@@ -54,38 +54,64 @@ else is wrapping + store plumbing.
 
 ---
 
-## Store-policy constraints baked into the plan (verified)
+## Store-policy constraints baked into the plan (verified, both stores)
 
-These shape WHAT ships, not just how:
+These shape WHAT ships, not just how. Researched against Apple's App Store
+Review Guidelines (3.1.5(b)) and Google Play's Cryptocurrency Exchanges and
+Software Wallets policy (enforced from 29 Oct 2025). RE-VERIFY at submission —
+both stores have changed these rules recently.
 
-1. **Organization developer account required.** Apple permits crypto wallets
-   only from developers enrolled as an ORGANIZATION (legal entity / D-U-N-S),
-   not an individual account. Same practical bar applies for a credible Play
-   listing. → Non-code blocker: set up the legal entity + org enrollment early;
-   it gates submission.
+### The single most important finding: stay NON-CUSTODIAL
+- **Google Play:** crypto wallet/exchange apps must hold financial licenses in
+  ~15+ major markets (US: FinCEN MSB + state money-transmitter licenses; EU:
+  MiCA CASP authorisation; UK: FCA; etc.) — BUT **non-custodial (self-custody)
+  wallets are EXPLICITLY OUT OF SCOPE / EXEMPT.** Veyrnox is self-custody (keys
+  on device, never custodied), so it falls in the exempt lane on Google Play.
+- **Apple:** permits wallet storage for ORG-enrolled developers; exchange/
+  transmission features require regional licensing (3.1.5(b)(iii)).
+- **THE LINE YOU MUST NOT CROSS:** the exemption/approvability holds ONLY while
+  the app stays non-custodial and free of exchange/swap/transmission services.
+  Adding DEX swap / DeFi / on-ramp / custodial features can pull the app INTO
+  the licensed-exchange category on BOTH stores — triggering FinCEN/MiCA/FCA
+  licensing (financially and operationally enormous) and, on Apple, the ~40%
+  rejection rate. Same boundary as the Phase D caution, now backed by both
+  stores' written policies. Defer all of it past v1.
+- **NOT legal advice:** "non-custodial = exempt" is the stores' stated position,
+  but for a build-to-sell product, have a lawyer confirm the design stays
+  outside MSB/MiCA/MTL scope in target markets BEFORE adding anything that
+  touches swaps or fund transmission.
 
-2. **Ship STORAGE-ONLY first.** Apple distinguishes wallet *storage* (allowed
-   for org devs) from *exchange/transmission* features, which require licensing
-   in every region you list. DEX swap / DeFi / on-ramp = the licensing trigger
-   and the ~40% rejection rate. → The initial mobile release is send / receive /
-   store across the EVM chains. NO swap/DEX/DeFi/WalletConnect in v1. Those come
-   later, separately, with their own legal groundwork (this matches the Phase D
-   "do it later" caution).
+### The rest
 
-3. **Be conservative with storefronts.** In App Store Connect, only select
-   regions you can support; over-broad region selection triggers
-   licensing-evidence rejections.
+1. **Organization developer account required (Apple).** Apple permits crypto
+   wallets only from developers enrolled as an ORGANIZATION (legal entity /
+   D-U-N-S), not an individual account. Non-code blocker: set up the legal
+   entity + Apple org enrollment early; it gates iOS submission. (Google's
+   licensing exemption for non-custodial removes the equivalent Play blocker,
+   but a proper org Play Console account is still advisable.)
+
+2. **Ship STORAGE-ONLY, NON-CUSTODIAL first.** The initial mobile release is
+   send / receive / store across the EVM chains — nothing that exchanges,
+   swaps, or custodies funds. NO swap/DEX/DeFi/WalletConnect/on-ramp in v1.
+   This keeps Google's exemption intact and stays in Apple's approvable lane.
+   Higher-risk features come later, separately, with their own legal groundwork.
+
+3. **Be conservative with storefronts/regions.** Only select regions you can
+   support. Over-broad region selection invites licensing-evidence rejections
+   (Apple) and, if you ever add custodial features, per-market licensing (both).
 
 4. **Subscriptions via store billing, NOT Wix/Stripe, on mobile.** Apple/Google
    require IN-APP PURCHASE for unlocking features/subscriptions; you may not use
-   your own payment mechanism, and crypto can't be the payment rail. → The tier
+   your own payment mechanism, and crypto can't be the payment rail. The tier
    model on mobile must use Apple IAP / Google Play Billing (each takes a cut).
-   Web can keep its own billing; mobile cannot. Plan the tier system to support
-   both rails. (Verify current policy at submission time — these rules change.)
+   Web can keep its own billing (Wix/Stripe); mobile cannot. Plan the tier
+   system to support both rails. (This answers the earlier Wix question: Wix
+   stays for WEB billing; mobile tiers go through store IAP.)
 
 5. **Reviewers look for:** Secure Enclave/Keystore key storage, biometric auth
    for transaction authorisation, clear risk disclosures. The secure-storage
-   work above directly satisfies this.
+   work above directly satisfies this — and being non-custodial with
+   hardware-backed keys is the strongest, most approvable posture on both stores.
 
 ---
 
@@ -126,8 +152,14 @@ review risk, and audit surface — add post-approval, deliberately.
 ## Non-code workstreams to start in parallel (these gate launch as much as code)
 - [ ] Legal entity + Apple **organization** Developer enrollment (D-U-N-S).
 - [ ] Google Play Console org account.
-- [ ] Decide supported regions; gather any licensing evidence for those regions.
-- [ ] IAP/Play Billing plan for the tier subscriptions (vs. web's billing).
+- [ ] Decide supported regions. NOTE: as a NON-CUSTODIAL wallet you are currently
+      exempt from Google's crypto licensing and outside Apple's exchange-licensing
+      requirement — so NO MSB/MiCA/FCA licenses needed for v1. Keep a written
+      record of the non-custodial design rationale in case a reviewer questions it.
+- [ ] Lawyer review confirming the non-custodial design stays outside
+      MSB/MiCA/MTL scope in target markets (cheap insurance for build-to-sell;
+      becomes essential the moment any swap/transmission feature is considered).
+- [ ] IAP/Play Billing plan for the tier subscriptions (vs. web's Wix/Stripe).
 - [ ] Risk-disclosure + privacy/data-safety content.
 - [ ] Confirm current Apple 3.1.5(b) and Google crypto-wallet policies at submit
       time (policies change — re-verify, do not assume this doc is current).
