@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { logAuditEvent } from "../hooks/useAuditLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -6,13 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock } from "lucide-react";
+import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import { toast } from "sonner";
 import { useWallet } from "@/lib/WalletProvider";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
-import { getAsset, canSend } from "@/wallet-core/assets";
+import { getAsset, canSend, canReceive } from "@/wallet-core/assets";
+import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
+import { describeErc20Call } from "@/wallet-core/evm/calldata";
+import { getToken } from "@/wallet-core/evm/tokens";
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
@@ -74,18 +77,44 @@ export default function SendCrypto() {
 
   const selectedWallet = wallets.find(w => w.id === walletId);
 
-  // Capability gate: only assets whose status is `live` may move funds (Phase A
-  // = ETH on Sepolia). Everything else is shown but cannot send.
+  // Capability gate: only assets whose status is `live` may move funds. ETH is
+  // live (Phase A); ERC-20 tokens (Phase B) are receive_only until a testnet
+  // transfer is verified, so they read balances but cannot yet send.
   const selectedAsset = getAsset(selectedWallet?.currency);
   const sendEnabled = canSend(selectedAsset);
+  const isErc20 = selectedAsset?.family === "erc20";
 
   // Chain is the source of truth for balance — read it live, never the DB.
+  // Native (ETH) reads via getBalanceEth; ERC-20 reads via the token contract's
+  // balanceOf (with an on-chain decimals cross-check). Enabled whenever the asset
+  // is at least receive-capable so balances show even before send is unlocked.
   const { data: liveBalance } = useQuery({
-    queryKey: ["evm-balance", NETWORK_KEY, selectedWallet?.address],
-    queryFn: () => getBalanceEth(NETWORK_KEY, selectedWallet.address),
-    enabled: !!selectedWallet?.address && sendEnabled,
+    queryKey: ["evm-balance", NETWORK_KEY, selectedWallet?.address, selectedAsset?.symbol],
+    queryFn: () => isErc20
+      ? getTokenBalance({ networkKey: NETWORK_KEY, symbol: selectedAsset.symbol, owner: selectedWallet.address })
+      : getBalanceEth(NETWORK_KEY, selectedWallet.address),
+    enabled: !!selectedWallet?.address && canReceive(selectedAsset),
     refetchInterval: 15000,
   });
+
+  // Decode EXACTLY what an ERC-20 send will sign, for display on the confirm
+  // screen BEFORE any signature (the anti-blind-signing control). Transfers show
+  // recipient/amount/token; an unlimited `approve` would surface a red warning.
+  const tokenCalldata = useMemo(() => {
+    if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
+    try {
+      const { data } = buildTokenTransfer({ networkKey: NETWORK_KEY, symbol: selectedAsset.symbol, to: toAddress, amount });
+      return describeErc20Call({ data, tokenSymbol: selectedAsset.symbol, decimals: getToken(NETWORK_KEY, selectedAsset.symbol).decimals });
+    } catch {
+      return null; // unconfigured token / invalid input — UI shows nothing to decode
+    }
+  }, [isErc20, selectedAsset, toAddress, amount]);
+
+  // Unlimited-approval extra confirmation. Send flows are transfer-only, so this
+  // stays false in normal use; it hard-gates the action only if an unlimited
+  // `approve` is ever decoded.
+  const [approvalAck, setApprovalAck] = useState(false);
+  const blockedByApproval = tokenCalldata?.kind === "approve" && tokenCalldata.unlimited && !approvalAck;
 
   // Effective balance for max/limit checks: chain read for live assets, falling
   // back to the DB value only for not-yet-live assets (display only).
@@ -123,14 +152,29 @@ export default function SendCrypto() {
       const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
       if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
 
+      // Unlimited approvals must be explicitly acknowledged before signing.
+      if (blockedByApproval) {
+        throw new Error("Confirm the unlimited-approval warning before signing.");
+      }
+
       // Sign LOCALLY and broadcast. privateKey is transient and never persisted.
+      // Branch on the asset family: ERC-20 tokens go through the token contract's
+      // transfer; native EVM coins (ETH) use the native value transfer.
       const tx = await withPrivateKey(acct.index, (privateKey) =>
-        signAndBroadcast({
-          networkKey: NETWORK_KEY,
-          privateKey,
-          to: toAddress,
-          amountEth: amount,
-        })
+        isErc20
+          ? sendToken({
+              networkKey: NETWORK_KEY,
+              privateKey,
+              symbol: selectedAsset.symbol,
+              to: toAddress,
+              amount,
+            })
+          : signAndBroadcast({
+              networkKey: NETWORK_KEY,
+              privateKey,
+              to: toAddress,
+              amountEth: amount,
+            })
       );
 
       // Record the REAL chain hash as 'pending'. Do NOT write balances — the
@@ -217,7 +261,7 @@ export default function SendCrypto() {
   };
 
   const resetVerify = () => {
-    setTwoFAMethod(null); setOtpSent(false); setOtpCode(""); setOtpSecret("");
+    setTwoFAMethod(null); setOtpSent(false); setOtpCode(""); setOtpSecret(""); setApprovalAck(false);
   };
 
   if (step === "done") {
@@ -363,12 +407,58 @@ export default function SendCrypto() {
               <p className="text-xs text-muted-foreground font-mono mt-1 truncate">{toAddress}</p>
             </div>
 
+            {/* Decoded calldata for ERC-20 sends — show EXACTLY what will be
+                signed before any signature (anti-blind-signing control). */}
+            {isErc20 && tokenCalldata && (
+              <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-2">
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
+                  <FileText className="h-3 w-3" /> Decoded contract call
+                </p>
+                {tokenCalldata.kind === "transfer" && (
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="font-mono font-semibold">transfer</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Amount</span><span className="font-mono font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
+                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Recipient</span><span className="font-mono truncate">{tokenCalldata.to}</span></div>
+                  </div>
+                )}
+                {tokenCalldata.kind === "approve" && (
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="font-mono font-semibold">approve</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Allowance</span><span className={`font-mono font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.amount}</span></div>
+                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Spender</span><span className="font-mono truncate">{tokenCalldata.spender}</span></div>
+                  </div>
+                )}
+                {tokenCalldata.kind === "unknown" && (
+                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Unrecognised calldata — do not sign unless you know exactly what this does.</p>
+                )}
+                {/* Gas is always paid in the chain's native coin, even for tokens. */}
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
+                  <Fuel className="h-3 w-3 shrink-0" /> Network fee is paid in ETH (Sepolia) — you need ETH for gas even when sending {tokenCalldata.tokenSymbol || selectedWallet?.currency}.
+                </p>
+              </div>
+            )}
+
+            {/* Unlimited-approval red warning + required extra confirmation. */}
+            {tokenCalldata?.kind === "approve" && tokenCalldata.unlimited && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/40 space-y-2">
+                <p className="text-xs text-destructive flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {tokenCalldata.warning}
+                </p>
+                <label className="flex items-start gap-2 text-xs text-destructive cursor-pointer">
+                  <input type="checkbox" checked={approvalAck} onChange={e => setApprovalAck(e.target.checked)} className="mt-0.5" />
+                  I understand this grants UNLIMITED spending and I trust this contract.
+                </label>
+              </div>
+            )}
+
             {/* 2FA method picker */}
             {!twoFAMethod && (
               <div className="space-y-2">
                 <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-widest">Verify your identity</p>
                 {selectedWallet?.passkey_registered && window.PublicKeyCredential && (
-                  <Button className="w-full gap-2" onClick={() => { setTwoFAMethod("passkey"); verifyPasskey(); }}>
+                  <Button className="w-full gap-2" disabled={blockedByApproval} onClick={() => { setTwoFAMethod("passkey"); verifyPasskey(); }}>
                     <Fingerprint className="h-4 w-4" />
                     Use Passkey / Biometric
                   </Button>
@@ -427,7 +517,7 @@ export default function SendCrypto() {
                     </div>
                     <Button
                       className="w-full gap-2"
-                      disabled={otpCode.length !== 6 || sendTx.isPending}
+                      disabled={otpCode.length !== 6 || sendTx.isPending || blockedByApproval}
                       onClick={verifyOTP}
                     >
                       {sendTx.isPending
