@@ -9,6 +9,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
+import { getBalanceEth } from "@/wallet-core/evm/provider";
+import { getTokenBalance } from "@/wallet-core/evm/token-send";
+
+const NETWORK_KEY = "sepolia"; // testnet-first; mainnet stays gated until audit
+
+// Live on-chain balance for a receivable EVM-family asset. Native coins read via
+// getBalanceEth; ERC-20 tokens via the token contract's balanceOf (chain is the
+// source of truth — never a stored DB value).
+function AssetLiveBalance({ asset, address }) {
+  const isErc20 = asset.family === "erc20";
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["hd-evm-balance", NETWORK_KEY, asset.symbol, address],
+    queryFn: () => isErc20
+      ? getTokenBalance({ networkKey: NETWORK_KEY, symbol: asset.symbol, owner: address })
+      : getBalanceEth(NETWORK_KEY, address),
+    enabled: !!address,
+    refetchInterval: 20000,
+    retry: 1,
+  });
+  if (!address) return null;
+  if (isLoading) return <span className="text-xs text-muted-foreground">…</span>;
+  if (isError) return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">—</span>;
+  return <span className="text-xs font-semibold">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} {asset.symbol}</span>;
+}
 
 // All EVM-family assets share one secp256k1 derivation (m/44'/60'/0'/0/0), so a
 // single derived account backs ETH and every EVM token/chain. Non-EVM assets
@@ -225,7 +249,9 @@ export default function HDWalletManager() {
                     <p className="text-xs text-muted-foreground font-mono truncate">{address || (dim ? "Address available once live" : "—")}</p>
                   </div>
                   <div className="text-right shrink-0 flex items-center gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground">{asset.symbol}</span>
+                    {address
+                      ? <AssetLiveBalance asset={asset} address={address} />
+                      : <span className="text-xs font-semibold text-muted-foreground">{asset.symbol}</span>}
                     {exp ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   </div>
                 </button>
