@@ -27,7 +27,15 @@ export const ASSET_STATUS = Object.freeze({
 //   solana - Solana (separate: ed25519, base58)
 export const ASSETS = Object.freeze([
   { symbol: 'ETH',   name: 'Ethereum',  family: 'evm',    chain: 'sepolia',   status: ASSET_STATUS.LIVE },
-  { symbol: 'USDC',  name: 'USD Coin',  family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.COMING_SOON },
+  // USDC (Phase B): real address + live balance reads are wired and verified
+  // (Circle's official Sepolia USDC). Send stays HARD-gated at receive_only
+  // until a testnet transfer is verified on-chain and reviewed, then flip to
+  // LIVE. See src/wallet-core/evm/tokens.js.
+  { symbol: 'USDC',  name: 'USD Coin',  family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.RECEIVE_ONLY },
+  // USDT (Phase B): no authoritative Tether deployment exists on Sepolia, so the
+  // token address is intentionally unconfigured (tokens.js) and USDT stays
+  // coming_soon — no address, no balance, no send — until a verified address is
+  // supplied. We do not guess token addresses.
   { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.COMING_SOON },
   { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygon',   status: ASSET_STATUS.COMING_SOON },
   { symbol: 'ARB',   name: 'Arbitrum',  family: 'evm',    chain: 'arbitrum',  status: ASSET_STATUS.COMING_SOON },
