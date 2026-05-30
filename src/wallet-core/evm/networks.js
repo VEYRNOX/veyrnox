@@ -23,7 +23,8 @@ export const NETWORKS = {
     symbol: 'ETH',
     decimals: 18,
     // Public default; override via setRpcUrl(). Swap for your own provider in prod.
-    defaultRpcUrl: 'https://rpc.sepolia.org',
+    // (rpc.sepolia.org was returning 404; publicnode is a reliable public default.)
+    defaultRpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     explorer: 'https://sepolia.etherscan.io',
     isTestnet: true,
     enabled: true,
