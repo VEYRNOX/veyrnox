@@ -6,18 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, KeyRound, RefreshCw, AlertTriangle } from "lucide-react";
+import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import { toast } from "sonner";
+import { useWallet } from "@/lib/WalletProvider";
+import { signAndBroadcast } from "@/wallet-core/evm/send";
+import { getBalanceEth } from "@/wallet-core/evm/provider";
+import { getAsset, canSend } from "@/wallet-core/assets";
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
+  const { isUnlocked, accounts, withPrivateKey } = useWallet();
+  const NETWORK_KEY = "sepolia"; // testnet-first; mainnet stays gated until audit
   const [walletId, setWalletId] = useState("");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
+  const [txResult, setTxResult] = useState(null); // { hash, explorerUrl } from a real broadcast
 
   // 2FA state
   const [otpCode, setOtpCode]         = useState("");
@@ -67,6 +74,25 @@ export default function SendCrypto() {
 
   const selectedWallet = wallets.find(w => w.id === walletId);
 
+  // Capability gate: only assets whose status is `live` may move funds (Phase A
+  // = ETH on Sepolia). Everything else is shown but cannot send.
+  const selectedAsset = getAsset(selectedWallet?.currency);
+  const sendEnabled = canSend(selectedAsset);
+
+  // Chain is the source of truth for balance — read it live, never the DB.
+  const { data: liveBalance } = useQuery({
+    queryKey: ["evm-balance", NETWORK_KEY, selectedWallet?.address],
+    queryFn: () => getBalanceEth(NETWORK_KEY, selectedWallet.address),
+    enabled: !!selectedWallet?.address && sendEnabled,
+    refetchInterval: 15000,
+  });
+
+  // Effective balance for max/limit checks: chain read for live assets, falling
+  // back to the DB value only for not-yet-live assets (display only).
+  const effectiveBalance = sendEnabled && liveBalance != null
+    ? parseFloat(liveBalance)
+    : (selectedWallet?.balance || 0);
+
   const ADDRESS_PATTERNS = {
     BTC: /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/,
     ETH: /^0x[0-9a-fA-F]{40}$/,
@@ -86,7 +112,29 @@ export default function SendCrypto() {
 
   const sendTx = useMutation({
     mutationFn: async () => {
-      const txHash = "0x" + Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
+      // HARD capability gate: only `live` assets may move funds. This is the
+      // exact failure mode of the original code (sending on fake assets).
+      if (!canSend(selectedAsset)) {
+        throw new Error(`Sending is not yet enabled for ${selectedWallet?.currency}.`);
+      }
+      if (!isUnlocked) throw new Error("Unlock your wallet to send");
+
+      // Map the selected wallet to its HD derivation index (public address match).
+      const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
+      if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
+
+      // Sign LOCALLY and broadcast. privateKey is transient and never persisted.
+      const tx = await withPrivateKey(acct.index, (privateKey) =>
+        signAndBroadcast({
+          networkKey: NETWORK_KEY,
+          privateKey,
+          to: toAddress,
+          amountEth: amount,
+        })
+      );
+
+      // Record the REAL chain hash as 'pending'. Do NOT write balances — the
+      // chain is the source of truth and is read live elsewhere.
       await base44.entities.Transaction.create({
         wallet_id: walletId,
         type: "send",
@@ -94,33 +142,29 @@ export default function SendCrypto() {
         currency: selectedWallet.currency,
         to_address: toAddress,
         from_address: selectedWallet.address,
-        status: "confirmed",
-        tx_hash: txHash,
+        status: "pending",        // becomes confirmed after tx.wait()
+        tx_hash: tx.hash,          // REAL chain hash
+        explorer_url: tx.explorerUrl,
         note,
       });
-      await base44.entities.Wallet.update(walletId, {
-        balance: (selectedWallet.balance || 0) - parseFloat(amount),
-      });
+
+      // Confirm in the background, then refresh balance + history from chain.
+      tx.wait(1).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["evm-balance", NETWORK_KEY, selectedWallet.address] });
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      }).catch(() => {/* surface a "still pending / failed" state in UI */});
+
+      return { hash: tx.hash, explorerUrl: tx.explorerUrl };
     },
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["wallets"] });
-      const prevWallets = queryClient.getQueryData(["wallets"]);
-      queryClient.setQueryData(["wallets"], (old) =>
-        old?.map(w => w.id === walletId
-          ? { ...w, balance: (w.balance || 0) - parseFloat(amount) }
-          : w
-        ) ?? []
-      );
-      return { prevWallets };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prevWallets) queryClient.setQueryData(["wallets"], ctx.prevWallets);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wallets"] });
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["evm-balance", NETWORK_KEY, selectedWallet?.address] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      logAuditEvent({ action: `Sent ${amount} ${selectedWallet?.currency} to ${toAddress}`, category: "transaction", details: `Wallet: ${selectedWallet?.name}`, severity: "info" });
+      logAuditEvent({ action: `Sent ${amount} ${selectedWallet?.currency} to ${toAddress}`, category: "transaction", details: `Wallet: ${selectedWallet?.name} • tx ${result?.hash}`, severity: "info" });
+      setTxResult(result);
       setStep("done");
+    },
+    onError: (err) => {
+      toast.error(err?.message || "Send failed");
     },
   });
 
@@ -182,11 +226,23 @@ export default function SendCrypto() {
         <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
           <CheckCircle2 className="h-8 w-8 text-primary" />
         </div>
-        <h2 className="text-xl font-bold">Transaction Sent</h2>
+        <h2 className="text-xl font-bold">Transaction Broadcast</h2>
         <p className="text-sm text-muted-foreground">
-          {amount} {selectedWallet?.currency} sent successfully
+          {amount} {selectedWallet?.currency} signed locally and sent to the network
         </p>
-        <Button variant="outline" onClick={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); }}>
+        {txResult?.hash && (
+          <div className="p-3 rounded-lg bg-secondary/30 border border-border text-left space-y-2">
+            <p className="text-xs text-muted-foreground">Transaction hash</p>
+            <p className="text-xs font-mono break-all">{txResult.hash}</p>
+            {txResult.explorerUrl && (
+              <a href={txResult.explorerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+                View on Etherscan <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+            <p className="text-[11px] text-muted-foreground">Pending until confirmed on-chain. Balance updates from the chain, not a stored value.</p>
+          </div>
+        )}
+        <Button variant="outline" onClick={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); }}>
           Send Another
         </Button>
       </div>
@@ -257,9 +313,26 @@ export default function SendCrypto() {
           <Label>Amount</Label>
           <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
           {selectedWallet && (
-            <p className="text-xs text-muted-foreground mt-1">Balance: {selectedWallet.balance} {selectedWallet.currency}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {sendEnabled
+                ? <>Balance: {liveBalance != null ? `${liveBalance} ${selectedWallet.currency}` : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
+                : <>Balance: {selectedWallet.balance} {selectedWallet.currency}</>}
+            </p>
           )}
         </div>
+
+        {selectedWallet && !sendEnabled && (
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
+            <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. Only ETH (Sepolia testnet) is live in this build; other assets are receive/roadmap only until their crypto path is verified.</p>
+          </div>
+        )}
+        {selectedWallet && sendEnabled && !isUnlocked && (
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <Lock className="h-3.5 w-3.5 text-yellow-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-300">Your wallet is locked. Unlock it in the HD Wallet Manager to sign and send.</p>
+          </div>
+        )}
         <div>
           <Label>Note (optional)</Label>
           <Input value={note} onChange={e => setNote(e.target.value)} placeholder="What's this for?" className="mt-1.5" />
@@ -268,7 +341,7 @@ export default function SendCrypto() {
         {step === "form" && (
           <Button
             className="w-full"
-            disabled={!walletId || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > (selectedWallet?.balance || 0) || !addressFormatValid || (() => {
+            disabled={!walletId || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !sendEnabled || (sendEnabled && !isUnlocked) || (() => {
               if (!selectedWallet) return false;
               const amtUSD = parseFloat(amount) * (USD_RATES[selectedWallet.currency] || 1);
               const activeLimits = txLimits.filter(l => l.enabled && (l.currency === selectedWallet.currency || l.currency === "ALL"));
