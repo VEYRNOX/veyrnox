@@ -1,0 +1,97 @@
+{
+  "name": "LendingPosition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "title": "Type",
+      "enum": [
+        "lend",
+        "borrow"
+      ],
+      "default": "lend"
+    },
+    "protocol": {
+      "type": "string",
+      "title": "Protocol",
+      "enum": [
+        "Aave",
+        "Compound",
+        "MakerDAO",
+        "Euler"
+      ]
+    },
+    "asset": {
+      "type": "string",
+      "title": "Asset",
+      "enum": [
+        "ETH",
+        "BTC",
+        "USDC",
+        "USDT",
+        "SOL"
+      ]
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "collateral_asset": {
+      "type": "string",
+      "title": "Collateral Asset"
+    },
+    "collateral_amount": {
+      "type": "number",
+      "title": "Collateral Amount"
+    },
+    "apy": {
+      "type": "number",
+      "title": "APY (%)"
+    },
+    "interest_accrued": {
+      "type": "number",
+      "title": "Interest Accrued",
+      "default": 0
+    },
+    "health_factor": {
+      "type": "number",
+      "title": "Health Factor",
+      "default": 1.5
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "closed",
+        "liquidated"
+      ],
+      "default": "active"
+    },
+    "due_date": {
+      "type": "string",
+      "title": "Due Date"
+    }
+  },
+  "required": [
+    "type",
+    "protocol",
+    "asset",
+    "amount",
+    "apy"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

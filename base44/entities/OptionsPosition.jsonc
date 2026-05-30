@@ -1,0 +1,98 @@
+{
+  "name": "OptionsPosition",
+  "type": "object",
+  "properties": {
+    "underlying": {
+      "type": "string",
+      "title": "Underlying Asset",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL"
+      ]
+    },
+    "position_type": {
+      "type": "string",
+      "title": "Type",
+      "enum": [
+        "call",
+        "put",
+        "futures_long",
+        "futures_short"
+      ],
+      "default": "call"
+    },
+    "strike_price": {
+      "type": "number",
+      "title": "Strike Price (USD)"
+    },
+    "expiry_date": {
+      "type": "string",
+      "title": "Expiry Date"
+    },
+    "contracts": {
+      "type": "number",
+      "title": "Contracts",
+      "default": 1
+    },
+    "premium_paid": {
+      "type": "number",
+      "title": "Premium Paid (USD)"
+    },
+    "entry_price": {
+      "type": "number",
+      "title": "Entry Price (USD)"
+    },
+    "current_price": {
+      "type": "number",
+      "title": "Current Price (USD)"
+    },
+    "leverage": {
+      "type": "number",
+      "title": "Leverage",
+      "default": 1
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "open",
+        "closed",
+        "expired"
+      ],
+      "default": "open"
+    },
+    "pnl": {
+      "type": "number",
+      "title": "P&L (USD)"
+    },
+    "exchange": {
+      "type": "string",
+      "title": "Exchange"
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "underlying",
+    "position_type",
+    "expiry_date",
+    "contracts"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

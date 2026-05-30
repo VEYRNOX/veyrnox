@@ -1,0 +1,68 @@
+{
+  "name": "UserSession",
+  "type": "object",
+  "properties": {
+    "device_name": {
+      "type": "string",
+      "title": "Device Name"
+    },
+    "browser": {
+      "type": "string",
+      "title": "Browser"
+    },
+    "ip_address": {
+      "type": "string",
+      "title": "IP Address"
+    },
+    "location": {
+      "type": "string",
+      "title": "Location"
+    },
+    "last_active": {
+      "type": "string",
+      "title": "Last Active"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "revoked"
+      ],
+      "default": "active"
+    },
+    "session_token": {
+      "type": "string",
+      "title": "Session Token"
+    }
+  },
+  "required": [
+    "device_name",
+    "browser"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

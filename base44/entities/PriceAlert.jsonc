@@ -1,0 +1,84 @@
+{
+  "name": "PriceAlert",
+  "type": "object",
+  "properties": {
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "alert_type": {
+      "type": "string",
+      "title": "Alert Type",
+      "enum": [
+        "price",
+        "volatility"
+      ],
+      "default": "price"
+    },
+    "target_price": {
+      "type": "number",
+      "title": "Target Price (USD)"
+    },
+    "direction": {
+      "type": "string",
+      "title": "Direction",
+      "enum": [
+        "above",
+        "below"
+      ],
+      "default": "above"
+    },
+    "volatility_pct": {
+      "type": "number",
+      "title": "Volatility Threshold (%)",
+      "description": "Fire alert when price swings this % within one polling interval"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "triggered",
+        "dismissed"
+      ],
+      "default": "active"
+    },
+    "triggered_at": {
+      "type": "string",
+      "title": "Triggered At"
+    },
+    "triggered_price": {
+      "type": "number",
+      "title": "Triggered Price"
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "currency",
+    "direction"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

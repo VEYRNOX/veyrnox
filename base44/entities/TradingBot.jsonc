@@ -1,0 +1,109 @@
+{
+  "name": "TradingBot",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Bot Name"
+    },
+    "strategy": {
+      "type": "string",
+      "title": "Strategy",
+      "enum": [
+        "grid",
+        "dca",
+        "momentum",
+        "mean_reversion",
+        "arbitrage"
+      ]
+    },
+    "asset": {
+      "type": "string",
+      "title": "Asset",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "base_currency": {
+      "type": "string",
+      "title": "Quote Currency",
+      "enum": [
+        "USDC",
+        "USDT"
+      ]
+    },
+    "investment_amount": {
+      "type": "number",
+      "title": "Investment Amount (USD)"
+    },
+    "grid_levels": {
+      "type": "number",
+      "title": "Grid Levels",
+      "default": 10
+    },
+    "lower_price": {
+      "type": "number",
+      "title": "Lower Price Bound (USD)"
+    },
+    "upper_price": {
+      "type": "number",
+      "title": "Upper Price Bound (USD)"
+    },
+    "take_profit": {
+      "type": "number",
+      "title": "Take Profit (%)"
+    },
+    "stop_loss": {
+      "type": "number",
+      "title": "Stop Loss (%)"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "paused",
+        "stopped"
+      ],
+      "default": "paused"
+    },
+    "total_pnl": {
+      "type": "number",
+      "title": "Total P&L (USD)",
+      "default": 0
+    },
+    "trades_executed": {
+      "type": "number",
+      "title": "Trades Executed",
+      "default": 0
+    },
+    "last_trade_at": {
+      "type": "string",
+      "title": "Last Trade At"
+    }
+  },
+  "required": [
+    "name",
+    "strategy",
+    "asset",
+    "investment_amount"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

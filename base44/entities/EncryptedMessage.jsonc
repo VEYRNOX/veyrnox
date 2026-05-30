@@ -1,0 +1,58 @@
+{
+  "name": "EncryptedMessage",
+  "type": "object",
+  "properties": {
+    "recipient_address": {
+      "type": "string",
+      "title": "Recipient Wallet Address"
+    },
+    "recipient_name": {
+      "type": "string",
+      "title": "Recipient Name"
+    },
+    "content": {
+      "type": "string",
+      "title": "Message Content"
+    },
+    "encrypted_content": {
+      "type": "string",
+      "title": "Encrypted Content"
+    },
+    "read": {
+      "type": "boolean",
+      "title": "Read",
+      "default": false
+    },
+    "direction": {
+      "type": "string",
+      "title": "Direction",
+      "enum": [
+        "sent",
+        "received"
+      ],
+      "default": "sent"
+    },
+    "thread_id": {
+      "type": "string",
+      "title": "Thread ID"
+    }
+  },
+  "required": [
+    "recipient_address",
+    "content"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

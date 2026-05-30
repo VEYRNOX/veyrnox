@@ -1,0 +1,108 @@
+import { useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
+import { X, Camera } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export default function QRScanner({ onScan, onClose }) {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const rafRef = useRef(null);
+  const [error, setError] = useState(null);
+  const [scanning, setScanning] = useState(true);
+
+  useEffect(() => {
+    startCamera();
+    return () => stopCamera();
+  }, []);
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      videoRef.current.play();
+      videoRef.current.onloadedmetadata = () => tick();
+    } catch {
+      setError("Camera access denied. Please allow camera permissions.");
+    }
+  }
+
+  function stopCamera() {
+    cancelAnimationFrame(rafRef.current);
+    streamRef.current?.getTracks().forEach(t => t.stop());
+  }
+
+  function tick() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      rafRef.current = requestAnimationFrame(tick);
+      return;
+    }
+    const ctx = canvas.getContext("2d");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    if (code) {
+      setScanning(false);
+      stopCamera();
+      onScan(code.data);
+      return;
+    }
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white">
+            <Camera className="h-5 w-5 text-primary" />
+            <span className="font-semibold">Scan QR Code</span>
+          </div>
+          <Button size="icon" variant="ghost" className="text-white hover:text-white hover:bg-white/10" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {error ? (
+          <div className="rounded-xl bg-destructive/20 border border-destructive/30 p-4 text-sm text-destructive-foreground text-center">
+            {error}
+          </div>
+        ) : (
+          <div className="relative rounded-2xl overflow-hidden border-2 border-primary shadow-[0_0_30px_hsl(28,95%,54%,0.3)]">
+            <video ref={videoRef} className="w-full aspect-square object-cover" playsInline muted />
+            {/* Scanning overlay */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 border-2 border-transparent">
+                {/* Corner brackets */}
+                {[["top-3 left-3","border-t-2 border-l-2"],["top-3 right-3","border-t-2 border-r-2"],["bottom-3 left-3","border-b-2 border-l-2"],["bottom-3 right-3","border-b-2 border-r-2"]].map(([pos, cls], i) => (
+                  <div key={i} className={`absolute ${pos} ${cls} border-primary w-6 h-6 rounded-sm`} />
+                ))}
+              </div>
+              {scanning && (
+                <div className="absolute left-4 right-4 top-1/2 h-0.5 bg-primary/70 animate-[scan_2s_ease-in-out_infinite]"
+                  style={{ boxShadow: "0 0 8px hsl(28,95%,54%)" }} />
+              )}
+            </div>
+          </div>
+        )}
+
+        <canvas ref={canvasRef} className="hidden" />
+        <p className="text-center text-xs text-white/50">Point your camera at a wallet address QR code</p>
+      </div>
+
+      <style>{`
+        @keyframes scan {
+          0%, 100% { transform: translateY(-60px); opacity: 0.4; }
+          50% { transform: translateY(60px); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}

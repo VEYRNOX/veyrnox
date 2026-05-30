@@ -1,0 +1,64 @@
+{
+  "name": "ExchangeConnection",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "title": "Label"
+    },
+    "exchange": {
+      "type": "string",
+      "title": "Exchange",
+      "enum": [
+        "binance",
+        "kraken",
+        "coinbase"
+      ]
+    },
+    "api_key": {
+      "type": "string",
+      "title": "API Key"
+    },
+    "api_secret": {
+      "type": "string",
+      "title": "API Secret"
+    },
+    "last_synced": {
+      "type": "string",
+      "title": "Last Synced"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "error",
+        "pending"
+      ],
+      "default": "pending"
+    },
+    "error_message": {
+      "type": "string",
+      "title": "Error Message"
+    }
+  },
+  "required": [
+    "exchange",
+    "api_key",
+    "api_secret"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

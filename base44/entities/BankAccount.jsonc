@@ -1,0 +1,85 @@
+{
+  "name": "BankAccount",
+  "type": "object",
+  "properties": {
+    "bank_name": {
+      "type": "string",
+      "title": "Bank Name"
+    },
+    "account_holder": {
+      "type": "string",
+      "title": "Account Holder"
+    },
+    "iban": {
+      "type": "string",
+      "title": "IBAN"
+    },
+    "bic": {
+      "type": "string",
+      "title": "BIC / SWIFT"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "enum": [
+        "GBP",
+        "EUR",
+        "USD",
+        "CHF",
+        "JPY"
+      ],
+      "default": "GBP"
+    },
+    "account_type": {
+      "type": "string",
+      "title": "Account Type",
+      "enum": [
+        "personal",
+        "business"
+      ],
+      "default": "personal"
+    },
+    "verified": {
+      "type": "boolean",
+      "title": "Verified",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "pending",
+        "removed"
+      ],
+      "default": "pending"
+    },
+    "last_used": {
+      "type": "string",
+      "title": "Last Used"
+    },
+    "nickname": {
+      "type": "string",
+      "title": "Nickname"
+    }
+  },
+  "required": [
+    "bank_name",
+    "iban",
+    "currency"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

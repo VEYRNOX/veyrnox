@@ -1,0 +1,106 @@
+{
+  "name": "RASPEvent",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "title": "Event Type",
+      "enum": [
+        "sql_injection",
+        "xss_attempt",
+        "csrf_attack",
+        "path_traversal",
+        "brute_force",
+        "replay_attack",
+        "api_abuse",
+        "suspicious_payload",
+        "rate_limit_exceeded",
+        "unauthorized_access"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "title": "Severity",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "source_ip": {
+      "type": "string",
+      "title": "Source IP"
+    },
+    "endpoint": {
+      "type": "string",
+      "title": "Endpoint / Action"
+    },
+    "payload_snippet": {
+      "type": "string",
+      "title": "Payload Snippet"
+    },
+    "user_agent": {
+      "type": "string",
+      "title": "User Agent"
+    },
+    "blocked": {
+      "type": "boolean",
+      "title": "Blocked",
+      "default": true
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "open",
+        "investigating",
+        "mitigated",
+        "false_positive"
+      ],
+      "default": "open"
+    },
+    "geo_country": {
+      "type": "string",
+      "title": "Country"
+    },
+    "resolution_note": {
+      "type": "string",
+      "title": "Resolution Note"
+    }
+  },
+  "required": [
+    "event_type",
+    "severity"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

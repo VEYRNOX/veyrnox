@@ -1,0 +1,81 @@
+{
+  "name": "AccountAccess",
+  "type": "object",
+  "properties": {
+    "invitee_email": {
+      "type": "string",
+      "title": "Invitee Email"
+    },
+    "invitee_name": {
+      "type": "string",
+      "title": "Invitee Name"
+    },
+    "role": {
+      "type": "string",
+      "title": "Role",
+      "enum": [
+        "viewer",
+        "trader",
+        "manager"
+      ],
+      "default": "viewer"
+    },
+    "permissions": {
+      "type": "array",
+      "title": "Permissions",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "pending",
+        "active",
+        "revoked"
+      ],
+      "default": "pending"
+    },
+    "last_active": {
+      "type": "string",
+      "title": "Last Active"
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "invitee_email",
+    "role"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.invitee_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.invitee_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "name": "HardwareWallet",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Device Name"
+    },
+    "device_type": {
+      "type": "string",
+      "title": "Device Type",
+      "enum": [
+        "Ledger Nano S",
+        "Ledger Nano X",
+        "Trezor One",
+        "Trezor Model T",
+        "Coldcard",
+        "BitBox02"
+      ]
+    },
+    "fingerprint": {
+      "type": "string",
+      "title": "Device Fingerprint"
+    },
+    "firmware_version": {
+      "type": "string",
+      "title": "Firmware Version"
+    },
+    "wallets_linked": {
+      "type": "array",
+      "title": "Linked Wallet IDs",
+      "items": {
+        "type": "string"
+      }
+    },
+    "last_connected": {
+      "type": "string",
+      "title": "Last Connected"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "connected",
+        "disconnected",
+        "pending"
+      ],
+      "default": "disconnected"
+    },
+    "require_pin": {
+      "type": "boolean",
+      "title": "Require PIN",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "device_type"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "WhitelistedAddress",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "title": "Label"
+    },
+    "address": {
+      "type": "string",
+      "title": "Wallet Address"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "label",
+    "address",
+    "currency"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

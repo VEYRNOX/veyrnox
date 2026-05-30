@@ -1,0 +1,110 @@
+{
+  "name": "DAOProposal",
+  "type": "object",
+  "properties": {
+    "protocol": {
+      "type": "string",
+      "title": "Protocol"
+    },
+    "proposal_id": {
+      "type": "string",
+      "title": "Proposal ID"
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "passed",
+        "rejected",
+        "pending"
+      ],
+      "default": "active"
+    },
+    "votes_for": {
+      "type": "number",
+      "title": "Votes For",
+      "default": 0
+    },
+    "votes_against": {
+      "type": "number",
+      "title": "Votes Against",
+      "default": 0
+    },
+    "my_vote": {
+      "type": "string",
+      "title": "My Vote",
+      "enum": [
+        "for",
+        "against",
+        "abstain"
+      ]
+    },
+    "ends_at": {
+      "type": "string",
+      "title": "Ends At"
+    },
+    "token_symbol": {
+      "type": "string",
+      "title": "Token"
+    },
+    "voting_power": {
+      "type": "number",
+      "title": "My Voting Power"
+    }
+  },
+  "required": [
+    "protocol",
+    "title",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

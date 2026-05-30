@@ -1,0 +1,73 @@
+{
+  "name": "Transaction",
+  "type": "object",
+  "properties": {
+    "wallet_id": {
+      "type": "string",
+      "title": "Wallet ID"
+    },
+    "type": {
+      "type": "string",
+      "title": "Type",
+      "enum": [
+        "send",
+        "receive",
+        "swap"
+      ]
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency"
+    },
+    "to_address": {
+      "type": "string",
+      "title": "To Address"
+    },
+    "from_address": {
+      "type": "string",
+      "title": "From Address"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "pending",
+        "confirmed",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "tx_hash": {
+      "type": "string",
+      "title": "Transaction Hash"
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "wallet_id",
+    "type",
+    "amount",
+    "currency"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

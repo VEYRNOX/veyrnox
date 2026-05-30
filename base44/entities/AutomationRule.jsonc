@@ -1,0 +1,101 @@
+{
+  "name": "AutomationRule",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Rule Name"
+    },
+    "rule_type": {
+      "type": "string",
+      "title": "Rule Type",
+      "enum": [
+        "stop_loss",
+        "take_profit",
+        "rebalance_trigger",
+        "dca_boost",
+        "trailing_stop"
+      ]
+    },
+    "asset": {
+      "type": "string",
+      "title": "Asset",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "trigger_condition": {
+      "type": "string",
+      "title": "Trigger Condition",
+      "enum": [
+        "price_drops_below",
+        "price_rises_above",
+        "portfolio_drift_exceeds",
+        "pnl_reaches"
+      ]
+    },
+    "trigger_value": {
+      "type": "number",
+      "title": "Trigger Value"
+    },
+    "action": {
+      "type": "string",
+      "title": "Action",
+      "enum": [
+        "sell_all",
+        "sell_percent",
+        "buy_percent",
+        "rebalance",
+        "notify_only"
+      ]
+    },
+    "action_value": {
+      "type": "number",
+      "title": "Action Value (%)"
+    },
+    "enabled": {
+      "type": "boolean",
+      "title": "Enabled",
+      "default": true
+    },
+    "last_triggered": {
+      "type": "string",
+      "title": "Last Triggered"
+    },
+    "trigger_count": {
+      "type": "number",
+      "title": "Times Triggered",
+      "default": 0
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "name",
+    "rule_type",
+    "asset",
+    "trigger_condition",
+    "trigger_value",
+    "action"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

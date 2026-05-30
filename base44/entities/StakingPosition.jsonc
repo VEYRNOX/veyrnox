@@ -1,0 +1,77 @@
+{
+  "name": "StakingPosition",
+  "type": "object",
+  "properties": {
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "enum": [
+        "ETH",
+        "SOL",
+        "BTC",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "validator_id": {
+      "type": "string",
+      "title": "Validator ID"
+    },
+    "validator_name": {
+      "type": "string",
+      "title": "Validator Name"
+    },
+    "staked_amount": {
+      "type": "number",
+      "title": "Staked Amount"
+    },
+    "apy": {
+      "type": "number",
+      "title": "APY (%)"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "unstaking",
+        "unstaked"
+      ],
+      "default": "active"
+    },
+    "staked_at": {
+      "type": "string",
+      "title": "Staked At"
+    },
+    "rewards_claimed": {
+      "type": "number",
+      "title": "Total Rewards Claimed",
+      "default": 0
+    },
+    "unstake_requested_at": {
+      "type": "string",
+      "title": "Unstake Requested At"
+    }
+  },
+  "required": [
+    "currency",
+    "validator_id",
+    "validator_name",
+    "staked_amount",
+    "apy"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

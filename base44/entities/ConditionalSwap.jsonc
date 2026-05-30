@@ -1,0 +1,117 @@
+{
+  "name": "ConditionalSwap",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Rule Name"
+    },
+    "from_asset": {
+      "type": "string",
+      "title": "From Asset",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "to_asset": {
+      "type": "string",
+      "title": "To Asset",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "amount_type": {
+      "type": "string",
+      "title": "Amount Type",
+      "enum": [
+        "fixed",
+        "percent_of_balance"
+      ],
+      "default": "fixed"
+    },
+    "condition_type": {
+      "type": "string",
+      "title": "Condition",
+      "enum": [
+        "price_drops_below",
+        "price_rises_above",
+        "price_drops_percent",
+        "price_rises_percent",
+        "time_based"
+      ]
+    },
+    "condition_value": {
+      "type": "number",
+      "title": "Condition Value"
+    },
+    "reference_asset": {
+      "type": "string",
+      "title": "Reference Asset",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "expiry": {
+      "type": "string",
+      "title": "Expires At"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "triggered",
+        "expired",
+        "cancelled"
+      ],
+      "default": "active"
+    },
+    "times_triggered": {
+      "type": "number",
+      "title": "Times Triggered",
+      "default": 0
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "name",
+    "from_asset",
+    "to_asset",
+    "amount",
+    "condition_type",
+    "condition_value"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

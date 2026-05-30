@@ -1,0 +1,89 @@
+{
+  "name": "SavingsGoal",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Goal Title"
+    },
+    "target_amount_usd": {
+      "type": "number",
+      "title": "Target Amount (USD)"
+    },
+    "current_amount_usd": {
+      "type": "number",
+      "title": "Current Amount (USD)",
+      "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "target_date": {
+      "type": "string",
+      "title": "Target Date"
+    },
+    "auto_dca": {
+      "type": "boolean",
+      "title": "Auto DCA",
+      "default": false
+    },
+    "dca_amount_usd": {
+      "type": "number",
+      "title": "DCA Amount (USD)"
+    },
+    "dca_frequency": {
+      "type": "string",
+      "title": "DCA Frequency",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "completed",
+        "paused"
+      ],
+      "default": "active"
+    },
+    "emoji": {
+      "type": "string",
+      "title": "Emoji"
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "title",
+    "target_amount_usd",
+    "currency"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

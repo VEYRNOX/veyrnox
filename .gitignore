@@ -1,0 +1,30 @@
+cat > .gitignore << 'EOF'
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Secrets / environment — NEVER commit these
+.env
+.env.*
+*.key
+*.pem
+*.keystore
+secrets.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local wallet artifacts (safety: never commit any seed/key material)
+*.mnemonic
+*.seed
+wallet-backup*

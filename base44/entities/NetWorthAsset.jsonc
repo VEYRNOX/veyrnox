@@ -1,0 +1,58 @@
+{
+  "name": "NetWorthAsset",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Asset Name"
+    },
+    "category": {
+      "type": "string",
+      "title": "Category",
+      "enum": [
+        "property",
+        "stocks",
+        "cash",
+        "pension",
+        "crypto",
+        "other"
+      ]
+    },
+    "value_usd": {
+      "type": "number",
+      "title": "Current Value (USD)"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency / Symbol"
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    },
+    "is_liability": {
+      "type": "boolean",
+      "title": "Is Liability",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "value_usd"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

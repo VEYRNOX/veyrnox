@@ -1,0 +1,98 @@
+{
+  "name": "RecurringPayment",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "title": "Label"
+    },
+    "wallet_id": {
+      "type": "string",
+      "title": "Wallet ID"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "to_address": {
+      "type": "string",
+      "title": "Recipient Address"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "frequency": {
+      "type": "string",
+      "title": "Frequency",
+      "enum": [
+        "daily",
+        "weekly",
+        "biweekly",
+        "monthly"
+      ],
+      "default": "monthly"
+    },
+    "next_run_at": {
+      "type": "string",
+      "title": "Next Run At"
+    },
+    "last_run_at": {
+      "type": "string",
+      "title": "Last Run At"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "paused",
+        "cancelled"
+      ],
+      "default": "active"
+    },
+    "total_sent": {
+      "type": "number",
+      "title": "Total Sent",
+      "default": 0
+    },
+    "run_count": {
+      "type": "number",
+      "title": "Run Count",
+      "default": 0
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    }
+  },
+  "required": [
+    "label",
+    "wallet_id",
+    "currency",
+    "to_address",
+    "amount",
+    "frequency"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

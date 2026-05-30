@@ -1,0 +1,103 @@
+{
+  "name": "DCASchedule",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "title": "Label"
+    },
+    "target_currency": {
+      "type": "string",
+      "title": "Target Asset",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "funding_wallet_id": {
+      "type": "string",
+      "title": "Funding Wallet ID"
+    },
+    "funding_currency": {
+      "type": "string",
+      "title": "Funding Currency",
+      "enum": [
+        "BTC",
+        "ETH",
+        "SOL",
+        "USDC",
+        "USDT"
+      ]
+    },
+    "amount_per_run": {
+      "type": "number",
+      "title": "Amount Per Run"
+    },
+    "frequency": {
+      "type": "string",
+      "title": "Frequency",
+      "enum": [
+        "daily",
+        "weekly",
+        "biweekly",
+        "monthly"
+      ],
+      "default": "weekly"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "paused",
+        "completed"
+      ],
+      "default": "active"
+    },
+    "next_run_at": {
+      "type": "string",
+      "title": "Next Run At"
+    },
+    "last_run_at": {
+      "type": "string",
+      "title": "Last Run At"
+    },
+    "total_invested": {
+      "type": "number",
+      "title": "Total Invested",
+      "default": 0
+    },
+    "total_runs": {
+      "type": "number",
+      "title": "Total Runs",
+      "default": 0
+    },
+    "target_wallet_id": {
+      "type": "string",
+      "title": "Target Wallet ID"
+    }
+  },
+  "required": [
+    "target_currency",
+    "funding_wallet_id",
+    "amount_per_run",
+    "frequency"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
