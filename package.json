@@ -12,11 +12,18 @@
     "preview": "vite preview",
     "check:rng": "node scripts/check-crypto-rng.mjs",
     "pretest": "node scripts/check-crypto-rng.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "cap:sync": "cap sync",
+    "mobile:build": "vite build && cap sync",
+    "android:sync": "vite build && cap sync android",
+    "android:open": "cap open android",
+    "android:run": "vite build && cap run android"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.30",
     "@base44/vite-plugin": "^1.0.20",
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@noble/curves": "^1.9.7",
@@ -89,6 +96,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.4",
     "@eslint/js": "^9.19.0",
     "@types/node": "^22.13.5",
     "@types/react": "^18.2.66",
