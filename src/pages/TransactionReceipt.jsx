@@ -86,7 +86,7 @@ export default function TransactionReceipt() {
               </Button>
             </div>
             <div ref={receiptRef} className="p-5 font-mono text-xs space-y-1">
-              <h2 className="text-center font-bold text-base mb-4 not-italic" style={{ fontFamily: "sans-serif" }}>SafeDigitalWallet</h2>
+              <h2 className="text-center font-bold text-base mb-4 not-italic" style={{ fontFamily: "sans-serif" }}>Veyrnox</h2>
               <div className="text-center text-muted-foreground mb-4">TRANSACTION RECEIPT</div>
               <div className="border-t border-dashed border-border my-3" />
               {[
@@ -106,7 +106,7 @@ export default function TransactionReceipt() {
                 </div>
               ))}
               <div className="border-t border-dashed border-border my-3" />
-              <p className="text-center text-muted-foreground text-[10px]">Thank you for using SafeDigitalWallet</p>
+              <p className="text-center text-muted-foreground text-[10px]">Thank you for using Veyrnox</p>
               <p className="text-center text-muted-foreground text-[10px]">This is a digital transaction record</p>
             </div>
           </div>

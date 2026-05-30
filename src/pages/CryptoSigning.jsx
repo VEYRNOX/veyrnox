@@ -21,7 +21,7 @@ export default function CryptoSigning() {
   const [showPhrase, setShowPhrase] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(null);
-  const [signMessage, setSignMessage] = useState("Hello from SafeDigitalWallet!");
+  const [signMessage, setSignMessage] = useState("Hello from Veyrnox!");
   const [signature, setSignature] = useState("");
   const [txTo, setTxTo] = useState("");
   const [txValue, setTxValue] = useState("0.001");

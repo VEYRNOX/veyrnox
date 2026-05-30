@@ -95,7 +95,7 @@ export default function BlockExplorer() {
           <Compass className="h-5 w-5 text-teal-500" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">SafeDigital Block Explorer</h1>
+          <h1 className="text-xl font-bold">Veyrnox Block Explorer</h1>
           <p className="text-sm text-muted-foreground">Search transactions, addresses, and blocks</p>
         </div>
       </div>

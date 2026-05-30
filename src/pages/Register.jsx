@@ -20,7 +20,7 @@ async function registerPasskey(email) {
   const cred = await navigator.credentials.create({
     publicKey: {
       challenge,
-      rp: { name: "SafeDigitalWallet", id: window.location.hostname },
+      rp: { name: "Veyrnox", id: window.location.hostname },
       user: { id: new TextEncoder().encode(email), name: email, displayName: email },
       pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
       authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },

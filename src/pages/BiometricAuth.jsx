@@ -43,7 +43,7 @@ export default function BiometricAuth() {
       await navigator.credentials.create({
         publicKey: {
           challenge,
-          rp: { name: "SafeDigitalWallet", id: window.location.hostname },
+          rp: { name: "Veyrnox", id: window.location.hostname },
           user: { id: new Uint8Array(16), name: "wallet-user", displayName: "Wallet User" },
           pubKeyCredParams: [{ type: "public-key", alg: -7 }],
           authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },

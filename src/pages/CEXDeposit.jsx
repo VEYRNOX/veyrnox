@@ -7,11 +7,11 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
 const EXCHANGES = [
-  { id: "binance", name: "Binance", logo: "🟡", color: "#F3BA2F", steps: ["Open Binance app or website", "Go to Wallet → Fiat and Spot", "Click [Withdraw]", "Select coin and network", "Paste your SafeDigitalWallet address", "Confirm via email/2FA"] },
-  { id: "coinbase", name: "Coinbase", logo: "🔵", color: "#0052FF", steps: ["Open Coinbase app or website", "Tap [Send & Receive] → Send", "Choose your asset", "Paste your SafeDigitalWallet address", "Enter amount and confirm", "Verify with Face ID / 2FA"] },
-  { id: "kraken", name: "Kraken", logo: "🟣", color: "#5741D9", steps: ["Log into Kraken", "Go to Funding → Withdraw", "Select your asset and network", "Add SafeDigitalWallet as a new address", "Enter amount and confirm", "Approve via email confirmation"] },
+  { id: "binance", name: "Binance", logo: "🟡", color: "#F3BA2F", steps: ["Open Binance app or website", "Go to Wallet → Fiat and Spot", "Click [Withdraw]", "Select coin and network", "Paste your Veyrnox address", "Confirm via email/2FA"] },
+  { id: "coinbase", name: "Coinbase", logo: "🔵", color: "#0052FF", steps: ["Open Coinbase app or website", "Tap [Send & Receive] → Send", "Choose your asset", "Paste your Veyrnox address", "Enter amount and confirm", "Verify with Face ID / 2FA"] },
+  { id: "kraken", name: "Kraken", logo: "🟣", color: "#5741D9", steps: ["Log into Kraken", "Go to Funding → Withdraw", "Select your asset and network", "Add Veyrnox as a new address", "Enter amount and confirm", "Approve via email confirmation"] },
   { id: "okx", name: "OKX", logo: "⚫", color: "#000000", steps: ["Open OKX app", "Go to Assets → Withdraw", "Select asset and on-chain withdrawal", "Paste your wallet address", "Set network (match your wallet network)", "Confirm with security verification"] },
-  { id: "bybit", name: "Bybit", logo: "🟠", color: "#F7A600", steps: ["Log into Bybit", "Click Assets → Withdraw", "Choose coin and network", "Enter your SafeDigitalWallet address", "Set amount and submit", "Complete Google Auth / SMS verification"] },
+  { id: "bybit", name: "Bybit", logo: "🟠", color: "#F7A600", steps: ["Log into Bybit", "Click Assets → Withdraw", "Choose coin and network", "Enter your Veyrnox address", "Set amount and submit", "Complete Google Auth / SMS verification"] },
 ];
 
 const NETWORK_TIPS = {
@@ -50,7 +50,7 @@ export default function CEXDeposit() {
       {wallet ? (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="pt-4 space-y-2">
-            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Your SafeDigitalWallet Address</p>
+            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Your Veyrnox Address</p>
             <div className="flex items-center gap-2">
               <code className="text-xs font-mono flex-1 truncate text-foreground">{wallet.address || "0x" + "a1b2c3d4e5f6".repeat(3).slice(0, 40)}</code>
               <button onClick={() => copy(wallet.address || "")} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
