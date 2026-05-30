@@ -10,20 +10,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
+import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { getTokenBalance } from "@/wallet-core/evm/token-send";
 
-const NETWORK_KEY = "sepolia"; // testnet-first; mainnet stays gated until audit
-
-// Live on-chain balance for a receivable EVM-family asset. Native coins read via
-// getBalanceEth; ERC-20 tokens via the token contract's balanceOf (chain is the
-// source of truth — never a stored DB value).
+// Live on-chain balance for a receivable EVM-family asset, read from the asset's
+// OWN chain (Phase C: each asset carries its testnet network key, e.g. MATIC ->
+// polygonAmoy). Native coins read via getBalanceEth; ERC-20 tokens via the token
+// contract's balanceOf. Chain is the source of truth — never a stored DB value.
+// The balance is labelled with the chain's NATIVE gas symbol (POL/AVAX/tBNB, and
+// ETH on Arbitrum/Optimism), never a hardcoded "ETH".
 function AssetLiveBalance({ asset, address }) {
+  const networkKey = asset.chain;
   const isErc20 = asset.family === "erc20";
+  // Native coins display the chain's native symbol; tokens display their own.
+  const unit = isErc20 ? asset.symbol : (getNetworkInfo(networkKey)?.symbol || asset.symbol);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["hd-evm-balance", NETWORK_KEY, asset.symbol, address],
+    queryKey: ["hd-evm-balance", networkKey, asset.symbol, address],
     queryFn: () => isErc20
-      ? getTokenBalance({ networkKey: NETWORK_KEY, symbol: asset.symbol, owner: address })
-      : getBalanceEth(NETWORK_KEY, address),
+      ? getTokenBalance({ networkKey, symbol: asset.symbol, owner: address })
+      : getBalanceEth(networkKey, address),
     enabled: !!address,
     refetchInterval: 20000,
     retry: 1,
@@ -31,7 +36,7 @@ function AssetLiveBalance({ asset, address }) {
   if (!address) return null;
   if (isLoading) return <span className="text-xs text-muted-foreground">…</span>;
   if (isError) return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">—</span>;
-  return <span className="text-xs font-semibold">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} {asset.symbol}</span>;
+  return <span className="text-xs font-semibold">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} {unit}</span>;
 }
 
 // All EVM-family assets share one secp256k1 derivation (m/44'/60'/0'/0/0), so a
@@ -229,6 +234,17 @@ export default function HDWalletManager() {
             </div>
           )}
 
+          {/* One address, every EVM chain (Phase C UX guard). The same
+              secp256k1 / m/44'/60' address serves Ethereum and all five new EVM
+              chains, so funds are not "missing" when the same address shows
+              across them — balances are simply read per-chain. */}
+          {isUnlocked && (
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
+              <Key className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+              <span>One address serves <span className="font-medium text-foreground">all EVM chains</span> (Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB). Balances are read live from each chain; the gas token differs per chain (e.g. POL on Polygon, AVAX on Avalanche, ETH on Arbitrum/Optimism).</span>
+            </div>
+          )}
+
           {/* Unlocked -> the 10 assets, status-gated */}
           {isUnlocked && ASSETS.map(asset => {
             const receivable = canReceive(asset);
@@ -258,8 +274,11 @@ export default function HDWalletManager() {
                 {exp && (
                   <div className="border-t border-border px-4 py-3 bg-secondary/20 space-y-3 text-xs">
                     <div className="grid grid-cols-2 gap-2">
-                      <div><p className="text-muted-foreground">Chain</p><p className="font-semibold capitalize">{asset.chain}</p></div>
+                      <div><p className="text-muted-foreground">Chain</p><p className="font-semibold">{getNetworkInfo(asset.chain)?.name || asset.chain}</p></div>
                       <div><p className="text-muted-foreground">Family</p><p className="font-semibold uppercase">{asset.family}</p></div>
+                      {isEvmFamily(asset) && getNetworkInfo(asset.chain) && (
+                        <div><p className="text-muted-foreground">Gas token</p><p className="font-semibold">{getNetworkInfo(asset.chain).symbol}</p></div>
+                      )}
                       {address && (
                         <>
                           <div className="col-span-2"><p className="text-muted-foreground">Path</p><p className="font-semibold font-mono">{shortPath(accounts[0]?.index)}</p></div>
