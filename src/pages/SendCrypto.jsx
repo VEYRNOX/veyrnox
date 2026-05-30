@@ -248,7 +248,7 @@ export default function SendCrypto() {
       setOtpSecret(code);
       await base44.integrations.Core.SendEmail({
         to: user.email,
-        subject: "SafeDigitalWallet — Your 2FA Code",
+        subject: "Veyrnox — Your 2FA Code",
         body: `Your one-time verification code is: ${code}\n\nYou are authorising a send of ${amount} ${selectedWallet?.currency} to ${toAddress}.\n\nThis code expires in 10 minutes. If you didn't request this, ignore this email.`,
       });
       setOtpSent(true);

@@ -33,7 +33,7 @@ export default function MobileWidgetPage() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <div><h1 className="text-xl font-bold">Mobile Widget</h1><p className="text-sm text-muted-foreground">Install SafeDigitalWallet as a native app with home screen widget</p></div>
+      <div><h1 className="text-xl font-bold">Mobile Widget</h1><p className="text-sm text-muted-foreground">Install Veyrnox as a native app with home screen widget</p></div>
 
       {/* Widget preview */}
       <div className="flex justify-center">

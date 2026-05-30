@@ -47,14 +47,14 @@ export default function MobileInstall() {
     <div className="max-w-md mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" /> Mobile App (PWA)</h1>
-        <p className="text-sm text-muted-foreground">Install SafeDigitalWallet as a native-feeling app on any device</p>
+        <p className="text-sm text-muted-foreground">Install Veyrnox as a native-feeling app on any device</p>
       </div>
 
       {installed ? (
         <div className="p-5 rounded-2xl border border-green-500/30 bg-green-500/10 text-center space-y-2">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
           <p className="font-bold text-green-500">App Installed!</p>
-          <p className="text-sm text-muted-foreground">SafeDigitalWallet is running as an installed PWA.</p>
+          <p className="text-sm text-muted-foreground">Veyrnox is running as an installed PWA.</p>
         </div>
       ) : (
         <div className="p-5 rounded-2xl border border-primary/20 bg-primary/5 space-y-4">
@@ -63,7 +63,7 @@ export default function MobileInstall() {
               <Smartphone className="h-10 w-10 text-primary-foreground" />
             </div>
           </div>
-          <p className="text-center font-bold text-lg">SafeDigitalWallet</p>
+          <p className="text-center font-bold text-lg">Veyrnox</p>
 
           {/* Android / Chrome */}
           {(platform === "android" || platform === "desktop") && installPrompt && (

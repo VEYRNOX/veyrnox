@@ -337,7 +337,7 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" storageKey="safedigitalwallet-theme">
+    <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
     <AuthProvider>
       <WalletProvider>
         <QueryClientProvider client={queryClientInstance}>

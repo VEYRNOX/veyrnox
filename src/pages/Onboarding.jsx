@@ -72,7 +72,7 @@ export default function Onboarding() {
               <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
                 <Shield className="h-8 w-8 text-primary-foreground" />
               </div>
-              <h1 className="text-2xl font-bold mb-2">Welcome to SafeDigitalWallet</h1>
+              <h1 className="text-2xl font-bold mb-2">Welcome to Veyrnox</h1>
               <p className="text-muted-foreground text-sm mb-6">Your institutional-grade crypto wallet. Let's get you set up in just a few steps.</p>
               <div className="space-y-2 text-left mb-8">
                 {["Multi-chain wallet management", "DeFi, staking & yield farming", "Bank-grade security & RASP protection", "AI-powered portfolio insights"].map(f => (
