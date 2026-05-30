@@ -65,7 +65,7 @@ export default function Dashboard() {
     refetchInterval: 60_000,
   });
 
-  const { data: wallets = [], isLoading } = useQuery({
+  const { data: wallets = [], isLoading, dataUpdatedAt: walletsUpdatedAt } = useQuery({
     queryKey: ["wallets"],
     queryFn: () => base44.entities.Wallet.list(),
   });
@@ -113,8 +113,13 @@ export default function Dashboard() {
   const animRef = useRef(null);
 
   useEffect(() => {
+    // Re-stamp the "last synced" time whenever the wallets query finishes loading
+    // or its data actually refreshes. Depend on react-query's stable `dataUpdatedAt`
+    // timestamp rather than the `wallets` array: the `= []` default produces a new
+    // array reference every render when `data` is undefined (e.g. the query errored),
+    // which would make this effect run every render and loop on setLastSynced.
     if (!isLoading) setLastSynced(new Date());
-  }, [isLoading, wallets]);
+  }, [isLoading, walletsUpdatedAt]);
 
   useEffect(() => {
     cancelAnimationFrame(animRef.current);

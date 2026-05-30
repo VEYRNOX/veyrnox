@@ -245,6 +245,41 @@ export default function HDWalletManager() {
             </div>
           )}
 
+          {/* Derived EVM account address — shown prominently at the top of the
+              unlocked wallet list so the user can see/copy it without expanding an
+              asset. Display-only: the 0x address comes straight from the public
+              accounts[0] derived by useWallet(); no keys are read or stored here. */}
+          {isUnlocked && evmAddress && (
+            <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Wallet className="h-4.5 w-4.5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">EVM Account</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">{shortPath(accounts[0]?.index)}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded border bg-green-500/15 text-green-400 border-green-500/30 shrink-0">Active</span>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground mb-1">Account address (public)</p>
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
+                  <p className="flex-1 font-mono text-xs break-all">{evmAddress}</p>
+                  <button
+                    onClick={() => copy(evmAddress, "evm-account")}
+                    className="shrink-0 p-1.5 rounded hover:bg-secondary transition-colors"
+                    title="Copy account address"
+                    aria-label="Copy account address"
+                  >
+                    {copied === "evm-account" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Unlocked -> the 10 assets, status-gated */}
           {isUnlocked && ASSETS.map(asset => {
             const receivable = canReceive(asset);
