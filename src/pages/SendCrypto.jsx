@@ -12,7 +12,8 @@ import { toast } from "sonner";
 import { useWallet } from "@/lib/WalletProvider";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
-import { getAsset, canSend, canReceive } from "@/wallet-core/assets";
+import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
+import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import { getToken } from "@/wallet-core/evm/tokens";
@@ -20,7 +21,6 @@ import { getToken } from "@/wallet-core/evm/tokens";
 export default function SendCrypto() {
   const queryClient = useQueryClient();
   const { isUnlocked, accounts, withPrivateKey } = useWallet();
-  const NETWORK_KEY = "sepolia"; // testnet-first; mainnet stays gated until audit
   const [walletId, setWalletId] = useState("");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
@@ -84,15 +84,24 @@ export default function SendCrypto() {
   const sendEnabled = canSend(selectedAsset);
   const isErc20 = selectedAsset?.family === "erc20";
 
+  // Phase C: the active chain follows the selected asset — each EVM asset carries
+  // its own (testnet) network key (e.g. MATIC -> polygonAmoy). The native gas
+  // symbol and chain name come from the network registry, NEVER hardcoded "ETH";
+  // Arbitrum/Optimism resolve to ETH because that genuinely is their gas token.
+  const networkKey = (isEvmFamily(selectedAsset) && selectedAsset?.chain) || "sepolia";
+  const activeNetwork = getNetworkInfo(networkKey);
+  const nativeSymbol = activeNetwork?.symbol || "ETH";
+  const networkName = activeNetwork?.name || networkKey;
+
   // Chain is the source of truth for balance — read it live, never the DB.
   // Native (ETH) reads via getBalanceEth; ERC-20 reads via the token contract's
   // balanceOf (with an on-chain decimals cross-check). Enabled whenever the asset
   // is at least receive-capable so balances show even before send is unlocked.
   const { data: liveBalance } = useQuery({
-    queryKey: ["evm-balance", NETWORK_KEY, selectedWallet?.address, selectedAsset?.symbol],
+    queryKey: ["evm-balance", networkKey, selectedWallet?.address, selectedAsset?.symbol],
     queryFn: () => isErc20
-      ? getTokenBalance({ networkKey: NETWORK_KEY, symbol: selectedAsset.symbol, owner: selectedWallet.address })
-      : getBalanceEth(NETWORK_KEY, selectedWallet.address),
+      ? getTokenBalance({ networkKey: networkKey, symbol: selectedAsset.symbol, owner: selectedWallet.address })
+      : getBalanceEth(networkKey, selectedWallet.address),
     enabled: !!selectedWallet?.address && canReceive(selectedAsset),
     refetchInterval: 15000,
   });
@@ -103,8 +112,8 @@ export default function SendCrypto() {
   const tokenCalldata = useMemo(() => {
     if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
     try {
-      const { data } = buildTokenTransfer({ networkKey: NETWORK_KEY, symbol: selectedAsset.symbol, to: toAddress, amount });
-      return describeErc20Call({ data, tokenSymbol: selectedAsset.symbol, decimals: getToken(NETWORK_KEY, selectedAsset.symbol).decimals });
+      const { data } = buildTokenTransfer({ networkKey: networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
+      return describeErc20Call({ data, tokenSymbol: selectedAsset.symbol, decimals: getToken(networkKey, selectedAsset.symbol).decimals });
     } catch {
       return null; // unconfigured token / invalid input — UI shows nothing to decode
     }
@@ -163,14 +172,14 @@ export default function SendCrypto() {
       const tx = await withPrivateKey(acct.index, (privateKey) =>
         isErc20
           ? sendToken({
-              networkKey: NETWORK_KEY,
+              networkKey: networkKey,
               privateKey,
               symbol: selectedAsset.symbol,
               to: toAddress,
               amount,
             })
           : signAndBroadcast({
-              networkKey: NETWORK_KEY,
+              networkKey: networkKey,
               privateKey,
               to: toAddress,
               amountEth: amount,
@@ -194,14 +203,14 @@ export default function SendCrypto() {
 
       // Confirm in the background, then refresh balance + history from chain.
       tx.wait(1).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["evm-balance", NETWORK_KEY, selectedWallet.address] });
+        queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet.address] });
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
       }).catch(() => {/* surface a "still pending / failed" state in UI */});
 
       return { hash: tx.hash, explorerUrl: tx.explorerUrl };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["evm-balance", NETWORK_KEY, selectedWallet?.address] });
+      queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet?.address] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       logAuditEvent({ action: `Sent ${amount} ${selectedWallet?.currency} to ${toAddress}`, category: "transaction", details: `Wallet: ${selectedWallet?.name} • tx ${result?.hash}`, severity: "info" });
       setTxResult(result);
@@ -280,7 +289,7 @@ export default function SendCrypto() {
             <p className="text-xs font-mono break-all">{txResult.hash}</p>
             {txResult.explorerUrl && (
               <a href={txResult.explorerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
-                View on Etherscan <ExternalLink className="h-3 w-3" />
+                View on block explorer <ExternalLink className="h-3 w-3" />
               </a>
             )}
             <p className="text-[11px] text-muted-foreground">Pending until confirmed on-chain. Balance updates from the chain, not a stored value.</p>
@@ -433,9 +442,10 @@ export default function SendCrypto() {
                 {tokenCalldata.kind === "unknown" && (
                   <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Unrecognised calldata — do not sign unless you know exactly what this does.</p>
                 )}
-                {/* Gas is always paid in the chain's native coin, even for tokens. */}
+                {/* Gas is always paid in the chain's native coin, even for tokens —
+                    and that coin is NOT always ETH (Phase C). Read it per-chain. */}
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
-                  <Fuel className="h-3 w-3 shrink-0" /> Network fee is paid in ETH (Sepolia) — you need ETH for gas even when sending {tokenCalldata.tokenSymbol || selectedWallet?.currency}.
+                  <Fuel className="h-3 w-3 shrink-0" /> Network fee is paid in {nativeSymbol} ({networkName}) — you need {nativeSymbol} for gas even when sending {tokenCalldata.tokenSymbol || selectedWallet?.currency}.
                 </p>
               </div>
             )}

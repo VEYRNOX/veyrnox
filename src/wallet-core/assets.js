@@ -37,11 +37,19 @@ export const ASSETS = Object.freeze([
   // coming_soon — no address, no balance, no send — until a verified address is
   // supplied. We do not guess token addresses.
   { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.COMING_SOON },
-  { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygon',   status: ASSET_STATUS.COMING_SOON },
-  { symbol: 'ARB',   name: 'Arbitrum',  family: 'evm',    chain: 'arbitrum',  status: ASSET_STATUS.COMING_SOON },
-  { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimism',  status: ASSET_STATUS.COMING_SOON },
-  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalanche', status: ASSET_STATUS.COMING_SOON },
-  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bsc',       status: ASSET_STATUS.COMING_SOON },
+  // Phase C: five EVM chains added on their TESTNETS, behind the mainnet gate.
+  // Each shares the SAME secp256k1 / m/44'/60'/0'/0/0 address as ETH, so the
+  // address derivation + live per-chain balance reads are wired now (receive_only).
+  // `chain` points at the verified TESTNET network key (mainnets stay gated in
+  // networks.js). SEND stays HARD-gated until a real testnet transfer on THAT
+  // chain is verified on-chain and reviewed — only then does it flip to LIVE.
+  // NOTE: gas/native token differs per chain (Polygon=POL, Avalanche=AVAX,
+  // BNB=tBNB, but Arbitrum/Optimism=ETH); the UI reads that from networks.js.
+  { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygonAmoy',     status: ASSET_STATUS.RECEIVE_ONLY },
+  { symbol: 'ARB',   name: 'Arbitrum',  family: 'evm',    chain: 'arbitrumSepolia', status: ASSET_STATUS.RECEIVE_ONLY },
+  { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.RECEIVE_ONLY },
+  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.RECEIVE_ONLY },
+  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.RECEIVE_ONLY },
   { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'bitcoin',   status: ASSET_STATUS.COMING_SOON },
   { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'solana',    status: ASSET_STATUS.COMING_SOON },
 ]);
