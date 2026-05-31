@@ -131,7 +131,6 @@ export default function Onboarding() {
               <p className="text-muted-foreground text-sm mb-6">We recommend completing these security steps.</p>
               <div className="space-y-2 text-left mb-6">
                 {[
-                  { label: "Complete KYC Verification", path: "/kyc", done: false },
                   { label: "Set transaction limits", path: "/security", done: false },
                   { label: "Enable price alerts", path: "/alerts", done: false },
                 ].map(item => (
