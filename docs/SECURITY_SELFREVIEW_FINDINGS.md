@@ -152,7 +152,15 @@ limitations that the code and `M2b.native-keystore-notes.md` already flag honest
    (OS-enforced ACL + on-device fallback/lockout testing) — already tracked in
    `M2b.native-keystore-notes.md`; just ensure they're in the audit scope doc.
 
-*Pass 2 changed no code and opened no code PR — review only.*
+*Pass 2 review itself changed no code.*
+
+**Follow-up (addressed in `fix/m2b-selfreview-cheap-fixes`):** F-1 wording
+corrected across `native.js`/`index.js`/`keyStore.js`/`WalletProvider.jsx` +
+M2b notes ("hardware-gated unlock + hardware-backed at-rest storage"); F-3
+biometric toggle now shown as forced-on/disabled with honest copy on native;
+F-4 passcode-removal recovery caveat added to the settings UI and M2b notes.
+**F-2** (OS-enforced biometric ACL) and **F-6** (on-device lockout/fallback
+testing) remain deferred to M2c/M2d + the independent audit — no code change.
 
 ---
 

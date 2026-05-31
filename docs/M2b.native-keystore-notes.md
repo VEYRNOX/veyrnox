@@ -8,7 +8,9 @@
 ## What this implements
 
 The **native branch of the keyStore seam** introduced in M2a, using **Design B**
-(hardware-wrapped / hardware-gated key). It changes only **WHERE the vault lives**
+— here built as **hardware-gated unlock + hardware-backed at-rest storage** (no
+Secure Enclave / StrongBox key wraps the vault-encryption key; that key remains
+the Argon2id-derived WebCrypto key). It changes only **WHERE the vault lives**
 and **HOW unlock is gated** on a real native platform. The audited crypto
 (`wallet-core/vault.js`, Argon2id + AES-GCM) and the vault blob format are reused
 **byte-identically** — no algorithm, parameter, or layout change.
@@ -48,6 +50,18 @@ Likewise, `isSecureHardwareAvailable()` returns whether a device credential is s
 (the precondition for hardware protection) as a **proxy** — the plugins do not
 expose a direct Secure Enclave / StrongBox probe, so StrongBox specifically cannot
 be asserted from JS.
+
+## Recovery / data-loss caveat (user-facing)
+
+iOS items are written with `whenPasscodeSetThisDeviceOnly` — the strongest
+accessibility class, deliberately chosen. Consequence: **if the user removes their
+device passcode, iOS erases the Keychain item**, so the on-device vault is gone.
+This is by design (no passcode ⇒ no hardware protection ⇒ refuse to keep the
+secret), not a bug. The wallet is still recoverable from the user's **recovery
+phrase** on any device. Surface this in onboarding/recovery copy so it is not a
+support surprise. (Android's Keystore-backed store has no equivalent
+passcode-removal erase, but losing the device credential can likewise invalidate
+hardware-bound keys.)
 
 ## Files changed
 
