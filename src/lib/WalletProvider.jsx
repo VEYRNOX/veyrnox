@@ -26,10 +26,19 @@ import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { getKeyStore } from '@/wallet-core/keystore';
 import { isBiometricUnlockEnabled, getBiometricStatus } from '@/lib/biometric';
+import {
+  loadAutoLockValue,
+  saveAutoLockValue,
+  autoLockMsFromValue,
+} from '@/lib/session';
 import BiometricPrompt from '@/components/security/BiometricPrompt';
 
 const WalletCtx = createContext(null);
-const AUTO_LOCK_MS = 5 * 60 * 1000; // 5 minutes idle
+
+// User activity that should reset the idle auto-lock timer while unlocked.
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'focus'];
+// Throttle re-arming the timer so a burst of activity doesn't thrash setTimeout.
+const ACTIVITY_THROTTLE_MS = 1000;
 
 // Platform-resolved storage seam. Web today; native (M2b) swaps in behind the
 // same interface. Stable singleton, so it lives at module scope.
@@ -40,6 +49,14 @@ export function WalletProvider({ children }) {
   const [isUnlocked, setUnlocked] = useState(false);
   const [accounts, setAccounts] = useState([]); // public only: {address, path, index}
   const lockTimer = useRef(null);
+
+  // Configurable idle auto-lock timeout. The picker value (e.g. '5', 'never')
+  // is React state for the settings UI; a ref mirrors the resolved ms so the
+  // timer/activity handlers always read the current value without being torn
+  // down and re-created on every change. Default mirrors today's 5-minute lock.
+  const [autoLockValue, setAutoLockValue] = useState(loadAutoLockValue);
+  const autoLockMsRef = useRef(autoLockMsFromValue(autoLockValue));
+  const lastActivityRef = useRef(0);     // throttle stamp for activity listener
 
   // PROVISIONAL biometric-unlock UI state (see lib/biometric.js header). Holds
   // the SIMULATED prompt's props while shown; null when hidden. The resolver
@@ -94,17 +111,55 @@ export function WalletProvider({ children }) {
     keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
   }, []);
 
-  const touch = useCallback(() => {
-    if (lockTimer.current) clearTimeout(lockTimer.current);
-    lockTimer.current = setTimeout(lock, AUTO_LOCK_MS);
+  // (Re)arm the idle auto-lock timer for the CURRENT timeout preference. Safe to
+  // call anytime: it clears any pending timer first, and arms a new one only
+  // while unlocked and when the user hasn't chosen "Never". This is the single
+  // idle-lock mechanism — it routes through lock() exactly like every other path.
+  const armTimer = useCallback(() => {
+    if (lockTimer.current) { clearTimeout(lockTimer.current); lockTimer.current = null; }
+    if (!mnemonicRef.current) return;        // locked → nothing to arm
+    const ms = autoLockMsRef.current;
+    if (ms == null) return;                  // "Never" → no idle lock
+    lockTimer.current = setTimeout(lock, ms);
   }, [lock]);
 
-  // Auto-lock when tab is hidden or on idle timeout.
+  // touch() = "user did something, reset the idle countdown". Kept as the name
+  // the wallet operations already call (create/import/unlock/withPrivateKey).
+  const touch = useCallback(() => { armTimer(); }, [armTimer]);
+
+  // Change the auto-lock timeout from the settings UI: persist, update the live
+  // ref, reflect in state, and immediately re-arm so the new value takes effect
+  // without waiting for the next activity.
+  const setAutoLockTimeout = useCallback((value) => {
+    saveAutoLockValue(value);
+    autoLockMsRef.current = autoLockMsFromValue(value);
+    setAutoLockValue(value);
+    armTimer();
+  }, [armTimer]);
+
+  // Auto-lock on app-background: web tab hidden (fallback) + native pause.
+  // Native (M2b): keyStore.setLockHook wires @capacitor/app's pause/appStateChange
+  // to lock(); web has no such hook so visibilitychange is the fallback.
   useEffect(() => {
     const onHide = () => { if (document.hidden) lock(); };
     document.addEventListener('visibilitychange', onHide);
     return () => document.removeEventListener('visibilitychange', onHide);
   }, [lock]);
+
+  // Reset the idle timer on real user activity while unlocked. Throttled so a
+  // stream of events doesn't churn the timer. Only attached while unlocked, so a
+  // locked wallet has zero listeners and never re-arms behind the user's back.
+  useEffect(() => {
+    if (!isUnlocked) return undefined;
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - lastActivityRef.current < ACTIVITY_THROTTLE_MS) return;
+      lastActivityRef.current = now;
+      armTimer();
+    };
+    ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, onActivity, { passive: true }));
+    return () => ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, onActivity));
+  }, [isUnlocked, armTimer]);
 
   // M2b (native only): also lock on a reliable OS background signal. The native
   // keyStore exposes setLockHook so its @capacitor/app pause listener can drop
@@ -201,6 +256,10 @@ export function WalletProvider({ children }) {
     withPrivateKey,
     clearVault: keyStore.clearVault,
     biometricPreview,
+    // Session / auto-lock controls (see lib/session.js). UI reads the current
+    // timeout preference and changes it; lock status is `isUnlocked` above.
+    autoLockValue,
+    setAutoLockTimeout,
   };
 
   return (
