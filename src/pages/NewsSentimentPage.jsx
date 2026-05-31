@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Newspaper, TrendingUp, TrendingDown, Minus, RefreshCw, Sparkles } from "lucide-react";
+import { Newspaper, TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import moment from "moment";
 

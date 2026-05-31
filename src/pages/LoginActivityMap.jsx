@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
-import { Shield, Monitor, Smartphone, Globe } from "lucide-react";
+import { Monitor, Smartphone } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 const SEVERITY_COLOR = { trusted: "#22c55e", suspicious: "#ef4444", new: "#f97316" };

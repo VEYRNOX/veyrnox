@@ -6,6 +6,10 @@ import pluginUnusedImports from "eslint-plugin-unused-imports";
 
 export default [
   {
+    // Build artifacts / generated output — not linted (mirrors .gitignore).
+    ignores: ["ios/**", "android/**", "dist/**", "build/**"],
+  },
+  {
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",
       "src/pages/**/*.{js,mjs,cjs,jsx}",

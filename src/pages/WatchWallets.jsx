@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Eye, Plus, Trash2, Copy, Check, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
+import { Eye, Plus, Trash2, Copy, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CoinLogo from "@/components/CoinLogo";
 import { Input } from "@/components/ui/input";

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { GripVertical, Eye, EyeOff, RotateCcw, Save, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";

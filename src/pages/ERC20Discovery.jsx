@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { Search, Coins, RefreshCw, CheckCircle, Eye, EyeOff, Plus, Trash2, AlertTriangle, Wifi } from "lucide-react";
+import { useState } from "react";
+import { Search, Coins, RefreshCw, CheckCircle, EyeOff, Plus, AlertTriangle, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
 // Simulated well-known ERC-20 tokens that would be found on any active address

@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Key, Eye, EyeOff, AlertTriangle, Shield, QrCode, Printer } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Eye, EyeOff, AlertTriangle, Shield, Printer } from "lucide-react";
 import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

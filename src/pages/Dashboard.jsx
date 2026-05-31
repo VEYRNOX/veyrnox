@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySelector";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, CheckCircle2, Clock, XCircle, Lock, ArrowDownUp, Zap, BarChart2, Repeat, Sprout, Bot, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
+import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, CheckCircle2, Clock, XCircle, Lock, BarChart2, Bot, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";

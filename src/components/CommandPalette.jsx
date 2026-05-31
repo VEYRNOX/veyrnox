@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Send, Download, ArrowDownUp, Zap, Receipt, Sliders, Bell,
-  ShieldAlert, BarChart2, Sparkles, CreditCard, Landmark, Sprout, Bot, Leaf,
-  Vote, ScrollText, Newspaper, GitMerge, Link2, MessageSquare, Fingerprint,
-  Cpu, Users, ShieldCheck, PieChart, TrendingUp, Image, Camera, Network,
-  Activity, DollarSign, Shuffle, Layers, ClipboardList, Globe, BarChart3,
-  Repeat, Building2, Plug, BellRing, BellDot, ShieldHalf, Copy, Settings,
-  Target, Banknote, FileText, Eye,
+  LayoutDashboard, Send, Download, Receipt, Sliders, Bell,
+  ShieldAlert, BarChart2, Sparkles, Leaf, ScrollText, Newspaper, Link2,
+  Cpu, ShieldCheck, PieChart, TrendingUp, Image, Camera, Network,
+  Activity, ClipboardList, BarChart3,
+  Repeat, BellRing, ShieldHalf, Settings,
+  Target, FileText, Eye,
 } from "lucide-react";
 
 const ALL_ROUTES = [
