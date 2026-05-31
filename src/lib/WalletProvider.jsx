@@ -24,6 +24,7 @@
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
+import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { getKeyStore } from '@/wallet-core/keystore';
 import {
   tryDuressUnlock,
@@ -59,6 +60,11 @@ export function WalletProvider({ children }) {
   // coercer sees no "decoy mode" indicator. See wallet-core/duress.js.
   const [isDecoy, setIsDecoy] = useState(false);
   const [accounts, setAccounts] = useState([]); // public only: {address, path, index}
+  // Phase BTC: the wallet's BIP-84 testnet account (PUBLIC only: {address, path}).
+  // Derived from the SAME in-memory mnemonic alongside the EVM accounts; kept in
+  // separate state so the EVM derivation path is untouched. Default network is
+  // testnet (mainnet gated in btc/networks.js). null while locked.
+  const [btcAccount, setBtcAccount] = useState(null);
   const lockTimer = useRef(null);
 
   // Configurable idle auto-lock timeout. The picker value (e.g. '5', 'never')
@@ -120,6 +126,7 @@ export function WalletProvider({ children }) {
     setUnlocked(false);
     setIsDecoy(false);
     setAccounts([]);
+    setBtcAccount(null);
     keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
   }, []);
 
@@ -194,6 +201,17 @@ export function WalletProvider({ children }) {
     return list;
   }, []);
 
+  // Derive the BIP-84 BTC account (PUBLIC address only) from the in-memory
+  // mnemonic. Separate from deriveAccounts() so the EVM path is untouched.
+  // Defaults to testnet; returns {address, path}. No keys stored here.
+  const deriveBtc = useCallback((networkKey = 'testnet') => {
+    if (!mnemonicRef.current) throw new Error('Wallet is locked');
+    const { address, path } = deriveBtcAccount(mnemonicRef.current, { networkKey });
+    const acct = { address, path, networkKey };
+    setBtcAccount(acct);
+    return acct;
+  }, []);
+
   // Create a brand-new wallet: generate -> encrypt -> persist ciphertext -> unlock.
   const createWallet = useCallback(async (password, strength = 128) => {
     const mnemonic = generateMnemonic(strength);
@@ -203,9 +221,10 @@ export function WalletProvider({ children }) {
     setIsDecoy(false);
     touch();
     deriveAccounts(1);
+    deriveBtc();
     // Return mnemonic ONCE for the user to back up; caller must not persist it.
     return mnemonic;
-  }, [deriveAccounts, touch]);
+  }, [deriveAccounts, deriveBtc, touch]);
 
   // Import an existing mnemonic.
   const importWallet = useCallback(async (mnemonic, password) => {
@@ -216,7 +235,8 @@ export function WalletProvider({ children }) {
     setIsDecoy(false);
     touch();
     deriveAccounts(1);
-  }, [deriveAccounts, touch]);
+    deriveBtc();
+  }, [deriveAccounts, deriveBtc, touch]);
 
   // Unlock an existing vault with the password.
   const unlock = useCallback(async (password) => {
@@ -248,7 +268,8 @@ export function WalletProvider({ children }) {
     setIsDecoy(decoy);
     touch();
     deriveAccounts(1);
-  }, [deriveAccounts, touch, runBiometricGate]);
+    deriveBtc();
+  }, [deriveAccounts, deriveBtc, touch, runBiometricGate]);
 
   // PROVISIONAL: fire the prompt on demand for the Security settings "Test"
   // button, so the simulated sheet can be shown on the simulator without an
@@ -275,6 +296,16 @@ export function WalletProvider({ children }) {
     return fn(privateKey);
   }, [touch]);
 
+  // BTC counterpart: provide the BIP-84 private+public key bytes for the BTC
+  // account transiently to a signer (e.g. the send path), WITHOUT storing them.
+  // Same contract as withPrivateKey — used immediately, then dropped. Never log.
+  const withBtcPrivateKey = useCallback((fn, networkKey = 'testnet') => {
+    if (!mnemonicRef.current) throw new Error('Wallet is locked');
+    touch();
+    const { privateKey, publicKey, address } = deriveBtcAccount(mnemonicRef.current, { networkKey });
+    return fn({ privateKey, publicKey, address });
+  }, [touch]);
+
   // DURESS / DECOY management (S3). Configure or remove the decoy vault that the
   // duress password opens. setDuressPin generates a FRESH decoy BIP-39 mnemonic,
   // encrypts it with the duress password via the SAME crypto as the primary
@@ -296,6 +327,12 @@ export function WalletProvider({ children }) {
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
     isDecoy,
     accounts,
+    // Phase BTC: public BIP-84 account {address, path, networkKey} (testnet),
+    // null while locked. deriveBtc() re-derives for a given network;
+    // withBtcPrivateKey() hands the transient signing key to the send path.
+    btcAccount,
+    deriveBtc,
+    withBtcPrivateKey,
     hasVault: keyStore.hasVault,
     // Duress / decoy controls (see wallet-core/duress.js). hasDuressPin() is the
     // raw store check; set/remove manage the decoy vault.
