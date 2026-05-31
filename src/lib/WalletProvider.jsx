@@ -8,7 +8,12 @@
 //     snapshots or devtools-inspectable state trees more than necessary.
 //   - lock() clears it and best-effort overwrites. Auto-lock on a timer and
 //     on tab hide reduces the exposure window.
-//   - Nothing here is persisted except via vaultStore (ciphertext only).
+//   - Nothing here is persisted except via the keyStore (ciphertext only).
+//
+// STORAGE SEAM (M2a): all vault persistence/crypto goes through the keyStore
+// interface (wallet-core/keystore). On web this is the unchanged Argon2id +
+// AES-GCM IndexedDB vault; native (M2b, Design B) swaps in a hardware-wrapped
+// implementation behind the SAME interface without touching this component.
 //
 // LIMITATION (document in threat model): JavaScript cannot guarantee secrets
 // are unrecoverable from memory after clearing. This minimizes, not
@@ -17,12 +22,15 @@
 
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
-import { encryptVault, decryptVault } from '@/wallet-core/vault';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
-import { saveVault, loadVault, hasVault, clearVault } from '@/wallet-core/evm/vaultStore';
+import { getKeyStore } from '@/wallet-core/keystore';
 
 const WalletCtx = createContext(null);
 const AUTO_LOCK_MS = 5 * 60 * 1000; // 5 minutes idle
+
+// Platform-resolved storage seam. Web today; native (M2b) swaps in behind the
+// same interface. Stable singleton, so it lives at module scope.
+const keyStore = getKeyStore();
 
 export function WalletProvider({ children }) {
   const mnemonicRef = useRef(null);      // LIVE SECRET while unlocked
@@ -38,6 +46,7 @@ export function WalletProvider({ children }) {
     mnemonicRef.current = null;
     setUnlocked(false);
     setAccounts([]);
+    keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
   }, []);
 
   const touch = useCallback(() => {
@@ -67,8 +76,7 @@ export function WalletProvider({ children }) {
   // Create a brand-new wallet: generate -> encrypt -> persist ciphertext -> unlock.
   const createWallet = useCallback(async (password, strength = 128) => {
     const mnemonic = generateMnemonic(strength);
-    const blob = await encryptVault(mnemonic, password);
-    await saveVault(blob);
+    await keyStore.createVault(mnemonic, password);
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
     touch();
@@ -80,8 +88,7 @@ export function WalletProvider({ children }) {
   // Import an existing mnemonic.
   const importWallet = useCallback(async (mnemonic, password) => {
     if (!validateMnemonic(mnemonic)) throw new Error('Invalid recovery phrase');
-    const blob = await encryptVault(mnemonic, password);
-    await saveVault(blob);
+    await keyStore.createVault(mnemonic, password);
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
     touch();
@@ -90,9 +97,9 @@ export function WalletProvider({ children }) {
 
   // Unlock an existing vault with the password.
   const unlock = useCallback(async (password) => {
-    const blob = await loadVault();
-    if (!blob) throw new Error('No wallet found on this device');
-    const mnemonic = await decryptVault(blob, password); // throws on wrong pw
+    // keyStore.unlock throws "No wallet found on this device" when absent and
+    // rethrows decryptVault's wrong-password/tamper error — same as before.
+    const mnemonic = await keyStore.unlock(password);
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
     touch();
@@ -112,14 +119,14 @@ export function WalletProvider({ children }) {
   const value = {
     isUnlocked,
     accounts,
-    hasVault,
+    hasVault: keyStore.hasVault,
     createWallet,
     importWallet,
     unlock,
     lock,
     deriveAccounts,
     withPrivateKey,
-    clearVault,
+    clearVault: keyStore.clearVault,
   };
 
   return <WalletCtx.Provider value={value}>{children}</WalletCtx.Provider>;
