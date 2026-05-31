@@ -24,6 +24,8 @@ import React, { createContext, useContext, useRef, useState, useCallback, useEff
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { getKeyStore } from '@/wallet-core/keystore';
+import { isBiometricUnlockEnabled, getBiometricStatus } from '@/lib/biometric';
+import BiometricPrompt from '@/components/security/BiometricPrompt';
 
 const WalletCtx = createContext(null);
 const AUTO_LOCK_MS = 5 * 60 * 1000; // 5 minutes idle
@@ -37,6 +39,48 @@ export function WalletProvider({ children }) {
   const [isUnlocked, setUnlocked] = useState(false);
   const [accounts, setAccounts] = useState([]); // public only: {address, path, index}
   const lockTimer = useRef(null);
+
+  // PROVISIONAL biometric-unlock UI state (see lib/biometric.js header). Holds
+  // the SIMULATED prompt's props while shown; null when hidden. The resolver
+  // ref carries the in-flight Promise's resolve/reject so the overlay's result
+  // can complete the awaited gate. None of this is secret or persisted.
+  const [bioPrompt, setBioPrompt] = useState(null);
+  const bioResolverRef = useRef(null);
+
+  // Show the simulated prompt and resolve when the user/auto-timer answers.
+  // Rejecting on cancel makes unlock() fail loudly, exactly like a real cancel.
+  const showSimulatedPrompt = useCallback((status) => new Promise((resolve, reject) => {
+    bioResolverRef.current = { resolve, reject };
+    setBioPrompt({ label: status.label });
+  }), []);
+
+  const resolveBioPrompt = useCallback((ok) => {
+    const r = bioResolverRef.current;
+    bioResolverRef.current = null;
+    setBioPrompt(null);
+    if (!r) return;
+    if (ok) r.resolve();
+    else r.reject(new Error('Biometric authentication was cancelled'));
+  }, []);
+
+  // The app-layer biometric gate run before reading the vault. PROVISIONAL:
+  //   - demo  : show the clearly-stubbed simulated prompt here.
+  //   - native: the REAL OS prompt is presented inside keyStore.unlock() (M2b),
+  //             so we do NOT double-prompt — this is a no-op there.
+  //   - web   : no platform biometric exists; nothing to prompt (password still
+  //             required by keyStore.unlock()).
+  // Honest limitation: M2b's native gate currently always prompts when a vault
+  // exists, so on a real device biometric is required regardless of this toggle;
+  // full toggle enforcement on-device is part of the flagged audit/OS-enforced
+  // rework. The toggle fully controls the demo path today.
+  const runBiometricGate = useCallback(async () => {
+    if (!isBiometricUnlockEnabled()) return;
+    const status = await getBiometricStatus();
+    if (status.mode === 'demo') {
+      await showSimulatedPrompt(status); // rejects on cancel → aborts unlock
+    }
+    // native/web: no app-layer prompt (see comment above).
+  }, [showSimulatedPrompt]);
 
   const lock = useCallback(() => {
     if (mnemonicRef.current) {
@@ -106,6 +150,10 @@ export function WalletProvider({ children }) {
 
   // Unlock an existing vault with the password.
   const unlock = useCallback(async (password) => {
+    // PROVISIONAL app-layer biometric gate. In demo this shows the simulated
+    // prompt; on native the real OS prompt fires inside keyStore.unlock(). A
+    // cancel here throws and aborts the unlock before any vault read.
+    await runBiometricGate();
     // keyStore.unlock throws "No wallet found on this device" when absent and
     // rethrows decryptVault's wrong-password/tamper error — same as before.
     const mnemonic = await keyStore.unlock(password);
@@ -113,7 +161,22 @@ export function WalletProvider({ children }) {
     setUnlocked(true);
     touch();
     deriveAccounts(1);
-  }, [deriveAccounts, touch]);
+  }, [deriveAccounts, touch, runBiometricGate]);
+
+  // PROVISIONAL: fire the prompt on demand for the Security settings "Test"
+  // button, so the simulated sheet can be shown on the simulator without an
+  // actual unlock. Resolves true on success, false on cancel. Demo-only today;
+  // native/web report status without an OS prompt to avoid a confusing no-op.
+  const biometricPreview = useCallback(async () => {
+    const status = await getBiometricStatus();
+    if (status.mode !== 'demo') return false;
+    try {
+      await showSimulatedPrompt(status);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [showSimulatedPrompt]);
 
   // Provide the private key for a derivation index to a caller that needs to
   // sign, WITHOUT storing it. The caller (send flow) uses it immediately and
@@ -136,9 +199,19 @@ export function WalletProvider({ children }) {
     deriveAccounts,
     withPrivateKey,
     clearVault: keyStore.clearVault,
+    biometricPreview,
   };
 
-  return <WalletCtx.Provider value={value}>{children}</WalletCtx.Provider>;
+  return (
+    <WalletCtx.Provider value={value}>
+      {children}
+      {/* PROVISIONAL / demo-only simulated biometric sheet. On native the real
+          OS prompt is shown by the OS from inside keyStore.unlock(). */}
+      {bioPrompt && (
+        <BiometricPrompt label={bioPrompt.label} onResult={resolveBioPrompt} />
+      )}
+    </WalletCtx.Provider>
+  );
 }
 
 export function useWallet() {
