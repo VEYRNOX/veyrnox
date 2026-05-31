@@ -53,6 +53,11 @@ export default function BiometricUnlockSettings() {
   const available = status?.available;
   const label = status?.label || 'Biometrics';
   const simulated = status?.simulated;
+  // On a real device, native unlock ALWAYS requires biometric/passcode (the
+  // native keyStore gates every unlock); the stored preference only drives the
+  // demo prompt. Reflect that honestly instead of implying an off switch the
+  // device doesn't honour. (See SECURITY_SELFREVIEW_FINDINGS.md → F-3.)
+  const forcedOnDevice = status?.mode === 'native';
 
   return (
     <div className="p-5 rounded-xl border border-border bg-card space-y-4">
@@ -71,16 +76,35 @@ export default function BiometricUnlockSettings() {
         </p>
       </div>
 
-      {/* The toggle. */}
+      {/* The toggle. On a real device it is forced on (and disabled): native
+          unlock always requires biometric/passcode. In demo/web it controls the
+          (simulated) prompt. */}
       <div className="flex items-center justify-between">
         <div className="pr-4">
-          <p className="text-sm font-medium">Require {label} on unlock</p>
+          <p className="text-sm font-medium">
+            {forcedOnDevice ? `${label} required on this device` : `Require ${label} on unlock`}
+          </p>
           <p className="text-xs text-muted-foreground">
-            Ask for {label} before decrypting your wallet.
+            {forcedOnDevice
+              ? `Your wallet always asks for ${label} (or your device passcode) on this device — this can't be turned off here.`
+              : `Ask for ${label} before decrypting your wallet.`}
           </p>
         </div>
-        <Switch checked={enabled} onCheckedChange={onToggle} aria-label="Require biometric unlock" />
+        <Switch
+          checked={forcedOnDevice ? true : enabled}
+          onCheckedChange={onToggle}
+          disabled={forcedOnDevice}
+          aria-label="Require biometric unlock"
+        />
       </div>
+
+      {/* Recovery caveat on device (see FINDINGS → F-4). */}
+      {forcedOnDevice && (
+        <p className="text-[11px] text-muted-foreground">
+          If you remove your device passcode, the on-device vault is erased for
+          security — restore it with your recovery phrase.
+        </p>
+      )}
 
       {/* Availability / status line. */}
       <div className="flex items-start gap-2 text-xs">

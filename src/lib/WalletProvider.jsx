@@ -12,8 +12,9 @@
 //
 // STORAGE SEAM (M2a): all vault persistence/crypto goes through the keyStore
 // interface (wallet-core/keystore). On web this is the unchanged Argon2id +
-// AES-GCM IndexedDB vault; native (M2b, Design B) swaps in a hardware-wrapped
-// implementation behind the SAME interface without touching this component.
+// AES-GCM IndexedDB vault; native (M2b, Design B) swaps in a hardware-gated,
+// hardware-backed-at-rest implementation behind the SAME interface without
+// touching this component.
 //
 // LIMITATION (document in threat model): JavaScript cannot guarantee secrets
 // are unrecoverable from memory after clearing. This minimizes, not
