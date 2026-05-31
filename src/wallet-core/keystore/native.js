@@ -9,7 +9,13 @@
 // │ gates"). Do not treat as secure on the strength of this code alone.        │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
-// DESIGN B (hardware-wrapped / hardware-gated key — see docs/M2.secure-storage.md):
+// DESIGN B — implemented as HARDWARE-GATED UNLOCK + HARDWARE-BACKED AT-REST
+// STORAGE (see docs/M2.secure-storage.md; Design B explicitly permits the
+// "or to gate access" interpretation). To be precise about what this is NOT:
+// no bespoke Secure Enclave / StrongBox key wraps the vault-encryption key —
+// that key is still the Argon2id-derived WebCrypto key from ../vault.js.
+// "hardware-backed" here means the plugin's at-rest store (iOS Keychain /
+// Android Keystore-backed); "gated" means the biometric/passcode prompt below.
 //   - The EXISTING Argon2id+AES-GCM vault FORMAT is reused BYTE-IDENTICALLY.
 //     We call the same ../vault.js encryptVault/decryptVault as the web path;
 //     no algorithm, parameter, or blob layout changes here.
