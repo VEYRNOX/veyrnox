@@ -1,7 +1,5 @@
-import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
-import { CURRENCY_COLORS, CURRENCY_SYMBOLS, USD_RATES } from "@/lib/cryptos";
-
-const FALLBACK_COLOR = "#64748B";
+import { USD_RATES } from "@/lib/cryptos";
+import CoinLogo from "@/components/CoinLogo";
 
 export default function TokenList({ wallets, onSelect, selectedId }) {
   return (
@@ -17,12 +15,7 @@ export default function TokenList({ wallets, onSelect, selectedId }) {
               isSelected ? "bg-primary/10 border border-primary/30" : "hover:bg-secondary border border-transparent"
             }`}
           >
-            <div
-              className="h-10 w-10 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-              style={{ background: (CURRENCY_COLORS[wallet.currency] || FALLBACK_COLOR) + "20", color: CURRENCY_COLORS[wallet.currency] || FALLBACK_COLOR }}
-            >
-              {CURRENCY_SYMBOLS[wallet.currency] || wallet.currency?.[0]}
-            </div>
+            <CoinLogo symbol={wallet.currency} size={40} />
             <div className="flex-1 text-left min-w-0">
               <p className="text-sm font-semibold">{wallet.currency}</p>
               <p className="text-xs text-muted-foreground truncate">{wallet.name}</p>

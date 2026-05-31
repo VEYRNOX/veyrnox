@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDownUp, Loader2, CheckCircle2, RefreshCw, ChevronRight, AlertTriangle, Fuel, Zap, Settings2, Info } from "lucide-react";
 import { toast } from "sonner";
+import CoinLogo from "@/components/CoinLogo";
 
 const USD_RATES    = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const CHAIN        = { BTC: "Bitcoin", ETH: "Ethereum", USDT: "Ethereum", BNB: "BNB Chain", SOL: "Solana", USDC: "Ethereum", XRP: "XRP Ledger", DOGE: "Dogecoin", ADA: "Cardano", TRX: "Tron" };
@@ -48,13 +49,7 @@ function getRate(from, to) {
 }
 
 function CurrencyIcon({ currency, size = "sm" }) {
-  const sz = size === "lg" ? "h-10 w-10 text-xl" : "h-7 w-7 text-sm";
-  return (
-    <div className={`${sz} rounded-full flex items-center justify-center font-bold shrink-0`}
-      style={{ background: (CURRENCY_COLORS[currency] || "#888") + "20", color: CURRENCY_COLORS[currency] || "#888" }}>
-      {CURRENCY_SYMBOLS[currency] || "●"}
-    </div>
-  );
+  return <CoinLogo symbol={currency} size={size === "lg" ? 40 : 28} />;
 }
 
 const SLIPPAGE_PRESETS = ["0.1", "0.5", "1.0"];
