@@ -10,15 +10,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import moment from "moment";
+import { TOP_SYMBOLS } from "@/lib/cryptos";
 
+// Demo APYs. Money-market coverage is intentionally uneven across the 10 assets:
+// majors/stables are everywhere; MakerDAO stays limited to ETH/BTC/stables (its
+// real scope). Assets a protocol doesn't list render as "—" in the table below.
 const PROTOCOLS = [
-  { name: "Aave", lend_apy: { USDC: 4.2, USDT: 3.8, ETH: 2.1, BTC: 1.8, SOL: 3.4 }, borrow_apy: { USDC: 6.1, USDT: 5.9, ETH: 3.2, BTC: 2.9, SOL: 5.1 }, color: "#B6509E", icon: "🔷" },
-  { name: "Compound", lend_apy: { USDC: 3.9, USDT: 3.5, ETH: 1.9, BTC: 1.5, SOL: 2.9 }, borrow_apy: { USDC: 5.8, USDT: 5.4, ETH: 2.9, BTC: 2.5, SOL: 4.6 }, color: "#00D395", icon: "🟢" },
-  { name: "MakerDAO", lend_apy: { USDC: 5.0, USDT: 4.5, ETH: 2.5, BTC: 2.0, SOL: 0 }, borrow_apy: { USDC: 7.0, USDT: 6.5, ETH: 4.0, BTC: 3.5, SOL: 0 }, color: "#F4B731", icon: "🟡" },
-  { name: "Euler", lend_apy: { USDC: 4.8, USDT: 4.1, ETH: 2.3, BTC: 1.9, SOL: 3.1 }, borrow_apy: { USDC: 6.5, USDT: 6.0, ETH: 3.5, BTC: 3.0, SOL: 4.8 }, color: "#627EEA", icon: "🔵" },
+  { name: "Aave", lend_apy: { USDC: 4.2, USDT: 3.8, ETH: 2.1, BTC: 1.8, SOL: 3.4, BNB: 2.6, XRP: 1.2, DOGE: 0.9, ADA: 1.5, TRX: 2.0 }, borrow_apy: { USDC: 6.1, USDT: 5.9, ETH: 3.2, BTC: 2.9, SOL: 5.1, BNB: 4.1, XRP: 2.4, DOGE: 2.0, ADA: 3.0, TRX: 3.6 }, color: "#B6509E", icon: "🔷" },
+  { name: "Compound", lend_apy: { USDC: 3.9, USDT: 3.5, ETH: 1.9, BTC: 1.5, SOL: 2.9, BNB: 2.3, XRP: 1.0, DOGE: 0.7, ADA: 1.3, TRX: 1.8 }, borrow_apy: { USDC: 5.8, USDT: 5.4, ETH: 2.9, BTC: 2.5, SOL: 4.6, BNB: 3.8, XRP: 2.2, DOGE: 1.8, ADA: 2.7, TRX: 3.3 }, color: "#00D395", icon: "🟢" },
+  { name: "MakerDAO", lend_apy: { USDC: 5.0, USDT: 4.5, ETH: 2.5, BTC: 2.0 }, borrow_apy: { USDC: 7.0, USDT: 6.5, ETH: 4.0, BTC: 3.5 }, color: "#F4B731", icon: "🟡" },
+  { name: "Euler", lend_apy: { USDC: 4.8, USDT: 4.1, ETH: 2.3, BTC: 1.9, SOL: 3.1, BNB: 2.4, XRP: 1.1, DOGE: 0.8, ADA: 1.4, TRX: 1.9 }, borrow_apy: { USDC: 6.5, USDT: 6.0, ETH: 3.5, BTC: 3.0, SOL: 4.8, BNB: 3.9, XRP: 2.3, DOGE: 1.9, ADA: 2.8, TRX: 3.4 }, color: "#627EEA", icon: "🔵" },
 ];
 
-const ASSETS = ["ETH", "BTC", "USDC", "USDT", "SOL"];
+const ASSETS = TOP_SYMBOLS;
 
 export default function LendingBorrowing() {
   const queryClient = useQueryClient();

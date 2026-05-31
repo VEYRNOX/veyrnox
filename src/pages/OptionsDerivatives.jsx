@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import moment from "moment";
+import { TOP_SYMBOLS } from "@/lib/cryptos";
 
 const TYPE_LABELS = { call: "CALL", put: "PUT", futures_long: "LONG", futures_short: "SHORT" };
 const TYPE_COLORS = { call: "text-green-400 bg-green-500/10", put: "text-destructive bg-destructive/10", futures_long: "text-blue-400 bg-blue-500/10", futures_short: "text-orange-400 bg-orange-500/10" };
@@ -146,7 +147,7 @@ export default function OptionsDerivatives() {
                 <Label>Underlying</Label>
                 <Select value={form.underlying} onValueChange={v => setForm(p => ({ ...p, underlying: v }))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{["BTC", "ETH", "SOL"].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                  <SelectContent>{TOP_SYMBOLS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
