@@ -71,11 +71,6 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Wallet.list(),
   });
 
-  const { data: kyc = [] } = useQuery({
-    queryKey: ["kyc"],
-    queryFn: () => base44.entities.KYCProfile.list(),
-  });
-
   const { data: transactions = [] } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
@@ -92,7 +87,6 @@ export default function Dashboard() {
   });
 
   const selectedWallet = wallets.find(w => w.id === selectedWalletId) || wallets[0];
-  const kycStatus = kyc[0]?.status || "not_started";
   const totalUSD = wallets.reduce((sum, w) => sum + (w.balance || 0) * (USD_RATES[w.currency] || 1), 0);
 
   const filteredTx = transactions.filter(tx => {
@@ -179,22 +173,6 @@ export default function Dashboard() {
         </Link>
       )}
 
-      {/* KYC Banner */}
-      {kycStatus !== "verified" && (
-        <Link to="/kyc" className="flex items-center gap-3 p-3 rounded-xl bg-primary/10 border border-primary/30 hover:border-primary/60 transition-colors">
-          <ShieldAlert className="h-5 w-5 text-primary shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">
-              {kycStatus === "pending" ? "KYC Under Review" : "Complete Identity Verification"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {kycStatus === "pending" ? "We're verifying your documents" : "Required for full access & higher limits"}
-            </p>
-          </div>
-          {kycStatus !== "pending" && <ArrowUpRight className="h-4 w-4 text-primary shrink-0" />}
-        </Link>
-      )}
-
       {/* Portfolio Value */}
       <div className="text-center py-4 relative">
         <div className="absolute top-4 right-0">
@@ -255,7 +233,7 @@ export default function Dashboard() {
       </div>
 
       {/* Portfolio Health Score */}
-      {widgets.healthScore && <PortfolioHealthScore wallets={wallets} kycStatus={kycStatus} />}
+      {widgets.healthScore && <PortfolioHealthScore wallets={wallets} />}
 
       {/* Watchlist Widget */}
       {widgets.watchlist && <WatchlistWidget />}
@@ -352,10 +330,10 @@ export default function Dashboard() {
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Quick Access</p>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: "Swap", icon: ArrowDownUp, path: "/swap", color: "text-blue-400", bg: "bg-blue-500/10" },
-              { label: "Staking", icon: Zap, path: "/staking", color: "text-yellow-400", bg: "bg-yellow-500/10" },
-              { label: "Yield", icon: Sprout, path: "/yield", color: "text-green-400", bg: "bg-green-500/10" },
-              { label: "DCA", icon: Repeat, path: "/dca", color: "text-purple-400", bg: "bg-purple-500/10" },
+              { label: "Receive", icon: ArrowDownLeft, path: "/receive", color: "text-blue-400", bg: "bg-blue-500/10" },
+              { label: "Security", icon: ShieldAlert, path: "/security", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+              { label: "Approvals", icon: Lock, path: "/token-approvals", color: "text-green-400", bg: "bg-green-500/10" },
+              { label: "Address Check", icon: Search, path: "/address-checker", color: "text-purple-400", bg: "bg-purple-500/10" },
               { label: "AI Advisor", icon: Bot, path: "/advisor", color: "text-primary", bg: "bg-primary/10" },
               { label: "Analytics", icon: BarChart2, path: "/analytics", color: "text-indigo-400", bg: "bg-indigo-500/10" },
               { label: "Sentiment", icon: Newspaper, path: "/news-sentiment", color: "text-cyan-400", bg: "bg-cyan-500/10" },
