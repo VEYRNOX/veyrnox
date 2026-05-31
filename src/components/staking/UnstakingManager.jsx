@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Clock, Unlock, AlertCircle } from "lucide-react";
 import moment from "moment";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const UNBONDING_DAYS = { ETH: 7, SOL: 3, BTC: 14, USDC: 1, USDT: 1 };
 const fmtUSD = (n) => "$" + Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const fmt    = (n, d = 4) => Number(n).toFixed(d);

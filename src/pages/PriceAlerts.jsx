@@ -10,12 +10,12 @@ import { Bell, BellOff, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, Check
 import { toast } from "sonner";
 import moment from "moment";
 
-const CURRENCIES = ["BTC", "ETH", "SOL", "USDC", "USDT"];
-const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", SOL: "#9945FF", USDC: "#2775CA", USDT: "#26A17B" };
+const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
+const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
 async function fetchLivePrices() {
   const res = await fetch(
-    "https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,SOL,USDC,USDT&tsyms=USD&extraParams=safecryptowallet"
+    "https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,USDT,BNB,SOL,USDC,XRP,DOGE,ADA,TRX&tsyms=USD&extraParams=safecryptowallet"
   );
   const data = await res.json();
   const prices = {};

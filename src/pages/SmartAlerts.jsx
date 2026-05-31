@@ -151,7 +151,7 @@ export default function SmartAlerts() {
                   <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="any">Any</SelectItem>
-                    {["BTC", "ETH", "SOL", "USDC", "USDT"].map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                    {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

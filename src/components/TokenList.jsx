@@ -1,14 +1,7 @@
 import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { CURRENCY_COLORS, CURRENCY_SYMBOLS, USD_RATES } from "@/lib/cryptos";
 
-const CURRENCY_COLORS = {
-  BTC: "#F7931A", ETH: "#627EEA", SOL: "#9945FF", USDC: "#2775CA", USDT: "#26A17B"
-};
-const CURRENCY_SYMBOLS = {
-  BTC: "₿", ETH: "Ξ", SOL: "◎", USDC: "$", USDT: "₮"
-};
-const USD_RATES = {
-  BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1
-};
+const FALLBACK_COLOR = "#64748B";
 
 export default function TokenList({ wallets, onSelect, selectedId }) {
   return (
@@ -26,9 +19,9 @@ export default function TokenList({ wallets, onSelect, selectedId }) {
           >
             <div
               className="h-10 w-10 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-              style={{ background: CURRENCY_COLORS[wallet.currency] + "20", color: CURRENCY_COLORS[wallet.currency] }}
+              style={{ background: (CURRENCY_COLORS[wallet.currency] || FALLBACK_COLOR) + "20", color: CURRENCY_COLORS[wallet.currency] || FALLBACK_COLOR }}
             >
-              {CURRENCY_SYMBOLS[wallet.currency]}
+              {CURRENCY_SYMBOLS[wallet.currency] || wallet.currency?.[0]}
             </div>
             <div className="flex-1 text-left min-w-0">
               <p className="text-sm font-semibold">{wallet.currency}</p>

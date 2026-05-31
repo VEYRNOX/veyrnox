@@ -5,7 +5,7 @@ import { Search, Printer, Download, CheckCircle2, XCircle, Clock } from "lucide-
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const STATUS_ICON = { completed: <CheckCircle2 className="h-4 w-4 text-green-500" />, failed: <XCircle className="h-4 w-4 text-destructive" />, pending: <Clock className="h-4 w-4 text-yellow-500" /> };
 
 export default function TransactionReceipt() {
