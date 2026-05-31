@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Send, ArrowDownUp, Copy, Check, ExternalLink, Zap, Shield, TrendingUp } from "lucide-react";
+import { Send, ArrowDownUp, Copy, Check, ExternalLink, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

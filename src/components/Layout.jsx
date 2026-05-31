@@ -1,24 +1,22 @@
-import { useState, useEffect, lazy, Suspense, useCallback } from "react";
+import { useState, useEffect, lazy, useCallback } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
 import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
 import {
-  LayoutDashboard, Send, Download, Settings, Shield, LogOut, ShieldCheck,
-  ArrowDownUp, Plug, Building2, Bell, Calculator, BarChart2, Sliders, Zap,
+  LayoutDashboard, Send, Download, Settings, LogOut, ShieldCheck, Plug, Bell, Calculator, BarChart2, Sliders, Zap,
   Receipt, MoreHorizontal, Repeat, ShieldAlert, ClipboardList, Globe, Image,
-  BarChart3, Camera, TrendingUp, Network, PieChart, Sparkles, BellRing,
-  CreditCard, Link2, BellDot, ShieldHalf, Shuffle, Users, DollarSign,
-  Activity, Landmark, Sprout, Bot, Layers, GitMerge, Fingerprint, Cpu,
-  MessageSquare, Leaf, Vote, ScrollText, Newspaper, Copy,
-  Target, Banknote, FileText, Eye, Search, ChevronLeft, ChevronRight, X, ChevronDown,
-  MapPin, QrCode, History, Briefcase, Scissors, ShieldQuestion, Lock, Grid2X2,
+  BarChart3, Camera, TrendingUp, Network, PieChart, Sparkles, BellRing, Link2, BellDot, ShieldHalf, Users,
+  Activity, Bot, Layers, Fingerprint, Cpu,
+  MessageSquare, Leaf, ScrollText, Newspaper,
+  Target, FileText, Eye, Search, ChevronLeft, ChevronRight, X, ChevronDown,
+  MapPin, QrCode, History, Scissors, ShieldQuestion, Lock, Grid2X2,
   Share2, Gift, Key, LayoutGrid, Fuel,
-  TrendingDown, RotateCcw, RefreshCw, Smartphone, Mic, Trophy, Star, Users2, GitBranch,
+  TrendingDown, RotateCcw, Smartphone, Mic, Trophy, Users2,
   ShieldOff, Gauge, FilterX, KeyRound, Atom, ScanLine, Frame, Wifi, Pen,
-  AtSign, Code2, Coins,
-  CloudUpload, ArrowDownToLine, ArrowUpFromLine, Compass, LineChart, Palette, Hexagon, ScanSearch,
+  AtSign, Coins,
+  CloudUpload, Compass, Hexagon, ScanSearch,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CommandPalette from "./CommandPalette";

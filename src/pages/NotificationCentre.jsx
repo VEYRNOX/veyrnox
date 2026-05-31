@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Bell, ShieldAlert, AlertTriangle, TrendingUp, CheckCircle2, X, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bell, ShieldAlert, AlertTriangle, TrendingUp, CheckCircle2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import moment from "moment";

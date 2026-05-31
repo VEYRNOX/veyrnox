@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Trophy, TrendingUp, Users, Medal } from "lucide-react";
+import { Users } from "lucide-react";
 
 const MOCK_LEADERS = [
   { rank: 1, name: "CryptoWhale_99", avatar: "🐳", return_30d: 34.2, return_alltime: 412.5, followers: 1240, risk: "high", badge: "🥇" },

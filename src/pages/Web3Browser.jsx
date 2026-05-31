@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Globe, Search, Star, ExternalLink, Shield, Zap, TrendingUp, Gamepad2, Image, BarChart3, ArrowLeft, ArrowRight, RotateCcw, X } from "lucide-react";
+import { Globe, Search, Star, ExternalLink, Shield, TrendingUp, Gamepad2, Image, ArrowLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DAPPS = [
   { name: "Uniswap", description: "Leading DEX on Ethereum", url: "https://app.uniswap.org", category: "DeFi", icon: "🦄", verified: true },

@@ -122,7 +122,7 @@ export default function HDWalletManager() {
     const existing = new Set((hdWallets || []).map(w => (w.address || "").toLowerCase()));
     const missing = accounts.filter(a => !existing.has(a.address.toLowerCase()));
     if (missing.length && !persistAccounts.isPending) persistAccounts.mutate(accounts);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isUnlocked, accounts, hdWallets]);
 
   const copy = (text, id) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(null), 1500); };
