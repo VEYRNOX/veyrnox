@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Shield, TrendingUp, Layers, Zap, ChevronRight } from "lucide-react";
+import { Shield, TrendingUp, Layers, ChevronRight } from "lucide-react";
 
 function ScoreRing({ score }) {
   const r = 28;
@@ -27,7 +27,7 @@ function ScoreRing({ score }) {
   );
 }
 
-export default function PortfolioHealthScore({ wallets = [], kycStatus = "not_started", hasStaking = false }) {
+export default function PortfolioHealthScore({ wallets = [] }) {
   const navigate = useNavigate();
 
   const factors = [
@@ -40,26 +40,18 @@ export default function PortfolioHealthScore({ wallets = [], kycStatus = "not_st
       action: "/",
     },
     {
-      label: "Identity",
+      label: "Security",
       icon: Shield,
-      score: kycStatus === "verified" ? 25 : 0,
-      max: 25,
-      tip: kycStatus === "verified" ? "Verified ✓" : "Complete KYC",
-      action: "/kyc",
-    },
-    {
-      label: "Yield",
-      icon: Zap,
-      score: hasStaking ? 20 : 0,
-      max: 20,
-      tip: hasStaking ? "Earning yield ✓" : "Start staking",
-      action: "/staking",
+      score: wallets.length > 0 ? 30 : 0,
+      max: 30,
+      tip: wallets.length > 0 ? "Review security settings" : "Set up your wallet",
+      action: "/security",
     },
     {
       label: "Growth",
       icon: TrendingUp,
-      score: wallets.some(w => w.balance > 0) ? 15 : 0,
-      max: 15,
+      score: wallets.some(w => w.balance > 0) ? 30 : 0,
+      max: 30,
       tip: "Based on holdings",
       action: "/analytics",
     },

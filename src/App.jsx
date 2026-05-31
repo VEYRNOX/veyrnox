@@ -15,22 +15,15 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
 const Settings = lazy(() => import('./pages/Settings'));
-const KYC = lazy(() => import('./pages/KYC'));
-const Swap = lazy(() => import('./pages/Swap'));
 const ConnectWallet = lazy(() => import('./pages/ConnectWallet'));
-const ExchangeConnections = lazy(() => import('./pages/ExchangeConnections'));
 const PriceAlerts = lazy(() => import('./pages/PriceAlerts'));
 const Calculator = lazy(() => import('./pages/Calculator'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Rebalancing = lazy(() => import('./pages/Rebalancing'));
-const Staking = lazy(() => import('./pages/Staking'));
 const TaxReport = lazy(() => import('./pages/TaxReport'));
-const DCA = lazy(() => import('./pages/DCA'));
 const SecurityCenter = lazy(() => import('./pages/SecurityCenter'));
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
-const GeoBlocking = lazy(() => import('./pages/GeoBlocking'));
 const NFTPortfolio = lazy(() => import('./pages/NFTPortfolio'));
-const OptionsDerivatives = lazy(() => import('./pages/OptionsDerivatives'));
 const PortfolioSnapshots = lazy(() => import('./pages/PortfolioSnapshots'));
 const PLTracking = lazy(() => import('./pages/PLTracking'));
 const OnChainAnalytics = lazy(() => import('./pages/OnChainAnalytics'));
@@ -39,35 +32,22 @@ const AIPortfolioAdvisor = lazy(() => import('./pages/AIPortfolioAdvisor'));
 const SmartAlerts = lazy(() => import('./pages/SmartAlerts'));
 const RecurringPayments = lazy(() => import('./pages/RecurringPayments'));
 const WalletConnectPage = lazy(() => import('./pages/WalletConnectPage'));
-const FiatRamp = lazy(() => import('./pages/FiatRamp'));
 const PushNotificationsPage = lazy(() => import('./pages/PushNotificationsPage'));
 const MultiSigWallets = lazy(() => import('./pages/MultiSigWallets'));
-const DEXSwap = lazy(() => import('./pages/DEXSwap'));
 const AdvancedAnalytics = lazy(() => import('./pages/AdvancedAnalytics'));
 const Community = lazy(() => import('./pages/Community'));
-const FiatWallets = lazy(() => import('./pages/FiatWallets'));
-const LendingBorrowing = lazy(() => import('./pages/LendingBorrowing'));
-const YieldFarming = lazy(() => import('./pages/YieldFarming'));
 const Web3Browser = lazy(() => import('./pages/Web3Browser'));
-const PortfolioAutomation = lazy(() => import('./pages/PortfolioAutomation'));
 const MultiChainNFT = lazy(() => import('./pages/MultiChainNFT'));
 const FraudDetection = lazy(() => import('./pages/FraudDetection'));
-const CrossChainBridge = lazy(() => import('./pages/CrossChainBridge'));
-const TradingBots = lazy(() => import('./pages/TradingBots'));
-const DIDManagement = lazy(() => import('./pages/DIDManagement'));
 const AccountAccess = lazy(() => import('./pages/AccountAccess'));
 const RASPSecurity = lazy(() => import('./pages/RASPSecurity'));
 const PaymentLinks = lazy(() => import('./pages/PaymentLinks'));
 const RiskScoring = lazy(() => import('./pages/RiskScoring'));
-const SocialTrading = lazy(() => import('./pages/SocialTrading'));
-const EncryptedMessaging = lazy(() => import('./pages/EncryptedMessaging'));
 const CarbonTracker = lazy(() => import('./pages/CarbonTracker'));
-const DAOGovernance = lazy(() => import('./pages/DAOGovernance'));
 const CryptoWillPage = lazy(() => import('./pages/CryptoWillPage'));
 const NewsSentimentPage = lazy(() => import('./pages/NewsSentimentPage'));
 const NotificationCentre = lazy(() => import('./pages/NotificationCentre'));
 const SavingsGoals = lazy(() => import('./pages/SavingsGoals'));
-const CryptoLoans = lazy(() => import('./pages/CryptoLoans'));
 const InvoiceGenerator = lazy(() => import('./pages/InvoiceGenerator'));
 const WatchlistPage = lazy(() => import('./pages/WatchlistPage'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
@@ -81,7 +61,6 @@ const NetWorthTracker = lazy(() => import('./pages/NetWorthTracker'));
 const PortfolioBenchmark = lazy(() => import('./pages/PortfolioBenchmark'));
 const WhatIfSimulator = lazy(() => import('./pages/WhatIfSimulator'));
 const BudgetLimits = lazy(() => import('./pages/BudgetLimits'));
-const LoanCalculator = lazy(() => import('./pages/LoanCalculator'));
 const LoginActivityMap = lazy(() => import('./pages/LoginActivityMap'));
 const FeeAnalytics = lazy(() => import('./pages/FeeAnalytics'));
 const HardwareWalletPage = lazy(() => import('./pages/HardwareWalletPage'));
@@ -90,17 +69,12 @@ const AnomalyDetection = lazy(() => import('./pages/AnomalyDetection'));
 const TaxHarvesting = lazy(() => import('./pages/TaxHarvesting'));
 const PortfolioRewind = lazy(() => import('./pages/PortfolioRewind'));
 const CustomIndexBuilder = lazy(() => import('./pages/CustomIndexBuilder'));
-const CryptoSubscriptions = lazy(() => import('./pages/CryptoSubscriptions'));
-const BankLink = lazy(() => import('./pages/BankLink'));
 const MobileWidgetPage = lazy(() => import('./pages/MobileWidgetPage'));
 const MessengerAlerts = lazy(() => import('./pages/MessengerAlerts'));
 const VoiceCommands = lazy(() => import('./pages/VoiceCommands'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
-const TradeSignals = lazy(() => import('./pages/TradeSignals'));
 const PublicProfiles = lazy(() => import('./pages/PublicProfiles'));
 const AIRebalancer = lazy(() => import('./pages/AIRebalancer'));
-const WebhookBuilder = lazy(() => import('./pages/WebhookBuilder'));
-const ConditionalSwapPage = lazy(() => import('./pages/ConditionalSwapPage'));
 const AssetCorrelationTimeline = lazy(() => import('./pages/AssetCorrelationTimeline'));
 const CustomDashboardWidgets = lazy(() => import('./pages/CustomDashboardWidgets'));
 const SharedPortfolioView = lazy(() => import('./pages/SharedPortfolioView'));
@@ -110,7 +84,6 @@ const DuressPin = lazy(() => import('./pages/DuressPin'));
 const PortfolioRiskScore = lazy(() => import('./pages/PortfolioRiskScore'));
 const CorrelationMatrix = lazy(() => import('./pages/CorrelationMatrix'));
 const RebalancingHistory = lazy(() => import('./pages/RebalancingHistory'));
-const CryptoPayroll = lazy(() => import('./pages/CryptoPayroll'));
 const SplitBill = lazy(() => import('./pages/SplitBill'));
 const MerchantQR = lazy(() => import('./pages/MerchantQR'));
 const SessionManager = lazy(() => import('./pages/SessionManager'));
@@ -130,26 +103,18 @@ const TronWallet = lazy(() => import('./pages/TronWallet'));
 const NFTGallery = lazy(() => import('./pages/NFTGallery'));
 const CryptoSigning = lazy(() => import('./pages/CryptoSigning'));
 const LiveBalances = lazy(() => import('./pages/LiveBalances'));
-const LiveFiatRamp = lazy(() => import('./pages/LiveFiatRamp'));
 const DAppConnector = lazy(() => import('./pages/DAppConnector'));
 const MobileInstall = lazy(() => import('./pages/MobileInstall'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Documentation = lazy(() => import('./pages/Documentation'));
 const Features = lazy(() => import('./pages/Features'));
 const SamsungKeystore = lazy(() => import('./pages/SamsungKeystore'));
-const PerpsTrading = lazy(() => import('./pages/PerpsTrading'));
 const CloudBackup = lazy(() => import('./pages/CloudBackup'));
-const CEXDeposit = lazy(() => import('./pages/CEXDeposit'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
-const CryptoOffRamp = lazy(() => import('./pages/CryptoOffRamp'));
 const BlockExplorer = lazy(() => import('./pages/BlockExplorer'));
-const TokenizedStocks = lazy(() => import('./pages/TokenizedStocks'));
-const NFTMinting = lazy(() => import('./pages/NFTMinting'));
 const SuiWallet = lazy(() => import('./pages/SuiWallet'));
 const SecurityScanner = lazy(() => import('./pages/SecurityScanner'));
 const ENSRegistration = lazy(() => import('./pages/ENSRegistration'));
-const SmartContractDeploy = lazy(() => import('./pages/SmartContractDeploy'));
-const NativePayRamp = lazy(() => import('./pages/NativePayRamp'));
 const ERC20Discovery = lazy(() => import('./pages/ERC20Discovery'));
 const WebBridge = lazy(() => import('./pages/WebBridge'));
 const Products = lazy(() => import('./pages/Products'));
@@ -192,22 +157,15 @@ const AuthenticatedApp = () => {
           <Route path="/send" element={<SendCrypto />} />
           <Route path="/receive" element={<ReceiveCrypto />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/swap" element={<Swap />} />
           <Route path="/connect" element={<ConnectWallet />} />
-          <Route path="/exchanges" element={<ExchangeConnections />} />
           <Route path="/alerts" element={<PriceAlerts />} />
           <Route path="/calculator" element={<Calculator />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/rebalance" element={<Rebalancing />} />
-          <Route path="/staking" element={<Staking />} />
           <Route path="/tax" element={<TaxReport />} />
-          <Route path="/dca" element={<DCA />} />
-          <Route path="/kyc" element={<KYC />} />
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/audit" element={<AuditLogPage />} />
-          <Route path="/geo-blocking" element={<GeoBlocking />} />
           <Route path="/nft" element={<NFTPortfolio />} />
-          <Route path="/options" element={<OptionsDerivatives />} />
           <Route path="/snapshots" element={<PortfolioSnapshots />} />
           <Route path="/pl" element={<PLTracking />} />
           <Route path="/onchain" element={<OnChainAnalytics />} />
@@ -216,35 +174,22 @@ const AuthenticatedApp = () => {
           <Route path="/smart-alerts" element={<SmartAlerts />} />
           <Route path="/recurring" element={<RecurringPayments />} />
           <Route path="/walletconnect" element={<WalletConnectPage />} />
-          <Route path="/fiat" element={<FiatRamp />} />
           <Route path="/push" element={<PushNotificationsPage />} />
           <Route path="/multisig" element={<MultiSigWallets />} />
-          <Route path="/dex" element={<DEXSwap />} />
           <Route path="/advanced-analytics" element={<AdvancedAnalytics />} />
           <Route path="/community" element={<Community />} />
-          <Route path="/fiat-wallets" element={<FiatWallets />} />
-          <Route path="/lending" element={<LendingBorrowing />} />
-          <Route path="/yield" element={<YieldFarming />} />
           <Route path="/web3" element={<Web3Browser />} />
-          <Route path="/automation" element={<PortfolioAutomation />} />
           <Route path="/nft-multichain" element={<MultiChainNFT />} />
           <Route path="/fraud" element={<FraudDetection />} />
-          <Route path="/bridge" element={<CrossChainBridge />} />
-          <Route path="/trading-bots" element={<TradingBots />} />
-          <Route path="/did" element={<DIDManagement />} />
           <Route path="/account-access" element={<AccountAccess />} />
           <Route path="/rasp" element={<RASPSecurity />} />
           <Route path="/payment-links" element={<PaymentLinks />} />
           <Route path="/risk" element={<RiskScoring />} />
-          <Route path="/social-trading" element={<SocialTrading />} />
-          <Route path="/messaging" element={<EncryptedMessaging />} />
           <Route path="/carbon" element={<CarbonTracker />} />
-          <Route path="/dao" element={<DAOGovernance />} />
           <Route path="/will" element={<CryptoWillPage />} />
           <Route path="/news-sentiment" element={<NewsSentimentPage />} />
           <Route path="/notifications" element={<NotificationCentre />} />
           <Route path="/savings" element={<SavingsGoals />} />
-          <Route path="/loans" element={<CryptoLoans />} />
           <Route path="/invoices" element={<InvoiceGenerator />} />
           <Route path="/watchlist" element={<WatchlistPage />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
@@ -253,13 +198,11 @@ const AuthenticatedApp = () => {
           <Route path="/benchmark" element={<PortfolioBenchmark />} />
           <Route path="/what-if" element={<WhatIfSimulator />} />
           <Route path="/budget" element={<BudgetLimits />} />
-          <Route path="/loan-calculator" element={<LoanCalculator />} />
           <Route path="/login-map" element={<LoginActivityMap />} />
           <Route path="/duress-pin" element={<DuressPin />} />
           <Route path="/risk-score" element={<PortfolioRiskScore />} />
           <Route path="/correlation" element={<CorrelationMatrix />} />
           <Route path="/rebalancing-history" element={<RebalancingHistory />} />
-          <Route path="/payroll" element={<CryptoPayroll />} />
           <Route path="/split-bill" element={<SplitBill />} />
           <Route path="/merchant-qr" element={<MerchantQR />} />
           <Route path="/session-manager" element={<SessionManager />} />
@@ -277,17 +220,12 @@ const AuthenticatedApp = () => {
           <Route path="/tax-harvest" element={<TaxHarvesting />} />
           <Route path="/portfolio-rewind" element={<PortfolioRewind />} />
           <Route path="/index-builder" element={<CustomIndexBuilder />} />
-          <Route path="/subscriptions" element={<CryptoSubscriptions />} />
-          <Route path="/bank-link" element={<BankLink />} />
           <Route path="/mobile-widget" element={<MobileWidgetPage />} />
           <Route path="/messenger-alerts" element={<MessengerAlerts />} />
           <Route path="/voice-commands" element={<VoiceCommands />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/trade-signals" element={<TradeSignals />} />
           <Route path="/public-profiles" element={<PublicProfiles />} />
           <Route path="/ai-rebalancer" element={<AIRebalancer />} />
-          <Route path="/webhook-builder" element={<WebhookBuilder />} />
-          <Route path="/conditional-swap" element={<ConditionalSwapPage />} />
           <Route path="/token-approvals" element={<TokenApprovals />} />
           <Route path="/network-manager" element={<NetworkManager />} />
           <Route path="/watch-wallets" element={<WatchWallets />} />
@@ -302,23 +240,15 @@ const AuthenticatedApp = () => {
           <Route path="/nft-gallery" element={<NFTGallery />} />
           <Route path="/crypto-signing" element={<CryptoSigning />} />
           <Route path="/live-balances" element={<LiveBalances />} />
-          <Route path="/live-fiat" element={<LiveFiatRamp />} />
           <Route path="/dapp-connect" element={<DAppConnector />} />
           <Route path="/mobile-install" element={<MobileInstall />} />
           <Route path="/samsung-keystore" element={<SamsungKeystore />} />
-          <Route path="/perps" element={<PerpsTrading />} />
           <Route path="/cloud-backup" element={<CloudBackup />} />
-          <Route path="/cex-deposit" element={<CEXDeposit />} />
           <Route path="/dapp-alerts" element={<DAppSecurityAlerts />} />
-          <Route path="/off-ramp" element={<CryptoOffRamp />} />
           <Route path="/block-explorer" element={<BlockExplorer />} />
-          <Route path="/tokenized-stocks" element={<TokenizedStocks />} />
-          <Route path="/nft-minting" element={<NFTMinting />} />
           <Route path="/sui" element={<SuiWallet />} />
           <Route path="/security-scanner" element={<SecurityScanner />} />
           <Route path="/ens-register" element={<ENSRegistration />} />
-          <Route path="/deploy-contract" element={<SmartContractDeploy />} />
-          <Route path="/native-pay" element={<NativePayRamp />} />
           <Route path="/erc20-discovery" element={<ERC20Discovery />} />
           <Route path="/web-bridge" element={<WebBridge />} />
           <Route path="/products" element={<Products />} />
