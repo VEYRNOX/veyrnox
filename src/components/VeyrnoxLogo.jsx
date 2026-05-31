@@ -1,14 +1,11 @@
-// Veyrnox brand mark — a secure-silicon chip with a keyhole, recreated as a
-// crisp, scalable SVG so it renders sharply at every size (header, auth, etc.).
-// `bg` draws the dark rounded-square app-icon tile; `holeColor` is the colour
-// painted into the keyhole (defaults to the tile colour so it reads as a
-// cut-out). We paint the keyhole on top rather than using an SVG <mask> because
-// masks can hang some rasterizers / webviews.
+// Veyrnox brand mark — a secure-silicon chip with a red security shield,
+// recreated as a crisp, scalable SVG so it renders sharply at every size
+// (header, auth, etc.). `bg` draws the dark rounded-square app-icon tile.
 
 const PIN_CENTERS = [150, 192, 234, 276, 318, 360];
 const BG = "#28333F";
 
-export default function VeyrnoxLogo({ size = 32, bg = true, holeColor = BG, className = "" }) {
+export default function VeyrnoxLogo({ size = 32, bg = true, className = "" }) {
   return (
     <svg
       width={size}
@@ -24,6 +21,10 @@ export default function VeyrnoxLogo({ size = 32, bg = true, holeColor = BG, clas
         <linearGradient id="vx-chip" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#C9D4DF" />
           <stop offset="1" stopColor="#9EABB9" />
+        </linearGradient>
+        <linearGradient id="vx-shield" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#F0554D" />
+          <stop offset="1" stopColor="#D42C2C" />
         </linearGradient>
       </defs>
 
@@ -42,9 +43,11 @@ export default function VeyrnoxLogo({ size = 32, bg = true, holeColor = BG, clas
       {/* chip body */}
       <rect x="132" y="132" width="248" height="248" rx="34" fill="url(#vx-chip)" />
 
-      {/* keyhole cut-out */}
-      <circle cx="256" cy="224" r="46" fill={holeColor} />
-      <polygon points="238,252 274,252 292,348 220,348" fill={holeColor} />
+      {/* red security shield */}
+      <path
+        d="M194 190 Q194 184 200 184 L312 184 Q318 184 318 190 L318 258 Q318 306 256 336 Q194 306 194 258 Z"
+        fill="url(#vx-shield)"
+      />
     </svg>
   );
 }

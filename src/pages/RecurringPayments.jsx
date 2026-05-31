@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, Trash2, Pause, Play, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CoinLogo from "@/components/CoinLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -148,7 +149,7 @@ export default function RecurringPayments() {
               <Label>From Wallet</Label>
               <Select value={form.wallet_id} onValueChange={v => { const w = wallets.find(x => x.id === v); setForm(p => ({ ...p, wallet_id: v, currency: w?.currency || p.currency })); }}>
                 <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select wallet" /></SelectTrigger>
-                <SelectContent>{wallets.map(w => <SelectItem key={w.id} value={w.id}>{w.name} — {w.balance} {w.currency}</SelectItem>)}</SelectContent>
+                <SelectContent>{wallets.map(w => <SelectItem key={w.id} value={w.id}><span className="flex items-center gap-2"><CoinLogo symbol={w.currency} size={18} />{w.name} — {w.balance} {w.currency}</span></SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Recipient Address</Label><Input value={form.to_address} onChange={e => setForm(p => ({ ...p, to_address: e.target.value }))} placeholder="0x..." className="mt-1.5 font-mono text-sm" /></div>
