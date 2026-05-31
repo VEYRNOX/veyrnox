@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { TrendingDown, DollarSign, Leaf, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const COST_BASIS = { BTC: 45000, ETH: 2100, SOL: 95, USDC: 1, USDT: 1 };
 
 export default function TaxHarvesting() {

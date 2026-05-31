@@ -33,7 +33,7 @@ export default function Login() {
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
             <Shield className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-xl font-bold">SafeDigitalWallet</h1>
+          <h1 className="text-xl font-bold">Veyrnox</h1>
           <p className="text-sm text-muted-foreground">Sign in to your account</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">

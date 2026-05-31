@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ShieldCheck, Plus, Trash2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
-const CURRENCIES = ["BTC", "ETH", "SOL", "USDC", "USDT"];
+const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
 const ADDRESS_PATTERNS = {
   BTC: /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/,

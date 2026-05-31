@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Smartphone, CheckCircle, Copy, Check } from "lucide-react";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 const steps = {
   ios: [
@@ -33,7 +33,7 @@ export default function MobileWidgetPage() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <div><h1 className="text-xl font-bold">Mobile Widget</h1><p className="text-sm text-muted-foreground">Install SafeDigitalWallet as a native app with home screen widget</p></div>
+      <div><h1 className="text-xl font-bold">Mobile Widget</h1><p className="text-sm text-muted-foreground">Install Veyrnox as a native app with home screen widget</p></div>
 
       {/* Widget preview */}
       <div className="flex justify-center">

@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { ShieldAlert, Sparkles, AlertTriangle, CheckCircle, TrendingUp, Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 function detectAnomalies(transactions) {
   const anomalies = [];

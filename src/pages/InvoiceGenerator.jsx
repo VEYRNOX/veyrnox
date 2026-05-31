@@ -151,7 +151,7 @@ export default function InvoiceGenerator() {
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
                   <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["BTC","ETH","SOL","USDC","USDT"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -184,7 +184,7 @@ export default function InvoiceGenerator() {
                   <p className="text-gray-500">{preview.invoice_number}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold">SafeDigitalWallet</p>
+                  <p className="font-semibold">Veyrnox</p>
                   <p className="text-gray-500 text-xs">Crypto Payments</p>
                 </div>
               </div>

@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(28);
     doc.setFont('helvetica', 'bold');
-    doc.text('SafeDigital Wallet', pageWidth / 2, 25, { align: 'center' });
+    doc.text('Veyrnox', pageWidth / 2, 25, { align: 'center' });
     
     doc.setFontSize(16);
     doc.setFont('helvetica', 'normal');
@@ -458,12 +458,12 @@ Deno.serve(async (req) => {
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
       doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-      doc.text('SafeDigital Wallet Documentation', margin, pageHeight - 10);
+      doc.text('Veyrnox Documentation', margin, pageHeight - 10);
     }
 
     const pdfBytes = doc.output('arraybuffer');
     const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const fileName = `SafeDigitalWallet_Documentation_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `Veyrnox_Documentation_${new Date().toISOString().split('T')[0]}.pdf`;
 
     // Upload to Google Drive
     const form = new FormData();

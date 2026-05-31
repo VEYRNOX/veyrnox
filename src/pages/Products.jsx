@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 
 const CATEGORIES = ["Subscription", "One-Time", "Hardware", "Service", "Bundle"];
-const CURRENCIES = ["BTC", "ETH", "SOL", "USDC", "USDT"];
+const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const STATUSES = ["active", "inactive", "archived"];
 
 const STATUS_COLORS = {
