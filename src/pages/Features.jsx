@@ -28,11 +28,6 @@ const featureCategories = [
         explanation: "Send and receive cryptocurrencies with advanced features including QR code scanning, ENS/SNS domain name resolution, address book management, and transaction validation. Includes whitelist checks and 2FA for enhanced security."
       },
       {
-        name: "Cross-Chain Swap",
-        summary: "Aggregate DEX swaps across chains",
-        explanation: "Swap tokens across different blockchains using aggregated liquidity from multiple DEXs. The system automatically finds the best exchange rates and routes, calculating fees, slippage, and estimated gas costs for optimal trades."
-      },
-      {
         name: "Address Book",
         summary: "Trusted address management",
         explanation: "Save and organize frequently used wallet addresses with custom names, emojis, and network tags. Mark addresses as trusted for faster transactions and track usage frequency."
@@ -83,11 +78,6 @@ const featureCategories = [
         explanation: "Real-time threat detection and response embedded in the application runtime. Automatically detects and blocks suspicious activities, injection attacks, and anomalous behavior patterns."
       },
       {
-        name: "Geo-Blocking",
-        summary: "Restrict access by country/region",
-        explanation: "Block or allow access from specific countries or regions. Useful for compliance with regional regulations or personal security preferences. Can be configured to allow only specific IP ranges."
-      },
-      {
         name: "Audit Log",
         summary: "Immutable record of all account activities",
         explanation: "Comprehensive logging of every action taken in the wallet including logins, transactions, security changes, and API calls. Logs are immutable and timestamped for compliance and forensic analysis."
@@ -135,92 +125,12 @@ const featureCategories = [
     ]
   },
   {
-    category: "Trading & Swaps",
+    category: "Payments",
     features: [
-      {
-        name: "DEX Aggregator",
-        summary: "Best-price swaps across multiple DEXs",
-        explanation: "Automatically finds the best swap rates across Uniswap, PancakeSwap, SushiSwap, and other major DEXs. Splits large orders across multiple exchanges to minimize slippage and optimize execution."
-      },
-      {
-        name: "Perpetuals Trading",
-        summary: "Leveraged trading up to 50x",
-        explanation: "Trade perpetual futures contracts with leverage up to 50x. Long or short cryptocurrencies with low fees. Includes risk management tools like stop-loss and take-profit orders."
-      },
-      {
-        name: "Limit Orders",
-        summary: "Price-triggered buy/sell orders",
-        explanation: "Set limit orders that execute automatically when assets reach specified prices. No need to constantly monitor markets. Orders remain active until filled, cancelled, or expired."
-      },
-      {
-        name: "Conditional Swaps",
-        summary: "Auto-swap when price targets are hit",
-        explanation: "Automatically execute swaps when specific price conditions are met. Set price triggers (above/below targets or percentage changes) and the system executes the swap without manual intervention."
-      },
-      {
-        name: "Social Trading",
-        summary: "Follow and copy top traders' signals",
-        explanation: "Browse and follow successful traders. View their public profiles, performance stats, and trading signals. Optionally copy their trades automatically with customizable allocation percentages."
-      },
-      {
-        name: "Trade Signals",
-        summary: "AI-generated trading recommendations",
-        explanation: "Receive AI-powered trading signals based on technical analysis, market sentiment, and on-chain data. Signals include entry price, targets, stop-loss, confidence levels, and detailed reasoning."
-      }
-    ]
-  },
-  {
-    category: "DeFi & Yield",
-    features: [
-      {
-        name: "Staking",
-        summary: "Earn yield on PoS assets",
-        explanation: "Stake proof-of-stake cryptocurrencies (ETH, SOL, ADA, etc.) to earn staking rewards. Choose validators by APR, commission rates, and reliability. Track rewards in real-time and claim or compound automatically."
-      },
-      {
-        name: "Yield Farming",
-        summary: "Liquidity provision across DeFi protocols",
-        explanation: "Provide liquidity to DeFi protocols and earn trading fees plus token rewards. Access farms across multiple chains with auto-compounding options. Track impermanent loss and APY changes."
-      },
-      {
-        name: "Lending/Borrowing",
-        summary: "Collateralized loans via Aave, Compound",
-        explanation: "Deposit assets as collateral and borrow against them. Access lending markets across multiple protocols. Monitor health factors, LTV ratios, and liquidation prices. Repay loans partially or fully anytime."
-      },
-      {
-        name: "Crypto Loans",
-        summary: "Track and manage collateralized debt",
-        explanation: "Comprehensive loan management dashboard showing all active loans, collateral values, interest accrued, and health factors. Receive alerts before liquidation thresholds and automate repayments."
-      },
-      {
-        name: "Auto-Rebalancing",
-        summary: "Maintain target portfolio allocations",
-        explanation: "Set target allocation percentages and the system automatically rebalances when drift exceeds thresholds. Uses DEX aggregators for optimal execution. Can be scheduled or triggered by allocation changes."
-      },
-      {
-        name: "DCA Schedules",
-        summary: "Dollar-cost averaging automation",
-        explanation: "Automate recurring purchases at fixed intervals (daily, weekly, monthly). Spread purchases over time to reduce timing risk. Fund DCA from bank account or crypto balance."
-      }
-    ]
-  },
-  {
-    category: "Payments & Banking",
-    features: [
-      {
-        name: "Fiat Ramp",
-        summary: "Buy/sell crypto via bank transfer",
-        explanation: "Purchase cryptocurrency using bank transfers (SEPA, SWIFT, FPS). Support for GBP, EUR, USD and other major currencies. Competitive exchange rates with transparent fees. Settlement in 1-3 business days."
-      },
       {
         name: "Recurring Payments",
         summary: "Schedule automatic crypto payments",
         explanation: "Automate regular crypto payments for subscriptions, salaries, or bills. Set frequency (weekly, monthly), amount, and recipient. Payments execute automatically from designated wallet."
-      },
-      {
-        name: "Crypto Payroll",
-        summary: "Pay employees/contractors in crypto",
-        explanation: "Payroll management for crypto-native businesses. Set employee wallet addresses, salaries, and payment schedules. Automated distribution on paydays with transaction receipts and records."
       },
       {
         name: "Split Bills",
@@ -237,16 +147,6 @@ const featureCategories = [
         summary: "Generate merchant payment QR codes",
         explanation: "Create shareable payment links or QR codes for receiving payments. Set fixed amounts or let payers choose. Ideal for merchants, freelancers, or donations."
       },
-      {
-        name: "Bank Link",
-        summary: "Connect European bank accounts",
-        explanation: "Open Banking integration (PSD2) for European users. Link bank accounts for direct fiat deposits and withdrawals. Real-time balance verification and instant payment initiation."
-      },
-      {
-        name: "Crypto Subscriptions",
-        summary: "Manage recurring crypto subscriptions",
-        explanation: "Track and manage subscriptions paid in crypto (DeFi protocols, SaaS, media). Monitor upcoming payments, total spent, and cancel anytime. Supports daily, weekly, monthly, or yearly billing."
-      }
     ]
   },
   {
@@ -290,7 +190,7 @@ const featureCategories = [
     ]
   },
   {
-    category: "Alerts & Automation",
+    category: "Alerts",
     features: [
       {
         name: "Price Alerts",
@@ -307,21 +207,6 @@ const featureCategories = [
         summary: "Telegram/WhatsApp notifications",
         explanation: "Receive wallet notifications via Telegram or WhatsApp. Configure which events trigger messages (transactions, price alerts, security events). End-to-end encrypted messaging."
       },
-      {
-        name: "Webhook Builder",
-        summary: "Custom webhooks for integrations",
-        explanation: "Create custom webhooks to integrate with external systems. Trigger on events like transactions, price changes, or balance updates. Include secret headers for security."
-      },
-      {
-        name: "Portfolio Automation",
-        summary: "Rule-based auto-trading",
-        explanation: "Create automation rules for portfolio management. Examples: 'Rebalance when allocation drifts 5%', 'Take profit when asset up 20%', 'DCA $100 weekly'. Rules execute automatically."
-      },
-      {
-        name: "Trading Bots",
-        summary: "Deploy automated trading strategies",
-        explanation: "Deploy pre-built or custom trading bots. Strategies include grid trading, DCA, rebalancing, and arbitrage. Monitor bot performance and adjust parameters in real-time."
-      }
     ]
   },
   {
@@ -338,11 +223,6 @@ const featureCategories = [
         explanation: "Create custom galleries to showcase favorite NFTs. Arrange displays, add descriptions, and share publicly or privately. Support for images, videos, and interactive NFTs."
       },
       {
-        name: "NFT Minting",
-        summary: "Mint NFTs directly from wallet",
-        explanation: "Mint new NFTs without leaving the wallet. Upload media, set metadata, choose blockchain, and mint with one click. Support for single editions and collections."
-      },
-      {
         name: "Multi-Chain NFT",
         summary: "Cross-chain NFT support",
         explanation: "Manage NFTs across Ethereum, Solana, Polygon, and other chains in one interface. Bridge NFTs between chains. View and interact with chain-specific NFT standards."
@@ -350,13 +230,8 @@ const featureCategories = [
     ]
   },
   {
-    category: "Identity & Social",
+    category: "Social",
     features: [
-      {
-        name: "DID Management",
-        summary: "Decentralized identity credentials",
-        explanation: "Create and manage decentralized identity (DID) credentials. Store verifiable credentials on-chain. Use DID for KYC, reputation, or access control across dApps."
-      },
       {
         name: "ENS Registration",
         summary: "Register and manage .eth domains",
@@ -373,11 +248,6 @@ const featureCategories = [
         explanation: "Global and friends leaderboards ranking traders by returns, win rate, or P&L. Filter by time period, asset class, or risk level. Compete and climb the ranks."
       },
       {
-        name: "Encrypted Messaging",
-        summary: "End-to-end encrypted chat",
-        explanation: "Send encrypted messages to other wallet users. Messages are encrypted with recipient's public key and can only be decrypted by them. Support for text, images, and files."
-      },
-      {
         name: "Referral Tracker",
         summary: "Track and reward referrals",
         explanation: "Generate unique referral links and track signups. Earn rewards when referred users become active. Monitor referral status (pending, joined, rewarded) and total earnings."
@@ -387,11 +257,6 @@ const featureCategories = [
   {
     category: "Advanced Features",
     features: [
-      {
-        name: "DAO Governance",
-        summary: "Vote on protocol proposals",
-        explanation: "Participate in DAO governance across multiple protocols. View active proposals, voting power, and delegation options. Vote directly from the wallet with transaction history."
-      },
       {
         name: "Carbon Tracker",
         summary: "Track crypto carbon footprint",
@@ -406,11 +271,6 @@ const featureCategories = [
         name: "Fraud Detection",
         summary: "AI-powered scam detection",
         explanation: "AI analyzes transactions, contracts, and addresses for fraud indicators. Warns about known scams, phishing sites, and suspicious contracts. Real-time protection during transactions."
-      },
-      {
-        name: "Cross-Chain Bridge",
-        summary: "Bridge assets between chains",
-        explanation: "Transfer assets between different blockchains using integrated bridges. Compare bridge options for speed, cost, and security. Track bridge transactions in real-time."
       },
       {
         name: "Token Approvals",
@@ -490,13 +350,8 @@ const featureCategories = [
     ]
   },
   {
-    category: "Compliance & Reporting",
+    category: "Reporting",
     features: [
-      {
-        name: "KYC Profile",
-        summary: "Identity verification management",
-        explanation: "Complete KYC verification for fiat ramps and regulatory compliance. Upload documents, track verification status, and manage identity credentials securely."
-      },
       {
         name: "Transaction Receipt",
         summary: "Generate transaction receipts",
@@ -543,8 +398,8 @@ export default function Features() {
             {totalFeatures} features across {featureCategories.length} categories
           </p>
           <div className="flex gap-2 mt-2">
-            <Badge variant="outline">14 Categories</Badge>
-            <Badge variant="outline">80+ Features</Badge>
+            <Badge variant="outline">{featureCategories.length} Categories</Badge>
+            <Badge variant="outline">{totalFeatures} Features</Badge>
           </div>
         </div>
         <div className="flex gap-2">

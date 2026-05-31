@@ -30,7 +30,6 @@ import { useQueryClient } from "@tanstack/react-query";
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
 const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
 const ReceiveCryptoPage = lazy(() => import('../pages/ReceiveCrypto'));
-const SwapPage          = lazy(() => import('../pages/Swap'));
 const TabSpinner = () => (
   <div className="flex justify-center items-center p-8" role="status" aria-label="Loading">
     <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -70,7 +69,6 @@ const navGroups = [
       { path: "/shared-portfolio", label: "Share Portfolio", icon: Share2 },
       { path: "/referrals", label: "Referral Tracker", icon: Gift },
       { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
-      { path: "/trade-signals", label: "Trade Signals", icon: Star },
       { path: "/public-profiles", label: "Public Profile", icon: Users2 },
       { path: "/news-sentiment", label: "News Sentiment", icon: Newspaper },
     ],
@@ -80,49 +78,26 @@ const navGroups = [
     items: [
       { path: "/send", label: "Send", icon: Send },
       { path: "/receive", label: "Receive", icon: Download },
-      { path: "/swap", label: "Swap", icon: ArrowDownUp },
-      { path: "/dex", label: "DEX Swap", icon: Shuffle },
-      { path: "/bridge", label: "Cross-Chain Bridge", icon: GitMerge },
       { path: "/payment-links", label: "Payment Links", icon: Link2 },
       { path: "/merchant-qr", label: "Merchant QR", icon: QrCode },
       { path: "/split-bill", label: "Split Bill", icon: Scissors },
       { path: "/receipt", label: "TX Receipts", icon: Receipt },
       { path: "/fee-analytics", label: "Fee Analytics", icon: Fuel },
       { path: "/tax-harvest", label: "Tax Harvesting", icon: TrendingDown },
-      { path: "/subscriptions", label: "Subscriptions", icon: RefreshCw },
-      { path: "/bank-link", label: "Bank Accounts", icon: Landmark },
-      { path: "/conditional-swap", label: "Conditional Swap", icon: GitBranch },
       { path: "/hd-wallet", label: "HD Wallet Manager", icon: KeyRound },
       { path: "/crypto-signing", label: "Crypto Signing (Live)", icon: Pen },
-      { path: "/live-fiat", label: "Fiat On-Ramp (Live)", icon: CreditCard },
-      { path: "/webhook-builder", label: "Webhooks", icon: Zap },
       { path: "/recurring", label: "Recurring Payments", icon: Repeat },
-      { path: "/fiat", label: "Fiat Ramp", icon: CreditCard },
-      { path: "/perps", label: "Perps Trading", icon: Zap },
-      { path: "/native-pay", label: "Apple / Google Pay", icon: CreditCard },
-      { path: "/off-ramp", label: "Sell Crypto (Off-Ramp)", icon: ArrowUpFromLine },
-      { path: "/cex-deposit", label: "Deposit from CEX", icon: ArrowDownToLine },
-      { path: "/deploy-contract", label: "Deploy Contract", icon: Code2 },
-      { path: "/fiat-wallets", label: "Fiat Wallets", icon: DollarSign },
       { path: "/calculator", label: "Convert", icon: Calculator },
     ],
   },
   {
     label: "Invest",
     items: [
-      { path: "/staking", label: "Staking", icon: Zap },
       { path: "/portfolio-rewind", label: "Portfolio Rewind", icon: RotateCcw },
       { path: "/index-builder", label: "Custom Index", icon: LayoutGrid },
       { path: "/ai-rebalancer", label: "AI Rebalancer", icon: Sparkles },
-      { path: "/dca", label: "DCA", icon: Repeat },
       { path: "/rebalance", label: "Rebalance", icon: Sliders },
-      { path: "/lending", label: "Lending", icon: Landmark },
-      { path: "/yield", label: "Yield Farming", icon: Sprout },
-      { path: "/options", label: "Options", icon: BarChart3 },
       { path: "/pl", label: "P&L Tracking", icon: TrendingUp },
-      { path: "/trading-bots", label: "Trading Bots", icon: Bot },
-      { path: "/social-trading", label: "Social Trading", icon: Copy },
-      { path: "/automation", label: "Automation", icon: Bot },
       { path: "/risk", label: "Risk Scoring", icon: ShieldCheck },
       { path: "/rebalancing-history", label: "Rebalance History", icon: History },
     ],
@@ -139,22 +114,16 @@ const navGroups = [
       { path: "/onchain", label: "On-Chain", icon: Network },
       { path: "/carbon", label: "Carbon Tracker", icon: Leaf },
       { path: "/erc20-discovery", label: "ERC-20 Discovery", icon: Coins },
-      { path: "/tokenized-stocks", label: "Tokenized Stocks", icon: LineChart },
-      { path: "/nft-minting", label: "NFT Minting Studio", icon: Palette },
     ],
   },
   {
     label: "Finance",
     items: [
-      { path: "/payroll", label: "Crypto Payroll", icon: Briefcase },
       { path: "/savings", label: "Savings Goals", icon: Target },
       { path: "/budget", label: "Budget Limits", icon: PieChart },
-      { path: "/loan-calculator", label: "Loan Calculator", icon: Calculator },
       { path: "/net-worth", label: "Net Worth", icon: TrendingUp },
-      { path: "/loans", label: "Crypto Loans", icon: Banknote },
       { path: "/invoices", label: "Invoice Generator", icon: FileText },
       { path: "/tax", label: "Tax Report", icon: Receipt },
-      { path: "/dao", label: "DAO Governance", icon: Vote },
       { path: "/will", label: "Crypto Will", icon: ScrollText },
       { path: "/community", label: "Community", icon: Users },
     ],
@@ -181,9 +150,7 @@ const navGroups = [
       { path: "/token-approvals", label: "Token Approvals", icon: ShieldOff },
       { path: "/spam-filter", label: "Spam Filter", icon: FilterX },
       { path: "/trust-score", label: "Token Trust Score", icon: ScanLine },
-      { path: "/kyc", label: "Verification", icon: ShieldCheck },
       { path: "/audit", label: "Audit Log", icon: ClipboardList },
-      { path: "/geo-blocking", label: "Geo-Blocking", icon: Globe },
       { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
       { path: "/rasp", label: "RASP Security", icon: Cpu },
       { path: "/multisig", label: "Multi-Sig", icon: ShieldHalf },
@@ -206,11 +173,8 @@ const navGroups = [
       { path: "/price-charts", label: "Price Charts", icon: BarChart3 },
       { path: "/gas-fees", label: "Gas Fees", icon: Gauge },
       { path: "/connect", label: "Connect Wallet", icon: Plug },
-      { path: "/exchanges", label: "Exchanges", icon: Building2 },
       { path: "/walletconnect", label: "WalletConnect", icon: Link2 },
       { path: "/web3", label: "Web3 Browser", icon: Globe },
-      { path: "/messaging", label: "Encrypted Messaging", icon: MessageSquare },
-      { path: "/did", label: "Digital Identity", icon: Fingerprint },
       { path: "/account-access", label: "Account Access", icon: Users },
       { path: "/push", label: "Notifications", icon: BellDot },
       { path: "/ens-register", label: "ENS Registration", icon: AtSign },
@@ -225,16 +189,14 @@ const mobileBottomNav = [
   { path: "/", label: "Home", icon: LayoutDashboard },
   { path: "/send", label: "Send", icon: Send },
   { path: "/receive", label: "Receive", icon: Download },
-  { path: "/swap", label: "Swap", icon: ArrowDownUp },
-  { path: "/settings", label: "More", icon: MoreHorizontal },
 ];
 
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const ROOT_TABS = ['/', '/send', '/receive', '/swap', '/settings'];
+  const ROOT_TABS = ['/', '/send', '/receive', '/settings'];
   const isRootTab = ROOT_TABS.includes(location.pathname);
-  const MOBILE_TABS = ['/', '/send', '/receive', '/swap'];
+  const MOBILE_TABS = ['/', '/send', '/receive'];
   const [mobileTab, setMobileTab] = useState(
     MOBILE_TABS.includes(location.pathname) ? location.pathname : '/'
   );
@@ -502,15 +464,6 @@ export default function Layout() {
         >
           <SafeSuspense fallback={<TabSpinner />}><ReceiveCryptoPage /></SafeSuspense>
         </div>
-        <div
-          id="tab-panel-3"
-          role="tabpanel"
-          aria-labelledby="tab-3"
-          hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/swap'}
-          className="p-4"
-        >
-          <SafeSuspense fallback={<TabSpinner />}><SwapPage /></SafeSuspense>
-        </div>
       </div>
 
       {/* ── Mobile Bottom Navigation ── */}
@@ -520,7 +473,7 @@ export default function Layout() {
         role="navigation"
         aria-label="Bottom navigation"
       >
-        {mobileBottomNav.slice(0, 4).map((item, index) => {
+        {mobileBottomNav.map((item, index) => {
           const active = mobileTab === item.path;
           return (
             <button
