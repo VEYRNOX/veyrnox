@@ -277,7 +277,7 @@ export default function Layout() {
 
   return (
     <AccessibilityWrapper>
-    <div className="min-h-screen flex flex-col md:flex-row bg-background">
+    <div className="app-shell flex flex-col md:flex-row md:min-h-screen bg-background">
 
       {/* ── Desktop Sidebar ── */}
       <aside className={`hidden md:flex md:min-h-screen bg-card border-r border-border flex-col shrink-0 transition-all duration-300 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
@@ -453,7 +453,7 @@ export default function Layout() {
       </AnimatePresence>
 
       {/* ── Main Content — Mobile (all 4 root tabs stay mounted) ── */}
-      <div id="main-scroll" className="md:hidden flex-1 overflow-auto pb-28" role="region" aria-label="Main content">
+      <div id="main-scroll" className="md:hidden flex-1 min-h-0 overflow-auto overscroll-contain pb-28" role="region" aria-label="Main content">
         {/* Sub-pages: rendered via Outlet only when not on a root tab with slide transition */}
         <AnimatePresence mode="wait">
           {!MOBILE_TABS.includes(location.pathname) && (
