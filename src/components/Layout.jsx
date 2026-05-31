@@ -342,18 +342,22 @@ export default function Layout() {
                 <div className="space-y-0.5 mt-1">
                   {group.items.map((item) => {
                     const active = location.pathname === item.path;
+                    const color = groupColor(group.label);
                     return (
                       <Link
                         key={item.path}
                         to={item.path}
                         title={collapsed ? item.label : undefined}
-                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] transition-all duration-150 group ${collapsed ? 'justify-center' : ''} ${
+                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] border transition-all duration-150 group ${collapsed ? 'justify-center' : ''} ${
                           active
-                            ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                            : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                            ? "bg-primary text-primary-foreground font-semibold shadow-sm border-transparent"
+                            : "text-foreground/80 hover:text-foreground"
                         }`}
+                        style={active ? undefined : { background: color + "14", borderColor: color + "33" }}
+                        onMouseEnter={active ? undefined : (e) => { e.currentTarget.style.background = color + "22"; }}
+                        onMouseLeave={active ? undefined : (e) => { e.currentTarget.style.background = color + "14"; }}
                       >
-                        <item.icon className={`h-3.5 w-3.5 shrink-0 ${active ? "text-primary-foreground" : "group-hover:text-foreground"}`} />
+                        <item.icon className={`h-3.5 w-3.5 shrink-0 ${active ? "text-primary-foreground" : "group-hover:text-foreground"}`} style={active ? undefined : { color }} />
                         {!collapsed && <span className="truncate">{item.label}</span>}
                       </Link>
                     );
@@ -566,10 +570,12 @@ export default function Layout() {
                     const active = location.pathname === item.path;
                     return (
                       <Link key={item.path} to={item.path} onClick={() => setMoreOpen(false)}
-                        className="flex flex-col items-center gap-1 p-2 rounded-xl transition-colors"
-                        style={active ? { background: color + "26", color } : { color: color }}
-                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = color + "14"; }}
-                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                        className="flex flex-col items-center gap-1 p-2 rounded-xl border transition-colors"
+                        style={active
+                          ? { background: color + "26", borderColor: color + "55", color }
+                          : { background: color + "14", borderColor: color + "33", color }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = color + "22"; }}
+                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = color + "14"; }}
                       >
                         <item.icon className="h-5 w-5" />
                         <span className="text-[9px] font-medium text-center leading-tight line-clamp-2 text-foreground/80">{item.label}</span>
