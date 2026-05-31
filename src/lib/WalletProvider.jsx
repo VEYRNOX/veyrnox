@@ -61,6 +61,15 @@ export function WalletProvider({ children }) {
     return () => document.removeEventListener('visibilitychange', onHide);
   }, [lock]);
 
+  // M2b (native only): also lock on a reliable OS background signal. The native
+  // keyStore exposes setLockHook so its @capacitor/app pause listener can drop
+  // the live secret. Web's keyStore has no such method, so this optional call is
+  // a no-op on web and the behaviour above is unchanged.
+  useEffect(() => {
+    keyStore.setLockHook?.(lock);
+    return () => keyStore.setLockHook?.(null);
+  }, [lock]);
+
   // Derive a set of public accounts from the in-memory mnemonic.
   const deriveAccounts = useCallback((count = 1) => {
     if (!mnemonicRef.current) throw new Error('Wallet is locked');
