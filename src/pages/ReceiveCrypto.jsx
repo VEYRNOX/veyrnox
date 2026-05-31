@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Copy, CheckCircle2 } from "lucide-react";
 import QRCodeDisplay from "../components/QRCodeDisplay";
+import CoinLogo from "@/components/CoinLogo";
 import { toast } from "sonner";
 
 export default function ReceiveCrypto() {
@@ -42,7 +43,10 @@ export default function ReceiveCrypto() {
             <SelectContent>
               {wallets.map(w => (
                 <SelectItem key={w.id} value={w.id}>
-                  {w.name} — {w.currency}
+                  <div className="flex items-center gap-2">
+                    <CoinLogo symbol={w.currency} size={20} />
+                    <span>{w.name} — {w.currency}</span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -54,7 +58,10 @@ export default function ReceiveCrypto() {
             <QRCodeDisplay address={selectedWallet.address} size={200} />
 
             <div className="text-center">
-              <p className="text-xs text-muted-foreground mb-2">{selectedWallet.currency} Address</p>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <CoinLogo symbol={selectedWallet.currency} size={22} />
+                <p className="text-xs text-muted-foreground">{selectedWallet.currency} Address</p>
+              </div>
               <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2.5">
                 <code className="text-xs flex-1 truncate">{selectedWallet.address}</code>
                 <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={copyAddress}>
