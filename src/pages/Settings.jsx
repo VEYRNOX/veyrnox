@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import PasskeySetup from "../components/PasskeySetup";
 import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
+import SessionSettings from "../components/security/SessionSettings";
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -85,6 +86,9 @@ export default function Settings() {
 
       {/* Biometric unlock (PROVISIONAL — M2b app-layer gate) */}
       <BiometricUnlockSettings />
+
+      {/* Session & auto-lock (idle + background → WalletProvider.lock()) */}
+      <SessionSettings />
 
       {/* Security Overview */}
       <div className="p-5 rounded-xl border border-border bg-card space-y-1">
