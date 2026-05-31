@@ -25,8 +25,8 @@ contract math.
   funds (this is also why it's exempt from Google Play's crypto licensing and
   approvable on Apple as storage).
 - Tech: React/Vite web app, audited crypto libs (@scure/bip39, @scure/bip32,
-  @noble/curves, @noble/hashes, ethers v6, hash-wasm Argon2id), Capacitor for
-  mobile shell.
+  @scure/btc-signer, @noble/curves, @noble/hashes, ethers v6, hash-wasm
+  Argon2id), Capacitor for mobile shell.
 
 ---
 
@@ -55,6 +55,33 @@ contract math.
 - **Calldata decode + approval guard** (`calldata.js`): the anti-blind-signing
   control — unlimited-approval detection + the required acknowledgement, fail-safe
   on unknown calldata. (Auditors flag wallet UIs that show misleading tx info.)
+
+### 2b. Bitcoin operations (Phase BTC, NEW attack surface) — `src/wallet-core/btc/`
+A SEPARATE cryptographic stack from the EVM family (UTXO model, bech32, PSBT) —
+shares nothing with the secp256k1/account engine beyond the BIP-39 seed. New
+audit surface; review independently of the EVM slice.
+- **Derivation** (`derivation.js`): BIP-84 native SegWit (P2WPKH), path
+  `m/84'/{0|1}'/0'/{change}/{index}`. coin type 1' on testnet/signet, 0' on
+  mainnet. Verified against the authoritative BIP-84 spec vectors + the testnet
+  vector (`__tests__/btc-derivation.test.js`). Interop caveat: BIP-44/49 seeds
+  derive different addresses (documented, surfaced in UI).
+- **Networks** (`networks.js`): testnet/signet enabled; **mainnet gated**
+  (`ALLOW_BTC_MAINNET=false`) exactly like the EVM `ALLOW_MAINNET`. The Esplora
+  indexer is UNTRUSTED (read + broadcast only); broadcast re-checks the gate.
+- **Coin selection + change** (`coinselect.js`, HIGHEST-RISK): UTXO selection,
+  vsize-based fee, and **change-output construction**. The cardinal invariant
+  `sum(inputs) === sum(outputs) + fee` is asserted on every plan
+  (`assertPlanConserves`) and RE-verified against the signed bytes in `send.js`
+  (`tx.fee === plan.feeSats`). Dust change is folded into the fee and disclosed.
+  Audit focus: that change can never be silently burned to fee, change always
+  returns to a wallet-controlled address, all money math is BigInt sats.
+- **Send** (`send.js`): build PSBT/tx with `@scure/btc-signer`, sign LOCALLY
+  (key supplied transiently via `WalletProvider.withBtcPrivateKey`), broadcast.
+- **Library**: `@scure/btc-signer` (paulmillr/@scure family, consistent with the
+  existing audited bip39/bip32/noble stack). Added to the supply-chain review.
+- Status: BTC is **receive_only** until a real testnet send is verified on-chain
+  and reviewed (see `docs/PhaseBTC.verification.md`), then → live; mainnet stays
+  gated until this audit clears.
 
 ### 3. Native secure storage (post-M2) — mobile
 - iOS Secure Enclave/Keychain + Android Keystore/StrongBox integration.

@@ -68,10 +68,12 @@ export function deriveSecp256k1AtPath(mnemonic, path, passphrase = '') {
 // Left explicit (and throwing) so they cannot be mistaken for working code.
 // ---------------------------------------------------------------------------
 
-export function deriveBitcoinAccount() {
-  // TODO: use @scure/btc-signer or bitcoinjs-lib for bech32/P2WPKH encoding.
-  throw new Error('NOT IMPLEMENTED: Bitcoin address encoding. Implement with @scure/btc-signer + BIP-84 test vectors.');
-}
+// Bitcoin is now IMPLEMENTED in the parallel btc/ stack (BIP-84 native SegWit,
+// @scure/btc-signer), kept separate because it shares nothing with the EVM
+// secp256k1/account engine beyond the seed. This thin re-export keeps the public
+// derivation surface in one place; the real logic + test vectors live in
+// btc/derivation.js. Defaults to testnet (mainnet is gated in btc/networks.js).
+export { deriveBtcAccount as deriveBitcoinAccount } from './btc/derivation.js';
 
 export function deriveSolanaAccount() {
   // TODO: ed25519 SLIP-0010 (m/44'/501'/0'/0') -> base58 pubkey via @solana/web3.js.
