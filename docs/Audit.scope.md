@@ -83,6 +83,45 @@ audit surface; review independently of the EVM slice.
   and reviewed (see `docs/PhaseBTC.verification.md`), then → live; mainnet stays
   gated until this audit clears.
 
+### 2c. Solana operations (Phase SOL, NEW CURVE — biggest divergence) — `src/wallet-core/sol/`
+A THIRD, distinct cryptographic family. Unlike EVM/BTC (both secp256k1), Solana
+is **ed25519** — a different elliptic curve with its own key generation, signing
+primitive, and HD-derivation standard. Shares NOTHING with the other stacks
+beyond the BIP-39 seed. Review independently; this materially expands the
+key/signing attack surface (the audit now covers TWO curves, not one).
+- **Derivation** (`derivation.js`, `slip10.js`): **ed25519 SLIP-0010**,
+  hardened-only, path `m/44'/501'/0'/0'` (Phantom/Solflare-compatible). SLIP-0010
+  is implemented on `@noble/hashes` (hmac+sha512) and pinned against the
+  AUTHORITATIVE SLIP-0010 ed25519 spec vectors; the derived address is
+  cross-checked against `@solana/web3.js` `Keypair.fromSeed` (`__tests__/sol-derivation.test.js`).
+  Address = base58 of the 32-byte ed25519 pubkey (`@scure/base`). Audit focus:
+  hardened-only enforcement (ed25519 has no public derivation), curve/path
+  correctness (interop = recoverability), no key material logged.
+- **Networks** (`networks.js`): devnet/testnet enabled; **mainnet gated**
+  (`ALLOW_SOL_MAINNET=false`) exactly like `ALLOW_BTC_MAINNET` / `ALLOW_MAINNET`.
+  The JSON-RPC is UNTRUSTED (read + broadcast only); broadcast re-checks the gate.
+- **Send + the two Solana fund-loss traps** (`send.js`, HIGHEST-RISK):
+  - **Blockhash expiry**: txs embed a recent blockhash and are SILENTLY dropped
+    after `lastValidBlockHeight`. A FRESH blockhash is fetched at send time,
+    confirmation is bounded by that deadline, and a `TransactionExpired*` error
+    drives a refetch/rebuild/resend (bounded retries). Audit focus: a stale
+    blockhash can never silently lose a user's send.
+  - **Rent-exemption minimum**: the pure planner `planSolTransfer` BLOCKS (a)
+    dust to a new (0-balance) recipient below the rent-exempt minimum and (b)
+    stranding the sender at a sub-rent-exempt dust remainder (allows exactly 0 or
+    >= rentMin). Lamport math is BigInt end-to-end. Tested in
+    `__tests__/sol-send.test.js`. Audit focus: no transfer can brick an account.
+  - Signing is LOCAL (ed25519) via a transiently-supplied key
+    (`WalletProvider.withSolPrivateKey`); the RPC only broadcasts.
+- **Libraries**: `@solana/web3.js` (chain/tx layer; supply-chain review — large
+  dependency tree) + the existing `@noble`/`@scure` primitives for keys. Note:
+  `@solana/web3.js` v1 references the Node `Buffer` global; it is confined to
+  `provider.js`/`send.js` (the browser receive_only path uses only
+  `derivation.js`), and the hands-on verification runs in Node.
+- Status: SOL is **receive_only** until a real devnet send is verified on-chain
+  and reviewed (harness: `scripts/sol-devnet-send.mjs`), then → live; mainnet
+  stays gated until this audit clears.
+
 ### 3. Native secure storage (post-M2) — mobile
 - iOS Secure Enclave/Keychain + Android Keystore/StrongBox integration.
 - Biometric gating of unlock / transaction authorisation.
@@ -99,7 +138,9 @@ audit surface; review independently of the EVM slice.
 
 ## Explicitly OUT of scope (deferred features — keep them out of this audit)
 - DEX swaps, DeFi deposits, WalletConnect/dApp arbitrary-tx signing (Phase D).
-- BTC and SOL (separate non-EVM stacks — own future audits).
+- SPL tokens / Associated Token Accounts, Solana staking & programs (Phase SOL
+  is native SOL only). BTC and SOL native stacks are IN scope above (§2b, §2c) as
+  separate non-EVM families; their token/contract layers are deferred.
 - Base44 backend / billing (separate concern; not key-handling).
 Keeping these out keeps THIS audit contained and cheaper. Each, when built, adds
 its own audit scope (and Phase D notably expands it a lot).
