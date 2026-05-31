@@ -430,6 +430,9 @@ export default function Layout() {
           <Link to="/notifications" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
             <Bell className="h-4 w-4" />
           </Link>
+          <Link to="/settings" aria-label="Settings" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+            <Settings className="h-4 w-4" />
+          </Link>
           <button onClick={() => base44.auth.logout()} className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
             <LogOut className="h-4 w-4" />
           </button>
