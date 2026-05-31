@@ -125,6 +125,17 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
   state does 1 KDF vs 2 when one exists (feature-presence, not contents, is
   timeable); native hardware-backed decoy slot not yet wired (web/demo today).
   See `src/wallet-core/duress.js`, `src/pages/DuressPin.jsx`.
+  - **DECOY BALANCE (follow-up).** The decoy can now hold + display a small,
+    REAL, block-explorer-verifiable testnet balance so it is plausible under
+    coercion (an empty decoy is suspicious). The balance is resolved by
+    `src/lib/decoyBalance.js`: a live on-chain `eth_getBalance` read on
+    real/native (same source of truth as the rest of the wallet — never a
+    hardcoded UI number), and a SEEDED amount in demo (a fresh decoy address
+    can't hold live funds on a simulator) clearly labelled "demo — simulated".
+    The page shows the decoy address + live balance + faucet hint so the user
+    can fund it with an amount they're willing to sacrifice. Added honest
+    plausibility limits in-UI (no tx history = less lived-in; sophisticated
+    coercers; provisional pending audit). Deniability properties unchanged.
 - **Hardware Wallet support** — Ledger/Trezor connect via established libs
   (strongest key security for power users).
 - **Login Activity** (+ map) — show recent access events (needs backend to record).
