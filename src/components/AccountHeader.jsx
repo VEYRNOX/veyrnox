@@ -4,13 +4,11 @@ import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { CURRENCY_COLORS, CURRENCY_SYMBOLS } from "@/lib/cryptos";
 
-const CURRENCY_COLORS = {
-  BTC: "#F7931A", ETH: "#627EEA", SOL: "#9945FF", USDC: "#2775CA", USDT: "#26A17B"
-};
-const CURRENCY_SYMBOLS = {
-  BTC: "₿", ETH: "Ξ", SOL: "◎", USDC: "$", USDT: "₮"
-};
+const FALLBACK_COLOR = "#64748B";
+const color = (c) => CURRENCY_COLORS[c] || FALLBACK_COLOR;
+const glyph = (c) => CURRENCY_SYMBOLS[c] || c?.[0] || "?";
 
 export default function AccountHeader({ wallet, wallets, onWalletChange }) {
   const [copied, setCopied] = useState(false);
@@ -38,8 +36,8 @@ export default function AccountHeader({ wallet, wallets, onWalletChange }) {
           className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-secondary transition-colors ${w.id === wallet.id ? "bg-secondary" : ""}`}
         >
           <div className="h-8 w-8 rounded-full flex items-center justify-center text-lg font-bold"
-            style={{ background: CURRENCY_COLORS[w.currency] + "20", color: CURRENCY_COLORS[w.currency] }}>
-            {CURRENCY_SYMBOLS[w.currency]}
+            style={{ background: color(w.currency) + "20", color: color(w.currency) }}>
+            {glyph(w.currency)}
           </div>
           <div className="text-left flex-1">
             <p className="text-sm font-medium">{w.name}</p>
@@ -58,7 +56,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange }) {
         <Drawer open={showPicker} onOpenChange={setShowPicker}>
           <DrawerTrigger asChild>
             <button className="flex items-center gap-2 mx-auto mb-4 px-4 py-1.5 rounded-full bg-secondary border border-border text-sm hover:border-primary/40 transition-colors">
-              <div className="h-4 w-4 rounded-full" style={{ background: CURRENCY_COLORS[wallet.currency] }} />
+              <div className="h-4 w-4 rounded-full" style={{ background: color(wallet.currency) }} />
               <span className="font-medium">{wallet.name}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
@@ -76,7 +74,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange }) {
             onClick={() => setShowPicker(!showPicker)}
             className="flex items-center gap-2 mx-auto mb-4 px-4 py-1.5 rounded-full bg-secondary border border-border text-sm hover:border-primary/40 transition-colors"
           >
-            <div className="h-4 w-4 rounded-full" style={{ background: CURRENCY_COLORS[wallet.currency] }} />
+            <div className="h-4 w-4 rounded-full" style={{ background: color(wallet.currency) }} />
             <span className="font-medium">{wallet.name}</span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
