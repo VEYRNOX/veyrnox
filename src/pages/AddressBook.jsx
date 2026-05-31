@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 
-const CURRENCIES = ["BTC", "ETH", "SOL", "USDC", "USDT"];
+const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const EMOJIS = ["👤", "🏢", "💼", "🏦", "👨‍👩‍👧", "🤝", "🌍", "⚡"];
 
 export default function AddressBook() {

@@ -16,7 +16,7 @@ const TRIGGER_LABELS = {
   manual: "Manual trigger only",
 };
 
-const ASSETS = ["BTC","ETH","SOL","USDC","USDT"];
+const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
 export default function CryptoWillPage() {
   const queryClient = useQueryClient();

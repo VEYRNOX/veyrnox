@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     pdfDoc.setTextColor(255, 255, 255);
     pdfDoc.setFontSize(32);
     pdfDoc.setFont('helvetica', 'bold');
-    pdfDoc.text('SafeDigital Wallet', pageWidth / 2, pageHeight / 2 - 20, { align: 'center' });
+    pdfDoc.text('Veyrnox', pageWidth / 2, pageHeight / 2 - 20, { align: 'center' });
     pdfDoc.setFontSize(24);
     pdfDoc.setFont('helvetica', 'normal');
     pdfDoc.text('Solution Architecture', pageWidth / 2, pageHeight / 2, { align: 'center' });
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     y += 10;
 
     const execSummary = [
-      'SafeDigital Wallet is a comprehensive, multi-chain cryptocurrency wallet platform designed for retail and institutional users.',
+      'Veyrnox is a comprehensive, multi-chain cryptocurrency wallet platform designed for retail and institutional users.',
       'The architecture follows modern cloud-native principles with security-first design, supporting 8+ blockchain networks.',
       '',
       'Key Capabilities:',
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
 
     const purposeContent = [
       'Purpose:',
-      'This document defines the complete architecture of SafeDigital Wallet, providing technical guidance',
+      'This document defines the complete architecture of Veyrnox, providing technical guidance',
       'for development, deployment, and operations teams.',
       '',
       'Scope:',
@@ -1084,7 +1084,7 @@ Deno.serve(async (req) => {
       '',
       'Appendix D: Contact Information',
       `• Prepared for: ${user.full_name || user.email}`,
-      '• Support: support@safedigitalwallet.com',
+      '• Support: support@veyrnox.com',
       '• Documentation: /docs page in application',
     ];
 
@@ -1102,19 +1102,19 @@ Deno.serve(async (req) => {
       pdfDoc.setFontSize(8);
       pdfDoc.setTextColor(150, 150, 150);
       pdfDoc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-      pdfDoc.text('SafeDigital Wallet - Solution Architecture', margin, pageHeight - 10);
+      pdfDoc.text('Veyrnox - Solution Architecture', margin, pageHeight - 10);
     }
 
     const pdfBytes = pdfDoc.output('arraybuffer');
     const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const pdfFileName = `SafeDigitalWallet_Architecture_${dateStr}.pdf`;
+    const pdfFileName = `Veyrnox_Architecture_${dateStr}.pdf`;
 
     // ========== GENERATE WORD DOCUMENT ==========
     const wordDoc = new Document({
       sections: [{
         properties: {},
         children: [
-          new Paragraph({ text: 'SafeDigital Wallet', heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
+          new Paragraph({ text: 'Veyrnox', heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
           new Paragraph({ text: 'Solution Architecture', heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
           new Paragraph({ text: 'Comprehensive Architecture Documentation', heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
           new Paragraph({ text: '' }),
@@ -1126,7 +1126,7 @@ Deno.serve(async (req) => {
 
           // 1. Executive Summary
           new Paragraph({ text: '1. Executive Summary', heading: HeadingLevel.HEADING_1 }),
-          new Paragraph({ text: 'SafeDigital Wallet is a comprehensive, multi-chain cryptocurrency wallet platform designed for retail and institutional users. The architecture follows modern cloud-native principles with security-first design, supporting 8+ blockchain networks.' }),
+          new Paragraph({ text: 'Veyrnox is a comprehensive, multi-chain cryptocurrency wallet platform designed for retail and institutional users. The architecture follows modern cloud-native principles with security-first design, supporting 8+ blockchain networks.' }),
           new Paragraph({ text: '' }),
           new Paragraph({ text: 'Key Capabilities:', heading: HeadingLevel.HEADING_2 }),
           new Paragraph({ text: '• Multi-chain asset management (Bitcoin, Ethereum, Solana, Polygon, BSC, Cosmos, Tron, Sui)' }),
@@ -1145,7 +1145,7 @@ Deno.serve(async (req) => {
 
           // 2. Purpose, Scope, and Audience
           new Paragraph({ text: '2. Purpose, Scope, and Audience', heading: HeadingLevel.HEADING_1 }),
-          new Paragraph({ text: 'Purpose: This document defines the complete architecture of SafeDigital Wallet, providing technical guidance for development, deployment, and operations teams.' }),
+          new Paragraph({ text: 'Purpose: This document defines the complete architecture of Veyrnox, providing technical guidance for development, deployment, and operations teams.' }),
           new Paragraph({ text: '' }),
           new Paragraph({ text: 'Scope:', heading: HeadingLevel.HEADING_2 }),
           new Paragraph({ text: '• Frontend application (React PWA with 40+ pages, 60+ components)' }),
@@ -1532,7 +1532,7 @@ Deno.serve(async (req) => {
           new Paragraph({ text: '' }),
           new Paragraph({ text: 'Appendix D: Contact Information', heading: HeadingLevel.HEADING_2 }),
           new Paragraph({ text: `Prepared for: ${user.full_name || user.email}` }),
-          new Paragraph({ text: 'Support: support@safedigitalwallet.com' }),
+          new Paragraph({ text: 'Support: support@veyrnox.com' }),
           new Paragraph({ text: 'Documentation: /docs page in application' }),
         ],
       }],
@@ -1540,7 +1540,7 @@ Deno.serve(async (req) => {
 
     const wordBuffer = await Packer.toBuffer(wordDoc);
     const wordBlob = new Blob([wordBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    const wordFileName = `SafeDigitalWallet_Architecture_${dateStr}.docx`;
+    const wordFileName = `Veyrnox_Architecture_${dateStr}.docx`;
 
     // ========== UPLOAD BOTH FILES TO GOOGLE DRIVE ==========
     const uploadFile = async (blob, fileName) => {

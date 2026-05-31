@@ -46,7 +46,7 @@ export default function PushNotificationsPage() {
 
   const sendTestNotification = () => {
     if (permission !== "granted") { toast.error("Enable notifications first"); return; }
-    new Notification("SafeDigitalWallet Test", {
+    new Notification("Veyrnox Test", {
       body: "Push notifications are working correctly! 🎉",
       icon: "/favicon.ico",
     });
@@ -118,7 +118,7 @@ export default function PushNotificationsPage() {
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">How it works</p>
         <ul className="space-y-1.5">
           {[
-            "Notifications appear even when SafeDigitalWallet is in the background",
+            "Notifications appear even when Veyrnox is in the background",
             "Your notification preferences are saved locally on this device",
             "You can revoke permissions at any time in your browser settings",
             "No personal data is shared with third-party notification services",

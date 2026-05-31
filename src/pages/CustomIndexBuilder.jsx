@@ -8,10 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { TOP_CRYPTOS, TOP_SYMBOLS } from "@/lib/cryptos";
 
-const ASSETS = ["BTC", "ETH", "SOL", "USDC", "USDT", "BNB", "AVAX", "MATIC", "DOT", "LINK"];
-const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308", "#ec4899", "#06b6d4", "#84cc16", "#f59e0b", "#6366f1"];
-const PERF = { BTC: 8.2, ETH: 12.4, SOL: 23.1, USDC: 0, USDT: 0 };
+// Top 10 by market cap, from the canonical source. COLORS is index-aligned to ASSETS.
+const ASSETS = TOP_SYMBOLS;
+const COLORS = TOP_CRYPTOS.map(c => c.color);
+const PERF = { BTC: 8.2, ETH: 12.4, USDT: 0, BNB: 9.6, SOL: 23.1, USDC: 0, XRP: -3.4, DOGE: 15.2, ADA: -1.7, TRX: 5.1 };
 
 export default function CustomIndexBuilder() {
   const qc = useQueryClient();

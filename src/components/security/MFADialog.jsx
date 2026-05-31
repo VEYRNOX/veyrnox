@@ -76,7 +76,7 @@ export default function MFADialog({ open, onOpenChange, onVerified, actionDescri
       setOtpSecret(code);
       await base44.integrations.Core.SendEmail({
         to: user.email,
-        subject: "SafeDigitalWallet - Action Verification Code",
+        subject: "Veyrnox - Action Verification Code",
         body: `Your one-time MFA code is: ${code}\n\nAction: ${actionDescription}\n\nThis code expires in 10 minutes. If you did not request this, please secure your account immediately.`,
       });
       setOtpSent(true);

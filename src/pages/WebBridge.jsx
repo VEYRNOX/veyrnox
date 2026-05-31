@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
-// Generate a pairing URI similar to WalletConnect format but for SafeDigitalWallet Web
+// Generate a pairing URI similar to WalletConnect format but for Veyrnox Web
 function generateBridgeUri(sessionId) {
-  return `safedigitalwallet://bridge?id=${sessionId}&relay=wss://bridge.safedigitalwallet.app&key=${Array.from({ length: 32 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`;
+  return `veyrnox://bridge?id=${sessionId}&relay=wss://bridge.veyrnox.app&key=${Array.from({ length: 32 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`;
 }
 
 function generateSessionId() {
@@ -68,7 +68,7 @@ export default function WebBridge() {
     if (status !== "waiting") return;
     const t = setTimeout(() => {
       setStatus("paired");
-      setPairedApp({ name: "SafeDigitalWallet Web", url: "app.safedigitalwallet.com", icon: "🛡️" });
+      setPairedApp({ name: "Veyrnox Web", url: "app.veyrnox.com", icon: "🛡️" });
       setRequests(PENDING_REQUESTS);
     }, 6000);
     return () => clearTimeout(t);
@@ -99,7 +99,7 @@ export default function WebBridge() {
           <Link2 className="h-5 w-5 text-cyan-500" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">SafeDigitalWallet Web Bridge</h1>
+          <h1 className="text-xl font-bold">Veyrnox Web Bridge</h1>
           <p className="text-sm text-muted-foreground">Pair your mobile wallet with the web dashboard</p>
         </div>
       </div>
@@ -132,8 +132,8 @@ export default function WebBridge() {
                   <QRCanvas data={uri} size={180} />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-semibold">Scan with SafeDigitalWallet Web</p>
-                  <p className="text-xs text-muted-foreground mt-1">Open <strong>app.safedigitalwallet.com</strong> in your browser and click "Connect Mobile Wallet"</p>
+                  <p className="text-sm font-semibold">Scan with Veyrnox Web</p>
+                  <p className="text-xs text-muted-foreground mt-1">Open <strong>app.veyrnox.com</strong> in your browser and click "Connect Mobile Wallet"</p>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1"><Clock className="h-3 w-3" /> Expires in 5 min</div>

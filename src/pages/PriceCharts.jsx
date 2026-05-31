@@ -1,14 +1,13 @@
 import { useState, useMemo } from "react";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from "recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { TOP_CRYPTOS } from "@/lib/cryptos";
 
-const ASSETS = [
-  { symbol: "BTC", name: "Bitcoin", price: 68420, change24h: 2.3, color: "#F97316", mcap: "1.34T" },
-  { symbol: "ETH", name: "Ethereum", price: 3215, change24h: -1.1, color: "#8B5CF6", mcap: "386B" },
-  { symbol: "SOL", name: "Solana", price: 167, change24h: 4.7, color: "#14B8A6", mcap: "78B" },
-  { symbol: "BNB", name: "BNB", price: 412, change24h: 0.8, color: "#F3BA2F", mcap: "60B" },
-  { symbol: "MATIC", name: "Polygon", price: 0.87, change24h: -2.4, color: "#8247E5", mcap: "8B" },
-];
+// Top 10 by market cap, derived from the canonical source so every feature
+// stays in sync. `price` mirrors the canonical reference `usd`.
+const ASSETS = TOP_CRYPTOS.map(c => ({
+  symbol: c.symbol, name: c.name, price: c.usd, change24h: c.change24h, color: c.color, mcap: c.mcap,
+}));
 
 const PERIODS = ["1H", "4H", "1D", "1W", "1M"];
 

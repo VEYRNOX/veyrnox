@@ -19,11 +19,11 @@ const DID_METHODS = [
 ];
 
 const CREDENTIAL_TYPES = [
-  { type: "KYC Verified", icon: "✅", desc: "Identity verification passed", issuer: "SafeDigitalWallet" },
-  { type: "Pro Trader", icon: "📈", desc: "Trading volume > $100k", issuer: "SafeDigitalWallet" },
-  { type: "Early Adopter", icon: "⭐", desc: "Joined in the first year", issuer: "SafeDigitalWallet" },
-  { type: "Multi-Sig Guardian", icon: "🛡", desc: "Active multi-sig signer", issuer: "SafeDigitalWallet" },
-  { type: "DeFi Expert", icon: "🌊", desc: "Used 5+ DeFi protocols", issuer: "SafeDigitalWallet" },
+  { type: "KYC Verified", icon: "✅", desc: "Identity verification passed", issuer: "Veyrnox" },
+  { type: "Pro Trader", icon: "📈", desc: "Trading volume > $100k", issuer: "Veyrnox" },
+  { type: "Early Adopter", icon: "⭐", desc: "Joined in the first year", issuer: "Veyrnox" },
+  { type: "Multi-Sig Guardian", icon: "🛡", desc: "Active multi-sig signer", issuer: "Veyrnox" },
+  { type: "DeFi Expert", icon: "🌊", desc: "Used 5+ DeFi protocols", issuer: "Veyrnox" },
 ];
 
 function generateDID(method) {

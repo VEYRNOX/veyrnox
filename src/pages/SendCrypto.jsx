@@ -58,7 +58,7 @@ export default function SendCrypto() {
     } catch { toast.error("Name resolution failed"); } finally { setEnsResolving(false); }
   };
 
-  const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+  const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
   const { data: wallets = [] } = useQuery({
     queryKey: ["wallets"],
@@ -248,7 +248,7 @@ export default function SendCrypto() {
       setOtpSecret(code);
       await base44.integrations.Core.SendEmail({
         to: user.email,
-        subject: "SafeDigitalWallet — Your 2FA Code",
+        subject: "Veyrnox — Your 2FA Code",
         body: `Your one-time verification code is: ${code}\n\nYou are authorising a send of ${amount} ${selectedWallet?.currency} to ${toAddress}.\n\nThis code expires in 10 minutes. If you didn't request this, ignore this email.`,
       });
       setOtpSent(true);

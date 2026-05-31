@@ -8,14 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import { TOP_CRYPTOS } from "@/lib/cryptos";
+import CoinLogo from "@/components/CoinLogo";
 
-const TOKENS = [
-  { symbol: "ETH", name: "Ethereum", price: 3200, color: "#627EEA", icon: "Ξ" },
-  { symbol: "BTC", name: "Bitcoin", price: 68000, color: "#F7931A", icon: "₿" },
-  { symbol: "SOL", name: "Solana", price: 165, color: "#9945FF", icon: "◎" },
-  { symbol: "USDC", name: "USD Coin", price: 1, color: "#2775CA", icon: "Ⓢ" },
-  { symbol: "USDT", name: "Tether", price: 1, color: "#26A17B", icon: "₮" },
-];
+// Top 10 by market cap, from the canonical source.
+const TOKENS = TOP_CRYPTOS.map(c => ({
+  symbol: c.symbol, name: c.name, price: c.usd, color: c.color, icon: c.glyph,
+}));
 
 const PROTOCOLS = [
   { name: "Uniswap v3", fee: 0.3, liquidity: "High", icon: "🦄" },
@@ -121,7 +120,7 @@ export default function DEXSwap() {
               <Input type="number" value={fromAmount} onChange={e => setFromAmount(e.target.value)} placeholder="0.00" className="text-lg font-bold flex-1" />
               <Select value={fromToken} onValueChange={v => { if (v === toToken) setToToken(fromToken); setFromToken(v); }}>
                 <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                <SelectContent>{TOKENS.map(t => <SelectItem key={t.symbol} value={t.symbol}>{t.icon} {t.symbol}</SelectItem>)}</SelectContent>
+                <SelectContent>{TOKENS.map(t => <SelectItem key={t.symbol} value={t.symbol}><span className="inline-flex items-center gap-1.5"><CoinLogo symbol={t.symbol} size={16} />{t.symbol}</span></SelectItem>)}</SelectContent>
               </Select>
             </div>
             {fromAmount && <p className="text-xs text-muted-foreground">≈ ${(parseFloat(fromAmount) * fromTokenData?.price).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>}
@@ -140,7 +139,7 @@ export default function DEXSwap() {
               <Input value={toAmount} readOnly placeholder="0.00" className="text-lg font-bold flex-1 bg-secondary" />
               <Select value={toToken} onValueChange={v => { if (v === fromToken) setFromToken(toToken); setToToken(v); }}>
                 <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                <SelectContent>{TOKENS.map(t => <SelectItem key={t.symbol} value={t.symbol}>{t.icon} {t.symbol}</SelectItem>)}</SelectContent>
+                <SelectContent>{TOKENS.map(t => <SelectItem key={t.symbol} value={t.symbol}><span className="inline-flex items-center gap-1.5"><CoinLogo symbol={t.symbol} size={16} />{t.symbol}</span></SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>

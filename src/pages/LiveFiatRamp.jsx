@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TOP_SYMBOLS } from "@/lib/cryptos";
 
 const PROVIDERS = [
   {
@@ -15,7 +16,7 @@ const PROVIDERS = [
     limits: "$30 - $20,000/mo",
     kyc: "Tier 1: ID scan",
     speed: "Instant (card)",
-    supported: ["ETH", "BTC", "SOL", "USDC", "MATIC"],
+    supported: ["ETH", "BTC", "SOL", "USDC", "XRP"],
     color: "#7B5EA7",
     buildUrl: (currency, address, amount) =>
       `https://buy.moonpay.com?apiKey=pk_live_YOUR_KEY&currencyCode=${currency.toLowerCase()}&walletAddress=${address}&baseCurrencyAmount=${amount}&colorCode=%237B5EA7`,
@@ -29,7 +30,7 @@ const PROVIDERS = [
     limits: "$30 - $50,000/mo",
     kyc: "KYC via Sumsub",
     speed: "5-10 min (bank)",
-    supported: ["ETH", "BTC", "SOL", "USDC", "BNB", "MATIC", "AVAX"],
+    supported: ["ETH", "BTC", "SOL", "USDC", "BNB", "DOGE", "ADA"],
     color: "#1F5EFF",
     buildUrl: (currency, address, amount) =>
       `https://global.transak.com?apiKey=YOUR_KEY&cryptoCurrencyCode=${currency}&walletAddress=${address}&fiatAmount=${amount}&fiatCurrency=USD`,
@@ -43,7 +44,7 @@ const PROVIDERS = [
     limits: "$500/day",
     kyc: "Automated KYC",
     speed: "Instant - 2 hrs",
-    supported: ["ETH", "BTC", "USDC", "USDT", "MATIC"],
+    supported: ["ETH", "BTC", "USDC", "USDT", "TRX"],
     color: "#00B259",
     buildUrl: (currency, address, amount) =>
       `https://buy.ramp.network?swapAsset=ETH_${currency}&userAddress=${address}&swapAmount=${parseFloat(amount) * 1e18}`,
@@ -64,7 +65,7 @@ const PROVIDERS = [
   },
 ];
 
-const TOKENS = ["ETH", "BTC", "SOL", "USDC", "MATIC", "BNB", "AVAX"];
+const TOKENS = TOP_SYMBOLS;
 
 export default function LiveFiatRamp() {
   const [selectedProvider, setSelectedProvider] = useState("moonpay");

@@ -430,7 +430,7 @@ const featureCategories = [
       {
         name: "PWA Install",
         summary: "Install as native app",
-        explanation: "Install SafeDigitalWallet as a Progressive Web App on iOS, Android, or desktop. Works offline for viewing portfolio. Receives push notifications. No app store required."
+        explanation: "Install Veyrnox as a Progressive Web App on iOS, Android, or desktop. Works offline for viewing portfolio. Receives push notifications. No app store required."
       },
       {
         name: "Mobile Widget",
@@ -538,7 +538,7 @@ export default function Features() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">SafeDigitalWallet Features</h1>
+          <h1 className="text-3xl font-bold">Veyrnox Features</h1>
           <p className="text-muted-foreground mt-1">
             {totalFeatures} features across {featureCategories.length} categories
           </p>

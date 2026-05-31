@@ -24,7 +24,7 @@ import DashboardWidgetSettings, { DEFAULT_WIDGETS } from "../components/Dashboar
 import TransactionFilters from "../components/TransactionFilters";
 import moment from "moment";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const STATUS_ICONS = {
   pending: <Clock className="h-3.5 w-3.5 text-yellow-500" />,
   confirmed: <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />,
@@ -396,7 +396,7 @@ export default function Dashboard() {
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["BTC", "ETH", "SOL", "USDC", "USDT"].map(c => (
+                  {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(c => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
                   ))}
                 </SelectContent>

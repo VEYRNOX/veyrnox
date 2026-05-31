@@ -3,12 +3,12 @@ import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const CURRENCIES = ["BTC", "ETH", "SOL", "USDC", "USDT"];
+const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const TYPES = ["send", "receive", "swap", "stake"];
 
 export default function TransactionFilters({ filters, onChange }) {
@@ -87,14 +87,12 @@ export default function TransactionFilters({ filters, onChange }) {
           </Button>
         </DrawerTrigger>
         <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader className="text-left">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">Filter Transactions</p>
-              <DrawerClose asChild>
-                <Button variant="ghost" size="sm"><X className="h-4 w-4" /></Button>
-              </DrawerClose>
-            </div>
-          </DrawerHeader>
+          {/* Close affordance only — FilterContent already renders the title */}
+          <div className="flex justify-end px-2 pt-1">
+            <DrawerClose asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><X className="h-4 w-4" /></Button>
+            </DrawerClose>
+          </div>
           <FilterContent />
         </DrawerContent>
       </Drawer>

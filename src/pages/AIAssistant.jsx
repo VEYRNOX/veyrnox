@@ -146,7 +146,7 @@ export default function AIAssistant() {
             <Bot className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-base font-bold">SafeDigital AI</h1>
+            <h1 className="text-base font-bold">Veyrnox AI</h1>
             <p className="text-xs text-muted-foreground">Your crypto co-pilot</p>
           </div>
         </div>

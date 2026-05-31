@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const CAT_COLORS = { DeFi: "bg-blue-500/10 text-blue-500", SaaS: "bg-purple-500/10 text-purple-500", Media: "bg-pink-500/10 text-pink-500", Gaming: "bg-green-500/10 text-green-500", Storage: "bg-yellow-500/10 text-yellow-500", Other: "bg-secondary text-muted-foreground" };
 const FREQ_MULT = { daily: 30, weekly: 4.33, monthly: 1, yearly: 1 / 12 };
 
@@ -104,7 +104,7 @@ export default function CryptoSubscriptions() {
               <div><Label>Currency</Label>
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
                   <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                  <SelectContent>{["BTC","ETH","SOL","USDC","USDT"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  <SelectContent>{["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>

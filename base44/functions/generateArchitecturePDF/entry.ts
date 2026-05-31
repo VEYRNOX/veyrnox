@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(32);
     doc.setFont('helvetica', 'bold');
-    doc.text('SafeDigital Wallet', pageWidth / 2, pageHeight / 2 - 10, { align: 'center' });
+    doc.text('Veyrnox', pageWidth / 2, pageHeight / 2 - 10, { align: 'center' });
     
     doc.setFontSize(24);
     doc.setFont('helvetica', 'normal');
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     const summary = [
-      'SafeDigital Wallet is a comprehensive, multi-chain cryptocurrency wallet platform designed for retail and institutional users.',
+      'Veyrnox is a comprehensive, multi-chain cryptocurrency wallet platform designed for retail and institutional users.',
       'The architecture follows a modern, cloud-native approach with separation of concerns, microservices principles, and security-first design.',
       '',
       'Key Architectural Principles:',
@@ -777,7 +777,7 @@ Deno.serve(async (req) => {
     y += 10;
 
     const conclusion = [
-      'SafeDigital Wallet demonstrates a modern, production-ready cryptocurrency wallet architecture',
+      'Veyrnox demonstrates a modern, production-ready cryptocurrency wallet architecture',
       'that balances security, usability, and scalability. The system leverages cloud-native technologies,',
       'multi-layer security, and comprehensive blockchain integrations to deliver a seamless user',
       'experience for managing digital assets across multiple networks.',
@@ -802,12 +802,12 @@ Deno.serve(async (req) => {
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
       doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-      doc.text('SafeDigital Wallet - Solution Architecture', margin, pageHeight - 10);
+      doc.text('Veyrnox - Solution Architecture', margin, pageHeight - 10);
     }
 
     const pdfBytes = doc.output('arraybuffer');
     const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const fileName = `SafeDigitalWallet_Architecture_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `Veyrnox_Architecture_${new Date().toISOString().split('T')[0]}.pdf`;
 
     // Upload to Google Drive
     const form = new FormData();

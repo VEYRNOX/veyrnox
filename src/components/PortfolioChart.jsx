@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import moment from "moment";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 const PERIODS = [
   { key: "7d",  label: "7D",  days: 7,   unit: "days",  fmt: "MMM D",    tickCount: 7  },

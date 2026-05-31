@@ -4,19 +4,13 @@ import { base44 } from "@/api/base44Client";
 import { Plus, Star, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TOP_CRYPTOS } from "@/lib/cryptos";
+import CoinLogo from "@/components/CoinLogo";
 
-const MOCK_PRICES = {
-  BTC: { price: 68420, change: 2.4 },
-  ETH: { price: 3218, change: -1.1 },
-  SOL: { price: 168, change: 5.2 },
-  USDC: { price: 1.00, change: 0.0 },
-  USDT: { price: 1.00, change: 0.0 },
-  BNB: { price: 412, change: 1.8 },
-  ADA: { price: 0.62, change: -2.3 },
-  DOT: { price: 9.4, change: 3.1 },
-  AVAX: { price: 41, change: -0.8 },
-  MATIC: { price: 0.91, change: 4.5 },
-};
+// Reference prices for the top 10 by market cap, from the canonical source.
+const MOCK_PRICES = Object.fromEntries(
+  TOP_CRYPTOS.map(c => [c.symbol, { price: c.usd, change: c.change24h }])
+);
 
 export default function WatchlistWidget() {
   const queryClient = useQueryClient();
@@ -73,9 +67,7 @@ export default function WatchlistWidget() {
             const up = data.change >= 0;
             return (
               <div key={item.id} className="flex items-center gap-2 group">
-                <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-bold">{item.symbol.slice(0, 2)}</span>
-                </div>
+                <CoinLogo symbol={item.symbol} size={28} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{item.symbol}</p>
                   {item.note && <p className="text-[10px] text-muted-foreground truncate">{item.note}</p>}
