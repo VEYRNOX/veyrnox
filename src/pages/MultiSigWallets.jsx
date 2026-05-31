@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, ShieldCheck, Users, Clock, CheckCircle2, XCircle, Zap, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CoinLogo from "@/components/CoinLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -80,11 +81,14 @@ export default function MultiSigWallets() {
           {wallets.map(w => (
             <div key={w.id} className="p-4 rounded-xl border border-border bg-card space-y-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">{w.name}</p>
-                  <p className="text-xs text-muted-foreground font-mono truncate">{w.address}</p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <CoinLogo symbol={w.currency} size={36} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{w.name}</p>
+                    <p className="text-xs text-muted-foreground font-mono truncate">{w.address}</p>
+                  </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p className="text-sm font-bold">{w.balance} {w.currency}</p>
                   <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{w.required_signatures}-of-{w.total_signers}</span>
                 </div>

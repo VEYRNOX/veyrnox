@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CoinLogo from "@/components/CoinLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -100,8 +101,8 @@ export default function NetWorthTracker() {
           <span className="text-sm font-bold">{fmt(cryptoValue)}</span>
         </div>
         {wallets.map(w => (
-          <div key={w.id} className="flex justify-between text-sm py-1 border-b border-border/50 last:border-0">
-            <span className="text-muted-foreground">{w.name} ({w.currency})</span>
+          <div key={w.id} className="flex justify-between items-center text-sm py-1 border-b border-border/50 last:border-0">
+            <span className="flex items-center gap-2 text-muted-foreground"><CoinLogo symbol={w.currency} size={20} />{w.name} ({w.currency})</span>
             <span className="font-medium">{fmt((w.balance || 0) * (USD_RATES[w.currency] || 1))}</span>
           </div>
         ))}
