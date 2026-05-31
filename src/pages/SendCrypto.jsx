@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel } from "lucide-react";
 import QRScanner from "../components/QRScanner";
+import CoinLogo from "@/components/CoinLogo";
 import { toast } from "sonner";
 import { useWallet } from "@/lib/WalletProvider";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
@@ -317,7 +318,10 @@ export default function SendCrypto() {
             <SelectContent>
               {wallets.map(w => (
                 <SelectItem key={w.id} value={w.id}>
-                  {w.name} — {w.balance} {w.currency}
+                  <div className="flex items-center gap-2">
+                    <CoinLogo symbol={w.currency} size={20} />
+                    <span>{w.name} — {w.balance} {w.currency}</span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
