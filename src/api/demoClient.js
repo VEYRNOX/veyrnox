@@ -1,22 +1,48 @@
 // src/api/demoClient.js
 //
 // DEMO MODE — a fully client-side mock of the base44 client so the entire app
-// can be browsed without a backend or authentication. Enabled by visiting any
-// URL with `?demo=1` (persisted to localStorage; `?demo=0` turns it off).
+// can be browsed without a backend or authentication. Enabled by any of:
+//   1. Visiting a URL with `?demo=1` (persisted to localStorage; `?demo=0` off).
+//   2. A build-time flag `VITE_DEMO_MODE=1` baked in at build time — used for
+//      backend-less native/simulator builds.
+//   3. Running on a native (Capacitor) platform during a *development* build,
+//      so the iOS/Android simulator works without a backend or login wall.
+//
+// The native/flag paths are deliberately gated so a real production build
+// (web or app store) never turns demo on unless VITE_DEMO_MODE was explicitly
+// set for that build.
 //
 // It returns seeded demo data for the high-traffic entities (wallets,
 // transactions, KYC, etc.) and empty arrays for everything else, so every page
 // renders its real UI/UX. Nothing here touches real keys or the network.
 
+import { Capacitor } from "@capacitor/core";
+
 export const DEMO = (() => {
+  // (2) Explicit build-time opt-in. Works in any build, including native
+  //     simulator builds produced with `VITE_DEMO_MODE=1 npm run mobile:build`.
+  if (import.meta.env.VITE_DEMO_MODE === "1") return true;
+
+  // (1) Browser query param / persisted preference.
   try {
     const p = new URLSearchParams(window.location.search);
     if (p.get("demo") === "0") localStorage.removeItem("veyrnox-demo");
     else if (p.has("demo")) localStorage.setItem("veyrnox-demo", "1");
-    return localStorage.getItem("veyrnox-demo") === "1";
+    if (localStorage.getItem("veyrnox-demo") === "1") return true;
   } catch {
-    return false;
+    // window/localStorage unavailable — fall through to the native check.
   }
+
+  // (3) Native dev builds (e.g. `cap run` against the dev server) default to
+  //     demo. import.meta.env.DEV is false in any production build, so this
+  //     never fires for a real release.
+  try {
+    if (import.meta.env.DEV && Capacitor.isNativePlatform()) return true;
+  } catch {
+    // Capacitor unavailable (plain web build) — ignore.
+  }
+
+  return false;
 })();
 
 const iso = (d) => new Date(d).toISOString();
