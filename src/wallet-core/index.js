@@ -19,3 +19,11 @@ export { getBtcNetwork, getBtcNetworkInfo, listEnabledBtcNetworks, ALLOW_BTC_MAI
 export { getUtxos, getBalanceSats, getFeeRate, broadcastTx, setEsploraUrl } from './btc/provider.js';
 export { selectCoins, estimateFeeSats, estimateVsize, assertPlanConserves } from './btc/coinselect.js';
 export { estimateBtcSend, signAndBroadcastBtc } from './btc/send.js';
+
+// --- Solana (Phase SOL) — separate ed25519 / SLIP-0010 / account stack,
+// devnet-first, mainnet gated. Shares only the BIP-39 seed (different curve from
+// EVM/BTC entirely). See sol/. ---
+export { deriveSolAccount, deriveSolAddress, isValidSolAddress, solPath, SOL_COIN_TYPE } from './sol/derivation.js';
+export { getSolNetwork, getSolNetworkInfo, listEnabledSolNetworks, solExplorerUrl, ALLOW_SOL_MAINNET } from './sol/networks.js';
+export { getBalanceLamports, getBalanceSol, getLatestBlockhash, getRentExemptMinimum, getLamportsPerSignature, broadcastRawTx, confirmTx, setSolRpcUrl, getConnection, LAMPORTS_PER_SOL } from './sol/provider.js';
+export { planSolTransfer, estimateSolSend, signAndBroadcastSol, buildAndSignSol } from './sol/send.js';
