@@ -7,6 +7,7 @@ import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ClipboardList, Trash2, Ale
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import PasskeySetup from "../components/PasskeySetup";
+import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -81,6 +82,9 @@ export default function Settings() {
           />
         </div>
       </div>
+
+      {/* Biometric unlock (PROVISIONAL — M2b app-layer gate) */}
+      <BiometricUnlockSettings />
 
       {/* Security Overview */}
       <div className="p-5 rounded-xl border border-border bg-card space-y-1">
