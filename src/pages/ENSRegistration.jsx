@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Search, CheckCircle, XCircle, Clock, DollarSign, AtSign, ChevronRight, AlertTriangle, ExternalLink } from "lucide-react";
+import { Search, CheckCircle, XCircle, AtSign, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
 const DURATION_OPTIONS = [1, 2, 3, 5, 10];

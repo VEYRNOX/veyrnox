@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Hexagon, Send, Download, RefreshCw, CheckCircle, Copy, ExternalLink, Zap } from "lucide-react";
+import { Hexagon, Send, Download, RefreshCw, CheckCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
 const SUI_TOKENS = [

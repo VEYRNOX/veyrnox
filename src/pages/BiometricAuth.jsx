@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Fingerprint, Shield, ShieldCheck, ShieldOff, Smartphone, Lock, CheckCircle, AlertTriangle } from "lucide-react";
+import { Fingerprint, ShieldCheck, ShieldOff, Smartphone, Lock, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Search, Wifi, RefreshCw, ExternalLink, Loader2, Coins, Image, AlertTriangle, CheckCircle } from "lucide-react";
+import { Search, Wifi, ExternalLink, Loader2, Coins, AlertTriangle, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

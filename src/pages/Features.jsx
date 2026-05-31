@@ -5,9 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
-import { 
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger 
-} from "@/components/ui/accordion";
+
 import { Button } from "@/components/ui/button";
 import { FileText, Search, Download } from "lucide-react";
 import { base44 } from "@/api/base44Client";

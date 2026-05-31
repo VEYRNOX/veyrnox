@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Mic, MicOff, Volume2, CheckCircle, AlertCircle, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
 const COMMANDS = [

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Monitor, Smartphone, Globe, ShieldX, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Monitor, Smartphone, Globe, ShieldX, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function getDeviceIcon(ua) {

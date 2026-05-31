@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Compass, ArrowRight, Clock, CheckCircle, XCircle, ArrowDownUp, ExternalLink } from "lucide-react";
+import { Search, Compass, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Copy, CheckCircle2, ChevronDown, ShieldCheck, Shield } from "lucide-react";
+import { Copy, CheckCircle2, ChevronDown, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { Drawer, DrawerContent, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
-import { Button } from "@/components/ui/button";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import CoinLogo from "@/components/CoinLogo";
 

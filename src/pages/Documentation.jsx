@@ -6,8 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
@@ -15,10 +13,9 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger 
 } from "@/components/ui/accordion";
 import { 
-  Wallet, Shield, ArrowDownUp, Bell, BarChart3, Key, Globe, Zap, 
+  Wallet, Shield, ArrowDownUp, Bell, BarChart3, Zap, 
   Search, ChevronRight, Book, Layers, Users, CreditCard, TrendingUp,
-  Lock, ScanLine, RefreshCw, Cloud, Smartphone, Vote, Leaf, Bot,
-  MessageSquare, Landmark, Receipt, Target, Share2, FileText,
+  Lock, RefreshCw, Cloud, Smartphone, Landmark, FileText,
   LayoutDashboard, Send, Download
 } from "lucide-react";
 

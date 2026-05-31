@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plug, Copy, Check, RefreshCw, Wifi, WifiOff, CheckCircle, ExternalLink } from "lucide-react";
+import { Plug, Copy, Check, RefreshCw, WifiOff, CheckCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
