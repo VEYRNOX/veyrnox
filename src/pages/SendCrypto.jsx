@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel } from "lucide-react";
+import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, ShieldAlert, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import CoinLogo from "@/components/CoinLogo";
 import { toast } from "sonner";
@@ -18,6 +18,37 @@ import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import { getToken } from "@/wallet-core/evm/tokens";
+import { screenRecipient } from "@/wallet-core/evm/poison";
+import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
+
+// Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
+// address is safe — only that it resembles one the user has used before and
+// couldn't be verified. Renders nothing unless the local screen is suspicious.
+function PoisonWarning({ screen }) {
+  if (!screen?.suspicious) return null;
+  return (
+    <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
+      <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+      <div className="text-xs text-destructive space-y-1.5 min-w-0">
+        <p className="font-semibold">Possible address-poisoning — check the FULL address</p>
+        <p className="text-destructive/90">
+          This recipient looks like an address you've used before — same first and last
+          characters, different middle. Scammers craft look-alike addresses hoping you copy
+          the wrong one. We couldn't verify this address; compare every character, not just
+          the ends.
+        </p>
+        {screen.lookAlikes.map((m, i) => (
+          <div key={i} className="rounded bg-destructive/10 border border-destructive/20 p-1.5">
+            <p className="text-[10px] uppercase tracking-wide text-destructive/70">
+              Resembles {m.label}{m.date ? ` · ${new Date(m.date).toLocaleDateString()}` : ""}
+            </p>
+            <p className="font-mono break-all">{m.address}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
@@ -75,6 +106,29 @@ export default function SendCrypto() {
     queryKey: ["tx-limits"],
     queryFn: () => base44.entities.TransactionLimit.list(),
   });
+
+  // Sources for LOCAL address-poisoning screening: the addresses the user has
+  // actually interacted with. All read client-side; nothing is sent anywhere.
+  const { data: history = [] } = useQuery({
+    queryKey: ["transactions"],
+    queryFn: () => base44.entities.Transaction.list("-created_date", 100),
+  });
+  const { data: addressBook = [] } = useQuery({
+    queryKey: ["address-book"],
+    queryFn: () => base44.entities.AddressBook.list(),
+  });
+
+  // Opt-in, off-by-default remote screening. DISCLOSED privacy trade-off: turning
+  // this on would send the recipient address to a third-party threat-intel API,
+  // leaking your intent off-device. The default is LOCAL-ONLY look-alike
+  // detection, which queries nothing. Persisted as a display preference.
+  const [remoteScreen, setRemoteScreen] = useState(() => {
+    try { return localStorage.getItem("veyrnox-remote-screen") === "1"; } catch { return false; }
+  });
+  const toggleRemoteScreen = (v) => {
+    setRemoteScreen(v);
+    try { localStorage.setItem("veyrnox-remote-screen", v ? "1" : "0"); } catch { /* ignore */ }
+  };
 
   const selectedWallet = wallets.find(w => w.id === walletId);
 
@@ -148,6 +202,28 @@ export default function SendCrypto() {
   const isAddressWhitelisted = currencyWhitelist.length === 0
     ? true
     : currencyWhitelist.some(w => w.address.toLowerCase() === toAddress.toLowerCase());
+
+  // Addresses the user has interacted with — the corpus the look-alike screen
+  // compares against. Each entry carries a human label so the warning can name
+  // what the recipient resembles. screenRecipient() ignores non-EVM addresses,
+  // so BTC/SOL recipients simply aren't screened here.
+  const knownAddresses = useMemo(() => {
+    const out = [];
+    for (const tx of history) {
+      if (tx.to_address) out.push({ address: tx.to_address, label: tx.type === "send" ? "an address you've paid before" : "a counterparty in your history", date: tx.created_date });
+      if (tx.from_address) out.push({ address: tx.from_address, label: "a counterparty in your history", date: tx.created_date });
+      if (tx.address) out.push({ address: tx.address, label: "a counterparty in your history", date: tx.created_date });
+    }
+    for (const c of addressBook) out.push({ address: c.address, label: c.name ? `your saved contact "${c.name}"` : "a saved contact" });
+    for (const w of whitelist) out.push({ address: w.address, label: "a whitelisted address" });
+    return out;
+  }, [history, addressBook, whitelist]);
+
+  // LOCAL look-alike / address-poisoning screen for the current recipient.
+  const poisonScreen = useMemo(
+    () => screenRecipient(toAddress, knownAddresses),
+    [toAddress, knownAddresses]
+  );
 
   const sendTx = useMutation({
     mutationFn: async () => {
@@ -360,6 +436,35 @@ export default function SendCrypto() {
             <p className="text-xs text-yellow-300">This address is not on your whitelist. Double-check before proceeding. You can add trusted addresses in Settings.</p>
           </div>
         )}
+
+        {/* Address-poisoning / look-alike warning (local screen against history). */}
+        {toAddress && addressFormatValid && (
+          <div className="-mt-2"><PoisonWarning screen={poisonScreen} /></div>
+        )}
+
+        {/* Local-first screening disclosure + the off-by-default remote opt-in.
+            Only relevant for EVM recipients (the look-alike screen targets EVM
+            addresses). The DEMO helper makes the warning trivially reproducible. */}
+        {selectedWallet && (isEvmFamily(selectedAsset) || isErc20) && (
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border -mt-2">
+            <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="text-[11px] text-muted-foreground space-y-1.5 flex-1 min-w-0">
+              <p>Recipients are screened <span className="font-medium">locally</span> for look-alike / address-poisoning against your own history — nothing leaves your device.</p>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" className="mt-0.5" checked={remoteScreen} onChange={e => toggleRemoteScreen(e.target.checked)} />
+                <span>Also screen against an online threat database <span className="text-destructive/80">(sends this address to a third party)</span></span>
+              </label>
+              {remoteScreen && (
+                <p className="text-destructive/80">Online screening is enabled, but no provider is configured in this build — screening stays local, so we couldn't verify this against an external list.</p>
+              )}
+              {DEMO && (
+                <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
+                  Demo: paste a look-alike address
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {showScanner && (
           <QRScanner
             onScan={(value) => { setToAddress(value); setShowScanner(false); }}
@@ -419,6 +524,9 @@ export default function SendCrypto() {
               <p className="text-lg font-bold">{amount} {selectedWallet?.currency}</p>
               <p className="text-xs text-muted-foreground font-mono mt-1 truncate">{toAddress}</p>
             </div>
+
+            {/* Address-poisoning warning repeated at the point of signing. */}
+            <PoisonWarning screen={poisonScreen} />
 
             {/* Decoded calldata for ERC-20 sends — show EXACTLY what will be
                 signed before any signature (anti-blind-signing control). */}
