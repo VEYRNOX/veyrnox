@@ -24,6 +24,11 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- M2b (PROVISIONAL, pending audit): required so the OS may present Face ID
+	     when unlocking the hardware-backed wallet vault. Without this key iOS
+	     terminates the app on the first Face ID request. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Veyrnox uses Face ID to unlock your wallet and authorise access to your keys.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
