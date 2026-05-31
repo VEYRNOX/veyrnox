@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import moment from "moment";
 
-const ASSETS = ["BTC","ETH","SOL","USDC","USDT"];
+const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
 const SENTIMENT_CONFIG = {
   very_bullish: { icon: TrendingUp, color: "text-green-500", bg: "bg-green-500/10 border-green-500/20", label: "Very Bullish", bar: 100 },

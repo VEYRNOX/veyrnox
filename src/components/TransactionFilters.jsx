@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const CURRENCIES = ["BTC", "ETH", "SOL", "USDC", "USDT"];
+const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const TYPES = ["send", "receive", "swap", "stake"];
 
 export default function TransactionFilters({ filters, onChange }) {

@@ -12,8 +12,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { toast } from "sonner";
 import moment from "moment";
 
-const ASSETS = ["BTC", "ETH", "SOL", "USDC", "USDT"];
-const CURRENT_PRICES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
+const CURRENT_PRICES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 const EMPTY = { asset: "BTC", entry_price: "", exit_price: "", quantity: "", entry_date: "", exit_date: "", status: "open", note: "" };
 

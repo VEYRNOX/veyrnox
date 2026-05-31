@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import moment from "moment";
 
-const CURRENCIES = ["BTC","ETH","SOL","USDC","USDT"];
+const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const STATUS_STYLES = {
   active: "bg-green-500/10 text-green-400 border-green-500/20",
   paid: "bg-blue-500/10 text-blue-400 border-blue-500/20",

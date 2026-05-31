@@ -4,19 +4,12 @@ import { base44 } from "@/api/base44Client";
 import { Plus, Star, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TOP_CRYPTOS } from "@/lib/cryptos";
 
-const MOCK_PRICES = {
-  BTC: { price: 68420, change: 2.4 },
-  ETH: { price: 3218, change: -1.1 },
-  SOL: { price: 168, change: 5.2 },
-  USDC: { price: 1.00, change: 0.0 },
-  USDT: { price: 1.00, change: 0.0 },
-  BNB: { price: 412, change: 1.8 },
-  ADA: { price: 0.62, change: -2.3 },
-  DOT: { price: 9.4, change: 3.1 },
-  AVAX: { price: 41, change: -0.8 },
-  MATIC: { price: 0.91, change: 4.5 },
-};
+// Reference prices for the top 10 by market cap, from the canonical source.
+const MOCK_PRICES = Object.fromEntries(
+  TOP_CRYPTOS.map(c => [c.symbol, { price: c.usd, change: c.change24h }])
+);
 
 export default function WatchlistWidget() {
   const queryClient = useQueryClient();

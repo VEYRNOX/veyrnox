@@ -149,7 +149,7 @@ export default function TradingBots() {
                 <div><Label>Asset</Label>
                   <Select value={form.asset} onValueChange={v => setForm(f => ({ ...f, asset: v }))}>
                     <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                    <SelectContent>{["BTC","ETH","SOL","USDC","USDT"].map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                    <SelectContent>{["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><Label>Investment (USD)</Label><Input type="number" value={form.investment_amount} onChange={e => setForm(f => ({ ...f, investment_amount: e.target.value }))} placeholder="1000" className="mt-1.5" /></div>

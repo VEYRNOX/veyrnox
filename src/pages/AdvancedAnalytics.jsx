@@ -5,7 +5,7 @@ import { TrendingUp, Activity, Target, AlertTriangle, BarChart3, Shield } from "
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const VOLATILITY = { BTC: 0.72, ETH: 0.85, SOL: 1.2, USDC: 0.01, USDT: 0.01 };
 const SHARPE = { BTC: 1.4, ETH: 1.1, SOL: 0.9, USDC: 0.05, USDT: 0.05 };
 const CORRELATION = [
@@ -181,14 +181,14 @@ export default function AdvancedAnalytics() {
                 <thead>
                   <tr>
                     <th className="text-left py-1 pr-3 text-muted-foreground font-normal"></th>
-                    {["BTC","ETH","SOL","USDC","USDT"].map(a => <th key={a} className="py-1 px-2 text-muted-foreground font-normal">{a}</th>)}
+                    {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(a => <th key={a} className="py-1 px-2 text-muted-foreground font-normal">{a}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {CORRELATION.map(row => (
                     <tr key={row.asset}>
                       <td className="py-1 pr-3 font-semibold">{row.asset}</td>
-                      {["BTC","ETH","SOL","USDC","USDT"].map(col => {
+                      {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(col => {
                         const val = row[col];
                         const isHigh = val > 0.6 && val < 1;
                         const isLow = val < 0.1;

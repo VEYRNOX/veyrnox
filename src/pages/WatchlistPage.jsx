@@ -7,24 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { TOP_CRYPTOS, TOP_SYMBOLS } from "@/lib/cryptos";
 
-const MOCK_PRICES = {
-  BTC: { price: 68420, change: 2.4, high: 70000, low: 65000 },
-  ETH: { price: 3218, change: -1.1, high: 3500, low: 3100 },
-  SOL: { price: 168, change: 5.2, high: 180, low: 155 },
-  USDC: { price: 1.00, change: 0.0, high: 1.001, low: 0.999 },
-  USDT: { price: 1.00, change: 0.0, high: 1.001, low: 0.999 },
-  BNB: { price: 412, change: 1.8, high: 430, low: 400 },
-  ADA: { price: 0.62, change: -2.3, high: 0.68, low: 0.59 },
-  DOT: { price: 9.4, change: 3.1, high: 10.2, low: 8.8 },
-  AVAX: { price: 41, change: -0.8, high: 44, low: 39 },
-  MATIC: { price: 0.91, change: 4.5, high: 0.98, low: 0.85 },
-  LINK: { price: 18.2, change: 2.1, high: 19.5, low: 17.0 },
-  UNI: { price: 11.4, change: -0.5, high: 12.0, low: 11.0 },
-  ATOM: { price: 9.8, change: 1.3, high: 10.5, low: 9.2 },
-};
+// Top 10 by market cap, from the canonical source. 24h high/low are synthesized
+// around the reference price for the mock display.
+const MOCK_PRICES = Object.fromEntries(
+  TOP_CRYPTOS.map(c => [c.symbol, {
+    price: c.usd,
+    change: c.change24h,
+    high: +(c.usd * 1.04).toPrecision(6),
+    low: +(c.usd * 0.96).toPrecision(6),
+  }])
+);
 
-const POPULAR = ["BTC","ETH","SOL","BNB","ADA","DOT","AVAX","MATIC","LINK","UNI"];
+const POPULAR = TOP_SYMBOLS;
 
 export default function WatchlistPage() {
   const queryClient = useQueryClient();

@@ -88,7 +88,7 @@ export default function TradeSignals() {
               <div><Label>Asset</Label>
                 <Select value={form.asset} onValueChange={v => setForm(f => ({ ...f, asset: v }))}>
                   <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                  <SelectContent>{["BTC","ETH","SOL","USDC","USDT"].map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                  <SelectContent>{["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Direction</Label>

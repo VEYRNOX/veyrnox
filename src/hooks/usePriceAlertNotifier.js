@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
-const PRICE_URL = "https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,SOL,USDC,USDT&tsyms=USD&extraParams=safecryptowallet";
+const PRICE_URL = "https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,USDT,BNB,SOL,USDC,XRP,DOGE,ADA,TRX&tsyms=USD&extraParams=safecryptowallet";
 
 function sendNotification(title, body, icon = "/favicon.ico") {
   if (Notification.permission !== "granted") return;

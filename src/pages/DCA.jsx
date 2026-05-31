@@ -10,16 +10,16 @@ import { Plus, Pause, Play, Trash2, RefreshCw, TrendingUp, Wallet, Clock } from 
 import { toast } from "sonner";
 import moment from "moment";
 
-const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", SOL: "#9945FF", USDC: "#2775CA", USDT: "#26A17B" };
-const CURRENCY_SYMBOLS = { BTC: "₿", ETH: "Ξ", SOL: "◎", USDC: "$", USDT: "₮" };
-const CURRENCIES = ["BTC", "ETH", "SOL", "USDC", "USDT"];
+const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
+const CURRENCY_SYMBOLS = { BTC: "₿", ETH: "Ξ", USDT: "₮", BNB: "◈", SOL: "◎", USDC: "$", XRP: "✕", DOGE: "Ð", ADA: "₳", TRX: "T" };
+const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const FREQUENCIES = [
   { value: "daily",    label: "Daily" },
   { value: "weekly",   label: "Weekly" },
   { value: "biweekly", label: "Bi-Weekly" },
   { value: "monthly",  label: "Monthly" },
 ];
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165, USDC: 1, USDT: 1 };
+const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 function getNextRunAt(frequency) {
   const d = new Date();
