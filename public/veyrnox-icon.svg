@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Veyrnox">
+  <defs>
+    <linearGradient id="vx-chip" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C9D4DF"/>
+      <stop offset="1" stop-color="#9EABB9"/>
+    </linearGradient>
+    <linearGradient id="vx-shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F0554D"/>
+      <stop offset="1" stop-color="#D42C2C"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#28333F"/>
+  <g fill="#A9B6C3">
+    <rect x="141" y="96" width="18" height="48" rx="6"/><rect x="141" y="368" width="18" height="48" rx="6"/><rect x="96" y="141" width="48" height="18" rx="6"/><rect x="368" y="141" width="48" height="18" rx="6"/>
+    <rect x="183" y="96" width="18" height="48" rx="6"/><rect x="183" y="368" width="18" height="48" rx="6"/><rect x="96" y="183" width="48" height="18" rx="6"/><rect x="368" y="183" width="48" height="18" rx="6"/>
+    <rect x="225" y="96" width="18" height="48" rx="6"/><rect x="225" y="368" width="18" height="48" rx="6"/><rect x="96" y="225" width="48" height="18" rx="6"/><rect x="368" y="225" width="48" height="18" rx="6"/>
+    <rect x="267" y="96" width="18" height="48" rx="6"/><rect x="267" y="368" width="18" height="48" rx="6"/><rect x="96" y="267" width="48" height="18" rx="6"/><rect x="368" y="267" width="48" height="18" rx="6"/>
+    <rect x="309" y="96" width="18" height="48" rx="6"/><rect x="309" y="368" width="18" height="48" rx="6"/><rect x="96" y="309" width="48" height="18" rx="6"/><rect x="368" y="309" width="48" height="18" rx="6"/>
+    <rect x="351" y="96" width="18" height="48" rx="6"/><rect x="351" y="368" width="18" height="48" rx="6"/><rect x="96" y="351" width="48" height="18" rx="6"/><rect x="368" y="351" width="48" height="18" rx="6"/>
+  </g>
+  <rect x="132" y="132" width="248" height="248" rx="34" fill="url(#vx-chip)"/>
+  <path d="M194 190 Q194 184 200 184 L312 184 Q318 184 318 190 L318 258 Q318 306 256 336 Q194 306 194 258 Z" fill="url(#vx-shield)"/>
+</svg>

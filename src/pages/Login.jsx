@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import VeyrnoxLogo from "@/components/VeyrnoxLogo";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -30,9 +31,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
-            <Shield className="h-6 w-6 text-primary" />
-          </div>
+          <VeyrnoxLogo size={56} className="mx-auto shadow-sm" />
           <h1 className="text-xl font-bold">Veyrnox</h1>
           <p className="text-sm text-muted-foreground">Sign in to your account</p>
         </div>

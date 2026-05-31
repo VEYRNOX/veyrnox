@@ -23,6 +23,7 @@ import WatchlistWidget from "../components/WatchlistWidget";
 import DashboardWidgetSettings, { DEFAULT_WIDGETS } from "../components/DashboardWidgetSettings";
 import TransactionFilters from "../components/TransactionFilters";
 import moment from "moment";
+import { DEMO } from "@/api/demoClient";
 
 const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const STATUS_ICONS = {
@@ -41,7 +42,7 @@ function generateAddress(currency) {
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [isLocked, setIsLocked] = useState(true);
+  const [isLocked, setIsLocked] = useState(!DEMO);
   const [fiatCurrency, setFiatCurrency] = useState("USD");
   const [selectedWalletId, setSelectedWalletId] = useState(null);
   const [open, setOpen] = useState(false);

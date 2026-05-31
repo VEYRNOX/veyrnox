@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Key, Eye, EyeOff, AlertTriangle, Shield, QrCode, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -109,7 +110,7 @@ export default function WalletSeedQR() {
         <Select value={selectedWalletId} onValueChange={setSelectedWalletId}>
           <SelectTrigger className="mt-1.5"><SelectValue placeholder="Choose wallet..." /></SelectTrigger>
           <SelectContent>
-            {wallets.map(w => <SelectItem key={w.id} value={w.id}>{w.name} ({w.currency})</SelectItem>)}
+            {wallets.map(w => <SelectItem key={w.id} value={w.id}><span className="flex items-center gap-2"><CoinLogo symbol={w.currency} size={18} />{w.name} ({w.currency})</span></SelectItem>)}
           </SelectContent>
         </Select>
       </div>

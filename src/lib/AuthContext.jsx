@@ -2,19 +2,23 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { DEMO } from '@/api/demoClient';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
+  // Demo mode (?demo=1): skip the network auth check and treat the user as
+  // signed in so the whole app is browsable without a backend.
+  const [user, setUser] = useState(DEMO ? { id: 'demo-user', email: 'demo@veyrnox.com', full_name: 'Alex Demo', role: 'admin' } : null);
+  const [isAuthenticated, setIsAuthenticated] = useState(DEMO);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(!DEMO);
+  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(!DEMO);
   const [authError, setAuthError] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [authChecked, setAuthChecked] = useState(DEMO);
+  const [appPublicSettings, setAppPublicSettings] = useState(DEMO ? { id: 'demo', public_settings: {} } : null); // Contains only { id, public_settings }
 
   useEffect(() => {
+    if (DEMO) return; // no network in demo mode
     checkAppState();
   }, []);
 
