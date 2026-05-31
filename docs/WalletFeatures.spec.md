@@ -71,6 +71,11 @@
 34. Hardware wallet (Ledger / Trezor) — 📋
 35. Login activity (+ map) — 📋
 36. Social recovery (guardian / SSS) — 📋 (cryptographic; own audit attention)
+36a. Crypto Will / inheritance — 📋 (SELF-CUSTODY ONLY: built on social-recovery /
+     secret-sharing + dead-man's-switch; Veyrnox NEVER custodies keys or adjudicates
+     death. High cryptographic risk + LEGAL/estate dimensions → own audit attention
+     AND a lawyer. Consider folding into Social Recovery rather than a separate
+     feature. Defer — not near-term.)
 
 ## 6. Security — S4 hardening
 37. RASP (jailbreak/root/tamper detection) — 📋
@@ -122,3 +127,92 @@ trigger licensing / are a different regulated business:
   team will check built-vs-claimed; the 170-page site is the cautionary tale).
 - Build order: finish S1 (M2) → S2 → S3 → S4, with BTC/SOL as separate stacks
   per decision, niceties woven in, WalletConnect post-audit. (docs/MVP.roadmap.md)
+
+---
+
+# ADDENDUM — Full site (veyrnox.com/features, ~188 pages) vs this spec
+
+> Three-way split of every site feature page against the self-custody line.
+> Purpose: make the scope decision auditable — what we'll build, what we could
+> add, and what we deliberately WON'T (and why). Counts: ~37 overlap · ~50
+> self-custody-safe gaps · ~70 custodial/regulated to avoid.
+
+## A. OVERLAP — on the site AND in this spec (already scoped above)
+Send, Receive, HD Wallet Manager, Import Private Key, Wallet Seed QR, Live
+Balances, Gas Fee Control, Biometric Auth, Samsung Keystore, Session Manager,
+Duress Pin, Token Approvals, Suspicious Address Checker, Spam Token Filter,
+Hardware Wallet, Social Recovery, RASP Security, Cloud Backup, Audit Log, Risk
+Scoring / Wallet Risk Limits, Login Activity Map, Address Book, Price Alerts,
+Price Charts, Watchlist, Net Worth Tracker, NFT Portfolio/Gallery, Solana, Tron,
+AI Assistant / AI Portfolio Advisor, D App Connector / WalletConnect / Web3
+Browser, Block Explorer, Transaction Receipt, Network Manager, Settings,
+Onboarding.
+
+## B. SELF-CUSTODY-SAFE GAPS — on the site, not yet specced, COULD build
+(No licensing/custody problem. Mostly read-only analytics + UX niceties + a few
+self-custody utilities + more chains. Candidate additions, triaged per the rules.)
+
+UX/niceties: Activity Dashboard, Notification Centre, Push Notifications, Smart
+Alerts, Messenger Alerts, Calculator, ENS Registration, ERC20 Discovery, Merchant
+QR, Mobile Widget, Custom Dashboard Widgets, Voice Commands.
+
+Analytics (read-only, safe): Portfolio Dashboard, Portfolio Metrics/Snapshots/
+Rewind/Benchmark, P&L Tracking, Performance Analytics/Dashboard, Spending
+Patterns, On-Chain Analytics, Advanced/Predictive Analytics, Correlation Matrix/
+Timeline, Fear & Greed Index, Crypto Sentiment, What-If Simulator, Custom Index
+Builder, Fee Analytics.
+
+Security extras (self-custody-safe): Security Center/Dashboard, Security Scanner,
+Anomaly Detection, Fraud Detection, D App Security Alerts, Account Access,
+Forgot/Reset Password, Watch Wallets.
+
+Chains (separate stacks, each own audit): Cosmos IBC, Sui Wallet, Multi-Chain NFT.
+
+Self-custody utilities: Crypto Signing (message signing), Multi-Sig Wallets/
+Treasury, Tax Report/Tax Harvesting (read-only), Savings Goals, Budget Limits,
+Split Bill, Payment Links, Recurring Payments (self-initiated), Invoice Generator,
+Carbon Tracker, Referral Dashboard/Tracker, Leaderboard, Social Feed/Public
+Profiles (privacy caveats).
+
+Borderline (advisory-only OK, auto-executing NOT): AI Rebalancer, AI Agents —
+safe ONLY if they advise/propose and the user signs; if they transact
+autonomously they break self-custody → then they belong in section C.
+
+## C. CUSTODIAL / REGULATED — on the site, DO NOT BUILD (breaks the model)
+(These would break non-custody and/or trigger licensing — FinCEN MSB / MiCA CASP
+/ FCA / securities / e-money — or are enterprise/operator tooling. They are a
+DIFFERENT, regulated business, not wallet features. See Security.roadmap.md +
+FutureFeatures.roadmap.md.)
+
+Trading/exchange (regulated): DEX Swap, Swap, Conditional Swap, Limit Orders, OCO
+Orders, TWAP Orders, Trailing Stop Orders, Grid Bots, Trading Bots, AI Trading
+Bots, Perps Trading, Options Derivatives, Tokenized Stocks, Social Trading, Trade
+Signals, DCA.
+
+Custody/banking (breaks non-custody): Institutional Custody, Bank Link, Fiat
+Wallets, Fiat Ramp, Live Fiat Ramp, Crypto Off-Ramp, CEX Deposit, Exchange
+Connections, Native Pay Ramp.
+
+Lending/yield/DeFi (regulated): Crypto Loans, Lending/Borrowing, Loan Calculator,
+DeFi Yield, Yield Farming, Staking (staking-as-a-service regulated; non-custodial
+staking borderline).
+
+Compliance/VASP (creates licensing obligation): KYC, KYCVASP Admin, VASP
+Compliance, Compliance Rules, Geo Blocking, Identity Management, DID Management,
+Trust Score.
+
+Enterprise/admin/ops (not user wallet): Security Admin Dashboard, Super Admin
+Dashboard, Telemetry Admin, Enterprise Analytics, White Label Platform, DAO
+Governance, DAO Treasury Tools, Crypto Payroll, Webhook Builder, Feature Flags,
+Performance Monitoring, Fee Wallet Dashboard, Automation Rules.
+
+Other regulated/out-of-scope: Crypto Subscriptions (payment processing), Smart
+Contract Deploy (dev platform), NFT Minting/Fractionalization (minting/securities-
+adjacent), Encrypted Messaging (separate product).
+
+Note: "Crypto Will" from the site is reclassified as SELF-CUSTODY (section 5,
+item 36a) — but only in the inheritance-via-social-recovery form, never custodial.
+
+## Decision rule (unchanged)
+Build from A (finish) and pull selectively from B by value. Never build C without
+becoming a different, licensed company — a strategic pivot, not a feature sprint.
