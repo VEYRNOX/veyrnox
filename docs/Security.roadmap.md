@@ -120,6 +120,26 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
 - **Social Recovery** (OPTIONAL, heavier) — guardian / Shamir's-Secret-Sharing
   recovery. Cryptographically nontrivial → ~3–4 weeks ALONE and **must get its
   own audit attention** (a flaw here loses or leaks the seed).
+- **Crypto Will / inheritance** ◈ — self-custody only (built on social-recovery /
+  secret-sharing + dead-man's-switch; NEVER custodial, NEVER adjudicates death).
+  High cryptographic risk + LEGAL/estate dimensions → audit attention AND a lawyer.
+- **Stealth / hidden wallets** ◈ — wallets revealed only by a specific PIN
+  (plausible deniability). Pairs with Duress PIN.
+- **Panic wipe** ◈ — emergency local destruction of key material.
+
+### S3 — TREASURY / BUSINESS cluster (⚑ — the Direction-B wedge)
+> ⚑ These are NOT consumer features. They only matter if Veyrnox commits to the
+> BUSINESS/TREASURY audience (most fundable wedge — incumbents don't compete,
+> businesses PAY = revenue model). If that wedge is chosen, this cluster moves to
+> an EARLY dedicated phase (right after Foundation) because for that audience it
+> IS the product, not a security add-on. See docs/WalletRoadmap.md WEDGE NOTE.
+- **Multi-sig wallets (2-of-3, 3-of-5)** ⚑◈ — cryptographic; own audit attention.
+- **Multi-sig TREASURY (org-grade)** ⚑ — shared treasury with controls.
+- **Approval workflows** ⚑ — proposer → approver(s) → execute, with audit trail.
+- **Role-based / multi-user access** ⚑ — propose vs approve vs view permissions.
+- **Spending policies / daily limits** ⚑◈ — caps + rules on what can move.
+- **Time-locks** ⚑◈ — delayed execution on moves (anti-theft / anti-coercion).
+- **Address allowlists** ⚑◈ — send only to pre-approved addresses.
 
 ## S4 — Hardening & monitoring
 ~3–4 weeks.
@@ -134,6 +154,14 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
   device.
 - **Fraud/Anomaly Detection** — meaningful versions are ONGOING (data + heuristics),
   not a fixed N-week task. Start rule-based.
+- **Compliance / governance EXPORT** ⚑ — exportable records of treasury actions
+  for accounting/governance. RECORDS ONLY — explicitly NOT KYC/identity (which
+  stays excluded below). Pairs with the ⚑ treasury cluster.
+- **No-telemetry / fully-local mode** ◈ — a provable "phones home to no one" mode.
+  A real claim incumbents (with their threat-intel APIs) can't make; differentiator
+  for high-threat/privacy users. Tension with online scam-screening (S2) — make
+  the trade-off a user choice.
+- **Privacy routing** ◈ — Tor / RPC-privacy options for high-threat users.
 
 ## Then: freeze → independent audit → fix → ship
 - The audit now covers S1–S4 (esp. M2, Social Recovery, Cloud Backup) — this is
