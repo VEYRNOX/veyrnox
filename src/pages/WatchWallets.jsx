@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Eye, Plus, Trash2, Copy, Check, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CoinLogo from "@/components/CoinLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -68,7 +69,7 @@ export default function WatchWallets() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">{w.name?.charAt(0) || "W"}</div>
+                      <CoinLogo symbol={w.currency} size={32} />
                       <div>
                         <p className="font-medium text-sm">{w.name}</p>
                         <span className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded font-semibold">Watch-only · {w.network}</span>

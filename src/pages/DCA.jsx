@@ -275,7 +275,7 @@ export default function DCA() {
                 <SelectContent>
                   {wallets.map(w => (
                     <SelectItem key={w.id} value={w.id}>
-                      {w.name} — {w.balance} {w.currency}
+                      <span className="flex items-center gap-2"><CoinLogo symbol={w.currency} size={18} />{w.name} — {w.balance} {w.currency}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -289,7 +289,7 @@ export default function DCA() {
                   <SelectItem value={null}>None</SelectItem>
                   {wallets.filter(w => w.currency === targetCurrency).map(w => (
                     <SelectItem key={w.id} value={w.id}>
-                      {w.name} — {w.balance} {w.currency}
+                      <span className="flex items-center gap-2"><CoinLogo symbol={w.currency} size={18} />{w.name} — {w.balance} {w.currency}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>

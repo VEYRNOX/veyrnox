@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Wallet, Plus, Eye, EyeOff, Copy, Check, RefreshCw, Download, Shield, ChevronDown, ChevronRight, Key, Lock, Unlock, AlertTriangle, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import CoinLogo from "@/components/CoinLogo";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -291,7 +292,7 @@ export default function HDWalletManager() {
             return (
               <div key={asset.symbol} className={`rounded-xl border border-border bg-card overflow-hidden ${dim ? "opacity-60" : ""}`}>
                 <button onClick={() => setExpandedSymbol(exp ? null : asset.symbol)} className="w-full p-4 flex items-center gap-3 text-left" title={dim ? "Not yet available." : undefined}>
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: ASSET_COLORS[asset.symbol] || "#64748b" }}>{asset.symbol.slice(0, 2)}</div>
+                  <CoinLogo symbol={asset.symbol} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm">{asset.name}</p>

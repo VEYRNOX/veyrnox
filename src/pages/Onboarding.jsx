@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
 import { Shield, Wallet, CheckCircle2, ArrowRight, ChevronRight } from "lucide-react";
+import VeyrnoxLogo from "@/components/VeyrnoxLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,9 +70,7 @@ export default function Onboarding() {
         <div className="bg-card border border-border rounded-3xl p-8 text-center">
           {step === 1 && (
             <>
-              <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-8 w-8 text-primary-foreground" />
-              </div>
+              <VeyrnoxLogo size={64} className="mx-auto mb-4 shadow-sm" />
               <h1 className="text-2xl font-bold mb-2">Welcome to Veyrnox</h1>
               <p className="text-muted-foreground text-sm mb-6">Your institutional-grade crypto wallet. Let's get you set up in just a few steps.</p>
               <div className="space-y-2 text-left mb-8">
