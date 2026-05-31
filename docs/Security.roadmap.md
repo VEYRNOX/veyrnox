@@ -113,7 +113,18 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
 ## S3 — Access & recovery
 ~3–4 weeks (Social Recovery pushes this longer + needs its own audit attention).
 - **Duress PIN** — decoy PIN opens an empty/fake wallet under coercion. Self-
-  contained, high value.
+  contained, high value. **IMPLEMENTED (PROVISIONAL, testnet/demo).** Design:
+  the decoy is a REAL, SEPARATELY-ENCRYPTED vault (its own BIP-39 mnemonic),
+  encrypted/decrypted with the SAME crypto as the primary vault (vault.js,
+  unchanged). It routes through the EXISTING unlock flow — `WalletProvider.unlock`
+  tries `keyStore.unlock` first and, only on failure, consults the decoy
+  (`wallet-core/duress.js`), re-throwing the ORIGINAL error on a miss so the
+  prompt gives no tell. Delivers RUNTIME deniability (identical UI / error text /
+  work-per-attempt). HONEST LIMITS (flagged for audit): NOT hidden-volume storage
+  (forensic inspection can see a second blob exists); a "no decoy configured"
+  state does 1 KDF vs 2 when one exists (feature-presence, not contents, is
+  timeable); native hardware-backed decoy slot not yet wired (web/demo today).
+  See `src/wallet-core/duress.js`, `src/pages/DuressPin.jsx`.
 - **Hardware Wallet support** — Ledger/Trezor connect via established libs
   (strongest key security for power users).
 - **Login Activity** (+ map) — show recent access events (needs backend to record).
