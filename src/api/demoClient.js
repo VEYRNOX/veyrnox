@@ -89,6 +89,19 @@ const SEEDS = {
   ],
   SavingsGoal: [{ id: "sg1", name: "Holiday Fund", target_amount: 5000, current_amount: 2150, currency: "USDC", deadline: iso("2026-12-01") }],
   UserSession: [{ id: "us1", device: "Chrome · Windows", ip: "—", last_active: iso("2026-05-31"), current: true }],
+
+  // ERC-20 allowances (Phase S2 — Token Approvals). Testnet only: every entry is
+  // Sepolia USDC (the one verified-address token), so a revoke decodes/builds for
+  // real and, on a native testnet build, would actually broadcast approve(.,0).
+  // `allowance_raw` is in base units (USDC = 6 decimals). The UNLIMITED rows use
+  // MaxUint256 (2^256-1) so calldata.js flags them exactly as the confirm screen
+  // would. `trusted` only tunes the risk badge — it never relaxes any guard.
+  TokenApproval: [
+    { id: "ta1", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "Uniswap V3 Router", spender_address: "0xe592427a0aece92de3edee1f18e0157c05861564", allowance_raw: "115792089237316195423570985008687907853269984665640564039457584007913129639935", trusted: true,  status: "active", last_used: iso("2026-05-20") },
+    { id: "ta2", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "Unknown Contract", spender_address: "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad", allowance_raw: "115792089237316195423570985008687907853269984665640564039457584007913129639935", trusted: false, status: "active", last_used: iso("2025-08-20") },
+    { id: "ta3", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "Aave V3 Pool",      spender_address: "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2", allowance_raw: "1000000000", trusted: true,  status: "active", last_used: iso("2026-04-12") },
+    { id: "ta4", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "OpenSea Seaport",   spender_address: "0x00000000000000adc04c56bf30ac9d3c0aaf14dc", allowance_raw: "0", trusted: true, status: "revoked", last_used: iso("2026-03-01") },
+  ],
 };
 
 // Per-session mutable copies so create/update/delete behave during the demo.

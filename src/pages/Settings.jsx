@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
 import { base44 } from "@/api/base44Client";
-import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ClipboardList, Trash2, AlertTriangle, Network, CloudUpload, Key } from "lucide-react";
+import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, ClipboardList, Trash2, AlertTriangle, Network, CloudUpload, Key } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import PasskeySetup from "../components/PasskeySetup";
@@ -151,6 +151,13 @@ export default function Settings() {
           <div>
             <p className="text-sm font-medium">Network Manager</p>
             <p className="text-xs text-muted-foreground">RPC &amp; chains</p>
+          </div>
+        </Link>
+        <Link to="/token-approvals" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+          <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Token Approvals</p>
+            <p className="text-xs text-muted-foreground">View &amp; revoke allowances</p>
           </div>
         </Link>
         <Link to="/cloud-backup" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
