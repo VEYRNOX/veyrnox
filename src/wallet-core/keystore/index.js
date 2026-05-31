@@ -1,7 +1,8 @@
 // wallet-core/keystore/index.js — resolve the active KeyStore for this platform.
 //
-// M2a: web only. M2b: adds the native (Design B, hardware-wrapped/gated key)
-// branch, selected here behind Capacitor.isNativePlatform().
+// M2a: web only. M2b: adds the native (Design B — hardware-gated unlock +
+// hardware-backed at-rest storage) branch, selected here behind
+// Capacitor.isNativePlatform().
 //
 // The native implementation (./native.js) imports Capacitor plugins, so it is
 // loaded LAZILY via dynamic import and ONLY on a real native platform. On web

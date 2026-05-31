@@ -5,7 +5,8 @@
 //                   composed behind this contract in ./web.js.
 //   - native (M2b): Capacitor plugin bridging iOS Keychain/Secure Enclave +
 //                   Android Keystore/StrongBox, with biometric gating
-//                   (Design B — hardware-wrapped key; same vault FORMAT).
+//                   (Design B — hardware-gated unlock + hardware-backed
+//                   at-rest store; same vault FORMAT, no Enclave key-wrap).
 //
 // The wallet-core crypto (mnemonic/derivation/signing) does NOT change; it just
 // receives the secret from whichever store unlocked it. This module is the
