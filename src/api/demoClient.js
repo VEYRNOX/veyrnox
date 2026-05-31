@@ -48,6 +48,15 @@ export const DEMO = (() => {
 const iso = (d) => new Date(d).toISOString();
 const addr = (p) => p + Array.from({ length: 36 }, (_, i) => "0123456789abcdef"[(i * 7 + 3) % 16]).join("");
 
+// Address-poisoning demo pair (Phase S2). DEMO_KNOWN_COUNTERPARTY is a real
+// counterparty the demo user has paid before (seeded into Transaction history
+// below). DEMO_POISON_ADDRESS is its LOOK-ALIKE: identical first 4 + last 4 hex
+// nibbles (a11c…ffee), different middle — exactly what an address-poisoning
+// scammer crafts. Pasting the poison address into Send fires the warning.
+// Both are valid lowercase EVM addresses (42 chars) so ethers' isAddress passes.
+export const DEMO_KNOWN_COUNTERPARTY = "0xa11ce1234567890abcdef1234567890abcc0ffee";
+export const DEMO_POISON_ADDRESS     = "0xa11cefedcba0987654321fedcba0987654c0ffee";
+
 const DEMO_USER = {
   id: "demo-user",
   email: "demo@veyrnox.com",
@@ -72,6 +81,10 @@ const SEEDS = {
     { id: "t3", type: "receive", currency: "BTC",  amount: 0.012, status: "pending",   created_date: iso("2026-05-29T09:15:00"), address: addr("bc1q"), to_address: addr("bc1q"), hash: addr("0x"), fee: 0.00003 },
     { id: "t4", type: "send",    currency: "SOL",  amount: 3.2,   status: "confirmed", created_date: iso("2026-05-28T18:45:00"), address: addr("So1"), to_address: addr("So1"), hash: addr("0x"), fee: 0.00005 },
     { id: "t5", type: "receive", currency: "BNB",  amount: 1.5,   status: "failed",    created_date: iso("2026-05-27T11:20:00"), address: addr("0x"), to_address: addr("0x"), hash: addr("0x"), fee: 0.0008 },
+    // A genuine past payment to a known counterparty (valid 42-char EVM address).
+    // The S2 address-poisoning screen treats this as "an address you've interacted
+    // with"; DEMO_POISON_ADDRESS look-alikes it. See the constants above.
+    { id: "t6", type: "send",    currency: "ETH",  amount: 0.25,  status: "confirmed", created_date: iso("2026-05-15T12:00:00"), address: addr("0x"), to_address: DEMO_KNOWN_COUNTERPARTY, hash: addr("0x"), fee: 0.0011 },
   ],
   KYCProfile: [{ id: "kyc1", status: "verified", level: 2, full_name: "Alex Demo", country: "GB", verified_date: iso("2025-11-01") }],
   PriceAlert: [
@@ -101,6 +114,22 @@ const SEEDS = {
     { id: "ta2", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "Unknown Contract", spender_address: "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad", allowance_raw: "115792089237316195423570985008687907853269984665640564039457584007913129639935", trusted: false, status: "active", last_used: iso("2025-08-20") },
     { id: "ta3", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "Aave V3 Pool",      spender_address: "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2", allowance_raw: "1000000000", trusted: true,  status: "active", last_used: iso("2026-04-12") },
     { id: "ta4", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "OpenSea Seaport",   spender_address: "0x00000000000000adc04c56bf30ac9d3c0aaf14dc", allowance_raw: "0", trusted: true, status: "revoked", last_used: iso("2026-03-01") },
+  ],
+
+  // ERC-20 token HOLDINGS (Phase S2 — Spam Token Filter). Testnet/demo display
+  // data only — these are never sent or signed; `token_contract` is for display.
+  // The first two are real, purchased, verified-listed tokens. The rest are the
+  // scam-airdrop patterns the filter catches: a website-link name, "claim/reward"
+  // lure wording, an emoji/homoglyph ticker, a Telegram link — all airdropped
+  // unsolicited and worth $0. `acquired_via` + `verified` + `value_usd` drive
+  // src/wallet-core/evm/spam.js classifyToken(). Hiding is display-only.
+  WalletToken: [
+    { id: "tok1", network: "sepolia", symbol: "USDC", name: "USD Coin",       token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", balance: 1250,    value_usd: 1250.0, acquired_via: "purchase", verified: true },
+    { id: "tok2", network: "sepolia", symbol: "WETH", name: "Wrapped Ether",  token_contract: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14", balance: 0.42,    value_usd: 1344.0, acquired_via: "purchase", verified: true },
+    { id: "tok3", network: "sepolia", symbol: "USDC", name: "USDC-Rewards.com", token_contract: "0xdeadbeef00000000000000000000000000000003", balance: 5000,  value_usd: 0.0, acquired_via: "airdrop", verified: false },
+    { id: "tok4", network: "sepolia", symbol: "CLAIM", name: "Claim 5,000 USDT Reward", token_contract: "0xdeadbeef00000000000000000000000000000004", balance: 5000, value_usd: 0.0, acquired_via: "airdrop", verified: false },
+    { id: "tok5", network: "sepolia", symbol: "🎁GIFT", name: "Free Gift Token", token_contract: "0xdeadbeef00000000000000000000000000000005", balance: 1000000, value_usd: 0.0, acquired_via: "airdrop", verified: false },
+    { id: "tok6", network: "sepolia", symbol: "AIRDROP", name: "t.me/airdropclaim", token_contract: "0xdeadbeef00000000000000000000000000000006", balance: 250, value_usd: 0.0, acquired_via: "airdrop", verified: false },
   ],
 };
 
