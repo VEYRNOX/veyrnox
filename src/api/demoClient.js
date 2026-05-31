@@ -74,6 +74,13 @@ const SEEDS = {
     { id: "w4", name: "USDC Savings",  currency: "USDC", address: addr("0x"),   balance: 1250.0,  passkey_registered: false, created_date: iso("2025-10-04") },
     { id: "w5", name: "BNB Trading",   currency: "BNB",  address: addr("0x"),   balance: 6.20,    passkey_registered: false, created_date: iso("2025-10-05") },
     { id: "w6", name: "XRP Wallet",    currency: "XRP",  address: addr("r"),    balance: 1820.5,  passkey_registered: false, created_date: iso("2025-10-06") },
+    // Rounds the Main Page token/price list out to all 10 canonical TOP_CRYPTOS
+    // (src/lib/cryptos.js) so it shows 10 assets, not 6. Display-only demo data —
+    // these are coming_soon in wallet-core/assets.js and grant no send capability.
+    { id: "w7", name: "USDT Reserve",  currency: "USDT", address: addr("0x"),   balance: 540.0,   passkey_registered: false, created_date: iso("2025-10-07") },
+    { id: "w8", name: "Doge Stash",    currency: "DOGE", address: addr("D"),    balance: 12500.0, passkey_registered: false, created_date: iso("2025-10-08") },
+    { id: "w9", name: "Cardano",       currency: "ADA",  address: addr("addr1"),balance: 3200.0,  passkey_registered: false, created_date: iso("2025-10-09") },
+    { id: "w10", name: "TRON Wallet",  currency: "TRX",  address: addr("T"),    balance: 8400.0,  passkey_registered: false, created_date: iso("2025-10-10") },
   ],
   Transaction: [
     { id: "t1", type: "receive", currency: "ETH",  amount: 0.5,   status: "confirmed", created_date: iso("2026-05-30T10:00:00"), address: addr("0x"), to_address: addr("0x"), hash: addr("0x"), fee: 0.0012 },
