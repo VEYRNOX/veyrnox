@@ -29,7 +29,7 @@ const BRIDGES = [
   { name: "deBridge", fee_pct: 0.03, time: 2, supported_chains: ["ethereum","polygon","arbitrum","optimism","bsc","solana"] },
 ];
 
-const ASSETS = ["ETH", "USDC", "USDT", "WBTC", "MATIC", "BNB"];
+const ASSETS = ["ETH", "USDC", "USDT", "WBTC", "BNB"];
 
 const STATUS_CONFIG = {
   pending: { icon: Clock, color: "text-yellow-400", label: "Pending" },
