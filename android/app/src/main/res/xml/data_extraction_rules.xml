@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  M2b — PROVISIONAL (pending independent security audit).
+
+  A self-custody wallet must NEVER auto-back-up secret material. Belt-and-
+  suspenders with android:allowBackup="false": on Android 12+ (API 31+) this
+  rules file excludes ALL app data from both cloud backup and device-to-device
+  transfer, so the hardware-backed secure store (Keystore-backed encrypted
+  prefs used by @aparajita/capacitor-secure-storage) is never copied off-device.
+  See docs/M2.secure-storage.md → "Android: no auto-backup of secrets".
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" />
+        <exclude domain="database" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+        <exclude domain="root" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" />
+        <exclude domain="database" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+        <exclude domain="root" />
+    </device-transfer>
+</data-extraction-rules>
