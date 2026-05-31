@@ -23,6 +23,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import CommandPalette from "./CommandPalette";
 import PullToRefreshContainer from "./PullToRefreshContainer";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { useQueryClient } from "@tanstack/react-query";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
@@ -429,7 +430,7 @@ export default function Layout() {
           className="hidden md:flex md:flex-1 flex-col p-8 overflow-auto"
         >
           <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">
-            <Outlet />
+            <ErrorBoundary key={location.pathname}><Outlet /></ErrorBoundary>
           </PullToRefreshContainer>
         </motion.main>
       </AnimatePresence>
@@ -448,7 +449,7 @@ export default function Layout() {
               className="p-4"
             >
               <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">
-                <Outlet />
+                <ErrorBoundary key={location.pathname}><Outlet /></ErrorBoundary>
               </PullToRefreshContainer>
             </motion.div>
           )}
