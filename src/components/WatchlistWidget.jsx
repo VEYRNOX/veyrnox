@@ -5,6 +5,7 @@ import { Plus, Star, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
+import CoinLogo from "@/components/CoinLogo";
 
 // Reference prices for the top 10 by market cap, from the canonical source.
 const MOCK_PRICES = Object.fromEntries(
@@ -66,9 +67,7 @@ export default function WatchlistWidget() {
             const up = data.change >= 0;
             return (
               <div key={item.id} className="flex items-center gap-2 group">
-                <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-bold">{item.symbol.slice(0, 2)}</span>
-                </div>
+                <CoinLogo symbol={item.symbol} size={28} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{item.symbol}</p>
                   {item.note && <p className="text-[10px] text-muted-foreground truncate">{item.note}</p>}

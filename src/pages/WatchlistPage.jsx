@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { TOP_CRYPTOS, TOP_SYMBOLS } from "@/lib/cryptos";
+import CoinLogo from "@/components/CoinLogo";
 
 // Top 10 by market cap, from the canonical source. 24h high/low are synthesized
 // around the reference price for the mock display.
@@ -98,9 +99,7 @@ export default function WatchlistPage() {
             return (
               <div key={item.id} className={`bg-card border rounded-2xl p-4 transition-colors ${atBuy ? "border-green-500/50" : atSell ? "border-red-500/50" : "border-border"}`}>
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold">{item.symbol.slice(0, 2)}</span>
-                  </div>
+                  <CoinLogo symbol={item.symbol} size={40} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold">{item.symbol}</p>

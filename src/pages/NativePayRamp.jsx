@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
+import CoinLogo from "@/components/CoinLogo";
 
 // Top 10 by market cap, from the canonical source.
 const CRYPTO_OPTIONS = TOP_CRYPTOS.map(c => ({
@@ -164,7 +165,7 @@ export default function NativePayRamp() {
                 {CRYPTO_OPTIONS.map(c => (
                   <button key={c.symbol} onClick={() => setSelectedCrypto(c)}
                     className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border text-xs font-semibold transition-colors ${selectedCrypto.symbol === c.symbol ? "border-primary/60 bg-primary/5 text-primary" : "border-border hover:bg-secondary"}`}>
-                    <span className="text-lg">{c.icon}</span>{c.symbol}
+                    <CoinLogo symbol={c.symbol} size={24} />{c.symbol}
                   </button>
                 ))}
               </div>

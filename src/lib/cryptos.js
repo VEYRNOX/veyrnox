@@ -46,6 +46,16 @@ export const CURRENCY_NAMES = byKey("name");
 /** { BTC: "Bitcoin", ... } settlement chain label. */
 export const CURRENCY_CHAINS = byKey("chain");
 
+/** { BTC: "/coins/btc.png", ... } bundled logo image paths (offline-safe). */
+export const CURRENCY_LOGOS = Object.freeze(
+  Object.fromEntries(TOP_CRYPTOS.map(c => [c.symbol, `/coins/${c.symbol.toLowerCase()}.png`]))
+);
+
+/** Bundled logo path for any symbol (may 404 for non-top-10 — callers fall back to a glyph). */
+export function logoFor(symbol) {
+  return symbol ? `/coins/${String(symbol).toLowerCase()}.png` : null;
+}
+
 export function getCrypto(symbol) {
   return TOP_CRYPTOS.find(c => c.symbol === symbol) || null;
 }
