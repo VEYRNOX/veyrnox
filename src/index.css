@@ -118,6 +118,22 @@
     padding-right: env(safe-area-inset-right);
   }
 
+  /* On mobile the app shell is a fixed-height flex column: the sticky header
+     and fixed bottom nav stay put while #main-scroll is the only scroll
+     viewport. A definite height (not just min-height) is required so the
+     flex-1 scroll region can bound itself and actually scroll on iOS WKWebView.
+     `100dvh` tracks the real viewport on devices that support it, with a
+     `100vh` fallback; we subtract the top safe-area inset that body already
+     applies so the shell ends exactly at the viewport bottom. Desktop keeps
+     its natural min-height layout (md:min-h-screen on the element). */
+  @media (max-width: 767.98px) {
+    .app-shell {
+      height: calc(100vh - env(safe-area-inset-top));
+      height: calc(100dvh - env(safe-area-inset-top));
+      overflow: hidden;
+    }
+  }
+
   /* Prevent 300ms tap delay & double-tap zoom */
   button, a, [role="button"], label, input, select, textarea {
     touch-action: manipulation;
