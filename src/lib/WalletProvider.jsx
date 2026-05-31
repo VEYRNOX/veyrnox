@@ -317,7 +317,12 @@ export function WalletProvider({ children }) {
   const setDuressPin = useCallback(async (duressPassword, strength = 128) => {
     const decoyMnemonic = generateMnemonic(strength);
     await setDuressVault(decoyMnemonic, duressPassword);
-    return decoyMnemonic;
+    // Also return the decoy's PUBLIC EVM address so the UI can show where to
+    // FUND the decoy (a decoy is only plausible once it holds a small, real,
+    // block-explorer-verifiable amount). Derived here from the in-memory decoy
+    // mnemonic via the SAME derivation as the primary wallet; no key persisted.
+    const { address } = deriveEvmAccount(decoyMnemonic, 0);
+    return { mnemonic: decoyMnemonic, address };
   }, []);
 
   const removeDuressPin = useCallback(() => clearDuressVault(), []);

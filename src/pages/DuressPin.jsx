@@ -3,26 +3,38 @@
 // DURESS PIN / DECOY WALLET  (S3 — individual security).  PROVISIONAL.
 //
 // Lets the user configure a SECONDARY "duress" password. Entered at the normal
-// unlock prompt, it opens a DECOY wallet (a real but separate, empty vault)
-// instead of the real one — plausible deniability under coercion.
+// unlock prompt, it opens a DECOY wallet (a real, separate vault) instead of the
+// real one — plausible deniability under coercion.
 //
 // This page routes through the EXISTING unlock flow (useWallet().unlock) and the
 // existing keystore/crypto. The decoy is a real, separately-encrypted vault; see
 // src/wallet-core/duress.js for the design and its honest limitations.
 //
+// DECOY BALANCE (this change): a decoy is only convincing if it holds a SMALL,
+// REAL, block-explorer-verifiable amount — a coercer can paste the decoy address
+// into Etherscan, so a faked UI number would expose it. The balance shown here is
+// resolved by src/lib/decoyBalance.js:
+//   - real/native : a live on-chain eth_getBalance read (same source of truth as
+//                   the rest of the wallet) — never a hardcoded number.
+//   - demo        : a SEEDED amount (a fresh decoy address can't hold live funds
+//                   on a simulator), clearly labelled as a demo simulation.
+//
 // DEMO vs NATIVE:
-//   - The setup card (set / remove duress PIN) works everywhere.
+//   - The setup card (set / remove duress PIN, fund the decoy) works everywhere.
 //   - The "Live demonstration" card is DEMO-gated: it creates a throwaway real
-//     vault + decoy in the browser's IndexedDB and exercises the REAL unlock
-//     path so the decoy behaviour can be shown on the simulator. On native you
-//     test by locking and unlocking with the duress password at the real unlock
-//     screen.
+//     vault + decoy, seeds a small plausible decoy balance, and exercises the
+//     REAL unlock path so the behaviour is demonstrable on the simulator.
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import {
+  resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
+} from "@/lib/decoyBalance";
+import { getNetworkInfo } from "@/wallet-core/evm/networks";
+import {
   Shield, Eye, EyeOff, CheckCircle2, AlertTriangle, Lock, Unlock, FlaskConical,
+  Copy, Check, RefreshCw, Coins, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,9 +44,43 @@ import { Label } from "@/components/ui/label";
 // DEMO ONLY — never used outside the demonstration panel.
 const DEMO_REAL_PW = "real-pin-2468";
 const DEMO_DURESS_PW = "duress-pin-1357";
+// A small, plausible decoy balance to seed in the demo (ETH). Small enough to be
+// "an amount you'd sacrifice", non-zero so the decoy looks lived-in.
+const DEMO_DECOY_ETH = "0.0412";
+
+const NET = getNetworkInfo(DECOY_NETWORK_KEY);
 
 function short(addr) {
   return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "—";
+}
+
+// Reads and shows the decoy's native testnet balance. REAL on-chain read in
+// real/native builds; SEEDED (clearly labelled) in demo. Never a hardcoded value.
+function DecoyBalance({ address, refreshKey }) {
+  const [state, setState] = useState({ loading: true });
+  useEffect(() => {
+    let active = true;
+    setState({ loading: true });
+    resolveDecoyBalance(address)
+      .then((r) => { if (active) setState({ loading: false, ...r }); })
+      .catch((e) => { if (active) setState({ loading: false, error: e?.message || "read failed" }); });
+    return () => { active = false; };
+  }, [address, refreshKey]);
+
+  if (!address) return null;
+  if (state.loading) return <span className="text-xs text-muted-foreground">reading balance…</span>;
+  if (state.error) {
+    return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">balance unavailable</span>;
+  }
+  const eth = Number(state.eth);
+  return (
+    <span className="text-sm font-semibold">
+      {eth.toLocaleString(undefined, { maximumFractionDigits: 6 })} {NET?.symbol || "ETH"}
+      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+        {state.source === "chain" ? "(live on-chain)" : "(demo — simulated)"}
+      </span>
+    </span>
+  );
 }
 
 export default function DuressPin() {
@@ -52,7 +98,10 @@ export default function DuressPin() {
   const [showPin, setShowPin] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [savedPhrase, setSavedPhrase] = useState(""); // decoy mnemonic shown once
+  const [savedPhrase, setSavedPhrase] = useState("");   // decoy mnemonic (shown once)
+  const [savedAddr, setSavedAddr] = useState("");       // decoy address (to fund)
+  const [copied, setCopied] = useState("");
+  const [balRefresh, setBalRefresh] = useState(0);      // bump to re-read balances
 
   // ----- live demo state -----
   const [vaultExists, setVaultExists] = useState(false);
@@ -68,15 +117,23 @@ export default function DuressPin() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const copy = (text, id) => {
+    navigator.clipboard?.writeText(text);
+    setCopied(id); setTimeout(() => setCopied(""), 1500);
+  };
+
   // ----- setup handlers -----
   const handleSave = async () => {
-    setError(""); setSavedPhrase("");
+    setError(""); setSavedPhrase(""); setSavedAddr("");
     if (pin.length < 4) { setError("Duress PIN must be at least 4 characters"); return; }
     if (pin !== confirmPin) { setError("PINs do not match"); return; }
     setSaving(true);
     try {
-      const phrase = await setDuressPin(pin);
-      setSavedPhrase(phrase);
+      // setDuressPin now returns { mnemonic, address } so the user can FUND the
+      // decoy. The decoy is a real wallet that can actually receive testnet funds.
+      const { mnemonic, address } = await setDuressPin(pin);
+      setSavedPhrase(mnemonic);
+      setSavedAddr(address);
       setPin(""); setConfirmPin("");
       await refresh();
     } catch (e) {
@@ -88,8 +145,14 @@ export default function DuressPin() {
 
   const handleRemove = async () => {
     setSaving(true);
-    try { await removeDuressPin(); setSavedPhrase(""); await refresh(); }
+    try { await removeDuressPin(); setSavedPhrase(""); setSavedAddr(""); await refresh(); }
     finally { setSaving(false); }
+  };
+
+  // DEMO ONLY: simulate funding the decoy address with a plausible small balance.
+  const handleDemoFund = (address, eth = DEMO_DECOY_ETH) => {
+    seedDemoDecoyBalance(address, eth);
+    setBalRefresh((n) => n + 1);
   };
 
   // ----- demo handlers (use the REAL unlock path) -----
@@ -103,8 +166,11 @@ export default function DuressPin() {
       // Capture the real address as a demo "oracle" so we can later prove the
       // decoy session never exposes it. (Real apps never show this.)
       if (accounts?.[0]?.address) setRealAddr(accounts[0].address);
-      // Configure the decoy.
-      await setDuressPin(DEMO_DURESS_PW);
+      // Configure the decoy and SEED a small plausible balance on its address so
+      // the decoy looks funded (demo simulation of a real on-chain top-up).
+      const { address } = await setDuressPin(DEMO_DURESS_PW);
+      seedDemoDecoyBalance(address, DEMO_DECOY_ETH);
+      setBalRefresh((n) => n + 1);
       lock();
       await refresh();
     } catch (e) {
@@ -118,6 +184,7 @@ export default function DuressPin() {
     setTryErr(""); setBusy("Unlocking…");
     try {
       await unlock(pw);
+      setBalRefresh((n) => n + 1);
     } catch (e) {
       // SAME generic error whether or not a duress vault exists — no tell.
       setTryErr(e?.message || "Unlock failed");
@@ -147,6 +214,7 @@ export default function DuressPin() {
   }, [isUnlocked, isDecoy, accounts]);
 
   const currentAddr = accounts?.[0]?.address;
+  const explorerAddr = (a) => NET?.explorer ? `${NET.explorer}/address/${a}` : null;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -175,13 +243,33 @@ export default function DuressPin() {
             <p className="text-xs text-muted-foreground mt-1">
               Set a duress PIN that is different from your real one. If you are
               ever coerced into unlocking, enter the <b>duress PIN</b> at the
-              normal unlock screen. The app opens a separate, empty <b>decoy
-              wallet</b> with its own address. Your real wallet stays encrypted
-              and is not referenced anywhere in the decoy session — to an
-              observer there is no sign it exists.
+              normal unlock screen. The app opens a separate <b>decoy wallet</b>{" "}
+              with its own address. Your real wallet stays encrypted and is not
+              referenced anywhere in the decoy session — to an observer there is no
+              sign it exists.
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Plausibility model — be honest about what makes a decoy convincing */}
+      <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
+        <div className="flex items-center gap-2">
+          <Coins className="h-4 w-4 text-primary" />
+          <p className="text-sm font-semibold">Make the decoy plausible: fund it</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          An <b>empty</b> decoy is suspicious — why protect a wallet with nothing
+          in it? Send a small amount you're willing to sacrifice to the decoy
+          address (below). The balance shown is read{" "}
+          <b>live from the chain</b> (the same number a coercer sees if they check
+          the address on a block explorer), so it can't be a fake display value.
+        </p>
+        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+          <li>Honest limits: a freshly funded decoy has <b>no transaction history</b>, so it can look less "lived-in" than a wallet used over time.</li>
+          <li>A <b>sophisticated coercer</b> who knows this feature exists, or who inspects device storage, may still suspect a hidden wallet. This is runtime deniability, not steganographic hiding.</li>
+          <li>Provisional, testnet-only, pending independent audit.</li>
+        </ul>
       </div>
 
       {/* Setup card */}
@@ -241,13 +329,54 @@ export default function DuressPin() {
         </div>
 
         {savedPhrase && (
-          <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs space-y-2">
+          <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs space-y-3">
             <p className="font-medium text-green-600">✓ Duress PIN saved. Decoy wallet created.</p>
-            <p className="text-muted-foreground">
-              Decoy recovery phrase (write it down if you want to fund the decoy
-              wallet with a plausible small balance — otherwise it stays empty):
-            </p>
-            <code className="block break-words rounded bg-background p-2 text-foreground">{savedPhrase}</code>
+
+            {/* Fund target: the decoy's REAL address + its live balance. */}
+            {savedAddr && (
+              <div className="space-y-1.5">
+                <p className="text-muted-foreground">
+                  Fund the decoy (send a small {NET?.symbol || "ETH"} amount on{" "}
+                  {NET?.name || "the testnet"} you're willing to sacrifice):
+                </p>
+                <div className="flex items-center gap-2 p-2 rounded bg-background">
+                  <code className="flex-1 break-all text-foreground">{savedAddr}</code>
+                  <button onClick={() => copy(savedAddr, "decoy-addr")} title="Copy decoy address" className="shrink-0">
+                    {copied === "decoy-addr" ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Decoy balance:</span>
+                  <DecoyBalance address={savedAddr} refreshKey={balRefresh} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setBalRefresh((n) => n + 1)} className="inline-flex items-center gap-1 text-primary">
+                    <RefreshCw className="h-3 w-3" /> Refresh
+                  </button>
+                  {explorerAddr(savedAddr) && (
+                    <a href={explorerAddr(savedAddr)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary">
+                      <ExternalLink className="h-3 w-3" /> View on explorer
+                    </a>
+                  )}
+                  {DEMO && (
+                    <button onClick={() => handleDemoFund(savedAddr)} className="inline-flex items-center gap-1 text-primary">
+                      <Coins className="h-3 w-3" /> Simulate funding ({DEMO_DECOY_ETH})
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Get free testnet {NET?.symbol || "ETH"} from a public faucet, then send a little here.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <p className="text-muted-foreground">
+                Decoy recovery phrase (back this up only if you want to manage the
+                decoy from another wallet — otherwise it lives in this app):
+              </p>
+              <code className="block break-words rounded bg-background p-2 text-foreground mt-1">{savedPhrase}</code>
+            </div>
           </div>
         )}
       </div>
@@ -262,12 +391,13 @@ export default function DuressPin() {
           <p className="text-xs text-muted-foreground">
             Exercises the real unlock flow. Step 1 creates a throwaway real wallet
             (password <code>{DEMO_REAL_PW}</code>) and a decoy (duress password{" "}
-            <code>{DEMO_DURESS_PW}</code>). Then unlock with either to compare.
+            <code>{DEMO_DURESS_PW}</code>) seeded with a small{" "}
+            {NET?.symbol || "ETH"} balance. Then unlock with either to compare.
           </p>
 
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" disabled={!!busy} onClick={demoSetup}>
-              1. Set up real + decoy
+              1. Set up real + funded decoy
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_REAL_PW)}>
               <Unlock className="h-3.5 w-3.5 mr-1" /> Unlock with REAL PIN
@@ -317,11 +447,14 @@ export default function DuressPin() {
                     : <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-600 text-xs font-semibold">REAL WALLET</span>}
                 </div>
                 <p className="font-mono text-xs">Address: {short(currentAddr)}</p>
-                <p className="text-xs text-muted-foreground">Testnet balance: 0 (empty)</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Testnet balance:</span>
+                  <DecoyBalance address={currentAddr} refreshKey={balRefresh} />
+                </div>
                 {isDecoy ? (
                   <p className="text-xs text-muted-foreground">
-                    This session exposes only the decoy address above. The real
-                    wallet is not derived, named, or referenced here.
+                    This session exposes only the decoy address + its real balance
+                    above. The real wallet is not derived, named, or referenced here.
                   </p>
                 ) : null}
                 {/* DEMO ORACLE — proves the decoy never shows the real address.
@@ -346,8 +479,9 @@ export default function DuressPin() {
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
             To test: lock your wallet, then unlock with your duress PIN — the app
-            opens the decoy wallet. ⚠️ Never share your Duress PIN. If you forget
-            it, remove and reset it from this page using your normal login.
+            opens the decoy wallet showing its real on-chain balance. ⚠️ Never
+            share your Duress PIN. If you forget it, remove and reset it from this
+            page using your normal login.
           </p>
         </div>
       )}
