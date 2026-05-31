@@ -551,12 +551,12 @@ export default function Layout() {
 
       {/* ── Mobile More Drawer ── */}
       {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col bg-background" style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
-          <div className="flex items-center justify-between px-4 border-b border-border" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="flex items-center justify-between px-4 border-b border-border shrink-0" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
             <span className="font-semibold">All Features</span>
             <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-secondary"><X className="h-5 w-5" /></button>
           </div>
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {navGroups.map(group => {
               const color = groupColor(group.label);
               return (
