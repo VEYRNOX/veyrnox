@@ -1,6 +1,6 @@
 import { Settings2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -53,17 +53,12 @@ export default function DashboardWidgetSettings({ widgets, onChange }) {
           </button>
         </DrawerTrigger>
         <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader className="text-left">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">Customize Dashboard</p>
-                <p className="text-xs text-muted-foreground">Show or hide sections</p>
-              </div>
-              <DrawerClose asChild>
-                <Button variant="ghost" size="sm">Close</Button>
-              </DrawerClose>
-            </div>
-          </DrawerHeader>
+          {/* Close affordance only — WidgetContent already renders the title */}
+          <div className="flex justify-end px-2 pt-1">
+            <DrawerClose asChild>
+              <Button variant="ghost" size="sm" className="text-muted-foreground">Close</Button>
+            </DrawerClose>
+          </div>
           <WidgetContent />
         </DrawerContent>
       </Drawer>
