@@ -7,14 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { TOP_CRYPTOS } from "@/lib/cryptos";
 
-const CRYPTO_OPTIONS = [
-  { symbol: "BTC", name: "Bitcoin", icon: "₿", rate: 67500 },
-  { symbol: "ETH", name: "Ethereum", icon: "Ξ", rate: 2420 },
-  { symbol: "SOL", name: "Solana", icon: "◎", rate: 148 },
-  { symbol: "USDC", name: "USD Coin", icon: "$", rate: 1 },
-  { symbol: "USDT", name: "Tether", icon: "₮", rate: 1 },
-];
+// Top 10 by market cap, from the canonical source.
+const CRYPTO_OPTIONS = TOP_CRYPTOS.map(c => ({
+  symbol: c.symbol, name: c.name, icon: c.glyph, rate: c.usd,
+}));
 
 const FIAT_OPTIONS = ["USD", "GBP", "EUR", "CAD", "AUD"];
 

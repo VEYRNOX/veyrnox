@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import moment from "moment";
+import { TOP_SYMBOLS } from "@/lib/cryptos";
 
-const AVAILABLE_ASSETS = ["BTC", "ETH", "SOL", "USDC", "USDT", "BNB", "ADA", "AVAX", "MATIC", "LINK"];
+const AVAILABLE_ASSETS = TOP_SYMBOLS;
 
 export default function Community() {
   const queryClient = useQueryClient();

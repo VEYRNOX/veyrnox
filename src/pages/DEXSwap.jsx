@@ -8,14 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import { TOP_CRYPTOS } from "@/lib/cryptos";
 
-const TOKENS = [
-  { symbol: "ETH", name: "Ethereum", price: 3200, color: "#627EEA", icon: "Ξ" },
-  { symbol: "BTC", name: "Bitcoin", price: 68000, color: "#F7931A", icon: "₿" },
-  { symbol: "SOL", name: "Solana", price: 165, color: "#9945FF", icon: "◎" },
-  { symbol: "USDC", name: "USD Coin", price: 1, color: "#2775CA", icon: "Ⓢ" },
-  { symbol: "USDT", name: "Tether", price: 1, color: "#26A17B", icon: "₮" },
-];
+// Top 10 by market cap, from the canonical source.
+const TOKENS = TOP_CRYPTOS.map(c => ({
+  symbol: c.symbol, name: c.name, price: c.usd, color: c.color, icon: c.glyph,
+}));
 
 const PROTOCOLS = [
   { name: "Uniswap v3", fee: 0.3, liquidity: "High", icon: "🦄" },
