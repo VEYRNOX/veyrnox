@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from "recharts";
+import { ResponsiveContainer, ComposedChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from "recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
 

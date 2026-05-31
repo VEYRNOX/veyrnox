@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, ReferenceLine
+  ResponsiveContainer, CartesianGrid
 } from "recharts";
 import moment from "moment";
 

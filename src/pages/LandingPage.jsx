@@ -2,10 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-  Shield, Smartphone, Lock, Zap, Globe, TrendingUp, Eye, ArrowRight,
-  CheckCircle2, ArrowDownUp, Wallet, Bell, BarChart3, Key, Menu, X,
-  Sparkles, BadgeCheck, Star, Download, Repeat2, Fingerprint, ShieldCheck,
-  CreditCard, LineChart, Coins, Bot
+  Shield, Smartphone, Lock, Zap, TrendingUp, Eye, ArrowRight,
+  CheckCircle2, ArrowDownUp, Bell, BarChart3, Key, Menu, X
 } from "lucide-react";
 
 export default function LandingPage() {

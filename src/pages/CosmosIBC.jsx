@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Globe, ArrowRight, Send, Copy, Check, ExternalLink, Layers, Vote, TrendingUp } from "lucide-react";
+import { Globe, ArrowRight, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
