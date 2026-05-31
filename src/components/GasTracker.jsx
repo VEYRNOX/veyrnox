@@ -21,8 +21,22 @@ async function fetchFees() {
       standard: parseFloat(eth.ProposeGasPrice),
       fast: parseFloat(eth.FastGasPrice),
     } : null,
-    sol: { slow: 0.000005, standard: 0.000005, fast: 0.00025 },
+    // Solana is NOT built as a chain yet (no signing stack) — these are STATIC
+    // PLACEHOLDER fees, not live data. Expressed in lamports (1 SOL = 1e9
+    // lamports), the unit Solana fees are actually quoted in: the 5,000-lamport
+    // base fee per signature, with a priority-fee estimate for "fast". Showing
+    // lamports keeps the numbers readable instead of "0.000005 SOL".
+    sol: { slow: 5000, standard: 5000, fast: 250000 },
   };
+}
+
+// Format a fee value for display: tiny fractions get fixed decimals; whole
+// numbers (sat/vB, Gwei, lamports) get thousands separators so large values
+// like 250,000 stay readable. Non-finite (e.g. a failed fetch) renders as "—".
+function formatFee(val) {
+  if (val == null || (typeof val === "number" && !Number.isFinite(val))) return null;
+  if (typeof val !== "number") return val;
+  return val < 0.01 ? val.toFixed(6) : val.toLocaleString();
 }
 
 function congestionColor(level) {
@@ -60,15 +74,18 @@ function FeeRow({ icon, name, slow, standard, fast, unit, congestion }) {
         </span>
       </div>
       <div className="flex-1 grid grid-cols-3 gap-1 text-right">
-        {[["Slow", slow], ["Avg", standard], ["Fast", fast]].map(([label, val]) => (
-          <div key={label}>
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{label}</p>
-            <p className="text-xs font-mono font-semibold">
-              {val != null ? `${typeof val === "number" && val < 0.01 ? val.toFixed(6) : val}` : "—"}
-              <span className="text-[9px] text-muted-foreground ml-0.5">{unit}</span>
-            </p>
-          </div>
-        ))}
+        {[["Slow", slow], ["Avg", standard], ["Fast", fast]].map(([label, val]) => {
+          const display = formatFee(val);
+          return (
+            <div key={label}>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{label}</p>
+              <p className="text-xs font-mono font-semibold">
+                {display != null ? display : "—"}
+                {display != null && <span className="text-[9px] text-muted-foreground ml-0.5">{unit}</span>}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -139,7 +156,7 @@ export default function GasTracker() {
             slow={fees?.sol?.slow}
             standard={fees?.sol?.standard}
             fast={fees?.sol?.fast}
-            unit="SOL"
+            unit="lamports"
             congestion={solCongestion}
           />
         </div>

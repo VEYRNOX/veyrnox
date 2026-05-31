@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import VeyrnoxLogo from "@/components/VeyrnoxLogo";
+import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -42,9 +43,11 @@ export default function Login() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Sign In
           </Button>
-          <Button type="button" variant="outline" className="w-full" onClick={() => base44.auth.loginWithProvider("google", "/")}>
-            Continue with Google
-          </Button>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">or</span></div>
+          </div>
+          <SocialAuthButtons redirect="/" />
         </form>
         <div className="text-center text-sm space-y-1">
           <Link to="/forgot-password" className="text-muted-foreground hover:text-foreground">Forgot password?</Link>
