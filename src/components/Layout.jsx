@@ -556,7 +556,7 @@ export default function Layout() {
             <span className="font-semibold">All Features</span>
             <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-secondary"><X className="h-5 w-5" /></button>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {navGroups.map(group => {
               const color = groupColor(group.label);
               return (
