@@ -25,6 +25,12 @@ import React, { createContext, useContext, useRef, useState, useCallback, useEff
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { getKeyStore } from '@/wallet-core/keystore';
+import {
+  tryDuressUnlock,
+  setDuressVault,
+  clearDuressVault,
+  hasDuressVault,
+} from '@/wallet-core/duress';
 import { isBiometricUnlockEnabled, getBiometricStatus } from '@/lib/biometric';
 import {
   loadAutoLockValue,
@@ -47,6 +53,11 @@ const keyStore = getKeyStore();
 export function WalletProvider({ children }) {
   const mnemonicRef = useRef(null);      // LIVE SECRET while unlocked
   const [isUnlocked, setUnlocked] = useState(false);
+  // DURESS / DECOY (S3): true when the CURRENT session was opened with the
+  // duress password (a decoy vault) rather than the real one. Internal flag for
+  // app logic; the normal wallet UI deliberately does NOT surface it, so a
+  // coercer sees no "decoy mode" indicator. See wallet-core/duress.js.
+  const [isDecoy, setIsDecoy] = useState(false);
   const [accounts, setAccounts] = useState([]); // public only: {address, path, index}
   const lockTimer = useRef(null);
 
@@ -107,6 +118,7 @@ export function WalletProvider({ children }) {
     }
     mnemonicRef.current = null;
     setUnlocked(false);
+    setIsDecoy(false);
     setAccounts([]);
     keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
   }, []);
@@ -188,6 +200,7 @@ export function WalletProvider({ children }) {
     await keyStore.createVault(mnemonic, password);
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
+    setIsDecoy(false);
     touch();
     deriveAccounts(1);
     // Return mnemonic ONCE for the user to back up; caller must not persist it.
@@ -200,6 +213,7 @@ export function WalletProvider({ children }) {
     await keyStore.createVault(mnemonic, password);
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
+    setIsDecoy(false);
     touch();
     deriveAccounts(1);
   }, [deriveAccounts, touch]);
@@ -212,9 +226,26 @@ export function WalletProvider({ children }) {
     await runBiometricGate();
     // keyStore.unlock throws "No wallet found on this device" when absent and
     // rethrows decryptVault's wrong-password/tamper error — same as before.
-    const mnemonic = await keyStore.unlock(password);
+    let mnemonic;
+    let decoy = false;
+    try {
+      mnemonic = await keyStore.unlock(password);
+    } catch (primaryErr) {
+      // DURESS / DECOY (S3). The primary unlock failed. BEFORE surfacing that
+      // failure, check whether this password opens a DECOY (duress) vault. On a
+      // miss we re-throw the ORIGINAL error, so the message, behaviour, and
+      // work-per-attempt are identical whether or not a duress vault exists —
+      // the duress path leaves no tell at the unlock prompt. tryDuressUnlock
+      // returns null (never throws) on a wrong password / no decoy configured.
+      // See wallet-core/duress.js for the design and its honest limitations.
+      const decoyMnemonic = await tryDuressUnlock(password);
+      if (decoyMnemonic == null) throw primaryErr;
+      mnemonic = decoyMnemonic;
+      decoy = true;
+    }
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
+    setIsDecoy(decoy);
     touch();
     deriveAccounts(1);
   }, [deriveAccounts, touch, runBiometricGate]);
@@ -244,10 +275,33 @@ export function WalletProvider({ children }) {
     return fn(privateKey);
   }, [touch]);
 
+  // DURESS / DECOY management (S3). Configure or remove the decoy vault that the
+  // duress password opens. setDuressPin generates a FRESH decoy BIP-39 mnemonic,
+  // encrypts it with the duress password via the SAME crypto as the primary
+  // vault, and persists it (see wallet-core/duress.js). It returns the decoy
+  // mnemonic ONCE so the demo can display a backup; callers must not persist the
+  // return value. The duress password must differ from the real one (the caller
+  // validates) — if they matched, the primary unlock would win and the decoy
+  // would never open. These never touch networks/signing: testnet-safe.
+  const setDuressPin = useCallback(async (duressPassword, strength = 128) => {
+    const decoyMnemonic = generateMnemonic(strength);
+    await setDuressVault(decoyMnemonic, duressPassword);
+    return decoyMnemonic;
+  }, []);
+
+  const removeDuressPin = useCallback(() => clearDuressVault(), []);
+
   const value = {
     isUnlocked,
+    // DURESS / DECOY (S3): is the current session a decoy? Off by default.
+    isDecoy,
     accounts,
     hasVault: keyStore.hasVault,
+    // Duress / decoy controls (see wallet-core/duress.js). hasDuressPin() is the
+    // raw store check; set/remove manage the decoy vault.
+    hasDuressPin: hasDuressVault,
+    setDuressPin,
+    removeDuressPin,
     createWallet,
     importWallet,
     unlock,
