@@ -453,7 +453,7 @@ export default function Layout() {
       </AnimatePresence>
 
       {/* ── Main Content — Mobile (all 4 root tabs stay mounted) ── */}
-      <div id="main-scroll" className="md:hidden flex-1 min-h-0 overflow-auto overscroll-contain pb-28" role="region" aria-label="Main content">
+      <div id="main-scroll" className="md:hidden flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] pb-28" role="region" aria-label="Main content">
         {/* Sub-pages: rendered via Outlet only when not on a root tab with slide transition */}
         <AnimatePresence mode="wait">
           {!MOBILE_TABS.includes(location.pathname) && (
