@@ -1,149 +1,169 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { ShieldAlert, Eye, EyeOff, CheckCircle, Trash2, Plus, Filter } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { DEMO } from "@/api/demoClient";
+import { annotateTokens } from "@/wallet-core/evm/spam";
+import { getNetworkInfo } from "@/wallet-core/evm/networks";
+import { ShieldAlert, Eye, EyeOff, Filter, AlertTriangle, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
-const STORAGE_KEY = "spam-filter-config";
-const DEFAULT_CONFIG = {
-  hide_zero_balance: true,
-  hide_dust_below_usd: 1,
-  hide_unknown_tokens: false,
-  auto_hide_airdrops: true,
-};
+// User per-token overrides ('show' un-hides a flagged token, 'hide' hides a clean
+// one). Persisted locally — display preference only, never on-chain state.
+const OVERRIDES_KEY = "veyrnox-spam-overrides";
 
-const MOCK_TOKENS = [
-  { id: "s1", symbol: "SHIB2", name: "Shiba Inu V2 (fake)", balance: 1000000, value_usd: 0.0001, flagged: true, reason: "Known scam airdrop" },
-  { id: "s2", symbol: "FREE", name: "FreeToken Airdrop", balance: 50000, value_usd: 0.0, flagged: true, reason: "Zero-value airdrop" },
-  { id: "s3", symbol: "DUST", name: "Unknown Token", balance: 0.000001, value_usd: 0.001, flagged: true, reason: "Dust amount" },
-  { id: "s4", symbol: "UNI", name: "Uniswap", balance: 0.0001, value_usd: 0.0009, flagged: false, reason: "Dust balance" },
-];
+function loadOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem(OVERRIDES_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function TokenRow({ t, onToggle }) {
+  const net = getNetworkInfo(t.network);
+  return (
+    <div className={`p-3 rounded-xl border bg-card ${t.hidden ? "opacity-70 border-dashed border-border" : "border-border"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${t.spam ? "bg-destructive/10 text-destructive" : "bg-secondary text-foreground"}`}>
+            {t.spam ? <ShieldAlert className="h-4 w-4" /> : (t.symbol || "?").slice(0, 2)}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-sm font-semibold truncate">{t.symbol}</span>
+              {t.verified && <BadgeCheck className="h-3.5 w-3.5 text-green-500 shrink-0" />}
+              <span className="text-xs text-muted-foreground font-normal truncate">{t.name}</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {t.balance?.toLocaleString(undefined, { maximumFractionDigits: 6 })} {t.symbol}
+              {" · "}${(Number(t.value_usd) || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              {net ? ` · ${net.name}` : ""}
+            </p>
+            {t.spam && t.reasons.length > 0 && (
+              <ul className="mt-1.5 space-y-0.5">
+                {t.reasons.map((r, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-[11px] text-destructive">
+                    <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                    <span>{r}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="gap-1.5 text-xs h-8 shrink-0"
+          onClick={() => onToggle(t)}
+        >
+          {t.hidden ? <><Eye className="h-3.5 w-3.5" /> Unhide</> : <><EyeOff className="h-3.5 w-3.5" /> Hide</>}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function SpamTokenFilter() {
-  const [config, setConfig] = useState(() => {
-    const s = localStorage.getItem(STORAGE_KEY);
-    return s ? { ...DEFAULT_CONFIG, ...JSON.parse(s) } : DEFAULT_CONFIG;
+  const [overrides, setOverrides] = useState(loadOverrides);
+  const [showHidden, setShowHidden] = useState(false);
+
+  const { data: tokens = [], isLoading } = useQuery({
+    queryKey: ["wallet-tokens"],
+    queryFn: () => base44.entities.WalletToken.list(),
   });
-  const [customBlocked, setCustomBlocked] = useState(() => {
-    const s = localStorage.getItem("custom-blocked-tokens");
-    return s ? JSON.parse(s) : [];
-  });
-  const [newToken, setNewToken] = useState("");
 
-  const save = (updates) => {
-    const c = { ...config, ...updates };
-    setConfig(c);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
+  const annotated = useMemo(() => annotateTokens(tokens, overrides), [tokens, overrides]);
+  const visible = annotated.filter((t) => !t.hidden);
+  const hidden = annotated.filter((t) => t.hidden);
+
+  // Toggle a token's hidden state by writing an explicit override that flips its
+  // CURRENT displayed state, then persist. The override always wins over the
+  // heuristic, so the user can never be overruled by the filter.
+  const toggle = (t) => {
+    const next = { ...overrides, [t.id]: t.hidden ? "show" : "hide" };
+    setOverrides(next);
+    try {
+      localStorage.setItem(OVERRIDES_KEY, JSON.stringify(next));
+    } catch {
+      /* localStorage unavailable — in-memory only for this session */
+    }
   };
-
-  const addBlock = () => {
-    if (!newToken.trim()) return;
-    const list = [...customBlocked, newToken.trim().toUpperCase()];
-    setCustomBlocked(list);
-    localStorage.setItem("custom-blocked-tokens", JSON.stringify(list));
-    setNewToken("");
-  };
-
-  const removeBlock = (t) => {
-    const list = customBlocked.filter(b => b !== t);
-    setCustomBlocked(list);
-    localStorage.setItem("custom-blocked-tokens", JSON.stringify(list));
-  };
-
-  const RULES = [
-    { key: "hide_zero_balance", label: "Hide zero-balance tokens", desc: "Tokens with 0 balance are hidden from the wallet view" },
-    { key: "auto_hide_airdrops", label: "Auto-hide suspicious airdrops", desc: "Tokens airdropped without interaction are flagged and hidden" },
-    { key: "hide_unknown_tokens", label: "Hide unverified tokens", desc: "Only show tokens from verified contract lists (e.g. CoinGecko)" },
-  ];
-
-  const flaggedCount = MOCK_TOKENS.filter(t => t.flagged).length;
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2"><Filter className="h-5 w-5 text-primary" /> Token Spam Filter</h1>
-        <p className="text-sm text-muted-foreground">Hide dust, scam tokens, and unsolicited airdrops</p>
-      </div>
-
-      <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 flex items-start gap-3">
-        <ShieldAlert className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">{flaggedCount} suspicious tokens detected</p>
-          <p className="text-xs text-muted-foreground mt-0.5">These tokens have been flagged as potential scams or worthless airdrops.</p>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Filter className="h-5 w-5 text-primary" /> Spam Token Filter
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Likely scam and airdropped tokens are hidden from your holdings. Hiding is
+            display-only — it never touches balances or keys, and you can unhide anything.
+          </p>
         </div>
+        <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
+          {DEMO ? "Demo · seeded" : "Testnet"}
+        </span>
       </div>
 
-      {/* Filter rules */}
-      <div className="space-y-2">
-        <p className="text-sm font-semibold">Filter Rules</p>
-        {RULES.map(r => (
-          <div key={r.key} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
-            <div><p className="text-sm font-medium">{r.label}</p><p className="text-xs text-muted-foreground">{r.desc}</p></div>
-            <Switch checked={config[r.key]} onCheckedChange={v => save({ [r.key]: v })} />
+      {hidden.length > 0 && (
+        <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 flex items-start gap-3">
+          <ShieldAlert className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold">
+              {hidden.length} token{hidden.length > 1 ? "s" : ""} hidden as likely spam
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Flagged by name/symbol lures, unsolicited airdrops, or zero market value.
+              These are heuristics, not a guarantee — review and unhide anything legitimate.
+            </p>
           </div>
-        ))}
-        <div className="p-4 rounded-xl border border-border bg-card">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-sm font-medium">Hide dust below</p>
-              <p className="text-xs text-muted-foreground">Hide tokens worth less than this USD amount</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-sm">$</span>
-            <Input type="number" min="0" step="0.1" value={config.hide_dust_below_usd} onChange={e => save({ hide_dust_below_usd: parseFloat(e.target.value) || 0 })} className="w-24" />
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs h-8 shrink-0"
+            onClick={() => setShowHidden((v) => !v)}
+          >
+            {showHidden ? <><EyeOff className="h-3.5 w-3.5" /> Hide spam</> : <><Eye className="h-3.5 w-3.5" /> Show hidden ({hidden.length})</>}
+          </Button>
         </div>
-      </div>
+      )}
 
-      {/* Detected spam */}
       <div>
-        <p className="text-sm font-semibold mb-2">Detected Spam Tokens</p>
+        <p className="text-sm font-semibold mb-2">Your Tokens</p>
+        {isLoading && <p className="text-sm text-muted-foreground">Loading tokens…</p>}
+        {!isLoading && visible.length === 0 && (
+          <div className="p-8 text-center text-sm text-muted-foreground rounded-xl border border-dashed border-border">
+            No tokens to show.
+          </div>
+        )}
         <div className="space-y-2">
-          {MOCK_TOKENS.filter(t => t.flagged).map(t => (
-            <div key={t.id} className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center text-xs font-bold">{t.symbol.slice(0, 2)}</div>
-                <div>
-                  <p className="text-sm font-medium">{t.symbol} <span className="text-xs text-muted-foreground font-normal">({t.name})</span></p>
-                  <p className="text-[10px] text-destructive">{t.reason}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">${t.value_usd.toFixed(4)}</span>
-                {config.auto_hide_airdrops || config.hide_zero_balance ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
-            </div>
+          {visible.map((t) => (
+            <TokenRow key={t.id} t={t} onToggle={toggle} />
           ))}
         </div>
       </div>
 
-      {/* Custom blocklist */}
-      <div>
-        <p className="text-sm font-semibold mb-2">Custom Blocked Tokens</p>
-        <div className="flex gap-2 mb-3">
-          <Input placeholder="Token symbol e.g. SCAMTOKEN" value={newToken} onChange={e => setNewToken(e.target.value)} onKeyDown={e => e.key === "Enter" && addBlock()} />
-          <Button onClick={addBlock} disabled={!newToken.trim()} className="gap-1"><Plus className="h-4 w-4" /> Block</Button>
-        </div>
-        {customBlocked.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No custom blocks added</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {customBlocked.map(t => (
-              <div key={t} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold border border-destructive/20">
-                {t}
-                <button onClick={() => removeBlock(t)} className="hover:opacity-70"><Trash2 className="h-3 w-3" /></button>
-              </div>
+      {showHidden && hidden.length > 0 && (
+        <div>
+          <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+            <EyeOff className="h-4 w-4 text-muted-foreground" /> Hidden Tokens
+          </p>
+          <div className="space-y-2">
+            {hidden.map((t) => (
+              <TokenRow key={t.id} t={t} onToggle={toggle} />
             ))}
           </div>
-        )}
+        </div>
+      )}
+
+      <div className="p-3 rounded-xl bg-secondary/50 border border-border">
+        <p className="text-xs text-muted-foreground">
+          ⚠️ Filtering is a display convenience only — it changes nothing on-chain. We can't
+          guarantee a token is safe or unsafe; never interact with an unexpected airdropped
+          token (don't visit links in its name or "claim" it).
+        </p>
       </div>
     </div>
   );
