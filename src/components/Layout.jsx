@@ -277,7 +277,7 @@ export default function Layout() {
 
   return (
     <AccessibilityWrapper>
-    <div className="min-h-screen flex flex-col md:flex-row bg-background">
+    <div className="app-shell flex flex-col md:flex-row md:min-h-screen bg-background">
 
       {/* ── Desktop Sidebar ── */}
       <aside className={`hidden md:flex md:min-h-screen bg-card border-r border-border flex-col shrink-0 transition-all duration-300 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
@@ -453,7 +453,7 @@ export default function Layout() {
       </AnimatePresence>
 
       {/* ── Main Content — Mobile (all 4 root tabs stay mounted) ── */}
-      <div id="main-scroll" className="md:hidden flex-1 overflow-auto pb-28" role="region" aria-label="Main content">
+      <div id="main-scroll" className="md:hidden flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] pb-28" role="region" aria-label="Main content">
         {/* Sub-pages: rendered via Outlet only when not on a root tab with slide transition */}
         <AnimatePresence mode="wait">
           {!MOBILE_TABS.includes(location.pathname) && (
@@ -551,12 +551,12 @@ export default function Layout() {
 
       {/* ── Mobile More Drawer ── */}
       {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col bg-background" style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
-          <div className="flex items-center justify-between px-4 border-b border-border" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="flex items-center justify-between px-4 border-b border-border shrink-0" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
             <span className="font-semibold">All Features</span>
             <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-secondary"><X className="h-5 w-5" /></button>
           </div>
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+          <div className="flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {navGroups.map(group => {
               const color = groupColor(group.label);
               return (
