@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import moment from "moment";
-
-const USD_RATES = { BTC: 68000, ETH: 3200, SOL: 165 };
+import { USD_RATES, TOP_SYMBOLS } from "@/lib/cryptos";
 
 export default function CryptoLoans() {
   const queryClient = useQueryClient();
@@ -163,7 +162,7 @@ export default function CryptoLoans() {
                 <Select value={form.collateral_asset} onValueChange={v => setForm(f => ({ ...f, collateral_asset: v }))}>
                   <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["BTC","ETH","SOL"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {TOP_SYMBOLS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
