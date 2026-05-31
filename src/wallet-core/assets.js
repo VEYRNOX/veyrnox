@@ -50,7 +50,13 @@ export const ASSETS = Object.freeze([
   { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.RECEIVE_ONLY },
   { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.RECEIVE_ONLY },
   { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.RECEIVE_ONLY },
-  { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'bitcoin',   status: ASSET_STATUS.COMING_SOON },
+  // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
+  // the mainnet gate (btc/networks.js). Address derivation + live balance reads
+  // are wired now (receive_only). The SEND path (construct/sign/broadcast) is
+  // built and tested, but stays HARD-gated at receive_only until a real testnet
+  // send is verified on-chain and reviewed — only then does it flip to LIVE.
+  // `chain` points at the verified testnet network key in btc/networks.js.
+  { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'testnet',   status: ASSET_STATUS.RECEIVE_ONLY },
   { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'solana',    status: ASSET_STATUS.COMING_SOON },
 ]);
 

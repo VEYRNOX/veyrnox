@@ -15,10 +15,20 @@ describe('asset registry', () => {
   });
 
   it('coming_soon assets cannot send and cannot receive (no fake addresses)', () => {
+    // SOL is still coming_soon (no derivation wired yet) — no address, no send.
+    const sol = getAsset('SOL');
+    expect(sol.status).toBe(ASSET_STATUS.COMING_SOON);
+    expect(canSend(sol)).toBe(false);
+    expect(canReceive(sol)).toBe(false);
+  });
+
+  it('BTC (Phase BTC) is receive_only on testnet — real address, no send yet', () => {
     const btc = getAsset('BTC');
-    expect(btc.status).toBe(ASSET_STATUS.COMING_SOON);
-    expect(canSend(btc)).toBe(false);
-    expect(canReceive(btc)).toBe(false);
+    expect(btc.status).toBe(ASSET_STATUS.RECEIVE_ONLY);
+    expect(btc.family).toBe('btc');
+    expect(btc.chain).toBe('testnet');     // gated-aware BTC network key
+    expect(canReceive(btc)).toBe(true);     // real BIP-84 address derivable
+    expect(canSend(btc)).toBe(false);       // HARD-gated until a verified testnet send
   });
 
   it('classifies EVM family (incl. ERC-20) correctly', () => {
