@@ -257,6 +257,47 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
     true`) to PROVE nothing recoverable remains. See `src/wallet-core/panic.js`,
     `src/pages/PanicWipe.jsx`, `scripts/verify-panic.mjs`,
     `src/wallet-core/__tests__/panic.test.js`. Tests 129→137.
+- **Constant-KDF unlock timing across the deniability stack** ◈ — **IMPLEMENTED
+  (PROVISIONAL).** ⚠️ **DENIABILITY-SECURITY CHANGE — REQUIRES INDEPENDENT AUDIT
+  VALIDATION.** ⚠️ Addresses SAST finding **M2**: each deniability module
+  (`panic.js`/`duress.js`/`stealth.js`) analyzed its OWN unlock timing correctly
+  in isolation, but the COMBINED failed-unlock path ran a VARIABLE number of
+  Argon2id KDFs depending on which features were configured (2 none / 3 duress-or-
+  panic / 4 both, + the always-on stealth pool), and a successful duress unlock
+  short-circuited before stealth — so an attacker timing a few wrong guesses at the
+  prompt could infer the PRESENCE/COUNT of configured deniability features, exactly
+  what they must hide.
+  - **FIX.** `src/wallet-core/deniabilityUnlock.js` (`resolveDeniabilityUnlock`)
+    runs a CONSTANT number of KDFs (exactly 3: panic + duress + stealth) on EVERY
+    post-primary-miss resolution, regardless of configuration and with NO early-
+    return short-circuit: an ABSENT panic/duress feature is padded with a DUMMY KDF
+    on a throwaway chaff blob; the always-seeded stealth pool guarantees its reveal
+    is one KDF. `WalletProvider.unlock` evaluates all paths, then branches on the
+    results in priority order (panic > duress > hidden). A wrong password, a duress
+    hit, a hidden hit, and a panic hit all cost a constant 4 KDFs (1 primary + 3).
+  - **⚠️ WHY THIS NEEDS THE AUDIT (the blind spot).** This is a SELF-AUTHORED timing
+    fix to self-authored timing code — precisely the confirmation-biased blind spot
+    an independent audit exists to catch. The SAST claim and this fix rest on
+    code-reading + KDF-cost reasoning + a KDF-COUNT test, **NOT** a real timing-
+    harness measurement under device/scheduler/GC noise. The audit must (a) measure
+    actual wall-clock timing on-device across configs, (b) validate the constant-
+    count claim against the orchestration, and (c) assess the residuals below.
+  - **RESIDUAL TIMING VARIANCE (documented, not eliminated).** (1) A CORRECT PRIMARY
+    unlock returns after 1 KDF (never enters this path) and is faster than any other
+    outcome — this leaks only "the typed secret was the primary password" (learnable
+    only by someone who already holds it), NOT deniability-feature presence/count
+    (every non-primary outcome is an identical 4-KDF cost); equalizing it would 4x
+    every legitimate unlock, so we deliberately do not. (2) Non-KDF per-branch work
+    (an extra IndexedDB GET, the GCM tag check, mnemonic derivation on a hit) differs
+    by microseconds against ~100 ms KDFs — below the KDF-set measurement floor but
+    not provably zero. (3) If the at-rest KDF params change (SAST M3), keep the
+    dummy-KDF chaff blob's params in sync so the dummy COST still matches a real
+    attempt (the COUNT is invariant regardless).
+  - **TEST.** `src/wallet-core/__tests__/deniability-timing.test.js` wraps
+    hash-wasm's `argon2id` to count real KDF invocations and asserts a constant 3
+    across {none, duress, panic, both, hidden, all} configs on a wrong password,
+    plus that duress/hidden/panic HITS cost the same (no short-circuit tell). See
+    `src/wallet-core/deniabilityUnlock.js`, `src/lib/WalletProvider.jsx`.
 
 ### S3 — TREASURY / BUSINESS cluster (⚑ — the Direction-B wedge)
 > ⚑ These are NOT consumer features. They only matter if Veyrnox commits to the
