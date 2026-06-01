@@ -25,8 +25,10 @@
 //     decide, matching the existing security-feature philosophy.
 //   - Honest coverage: this catches KNOWN patterns (unlimited approval, known-bad
 //     / look-alike recipient, unverified contract, predicted revert, large
-//     outflow) and predicts the outcome via simulation. It is NOT equivalent to a
-//     commercial telemetry feed and will not catch every novel threat.
+//     outflow) plus LOCAL anomaly heuristics over the user's OWN history (unusual
+//     amount vs typical, large-to-new-recipient, approve-then-transfer — see
+//     anomaly.js) and predicts the outcome via simulation. It is NOT equivalent to
+//     a commercial telemetry feed and will not catch every novel threat.
 //
 // Lives under the guarded wallet-core path so the RNG tripwire covers it too.
 
@@ -35,6 +37,7 @@ import { getProvider } from './provider.js';
 import { describeErc20Call } from './calldata.js';
 import { TOKENS } from './tokens.js';
 import { screenRecipient, isLocallyFlagged } from './poison.js';
+import { assessHistoryAnomalies } from './anomaly.js';
 
 // Sending at/above this fraction of the asset balance is "drain-like" — worth a
 // flag so a user notices an unexpectedly large outflow (a classic drainer move).
@@ -127,6 +130,8 @@ export function assessEvmTransaction({
   targetIsContract = false,   // does the tx `to` have code?
   spenderIsContract = null,   // for approve: does the spender have code?
   largeOutflowRatio = LARGE_OUTFLOW_RATIO,
+  priorSends = [],            // past OUTFLOW amounts of the SAME asset (display units) — history baseline
+  knownCounterparties = [],   // addresses the user has transacted with / saved — for first-time-recipient
 } = {}) {
   const risks = [];
   const balanceChanges = [];
@@ -221,6 +226,30 @@ export function assessEvmTransaction({
   });
   if (outflow) risks.push(outflow);
 
+  // 7. ANOMALY / FRAUD heuristics vs the user's OWN on-device history (anomaly.js).
+  //    Complements the checks above: unusual amount vs your typical send, a large
+  //    amount to a first-time recipient, and the approve-then-transferFrom shape.
+  //    Pure + local — operates only over passed-in history/balances, no network.
+  let outflowAmount = 0;       // outflow in DISPLAY units, for the history comparison
+  let balanceNum = null;       // current balance in DISPLAY units, for the fraction check
+  if (kind === 'native') {
+    outflowAmount = Number(formatEther(toBig(valueWei)));
+    if (nativeBalanceWei != null) balanceNum = Number(formatEther(toBig(nativeBalanceWei)));
+  } else if (kind === 'transfer') {
+    outflowAmount = parseFloat(decoded?.amount);
+    if (tokenBalance != null) balanceNum = parseFloat(tokenBalance);
+  }
+  const anomalies = assessHistoryAnomalies({
+    kind,
+    effectiveRecipient,
+    amount: outflowAmount,
+    symbol: kind === 'native' ? nativeSymbol : tokenSymbol,
+    balanceNum,
+    priorSends,
+    knownCounterparties,
+  });
+  for (const a of anomalies) risks.push(a);
+
   return { kind, effectiveRecipient, balanceChanges, risks };
 }
 
@@ -240,6 +269,8 @@ export function assessEvmTransaction({
  * @param {number} [p.tokenDecimals]
  * @param {string} [p.tokenBalance]  sender token balance (decimal string) for outflow ratio
  * @param {Array}  [p.knownAddresses] history/book/whitelist for the look-alike screen
+ * @param {Array}  [p.priorSends]     past OUTFLOW amounts of the same asset (history baseline)
+ * @param {Array}  [p.knownCounterparties] addresses the user has transacted with / saved
  * @returns {Promise<object>} preview result (see assessEvmTransaction + meta).
  */
 export async function simulateEvmTransaction({
@@ -253,6 +284,8 @@ export async function simulateEvmTransaction({
   tokenDecimals = 18,
   tokenBalance = null,
   knownAddresses = [],
+  priorSends = [],
+  knownCounterparties = [],
 }) {
   if (!isAddress(to)) throw new Error('Invalid recipient/target address');
   const provider = getProvider(networkKey); // existing RPC; throws if mainnet gated
@@ -314,6 +347,8 @@ export async function simulateEvmTransaction({
     knownAddresses,
     targetIsContract,
     spenderIsContract,
+    priorSends,
+    knownCounterparties,
   });
 
   if (willRevert) {
@@ -340,7 +375,8 @@ export async function simulateEvmTransaction({
     },
     coverageNote:
       'Simulated locally against your own RPC — nothing was sent to any third-party scoring service. ' +
-      'This predicts the outcome and flags KNOWN risk patterns; it is NOT a guarantee of safety and ' +
-      'will not catch every novel threat. Review every detail before signing.',
+      'This predicts the outcome, flags KNOWN risk patterns, and checks for deviations from your own ' +
+      'on-device history; it is NOT a guarantee of safety and will not catch every novel threat. ' +
+      'Review every detail before signing.',
   };
 }

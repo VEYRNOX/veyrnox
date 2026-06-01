@@ -66,6 +66,7 @@ const features = [
     { name: "Calldata Decode & Approval Guard", desc: "Human-readable calldata before signing", status: "available" },
     { name: "Suspicious-Address Screening", desc: "Threat-intel reputation checks", status: "roadmap" },
     { name: "Transaction Simulation", desc: "Local-first pre-sign preview of balance / approval changes with risk flags", status: "available" },
+    { name: "Anomaly / Fraud Detection", desc: "Local rule-based flags for deviations from your own history (unusual amount, new-recipient-large, approve-then-transfer)", status: "available" },
   ]},
   { category: "Recovery & Duress", icon: LifeBuoy, items: [
     { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "available" },

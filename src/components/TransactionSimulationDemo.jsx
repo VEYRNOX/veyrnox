@@ -32,11 +32,11 @@ const KNOWN = [{ address: DEMO_KNOWN_COUNTERPARTY, label: "an address you've pai
 
 // Wrap a pure EVM assessment into the same result shape simulateEvmTransaction
 // returns, so the preview renders identically to the live path.
-function evmResult({ decoded, txTo, valueWei = 0n, nativeBalanceWei = null, tokenSymbol = null, tokenBalance = null, targetIsContract = false, spenderIsContract = null, knownAddresses = [], willRevert = false }) {
+function evmResult({ decoded, txTo, valueWei = 0n, nativeBalanceWei = null, tokenSymbol = null, tokenBalance = null, targetIsContract = false, spenderIsContract = null, knownAddresses = [], priorSends = [], knownCounterparties = [], willRevert = false }) {
   const a = assessEvmTransaction({
     decoded, txTo, valueWei, nativeBalanceWei, nativeSymbol: "ETH",
     networkKey: "sepolia", tokenSymbol, tokenBalance, knownAddresses,
-    targetIsContract, spenderIsContract,
+    targetIsContract, spenderIsContract, priorSends, knownCounterparties,
   });
   const risks = willRevert
     ? [{ level: "high", code: "will_revert", title: "Transaction predicted to FAIL", detail: "Simulated against your RPC, this transaction reverts: insufficient balance. Signing would spend gas for nothing." }, ...a.risks]
@@ -47,7 +47,8 @@ function evmResult({ decoded, txTo, valueWei = 0n, nativeBalanceWei = null, toke
     source: { mode: "local-rpc", queries: ["eth_getCode", "eth_getBalance", "eth_call"], thirdParty: false },
     coverageNote:
       "Simulated locally against your own RPC — nothing was sent to any third-party scoring service. " +
-      "This predicts the outcome and flags KNOWN risk patterns; it is NOT a guarantee of safety and will not catch every novel threat.",
+      "This predicts the outcome, flags KNOWN risk patterns, and checks for deviations from your own " +
+      "on-device history; it is NOT a guarantee of safety and will not catch every novel threat.",
   };
 }
 
@@ -87,6 +88,37 @@ function buildSamples() {
     valueWei: parseEther(DEMO_BALANCE_ETH), nativeBalanceWei: parseEther(DEMO_BALANCE_ETH),
   });
 
+  // --- Anomaly / Fraud heuristics vs the user's OWN history (anomaly.js) ---
+
+  // 5b. Unusual amount vs your typical send. A send to a KNOWN counterparty, well
+  //     within balance, but ~22× your usual ETH transfer — isolates the
+  //     history-deviation flag (not a balance drain, not a new payee).
+  const TINY_SENDS = [0.02, 0.03, 0.025, 0.02]; // median ~0.0225 ETH
+  const amountVsHistory = evmResult({
+    decoded: { kind: "native" }, txTo: DEMO_KNOWN_COUNTERPARTY,
+    valueWei: parseEther("0.5"), nativeBalanceWei: parseEther(DEMO_BALANCE_ETH),
+    priorSends: TINY_SENDS, knownCounterparties: [DEMO_KNOWN_COUNTERPARTY.toLowerCase()],
+  });
+
+  // 5c. Large amount to a FIRST-TIME recipient. New payee (not in your history) +
+  //     ~56% of balance — new counterparty + high value. No baseline supplied, so
+  //     "large" is judged against balance.
+  const newRecipientLarge = evmResult({
+    decoded: { kind: "native" }, txTo: FRESH_EOA,
+    valueWei: parseEther("1.4"), nativeBalanceWei: parseEther(DEMO_BALANCE_ETH),
+    knownCounterparties: [DEMO_KNOWN_COUNTERPARTY.toLowerCase()],
+  });
+
+  // 5d. Approve → transfer (the "second tx is the exploit" shape). An EXACT-amount
+  //     approval to a spender you've never used — names the two-step transferFrom
+  //     drain that a later, separate transaction could execute without re-signing.
+  const approveExactData = encodeApprove(UNKNOWN_SPENDER, BigInt(500e6)); // 500 USDC, exact
+  const approveThenTransfer = evmResult({
+    decoded: describeErc20Call({ data: approveExactData, tokenSymbol: "USDC", decimals: dec }),
+    txTo: USDC, targetIsContract: true, spenderIsContract: true,
+    tokenSymbol: "USDC", knownAddresses: KNOWN, knownCounterparties: [DEMO_KNOWN_COUNTERPARTY.toLowerCase()],
+  });
+
   // 6. Bitcoin — decoded inputs/outputs/fee (no programmable simulation on BTC).
   const btc = describeBtcPlan({
     plan: {
@@ -110,6 +142,9 @@ function buildSamples() {
     { id: "knownbad", label: "Known-bad recipient", result: knownBad },
     { id: "poison", label: "Look-alike (poisoning)", result: poison },
     { id: "drain", label: "Drain (entire balance)", result: drain },
+    { id: "amountvshistory", label: "Unusual amount (vs history)", result: amountVsHistory },
+    { id: "newrecipient", label: "New recipient + large", result: newRecipientLarge },
+    { id: "approvethentransfer", label: "Approve → transfer", result: approveThenTransfer },
     { id: "btc", label: "Bitcoin", result: btc },
     { id: "sol", label: "Solana", result: sol },
   ];
