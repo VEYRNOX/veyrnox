@@ -14,16 +14,21 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Hoisted counter shared with the mock factory (vi.mock is hoisted above imports).
-const kdf = vi.hoisted(() => ({ count: 0 }));
+const kdf = vi.hoisted(() => ({ count: 0, memorySizes: [] }));
 vi.mock('hash-wasm', async (importOriginal) => {
   const orig = await importOriginal();
   return {
     ...orig,
-    argon2id: (...args) => { kdf.count += 1; return orig.argon2id(...args); },
+    argon2id: (opts, ...rest) => {
+      kdf.count += 1;
+      kdf.memorySizes.push(opts && opts.memorySize);
+      return orig.argon2id(opts, ...rest);
+    },
   };
 });
 
 import { resolveDeniabilityUnlock } from '../deniabilityUnlock.js';
+import { KDF_PARAMS } from '../vault.js';
 import { setDuressVault, clearDuressVault, tryDuressUnlock } from '../duress.js';
 import { setPanicVault, clearPanicVault } from '../panic.js';
 import {
@@ -80,12 +85,18 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
   ];
 
   for (const cfg of configs) {
-    it(`spends ${EXPECTED_KDFS} KDFs on a wrong password — ${cfg.name}`, async () => {
+    it(`spends ${EXPECTED_KDFS} KDFs (all at current params) on a wrong password — ${cfg.name}`, async () => {
       await cfg.setup();
-      await ensureStealthPool(); // seeded in real flow; ensure for a clean count
-      kdf.count = 0;             // measure ONLY the resolution, not the setup
+      await ensureStealthPool();      // seeded in real flow; ensure for a clean count
+      kdf.count = 0;                  // measure ONLY the resolution, not the setup
+      kdf.memorySizes = [];
       const r = await resolveDeniabilityUnlock(WRONG_PW);
       expect(kdf.count).toBe(EXPECTED_KDFS);
+      // EVERY KDF (real attempt OR dummy pad) must run at the CURRENT params. A
+      // dummy pad at stale params would cost differently than a real attempt and
+      // reintroduce the presence/count timing tell across the M3 param raise.
+      expect(kdf.memorySizes).toHaveLength(EXPECTED_KDFS);
+      for (const m of kdf.memorySizes) expect(m).toBe(KDF_PARAMS.memorySize);
       // A wrong password matches nothing.
       expect(r.panic).toBe(false);
       expect(r.duressMnemonic).toBeNull();
