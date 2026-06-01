@@ -17,6 +17,8 @@ import {
 } from '../stealth.js';
 import { deriveEvmAccount } from '../derivation.js';
 import { generateMnemonic } from '../mnemonic.js';
+import { deriveBtcAddress } from '../btc/derivation.js';
+import { deriveSolAddress } from '../sol/derivation.js';
 
 const POOL_SIZE = 12;
 
@@ -114,6 +116,35 @@ describe('stealth / hidden wallets', () => {
 
   it('rejects a too-short reveal secret', async () => {
     await expect(createHiddenWallet('ab')).rejects.toThrow(/at least 4/i);
+  });
+
+  it('returns the full multi-chain identity (EVM+BTC+SOL) from the existing derivation', async () => {
+    const created = await createHiddenWallet('multichain-secret-1');
+    // Reveal the mnemonic and re-derive via the canonical public helpers — the
+    // hidden wallet's addresses must match them EXACTLY (no reimplemented paths).
+    const m = await tryRevealHidden('multichain-secret-1');
+    expect(created.evm.address).toBe(deriveEvmAccount(m, 0).address);
+    expect(created.btc.address).toBe(deriveBtcAddress(m, { networkKey: 'testnet' }).address);
+    expect(created.sol.address).toBe(deriveSolAddress(m).address);
+    // `address` stays an alias of the EVM address for back-compat.
+    expect(created.address).toBe(created.evm.address);
+    // Plausible per-chain formats (testnet BTC is bech32 tb1…; EVM is 0x…).
+    expect(created.evm.address.startsWith('0x')).toBe(true);
+    expect(created.btc.address.startsWith('tb1')).toBe(true);
+    expect(created.btc.networkKey).toBe('testnet');
+    expect(created.sol.networkKey).toBe('devnet');
+  });
+
+  it('multi-chain identity does NOT change the slot pool (deniability unchanged)', async () => {
+    await ensureStealthPool();
+    await createHiddenWallet('still-one-slot');
+    const store = await dumpVaultStore();
+    const slots = Object.keys(store).filter((k) => k.startsWith('vault:'));
+    // Still exactly one fixed pool of uniformly-shaped slots — deriving BTC/SOL
+    // addresses is pure local computation and writes nothing extra.
+    expect(slots.length).toBe(POOL_SIZE);
+    const shapes = new Set(slots.map((k) => Object.keys(store[k]).sort().join(',')));
+    expect(shapes.size).toBe(1);
   });
 
   // ---- moveWalletToHidden: hide an EXISTING (provided) wallet ----
