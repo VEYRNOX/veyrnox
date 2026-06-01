@@ -36,6 +36,19 @@
  *   loadVault + decryptVault (throws on wrong password or missing vault).
  *   Native (M2b): triggers biometric + hardware unwrap before decrypting.
  *
+ * @property {(currentPassword: string, newPassword: string) => Promise<void>} changePassword
+ *   Re-encrypt the EXISTING vault under a new password WITHOUT changing the
+ *   secret it protects (non-custodial "change my vault password" — see
+ *   pages/WalletAccessReset.jsx). Decrypt with `currentPassword` (throws the
+ *   same generic wrong-password/tamper error as unlock on a mismatch), then
+ *   re-encrypt the SAME secret with `newPassword` via the unchanged
+ *   encryptVault/decryptVault crypto and persist ciphertext only. The seed is
+ *   never changed and never leaves memory; this is purely a re-wrap. As a side
+ *   effect it also rewrites at the CURRENT KDF params (so a legacy-params vault
+ *   is upgraded on change, like the unlock-time migration). This is NOT a
+ *   recovery path — a forgotten password is recovered ONLY by re-importing the
+ *   seed (createVault), because we hold no key escrow.
+ *
  * @property {() => void} lock
  *   Clear any key material / hardware grant held inside the store. On web the
  *   unlocked secret lives in the caller (WalletProvider), so this is a no-op;

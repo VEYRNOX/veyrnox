@@ -200,6 +200,27 @@ export const nativeKeyStore = {
     return decryptVault(blob, password);
   },
 
+  // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
+  // (non-custodial "change my vault password"). Mirrors web.js exactly over the
+  // same unchanged ../vault.js crypto — only WHERE the blob lives differs. We
+  // GATE this behind the biometric/device-credential prompt (same as unlock),
+  // since it both reads and rewrites the at-rest secret; then decrypt with the
+  // current password (throws the generic error on a mismatch, changing nothing)
+  // and persist the re-encrypted blob. The secret never leaves memory.
+  async changePassword(currentPassword, newPassword) {
+    await init();
+    await authenticateOrThrow(); // throws on cancel/failure/lockout
+
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) {
+      throw new Error('No wallet found on this device');
+    }
+    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const secret = await decryptVault(blob, currentPassword); // ../vault.js — unchanged
+    const rewrapped = await encryptVault(secret, newPassword); // ../vault.js — unchanged
+    await SecureStorage.set(VAULT_KEY, JSON.stringify(rewrapped));
+  },
+
   // Drop any in-memory grant. This store caches NO plaintext key material (the
   // live secret lives in, and is cleared by, WalletProvider), so today this is a
   // structural no-op — it is the defined seam where a future OS biometric-grant
