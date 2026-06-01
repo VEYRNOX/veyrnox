@@ -70,6 +70,15 @@
 //     AFTER a hidden wallet is created sees one chaff slot change to a real one.
 //     Deniability protects a SINGLE point-in-time inspection, not continuous
 //     monitoring of an already-compromised device.
+//   - MOVING A PREVIOUSLY-VISIBLE WALLET (moveWalletToHidden) IS WEAKER. A FRESH
+//     hidden wallet the adversary never knew about leaves nothing for them to miss.
+//     But HIDING a wallet that was already on screen creates a TRANSITION TELL: a
+//     coercer who saw the app before can notice that wallet is now gone and demand
+//     it be restored, and a before/after device comparison can detect BOTH the
+//     removed visible record AND the one slot that changed from chaff to real. The
+//     wallet's address/history also stay public on-chain regardless. This variant
+//     is for wallets the adversary has NOT already catalogued; the UI warns the
+//     user explicitly and it is flagged for specific audit scrutiny.
 //   - RARE SLOT COLLISION. Two secrets can hash to the same slot; the later
 //     createHiddenWallet would overwrite the earlier wallet. By design we keep
 //     NO index of hidden wallets (an index readable with the primary password
@@ -89,7 +98,7 @@
 // move funds and adds no mainnet surface.
 
 import { encryptVault, decryptVault } from './vault.js';
-import { generateMnemonic } from './mnemonic.js';
+import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { deriveEvmAccount } from './derivation.js';
 
 // Same database + store as the primary vault (see evm/vaultStore.js) and the
@@ -268,6 +277,68 @@ export async function createHiddenWallet(secret, strength = 128) {
   // wallet. No key is persisted here.
   const { address } = deriveEvmAccount(mnemonic, 0);
   return { mnemonic, address, slot, existing: false };
+}
+
+/**
+ * Move an EXISTING wallet (the user supplies its recovery phrase) into the hidden
+ * pool, revealed by `secret`. This is the riskier "hide a wallet that was already
+ * VISIBLE" variant — see the page UI for the transition-tell warning the caller
+ * MUST show first. It reuses the EXACT same store path as createHiddenWallet
+ * (ensure pool → secret-derived slot → encryptVault → put), so the resulting slot
+ * is byte-shaped identically to a fresh hidden wallet and to chaff; the pool size,
+ * hidden count, and one-KDF reveal are all UNCHANGED. No wallet-core crypto touched.
+ *
+ * SAFETY ORDERING (critical): this stores the wallet AND self-verifies it is
+ * revealable BEFORE returning. The caller must only purge the wallet's visible
+ * record (its app entry / cached balance / label) AFTER this resolves — so a
+ * storage hiccup can never leave the wallet deleted-from-view yet not hidden.
+ *
+ * CLOBBER GUARD: unlike createHiddenWallet (which returns an existing wallet
+ * untouched on a re-typed secret), a MOVE writes a specific provided wallet. If
+ * `secret` already reveals a DIFFERENT hidden wallet we REFUSE rather than
+ * overwrite it (which would destroy that other wallet). Re-moving the SAME wallet
+ * under the same secret is idempotent.
+ *
+ * @param {string} mnemonic - the existing wallet's BIP-39 recovery phrase
+ * @param {string} secret   - the reveal secret it will be opened with
+ * @returns {Promise<{ address: string, slot: string }>}
+ */
+export async function moveWalletToHidden(mnemonic, secret) {
+  if (!validateMnemonic(mnemonic)) {
+    throw new Error('Invalid recovery phrase: failed BIP-39 checksum/wordlist check');
+  }
+  if (typeof secret !== 'string' || secret.length < 4) {
+    throw new Error('Reveal secret must be at least 4 characters');
+  }
+  await ensureStealthPool();
+  const slot = await slotForSecret(secret);
+
+  // Refuse to clobber a DIFFERENT hidden wallet already living under this secret.
+  const existing = await tryRevealHidden(secret);
+  if (existing != null && existing !== mnemonic) {
+    throw new Error('That reveal secret is already in use by a hidden wallet. Choose a different secret.');
+  }
+
+  const blob = await encryptVault(mnemonic, secret);
+  if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
+    throw new Error('Refusing to store: not a valid encrypted vault blob');
+  }
+  const db = await openDb();
+  try {
+    await putKey(db, slot, blob);
+  } finally {
+    db.close();
+  }
+
+  // Self-verify: the moved wallet MUST now be revealable by its secret before the
+  // caller removes the visible record. If this fails, nothing visible is purged.
+  const check = await tryRevealHidden(secret);
+  if (check !== mnemonic) {
+    throw new Error('Move failed to verify; the wallet was NOT hidden and nothing was removed.');
+  }
+
+  const { address } = deriveEvmAccount(mnemonic, 0);
+  return { address, slot };
 }
 
 /**
