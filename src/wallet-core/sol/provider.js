@@ -111,6 +111,39 @@ export async function getLamportsPerSignature(networkKey) {
 }
 
 /**
+ * Read an address's recent transaction history from the SAME RPC used for
+ * balance/blockhash/broadcast — NO new data source. Two-step, both read-only and
+ * gate-free (the gate is enforced on broadcast): getSignaturesForAddress() lists
+ * recent signatures, then getParsedTransactions() pulls each so the caller can
+ * compute the per-account balance delta and counterparty locally. A lying RPC can
+ * at worst show a wrong/empty list (display only), never move funds.
+ *
+ * PRIVACY: this is a phone-home/deanonymization surface — the RPC learns the
+ * queried address and that this client is watching it. Runs ONLY on demand (when
+ * the user opens this address's history), never in the background, and the
+ * endpoint is overridable via setSolRpcUrl() so an operator can point at their own
+ * RPC. See src/lib/txHistory.js for the normalization + user-facing disclosure.
+ *
+ * @param {string} networkKey
+ * @param {string} address - base58 account
+ * @param {{ limit?: number }} [opts] - max signatures to pull (default 25)
+ * @returns {Promise<Array<{ signature: object, parsed: object|null }>>}
+ *   signature = ConfirmedSignatureInfo (has err, blockTime, confirmationStatus),
+ *   parsed = ParsedTransactionWithMeta or null if the RPC dropped it.
+ */
+export async function getAddressHistory(networkKey, address, { limit = 25 } = {}) {
+  const conn = getConnection(networkKey);
+  const pubkey = new PublicKey(address);
+  const sigs = await conn.getSignaturesForAddress(pubkey, { limit });
+  if (!sigs.length) return [];
+  const parsed = await conn.getParsedTransactions(
+    sigs.map((s) => s.signature),
+    { maxSupportedTransactionVersion: 0 },
+  );
+  return sigs.map((signature, i) => ({ signature, parsed: parsed[i] || null }));
+}
+
+/**
  * Broadcast a fully-signed, serialized transaction (raw bytes). RE-ENFORCES the
  * mainnet gate here via getSolNetwork() — broadcasting is the irreversible
  * action, so even if a read path resolved a mainnet URL, no mainnet tx can be
