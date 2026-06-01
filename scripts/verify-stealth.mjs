@@ -8,6 +8,8 @@ import 'fake-indexeddb/auto';
 import { webKeyStore } from '../src/wallet-core/keystore/web.js';
 import { generateMnemonic } from '../src/wallet-core/mnemonic.js';
 import { deriveEvmAccount } from '../src/wallet-core/derivation.js';
+import { deriveBtcAddress } from '../src/wallet-core/btc/derivation.js';
+import { deriveSolAddress } from '../src/wallet-core/sol/derivation.js';
 import { clearVault } from '../src/wallet-core/evm/vaultStore.js';
 import { clearDuressVault, tryDuressUnlock } from '../src/wallet-core/duress.js';
 import {
@@ -56,6 +58,12 @@ const beforeHidden = await unlock(HIDDEN_A);
 // --- create two hidden wallets under different secrets ---
 const a = await createHiddenWallet(HIDDEN_A);
 const b = await createHiddenWallet(HIDDEN_B);
+
+// Multi-chain identity check: the hidden wallet's BTC/SOL addresses must equal
+// the EXISTING public derivation for its own mnemonic (no reimplemented paths).
+const aMnemonic = await tryRevealHidden(HIDDEN_A);
+const aBtc = deriveBtcAddress(aMnemonic, { networkKey: 'testnet' }).address;
+const aSol = deriveSolAddress(aMnemonic).address;
 
 // Re-create A with the SAME secret -> must be idempotent (same slot), not a 3rd.
 const aAgain = await createHiddenWallet(HIDDEN_A);
@@ -112,6 +120,12 @@ const result = {
     // Hidden wallets are distinct real wallets, and neither equals the visible one.
     wallets_all_distinct:
       new Set([realAddr, a.address, b.address]).size === 3,
+    // MULTI-CHAIN: createHiddenWallet returns EVM+BTC+SOL, and the BTC/SOL
+    // addresses match the canonical existing derivation for the same mnemonic.
+    multichain_identity_present: !!(a.evm && a.btc && a.sol),
+    btc_matches_existing_derivation: a.btc.address === aBtc && a.btc.address.startsWith('tb1'),
+    sol_matches_existing_derivation: a.sol.address === aSol,
+    evm_address_alias_back_compat: a.address === a.evm.address,
     // A hidden wallet is NEVER referenced by the visible/real session address.
     hidden_absent_from_real_session:
       realRes.addr !== a.address && realRes.addr !== b.address,

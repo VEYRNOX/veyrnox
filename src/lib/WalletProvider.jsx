@@ -422,9 +422,15 @@ export function WalletProvider({ children }) {
   // The secret must differ from the primary password and any duress PIN (the
   // page warns — we never hold those in plaintext to check). Touches no network
   // or signing: testnet-safe.
+  // Returns the hidden wallet's full PUBLIC multi-chain identity (evm/btc/sol
+  // addresses) so the UI can show every fund target. A hidden wallet is a real
+  // BIP-39 wallet, so these come from the SAME derivation as the primary wallet
+  // (see wallet-core/stealth.js -> deriveHiddenIdentity). Address derivation is
+  // local — no network query, no balance fetch (that is opt-in in the UI for
+  // privacy; see lib/hiddenBalance.js).
   const addHiddenWallet = useCallback(async (secret, strength = 128) => {
-    const { mnemonic, address } = await createHiddenWallet(secret, strength);
-    return { mnemonic, address };
+    const { mnemonic, address, evm, btc, sol, existing } = await createHiddenWallet(secret, strength);
+    return { mnemonic, address, evm, btc, sol, existing };
   }, []);
 
   // Seed the chaff pool on demand (idempotent, non-destructive). Used by the
