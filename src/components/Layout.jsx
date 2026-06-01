@@ -76,6 +76,7 @@ const navGroups = [
     items: [
       { path: "/send", label: "Send", icon: Send },
       { path: "/receive", label: "Receive", icon: Download },
+      { path: "/tx-history", label: "Transaction History", icon: History },
       { path: "/payment-links", label: "Payment Links", icon: Link2 },
       { path: "/merchant-qr", label: "Merchant QR", icon: QrCode },
       { path: "/split-bill", label: "Split Bill", icon: Scissors },

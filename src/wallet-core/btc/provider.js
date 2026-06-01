@@ -19,6 +19,7 @@
 //
 // Esplora REST shape (Blockstream/mempool.space):
 //   GET  {base}/address/:addr/utxo   -> [{ txid, vout, value, status:{confirmed,...} }]
+//   GET  {base}/address/:addr/txs    -> [{ txid, vin[], vout[], fee, status:{…} }]
 //   GET  {base}/fee-estimates        -> { "1": sat/vB, "6": …, "144": … }
 //   POST {base}/tx  (raw hex body)   -> txid (text)
 //   GET  {base}/tx/:txid             -> tx detail (used to confirm)
@@ -61,6 +62,30 @@ export async function getUtxos(networkKey, address) {
     value: BigInt(u.value),
     confirmed: !!u.status?.confirmed,
   }));
+}
+
+/**
+ * Read an address's transaction history from the SAME Esplora indexer used for
+ * UTXOs/fees/broadcast — NO new data source. Read-only and gate-free (the gate
+ * is enforced on the broadcast path); a lying indexer can at worst show a wrong
+ * or empty list (display only), never move funds.
+ *
+ * PRIVACY: this is a phone-home/deanonymization surface — the indexer learns the
+ * queried address and that this client is watching it. It runs ONLY on demand
+ * (when the user opens this address's history), never in the background, and the
+ * endpoint is overridable via setEsploraUrl() so an operator can point at their
+ * own Esplora/Electrs (or a Tor route). See src/lib/txHistory.js for the
+ * normalization + the user-facing disclosure.
+ *
+ * Returns Esplora's raw confirmed tx objects (newest first). Esplora paginates at
+ * 25 confirmed txs per call after an initial mempool batch; we take the first
+ * page (the recent history a wallet UI shows) rather than walking all pages.
+ * @returns {Promise<Array<object>>} raw Esplora tx objects
+ */
+export async function getAddressTxs(networkKey, address) {
+  const raw = await getJson(`${baseUrl(networkKey)}/address/${address}/txs`);
+  if (!Array.isArray(raw)) throw new Error('Indexer returned a non-array tx list');
+  return raw;
 }
 
 /**
