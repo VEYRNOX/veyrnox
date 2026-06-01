@@ -52,17 +52,25 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
   over PUBLIC on-chain data. These ENHANCE security; they don't add a new product.
 - EXCLUDED: AI trading bots / auto-management / autonomous agents that transact.
 
-## Standing rule — no autonomous value movement (⚠️ OPEN GAP on `main`)
-No feature may move value or mutate balances WITHOUT a user signature through
-wallet-core signing; demo backend-balance mutations must never reach the mainnet
-path. Every transaction is signed by the user via wallet-core — nothing transacts
-autonomously (also keeps us out of swap/bot territory, spec §C).
-- **VIOLATION still present on `main`:** **Rebalance** (`Rebalancing.jsx`) and
-  **Recurring Payments** (`RecurringPayments.jsx` `runNow`) auto-debit a demo
-  balance + fabricate a tx hash with no signature.
-- **FIX written, NOT merged:** branch `fix/remove-autonomous-execution`
-  (commit `648afbe`) removes Rebalance and guts the Recurring auto-debit. Until
-  it merges, this is a known self-custody integrity gap. 🟡 flagged, not done.
+## No-autonomous-value rule (applies to EVERY feature, not just AI)
+**No feature may move value or mutate balances without a user signature through
+wallet-core signing.** Every transaction is signed by the user with their own
+keys (the `signing.js` / vault path); nothing transacts autonomously. Concretely:
+- NO feature may call `base44.entities.Wallet.update({ balance })` (or any balance
+  mutation) to "execute" a buy/sell/payment/transfer. Balances are derived from
+  the chain, which is the source of truth (see the Send flow in `SendCrypto.jsx`:
+  it records the REAL chain hash and never writes balances).
+- NO feature may fabricate a `confirmed`/`completed` transaction record to stand
+  in for a real signed broadcast.
+- **Demo-mode shortcuts must NEVER carry over to the mainnet path.** Backend
+  balance mutations are acceptable ONLY as throwaway demo scaffolding and must be
+  replaced by user-signed wallet-core flows before any mainnet wiring.
+- A feature that transacts autonomously = OUT OF SCOPE (spec §C) and breaks
+  self-custody — the same hard line as the AI guardrails above.
+
+History: `Rebalance`/`Rebalance History` were removed and `Recurring Payments`
+had its auto-debit path gutted (now schedule/reminder only, hands off to Send for
+user signing) for violating this rule — see branch `fix/remove-autonomous-execution`.
 
 ---
 
