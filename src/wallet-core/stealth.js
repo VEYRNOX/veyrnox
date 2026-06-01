@@ -97,7 +97,7 @@
 // only encrypts, stores, and decrypts hidden-wallet mnemonics locally. It cannot
 // move funds and adds no mainnet surface.
 
-import { encryptVault, decryptVault } from './vault.js';
+import { encryptVault, decryptVault, KDF_PARAMS } from './vault.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { deriveEvmAccount } from './derivation.js';
 // A hidden wallet is a real BIP-39 wallet, so it has the SAME multi-chain
@@ -222,7 +222,11 @@ function makeChaff() {
   const GCM_TAG = 16;
   return {
     v: 1,
-    kdf: { name: 'argon2id', parallelism: 1, iterations: 3, memorySize: 65536, hashLength: 32 },
+    // Advertise the CURRENT KDF params (imported from vault.js) so chaff blobs are
+    // byte-shaped identically to real hidden-wallet blobs. If these were hardcoded
+    // they would diverge when the at-rest params are raised (SAST M3), making the
+    // kdf field a real-vs-chaff distinguisher — a deniability tell.
+    kdf: { name: 'argon2id', ...KDF_PARAMS },
     salt: b64(randomBytes(16)),
     iv: b64(randomBytes(12)),
     ct: b64(randomBytes(ptLen + GCM_TAG)),
