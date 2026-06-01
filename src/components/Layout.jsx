@@ -129,6 +129,7 @@ const navGroups = [
   {
     label: "Security",
     items: [
+      { path: "/security-dashboard", label: "Security Dashboard", icon: ShieldCheck },
       { path: "/security", label: "Security Center", icon: ShieldAlert },
       { path: "/wallet-access", label: "Access & Recovery", icon: KeyRound },
       { path: "/login-map", label: "Login Activity Map", icon: MapPin },
