@@ -27,6 +27,10 @@ import {
   getPasskeyStatus,
   registerPasskeyCredential,
   verifyPasskeyAssertion,
+  PASSKEY_GATE,
+  PasskeyGateError,
+  classifyPasskeyError,
+  isPasskeyGateError,
 } from '@/lib/passkey';
 
 // In-memory localStorage stand-in.
@@ -195,5 +199,54 @@ describe('status (web)', () => {
     await registerPasskeyCredential();
     s = await getPasskeyStatus();
     expect(s.registered).toBe(true);
+  });
+});
+
+// SAST M-3 — the escape-hatch primitives. These let the unlock flow tell a
+// deliberate CANCEL of a working passkey (fail closed, retry) apart from a HARD
+// failure where the credential can no longer be used (offer the password-only
+// escape hatch as recovery). The vault is still gated by the password either way.
+describe('gate outcome classification (escape hatch)', () => {
+  it('classifies a NotAllowedError as the ambiguous cancel-or-removed case', () => {
+    const err = new Error('x');
+    err.name = 'NotAllowedError';
+    expect(classifyPasskeyError(err)).toBe('cancelled');
+  });
+
+  it('classifies any other error (broken/deleted credential, authenticator fault) as a hard failure', () => {
+    const named = new Error('boom');
+    named.name = 'InvalidStateError';
+    expect(classifyPasskeyError(named)).toBe('error');
+    expect(classifyPasskeyError(new Error('plain'))).toBe('error');
+    // Defensive: non-error inputs must not be mistaken for a user cancel.
+    expect(classifyPasskeyError(null)).toBe('error');
+    expect(classifyPasskeyError(undefined)).toBe('error');
+    expect(classifyPasskeyError('NotAllowedError')).toBe('error');
+  });
+
+  it('PasskeyGateError carries the classified reason and a stable tag', () => {
+    const cancelled = new PasskeyGateError('cancelled');
+    expect(cancelled.reason).toBe('cancelled');
+    expect(cancelled.isPasskeyGateError).toBe(true);
+    expect(isPasskeyGateError(cancelled)).toBe(true);
+    expect(cancelled).toBeInstanceOf(Error);
+
+    const hard = new PasskeyGateError('error', new Error('cause'));
+    expect(hard.reason).toBe('error');
+    expect(hard.cause).toBeInstanceOf(Error);
+  });
+
+  it('isPasskeyGateError rejects ordinary (wrong-password / vault) errors', () => {
+    // So the unlock UI never shows the passkey escape hatch for a wrong password.
+    expect(isPasskeyGateError(new Error('wrong password or corrupted vault'))).toBe(false);
+    expect(isPasskeyGateError(null)).toBe(false);
+    expect(isPasskeyGateError({})).toBe(false);
+  });
+
+  it('PASSKEY_GATE enumerates the three gate outcomes and is frozen', () => {
+    expect(PASSKEY_GATE.PASSED).toBe('passed');
+    expect(PASSKEY_GATE.SKIPPED).toBe('skipped');
+    expect(PASSKEY_GATE.UNAVAILABLE).toBe('unavailable');
+    expect(Object.isFrozen(PASSKEY_GATE)).toBe(true);
   });
 });

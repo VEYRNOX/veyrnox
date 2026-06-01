@@ -1,21 +1,33 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, ShieldCheck, AlertCircle } from "lucide-react";
+import { Fingerprint, ShieldCheck, AlertCircle, KeyRound } from "lucide-react";
 import {
   isPasskeyRegistered,
   isWebAuthnSupported,
   verifyPasskeyAssertion,
+  classifyPasskeyError,
 } from "@/lib/passkey";
 
 export default function QuickLock({ onUnlock }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // SAST M-1: shown only after the passkey assertion HARD-fails (broken/deleted
+  // credential or authenticator error), so a genuinely-unusable passkey can't
+  // trap the user on this screen — mirrors the vault unlock's M-3 escape hatch.
+  const [recoverable, setRecoverable] = useState(false);
 
   // This is the dashboard's soft SCREEN lock (distinct from the vault unlock in
   // WalletProvider — the vault is already decrypted here). When a real passkey
   // is registered we require a genuine assertion against THAT credential; with
   // no passkey (or no WebAuthn) it degrades to an immediate unlock so the screen
   // is never bricked. It holds/derives no key material either way.
+  //
+  // SAST M-1 (fail-open fix): once we DECIDE to attempt an assertion (a passkey
+  // is registered AND WebAuthn is supported), we no longer silently unlock on a
+  // thrown error — that was a fail-open. A cancel stays locked (retry); a hard
+  // failure (deleted credential / authenticator error) stays locked too but
+  // reveals an explicit "Continue without passkey" recovery, justified ONLY
+  // because this screen protects no secret (the vault is already decrypted).
   const handleUnlock = async () => {
     setLoading(true);
     setError(null);
@@ -23,14 +35,17 @@ export default function QuickLock({ onUnlock }) {
       if (isPasskeyRegistered() && isWebAuthnSupported()) {
         await verifyPasskeyAssertion(); // scoped to our credential; throws on cancel
       }
+      // No passkey, or no WebAuthn API at all: nothing to assert against, so the
+      // screen-lock degrades to an unlock (it guards no secret) — unchanged.
       onUnlock();
     } catch (err) {
-      if (err?.name === "NotAllowedError") {
-        setError("Authentication was cancelled or denied.");
+      if (classifyPasskeyError(err) === "cancelled") {
+        setError("Authentication was cancelled or denied. Try again.");
       } else {
-        // WebAuthn unavailable on this platform — don't trap the user out of a
-        // screen lock that protects no secret. Allow the unlock.
-        onUnlock();
+        // Hard failure: the passkey could not be used. Fail CLOSED, but offer a
+        // deliberate recovery so a broken passkey can't strand the dashboard.
+        setError("Your passkey couldn't be used. It may have been removed from this device.");
+        setRecoverable(true);
       }
     } finally {
       setLoading(false);
@@ -74,6 +89,22 @@ export default function QuickLock({ onUnlock }) {
             </>
           )}
         </Button>
+
+        {/* SAST M-1 recovery: only after a HARD passkey failure. This screen
+            protects no secret (the vault is already decrypted), so continuing
+            without the passkey here is safe — and necessary so a deleted/broken
+            credential can't permanently trap the dashboard behind the blur. */}
+        {recoverable && (
+          <Button
+            variant="outline"
+            className="gap-2 px-6 h-10 text-sm"
+            onClick={onUnlock}
+            disabled={loading}
+          >
+            <KeyRound className="h-4 w-4" />
+            Continue without passkey
+          </Button>
+        )}
       </div>
     </div>
   );
