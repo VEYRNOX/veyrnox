@@ -1,143 +1,89 @@
-import { useState, useEffect } from "react";
-import { Flame, Zap, Clock, CheckCircle, RefreshCw, AlertTriangle } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { Fuel, Info } from "lucide-react";
+import FeeSelector from "@/components/FeeSelector";
+import { getNetworkInfo } from "@/wallet-core/evm/networks";
 
-const PRESETS = [
-  { id: "slow", label: "Slow", icon: Clock, time: "~5 min", baseFee: 12, priority: 1, color: "text-blue-500" },
-  { id: "standard", label: "Standard", icon: Zap, time: "~1 min", baseFee: 18, priority: 2, color: "text-yellow-500" },
-  { id: "fast", label: "Fast", icon: Flame, time: "~15 sec", baseFee: 24, priority: 5, color: "text-orange-500" },
-  { id: "custom", label: "Custom", icon: CheckCircle, time: "Manual", baseFee: 0, priority: 0, color: "text-primary" },
+// Per-chain fee control. Each chain has a genuinely different fee model and is
+// shown in its own native units (EIP-1559 gwei for EVM, sat/vByte for BTC,
+// lamports + µlam/CU for SOL) — never one chain's format forced onto another.
+// Estimates are LIVE from the existing wallet-core providers (testnet only;
+// mainnet is gated in the registries). The fee you choose here is the same model
+// the Send screen applies into the actual signing path.
+const CHAINS = [
+  { id: "evm", label: "Ethereum", chain: "evm", networkKey: "sepolia",  symbol: "ETH", decimals: 18, usdRate: 3200, badge: "Sepolia testnet" },
+  { id: "btc", label: "Bitcoin",  chain: "btc", networkKey: "testnet",  symbol: "BTC", decimals: 8,  usdRate: 68000, badge: "testnet3" },
+  { id: "sol", label: "Solana",   chain: "sol", networkKey: "devnet",   symbol: "SOL", decimals: 9,  usdRate: 165,   badge: "devnet" },
 ];
 
-const ETH_USD = 3200;
+const MODEL_NOTE = {
+  evm: "EIP-1559: a network base fee plus a priority tip you control. Pick a speed or set a custom max base fee, priority, and gas limit.",
+  btc: "UTXO fee rate in sat/vByte. The miner fee = transaction size × rate, so the final amount is set by coin selection at send time using the rate you pick.",
+  sol: "A fixed base fee per signature (~5,000 lamports) plus an OPTIONAL priority fee (compute-unit price) that only matters under congestion. NOT gas-limit × price.",
+};
 
 export default function GasFeeControl() {
-  const [selected, setSelected] = useState("standard");
-  const [baseFee, setBaseFee] = useState(18);
-  const [priorityFee, setPriorityFee] = useState(2);
-  const [gasLimit, setGasLimit] = useState(21000);
-  const [liveBase, setLiveBase] = useState(18.4);
-  const [refreshing, setRefreshing] = useState(false);
+  const [active, setActive] = useState("evm");
+  const [selected, setSelected] = useState({});
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveBase(prev => +(prev + (Math.random() - 0.5) * 2).toFixed(1));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const applyPreset = (preset) => {
-    setSelected(preset.id);
-    if (preset.id !== "custom") {
-      setBaseFee(preset.baseFee + Math.round(liveBase - 18));
-      setPriorityFee(preset.priority);
-    }
-  };
-
-  const refresh = async () => {
-    setRefreshing(true);
-    await new Promise(r => setTimeout(r, 800));
-    setLiveBase(+(Math.random() * 20 + 10).toFixed(1));
-    setRefreshing(false);
-  };
-
-  const maxFeeGwei = baseFee + priorityFee;
-  const gasCostEth = (maxFeeGwei * gasLimit) / 1e9;
-  const gasCostUsd = gasCostEth * ETH_USD;
-
-  const COMMON_LIMITS = [
-    { label: "ETH Transfer", value: 21000 },
-    { label: "ERC-20 Transfer", value: 65000 },
-    { label: "Uniswap Swap", value: 150000 },
-    { label: "NFT Mint", value: 200000 },
-    { label: "Complex DeFi", value: 500000 },
-  ];
+  const cfg = CHAINS.find((c) => c.id === active);
+  const sel = selected[active];
+  // Native symbol comes from the network registry for EVM (POL/AVAX/tBNB ≠ ETH).
+  const evmInfo = cfg.chain === "evm" ? getNetworkInfo(cfg.networkKey) : null;
+  const symbol = evmInfo?.symbol || cfg.symbol;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold">Gas Fee Control</h1>
-        <p className="text-sm text-muted-foreground">Configure EIP-1559 transaction fees</p>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Fuel className="h-5 w-5 text-primary" /> Gas &amp; Fee Control</h1>
+        <p className="text-sm text-muted-foreground">See and control transaction fees per chain — each in its native model.</p>
       </div>
 
-      {/* Live base fee */}
-      <div className="p-4 rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold">Live Network Base Fee</p>
-          <button onClick={refresh} className={`p-1.5 text-muted-foreground hover:text-foreground ${refreshing ? "animate-spin" : ""}`}><RefreshCw className="h-4 w-4" /></button>
-        </div>
-        <div className="flex items-end gap-3">
-          <p className="text-3xl font-bold">{liveBase} <span className="text-lg text-muted-foreground">Gwei</span></p>
-          <div className={`text-xs px-2 py-1 rounded-lg font-semibold mb-1 ${liveBase < 15 ? "bg-green-500/10 text-green-500" : liveBase < 30 ? "bg-yellow-500/10 text-yellow-500" : "bg-destructive/10 text-destructive"}`}>
-            {liveBase < 15 ? "Low" : liveBase < 30 ? "Normal" : "High"}
-          </div>
-        </div>
-        <div className="flex gap-2 mt-3">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className={`h-6 flex-1 rounded-sm ${i < Math.round(liveBase / 5) ? "bg-primary" : "bg-secondary"}`} />
-          ))}
-        </div>
-      </div>
-
-      {/* Speed presets */}
-      <div className="grid grid-cols-4 gap-2">
-        {PRESETS.map(p => (
-          <button key={p.id} onClick={() => applyPreset(p)}
-            className={`p-3 rounded-xl border text-center transition-colors ${selected === p.id ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
-            <p.icon className={`h-4 w-4 mx-auto mb-1 ${selected === p.id ? "text-primary" : p.color}`} />
-            <p className="text-xs font-semibold">{p.label}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{p.time}</p>
+      {/* Chain selector */}
+      <div className="grid grid-cols-3 gap-2">
+        {CHAINS.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setActive(c.id)}
+            className={`p-3 rounded-xl border text-center transition-colors ${active === c.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
+          >
+            <p className="text-sm font-semibold">{c.label}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{c.badge}</p>
           </button>
         ))}
       </div>
 
-      {/* Manual controls */}
-      <div className="p-4 rounded-xl border border-border bg-card space-y-4">
-        <div>
-          <div className="flex justify-between mb-2">
-            <Label>Base Fee (Gwei)</Label>
-            <span className="text-sm font-mono font-semibold">{baseFee}</span>
-          </div>
-          <Slider value={[baseFee]} min={1} max={100} step={1} onValueChange={([v]) => { setBaseFee(v); setSelected("custom"); }} />
-        </div>
-        <div>
-          <div className="flex justify-between mb-2">
-            <Label>Priority Fee / Tip (Gwei)</Label>
-            <span className="text-sm font-mono font-semibold">{priorityFee}</span>
-          </div>
-          <Slider value={[priorityFee]} min={0} max={20} step={0.5} onValueChange={([v]) => { setPriorityFee(v); setSelected("custom"); }} />
-        </div>
-        <div>
-          <Label className="mb-2 block">Gas Limit</Label>
-          <div className="flex gap-2 items-center">
-            <Input type="number" value={gasLimit} onChange={e => setGasLimit(parseInt(e.target.value) || 21000)} className="font-mono" />
-          </div>
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {COMMON_LIMITS.map(l => (
-              <button key={l.label} onClick={() => setGasLimit(l.value)} className={`text-[10px] px-2 py-1 rounded-lg border transition-colors ${gasLimit === l.value ? "bg-primary text-primary-foreground border-transparent" : "border-border text-muted-foreground hover:text-foreground"}`}>{l.label}</button>
-            ))}
-          </div>
-        </div>
+      {/* Per-chain model note */}
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-secondary/40 border border-border">
+        <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-[11px] text-muted-foreground">{MODEL_NOTE[cfg.chain]}</p>
       </div>
 
-      {/* Cost summary */}
-      <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
-        <p className="text-sm font-semibold">Estimated Transaction Cost</p>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div><p className="text-muted-foreground text-xs">Max Fee Per Gas</p><p className="font-semibold font-mono">{maxFeeGwei.toFixed(1)} Gwei</p></div>
-          <div><p className="text-muted-foreground text-xs">Gas Limit</p><p className="font-semibold font-mono">{gasLimit.toLocaleString()}</p></div>
-          <div><p className="text-muted-foreground text-xs">Max Gas Cost</p><p className="font-semibold">{gasCostEth.toFixed(6)} ETH</p></div>
-          <div><p className="text-muted-foreground text-xs">USD Estimate</p><p className="font-bold text-lg">${gasCostUsd.toFixed(2)}</p></div>
-        </div>
-        {gasCostUsd > 20 && (
-          <div className="flex items-center gap-2 text-xs text-yellow-500 mt-1">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            High gas cost. Consider waiting for lower network activity.
+      {/* Live per-chain fee picker (keyed so state resets cleanly per chain). */}
+      <FeeSelector
+        key={active}
+        chain={cfg.chain}
+        networkKey={cfg.networkKey}
+        symbol={symbol}
+        decimals={cfg.decimals}
+        usdRate={cfg.usdRate}
+        gasLimitHint={cfg.chain === "evm" ? 21000 : undefined}
+        onChange={(s) => setSelected((prev) => ({ ...prev, [active]: s }))}
+      />
+
+      {/* Selected-fee summary */}
+      {sel?.fee && (
+        <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+          <p className="text-sm font-semibold">Selected fee</p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div><p className="text-muted-foreground text-xs">Speed</p><p className="font-semibold capitalize">{sel.tierId}{sel.etaLabel ? ` · ${sel.etaLabel}` : ""}</p></div>
+            <div><p className="text-muted-foreground text-xs">Estimated fee</p><p className="font-semibold font-mono">{sel.nativeText}</p></div>
+            {sel.fiatText && <div><p className="text-muted-foreground text-xs">≈ Fiat</p><p className="font-bold text-lg">{sel.fiatText}</p></div>}
           </div>
-        )}
-      </div>
+          <p className="text-[10px] text-muted-foreground pt-1 border-t border-border/60">
+            On the Send screen this same selection is passed straight into the signing path, so the fee you choose is the fee that gets signed.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { Contract, Interface, Wallet, parseUnits, formatUnits, isAddress } from 
 import { getProvider } from './provider.js';
 import { getNetwork } from './networks.js';
 import { getToken, ERC20_ABI } from './tokens.js';
+import { evmFeeOverrides } from './fees.js';
 
 const erc20Interface = new Interface(ERC20_ABI);
 
@@ -68,10 +69,12 @@ export function buildTokenTransfer({ networkKey, symbol, to, amount }) {
 
 /**
  * Build + sign + broadcast an ERC-20 transfer. `privateKey` is transient and
- * never persisted. Returns a REAL tx handle (hash from the network).
+ * never persisted. `fee` (optional) is a user-selected EIP-1559 fee from
+ * evm/fees.js; when present those EXACT values are signed (note gas pays in the
+ * chain's native coin even for a token transfer). Returns a REAL tx handle.
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */
-export async function sendToken({ networkKey, privateKey, symbol, to, amount }) {
+export async function sendToken({ networkKey, privateKey, symbol, to, amount, fee }) {
   if (!isAddress(to)) throw new Error('Invalid recipient address');
   const net = getNetwork(networkKey); // throws if mainnet gated / disabled
   const provider = getProvider(networkKey);
@@ -88,7 +91,9 @@ export async function sendToken({ networkKey, privateKey, symbol, to, amount }) 
   const c = new Contract(t.address, ERC20_ABI, wallet);
   await assertDecimals(c, t); // never scale by an unverified power of ten
   const value = parseUnits(String(amount), t.decimals); // exact base units, no float
-  const txResponse = await c.transfer(to, value); // signed LOCALLY + broadcast
+  // The trailing overrides object carries the user-selected EIP-1559 fee (if any);
+  // ethers treats the last arg as the tx overrides for a contract method call.
+  const txResponse = await c.transfer(to, value, evmFeeOverrides(fee)); // signed LOCALLY + broadcast
 
   return {
     hash: txResponse.hash, // REAL hash from the network
