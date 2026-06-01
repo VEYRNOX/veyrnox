@@ -75,10 +75,13 @@ export function deriveSecp256k1AtPath(mnemonic, path, passphrase = '') {
 // btc/derivation.js. Defaults to testnet (mainnet is gated in btc/networks.js).
 export { deriveBtcAccount as deriveBitcoinAccount } from './btc/derivation.js';
 
-export function deriveSolanaAccount() {
-  // TODO: ed25519 SLIP-0010 (m/44'/501'/0'/0') -> base58 pubkey via @solana/web3.js.
-  throw new Error('NOT IMPLEMENTED: Solana ed25519 derivation. Implement with SLIP-0010 + @solana/web3.js test vectors.');
-}
+// Solana is now IMPLEMENTED in the parallel sol/ stack (ed25519 SLIP-0010,
+// m/44'/501'/0'/0', base58 address), kept separate because it shares NOTHING
+// with the EVM/BTC secp256k1 engine beyond the seed (different curve entirely).
+// This thin re-export keeps the public derivation surface in one place; the real
+// logic + test vectors live in sol/derivation.js. Devnet-first (mainnet gated in
+// sol/networks.js).
+export { deriveSolAccount as deriveSolanaAccount } from './sol/derivation.js';
 
 export function deriveCosmosAccount() {
   // TODO: secp256k1 -> bech32 with chain prefix (cosmos/osmo/etc.).

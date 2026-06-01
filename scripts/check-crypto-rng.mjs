@@ -14,6 +14,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 
 // Directories whose contents must never use non-cryptographic randomness.
+// `src/wallet-core` is walked RECURSIVELY, so every chain stack underneath it is
+// covered automatically: evm/, btc/, AND sol/ (Phase SOL — ed25519 key material
+// must come from the CSPRNG-seeded BIP-39 path, never Math.random).
 const GUARDED_DIRS = ['src/wallet-core', 'src/lib/WalletProvider.jsx'];
 // Extend with any path that touches keys/seeds/signing as you build them out.
 
