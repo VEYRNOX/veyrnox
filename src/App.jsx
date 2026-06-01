@@ -112,6 +112,7 @@ const CloudBackup = lazy(() => import('./pages/CloudBackup'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
 const BlockExplorer = lazy(() => import('./pages/BlockExplorer'));
 const SecurityScanner = lazy(() => import('./pages/SecurityScanner'));
+const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
 const ERC20Discovery = lazy(() => import('./pages/ERC20Discovery'));
 const Products = lazy(() => import('./pages/Products'));
 
@@ -159,6 +160,7 @@ const AuthenticatedApp = () => {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/tax" element={<TaxReport />} />
           <Route path="/security" element={<SecurityCenter />} />
+          <Route path="/security-dashboard" element={<SecurityDashboard />} />
           <Route path="/audit" element={<AuditLogPage />} />
           <Route path="/nft" element={<NFTPortfolio />} />
           <Route path="/snapshots" element={<PortfolioSnapshots />} />
