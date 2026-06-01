@@ -1,45 +1,35 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Fingerprint, ShieldCheck, AlertCircle } from "lucide-react";
-
-async function triggerBiometric() {
-  if (!window.PublicKeyCredential) {
-    throw new Error("WebAuthn not supported in this browser");
-  }
-
-  const challenge = new Uint8Array(32);
-  crypto.getRandomValues(challenge);
-
-  await navigator.credentials.get({
-    publicKey: {
-      challenge,
-      timeout: 60000,
-      userVerification: "required",
-      rpId: window.location.hostname,
-      allowCredentials: [],
-    },
-  });
-}
+import {
+  isPasskeyRegistered,
+  isWebAuthnSupported,
+  verifyPasskeyAssertion,
+} from "@/lib/passkey";
 
 export default function QuickLock({ onUnlock }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // This is the dashboard's soft SCREEN lock (distinct from the vault unlock in
+  // WalletProvider — the vault is already decrypted here). When a real passkey
+  // is registered we require a genuine assertion against THAT credential; with
+  // no passkey (or no WebAuthn) it degrades to an immediate unlock so the screen
+  // is never bricked. It holds/derives no key material either way.
   const handleUnlock = async () => {
     setLoading(true);
     setError(null);
     try {
-      await triggerBiometric();
+      if (isPasskeyRegistered() && isWebAuthnSupported()) {
+        await verifyPasskeyAssertion(); // scoped to our credential; throws on cancel
+      }
       onUnlock();
     } catch (err) {
-      // If no credentials registered or user cancelled, check if it's a "not allowed" (cancel)
-      if (err.name === "NotAllowedError") {
+      if (err?.name === "NotAllowedError") {
         setError("Authentication was cancelled or denied.");
-      } else if (err.name === "SecurityError" || err.message?.includes("not supported")) {
-        // Fallback: WebAuthn not available (e.g. localhost without HTTPS) — allow unlock
-        onUnlock();
       } else {
-        // No registered credentials but WebAuthn works — still unlock (passkey-less unlock)
+        // WebAuthn unavailable on this platform — don't trap the user out of a
+        // screen lock that protects no secret. Allow the unlock.
         onUnlock();
       }
     } finally {

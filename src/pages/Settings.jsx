@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import PasskeySetup from "../components/PasskeySetup";
 import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
+import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
 import SessionSettings from "../components/security/SessionSettings";
 
 export default function Settings() {
@@ -87,6 +88,9 @@ export default function Settings() {
       {/* Biometric unlock (PROVISIONAL — M2b app-layer gate) */}
       <BiometricUnlockSettings />
 
+      {/* Passkey unlock (S1 — FIDO2/WebAuthn gate, parallel to biometric) */}
+      <PasskeyUnlockSettings />
+
       {/* Session & auto-lock (idle + background → WalletProvider.lock()) */}
       <SessionSettings />
 
@@ -97,12 +101,15 @@ export default function Settings() {
           <h2 className="font-semibold">WebAuthn / FIDO2</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Passkeys use your device's biometric sensor or security key to verify transactions. 
-          No passwords are stored — authentication happens on-device using the FIDO2 protocol.
+          Passkeys add an on-device biometric or security-key tap as an extra
+          authentication factor. They never hold your keys or seed — your password
+          and recovery phrase remain the independent way to unlock, so losing a
+          passkey never costs funds. Transaction verification (below) can also use
+          a per-wallet passkey.
         </p>
       </div>
 
-      {/* Wallet Passkeys */}
+      {/* Wallet Passkeys (per-wallet — used for transaction MFA, see MFADialog) */}
       <div className="space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
           <Fingerprint className="h-4 w-4 text-accent" />
