@@ -28,7 +28,6 @@ import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
 import { getKeyStore } from '@/wallet-core/keystore';
 import {
-  tryDuressUnlock,
   setDuressVault,
   clearDuressVault,
   hasDuressVault,
@@ -45,10 +44,13 @@ import {
   setPanicVault,
   clearPanicVault,
   hasPanicVault,
-  tryPanicUnlock,
   panicWipeLocal,
   inspectKeyMaterial,
 } from '@/wallet-core/panic';
+// SAST M2: the post-primary-miss deniability resolution runs a CONSTANT number
+// of KDFs regardless of which features are configured, so the presence/count of
+// panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
+import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
 import { isBiometricUnlockEnabled, getBiometricStatus } from '@/lib/biometric';
 import {
   loadAutoLockValue,
@@ -344,38 +346,40 @@ export function WalletProvider({ children }) {
       mnemonic = await keyStore.unlock(password);
     } catch (primaryErr) {
       // The primary unlock failed. BEFORE surfacing that failure, consult the
-      // deniability/emergency paths in order. Each returns falsy (never throws) on
-      // a miss. On a total miss we re-throw the ORIGINAL primary error, so the
-      // message, behaviour, and work-per-attempt at the prompt are identical
-      // whether or not any feature is in use — no tell.
+      // deniability/emergency paths. resolveDeniabilityUnlock (SAST M2) runs a
+      // CONSTANT number of Argon2id KDFs (exactly 3) regardless of which features
+      // are configured and with NO early-return short-circuit, so the presence and
+      // COUNT of panic/duress/hidden cannot be inferred by timing wrong guesses at
+      // the prompt. We evaluate all paths, then branch on the boolean results here
+      // in priority order. On a total miss we re-throw the ORIGINAL primary error,
+      // so the message, behaviour, and work-per-attempt are identical whether or
+      // not any feature is in use — no tell.
       //
       //   0. PANIC WIPE (wallet-core/panic.js): a dedicated panic PIN that
-      //      IRREVERSIBLY destroys all local key material. Checked FIRST so a
+      //      IRREVERSIBLY destroys all local key material. Acted on FIRST so a
       //      deliberate destroy intent is never shadowed by another path. NO
       //      confirmation — under genuine duress a dialog is a liability. After the
       //      wipe we throw the SAME generic primary error (a wrong-password look),
-      //      so the prompt gives no triumphant "wiped!" tell; the destruction has
-      //      already happened. A wrong password can never match (exact GCM decrypt).
+      //      so the prompt gives no triumphant "wiped!" tell. A wrong password can
+      //      never match (exact GCM decrypt).
       //   1. DURESS / DECOY (wallet-core/duress.js): a secondary password that
       //      opens a low-value decoy surrendered under coercion.
       //   2. STEALTH / HIDDEN WALLETS (wallet-core/stealth.js): a dedicated secret
-      //      that reveals one of the user's HIDDEN wallets. Routes through the
-      //      SAME prompt — there is no separate reveal field to notice. The reveal
-      //      runs exactly one KDF on the secret's slot (constant work; see module
-      //      header), so the presence/count of hidden wallets is not timeable.
-      if (await tryPanicUnlock(password)) {
+      //      that reveals one of the user's HIDDEN wallets, via the SAME prompt.
+      const { panic, duressMnemonic, hiddenMnemonic } =
+        await resolveDeniabilityUnlock(password);
+      if (panic) {
         await panicWipe();
         throw primaryErr; // keys destroyed; surface a plain wrong-password failure
       }
-      const decoyMnemonic = await tryDuressUnlock(password);
-      if (decoyMnemonic != null) {
-        mnemonic = decoyMnemonic;
+      if (duressMnemonic != null) {
+        mnemonic = duressMnemonic;
         decoy = true;
-      } else {
-        const hiddenMnemonic = await tryRevealHidden(password);
-        if (hiddenMnemonic == null) throw primaryErr;
+      } else if (hiddenMnemonic != null) {
         mnemonic = hiddenMnemonic;
         hidden = true;
+      } else {
+        throw primaryErr;
       }
     }
     mnemonicRef.current = mnemonic;
