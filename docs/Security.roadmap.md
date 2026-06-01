@@ -200,7 +200,63 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
       infer the wallet from those. In DEMO the visible list is an in-memory mock, so
       after a reload nothing persists. Provisional; this path specifically needs
       audit scrutiny. See `moveWalletToHidden` / `peekHiddenWallet`.
-- **Panic wipe** ◈ — emergency local destruction of key material.
+- **Panic wipe** ◈ — emergency local destruction of key material. **IMPLEMENTED
+  (PROVISIONAL, testnet/demo) — ⚠️ DESTRUCTIVE + SAFETY-CRITICAL, FLAGGED FOR
+  SPECIFIC AUDIT SCRUTINY.** For a user under threat who needs to ensure nothing
+  is recoverable from the device. The destructive counterpart to Duress + Stealth:
+  where those HIDE keys, this DESTROYS them. Routes through the existing
+  keystore/WalletProvider; the primitive lives in `src/wallet-core/panic.js`
+  (vault.js / vaultStore.js / signing.js UNCHANGED — it reuses encryptVault/
+  decryptVault for the panic marker and re-opens the shared IndexedDB by name,
+  plain storage plumbing only).
+  - **TWO TRIGGERS (the misfire/threat-model tradeoff, documented).**
+    (1) **Panic PIN at unlock** (primary, duress-appropriate): a dedicated PIN
+    entered at the SAME unlock prompt as every other secret fires the wipe with
+    **NO confirmation** — under genuine duress a "are you sure?" dialog is a
+    liability (a coercer can cancel it; it signals what's happening). Wired into
+    `WalletProvider.unlock` as the FIRST fallback after the primary unlock fails
+    (before duress + stealth), so a deliberate destroy intent is never shadowed;
+    after the wipe it throws the SAME generic wrong-password error (no "wiped!"
+    tell). MISFIRE PROTECTION: the marker is a real AES-GCM blob, so the wipe
+    fires ONLY on an exact decrypt match (a wrong password can never trigger it);
+    it is checked only AFTER the primary unlock fails (your REAL password never
+    wipes); and it requires a deliberate ≥6-char PIN (vs duress's 4) chosen
+    specifically to destroy. The accepted residual: a user who types EXACTLY their
+    panic PIN by accident loses the local copy — mitigated by the length floor +
+    "set it to something you'd never type" guidance, accepted because
+    duress-usability requires no dialog. (2) **In-app guarded action**
+    (deliberate, non-duress decommissioning): a type-to-confirm (`WIPE`) +
+    acknowledgement-checkbox button on the PanicWipe page, where a confirmation IS
+    appropriate (no coercion to design around).
+  - **WHAT IT DESTROYS.** The WHOLE `veyrnox-vault`/`vault` store is `clear()`-ed
+    (so a future-added key can't silently survive) AND the database is best-effort
+    deleted: this removes the primary vault (`primary`), the duress decoy
+    (`secondary`), the entire stealth pool (`vault:1..N`, real + chaff), and the
+    panic marker (`tertiary`). It also clears the DEMO-only address-residue maps in
+    localStorage (`veyrnox-decoy-demo-balances` / `veyrnox-hidden-demo-balances` —
+    not key material, but they name addresses). On NATIVE (M2b) the hardware-backed
+    primary vault lives outside IndexedDB, so `WalletProvider.panicWipe` ALSO calls
+    `keyStore.clearVault()`. Then it drops the live in-memory secret (`lock()`).
+  - **HONEST LIMITS (stated plainly to the user + flagged for audit).** Panic wipe
+    destroys the **LOCAL device copy only**. A **seed backup the user holds
+    elsewhere** (paper, password manager, another device) STILL recovers the wallet
+    — INTENDED: wipe protects the *device*, not the *seed*. On-chain
+    addresses/history stay public forever. Flash-media forensic recovery is OUT OF
+    SCOPE — we delete logical IndexedDB records, NOT cryptographically sanitise the
+    storage medium (wear-levelling/snapshots/swap); the mitigation is that only
+    ciphertext (Argon2id + AES-GCM) was ever stored, so a recovered blob is still
+    gated by the never-stored password. TIMING: like duress, when a panic PIN IS
+    configured the unlock-miss path runs one extra KDF, so the *presence* (not the
+    value) of a panic PIN is in principle timeable. Native hardware-backed
+    duress/stealth still not wired (web/demo today). Provisional; this path needs
+    specific audit scrutiny.
+  - **RESIDUAL-STORAGE PROOF.** `inspectKeyMaterial()` (non-destructive) enumerates
+    the vault store keys + residue maps and returns `{ indexedDbKeys, vaultBlobCount,
+    localStorageResidue, clean }`. The PanicWipe demo snapshots it BEFORE (15 blobs:
+    primary + secondary + tertiary + 12 stealth slots) and AFTER (empty, `clean:
+    true`) to PROVE nothing recoverable remains. See `src/wallet-core/panic.js`,
+    `src/pages/PanicWipe.jsx`, `scripts/verify-panic.mjs`,
+    `src/wallet-core/__tests__/panic.test.js`. Tests 129→137.
 
 ### S3 — TREASURY / BUSINESS cluster (⚑ — the Direction-B wedge)
 > ⚑ These are NOT consumer features. They only matter if Veyrnox commits to the

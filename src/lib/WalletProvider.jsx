@@ -41,6 +41,14 @@ import {
   hasStealthPool,
   wipeStealthPool,
 } from '@/wallet-core/stealth';
+import {
+  setPanicVault,
+  clearPanicVault,
+  hasPanicVault,
+  tryPanicUnlock,
+  panicWipeLocal,
+  inspectKeyMaterial,
+} from '@/wallet-core/panic';
 import { isBiometricUnlockEnabled, getBiometricStatus } from '@/lib/biometric';
 import {
   loadAutoLockValue,
@@ -75,6 +83,11 @@ export function WalletProvider({ children }) {
   // surface it, so an observer sees no "hidden wallet" indicator. A hidden
   // wallet is a real, independently-encrypted vault — see wallet-core/stealth.js.
   const [isHidden, setIsHidden] = useState(false);
+  // PANIC WIPE (S3 — Direction-C): set true once a panic wipe has destroyed the
+  // local key material this session, so the UI can confirm the wipe + show the
+  // residual report. Reset on the next create/import/unlock (a fresh wallet).
+  // This is NOT a secret; it is purely a UX/proof signal. See wallet-core/panic.js.
+  const [wasWiped, setWasWiped] = useState(false);
   const [accounts, setAccounts] = useState([]); // public only: {address, path, index}
   // Phase BTC: the wallet's BIP-84 testnet account (PUBLIC only: {address, path}).
   // Derived from the SAME in-memory mnemonic alongside the EVM accounts; kept in
@@ -259,6 +272,25 @@ export function WalletProvider({ children }) {
     return acct;
   }, []);
 
+  // PANIC WIPE (S3 — Direction-C). ⚠️ DESTRUCTIVE + SAFETY-CRITICAL — see
+  // wallet-core/panic.js. Irreversibly destroy ALL local key material:
+  //   - native (M2b): the hardware-backed primary vault, via keyStore.clearVault();
+  //   - web: the entire 'veyrnox-vault' IndexedDB store (primary + duress decoy +
+  //     stealth pool + panic marker) and the demo address-residue maps, via
+  //     panicWipeLocal() — which also returns a post-wipe inspection report.
+  // Then drop the live in-memory secret (lock) and flag wasWiped so the UI can
+  // confirm + display proof. HONEST LIMIT: this destroys the LOCAL device copy
+  // only — a seed backup the user holds elsewhere still recovers the wallet (by
+  // design; wipe protects the device, not the seed). Best-effort on the native
+  // clear so an already-cleared vault can't block the (more important) local wipe.
+  const panicWipe = useCallback(async () => {
+    try { await keyStore.clearVault(); } catch { /* may already be gone */ }
+    const residual = await panicWipeLocal();
+    lock();              // drop in-memory secret + reset session flags
+    setWasWiped(true);   // UX/proof signal only (not a secret)
+    return residual;     // { indexedDbKeys, vaultBlobCount, localStorageResidue, clean }
+  }, [lock]);
+
   // Create a brand-new wallet: generate -> encrypt -> persist ciphertext -> unlock.
   const createWallet = useCallback(async (password, strength = 128) => {
     const mnemonic = generateMnemonic(strength);
@@ -267,6 +299,7 @@ export function WalletProvider({ children }) {
     setUnlocked(true);
     setIsDecoy(false);
     setIsHidden(false);
+    setWasWiped(false); // a fresh wallet exists again; clear any prior wipe signal
     // STEALTH (S3): a primary vault now exists, so seed the chaff slot pool. Doing
     // it here (and on import/unlock) ties the pool's presence to "has a wallet"
     // — universal among users — rather than to hidden-wallet usage. Best-effort:
@@ -288,6 +321,7 @@ export function WalletProvider({ children }) {
     setUnlocked(true);
     setIsDecoy(false);
     setIsHidden(false);
+    setWasWiped(false); // a fresh wallet exists again; clear any prior wipe signal
     void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
     touch();
     deriveAccounts(1);
@@ -309,12 +343,19 @@ export function WalletProvider({ children }) {
     try {
       mnemonic = await keyStore.unlock(password);
     } catch (primaryErr) {
-      // The primary unlock failed. BEFORE surfacing that failure, consult the two
-      // deniability paths in order, each of which returns null (never throws) on a
-      // miss. On a total miss we re-throw the ORIGINAL primary error, so the
+      // The primary unlock failed. BEFORE surfacing that failure, consult the
+      // deniability/emergency paths in order. Each returns falsy (never throws) on
+      // a miss. On a total miss we re-throw the ORIGINAL primary error, so the
       // message, behaviour, and work-per-attempt at the prompt are identical
-      // whether or not either feature is in use — no tell.
+      // whether or not any feature is in use — no tell.
       //
+      //   0. PANIC WIPE (wallet-core/panic.js): a dedicated panic PIN that
+      //      IRREVERSIBLY destroys all local key material. Checked FIRST so a
+      //      deliberate destroy intent is never shadowed by another path. NO
+      //      confirmation — under genuine duress a dialog is a liability. After the
+      //      wipe we throw the SAME generic primary error (a wrong-password look),
+      //      so the prompt gives no triumphant "wiped!" tell; the destruction has
+      //      already happened. A wrong password can never match (exact GCM decrypt).
       //   1. DURESS / DECOY (wallet-core/duress.js): a secondary password that
       //      opens a low-value decoy surrendered under coercion.
       //   2. STEALTH / HIDDEN WALLETS (wallet-core/stealth.js): a dedicated secret
@@ -322,6 +363,10 @@ export function WalletProvider({ children }) {
       //      SAME prompt — there is no separate reveal field to notice. The reveal
       //      runs exactly one KDF on the secret's slot (constant work; see module
       //      header), so the presence/count of hidden wallets is not timeable.
+      if (await tryPanicUnlock(password)) {
+        await panicWipe();
+        throw primaryErr; // keys destroyed; surface a plain wrong-password failure
+      }
       const decoyMnemonic = await tryDuressUnlock(password);
       if (decoyMnemonic != null) {
         mnemonic = decoyMnemonic;
@@ -337,6 +382,7 @@ export function WalletProvider({ children }) {
     setUnlocked(true);
     setIsDecoy(decoy);
     setIsHidden(hidden);
+    setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
     // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
     void ensureStealthPool().catch(() => {});
@@ -344,7 +390,7 @@ export function WalletProvider({ children }) {
     deriveAccounts(1);
     deriveBtc();
     deriveSol();
-  }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate]);
+  }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate, panicWipe]);
 
   // PROVISIONAL: fire the prompt on demand for the Security settings "Test"
   // button, so the simulated sheet can be shown on the simulator without an
@@ -462,6 +508,16 @@ export function WalletProvider({ children }) {
   // Coarse local wipe of every stealth slot (real + chaff). Demo reset / panic.
   const removeAllHiddenWallets = useCallback(() => wipeStealthPool(), []);
 
+  // PANIC WIPE management (S3 — see wallet-core/panic.js + panicWipe above).
+  // setPanicPin stores the panic-PIN marker; removePanicPin clears just that
+  // marker (wiping nothing else); hasPanicPin is the raw store check;
+  // inspectKeyMaterial is the NON-destructive "what local key material exists?"
+  // probe used to PROVE a wipe left nothing recoverable. setPanicPin must differ
+  // from the primary/duress/stealth secrets (the page warns — we never hold those
+  // in plaintext to check). None of these touch networks/signing: testnet-safe.
+  const setPanicPin = useCallback((panicPassword) => setPanicVault(panicPassword), []);
+  const removePanicPin = useCallback(() => clearPanicVault(), []);
+
   const value = {
     isUnlocked,
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
@@ -497,6 +553,17 @@ export function WalletProvider({ children }) {
     hasStealthPool,
     initStealthPool,
     removeAllHiddenWallets,
+    // PANIC WIPE (S3 — Direction-C). wasWiped: did a panic wipe destroy local key
+    // material this session? panicWipe(): the destructive action (returns a
+    // post-wipe report). set/remove/hasPanicPin manage the panic PIN; the panic
+    // PIN also fires panicWipe automatically when entered at the unlock prompt.
+    // inspectKeyMaterial(): non-destructive proof of what local key material exists.
+    wasWiped,
+    panicWipe,
+    hasPanicPin: hasPanicVault,
+    setPanicPin,
+    removePanicPin,
+    inspectKeyMaterial,
     createWallet,
     importWallet,
     unlock,

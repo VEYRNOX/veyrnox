@@ -16,7 +16,7 @@ import {
   TrendingDown, RotateCcw, Smartphone, Mic, Trophy, Users2,
   ShieldOff, Gauge, FilterX, KeyRound, Atom, ScanLine, Frame, Wifi, Pen,
   AtSign, Coins,
-  CloudUpload, Compass, Hexagon, ScanSearch, Ghost,
+  CloudUpload, Compass, Hexagon, ScanSearch, Ghost, Bomb,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CommandPalette from "./CommandPalette";
@@ -134,6 +134,7 @@ const navGroups = [
       { path: "/session-manager", label: "Session Manager", icon: ShieldCheck },
       { path: "/duress-pin", label: "Duress PIN", icon: Lock },
       { path: "/stealth-wallets", label: "Stealth Wallets", icon: Ghost },
+      { path: "/panic-wipe", label: "Panic Wipe", icon: Bomb },
       { path: "/address-checker", label: "Address Checker", icon: ShieldQuestion },
       { path: "/wallet-seed-qr", label: "Seed Key QR", icon: Key },
       { path: "/hardware-wallet", label: "Hardware Wallets", icon: Cpu },
