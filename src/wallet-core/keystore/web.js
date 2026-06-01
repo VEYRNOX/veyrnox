@@ -52,6 +52,24 @@ export const webKeyStore = {
     return secret;
   },
 
+  // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
+  // (non-custodial "change my vault password"). This is decrypt-then-re-encrypt
+  // over the unchanged ../vault.js crypto — NO new algorithm, parameter, or
+  // format. The current password is verified by actually decrypting the stored
+  // blob (so a wrong current password throws the SAME generic error as unlock and
+  // changes NOTHING), then the recovered secret is re-encrypted at the CURRENT
+  // KDF params and persisted. Because encryptVault always records the current
+  // params, a legacy-params vault is also upgraded here (same effect as the
+  // unlock-time M3 migration). The secret is never written anywhere in plaintext.
+  async changePassword(currentPassword, newPassword) {
+    const blob = await loadVault();
+    if (!blob) throw new Error('No wallet found on this device');
+    const secret = await decryptVault(blob, currentPassword); // throws on wrong password or tamper
+    // Re-wrap under the new password. Only persist after a successful re-encrypt,
+    // so a failure here leaves the old (still-valid) blob untouched.
+    await saveVault(await encryptVault(secret, newPassword));
+  },
+
   // The unlocked secret lives in WalletProvider's in-memory ref on web, so the
   // store holds nothing to clear here. Native (M2b) drops its hardware grant.
   lock() {},

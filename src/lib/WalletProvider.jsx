@@ -417,6 +417,25 @@ export function WalletProvider({ children }) {
     deriveSol();
   }, [deriveAccounts, deriveBtc, deriveSol, touch]);
 
+  // CHANGE THE VAULT PASSWORD (S1 — Account Access / Reset). Re-encrypt the
+  // existing vault under a new password while keeping the SAME seed. This is the
+  // ONLY "reset" a non-custodial wallet can offer for someone who still knows
+  // their password: it re-wraps the seed, it does NOT recover a forgotten one
+  // (we hold no key escrow — a forgotten password is recovered ONLY by
+  // re-importing the seed via importWallet). It goes through keyStore, which
+  // verifies the current password by decrypting the stored blob (a wrong current
+  // password throws and changes nothing) and re-encrypts via the unchanged
+  // Argon2id+AES-GCM crypto. The seed is unchanged, so the unlocked session and
+  // every derived account stay valid — no re-derive, no re-lock. We do NOT hold
+  // the password in plaintext, so the caller passes the current password through
+  // for verification (defence in depth alongside the unlocked session).
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    await keyStore.changePassword(currentPassword, newPassword);
+    // Keep the session alive on its existing in-memory secret. touch() resets the
+    // idle auto-lock so a successful change doesn't leave a stale countdown.
+    touch();
+  }, [touch]);
+
   // Unlock an existing vault with the password.
   //
   // opts.skipPasskey (SAST M-3 ESCAPE HATCH): when true, bypass the passkey gate
@@ -704,6 +723,10 @@ export function WalletProvider({ children }) {
     createWallet,
     importWallet,
     unlock,
+    // Account Access / Reset (S1): re-encrypt the vault under a new password
+    // (same seed). NOT recovery — a forgotten password is recovered only by
+    // re-importing the seed via importWallet. See pages/WalletAccessReset.jsx.
+    changePassword,
     lock,
     deriveAccounts,
     withPrivateKey,
