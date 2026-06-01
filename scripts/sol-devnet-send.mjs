@@ -19,6 +19,10 @@
 //   node scripts/sol-devnet-send.mjs plan      "<mnemonic>" <toAddress> <amountSol|max>
 //   node scripts/sol-devnet-send.mjs send      "<mnemonic>" <toAddress> <amountSol|max>
 //
+// Add `--rpc <url>` to point at an ALTERNATE devnet/testnet RPC (e.g. a free
+// Helius/QuickNode endpoint) when the public faucet is dry/rate-limited:
+//   node scripts/sol-devnet-send.mjs airdrop "<mnemonic>" 1 --rpc https://<your-devnet-rpc>
+//
 // SAFETY: devnet/testnet only — mainnet is gated in sol/networks.js and this
 // script never selects it. Use a THROWAWAY mnemonic. The default mnemonic is the
 // public BIP-39 test vector (fine to derive/read; never fund a public seed for
@@ -34,6 +38,7 @@ import {
 } from '../src/wallet-core/sol/provider.js';
 import { estimateSolSend, signAndBroadcastSol } from '../src/wallet-core/sol/send.js';
 import { getSolNetworkInfo, solExplorerUrl } from '../src/wallet-core/sol/networks.js';
+import { setSolRpcUrl } from '../src/wallet-core/sol/provider.js';
 import { PublicKey } from '@solana/web3.js';
 
 const PUBLIC_TEST_MNEMONIC =
@@ -44,6 +49,14 @@ const argv = process.argv.slice(2);
 let network = 'devnet';
 const niCmd = argv.indexOf('--network');
 if (niCmd !== -1) { network = argv[niCmd + 1]; argv.splice(niCmd, 2); }
+// Optional --rpc <url> override: point the SAME provider at an alternate
+// devnet/testnet RPC (e.g. a Helius/QuickNode endpoint whose faucet/airdrop
+// isn't dry like the public api.devnet.solana.com one). Routed through the
+// production setSolRpcUrl, so reads/broadcast use it too. The mainnet gate is
+// UNAFFECTED — getSolNetwork() still refuses mainnet regardless of the URL.
+let rpcUrl = null;
+const riCmd = argv.indexOf('--rpc');
+if (riCmd !== -1) { rpcUrl = argv[riCmd + 1]; argv.splice(riCmd, 2); }
 const [cmd, mnemonicArg, toAddress, amountArg] = argv;
 const mnemonic = mnemonicArg || PUBLIC_TEST_MNEMONIC;
 
@@ -51,6 +64,8 @@ if (!getSolNetworkInfo(network)?.isTestnet) {
   console.error(`Refusing: "${network}" is not a testnet/devnet. This harness is devnet/testnet only.`);
   process.exit(1);
 }
+
+if (rpcUrl) setSolRpcUrl(network, rpcUrl);
 
 const toSol = (lamports) => (Number(lamports) / LAMPORTS_PER_SOL).toFixed(9);
 const fmt = (lamports) => `${lamports} lamports (${toSol(lamports)} SOL)`;
