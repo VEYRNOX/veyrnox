@@ -111,6 +111,34 @@ export async function getLamportsPerSignature(networkKey) {
 }
 
 /**
+ * Median recent prioritization fee (micro-lamports per compute unit) from the
+ * SAME Connection/RPC used for everything else — NO new data source. Solana's
+ * priority fee is market-set: getRecentPrioritizationFees() returns the per-slot
+ * fees paid recently; the median is a representative rate. Read-only and
+ * gate-free (display/estimation only; the gate is enforced on broadcast).
+ *
+ * Returns null (NOT 0) if the RPC is unreachable or returns nothing, so the UI
+ * can show "—" for the priority cell while the fixed base fee still renders. On
+ * an idle testnet a real ~0 is legitimate and returned as 0.
+ * @returns {Promise<number|null>} micro-lamports per CU, or null if unavailable.
+ */
+export async function getRecentPrioritizationFee(networkKey) {
+  const conn = getConnection(networkKey);
+  try {
+    const fees = await conn.getRecentPrioritizationFees();
+    if (!Array.isArray(fees) || !fees.length) return null;
+    const vals = fees
+      .map((f) => f.prioritizationFee)
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => a - b);
+    if (!vals.length) return null;
+    return vals[Math.floor(vals.length / 2)]; // median
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Read an address's recent transaction history from the SAME RPC used for
  * balance/blockhash/broadcast — NO new data source. Two-step, both read-only and
  * gate-free (the gate is enforced on broadcast): getSignaturesForAddress() lists

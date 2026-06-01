@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, ShieldAlert, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel } from "lucide-react";
 import QRScanner from "../components/QRScanner";
+import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
 import { toast } from "sonner";
 import { useWallet } from "@/lib/WalletProvider";
@@ -61,6 +62,7 @@ export default function SendCrypto() {
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
   const [txResult, setTxResult] = useState(null); // { hash, explorerUrl } from a real broadcast
+  const [selectedFee, setSelectedFee] = useState(null); // user-chosen EIP-1559 fee (FeeSelector)
 
   // 2FA state
   const [otpCode, setOtpCode]         = useState("");
@@ -239,6 +241,10 @@ export default function SendCrypto() {
       // Sign LOCALLY and broadcast. privateKey is transient and never persisted.
       // Branch on the asset family: ERC-20 tokens go through the token contract's
       // transfer; native EVM coins (ETH) use the native value transfer.
+      // The user-selected EIP-1559 fee (slow/avg/fast or custom) flows straight
+      // into the signing call. When null (estimate unavailable) the send path
+      // falls back to ethers' auto-filled fee — never blocks the send.
+      const fee = selectedFee?.fee || undefined;
       const tx = await withPrivateKey(acct.index, (privateKey) =>
         isErc20
           ? sendToken({
@@ -247,12 +253,14 @@ export default function SendCrypto() {
               symbol: selectedAsset.symbol,
               to: toAddress,
               amount,
+              fee,
             })
           : signAndBroadcast({
               networkKey: networkKey,
               privateKey,
               to: toAddress,
               amountEth: amount,
+              fee,
             })
       );
 
@@ -567,6 +575,18 @@ export default function SendCrypto() {
                 </label>
               </div>
             )}
+
+            {/* Per-chain fee control. The live send path is EVM (EIP-1559); the
+                chosen tier/custom fee is passed into signAndBroadcast/sendToken. */}
+            <FeeSelector
+              chain="evm"
+              networkKey={networkKey}
+              symbol={nativeSymbol}
+              decimals={activeNetwork?.decimals ?? 18}
+              usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
+              gasLimitHint={isErc20 ? 65000 : 21000}
+              onChange={setSelectedFee}
+            />
 
             {/* 2FA method picker */}
             {!twoFAMethod && (
