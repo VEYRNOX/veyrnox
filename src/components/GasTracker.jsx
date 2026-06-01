@@ -1,14 +1,42 @@
 import { useQuery } from "@tanstack/react-query";
 import { Zap, RefreshCw, TrendingDown, TrendingUp, Minus } from "lucide-react";
 
+// Solana does NOT use the EVM gwei/gas-limit model, so it can't be forced into
+// the SLOW/AVG/FAST tiers the other chains use. A Solana fee is a FIXED base
+// fee of 5,000 lamports per signature (a protocol constant = 0.000005 SOL),
+// plus an OPTIONAL priority fee quoted in micro-lamports per compute unit that
+// the market sets under congestion. We render those two SOL-native numbers
+// instead. The base fee is the protocol constant; the priority fee is read
+// live from devnet via getRecentPrioritizationFees (real testnet data, not a
+// hardcoded guess — on an idle testnet it legitimately reads ~0).
+const SOL_BASE_FEE_LAMPORTS = 5000;
+const SOL_DEVNET_RPC = "https://api.devnet.solana.com";
+
 async function fetchFees() {
-  const [btcRes, ethRes] = await Promise.allSettled([
+  const [btcRes, ethRes, solRes] = await Promise.allSettled([
     fetch("https://mempool.space/api/v1/fees/recommended").then(r => r.json()),
     fetch("https://api.etherscan.io/api?module=gastracker&action=gasoracle").then(r => r.json()),
+    fetch(SOL_DEVNET_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getRecentPrioritizationFees", params: [[]] }),
+    }).then(r => r.json()),
   ]);
 
   const btc = btcRes.status === "fulfilled" ? btcRes.value : null;
   const eth = ethRes.status === "fulfilled" && ethRes.value?.result ? ethRes.value.result : null;
+
+  // Median of the recent per-slot prioritization fees = a representative
+  // priority rate. Null (not 0) if the RPC was unreachable, so the UI can show
+  // "—" for the priority cell while the fixed base fee still renders.
+  let solPriority = null;
+  if (solRes.status === "fulfilled" && Array.isArray(solRes.value?.result)) {
+    const vals = solRes.value.result
+      .map(f => f.prioritizationFee)
+      .filter(n => Number.isFinite(n))
+      .sort((a, b) => a - b);
+    if (vals.length) solPriority = vals[Math.floor(vals.length / 2)];
+  }
 
   return {
     btc: btc ? {
@@ -21,12 +49,7 @@ async function fetchFees() {
       standard: parseFloat(eth.ProposeGasPrice),
       fast: parseFloat(eth.FastGasPrice),
     } : null,
-    // Solana is NOT built as a chain yet (no signing stack) — these are STATIC
-    // PLACEHOLDER fees, not live data. Expressed in lamports (1 SOL = 1e9
-    // lamports), the unit Solana fees are actually quoted in: the 5,000-lamport
-    // base fee per signature, with a priority-fee estimate for "fast". Showing
-    // lamports keeps the numbers readable instead of "0.000005 SOL".
-    sol: { slow: 5000, standard: 5000, fast: 250000 },
+    sol: { baseLamports: SOL_BASE_FEE_LAMPORTS, priorityMicroLamports: solPriority },
   };
 }
 
@@ -91,6 +114,48 @@ function FeeRow({ icon, name, slow, standard, fast, unit, congestion }) {
   );
 }
 
+// Solana-native fee row: a fixed base fee + a live priority rate, NOT the
+// SLOW/AVG/FAST tiers used for EVM/BTC, because Solana's fee model is different.
+function SolFeeRow({ baseLamports, priorityMicroLamports }) {
+  const baseSol = baseLamports != null ? (baseLamports / 1e9).toFixed(6) : null;
+  const priorityKnown = priorityMicroLamports != null;
+  // Congestion is driven by the real priority rate: idle testnet (~0) reads low.
+  const congestion = !priorityKnown ? "medium" : priorityMicroLamports > 0 ? "medium" : "low";
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-border last:border-0">
+      <div className="flex items-center gap-2 w-16 shrink-0">
+        <span className="text-base">◎</span>
+        <span className="text-xs font-semibold">SOL</span>
+      </div>
+      <div className="flex items-center gap-1 w-20 shrink-0">
+        {congestionIcon(congestion)}
+        <span className={`text-xs font-medium ${congestionColor(congestion)}`}>
+          {CONGESTION_LABELS[congestion]}
+        </span>
+      </div>
+      <div className="flex-1 grid grid-cols-2 gap-1 text-right">
+        <div>
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Base / sig</p>
+          <p className="text-xs font-mono font-semibold">
+            {baseLamports != null ? baseLamports.toLocaleString() : "—"}
+            <span className="text-[9px] text-muted-foreground ml-0.5">lamports</span>
+          </p>
+          {baseSol != null && (
+            <p className="text-[8px] text-muted-foreground font-mono">≈ {baseSol} SOL</p>
+          )}
+        </div>
+        <div>
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Priority</p>
+          <p className="text-xs font-mono font-semibold">
+            {priorityKnown ? priorityMicroLamports.toLocaleString() : "—"}
+            <span className="text-[9px] text-muted-foreground ml-0.5">µlam/CU</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GasTracker() {
   const { data: fees, isLoading, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["gas-fees"],
@@ -101,7 +166,6 @@ export default function GasTracker() {
 
   const ethCongestion = getCongestion(fees?.eth?.standard, { low: 20, high: 60 });
   const btcCongestion = getCongestion(fees?.btc?.standard, { low: 10, high: 40 });
-  const solCongestion = "low";
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
@@ -150,14 +214,9 @@ export default function GasTracker() {
             unit="Gwei"
             congestion={ethCongestion}
           />
-          <FeeRow
-            icon="◎"
-            name="SOL"
-            slow={fees?.sol?.slow}
-            standard={fees?.sol?.standard}
-            fast={fees?.sol?.fast}
-            unit="lamports"
-            congestion={solCongestion}
+          <SolFeeRow
+            baseLamports={fees?.sol?.baseLamports}
+            priorityMicroLamports={fees?.sol?.priorityMicroLamports}
           />
         </div>
       )}
