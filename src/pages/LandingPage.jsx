@@ -144,7 +144,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-6">
             {[
               { icon: Lock, title: "Passkey Auth", desc: "WebAuthn/FIDO2 biometric login" },
-              { icon: Shield, title: "Multi-Sig", desc: "M-of-N signature wallets" },
+              { icon: Shield, title: "Duress PIN", desc: "Decoy wallet under coercion" },
               { icon: Eye, title: "Whitelist", desc: "Restrict withdrawals to approved addresses" },
               { icon: Zap, title: "2FA", desc: "Email OTP for high-risk actions" },
             ].map((item, idx) => (

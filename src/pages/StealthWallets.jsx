@@ -49,6 +49,7 @@ import {
   FolderInput, ShieldAlert, Wallet as WalletIcon, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import BackButton from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -514,6 +515,7 @@ export default function StealthWallets() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
+      <BackButton />
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Ghost className="h-5 w-5 text-primary" /> Stealth / Hidden Wallets

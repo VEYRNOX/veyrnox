@@ -70,7 +70,9 @@ keys (the `signing.js` / vault path); nothing transacts autonomously. Concretely
 
 History: `Rebalance`/`Rebalance History` were removed and `Recurring Payments`
 had its auto-debit path gutted (now schedule/reminder only, hands off to Send for
-user signing) for violating this rule — see branch `fix/remove-autonomous-execution`.
+user signing) for violating this rule — **PR #47 is MERGED on `main`** (gap closed).
+(`AIRebalancer` remains as ADVISORY-ONLY LLM recommendations — it never moves funds,
+so it is allowed, not a violation.)
 
 ---
 
@@ -79,8 +81,8 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
 > ✅ BUILT (PROVISIONAL): biometric unlock (app-layer gate), passkey Level-1
 > unlock gate (+ password escape hatch — SAST M-3), session manager + auto-lock,
 > KDF work-factor raise + param migration (M3). 🟡 native secure storage (M2b
-> app-layer; OS-enforced M2c/M2d still 📋). 📋 passkey Level-2 PRF vault-protect;
-> account access / reset password.
+> app-layer; OS-enforced M2c/M2d still 📋). ✅ account access / change password +
+> seed recovery (PR #50, non-custodial). 📋 passkey Level-2 PRF vault-protect.
 - **M2 native secure storage + biometrics** — Secure Enclave/Keychain (iOS) +
   Android Keystore/StrongBox; biometric unlock. (Full spec: docs/M2.secure-
   storage.md. Covers the site's "Biometric Auth" + "Samsung Keystore" pages.)
@@ -106,8 +108,10 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
     passkeys (iCloud Keychain / Google Password Manager). 
   - **The hard one — recovery/device-loss:** if a passkey protects the seed and
     the device is lost, how does the user recover? This is the most dangerous
-    thing to get wrong (lock-out = lost funds). Design explicitly; it intersects
-    with Social Recovery (S3). 
+    thing to get wrong (lock-out = lost funds). Design explicitly. (Note: Social
+    Recovery, once the intended fallback here, is ❌ removed — so device-loss
+    recovery rests on the user's own seed backup + the account-access seed-recovery
+    path, not guardians.) 
   - AUDIT NOTE: Level 2 is cryptographic → its own audit attention.
 - Finish core: HD Wallet Manager, Wallet Seed QR, Import Private Key (mostly done).
 - AUDIT NOTE: M2 is security-critical → strict pre-merge review + in audit scope.
@@ -150,10 +154,11 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
 ~3–4 weeks.
 > ✅ BUILT: token approvals view + REVOKE; address-poisoning / look-alike
 > warnings (wired into send, informs-not-blocks); spam-token filter; calldata
-> decode + unlimited-allowance warning; per-chain recipient address validation.
-> 📋 NOT BUILT: suspicious-address threat-intel screening; transaction simulation
-> (UI shells only — `WhatIfSimulator`/`SecurityScanner`); Security Center,
-> anomaly/fraud detection (UI shells only); dApp security alerts; AI explanation.
+> decode + unlimited-allowance warning; per-chain recipient address validation;
+> transaction simulation (LOCAL-first pre-sign preview, `simulate.js`); anomaly /
+> fraud detection (LOCAL heuristics `anomaly.js`, PR #54); Security Dashboard
+> (read-only posture view, PR #53). 📋 NOT BUILT: suspicious-address threat-intel
+> screening; dApp security alerts; AI explanation.
 - **Token Approvals** — view + REVOKE ERC-20 allowances (the top drain vector).
   Reuses Phase B calldata/approval logic.
 - **Suspicious Address Checker** — screen recipient vs known-scam lists + warn on
@@ -182,22 +187,27 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
   scope; review carefully.
 
 ## S3 — Access & recovery
-~3–4 weeks (Social Recovery pushes this longer + needs its own audit attention).
+~3–4 weeks. (Social Recovery — which would have pushed this longer — is ❌ removed;
+see the removed record under "Explicitly EXCLUDED".)
 > ✅ BUILT (PROVISIONAL, testnet/demo): Duress PIN, Stealth/hidden wallets,
 > Panic wipe, constant-KDF unlock timing (details below). 📋 NOT BUILT: Hardware
-> wallet (UI shell only), Login activity (UI shell only), Social recovery
-> (audit-blocked), Crypto Will/inheritance, Multi-sig (UI shell only).
+> wallet (UI shell only), Login activity (UI shell only), Crypto Will/inheritance.
+> ❌ REMOVED: Social Recovery (audit-blocked, never shipped), Multi-Sig
+> (UI shell w/ fake addresses; page/route/nav/catalogue deleted) — see the
+> removed record in "Explicitly EXCLUDED" below.
 - **Duress PIN** ✅ — decoy PIN opens an empty/fake wallet under coercion. Self-
   contained, high value. (`src/wallet-core/duress.js`.)
 - **Hardware Wallet support** — Ledger/Trezor connect via established libs
   (strongest key security for power users).
 - **Login Activity** (+ map) — show recent access events (needs backend to record).
-- **Social Recovery** (OPTIONAL, heavier) — guardian / Shamir's-Secret-Sharing
-  recovery. Cryptographically nontrivial → ~3–4 weeks ALONE and **must get its
-  own audit attention** (a flaw here loses or leaks the seed).
-- **Crypto Will / inheritance** ◈ — self-custody only (built on social-recovery /
-  secret-sharing + dead-man's-switch; NEVER custodial, NEVER adjudicates death).
-  High cryptographic risk + LEGAL/estate dimensions → audit attention AND a lawyer.
+- **Social Recovery** (guardian / Shamir's-Secret-Sharing) — ❌ REMOVED
+  [audit-blocked-and-not-advertised]. Cryptographically nontrivial, never shipped,
+  no longer advertised; removed from UI/catalogue. (A flaw here would lose or leak
+  the seed — it stays out until/unless a dedicated audited design is greenlit.)
+- **Crypto Will / inheritance** ◈ — self-custody only (secret-sharing +
+  dead-man's-switch design; NEVER custodial, NEVER adjudicates death). High
+  cryptographic risk + LEGAL/estate dimensions → audit attention AND a lawyer. 📋
+  roadmap (not near-term).
 - **Stealth / hidden wallets** ◈ — wallets revealed only by a specific PIN
   (plausible deniability). Pairs with Duress PIN. **IMPLEMENTED (PROVISIONAL,
   testnet/demo).** Design: a user creates one or more HIDDEN wallets that never
@@ -380,8 +390,12 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
 > businesses PAY = revenue model). If that wedge is chosen, this cluster moves to
 > an EARLY dedicated phase (right after Foundation) because for that audience it
 > IS the product, not a security add-on. See docs/WalletRoadmap.md WEDGE NOTE.
-- **Multi-sig wallets (2-of-3, 3-of-5)** ⚑◈ — cryptographic; own audit attention.
-- **Multi-sig TREASURY (org-grade)** ⚑ — shared treasury with controls.
+> NB: **Multi-Sig is ❌ removed** [audit-blocked-and-not-advertised] — it shipped
+> only as a UI shell with fake addresses and its page/route/nav/catalogue were
+> deleted. The rest of this cluster remains an unbuilt ⚑ wedge idea, contingent on
+> a Multi-Sig core being designed + audited first.
+- **Multi-sig wallets (2-of-3, 3-of-5)** — ❌ REMOVED [audit-blocked-and-not-advertised] (UI shell w/ fake addresses; page/route/nav/catalogue deleted).
+- **Multi-sig TREASURY (org-grade)** ⚑ — shared treasury with controls (depends on a Multi-Sig core — currently removed).
 - **Approval workflows** ⚑ — proposer → approver(s) → execute, with audit trail.
 - **Role-based / multi-user access** ⚑ — propose vs approve vs view permissions.
 - **Spending policies / daily limits** ⚑◈ — caps + rules on what can move.
@@ -414,10 +428,10 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
 - **Privacy routing** ◈ — Tor / RPC-privacy options for high-threat users.
 
 ## Then: freeze → independent audit → fix → ship
-- The audit now covers S1–S4 (esp. M2, Social Recovery, Cloud Backup) — this is
-  MORE than the EVM-only estimate (~$7k–$30k). Re-scope/quote accordingly
-  (docs/Audit.scope.md).
-- Cryptographic features (M2, Social Recovery, Cloud Backup) get hands-on
+- The audit now covers S1–S4 (esp. M2, the deniability stack, Cloud Backup) — this
+  is MORE than the EVM-only estimate (~$7k–$30k). Re-scope/quote accordingly
+  (docs/Audit.scope.md). (Social Recovery is ❌ removed, so it is NOT in scope.)
+- Cryptographic features (M2, deniability stack, Cloud Backup) get hands-on
   verification AND explicit auditor focus — bugs there lose funds.
 
 ---
@@ -434,6 +448,23 @@ These site pages sound security/compliance but contradict the strategy:
 
 > If the business ever pivots to a custodial/exchange model, that's a DIFFERENT
 > product with licensing — led by lawyers, not the codebase — and a re-architecture.
+
+### ❌ Removed from the app (consolidated record)
+> Reason tags: [off-wedge] not core to the wedge · [breaks-self-custody] would move
+> value without a user signature · [audit-blocked-and-not-advertised] cryptographically
+> sensitive, never shipped, no longer advertised · [out-of-scope-regulated]
+> custodial/regulated, never in scope.
+- ❌ Social Recovery (guardian / Shamir SSS) — [audit-blocked-and-not-advertised] never built; removed from UI/catalogue.
+- ❌ Multi-Sig wallets (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
+- ❌ Rebalance + Rebalance History — [breaks-self-custody] autonomous value movement; removed (PR #47).
+- ❌ Recurring auto-debit — [breaks-self-custody] auto-debit path gutted (PR #47); Recurring Payments is now schedule/reminder only, hands off to Send for user signing.
+- ❌ Sui — [off-wedge] chain trim (PR #48).
+- ❌ Cosmos / IBC — [off-wedge] chain trim (PR #48); derive stub left unwired in wallet-core.
+- ❌ Web Bridge — [off-wedge] dApp/swap gateway (PR #48).
+- ❌ ENS Registration — [off-wedge] registration removed (PR #48); ENS/SNS resolution kept as ✅.
+- ❌ Mobile App PWA — [off-wedge] (PR #48); native Capacitor shell remains.
+- ❌ Mobile Widget — [off-wedge] (PR #48).
+- ❌ Custodial / regulated cluster — [out-of-scope-regulated] never in scope: swaps/DEX, limit/OCO/TWAP/trailing/grid orders, trading bots/AI trading bots, perps/options/tokenized stocks, social/copy trading, DCA, staking-as-a-service, DeFi yield/farming, lending/borrowing, fiat on/off-ramp, bank links, CEX deposit/exchange connections, KYC/VASP/DID/trust-score/geo-blocking/compliance, institutional custody, enterprise/super-admin/telemetry/white-label/DAO governance+treasury/payroll/webhook builder/feature flags/perf monitoring/fee-wallet/automation rules, crypto subscriptions, smart-contract deploy, NFT minting/fractionalization, encrypted messaging.
 
 ---
 

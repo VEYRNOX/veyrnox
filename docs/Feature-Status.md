@@ -24,10 +24,10 @@
 - **Security depth is the real progress.** The S1/S2/S3 security stack is the
   bulk of what's built — but all of it is PROVISIONAL until the independent
   audit, and the deniability features (duress/stealth/panic) are testnet/demo.
-- **One known integrity gap, not yet fixed on `main`:** Rebalance and Recurring
-  Payments still contain autonomous/auto-debit value-movement (demo backend
-  balance mutation, no user signature). The fix exists on a branch
-  (`fix/remove-autonomous-execution`) but is **NOT merged** — see bottom section.
+- **Integrity gap CLOSED:** the autonomous/auto-debit value-movement gap is fixed
+  on `main` (PR #47 merged). `Rebalance` + `Rebalance History` are removed; the
+  `Recurring Payments` auto-debit path is gutted (now schedule/reminder only — it
+  hands off to /send for user signing). See bottom section.
 
 ---
 
@@ -84,7 +84,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - FIDO2 / passkeys (unlock gate, NOT key custody) — ✅ (`passkey.js`; password-only escape hatch present — SAST M-3 fix)
 - Session manager + auto-lock (idle / background) — ✅ (`session.js`)
 - At-rest KDF work-factor raise + param migration — ✅ (SAST M3; PROVISIONAL — params need audit validation)
-- Account access / forgot / reset password — 📋 not built
+- Account access / change password + seed recovery — ✅ (PR #50; non-custodial `keyStore.changePassword` + `importWallet` seed recovery; honest "no custodial reset"). OS-enforced ACL hardening (M2c/M2d) remains 📋 audit-blocked, not built.
 
 ## 5. Security — S2 transaction safety
 - Token approvals: view + REVOKE ERC-20 allowances — ✅ (`evm/approvals.js`)
@@ -94,8 +94,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Per-chain recipient address validation — ✅ (`lib/addressValidation.js`; wired into Address Book save + send)
 - Suspicious-address / threat-intel feed screening — 📋 not built (privacy trade-off undecided)
 - Transaction simulation (drainer defense) — ✅ LOCAL-first pre-sign preview wired into Send→verify (`evm/simulate.js` real `eth_call` dry-run + risk flags; `btc/simulate.js` + `sol/simulate.js` honest decode; `TransactionPreview.jsx`). No third-party scoring service. Warns-not-blocks; never claims "safe". The old `WhatIfSimulator`/`SecurityScanner` UI shells remain 📋 separate stubs.
-- Security Center / Dashboard, Security Scanner — 📋 UI shell only
-- Anomaly / fraud detection — 📋 UI shell only (`AnomalyDetection.jsx` placeholder)
+- Anomaly / fraud detection — ✅ (PR #54) LOCAL history-aware heuristics (`anomaly.js`) folded into the tx-simulation preview: amount-vs-history, new-recipient-large, approve-then-transfer; no phone-home, never claims "safe".
+- Security Dashboard (read-only posture view) — ✅ (PR #53) aggregates existing signals (`securityPosture.js`, `SecurityDashboard.jsx`); reuses approvals/spam/poison/feature-status, no new detection, never claims "safe".
 - dApp security alerts — 📋 not built
 
 ## 6. Security — S3 access & recovery (deniability stack — PROVISIONAL, testnet/demo)
@@ -105,9 +105,9 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Constant-KDF unlock timing across the deniability stack — ✅ (`deniabilityUnlock.js`; SAST M-2 fix)
 - Hardware wallet (Ledger / Trezor) — 📋 UI shell only (`HardwareWalletPage.jsx`, simulated connect; no HID/WebUSB)
 - Login activity (+ map) — 📋 UI shell only (needs backend)
-- Social recovery (guardian / SSS) — 📋 not built (audit-blocked, cryptographic)
-- Crypto Will / inheritance — 📋 not built (audit + lawyer; defer)
-- Multi-sig (personal + treasury) — 📋 UI shell only (`MultiSigWallets.jsx`, fake addresses; audit-blocked)
+- Social recovery (guardian / SSS) — ❌ removed [audit-blocked-and-not-advertised] (never built; removed from UI/catalogue)
+- Crypto Will / inheritance — 📋 not built (roadmap; secret-sharing + dead-man's-switch design; audit + lawyer; defer)
+- Multi-sig (personal + treasury) — ❌ removed [audit-blocked-and-not-advertised] (was UI shell `MultiSigWallets.jsx` w/ fake addresses; page/route/nav/catalogue deleted)
 
 ## 7. Security — S4 hardening — 📋 none built
 - RASP — 📋 UI shell only (`RASPSecurity.jsx`)
@@ -144,17 +144,40 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ---
 
-## ⚠️ Open integrity gap — flagged for removal/fix, NOT yet merged
-Two features still move value WITHOUT a user signature (demo backend balance
-mutation + fabricated tx hash), which breaks the non-custodial model:
-- **Rebalance** (`/rebalance`, `Rebalancing.jsx`) — still present on `main`.
-- **Recurring Payments** (`RecurringPayments.jsx`) — `runNow` still debits balance.
+## ✅ Integrity gap CLOSED (PR #47 merged)
+The autonomous-value-movement gap that previously breached the non-custodial model
+is now fixed on `main`:
+- **Rebalance** + **Rebalance History** — ❌ removed [breaks-self-custody]. No
+  `Rebalancing.jsx`, no `/rebalance` route.
+- **Recurring auto-debit** — ❌ removed [breaks-self-custody]; the `runNow` debit
+  path is gutted. **Recurring Payments** now only schedules reminders and hands off
+  to /send for user signing (`runNow → navigate("/send")`) — advisory/schedule-only.
+- **AIRebalancer** (`/ai-rebalancer`) — remains but is ADVISORY-ONLY (LLM
+  recommendations, never moves funds); allowed, not a violation.
 
-A fix that removes Rebalance and guts the Recurring auto-debit exists on branch
-`fix/remove-autonomous-execution` (commit `648afbe`) but is **NOT merged to
-`main`**. Until it merges, treat these as a known self-custody violation in demo.
 The companion rule is recorded in `docs/Security.roadmap.md` (no feature may move
 value / mutate balances without a user signature through wallet-core signing).
+
+---
+
+## ❌ Removed / out-of-scope (consolidated record)
+> Every removed feature with its one-line reason. Reason tags: [off-wedge] = trimmed
+> as not core to the wedge · [breaks-self-custody] = would move value without a user
+> signature · [audit-blocked-and-not-advertised] = cryptographically sensitive, never
+> shipped, no longer advertised · [out-of-scope-regulated] = custodial/regulated,
+> never in scope.
+
+- ❌ Social Recovery (guardian / Shamir SSS) — [audit-blocked-and-not-advertised] never built; removed from UI/catalogue.
+- ❌ Multi-Sig wallets (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
+- ❌ Rebalance + Rebalance History — [breaks-self-custody] autonomous value movement; removed (PR #47).
+- ❌ Recurring auto-debit — [breaks-self-custody] auto-debit path gutted (PR #47); Recurring Payments is now schedule/reminder only, hands off to Send for user signing.
+- ❌ Sui — [off-wedge] chain trim (PR #48).
+- ❌ Cosmos / IBC — [off-wedge] chain trim (PR #48); derive stub left unwired in wallet-core.
+- ❌ Web Bridge — [off-wedge] dApp/swap gateway (PR #48).
+- ❌ ENS Registration — [off-wedge] registration removed (PR #48); ENS/SNS resolution kept as ✅.
+- ❌ Mobile App PWA — [off-wedge] (PR #48); native Capacitor shell remains.
+- ❌ Mobile Widget — [off-wedge] (PR #48).
+- ❌ Custodial / regulated cluster — [out-of-scope-regulated] never in scope: swaps/DEX, limit/OCO/TWAP/trailing/grid orders, trading bots/AI trading bots, perps/options/tokenized stocks, social/copy trading, DCA, staking-as-a-service, DeFi yield/farming, lending/borrowing, fiat on/off-ramp, bank links, CEX deposit/exchange connections, KYC/VASP/DID/trust-score/geo-blocking/compliance, institutional custody, enterprise/super-admin/telemetry/white-label/DAO governance+treasury/payroll/webhook builder/feature flags/perf monitoring/fee-wallet/automation rules, crypto subscriptions, smart-contract deploy, NFT minting/fractionalization, encrypted messaging.
 
 ---
 

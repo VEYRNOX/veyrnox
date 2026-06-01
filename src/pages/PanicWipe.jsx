@@ -40,6 +40,7 @@ import {
   FlaskConical, Lock, Trash2, Database, HardDrive, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import BackButton from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -203,6 +204,7 @@ export default function PanicWipe() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
+      <BackButton />
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Bomb className="h-5 w-5 text-destructive" /> Panic Wipe

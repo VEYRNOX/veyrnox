@@ -18,9 +18,9 @@
 //
 // What this page deliberately does NOT do (and says so): no custodial reset, no
 // email/SMS recovery of the WALLET, no server-side key escrow, no "we'll restore
-// your access". Social recovery / guardians is a SEPARATE, audit-blocked feature
-// and is NOT here. If you lose BOTH your password AND your seed, the funds are
-// unrecoverable — by design, because that is what self-custody means.
+// your access". There is no guardian / social-recovery restoration. If you lose
+// BOTH your password AND your seed, the funds are unrecoverable — by design,
+// because that is what self-custody means.
 //
 // DEMO vs NATIVE: the change-password and recovery cards work everywhere. The
 // "Live demonstration" card is DEMO-gated and exercises the REAL change-password
@@ -375,7 +375,7 @@ export default function WalletAccessReset() {
           <li>We cannot email or text you a link to recover your wallet. There is nothing on our servers to recover; we hold only ciphertext we cannot decrypt.</li>
           <li>We have no key escrow and no “master key”. Support cannot restore access.</li>
           <li>If you lose both your password and your seed phrase, your funds are gone permanently.</li>
-          <li>Social recovery / guardians is a separate feature and is <b>not</b> available here.</li>
+          <li>We do <b>not</b> offer guardian or social-recovery restoration of your wallet.</li>
         </ul>
       </div>
 

@@ -72,8 +72,7 @@ const features = [
     { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "available" },
     { name: "Stealth / Hidden Wallets", desc: "Deniable hidden-wallet pool; count-hiding", status: "available" },
     { name: "Panic Wipe", desc: "Irreversible local key-material destruction", status: "available" },
-    { name: "Social Recovery", desc: "Guardian / secret-sharing recovery (no custodial backstop)", status: "roadmap" },
-    { name: "Crypto Will / Inheritance", desc: "Self-custody inheritance via social recovery", status: "roadmap" },
+    { name: "Crypto Will / Inheritance", desc: "Self-custody inheritance (secret-sharing + dead-man's-switch; no custodial backstop)", status: "roadmap" },
     { name: "Encrypted Cloud Backup", desc: "Ciphertext-only vault backup", status: "roadmap" },
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
@@ -104,7 +103,6 @@ const features = [
   { category: "Payments & Utilities", icon: CreditCard, items: [
     { name: "Address Book", desc: "Saved, labelled addresses with per-chain validation for safer sends", status: "available" },
     { name: "Message Signing", desc: "Sign arbitrary messages for proof-of-ownership", status: "roadmap" },
-    { name: "Multi-Sig Wallets", desc: "Self-custody M-of-N wallets (not custodial treasury)", status: "roadmap" },
     { name: "Split Bill", desc: "Split a cost; each pays from their own wallet", status: "roadmap" },
     { name: "Payment Links", desc: "Shareable request-to-pay link / QR (no processing)", status: "roadmap" },
     { name: "Recurring Payments", desc: "Self-initiated, user-signed each time (no auto-debit)", status: "roadmap" },
