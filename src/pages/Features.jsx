@@ -158,9 +158,9 @@ const featureCategories = [
       },
       {
         name: "Account Access & Recovery",
-        status: "roadmap",
-        summary: "Account access, forgot / reset password",
-        explanation: "Account-level access management and password reset for the app shell. Specced, not yet built. (Wallet key recovery remains seed-phrase / social-recovery based — never custodial.)"
+        status: "available",
+        summary: "Non-custodial change-password + seed recovery",
+        explanation: "Change the vault password (re-encrypts the same seed under a new password; requires the current password) and recover access by re-importing your seed phrase. Fully non-custodial — there is no server-side key escrow and no \"we'll restore your access\" path. If you lose both password and seed, funds are unrecoverable by design."
       },
       {
         name: "Hardware Wallet",
@@ -205,9 +205,9 @@ const featureCategories = [
       },
       {
         name: "Transaction Simulation",
-        status: "roadmap",
-        summary: "Preview balance changes before signing",
-        explanation: "Simulate a transaction's effects (balance and approval changes) before signing as a top-tier drainer defence. Specced, not yet built."
+        status: "available",
+        summary: "Local-first pre-sign preview with risk flags",
+        explanation: "Before signing, the transaction is previewed locally — an eth_call dry-run on EVM plus honest decode on BTC/SOL — surfacing expected balance / approval changes and risk flags as a drainer defence. No third-party scoring service; it warns rather than blocks and never claims a transaction is \"safe\"."
       }
     ]
   },
@@ -379,9 +379,9 @@ const featureCategories = [
     features: [
       {
         name: "Address Book",
-        status: "roadmap",
-        summary: "Saved, labelled addresses",
-        explanation: "Save and label trusted addresses for faster, safer sends. Specced, not yet built."
+        status: "available",
+        summary: "Saved, labelled addresses with per-chain validation",
+        explanation: "Save and label trusted addresses for faster, safer sends. Each address is validated for the selected chain on save using the same validators the Send flow uses, reducing wrong-chain mistakes."
       },
       {
         name: "Message Signing",
