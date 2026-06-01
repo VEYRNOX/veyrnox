@@ -69,7 +69,6 @@ const AnomalyDetection = lazy(() => import('./pages/AnomalyDetection'));
 const TaxHarvesting = lazy(() => import('./pages/TaxHarvesting'));
 const PortfolioRewind = lazy(() => import('./pages/PortfolioRewind'));
 const CustomIndexBuilder = lazy(() => import('./pages/CustomIndexBuilder'));
-const MobileWidgetPage = lazy(() => import('./pages/MobileWidgetPage'));
 const MessengerAlerts = lazy(() => import('./pages/MessengerAlerts'));
 const VoiceCommands = lazy(() => import('./pages/VoiceCommands'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
@@ -101,13 +100,11 @@ const SpamTokenFilter = lazy(() => import('./pages/SpamTokenFilter'));
 const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
 const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
-const CosmosIBC = lazy(() => import('./pages/CosmosIBC'));
 const TronWallet = lazy(() => import('./pages/TronWallet'));
 const NFTGallery = lazy(() => import('./pages/NFTGallery'));
 const CryptoSigning = lazy(() => import('./pages/CryptoSigning'));
 const LiveBalances = lazy(() => import('./pages/LiveBalances'));
 const DAppConnector = lazy(() => import('./pages/DAppConnector'));
-const MobileInstall = lazy(() => import('./pages/MobileInstall'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Documentation = lazy(() => import('./pages/Documentation'));
 const Features = lazy(() => import('./pages/Features'));
@@ -115,11 +112,8 @@ const SamsungKeystore = lazy(() => import('./pages/SamsungKeystore'));
 const CloudBackup = lazy(() => import('./pages/CloudBackup'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
 const BlockExplorer = lazy(() => import('./pages/BlockExplorer'));
-const SuiWallet = lazy(() => import('./pages/SuiWallet'));
 const SecurityScanner = lazy(() => import('./pages/SecurityScanner'));
-const ENSRegistration = lazy(() => import('./pages/ENSRegistration'));
 const ERC20Discovery = lazy(() => import('./pages/ERC20Discovery'));
-const WebBridge = lazy(() => import('./pages/WebBridge'));
 const Products = lazy(() => import('./pages/Products'));
 
 const AuthenticatedApp = () => {
@@ -226,7 +220,6 @@ const AuthenticatedApp = () => {
           <Route path="/tax-harvest" element={<TaxHarvesting />} />
           <Route path="/portfolio-rewind" element={<PortfolioRewind />} />
           <Route path="/index-builder" element={<CustomIndexBuilder />} />
-          <Route path="/mobile-widget" element={<MobileWidgetPage />} />
           <Route path="/messenger-alerts" element={<MessengerAlerts />} />
           <Route path="/voice-commands" element={<VoiceCommands />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
@@ -241,22 +234,17 @@ const AuthenticatedApp = () => {
           <Route path="/hd-wallet" element={<HDWalletManager />} />
           <Route path="/trust-score" element={<TrustScore />} />
           <Route path="/solana" element={<SolanaTokens />} />
-          <Route path="/cosmos" element={<CosmosIBC />} />
           <Route path="/tron" element={<TronWallet />} />
           <Route path="/nft-gallery" element={<NFTGallery />} />
           <Route path="/crypto-signing" element={<CryptoSigning />} />
           <Route path="/live-balances" element={<LiveBalances />} />
           <Route path="/dapp-connect" element={<DAppConnector />} />
-          <Route path="/mobile-install" element={<MobileInstall />} />
           <Route path="/samsung-keystore" element={<SamsungKeystore />} />
           <Route path="/cloud-backup" element={<CloudBackup />} />
           <Route path="/dapp-alerts" element={<DAppSecurityAlerts />} />
           <Route path="/block-explorer" element={<BlockExplorer />} />
-          <Route path="/sui" element={<SuiWallet />} />
           <Route path="/security-scanner" element={<SecurityScanner />} />
-          <Route path="/ens-register" element={<ENSRegistration />} />
           <Route path="/erc20-discovery" element={<ERC20Discovery />} />
-          <Route path="/web-bridge" element={<WebBridge />} />
           <Route path="/products" element={<Products />} />
           <Route path="/docs" element={<Documentation />} />
           <Route path="/features" element={<Features />} />

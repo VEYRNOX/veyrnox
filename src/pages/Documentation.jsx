@@ -21,7 +21,7 @@ import {
 
 const features = [
   { category: "Core Wallet", icon: Wallet, items: [
-    { name: "Multi-Chain Support", desc: "Bitcoin, Ethereum, Solana, Polygon, BSC, Cosmos, Tron, Sui", status: "Active" },
+    { name: "Multi-Chain Support", desc: "Bitcoin, Ethereum, Solana, Polygon, BSC, Tron", status: "Active" },
     { name: "Send/Receive", desc: "Secure crypto transfers with QR scanning and ENS/SNS resolution", status: "Active" },
     { name: "Cross-Chain Swap", desc: "Aggregate DEX swaps across multiple chains", status: "Active" },
     { name: "Address Book", desc: "Save and manage trusted wallet addresses", status: "Active" },
@@ -97,7 +97,6 @@ const features = [
   ]},
   { category: "Identity & Social", icon: Users, items: [
     { name: "DID Management", desc: "Decentralized identity credentials", status: "Active" },
-    { name: "ENS Registration", desc: "Register and manage .eth domains", status: "Active" },
     { name: "Public Profiles", desc: "Shareable trader profiles with stats", status: "Active" },
     { name: "Leaderboard", desc: "Rank traders by performance", status: "Active" },
     { name: "Encrypted Messaging", desc: "End-to-end encrypted chat between users", status: "Active" },
@@ -108,13 +107,10 @@ const features = [
     { name: "Carbon Tracker", desc: "Track and offset crypto carbon footprint", status: "Active" },
     { name: "Crypto Will", desc: "Estate planning and inheritance setup", status: "Active" },
     { name: "Fraud Detection", desc: "AI-powered scam detection", status: "Active" },
-    { name: "Cross-Chain Bridge", desc: "Bridge assets between chains", status: "Active" },
     { name: "Token Approvals", desc: "Monitor and revoke token allowances", status: "Active" },
     { name: "Spam Token Filter", desc: "Auto-hide scam tokens", status: "Active" },
   ]},
   { category: "Mobile & Accessibility", icon: Smartphone, items: [
-    { name: "PWA Install", desc: "Install as native app on iOS/Android", status: "Active" },
-    { name: "Mobile Widget", desc: "Home screen portfolio widgets", status: "Active" },
     { name: "Voice Commands", desc: "Voice-controlled wallet actions", status: "Active" },
     { name: "Biometric Auth", desc: "Face ID / Touch ID login", status: "Active" },
     { name: "DApp Connector", desc: "WalletConnect v2 for dApp access", status: "Active" },
