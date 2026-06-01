@@ -224,6 +224,24 @@ export default function SendCrypto() {
     [toAddress, knownAddresses]
   );
 
+  // ANOMALY / FRAUD DETECTION inputs (Phase S2) — derived from the SAME local data
+  // already loaded above, NOTHING fetched. `priorSends` are this asset's past
+  // OUTFLOW amounts (the baseline for "unusual amount vs your own history");
+  // `knownCounterparties` are every address you've transacted with / saved (for
+  // the first-time-recipient check). Fed into the simulation so the deviation
+  // flags render in the same pre-sign preview. Local-only; no phone-home.
+  const priorSends = useMemo(
+    () => history
+      .filter((t) => t.type === "send" && t.currency === selectedWallet?.currency)
+      .map((t) => Number(t.amount))
+      .filter((n) => Number.isFinite(n) && n > 0),
+    [history, selectedWallet]
+  );
+  const knownCounterparties = useMemo(
+    () => knownAddresses.map((k) => k.address?.toLowerCase()).filter(Boolean),
+    [knownAddresses]
+  );
+
   // PRE-SIGN TRANSACTION SIMULATION (Phase S2). Before the user confirms, dry-run
   // the transaction against the EXISTING RPC (eth_call / eth_getBalance /
   // eth_getCode) to predict the outcome (balance changes), decode the call, and
@@ -244,11 +262,12 @@ export default function SendCrypto() {
           networkKey, from, to: t.address, data, valueWei: 0n,
           nativeSymbol, tokenSymbol: selectedAsset.symbol, tokenDecimals: t.decimals,
           tokenBalance: liveBalance != null ? String(liveBalance) : null, knownAddresses,
+          priorSends, knownCounterparties,
         });
       }
       return simulateEvmTransaction({
         networkKey, from, to: toAddress, valueWei: parseEther(String(amount)),
-        nativeSymbol, knownAddresses,
+        nativeSymbol, knownAddresses, priorSends, knownCounterparties,
       });
     },
     enabled: step === "verify" && !DEMO && (isEvmFamily(selectedAsset) || isErc20)
