@@ -113,29 +113,7 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
 ## S3 — Access & recovery
 ~3–4 weeks (Social Recovery pushes this longer + needs its own audit attention).
 - **Duress PIN** — decoy PIN opens an empty/fake wallet under coercion. Self-
-  contained, high value. **IMPLEMENTED (PROVISIONAL, testnet/demo).** Design:
-  the decoy is a REAL, SEPARATELY-ENCRYPTED vault (its own BIP-39 mnemonic),
-  encrypted/decrypted with the SAME crypto as the primary vault (vault.js,
-  unchanged). It routes through the EXISTING unlock flow — `WalletProvider.unlock`
-  tries `keyStore.unlock` first and, only on failure, consults the decoy
-  (`wallet-core/duress.js`), re-throwing the ORIGINAL error on a miss so the
-  prompt gives no tell. Delivers RUNTIME deniability (identical UI / error text /
-  work-per-attempt). HONEST LIMITS (flagged for audit): NOT hidden-volume storage
-  (forensic inspection can see a second blob exists); a "no decoy configured"
-  state does 1 KDF vs 2 when one exists (feature-presence, not contents, is
-  timeable); native hardware-backed decoy slot not yet wired (web/demo today).
-  See `src/wallet-core/duress.js`, `src/pages/DuressPin.jsx`.
-  - **DECOY BALANCE (follow-up).** The decoy can now hold + display a small,
-    REAL, block-explorer-verifiable testnet balance so it is plausible under
-    coercion (an empty decoy is suspicious). The balance is resolved by
-    `src/lib/decoyBalance.js`: a live on-chain `eth_getBalance` read on
-    real/native (same source of truth as the rest of the wallet — never a
-    hardcoded UI number), and a SEEDED amount in demo (a fresh decoy address
-    can't hold live funds on a simulator) clearly labelled "demo — simulated".
-    The page shows the decoy address + live balance + faucet hint so the user
-    can fund it with an amount they're willing to sacrifice. Added honest
-    plausibility limits in-UI (no tx history = less lived-in; sophisticated
-    coercers; provisional pending audit). Deniability properties unchanged.
+  contained, high value.
 - **Hardware Wallet support** — Ledger/Trezor connect via established libs
   (strongest key security for power users).
 - **Login Activity** (+ map) — show recent access events (needs backend to record).
@@ -146,49 +124,7 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
   secret-sharing + dead-man's-switch; NEVER custodial, NEVER adjudicates death).
   High cryptographic risk + LEGAL/estate dimensions → audit attention AND a lawyer.
 - **Stealth / hidden wallets** ◈ — wallets revealed only by a specific PIN
-  (plausible deniability). Pairs with Duress PIN. **IMPLEMENTED (PROVISIONAL,
-  testnet/demo).** Design: a user creates one or more HIDDEN wallets that never
-  appear in the normal UI (no list, no count, no indicator) and are revealed only
-  by typing their dedicated secret at the EXISTING unlock prompt — `WalletProvider
-  .unlock` tries `keyStore.unlock`, then the duress decoy, then the stealth reveal
-  (`wallet-core/stealth.js`), re-throwing the ORIGINAL error on a total miss so the
-  prompt gives no tell. Each hidden wallet is a REAL, separately-encrypted vault
-  (own BIP-39 mnemonic, vault.js crypto UNCHANGED). It is the DUAL of Duress (there
-  the hidden thing is your real wallet; here the visible wallet is real and the
-  hidden ones are extras). **Storage deniability — improves on the duress artifact
-  tell:** hidden wallets live among a FIXED POOL of identical, vault-shaped slots
-  (in the SAME `veyrnox-vault`/`vault` store); the rest are random CHAFF sized like
-  a real encrypted mnemonic. AES-GCM ciphertext is indistinguishable from random,
-  so a storage dump cannot tell which — or HOW MANY — slots are real vs chaff (the
-  count is hidden, unlike duress's single keyed blob). The pool is seeded for EVERY
-  wallet-bearing device, so its presence tracks "has a wallet" (universal), not
-  "uses hidden wallets". Placement = slot `SHA-256(secret) mod N`; reveal runs
-  exactly ONE KDF on that slot, so presence/count are not timeable. HONEST LIMITS
-  (flagged for audit): NOT a hidden volume — a forensic compare against a pristine
-  install can see the POOL exists (just not its real-vs-chaff contents/count); no
-  claim to defeat statistical blob analysis; write-time snapshotting (before/after)
-  can catch a chaff→real change; rare two-secrets-one-slot collision overwrites the
-  earlier wallet (no enumerable index is kept ON PURPOSE — an index readable with
-  the main password would let a coercer enumerate hidden wallets — so a forgotten
-  secret = an unrecoverable wallet); native hardware-backed pool not yet wired
-  (web/demo today). See `src/wallet-core/stealth.js`, `src/pages/StealthWallets.jsx`,
-  `scripts/verify-stealth.mjs`.
-  - **MULTI-CHAIN IDENTITY (follow-up).** A revealed hidden wallet now shows its
-    full EVM + BTC + SOL identity, not just ETH. Because a hidden wallet is a real
-    BIP-39 wallet, its BTC (BIP-84 testnet) and SOL (ed25519 devnet) addresses come
-    from the EXISTING derivation (`deriveBtcAddress`/`deriveSolAddress` — the same
-    paths `WalletProvider.deriveBtc/deriveSol` use for the primary wallet); on
-    reveal the provider already populates `btcAccount`/`solAccount`, so no new
-    derivation or crypto is added. Deniability is UNCHANGED: deriving extra
-    addresses is pure local computation that writes nothing — the uniform slot
-    pool, hidden count, and identical-error-on-miss all hold (asserted in tests).
-    PRIVACY: a hidden-wallet balance query is a PHONE-HOME surface (it contacts a
-    public RPC/Esplora node and reveals an address; checking ETH+BTC+SOL could let
-    nodes correlate them). The wallet has no private/local balance path yet (S4),
-    so balance checks are OPT-IN/manual — revealing a hidden wallet is network-
-    silent; the UI fetches only on an explicit tap and says so. HONEST LIMIT kept
-    in-UI for all three chains: stealth hides a wallet IN THE APP, not ON-CHAIN
-    (the addresses are public on explorers). See `src/lib/hiddenBalance.js`.
+  (plausible deniability). Pairs with Duress PIN.
 - **Panic wipe** ◈ — emergency local destruction of key material.
 
 ### S3 — TREASURY / BUSINESS cluster (⚑ — the Direction-B wedge)
