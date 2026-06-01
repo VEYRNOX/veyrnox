@@ -10,10 +10,15 @@
 > treat as fact in a deck — present as "model to validate." The single highest-value
 > next step is willingness-to-pay validation via customer conversations.
 >
-> Build status (NOW vs ROADMAP): ✅ built today · 🟡 partial/building · 📋 specced ·
-> 💡 idea. For any public page/deck, only ✅/🟡 may be shown as "available"; 📋/💡
-> must be labelled "roadmap / coming" — overclaiming fails diligence (the 188-page
-> site is the cautionary tale).
+> Build status (NOW vs ROADMAP): ✅ built today · 🟡 partial / built-but-gated ·
+> 📋 specced · 💡 idea · ❌ removed. For any public page/deck, only ✅/🟡 may be
+> shown as "available"; 📋/💡 must be labelled "roadmap / coming" — overclaiming
+> fails diligence (the 188-page site is the cautionary tale).
+>
+> ⚠️ REALITY CAVEAT (verified vs code on `main`): **send is live ONLY for
+> ETH/Sepolia** — all other assets (5 EVM chains, USDC, USDT, BTC, SOL) are
+> `receive_only` (receive + balance work, send gated/unverified). All security
+> features are PROVISIONAL pending the independent audit. See docs/Feature-Status.md.
 
 ## Pricing
 - **Free** — full wallet + baseline security + LIFE-SAFETY features. Adoption engine + ethical floor.
@@ -28,19 +33,19 @@ Tier = where it's offered once built. Chains/dApp access never gated — monetiz
 | Feature (status) | Free | Secure ~$12 | Vault ~$40 | Guardian £100+ |
 |---|---|---|---|---|
 | **Core wallet** | | | | |
-| Multi-chain: EVM (6) ✅, BTC ✅, SOL 🟡 | ✅ | ✅ | ✅ | ✅ |
-| Send ✅ / receive 🟡 / balances ✅ | ✅ | ✅ | ✅ | ✅ |
+| Multi-chain receive+balance: EVM (6) ✅, BTC ✅, SOL ✅ | ✅ | ✅ | ✅ | ✅ |
+| Send: ETH live ✅ / others receive_only 🟡 / receive ✅ / balances ✅ | ✅ | ✅ | ✅ | ✅ |
 | Multi-account HD ✅, import ✅, seed backup ✅ | ✅ | ✅ | ✅ | ✅ |
-| Gas control 🟡, transaction history 📋 | ✅ | ✅ | ✅ | ✅ |
+| Gas control ✅, transaction history ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Baseline security** | | | | |
 | Encrypted vault ✅, biometric ✅, auto-lock ✅ | ✅ | ✅ | ✅ | ✅ |
-| Token-approval revoke ✅, calldata decode ✅ | ✅ | ✅ | ✅ | ✅ |
-| Address-poisoning / spam warnings 🟡 | ✅ | ✅ | ✅ | ✅ |
+| Token-approval revoke ✅, calldata decode ✅, addr validation ✅ | ✅ | ✅ | ✅ | ✅ |
+| Address-poisoning / spam warnings ✅ | ✅ | ✅ | ✅ | ✅ |
 | Local threat-intel (open-source feeds) 💡 | ✅ | ✅ | ✅ | ✅ |
-| FIDO2 / passkeys 🟡 | ✅ | ✅ | ✅ | ✅ |
+| FIDO2 / passkeys (unlock gate) ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Life-safety (free by principle)** | | | | |
 | Duress PIN / decoy wallet ✅ | ✅ | ✅ | ✅ | ✅ |
-| Panic wipe 💡 | ✅ | ✅ | ✅ | ✅ |
+| Panic wipe ✅ | ✅ | ✅ | ✅ | ✅ |
 | **AI (advisory only — never holds keys)** | | | | |
 | Plain-language tx explanation 💡 | ✅ | ✅ | ✅ | ✅ |
 | Scam / phishing explanation 💡 | ✅ | ✅ | ✅ | ✅ |
@@ -48,7 +53,7 @@ Tier = where it's offered once built. Chains/dApp access never gated — monetiz
 | Portfolio Q&A (public on-chain data) 💡 | — | ✅ | ✅ | ✅ |
 | AI portfolio advisor (advisory) 💡 | — | ✅ | ✅ | ✅ |
 | **Privacy & advanced protection** | | | | |
-| Stealth / hidden wallets 💡 | — | ✅ | ✅ | ✅ |
+| Stealth / hidden wallets ✅ | — | ✅ | ✅ | ✅ |
 | No-telemetry / fully-local mode 💡 | — | ✅ | ✅ | ✅ |
 | Privacy routing (Tor / RPC) 💡 | — | ✅ | ✅ | ✅ |
 | Hardware wallet integration 📋 | — | ✅ | ✅ | ✅ |
@@ -58,12 +63,12 @@ Tier = where it's offered once built. Chains/dApp access never gated — monetiz
 | Encrypted cloud backup (ciphertext) 📋 | — | ✅ | ✅ | ✅ |
 | **High-value protection** | | | | |
 | Inheritance / Crypto Will 📋 | — | — | ✅ | ✅ |
-| Personal multi-sig (2-of-3, 3-of-5) 💡 | — | — | ✅ | ✅ |
+| Personal multi-sig (2-of-3, 3-of-5) 📋 (UI shell only) | — | — | ✅ | ✅ |
 | Spending policies / daily limits 💡 | — | — | ✅ | ✅ |
 | Time-locks 💡, address allowlists 💡 | — | — | ✅ | ✅ |
 | Audit log 📋, hardware-key enforcement 📋 | — | — | ✅ | ✅ |
 | **Niceties / analytics / utilities** | | | | |
-| Address book, ENS, basic charts 💡 | ✅ | ✅ | ✅ | ✅ |
+| Address book ✅, ENS/SNS resolution ✅, basic charts 💡 | ✅ | ✅ | ✅ | ✅ |
 | Net-worth / portfolio dashboard 💡 | — | ✅ | ✅ | ✅ |
 | Advanced / predictive analytics, tax reports 💡 | — | ✅ | ✅ | ✅ |
 | Notifications, widgets, voice commands 💡 | basic | ✅ | ✅ | ✅ |
