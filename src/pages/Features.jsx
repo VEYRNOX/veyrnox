@@ -208,6 +208,12 @@ const featureCategories = [
         status: "available",
         summary: "Local-first pre-sign preview with risk flags",
         explanation: "Before signing, the transaction is previewed locally — an eth_call dry-run on EVM plus honest decode on BTC/SOL — surfacing expected balance / approval changes and risk flags as a drainer defence. No third-party scoring service; it warns rather than blocks and never claims a transaction is \"safe\"."
+      },
+      {
+        name: "Anomaly / Fraud Detection",
+        status: "available",
+        summary: "Local rule-based deviation flags over your own history",
+        explanation: "Local heuristics compare a pending transaction against your OWN on-device history and flag deviations in the same pre-sign preview: an amount far above your typical send, a large amount to a first-time recipient, and the approve-then-transferFrom two-step drain shape. Rules run on-device over your history, balances and local lists — no third-party scoring, no telemetry. It catches KNOWN local deviations only, warns rather than blocks, and never claims a transaction is \"safe\"."
       }
     ]
   },
