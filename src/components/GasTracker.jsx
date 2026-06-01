@@ -96,7 +96,7 @@ function FeeRow({ icon, name, slow, standard, fast, unit, congestion }) {
           {CONGESTION_LABELS[congestion]}
         </span>
       </div>
-      <div className="flex-1 grid grid-cols-3 gap-1 text-right">
+      <div className="flex-1 max-w-52 grid grid-cols-3 gap-2 text-right">
         {[["Slow", slow], ["Avg", standard], ["Fast", fast]].map(([label, val]) => {
           const display = formatFee(val);
           return (
@@ -133,7 +133,7 @@ function SolFeeRow({ baseLamports, priorityMicroLamports }) {
           {CONGESTION_LABELS[congestion]}
         </span>
       </div>
-      <div className="flex-1 grid grid-cols-2 gap-1 text-right">
+      <div className="flex-1 max-w-52 grid grid-cols-2 gap-2 text-right">
         <div>
           <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Base / sig</p>
           <p className="text-xs font-mono font-semibold">
