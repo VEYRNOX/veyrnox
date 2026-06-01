@@ -173,6 +173,22 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
   secret = an unrecoverable wallet); native hardware-backed pool not yet wired
   (web/demo today). See `src/wallet-core/stealth.js`, `src/pages/StealthWallets.jsx`,
   `scripts/verify-stealth.mjs`.
+  - **MULTI-CHAIN IDENTITY (follow-up).** A revealed hidden wallet now shows its
+    full EVM + BTC + SOL identity, not just ETH. Because a hidden wallet is a real
+    BIP-39 wallet, its BTC (BIP-84 testnet) and SOL (ed25519 devnet) addresses come
+    from the EXISTING derivation (`deriveBtcAddress`/`deriveSolAddress` — the same
+    paths `WalletProvider.deriveBtc/deriveSol` use for the primary wallet); on
+    reveal the provider already populates `btcAccount`/`solAccount`, so no new
+    derivation or crypto is added. Deniability is UNCHANGED: deriving extra
+    addresses is pure local computation that writes nothing — the uniform slot
+    pool, hidden count, and identical-error-on-miss all hold (asserted in tests).
+    PRIVACY: a hidden-wallet balance query is a PHONE-HOME surface (it contacts a
+    public RPC/Esplora node and reveals an address; checking ETH+BTC+SOL could let
+    nodes correlate them). The wallet has no private/local balance path yet (S4),
+    so balance checks are OPT-IN/manual — revealing a hidden wallet is network-
+    silent; the UI fetches only on an explicit tap and says so. HONEST LIMIT kept
+    in-UI for all three chains: stealth hides a wallet IN THE APP, not ON-CHAIN
+    (the addresses are public on explorers). See `src/lib/hiddenBalance.js`.
 - **Panic wipe** ◈ — emergency local destruction of key material.
 
 ### S3 — TREASURY / BUSINESS cluster (⚑ — the Direction-B wedge)
