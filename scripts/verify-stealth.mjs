@@ -13,7 +13,7 @@ import { deriveSolAddress } from '../src/wallet-core/sol/derivation.js';
 import { clearVault } from '../src/wallet-core/evm/vaultStore.js';
 import { clearDuressVault, tryDuressUnlock } from '../src/wallet-core/duress.js';
 import {
-  ensureStealthPool, createHiddenWallet, tryRevealHidden,
+  ensureStealthPool, createHiddenWallet, moveWalletToHidden, tryRevealHidden,
   hasStealthPool, wipeStealthPool,
 } from '../src/wallet-core/stealth.js';
 
@@ -67,6 +67,16 @@ const aSol = deriveSolAddress(aMnemonic).address;
 
 // Re-create A with the SAME secret -> must be idempotent (same slot), not a 3rd.
 const aAgain = await createHiddenWallet(HIDDEN_A);
+
+// --- move an EXISTING wallet (own mnemonic) into hidden ---
+const existingMnemonic = generateMnemonic(128);
+const existingAddr = deriveEvmAccount(existingMnemonic, 0).address;
+const moved = await moveWalletToHidden(existingMnemonic, 'move-secret-7777');
+const movedReveal = await unlock('move-secret-7777');
+// Clobber guard: a DIFFERENT wallet under the same secret must be refused.
+let clobberRefused = false;
+try { await moveWalletToHidden(generateMnemonic(128), 'move-secret-7777'); }
+catch { clobberRefused = true; }
 
 const realRes = await unlock(REAL_PW);
 const hiddenARes = await unlock(HIDDEN_A);
@@ -138,6 +148,13 @@ const result = {
     // distinguish real wallets from chaff by shape.
     fixed_pool_present: slotKeys.length === 12,
     uniform_blob_shape: blobShapes.size === 1,
+    // MOVE EXISTING: a user-supplied wallet is hidden and revealed by its secret
+    // at the SAME exact address; a different wallet under the same secret is
+    // refused (no clobber). The moved wallet is NOT the visible/real session.
+    move_returns_existing_address: moved.address === existingAddr,
+    move_reveals_existing_wallet: movedReveal.ok && movedReveal.kind === 'hidden' && movedReveal.addr === existingAddr,
+    move_clobber_refused: clobberRefused === true,
+    move_distinct_from_visible: existingAddr !== realAddr,
   },
 };
 
