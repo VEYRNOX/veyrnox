@@ -62,6 +62,9 @@ import {
   isPasskeyRegistered,
   getPasskeyStatus,
   verifyPasskeyAssertion,
+  PASSKEY_GATE,
+  PasskeyGateError,
+  classifyPasskeyError,
 } from '@/lib/passkey';
 import {
   loadAutoLockValue,
@@ -189,27 +192,51 @@ export function WalletProvider({ children }) {
   // The app-layer PASSKEY gate run before reading the vault — the dual of
   // runBiometricGate. It is a CONVENIENCE factor layered on the password, NOT a
   // replacement for it: the password still decrypts the vault, so a lost/broken
-  // passkey never costs funds (passkey loss ≠ fund loss).
-  //   - off / not registered : no-op (password unlock unchanged).
-  //   - demo  : show the clearly-stubbed simulated passkey sheet here.
-  //   - web   : present the REAL browser passkey sheet via verifyPasskeyAssertion;
-  //             a cancel/failure throws and aborts THIS unlock attempt (the user
-  //             can retry, or fall back to a password-only unlock in the UI).
-  //   - unsupported platform : degrade gracefully (skip the gate) so the vault
-  //             is never bricked behind a factor the device can't satisfy.
+  // passkey never costs funds (passkey loss ≠ fund loss). Returns a PASSKEY_GATE
+  // status; THROWS a PasskeyGateError (with reason cancelled|error) when an
+  // attempted assertion fails, so unlock() can fail closed and the UI can offer
+  // the password-only escape hatch. See lib/passkey.js ESCAPE-HATCH THREAT MODEL.
+  //   - off / not registered : SKIPPED (password unlock unchanged).
+  //   - demo  : show the clearly-stubbed simulated passkey sheet; cancel → throw.
+  //   - web + available : present the REAL browser passkey sheet; cancel/failure
+  //             throws (fail closed) and is classified for the escape hatch.
+  //   - web + UNAVAILABLE (no platform authenticator / WebAuthn gone) : the gate
+  //             cannot even prompt, so requiring it would brick EVERY unlock.
+  //             Degrade to the password path, but RETURN the UNAVAILABLE status so
+  //             unlock() can SIGNAL the dropped factor (M-1/M-2) — never silent.
   // A successful assertion returns NO decryption material — it is purely a gate
   // signal. The vault is still opened by keyStore.unlock(password) below.
   const runPasskeyGate = useCallback(async () => {
-    if (!isPasskeyUnlockEnabled() || !isPasskeyRegistered()) return;
+    if (!isPasskeyUnlockEnabled() || !isPasskeyRegistered()) {
+      return { status: PASSKEY_GATE.SKIPPED };
+    }
     const status = await getPasskeyStatus();
     if (status.mode === 'demo') {
-      await showSimulatedPasskeyPrompt(status); // rejects on cancel → aborts unlock
-      return;
+      // Simulated sheet. A cancel rejects with a plain Error → classify as a
+      // cancel so the demo exercises the SAME fail-closed + escape-hatch flow as
+      // real web (and so the cancel path can be load-app verified in demo).
+      try {
+        await showSimulatedPasskeyPrompt(status);
+      } catch (err) {
+        throw new PasskeyGateError('cancelled', err);
+      }
+      return { status: PASSKEY_GATE.PASSED };
     }
-    if (status.available) {
-      await verifyPasskeyAssertion(); // throws on cancel/failure → aborts unlock
+    if (!status.available) {
+      // The configured passkey CANNOT run on this device right now. Do NOT brick
+      // the vault behind a factor it can't satisfy — degrade to the password path
+      // and let unlock() signal it. (SAST M-2: previously a silent skip.)
+      return { status: PASSKEY_GATE.UNAVAILABLE, detail: status.detail };
     }
-    // unsupported platform: no app-layer prompt; password gate (below) still applies.
+    try {
+      await verifyPasskeyAssertion(); // fail closed on cancel/failure
+    } catch (err) {
+      // Classify cancel-vs-broken so the UI can decide whether to surface the
+      // password-only escape hatch (SAST M-3). We still THROW here — the unlock
+      // fails closed; the escape hatch is a separate, deliberate user action.
+      throw new PasskeyGateError(classifyPasskeyError(err), err);
+    }
+    return { status: PASSKEY_GATE.PASSED };
   }, [showSimulatedPasskeyPrompt]);
 
   const lock = useCallback(() => {
@@ -391,16 +418,36 @@ export function WalletProvider({ children }) {
   }, [deriveAccounts, deriveBtc, deriveSol, touch]);
 
   // Unlock an existing vault with the password.
-  const unlock = useCallback(async (password) => {
+  //
+  // opts.skipPasskey (SAST M-3 ESCAPE HATCH): when true, bypass the passkey gate
+  // and unlock with the password alone. This is NOT a casual "skip the 2nd
+  // factor" path — the UI only offers it AFTER the passkey gate has actually
+  // FAILED (a broken/deleted/unavailable credential), and it STILL requires the
+  // correct vault password below (the password is the real control, so this is
+  // no weaker than the app's baseline custody). A plain cancel of a WORKING
+  // passkey does NOT set this — that still fails closed. See lib/passkey.js.
+  //
+  // Returns { passkeySkipped } so the caller can SIGNAL to the user when the
+  // passkey factor was dropped (escape hatch taken, or no authenticator
+  // available) instead of silently proceeding (SAST M-1/M-2).
+  const unlock = useCallback(async (password, opts = {}) => {
     // PROVISIONAL app-layer biometric gate. In demo this shows the simulated
     // prompt; on native the real OS prompt fires inside keyStore.unlock(). A
     // cancel here throws and aborts the unlock before any vault read.
     await runBiometricGate();
     // PASSKEY GATE (S1): an additional FIDO2 factor, parallel to the biometric
     // gate. No-op unless the user registered a passkey AND enabled the toggle.
-    // A cancel/failure throws and aborts the unlock before any vault read; the
-    // password remains the independent path that actually decrypts the vault.
-    await runPasskeyGate();
+    // A cancel/failure throws (fail closed) and aborts the unlock before any
+    // vault read; the password remains the independent path that decrypts the
+    // vault. The deliberate password-only escape hatch (opts.skipPasskey) is the
+    // ONLY way past a failed gate, and it still requires the password below.
+    let passkeySkipped = null;
+    if (opts.skipPasskey) {
+      passkeySkipped = 'escape-hatch';
+    } else {
+      const gate = await runPasskeyGate();
+      if (gate.status === PASSKEY_GATE.UNAVAILABLE) passkeySkipped = 'unavailable';
+    }
     // keyStore.unlock throws "No wallet found on this device" when absent and
     // rethrows decryptVault's wrong-password/tamper error — same as before.
     let mnemonic;
@@ -458,6 +505,9 @@ export function WalletProvider({ children }) {
     deriveAccounts(1);
     deriveBtc();
     deriveSol();
+    // Signal (not secret): tell the caller whether the passkey factor was dropped
+    // for this unlock so the UI can disclose it rather than silently proceeding.
+    return { passkeySkipped };
   }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // PROVISIONAL: fire the prompt on demand for the Security settings "Test"

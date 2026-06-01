@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Wallet, Plus, Eye, EyeOff, Copy, Check, RefreshCw, Download, Shield, ChevronDown, ChevronRight, Key, Lock, Unlock, AlertTriangle, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Wallet, Plus, Eye, EyeOff, Copy, Check, RefreshCw, Download, Shield, ChevronDown, ChevronRight, Key, KeyRound, Lock, Unlock, AlertTriangle, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import CoinLogo from "@/components/CoinLogo";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
+import { isPasskeyGateError } from "@/lib/passkey";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
@@ -71,6 +73,11 @@ export default function HDWalletManager() {
   const [importPhrase, setImportPhrase] = useState("");
   const [importPassword, setImportPassword] = useState("");
   const [unlockPassword, setUnlockPassword] = useState("");
+  // SAST M-3 ESCAPE HATCH: null until the passkey gate has actually FAILED on an
+  // unlock attempt; then { reason: 'cancelled'|'error' } so we can offer a
+  // deliberate, signposted password-only unlock for a broken/deleted passkey.
+  // Surfaced ONLY after a real failure — never a default-visible "skip" button.
+  const [passkeyFailed, setPasskeyFailed] = useState(null);
   const [copied, setCopied] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -153,15 +160,45 @@ export default function HDWalletManager() {
     finally { setBusy(false); }
   };
 
-  const handleUnlock = async () => {
+  // Unlock the vault. `skipPasskey` is the SAST M-3 escape hatch: only ever set
+  // by the explicit "Unlock with password only" button below, which we surface
+  // ONLY after the passkey gate has actually failed. The password is still
+  // required either way — the escape hatch never weakens the vault, it only
+  // refuses to let a broken/deleted passkey strand the user (see lib/passkey.js).
+  const runUnlock = async (skipPasskey) => {
     setError("");
     setBusy(true);
     try {
-      await unlock(unlockPassword);
+      const res = await unlock(unlockPassword, { skipPasskey });
       setUnlockPassword("");
-    } catch (e) { setError(e?.message || "Unlock failed"); }
-    finally { setBusy(false); }
+      setPasskeyFailed(null);
+      // SIGNAL (M-1/M-2): don't silently drop the configured second factor.
+      if (res?.passkeySkipped === "unavailable") {
+        toast.warning("Passkey unavailable on this device — unlocked with your password only.");
+      } else if (res?.passkeySkipped === "escape-hatch") {
+        toast.warning("Unlocked with password only. Re-register your passkey in Security settings to restore the second factor.");
+      }
+    } catch (e) {
+      // A failed passkey gate (cancel OR a broken/deleted credential) fails
+      // CLOSED — the vault stays locked. We then reveal the escape hatch so a
+      // genuinely-broken passkey can't permanently lock the user out, while a
+      // plain cancel of a working passkey still just stays locked until the user
+      // retries or deliberately chooses the password-only path.
+      if (isPasskeyGateError(e)) {
+        setPasskeyFailed({ reason: e.reason });
+        setError(
+          e.reason === "cancelled"
+            ? "Passkey cancelled or unavailable. Try again, or unlock with your password if your passkey was removed from this device."
+            : "Your passkey couldn't be used (it may have been removed from this device). Unlock with your password below."
+        );
+      } else {
+        setError(e?.message || "Unlock failed");
+      }
+    } finally { setBusy(false); }
   };
+
+  const handleUnlock = () => runUnlock(false);
+  const handleUnlockPasswordOnly = () => runUnlock(true);
 
   const handleDerive = async () => {
     setBusy(true);
@@ -220,6 +257,32 @@ export default function HDWalletManager() {
               <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={handleUnlock}>
                 {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
               </Button>
+
+              {/* SAST M-3 ESCAPE HATCH. Shown ONLY after the passkey gate has
+                  actually FAILED on an attempt — never on the pristine form, so
+                  it is not a default-visible "skip the 2nd factor" button. It
+                  still requires the correct vault password (the real control;
+                  the passkey is a presence-only convenience factor), so it is no
+                  weaker than the app's baseline custody — it simply refuses to
+                  let a deleted/unavailable passkey strand a user from funds they
+                  can still unlock with their password. */}
+              {passkeyFailed && (
+                <div className="pt-2 border-t border-border space-y-2">
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Can't use your passkey? If it was removed from this device or your
+                    authenticator is unavailable, unlock with your vault password alone.
+                    Your password still protects the wallet.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    disabled={!unlockPassword || busy}
+                    onClick={handleUnlockPasswordOnly}
+                  >
+                    <KeyRound className="h-4 w-4" /> Unlock with password only
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
