@@ -1,12 +1,12 @@
 // wallet-core/keystore/web.js — the web KeyStore implementation.
 //
 // This is the EXISTING web vault path, now behind the keyStore contract. It is
-// a pure structural wrapper: the crypto (../vault.js, Argon2id+AES-GCM) and the
-// ciphertext persistence (../evm/vaultStore.js, IndexedDB) are UNCHANGED — this
-// module only composes them into the KeyStore interface. No algorithm, storage
-// format, or behaviour changes here versus the pre-M2a code.
+// a structural wrapper over the crypto (../vault.js, Argon2id+AES-GCM) and the
+// ciphertext persistence (../evm/vaultStore.js, IndexedDB). The algorithms and
+// storage format are unchanged; the only behavioural addition (SAST M3) is a
+// transparent KDF-parameter MIGRATION on unlock (see unlock()).
 
-import { encryptVault, decryptVault } from '../vault.js';
+import { encryptVault, decryptVault, vaultNeedsRekey } from '../vault.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
 
 /** @type {import('./keyStore.js').KeyStore} */
@@ -30,10 +30,26 @@ export const webKeyStore = {
 
   // Load ciphertext -> decrypt. Preserves the prior behaviour exactly, including
   // the "No wallet found" path and decryptVault's wrong-password/tamper throw.
+  //
+  // M3 MIGRATION (lazy, upgrade-only): after a SUCCESSFUL decrypt, if the blob was
+  // encrypted with weaker-than-current KDF params, transparently re-encrypt it at
+  // the new params and persist. This happens at most once per vault (the next
+  // unlock sees current params and skips it). Best-effort: a failed re-encrypt
+  // must NEVER block the unlock — the user still gets their (old-params) secret,
+  // and the rekey simply retries next time. Old vaults are NEVER locked out: the
+  // decrypt above already used the blob's own params (see decryptVault).
   async unlock(password) {
     const blob = await loadVault();
     if (!blob) throw new Error('No wallet found on this device');
-    return decryptVault(blob, password); // throws on wrong password or tamper
+    const secret = await decryptVault(blob, password); // throws on wrong password or tamper
+    if (vaultNeedsRekey(blob)) {
+      try {
+        await saveVault(await encryptVault(secret, password)); // re-encrypt at current params
+      } catch {
+        /* best-effort: keep the old blob; unlock still succeeds, rekey retries later */
+      }
+    }
+    return secret;
   },
 
   // The unlocked secret lives in WalletProvider's in-memory ref on web, so the

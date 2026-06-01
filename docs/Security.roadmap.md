@@ -80,6 +80,40 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
   - AUDIT NOTE: Level 2 is cryptographic → its own audit attention.
 - Finish core: HD Wallet Manager, Wallet Seed QR, Import Private Key (mostly done).
 - AUDIT NOTE: M2 is security-critical → strict pre-merge review + in audit scope.
+- **At-rest KDF work factor raised + parameter migration** ◈ — **IMPLEMENTED.**
+  ⚠️ **THE CHOSEN PARAMETERS REQUIRE INDEPENDENT AUDIT VALIDATION.** ⚠️ Addresses
+  SAST finding **M3**: on web the password is the SOLE factor protecting the seed
+  (no hardware key-wrap; `web.js isSecureHardwareAvailable() === false`), and the
+  vault KDF is not gating an interactive login — it stands between an exfiltrated
+  ciphertext blob and the seed, offline and GPU/ASIC-crackable. 64 MiB / t=3 cleared
+  only the OWASP interactive-login floor, low for this threat.
+  - **OLD → NEW:** Argon2id `memorySize` **64 MiB → 192 MiB** (`65536 → 196608`
+    KiB), `iterations` 3, `parallelism` 1, `hashLength` 32. ~3× memory-hardness
+    (memory is the lever against parallel cracking hardware). Deliberately balanced
+    for a phone rather than maxed: measured unlock-KDF latency (desktop browser,
+    native WASM) 64 MiB ~160 ms → 192 MiB ~440 ms; a low-end phone runs ~2–4× slower
+    (~1–1.7 s), tolerable for an infrequent seed-vault unlock. A flat 256 MiB
+    (~720 ms desktop, ~2–3 s low-end phone + webview memory pressure) was rejected as
+    too aggressive WITHOUT per-device tuning.
+  - **MIGRATION (no lockout).** `decryptVault` now derives with the params recorded
+    in EACH blob (`paramsFromVault`), so vaults written at 64 MiB still open. After a
+    successful unlock, `webKeyStore.unlock` transparently re-encrypts at the new
+    params (`vaultNeedsRekey` → `encryptVault` → `saveVault`), upgrade-only and
+    best-effort (a failed rekey never blocks unlock; it retries next time). This
+    mechanism also EXISTS so the audit can later raise the params (e.g. to 256 MiB on
+    capable devices, tuned by device class) without locking anyone out.
+  - **⚠️ AUDIT MUST VALIDATE:** the chosen point on the security/unlock-latency curve
+    against real low-end hardware, ideally adding per-device-class tuning; that the
+    migration cannot strand or downgrade a vault; and enforcing a real password-
+    strength floor (zxcvbn-style) at vault creation, since the KDF only raises the
+    bar — it cannot rescue a weak password. `KDF_PARAMS` is exported so the stealth
+    chaff pool advertises the SAME params (else chaff vs real blobs would differ by
+    their `kdf` field — a deniability tell).
+  - **TEST.** `src/wallet-core/__tests__/vault-migration.test.js` — old-params vault
+    still decrypts; new vaults record new params; `vaultNeedsRekey` flags correctly;
+    `webKeyStore.unlock` migrates on first unlock (and is a no-op after); a wrong
+    password neither migrates nor leaks. See `src/wallet-core/vault.js`,
+    `src/wallet-core/keystore/web.js`, `src/wallet-core/stealth.js` (chaff params).
 
 ## S2 — Transaction safety (high user-protection; reuses calldata work)
 ~3–4 weeks.
