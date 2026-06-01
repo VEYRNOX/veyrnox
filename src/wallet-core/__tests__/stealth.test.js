@@ -13,14 +13,26 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   ensureStealthPool, createHiddenWallet, moveWalletToHidden, tryRevealHidden,
-  hasStealthPool, wipeStealthPool,
+  hasStealthPool, wipeStealthPool, slotForSecret,
 } from '../stealth.js';
 import { deriveEvmAccount } from '../derivation.js';
 import { generateMnemonic } from '../mnemonic.js';
 import { deriveBtcAddress } from '../btc/derivation.js';
 import { deriveSolAddress } from '../sol/derivation.js';
 
-const POOL_SIZE = 12;
+// M1: pool raised 12 -> 256 to cut slot-collision (silent fund-loss) probability.
+const POOL_SIZE = 256;
+
+// Replicate stealth.js's slot math at an ARBITRARY modulus, so a test can find
+// secrets that collide at the OLD pool size (12) and show they no longer collide
+// at the new one. Mirrors slotForSecret: SHA-256(secret), first 4 bytes as a u32.
+async function slotIndexAtModulus(secret, modulus) {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret)),
+  );
+  const n = ((digest[0] << 24) | (digest[1] << 16) | (digest[2] << 8) | digest[3]) >>> 0;
+  return n % modulus;
+}
 
 function dumpVaultStore() {
   return new Promise((resolve, reject) => {
@@ -145,6 +157,56 @@ describe('stealth / hidden wallets', () => {
     expect(slots.length).toBe(POOL_SIZE);
     const shapes = new Set(slots.map((k) => Object.keys(store[k]).sort().join(',')));
     expect(shapes.size).toBe(1);
+  });
+
+  // ---- M1: slot-collision hardening (silent fund-loss bug) ----
+
+  it('places every secret in an in-range vault:N slot (slotForSecret)', async () => {
+    for (const s of ['aaaa', 'some-secret', 'another-one-2', 'zzzz-9999']) {
+      const slot = await slotForSecret(s);
+      expect(slot).toMatch(/^vault:\d+$/);
+      const idx = Number(slot.slice('vault:'.length));
+      expect(idx).toBeGreaterThanOrEqual(1);
+      expect(idx).toBeLessThanOrEqual(POOL_SIZE);
+    }
+  });
+
+  it('the larger pool resolves a pair that COLLIDED at the old size (12) into distinct slots, so both wallets survive', async () => {
+    // Find two DISTINCT secrets that map to the SAME slot under the OLD pool
+    // (POOL_SIZE = 12) — the exact input shape that used to silently overwrite a
+    // hidden wallet — but to DIFFERENT slots under the new pool (256).
+    let a = null;
+    let b = null;
+    const byOldSlot = new Map();
+    for (let i = 0; i < 5000 && !a; i++) {
+      const secret = `collide-probe-${i}`;
+      const oldSlot = await slotIndexAtModulus(secret, 12);
+      const newSlot = await slotIndexAtModulus(secret, POOL_SIZE);
+      const prior = byOldSlot.get(oldSlot);
+      if (prior && prior.newSlot !== newSlot) { a = prior.secret; b = secret; break; }
+      if (!prior) byOldSlot.set(oldSlot, { secret, newSlot });
+    }
+    expect(a).not.toBeNull(); // such a pair must exist quickly
+    expect(b).not.toBeNull();
+    // They WOULD have shared a slot at POOL_SIZE = 12 (the bug), but not at 256.
+    expect(await slotIndexAtModulus(a, 12)).toBe(await slotIndexAtModulus(b, 12));
+    expect(await slotForSecret(a)).not.toBe(await slotForSecret(b));
+
+    // Both hidden wallets now coexist — neither is silently destroyed.
+    const wa = await createHiddenWallet(a);
+    const wb = await createHiddenWallet(b);
+    expect(wa.address).not.toBe(wb.address);
+    expect(await tryRevealHidden(a)).toBe(wa.mnemonic);
+    expect(await tryRevealHidden(b)).toBe(wb.mnemonic);
+  });
+
+  it('self-verifies a freshly created hidden wallet is immediately revealable', async () => {
+    // The post-write self-verify guarantees a create that returns has actually
+    // landed in storage (a write that did not take throws instead of silently
+    // "succeeding" with nothing stored).
+    const created = await createHiddenWallet('verify-after-write-1');
+    expect(created.existing).toBe(false);
+    expect(await tryRevealHidden('verify-after-write-1')).toBe(created.mnemonic);
   });
 
   // ---- moveWalletToHidden: hide an EXISTING (provided) wallet ----
