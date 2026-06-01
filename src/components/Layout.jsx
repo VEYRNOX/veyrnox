@@ -5,7 +5,7 @@ import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
 import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
 import {
-  LayoutDashboard, Send, Download, Settings, LogOut, ShieldCheck, Plug, Bell, Calculator, BarChart2, Sliders, Zap,
+  LayoutDashboard, Send, Download, Settings, LogOut, ShieldCheck, Plug, Bell, Calculator, BarChart2, Zap,
   Receipt, MoreHorizontal, Repeat, ShieldAlert, ClipboardList, Globe, Image,
   BarChart3, Camera, TrendingUp, Network, PieChart, Sparkles, BellRing, Link2, BellDot, ShieldHalf, Users,
   Activity, Bot, Layers, Fingerprint, Cpu,
@@ -95,10 +95,8 @@ const navGroups = [
       { path: "/portfolio-rewind", label: "Portfolio Rewind", icon: RotateCcw },
       { path: "/index-builder", label: "Custom Index", icon: LayoutGrid },
       { path: "/ai-rebalancer", label: "AI Rebalancer", icon: Sparkles },
-      { path: "/rebalance", label: "Rebalance", icon: Sliders },
       { path: "/pl", label: "P&L Tracking", icon: TrendingUp },
       { path: "/risk", label: "Risk Scoring", icon: ShieldCheck },
-      { path: "/rebalancing-history", label: "Rebalance History", icon: History },
     ],
   },
   {

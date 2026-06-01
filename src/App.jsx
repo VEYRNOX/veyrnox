@@ -19,7 +19,6 @@ const ConnectWallet = lazy(() => import('./pages/ConnectWallet'));
 const PriceAlerts = lazy(() => import('./pages/PriceAlerts'));
 const Calculator = lazy(() => import('./pages/Calculator'));
 const Analytics = lazy(() => import('./pages/Analytics'));
-const Rebalancing = lazy(() => import('./pages/Rebalancing'));
 const TaxReport = lazy(() => import('./pages/TaxReport'));
 const SecurityCenter = lazy(() => import('./pages/SecurityCenter'));
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
@@ -85,7 +84,6 @@ const StealthWallets = lazy(() => import('./pages/StealthWallets'));
 const PanicWipe = lazy(() => import('./pages/PanicWipe'));
 const PortfolioRiskScore = lazy(() => import('./pages/PortfolioRiskScore'));
 const CorrelationMatrix = lazy(() => import('./pages/CorrelationMatrix'));
-const RebalancingHistory = lazy(() => import('./pages/RebalancingHistory'));
 const SplitBill = lazy(() => import('./pages/SplitBill'));
 const MerchantQR = lazy(() => import('./pages/MerchantQR'));
 const SessionManager = lazy(() => import('./pages/SessionManager'));
@@ -164,7 +162,6 @@ const AuthenticatedApp = () => {
           <Route path="/alerts" element={<PriceAlerts />} />
           <Route path="/calculator" element={<Calculator />} />
           <Route path="/analytics" element={<Analytics />} />
-          <Route path="/rebalance" element={<Rebalancing />} />
           <Route path="/tax" element={<TaxReport />} />
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/audit" element={<AuditLogPage />} />
@@ -207,7 +204,6 @@ const AuthenticatedApp = () => {
           <Route path="/panic-wipe" element={<PanicWipe />} />
           <Route path="/risk-score" element={<PortfolioRiskScore />} />
           <Route path="/correlation" element={<CorrelationMatrix />} />
-          <Route path="/rebalancing-history" element={<RebalancingHistory />} />
           <Route path="/split-bill" element={<SplitBill />} />
           <Route path="/merchant-qr" element={<MerchantQR />} />
           <Route path="/session-manager" element={<SessionManager />} />

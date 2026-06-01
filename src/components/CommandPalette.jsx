@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Send, Download, Receipt, Sliders, Bell,
+  LayoutDashboard, Send, Download, Receipt, Bell,
   ShieldAlert, BarChart2, Sparkles, Leaf, ScrollText, Newspaper, Link2,
   Cpu, ShieldCheck, PieChart, TrendingUp, Image, Camera, Network,
   Activity, ClipboardList, BarChart3,
@@ -21,7 +21,6 @@ const ALL_ROUTES = [
   { path: "/payment-links", label: "Payment Links", icon: Link2, group: "Wallet" },
   { path: "/recurring", label: "Recurring Payments", icon: Repeat, group: "Wallet" },
   { path: "/calculator", label: "Convert", icon: BarChart3, group: "Wallet" },
-  { path: "/rebalance", label: "Rebalance", icon: Sliders, group: "Invest" },
   { path: "/pl", label: "P&L Tracking", icon: TrendingUp, group: "Invest" },
   { path: "/risk", label: "Risk Scoring", icon: ShieldCheck, group: "Invest" },
   { path: "/savings", label: "Savings Goals", icon: Target, group: "Finance" },
