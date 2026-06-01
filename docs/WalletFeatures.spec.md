@@ -8,7 +8,11 @@
 > licence-triggering.
 >
 > Status is HONEST and current. Do not let this drift into aspiration.
->   ✅ built/working   🟡 partial   📋 specced, not built   💡 parking-lot idea
+>   ✅ built/working   🟡 partial / built-but-gated   📋 specced, not built
+>   💡 parking-lot idea   ❌ removed / out of scope
+>
+> For the at-a-glance consolidated truth (verified against code on `main`), see
+> **docs/Feature-Status.md** — that doc is authoritative when this one disagrees.
 >
 > Standing rules: non-custodial only; testnet until audited; mainnet gated;
 > AI advisory-only (never holds keys); no VASP/custody/swap/DeFi (see
@@ -18,10 +22,20 @@
 
 ## Reality check (read first)
 - Full *vision*: ~50-55 features (this doc).
-- Actually *built & working today*: ~15 (the ✅s) — core wallet ops, 6 EVM
-  chains, USDC, demo mode, desktop web; iOS/Android shells running.
-- The gap between built and envisioned IS the roadmap. ~25-30% of the vision by
-  feature count; most hard EVM crypto risk already retired.
+- Actually *built & working today*: ~30 (the ✅s) — core wallet ops, the full
+  S1 foundation (biometric, passkeys, session/auto-lock, hardened vault), the
+  S2 transaction-safety set (approvals/revoke, poison/spam, calldata decode,
+  per-chain address validation), the S3 deniability stack (duress, stealth,
+  panic wipe), transaction history, gas control, receive flow, demo mode,
+  desktop web; iOS/Android shells running.
+- **BUT — what actually SENDS is only ETH on Sepolia.** All 6 EVM chains, both
+  ERC-20 tokens (USDC, USDT), BTC and SOL are `receive_only`: address derivation
+  + balance reads + receive work, and the send code path is built + unit-tested,
+  but it is HARD-gated off until a real on-chain send is verified per asset.
+- All security/crypto features are PROVISIONAL pending the independent audit;
+  the deniability stack is testnet/demo only.
+- The gap between built and envisioned IS the roadmap; most hard EVM crypto risk
+  already retired. 233 tests green.
 
 ---
 
@@ -31,46 +45,56 @@
 3. Multi-account derivation — ✅
 4. Encrypted vault (Argon2id + AES-256-GCM) — ✅
 5. Backup / reveal seed (with warnings) — ✅
-6. Send native coins — ✅ (verified testnet send)
-7. Receive (address + QR) — 🟡
+6. Send native coins — 🟡 (ONLY ETH/Sepolia is live + verified; all other assets
+   are `receive_only` — send code built+tested but on-chain unverified, gated)
+7. Receive (per-chain address + local QR) — ✅
 8. View balances (from chain) — ✅
-9. Transaction history — 📋
-10. Gas/fee display + control before signing — 🟡
+9. Transaction history (read-only) — ✅ (BTC/SOL via providers, EVM explorer-fallback)
+10. Gas/fee display + control before signing — ✅ (per-chain tiers + custom)
 
 ## 2. Chains & assets
-11. Ethereum — ✅
-12. Polygon — ✅
-13. Arbitrum — ✅
-14. Optimism — ✅
-15. Avalanche — ✅
-16. BNB Chain — ✅
-17. ERC-20 tokens (USDC verified) — ✅
-18. Bitcoin — 📋 (docs/PhaseBTC.md — separate stack, own audit)
-19. Solana — 📋 (docs/PhaseSOL.md — separate stack, own audit)
+> Receive + balance reads work for all of 11–19. SEND is live ONLY for ETH;
+> everything else is `receive_only` (HARD-gated) until verified on-chain.
+11. Ethereum (Sepolia) — ✅ (live send, verified)
+12. Polygon (Amoy) — 🟡 receive_only
+13. Arbitrum (Sepolia) — 🟡 receive_only
+14. Optimism (Sepolia) — 🟡 receive_only
+15. Avalanche (Fuji) — 🟡 receive_only
+16. BNB Chain (testnet) — 🟡 receive_only
+17. ERC-20 tokens (USDC + USDT, Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
+18. Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified — docs/PhaseBTC.verification.md)
+19. Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
 20. More ERC-20 tokens (DAI, LINK…) — 💡 (cheap; reuses token path)
 21. More EVM chains (Base, zkSync…) — 💡 (config-level)
 22. Other stacks (XRP, ADA, TRON…) — 💡 (each a full new stack + audit)
 
 ## 3. Security — S1 foundation (docs/Security.roadmap.md)
 23. Native secure storage (Secure Enclave / Android Keystore) — 🟡 (M2a done;
-    M2b in progress, PROVISIONAL pending audit)
-24. Biometric unlock — 📋
-25. FIDO2 / passkeys (auth + optional vault-protect via PRF) — 📋
-26. Session manager + auto-lock (idle/background) — 📋
+    M2b app-layer, PROVISIONAL; OS-enforced ACL M2c/M2d 📋 not built)
+24. Biometric unlock — ✅ (app-layer gate, PROVISIONAL — not an OS-enforced ACL)
+25. FIDO2 / passkeys — ✅ Level-1 unlock gate (NOT key custody; password escape
+    hatch present). Level-2 PRF vault-protect — 📋 not built.
+26. Session manager + auto-lock (idle/background) — ✅
+26a. At-rest KDF work-factor raise + param migration (SAST M3) — ✅ (PROVISIONAL; params need audit)
 
 ## 4. Security — S2 transaction safety
-27. Token approvals: view + REVOKE — 📋
-28. Suspicious-address / scam screening (threat-intel feed) — 📋
-29. Address-poisoning warnings — 📋
-30. Spam-token filter — 📋
-31. Transaction simulation (top drainer defense) — 📋
-32. Calldata decode / approval warning — 🟡 (partly built in Phase B)
+27. Token approvals: view + REVOKE — ✅
+28. Suspicious-address / scam screening (threat-intel feed) — 📋 not built
+29. Address-poisoning warnings — ✅ (wired into send, informs-not-blocks)
+30. Spam-token filter — ✅
+31. Transaction simulation (top drainer defense) — 📋 not built (UI shells only)
+32. Calldata decode / approval (unlimited-allowance) warning — ✅
+32a. Per-chain recipient address validation — ✅ (Address Book save + send)
 
 ## 5. Security — S3 access & recovery
-33. Duress PIN (decoy wallet) — 📋
-34. Hardware wallet (Ledger / Trezor) — 📋
-35. Login activity (+ map) — 📋
-36. Social recovery (guardian / SSS) — 📋 (cryptographic; own audit attention)
+> Deniability stack (duress/stealth/panic) is BUILT but PROVISIONAL, testnet/demo.
+33. Duress PIN (decoy wallet) — ✅
+33a. Stealth / hidden wallets (deniable chaff-slot pool) — ✅ (SAST M-1 collision fix; multi-chain reveal; move-existing variant)
+33b. Panic wipe (emergency local key destruction) — ✅ (panic PIN + in-app guarded wipe)
+33c. Constant-KDF unlock timing across the deniability stack — ✅ (SAST M-2 fix)
+34. Hardware wallet (Ledger / Trezor) — 📋 not built (UI shell only)
+35. Login activity (+ map) — 📋 not built (UI shell only)
+36. Social recovery (guardian / SSS) — 📋 not built (cryptographic; audit-blocked)
 36a. Crypto Will / inheritance — 📋 (SELF-CUSTODY ONLY: built on social-recovery /
      secret-sharing + dead-man's-switch; Veyrnox NEVER custodies keys or adjudicates
      death. High cryptographic risk + LEGAL/estate dimensions → own audit attention
@@ -92,8 +116,9 @@
 > breaks self-custody + (if trading) regulated. See FutureFeatures.roadmap.md.
 
 ## 8. Wallet niceties (Tier-2 completeness)
-45. Address book / contacts — 💡
-46. ENS resolution + display — 💡
+44a. Help menu (top-bar Documentation entry) — ✅
+45. Address book / contacts — ✅ (with per-chain address validation on save)
+46. ENS / SNS resolution in Send — ✅ (resolve-only); ENS registration — ❌ removed
 47. Price charts / alerts / watchlist — 💡
 48. Portfolio / net-worth view — 💡
 49. NFT viewing (display-only gallery) — 💡
@@ -104,6 +129,7 @@
 52. Android native app — 🟡 (scaffolded; non-custodial = store-exempt)
 53. Desktop web app — ✅
 54. Demo mode (browse without backend) — ✅
+54a. Mobile App PWA / Mobile Widget — ❌ removed from app (PR #48)
 
 ## 10. High-risk / deferred
 55. WalletConnect / dApp connection — 📋 (Phase D; POST-AUDIT only; gateway to
@@ -151,6 +177,12 @@ Onboarding.
 ## B. SELF-CUSTODY-SAFE GAPS — on the site, not yet specced, COULD build
 (No licensing/custody problem. Mostly read-only analytics + UX niceties + a few
 self-custody utilities + more chains. Candidate additions, triaged per the rules.)
+
+> ❌ REMOVED FROM THE APP (PR #48, off-wedge trim): **Sui Wallet**, **Cosmos /
+> IBC**, **Web Bridge**, **ENS Registration**, **Mobile App PWA**, **Mobile
+> Widget** — pages/routes/nav deleted. (ENS/SNS *resolution* in Send kept; the
+> `deriveCosmosAccount` stub remains in wallet-core but is unwired.) These are no
+> longer build candidates unless deliberately re-greenlit.
 
 UX/niceties: Activity Dashboard, Notification Centre, Push Notifications, Smart
 Alerts, Messenger Alerts, Calculator, ENS Registration, ERC20 Discovery, Merchant

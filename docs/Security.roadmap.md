@@ -14,6 +14,12 @@
 > phase = own design doc + branch + PR + review; cryptographic features get
 > explicit audit attention. Security features ENLARGE the audit scope — budget
 > for it.
+>
+> STATUS (verified vs code on `main`, 2026-06-01): S1 ✅ largely built, S2 ✅ core
+> built, S3 deniability stack ✅ built (PROVISIONAL, testnet/demo), S4 📋 not
+> built. ALL security features remain PROVISIONAL pending the independent audit.
+> Markers: ✅ built · 🟡 partial · 📋 specced · 💡 idea · ❌ removed. At-a-glance
+> truth: **docs/Feature-Status.md** (authoritative when docs disagree).
 
 ---
 
@@ -70,6 +76,11 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
 
 ## S1 — Foundation security (bedrock; overlaps mobile M2)
 ~3–4 weeks. The base everything else relies on.
+> ✅ BUILT (PROVISIONAL): biometric unlock (app-layer gate), passkey Level-1
+> unlock gate (+ password escape hatch — SAST M-3), session manager + auto-lock,
+> KDF work-factor raise + param migration (M3). 🟡 native secure storage (M2b
+> app-layer; OS-enforced M2c/M2d still 📋). 📋 passkey Level-2 PRF vault-protect;
+> account access / reset password.
 - **M2 native secure storage + biometrics** — Secure Enclave/Keychain (iOS) +
   Android Keystore/StrongBox; biometric unlock. (Full spec: docs/M2.secure-
   storage.md. Covers the site's "Biometric Auth" + "Samsung Keystore" pages.)
@@ -137,6 +148,12 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
 
 ## S2 — Transaction safety (high user-protection; reuses calldata work)
 ~3–4 weeks.
+> ✅ BUILT: token approvals view + REVOKE; address-poisoning / look-alike
+> warnings (wired into send, informs-not-blocks); spam-token filter; calldata
+> decode + unlimited-allowance warning; per-chain recipient address validation.
+> 📋 NOT BUILT: suspicious-address threat-intel screening; transaction simulation
+> (UI shells only — `WhatIfSimulator`/`SecurityScanner`); Security Center,
+> anomaly/fraud detection (UI shells only); dApp security alerts; AI explanation.
 - **Token Approvals** — view + REVOKE ERC-20 allowances (the top drain vector).
   Reuses Phase B calldata/approval logic.
 - **Suspicious Address Checker** — screen recipient vs known-scam lists + warn on
@@ -166,8 +183,12 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
 
 ## S3 — Access & recovery
 ~3–4 weeks (Social Recovery pushes this longer + needs its own audit attention).
-- **Duress PIN** — decoy PIN opens an empty/fake wallet under coercion. Self-
-  contained, high value.
+> ✅ BUILT (PROVISIONAL, testnet/demo): Duress PIN, Stealth/hidden wallets,
+> Panic wipe, constant-KDF unlock timing (details below). 📋 NOT BUILT: Hardware
+> wallet (UI shell only), Login activity (UI shell only), Social recovery
+> (audit-blocked), Crypto Will/inheritance, Multi-sig (UI shell only).
+- **Duress PIN** ✅ — decoy PIN opens an empty/fake wallet under coercion. Self-
+  contained, high value. (`src/wallet-core/duress.js`.)
 - **Hardware Wallet support** — Ledger/Trezor connect via established libs
   (strongest key security for power users).
 - **Login Activity** (+ map) — show recent access events (needs backend to record).
@@ -369,6 +390,9 @@ user signing) for violating this rule — see branch `fix/remove-autonomous-exec
 
 ## S4 — Hardening & monitoring
 ~3–4 weeks.
+> 📋 NOT BUILT — none of S4 is implemented; RASP / Audit Log / Risk Limits /
+> Cloud Backup / Anomaly Detection exist only as UI shells. No-telemetry mode +
+> privacy routing remain 💡 ideas.
 - **RASP** (Runtime App Self-Protection) — jailbreak/root/tamper/debugger/emulator
   detection on mobile; warn/lock on compromise. Via a mobile security SDK or
   vetted libs. Pure defensive tech, NO regulatory downside; helps store review.

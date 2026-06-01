@@ -6,115 +6,129 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
-import { 
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger 
+import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger
 } from "@/components/ui/accordion";
-import { 
-  Wallet, Shield, ArrowDownUp, Bell, BarChart3, Zap,
-  Search, ChevronRight, Book, Layers, Users, CreditCard, TrendingUp,
-  Lock, RefreshCw, Cloud, Smartphone, Landmark, FileText,
-  LayoutDashboard, Send, Download, Image as ImageIcon
+import {
+  Wallet, Shield, Bell, BarChart3, Zap,
+  Search, ChevronRight, Book, Layers, Users, CreditCard, KeyRound,
+  Lock, Smartphone, Globe, FileText, ShieldAlert, LifeBuoy,
+  LayoutDashboard, Send, Download, Image as ImageIcon, Coins
 } from "lucide-react";
 
+// Scope contract: docs/WalletFeatures.spec.md (canonical three-way split).
+// This catalogue lists ONLY self-custody-safe, in-scope features (spec A = in-scope
+// + B = self-custody-safe gaps). Everything in spec section C (custodial / regulated
+// — swaps, perps, staking/yield/lending, fiat ramps, bank links, KYC/DID, NFT
+// minting, DAO/payroll, encrypted messaging, etc.) is deliberately NOT built and is
+// not listed here.
+//
+// Status is HONEST, cross-checked against actual implementation (wallet-core + real
+// routes):
+//   "available" — built and working today (testnet; mainnet gated until audited)
+//   "roadmap"   — in scope and specced, NOT yet built ("coming soon")
 const features = [
   { category: "Core Wallet", icon: Wallet, items: [
-    { name: "Multi-Chain Support", desc: "Bitcoin, Ethereum, Solana, Polygon, BSC, Tron", status: "Active" },
-    { name: "Send/Receive", desc: "Secure crypto transfers with QR scanning and ENS/SNS resolution", status: "Active" },
-    { name: "Cross-Chain Swap", desc: "Aggregate DEX swaps across multiple chains", status: "Active" },
-    { name: "Address Book", desc: "Save and manage trusted wallet addresses", status: "Active" },
-    { name: "Transaction History", desc: "Complete transaction log with filtering and export", status: "Active" },
+    { name: "Multi-Account HD Wallet", desc: "BIP-39 seed with multi-account derivation; keys held locally", status: "available" },
+    { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "available" },
+    { name: "Encrypted Vault", desc: "Argon2id + AES-256-GCM at rest; plaintext keys never leave device", status: "available" },
+    { name: "Backup & Reveal Seed", desc: "Seed phrase + encrypted QR backup behind explicit warnings", status: "available" },
+    { name: "Send Crypto", desc: "Locally-signed native transfers, testnet-verified", status: "available" },
+    { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "available" },
+    { name: "Live Balances", desc: "Read live from chain RPC / explorer providers", status: "available" },
+    { name: "Transaction History", desc: "Per-chain read-only history with privacy disclosures", status: "available" },
+    { name: "Gas / Fee Control", desc: "Per-chain fee tiers + custom fee before signing", status: "available" },
+    { name: "ENS / SNS Resolution", desc: "Resolve .eth and .sol names on send (resolution only)", status: "available" },
   ]},
-  { category: "Security", icon: Shield, items: [
-    { name: "Passkey Authentication", desc: "Biometric login using WebAuthn/FIDO2", status: "Active" },
-    { name: "Email OTP 2FA", desc: "Two-factor authentication for high-risk actions", status: "Active" },
-    { name: "Address Whitelist", desc: "Restrict withdrawals to pre-approved addresses", status: "Active" },
-    { name: "Transaction Limits", desc: "Daily/per-transaction USD limits with alerts", status: "Active" },
-    { name: "Hardware Wallet", desc: "Ledger, Trezor, Coldcard integration", status: "Active" },
-    { name: "Multi-Sig Wallets", desc: "M-of-N signature wallets for enhanced security", status: "Active" },
-    { name: "RASP Security", desc: "Runtime Application Self-Protection", status: "Active" },
-    { name: "Geo-Blocking", desc: "Restrict access by country/region", status: "Active" },
+  { category: "Networks & Assets", icon: Coins, items: [
+    { name: "EVM Networks", desc: "Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain", status: "available" },
+    { name: "Bitcoin", desc: "BIP-84 native-segwit stack (testnet; mainnet gated)", status: "available" },
+    { name: "Solana", desc: "ed25519 / SLIP-0010 stack (devnet; mainnet gated)", status: "available" },
+    { name: "ERC-20 Tokens", desc: "USDC and USDT via the shared token path", status: "available" },
+    { name: "Additional Tokens", desc: "More ERC-20 tokens (DAI, LINK …) reuse the token path", status: "roadmap" },
+    { name: "Additional Networks", desc: "More EVM chains (Base, zkSync …), config-level", status: "roadmap" },
   ]},
-  { category: "Portfolio Management", icon: BarChart3, items: [
-    { name: "Dashboard Overview", desc: "Real-time portfolio value, allocation charts, P&L tracking", status: "Active" },
-    { name: "Net Worth Tracker", desc: "Track crypto + traditional assets (property, stocks, cash)", status: "Active" },
-    { name: "Custom Index Builder", desc: "Create and manage custom crypto indices", status: "Active" },
-    { name: "Portfolio Snapshots", desc: "Time-travel portfolio value at historical dates", status: "Active" },
-    { name: "What-If Simulator", desc: "Model hypothetical trades and their impact", status: "Active" },
-    { name: "Shared Portfolio View", desc: "Generate shareable portfolio links with privacy controls", status: "Active" },
-    { name: "Benchmarking", desc: "Compare performance against market indices", status: "Active" },
+  { category: "Access & Authentication", icon: KeyRound, items: [
+    { name: "Passkey Unlock", desc: "FIDO2 / WebAuthn unlock gate; never holds keys", status: "available" },
+    { name: "Biometric Unlock", desc: "Face ID / Touch ID unlock gate with fallback", status: "available" },
+    { name: "Native Secure Storage", desc: "Secure Enclave / Android Keystore hardening", status: "roadmap" },
+    { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "roadmap" },
+    { name: "Account Access & Recovery", desc: "Account access, forgot / reset password", status: "roadmap" },
+    { name: "Hardware Wallet", desc: "Ledger / Trezor cold-key signing", status: "roadmap" },
   ]},
-  { category: "Trading & Swaps", icon: ArrowDownUp, items: [
-    { name: "DEX Aggregator", desc: "Best-price swaps across Uniswap, PancakeSwap, etc.", status: "Active" },
-    { name: "Perpetuals Trading", desc: "Leveraged trading with up to 50x", status: "Active" },
-    { name: "Limit Orders", desc: "Price-triggered buy/sell orders", status: "Active" },
-    { name: "Conditional Swaps", desc: "Auto-swap when price targets are hit", status: "Active" },
-    { name: "Social Trading", desc: "Follow and copy top traders' signals", status: "Active" },
-    { name: "Trade Signals", desc: "AI-generated trading recommendations", status: "Active" },
+  { category: "Transaction Safety", icon: ShieldAlert, items: [
+    { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke ERC-20 allowances; flag unlimited", status: "available" },
+    { name: "Address-Poisoning Warnings", desc: "Look-alike recipient detection on send", status: "available" },
+    { name: "Spam Token Filter", desc: "Auto-hide airdropped scam tokens with override", status: "available" },
+    { name: "Calldata Decode & Approval Guard", desc: "Human-readable calldata before signing", status: "available" },
+    { name: "Suspicious-Address Screening", desc: "Threat-intel reputation checks", status: "roadmap" },
+    { name: "Transaction Simulation", desc: "Preview balance / approval changes before signing", status: "roadmap" },
   ]},
-  { category: "DeFi & Yield", icon: TrendingUp, items: [
-    { name: "Staking", desc: "Earn yield on ETH, SOL, and other PoS assets", status: "Active" },
-    { name: "Yield Farming", desc: "Liquidity provision across DeFi protocols", status: "Active" },
-    { name: "Lending/Borrowing", desc: "Collateralized loans via Aave, Compound", status: "Active" },
-    { name: "Crypto Loans", desc: "Track and manage collateralized debt positions", status: "Active" },
-    { name: "Rebalancing", desc: "Auto-rebalance portfolio to target allocations", status: "Active" },
-    { name: "DCA Schedules", desc: "Dollar-cost averaging automation", status: "Active" },
+  { category: "Recovery & Duress", icon: LifeBuoy, items: [
+    { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "available" },
+    { name: "Stealth / Hidden Wallets", desc: "Deniable hidden-wallet pool; count-hiding", status: "available" },
+    { name: "Panic Wipe", desc: "Irreversible local key-material destruction", status: "available" },
+    { name: "Social Recovery", desc: "Guardian / secret-sharing recovery (no custodial backstop)", status: "roadmap" },
+    { name: "Crypto Will / Inheritance", desc: "Self-custody inheritance via social recovery", status: "roadmap" },
+    { name: "Encrypted Cloud Backup", desc: "Ciphertext-only vault backup", status: "roadmap" },
   ]},
-  { category: "Payments & Banking", icon: CreditCard, items: [
-    { name: "Fiat Ramp", desc: "Buy/sell crypto via bank transfer (SEPA, SWIFT, FPS)", status: "Active" },
-    { name: "Recurring Payments", desc: "Schedule automatic crypto payments", status: "Active" },
-    { name: "Crypto Payroll", desc: "Pay employees/contractors in crypto", status: "Active" },
-    { name: "Split Bills", desc: "Split expenses and collect from multiple people", status: "Active" },
-    { name: "Invoice Generator", desc: "Create crypto payment invoices with QR codes", status: "Active" },
-    { name: "Payment Links", desc: "Generate merchant payment QR codes", status: "Active" },
-    { name: "Bank Link", desc: "Connect European bank accounts via Open Banking", status: "Active" },
-    { name: "Subscriptions", desc: "Track and manage recurring crypto subscriptions", status: "Active" },
+  { category: "Monitoring & Risk", icon: Shield, items: [
+    { name: "RASP", desc: "Jailbreak / root / tamper detection", status: "roadmap" },
+    { name: "Audit Log", desc: "Local record of security-relevant actions", status: "roadmap" },
+    { name: "Risk Limits / Risk Scoring", desc: "Rule-based limits and transparent scoring", status: "roadmap" },
+    { name: "Login Activity", desc: "Login history and map view", status: "roadmap" },
   ]},
-  { category: "Analytics & Insights", icon: BarChart3, items: [
-    { name: "Advanced Analytics", desc: "Portfolio performance, win rate, Sharpe ratio", status: "Active" },
-    { name: "On-Chain Analytics", desc: "Track whale movements, smart money flows", status: "Active" },
-    { name: "Spending Patterns", desc: "Categorize and analyze crypto spending", status: "Active" },
-    { name: "Fee Analytics", desc: "Track gas fees and optimize transaction costs", status: "Active" },
-    { name: "Tax Report", desc: "Generate capital gains/losses reports", status: "Active" },
-    { name: "Tax Harvesting", desc: "Identify loss harvesting opportunities", status: "Active" },
-    { name: "P&L Tracking", desc: "Real-time profit/loss by asset and wallet", status: "Active" },
+  { category: "Portfolio & Analytics", icon: BarChart3, items: [
+    { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains", status: "roadmap" },
+    { name: "Net-Worth Tracker", desc: "Aggregate crypto holdings over time", status: "roadmap" },
+    { name: "P&L Tracking", desc: "Realised / unrealised profit and loss", status: "roadmap" },
+    { name: "On-Chain Analytics", desc: "Insights over public on-chain data", status: "roadmap" },
+    { name: "Fee Analytics", desc: "Track and optimise fees paid", status: "roadmap" },
+    { name: "What-If Simulator", desc: "Model hypothetical allocation changes (executes nothing)", status: "roadmap" },
+    { name: "Tax Report", desc: "Read-only capital gains / loss export", status: "roadmap" },
   ]},
-  { category: "Alerts & Automation", icon: Bell, items: [
-    { name: "Price Alerts", desc: "Push/email alerts for price thresholds", status: "Active" },
-    { name: "Smart Alerts", desc: "AI-powered anomaly detection alerts", status: "Active" },
-    { name: "Messenger Alerts", desc: "Telegram/WhatsApp notifications", status: "Active" },
-    { name: "Webhook Builder", desc: "Custom webhooks for external integrations", status: "Active" },
-    { name: "Portfolio Automation", desc: "Rule-based auto-trading and rebalancing", status: "Active" },
-    { name: "Trading Bots", desc: "Deploy automated trading strategies", status: "Active" },
+  { category: "Prices & Alerts", icon: Bell, items: [
+    { name: "Price Charts", desc: "Historical price charts", status: "roadmap" },
+    { name: "Price Alerts", desc: "Threshold notifications (advisory; never trades)", status: "roadmap" },
+    { name: "Watchlist", desc: "Track assets you don't hold", status: "roadmap" },
+    { name: "Notifications & Push", desc: "Notification centre + push delivery", status: "roadmap" },
   ]},
   { category: "NFTs", icon: ImageIcon, items: [
-    { name: "NFT Portfolio", desc: "View NFTs across multiple chains", status: "Active" },
-    { name: "NFT Gallery", desc: "Showcase NFTs with custom displays", status: "Active" },
-    { name: "NFT Minting", desc: "Mint NFTs directly from the wallet", status: "Active" },
-    { name: "Multi-Chain NFT", desc: "Support for Ethereum, Solana, Polygon NFTs", status: "Active" },
+    { name: "NFT Gallery (Display-Only)", desc: "View owned NFTs; no minting or marketplace", status: "roadmap" },
+    { name: "Multi-Chain NFT Viewing", desc: "View NFTs across chains (display only)", status: "roadmap" },
   ]},
-  { category: "Identity & Social", icon: Users, items: [
-    { name: "DID Management", desc: "Decentralized identity credentials", status: "Active" },
-    { name: "Public Profiles", desc: "Shareable trader profiles with stats", status: "Active" },
-    { name: "Leaderboard", desc: "Rank traders by performance", status: "Active" },
-    { name: "Encrypted Messaging", desc: "End-to-end encrypted chat between users", status: "Active" },
-    { name: "Referral Tracker", desc: "Track and reward referrals", status: "Active" },
+  { category: "Payments & Utilities", icon: CreditCard, items: [
+    { name: "Address Book", desc: "Saved, labelled addresses for safer sends", status: "roadmap" },
+    { name: "Message Signing", desc: "Sign arbitrary messages for proof-of-ownership", status: "roadmap" },
+    { name: "Multi-Sig Wallets", desc: "Self-custody M-of-N wallets (not custodial treasury)", status: "roadmap" },
+    { name: "Split Bill", desc: "Split a cost; each pays from their own wallet", status: "roadmap" },
+    { name: "Payment Links", desc: "Shareable request-to-pay link / QR (no processing)", status: "roadmap" },
+    { name: "Recurring Payments", desc: "Self-initiated, user-signed each time (no auto-debit)", status: "roadmap" },
   ]},
-  { category: "Advanced Features", icon: Zap, items: [
-    { name: "DAO Governance", desc: "Vote on proposals across protocols", status: "Active" },
-    { name: "Carbon Tracker", desc: "Track and offset crypto carbon footprint", status: "Active" },
-    { name: "Crypto Will", desc: "Estate planning and inheritance setup", status: "Active" },
-    { name: "Fraud Detection", desc: "AI-powered scam detection", status: "Active" },
-    { name: "Token Approvals", desc: "Monitor and revoke token allowances", status: "Active" },
-    { name: "Spam Token Filter", desc: "Auto-hide scam tokens", status: "Active" },
+  { category: "Social", icon: Users, items: [
+    { name: "Referral Tracker", desc: "Track referral sign-ups (privacy caveats)", status: "roadmap" },
+    { name: "Leaderboard", desc: "Opt-in performance ranking", status: "roadmap" },
+    { name: "Public Profiles", desc: "Opt-in, privacy-controlled profile", status: "roadmap" },
   ]},
-  { category: "Mobile & Accessibility", icon: Smartphone, items: [
-    { name: "Voice Commands", desc: "Voice-controlled wallet actions", status: "Active" },
-    { name: "Biometric Auth", desc: "Face ID / Touch ID login", status: "Active" },
-    { name: "DApp Connector", desc: "WalletConnect v2 for dApp access", status: "Active" },
-    { name: "Web3 Browser", desc: "Built-in dApp browser", status: "Active" },
+  { category: "AI Assistant (Advisory-Only)", icon: Zap, items: [
+    { name: "Transaction Explanation", desc: "Plain-language description of a transaction", status: "roadmap" },
+    { name: "Scam & Phishing Explanation", desc: "Explain why something looks risky", status: "roadmap" },
+    { name: "Educational Assistant", desc: "Answer gas / approval / format questions", status: "roadmap" },
+    { name: "Portfolio Q&A", desc: "Questions over public on-chain data (never trades)", status: "roadmap" },
+  ]},
+  { category: "dApp Connectivity (Post-Audit)", icon: Globe, items: [
+    { name: "WalletConnect / dApp Connector", desc: "Connect to dApps; high-risk, post-audit only", status: "roadmap" },
+    { name: "Web3 Browser", desc: "In-app dApp browser; post-audit only", status: "roadmap" },
+  ]},
+  { category: "Platform", icon: Smartphone, items: [
+    { name: "Desktop Web App", desc: "Runs in the browser today", status: "available" },
+    { name: "Demo Mode", desc: "Browse without a backend or funded wallet", status: "available" },
+    { name: "iOS App", desc: "Native iOS shell (submission gated on Apple org account)", status: "roadmap" },
+    { name: "Android App", desc: "Native Android shell (scaffolded)", status: "roadmap" },
+    { name: "Voice Commands", desc: "Hands-free read-only actions; never unattended signing", status: "roadmap" },
   ]},
 ];
 
@@ -123,88 +137,69 @@ const workflows = [
     title: "Onboarding Flow",
     icon: Users,
     steps: [
-      { step: 1, title: "Account Creation", desc: "User registers with email + password, verifies via OTP" },
-      { step: 2, title: "Passkey Setup", desc: "Enroll biometric authentication (Face ID, Touch ID, Windows Hello)" },
-      { step: 3, title: "Wallet Creation", desc: "Create first wallet (BTC, ETH, SOL) with auto-generated seed phrase" },
-      { step: 4, title: "Backup Seed QR", desc: "Download encrypted QR backup of seed phrase" },
-      { step: 5, title: "KYC Verification", desc: "Optional identity verification for fiat ramps" },
+      { step: 1, title: "Create or Import", desc: "Generate a new BIP-39 wallet or import an existing seed / private key" },
+      { step: 2, title: "Set Unlock", desc: "Set a password and optionally enrol a passkey or biometric unlock gate" },
+      { step: 3, title: "Backup Seed", desc: "Reveal and back up the recovery phrase (encrypted seed QR) behind warnings" },
+      { step: 4, title: "Optional Safety Setup", desc: "Optionally configure a duress PIN, stealth wallet, or panic wipe" },
     ]
   },
   {
     title: "Send Crypto Flow",
-    icon: ArrowDownUp,
+    icon: Send,
     steps: [
-      { step: 1, title: "Select Wallet", desc: "Choose source wallet and asset" },
-      { step: 2, title: "Enter Recipient", desc: "Paste address, scan QR, or use ENS/SNS name" },
-      { step: 3, title: "Whitelist Check", desc: "System validates if address is whitelisted; warns if not" },
-      { step: 4, title: "Enter Amount", desc: "Input amount with USD equivalent display" },
-      { step: 5, title: "2FA Verification", desc: "Authenticate via Passkey OR Email OTP" },
-      { step: 6, title: "Transaction Broadcast", desc: "Signed transaction sent to blockchain" },
-      { step: 7, title: "Audit Log", desc: "Transaction recorded in immutable audit trail" },
+      { step: 1, title: "Select Wallet & Asset", desc: "Choose the source wallet, chain, and asset" },
+      { step: 2, title: "Enter Recipient", desc: "Paste an address, scan a QR, or resolve an ENS (.eth) / SNS (.sol) name" },
+      { step: 3, title: "Safety Screening", desc: "Address-poisoning warnings flag look-alike recipients before you proceed" },
+      { step: 4, title: "Enter Amount & Fee", desc: "Input the amount and pick a fee tier (or custom fee) for the chain" },
+      { step: 5, title: "Confirm with Calldata", desc: "Review a human-readable summary of the transaction calldata" },
+      { step: 6, title: "Unlock & Sign", desc: "Authenticate (password / passkey / biometric); the transaction is signed locally" },
+      { step: 7, title: "Broadcast", desc: "The signed transaction is broadcast and appears in transaction history" },
     ]
   },
   {
-    title: "Portfolio Rebalancing Flow",
-    icon: RefreshCw,
+    title: "Receive Crypto Flow",
+    icon: Download,
     steps: [
-      { step: 1, title: "Set Target Allocation", desc: "Define desired portfolio percentages (e.g., 50% BTC, 30% ETH, 20% SOL)" },
-      { step: 2, title: "Enable Monitoring", desc: "System tracks drift in real-time" },
-      { step: 3, title: "Drift Alert", desc: "Notification when allocation deviates > threshold (e.g., 5%)" },
-      { step: 4, title: "Review Trades", desc: "System calculates optimal rebalancing trades" },
-      { step: 5, title: "Execute Trades", desc: "User approves; DEX aggregator finds best routes" },
-      { step: 6, title: "Confirmation", desc: "Portfolio returns to target allocation" },
+      { step: 1, title: "Select Chain", desc: "Choose the network you want to receive on" },
+      { step: 2, title: "Show Address", desc: "The correct derived address is shown with a locally-generated QR code" },
+      { step: 3, title: "Share or Copy", desc: "Copy the address or share the QR with the sender" },
+      { step: 4, title: "Track Incoming", desc: "Incoming transfers appear in live balances and transaction history" },
     ]
   },
   {
-    title: "Fiat On-Ramp Flow",
-    icon: Landmark,
+    title: "Token Approval Review Flow",
+    icon: ShieldAlert,
     steps: [
-      { step: 1, title: "Select Currency", desc: "Choose fiat (GBP, EUR, USD) and crypto asset" },
-      { step: 2, title: "Enter Amount", desc: "Input fiat amount to spend" },
-      { step: 3, title: "Bank Link", desc: "Connect bank via Open Banking (PSD2)" },
-      { step: 4, title: "KYC Check", desc: "Verify identity if first-time or large amount" },
-      { step: 5, title: "SEPA/SWIFT Transfer", desc: "Initiate bank transfer to partner exchange" },
-      { step: 6, title: "Crypto Credit", desc: "Crypto deposited to wallet upon settlement (1-3 days)" },
-    ]
-  },
-  {
-    title: "Staking Flow",
-    icon: TrendingUp,
-    steps: [
-      { step: 1, title: "Select Asset", desc: "Choose stakeable asset (ETH, SOL, etc.)" },
-      { step: 2, title: "Choose Validator", desc: "Select validator by APR, commission, reliability" },
-      { step: 3, title: "Enter Amount", desc: "Input amount to stake" },
-      { step: 4, title: "Confirm Delegation", desc: "Sign delegation transaction" },
-      { step: 5, title: "Track Rewards", desc: "View accrued staking rewards in real-time" },
-      { step: 6, title: "Unstake/Claim", desc: "Initiate unbonding (if applicable) and claim rewards" },
-    ]
-  },
-  {
-    title: "Price Alert Flow",
-    icon: Bell,
-    steps: [
-      { step: 1, title: "Select Asset", desc: "Choose cryptocurrency to monitor" },
-      { step: 2, title: "Set Condition", desc: "Define trigger (price above/below target)" },
-      { step: 3, title: "Choose Notification", desc: "Select push, email, or Telegram/WhatsApp" },
-      { step: 4, title: "Monitoring Active", desc: "Backend checks prices every 60 seconds" },
-      { step: 5, title: "Alert Triggered", desc: "Notification sent when condition met" },
-      { step: 6, title: "Quick Action", desc: "Alert includes link to swap/buy/sell" },
+      { step: 1, title: "Open Token Approvals", desc: "List the ERC-20 allowances your wallet has granted" },
+      { step: 2, title: "Spot Risk", desc: "Unlimited or stale approvals to unknown contracts are flagged" },
+      { step: 3, title: "Build Revoke", desc: "Choose an approval to revoke; the revoke calldata is prepared" },
+      { step: 4, title: "Sign Revoke", desc: "Authenticate and sign locally to shut down the exposure" },
     ]
   },
 ];
 
+const STATUS_META = {
+  available: { label: "Available", className: "bg-green-500/10 text-green-600 border-green-500/20" },
+  roadmap: { label: "Roadmap", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+};
+
 export default function Documentation() {
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   const filteredFeatures = features
     .map(cat => ({
       ...cat,
-      items: cat.items.filter(item => 
+      items: cat.items.filter(item =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.desc.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }))
     .filter(cat => cat.items.length > 0);
+
+  const allItems = features.flatMap(cat => cat.items);
+  const totalFeatures = allItems.length;
+  const availableCount = allItems.filter(i => i.status === "available").length;
+  const roadmapCount = totalFeatures - availableCount;
 
   return (
     <div className="max-w-[1600px] mx-auto p-6 space-y-8">
@@ -212,7 +207,7 @@ export default function Documentation() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Veyrnox Documentation</h1>
-          <p className="text-muted-foreground mt-1">Complete feature guide and user workflows</p>
+          <p className="text-muted-foreground mt-1">Feature guide and user workflows for a non-custodial, security-first self-custody wallet</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => window.print()}>
@@ -229,21 +224,6 @@ export default function Documentation() {
             } catch (error) {
               console.error('PDF generation failed:', error);
               toast.error('Failed to generate documentation PDF');
-            }
-          }}>
-            <FileText className="h-4 w-4 mr-2" />
-            Upload to Drive
-          </Button>
-          <Button onClick={async () => {
-            try {
-              const response = await base44.functions.invoke('generateArchitecturePDF', {});
-              if (response.data.success) {
-                toast.success(`Architecture uploaded to Google Drive: ${response.data.file_name}`);
-                window.open(response.data.web_view_link, '_blank');
-              }
-            } catch (error) {
-              console.error('PDF generation failed:', error);
-              toast.error('Failed to generate architecture PDF');
             }
           }}>
             <FileText className="h-4 w-4 mr-2" />
@@ -286,11 +266,18 @@ export default function Documentation() {
             Feature Catalog
           </CardTitle>
           <CardDescription>
-            {features.reduce((acc, cat) => acc + cat.items.length, 0)} features across {features.length} categories
+            {totalFeatures} in-scope features across {features.length} categories — {availableCount} available
+            today, {roadmapCount} on the roadmap. Scope follows docs/WalletFeatures.spec.md; custodial /
+            regulated features (swaps, perps, staking/yield/lending, fiat ramps, bank links, KYC/DID, NFT
+            minting, etc.) are deliberately not built. "Available" is testnet; mainnet is gated until audit.
           </CardDescription>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Badge variant="outline" className={STATUS_META.available.className}>{availableCount} Available</Badge>
+            <Badge variant="outline" className={STATUS_META.roadmap.className}>{roadmapCount} Roadmap</Badge>
+          </div>
         </CardHeader>
         <CardContent>
-          <Accordion type="multiple" defaultValue={["core", "security", "portfolio"]} className="w-full">
+          <Accordion type="multiple" defaultValue={["cat-0", "cat-1", "cat-2"]} className="w-full">
             {filteredFeatures.map((category, idx) => (
               <AccordionItem key={category.category} value={`cat-${idx}`}>
                 <AccordionTrigger className="hover:no-underline">
@@ -308,7 +295,7 @@ export default function Documentation() {
                       <TableRow>
                         <TableHead className="w-[250px]">Feature</TableHead>
                         <TableHead>Description</TableHead>
-                        <TableHead className="w-[100px]">Status</TableHead>
+                        <TableHead className="w-[120px]">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -317,8 +304,8 @@ export default function Documentation() {
                           <TableCell className="font-medium">{feature.name}</TableCell>
                           <TableCell className="text-muted-foreground">{feature.desc}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary" className="bg-green-500/10 text-green-600">
-                              {feature.status}
+                            <Badge variant="outline" className={STATUS_META[feature.status].className}>
+                              {STATUS_META[feature.status].label}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -339,7 +326,7 @@ export default function Documentation() {
             <Layers className="h-5 w-5" />
             Key User Workflows
           </CardTitle>
-          <CardDescription>Step-by-step guides for common tasks</CardDescription>
+          <CardDescription>Step-by-step guides for common tasks (built features only)</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
@@ -382,46 +369,52 @@ export default function Documentation() {
             <Shield className="h-5 w-5" />
             Security Architecture
           </CardTitle>
+          <CardDescription>What is built today — non-custodial by design</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <div className="p-4 rounded-lg bg-secondary/50">
               <h3 className="font-semibold mb-2 flex items-center gap-2">
                 <Lock className="h-4 w-4" />
-                Authentication
+                Keys & Vault
               </h3>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• WebAuthn/FIDO2 Passkeys</li>
-                <li>• Email OTP 2FA</li>
-                <li>• Biometric verification</li>
-                <li>• Session management</li>
+                <li>• Argon2id + AES-256-GCM vault</li>
+                <li>• Keys generated &amp; held locally</li>
+                <li>• Plaintext keys never leave device</li>
+                <li>• Non-custodial — no key escrow</li>
               </ul>
             </div>
             <div className="p-4 rounded-lg bg-secondary/50">
               <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Transaction Security
+                <ShieldAlert className="h-4 w-4" />
+                Transaction Safety
               </h3>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Address whitelisting</li>
-                <li>• Transaction limits</li>
-                <li>• Multi-sig support</li>
-                <li>• Hardware wallet integration</li>
+                <li>• Calldata decode before signing</li>
+                <li>• Token approval view + revoke</li>
+                <li>• Address-poisoning warnings</li>
+                <li>• Spam-token filter</li>
               </ul>
             </div>
             <div className="p-4 rounded-lg bg-secondary/50">
               <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <Cloud className="h-4 w-4" />
-                Infrastructure
+                <LifeBuoy className="h-4 w-4" />
+                Access & Recovery
               </h3>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• RASP protection</li>
-                <li>• Geo-blocking</li>
-                <li>• Audit logging</li>
-                <li>• Encrypted backups</li>
+                <li>• Passkey / biometric unlock</li>
+                <li>• Duress PIN (decoy wallet)</li>
+                <li>• Stealth / hidden wallets</li>
+                <li>• Panic wipe</li>
               </ul>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Testnet today; mainnet is gated until independent audit. Roadmap hardening (native secure
+            storage, session auto-lock, RASP, audit log, encrypted ciphertext backup) is tracked in the
+            feature catalog above.
+          </p>
         </CardContent>
       </Card>
 
@@ -436,7 +429,8 @@ export default function Documentation() {
               { path: "/", label: "Dashboard", icon: LayoutDashboard },
               { path: "/send", label: "Send Crypto", icon: Send },
               { path: "/receive", label: "Receive", icon: Download },
-              { path: "/alerts", label: "Price Alerts", icon: Bell },
+              { path: "/tx-history", label: "Transaction History", icon: FileText },
+              { path: "/token-approvals", label: "Token Approvals", icon: ShieldAlert },
               { path: "/security", label: "Security Center", icon: Shield },
             ].map((link) => (
               <Link key={link.path} to={link.path}>
