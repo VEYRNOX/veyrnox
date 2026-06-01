@@ -436,7 +436,6 @@ export default function Documentation() {
               { path: "/", label: "Dashboard", icon: LayoutDashboard },
               { path: "/send", label: "Send Crypto", icon: Send },
               { path: "/receive", label: "Receive", icon: Download },
-              { path: "/rebalance", label: "Rebalancing", icon: RefreshCw },
               { path: "/alerts", label: "Price Alerts", icon: Bell },
               { path: "/security", label: "Security Center", icon: Shield },
             ].map((link) => (
