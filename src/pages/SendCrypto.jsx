@@ -10,7 +10,10 @@ import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, Shiel
 import QRScanner from "../components/QRScanner";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
+import TransactionPreview from "@/components/TransactionPreview";
+import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import { toast } from "sonner";
+import { parseEther } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -18,6 +21,7 @@ import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
+import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
@@ -219,6 +223,39 @@ export default function SendCrypto() {
     () => screenRecipient(toAddress, knownAddresses),
     [toAddress, knownAddresses]
   );
+
+  // PRE-SIGN TRANSACTION SIMULATION (Phase S2). Before the user confirms, dry-run
+  // the transaction against the EXISTING RPC (eth_call / eth_getBalance /
+  // eth_getCode) to predict the outcome (balance changes), decode the call, and
+  // flag KNOWN risk patterns (unlimited approval, known-bad / look-alike
+  // recipient, unverified contract, predicted revert, large outflow). LOCAL-ONLY:
+  // no third-party scoring service. WARNS, never blocks; never claims "safe".
+  // Disabled in DEMO (no live RPC) — the demo harness renders sample previews
+  // instead. Errors are surfaced as a degraded "couldn't simulate" note, not a
+  // block. Keys are never involved (simulation needs only the sender address).
+  const txSim = useQuery({
+    queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, amount, selectedAsset?.symbol, isErc20],
+    queryFn: async () => {
+      const from = selectedWallet.address;
+      if (isErc20) {
+        const t = getToken(networkKey, selectedAsset.symbol);
+        const { data } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
+        return simulateEvmTransaction({
+          networkKey, from, to: t.address, data, valueWei: 0n,
+          nativeSymbol, tokenSymbol: selectedAsset.symbol, tokenDecimals: t.decimals,
+          tokenBalance: liveBalance != null ? String(liveBalance) : null, knownAddresses,
+        });
+      }
+      return simulateEvmTransaction({
+        networkKey, from, to: toAddress, valueWei: parseEther(String(amount)),
+        nativeSymbol, knownAddresses,
+      });
+    },
+    enabled: step === "verify" && !DEMO && (isEvmFamily(selectedAsset) || isErc20)
+      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
+    retry: false,
+    staleTime: 10000,
+  });
 
   const sendTx = useMutation({
     mutationFn: async () => {
@@ -466,6 +503,12 @@ export default function SendCrypto() {
             </div>
           </div>
         )}
+        {/* DEMO: the pre-sign Transaction Simulation preview. The real preview
+            appears at the verify step against a live RPC; in demo (no live RPC,
+            sends gated) this shows the same preview for representative samples on
+            every chain, including the high-risk patterns it flags. */}
+        {DEMO && step === "form" && <TransactionSimulationDemo />}
+
         {showScanner && (
           <QRScanner
             onScan={(value) => { setToAddress(value); setShowScanner(false); }}
@@ -528,6 +571,13 @@ export default function SendCrypto() {
 
             {/* Address-poisoning warning repeated at the point of signing. */}
             <PoisonWarning screen={poisonScreen} />
+
+            {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
+                KNOWN risk flags, dry-run against your own RPC before you confirm.
+                Local-only; warns, never blocks; never claims "safe". */}
+            {(isEvmFamily(selectedAsset) || isErc20) && (
+              <TransactionPreview result={txSim.data} loading={txSim.isFetching && !txSim.data} error={txSim.error} />
+            )}
 
             {/* Decoded calldata for ERC-20 sends — show EXACTLY what will be
                 signed before any signature (anti-blind-signing control). */}
