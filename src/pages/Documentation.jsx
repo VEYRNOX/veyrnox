@@ -56,7 +56,7 @@ const features = [
     { name: "Biometric Unlock", desc: "Face ID / Touch ID unlock gate with fallback", status: "available" },
     { name: "Native Secure Storage", desc: "Secure Enclave / Android Keystore hardening", status: "roadmap" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "roadmap" },
-    { name: "Account Access & Recovery", desc: "Account access, forgot / reset password", status: "roadmap" },
+    { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "available" },
     { name: "Hardware Wallet", desc: "Ledger / Trezor cold-key signing", status: "roadmap" },
   ]},
   { category: "Transaction Safety", icon: ShieldAlert, items: [
@@ -65,7 +65,7 @@ const features = [
     { name: "Spam Token Filter", desc: "Auto-hide airdropped scam tokens with override", status: "available" },
     { name: "Calldata Decode & Approval Guard", desc: "Human-readable calldata before signing", status: "available" },
     { name: "Suspicious-Address Screening", desc: "Threat-intel reputation checks", status: "roadmap" },
-    { name: "Transaction Simulation", desc: "Preview balance / approval changes before signing", status: "roadmap" },
+    { name: "Transaction Simulation", desc: "Local-first pre-sign preview of balance / approval changes with risk flags", status: "available" },
   ]},
   { category: "Recovery & Duress", icon: LifeBuoy, items: [
     { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "available" },
@@ -101,7 +101,7 @@ const features = [
     { name: "Multi-Chain NFT Viewing", desc: "View NFTs across chains (display only)", status: "roadmap" },
   ]},
   { category: "Payments & Utilities", icon: CreditCard, items: [
-    { name: "Address Book", desc: "Saved, labelled addresses for safer sends", status: "roadmap" },
+    { name: "Address Book", desc: "Saved, labelled addresses with per-chain validation for safer sends", status: "available" },
     { name: "Message Signing", desc: "Sign arbitrary messages for proof-of-ownership", status: "roadmap" },
     { name: "Multi-Sig Wallets", desc: "Self-custody M-of-N wallets (not custodial treasury)", status: "roadmap" },
     { name: "Split Bill", desc: "Split a cost; each pays from their own wallet", status: "roadmap" },
