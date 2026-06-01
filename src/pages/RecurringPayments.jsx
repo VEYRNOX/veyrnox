@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Trash2, Repeat } from "lucide-react";
+import { Plus, Trash2, Repeat, ShieldAlert, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CoinLogo from "@/components/CoinLogo";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ const EMPTY = { label: "", wallet_id: "", currency: "USDT", to_address: "", amou
 
 export default function RecurringPayments() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY);
 
@@ -51,20 +53,17 @@ export default function RecurringPayments() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }); toast.success("Payment deleted"); },
   });
 
-  // Simulate running a due payment
-  const runNow = useMutation({
-    mutationFn: async (p) => {
-      const wallet = wallets.find(w => w.id === p.wallet_id);
-      if (!wallet || wallet.balance < p.amount) throw new Error("Insufficient balance");
-      const txHash = "0x" + Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
-      await base44.entities.Transaction.create({ wallet_id: p.wallet_id, type: "send", amount: p.amount, currency: p.currency, to_address: p.to_address, from_address: wallet.address, status: "confirmed", tx_hash: txHash, note: `Recurring: ${p.label}` });
-      await base44.entities.Wallet.update(p.wallet_id, { balance: wallet.balance - p.amount });
-      const nextRun = moment().add(FREQ_DAYS[p.frequency], "days").toISOString();
-      return base44.entities.RecurringPayment.update(p.id, { last_run_at: new Date().toISOString(), next_run_at: nextRun, total_sent: (p.total_sent || 0) + p.amount, run_count: (p.run_count || 0) + 1 });
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }); queryClient.invalidateQueries({ queryKey: ["wallets"] }); toast.success("Payment executed"); },
-    onError: (e) => toast.error(e.message),
-  });
+  // STUB — non-custodial: this feature only SCHEDULES reminders. It must never
+  // move value on its own. Autonomous execution (mutating the wallet balance /
+  // fabricating a confirmed tx without a user signature) was removed because it
+  // breaks self-custody — every payment must be signed by the user through
+  // wallet-core. Until the signed-payment flow is built, "due" payments hand off
+  // to Send so the user signs each one manually. Do NOT reintroduce any path
+  // that moves value without a signature. Rebuild (user-signed) before mainnet.
+  const promptSignInSend = () => {
+    toast.info("Recurring payments must be signed by you — opening Send to sign this payment manually.");
+    navigate("/send");
+  };
 
   const totalMonthly = payments.filter(p => p.status === "active").reduce((s, p) => {
     const mult = { daily: 30, weekly: 4.3, biweekly: 2.15, monthly: 1 }[p.frequency] || 1;
@@ -79,6 +78,18 @@ export default function RecurringPayments() {
           <p className="text-sm text-muted-foreground mt-0.5">Automate regular crypto transfers</p>
         </div>
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> New</Button>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 p-3">
+        <ShieldAlert className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="text-sm font-medium text-yellow-400">Non-custodial — schedules &amp; reminders only</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            This wallet never moves your funds on its own. Recurring payments are stored as
+            schedules; when one is due you sign it manually in Send. Autonomous execution must
+            be rebuilt as a user-signed flow before mainnet.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -127,7 +138,9 @@ export default function RecurringPayments() {
                     <div className="flex flex-col gap-1.5 shrink-0">
                       <Switch checked={p.status === "active"} onCheckedChange={() => toggleStatus.mutate({ id: p.id, status: p.status })} />
                       {p.status === "active" && (
-                        <Button variant="outline" size="sm" className="text-xs h-7 px-2" onClick={() => runNow.mutate(p)} disabled={runNow.isPending}>Run</Button>
+                        <Button variant="outline" size="sm" className="text-xs h-7 px-2 gap-1" onClick={promptSignInSend} title="Recurring payments must be signed by you — opens Send">
+                          <PenLine className="h-3 w-3" /> Sign
+                        </Button>
                       )}
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => deletePayment.mutate(p.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
