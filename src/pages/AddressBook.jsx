@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { isValidAddressForCurrency, addressKindLabel } from "@/lib/addressValidation";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const EMOJIS = ["👤", "🏢", "💼", "🏦", "👨‍👩‍👧", "🤝", "🌍", "⚡"];
@@ -44,6 +45,14 @@ export default function AddressBook() {
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
   };
+
+  // Validate the recipient address against the selected chain before it can be
+  // saved — garbage addresses otherwise persist and feed the Send recipient list.
+  // Reuses the same validators the Send flow uses (see lib/addressValidation).
+  const trimmedAddress = form.address.trim();
+  const addressValid = isValidAddressForCurrency(trimmedAddress, form.currency, form.network);
+  const showAddressError = trimmedAddress.length > 0 && !addressValid;
+  const canSave = !!form.name && !!trimmedAddress && addressValid && !create.isPending;
 
   const filtered = contacts.filter(c =>
     c.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -119,7 +128,21 @@ export default function AddressBook() {
               </div>
             </div>
             <div><Label>Name</Label><Input className="mt-1.5" placeholder="Alice's ETH Wallet" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div><Label>Wallet Address</Label><Input className="mt-1.5 font-mono text-xs" placeholder="0x..." value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
+            <div>
+              <Label>Wallet Address</Label>
+              <Input
+                className={`mt-1.5 font-mono text-xs ${showAddressError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                placeholder="0x..."
+                value={form.address}
+                onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                aria-invalid={showAddressError}
+              />
+              {showAddressError && (
+                <p className="text-xs text-destructive mt-1.5">
+                  Not a valid {form.currency} address on {form.network} — expected {addressKindLabel(form.currency, form.network)}.
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Currency</Label>
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
@@ -139,7 +162,7 @@ export default function AddressBook() {
               <Switch checked={form.is_trusted} onCheckedChange={v => setForm(f => ({ ...f, is_trusted: v }))} />
               <Label>Mark as Trusted</Label>
             </div>
-            <Button className="w-full" disabled={!form.name || !form.address || create.isPending} onClick={() => create.mutate(form)}>
+            <Button className="w-full" disabled={!canSave} onClick={() => { if (!canSave) return; create.mutate({ ...form, address: trimmedAddress }); }}>
               {create.isPending ? "Saving..." : "Save Contact"}
             </Button>
           </div>
