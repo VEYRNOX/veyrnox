@@ -33,6 +33,13 @@ import {
   clearDuressVault,
   hasDuressVault,
 } from '@/wallet-core/duress';
+import {
+  tryRevealHidden,
+  createHiddenWallet,
+  ensureStealthPool,
+  hasStealthPool,
+  wipeStealthPool,
+} from '@/wallet-core/stealth';
 import { isBiometricUnlockEnabled, getBiometricStatus } from '@/lib/biometric';
 import {
   loadAutoLockValue,
@@ -60,6 +67,13 @@ export function WalletProvider({ children }) {
   // app logic; the normal wallet UI deliberately does NOT surface it, so a
   // coercer sees no "decoy mode" indicator. See wallet-core/duress.js.
   const [isDecoy, setIsDecoy] = useState(false);
+  // STEALTH / HIDDEN WALLETS (S3 — Direction-C): true when the CURRENT session
+  // was opened by a hidden wallet's reveal secret (entered at the SAME unlock
+  // prompt) rather than the primary or duress password. Like isDecoy this is an
+  // internal flag for app logic; the normal wallet UI deliberately does NOT
+  // surface it, so an observer sees no "hidden wallet" indicator. A hidden
+  // wallet is a real, independently-encrypted vault — see wallet-core/stealth.js.
+  const [isHidden, setIsHidden] = useState(false);
   const [accounts, setAccounts] = useState([]); // public only: {address, path, index}
   // Phase BTC: the wallet's BIP-84 testnet account (PUBLIC only: {address, path}).
   // Derived from the SAME in-memory mnemonic alongside the EVM accounts; kept in
@@ -131,6 +145,7 @@ export function WalletProvider({ children }) {
     mnemonicRef.current = null;
     setUnlocked(false);
     setIsDecoy(false);
+    setIsHidden(false);
     setAccounts([]);
     setBtcAccount(null);
     setSolAccount(null);
@@ -162,6 +177,19 @@ export function WalletProvider({ children }) {
     setAutoLockValue(value);
     armTimer();
   }, [armTimer]);
+
+  // STEALTH (S3): on mount, if this device already has a primary vault, seed the
+  // chaff slot pool so its presence tracks "has a wallet" (universal) rather than
+  // "uses hidden wallets". Idempotent and non-destructive (never overwrites a real
+  // hidden-wallet slot). Best-effort: swallow storage errors so a hiccup here can
+  // never block the app. Runs once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    keyStore.hasVault()
+      .then((has) => { if (has && !cancelled) return ensureStealthPool(); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Auto-lock on app-background: web tab hidden (fallback) + native pause.
   // Native (M2b): keyStore.setLockHook wires @capacitor/app's pause/appStateChange
@@ -237,6 +265,12 @@ export function WalletProvider({ children }) {
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
     setIsDecoy(false);
+    setIsHidden(false);
+    // STEALTH (S3): a primary vault now exists, so seed the chaff slot pool. Doing
+    // it here (and on import/unlock) ties the pool's presence to "has a wallet"
+    // — universal among users — rather than to hidden-wallet usage. Best-effort:
+    // a storage hiccup must never break wallet creation.
+    void ensureStealthPool().catch(() => {});
     touch();
     deriveAccounts(1);
     deriveBtc();
@@ -252,6 +286,8 @@ export function WalletProvider({ children }) {
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
     setIsDecoy(false);
+    setIsHidden(false);
+    void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
     touch();
     deriveAccounts(1);
     deriveBtc();
@@ -268,24 +304,41 @@ export function WalletProvider({ children }) {
     // rethrows decryptVault's wrong-password/tamper error — same as before.
     let mnemonic;
     let decoy = false;
+    let hidden = false;
     try {
       mnemonic = await keyStore.unlock(password);
     } catch (primaryErr) {
-      // DURESS / DECOY (S3). The primary unlock failed. BEFORE surfacing that
-      // failure, check whether this password opens a DECOY (duress) vault. On a
-      // miss we re-throw the ORIGINAL error, so the message, behaviour, and
-      // work-per-attempt are identical whether or not a duress vault exists —
-      // the duress path leaves no tell at the unlock prompt. tryDuressUnlock
-      // returns null (never throws) on a wrong password / no decoy configured.
-      // See wallet-core/duress.js for the design and its honest limitations.
+      // The primary unlock failed. BEFORE surfacing that failure, consult the two
+      // deniability paths in order, each of which returns null (never throws) on a
+      // miss. On a total miss we re-throw the ORIGINAL primary error, so the
+      // message, behaviour, and work-per-attempt at the prompt are identical
+      // whether or not either feature is in use — no tell.
+      //
+      //   1. DURESS / DECOY (wallet-core/duress.js): a secondary password that
+      //      opens a low-value decoy surrendered under coercion.
+      //   2. STEALTH / HIDDEN WALLETS (wallet-core/stealth.js): a dedicated secret
+      //      that reveals one of the user's HIDDEN wallets. Routes through the
+      //      SAME prompt — there is no separate reveal field to notice. The reveal
+      //      runs exactly one KDF on the secret's slot (constant work; see module
+      //      header), so the presence/count of hidden wallets is not timeable.
       const decoyMnemonic = await tryDuressUnlock(password);
-      if (decoyMnemonic == null) throw primaryErr;
-      mnemonic = decoyMnemonic;
-      decoy = true;
+      if (decoyMnemonic != null) {
+        mnemonic = decoyMnemonic;
+        decoy = true;
+      } else {
+        const hiddenMnemonic = await tryRevealHidden(password);
+        if (hiddenMnemonic == null) throw primaryErr;
+        mnemonic = hiddenMnemonic;
+        hidden = true;
+      }
     }
     mnemonicRef.current = mnemonic;
     setUnlocked(true);
     setIsDecoy(decoy);
+    setIsHidden(hidden);
+    // Keep the chaff pool seeded for this device (idempotent; never overwrites a
+    // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
+    void ensureStealthPool().catch(() => {});
     touch();
     deriveAccounts(1);
     deriveBtc();
@@ -360,10 +413,33 @@ export function WalletProvider({ children }) {
 
   const removeDuressPin = useCallback(() => clearDuressVault(), []);
 
+  // STEALTH / HIDDEN WALLETS management (S3). Create a hidden wallet revealed by
+  // a dedicated secret entered at the normal unlock prompt. Generates a FRESH
+  // BIP-39 mnemonic, encrypts it with the secret via the SAME crypto as the
+  // primary vault, and stores it in the secret's slot in the chaff pool (see
+  // wallet-core/stealth.js). Returns { mnemonic, address } ONCE so the UI can
+  // show a backup + a fund-me address; callers must not persist the return value.
+  // The secret must differ from the primary password and any duress PIN (the
+  // page warns — we never hold those in plaintext to check). Touches no network
+  // or signing: testnet-safe.
+  const addHiddenWallet = useCallback(async (secret, strength = 128) => {
+    const { mnemonic, address } = await createHiddenWallet(secret, strength);
+    return { mnemonic, address };
+  }, []);
+
+  // Seed the chaff pool on demand (idempotent, non-destructive). Used by the
+  // management/demo UI so the pool exists before a reveal is attempted.
+  const initStealthPool = useCallback(() => ensureStealthPool(), []);
+  // Coarse local wipe of every stealth slot (real + chaff). Demo reset / panic.
+  const removeAllHiddenWallets = useCallback(() => wipeStealthPool(), []);
+
   const value = {
     isUnlocked,
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
     isDecoy,
+    // STEALTH (S3): is the current session a revealed HIDDEN wallet? Off by
+    // default. Like isDecoy, the normal wallet UI must NOT surface this.
+    isHidden,
     accounts,
     // Phase BTC: public BIP-84 account {address, path, networkKey} (testnet),
     // null while locked. deriveBtc() re-derives for a given network;
@@ -383,6 +459,12 @@ export function WalletProvider({ children }) {
     hasDuressPin: hasDuressVault,
     setDuressPin,
     removeDuressPin,
+    // Stealth / hidden-wallet controls (see wallet-core/stealth.js). hasStealthPool
+    // reflects only the universal baseline pool, NOT whether hidden wallets exist.
+    addHiddenWallet,
+    hasStealthPool,
+    initStealthPool,
+    removeAllHiddenWallets,
     createWallet,
     importWallet,
     unlock,
