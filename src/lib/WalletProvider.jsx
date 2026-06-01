@@ -36,6 +36,7 @@ import {
 import {
   tryRevealHidden,
   createHiddenWallet,
+  moveWalletToHidden,
   ensureStealthPool,
   hasStealthPool,
   wipeStealthPool,
@@ -433,6 +434,28 @@ export function WalletProvider({ children }) {
     return { mnemonic, address, evm, btc, sol, existing };
   }, []);
 
+  // STEALTH — MOVE AN EXISTING WALLET INTO HIDDEN (S3). Takes a wallet the user
+  // already has (its recovery phrase) and stores it in the hidden pool under a
+  // reveal secret, reusing the SAME store path as addHiddenWallet (see
+  // wallet-core/stealth.js -> moveWalletToHidden). It self-verifies the wallet is
+  // revealable BEFORE returning, so the caller may purge the wallet's visible
+  // record only after this resolves (never lose a wallet mid-move). Returns the
+  // wallet's PUBLIC EVM address + slot. This is the RISKIER "hide a previously-
+  // visible wallet" variant — the caller MUST show the transition-tell warning.
+  const moveWalletHidden = useCallback((mnemonic, secret) => moveWalletToHidden(mnemonic, secret), []);
+
+  // Read-only peek: does `secret` reveal a hidden wallet, and at what PUBLIC EVM
+  // address? Returns { address } or null WITHOUT changing the unlocked session
+  // (unlike unlock(), which opens it). The caller must already know the secret, so
+  // this leaks nothing; used by the move flow to prove a wallet was hidden, and a
+  // wrong secret returns null exactly like a miss. Never returns key material.
+  const peekHiddenWallet = useCallback(async (secret) => {
+    const m = await tryRevealHidden(secret);
+    if (m == null) return null;
+    const { address } = deriveEvmAccount(m, 0);
+    return { address };
+  }, []);
+
   // Seed the chaff pool on demand (idempotent, non-destructive). Used by the
   // management/demo UI so the pool exists before a reveal is attempted.
   const initStealthPool = useCallback(() => ensureStealthPool(), []);
@@ -468,6 +491,9 @@ export function WalletProvider({ children }) {
     // Stealth / hidden-wallet controls (see wallet-core/stealth.js). hasStealthPool
     // reflects only the universal baseline pool, NOT whether hidden wallets exist.
     addHiddenWallet,
+    // Move an EXISTING wallet (recovery phrase) into hidden + read-only peek.
+    moveWalletToHidden: moveWalletHidden,
+    peekHiddenWallet,
     hasStealthPool,
     initStealthPool,
     removeAllHiddenWallets,
