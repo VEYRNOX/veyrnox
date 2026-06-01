@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
 import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
+import HelpMenu from "./HelpMenu";
 import {
   LayoutDashboard, Send, Download, Settings, LogOut, ShieldCheck, Plug, Bell, Calculator, BarChart2, Sliders, Zap,
   Receipt, MoreHorizontal, Repeat, ShieldAlert, ClipboardList, Globe, Image,
@@ -14,9 +15,9 @@ import {
   MapPin, QrCode, History, Scissors, ShieldQuestion, Lock, Grid2X2,
   Share2, Gift, Key, LayoutGrid, Fuel,
   TrendingDown, RotateCcw, Smartphone, Mic, Trophy, Users2,
-  ShieldOff, Gauge, FilterX, KeyRound, Atom, ScanLine, Frame, Wifi, Pen,
-  AtSign, Coins,
-  CloudUpload, Compass, Hexagon, ScanSearch, Ghost, Bomb,
+  ShieldOff, Gauge, FilterX, KeyRound, ScanLine, Frame, Wifi, Pen,
+  Coins,
+  CloudUpload, Compass, ScanSearch, Ghost, Bomb,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CommandPalette from "./CommandPalette";
@@ -165,11 +166,8 @@ const navGroups = [
       { path: "/watch-wallets", label: "Watch Wallets", icon: Eye },
       { path: "/live-balances", label: "Live Balances (RPC)", icon: Wifi },
       { path: "/dapp-connect", label: "dApp Connector", icon: Plug },
-      { path: "/mobile-install", label: "Mobile Install (PWA)", icon: Smartphone },
-      { path: "/mobile-widget", label: "Mobile Widget", icon: Smartphone },
       { path: "/network-manager", label: "Network Manager", icon: Network },
       { path: "/solana", label: "Solana / SPL", icon: Layers },
-      { path: "/cosmos", label: "Cosmos / IBC", icon: Atom },
       { path: "/tron", label: "TRON / TRX", icon: Zap },
       { path: "/price-charts", label: "Price Charts", icon: BarChart3 },
       { path: "/gas-fees", label: "Gas Fees", icon: Gauge },
@@ -178,10 +176,7 @@ const navGroups = [
       { path: "/web3", label: "Web3 Browser", icon: Globe },
       { path: "/account-access", label: "Account Access", icon: Users },
       { path: "/push", label: "Notifications", icon: BellDot },
-      { path: "/ens-register", label: "ENS Registration", icon: AtSign },
-      { path: "/web-bridge", label: "Web Bridge", icon: Wifi },
       { path: "/block-explorer", label: "Block Explorer", icon: Compass },
-      { path: "/sui", label: "Sui Network", icon: Hexagon },
     ],
   },
 ];
@@ -255,6 +250,7 @@ export default function Layout() {
                 <p className="text-[9px] text-muted-foreground tracking-widest uppercase">Wallet</p>
               </div>
             )}
+            <HelpMenu triggerClassName="p-1 hover:bg-secondary" />
             <button
               onClick={() => setCollapsed(c => !c)}
               className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -393,6 +389,7 @@ export default function Layout() {
           <Link to="/notifications" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
             <Bell className="h-4 w-4" />
           </Link>
+          <HelpMenu triggerClassName="p-2 active:bg-secondary" />
           <Link to="/settings" aria-label="Settings" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
             <Settings className="h-4 w-4" />
           </Link>

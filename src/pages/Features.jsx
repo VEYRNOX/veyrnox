@@ -18,7 +18,7 @@ const featureCategories = [
       {
         name: "Multi-Chain Support",
         summary: "Comprehensive blockchain network support",
-        explanation: "Native support for Bitcoin, Ethereum, Solana, Polygon, BSC, Cosmos, Tron, and Sui networks. Each chain is fully integrated with its native tokens, smart contracts, and ecosystem features. Users can manage assets across all chains from a single unified interface."
+        explanation: "Native support for Bitcoin, Ethereum, Solana, Polygon, BSC, and Tron networks. Each chain is fully integrated with its native tokens, smart contracts, and ecosystem features. Users can manage assets across all chains from a single unified interface."
       },
       {
         name: "Send/Receive Crypto",
@@ -231,11 +231,6 @@ const featureCategories = [
     category: "Social",
     features: [
       {
-        name: "ENS Registration",
-        summary: "Register and manage .eth domains",
-        explanation: "Register Ethereum Name Service (ENS) domains directly from the wallet. Manage domain records, set primary addresses, and configure subdomains. Auto-renewal options available."
-      },
-      {
         name: "Public Profiles",
         summary: "Shareable trader profiles",
         explanation: "Create public trader profiles showcasing performance, win rate, and trading history. Customize privacy settings for what to display. Follow other traders and build reputation."
@@ -285,16 +280,6 @@ const featureCategories = [
   {
     category: "Mobile & Accessibility",
     features: [
-      {
-        name: "PWA Install",
-        summary: "Install as native app",
-        explanation: "Install Veyrnox as a Progressive Web App on iOS, Android, or desktop. Works offline for viewing portfolio. Receives push notifications. No app store required."
-      },
-      {
-        name: "Mobile Widget",
-        summary: "Home screen portfolio widgets",
-        explanation: "Add portfolio widgets to phone home screen. View balances, prices, and P&L at a glance. Customizable widgets in different sizes. Tap to open full app."
-      },
       {
         name: "Voice Commands",
         summary: "Voice-controlled wallet actions",
