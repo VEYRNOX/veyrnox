@@ -16,11 +16,42 @@
 // │    A WebAuthn assertion yields NO decryption material here (we do NOT use  │
 // │    the PRF extension to derive any wrapping key — doing so would make the  │
 // │    passkey key custody, which is explicitly out of scope).                 │
-// │  • Therefore passkey loss ≠ fund loss: the password/seed unlock path is    │
-// │    fully independent and always works. The passkey is a convenience gate,  │
-// │    never the sole path to funds, and recovery is NOT entangled with it     │
-// │    (or with any Apple/Google credential sync).                             │
+// │  • Therefore passkey loss ≠ fund loss. The vault is ALWAYS decrypted by    │
+// │    the password (keyStore.unlock), independently of the passkey:           │
+// │      - the SEED path (wipe + re-import the phrase) always recovers funds;   │
+// │      - the existing-install PASSWORD path is ALSO preserved even when the   │
+// │        registered credential is later deleted/unavailable — see the        │
+// │        password-only ESCAPE HATCH below (classifyPasskeyError /             │
+// │        PasskeyGateError / runPasskeyGate UNAVAILABLE). A broken passkey     │
+// │        must never strand a user behind a factor it can no longer satisfy.   │
+// │    The passkey is a convenience gate, never the sole path to funds, and     │
+// │    recovery is NOT entangled with it (or with any Apple/Google sync).       │
 // └─────────────────────────────────────────────────────────────────────────┘
+//
+// ESCAPE-HATCH THREAT MODEL (SAST M-3 — why falling back to password is safe):
+//   The gate sits IN FRONT OF the password; the password is the real control
+//   (it alone decrypts the vault — the assertion yields no key material, and is
+//   only a browser-enforced presence check, never an app-verified signature).
+//   So "unlock with password only" is no weaker than this app's BASELINE custody
+//   model: anyone who can complete it already holds the correct vault password.
+//   The danger to avoid is turning that into a casual "skip the 2nd factor"
+//   button a thief/coercer (who DOES have the password) clicks to dodge a WORKING
+//   passkey at will. We keep the two cases distinct:
+//     • CANCEL of a working passkey  → fail CLOSED (stay locked), unchanged. The
+//       escape hatch is NOT auto-taken; the unlock attempt simply rejects.
+//     • Passkey genuinely CANNOT run → degrade to the password path:
+//         - UNAVAILABLE (no platform authenticator / WebAuthn gone): the gate
+//           can't even prompt, so requiring it would brick EVERY unlock. We
+//           degrade automatically but SIGNAL it to the user (no silent skip).
+//         - HARD FAILURE / deleted credential: the assertion throws. We still
+//           fail closed FIRST (so a plain cancel never auto-passes), then the UI
+//           offers a deliberate, signposted password-only escape hatch as
+//           RECOVERY — and it STILL requires the correct vault password.
+//   WebAuthn deliberately reports a user-cancel and a missing-credential timeout
+//   BOTH as NotAllowedError (anti-enumeration), so they are not perfectly
+//   separable at the prompt without a server. We therefore make the escape hatch
+//   an explicit, password-gated USER action surfaced only AFTER a failure, never
+//   a default-visible bypass — see classifyPasskeyError / PasskeyGateError.
 //
 // PLATFORM SUPPORT (be honest — see report):
 //   • web (https / localhost) : real WebAuthn via navigator.credentials. Works
@@ -303,4 +334,76 @@ export async function verifyPasskeyAssertion() {
     },
   });
   return true;
+}
+
+// --- gate outcome model (SAST M-1/M-2/M-3) -----------------------------------
+
+/**
+ * The outcome of running the passkey gate in front of an unlock. Consumed by the
+ * unlock flow (WalletProvider.runPasskeyGate) to choose between "fail closed and
+ * let the user retry/cancel" and "the passkey genuinely cannot run here — degrade
+ * to the password path, which is the real control." Never a secret.
+ * @readonly
+ * @enum {string}
+ */
+export const PASSKEY_GATE = Object.freeze({
+  PASSED: 'passed',           // assertion succeeded (or the demo sheet verified)
+  SKIPPED: 'skipped',         // gate not applicable (toggle off / not registered)
+  UNAVAILABLE: 'unavailable', // registered + enabled, but the passkey CANNOT run
+                              // here (no platform authenticator / WebAuthn gone).
+                              // Degrade to the password path, but SIGNAL it — the
+                              // factor was dropped, not silently skipped (M-1/M-2).
+});
+
+/**
+ * Classify why a passkey assertion failed, so the unlock UI can tell a deliberate
+ * CANCEL of a working passkey (fail closed, let the user retry) apart from a HARD
+ * failure where the passkey can no longer be used at all (offer the password-only
+ * escape hatch as recovery — SAST M-3).
+ *
+ * Honest limitation: WebAuthn deliberately reports BOTH a user-cancel AND a
+ * missing/After-timeout credential as `NotAllowedError` (anti-enumeration), so we
+ * cannot perfectly separate "user cancelled" from "credential was deleted" from
+ * the error alone. We therefore treat `NotAllowedError` as the AMBIGUOUS
+ * cancel-or-removed case — the UI keeps it fail-closed but still offers the
+ * password escape hatch as recovery — and any OTHER error name as an unambiguous
+ * hard failure (the passkey machinery is broken / the credential is unusable).
+ *
+ * @param {*} err
+ * @returns {'cancelled'|'error'}
+ */
+export function classifyPasskeyError(err) {
+  // Only a real Error/DOMException carries a `.name`; a string/null/object reads
+  // it as undefined and correctly falls through to the hard-failure branch.
+  return err?.name === 'NotAllowedError' ? 'cancelled' : 'error';
+}
+
+/**
+ * Error thrown by the unlock flow's passkey gate when an attempted assertion
+ * fails. Carries the classified `reason` so the unlock UI can distinguish
+ * cancel-vs-broken and decide whether to surface the password-only escape hatch.
+ * It is NOT thrown for the UNAVAILABLE/skip cases — those return a PASSKEY_GATE
+ * status instead (no prompt was ever shown, so there is nothing to "fail").
+ */
+export class PasskeyGateError extends Error {
+  /**
+   * @param {'cancelled'|'error'} reason
+   * @param {unknown} [cause] the underlying assertion error, for diagnostics.
+   */
+  constructor(reason, cause) {
+    super(reason === 'cancelled'
+      ? 'Passkey was cancelled or could not be used.'
+      : 'Your passkey could not be used.');
+    this.name = 'PasskeyGateError';
+    // Stable, minification-proof tag so the UI can detect a passkey-gate failure
+    // (vs. a wrong-password error) without relying on the class identity.
+    this.isPasskeyGateError = true;
+    this.reason = reason;
+    this.cause = cause;
+  }
+}
+
+/** @returns {boolean} did this error come from the passkey gate (not the vault)? */
+export function isPasskeyGateError(err) {
+  return !!(err && typeof err === 'object' && err.isPasskeyGateError);
 }
