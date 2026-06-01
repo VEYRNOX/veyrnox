@@ -12,10 +12,11 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  ensureStealthPool, createHiddenWallet, tryRevealHidden,
+  ensureStealthPool, createHiddenWallet, moveWalletToHidden, tryRevealHidden,
   hasStealthPool, wipeStealthPool,
 } from '../stealth.js';
 import { deriveEvmAccount } from '../derivation.js';
+import { generateMnemonic } from '../mnemonic.js';
 
 const POOL_SIZE = 12;
 
@@ -113,5 +114,62 @@ describe('stealth / hidden wallets', () => {
 
   it('rejects a too-short reveal secret', async () => {
     await expect(createHiddenWallet('ab')).rejects.toThrow(/at least 4/i);
+  });
+
+  // ---- moveWalletToHidden: hide an EXISTING (provided) wallet ----
+
+  it('moves an existing wallet into the pool and reveals it by its secret', async () => {
+    const mnemonic = generateMnemonic(128);
+    const expectedAddr = deriveEvmAccount(mnemonic, 0).address;
+
+    const { address } = await moveWalletToHidden(mnemonic, 'move-secret-aaaa');
+    expect(address).toBe(expectedAddr);
+
+    // It is now revealable by its secret and yields the SAME wallet (not a fresh one).
+    const revealed = await tryRevealHidden('move-secret-aaaa');
+    expect(revealed).toBe(mnemonic);
+    expect(deriveEvmAccount(revealed, 0).address).toBe(expectedAddr);
+  });
+
+  it('moving an existing wallet does NOT change the slot pool shape (deniability unchanged)', async () => {
+    await ensureStealthPool();
+    const before = await dumpVaultStore();
+    const beforeSlots = Object.keys(before).filter((k) => k.startsWith('vault:')).length;
+
+    await moveWalletToHidden(generateMnemonic(128), 'move-secret-bbbb');
+
+    const after = await dumpVaultStore();
+    const slots = Object.keys(after).filter((k) => k.startsWith('vault:'));
+    // Same fixed pool size, still one uniform blob shape — a moved wallet looks
+    // exactly like a fresh hidden wallet and like chaff in storage.
+    expect(slots.length).toBe(POOL_SIZE);
+    expect(slots.length).toBe(beforeSlots);
+    const shapes = new Set(slots.map((k) => Object.keys(after[k]).sort().join(',')));
+    expect(shapes.size).toBe(1);
+  });
+
+  it('rejects an invalid recovery phrase (cannot hide a wallet you do not control)', async () => {
+    await expect(moveWalletToHidden('not a real bip39 phrase at all', 'secret-xyz'))
+      .rejects.toThrow(/recovery phrase/i);
+  });
+
+  it('refuses to clobber a DIFFERENT hidden wallet already under the same secret', async () => {
+    const first = generateMnemonic(128);
+    const second = generateMnemonic(128);
+    await moveWalletToHidden(first, 'shared-secret-cccc');
+    // A different wallet under the same secret must be refused, not silently
+    // overwrite the first (which would destroy it).
+    await expect(moveWalletToHidden(second, 'shared-secret-cccc'))
+      .rejects.toThrow(/already in use/i);
+    // The first wallet is intact.
+    expect(await tryRevealHidden('shared-secret-cccc')).toBe(first);
+  });
+
+  it('re-moving the SAME wallet under the same secret is idempotent', async () => {
+    const mnemonic = generateMnemonic(128);
+    const a = await moveWalletToHidden(mnemonic, 'idem-secret-dddd');
+    const b = await moveWalletToHidden(mnemonic, 'idem-secret-dddd');
+    expect(b.address).toBe(a.address);
+    expect(b.slot).toBe(a.slot);
   });
 });

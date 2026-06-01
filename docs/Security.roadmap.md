@@ -173,6 +173,39 @@ AI is useful ONLY as an ADVISOR/EXPLAINER. The non-negotiable rules:
   secret = an unrecoverable wallet); native hardware-backed pool not yet wired
   (web/demo today). See `src/wallet-core/stealth.js`, `src/pages/StealthWallets.jsx`,
   `scripts/verify-stealth.mjs`.
+  - **MOVE AN EXISTING WALLET INTO HIDDEN (follow-up — RISKIER VARIANT, needs
+    audit).** Beyond creating a *fresh* hidden wallet, the user can move a wallet
+    they already have into the pool: `moveWalletToHidden(mnemonic, secret)` reuses
+    the EXACT same store path as `createHiddenWallet` (ensure pool → secret-derived
+    slot → `encryptVault` → put), so the resulting slot is byte-shaped identically
+    to a fresh hidden wallet and to chaff — pool size, hidden count, one-KDF reveal,
+    and identical-error-on-miss are ALL unchanged. The user supplies the wallet's
+    recovery phrase (the app holds only public data for visible wallets); an EVM
+    address-match guards that you can only hide a wallet you control, and a clobber
+    guard refuses to overwrite a different wallet already under that secret. The
+    move SELF-VERIFIES the wallet is revealable BEFORE the UI purges its visible
+    record, so a wallet can never be deleted-from-view yet not hidden.
+    - **TRANSITION TELL (the key honest limit, warned in-UI + flagged for audit):**
+      hiding a *previously-visible* wallet is WEAKER than a fresh hidden wallet. A
+      coercer who saw the app before can notice the wallet is now gone and demand it
+      back, and a BEFORE/AFTER device comparison can detect both the removed visible
+      record AND the one slot that changed from chaff→real. A fresh hidden wallet
+      leaves nothing to miss; this variant is for wallets the adversary has NOT
+      catalogued. The UI requires an explicit acknowledgement before proceeding.
+    - **RESIDUAL-ARTIFACT ANALYSIS (honest).** On move we delete the visible `Wallet`
+      record (label, address, cached balance) and invalidate its query caches → no
+      leftover reference in the normal in-app UI. Remaining artifacts: (1) the stealth
+      slot changed chaff→real (same write-time limit as a fresh hidden wallet);
+      (2) the *absence* of the previously-present visible record is itself detectable
+      by before/after comparison; (3) in real/native builds the `Wallet` entity is
+      backend-synced, so a backend that logs deletions could show "a wallet record
+      was removed at T" (a server-side tell outside the device); (4) on-chain the
+      address/history stay public forever; (5) we do NOT scrub cross-references such
+      as past `Transaction` records or address-book entries that mention the address
+      (scrubbing history would itself be suspicious) — a thorough inspector could
+      infer the wallet from those. In DEMO the visible list is an in-memory mock, so
+      after a reload nothing persists. Provisional; this path specifically needs
+      audit scrutiny. See `moveWalletToHidden` / `peekHiddenWallet`.
 - **Panic wipe** ◈ — emergency local destruction of key material.
 
 ### S3 — TREASURY / BUSINESS cluster (⚑ — the Direction-B wedge)
