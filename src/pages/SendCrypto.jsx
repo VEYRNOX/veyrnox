@@ -19,6 +19,7 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
+import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
@@ -186,17 +187,9 @@ export default function SendCrypto() {
     ? parseFloat(liveBalance)
     : (selectedWallet?.balance || 0);
 
-  const ADDRESS_PATTERNS = {
-    BTC: /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/,
-    ETH: /^0x[0-9a-fA-F]{40}$/,
-    SOL: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
-    USDC: /^0x[0-9a-fA-F]{40}$/,
-    USDT: /^0x[0-9a-fA-F]{40}$/,
-  };
-
   const addressFormatValid = !toAddress || !selectedWallet
     ? true
-    : (ADDRESS_PATTERNS[selectedWallet.currency]?.test(toAddress) ?? true);
+    : isValidAddressForCurrency(toAddress, selectedWallet.currency);
 
   const currencyWhitelist = whitelist.filter(w => w.currency === selectedWallet?.currency);
   const isAddressWhitelisted = currencyWhitelist.length === 0
