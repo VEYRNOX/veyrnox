@@ -82,9 +82,11 @@
 28. Suspicious-address / scam screening (threat-intel feed) — 📋 not built
 29. Address-poisoning warnings — ✅ (wired into send, informs-not-blocks)
 30. Spam-token filter — ✅
-31. Transaction simulation (top drainer defense) — 📋 not built (UI shells only)
+31. Transaction simulation (top drainer defense) — ✅ (LOCAL-first pre-sign preview, `simulate.js` + `TransactionPreview.jsx`; warns-not-blocks, never "safe")
 32. Calldata decode / approval (unlimited-allowance) warning — ✅
 32a. Per-chain recipient address validation — ✅ (Address Book save + send)
+32b. Anomaly / fraud detection — ✅ (PR #54; LOCAL history-aware heuristics `anomaly.js`, folded into tx preview)
+32c. Security Dashboard (read-only posture view) — ✅ (PR #53; `securityPosture.js` + `SecurityDashboard.jsx`)
 
 ## 5. Security — S3 access & recovery
 > Deniability stack (duress/stealth/panic) is BUILT but PROVISIONAL, testnet/demo.
@@ -94,12 +96,12 @@
 33c. Constant-KDF unlock timing across the deniability stack — ✅ (SAST M-2 fix)
 34. Hardware wallet (Ledger / Trezor) — 📋 not built (UI shell only)
 35. Login activity (+ map) — 📋 not built (UI shell only)
-36. Social recovery (guardian / SSS) — 📋 not built (cryptographic; audit-blocked)
-36a. Crypto Will / inheritance — 📋 (SELF-CUSTODY ONLY: built on social-recovery /
-     secret-sharing + dead-man's-switch; Veyrnox NEVER custodies keys or adjudicates
-     death. High cryptographic risk + LEGAL/estate dimensions → own audit attention
-     AND a lawyer. Consider folding into Social Recovery rather than a separate
-     feature. Defer — not near-term.)
+36. Social recovery (guardian / SSS) — ❌ removed [audit-blocked-and-not-advertised]
+    (never built; removed from UI/catalogue)
+36a. Crypto Will / inheritance — 📋 (SELF-CUSTODY ONLY: secret-sharing + dead-man's-
+     switch design; Veyrnox NEVER custodies keys or adjudicates death. High
+     cryptographic risk + LEGAL/estate dimensions → own audit attention AND a lawyer.
+     Defer — not near-term.)
 
 ## 6. Security — S4 hardening
 37. RASP (jailbreak/root/tamper detection) — 📋
@@ -167,7 +169,7 @@ trigger licensing / are a different regulated business:
 Send, Receive, HD Wallet Manager, Import Private Key, Wallet Seed QR, Live
 Balances, Gas Fee Control, Biometric Auth, Samsung Keystore, Session Manager,
 Duress Pin, Token Approvals, Suspicious Address Checker, Spam Token Filter,
-Hardware Wallet, Social Recovery, RASP Security, Cloud Backup, Audit Log, Risk
+Hardware Wallet, RASP Security, Cloud Backup, Audit Log, Risk
 Scoring / Wallet Risk Limits, Login Activity Map, Address Book, Price Alerts,
 Price Charts, Watchlist, Net Worth Tracker, NFT Portfolio/Gallery, Solana, Tron,
 AI Assistant / AI Portfolio Advisor, D App Connector / WalletConnect / Web3
@@ -178,15 +180,28 @@ Onboarding.
 (No licensing/custody problem. Mostly read-only analytics + UX niceties + a few
 self-custody utilities + more chains. Candidate additions, triaged per the rules.)
 
-> ❌ REMOVED FROM THE APP (PR #48, off-wedge trim): **Sui Wallet**, **Cosmos /
-> IBC**, **Web Bridge**, **ENS Registration**, **Mobile App PWA**, **Mobile
-> Widget** — pages/routes/nav deleted. (ENS/SNS *resolution* in Send kept; the
-> `deriveCosmosAccount` stub remains in wallet-core but is unwired.) These are no
-> longer build candidates unless deliberately re-greenlit.
+> ❌ REMOVED FROM THE APP (consolidated record). Reason tags: [off-wedge] not core
+> to the wedge · [breaks-self-custody] would move value without a user signature ·
+> [audit-blocked-and-not-advertised] cryptographically sensitive, never shipped, no
+> longer advertised · [out-of-scope-regulated] custodial/regulated, never in scope.
+> - **Social Recovery** (guardian / Shamir SSS) — [audit-blocked-and-not-advertised] never built; removed from UI/catalogue.
+> - **Multi-Sig wallets** (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
+> - **Rebalance** + **Rebalance History** — [breaks-self-custody] autonomous value movement; removed (PR #47).
+> - **Recurring auto-debit** — [breaks-self-custody] auto-debit path gutted (PR #47); Recurring Payments is now schedule/reminder only, hands off to Send for user signing.
+> - **Sui Wallet** — [off-wedge] chain trim (PR #48).
+> - **Cosmos / IBC** — [off-wedge] chain trim (PR #48); `deriveCosmosAccount` stub remains in wallet-core but is unwired.
+> - **Web Bridge** — [off-wedge] dApp/swap gateway (PR #48).
+> - **ENS Registration** — [off-wedge] removed (PR #48); ENS/SNS *resolution* in Send kept (✅).
+> - **Mobile App PWA** — [off-wedge] (PR #48); native Capacitor shell remains.
+> - **Mobile Widget** — [off-wedge] (PR #48).
+> - **Custodial / regulated cluster** — [out-of-scope-regulated] never in scope (see section C below for the full list).
+>
+> These are no longer build candidates unless deliberately re-greenlit.
 
 UX/niceties: Activity Dashboard, Notification Centre, Push Notifications, Smart
-Alerts, Messenger Alerts, Calculator, ENS Registration, ERC20 Discovery, Merchant
-QR, Mobile Widget, Custom Dashboard Widgets, Voice Commands.
+Alerts, Messenger Alerts, Calculator, ERC20 Discovery, Merchant QR, Custom
+Dashboard Widgets, Voice Commands. (ENS Registration + Mobile Widget ❌ removed —
+see the removed record above.)
 
 Analytics (read-only, safe): Portfolio Dashboard, Portfolio Metrics/Snapshots/
 Rewind/Benchmark, P&L Tracking, Performance Analytics/Dashboard, Spending
@@ -194,17 +209,20 @@ Patterns, On-Chain Analytics, Advanced/Predictive Analytics, Correlation Matrix/
 Timeline, Fear & Greed Index, Crypto Sentiment, What-If Simulator, Custom Index
 Builder, Fee Analytics.
 
-Security extras (self-custody-safe): Security Center/Dashboard, Security Scanner,
-Anomaly Detection, Fraud Detection, D App Security Alerts, Account Access,
-Forgot/Reset Password, Watch Wallets.
+Security extras (self-custody-safe): Security Dashboard ✅ (built, PR #53), Anomaly/
+Fraud Detection ✅ (built, PR #54), Account Access ✅ (built, PR #50), D App
+Security Alerts, Watch Wallets. (Social Recovery + Multi-Sig ❌ removed — see the
+removed record above.)
 
-Chains (separate stacks, each own audit): Cosmos IBC, Sui Wallet, Multi-Chain NFT.
+Chains (separate stacks, each own audit): Multi-Chain NFT. (Cosmos IBC + Sui Wallet
+❌ removed — see the removed record above.)
 
-Self-custody utilities: Crypto Signing (message signing), Multi-Sig Wallets/
-Treasury, Tax Report/Tax Harvesting (read-only), Savings Goals, Budget Limits,
-Split Bill, Payment Links, Recurring Payments (self-initiated), Invoice Generator,
-Carbon Tracker, Referral Dashboard/Tracker, Leaderboard, Social Feed/Public
-Profiles (privacy caveats).
+Self-custody utilities: Crypto Signing (message signing), Tax Report/Tax Harvesting
+(read-only), Savings Goals, Budget Limits, Split Bill, Payment Links, Recurring
+Payments (self-initiated, schedule/reminder only — hands off to Send for user
+signing), Invoice Generator, Carbon Tracker, Referral Dashboard/Tracker,
+Leaderboard, Social Feed/Public Profiles (privacy caveats). (Multi-Sig Wallets/
+Treasury ❌ removed — see the removed record above.)
 
 Borderline (advisory-only OK, auto-executing NOT): AI Rebalancer, AI Agents —
 safe ONLY if they advise/propose and the user signs; if they transact
@@ -243,7 +261,8 @@ Contract Deploy (dev platform), NFT Minting/Fractionalization (minting/securitie
 adjacent), Encrypted Messaging (separate product).
 
 Note: "Crypto Will" from the site is reclassified as SELF-CUSTODY (section 5,
-item 36a) — but only in the inheritance-via-social-recovery form, never custodial.
+item 36a) — but only in a secret-sharing + dead-man's-switch form, never custodial.
+(Social Recovery itself is ❌ removed — see the removed record above.)
 
 ## Decision rule (unchanged)
 Build from A (finish) and pull selectively from B by value. Never build C without

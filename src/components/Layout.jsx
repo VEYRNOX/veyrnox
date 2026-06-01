@@ -8,7 +8,7 @@ import HelpMenu from "./HelpMenu";
 import {
   LayoutDashboard, Send, Download, Settings, LogOut, ShieldCheck, Plug, Bell, Calculator, BarChart2, Zap,
   Receipt, MoreHorizontal, Repeat, ShieldAlert, ClipboardList, Globe, Image,
-  BarChart3, Camera, TrendingUp, Network, PieChart, Sparkles, BellRing, Link2, BellDot, ShieldHalf, Users,
+  BarChart3, Camera, TrendingUp, Network, PieChart, Sparkles, BellRing, Link2, BellDot, Users,
   Activity, Bot, Layers, Fingerprint, Cpu,
   MessageSquare, Leaf, ScrollText, Newspaper,
   Target, FileText, Eye, Search, ChevronLeft, ChevronRight, X, ChevronDown,
@@ -154,7 +154,6 @@ const navGroups = [
       { path: "/audit", label: "Audit Log", icon: ClipboardList },
       { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
       { path: "/rasp", label: "RASP Security", icon: Cpu },
-      { path: "/multisig", label: "Multi-Sig", icon: ShieldHalf },
       { path: "/smart-alerts", label: "Smart Alerts", icon: BellRing },
       { path: "/alerts", label: "Price Alerts", icon: Bell },
     ],

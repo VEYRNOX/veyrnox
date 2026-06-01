@@ -23,7 +23,7 @@
 ## Pricing
 - **Free** — full wallet + baseline security + LIFE-SAFETY features. Adoption engine + ethical floor.
 - **Secure — ~$12/mo** — privacy & advanced protection layer.
-- **Vault — ~$40/mo** — high-value-protection layer (inheritance, multi-sig, controls).
+- **Vault — ~$40/mo** — high-value-protection layer (inheritance roadmap, spending controls). (Multi-sig ❌ removed.)
 - **Guardian — bespoke, £100+/mo (by application / limited slots)** — human-expert security service on top of Vault. SERVICES line, not scalable SaaS (see limits below).
 
 ## Tier × feature matrix
@@ -57,13 +57,13 @@ Tier = where it's offered once built. Chains/dApp access never gated — monetiz
 | No-telemetry / fully-local mode 💡 | — | ✅ | ✅ | ✅ |
 | Privacy routing (Tor / RPC) 💡 | — | ✅ | ✅ | ✅ |
 | Hardware wallet integration 📋 | — | ✅ | ✅ | ✅ |
-| Social recovery (guardians) 📋 | — | ✅ | ✅ | ✅ |
-| Transaction simulation 📋, RASP 📋, risk scoring 📋 | — | ✅ | ✅ | ✅ |
-| Login activity / security dashboard 📋 | — | ✅ | ✅ | ✅ |
+| Social recovery (guardians) ❌ removed | — | — | — | — |
+| Transaction simulation ✅, anomaly detection ✅, RASP 📋, risk scoring 📋 | — | ✅ | ✅ | ✅ |
+| Login activity 📋 / security dashboard ✅ | — | ✅ | ✅ | ✅ |
 | Encrypted cloud backup (ciphertext) 📋 | — | ✅ | ✅ | ✅ |
 | **High-value protection** | | | | |
-| Inheritance / Crypto Will 📋 | — | — | ✅ | ✅ |
-| Personal multi-sig (2-of-3, 3-of-5) 📋 (UI shell only) | — | — | ✅ | ✅ |
+| Inheritance / Crypto Will 📋 (roadmap) | — | — | ✅ | ✅ |
+| Personal multi-sig (2-of-3, 3-of-5) ❌ removed | — | — | — | — |
 | Spending policies / daily limits 💡 | — | — | ✅ | ✅ |
 | Time-locks 💡, address allowlists 💡 | — | — | ✅ | ✅ |
 | Audit log 📋, hardware-key enforcement 📋 | — | — | ✅ | ✅ |
@@ -79,7 +79,7 @@ Tier = where it's offered once built. Chains/dApp access never gated — monetiz
 | **Guardian — human-expert service** | | | | |
 | 1:1 setup session, written threat model | — | — | — | ✅ |
 | Quarterly review, priority support channel | — | — | — | ✅ |
-| Custom multi-sig / recovery / inheritance help | — | — | — | ✅ |
+| Custom recovery / inheritance setup help | — | — | — | ✅ |
 
 **Life-safety free — rationale:** paywalling features that protect at-risk people under
 coercion is an ethical hazard AND a brand risk for this audience AND bad funnel logic
@@ -94,7 +94,7 @@ AI is supporting cast, not a headline (incumbents are adding it too — not a di
 Included (bounded deliverables):
 - 1:1 secure-setup session (~90 min, one at onboarding)
 - Personalised written threat model (onboarding; refreshed at quarterly review)
-- Custom multi-sig / recovery / inheritance setup ASSISTANCE (advisory; client holds keys)
+- Custom recovery / inheritance setup ASSISTANCE (advisory; client holds keys). (Multi-sig is ❌ removed from the app.)
 - Priority support channel — BEST-EFFORT, response target ~1 business day
 - Quarterly security review + threat-model refresh
 

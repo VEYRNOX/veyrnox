@@ -32,6 +32,14 @@ exemption) and the audit contained.
 > separate testnet stacks (`receive_only`, mainnet gated) — they are now part of
 > the built surface, not excluded. dApp/swap/DeFi remain firmly out.
 
+**❌ Removed (out-of-scope record):** Social Recovery + Multi-Sig
+[audit-blocked-and-not-advertised, never shipped]; Rebalance + Recurring auto-debit
+[breaks-self-custody, gutted in PR #47]; Sui, Cosmos/IBC, Web Bridge, ENS
+Registration, Mobile App PWA, Mobile Widget [off-wedge trim, PR #48]; and the full
+custodial/regulated cluster [out-of-scope-regulated, never in scope]. Full
+consolidated record + reasons: **docs/Feature-Status.md** and
+**docs/WalletFeatures.spec.md**.
+
 ---
 
 ## Status snapshot (what's done)
@@ -50,17 +58,22 @@ truth table: docs/Feature-Status.md.
   `receive_only`, mainnet gated, on-chain send unverified by hand.
 - Phase SOL — ed25519/SLIP-0010 devnet stack (build/sign/broadcast built+tested),
   `receive_only`, mainnet gated, on-chain send unverified by hand.
-- Security S1 (biometric, passkey unlock gate, session/auto-lock, hardened KDF),
-  S2 (approvals/revoke, poison/spam, calldata decode, per-chain validation),
-  S3 deniability (duress, stealth, panic wipe, constant-KDF timing) — BUILT,
-  PROVISIONAL pending audit. SAST M-1/M-2/M-3 fixes merged.
+- Security S1 (biometric, passkey unlock gate, session/auto-lock, hardened KDF,
+  account access / change-password + seed recovery — PR #50; OS-enforced ACL
+  M2c/M2d still pending), S2 (approvals/revoke, poison/spam, calldata decode,
+  per-chain validation, transaction simulation, anomaly/fraud detection — PR #54,
+  security dashboard — PR #53), S3 deniability (duress, stealth, panic wipe,
+  constant-KDF timing) — BUILT, PROVISIONAL pending audit. SAST M-1/M-2/M-3
+  fixes merged.
 - UX: transaction history, gas/fee control, receive flow, Help menu.
 - Mobile M1 — Capacitor shell (Android scaffolded; iOS added on Mac); additive.
 - Planning docs: PhaseA/B/C/BTC/SOL, Mobile.capacitor, Hosting.migration,
   MobileSetup, Audit.scope, Security.roadmap, Feature-Status, and this roadmap.
 
-⚠️ Open gap: Rebalance + Recurring still auto-debit demo balances without a
-signature; fix written on branch `fix/remove-autonomous-execution`, NOT merged.
+✅ Integrity gap CLOSED (PR #47 merged): Rebalance + Rebalance History removed;
+Recurring auto-debit gutted (Recurring Payments is now schedule/reminder only,
+hands off to /send for user signing). No feature moves value without a user
+signature. (`AIRebalancer` remains ADVISORY-ONLY — never moves funds.)
 
 Honest scorecard: ~30% of the full vision by features; MOST of the hard
 technical risk retired across EVM + BTC + SOL; the differentiating security
