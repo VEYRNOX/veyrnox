@@ -79,6 +79,7 @@ const SharedPortfolioView = lazy(() => import('./pages/SharedPortfolioView'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 const WalletSeedQR = lazy(() => import('./pages/WalletSeedQR'));
 const DuressPin = lazy(() => import('./pages/DuressPin'));
+const WalletAccessReset = lazy(() => import('./pages/WalletAccessReset'));
 const StealthWallets = lazy(() => import('./pages/StealthWallets'));
 const PanicWipe = lazy(() => import('./pages/PanicWipe'));
 const PortfolioRiskScore = lazy(() => import('./pages/PortfolioRiskScore'));
@@ -194,6 +195,7 @@ const AuthenticatedApp = () => {
           <Route path="/budget" element={<BudgetLimits />} />
           <Route path="/login-map" element={<LoginActivityMap />} />
           <Route path="/duress-pin" element={<DuressPin />} />
+          <Route path="/wallet-access" element={<WalletAccessReset />} />
           <Route path="/stealth-wallets" element={<StealthWallets />} />
           <Route path="/panic-wipe" element={<PanicWipe />} />
           <Route path="/risk-score" element={<PortfolioRiskScore />} />
