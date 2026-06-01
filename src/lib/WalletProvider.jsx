@@ -52,12 +52,24 @@ import {
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
 import { isBiometricUnlockEnabled, getBiometricStatus } from '@/lib/biometric';
+// PASSKEY UNLOCK GATE (S1). The dual of the biometric gate: an ADDITIONAL
+// FIDO2/WebAuthn authentication factor in front of unlock. It is NOT key
+// custody — it stores only a public credential id, never touches the seed
+// vault, and the password path stays fully independent (passkey loss ≠ fund
+// loss). See lib/passkey.js for the hard invariants.
+import {
+  isPasskeyUnlockEnabled,
+  isPasskeyRegistered,
+  getPasskeyStatus,
+  verifyPasskeyAssertion,
+} from '@/lib/passkey';
 import {
   loadAutoLockValue,
   saveAutoLockValue,
   autoLockMsFromValue,
 } from '@/lib/session';
 import BiometricPrompt from '@/components/security/BiometricPrompt';
+import PasskeyPrompt from '@/components/security/PasskeyPrompt';
 
 const WalletCtx = createContext(null);
 
@@ -118,6 +130,13 @@ export function WalletProvider({ children }) {
   const [bioPrompt, setBioPrompt] = useState(null);
   const bioResolverRef = useRef(null);
 
+  // PASSKEY (S1) demo-prompt state — exact parallel of the biometric prompt
+  // above. Holds the SIMULATED passkey sheet's props while shown; null when
+  // hidden. Not secret, not persisted. The real (web) passkey sheet is shown by
+  // the browser from inside verifyPasskeyAssertion(), so this is demo-only.
+  const [passkeyPrompt, setPasskeyPrompt] = useState(null);
+  const passkeyResolverRef = useRef(null);
+
   // Show the simulated prompt and resolve when the user/auto-timer answers.
   // Rejecting on cancel makes unlock() fail loudly, exactly like a real cancel.
   const showSimulatedPrompt = useCallback((status) => new Promise((resolve, reject) => {
@@ -132,6 +151,20 @@ export function WalletProvider({ children }) {
     if (!r) return;
     if (ok) r.resolve();
     else r.reject(new Error('Biometric authentication was cancelled'));
+  }, []);
+
+  const showSimulatedPasskeyPrompt = useCallback((status) => new Promise((resolve, reject) => {
+    passkeyResolverRef.current = { resolve, reject };
+    setPasskeyPrompt({ label: status.label });
+  }), []);
+
+  const resolvePasskeyPrompt = useCallback((ok) => {
+    const r = passkeyResolverRef.current;
+    passkeyResolverRef.current = null;
+    setPasskeyPrompt(null);
+    if (!r) return;
+    if (ok) r.resolve();
+    else r.reject(new Error('Passkey authentication was cancelled'));
   }, []);
 
   // The app-layer biometric gate run before reading the vault. PROVISIONAL:
@@ -152,6 +185,32 @@ export function WalletProvider({ children }) {
     }
     // native/web: no app-layer prompt (see comment above).
   }, [showSimulatedPrompt]);
+
+  // The app-layer PASSKEY gate run before reading the vault — the dual of
+  // runBiometricGate. It is a CONVENIENCE factor layered on the password, NOT a
+  // replacement for it: the password still decrypts the vault, so a lost/broken
+  // passkey never costs funds (passkey loss ≠ fund loss).
+  //   - off / not registered : no-op (password unlock unchanged).
+  //   - demo  : show the clearly-stubbed simulated passkey sheet here.
+  //   - web   : present the REAL browser passkey sheet via verifyPasskeyAssertion;
+  //             a cancel/failure throws and aborts THIS unlock attempt (the user
+  //             can retry, or fall back to a password-only unlock in the UI).
+  //   - unsupported platform : degrade gracefully (skip the gate) so the vault
+  //             is never bricked behind a factor the device can't satisfy.
+  // A successful assertion returns NO decryption material — it is purely a gate
+  // signal. The vault is still opened by keyStore.unlock(password) below.
+  const runPasskeyGate = useCallback(async () => {
+    if (!isPasskeyUnlockEnabled() || !isPasskeyRegistered()) return;
+    const status = await getPasskeyStatus();
+    if (status.mode === 'demo') {
+      await showSimulatedPasskeyPrompt(status); // rejects on cancel → aborts unlock
+      return;
+    }
+    if (status.available) {
+      await verifyPasskeyAssertion(); // throws on cancel/failure → aborts unlock
+    }
+    // unsupported platform: no app-layer prompt; password gate (below) still applies.
+  }, [showSimulatedPasskeyPrompt]);
 
   const lock = useCallback(() => {
     if (mnemonicRef.current) {
@@ -337,6 +396,11 @@ export function WalletProvider({ children }) {
     // prompt; on native the real OS prompt fires inside keyStore.unlock(). A
     // cancel here throws and aborts the unlock before any vault read.
     await runBiometricGate();
+    // PASSKEY GATE (S1): an additional FIDO2 factor, parallel to the biometric
+    // gate. No-op unless the user registered a passkey AND enabled the toggle.
+    // A cancel/failure throws and aborts the unlock before any vault read; the
+    // password remains the independent path that actually decrypts the vault.
+    await runPasskeyGate();
     // keyStore.unlock throws "No wallet found on this device" when absent and
     // rethrows decryptVault's wrong-password/tamper error — same as before.
     let mnemonic;
@@ -394,7 +458,7 @@ export function WalletProvider({ children }) {
     deriveAccounts(1);
     deriveBtc();
     deriveSol();
-  }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate, panicWipe]);
+  }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // PROVISIONAL: fire the prompt on demand for the Security settings "Test"
   // button, so the simulated sheet can be shown on the simulator without an
@@ -410,6 +474,25 @@ export function WalletProvider({ children }) {
       return false;
     }
   }, [showSimulatedPrompt]);
+
+  // PASSKEY (S1): fire the gate on demand for the Security settings "Test"
+  // button. In demo this shows the simulated sheet; on real web it presents the
+  // browser passkey sheet for the registered credential. Resolves true on a
+  // successful assertion, false on cancel/failure. Returns no secret.
+  const passkeyPreview = useCallback(async () => {
+    const status = await getPasskeyStatus();
+    try {
+      if (status.mode === 'demo') {
+        await showSimulatedPasskeyPrompt(status);
+        return true;
+      }
+      if (!status.registered || !status.available) return false;
+      await verifyPasskeyAssertion();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [showSimulatedPasskeyPrompt]);
 
   // Provide the private key for a derivation index to a caller that needs to
   // sign, WITHOUT storing it. The caller (send flow) uses it immediately and
@@ -576,6 +659,11 @@ export function WalletProvider({ children }) {
     withPrivateKey,
     clearVault: keyStore.clearVault,
     biometricPreview,
+    // PASSKEY (S1): preview/test the passkey gate from settings. Registration,
+    // removal, status and the unlock preference are read/written directly from
+    // lib/passkey.js by the settings UI; only the gate + simulated prompt need
+    // to live here (the overlay is rendered by this provider).
+    passkeyPreview,
     // Session / auto-lock controls (see lib/session.js). UI reads the current
     // timeout preference and changes it; lock status is `isUnlocked` above.
     autoLockValue,
@@ -589,6 +677,11 @@ export function WalletProvider({ children }) {
           OS prompt is shown by the OS from inside keyStore.unlock(). */}
       {bioPrompt && (
         <BiometricPrompt label={bioPrompt.label} onResult={resolveBioPrompt} />
+      )}
+      {/* PROVISIONAL / demo-only simulated passkey sheet (S1). On real web the
+          browser presents the actual passkey sheet from verifyPasskeyAssertion. */}
+      {passkeyPrompt && (
+        <PasskeyPrompt label={passkeyPrompt.label} onResult={resolvePasskeyPrompt} />
       )}
     </WalletCtx.Provider>
   );
