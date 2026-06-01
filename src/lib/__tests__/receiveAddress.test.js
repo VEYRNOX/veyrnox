@@ -62,10 +62,12 @@ describe('resolveReceive — per-chain address correctness', () => {
     expect(r.network.name).toMatch(/Devnet/i);
   });
 
-  it('USDT (coming_soon) is NOT receivable and exposes NO address', () => {
+  it('USDT (ERC-20) → SAME EVM address as USDC, flagged as a token, receivable', () => {
     const r = resolveReceive('USDT', wallet);
-    expect(r.receivable).toBe(false);
-    expect(r.address).toBeNull();
+    expect(r.address).toBe(EVM); // shares the one secp256k1 EVM account
+    expect(r.isErc20).toBe(true);
+    expect(r.receivable).toBe(true);
+    expect(r.network.name).toMatch(/Sepolia/i);
   });
 
   it('locked wallet (no derived accounts) yields null address but keeps the label', () => {

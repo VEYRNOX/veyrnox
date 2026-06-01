@@ -14,13 +14,24 @@ describe('asset registry', () => {
     expect(sendable).toEqual(['ETH']);
   });
 
-  it('coming_soon assets cannot send and cannot receive (no fake addresses)', () => {
-    // USDT is coming_soon (no authoritative Sepolia Tether address) — no address,
-    // no balance, no send.
+  it('USDT is receive_only ERC-20 on Sepolia — real address + balance, no send yet', () => {
+    // USDT now routes through the same ERC-20 path as USDC (Aave faucet test-USDT
+    // stand-in, 6 decimals — see evm/tokens.js). Receivable now; send HARD-gated.
     const usdt = getAsset('USDT');
-    expect(usdt.status).toBe(ASSET_STATUS.COMING_SOON);
+    expect(usdt.status).toBe(ASSET_STATUS.RECEIVE_ONLY);
+    expect(usdt.family).toBe('erc20');
+    expect(usdt.chain).toBe('sepolia');
+    expect(canReceive(usdt)).toBe(true);
     expect(canSend(usdt)).toBe(false);
-    expect(canReceive(usdt)).toBe(false);
+  });
+
+  it('the coming_soon gate still blocks receive AND send (no asset is coming_soon now)', () => {
+    // Capability-gate semantics must keep denying a coming_soon asset, even though
+    // nothing currently sits in that state.
+    const fake = { symbol: 'X', status: ASSET_STATUS.COMING_SOON };
+    expect(canSend(fake)).toBe(false);
+    expect(canReceive(fake)).toBe(false);
+    expect(ASSETS.some(a => a.status === ASSET_STATUS.COMING_SOON)).toBe(false);
   });
 
   it('BTC (Phase BTC) is receive_only on testnet — real address, no send yet', () => {

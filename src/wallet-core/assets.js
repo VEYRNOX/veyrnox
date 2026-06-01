@@ -32,11 +32,13 @@ export const ASSETS = Object.freeze([
   // until a testnet transfer is verified on-chain and reviewed, then flip to
   // LIVE. See src/wallet-core/evm/tokens.js.
   { symbol: 'USDC',  name: 'USD Coin',  family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.RECEIVE_ONLY },
-  // USDT (Phase B): no authoritative Tether deployment exists on Sepolia, so the
-  // token address is intentionally unconfigured (tokens.js) and USDT stays
-  // coming_soon — no address, no balance, no send — until a verified address is
-  // supplied. We do not guess token addresses.
-  { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.COMING_SOON },
+  // USDT: routes through the SAME ERC-20 path as USDC. Tether ships no official
+  // Sepolia deployment, so we use the authoritative Aave faucet test-USDT as a
+  // verified 6-decimal stand-in (see evm/tokens.js). Real address + live balance
+  // reads + receive are wired now (receive_only); decimals (6) are pinned and
+  // re-checked on-chain. SEND stays HARD-gated until a real testnet transfer is
+  // verified on-chain and reviewed, then flip to LIVE — same discipline as USDC.
+  { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.RECEIVE_ONLY },
   // Phase C: five EVM chains added on their TESTNETS, behind the mainnet gate.
   // Each shares the SAME secp256k1 / m/44'/60'/0'/0/0 address as ETH, so the
   // address derivation + live per-chain balance reads are wired now (receive_only).
