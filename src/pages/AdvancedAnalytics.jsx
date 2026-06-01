@@ -15,6 +15,14 @@ const CORRELATION = [
   { asset: "USDC", BTC: -0.05, ETH: -0.03, SOL: -0.01, USDC: 1, USDT: 0.99 },
   { asset: "USDT", BTC: -0.04, ETH: -0.02, SOL: -0.01, USDC: 0.99, USDT: 1 },
 ];
+// The matrix only has data for these 5 assets — drive BOTH the header and the
+// per-row columns from this list so we never index a column a row doesn't have
+// (which would crash on `.toFixed`).
+const CORRELATION_ASSETS = ["BTC", "ETH", "SOL", "USDC", "USDT"];
+// Lookups default to mid-range so an asset missing from the tables above
+// renders a sensible value instead of NaN.
+const DEFAULT_VOLATILITY = 0.5;
+const DEFAULT_SHARPE = 0.5;
 const MONTHLY_PERFORMANCE = [
   { month: "Nov", portfolio: 4.2, btc: 5.1, sp500: 2.1 },
   { month: "Dec", portfolio: -2.1, btc: -3.4, sp500: -1.2 },
@@ -152,13 +160,13 @@ export default function AdvancedAnalytics() {
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground w-14">Volatility</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-destructive" style={{ width: `${Math.min(VOLATILITY[c] * 100, 100)}%` }} /></div>
-                    <span className="text-[10px] text-muted-foreground w-8">{(VOLATILITY[c] * 100).toFixed(0)}%</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-destructive" style={{ width: `${Math.min((VOLATILITY[c] || DEFAULT_VOLATILITY) * 100, 100)}%` }} /></div>
+                    <span className="text-[10px] text-muted-foreground w-8">{((VOLATILITY[c] || DEFAULT_VOLATILITY) * 100).toFixed(0)}%</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground w-14">Sharpe</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-green-500" style={{ width: `${Math.min(SHARPE[c] * 70, 100)}%` }} /></div>
-                    <span className="text-[10px] text-muted-foreground w-8">{SHARPE[c]}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-green-500" style={{ width: `${Math.min((SHARPE[c] || DEFAULT_SHARPE) * 70, 100)}%` }} /></div>
+                    <span className="text-[10px] text-muted-foreground w-8">{SHARPE[c] || DEFAULT_SHARPE}</span>
                   </div>
                 </div>
               </div>
@@ -181,15 +189,16 @@ export default function AdvancedAnalytics() {
                 <thead>
                   <tr>
                     <th className="text-left py-1 pr-3 text-muted-foreground font-normal"></th>
-                    {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(a => <th key={a} className="py-1 px-2 text-muted-foreground font-normal">{a}</th>)}
+                    {CORRELATION_ASSETS.map(a => <th key={a} className="py-1 px-2 text-muted-foreground font-normal">{a}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {CORRELATION.map(row => (
                     <tr key={row.asset}>
                       <td className="py-1 pr-3 font-semibold">{row.asset}</td>
-                      {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(col => {
+                      {CORRELATION_ASSETS.map(col => {
                         const val = row[col];
+                        if (val == null) return <td key={col} className="py-1 px-2 text-center font-mono text-muted-foreground">—</td>;
                         const isHigh = val > 0.6 && val < 1;
                         const isLow = val < 0.1;
                         return (
