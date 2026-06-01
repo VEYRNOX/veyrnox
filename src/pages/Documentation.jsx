@@ -13,10 +13,10 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger 
 } from "@/components/ui/accordion";
 import { 
-  Wallet, Shield, ArrowDownUp, Bell, BarChart3, Zap, 
+  Wallet, Shield, ArrowDownUp, Bell, BarChart3, Zap,
   Search, ChevronRight, Book, Layers, Users, CreditCard, TrendingUp,
   Lock, RefreshCw, Cloud, Smartphone, Landmark, FileText,
-  LayoutDashboard, Send, Download
+  LayoutDashboard, Send, Download, Image as ImageIcon
 } from "lucide-react";
 
 const features = [
@@ -89,7 +89,7 @@ const features = [
     { name: "Portfolio Automation", desc: "Rule-based auto-trading and rebalancing", status: "Active" },
     { name: "Trading Bots", desc: "Deploy automated trading strategies", status: "Active" },
   ]},
-  { category: "NFTs", icon: Image, items: [
+  { category: "NFTs", icon: ImageIcon, items: [
     { name: "NFT Portfolio", desc: "View NFTs across multiple chains", status: "Active" },
     { name: "NFT Gallery", desc: "Showcase NFTs with custom displays", status: "Active" },
     { name: "NFT Minting", desc: "Mint NFTs directly from the wallet", status: "Active" },
