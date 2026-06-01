@@ -36,10 +36,11 @@
 //   - The recipient address is validated (base58 -> 32-byte ed25519 pubkey)
 //     before anything is built; a malformed address can burn funds.
 
-import { Transaction, SystemProgram, Keypair, PublicKey } from '@solana/web3.js';
+import { Transaction, SystemProgram, ComputeBudgetProgram, Keypair, PublicKey } from '@solana/web3.js';
 import { base58 } from '@scure/base';
 import { getSolNetwork, solExplorerUrl } from './networks.js';
 import { isValidSolAddress } from './derivation.js';
+import { solPriorityLamports } from './fees.js';
 import {
   getBalanceLamports,
   getLatestBlockhash,
@@ -50,6 +51,26 @@ import {
 } from './provider.js';
 
 const MAX_BLOCKHASH_RETRIES = 3;
+
+/**
+ * PURE: the ComputeBudget instructions that set an OPTIONAL priority fee. Returns
+ * [] when no priority is requested — so a "None"/base-fee-only send builds the
+ * EXACT same single-instruction transfer it always did (no behaviour change).
+ * When a priority IS requested we set both a compute-unit LIMIT and PRICE; the
+ * price × limit is the priority fee (see solPriorityLamports / fees.js).
+ *
+ * @returns {Array<import('@solana/web3.js').TransactionInstruction>}
+ */
+export function solComputeBudgetIxns({ priorityMicroLamports = 0, computeUnitLimit = 0 } = {}) {
+  const price = Number(priorityMicroLamports) || 0;
+  if (price <= 0) return [];
+  const ixns = [];
+  if (Number(computeUnitLimit) > 0) {
+    ixns.push(ComputeBudgetProgram.setComputeUnitLimit({ units: Number(computeUnitLimit) }));
+  }
+  ixns.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: BigInt(Math.round(price)) }));
+  return ixns;
+}
 
 /**
  * PURE, network-free rent-aware planner — so the whole rent/dust pipeline is
@@ -120,13 +141,22 @@ export function planSolTransfer({
  * with the ed25519 key, and return the serialized bytes. PURE — no network —
  * given a blockhash, so it can be re-run cheaply on a blockhash refetch.
  *
+ * An OPTIONAL priority fee (priorityMicroLamports + computeUnitLimit) is attached
+ * via leading ComputeBudget instructions; omit it (or pass 0) for a base-fee-only
+ * transfer. The priority instructions come FIRST, before the System transfer, as
+ * is conventional.
+ *
  * @returns {{ rawTx: Buffer, signature: string }} serialized signed tx + its signature.
  */
-export function buildAndSignSol({ keypair, toPubkey, amountLamports, blockhash }) {
+export function buildAndSignSol({ keypair, toPubkey, amountLamports, blockhash, priorityMicroLamports = 0, computeUnitLimit = 0 }) {
   const tx = new Transaction({
     feePayer: keypair.publicKey,
     recentBlockhash: blockhash,
-  }).add(
+  });
+  for (const ix of solComputeBudgetIxns({ priorityMicroLamports, computeUnitLimit })) {
+    tx.add(ix); // OPTIONAL priority fee — sets compute-unit limit + price
+  }
+  tx.add(
     SystemProgram.transfer({
       fromPubkey: keypair.publicKey,
       toPubkey,
@@ -151,16 +181,22 @@ function base58FromSignature(tx) {
  * balance, rent minimum, fee, and recipient balance, then runs the pure planner.
  * @returns {Promise<{ plan: object, network: object }>}
  */
-export async function estimateSolSend({ networkKey, fromAddress, toAddress, amountLamports, sendMax = false }) {
+export async function estimateSolSend({ networkKey, fromAddress, toAddress, amountLamports, sendMax = false, priorityMicroLamports = 0, computeUnitLimit = 0 }) {
   const net = getSolNetwork(networkKey); // gate-aware
   if (!isValidSolAddress(toAddress)) throw new Error('Invalid Solana recipient address.');
 
-  const [balance, rentMin, fee, destBalance] = await Promise.all([
+  const [balance, rentMin, baseFee, destBalance] = await Promise.all([
     getBalanceLamports(networkKey, fromAddress),
     getRentExemptMinimum(networkKey, 0),
     getLamportsPerSignature(networkKey),
     getBalanceLamports(networkKey, toAddress),
   ]);
+
+  // Total fee = protocol base fee + OPTIONAL priority fee. Folding priority into
+  // feeLamports keeps the rent-safety maths (planSolTransfer) correct: the
+  // remainder/affordability checks account for the FULL fee the user will pay.
+  const priorityFee = solPriorityLamports(priorityMicroLamports, computeUnitLimit || 0);
+  const fee = BigInt(baseFee) + (priorityMicroLamports > 0 ? priorityFee : 0n);
 
   const plan = planSolTransfer({
     balanceLamports: balance,
@@ -170,7 +206,7 @@ export async function estimateSolSend({ networkKey, fromAddress, toAddress, amou
     destBalanceLamports: destBalance,
     sendMax,
   });
-  return { plan, network: net };
+  return { plan: { ...plan, baseFeeLamports: BigInt(baseFee), priorityFeeLamports: priorityMicroLamports > 0 ? priorityFee : 0n }, network: net };
 }
 
 /**
@@ -193,6 +229,8 @@ export async function signAndBroadcastSol({
   toAddress,
   amountLamports,
   sendMax = false,
+  priorityMicroLamports = 0,
+  computeUnitLimit = 0,
 }) {
   getSolNetwork(networkKey); // throws if mainnet gated / disabled
   if (!isValidSolAddress(toAddress)) throw new Error('Invalid Solana recipient address.');
@@ -207,13 +245,17 @@ export async function signAndBroadcastSol({
   const toPubkey = new PublicKey(toAddress);
 
   // Plan once against live balances/rent — the amount doesn't change across
-  // blockhash retries, only the blockhash does.
-  const [balance, rentMin, fee, destBalance] = await Promise.all([
+  // blockhash retries, only the blockhash does. The fee is base + OPTIONAL
+  // priority; folding priority in keeps the rent-safety maths honest about the
+  // full amount the user pays.
+  const [balance, rentMin, baseFee, destBalance] = await Promise.all([
     getBalanceLamports(networkKey, fromAddress),
     getRentExemptMinimum(networkKey, 0),
     getLamportsPerSignature(networkKey),
     getBalanceLamports(networkKey, toAddress),
   ]);
+  const priorityFee = solPriorityLamports(priorityMicroLamports, computeUnitLimit || 0);
+  const fee = BigInt(baseFee) + (priorityMicroLamports > 0 ? priorityFee : 0n);
   const plan = planSolTransfer({
     balanceLamports: balance,
     amountLamports: sendMax ? undefined : amountLamports,
@@ -225,13 +267,17 @@ export async function signAndBroadcastSol({
 
   let lastErr;
   for (let attempt = 1; attempt <= MAX_BLOCKHASH_RETRIES; attempt++) {
-    // FRESH blockhash every attempt — never reuse one that may have expired.
+    // FRESH blockhash every attempt — never reuse one that may have expired. The
+    // SAME priority fee is re-attached on every rebuild so a retry pays what the
+    // user selected (and the planned amount stays consistent).
     const { blockhash, lastValidBlockHeight } = await getLatestBlockhash(networkKey);
     const { rawTx, signature } = buildAndSignSol({
       keypair,
       toPubkey,
       amountLamports: plan.amountLamports,
       blockhash,
+      priorityMicroLamports,
+      computeUnitLimit,
     });
 
     try {

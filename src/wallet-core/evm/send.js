@@ -10,6 +10,7 @@
 import { Wallet, parseEther, isAddress } from 'ethers';
 import { getProvider } from './provider.js';
 import { getNetwork } from './networks.js';
+import { evmFeeOverrides } from './fees.js';
 
 /**
  * Estimate the total cost (value + gas) before the user confirms.
@@ -37,9 +38,14 @@ export async function estimateSend({ networkKey, from, to, amountEth }) {
  * Sign locally and broadcast. `privateKey` is supplied transiently by the
  * caller (e.g. via useWallet().withPrivateKey) and must not be persisted.
  *
+ * `fee` (optional) is a user-selected EIP-1559 fee from evm/fees.js
+ * ({ maxFeePerGasWei, maxPriorityFeePerGasWei, gasLimit }). When omitted, ethers
+ * auto-fills the fee as before (back-compat). When present, those EXACT values
+ * are what get signed — see evmFeeOverrides().
+ *
  * @returns {Promise<{ hash: string, wait: Function }>} REAL tx handle.
  */
-export async function signAndBroadcast({ networkKey, privateKey, to, amountEth }) {
+export async function signAndBroadcast({ networkKey, privateKey, to, amountEth, fee }) {
   if (!isAddress(to)) throw new Error('Invalid recipient address');
   const net = getNetwork(networkKey); // throws if mainnet gated
   const provider = getProvider(networkKey);
@@ -51,10 +57,13 @@ export async function signAndBroadcast({ networkKey, privateKey, to, amountEth }
     throw new Error(`Wrong network: provider chainId ${live.chainId}, expected ${net.chainId}`);
   }
 
-  // ethers fills nonce + EIP-1559 fees, signs LOCALLY, and broadcasts.
+  // ethers fills nonce, signs LOCALLY, and broadcasts. The user-selected fee
+  // overrides (if any) are the EXACT EIP-1559 fields that get signed; with no
+  // override ethers auto-fills them.
   const txResponse = await wallet.sendTransaction({
     to,
     value: parseEther(String(amountEth)),
+    ...evmFeeOverrides(fee),
   });
 
   return {
