@@ -32,7 +32,6 @@ const SmartAlerts = lazy(() => import('./pages/SmartAlerts'));
 const RecurringPayments = lazy(() => import('./pages/RecurringPayments'));
 const WalletConnectPage = lazy(() => import('./pages/WalletConnectPage'));
 const PushNotificationsPage = lazy(() => import('./pages/PushNotificationsPage'));
-const MultiSigWallets = lazy(() => import('./pages/MultiSigWallets'));
 const AdvancedAnalytics = lazy(() => import('./pages/AdvancedAnalytics'));
 const Community = lazy(() => import('./pages/Community'));
 const Web3Browser = lazy(() => import('./pages/Web3Browser'));
@@ -172,7 +171,6 @@ const AuthenticatedApp = () => {
           <Route path="/recurring" element={<RecurringPayments />} />
           <Route path="/walletconnect" element={<WalletConnectPage />} />
           <Route path="/push" element={<PushNotificationsPage />} />
-          <Route path="/multisig" element={<MultiSigWallets />} />
           <Route path="/advanced-analytics" element={<AdvancedAnalytics />} />
           <Route path="/community" element={<Community />} />
           <Route path="/web3" element={<Web3Browser />} />

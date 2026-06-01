@@ -138,6 +138,10 @@ key/signing attack surface (the audit now covers TWO curves, not one).
 
 ## Explicitly OUT of scope (deferred features — keep them out of this audit)
 - DEX swaps, DeFi deposits, WalletConnect/dApp arbitrary-tx signing (Phase D).
+- **Social Recovery and Multi-Sig** — ❌ REMOVED from the app
+  [audit-blocked-and-not-advertised]; neither ever shipped (Social Recovery never
+  built; Multi-Sig was a UI shell with fake addresses, now deleted). NOT in scope.
+  If either is ever greenlit as a real audited design, it adds its own scope.
 - SPL tokens / Associated Token Accounts, Solana staking & programs (Phase SOL
   is native SOL only). BTC and SOL native stacks are IN scope above (§2b, §2c) as
   separate non-EVM families; their token/contract layers are deferred.
