@@ -15,7 +15,7 @@
 ---
 
 ## Reality check (read first)
-- **Test suite:** 233 tests across 23 files, all green (`npm test`); `check:rng` green.
+- **Test suite:** 258 tests across 25 files, all green (`npm test`); `check:rng` green.
 - **What actually SENDS on-chain today:** **only ETH on Sepolia** is `live`
   (send verified end-to-end). **Every other asset is `receive_only`** — see the
   table below. Receiving and balance reads work for all 10 assets; the send
@@ -93,7 +93,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Calldata decode / approval (unlimited-allowance) warning — ✅ (`evm/calldata.js`)
 - Per-chain recipient address validation — ✅ (`lib/addressValidation.js`; wired into Address Book save + send)
 - Suspicious-address / threat-intel feed screening — 📋 not built (privacy trade-off undecided)
-- Transaction simulation (drainer defense) — 📋 not built (UI shells only: `WhatIfSimulator`, `SecurityScanner`)
+- Transaction simulation (drainer defense) — ✅ LOCAL-first pre-sign preview wired into Send→verify (`evm/simulate.js` real `eth_call` dry-run + risk flags; `btc/simulate.js` + `sol/simulate.js` honest decode; `TransactionPreview.jsx`). No third-party scoring service. Warns-not-blocks; never claims "safe". The old `WhatIfSimulator`/`SecurityScanner` UI shells remain 📋 separate stubs.
 - Security Center / Dashboard, Security Scanner — 📋 UI shell only
 - Anomaly / fraud detection — 📋 UI shell only (`AnomalyDetection.jsx` placeholder)
 - dApp security alerts — 📋 not built
