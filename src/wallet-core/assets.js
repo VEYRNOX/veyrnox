@@ -57,7 +57,14 @@ export const ASSETS = Object.freeze([
   // send is verified on-chain and reviewed — only then does it flip to LIVE.
   // `chain` points at the verified testnet network key in btc/networks.js.
   { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'testnet',   status: ASSET_STATUS.RECEIVE_ONLY },
-  { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'solana',    status: ASSET_STATUS.COMING_SOON },
+  // Phase SOL: real ed25519 / SLIP-0010 derivation on Solana DEVNET, behind the
+  // mainnet gate (sol/networks.js). Address derivation + live balance reads are
+  // wired now (receive_only). The SEND path (build/sign/broadcast, with explicit
+  // blockhash-expiry and rent-exempt handling) is built and tested, but stays
+  // HARD-gated at receive_only until a real devnet send is verified on-chain and
+  // reviewed — only then does it flip to LIVE. `chain` points at the verified
+  // devnet network key in sol/networks.js.
+  { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'devnet',    status: ASSET_STATUS.RECEIVE_ONLY },
 ]);
 
 export function getAsset(symbol) {

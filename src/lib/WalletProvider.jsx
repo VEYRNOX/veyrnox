@@ -25,6 +25,7 @@ import React, { createContext, useContext, useRef, useState, useCallback, useEff
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
+import { deriveSolAccount } from '@/wallet-core/sol/derivation';
 import { getKeyStore } from '@/wallet-core/keystore';
 import {
   tryDuressUnlock,
@@ -65,6 +66,11 @@ export function WalletProvider({ children }) {
   // separate state so the EVM derivation path is untouched. Default network is
   // testnet (mainnet gated in btc/networks.js). null while locked.
   const [btcAccount, setBtcAccount] = useState(null);
+  // Phase SOL: the wallet's Solana devnet account (PUBLIC only: {address, path}).
+  // ed25519 / SLIP-0010 m/44'/501'/0'/0', derived from the SAME in-memory
+  // mnemonic; separate state so the EVM/BTC paths are untouched. Default network
+  // is devnet (mainnet gated in sol/networks.js). null while locked.
+  const [solAccount, setSolAccount] = useState(null);
   const lockTimer = useRef(null);
 
   // Configurable idle auto-lock timeout. The picker value (e.g. '5', 'never')
@@ -127,6 +133,7 @@ export function WalletProvider({ children }) {
     setIsDecoy(false);
     setAccounts([]);
     setBtcAccount(null);
+    setSolAccount(null);
     keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
   }, []);
 
@@ -212,6 +219,17 @@ export function WalletProvider({ children }) {
     return acct;
   }, []);
 
+  // Derive the Solana account (PUBLIC address only) from the in-memory mnemonic.
+  // ed25519 / SLIP-0010 — a different curve from EVM/BTC, separate from both
+  // derivation paths. Defaults to devnet; returns {address, path}. No keys stored.
+  const deriveSol = useCallback((networkKey = 'devnet') => {
+    if (!mnemonicRef.current) throw new Error('Wallet is locked');
+    const { address, path } = deriveSolAccount(mnemonicRef.current);
+    const acct = { address, path, networkKey };
+    setSolAccount(acct);
+    return acct;
+  }, []);
+
   // Create a brand-new wallet: generate -> encrypt -> persist ciphertext -> unlock.
   const createWallet = useCallback(async (password, strength = 128) => {
     const mnemonic = generateMnemonic(strength);
@@ -222,9 +240,10 @@ export function WalletProvider({ children }) {
     touch();
     deriveAccounts(1);
     deriveBtc();
+    deriveSol();
     // Return mnemonic ONCE for the user to back up; caller must not persist it.
     return mnemonic;
-  }, [deriveAccounts, deriveBtc, touch]);
+  }, [deriveAccounts, deriveBtc, deriveSol, touch]);
 
   // Import an existing mnemonic.
   const importWallet = useCallback(async (mnemonic, password) => {
@@ -236,7 +255,8 @@ export function WalletProvider({ children }) {
     touch();
     deriveAccounts(1);
     deriveBtc();
-  }, [deriveAccounts, deriveBtc, touch]);
+    deriveSol();
+  }, [deriveAccounts, deriveBtc, deriveSol, touch]);
 
   // Unlock an existing vault with the password.
   const unlock = useCallback(async (password) => {
@@ -269,7 +289,8 @@ export function WalletProvider({ children }) {
     touch();
     deriveAccounts(1);
     deriveBtc();
-  }, [deriveAccounts, deriveBtc, touch, runBiometricGate]);
+    deriveSol();
+  }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate]);
 
   // PROVISIONAL: fire the prompt on demand for the Security settings "Test"
   // button, so the simulated sheet can be shown on the simulator without an
@@ -306,6 +327,18 @@ export function WalletProvider({ children }) {
     return fn({ privateKey, publicKey, address });
   }, [touch]);
 
+  // SOL counterpart: provide the ed25519 private+public key bytes for the Solana
+  // account transiently to a signer (e.g. the send path), WITHOUT storing them.
+  // privateKey is the 32-byte ed25519 seed scalar. Same contract as the others —
+  // used immediately, then dropped. Never log. networkKey is accepted for API
+  // symmetry (the same address derives across all Solana clusters).
+  const withSolPrivateKey = useCallback((fn) => {
+    if (!mnemonicRef.current) throw new Error('Wallet is locked');
+    touch();
+    const { privateKey, publicKey, address } = deriveSolAccount(mnemonicRef.current);
+    return fn({ privateKey, publicKey, address });
+  }, [touch]);
+
   // DURESS / DECOY management (S3). Configure or remove the decoy vault that the
   // duress password opens. setDuressPin generates a FRESH decoy BIP-39 mnemonic,
   // encrypts it with the duress password via the SAME crypto as the primary
@@ -338,6 +371,12 @@ export function WalletProvider({ children }) {
     btcAccount,
     deriveBtc,
     withBtcPrivateKey,
+    // Phase SOL: public Solana account {address, path, networkKey} (devnet),
+    // null while locked. deriveSol() re-derives; withSolPrivateKey() hands the
+    // transient ed25519 signing key to the send path.
+    solAccount,
+    deriveSol,
+    withSolPrivateKey,
     hasVault: keyStore.hasVault,
     // Duress / decoy controls (see wallet-core/duress.js). hasDuressPin() is the
     // raw store check; set/remove manage the decoy vault.
