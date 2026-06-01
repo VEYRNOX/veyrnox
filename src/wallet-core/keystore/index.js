@@ -53,6 +53,9 @@ function makeNativeFacade() {
     async unlock(password) {
       return (await load()).nativeKeyStore.unlock(password);
     },
+    async changePassword(currentPassword, newPassword) {
+      return (await load()).nativeKeyStore.changePassword(currentPassword, newPassword);
+    },
     // Synchronous, matching the interface. If native isn't loaded yet there is
     // nothing unlocked to clear; once loaded, delegate to the real lock().
     lock() {
