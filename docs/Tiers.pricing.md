@@ -22,49 +22,70 @@
 - **Guardian — bespoke, £100+/mo (by application / limited slots)** — human-expert security service on top of Vault. SERVICES line, not scalable SaaS (see limits below).
 
 ## Tier × feature matrix
-(status shown per feature; tier = where it's offered once built)
+Status per feature: ✅ built · 🟡 building · 📋 specced · 💡 planned.
+Tier = where it's offered once built. Chains/dApp access never gated — monetize depth, not access.
 
-### Core wallet (Phase 0) — ALL TIERS
-- Multi-chain: EVM 6 chains ✅, BTC ✅, SOL 🟡 ; send ✅ / receive 🟡 / balances ✅
-- Multi-account HD ✅, import ✅, seed backup ✅, gas control 🟡, tx history 📋
+| Feature (status) | Free | Secure ~$12 | Vault ~$40 | Guardian £100+ |
+|---|---|---|---|---|
+| **Core wallet** | | | | |
+| Multi-chain: EVM (6) ✅, BTC ✅, SOL 🟡 | ✅ | ✅ | ✅ | ✅ |
+| Send ✅ / receive 🟡 / balances ✅ | ✅ | ✅ | ✅ | ✅ |
+| Multi-account HD ✅, import ✅, seed backup ✅ | ✅ | ✅ | ✅ | ✅ |
+| Gas control 🟡, transaction history 📋 | ✅ | ✅ | ✅ | ✅ |
+| **Baseline security** | | | | |
+| Encrypted vault ✅, biometric ✅, auto-lock ✅ | ✅ | ✅ | ✅ | ✅ |
+| Token-approval revoke ✅, calldata decode ✅ | ✅ | ✅ | ✅ | ✅ |
+| Address-poisoning / spam warnings 🟡 | ✅ | ✅ | ✅ | ✅ |
+| Local threat-intel (open-source feeds) 💡 | ✅ | ✅ | ✅ | ✅ |
+| FIDO2 / passkeys 🟡 | ✅ | ✅ | ✅ | ✅ |
+| **Life-safety (free by principle)** | | | | |
+| Duress PIN / decoy wallet ✅ | ✅ | ✅ | ✅ | ✅ |
+| Panic wipe 💡 | ✅ | ✅ | ✅ | ✅ |
+| **AI (advisory only — never holds keys)** | | | | |
+| Plain-language tx explanation 💡 | ✅ | ✅ | ✅ | ✅ |
+| Scam / phishing explanation 💡 | ✅ | ✅ | ✅ | ✅ |
+| Educational assistant 💡 | ✅ | ✅ | ✅ | ✅ |
+| Portfolio Q&A (public on-chain data) 💡 | — | ✅ | ✅ | ✅ |
+| AI portfolio advisor (advisory) 💡 | — | ✅ | ✅ | ✅ |
+| **Privacy & advanced protection** | | | | |
+| Stealth / hidden wallets 💡 | — | ✅ | ✅ | ✅ |
+| No-telemetry / fully-local mode 💡 | — | ✅ | ✅ | ✅ |
+| Privacy routing (Tor / RPC) 💡 | — | ✅ | ✅ | ✅ |
+| Hardware wallet integration 📋 | — | ✅ | ✅ | ✅ |
+| Social recovery (guardians) 📋 | — | ✅ | ✅ | ✅ |
+| Transaction simulation 📋, RASP 📋, risk scoring 📋 | — | ✅ | ✅ | ✅ |
+| Login activity / security dashboard 📋 | — | ✅ | ✅ | ✅ |
+| Encrypted cloud backup (ciphertext) 📋 | — | ✅ | ✅ | ✅ |
+| **High-value protection** | | | | |
+| Inheritance / Crypto Will 📋 | — | — | ✅ | ✅ |
+| Personal multi-sig (2-of-3, 3-of-5) 💡 | — | — | ✅ | ✅ |
+| Spending policies / daily limits 💡 | — | — | ✅ | ✅ |
+| Time-locks 💡, address allowlists 💡 | — | — | ✅ | ✅ |
+| Audit log 📋, hardware-key enforcement 📋 | — | — | ✅ | ✅ |
+| **Niceties / analytics / utilities** | | | | |
+| Address book, ENS, basic charts 💡 | ✅ | ✅ | ✅ | ✅ |
+| Net-worth / portfolio dashboard 💡 | — | ✅ | ✅ | ✅ |
+| Advanced / predictive analytics, tax reports 💡 | — | ✅ | ✅ | ✅ |
+| Notifications, widgets, voice commands 💡 | basic | ✅ | ✅ | ✅ |
+| Self-custody utilities (signing, savings, invoices) 💡 | basic | ✅ | ✅ | ✅ |
+| **Chains & dApp (not tier-gated)** | | | | |
+| More EVM chains / tokens 💡 | ✅ | ✅ | ✅ | ✅ |
+| WalletConnect / dApp / Web3 browser 📋 (post-audit) | ✅ | ✅ | ✅ | ✅ |
+| **Guardian — human-expert service** | | | | |
+| 1:1 setup session, written threat model | — | — | — | ✅ |
+| Quarterly review, priority support channel | — | — | — | ✅ |
+| Custom multi-sig / recovery / inheritance help | — | — | — | ✅ |
 
-### Baseline security (S1/S2) — ALL TIERS
-- Encrypted vault ✅, biometric ✅, auto-lock ✅, token-approval revoke ✅,
-  calldata decode ✅, address-poisoning/spam 🟡, local threat-intel 💡, passkeys 🟡
+**Life-safety free — rationale:** paywalling features that protect at-risk people under
+coercion is an ethical hazard AND a brand risk for this audience AND bad funnel logic
+(they're the word-of-mouth magnet). Incumbents offer neither. Free is the right call.
 
-### Life-safety (FREE by principle — life-safety + adoption magnet)
-- Duress PIN / decoy wallet ✅ · Panic wipe 💡
-- RATIONALE: paywalling features that protect at-risk people under coercion is an
-  ethical hazard AND a brand risk for this audience AND bad funnel logic (these are
-  the word-of-mouth magnet). Incumbents offer neither at all. Free is the right call.
+**AI-privacy tension:** AI features calling external LLMs are a PHONE-HOME surface that
+conflicts with the no-telemetry/privacy wedge. Prefer local/on-device; where a remote
+model is used, make it disclosed + optional, never default-on for privacy-tier users.
+AI is supporting cast, not a headline (incumbents are adding it too — not a differentiator).
 
-### AI (Phase 2 — ADVISORY ONLY, never holds keys / never transacts)
-- FREE: plain-language tx explanation 💡, scam/phishing explanation 💡, educational assistant 💡
-- SECURE+: portfolio Q&A over public data 💡, AI advisor/rebalancer (advisory) 💡
-- ⚠️ AI-PRIVACY TENSION: AI features that call external LLMs are a PHONE-HOME surface,
-  which conflicts with the no-telemetry/privacy wedge. Apply the same rule as threat-intel:
-  local/on-device where possible; where a remote model is used, make it disclosed and
-  optional, never default-on for privacy-tier users. Do NOT let AI become a headline —
-  it's supporting cast; incumbents are adding it too, so it's not a differentiator.
-
-### Privacy & advanced protection (S3/S4) — SECURE+
-- Stealth/hidden wallets 💡, no-telemetry mode 💡, privacy routing 💡, hardware wallet 📋,
-  social recovery 📋, transaction simulation 📋, RASP 📋, risk scoring 📋, login activity 📋,
-  encrypted cloud backup (ciphertext) 📋
-
-### High-value protection (S3) — VAULT+
-- Inheritance/Crypto Will 📋, personal multi-sig 💡, spending policies 💡, time-locks 💡,
-  address allowlists 💡, audit log 📋, hardware-key enforcement 📋
-
-### Niceties / analytics / utilities (Phase 3)
-- FREE basic: address book 💡, ENS 💡, basic charts 💡, notifications 💡, basic utilities 💡
-- SECURE+: net-worth/portfolio dashboard 💡, advanced/predictive analytics 💡, tax reports 💡
-
-### Chains (Phase 4) & dApp (Phase 5) — ALL TIERS (NOT gated)
-- More EVM chains/tokens 💡; WalletConnect/dApp/Web3 browser 📋 (post-audit).
-- Basic access/chains are never paywalled — monetize depth, not access.
-
-### Guardian — HUMAN-EXPERT SERVICE (bespoke tier only)
+## Guardian — HUMAN-EXPERT SERVICE (bespoke tier only)
 Included (bounded deliverables):
 - 1:1 secure-setup session (~90 min, one at onboarding)
 - Personalised written threat model (onboarding; refreshed at quarterly review)
