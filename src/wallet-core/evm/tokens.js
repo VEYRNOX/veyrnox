@@ -20,21 +20,26 @@
 //   - On-chain:      name=USDC, symbol=USDC, decimals=6
 const SEPOLIA_USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
 
-// USDT on Sepolia — INTENTIONALLY UNCONFIGURED.
-//   Tether publishes NO official USDT on Sepolia, so there is no authoritative
-//   address to verify against. Per policy we do NOT invent or guess one: a wrong
-//   token address is a silent funds/decimals hazard. The placeholder below fails
-//   getToken()'s 0x-address validation, so any attempt to read or send USDT
-//   throws ("address not configured/verified") instead of touching an unverified
-//   contract. To enable USDT later, drop in an address verified against an
-//   authoritative source (or substitute another token with an authoritative
-//   Sepolia deployment, e.g. Circle's EURC, clearly labelled as a stand-in).
-const SEPOLIA_USDT_UNCONFIGURED = '0x<sepolia_usdt_address_unverified>';
+// USDT on Sepolia — Tether-issued STAND-IN (Aave faucet test token).
+//   Tether publishes NO official USDT on Sepolia, so there is no Tether-issued
+//   address to verify against. Per policy we do NOT invent or guess one. Instead
+//   we use the authoritative, faucet-mintable test-USDT from the Aave ecosystem:
+//   a verified `TestnetERC20` deployed as USDT with the CORRECT 6 decimals — the
+//   same role USDC's official Sepolia deployment plays. Verified three ways:
+//     - Aave address book: USDT_UNDERLYING in bgd-labs/aave-address-book
+//       https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Sepolia.sol
+//     - Etherscan (verified source, TestnetERC20): name=USDT, symbol=USDT, decimals=6
+//       https://sepolia.etherscan.io/token/0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0
+//     - On-chain decimals() is re-checked at read/send time (token-send.js).
+//   It is a TESTNET stand-in, not Tether's own contract — labelled as such and
+//   faucet-mintable (https://gho.aave.com/faucet/) so a real testnet send can be
+//   hand-verified before flipping USDT to live.
+const SEPOLIA_USDT = '0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0';
 
 export const TOKENS = {
   sepolia: {
     USDC: { address: SEPOLIA_USDC, decimals: 6, symbol: 'USDC' },
-    USDT: { address: SEPOLIA_USDT_UNCONFIGURED, decimals: 6, symbol: 'USDT' },
+    USDT: { address: SEPOLIA_USDT, decimals: 6, symbol: 'USDT' },
   },
   // mainnet: { ... }  // stays unused until ALLOW_MAINNET + audit
 };
