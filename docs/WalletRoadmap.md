@@ -5,9 +5,14 @@
 > Custodial/regulated features (spec addendum section C) are OUT OF SCOPE and do
 > NOT appear here.
 >
-> Status: ✅ built · 🟡 partial · 📋 specced · 💡 idea (not yet specced)
+> Status: ✅ built · 🟡 partial / built-but-gated · 📋 specced · 💡 idea ·
+> ❌ removed / out of scope
 > Rules: testnet only; mainnet gated until independent audit; each feature its own
 > branch+PR+review; cryptographic features get hands-on verification + audit focus.
+>
+> Verified against code on `main` (2026-06-01). At-a-glance truth table:
+> **docs/Feature-Status.md** (authoritative when docs disagree). NB: send is live
+> ONLY for ETH/Sepolia — every other asset is `receive_only`. 233 tests green.
 
 ---
 
@@ -22,34 +27,41 @@
 
 ---
 
-## NOW — in flight
-- Native secure storage M2 — 🟡 (M2a done; M2b provisional in main; biometric UI next)
-- Biometric unlock UI (Face ID/Touch ID toggle + prompt) — 📋 briefed, building
-- Group-tile colour fix — 📋 (small visible polish, outstanding)
+## NOW — pending (non-code, gating mainnet)
+- Independent security audit (S1–S4 + crypto stacks) — 📋 (docs/Audit.scope.md)
+- Hands-on testnet send verification for every `receive_only` asset — 📋
+- ⚠️ Self-custody fix (remove Rebalance / gut Recurring auto-debit) — 🟡 written
+  on branch `fix/remove-autonomous-execution`, **NOT merged to main**
 
-## PHASE S1 — Security foundation (finish first)
-- Native secure storage (harden M2b → OS-enforced, post-audit) — 🟡
-- Biometric unlock — 📋
-- FIDO2 / passkeys (auth; optional PRF vault-protect) — 📋
-- Session manager + auto-lock (idle/background) — 📋
+## PHASE S1 — Security foundation — ✅ largely built (PROVISIONAL pending audit)
+- Native secure storage (M2a done; M2b app-layer; OS-enforced M2c/M2d) — 🟡 (M2c/M2d 📋)
+- Biometric unlock — ✅ (app-layer gate, PROVISIONAL)
+- FIDO2 / passkeys (Level-1 unlock gate; password escape hatch) — ✅ (PRF vault-protect 📋)
+- Session manager + auto-lock (idle/background) — ✅
+- At-rest KDF work-factor raise + param migration (SAST M3) — ✅ (params need audit)
 - Account access / forgot / reset password — 📋
 
-## PHASE S2 — Transaction safety
-- Token approvals: view + REVOKE — 📋
+## PHASE S2 — Transaction safety — ✅ core built
+- Token approvals: view + REVOKE — ✅
+- Address-poisoning warnings — ✅ (wired into send)
+- Spam-token filter — ✅
+- Calldata decode / approval (unlimited-allowance) warning — ✅
+- Per-chain recipient address validation — ✅
 - Suspicious-address / scam screening (threat-intel feed) — 📋
-- Address-poisoning warnings — 📋
-- Spam-token filter — 📋
-- Transaction simulation (drainer defense) — 📋
-- Calldata decode / approval warning — 🟡
+- Transaction simulation (drainer defense) — 📋 (UI shells only)
 - D App security alerts — 📋
-- Security Center / Dashboard, Security Scanner — 📋
-- Anomaly / Fraud detection (rule-based) — 📋
+- Security Center / Dashboard, Security Scanner — 📋 (UI shell only)
+- Anomaly / Fraud detection (rule-based) — 📋 (UI shell only)
 
 ## PHASE S3 — Access & recovery (higher risk; audit + legal where noted)
-- Duress PIN — 📋
-- Hardware wallet (Ledger/Trezor) — 📋
-- Login activity (+ map) — 📋
-- Social recovery (guardian/SSS) — 📋 (cryptographic; audit attention)
+> Deniability stack BUILT but PROVISIONAL (testnet/demo); needs specific audit.
+- Duress PIN — ✅
+- Stealth / hidden wallets (deniable chaff-slot pool) — ✅ (SAST M-1 fix)
+- Panic wipe (emergency local key destruction) — ✅
+- Constant-KDF unlock timing across deniability stack — ✅ (SAST M-2 fix)
+- Hardware wallet (Ledger/Trezor) — 📋 (UI shell only)
+- Login activity (+ map) — 📋 (UI shell only)
+- Social recovery (guardian/SSS) — 📋 (cryptographic; audit-blocked)
 - Crypto Will / inheritance — 📋 (self-custody via social-recovery only; audit + LAWYER)
 - Watch wallets — 📋
 
@@ -60,8 +72,10 @@
 - Encrypted cloud backup (ciphertext only) — 📋
 
 ## PHASE UX — Wallet completeness (cheap, safe, parallelizable)
-- Receive (finish), Transaction history, Gas/fee control (finish) — 🟡
-- Address book, ENS resolution + registration — 💡
+- Receive (per-chain + local QR), Transaction history, Gas/fee control — ✅
+- Help menu (top-bar Documentation) — ✅
+- Address book — ✅ (per-chain validation); ENS/SNS resolution in Send — ✅;
+  ENS registration — ❌ removed (PR #48)
 - Price charts / alerts / watchlist — 💡
 - Net-worth / portfolio dashboard + metrics/snapshots/benchmark — 💡
 - NFT viewing (display-only) / multi-chain NFT — 💡
@@ -94,11 +108,12 @@
 - AI portfolio advisor / rebalancer — 💡 (ADVISORY ONLY; auto-execute = OUT OF SCOPE)
 
 ## PHASE CHAINS — separate stacks (each its own build + audit)
-- Bitcoin (BIP-84) — 📋 (docs/PhaseBTC.md)
-- Solana (ed25519) — 📋 (docs/PhaseSOL.md)
+- Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified — docs/PhaseBTC.verification.md)
+- Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
 - More EVM chains (Base, zkSync…) — 💡 (config-level, cheap)
 - More ERC-20 tokens (DAI, LINK…) — 💡 (reuses token path, cheap)
-- Cosmos IBC, Sui, Tron, XRP, etc. — 💡 (each a full stack; only if justified)
+- Tron, XRP, etc. — 💡 (each a full stack; only if justified)
+- Cosmos IBC, Sui — ❌ removed from app (PR #48; Cosmos derive stub left unwired)
 
 ## PHASE D — dApp connectivity (POST-AUDIT only)
 - WalletConnect / dApp connector / Web3 browser — 📋 (docs/PhaseD; high-risk;

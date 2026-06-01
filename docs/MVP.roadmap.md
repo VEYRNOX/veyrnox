@@ -26,29 +26,46 @@ desktop web app, from ONE shared React/Vite codebase.
 
 **Explicitly NOT in the MVP** (deferred; each adds risk + audit scope + store-
 approval/licensing exposure): DEX swaps, DeFi, WalletConnect/dApp signing
-(Phase D), BTC, SOL. Keeping these out is what keeps the wallet approvable
-(non-custodial exemption) and the audit contained.
+(Phase D). Keeping these out is what keeps the wallet approvable (non-custodial
+exemption) and the audit contained.
+> UPDATE: BTC and SOL, originally deferred here, have since been built as
+> separate testnet stacks (`receive_only`, mainnet gated) — they are now part of
+> the built surface, not excluded. dApp/swap/DeFi remain firmly out.
 
 ---
 
 ## Status snapshot (what's done)
 
-DONE & verified (on `main`, 58/58 tests, clean history):
+DONE & verified (on `main`, **233 tests green**, clean history). At-a-glance
+truth table: docs/Feature-Status.md.
 - Phase A — real ETH key core (BIP-39/32/44, Argon2id+AES-GCM vault, local
   signing); derivation verified vs canonical address; a REAL Sepolia send proven
-  end-to-end by hand.
+  end-to-end by hand. **ETH/Sepolia is the only `live` send.**
 - Phase B — ERC-20 token path; USDC address verified 3 ways; approval-warning /
-  calldata-decode guard; USDT correctly left unconfigured.
+  calldata-decode guard. USDT now wired via the same path (receive_only, Aave
+  faucet stand-in). Both tokens `receive_only` (send gated/unverified).
 - Phase C — 5 more EVM chains; chainIds verified vs ethereum-lists; chain-aware
-  gas tokens (no hardcoded ETH); mainnets gated.
-- Mobile M1 — Capacitor shell (Android scaffolded; iOS added on Mac); additive,
-  crypto untouched.
-- Planning docs: PhaseC/PhaseD, Mobile.capacitor, Hosting.migration,
-  MobileSetup, Audit.scope, and this roadmap.
+  gas tokens; mainnets gated. All five `receive_only` (send gated/unverified).
+- Phase BTC — BIP-84 testnet stack (derive/balance/receive/send built+tested),
+  `receive_only`, mainnet gated, on-chain send unverified by hand.
+- Phase SOL — ed25519/SLIP-0010 devnet stack (build/sign/broadcast built+tested),
+  `receive_only`, mainnet gated, on-chain send unverified by hand.
+- Security S1 (biometric, passkey unlock gate, session/auto-lock, hardened KDF),
+  S2 (approvals/revoke, poison/spam, calldata decode, per-chain validation),
+  S3 deniability (duress, stealth, panic wipe, constant-KDF timing) — BUILT,
+  PROVISIONAL pending audit. SAST M-1/M-2/M-3 fixes merged.
+- UX: transaction history, gas/fee control, receive flow, Help menu.
+- Mobile M1 — Capacitor shell (Android scaffolded; iOS added on Mac); additive.
+- Planning docs: PhaseA/B/C/BTC/SOL, Mobile.capacitor, Hosting.migration,
+  MobileSetup, Audit.scope, Security.roadmap, Feature-Status, and this roadmap.
 
-Honest scorecard: ~20–25% of the full vision by features; MOST of the hard
-technical risk retired for the EVM family; ~30% toward a real-money launch (the
-remainder is audit + legal + hardening, not core code).
+⚠️ Open gap: Rebalance + Recurring still auto-debit demo balances without a
+signature; fix written on branch `fix/remove-autonomous-execution`, NOT merged.
+
+Honest scorecard: ~30% of the full vision by features; MOST of the hard
+technical risk retired across EVM + BTC + SOL; the differentiating security
+stack is largely built. Remainder to real-money launch is mostly audit + legal +
+per-asset send verification + hardening, not core code.
 
 ---
 
