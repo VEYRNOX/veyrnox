@@ -5,7 +5,7 @@ import {
   ShieldAlert, BarChart2, Sparkles, Leaf, ScrollText, Newspaper, Link2,
   Cpu, ShieldCheck, PieChart, TrendingUp, Image, Camera, Network,
   Activity, ClipboardList, BarChart3,
-  Repeat, BellRing, ShieldHalf, Settings,
+  Repeat, BellRing, Settings,
   Target, FileText, Eye,
 } from "lucide-react";
 
@@ -37,7 +37,6 @@ const ALL_ROUTES = [
   { path: "/audit", label: "Audit Log", icon: ClipboardList, group: "Security" },
   { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert, group: "Security" },
   { path: "/rasp", label: "RASP Security", icon: Cpu, group: "Security" },
-  { path: "/multisig", label: "Multi-Sig Wallets", icon: ShieldHalf, group: "Security" },
   { path: "/alerts", label: "Price Alerts", icon: Bell, group: "Security" },
   { path: "/settings", label: "Settings", icon: Settings, group: "Preferences" },
 ];

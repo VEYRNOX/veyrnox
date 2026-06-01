@@ -239,16 +239,10 @@ const featureCategories = [
         explanation: "An emergency wipe irreversibly destroys local key material — available both as a panic PIN at unlock and as a guarded in-app action. Destroys local data only; on-chain funds are unaffected."
       },
       {
-        name: "Social Recovery",
-        status: "roadmap",
-        summary: "Guardian / secret-sharing recovery",
-        explanation: "Recover a wallet via guardians / Shamir secret sharing, with no custodial backstop. Cryptographically sensitive — specced, not yet built, and gated on dedicated audit attention."
-      },
-      {
         name: "Crypto Will / Inheritance",
         status: "roadmap",
-        summary: "Self-custody inheritance via social recovery",
-        explanation: "Inheritance built on social-recovery / secret-sharing plus a dead-man's-switch — Veyrnox never custodies keys or adjudicates death. Specced, not yet built; needs audit and legal input."
+        summary: "Self-custody inheritance (no custodial backstop)",
+        explanation: "Inheritance built on secret-sharing plus a dead-man's-switch — Veyrnox never custodies keys or adjudicates death. Specced, not yet built; needs audit and legal input."
       },
       {
         name: "Encrypted Cloud Backup",
@@ -394,12 +388,6 @@ const featureCategories = [
         status: "roadmap",
         summary: "Sign arbitrary messages",
         explanation: "Sign plain messages with a wallet key for proof-of-ownership and off-chain auth. Specced, not yet built — handled carefully, distinct from arbitrary dApp signing."
-      },
-      {
-        name: "Multi-Sig Wallets",
-        status: "roadmap",
-        summary: "Self-custody M-of-N wallets",
-        explanation: "Self-custody M-of-N multi-signature wallets for shared control. Specced, not yet built — self-custody only, not a custodial treasury service."
       },
       {
         name: "Split Bill",

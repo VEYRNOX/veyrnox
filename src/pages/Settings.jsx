@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, ClipboardList, Trash2, AlertTriangle, Network, CloudUpload, Key } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
+import BackButton from "@/components/BackButton";
 import PasskeySetup from "../components/PasskeySetup";
 import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
 import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
@@ -59,6 +60,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-lg mx-auto space-y-8">
+      <BackButton />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Security Settings</h1>
         <p className="text-sm text-muted-foreground mt-0.5">

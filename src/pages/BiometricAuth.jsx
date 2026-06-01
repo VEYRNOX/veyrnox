@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Fingerprint, ShieldCheck, ShieldOff, Smartphone, Lock, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import BackButton from "@/components/BackButton";
 
 const STORAGE_KEY = "biometric-auth-config";
 const DEFAULT_CONFIG = {
@@ -75,6 +76,7 @@ export default function BiometricAuth() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
+      <BackButton />
       <div>
         <h1 className="text-xl font-bold">Biometric Re-Auth</h1>
         <p className="text-sm text-muted-foreground">Require fingerprint or Face ID before sensitive wallet actions</p>
