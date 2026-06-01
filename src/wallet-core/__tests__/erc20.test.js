@@ -4,7 +4,7 @@
 //   - registry guard refuses unconfigured/unverified token addresses
 //   - calldata decode surfaces transfer/approve + flags UNLIMITED approvals
 //   - amount scaling uses exact base units (parseUnits), correct at boundaries
-//   - asset status: USDC receive_only (read, no send), USDT coming_soon
+//   - asset status: USDC + USDT both receive_only (read, no send yet)
 // Live balance/transfer behavior needs a Sepolia RPC and is covered separately.
 
 import { describe, it, expect } from 'vitest';
@@ -25,24 +25,30 @@ describe('token registry guard', () => {
     expect(/^0x[0-9a-fA-F]{40}$/.test(t.address)).toBe(true);
   });
 
-  it('REFUSES the unconfigured USDT address (never touch an unverified token)', () => {
-    expect(() => getToken('sepolia', 'USDT')).toThrow(/not configured\/verified/i);
+  it('returns the verified USDT entry (6 decimals, configured stand-in)', () => {
+    // USDT now routes through the same ERC-20 path as USDC, using the Aave faucet
+    // test-USDT stand-in. Critically it is 6 decimals (NOT 18) — wrong decimals
+    // would scale every amount by 10^12.
+    const t = getToken('sepolia', 'USDT');
+    expect(t.decimals).toBe(6);
+    expect(/^0x[0-9a-fA-F]{40}$/.test(t.address)).toBe(true);
     expect(isTokenConfigured('sepolia', 'USDC')).toBe(true);
-    expect(isTokenConfigured('sepolia', 'USDT')).toBe(false);
+    expect(isTokenConfigured('sepolia', 'USDT')).toBe(true);
   });
 
-  it('throws on an unknown token', () => {
+  it('throws on an unknown token (registry guard refuses anything unverified)', () => {
     expect(() => getToken('sepolia', 'NOPE')).toThrow(/unknown token/i);
+    expect(isTokenConfigured('sepolia', 'NOPE')).toBe(false);
   });
 
   it('does not register any mainnet tokens (testnet-only until audit)', () => {
     expect(TOKENS.mainnet).toBeUndefined();
   });
 
-  it('sendToken rejects an unconfigured token before any signing', async () => {
+  it('sendToken refuses any token not in the verified registry (no signing)', async () => {
     await expect(
-      sendToken({ networkKey: 'sepolia', privateKey: '0x' + '1'.repeat(64), symbol: 'USDT', to: RECIPIENT, amount: '1' })
-    ).rejects.toThrow(/not configured\/verified/i);
+      sendToken({ networkKey: 'sepolia', privateKey: '0x' + '1'.repeat(64), symbol: 'NOPE', to: RECIPIENT, amount: '1' })
+    ).rejects.toThrow(/unknown token/i);
   });
 });
 
@@ -97,6 +103,12 @@ describe('amount scaling (exact base units, no float)', () => {
     expect(value).toBe(1_500_000n);
   });
 
+  it('scales USDT at 6 decimals (1.5 -> 1_500_000), NOT 18 — guards the 10^12 bug', () => {
+    const { value, token } = buildTokenTransfer({ networkKey: 'sepolia', symbol: 'USDT', to: RECIPIENT, amount: '1.5' });
+    expect(token.decimals).toBe(6);
+    expect(value).toBe(1_500_000n); // 1.5 * 10^6; an 18-decimal bug would give 1.5e18
+  });
+
   it('handles large amounts without precision loss', () => {
     const { value } = buildTokenTransfer({ networkKey: 'sepolia', symbol: 'USDC', to: RECIPIENT, amount: '1000000.123456' });
     expect(value).toBe(parseUnits('1000000.123456', 6));
@@ -123,11 +135,11 @@ describe('asset status gating (Phase B)', () => {
     expect(canSend(usdc)).toBe(false);
   });
 
-  it('USDT stays coming_soon: no receive, no send (no authoritative address)', () => {
+  it('USDT is now receive_only: can receive/show balance, cannot send yet', () => {
     const usdt = getAsset('USDT');
-    expect(usdt.status).toBe('coming_soon');
-    expect(canReceive(usdt)).toBe(false);
-    expect(canSend(usdt)).toBe(false);
+    expect(usdt.status).toBe('receive_only');
+    expect(canReceive(usdt)).toBe(true);
+    expect(canSend(usdt)).toBe(false); // HARD-gated until a verified testnet send
   });
 
   it('ETH remains the only sendable (live) asset', () => {
