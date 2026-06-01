@@ -113,12 +113,15 @@ describe('panic wipe', () => {
     await populateDevice();
     const before = await inspectKeyMaterial();
     expect(before.clean).toBe(false);
-    // primary + secondary + tertiary + 12 stealth slots = 15 blobs.
-    expect(before.vaultBlobCount).toBe(15);
+    // primary + secondary + tertiary + the stealth pool (POOL_SIZE slots; M1
+    // raised it 12 -> 256). Assert via the actual pool size rather than a magic
+    // number so this stays correct if the pool is retuned.
+    const stealthSlots = before.indexedDbKeys.filter((k) => k.startsWith('vault:')).length;
+    expect(before.vaultBlobCount).toBe(3 + stealthSlots);
     expect(before.indexedDbKeys).toContain('primary');
     expect(before.indexedDbKeys).toContain('secondary');
     expect(before.indexedDbKeys).toContain('tertiary');
-    expect(before.indexedDbKeys.filter((k) => k.startsWith('vault:')).length).toBe(12);
+    expect(stealthSlots).toBe(256);
   });
 
   it('panicWipeLocal destroys ALL key material — nothing recoverable remains', async () => {

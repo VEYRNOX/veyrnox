@@ -79,12 +79,34 @@
 //     wallet's address/history also stay public on-chain regardless. This variant
 //     is for wallets the adversary has NOT already catalogued; the UI warns the
 //     user explicitly and it is flagged for specific audit scrutiny.
-//   - RARE SLOT COLLISION. Two secrets can hash to the same slot; the later
-//     createHiddenWallet would overwrite the earlier wallet. By design we keep
-//     NO index of hidden wallets (an index readable with the primary password
-//     would let a coercer enumerate them), so we cannot detect this perfectly.
-//     POOL_SIZE is chosen so collisions are unlikely for a handful of wallets;
-//     the create path warns and the limit is documented. Flagged for audit.
+//   - SLOT COLLISION (M1 — fund-loss hardening). Two DIFFERENT secrets can hash
+//     to the same slot. The slot is SHA-256(secret) mod POOL_SIZE, a uniform draw
+//     over POOL_SIZE buckets, so by the birthday bound the chance that SOME pair
+//     among k hidden wallets collides is ≈ k(k-1)/(2·POOL_SIZE). The original
+//     POOL_SIZE = 12 made this materially likely ("a handful" understated it):
+//     ~8% at 2 wallets, ~24% at 3, ~42% at 4. We now use POOL_SIZE = 256, which
+//     drops those to ~0.4% / ~1.2% / ~2.3% — about a 21× reduction (raising the
+//     pool only costs one-time chaff-seeding; reveal still touches ONE slot, so
+//     unlock cost is unchanged). The math is the lever here; see below for why a
+//     hard guard is impossible.
+//
+//     WHY WE CANNOT FULLY "REFUSE ON COLLISION" (the honest limit, flagged for
+//     audit). To refuse, createHiddenWallet would have to tell "this slot holds a
+//     DIFFERENT user's-real hidden wallet" apart from "this slot holds chaff."
+//     But real and chaff blobs are AES-GCM-vs-random — computationally
+//     INDISTINGUISHABLE WITHOUT the owning secret, which the create path does not
+//     have for OTHER hidden wallets. Any mechanism that let the creator detect a
+//     foreign real wallet (a readable index, a recognizable-chaff marker, a key
+//     derived from the primary password) would EQUALLY let a coercer enumerate or
+//     COUNT hidden wallets from a storage dump — which is exactly the deniability
+//     property this module exists to protect. So strict per-collision refusal and
+//     count-hiding are mutually exclusive here; we choose count-hiding and shrink
+//     the collision probability instead. What createHiddenWallet CAN and now DOES
+//     guard is the DETECTABLE case (the same secret re-used — handled idempotently
+//     below) plus a post-write self-verify so a write that did not land is caught
+//     loudly rather than silently. LOST-on-collision of a *different* wallet under
+//     a *colliding* secret remains a (now-rare) residual, documented for the user
+//     and flagged for audit. See createHiddenWallet + SAST_FINDINGS.md M1.
 //   - LOST SECRET = LOST WALLET. Precisely because we keep no enumerable index,
 //     a forgotten reveal secret makes its hidden wallet unrecoverable from this
 //     app (the slot is indistinguishable from chaff without the secret). This is
@@ -144,8 +166,12 @@ const STORE = 'vault';
 // innocuous, expected shape rather than a feature-naming tell. POOL_SIZE bounds
 // the collision probability (see header) while keeping the pool small enough
 // that seeding it for every wallet is cheap. Reveal touches only ONE slot, so
-// POOL_SIZE does not affect unlock cost.
-const POOL_SIZE = 12;
+// POOL_SIZE does NOT affect unlock cost — only the one-time seeding cost — which
+// is why M1 raises it from 12 to 256: a ~21× cut in slot-collision probability
+// (and thus in silent hidden-wallet fund loss) at zero unlock-latency cost. The
+// uniform 'vault:N' key shape is unchanged, so this introduces no new storage
+// tell relative to the prior pool — it is the same artifact, just larger.
+const POOL_SIZE = 256;
 const SLOT_KEYS = Object.freeze(
   Array.from({ length: POOL_SIZE }, (_, i) => `vault:${i + 1}`)
 );
@@ -199,7 +225,7 @@ function b64(u8) {
 // The encryption itself uses vault.js's own random Argon2id salt — this is not
 // key material. An attacker cannot compute a slot without the secret, and the
 // slot index alone reveals nothing.
-async function slotForSecret(secret) {
+export async function slotForSecret(secret) {
   const digest = new Uint8Array(
     await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret))
   );
@@ -265,10 +291,17 @@ export async function ensureStealthPool() {
  * never open. We cannot check the other secrets (we never hold them in plaintext),
  * so the caller warns the user; this is documented in the page UI.
  *
- * COLLISION CAVEAT (see header): if a DIFFERENT secret hashes to the same slot and
- * already holds a wallet, this overwrites it (the prior wallet decrypts under the
- * other secret, not this one, so we cannot tell it apart from chaff). POOL_SIZE
- * makes this unlikely for a handful of wallets; flagged for audit.
+ * COLLISION GUARD (M1). Two failure modes are handled:
+ *   (1) SAME secret re-used → returned idempotently (below), never clobbered.
+ *   (2) The write must actually land → we SELF-VERIFY after writing (re-reveal
+ *       under the secret and confirm it yields the new wallet) before returning,
+ *       so a storage hiccup surfaces a clear error instead of a silent loss —
+ *       parity with moveWalletToHidden's safety ordering.
+ * RESIDUAL (see header): a DIFFERENT secret that hashes to the SAME slot still
+ * overwrites the prior wallet, because real and chaff are cryptographically
+ * indistinguishable without the owning secret — detecting it would break
+ * count-hiding deniability. We make this RARE (POOL_SIZE = 256, ≈k(k-1)/512 for
+ * k hidden wallets) rather than impossible; flagged for audit.
  *
  * Returns the hidden wallet's full PUBLIC multi-chain identity (EVM + BTC + SOL),
  * so the UI can show every address to fund. `address` is kept as an alias of the
@@ -304,6 +337,16 @@ export async function createHiddenWallet(secret, strength = 128) {
     await putKey(db, slot, blob);
   } finally {
     db.close();
+  }
+  // SELF-VERIFY (M1, parity with moveWalletToHidden): the wallet we just wrote
+  // MUST be revealable by its secret before we hand it back. This catches a
+  // storage write that did not land (a silent-loss path) and surfaces it loudly.
+  // It does NOT — and cannot — detect a collision that overwrote a DIFFERENT
+  // wallet under a colliding secret (that prior wallet is indistinguishable from
+  // chaff to us); see the header for why that residual is unavoidable here.
+  const verify = await tryRevealHidden(secret);
+  if (verify !== mnemonic) {
+    throw new Error('Hidden wallet failed to verify after write; not created.');
   }
   // Derive the hidden wallet's PUBLIC multi-chain identity (so the UI can show
   // where to fund each chain) from the in-memory mnemonic via the SAME derivation
