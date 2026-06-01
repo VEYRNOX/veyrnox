@@ -90,6 +90,7 @@ const SplitBill = lazy(() => import('./pages/SplitBill'));
 const MerchantQR = lazy(() => import('./pages/MerchantQR'));
 const SessionManager = lazy(() => import('./pages/SessionManager'));
 const TransactionReceipt = lazy(() => import('./pages/TransactionReceipt'));
+const TransactionHistory = lazy(() => import('./pages/TransactionHistory'));
 const SuspiciousAddressChecker = lazy(() => import('./pages/SuspiciousAddressChecker'));
 const TokenApprovals = lazy(() => import('./pages/TokenApprovals'));
 const NetworkManager = lazy(() => import('./pages/NetworkManager'));
@@ -211,6 +212,7 @@ const AuthenticatedApp = () => {
           <Route path="/merchant-qr" element={<MerchantQR />} />
           <Route path="/session-manager" element={<SessionManager />} />
           <Route path="/receipt" element={<TransactionReceipt />} />
+          <Route path="/tx-history" element={<TransactionHistory />} />
           <Route path="/address-checker" element={<SuspiciousAddressChecker />} />
           <Route path="/fee-analytics" element={<FeeAnalytics />} />
           <Route path="/correlation-timeline" element={<AssetCorrelationTimeline />} />
