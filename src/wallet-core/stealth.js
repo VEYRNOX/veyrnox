@@ -100,6 +100,35 @@
 import { encryptVault, decryptVault } from './vault.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { deriveEvmAccount } from './derivation.js';
+// A hidden wallet is a real BIP-39 wallet, so it has the SAME multi-chain
+// identity any wallet does. We reuse the EXISTING public-address-only derivation
+// helpers — the same ones WalletProvider.deriveBtc/deriveSol use for the primary
+// wallet — so a revealed hidden wallet shows its EVM + BTC + SOL addresses with
+// no new derivation logic and no wallet-core crypto touched. These compute
+// addresses locally from the mnemonic; they perform NO network I/O.
+import { deriveBtcAddress } from './btc/derivation.js';
+import { deriveSolAddress } from './sol/derivation.js';
+
+// Default networks for the hidden wallet's non-EVM addresses, matching the
+// primary wallet's defaults (WalletProvider.deriveBtc/deriveSol): BTC testnet,
+// SOL devnet. Testnet only; mainnet stays gated in the respective networks.js.
+const HIDDEN_BTC_NETWORK = 'testnet';
+const HIDDEN_SOL_NETWORK = 'devnet';
+
+// Derive a hidden wallet's PUBLIC multi-chain identity from its mnemonic. EVM
+// (one secp256k1 address serves every EVM chain), BTC (BIP-84 P2WPKH testnet),
+// and SOL (ed25519 devnet) — all via the existing derivation modules. No key
+// material is returned or persisted; addresses only. No network access.
+function deriveHiddenIdentity(mnemonic) {
+  const { address: evm } = deriveEvmAccount(mnemonic, 0);
+  const { address: btc, path: btcPath } = deriveBtcAddress(mnemonic, { networkKey: HIDDEN_BTC_NETWORK });
+  const { address: sol, path: solPath } = deriveSolAddress(mnemonic);
+  return {
+    evm: { address: evm, path: "m/44'/60'/0'/0/0" },
+    btc: { address: btc, path: btcPath, networkKey: HIDDEN_BTC_NETWORK },
+    sol: { address: sol, path: solPath, networkKey: HIDDEN_SOL_NETWORK },
+  };
+}
 
 // Same database + store as the primary vault (see evm/vaultStore.js) and the
 // duress decoy. Keeping the stealth slots in ONE shared store — rather than a
@@ -241,9 +270,13 @@ export async function ensureStealthPool() {
  * other secret, not this one, so we cannot tell it apart from chaff). POOL_SIZE
  * makes this unlikely for a handful of wallets; flagged for audit.
  *
+ * Returns the hidden wallet's full PUBLIC multi-chain identity (EVM + BTC + SOL),
+ * so the UI can show every address to fund. `address` is kept as an alias of the
+ * EVM address for back-compat. No key material is returned or persisted.
+ *
  * @param {string} secret
  * @param {128|256} [strength]
- * @returns {Promise<{ mnemonic: string, address: string, slot: string, existing: boolean }>}
+ * @returns {Promise<{ mnemonic: string, address: string, evm: object, btc: object, sol: object, slot: string, existing: boolean }>}
  */
 export async function createHiddenWallet(secret, strength = 128) {
   if (typeof secret !== 'string' || secret.length < 4) {
@@ -256,8 +289,8 @@ export async function createHiddenWallet(secret, strength = 128) {
   // never clobber a hidden wallet just because the user re-typed its secret.
   const existingMnemonic = await tryRevealHidden(secret);
   if (existingMnemonic != null) {
-    const { address } = deriveEvmAccount(existingMnemonic, 0);
-    return { mnemonic: existingMnemonic, address, slot, existing: true };
+    const id = deriveHiddenIdentity(existingMnemonic);
+    return { mnemonic: existingMnemonic, address: id.evm.address, ...id, slot, existing: true };
   }
 
   const mnemonic = generateMnemonic(strength);
@@ -272,11 +305,11 @@ export async function createHiddenWallet(secret, strength = 128) {
   } finally {
     db.close();
   }
-  // Derive the hidden wallet's PUBLIC EVM address (so the UI can show where to
-  // fund it) from the in-memory mnemonic via the SAME derivation as the primary
-  // wallet. No key is persisted here.
-  const { address } = deriveEvmAccount(mnemonic, 0);
-  return { mnemonic, address, slot, existing: false };
+  // Derive the hidden wallet's PUBLIC multi-chain identity (so the UI can show
+  // where to fund each chain) from the in-memory mnemonic via the SAME derivation
+  // as the primary wallet. No key is persisted here.
+  const id = deriveHiddenIdentity(mnemonic);
+  return { mnemonic, address: id.evm.address, ...id, slot, existing: false };
 }
 
 /**
