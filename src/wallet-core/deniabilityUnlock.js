@@ -63,7 +63,7 @@
 // TESTNET ONLY. This module performs no network/provider/signing work — it only
 // spends KDFs and reads local vault-shaped blobs. It cannot move funds.
 
-import { decryptVault } from './vault.js';
+import { decryptVault, KDF_PARAMS } from './vault.js';
 import { hasPanicVault, tryPanicUnlock } from './panic.js';
 import { hasDuressVault, tryDuressUnlock } from './duress.js';
 import { ensureStealthPool, tryRevealHidden } from './stealth.js';
@@ -83,12 +83,18 @@ function b64(u8) {
 // A throwaway vault-shaped blob (random ct). Used ONLY to spend exactly one
 // Argon2id KDF so an ABSENT deniability feature costs the same as a present one.
 // decryptVault on it always fails (random ct -> GCM auth fail), which is exactly
-// what we want: pure KDF cost, no real secret involved. The { v, kdf, salt, iv,
-// ct } shape and KDF params mirror a real vault so the KDF work matches.
+// what we want: pure KDF cost, no real secret involved.
+//
+// The kdf field MUST carry the CURRENT params (imported from vault.js), not
+// hardcoded ones: decryptVault derives with the blob's OWN recorded params
+// (M3 migration), so a stale 64 MiB here would make a padded/absent feature cost
+// one 64 MiB KDF while a configured feature's real blob costs a 192 MiB KDF —
+// reintroducing exactly the timing tell M2 closed. Tracking KDF_PARAMS keeps the
+// dummy cost equal to a real attempt as the at-rest params evolve.
 function chaffBlob() {
   return {
     v: 1,
-    kdf: { name: 'argon2id', parallelism: 1, iterations: 3, memorySize: 65536, hashLength: 32 },
+    kdf: { name: 'argon2id', ...KDF_PARAMS },
     salt: b64(randomBytes(16)),
     iv: b64(randomBytes(12)),
     ct: b64(randomBytes(48)),
