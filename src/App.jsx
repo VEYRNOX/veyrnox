@@ -82,6 +82,7 @@ const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 const WalletSeedQR = lazy(() => import('./pages/WalletSeedQR'));
 const DuressPin = lazy(() => import('./pages/DuressPin'));
 const StealthWallets = lazy(() => import('./pages/StealthWallets'));
+const PanicWipe = lazy(() => import('./pages/PanicWipe'));
 const PortfolioRiskScore = lazy(() => import('./pages/PortfolioRiskScore'));
 const CorrelationMatrix = lazy(() => import('./pages/CorrelationMatrix'));
 const RebalancingHistory = lazy(() => import('./pages/RebalancingHistory'));
@@ -202,6 +203,7 @@ const AuthenticatedApp = () => {
           <Route path="/login-map" element={<LoginActivityMap />} />
           <Route path="/duress-pin" element={<DuressPin />} />
           <Route path="/stealth-wallets" element={<StealthWallets />} />
+          <Route path="/panic-wipe" element={<PanicWipe />} />
           <Route path="/risk-score" element={<PortfolioRiskScore />} />
           <Route path="/correlation" element={<CorrelationMatrix />} />
           <Route path="/rebalancing-history" element={<RebalancingHistory />} />
