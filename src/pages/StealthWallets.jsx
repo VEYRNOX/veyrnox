@@ -12,30 +12,37 @@
 // encrypted vault stored among indistinguishable chaff slots; see
 // src/wallet-core/stealth.js for the design and its honest limitations.
 //
-// A DELIBERATE PROPERTY: this page CANNOT list your existing hidden wallets. By
-// design the app keeps no enumerable index of them (an index readable with your
-// main password would let a coercer enumerate them). You create a hidden wallet
-// here and remember its secret; that same indistinguishability is what hides it.
+// MULTI-CHAIN IDENTITY (this change): a hidden wallet is a real BIP-39 wallet, so
+// it has the SAME EVM + BTC + SOL identity any wallet does. Its non-EVM addresses
+// come from the EXISTING derivation (deriveBtcAddress/deriveSolAddress — the same
+// paths WalletProvider.deriveBtc/deriveSol use for the primary wallet); on reveal
+// the provider already populates btcAccount/solAccount, so a revealed hidden
+// wallet shows all three. Balances are PRIVACY-AWARE and OPT-IN: see lib/
+// hiddenBalance.js — a balance check contacts a public node (phone-home), so we
+// never fire it automatically; the user taps "Check balances" and is told so.
+//
+// HONEST LIMIT kept visible in-UI: stealth hides a wallet IN THE APP, not
+// ON-CHAIN. Every EVM/BTC/SOL address here is public — anyone who knows it can
+// see its balance/history on an explorer.
 //
 // DEMO vs NATIVE:
 //   - The "Create a hidden wallet" card works everywhere (real, hidden vault).
-//   - Balances are real on-chain reads in real/native builds and clearly-labelled
-//     seeded values in demo (a fresh address can't hold live funds on a simulator).
+//   - Balances are real on-chain reads in real/native and clearly-labelled seeded
+//     values in demo (a fresh address can't hold live funds on a simulator).
 //   - The "Live demonstration" card is DEMO-gated: it stands up a throwaway real
 //     wallet + a hidden wallet, then exercises the REAL unlock path to prove the
 //     hidden wallet is invisible under the real session and revealed only by its
-//     secret — demonstrable on the simulator.
+//     secret — now showing its full multi-chain identity.
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import {
-  resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
-} from "@/lib/decoyBalance";
-import { getNetworkInfo } from "@/wallet-core/evm/networks";
+  HIDDEN_CHAINS, resolveHiddenBalance, seedDemoHiddenBalance,
+} from "@/lib/hiddenBalance";
 import {
   EyeOff, Eye, Shield, CheckCircle2, AlertTriangle, Lock, Unlock, FlaskConical,
-  Copy, Check, RefreshCw, Coins, ExternalLink, Ghost,
+  Copy, Check, Coins, ExternalLink, Ghost, Globe, Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,49 +52,116 @@ import { Label } from "@/components/ui/label";
 // DEMO ONLY — never used outside the demonstration panel.
 const DEMO_REAL_PW = "main-pass-2468";
 const DEMO_HIDDEN_SECRET = "hidden-key-9753";
-// A small, plausible hidden-wallet balance to seed in the demo (ETH).
-const DEMO_HIDDEN_ETH = "0.0231";
-
-const NET = getNetworkInfo(DECOY_NETWORK_KEY);
+// Small, plausible per-chain balances to seed in the demo.
+const DEMO_AMOUNTS = { evm: "0.0231", btc: "0.0007", sol: "0.42" };
 
 function short(addr) {
   return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "—";
 }
 
-// Reads and shows an address's native testnet balance. REAL on-chain read in
-// real/native builds; SEEDED (clearly labelled) in demo. Never a hardcoded value.
-// Reuses the decoy-balance resolver — it is a generic per-address balance read.
-function LiveBalance({ address, refreshKey }) {
-  const [state, setState] = useState({ loading: true });
-  useEffect(() => {
-    let active = true;
-    setState({ loading: true });
-    resolveDecoyBalance(address)
-      .then((r) => { if (active) setState({ loading: false, ...r }); })
-      .catch((e) => { if (active) setState({ loading: false, error: e?.message || "read failed" }); });
-    return () => { active = false; };
-  }, [address, refreshKey]);
+// Renders a hidden wallet's EVM + BTC + SOL addresses with copy + explorer links,
+// and an OPT-IN balance check. Balances are NOT fetched until the user asks (each
+// check is a phone-home to a public node — see lib/hiddenBalance.js). `addresses`
+// is a { evm, btc, sol } map of address strings.
+function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
+  const [balances, setBalances] = useState(null); // null = not checked yet
+  const [checking, setChecking] = useState(false);
 
-  if (!address) return null;
-  if (state.loading) return <span className="text-xs text-muted-foreground">reading balance…</span>;
-  if (state.error) {
-    return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">balance unavailable</span>;
-  }
-  const eth = Number(state.eth);
+  const rows = HIDDEN_CHAINS
+    .map((c) => ({ c, address: addresses?.[c.key] }))
+    .filter((r) => r.address);
+
+  // Re-checking after a demo "simulate funding" should re-read; reset on address change.
+  useEffect(() => { setBalances(null); }, [addresses?.evm, addresses?.btc, addresses?.sol]);
+
+  // Plain handler (not memoized): runs ONLY on an explicit user action, so each
+  // call is a deliberate phone-home. See lib/hiddenBalance.js on the opt-in posture.
+  const check = async () => {
+    setChecking(true);
+    try {
+      const out = {};
+      for (const { c, address } of rows) {
+        try { out[c.key] = await resolveHiddenBalance(c.key, address); }
+        catch (e) { out[c.key] = { error: e?.message || "read failed" }; }
+      }
+      setBalances(out);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const demoFundAll = () => {
+    rows.forEach(({ c, address }) => seedDemoHiddenBalance(c.key, address, DEMO_AMOUNTS[c.key]));
+    // re-read so the seeded values show immediately
+    check();
+  };
+
   return (
-    <span className="text-sm font-semibold">
-      {eth.toLocaleString(undefined, { maximumFractionDigits: 6 })} {NET?.symbol || "ETH"}
-      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-        {state.source === "chain" ? "(live on-chain)" : "(demo — simulated)"}
-      </span>
-    </span>
+    <div className="space-y-2.5">
+      {rows.map(({ c, address }) => {
+        const b = balances?.[c.key];
+        return (
+          <div key={c.key} className="rounded-lg bg-background p-2.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold">{c.label}</span>
+              <span className="text-[10px] text-muted-foreground">{c.networkName()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 break-all text-[11px] text-foreground">{address}</code>
+              <button onClick={() => copy(address, `${idPrefix}-${c.key}`)} title={`Copy ${c.label} address`} className="shrink-0">
+                {copied === `${idPrefix}-${c.key}` ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+              </button>
+              {c.explorer(address) && (
+                <a href={c.explorer(address)} target="_blank" rel="noreferrer" title="View on explorer" className="shrink-0">
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                </a>
+              )}
+            </div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">Balance</span>
+              <span className="font-semibold">
+                {!balances ? (
+                  <span className="text-muted-foreground">— not checked</span>
+                ) : b?.error ? (
+                  <span className="text-muted-foreground" title={b.error}>unavailable</span>
+                ) : (
+                  <>
+                    {Number(b.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })} {b.unit}
+                    <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                      {b.source === "chain" ? "(live on-chain)" : "(demo — simulated)"}
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="flex flex-wrap items-center gap-3 pt-0.5">
+        <button onClick={check} disabled={checking} className="inline-flex items-center gap-1 text-primary text-[11px]">
+          <Wifi className="h-3 w-3" /> {checking ? "Checking…" : balances ? "Re-check balances" : "Check balances"}
+        </button>
+        {DEMO && (
+          <button onClick={demoFundAll} className="inline-flex items-center gap-1 text-primary text-[11px]">
+            <Coins className="h-3 w-3" /> Simulate funding (demo)
+          </button>
+        )}
+      </div>
+      <p className="text-[10px] text-muted-foreground flex items-start gap-1.5">
+        <Globe className="h-3 w-3 mt-0.5 shrink-0" />
+        Checking a balance contacts that chain's public node — a network query that
+        reveals the address. The wallet has no private/local balance path yet, so
+        this is opt-in and never runs on its own.
+      </p>
+    </div>
   );
 }
 
 export default function StealthWallets() {
   const wallet = useWallet();
   const {
-    isUnlocked, isHidden, isDecoy, accounts,
+    isUnlocked, isHidden, isDecoy, accounts, btcAccount, solAccount,
     hasVault, addHiddenWallet, initStealthPool, removeAllHiddenWallets,
     createWallet, unlock, lock, clearVault,
   } = wallet;
@@ -98,15 +172,14 @@ export default function StealthWallets() {
   const [showSecret, setShowSecret] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [savedPhrase, setSavedPhrase] = useState("");  // hidden mnemonic (once)
-  const [savedAddr, setSavedAddr] = useState("");       // hidden address (to fund)
+  const [savedPhrase, setSavedPhrase] = useState("");      // hidden mnemonic (once)
+  const [savedIdentity, setSavedIdentity] = useState(null); // { evm, btc, sol } addresses
   const [copied, setCopied] = useState("");
-  const [balRefresh, setBalRefresh] = useState(0);
 
   // ----- live demo state -----
   const [vaultExists, setVaultExists] = useState(false);
-  const [realAddr, setRealAddr] = useState("");   // demo oracle: the real address
-  const [hiddenAddr, setHiddenAddr] = useState(""); // demo oracle: the hidden one
+  const [realAddr, setRealAddr] = useState("");      // demo oracle: visible EVM address
+  const [hiddenOracle, setHiddenOracle] = useState(""); // demo oracle: hidden EVM address
   const [tryPw, setTryPw] = useState("");
   const [tryErr, setTryErr] = useState("");
   const [busy, setBusy] = useState("");
@@ -124,14 +197,14 @@ export default function StealthWallets() {
 
   // ----- create handler -----
   const handleCreate = async () => {
-    setError(""); setSavedPhrase(""); setSavedAddr("");
+    setError(""); setSavedPhrase(""); setSavedIdentity(null);
     if (secret.length < 4) { setError("Reveal secret must be at least 4 characters"); return; }
     if (secret !== confirm) { setError("Secrets do not match"); return; }
     setSaving(true);
     try {
-      const { mnemonic, address } = await addHiddenWallet(secret);
+      const { mnemonic, evm, btc, sol } = await addHiddenWallet(secret);
       setSavedPhrase(mnemonic);
-      setSavedAddr(address);
+      setSavedIdentity({ evm: evm.address, btc: btc.address, sol: sol.address });
       setSecret(""); setConfirm("");
       await refresh();
     } catch (e) {
@@ -139,12 +212,6 @@ export default function StealthWallets() {
     } finally {
       setSaving(false);
     }
-  };
-
-  // DEMO ONLY: simulate funding the hidden address with a plausible small balance.
-  const handleDemoFund = (address, eth = DEMO_HIDDEN_ETH) => {
-    seedDemoDecoyBalance(address, eth);
-    setBalRefresh((n) => n + 1);
   };
 
   // ----- demo handlers (use the REAL unlock path) -----
@@ -155,15 +222,15 @@ export default function StealthWallets() {
       if (!(await hasVault())) {
         await createWallet(DEMO_REAL_PW);
       }
-      // Capture the visible wallet's address as a demo "oracle" so we can later
-      // prove the hidden session never exposes it. (Real apps never show this.)
       if (accounts?.[0]?.address) setRealAddr(accounts[0].address);
       await initStealthPool();
-      // Create the hidden wallet and SEED a small plausible balance on its address.
-      const { address } = await addHiddenWallet(DEMO_HIDDEN_SECRET);
-      setHiddenAddr(address);
-      seedDemoDecoyBalance(address, DEMO_HIDDEN_ETH);
-      setBalRefresh((n) => n + 1);
+      // Create the hidden wallet and SEED small plausible balances on ALL THREE of
+      // its chains (demo simulation of real on-chain top-ups).
+      const { evm, btc, sol } = await addHiddenWallet(DEMO_HIDDEN_SECRET);
+      setHiddenOracle(evm.address);
+      seedDemoHiddenBalance("evm", evm.address, DEMO_AMOUNTS.evm);
+      seedDemoHiddenBalance("btc", btc.address, DEMO_AMOUNTS.btc);
+      seedDemoHiddenBalance("sol", sol.address, DEMO_AMOUNTS.sol);
       lock();
       await refresh();
     } catch (e) {
@@ -177,7 +244,6 @@ export default function StealthWallets() {
     setTryErr(""); setBusy("Unlocking…");
     try {
       await unlock(pw);
-      setBalRefresh((n) => n + 1);
     } catch (e) {
       // SAME generic error whether or not a hidden wallet exists — no tell.
       setTryErr(e?.message || "Unlock failed");
@@ -192,7 +258,7 @@ export default function StealthWallets() {
       lock();
       await clearVault();
       await removeAllHiddenWallets();
-      setRealAddr(""); setHiddenAddr("");
+      setRealAddr(""); setHiddenOracle("");
       await refresh();
     } finally {
       setBusy("");
@@ -206,8 +272,15 @@ export default function StealthWallets() {
     }
   }, [isUnlocked, isHidden, isDecoy, accounts]);
 
-  const currentAddr = accounts?.[0]?.address;
-  const explorerAddr = (a) => NET?.explorer ? `${NET.explorer}/address/${a}` : null;
+  // The CURRENT session's multi-chain identity (visible or revealed-hidden), read
+  // straight from the provider — which derived BTC/SOL via the SAME deriveBtc/
+  // deriveSol it uses for any wallet. Proves a revealed hidden wallet is fully
+  // multi-chain with no extra logic here.
+  const currentIdentity = {
+    evm: accounts?.[0]?.address,
+    btc: btcAccount?.address,
+    sol: solAccount?.address,
+  };
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -242,7 +315,8 @@ export default function StealthWallets() {
               from your main password and any duress PIN). It will <b>not</b> appear
               anywhere in the app — no list, no count, no indicator. To open it,
               type its secret at the <b>normal unlock screen</b>; the app opens that
-              hidden wallet instead of your visible one. To anyone inspecting the
+              hidden wallet — with its full <b>Ethereum, Bitcoin and Solana</b>{" "}
+              identity — instead of your visible one. To anyone inspecting the
               unlocked app there is no sign a hidden wallet exists.
             </p>
           </div>
@@ -259,6 +333,7 @@ export default function StealthWallets() {
           <li>Hidden wallets are stored among a fixed pool of identical, vault-shaped slots — some real, the rest random <b>chaff</b>. Without the secret, real and chaff are indistinguishable, so the <b>count</b> of hidden wallets is not revealed.</li>
           <li>The pool is seeded for <b>every</b> wallet on the device, so its presence means "this device has a Veyrnox wallet" — not "this device has hidden wallets".</li>
           <li>This is <b>not</b> a hidden volume. A forensic examiner comparing against a pristine install can see the pool itself exists; they just cannot learn how many slots (if any) are real or what they hold.</li>
+          <li><b>Stealth hides a wallet in the app, not on-chain.</b> A hidden wallet's Ethereum, Bitcoin and Solana addresses are public — anyone who knows one can see its balance and history on a block explorer. Hiding is local; the chain is not.</li>
           <li>We keep <b>no list</b> of your hidden wallets — by design. A forgotten secret means that hidden wallet is unrecoverable from this app. Remember each secret.</li>
           <li>Provisional, testnet-only, pending independent audit.</li>
         </ul>
@@ -324,37 +399,12 @@ export default function StealthWallets() {
               <CheckCircle2 className="h-4 w-4" /> Hidden wallet created. It is invisible until you unlock with its secret.
             </p>
 
-            {savedAddr && (
-              <div className="space-y-1.5">
+            {savedIdentity && (
+              <div className="space-y-2">
                 <p className="text-muted-foreground">
-                  Fund it (send a small {NET?.symbol || "ETH"} amount on{" "}
-                  {NET?.name || "the testnet"}):
+                  Fund any chain (send a small testnet amount to the matching address):
                 </p>
-                <div className="flex items-center gap-2 p-2 rounded bg-background">
-                  <code className="flex-1 break-all text-foreground">{savedAddr}</code>
-                  <button onClick={() => copy(savedAddr, "hidden-addr")} title="Copy hidden address" className="shrink-0">
-                    {copied === "hidden-addr" ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Hidden balance:</span>
-                  <LiveBalance address={savedAddr} refreshKey={balRefresh} />
-                </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setBalRefresh((n) => n + 1)} className="inline-flex items-center gap-1 text-primary">
-                    <RefreshCw className="h-3 w-3" /> Refresh
-                  </button>
-                  {explorerAddr(savedAddr) && (
-                    <a href={explorerAddr(savedAddr)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary">
-                      <ExternalLink className="h-3 w-3" /> View on explorer
-                    </a>
-                  )}
-                  {DEMO && (
-                    <button onClick={() => handleDemoFund(savedAddr)} className="inline-flex items-center gap-1 text-primary">
-                      <Coins className="h-3 w-3" /> Simulate funding ({DEMO_HIDDEN_ETH})
-                    </button>
-                  )}
-                </div>
+                <MultiChainIdentity addresses={savedIdentity} copy={copy} copied={copied} idPrefix="new" />
               </div>
             )}
 
@@ -384,9 +434,9 @@ export default function StealthWallets() {
           <p className="text-xs text-muted-foreground">
             Exercises the real unlock flow. Step 1 creates a throwaway visible wallet
             (password <code>{DEMO_REAL_PW}</code>) and a hidden wallet (reveal secret{" "}
-            <code>{DEMO_HIDDEN_SECRET}</code>) seeded with a small{" "}
-            {NET?.symbol || "ETH"} balance. Then unlock with either to compare — and
-            note the visible session shows <b>no</b> sign the hidden wallet exists.
+            <code>{DEMO_HIDDEN_SECRET}</code>) seeded with small balances on all three
+            chains. Then unlock with either to compare — and note the visible session
+            shows <b>no</b> sign the hidden wallet exists.
           </p>
 
           <div className="flex flex-wrap gap-2">
@@ -434,40 +484,39 @@ export default function StealthWallets() {
             {!isUnlocked ? (
               <p className="text-muted-foreground">Locked. Unlock above to see which wallet opens.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   {isHidden
                     ? <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-500 text-xs font-semibold">HIDDEN WALLET</span>
                     : <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-600 text-xs font-semibold">VISIBLE WALLET</span>}
+                  <span className="text-[11px] text-muted-foreground">full multi-chain identity</span>
                 </div>
-                <p className="font-mono text-xs">Address: {short(currentAddr)}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Testnet balance:</span>
-                  <LiveBalance address={currentAddr} refreshKey={balRefresh} />
-                </div>
-                {!isHidden ? (
+
+                <MultiChainIdentity addresses={currentIdentity} copy={copy} copied={copied} idPrefix="session" />
+
+                {isHidden ? (
                   <p className="text-xs text-muted-foreground">
-                    This is the visible wallet a coercer would see. Nothing here lists,
-                    counts, or hints at the hidden wallet — it is not derived or
-                    referenced in this session.
+                    Revealed via its secret. This session exposes only the hidden
+                    wallet's own addresses. The visible wallet is not referenced.
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Revealed via its secret. This session exposes only the hidden
-                    address + its real balance. The visible wallet is not referenced.
+                    This is the visible wallet a coercer would see. Nothing here lists,
+                    counts, or hints at the hidden wallet.
                   </p>
                 )}
+
                 {/* DEMO ORACLE — proves the visible session never shows the hidden
-                    address (and vice versa). Real apps never reveal this. */}
-                {(realAddr || hiddenAddr) && (
-                  <div className="text-[11px] text-muted-foreground/70 border-t border-border pt-2 mt-2 space-y-0.5">
-                    {realAddr && <p>demo oracle — visible address: {short(realAddr)}</p>}
-                    {hiddenAddr && (
+                    EVM address (and vice versa). Real apps never reveal this. */}
+                {(realAddr || hiddenOracle) && (
+                  <div className="text-[11px] text-muted-foreground/70 border-t border-border pt-2 mt-1 space-y-0.5">
+                    {realAddr && <p>demo oracle — visible EVM address: {short(realAddr)}</p>}
+                    {hiddenOracle && (
                       <p>
-                        demo oracle — hidden address: {short(hiddenAddr)}{" "}
-                        {!isHidden && currentAddr === realAddr && currentAddr !== hiddenAddr
+                        demo oracle — hidden EVM address: {short(hiddenOracle)}{" "}
+                        {!isHidden && currentIdentity.evm === realAddr && currentIdentity.evm !== hiddenOracle
                           ? "✓ absent from this visible session"
-                          : isHidden && currentAddr === hiddenAddr
+                          : isHidden && currentIdentity.evm === hiddenOracle
                             ? "✓ this is the revealed hidden wallet"
                             : ""}
                       </p>
@@ -488,9 +537,9 @@ export default function StealthWallets() {
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
             To open a hidden wallet: lock your wallet, then unlock with that wallet's
-            reveal secret — the app opens it showing its real on-chain balance. ⚠️
-            Never share a reveal secret, and remember it: there is no list of hidden
-            wallets and no reset.
+            reveal secret — the app opens it with its full Ethereum, Bitcoin and
+            Solana identity. ⚠️ Never share a reveal secret, and remember it: there
+            is no list of hidden wallets and no reset.
           </p>
         </div>
       )}
