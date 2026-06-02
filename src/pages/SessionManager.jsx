@@ -50,7 +50,7 @@ export default function SessionManager() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Session Manager</h1>
-          <p className="text-sm text-muted-foreground">View and revoke all active login sessions</p>
+          <p className="text-sm text-muted-foreground">View and revoke device sessions</p>
         </div>
         {activeSessions.length > 0 && (
           <Button variant="destructive" size="sm" disabled={revokeAll.isPending} onClick={() => revokeAll.mutate()}>
@@ -58,6 +58,11 @@ export default function SessionManager() {
           </Button>
         )}
       </div>
+
+      <p className="text-xs text-muted-foreground -mt-2">
+        Revoking signs a device out: it locks that device's wallet and requires the password again — immediately
+        for this device, next-open for others (there's no server that can force-close a remote device instantly).
+      </p>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="p-4 rounded-xl border border-border bg-card text-center">
