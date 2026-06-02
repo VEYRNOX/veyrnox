@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { base44, LLM_AVAILABLE } from "@/api/base44Client";
 import { Sparkles, Send, Loader2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import LocalBuildNotice from "@/components/LocalBuildNotice";
 import ReactMarkdown from "react-markdown";
 
 const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
@@ -40,6 +41,8 @@ export default function AIPortfolioAdvisor() {
   const sendMessage = async (text) => {
     const userMsg = text || input.trim();
     if (!userMsg) return;
+    // AI advice needs an LLM endpoint we don't ship in the local build.
+    if (!LLM_AVAILABLE) return;
     setMessages(m => [...m, { role: "user", content: userMsg }]);
     setInput("");
     setLoading(true);
@@ -67,8 +70,17 @@ export default function AIPortfolioAdvisor() {
         <p className="text-sm text-muted-foreground mt-0.5">Personalised advice powered by your real portfolio data</p>
       </div>
 
+      {!LLM_AVAILABLE && (
+        <div className="mb-4">
+          <LocalBuildNotice
+            feature="AI portfolio advice"
+            detail="It needs a connection to an LLM service, which this offline-first build doesn't include. Your portfolio data below is still local and accurate; only the AI chat is disabled."
+          />
+        </div>
+      )}
+
       {/* Suggested prompts */}
-      {messages.length <= 1 && (
+      {LLM_AVAILABLE && messages.length <= 1 && (
         <div className="flex flex-wrap gap-2 mb-4">
           {SUGGESTED_PROMPTS.map(p => (
             <button key={p} onClick={() => sendMessage(p)} className="text-xs px-3 py-1.5 rounded-full border border-border hover:border-primary/40 bg-secondary hover:bg-secondary/80 transition-colors text-left">
@@ -114,11 +126,11 @@ export default function AIPortfolioAdvisor() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === "Enter" && !loading && sendMessage()}
-          placeholder="Ask about your portfolio..."
-          disabled={loading}
+          placeholder={LLM_AVAILABLE ? "Ask about your portfolio..." : "AI chat unavailable in local build"}
+          disabled={loading || !LLM_AVAILABLE}
           className="flex-1"
         />
-        <Button onClick={() => sendMessage()} disabled={!input.trim() || loading}>
+        <Button onClick={() => sendMessage()} disabled={!input.trim() || loading || !LLM_AVAILABLE}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>

@@ -8,7 +8,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { FileText, Search, Download } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { exportCataloguePdf } from "@/lib/pdfExport";
 import { toast } from "sonner";
 
 // Scope contract: docs/WalletFeatures.spec.md (canonical three-way split).
@@ -566,19 +566,24 @@ export default function Features() {
             <FileText className="h-4 w-4 mr-2" />
             Print
           </Button>
-          <Button onClick={async () => {
+          <Button onClick={() => {
             try {
-              const response = await base44.functions.invoke('generateArchitectureDocuments', {});
-              if (response.data.success) {
-                toast.success('Documentation uploaded to Google Drive');
-                window.open(response.data.pdf.web_view_link, '_blank');
-              }
+              exportCataloguePdf({
+                title: "Feature Catalogue",
+                subtitle: "Scope follows docs/WalletFeatures.spec.md — only self-custody-safe features are listed. \"Available\" is testnet today; mainnet is gated until independent audit.",
+                categories: featureCategories.map(c => ({
+                  category: c.category,
+                  items: c.features.map(f => ({ name: f.name, desc: f.summary, status: f.status })),
+                })),
+              });
+              toast.success("Feature catalogue PDF downloaded");
             } catch (error) {
-              toast.error('Failed to generate documentation');
+              console.error("PDF generation failed:", error);
+              toast.error("Failed to generate documentation");
             }
           }}>
             <Download className="h-4 w-4 mr-2" />
-            Export to Drive
+            Download PDF
           </Button>
         </div>
       </div>

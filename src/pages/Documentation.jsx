@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { exportCataloguePdf } from "@/lib/pdfExport";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -213,35 +213,24 @@ export default function Documentation() {
             <FileText className="h-4 w-4 mr-2" />
             Print
           </Button>
-          <Button onClick={async () => {
+          <Button onClick={() => {
             try {
-              const response = await base44.functions.invoke('generateDocumentationPDF', {});
-              if (response.data.success) {
-                toast.success(`Documentation uploaded to Google Drive: ${response.data.file_name}`);
-                window.open(response.data.web_view_link, '_blank');
-              }
+              exportCataloguePdf({
+                title: "Documentation",
+                subtitle: "Feature guide for a non-custodial, security-first self-custody wallet. Scope follows docs/WalletFeatures.spec.md; \"available\" is testnet (mainnet gated until audit).",
+                categories: features.map(c => ({
+                  category: c.category,
+                  items: c.items.map(i => ({ name: i.name, desc: i.desc, status: i.status })),
+                })),
+              });
+              toast.success("Documentation PDF downloaded");
             } catch (error) {
-              console.error('PDF generation failed:', error);
-              toast.error('Failed to generate documentation PDF');
+              console.error("PDF generation failed:", error);
+              toast.error("Failed to generate documentation PDF");
             }
           }}>
             <FileText className="h-4 w-4 mr-2" />
-            Upload to Drive
-          </Button>
-          <Button onClick={async () => {
-            try {
-              const response = await base44.functions.invoke('generateArchitectureDocuments', {});
-              if (response.data.success) {
-                toast.success('PDF and Word uploaded to Google Drive');
-                window.open(response.data.pdf.web_view_link, '_blank');
-              }
-            } catch (error) {
-              console.error('Document generation failed:', error);
-              toast.error('Failed to generate documents');
-            }
-          }}>
-            <FileText className="h-4 w-4 mr-2" />
-            Upload PDF and Word
+            Download PDF
           </Button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { base44 } from "@/api/base44Client";
+import { base44, EMAIL_AVAILABLE } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import {
   ShieldCheck, Mail, Loader2, KeyRound, RefreshCw,
@@ -67,6 +67,8 @@ export default function MFADialog({ open, onOpenChange, onVerified, actionDescri
   };
 
   const sendOTP = async () => {
+    // Email delivery needs a backend mail sender the local build doesn't ship.
+    if (!EMAIL_AVAILABLE) return;
     setMethod("otp");
     setSending(true);
     setError("");
@@ -138,11 +140,17 @@ export default function MFADialog({ open, onOpenChange, onVerified, actionDescri
                 variant={hasPasskey ? "outline" : "default"}
                 className="w-full gap-2"
                 onClick={sendOTP}
-                disabled={sending}
+                disabled={sending || !EMAIL_AVAILABLE}
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                Send Email OTP
+                {EMAIL_AVAILABLE ? "Send Email OTP" : "Email OTP unavailable offline"}
               </Button>
+              {!EMAIL_AVAILABLE && (
+                <p className="text-[11px] text-muted-foreground text-center">
+                  Email OTP needs a mail server, which this local build doesn't include.
+                  {hasPasskey ? " Use passkey verification instead." : " Register a passkey to verify actions on this device."}
+                </p>
+              )}
             </div>
           )}
 
