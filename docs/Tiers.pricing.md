@@ -79,7 +79,8 @@ Tier = where it's offered once built. Chains/dApp access never gated — monetiz
 | **Guardian — human-expert service** | | | | |
 | 1:1 setup session, written threat model | — | — | — | ✅ |
 | Quarterly review, priority support channel | — | — | — | ✅ |
-| Custom recovery / inheritance setup help | — | — | — | ✅ |
+| Recovery / inheritance setup help (advisory) | — | — | — | ✅ |
+| DFIR advisory (post-incident triage, best-effort) | — | — | — | ✅ |
 
 **Life-safety free — rationale:** paywalling features that protect at-risk people under
 coercion is an ethical hazard AND a brand risk for this audience AND bad funnel logic
@@ -91,12 +92,13 @@ model is used, make it disclosed + optional, never default-on for privacy-tier u
 AI is supporting cast, not a headline (incumbents are adding it too — not a differentiator).
 
 ## Guardian — HUMAN-EXPERT SERVICE (bespoke tier only)
-Included (bounded deliverables):
+Included (bounded deliverables — all advisory; client always holds their own keys):
 - 1:1 secure-setup session (~90 min, one at onboarding)
 - Personalised written threat model (onboarding; refreshed at quarterly review)
-- Custom recovery / inheritance setup ASSISTANCE (advisory; client holds keys). (Multi-sig is ❌ removed from the app.)
-- Priority support channel — BEST-EFFORT, response target ~1 business day
+- Recovery / inheritance setup ASSISTANCE (advisory; client holds keys)
 - Quarterly security review + threat-model refresh
+- Priority support channel — BEST-EFFORT, response target ~1 business day
+- DFIR advisory — post-incident triage guidance (best-effort, advisory only)
 
 Explicitly NOT (critical limits — lawyer-review before advertising):
 - NOT a guarantee of protection / fund safety / attack prevention

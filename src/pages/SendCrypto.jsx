@@ -25,6 +25,7 @@ import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
+import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
@@ -224,6 +225,25 @@ export default function SendCrypto() {
     [toAddress, knownAddresses]
   );
 
+  // SPEND-LIMIT ENFORCEMENT (Security Center → Tx Limits). Evaluates this send
+  // against the user's per-transaction AND daily caps. The daily cap was
+  // previously saved-but-never-read (security theatre); it is now enforced by
+  // summing TODAY's sends from the SAME local tx-history records loaded above
+  // (`history`) — see lib/txLimits.js. Fully on-device: no new fetch, no
+  // phone-home. A breach disables the Continue button below and renders a clear,
+  // specific reason; it never silently blocks.
+  const limitEval = useMemo(
+    () => evaluateSendAgainstLimits({
+      amount,
+      currency: selectedWallet?.currency,
+      usdRates: USD_RATES,
+      history,
+      limits: txLimits,
+      now: new Date(),
+    }),
+    [amount, selectedWallet, history, txLimits]
+  );
+
   // ANOMALY / FRAUD DETECTION inputs (Phase S2) — derived from the SAME local data
   // already loaded above, NOTHING fetched. `priorSends` are this asset's past
   // OUTFLOW amounts (the baseline for "unusual amount vs your own history");
@@ -284,6 +304,27 @@ export default function SendCrypto() {
         throw new Error(`Sending is not yet enabled for ${selectedWallet?.currency}.`);
       }
       if (!isUnlocked) throw new Error("Unlock your wallet to send");
+
+      // HARD spend-limit gate (defense-in-depth). The Continue button is already
+      // disabled on a breach, but re-evaluate at signing time so a per-tx OR
+      // daily cap can never be bypassed by stale UI state. Re-computed here at
+      // the moment of signing against the latest local history. See lib/txLimits.js.
+      const limitGate = evaluateSendAgainstLimits({
+        amount,
+        currency: selectedWallet.currency,
+        usdRates: USD_RATES,
+        history,
+        limits: txLimits,
+        now: new Date(),
+      });
+      if (limitGate.blocked) {
+        const daily = limitGate.reasons.find((r) => r.kind === "daily");
+        throw new Error(
+          daily
+            ? `Daily spending limit reached: this send would put today's total over your $${daily.limitUSD.toLocaleString()} cap.`
+            : `This send exceeds your per-transaction spending limit.`
+        );
+      }
 
       // Map the selected wallet to its HD derivation index (public address match).
       const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
@@ -563,15 +604,30 @@ export default function SendCrypto() {
           <Input value={note} onChange={e => setNote(e.target.value)} placeholder="What's this for?" className="mt-1.5" />
         </div>
 
+        {/* Spend-limit breach — explicit, specific message. Per-transaction AND
+            daily caps from Security Center, both now enforced (see lib/txLimits.js).
+            "Sent today" is summed from local tx history; nothing leaves the device. */}
+        {limitEval.blocked && parseFloat(amount) > 0 && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
+            <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <div className="text-xs text-destructive space-y-1 min-w-0">
+              <p className="font-semibold">Send blocked by your spending limit</p>
+              {limitEval.reasons.map((r, i) => (
+                <p key={i} className="text-destructive/90">
+                  {r.kind === "per_tx"
+                    ? `This send (~$${Math.round(limitEval.amountUSD).toLocaleString()}) exceeds your ${r.currency === "ALL" ? "" : r.currency + " "}per-transaction cap of $${r.limitUSD.toLocaleString()}.`
+                    : `You've already sent ~$${Math.round(r.spentTodayUSD).toLocaleString()} today; this send (~$${Math.round(limitEval.amountUSD).toLocaleString()}) would reach ~$${Math.round(r.projectedUSD).toLocaleString()}, over your ${r.currency === "ALL" ? "" : r.currency + " "}daily cap of $${r.limitUSD.toLocaleString()}.`}
+                </p>
+              ))}
+              <p className="text-destructive/70">Adjust the amount, or change the limit in Security Center.</p>
+            </div>
+          </div>
+        )}
+
         {step === "form" && (
           <Button
             className="w-full"
-            disabled={!walletId || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !sendEnabled || (sendEnabled && !isUnlocked) || (() => {
-              if (!selectedWallet) return false;
-              const amtUSD = parseFloat(amount) * (USD_RATES[selectedWallet.currency] || 1);
-              const activeLimits = txLimits.filter(l => l.enabled && (l.currency === selectedWallet.currency || l.currency === "ALL"));
-              return activeLimits.some(l => l.per_transaction_limit && amtUSD > l.per_transaction_limit);
-            })()}
+            disabled={!walletId || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !sendEnabled || (sendEnabled && !isUnlocked) || limitEval.blocked}
             onClick={() => setStep("verify")}
           >
             <ArrowUpRight className="h-4 w-4 mr-1.5" />

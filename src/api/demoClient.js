@@ -92,6 +92,11 @@ const SEEDS = {
     // The S2 address-poisoning screen treats this as "an address you've interacted
     // with"; DEMO_POISON_ADDRESS look-alikes it. See the constants above.
     { id: "t6", type: "send",    currency: "ETH",  amount: 0.25,  status: "confirmed", created_date: iso("2026-05-15T12:00:00"), address: addr("0x"), to_address: DEMO_KNOWN_COUNTERPARTY, hash: addr("0x"), fee: 0.0011 },
+    // A send dated TODAY (dynamic) so the Security Center daily-limit running
+    // total ("sent today") is non-zero out of the box and the CUMULATIVE daily
+    // cap is demonstrable in the demo without first broadcasting a live send.
+    // ~$160 at the demo ETH rate. Display/demo data only — never signed/sent.
+    { id: "t7", type: "send",    currency: "ETH",  amount: 0.05,  status: "confirmed", created_date: iso(Date.now()), address: addr("0x"), to_address: addr("0x"), hash: addr("0x"), fee: 0.0009 },
   ],
   KYCProfile: [{ id: "kyc1", status: "verified", level: 2, full_name: "Alex Demo", country: "GB", verified_date: iso("2025-11-01") }],
   PriceAlert: [

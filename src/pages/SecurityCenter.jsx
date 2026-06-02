@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Monitor, Trash2, Plus, DollarSign } from "lucide-react";
+import { Monitor, Trash2, Plus, DollarSign, ShieldCheck, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import moment from "moment";
+import { sumSentTodayUSD } from "@/lib/txLimits";
 
 const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
@@ -44,6 +45,15 @@ export default function SecurityCenter() {
     queryFn: () => base44.entities.TransactionLimit.list(),
   });
 
+  // LOCAL tx-history records — the SAME source the Send flow uses to enforce the
+  // daily cap. Read client-side; nothing is sent anywhere. Used here only to
+  // SHOW each daily limit's "spent today" so the cap is visible, not just
+  // enforced silently in Send. See lib/txLimits.js for the computation.
+  const { data: history = [] } = useQuery({
+    queryKey: ["transactions"],
+    queryFn: () => base44.entities.Transaction.list("-created_date", 100),
+  });
+
   // Register current session on mount
   useEffect(() => {
     const registerSession = async () => {
@@ -73,7 +83,10 @@ export default function SecurityCenter() {
     mutationFn: (id) => base44.entities.UserSession.update(id, { status: "revoked" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      toast.success("Session revoked");
+      // Honest scope: revoking marks the session revoked; the device with that
+      // session locks its wallet + requires re-auth (immediately for this device,
+      // next-open for others). See lib/sessionRevocation.js + SessionRevocationGuard.
+      toast.success("Session revoked — that device is signed out and must re-authenticate.");
     },
   });
 
@@ -120,6 +133,14 @@ export default function SecurityCenter() {
         {/* ── Sessions Tab ── */}
         <TabsContent value="sessions" className="mt-4 space-y-3">
           <p className="text-xs text-muted-foreground">All devices currently signed in to your account.</p>
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
+            <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Revoking a session signs that device out: it locks the wallet (clears the in-memory key) and
+              requires the password again. This device applies it immediately; other devices apply it the next
+              time they're opened — there's no server that can force-close them instantly.
+            </p>
+          </div>
           {sessions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No active sessions found</p>
           ) : (
@@ -139,11 +160,28 @@ export default function SecurityCenter() {
                     </div>
                     <p className="text-xs text-muted-foreground">Last active {moment(s.last_active).fromNow()}</p>
                   </div>
-                  {!isCurrent && (
+                  {isCurrent ? (
+                    // Signing out THIS device is now meaningful: the guard locks
+                    // the wallet + clears the token, forcing re-auth. Confirm first.
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
+                      title="Lock this device and require the password again"
+                      onClick={() => {
+                        if (window.confirm("Sign out this device? The wallet will lock and you'll need your password to continue.")) {
+                          revokeSession.mutate(s.id);
+                        }
+                      }}
+                    >
+                      <LogOut className="h-4 w-4" /> Sign out
+                    </Button>
+                  ) : (
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:bg-destructive/10 shrink-0"
+                      title="Revoke this session"
                       onClick={() => revokeSession.mutate(s.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -180,6 +218,25 @@ export default function SecurityCenter() {
                     {l.daily_limit && <p className="text-xs text-muted-foreground">Daily: <span className="text-foreground font-medium">${l.daily_limit.toLocaleString()}</span></p>}
                     {l.per_transaction_limit && <p className="text-xs text-muted-foreground">Per Tx: <span className="text-foreground font-medium">${l.per_transaction_limit.toLocaleString()}</span></p>}
                   </div>
+                  {/* Today's running total against this daily cap — enforced in the
+                      Send flow, summed from local tx history (lib/txLimits.js). */}
+                  {l.enabled && l.daily_limit != null && (() => {
+                    const spent = sumSentTodayUSD({ history, currency: l.currency, usdRates: USD_RATES });
+                    const pct = Math.min(100, Math.round((spent / l.daily_limit) * 100));
+                    return (
+                      <div className="mt-1.5">
+                        <div className="flex justify-between text-[11px] text-muted-foreground">
+                          <span>Sent today (local)</span>
+                          <span className={spent >= l.daily_limit ? "text-destructive font-medium" : "text-foreground"}>
+                            ${Math.round(spent).toLocaleString()} / ${l.daily_limit.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="h-1 rounded-full bg-secondary mt-1 overflow-hidden">
+                          <div className={`h-full ${pct >= 100 ? "bg-destructive" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <Switch
                   checked={l.enabled}
