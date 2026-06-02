@@ -24,6 +24,7 @@ import DashboardWidgetSettings, { DEFAULT_WIDGETS } from "../components/Dashboar
 import TransactionFilters from "../components/TransactionFilters";
 import moment from "moment";
 import { DEMO } from "@/api/demoClient";
+import WalletPortfolioPage from "./WalletPortfolioPage";
 
 const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const STATUS_ICONS = {
@@ -39,7 +40,15 @@ function generateAddress(currency) {
   return addr;
 }
 
+// In the LOCAL/native build the dashboard is the REAL multi-wallet portfolio
+// driven by the on-device vault (see WalletPortfolioPage). The seeded mock
+// dashboard below is the DEMO tour only, so `npm run *:demo` is unchanged.
 export default function Dashboard() {
+  if (!DEMO) return <WalletPortfolioPage />;
+  return <DemoDashboard />;
+}
+
+function DemoDashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isLocked, setIsLocked] = useState(!DEMO);
