@@ -206,10 +206,9 @@ export default function LandingPage() {
                 {[
                   "256-bit AES-GCM encryption",
                   "WebAuthn/FIDO2 biometrics",
-                  "Secure enclave key storage",
-                  "Hardware wallet support",
-                  "Real-time transaction simulation",
-                  "Phishing domain detection",
+                  "Encrypted on-device key vault",
+                  "Local pre-sign transaction screening",
+                  "Local known-bad domain list",
                   "Duress PIN protection",
                 ].map((feature) => (
                   <div key={feature} className="flex items-center gap-3">
@@ -224,7 +223,7 @@ export default function LandingPage() {
               <Shield className="w-12 h-12 text-primary mb-6" />
               <h3 className="text-2xl font-bold mb-4">Zero Compromise Security</h3>
               <p className="text-slate-400 mb-6">
-                Your private keys are generated and stored exclusively on your device using secure enclave technology. We never have access to your funds.
+                Your private keys are generated on your device and stored exclusively on it in an AES-GCM encrypted vault. Hardware-backed secure-enclave storage is on the roadmap, not yet active. We never have access to your funds.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-slate-900/50">
@@ -237,11 +236,11 @@ export default function LandingPage() {
                 </div>
                 <div className="p-4 rounded-lg bg-slate-900/50">
                   <p className="text-sm text-slate-400">Storage</p>
-                  <p className="font-bold text-lg">Secure Enclave</p>
+                  <p className="font-bold text-lg">Encrypted Vault</p>
                 </div>
                 <div className="p-4 rounded-lg bg-slate-900/50">
                   <p className="text-sm text-slate-400">Audits</p>
-                  <p className="font-bold text-lg">Third-Party</p>
+                  <p className="font-bold text-lg">Planned</p>
                 </div>
               </div>
             </div>
