@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { logAuditEvent } from "../hooks/useAuditLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { base44, EMAIL_AVAILABLE } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -416,6 +416,8 @@ export default function SendCrypto() {
   };
 
   const sendOTP = async () => {
+    // Email delivery needs a backend mail sender the local build doesn't ship.
+    if (!EMAIL_AVAILABLE) return;
     setOtpSending(true);
     try {
       const user = await base44.auth.me();
@@ -723,10 +725,16 @@ export default function SendCrypto() {
                     Use Passkey / Biometric
                   </Button>
                 )}
-                <Button variant="outline" className="w-full gap-2" onClick={() => { setTwoFAMethod("otp"); sendOTP(); }}>
+                <Button variant="outline" className="w-full gap-2" disabled={!EMAIL_AVAILABLE || blockedByApproval} onClick={() => { setTwoFAMethod("otp"); sendOTP(); }}>
                   {otpSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                  Send Email OTP
+                  {EMAIL_AVAILABLE ? "Send Email OTP" : "Email OTP unavailable offline"}
                 </Button>
+                {!EMAIL_AVAILABLE && (
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    Email OTP needs a mail server, which this local build doesn't include.
+                    {selectedWallet?.passkey_registered ? " Use passkey verification instead." : " Register a passkey for this wallet to authorise sends on this device."}
+                  </p>
+                )}
               </div>
             )}
 

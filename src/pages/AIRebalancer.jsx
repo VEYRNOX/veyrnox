@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { base44, LLM_AVAILABLE } from "@/api/base44Client";
 import { Sparkles, TrendingUp, Shield, Zap, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import LocalBuildNotice from "@/components/LocalBuildNotice";
 
 const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
@@ -22,6 +23,7 @@ export default function AIRebalancer() {
   const totalUSD = wallets.reduce((s, w) => s + (w.balance || 0) * (USD_RATES[w.currency] || 1), 0);
 
   const analyse = async () => {
+    if (!LLM_AVAILABLE) return; // needs an LLM endpoint, not shipped in local build
     setLoading(true); setResult(null);
     const holdings = wallets.map(w => `${w.currency}: ${((w.balance || 0) * (USD_RATES[w.currency] || 1) / (totalUSD || 1) * 100).toFixed(1)}%`).join(", ");
     const selectedStrategy = STRATEGIES.find(s => s.id === strategy);
@@ -73,9 +75,16 @@ export default function AIRebalancer() {
         </div>
       )}
 
-      <Button className="w-full gap-2" onClick={analyse} disabled={loading}>
+      {!LLM_AVAILABLE && (
+        <LocalBuildNotice
+          feature="AI rebalancing analysis"
+          detail="It needs a connection to an LLM service, which this offline-first build doesn't include. Your current portfolio above is still local and accurate."
+        />
+      )}
+
+      <Button className="w-full gap-2" onClick={analyse} disabled={loading || !LLM_AVAILABLE}>
         <Sparkles className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
-        {loading ? "AI is analysing your portfolio..." : "Run AI Analysis"}
+        {loading ? "AI is analysing your portfolio..." : LLM_AVAILABLE ? "Run AI Analysis" : "AI Analysis unavailable in local build"}
       </Button>
 
       {result && (
