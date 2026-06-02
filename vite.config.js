@@ -28,26 +28,69 @@ const printUrls = () => ({
   },
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// H-1 BUILD-TIME GUARD — a PRODUCTION/RELEASE build must NEVER resolve DEMO=true.
+//
+// DEMO mode caches the vault password in plaintext localStorage (see
+// src/lib/biometricUnlock.js demo branch + src/api/demoClient.js). That is an
+// accepted, clearly-labelled simulation cost in a demo build, but catastrophic
+// if it ever shipped in a real store release.
+//
+// "Release" is signalled EXPLICITLY by VITE_RELEASE=1 (set by the `build:release`
+// / `mobile:build:release` scripts — the canonical store-build path). We can't
+// key off Vite's production MODE/PROD: the legitimate demo build is itself a
+// `vite build` (MODE=production, PROD=true), so PROD cannot distinguish a demo
+// build from a store build. A positive, explicit release marker can.
+//
+// "Demo" is signalled by VITE_DEMO_MODE=1 (set by `mobile:build:demo`).
+//
+// The contradiction RELEASE + DEMO must be unbuildable, not merely warned about —
+// so we throw here, before any bundle is emitted. Legitimate paths are untouched:
+//   • mobile:build:demo  → DEMO, no RELEASE  → allowed (demo)
+//   • build / mobile:build / *:release → RELEASE (or neither), no DEMO → allowed
+//   • RELEASE + DEMO     → build FAILS here
+// A runtime belt-and-suspenders assertion lives in src/api/demoClient.js.
+const RELEASE_BUILD = process.env.VITE_RELEASE === '1';
+const DEMO_BUILD = process.env.VITE_DEMO_MODE === '1';
+
 // https://vite.dev/config/
-export default defineConfig({
-  logLevel: 'error', // Suppress warnings, only show errors
-  // The '@/...' -> src alias used to be supplied by the @base44/vite-plugin.
-  // That plugin was removed (base44 removal, Phase 4), so declare it here
-  // explicitly. Mirrors jsconfig.json and vitest.config.js.
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+export default defineConfig(({ command }) => {
+  if (command === 'build' && RELEASE_BUILD && DEMO_BUILD) {
+    throw new Error(
+      '\n\n' +
+        '╔════════════════════════════════════════════════════════════════════╗\n' +
+        '║  REFUSING TO BUILD: VITE_RELEASE=1 and VITE_DEMO_MODE=1 are both set. ║\n' +
+        '║                                                                      ║\n' +
+        '║  A production/release build must NEVER resolve DEMO=true. DEMO mode   ║\n' +
+        '║  caches the vault password in plaintext localStorage (a simulation   ║\n' +
+        '║  cost acceptable only in a demo build). Shipping it in a release is   ║\n' +
+        '║  catastrophic (SAST H-1).                                             ║\n' +
+        '║                                                                      ║\n' +
+        '║  Build a DEMO bundle with `npm run mobile:build:demo` (no RELEASE),   ║\n' +
+        '║  or a STORE bundle with `npm run mobile:build:release` (no DEMO).     ║\n' +
+        '╚════════════════════════════════════════════════════════════════════╝\n',
+    );
+  }
+  return {
+    logLevel: 'error', // Suppress warnings, only show errors
+    // The '@/...' -> src alias used to be supplied by the @base44/vite-plugin.
+    // That plugin was removed (base44 removal, Phase 4), so declare it here
+    // explicitly. Mirrors jsconfig.json and vitest.config.js.
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
     },
-  },
-  plugins: [
-    react(),
-    printUrls(),
-  ],
-  // Pre-bundle the wallet-core's crypto deps so Vite doesn't discover them
-  // mid-session and trigger an optimize + forced full-reload (which can flash a
-  // blank page on first load). hash-wasm inlines its WASM as base64, so no WASM
-  // plugin is needed.
-  optimizeDeps: {
-    include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers'],
-  },
+    plugins: [
+      react(),
+      printUrls(),
+    ],
+    // Pre-bundle the wallet-core's crypto deps so Vite doesn't discover them
+    // mid-session and trigger an optimize + forced full-reload (which can flash a
+    // blank page on first load). hash-wasm inlines its WASM as base64, so no WASM
+    // plugin is needed.
+    optimizeDeps: {
+      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers'],
+    },
+  };
 });
