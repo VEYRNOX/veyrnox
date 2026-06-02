@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CommandPalette from "./CommandPalette";
+import SessionRevocationGuard from "./SessionRevocationGuard";
 import PullToRefreshContainer from "./PullToRefreshContainer";
 import { ErrorBoundary } from "./ErrorBoundary";
 import VeyrnoxLogo from "./VeyrnoxLogo";
@@ -234,6 +235,9 @@ export default function Layout() {
 
   return (
     <AccessibilityWrapper>
+    {/* Honest local enforcement of session revocation: locks the wallet +
+        signs this device out if its own session is revoked. See the component. */}
+    <SessionRevocationGuard />
     <div className="app-shell flex flex-col md:flex-row md:min-h-screen bg-background">
 
       {/* ── Desktop Sidebar ── */}
