@@ -1,39 +1,48 @@
-**Welcome to your Base44 project** 
+# Veyrnox Wallet
 
-**About**
+A self-custody, local-first crypto wallet. Keys are derived and stored on-device;
+signing and broadcast go through the wallet's own `wallet-core` providers and
+direct RPC — never through a hosted backend.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+## Run locally
 
-This project contains everything you need to run your app locally.
+**Prerequisites:** Node.js + npm.
 
-**Edit the code in your local development environment**
+1. Clone the repository.
+2. Install dependencies: `npm install`
+3. Run the dev server: `npm run dev`
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+The app defaults to a **local-first data layer**: all app data (wallets list,
+transaction history, watchlists, approvals, address book, etc.) is persisted
+on-device (IndexedDB) and no entity data is sent to any hosted backend.
 
-**Prerequisites:** 
+### Demo mode
 
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
+Append `?demo=1` to the URL (or build with `VITE_DEMO_MODE=1`) to run against an
+in-memory seeded dataset for a quick tour without creating real wallet data.
+`?demo=0` turns it back off.
+
+## Mobile (Capacitor)
 
 ```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+npm run mobile:build          # vite build + cap sync
+npm run mobile:build:demo     # demo-seeded native build
+npm run android:run           # build + run on Android
 ```
 
-Run the app: `npm run dev`
+## Tests & checks
 
-**Publish your changes**
+```
+npm test            # vitest suite (wallet-core + lib)
+npm run check:rng   # guards against insecure randomness in crypto paths
+npm run lint        # eslint
+```
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+## Legacy hosted backend (optional, being removed)
 
-**Docs & Support**
-
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+Earlier builds talked to a hosted backend for entity data, auth, and a few
+server functions. That dependency is being removed in phases so the app can
+ship as a self-contained native binary. The hosted path is no longer the
+default; it can still be opted into for a transitional build with
+`VITE_BASE44_BACKEND=1` (plus the `VITE_BASE44_APP_ID` / `VITE_BASE44_APP_BASE_URL`
+env vars). This opt-in will go away entirely once the phased removal completes.
