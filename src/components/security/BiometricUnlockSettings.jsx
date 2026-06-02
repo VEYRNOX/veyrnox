@@ -21,7 +21,7 @@ import {
 } from '@/lib/biometric';
 
 export default function BiometricUnlockSettings() {
-  const { biometricPreview } = useWallet();
+  const { biometricPreview, disableBiometricUnlock } = useWallet();
   const [enabled, setEnabled] = useState(() => isBiometricUnlockEnabled());
   const [status, setStatus] = useState(null); // null while loading
   const [testResult, setTestResult] = useState(null); // null | 'ok' | 'cancel'
@@ -35,7 +35,13 @@ export default function BiometricUnlockSettings() {
 
   const onToggle = (v) => {
     setEnabled(v);
-    setBiometricUnlockEnabled(v); // persist immediately
+    if (v) {
+      setBiometricUnlockEnabled(true); // persist immediately
+    } else {
+      // Turning it OFF also wipes the cached one-tap password so it never
+      // lingers at rest while the feature is disabled.
+      disableBiometricUnlock();
+    }
     setTestResult(null);
   };
 
