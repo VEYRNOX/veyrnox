@@ -38,7 +38,6 @@ const Web3Browser = lazy(() => import('./pages/Web3Browser'));
 const MultiChainNFT = lazy(() => import('./pages/MultiChainNFT'));
 const FraudDetection = lazy(() => import('./pages/FraudDetection'));
 const AccountAccess = lazy(() => import('./pages/AccountAccess'));
-const RASPSecurity = lazy(() => import('./pages/RASPSecurity'));
 const PaymentLinks = lazy(() => import('./pages/PaymentLinks'));
 const RiskScoring = lazy(() => import('./pages/RiskScoring'));
 const CarbonTracker = lazy(() => import('./pages/CarbonTracker'));
@@ -106,7 +105,6 @@ const DAppConnector = lazy(() => import('./pages/DAppConnector'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Documentation = lazy(() => import('./pages/Documentation'));
 const Features = lazy(() => import('./pages/Features'));
-const SamsungKeystore = lazy(() => import('./pages/SamsungKeystore'));
 const CloudBackup = lazy(() => import('./pages/CloudBackup'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
 const BlockExplorer = lazy(() => import('./pages/BlockExplorer'));
@@ -177,7 +175,6 @@ const AuthenticatedApp = () => {
           <Route path="/nft-multichain" element={<MultiChainNFT />} />
           <Route path="/fraud" element={<FraudDetection />} />
           <Route path="/account-access" element={<AccountAccess />} />
-          <Route path="/rasp" element={<RASPSecurity />} />
           <Route path="/payment-links" element={<PaymentLinks />} />
           <Route path="/risk" element={<RiskScoring />} />
           <Route path="/carbon" element={<CarbonTracker />} />
@@ -237,7 +234,6 @@ const AuthenticatedApp = () => {
           <Route path="/crypto-signing" element={<CryptoSigning />} />
           <Route path="/live-balances" element={<LiveBalances />} />
           <Route path="/dapp-connect" element={<DAppConnector />} />
-          <Route path="/samsung-keystore" element={<SamsungKeystore />} />
           <Route path="/cloud-backup" element={<CloudBackup />} />
           <Route path="/dapp-alerts" element={<DAppSecurityAlerts />} />
           <Route path="/block-explorer" element={<BlockExplorer />} />
