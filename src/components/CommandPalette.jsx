@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Send, Download, Receipt, Bell,
   ShieldAlert, BarChart2, Sparkles, Leaf, ScrollText, Newspaper, Link2,
-  Cpu, ShieldCheck, PieChart, TrendingUp, Image, Camera, Network,
+  ShieldCheck, PieChart, TrendingUp, Image, Camera, Network,
   Activity, ClipboardList, BarChart3,
   Repeat, BellRing, Settings,
   Target, FileText, Eye,
@@ -36,7 +36,6 @@ const ALL_ROUTES = [
   { path: "/security", label: "Security Center", icon: ShieldAlert, group: "Security" },
   { path: "/audit", label: "Audit Log", icon: ClipboardList, group: "Security" },
   { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert, group: "Security" },
-  { path: "/rasp", label: "RASP Security", icon: Cpu, group: "Security" },
   { path: "/alerts", label: "Price Alerts", icon: Bell, group: "Security" },
   { path: "/settings", label: "Settings", icon: Settings, group: "Preferences" },
 ];

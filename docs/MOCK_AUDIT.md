@@ -29,11 +29,20 @@
 ## Headline counts
 | Class | Count |
 |---|---|
-| 🟢 REAL & working | 41 |
-| 🟡 PARTIAL | 7 |
+| 🟢 REAL & working | 44 |
+| 🟡 PARTIAL | 6 |
 | ⚪ MOCK — honest demo | 49 |
-| 🔴 DISHONEST MOCK (dangerous false claim) | 6 |
-| **Total pages** | **103** |
+| 🔴 DISHONEST MOCK (dangerous false claim) | 0 |
+| **Total pages** | **101** |
+
+> **UPDATE — `fix/dishonest-security-mocks` (2026-06-02):** all 6 🔴 dangerous
+> mocks are resolved (see the [resolution table](#-dishonest-mock--resolved)
+> below). 4 were rewired to the REAL local screening/simulation modules and 2
+> (RASP, Samsung Keystore) were REMOVED from the app entirely. The 🔴 count is now
+> **0**; total pages drops 103 → 101 (two removed). One non-listed page
+> (**LandingPage**) repeated the same "secure enclave key storage" / "Third-Party
+> audit" falsehood in marketing copy and was corrected to honest wording in the
+> same pass.
 
 **Fixed in THIS PR (were dangerous theatre, now honest enforcement):**
 Security Center **daily transaction limit** (was saved-but-never-read) and
@@ -43,18 +52,27 @@ the 🔴 row above.
 
 ---
 
-## 🔴 DISHONEST MOCK — dangerous false security claims (TRIAGE FIRST)
-These pages tell the user something is *safe / protected / verified* based on
-hardcoded or trivially-seeded data. **Report-only — not fixed in this pass.**
+## 🔴 DISHONEST MOCK — RESOLVED
+All six dangerous mocks below have been fixed on `fix/dishonest-security-mocks`.
+The absolute rule enforced: **no page asserts "safe / protected / verified /
+secure" from mock or hardcoded data.** Group A pages were rewired to the EXISTING
+real local modules (none built new detection); Group B pages were removed.
 
-| Page | Route | Renders | Action works | Real/Mock | Note (the false claim) |
-|---|---|---|---|---|---|
-| SecurityScanner | /security-scanner | yes | no | DISHONEST | Labels seeded `SAMPLE_TXS` **"Safe to Sign"**; claims to decode+simulate+score any tx but returns canned verdicts. (Previously identified.) |
-| SuspiciousAddressChecker | /address-checker | yes | no | DISHONEST | Green **"Address appears legitimate"** from trivial pattern checks (it does add a "verify independently" caveat, but the green verdict is false assurance). (Previously identified.) |
-| DAppSecurityAlerts | /dapp-alerts | yes | partial | DISHONEST | Banner **"No threats detected · Audit verified · Safe to connect"** rendered over a hardcoded URL/risk list — no real scan. |
-| RASPSecurity | /rasp | yes | no | DISHONEST | **"RASP is active — monitoring all runtime operations"** + fake blocked-IPs/rules; zero runtime protection exists. |
-| SamsungKeystore | /samsung-keystore | yes-caveat | no | DISHONEST | Fakes **"Knox Keystore v3.1 detected"** / **"Private keys stored in secure enclave"**; keys are not in any TEE — the whole detect/protect flow is simulated. |
-| TrustScore | /trust-score | yes | no | DISHONEST | **"powered by on-chain analysis"** + **"token appears legitimate with strong on-chain signals"**; score is a hardcoded allow/deny list + seeded hash, no chain reads. |
+| Page | Route | Was (false claim) | Now | Real module reused |
+|---|---|---|---|---|
+| SecurityScanner | /security-scanner | Seeded `SAMPLE_TXS` labelled **"Safe to Sign"** with canned verdicts | **REWIRED.** Decodes pasted ERC-20 calldata + runs the real risk assessment, rendered via the honest `TransactionPreview`; with no findings says "no KNOWN risks — not a guarantee", never "safe". Also embeds the real RPC-backed `TransactionSimulationDemo`. | `wallet-core/evm/simulate.js` (`assessEvmTransaction`), `evm/calldata.js` (`describeErc20Call`), `TransactionPreview` |
+| SuspiciousAddressChecker | /address-checker | Green **"Address appears legitimate"** / "Low Risk — Appears Safe" | **REWIRED.** Real local known-bad-list + address-poisoning look-alike screen against the user's Address Book. Reports "on known-bad list" / "look-alike of a saved address" / "not flagged — NOT a safety check"; never "legitimate"/"safe". | `wallet-core/evm/poison.js` (`isLocallyFlagged`, `screenRecipient`), `lib/addressValidation` (`isAddress`) |
+| TrustScore | /trust-score | **"powered by on-chain analysis"** + **"token appears legitimate"** from an allow/deny list + seeded hash | **REWIRED (option a).** Runs the real spam classifier over the token's public metadata; reports "flagged by local heuristics" (with reasons) or "not flagged — not a guarantee". Fake score-ring, allow/deny list and "on-chain analysis" claim removed. | `wallet-core/evm/spam.js` (`classifyToken`) |
+| DAppSecurityAlerts | /dapp-alerts | Banner **"No threats detected · Audit verified · Safe to connect"** + fake scores | **RELABELLED honestly.** Checks a domain against a small LOCAL known-bad/phishing list and says so when hit; otherwise "not on local list — NOT a safety verdict". All scores, "Audit verified" and "Safe to connect" removed; the fake auto-scan/block settings (implied non-existent interception) removed. | Local known-bad list (same pattern as `poison.js` `LOCAL_FLAGGED`); Veyrnox does not audit dApps |
+| RASPSecurity | /rasp | **"RASP is active — monitoring all runtime operations"** + fake blocked-IPs/rules | **REMOVED.** Page, route, sidebar nav and command-palette entry deleted — RASP is not built (roadmap). The honest "RASP — roadmap" entry in /docs + /features remains. | — (removal) |
+| SamsungKeystore | /samsung-keystore | Fakes **"Knox Keystore v3.1 detected"** / **"keys stored in secure enclave"** | **REMOVED.** Page, route and sidebar nav deleted — keys are NOT in any TEE (audit-blocked/unbuilt). The honest "Native Secure Storage — roadmap" entry in /docs + /features remains. | — (removal) |
+
+**Also corrected (same falsehood class, found by the whole-app grep):**
+**LandingPage** (/landing) listed "Secure enclave key storage" and a "Storage:
+Secure Enclave" / "Audits: Third-Party" stat — both false (keys live in the
+AES-GCM encrypted on-device vault; no third-party audit exists). Reworded to
+"Encrypted on-device key vault" / "Encrypted Vault" / "Audits: Planned", with a
+roadmap caveat for hardware-backed storage.
 
 > Honorable-mention (non-security false claim, not counted above):
 > **NewsSentimentPage** (/news-sentiment) frames seeded `MOCK_NEWS` as "AI
@@ -213,11 +231,18 @@ app-layer logic (limit arithmetic over already-loaded records; the existing
 `WalletProvider.lock()` path; a docs edit). Verified: full suite 300/300 green
 and `check:rng` green.
 
-## Recommended triage order (for the 🔴 dangerous mocks)
-1. Remove or hard-gate the false-assurance verdicts first: SecurityScanner
-   ("Safe to Sign"), SuspiciousAddressChecker ("appears legitimate"),
-   DAppSecurityAlerts ("Safe to connect · Audit verified").
-2. Then the fake-protection theatre: RASPSecurity ("monitoring active"),
-   SamsungKeystore ("keys in secure enclave"), TrustScore ("on-chain analysis").
-   Each should either be wired to real analysis or relabelled as a
-   non-protective demo / removed from the security surface.
+## Recommended triage order (for the 🔴 dangerous mocks) — ✅ DONE
+All six resolved on `fix/dishonest-security-mocks` (see the
+[resolution table](#-dishonest-mock--resolved)):
+1. ✅ False-assurance verdicts removed/rewired: SecurityScanner (no more
+   "Safe to Sign" — real decode+assess), SuspiciousAddressChecker (no
+   "appears legitimate" — real local known-bad + poisoning screen),
+   DAppSecurityAlerts (no "Safe to connect · Audit verified" — local known-bad
+   list only).
+2. ✅ Fake-protection theatre handled: RASPSecurity and SamsungKeystore REMOVED
+   from the app; TrustScore rewired to the real spam classifier (no
+   "on-chain analysis").
+3. ✅ Whole-app grep confirms no remaining live "safe to sign / appears
+   legitimate / audit verified / safe to connect / secure enclave key storage /
+   monitoring active / on-chain analysis" assertions (only honest negations and
+   roadmap labels remain). LandingPage marketing copy corrected in the same pass.

@@ -1,65 +1,83 @@
+// pages/SecurityScanner.jsx
+//
+// Pre-Sign Transaction Scanner. This page runs the REAL wallet-core transaction
+// risk logic — the same `describeErc20Call` decode + `assessEvmTransaction` risk
+// assessment that powers the Send flow's pre-sign preview (evm/simulate.js) — over
+// whatever ERC-20 calldata the user pastes. It renders the honest
+// `TransactionPreview` component, which NEVER asserts a transaction is "safe":
+// with no findings it says "no KNOWN risk patterns detected — not a guarantee".
+//
+// HONESTY CONTRACT (mirrors evm/simulate.js + TransactionPreview):
+//   - No canned verdicts. Findings come from the real assessor over the real
+//     decoded bytes (unlimited approval, known-bad/burn recipient, look-alike
+//     poisoning, unrecognised calldata, large outflow…).
+//   - This pure path decodes + assesses LOCALLY (no key, no network). It does NOT
+//     run the on-chain eth_call dry-run (that needs a live unlocked wallet on a
+//     real RPC, reached from the actual Send flow); it says so, and never claims
+//     to have simulated against chain state.
+//   - If the input can't be decoded as an ERC-20 call, the assessor flags it as an
+//     unrecognised call — we surface that, we do not fake a "safe" result.
+//   - The live, RPC-backed preview (with representative high-risk samples) is shown
+//     below via the shared TransactionSimulationDemo.
+
 import { useState } from "react";
-import { ScanSearch, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { isHexString } from "ethers";
+import { ScanSearch, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import TransactionPreview from "@/components/TransactionPreview";
+import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
+import { describeErc20Call } from "@/wallet-core/evm/calldata";
+import { assessEvmTransaction } from "@/wallet-core/evm/simulate";
 
-const SAMPLE_TXS = [
-  {
-    id: "safe1",
-    to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    method: "transfer(address,uint256)",
-    value: "0 ETH",
-    label: "USDC Token Transfer",
-    risk: "safe",
-    findings: ["Verified USDC contract (Circle)", "Standard ERC-20 transfer", "No suspicious permissions"],
-    simulation: { gasEstimate: "46,200", ethUsed: "0", tokensOut: "-150 USDC", tokensIn: "+" }
-  },
-  {
-    id: "medium1",
-    to: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-    method: "approve(address,uint256)",
-    value: "0 ETH",
-    label: "Unlimited Token Approval",
-    risk: "medium",
-    findings: ["Requesting UNLIMITED token approval", "Spender is Uniswap v2 Router (trusted)", "Consider setting a specific amount instead"],
-    simulation: { gasEstimate: "29,800", ethUsed: "0", tokensOut: "Approval granted", tokensIn: "—" }
-  },
-  {
-    id: "high1",
-    to: "0xdeadbeef1234567890abcdef1234567890abcdef",
-    method: "claimRewards()",
-    value: "0.05 ETH",
-    label: "Suspicious Reward Claim",
-    risk: "high",
-    findings: ["Unverified contract (no source code)", "Requests ETH + wallet drain pattern detected", "Similar to known phishing contract: 0xdead...efef", "No audit found"],
-    simulation: { gasEstimate: "?", ethUsed: "0.05 ETH", tokensOut: "All USDC, USDT, WETH (drain)", tokensIn: "Fake reward token" }
-  },
-];
-
-const riskConfig = {
-  safe: { color: "text-green-500", bg: "bg-green-500/10 border-green-500/30", icon: CheckCircle, label: "Safe to Sign" },
-  medium: { color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/30", icon: AlertTriangle, label: "Proceed with Caution" },
-  high: { color: "text-destructive", bg: "bg-destructive/10 border-destructive/30", icon: XCircle, label: "High Risk — Do Not Sign" },
-  critical: { color: "text-destructive", bg: "bg-destructive/10 border-destructive/30", icon: XCircle, label: "Critical — Wallet Drainer" },
-};
+const COVERAGE_NOTE =
+  "Decoded and assessed locally on this device — no key was used, nothing was sent to any RPC " +
+  "or third-party scoring service, and no on-chain dry-run (eth_call) was performed here. It flags " +
+  "KNOWN risk patterns in the calldata; it is NOT a guarantee of safety and will not catch every novel " +
+  "threat. The full RPC-backed simulation runs at the verify step inside the real Send flow.";
 
 export default function SecurityScanner() {
-  const [rawTx, setRawTx] = useState("");
-  const [scanning, setScanning] = useState(false);
+  const [calldata, setCalldata] = useState("");
+  const [tokenSymbol, setTokenSymbol] = useState("");
+  const [decimals, setDecimals] = useState("18");
   const [result, setResult] = useState(null);
-  const [expanded, setExpanded] = useState({});
-  const [demoMode, setDemoMode] = useState(false);
+  const [inputError, setInputError] = useState(null);
 
-  const handleScan = async (sample) => {
-    setScanning(true);
+  const handleScan = () => {
     setResult(null);
-    await new Promise(r => setTimeout(r, 1500));
-    const res = sample || SAMPLE_TXS[Math.floor(Math.random() * SAMPLE_TXS.length)];
-    setResult(res);
-    setScanning(false);
+    setInputError(null);
+    const data = calldata.trim();
+    if (!data || !isHexString(data) || data.length < 10) {
+      setInputError(
+        "Enter valid ERC-20 calldata as a 0x-prefixed hex string (the transaction's `data` field). " +
+          "This page can't analyse a raw signed transaction or a plain address — paste the calldata.",
+      );
+      return;
+    }
+    const dec = Number.parseInt(decimals, 10);
+    const decoded = describeErc20Call({
+      data,
+      tokenSymbol: tokenSymbol.trim() || undefined,
+      decimals: Number.isFinite(dec) ? dec : 18,
+    });
+    // Pure, local assessment — same logic the Send pre-sign preview uses. No RPC,
+    // so contract-code / balance facts are unknown; the assessor degrades honestly.
+    const assessment = assessEvmTransaction({
+      decoded,
+      txTo: null,
+      tokenSymbol: tokenSymbol.trim() || decoded.tokenSymbol || null,
+    });
+    setResult({
+      chain: "evm",
+      simulated: false, // decode + risk-assessment only; no on-chain dry-run here
+      willRevert: false,
+      decoded,
+      ...assessment,
+      source: { mode: "decode-only", queries: [], thirdParty: false },
+      coverageNote: COVERAGE_NOTE,
+    });
   };
-
-  const toggleExpand = (key) => setExpanded(p => ({ ...p, [key]: !p[key] }));
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -68,17 +86,22 @@ export default function SecurityScanner() {
           <ScanSearch className="h-5 w-5 text-violet-500" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">Transaction Security Scanner</h1>
-          <p className="text-sm text-muted-foreground">Simulate and scan any transaction before signing</p>
+          <h1 className="text-xl font-bold">Pre-Sign Transaction Scanner</h1>
+          <p className="text-sm text-muted-foreground">Decode and risk-assess ERC-20 calldata before you sign — locally, with no key and no network</p>
         </div>
       </div>
 
-      {/* How it works */}
+      {/* How it works — honest about what this does and does NOT do. */}
       <Card className="border-violet-500/20 bg-violet-500/5">
-        <CardContent className="pt-4 grid grid-cols-3 gap-3 text-center text-xs">
-          {[["🔍", "Decode", "Parse calldata & ABI"], ["🧪", "Simulate", "Run on forked chain"], ["🛡️", "Score", "Risk analysis"]].map(([icon, title, desc]) => (
-            <div key={title}><p className="text-2xl">{icon}</p><p className="font-bold mt-1">{title}</p><p className="text-muted-foreground">{desc}</p></div>
-          ))}
+        <CardContent className="pt-4 space-y-2 text-xs text-muted-foreground">
+          <p className="font-semibold text-foreground">What this does</p>
+          <p>
+            Paste a transaction's <span className="font-mono">data</span> field. It runs the same
+            calldata decode and risk assessment used by the Send flow's pre-sign preview, on your
+            device, and lists any KNOWN risk patterns it finds. It never tells you a transaction is
+            "safe" — absence of a flagged pattern is not a guarantee, and you should review every
+            detail yourself.
+          </p>
         </CardContent>
       </Card>
 
@@ -86,117 +109,49 @@ export default function SecurityScanner() {
       <Card>
         <CardContent className="pt-4 space-y-3">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Raw Transaction (hex) or Paste TX Data</label>
+            <label className="text-xs text-muted-foreground mb-1 block">ERC-20 calldata (the tx `data` field, 0x…)</label>
             <textarea
               className="w-full h-24 text-xs font-mono p-2 rounded-lg bg-secondary border border-border resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-              placeholder="0x... or paste contract calldata"
-              value={rawTx}
-              onChange={e => setRawTx(e.target.value)}
+              placeholder="0xa9059cbb… (transfer) or 0x095ea7b3… (approve)"
+              value={calldata}
+              onChange={(e) => setCalldata(e.target.value)}
             />
           </div>
-          <Button className="w-full" onClick={() => handleScan(null)} disabled={scanning || !rawTx.trim()}>
-            {scanning ? <><div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />Scanning...</> : <><ScanSearch className="h-4 w-4 mr-2" />Scan Transaction</>}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Token symbol (optional)</label>
+              <Input value={tokenSymbol} onChange={(e) => setTokenSymbol(e.target.value)} placeholder="USDC" className="text-xs" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Token decimals</label>
+              <Input value={decimals} onChange={(e) => setDecimals(e.target.value)} placeholder="18" inputMode="numeric" className="text-xs" />
+            </div>
+          </div>
+          <Button className="w-full" onClick={handleScan} disabled={!calldata.trim()}>
+            <ScanSearch className="h-4 w-4 mr-2" />Decode &amp; Assess
           </Button>
         </CardContent>
       </Card>
 
-      {/* Demo examples */}
-      <div>
-        <p className="text-sm font-semibold mb-2">Try Demo Scenarios</p>
-        <div className="grid grid-cols-3 gap-2">
-          {SAMPLE_TXS.map(s => {
-            const cfg = riskConfig[s.risk];
-            const Icon = cfg.icon;
-            return (
-              <button key={s.id} onClick={() => handleScan(s)}
-                className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-xs font-semibold transition-colors ${cfg.bg}`}>
-                <Icon className={`h-5 w-5 ${cfg.color}`} />
-                <span className={cfg.color}>{s.risk.charAt(0).toUpperCase() + s.risk.slice(1)}</span>
-                <span className="text-muted-foreground font-normal text-center leading-tight">{s.label}</span>
-              </button>
-            );
-          })}
+      {inputError && (
+        <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-start gap-2 text-xs text-yellow-300">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>{inputError}</span>
         </div>
-      </div>
-
-      {/* Result */}
-      {scanning && (
-        <Card>
-          <CardContent className="pt-6 pb-6 flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm font-medium">Simulating on forked mainnet...</p>
-            <p className="text-xs text-muted-foreground">Decoding calldata · Checking allowances · Scoring contract</p>
-          </CardContent>
-        </Card>
       )}
 
-      {!scanning && result && (() => {
-        const cfg = riskConfig[result.risk];
-        const Icon = cfg.icon;
-        return (
-          <div className="space-y-4">
-            <div className={`p-4 rounded-xl border ${cfg.bg} flex items-center gap-3`}>
-              <Icon className={`h-8 w-8 ${cfg.color} shrink-0`} />
-              <div>
-                <p className={`font-bold ${cfg.color}`}>{cfg.label}</p>
-                <p className="text-sm text-muted-foreground">{result.label}</p>
-              </div>
-            </div>
+      {/* Real assessment of the pasted calldata. */}
+      {result && <TransactionPreview result={result} />}
 
-            <Card>
-              <CardHeader className="pb-2">
-                <button className="flex items-center justify-between w-full" onClick={() => toggleExpand("details")}>
-                  <CardTitle className="text-sm">Transaction Details</CardTitle>
-                  {expanded.details ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-              </CardHeader>
-              {expanded.details && (
-                <CardContent className="space-y-2 text-sm">
-                  {[["To", result.to], ["Method", result.method], ["Value", result.value]].map(([k, v]) => (
-                    <div key={k} className="flex gap-3">
-                      <span className="text-muted-foreground w-16 shrink-0">{k}</span>
-                      <span className="font-mono text-xs truncate">{v}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              )}
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Security Findings</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {result.findings.map((f, i) => (
-                  <div key={i} className={`flex items-start gap-2 text-sm ${result.risk === "safe" ? "text-green-500" : result.risk === "medium" ? "text-amber-500" : "text-destructive"}`}>
-                    {result.risk === "safe" ? <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />}
-                    <span>{f}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Simulation Preview</CardTitle></CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {[["Gas Estimate", result.simulation.gasEstimate], ["ETH Spent", result.simulation.ethUsed], ["Tokens Out", result.simulation.tokensOut]].map(([k, v]) => (
-                  <div key={k} className="flex justify-between">
-                    <span className="text-muted-foreground">{k}</span>
-                    <span className={k === "Tokens Out" && v.includes("drain") ? "text-destructive font-bold" : "font-semibold"}>{v}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <div className="flex gap-2">
-              {result.risk !== "safe" && (
-                <Button variant="destructive" className="flex-1">Reject Transaction</Button>
-              )}
-              <Button variant={result.risk === "safe" ? "default" : "outline"} className="flex-1">
-                {result.risk === "safe" ? "Sign Transaction" : "Sign Anyway (Risk)"}
-              </Button>
-            </div>
-          </div>
-        );
-      })()}
+      {/* Live, RPC-backed preview with representative samples (the real Send-flow preview). */}
+      <div>
+        <p className="text-sm font-semibold mb-2">Representative pre-sign previews</p>
+        <p className="text-xs text-muted-foreground mb-2">
+          The exact preview you see at the verify step before approving a transaction, across chains
+          and risk patterns. Each runs the real risk logic over real decoded data.
+        </p>
+        <TransactionSimulationDemo />
+      </div>
     </div>
   );
 }
