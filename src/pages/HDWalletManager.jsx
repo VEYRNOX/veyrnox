@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
+import { isBiometricGateError } from "@/lib/biometric";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
@@ -78,6 +79,8 @@ export default function HDWalletManager() {
   // deliberate, signposted password-only unlock for a broken/deleted passkey.
   // Surfaced ONLY after a real failure — never a default-visible "skip" button.
   const [passkeyFailed, setPasskeyFailed] = useState(null);
+  // Biometric escape hatch (dual of passkeyFailed) — see WalletEntry / unlock().
+  const [biometricFailed, setBiometricFailed] = useState(false);
   const [copied, setCopied] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -165,18 +168,22 @@ export default function HDWalletManager() {
   // ONLY after the passkey gate has actually failed. The password is still
   // required either way — the escape hatch never weakens the vault, it only
   // refuses to let a broken/deleted passkey strand the user (see lib/passkey.js).
-  const runUnlock = async (skipPasskey) => {
+  const runUnlock = async (opts = {}) => {
     setError("");
     setBusy(true);
     try {
-      const res = await unlock(unlockPassword, { skipPasskey });
+      const res = await unlock(unlockPassword, opts);
       setUnlockPassword("");
       setPasskeyFailed(null);
+      setBiometricFailed(false);
       // SIGNAL (M-1/M-2): don't silently drop the configured second factor.
       if (res?.passkeySkipped === "unavailable") {
         toast.warning("Passkey unavailable on this device — unlocked with your password only.");
       } else if (res?.passkeySkipped === "escape-hatch") {
         toast.warning("Unlocked with password only. Re-register your passkey in Security settings to restore the second factor.");
+      }
+      if (res?.biometricSkipped === "escape-hatch") {
+        toast.warning("Unlocked with your vault password. Re-enable biometric unlock in Security settings when it's working again.");
       }
     } catch (e) {
       // A failed passkey gate (cancel OR a broken/deleted credential) fails
@@ -191,14 +198,18 @@ export default function HDWalletManager() {
             ? "Passkey cancelled or unavailable. Try again, or unlock with your password if your passkey was removed from this device."
             : "Your passkey couldn't be used (it may have been removed from this device). Unlock with your password below."
         );
+      } else if (isBiometricGateError(e)) {
+        setBiometricFailed(true);
+        setError("Biometric authentication failed or was cancelled. Unlock with your vault password below.");
       } else {
         setError(e?.message || "Unlock failed");
       }
     } finally { setBusy(false); }
   };
 
-  const handleUnlock = () => runUnlock(false);
-  const handleUnlockPasswordOnly = () => runUnlock(true);
+  const handleUnlock = () => runUnlock();
+  const handleUnlockPasswordOnly = () => runUnlock({ skipPasskey: true });
+  const handleUnlockBiometricSkip = () => runUnlock({ skipBiometric: true });
 
   const handleDerive = async () => {
     setBusy(true);
@@ -278,6 +289,26 @@ export default function HDWalletManager() {
                     className="w-full gap-2"
                     disabled={!unlockPassword || busy}
                     onClick={handleUnlockPasswordOnly}
+                  >
+                    <KeyRound className="h-4 w-4" /> Unlock with password only
+                  </Button>
+                </div>
+              )}
+
+              {/* Biometric escape hatch — surfaced ONLY after the biometric gate
+                  has actually failed. Still requires the vault password, so it is
+                  no weaker than the baseline custody. */}
+              {biometricFailed && (
+                <div className="pt-2 border-t border-border space-y-2">
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Biometric / Face ID didn't work? Unlock with your vault password
+                    alone — your password is the real key and always works.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    disabled={!unlockPassword || busy}
+                    onClick={handleUnlockBiometricSkip}
                   >
                     <KeyRound className="h-4 w-4" /> Unlock with password only
                   </Button>

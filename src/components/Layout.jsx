@@ -6,26 +6,18 @@ import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
 import HelpMenu from "./HelpMenu";
 import {
-  LayoutDashboard, Send, Download, Settings, LogOut, ShieldCheck, Plug, Bell, Calculator, BarChart2, Zap,
-  Receipt, MoreHorizontal, Repeat, ShieldAlert, ClipboardList, Globe, Image,
-  BarChart3, Camera, TrendingUp, Network, PieChart, Sparkles, BellRing, Link2, BellDot, Users,
-  Activity, Bot, Layers, Fingerprint, Cpu,
-  MessageSquare, Leaf, ScrollText, Newspaper,
-  Target, FileText, Eye, Search, ChevronLeft, ChevronRight, X, ChevronDown,
-  MapPin, QrCode, History, Scissors, ShieldQuestion, Lock, Grid2X2,
-  Share2, Gift, Key, LayoutGrid, Fuel,
-  TrendingDown, RotateCcw, Mic, Trophy, Users2,
-  ShieldOff, Gauge, FilterX, KeyRound, ScanLine, Frame, Wifi, Pen,
-  Coins,
-  CloudUpload, Compass, ScanSearch, Ghost, Bomb,
+  LayoutDashboard, Send, Download, Settings, LogOut, Bell, Search,
+  MoreHorizontal, ChevronLeft, ChevronRight, X, ChevronDown,
 } from "lucide-react";
 import { base44, WALLET_AUTH } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import CommandPalette from "./CommandPalette";
+import BackButton from "./BackButton";
 import SessionRevocationGuard from "./SessionRevocationGuard";
 import PullToRefreshContainer from "./PullToRefreshContainer";
 import { ErrorBoundary } from "./ErrorBoundary";
 import VeyrnoxLogo from "./VeyrnoxLogo";
+import { navGroups, groupColor } from "@/lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
@@ -38,147 +30,8 @@ const TabSpinner = () => (
   </div>
 );
 
-// Each feature group gets its own accent colour so the menus read as
-// colour-coded sections rather than one long undifferentiated list.
-const GROUP_COLORS = {
-  Overview: "#3b82f6", // blue
-  Wallet:   "#8b5cf6", // violet
-  Invest:   "#22c55e", // green
-  Assets:   "#f59e0b", // amber
-  Finance:  "#06b6d4", // cyan
-  Security: "#ef4444", // red
-  Connect:  "#ec4899", // pink
-};
-const groupColor = (label) => GROUP_COLORS[label] || "#8b5cf6";
-
-const navGroups = [
-  {
-    label: "Overview",
-    items: [
-      { path: "/", label: "Dashboard", icon: LayoutDashboard },
-      { path: "/notifications", label: "Notifications", icon: BellRing },
-      { path: "/analytics", label: "Analytics", icon: BarChart2 },
-      { path: "/advanced-analytics", label: "Advanced Analytics", icon: Activity },
-      { path: "/advisor", label: "AI Advisor", icon: Sparkles },
-      { path: "/ai-assistant", label: "AI Assistant", icon: Bot },
-      { path: "/benchmark", label: "Benchmarking", icon: BarChart2 },
-      { path: "/what-if", label: "What-If Simulator", icon: Calculator },
-      { path: "/risk-score", label: "Risk Score", icon: ShieldQuestion },
-      { path: "/correlation", label: "Correlation Matrix", icon: Grid2X2 },
-      { path: "/correlation-timeline", label: "Event Timeline", icon: Newspaper },
-      { path: "/dashboard-widgets", label: "Custom Widgets", icon: LayoutGrid },
-      { path: "/shared-portfolio", label: "Share Portfolio", icon: Share2 },
-      { path: "/referrals", label: "Referral Tracker", icon: Gift },
-      { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
-      { path: "/public-profiles", label: "Public Profile", icon: Users2 },
-      { path: "/news-sentiment", label: "News Sentiment", icon: Newspaper },
-    ],
-  },
-  {
-    label: "Wallet",
-    items: [
-      { path: "/send", label: "Send", icon: Send },
-      { path: "/receive", label: "Receive", icon: Download },
-      { path: "/tx-history", label: "Transaction History", icon: History },
-      { path: "/payment-links", label: "Payment Links", icon: Link2 },
-      { path: "/merchant-qr", label: "Merchant QR", icon: QrCode },
-      { path: "/split-bill", label: "Split Bill", icon: Scissors },
-      { path: "/receipt", label: "TX Receipts", icon: Receipt },
-      { path: "/fee-analytics", label: "Fee Analytics", icon: Fuel },
-      { path: "/tax-harvest", label: "Tax Harvesting", icon: TrendingDown },
-      { path: "/hd-wallet", label: "HD Wallet Manager", icon: KeyRound },
-      { path: "/crypto-signing", label: "Crypto Signing (Live)", icon: Pen },
-      { path: "/recurring", label: "Recurring Payments", icon: Repeat },
-      { path: "/calculator", label: "Convert", icon: Calculator },
-    ],
-  },
-  {
-    label: "Invest",
-    items: [
-      { path: "/portfolio-rewind", label: "Portfolio Rewind", icon: RotateCcw },
-      { path: "/index-builder", label: "Custom Index", icon: LayoutGrid },
-      { path: "/ai-rebalancer", label: "AI Rebalancer", icon: Sparkles },
-      { path: "/pl", label: "P&L Tracking", icon: TrendingUp },
-      { path: "/risk", label: "Risk Scoring", icon: ShieldCheck },
-    ],
-  },
-  {
-    label: "Assets",
-    items: [
-      { path: "/watchlist", label: "Watchlist", icon: Eye },
-      { path: "/nft-gallery", label: "NFT Gallery", icon: Frame },
-      { path: "/nft", label: "NFT Portfolio", icon: Image },
-      { path: "/nft-multichain", label: "Multi-Chain NFT", icon: Layers },
-      { path: "/spending", label: "Spending", icon: PieChart },
-      { path: "/snapshots", label: "Snapshots", icon: Camera },
-      { path: "/onchain", label: "On-Chain", icon: Network },
-      { path: "/carbon", label: "Carbon Tracker", icon: Leaf },
-      { path: "/erc20-discovery", label: "ERC-20 Discovery", icon: Coins },
-    ],
-  },
-  {
-    label: "Finance",
-    items: [
-      { path: "/savings", label: "Savings Goals", icon: Target },
-      { path: "/budget", label: "Budget Limits", icon: PieChart },
-      { path: "/net-worth", label: "Net Worth", icon: TrendingUp },
-      { path: "/invoices", label: "Invoice Generator", icon: FileText },
-      { path: "/tax", label: "Tax Report", icon: Receipt },
-      { path: "/will", label: "Crypto Will", icon: ScrollText },
-      { path: "/community", label: "Community", icon: Users },
-    ],
-  },
-  {
-    label: "Security",
-    items: [
-      { path: "/security-dashboard", label: "Security Dashboard", icon: ShieldCheck },
-      { path: "/security", label: "Security Center", icon: ShieldAlert },
-      { path: "/wallet-access", label: "Access & Recovery", icon: KeyRound },
-      { path: "/login-map", label: "Login Activity Map", icon: MapPin },
-      { path: "/session-manager", label: "Session Manager", icon: ShieldCheck },
-      { path: "/duress-pin", label: "Duress PIN", icon: Lock },
-      { path: "/stealth-wallets", label: "Stealth Wallets", icon: Ghost },
-      { path: "/panic-wipe", label: "Panic Wipe", icon: Bomb },
-      { path: "/address-checker", label: "Address Screening", icon: ShieldQuestion },
-      { path: "/wallet-seed-qr", label: "Seed Key QR", icon: Key },
-      { path: "/hardware-wallet", label: "Hardware Wallets", icon: Cpu },
-      { path: "/cloud-backup", label: "Encrypted Cloud Backup", icon: CloudUpload },
-      { path: "/dapp-alerts", label: "dApp Domain Check", icon: ShieldAlert },
-      { path: "/security-scanner", label: "Pre-Sign Scanner", icon: ScanSearch },
-      { path: "/biometric-auth", label: "Biometric Auth", icon: Fingerprint },
-      { path: "/anomaly-detection", label: "Anomaly Detection", icon: ShieldAlert },
-      { path: "/messenger-alerts", label: "Messenger Alerts", icon: MessageSquare },
-      { path: "/voice-commands", label: "Voice Commands", icon: Mic },
-      { path: "/token-approvals", label: "Token Approvals", icon: ShieldOff },
-      { path: "/spam-filter", label: "Spam Filter", icon: FilterX },
-      { path: "/trust-score", label: "Token Spam Screening", icon: ScanLine },
-      { path: "/audit", label: "Audit Log", icon: ClipboardList },
-      { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
-      { path: "/smart-alerts", label: "Smart Alerts", icon: BellRing },
-      { path: "/alerts", label: "Price Alerts", icon: Bell },
-    ],
-  },
-  {
-    label: "Connect",
-    items: [
-      { path: "/address-book", label: "Address Book", icon: Users },
-      { path: "/watch-wallets", label: "Watch Wallets", icon: Eye },
-      { path: "/live-balances", label: "Live Balances (RPC)", icon: Wifi },
-      { path: "/dapp-connect", label: "dApp Connector", icon: Plug },
-      { path: "/network-manager", label: "Network Manager", icon: Network },
-      { path: "/solana", label: "Solana / SPL", icon: Layers },
-      { path: "/tron", label: "TRON / TRX", icon: Zap },
-      { path: "/price-charts", label: "Price Charts", icon: BarChart3 },
-      { path: "/gas-fees", label: "Gas Fees", icon: Gauge },
-      { path: "/connect", label: "Connect Wallet", icon: Plug },
-      { path: "/walletconnect", label: "WalletConnect", icon: Link2 },
-      { path: "/web3", label: "Web3 Browser", icon: Globe },
-      { path: "/account-access", label: "Account Access", icon: Users },
-      { path: "/push", label: "Notifications", icon: BellDot },
-      { path: "/block-explorer", label: "Block Explorer", icon: Compass },
-    ],
-  },
-];
+// navGroups + groupColor now live in lib/navigation.js — the single source of
+// truth shared with the command palette / search so the two can't drift.
 
 const mobileBottomNav = [
   { path: "/", label: "Home", icon: LayoutDashboard },
@@ -190,11 +43,24 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { lock } = useWallet();
-  // Sign out (base44 removal, Phase 2). In the local build there is no hosted
-  // account to log out of — "sign out" means locking the on-device vault, which
-  // the WalletGate then enforces (the unlock front door reappears). In the
-  // opt-in hosted build it still calls the hosted logout.
-  const signOut = () => { if (WALLET_AUTH) lock(); else base44.auth.logout(); };
+  // Sign out / Exit (base44 removal, Phase 2). In the local build there is no
+  // hosted account to log out of — exiting means locking the on-device vault,
+  // which the WalletGate then enforces (the unlock front door reappears). We
+  // ALWAYS lock first (drops the in-memory secret) and then reset the route so
+  // the user lands cleanly on the gate rather than on a now-locked deep page:
+  //   - local : navigate to "/" → a locked vault renders WalletEntry (unlock).
+  //   - demo  : there is no on-device gate, so call the (no-op) hosted logout
+  //             and return to the public landing screen so Exit still does
+  //             something visible instead of silently no-op'ing.
+  const signOut = () => {
+    lock();
+    if (WALLET_AUTH) {
+      navigate("/", { replace: true });
+    } else {
+      base44.auth.logout();
+      navigate("/landing", { replace: true });
+    }
+  };
   const ROOT_TABS = ['/', '/send', '/receive', '/settings'];
   const isRootTab = ROOT_TABS.includes(location.pathname);
   const MOBILE_TABS = ['/', '/send', '/receive'];
@@ -391,18 +257,18 @@ export default function Layout() {
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setCmdOpen(true)} className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
-            <Search className="h-4 w-4" />
+          <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+            <Search className="h-4 w-4" aria-hidden="true" />
           </button>
-          <Link to="/notifications" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
-            <Bell className="h-4 w-4" />
+          <Link to="/notifications" aria-label="Notifications" title="Notifications" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+            <Bell className="h-4 w-4" aria-hidden="true" />
           </Link>
           <HelpMenu triggerClassName="p-2 active:bg-secondary" />
-          <Link to="/settings" aria-label="Settings" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
-            <Settings className="h-4 w-4" />
+          <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+            <Settings className="h-4 w-4" aria-hidden="true" />
           </Link>
-          <button onClick={signOut} className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
-            <LogOut className="h-4 w-4" />
+          <button onClick={signOut} aria-label="Exit — lock wallet" title="Exit — lock wallet" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+            <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </header>
@@ -417,6 +283,14 @@ export default function Layout() {
           transition={{ duration: 0.15, ease: "easeOut" }}
           className="hidden md:flex md:flex-1 flex-col p-8 overflow-auto"
         >
+          {/* Desktop back affordance (item: back nav on every page). The desktop
+              layout has no back control of its own — only the sidebar (which
+              jumps to top-level destinations) — so a sub-page reached from e.g.
+              the Security Dashboard would otherwise strand the user. The mobile
+              top bar already provides this; here we mirror it for desktop on
+              every non-root-tab page. Root tabs (Dashboard/Send/Receive/Settings)
+              are top-level destinations and don't get a back control. */}
+          {!isRootTab && <BackButton className="mb-4" />}
           <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">
             <ErrorBoundary key={location.pathname}><Outlet /></ErrorBoundary>
           </PullToRefreshContainer>
