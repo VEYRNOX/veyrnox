@@ -1,24 +1,29 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, HOSTED } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
-import { DEMO } from '@/api/demoClient';
 
 const AuthContext = createContext();
 
+// Run the hosted-auth network path only when the app is actually wired to the
+// hosted base44 backend. In demo mode AND in the default local-first app build
+// there is no hosted backend, so we skip the `/api/apps/public` + `auth.me()`
+// network calls entirely and treat the user as signed in — the real gate is the
+// on-device WalletProvider unlock, not hosted accounts. (Full auth replacement
+// is Phase 2; this just stops the dead hosted-auth call from firing/erroring.)
+const NO_HOSTED_AUTH = !HOSTED;
+
 export const AuthProvider = ({ children }) => {
-  // Demo mode (?demo=1): skip the network auth check and treat the user as
-  // signed in so the whole app is browsable without a backend.
-  const [user, setUser] = useState(DEMO ? { id: 'demo-user', email: 'demo@veyrnox.com', full_name: 'Alex Demo', role: 'admin' } : null);
-  const [isAuthenticated, setIsAuthenticated] = useState(DEMO);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(!DEMO);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(!DEMO);
+  const [user, setUser] = useState(NO_HOSTED_AUTH ? { id: 'demo-user', email: 'demo@veyrnox.com', full_name: 'Alex Demo', role: 'admin' } : null);
+  const [isAuthenticated, setIsAuthenticated] = useState(NO_HOSTED_AUTH);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(!NO_HOSTED_AUTH);
+  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(!NO_HOSTED_AUTH);
   const [authError, setAuthError] = useState(null);
-  const [authChecked, setAuthChecked] = useState(DEMO);
-  const [appPublicSettings, setAppPublicSettings] = useState(DEMO ? { id: 'demo', public_settings: {} } : null); // Contains only { id, public_settings }
+  const [authChecked, setAuthChecked] = useState(NO_HOSTED_AUTH);
+  const [appPublicSettings, setAppPublicSettings] = useState(NO_HOSTED_AUTH ? { id: 'demo', public_settings: {} } : null); // Contains only { id, public_settings }
 
   useEffect(() => {
-    if (DEMO) return; // no network in demo mode
+    if (NO_HOSTED_AUTH) return; // no hosted backend → no network auth check
     checkAppState();
   }, []);
 
