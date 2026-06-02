@@ -22,7 +22,7 @@ import { Outlet } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Shield, Wallet, Lock, Unlock, KeyRound, Download, RefreshCw,
-  Eye, EyeOff, Copy, Check, AlertTriangle, ArrowLeft,
+  Eye, EyeOff, Copy, Check, AlertTriangle, ArrowLeft, Fingerprint,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,11 @@ import { Label } from "@/components/ui/label";
 import VeyrnoxLogo from "@/components/VeyrnoxLogo";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
+import {
+  isBiometricGateError,
+  getBiometricStatus,
+  setBiometricUnlockEnabled,
+} from "@/lib/biometric";
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
@@ -55,7 +60,7 @@ function EntryShell({ error, children }) {
 }
 
 export default function WalletEntry() {
-  const { isUnlocked, createWallet, importWallet, unlock, hasVault } = useWallet();
+  const { isUnlocked, createWallet, importWallet, unlock, hasVault, biometricPreview } = useWallet();
 
   // null until we know whether a vault exists; drives unlock vs first-run.
   const [vaultExists, setVaultExists] = useState(null);
@@ -74,8 +79,20 @@ export default function WalletEntry() {
   // unlock attempt; then { reason } so we can offer a signposted password-only
   // unlock for a broken/deleted passkey. Never a default-visible "skip" button.
   const [passkeyFailed, setPasskeyFailed] = useState(null);
+  // BIOMETRIC escape hatch (dual of passkeyFailed): null until the biometric gate
+  // has actually FAILED/been cancelled on an attempt; then true so we can offer a
+  // signposted password-only unlock. The vault password is still required, so
+  // this is NEVER a weaker path — see WalletProvider.unlock opts.skipBiometric.
+  const [biometricFailed, setBiometricFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // ONBOARDING SECURITY STEP: after a freshly-created wallet's seed is backed up,
+  // hold here (instead of entering the app) to OPTIONALLY enable biometric unlock.
+  // The vault password set during creation is always the fallback, so this step
+  // is purely additive and fully skippable. Only used in the create flow.
+  const [onboardingSecurity, setOnboardingSecurity] = useState(false);
+  const [bioStatus, setBioStatus] = useState(null); // resolved biometric availability
+  const [bioEnabled, setBioEnabled] = useState(false); // user toggled it on this step
   // recovering = the user arrived at import via "Forgot password?" (vault exists);
   // we show recovery-specific copy and an explicit "no custodial reset" notice.
   const [recovering, setRecovering] = useState(false);
@@ -111,16 +128,23 @@ export default function WalletEntry() {
   };
 
   // ---- Unlock (mirrors HDWalletManager.runUnlock) ----
-  const runUnlock = async (skipPasskey) => {
+  // opts: { skipPasskey, skipBiometric } — escape hatches, each only ever set by
+  // the explicit "Unlock with password only" buttons surfaced AFTER the matching
+  // gate has failed. Both still require the correct vault password below.
+  const runUnlock = async (opts = {}) => {
     setError(""); setBusy(true);
     try {
-      const res = await unlock(unlockPassword, { skipPasskey });
+      const res = await unlock(unlockPassword, opts);
       setUnlockPassword("");
       setPasskeyFailed(null);
+      setBiometricFailed(false);
       if (res?.passkeySkipped === "unavailable") {
         toast.warning("Passkey unavailable on this device — unlocked with your password only.");
       } else if (res?.passkeySkipped === "escape-hatch") {
         toast.warning("Unlocked with password only. Re-register your passkey in Security settings to restore the second factor.");
+      }
+      if (res?.biometricSkipped === "escape-hatch") {
+        toast.warning("Unlocked with your vault password. Re-enable biometric unlock in Security settings when it's working again.");
       }
       // On success, isUnlocked flips and WalletGate renders the app.
     } catch (e) {
@@ -131,6 +155,12 @@ export default function WalletEntry() {
             ? "Passkey cancelled or unavailable. Try again, or unlock with your password if your passkey was removed from this device."
             : "Your passkey couldn't be used (it may have been removed from this device). Unlock with your password below."
         );
+      } else if (isBiometricGateError(e)) {
+        // Biometric/Face ID failed or was cancelled. Fail closed, then offer the
+        // password-only fallback so the user is never stranded (the password is
+        // the real gate and is still required).
+        setBiometricFailed(true);
+        setError("Biometric authentication failed or was cancelled. Unlock with your vault password below.");
       } else {
         setError(e?.message || "Unlock failed");
       }
@@ -167,10 +197,27 @@ export default function WalletEntry() {
     finally { setBusy(false); }
   };
 
-  // Unlocked → reveal the app. The one exception is right after creating a new
-  // wallet: the vault is already unlocked but `generatedSeed` is still set, so we
-  // hold on the seed-backup screen below until the user confirms they've saved it.
-  if (isUnlocked && !generatedSeed) return <Outlet />;
+  // Begin onboarding's optional security step: resolve biometric availability,
+  // then hold on the security screen (the vault is already unlocked, but we keep
+  // gating until the user finishes/skips). Called from "I've backed it up".
+  const startSecurityStep = async () => {
+    setGeneratedSeed("");
+    setShowSeed(false);
+    try { setBioStatus(await getBiometricStatus()); } catch { setBioStatus(null); }
+    setBioEnabled(false);
+    setOnboardingSecurity(true);
+  };
+
+  const finishOnboarding = () => {
+    setBiometricUnlockEnabled(bioEnabled); // persist the user's choice (off by default)
+    setOnboardingSecurity(false); // unlocked + nothing held → WalletGate renders the app
+  };
+
+  // Unlocked → reveal the app. Exceptions during first-run wallet creation: the
+  // vault is already unlocked, but we keep holding while (a) `generatedSeed` is
+  // set (seed-backup screen) or (b) `onboardingSecurity` is set (optional
+  // biometric setup), until the user confirms/finishes each step.
+  if (isUnlocked && !generatedSeed && !onboardingSecurity) return <Outlet />;
 
   // Initial probe in flight (only relevant while still locked).
   if (vaultExists === null) {
@@ -178,6 +225,70 @@ export default function WalletEntry() {
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  // ---- Onboarding: optional biometric setup (after seed backup) ----
+  // The vault password chosen during creation is ALWAYS the fallback, so this
+  // step only ADDS an optional biometric convenience factor — it never replaces
+  // the password and is fully skippable. On plain web there is no platform
+  // biometric, so we honestly say so and just offer Continue.
+  if (onboardingSecurity) {
+    const bioAvailable = !!bioStatus?.available;
+    return (
+      <EntryShell error={error}>
+        <div className="p-4 rounded-xl border border-border bg-card space-y-4">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Fingerprint className="h-4 w-4 text-primary" /> Secure your wallet
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Your vault password is set and is always your way in — it's the real
+            key that decrypts this wallet. You can add {bioStatus?.label || "biometric"} unlock
+            as a faster convenience factor on top of it.
+          </p>
+
+          {bioAvailable ? (
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-border bg-secondary/30 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-primary"
+                checked={bioEnabled}
+                onChange={async (e) => {
+                  const on = e.target.checked;
+                  // When turning it on, run the prompt once so the user proves it
+                  // works now (and isn't surprised later). If they cancel, leave
+                  // it off. This never affects the password fallback.
+                  if (on) {
+                    const ok = await biometricPreview();
+                    setBioEnabled(ok);
+                    if (!ok) toast.warning("Biometric check cancelled — you can enable it later in Security settings.");
+                  } else {
+                    setBioEnabled(false);
+                  }
+                }}
+              />
+              <span className="text-xs">
+                <span className="font-medium text-foreground">Enable {bioStatus?.label || "biometric"} unlock</span>
+                <span className="block text-muted-foreground mt-0.5">
+                  Require {bioStatus?.label || "biometrics"} before unlocking. If it ever fails or is
+                  unavailable, you can always fall back to your vault password.
+                </span>
+              </span>
+            </label>
+          ) : (
+            <div className="p-3 rounded-xl border border-border bg-secondary/30 text-xs text-muted-foreground">
+              {bioStatus?.detail || "Biometric unlock isn't available on this device. Your vault password protects your wallet; you can enable biometrics later in Security settings on a supported device."}
+            </div>
+          )}
+
+          <Button className="w-full gap-2" onClick={finishOnboarding}>
+            <Check className="h-4 w-4" /> {bioEnabled ? "Finish — Enter Wallet" : "Continue to Wallet"}
+          </Button>
+          <p className="text-[11px] text-center text-muted-foreground">
+            You can change this anytime in Security settings.
+          </p>
+        </div>
+      </EntryShell>
     );
   }
 
@@ -193,10 +304,10 @@ export default function WalletEntry() {
             value={unlockPassword}
             onChange={e => setUnlockPassword(e.target.value)}
             placeholder="Enter your vault password"
-            onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(false); }}
+            onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
             autoFocus
           />
-          <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock(false)}>
+          <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
             {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
           </Button>
 
@@ -207,7 +318,20 @@ export default function WalletEntry() {
                 authenticator is unavailable, unlock with your vault password alone.
                 Your password still protects the wallet.
               </p>
-              <Button variant="outline" className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock(true)}>
+              <Button variant="outline" className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock({ skipPasskey: true })}>
+                <KeyRound className="h-4 w-4" /> Unlock with password only
+              </Button>
+            </div>
+          )}
+
+          {biometricFailed && (
+            <div className="pt-2 border-t border-border space-y-2">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Biometric / Face ID didn't work? Unlock with your vault password
+                alone — your password is the real key and always works, even when
+                biometrics are unavailable.
+              </p>
+              <Button variant="outline" className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock({ skipBiometric: true })}>
                 <KeyRound className="h-4 w-4" /> Unlock with password only
               </Button>
             </div>
@@ -295,7 +419,7 @@ export default function WalletEntry() {
               <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               <span>Your wallet is created and unlocked. Back up your phrase before continuing — it is never shown again and we cannot recover it for you.</span>
             </div>
-            <Button className="w-full gap-2" onClick={() => { setGeneratedSeed(""); setShowSeed(false); }}>
+            <Button className="w-full gap-2" onClick={startSecurityStep}>
               <Check className="h-4 w-4" /> I've backed it up — Continue
             </Button>
           </div>

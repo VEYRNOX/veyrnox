@@ -37,7 +37,6 @@ import {
   Copy, Check, RefreshCw, Coins, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import BackButton from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -219,7 +218,6 @@ export default function DuressPin() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <BackButton />
       <div>
         <h1 className="text-xl font-bold">Duress PIN / Decoy Wallet</h1>
         <p className="text-sm text-muted-foreground">

@@ -34,6 +34,31 @@ export function isBiometricUnlockEnabled() {
   }
 }
 
+/**
+ * Thrown when the app-layer biometric gate fails or is cancelled, so unlock()
+ * can fail CLOSED and the UI can surface the password-only escape hatch. This is
+ * the exact dual of lib/passkey.js's PasskeyGateError. It carries NO secret and
+ * NEVER weakens the vault: the escape hatch it enables still requires the
+ * correct vault password (the real Argon2id+AES-GCM gate) — it only refuses to
+ * let a failed *convenience* factor strand a user from funds they can unlock
+ * with their password. Duck-typed flag (like PasskeyGateError) so it survives a
+ * structuredClone / cross-bundle boundary.
+ */
+export class BiometricGateError extends Error {
+  constructor(reason = 'cancelled', cause) {
+    super(`Biometric gate ${reason}`);
+    this.name = 'BiometricGateError';
+    this.reason = reason; // 'cancelled' today (demo cancel); room for more later
+    this.cause = cause;
+    this.isBiometricGateError = true;
+  }
+}
+
+/** @returns {boolean} true if `err` is a BiometricGateError (gate failed/cancelled). */
+export function isBiometricGateError(err) {
+  return !!(err && typeof err === 'object' && err.isBiometricGateError);
+}
+
 /** Persist the "require biometric unlock" preference. */
 export function setBiometricUnlockEnabled(on) {
   try {

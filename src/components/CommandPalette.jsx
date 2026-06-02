@@ -1,44 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard, Send, Download, Receipt, Bell,
-  ShieldAlert, BarChart2, Sparkles, Leaf, ScrollText, Newspaper, Link2,
-  ShieldCheck, PieChart, TrendingUp, Image, Camera, Network,
-  Activity, ClipboardList, BarChart3,
-  Repeat, BellRing, Settings,
-  Target, FileText, Eye,
-} from "lucide-react";
-
-const ALL_ROUTES = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard, group: "Overview" },
-  { path: "/analytics", label: "Analytics", icon: BarChart2, group: "Overview" },
-  { path: "/advanced-analytics", label: "Advanced Analytics", icon: Activity, group: "Overview" },
-  { path: "/advisor", label: "AI Advisor", icon: Sparkles, group: "Overview" },
-  { path: "/news-sentiment", label: "News Sentiment", icon: Newspaper, group: "Overview" },
-  { path: "/notifications", label: "Notification Centre", icon: BellRing, group: "Overview" },
-  { path: "/send", label: "Send Crypto", icon: Send, group: "Wallet" },
-  { path: "/receive", label: "Receive Crypto", icon: Download, group: "Wallet" },
-  { path: "/payment-links", label: "Payment Links", icon: Link2, group: "Wallet" },
-  { path: "/recurring", label: "Recurring Payments", icon: Repeat, group: "Wallet" },
-  { path: "/calculator", label: "Convert", icon: BarChart3, group: "Wallet" },
-  { path: "/pl", label: "P&L Tracking", icon: TrendingUp, group: "Invest" },
-  { path: "/risk", label: "Risk Scoring", icon: ShieldCheck, group: "Invest" },
-  { path: "/savings", label: "Savings Goals", icon: Target, group: "Finance" },
-  { path: "/invoices", label: "Invoice Generator", icon: FileText, group: "Finance" },
-  { path: "/tax", label: "Tax Report", icon: Receipt, group: "Finance" },
-  { path: "/will", label: "Crypto Will", icon: ScrollText, group: "Finance" },
-  { path: "/nft", label: "NFT Portfolio", icon: Image, group: "Assets" },
-  { path: "/watchlist", label: "Watchlist", icon: Eye, group: "Assets" },
-  { path: "/spending", label: "Spending", icon: PieChart, group: "Assets" },
-  { path: "/snapshots", label: "Snapshots", icon: Camera, group: "Assets" },
-  { path: "/onchain", label: "On-Chain", icon: Network, group: "Assets" },
-  { path: "/carbon", label: "Carbon Tracker", icon: Leaf, group: "Assets" },
-  { path: "/security", label: "Security Center", icon: ShieldAlert, group: "Security" },
-  { path: "/audit", label: "Audit Log", icon: ClipboardList, group: "Security" },
-  { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert, group: "Security" },
-  { path: "/alerts", label: "Price Alerts", icon: Bell, group: "Security" },
-  { path: "/settings", label: "Settings", icon: Settings, group: "Preferences" },
-];
+// Single source of truth shared with the sidebar nav (components/Layout.jsx), so
+// search always covers the full current feature set instead of a stale hand-kept
+// subset. See lib/navigation.js.
+import { searchableRoutes as ALL_ROUTES } from "@/lib/navigation";
 
 export default function CommandPalette({ open, onClose }) {
   const [query, setQuery] = useState("");
