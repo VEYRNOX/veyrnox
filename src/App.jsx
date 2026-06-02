@@ -5,12 +5,8 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
-import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { WalletProvider } from '@/lib/WalletProvider';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import ProtectedRoute from '@/components/ProtectedRoute';
 import WalletGate from '@/components/WalletGate';
-import { HOSTED } from '@/api/base44Client';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -49,12 +45,7 @@ const NotificationCentre = lazy(() => import('./pages/NotificationCentre'));
 const SavingsGoals = lazy(() => import('./pages/SavingsGoals'));
 const InvoiceGenerator = lazy(() => import('./pages/InvoiceGenerator'));
 const WatchlistPage = lazy(() => import('./pages/WatchlistPage'));
-const Onboarding = lazy(() => import('./pages/Onboarding'));
 const AIAssistant = lazy(() => import('./pages/AIAssistant'));
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const AddressBook = lazy(() => import('./pages/AddressBook'));
 const NetWorthTracker = lazy(() => import('./pages/NetWorthTracker'));
 const PortfolioBenchmark = lazy(() => import('./pages/PortfolioBenchmark'));
@@ -116,49 +107,26 @@ const ERC20Discovery = lazy(() => import('./pages/ERC20Discovery'));
 const Products = lazy(() => import('./pages/Products'));
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
-
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
-    }
-  }
-
   // Render the main app
   return (
     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" /></div>}>
     <Routes>
       <Route path="/landing" element={<LandingPage />} />
-      {/* Hosted-account auth routes (base44 removal, Phase 2). In the default
-          local build there is no hosted account — the seed/vault is the identity
-          — so these would only render a fake login wall (the auth stubs return
-          canned success with no backend). We redirect them to "/", which the
-          WalletGate resolves to the on-device create/import/unlock front door.
-          Seed-password recovery lives there ("Forgot password? Restore from
-          seed"), so forgot/reset stay honest. The real pages render only in the
-          opt-in hosted build (HOSTED), which Phase 4 removes with the SDK. */}
-      <Route path="/login" element={HOSTED ? <Login /> : <Navigate to="/" replace />} />
-      <Route path="/register" element={HOSTED ? <Register /> : <Navigate to="/" replace />} />
-      <Route path="/forgot-password" element={HOSTED ? <ForgotPassword /> : <Navigate to="/" replace />} />
-      <Route path="/reset-password" element={HOSTED ? <ResetPassword /> : <Navigate to="/" replace />} />
-      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
-        {/* On-device vault gate: in the local build a locked vault renders the
-            create/import/unlock front door instead of any wallet screen. */}
-        <Route element={<WalletGate />}>
+      {/* Hosted-account auth routes are gone (base44 removal complete, Phase 4).
+          There is no hosted account — the seed/vault is the identity — so any
+          stale /login, /register, /forgot-password, /reset-password or
+          /onboarding link redirects to "/", which the WalletGate resolves to the
+          on-device create/import/unlock front door. Seed-password recovery lives
+          there ("Forgot password? Restore from seed"). */}
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/register" element={<Navigate to="/" replace />} />
+      <Route path="/forgot-password" element={<Navigate to="/" replace />} />
+      <Route path="/reset-password" element={<Navigate to="/" replace />} />
+      {/* On-device vault gate: in the local build a locked vault renders the
+          create/import/unlock front door instead of any wallet screen. This is
+          now the SOLE access gate (the former hosted-account ProtectedRoute was
+          removed with the SDK). In demo mode it is a pass-through. */}
+      <Route element={<WalletGate />}>
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/send" element={<SendCrypto />} />
@@ -259,8 +227,7 @@ const AuthenticatedApp = () => {
         {/* Onboarding created a hosted-style wallet *entity* with a fabricated
             address. In the local build the real first run is the on-device
             create/import flow (WalletGate -> WalletEntry), so redirect there. */}
-        <Route path="/onboarding" element={HOSTED ? <Onboarding /> : <Navigate to="/" replace />} />
-        </Route>
+        <Route path="/onboarding" element={<Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
@@ -273,7 +240,6 @@ function App() {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
-    <AuthProvider>
       <WalletProvider>
         <QueryClientProvider client={queryClientInstance}>
           <Router>
@@ -282,7 +248,6 @@ function App() {
           <Toaster />
         </QueryClientProvider>
       </WalletProvider>
-    </AuthProvider>
     </ThemeProvider>
   )
 }
