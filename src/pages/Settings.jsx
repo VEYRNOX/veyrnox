@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
-import { base44 } from "@/api/base44Client";
+import { base44, WALLET_AUTH } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
 import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, ClipboardList, Trash2, AlertTriangle, Network, CloudUpload, Key } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +15,7 @@ import SessionSettings from "../components/security/SessionSettings";
 
 export default function Settings() {
   const queryClient = useQueryClient();
+  const { lock } = useWallet();
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -31,7 +33,10 @@ export default function Settings() {
         ...txList.map(t => base44.entities.Transaction.delete(t.id)),
       ]);
     } catch {}
-    await base44.auth.logout();
+    // Sign out (base44 removal, Phase 2). No hosted account in the local build —
+    // lock the on-device vault so the WalletGate front door reappears. (This
+    // clears the local entity cache; destroying key material is Panic Wipe.)
+    if (WALLET_AUTH) lock(); else await base44.auth.logout();
   };
   const { theme, setTheme } = useTheme();
   const isDark = theme !== 'light';

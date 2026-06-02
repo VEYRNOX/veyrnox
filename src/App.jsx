@@ -9,6 +9,8 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { WalletProvider } from '@/lib/WalletProvider';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import WalletGate from '@/components/WalletGate';
+import { HOSTED } from '@/api/base44Client';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -141,11 +143,22 @@ const AuthenticatedApp = () => {
     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" /></div>}>
     <Routes>
       <Route path="/landing" element={<LandingPage />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+      {/* Hosted-account auth routes (base44 removal, Phase 2). In the default
+          local build there is no hosted account — the seed/vault is the identity
+          — so these would only render a fake login wall (the auth stubs return
+          canned success with no backend). We redirect them to "/", which the
+          WalletGate resolves to the on-device create/import/unlock front door.
+          Seed-password recovery lives there ("Forgot password? Restore from
+          seed"), so forgot/reset stay honest. The real pages render only in the
+          opt-in hosted build (HOSTED), which Phase 4 removes with the SDK. */}
+      <Route path="/login" element={HOSTED ? <Login /> : <Navigate to="/" replace />} />
+      <Route path="/register" element={HOSTED ? <Register /> : <Navigate to="/" replace />} />
+      <Route path="/forgot-password" element={HOSTED ? <ForgotPassword /> : <Navigate to="/" replace />} />
+      <Route path="/reset-password" element={HOSTED ? <ResetPassword /> : <Navigate to="/" replace />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        {/* On-device vault gate: in the local build a locked vault renders the
+            create/import/unlock front door instead of any wallet screen. */}
+        <Route element={<WalletGate />}>
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/send" element={<SendCrypto />} />
@@ -243,7 +256,11 @@ const AuthenticatedApp = () => {
           <Route path="/docs" element={<Documentation />} />
           <Route path="/features" element={<Features />} />
         </Route>
-        <Route path="/onboarding" element={<Onboarding />} />
+        {/* Onboarding created a hosted-style wallet *entity* with a fabricated
+            address. In the local build the real first run is the on-device
+            create/import flow (WalletGate -> WalletEntry), so redirect there. */}
+        <Route path="/onboarding" element={HOSTED ? <Onboarding /> : <Navigate to="/" replace />} />
+        </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

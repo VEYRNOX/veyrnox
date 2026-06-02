@@ -19,7 +19,8 @@ import {
   Coins,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb,
 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { base44, WALLET_AUTH } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
 import CommandPalette from "./CommandPalette";
 import SessionRevocationGuard from "./SessionRevocationGuard";
 import PullToRefreshContainer from "./PullToRefreshContainer";
@@ -188,6 +189,12 @@ const mobileBottomNav = [
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { lock } = useWallet();
+  // Sign out (base44 removal, Phase 2). In the local build there is no hosted
+  // account to log out of — "sign out" means locking the on-device vault, which
+  // the WalletGate then enforces (the unlock front door reappears). In the
+  // opt-in hosted build it still calls the hosted logout.
+  const signOut = () => { if (WALLET_AUTH) lock(); else base44.auth.logout(); };
   const ROOT_TABS = ['/', '/send', '/receive', '/settings'];
   const isRootTab = ROOT_TABS.includes(location.pathname);
   const MOBILE_TABS = ['/', '/send', '/receive'];
@@ -349,7 +356,7 @@ export default function Layout() {
         {/* Sign Out */}
         <div className="px-2 pb-4 border-t border-border pt-2">
           <button
-            onClick={() => base44.auth.logout()}
+            onClick={signOut}
             title={collapsed ? "Sign Out" : undefined}
             className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all w-full ${collapsed ? 'justify-center' : ''}`}
           >
@@ -394,7 +401,7 @@ export default function Layout() {
           <Link to="/settings" aria-label="Settings" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
             <Settings className="h-4 w-4" />
           </Link>
-          <button onClick={() => base44.auth.logout()} className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+          <button onClick={signOut} className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
             <LogOut className="h-4 w-4" />
           </button>
         </div>
