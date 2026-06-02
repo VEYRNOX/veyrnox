@@ -26,9 +26,17 @@ in-memory seeded dataset for a quick tour without creating real wallet data.
 
 ```
 npm run mobile:build          # vite build + cap sync
-npm run mobile:build:demo     # demo-seeded native build
+npm run mobile:build:demo     # demo-seeded native build (DEMO=true; plaintext cache — NOT for release)
+npm run mobile:build:release  # store/production build (VITE_RELEASE=1; DEMO can never be true)
 npm run android:run           # build + run on Android
 ```
+
+`mobile:build:release` (and `build:release` for web) is the canonical store
+build. It sets `VITE_RELEASE=1`; the build hard-fails if `VITE_DEMO_MODE` is also
+set, so a release bundle can never resolve `DEMO=true` (which would cache the
+vault password in plaintext localStorage — SAST H-1). The guard lives in
+`vite.config.js`, with a runtime belt-and-suspenders assertion in
+`src/api/demoClient.js`.
 
 ## Tests & checks
 
