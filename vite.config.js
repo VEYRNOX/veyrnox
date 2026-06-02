@@ -1,8 +1,8 @@
-import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { fileURLToPath } from 'node:url'
 
-// logLevel 'error' (base44 default) suppresses Vite's startup banner too, so the
+// logLevel 'error' suppresses Vite's startup banner too, so the
 // "Local: http://localhost:5173/" line never prints. This tiny plugin restores
 // just the URL print on listen, keeping warnings quiet.
 const printUrls = () => ({
@@ -31,16 +31,15 @@ const printUrls = () => ({
 // https://vite.dev/config/
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
+  // The '@/...' -> src alias used to be supplied by the @base44/vite-plugin.
+  // That plugin was removed (base44 removal, Phase 4), so declare it here
+  // explicitly. Mirrors jsconfig.json and vitest.config.js.
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   plugins: [
-    base44({
-      // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.
-      // can be removed if the code has been updated to use the new SDK imports from @base44/sdk
-      legacySDKImports: process.env.BASE44_LEGACY_SDK_IMPORTS === 'true',
-      hmrNotifier: true,
-      navigationNotifier: true,
-      analyticsTracker: true,
-      visualEditAgent: true
-    }),
     react(),
     printUrls(),
   ],

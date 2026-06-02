@@ -38,11 +38,20 @@ npm run check:rng   # guards against insecure randomness in crypto paths
 npm run lint        # eslint
 ```
 
-## Legacy hosted backend (optional, being removed)
+## Data layer (fully on-device)
 
-Earlier builds talked to a hosted backend for entity data, auth, and a few
-server functions. That dependency is being removed in phases so the app can
-ship as a self-contained native binary. The hosted path is no longer the
-default; it can still be opted into for a transitional build with
-`VITE_BASE44_BACKEND=1` (plus the `VITE_BASE44_APP_ID` / `VITE_BASE44_APP_BASE_URL`
-env vars). This opt-in will go away entirely once the phased removal completes.
+Earlier builds talked to a hosted backend (base44) for entity data, auth, and a
+few server functions. That dependency has been **removed entirely** — the app
+ships as a self-contained binary with no hosted account and no network for
+entity data. Two on-device data layers back the app:
+
+- **local** (default): persistent on-device storage (IndexedDB). A fresh install
+  starts empty — the honest state for a real self-custody wallet.
+- **demo**: an ephemeral, pre-seeded in-memory tour. Enable with `?demo=1` or a
+  `VITE_DEMO_MODE=1` build.
+
+Access in the local build is gated solely by the on-device vault unlock
+(`WalletGate` → `WalletEntry`): the seed/vault is the identity. A few features
+that genuinely need a server we no longer ship (LLM-backed AI pages, email-OTP
+delivery) show an explicit "not available in this local build" state rather than
+faking a result.
