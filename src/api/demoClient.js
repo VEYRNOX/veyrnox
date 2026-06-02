@@ -19,30 +19,53 @@
 import { Capacitor } from "@capacitor/core";
 
 export const DEMO = (() => {
-  // (2) Explicit build-time opt-in. Works in any build, including native
-  //     simulator builds produced with `VITE_DEMO_MODE=1 npm run mobile:build`.
-  if (import.meta.env.VITE_DEMO_MODE === "1") return true;
+  const resolve = () => {
+    // (2) Explicit build-time opt-in. Works in any build, including native
+    //     simulator builds produced with `VITE_DEMO_MODE=1 npm run mobile:build`.
+    if (import.meta.env.VITE_DEMO_MODE === "1") return true;
 
-  // (1) Browser query param / persisted preference.
-  try {
-    const p = new URLSearchParams(window.location.search);
-    if (p.get("demo") === "0") localStorage.removeItem("veyrnox-demo");
-    else if (p.has("demo")) localStorage.setItem("veyrnox-demo", "1");
-    if (localStorage.getItem("veyrnox-demo") === "1") return true;
-  } catch {
-    // window/localStorage unavailable — fall through to the native check.
+    // (1) Browser query param / persisted preference.
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("demo") === "0") localStorage.removeItem("veyrnox-demo");
+      else if (p.has("demo")) localStorage.setItem("veyrnox-demo", "1");
+      if (localStorage.getItem("veyrnox-demo") === "1") return true;
+    } catch {
+      // window/localStorage unavailable — fall through to the native check.
+    }
+
+    // (3) Native dev builds (e.g. `cap run` against the dev server) default to
+    //     demo. import.meta.env.DEV is false in any production build, so this
+    //     never fires for a real release.
+    try {
+      if (import.meta.env.DEV && Capacitor.isNativePlatform()) return true;
+    } catch {
+      // Capacitor unavailable (plain web build) — ignore.
+    }
+
+    return false;
+  };
+
+  const demo = resolve();
+
+  // H-1 RUNTIME GUARD (belt-and-suspenders). The PRIMARY guard is at build time
+  // (vite.config.js throws if VITE_RELEASE=1 and VITE_DEMO_MODE=1 are both set),
+  // so a release bundle that resolves demo should be impossible to produce. This
+  // is the last-line assertion in case demo is somehow forced on in a release
+  // build through some other path: a release build (VITE_RELEASE=1) that still
+  // resolves demo hard-fails rather than silently caching the vault password in
+  // plaintext localStorage. NOTE we key off the explicit VITE_RELEASE flag, NOT
+  // import.meta.env.PROD — the legitimate demo build is itself a `vite build`
+  // (PROD=true), so PROD+demo is the NORMAL demo state and must stay allowed.
+  if (import.meta.env.VITE_RELEASE === "1" && demo) {
+    throw new Error(
+      "FATAL: DEMO mode resolved true in a VITE_RELEASE build. A release must " +
+        "never enable demo (it caches the vault password in plaintext). This " +
+        "bundle should have been blocked at build time — see vite.config.js.",
+    );
   }
 
-  // (3) Native dev builds (e.g. `cap run` against the dev server) default to
-  //     demo. import.meta.env.DEV is false in any production build, so this
-  //     never fires for a real release.
-  try {
-    if (import.meta.env.DEV && Capacitor.isNativePlatform()) return true;
-  } catch {
-    // Capacitor unavailable (plain web build) — ignore.
-  }
-
-  return false;
+  return demo;
 })();
 
 const iso = (d) => new Date(d).toISOString();
