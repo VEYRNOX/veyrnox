@@ -112,10 +112,35 @@ function BiometricOffer({ status, enabled, onToggle }) {
   );
 }
 
+// EXPLORE-MODE SHELL — renders the real app (Outlet) VIEW-ONLY behind a
+// persistent, non-dismissable "Create or import a wallet" CTA. There is nothing
+// to authenticate (no vault exists), so this is genuinely no-auth browsing; any
+// wallet-requiring action calls requireWallet() which leaves explore and shows
+// the create/import flow.
+function ExploreShell({ onCreate, children }) {
+  return (
+    <div className="min-h-screen">
+      {children}
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium flex items-center gap-1.5"><Eye className="h-3.5 w-3.5 text-primary" /> Exploring — view only</p>
+            <p className="text-[11px] text-muted-foreground truncate">No wallet yet. Create or import one to send, receive, and hold funds.</p>
+          </div>
+          <Button size="sm" className="gap-1.5 shrink-0" onClick={onCreate}>
+            <Wallet className="h-3.5 w-3.5" /> Create or import
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function WalletEntry() {
   const {
     isUnlocked, createWallet, importWallet, unlock, hasVault,
     enableBiometricUnlock, unlockWithBiometric,
+    exploreMode, enterExplore, leaveExplore, confirmWalletBackup,
   } = useWallet();
 
   // null until we know whether a vault exists; drives unlock vs first-run.
@@ -186,6 +211,10 @@ export default function WalletEntry() {
         if (!active) return;
         setVaultExists(v);
         setView(v ? "unlock" : "choose");
+        // EXPLORE-FIRST: with NO vault, default to view-only explore mode so the
+        // first open is the real app (honest $0 empty states), not a wall. A
+        // returning user (vault exists) never explores — they get the unlock gate.
+        if (!v) enterExplore();
         if (v && isBiometricUnlockEnabled()) {
           try { setBioReady(await hasStoredUnlockSecret()); }
           catch { setBioReady(false); }
@@ -285,6 +314,9 @@ export default function WalletEntry() {
   const finishCreate = async () => {
     setBusy(true);
     try {
+      // The user confirmed the mandatory backup — mark wallet 1 backed up so the
+      // multi-wallet portfolio doesn't then warn about the wallet they just saved.
+      confirmWalletBackup();
       if (bioEnabled && bioStatus?.available && createdPasswordRef.current) {
         const ok = await enableBiometricUnlock(createdPasswordRef.current);
         if (!ok) toast.warning("Biometric unlock wasn't enabled — your vault password is always your way in. You can enable it later in Security settings.");
@@ -322,6 +354,13 @@ export default function WalletEntry() {
   // screen during first-run create: the vault is already unlocked, but we keep
   // holding while `generatedSeed` is set until the user confirms the backup.
   if (isUnlocked && !generatedSeed) return <Outlet />;
+
+  // EXPLORE MODE: no vault on this device and the user is browsing view-only.
+  // Render the real app behind a persistent create/import CTA. Tapping it (or any
+  // wallet-requiring action via requireWallet()) leaves explore → the choose view.
+  if (vaultExists === false && exploreMode && !generatedSeed) {
+    return <ExploreShell onCreate={leaveExplore}><Outlet /></ExploreShell>;
+  }
 
   // Initial probe in flight (only relevant while still locked).
   if (vaultExists === null) {
@@ -426,6 +465,9 @@ export default function WalletEntry() {
               <Download className="h-4 w-4" /> Import an existing seed
             </Button>
           </div>
+          <button type="button" onClick={() => enterExplore()} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            ← Keep exploring (view only)
+          </button>
         </div>
       </EntryShell>
     );
