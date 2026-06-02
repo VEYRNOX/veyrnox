@@ -51,7 +51,21 @@ import {
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
-import { isBiometricUnlockEnabled, getBiometricStatus, BiometricGateError } from '@/lib/biometric';
+import {
+  isBiometricUnlockEnabled,
+  setBiometricUnlockEnabled,
+  getBiometricStatus,
+  BiometricGateError,
+} from '@/lib/biometric';
+// BIOMETRIC ONE-TAP UNLOCK CACHE (convenience over the existing vault). Stores
+// the vault password behind the biometric gate so a returning user can unlock
+// with Face ID instead of re-typing it. The password remains THE secret and the
+// always-available fallback; this never touches vault crypto. See lib/biometricUnlock.js.
+import {
+  storeUnlockSecret,
+  retrieveUnlockSecret,
+  clearUnlockSecret,
+} from '@/lib/biometricUnlock';
 // PASSKEY UNLOCK GATE (S1). The dual of the biometric gate: an ADDITIONAL
 // FIDO2/WebAuthn authentication factor in front of unlock. It is NOT key
 // custody — it stores only a public credential id, never touches the seed
@@ -384,6 +398,10 @@ export function WalletProvider({ children }) {
   const panicWipe = useCallback(async () => {
     try { await keyStore.clearVault(); } catch { /* may already be gone */ }
     const residual = await panicWipeLocal();
+    // Also destroy the biometric one-tap cache + preference: it holds a copy of
+    // the vault password, so a wipe must take it too.
+    setBiometricUnlockEnabled(false);
+    try { await clearUnlockSecret(); } catch { /* best-effort */ }
     lock();              // drop in-memory secret + reset session flags
     setWasWiped(true);   // UX/proof signal only (not a secret)
     return residual;     // { indexedDbKeys, vaultBlobCount, localStorageResidue, clean }
@@ -398,6 +416,11 @@ export function WalletProvider({ children }) {
     setIsDecoy(false);
     setIsHidden(false);
     setWasWiped(false); // a fresh wallet exists again; clear any prior wipe signal
+    // A brand-new wallet must not inherit a previous wallet's biometric one-tap
+    // cache/preference (its password wouldn't decrypt this vault). Reset so
+    // onboarding re-offers Face ID for THIS wallet. Best-effort.
+    setBiometricUnlockEnabled(false);
+    void clearUnlockSecret().catch(() => {});
     // STEALTH (S3): a primary vault now exists, so seed the chaff slot pool. Doing
     // it here (and on import/unlock) ties the pool's presence to "has a wallet"
     // — universal among users — rather than to hidden-wallet usage. Best-effort:
@@ -420,6 +443,9 @@ export function WalletProvider({ children }) {
     setIsDecoy(false);
     setIsHidden(false);
     setWasWiped(false); // a fresh wallet exists again; clear any prior wipe signal
+    // Reset any prior wallet's biometric one-tap cache/preference (see createWallet).
+    setBiometricUnlockEnabled(false);
+    void clearUnlockSecret().catch(() => {});
     void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
     touch();
     deriveAccounts(1);
@@ -441,6 +467,12 @@ export function WalletProvider({ children }) {
   // for verification (defence in depth alongside the unlocked session).
   const changePassword = useCallback(async (currentPassword, newPassword) => {
     await keyStore.changePassword(currentPassword, newPassword);
+    // If biometric one-tap unlock is on, the cached password just went stale —
+    // re-cache the NEW one so Face ID keeps working. (Best-effort; if it fails
+    // the user still has the new password as the fallback.)
+    if (isBiometricUnlockEnabled()) {
+      try { await storeUnlockSecret(newPassword); } catch { /* fall back to password */ }
+    }
     // Keep the session alive on its existing in-memory secret. touch() resets the
     // idle auto-lock so a successful change doesn't leave a stale countdown.
     touch();
@@ -555,6 +587,58 @@ export function WalletProvider({ children }) {
     // proceeding.
     return { passkeySkipped, biometricSkipped };
   }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate, runPasskeyGate, panicWipe]);
+
+  // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).
+  //
+  // enableBiometricUnlock(password): turn on Face ID unlock for a returning
+  // session. Called by first-run create/import (the only places that legitimately
+  // hold the plaintext vault password). It runs the biometric prompt once to
+  // confirm the user can satisfy it, then caches the password behind the
+  // biometric gate (lib/biometricUnlock.js) and flips the persisted preference.
+  // The password stays THE secret and the always-available fallback; this adds a
+  // convenience factor and NEVER weakens the vault. Returns false (and enables
+  // nothing) on plain web or when biometrics are unavailable/cancelled.
+  const enableBiometricUnlock = useCallback(async (password) => {
+    const status = await getBiometricStatus();
+    if (!status.available) return false; // web / no platform biometric → password only
+    if (status.mode === 'demo') {
+      try { await showSimulatedPrompt(status); } // prove it works now; cancel → don't enable
+      catch { return false; }
+    }
+    // native available: the REAL OS sheet gates retrieval at unlock time; store now.
+    try {
+      const stored = await storeUnlockSecret(password);
+      if (!stored) return false;
+    } catch { return false; }
+    setBiometricUnlockEnabled(true);
+    return true;
+  }, [showSimulatedPrompt]);
+
+  // Turn Face ID unlock back off: clear the persisted preference AND wipe the
+  // cached password so it never lingers at rest once the feature is disabled.
+  const disableBiometricUnlock = useCallback(async () => {
+    setBiometricUnlockEnabled(false);
+    try { await clearUnlockSecret(); } catch { /* best-effort */ }
+  }, []);
+
+  // unlockWithBiometric(): the one-tap returning-user path. Satisfy the biometric
+  // gate (demo simulated prompt here; on native the real OS sheet fires inside
+  // keyStore.unlock below), retrieve the cached vault password, then unlock with
+  // it. We pass skipBiometric so the app-layer gate isn't run twice. THROWS a
+  // BiometricGateError on cancel/unavailable/missing-cache so the UI falls back
+  // to the vault password field — which always works (it is the real key).
+  const unlockWithBiometric = useCallback(async () => {
+    const status = await getBiometricStatus();
+    if (!status.available) throw new BiometricGateError('unavailable');
+    if (status.mode === 'demo') {
+      try { await showSimulatedPrompt(status); }
+      catch (err) { throw new BiometricGateError('cancelled', err); }
+    }
+    // native: the OS biometric sheet is presented inside keyStore.unlock().
+    const password = await retrieveUnlockSecret();
+    if (password == null) throw new BiometricGateError('no-secret');
+    return unlock(password, { skipBiometric: true });
+  }, [showSimulatedPrompt, unlock]);
 
   // PROVISIONAL: fire the prompt on demand for the Security settings "Test"
   // button, so the simulated sheet can be shown on the simulator without an
@@ -759,6 +843,14 @@ export function WalletProvider({ children }) {
     withPrivateKey,
     clearVault: keyStore.clearVault,
     biometricPreview,
+    // BIOMETRIC ONE-TAP UNLOCK (convenience over the vault; password stays the
+    // fallback). enableBiometricUnlock(password) caches the password behind the
+    // biometric gate (used by first-run create/import); disableBiometricUnlock()
+    // turns it off and wipes the cache; unlockWithBiometric() is the returning-
+    // user one-tap path. See lib/biometricUnlock.js.
+    enableBiometricUnlock,
+    disableBiometricUnlock,
+    unlockWithBiometric,
     // PASSKEY (S1): preview/test the passkey gate from settings. Registration,
     // removal, status and the unlock preference are read/written directly from
     // lib/passkey.js by the settings UI; only the gate + simulated prompt need
