@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Copy, CheckCircle2, ChevronDown, ShieldCheck } from "lucide-react";
+import { Copy, CheckCircle2, ChevronDown, ShieldCheck, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import CoinLogo from "@/components/CoinLogo";
 
-export default function AccountHeader({ wallet, wallets, onWalletChange }) {
+export default function AccountHeader({ wallet, wallets, onWalletChange, onRenameWallet }) {
   const [copied, setCopied] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const isMobile = useIsMobile();
@@ -25,18 +25,32 @@ export default function AccountHeader({ wallet, wallets, onWalletChange }) {
   const WalletPickerContent = () => (
     <div className="space-y-1 p-2">
       {wallets.map(w => (
-        <button
+        <div
           key={w.id}
-          onClick={() => { onWalletChange(w); setShowPicker(false); }}
           className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-secondary transition-colors ${w.id === wallet.id ? "bg-secondary" : ""}`}
         >
-          <CoinLogo symbol={w.currency} size={32} />
-          <div className="text-left flex-1">
-            <p className="text-sm font-medium">{w.name}</p>
-            <p className="text-xs text-muted-foreground">{shortAddress(w.address)}</p>
-          </div>
-          {w.passkey_registered && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
-        </button>
+          <button
+            onClick={() => { onWalletChange(w); setShowPicker(false); }}
+            className="flex items-center gap-3 flex-1 text-left min-w-0"
+          >
+            <CoinLogo symbol={w.currency} size={32} />
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{w.name}</p>
+              <p className="text-xs text-muted-foreground">{shortAddress(w.address)}</p>
+            </div>
+          </button>
+          {w.passkey_registered && <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
+          {onRenameWallet && (
+            <button
+              onClick={() => { onRenameWallet(w); setShowPicker(false); }}
+              aria-label={`Rename ${w.name}`}
+              title="Rename wallet"
+              className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       ))}
     </div>
   );
@@ -74,18 +88,32 @@ export default function AccountHeader({ wallet, wallets, onWalletChange }) {
           {showPicker && (
             <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 w-64 bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
               {wallets.map(w => (
-                <button
+                <div
                   key={w.id}
-                  onClick={() => { onWalletChange(w); setShowPicker(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors ${w.id === wallet.id ? "bg-secondary" : ""}`}
                 >
-                  <CoinLogo symbol={w.currency} size={32} />
-                  <div className="text-left">
-                    <p className="text-sm font-medium">{w.name}</p>
-                    <p className="text-xs text-muted-foreground">{shortAddress(w.address)}</p>
-                  </div>
-                  {w.passkey_registered && <ShieldCheck className="h-3.5 w-3.5 text-primary ml-auto" />}
-                </button>
+                  <button
+                    onClick={() => { onWalletChange(w); setShowPicker(false); }}
+                    className="flex items-center gap-3 flex-1 text-left min-w-0"
+                  >
+                    <CoinLogo symbol={w.currency} size={32} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{w.name}</p>
+                      <p className="text-xs text-muted-foreground">{shortAddress(w.address)}</p>
+                    </div>
+                  </button>
+                  {w.passkey_registered && <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  {onRenameWallet && (
+                    <button
+                      onClick={() => { onRenameWallet(w); setShowPicker(false); }}
+                      aria-label={`Rename ${w.name}`}
+                      title="Rename wallet"
+                      className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}

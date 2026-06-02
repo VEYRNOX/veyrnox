@@ -51,7 +51,7 @@ import {
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
-import { isBiometricUnlockEnabled, getBiometricStatus } from '@/lib/biometric';
+import { isBiometricUnlockEnabled, getBiometricStatus, BiometricGateError } from '@/lib/biometric';
 // PASSKEY UNLOCK GATE (S1). The dual of the biometric gate: an ADDITIONAL
 // FIDO2/WebAuthn authentication factor in front of unlock. It is NOT key
 // custody — it stores only a public credential id, never touches the seed
@@ -180,11 +180,21 @@ export function WalletProvider({ children }) {
   // exists, so on a real device biometric is required regardless of this toggle;
   // full toggle enforcement on-device is part of the flagged audit/OS-enforced
   // rework. The toggle fully controls the demo path today.
+  // It THROWS a BiometricGateError (reason 'cancelled') when the gate is shown
+  // and the user cancels/fails it, so unlock() fails CLOSED and the UI can offer
+  // the password-only escape hatch (the dual of the passkey escape hatch). The
+  // escape hatch never weakens the vault — keyStore.unlock(password) below still
+  // requires the correct password (the real control); skipping the biometric
+  // factor is no weaker than the app's baseline custody.
   const runBiometricGate = useCallback(async () => {
     if (!isBiometricUnlockEnabled()) return;
     const status = await getBiometricStatus();
     if (status.mode === 'demo') {
-      await showSimulatedPrompt(status); // rejects on cancel → aborts unlock
+      try {
+        await showSimulatedPrompt(status); // rejects on cancel
+      } catch (err) {
+        throw new BiometricGateError('cancelled', err); // fail closed → escape hatch
+      }
     }
     // native/web: no app-layer prompt (see comment above).
   }, [showSimulatedPrompt]);
@@ -452,8 +462,21 @@ export function WalletProvider({ children }) {
   const unlock = useCallback(async (password, opts = {}) => {
     // PROVISIONAL app-layer biometric gate. In demo this shows the simulated
     // prompt; on native the real OS prompt fires inside keyStore.unlock(). A
-    // cancel here throws and aborts the unlock before any vault read.
-    await runBiometricGate();
+    // cancel here throws a BiometricGateError and aborts the unlock before any
+    // vault read.
+    //
+    // opts.skipBiometric (ESCAPE HATCH, dual of opts.skipPasskey): when true,
+    // bypass the app-layer biometric prompt and unlock with the password alone.
+    // The UI only offers this AFTER the biometric gate has actually FAILED, and
+    // it STILL requires the correct vault password below — so it is NO weaker
+    // than the app's baseline custody. It exists so a failed/cancelled biometric
+    // can never permanently strand a user from a vault their password opens.
+    // (On native the OS biometric sheet lives inside keyStore.unlock() and is
+    // not affected by this app-layer skip; the OS provides its own passcode
+    // fallback there. This hatch covers the demo/app-layer gate.)
+    if (!opts.skipBiometric) {
+      await runBiometricGate();
+    }
     // PASSKEY GATE (S1): an additional FIDO2 factor, parallel to the biometric
     // gate. No-op unless the user registered a passkey AND enabled the toggle.
     // A cancel/failure throws (fail closed) and aborts the unlock before any
@@ -467,6 +490,9 @@ export function WalletProvider({ children }) {
       const gate = await runPasskeyGate();
       if (gate.status === PASSKEY_GATE.UNAVAILABLE) passkeySkipped = 'unavailable';
     }
+    // Signal (not secret) when the biometric convenience factor was bypassed via
+    // the escape hatch, so the UI can disclose it rather than silently proceed.
+    const biometricSkipped = opts.skipBiometric ? 'escape-hatch' : null;
     // keyStore.unlock throws "No wallet found on this device" when absent and
     // rethrows decryptVault's wrong-password/tamper error — same as before.
     let mnemonic;
@@ -524,9 +550,10 @@ export function WalletProvider({ children }) {
     deriveAccounts(1);
     deriveBtc();
     deriveSol();
-    // Signal (not secret): tell the caller whether the passkey factor was dropped
-    // for this unlock so the UI can disclose it rather than silently proceeding.
-    return { passkeySkipped };
+    // Signal (not secret): tell the caller whether either convenience factor was
+    // dropped for this unlock so the UI can disclose it rather than silently
+    // proceeding.
+    return { passkeySkipped, biometricSkipped };
   }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // PROVISIONAL: fire the prompt on demand for the Security settings "Test"
