@@ -74,15 +74,39 @@ export default function PriceAlerts() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts"] }),
   });
 
+  // Evaluate alerts client-side against the live price feed (the same
+  // cryptocompare endpoint this page already polls — no new endpoint, no
+  // backend). This replaces the old `checkPriceAlerts` server function: the
+  // server iterated every user's alerts on a schedule; here we check only THIS
+  // device's alerts, on demand. Volatility alerts are left to the in-app poller
+  // (usePriceAlertNotifier) which needs two samples to measure a swing.
   const checkNow = async () => {
     setChecking(true);
     try {
-      const res = await base44.functions.invoke("checkPriceAlerts", {});
+      const livePrices = await fetchLivePrices();
+      const active = await base44.entities.PriceAlert.filter({ status: "active" });
+      let triggered = 0;
+      for (const alert of active) {
+        if (alert.alert_type === "volatility") continue;
+        const price = livePrices[alert.currency];
+        if (price == null) continue;
+        const hit =
+          (alert.direction === "above" && price >= alert.target_price) ||
+          (alert.direction === "below" && price <= alert.target_price);
+        if (hit) {
+          await base44.entities.PriceAlert.update(alert.id, {
+            status: "triggered",
+            triggered_at: new Date().toISOString(),
+            triggered_price: price,
+          });
+          triggered++;
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
-      const { triggered, checked } = res.data;
-      toast.success(`Checked ${checked} alerts — ${triggered} triggered`);
+      queryClient.invalidateQueries({ queryKey: ["live-prices"] });
+      toast.success(`Checked ${active.length} alert${active.length === 1 ? "" : "s"} — ${triggered} triggered`);
     } catch {
-      toast.error("Check failed");
+      toast.error("Check failed — could not reach the price feed.");
     } finally {
       setChecking(false);
     }
@@ -137,6 +161,11 @@ export default function PriceAlerts() {
           </div>
         ))}
       </div>
+
+      {/* Honest scope: this is an on-device check, not a server push. */}
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        Alerts are checked on this device — automatically every minute while the app is open, and instantly with <span className="font-medium text-foreground">Check Now</span>. Firing while the app is fully closed would need a push server, which this local build doesn't include.
+      </p>
 
       {/* Triggered alerts */}
       {triggeredAlerts.length > 0 && (

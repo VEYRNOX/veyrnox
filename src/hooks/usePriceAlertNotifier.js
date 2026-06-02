@@ -41,11 +41,26 @@ export function usePriceAlertNotifier() {
     return unsub;
   }, [queryClient]);
 
-  // ── 2. Volatility polling: fire notification when price swings ≥ threshold ──
+  // ── 2. In-app polling: fire notification when a price-target is hit or a ──
+  //       price swings ≥ a volatility threshold. This is the on-device
+  //       replacement for the old `checkPriceAlerts` server cron: it runs every
+  //       60s WHILE THE APP IS OPEN against the same cryptocompare feed (no new
+  //       endpoint). Background-while-closed firing would need a push server,
+  //       which this local build doesn't ship.
   useEffect(() => {
     let active = true;
 
-    const pollVolatility = async () => {
+    const triggerAlert = async (alert, price) => {
+      await base44.entities.PriceAlert.update(alert.id, {
+        status: "triggered",
+        triggered_at: new Date().toISOString(),
+        triggered_price: price,
+      });
+      queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["price-alerts-triggered"] });
+    };
+
+    const pollAlerts = async () => {
       try {
         const res = await fetch(PRICE_URL);
         const raw = await res.json();
@@ -53,14 +68,15 @@ export function usePriceAlertNotifier() {
         for (const [coin, val] of Object.entries(raw)) current[coin] = val.USD;
 
         const prev = prevPricesRef.current;
+        const alerts = await base44.entities.PriceAlert.filter({ status: "active" });
 
-        if (Object.keys(prev).length > 0) {
-          // Fetch active volatility alerts
-          const alerts = await base44.entities.PriceAlert.filter({ status: "active" });
-          for (const alert of alerts) {
-            if (!alert.volatility_pct || !alert.volatility_pct > 0) continue;
-            const c = alert.currency;
-            if (!prev[c] || !current[c]) continue;
+        for (const alert of alerts) {
+          const c = alert.currency;
+          if (current[c] == null) continue;
+
+          // Volatility alert: needs a previous sample to measure a swing.
+          if (alert.alert_type === "volatility" || alert.volatility_pct > 0) {
+            if (!prev[c]) continue;
             const swingPct = Math.abs(((current[c] - prev[c]) / prev[c]) * 100);
             if (swingPct >= alert.volatility_pct) {
               const direction = current[c] > prev[c] ? "📈 up" : "📉 down";
@@ -68,15 +84,23 @@ export function usePriceAlertNotifier() {
                 `⚡ ${c} Volatility Alert!`,
                 `${c} moved ${direction} ${swingPct.toFixed(2)}% in the last interval (threshold: ${alert.volatility_pct}%)`,
               );
-              // Mark alert as triggered
-              await base44.entities.PriceAlert.update(alert.id, {
-                status: "triggered",
-                triggered_at: new Date().toISOString(),
-                triggered_price: current[c],
-              });
-              queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
-              queryClient.invalidateQueries({ queryKey: ["price-alerts-triggered"] });
+              await triggerAlert(alert, current[c]);
             }
+            continue;
+          }
+
+          // Price-target alert: evaluable on every poll (no previous sample
+          // needed). This is what the server cron used to do.
+          if (alert.target_price == null) continue;
+          const hit =
+            (alert.direction === "above" && current[c] >= alert.target_price) ||
+            (alert.direction === "below" && current[c] <= alert.target_price);
+          if (hit) {
+            sendNotification(
+              `🔔 ${c} Price Alert Triggered!`,
+              `${c} hit $${current[c].toLocaleString()} (target: ${alert.direction} $${alert.target_price?.toLocaleString()})${alert.note ? " · " + alert.note : ""}`,
+            );
+            await triggerAlert(alert, current[c]);
           }
         }
 
@@ -85,8 +109,8 @@ export function usePriceAlertNotifier() {
     };
 
     // Poll every 60 seconds
-    pollVolatility();
-    const interval = setInterval(() => { if (active) pollVolatility(); }, 60_000);
+    pollAlerts();
+    const interval = setInterval(() => { if (active) pollAlerts(); }, 60_000);
     return () => { active = false; clearInterval(interval); };
   }, [queryClient]);
 }
