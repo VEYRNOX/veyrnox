@@ -32,6 +32,20 @@ export const BACKEND = DEMO ? 'demo' : (USE_HOSTED ? 'hosted' : 'local');
 // by AuthContext to decide whether to run the hosted-auth network path at all.
 export const HOSTED = BACKEND === 'hosted';
 
+// ON-DEVICE AUTH (base44 removal, Phase 2). True only in the default local build.
+//
+// In this build there is no hosted account: the user's seed/vault IS their
+// identity, so the SINGLE source of truth for access is the on-device vault
+// unlock (WalletProvider). The routing gate (components/WalletGate.jsx) requires
+// `isUnlocked` here, and the hosted-account flows (email/password login,
+// register, email OTP, social sign-in) are redirected to the on-device
+// create/import/unlock front door instead of rendering a fake login wall.
+//
+//   - local  : on-device unlock is the account (this flag true).
+//   - demo   : explicit fake-data tour — no gate, pre-seeded session (unchanged).
+//   - hosted : real hosted account layer still runs (opt-in, removed in Phase 4).
+export const WALLET_AUTH = BACKEND === 'local';
+
 // SERVER-DEPENDENT CAPABILITIES (base44 removal, Phase 3).
 //
 // Some features genuinely cannot run purely on-device — they need a server we
