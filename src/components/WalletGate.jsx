@@ -12,12 +12,14 @@
 // account layer via ProtectedRoute, which Phase 4 removes with the SDK).
 
 import { Outlet } from "react-router-dom";
-import { WALLET_AUTH } from "@/api/base44Client";
+import { WALLET_GATE } from "@/api/base44Client";
 import WalletEntry from "@/components/WalletEntry";
 
 export default function WalletGate() {
-  // demo / hosted: not the on-device-auth build → don't change behaviour.
-  if (!WALLET_AUTH) return <Outlet />;
+  // Gate-less ONLY for the web demo tour. Every native build — including a
+  // demo-data native build — gates here so the app's entry point is always the
+  // in-app create/import/unlock front door, never the marketing /landing page.
+  if (!WALLET_GATE) return <Outlet />;
 
   // local build: the vault unlock IS the gate. WalletEntry owns the locked⇄
   // unlocked transition (it renders <Outlet/> once unlocked) so it can hold the

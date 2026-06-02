@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { DEMO, demoBase44 } from '@/api/demoClient';
 import { localBase44 } from '@/api/localClient';
 
@@ -25,6 +26,27 @@ export const BACKEND = DEMO ? 'demo' : 'local';
 //   - local : on-device unlock is the account (this flag true).
 //   - demo  : explicit fake-data tour — no gate, pre-seeded session.
 export const WALLET_AUTH = BACKEND === 'local';
+
+// NATIVE PLATFORM (Capacitor iOS/Android). A native app must be FULLY
+// self-contained for auth — it must never route out to the marketing website
+// (or the in-app /landing marketing page) for login/entry. Resolved once at
+// module load; false on plain web and in tests where Capacitor is absent.
+export const NATIVE = (() => {
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
+})();
+
+// THE AUTH FRONT DOOR IS THE ON-DEVICE WALLETENTRY GATE.
+//
+// True whenever the seed/vault is the identity and the create/import/unlock
+// gate (components/WalletGate.jsx -> WalletEntry) is the sole entry point:
+//   - the default LOCAL build (WALLET_AUTH), web or native; AND
+//   - EVERY native build, even one shipped with the demo *data* layer
+//     (`mobile:build:demo`) — a native app must enter in-app, never at the
+//     marketing site. The demo seed still backs entity data once unlocked.
+//
+// Only the WEB demo tour (DEMO && !NATIVE) is a gate-less pass-through, so its
+// behaviour is unchanged (Exit returns to the public /landing page).
+export const WALLET_GATE = WALLET_AUTH || NATIVE;
 
 // SERVER-DEPENDENT CAPABILITIES.
 //
