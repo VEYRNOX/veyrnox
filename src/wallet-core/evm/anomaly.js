@@ -14,7 +14,7 @@
 //
 // LOCAL-ONLY — NO third-party scoring, NO phone-home:
 //   Every input is data the wallet already holds on-device: the user's own
-//   transaction history (base44 Transaction entities / demo seed), their address
+//   transaction history (the local Transaction store / demo seed), their address
 //   book + whitelist, and balances already read for the simulation. This file
 //   makes NO network calls of its own. It is the explicit OPPOSITE of the remote
 //   telemetry-scoring model the product's privacy wedge rejects.
