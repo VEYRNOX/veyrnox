@@ -48,6 +48,10 @@ export default function Dashboard() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("ETH");
+  // Rename an existing wallet (persisted via the local data layer). renameTarget
+  // holds the wallet being edited; renameName the in-progress new name.
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameName, setRenameName] = useState("");
   const [txSearch, setTxSearch] = useState("");
   const [txFilters, setTxFilters] = useState({ asset: "", type: "", dateFrom: "", dateTo: "" });
   const [widgets, setWidgets] = useState(() => {
@@ -83,6 +87,18 @@ export default function Dashboard() {
       setSelectedWalletId(newWallet.id);
       setOpen(false);
       setName("");
+    },
+  });
+
+  // Persist a renamed wallet through the same local data layer that created it
+  // (base44.entities.Wallet.update → IndexedDB), then refresh the wallets query
+  // so every place the name shows (picker, cards, token list) updates.
+  const renameWallet = useMutation({
+    mutationFn: ({ id, name }) => base44.entities.Wallet.update(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wallets"] });
+      setRenameTarget(null);
+      setRenameName("");
     },
   });
 
@@ -209,6 +225,7 @@ export default function Dashboard() {
           wallet={selectedWallet}
           wallets={wallets}
           onWalletChange={(w) => setSelectedWalletId(w.id)}
+          onRenameWallet={(w) => { setRenameTarget(w); setRenameName(w.name || ""); }}
         />
       )}
 
@@ -387,6 +404,37 @@ export default function Dashboard() {
               onClick={() => createWallet.mutate({ name, currency, address: generateAddress(currency), balance: 0 })}
             >
               {createWallet.isPending ? "Creating..." : "Create Wallet"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Wallet Dialog */}
+      <Dialog open={!!renameTarget} onOpenChange={(o) => { if (!o) { setRenameTarget(null); setRenameName(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rename Wallet</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Wallet Name</Label>
+              <Input
+                value={renameName}
+                onChange={e => setRenameName(e.target.value)}
+                placeholder="My ETH Wallet"
+                className="mt-1.5"
+                autoFocus
+                onKeyDown={e => {
+                  if (e.key === "Enter" && renameName.trim() && !renameWallet.isPending) {
+                    renameWallet.mutate({ id: renameTarget.id, name: renameName.trim() });
+                  }
+                }}
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!renameName.trim() || renameWallet.isPending}
+              onClick={() => renameWallet.mutate({ id: renameTarget.id, name: renameName.trim() })}
+            >
+              {renameWallet.isPending ? "Saving..." : "Save Name"}
             </Button>
           </div>
         </DialogContent>
