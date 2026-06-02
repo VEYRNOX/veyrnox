@@ -16,6 +16,8 @@
     "cap:sync": "cap sync",
     "mobile:build": "vite build && cap sync",
     "mobile:build:demo": "VITE_DEMO_MODE=1 vite build && cap sync",
+    "build:release": "VITE_RELEASE=1 vite build",
+    "mobile:build:release": "VITE_RELEASE=1 vite build && cap sync",
     "android:sync": "vite build && cap sync android",
     "android:open": "cap open android",
     "android:run": "vite build && cap run android"
