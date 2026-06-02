@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Send, Download, Settings, LogOut, Bell, Search,
   MoreHorizontal, ChevronLeft, ChevronRight, X, ChevronDown,
 } from "lucide-react";
-import { base44, WALLET_AUTH } from "@/api/base44Client";
+import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import CommandPalette from "./CommandPalette";
 import BackButton from "./BackButton";
@@ -48,13 +48,15 @@ export default function Layout() {
   // which the WalletGate then enforces (the unlock front door reappears). We
   // ALWAYS lock first (drops the in-memory secret) and then reset the route so
   // the user lands cleanly on the gate rather than on a now-locked deep page:
-  //   - local : navigate to "/" → a locked vault renders WalletEntry (unlock).
-  //   - demo  : there is no on-device gate, so call the (no-op) hosted logout
+  //   - gated (local build OR any native build): navigate to "/" → a locked
+  //             vault renders WalletEntry (unlock). A native app must ALWAYS
+  //             land on the in-app gate here, never the /landing marketing page.
+  //   - web demo: there is no on-device gate, so call the (no-op) hosted logout
   //             and return to the public landing screen so Exit still does
   //             something visible instead of silently no-op'ing.
   const signOut = () => {
     lock();
-    if (WALLET_AUTH) {
+    if (WALLET_GATE) {
       navigate("/", { replace: true });
     } else {
       base44.auth.logout();
