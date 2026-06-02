@@ -18,16 +18,21 @@
 //     (no fabricated balances/history). Pages render their normal empty
 //     states until the user/app creates data.
 //
-// SCOPE (Phase 1 of the base44 removal):
+// SCOPE (base44 removal):
 //   - ENTITY DATA is fully local here — NO hosted backend, NO network, NO keys.
-//   - auth / functions / integrations are intentionally NOT reimplemented in
-//     this phase. We reuse demoClient's no-op stubs for them so nothing phones
-//     home, and the real replacements land in later phases:
-//       * auth            → Phase 2 (on-device unlock is the account)
-//       * functions       → Phase 3 (rpcProxy / price / PDF — direct calls)
-//       * integrations    → Phase 3 (LLM / email)
-//     Features that depend on those stubs (LiveBalances RPC proxy, PriceAlerts
-//     server check, PDF export, AI pages, email) are inert until then.
+//   - functions (Phase 3): the old `functions.invoke` consumers were moved to
+//     direct client-side / wallet-core paths, so no app page calls this stub
+//     anymore:
+//       * rpcProxy        → LiveBalances reads via wallet-core/evm/provider
+//       * checkPriceAlerts→ PriceAlerts checks the cryptocompare feed in-app
+//       * generate*PDF    → exportCataloguePdf() renders with vendored jsPDF
+//     The no-op `functions.invoke` below is kept only as a harmless fallback.
+//   - integrations (Phase 3, DECISION PENDING): InvokeLLM (AI pages) and
+//     SendEmail (email OTP) genuinely need a server. In the local build the UI
+//     shows an honest "not available in this local build" state instead of
+//     calling these stubs (see base44Client LLM_AVAILABLE / EMAIL_AVAILABLE).
+//     The stubs remain so demo mode keeps its scripted tour behaviour.
+//   - auth (Phase 2): on-device unlock is the account.
 //
 // Nothing in this file touches real keys. Key custody/signing live entirely in
 // wallet-core and are unaffected.
