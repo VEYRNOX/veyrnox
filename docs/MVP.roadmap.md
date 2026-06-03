@@ -44,7 +44,7 @@ consolidated record + reasons: **docs/Feature-Status.md** and
 
 ## Status snapshot (what's done)
 
-DONE & verified (on `main`, **233 tests green**, clean history). At-a-glance
+DONE & verified (on `main`, **390 tests green**, clean history). At-a-glance
 truth table: docs/Feature-Status.md.
 - Phase A — real ETH key core (BIP-39/32/44, Argon2id+AES-GCM vault, local
   signing); derivation verified vs canonical address; a REAL Sepolia send proven
