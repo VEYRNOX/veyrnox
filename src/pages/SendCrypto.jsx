@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { logAuditEvent } from "../hooks/useAuditLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44, EMAIL_AVAILABLE } from "@/api/base44Client";
@@ -188,6 +188,14 @@ export default function SendCrypto() {
   const [approvalAck, setApprovalAck] = useState(false);
   const blockedByApproval = tokenCalldata?.kind === "approve" && tokenCalldata.unlimited && !approvalAck;
 
+  // Spend-limit acknowledgement. The cap is a warn-not-block control (matching
+  // screening/simulation/anomaly): a breach surfaces a clear warning the user can
+  // explicitly override. Reset whenever the breach could change — amount, asset,
+  // or recipient — so a prior acknowledgement never carries over to a changed or
+  // larger send (the freshness guarantee for the sign-time re-evaluation below).
+  const [limitAck, setLimitAck] = useState(false);
+  useEffect(() => { setLimitAck(false); }, [amount, selectedWallet?.currency, toAddress]);
+
   // Effective balance for max/limit checks: chain read for live assets, falling
   // back to the DB value only for not-yet-live assets (display only).
   const effectiveBalance = sendEnabled && liveBalance != null
@@ -317,7 +325,7 @@ export default function SendCrypto() {
         limits: txLimits,
         now: new Date(),
       });
-      if (limitGate.blocked) {
+      if (limitGate.blocked && !limitAck) {
         const daily = limitGate.reasons.find((r) => r.kind === "daily");
         throw new Error(
           daily
@@ -613,7 +621,7 @@ export default function SendCrypto() {
           <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
             <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <div className="text-xs text-destructive space-y-1 min-w-0">
-              <p className="font-semibold">Send blocked by your spending limit</p>
+              <p className="font-semibold">This send exceeds the spending limit you set</p>
               {limitEval.reasons.map((r, i) => (
                 <p key={i} className="text-destructive/90">
                   {r.kind === "per_tx"
@@ -622,6 +630,10 @@ export default function SendCrypto() {
                 </p>
               ))}
               <p className="text-destructive/70">Adjust the amount, or change the limit in Security Center.</p>
+              <label className="flex items-start gap-2 text-destructive cursor-pointer pt-0.5">
+                <input type="checkbox" checked={limitAck} onChange={e => setLimitAck(e.target.checked)} className="mt-0.5" />
+                I understand this exceeds my limit — send anyway.
+              </label>
             </div>
           </div>
         )}
@@ -629,7 +641,7 @@ export default function SendCrypto() {
         {step === "form" && (
           <Button
             className="w-full"
-            disabled={!walletId || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !sendEnabled || (sendEnabled && !isUnlocked) || limitEval.blocked}
+            disabled={!walletId || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !sendEnabled || (sendEnabled && !isUnlocked) || (limitEval.blocked && !limitAck)}
             onClick={() => setStep("verify")}
           >
             <ArrowUpRight className="h-4 w-4 mr-1.5" />
