@@ -15,9 +15,9 @@
 > explicit audit attention. Security features ENLARGE the audit scope — budget
 > for it.
 >
-> STATUS (verified vs code on `main`, 2026-06-01): S1 ✅ largely built, S2 ✅ core
-> built, S3 deniability stack ✅ built (PROVISIONAL, testnet/demo), S4 📋 not
-> built. ALL security features remain PROVISIONAL pending the independent audit.
+> STATUS (verified vs code on `main`, 2026-06-03): S1 ✅ largely built, S2 ✅ core
+> built, S3 deniability stack ✅ built (PROVISIONAL, testnet/demo), S4 🟡 first
+> item built (audit log). ALL security features remain PROVISIONAL pending the independent audit.
 > Markers: ✅ built · 🟡 partial · 📋 specced · 💡 idea · ❌ removed. At-a-glance
 > truth: **docs/Feature-Status.md** (authoritative when docs disagree).
 
@@ -157,19 +157,13 @@ so it is allowed, not a violation.)
 > decode + unlimited-allowance warning; per-chain recipient address validation;
 > transaction simulation (LOCAL-first pre-sign preview, `simulate.js`); anomaly /
 > fraud detection (LOCAL heuristics `anomaly.js`, PR #54); Security Dashboard
-> (read-only posture view, PR #53). 📋 NOT BUILT: suspicious-address threat-intel
-> screening; dApp security alerts; AI explanation.
+> (read-only posture view, PR #53). ✅ suspicious-address screening (local
+> on-device blocklist + OFAC sanctions snapshot, PR #70/#71). 📋 NOT BUILT: remote
+> threat-intel feed (deferred on privacy grounds); dApp security alerts; AI explanation.
 - **Token Approvals** — view + REVOKE ERC-20 allowances (the top drain vector).
   Reuses Phase B calldata/approval logic.
-- **Suspicious Address Checker** — screen recipient vs known-scam lists + warn on
-  look-alike / address-poisoning. Integrate a REPUTABLE THREAT-INTEL FEED
-  (e.g. Blockaid / Wallet Guard / ScamSniffer-style) for malicious address +
-  contract + phishing-domain screening.
-  - **PRIVACY TRADE-OFF (explicit design decision):** screening often means
-    sending the address/tx to a 3rd-party API — leaks user intent off-device,
-    which conflicts with a privacy-respecting self-custody wallet. Decide which
-    checks run LOCALLY (downloaded lists) vs. call out, and DISCLOSE it. Some
-    users choose wallets BECAUSE they don't phone home.
+- **Suspicious Address Checker** — ✅ BUILT (LOCAL-ONLY). The privacy trade-off below was decided in favour of NO phone-home: screening runs against on-device lists, not a third-party API. `evm/suspicious.js` is a pluggable-provider screen wired into the send risk assessment; `screenAddress` routes by family so EVM and BTC are both screened at runtime. Two local providers ship: a general blocklist (PR #70; burn sinks + a sanctioned address, scam/drainer categories deliberately EMPTY pending a maintained feed — no fabricated entries) and an OFAC sanctions provider (PR #71) over a bundled, dated OFAC SDN snapshot (`data/ofac-sanctioned.json`, rebuildable via `scripts/refresh-ofac-blocklist.mjs`; delisting-aware, e.g. Tornado Cash excluded post-2025; SOL not covered). Warns-not-blocks, never claims "safe". OFAC shipping is gated on legal review (sanctions data in a financial product).
+  - **REMOTE threat-intel feed (Blockaid / Wallet Guard / ScamSniffer-style)** — 📋 NOT BUILT, deliberately deferred. Such a feed means sending the address/tx to a 3rd-party API — leaking user intent off-device, which conflicts with a privacy-respecting self-custody wallet. If ever added it must be an off-by-default, disclosed opt-in; the local screen above is the always-on default.
   - **Framing:** warnings INFORM, never GUARANTEE ("we couldn't verify this", not
     "this is safe") — avoids false-assurance trust/liability.
 - **Transaction simulation (HIGHEST-VALUE drainer defense)** — show the user the
@@ -404,13 +398,13 @@ see the removed record under "Explicitly EXCLUDED".)
 
 ## S4 — Hardening & monitoring
 ~3–4 weeks.
-> 📋 NOT BUILT — none of S4 is implemented; RASP / Audit Log / Risk Limits /
+> 🟡 FIRST ITEM BUILT — Audit Log implemented (PR #72, local/in-vault); RASP / Risk Limits /
 > Cloud Backup / Anomaly Detection exist only as UI shells. No-telemetry mode +
 > privacy routing remain 💡 ideas.
 - **RASP** (Runtime App Self-Protection) — jailbreak/root/tamper/debugger/emulator
   detection on mobile; warn/lock on compromise. Via a mobile security SDK or
   vetted libs. Pure defensive tech, NO regulatory downside; helps store review.
-- **Audit Log** — record of security-relevant actions (needs backend).
+- **Audit Log** — ✅ BUILT (PR #72, opt-in, OFF by default, LOCAL — no backend). `auditLog.js` stores entries as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. A hard in-code denylist refuses any duress/stealth/hidden/panic/decoy/seed event (independent of the allowlist); only benign `{type, ts}` events are logged, ring-buffered. NOTE: built as a local in-vault primitive, NOT the "needs backend" design originally sketched here; not yet wired into call sites.
 - **Wallet Risk Limits / Risk Scoring** — rule-based send limits / risk flags.
   Start simple (rules), evolve.
 - **Encrypted Cloud Backup** — back up the CIPHERTEXT vault only (NEVER plaintext

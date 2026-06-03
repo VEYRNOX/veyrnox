@@ -43,6 +43,7 @@ contract math.
   no key material logged or serialized.
 - **Key lifetime in memory**: seed/private keys held only as long as a signing
   op needs; cleared on lock; never in webview storage on native (post-M2).
+- **Audit log** (`auditLog.js`, S4 — PR #72): opt-in, OFF by default. Entries are stored as a single AES-GCM blob (via `vault.js encryptVault`) in the SAME `veyrnox-vault`/`vault` store as the primary vault, duress decoy, stealth pool, and panic marker, under a neutral key — byte-shaped identically to every other vault blob. **Audit focus — review ALONGSIDE the deniability stack, not as a generic logging feature:** verify (a) it is destroyed by panic wipe (it's in the cleared store); (b) the in-code denylist genuinely cannot record any duress/stealth/hidden/panic/decoy/seed event — its whole safety claim is that it cannot betray the deniability features; (c) the blob is indistinguishable in shape from other vault blobs (not a forensic tell); (d) when disabled, nothing is written at all. A naive audit log on a deniability wallet is a security regression; confirm this one isn't.
 
 ### 2. EVM operations — `src/wallet-core/evm/`
 - **Networks** (`networks.js`): chainId correctness (verified vs ethereum-lists),
@@ -122,6 +123,11 @@ key/signing attack surface (the audit now covers TWO curves, not one).
   and reviewed (harness: `scripts/sol-devnet-send.mjs`), then → live; mainnet
   stays gated until this audit clears.
 
+### 2d. Address screening (S2, NEW surface) — `src/wallet-core/evm/suspicious.js` + `src/wallet-core/data/`
+LOCAL-only recipient screening wired into the send risk assessment; warns-not-blocks, never asserts "safe". Pluggable-provider design; `screenAddress` routes by family so EVM and BTC addresses are both screened at runtime.
+- **Providers**: a general on-device blocklist (PR #70 — burn sinks + a sanctioned address; scam/drainer categories deliberately empty, no fabricated entries) and an OFAC sanctions provider (PR #71) over a bundled, dated OFAC SDN snapshot (`data/ofac-sanctioned.json`, ~700 entries, rebuilt via `scripts/refresh-ofac-blocklist.mjs`).
+- **Audit focus**: (a) screening is advisory and cannot block/alter a signed tx or leak intent off-device (no phone-home — verify no network in this path); (b) data PROVENANCE and currency — the snapshot is dated and delisting-aware (e.g. Tornado Cash excluded post-2025 delisting), so a stale snapshot must not produce false sanctions hits; (c) family routing correctly screens BTC at runtime, not only in unit tests. NOTE: OFAC sanctions screening in a financial product is gated on independent LEGAL review (separate from this security audit) before it may ship.
+
 ### 3. Native secure storage (post-M2) — mobile
 - iOS Secure Enclave/Keychain + Android Keystore/StrongBox integration.
 - Biometric gating of unlock / transaction authorisation.
@@ -167,7 +173,7 @@ its own audit scope (and Phase D notably expands it a lot).
 - **Budget for the re-review:** the second-pass verification of your fixes is
   usually billed separately — plan for it.
 - **Rush = +30–50%.** Tier-1 firms have 2–3 month waitlists → engage early.
-- **Good docs + tests cut cost 15–25%** → your clean repo, 58 tests, and these
+- **Good docs + tests cut cost 15–25%** → your clean repo, 390 tests, and these
   design docs are a direct discount lever.
 
 ---
