@@ -186,11 +186,12 @@ export function assessEvmTransaction({
     });
   }
 
-  // 2b. Recipient screened against pluggable blocklist providers (default: the
-  //     LOCAL on-device blocklist in suspicious.js — sanctioned / scam / drainer /
-  //     burn). WARNS, never blocks, never asserts "safe". Burn/null sinks are
-  //     already surfaced by the known-bad check above, so we skip that category
-  //     here to avoid a duplicate warning. Built so a future opt-in remote
+  // 2b. Recipient screened against pluggable blocklist providers. The DEFAULT set
+  //     (suspicious.js DEFAULT_PROVIDERS) is now the LOCAL seed blocklist PLUS the
+  //     bundled OFAC SDN snapshot — both on-device, no network. Covers sanctioned /
+  //     scam / drainer / burn. WARNS, never blocks, never asserts "safe". Burn/null
+  //     sinks are already surfaced by the known-bad check above, so we skip that
+  //     category here to avoid a duplicate warning. Built so a future opt-in remote
   //     threat-intel provider can be passed in without touching this code.
   const screened = screenAddress(effectiveRecipient);
   for (const m of screened.matches) {
