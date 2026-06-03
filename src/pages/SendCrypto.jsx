@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { logAuditEvent } from "../hooks/useAuditLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44, EMAIL_AVAILABLE } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -395,7 +394,6 @@ export default function SendCrypto() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet?.address] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      logAuditEvent({ action: `Sent ${amount} ${selectedWallet?.currency} to ${toAddress}`, category: "transaction", details: `Wallet: ${selectedWallet?.name} • tx ${result?.hash}`, severity: "info" });
       setTxResult(result);
       setStep("done");
     },
