@@ -25,5 +25,14 @@ export default defineConfig({
     // this reflects the heavier (intended) KDF cost, not slow test logic.
     testTimeout: 60000,
     hookTimeout: 60000,
+    // Cap parallelism so concurrent 192 MiB Argon2id KDF allocations don't
+    // exhaust the WASM heap (the pre-existing `RangeError: Invalid typed array
+    // length` OOM flake). Vitest 4 removed `poolOptions`; the cap is now set via
+    // the top-level `maxWorkers`/`minWorkers`. Pin to 1 (not 2) — two concurrent
+    // 192 MiB derivations were enough to exhaust the heap, so we run the KDF
+    // tests strictly serially with a single fork.
+    pool: 'forks',
+    maxWorkers: 1,
+    minWorkers: 1,
   },
 });
