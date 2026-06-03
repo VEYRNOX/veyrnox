@@ -10,12 +10,12 @@
 >
 > Standing rules (unchanged, still true): **testnet/devnet only; mainnet gated**
 > until an independent audit clears; every security/crypto feature is
-> **PROVISIONAL pending that audit**. Status last verified: 2026-06-01.
+> **PROVISIONAL pending that audit**. Status last verified: 2026-06-03.
 
 ---
 
 ## Reality check (read first)
-- **Test suite:** 258 tests across 25 files, all green (`npm test`); `check:rng` green.
+- **Test suite:** 390 tests across 39 files, all green (`npm test`); `check:rng` green.
 - **What actually SENDS on-chain today:** **only ETH on Sepolia** is `live`
   (send verified end-to-end). **Every other asset is `receive_only`** — see the
   table below. Receiving and balance reads work for all 10 assets; the send
@@ -92,7 +92,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Spam-token filter — ✅ (`evm/spam.js`)
 - Calldata decode / approval (unlimited-allowance) warning — ✅ (`evm/calldata.js`)
 - Per-chain recipient address validation — ✅ (`lib/addressValidation.js`; wired into Address Book save + send)
-- Suspicious-address / threat-intel feed screening — 📋 not built (privacy trade-off undecided)
+- Suspicious-address screening (local, pluggable providers) — ✅ (PR #70) on-device blocklist via `evm/suspicious.js`, wired into the send risk assessment, warns-not-blocks, never claims "safe". Scam/drainer categories ship empty pending a maintained feed (no fabricated entries).
+- OFAC sanctioned-address screening — ✅ (PR #71) second local provider over a bundled, dated OFAC SDN snapshot (`data/ofac-sanctioned.json`, refreshable via `scripts/refresh-ofac-blocklist.mjs`); family-aware routing screens EVM + BTC at runtime. Sanctions-only, dated, SOL not covered, delisting-aware (Tornado Cash excluded post-2025 delisting). Warns-not-blocks; shipping gated on legal review (sanctions data in a financial product).
 - Transaction simulation (drainer defense) — ✅ LOCAL-first pre-sign preview wired into Send→verify (`evm/simulate.js` real `eth_call` dry-run + risk flags; `btc/simulate.js` + `sol/simulate.js` honest decode; `TransactionPreview.jsx`). No third-party scoring service. Warns-not-blocks; never claims "safe". The old `WhatIfSimulator`/`SecurityScanner` UI shells remain 📋 separate stubs.
 - Anomaly / fraud detection — ✅ (PR #54) LOCAL history-aware heuristics (`anomaly.js`) folded into the tx-simulation preview: amount-vs-history, new-recipient-large, approve-then-transfer; no phone-home, never claims "safe".
 - Security Dashboard (read-only posture view) — ✅ (PR #53) aggregates existing signals (`securityPosture.js`, `SecurityDashboard.jsx`); reuses approvals/spam/poison/feature-status, no new detection, never claims "safe".
@@ -109,9 +110,10 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Crypto Will / inheritance — 📋 not built (roadmap; secret-sharing + dead-man's-switch design; audit + lawyer; defer)
 - Multi-sig (personal + treasury) — ❌ removed [audit-blocked-and-not-advertised] (was UI shell `MultiSigWallets.jsx` w/ fake addresses; page/route/nav/catalogue deleted)
 
-## 7. Security — S4 hardening — 📋 none built
+## 7. Security — S4 hardening — 🟡 first item built
 - RASP — 📋 UI shell only (`RASPSecurity.jsx`)
-- Audit log, risk limits / scoring — 📋 not built
+- Audit log (opt-in, deniability-safe) — ✅ (PR #72) OFF by default; entries stored as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. Hard in-code denylist refuses duress/stealth/hidden/panic/decoy/seed events; logs only benign `{type, ts}`. Primitive built + tested; not yet wired into call sites.
+- Risk limits / scoring — 📋 not built
 - Encrypted cloud backup (ciphertext only) — 📋 UI shell only (`CloudBackup.jsx`)
 - No-telemetry / fully-local mode, privacy routing (Tor / RPC) — 💡
 
@@ -121,6 +123,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - SAST M-3 (at-rest KDF work factor) + passkey lockout escape hatch — ✅ fixed (PR #35/#40)
 - Validation / fund-correctness / render-safety sweep — ✅ doc + per-chain address-validation fix (PR #41/#42)
 - SAST S1/passkey findings — documented (review-only), see `docs/SAST_S1_FINDINGS.md`
+- Test-suite determinism (Argon2id WASM-heap OOM under parallel vitest) — ✅ fixed (PR #73); suite pinned to a single worker so the 192 MiB KDF can't exhaust the heap. Deterministic but slower; a test-only low-memory KDF override is the noted future fix.
 
 ## 9. AI (advisory only) — 💡 none built
 - Plain-language tx explanation, scam/phishing explanation, educational assistant, portfolio Q&A — 💡

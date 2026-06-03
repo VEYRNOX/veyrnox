@@ -12,7 +12,7 @@
 >
 > Verified against code on `main` (2026-06-01). At-a-glance truth table:
 > **docs/Feature-Status.md** (authoritative when docs disagree). NB: send is live
-> ONLY for ETH/Sepolia — every other asset is `receive_only`. 233 tests green.
+> ONLY for ETH/Sepolia — every other asset is `receive_only`. 390 tests green.
 
 ---
 
