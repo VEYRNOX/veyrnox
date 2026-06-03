@@ -37,6 +37,7 @@ import { getProvider } from './provider.js';
 import { describeErc20Call } from './calldata.js';
 import { TOKENS } from './tokens.js';
 import { screenRecipient, isLocallyFlagged } from './poison.js';
+import { screenAddress, CATEGORY_LABELS } from './suspicious.js';
 import { assessHistoryAnomalies } from './anomaly.js';
 
 // Sending at/above this fraction of the asset balance is "drain-like" — worth a
@@ -182,6 +183,23 @@ export function assessEvmTransaction({
       code: 'known_bad_recipient',
       title: 'Recipient on local known-bad list',
       detail: 'This address is on the local flagged list (e.g. a burn/null sink or a known scam sink). Sending here is very likely a mistake or a scam.',
+    });
+  }
+
+  // 2b. Recipient screened against pluggable blocklist providers (default: the
+  //     LOCAL on-device blocklist in suspicious.js — sanctioned / scam / drainer /
+  //     burn). WARNS, never blocks, never asserts "safe". Burn/null sinks are
+  //     already surfaced by the known-bad check above, so we skip that category
+  //     here to avoid a duplicate warning. Built so a future opt-in remote
+  //     threat-intel provider can be passed in without touching this code.
+  const screened = screenAddress(effectiveRecipient);
+  for (const m of screened.matches) {
+    if (m.category === 'burn') continue; // already flagged as known_bad_recipient
+    risks.push({
+      level: 'high',
+      code: 'flagged_recipient',
+      title: `Recipient flagged: ${CATEGORY_LABELS[m.category] || 'known bad'}`,
+      detail: `${m.note ? `${m.note} ` : ''}Source: ${m.source}. This is a WARNING from a local blocklist — it is not proof of wrongdoing, and an address that is NOT flagged is not proven trustworthy. Verify the recipient independently before sending.`,
     });
   }
 
