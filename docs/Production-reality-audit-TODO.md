@@ -65,3 +65,61 @@ docs/UI-audit-findings.md style: per page -> classification + disposition
 ## Related
 - docs/UI-audit-findings.md (first pass, 28 Criticals, 23 resolved)
 - docs/Production-readiness.md ("UI honesty" is a launch-review blocker)
+
+---
+
+## Classifier run (2026-06-04) — MACHINE SIGNAL, NOT VERIFIED
+
+> These tags come from a grep classifier over src/pages, not a code read. They are
+> SIGNALS for the verify pass, NOT verdicts. Do NOT promote anything here into
+> Feature-Status.md or Tiers.pricing.md until each page is individually verified.
+>
+> Tags: WALLET = touches real wallet-core (self-custody) · SVC = still reads the
+> base44 local/demo data layer (UNWIRED — shell, not yet real custody, but not
+> necessarily fake) · FAKE = fabricates data (Math.random/mock) · GATED = mode-aware.
+>
+> Key nuance: SVC ≠ remote server. base44 is now a local/demo data abstraction, so
+> SVC means "not yet wired to the real vault," i.e. a retainable shell, not a lie.
+> WALLET+SVC = real core mixed with some local/demo data — verify it isn't faking.
+
+### Self-custody core — real wallet-core, retain candidates (WALLET, no FAKE)
+ReceiveCrypto, WalletPortfolioPage, LiveBalances, GasFeeControl, SecurityScanner,
+TrustScore, DAppSecurityAlerts, DuressPin, PanicWipe, WalletAccessReset,
+WalletSeedQR (fixed #87). VERIFY-SVC: SuspiciousAddressChecker, StealthWallets,
+SpamTokenFilter, TokenApprovals, SecurityDashboard, HDWalletManager, NetworkManager,
+RecurringPayments, Settings. VERIFY-FAKE: TransactionHistory (WALLET+FAKE — real
+core, some seeded data). SendCrypto (GATED+WALLET+FAKE+SVC — core send; FAKE = the
+known latent 2FA Math.random, tracked separately).
+
+### Known / suspected FAKE — fix or honest-disable
+Known: ERC20Discovery (FAKE+SVC), SolanaTokens (FAKE), FraudDetection (SVC, fake AI scan).
+Verify: MultiChainNFT, PaymentLinks, SharedPortfolioView (all FAKE+SVC).
+Likely-cosmetic (verify, may be fine): PriceCharts (FAKE — probably sparkline noise),
+Dashboard (FAKE+SVC — the demo tour; real equivalent is WalletPortfolioPage).
+
+### Base44 data-layer shells — RETAINABLE, need wiring to real data (SVC, no WALLET/FAKE)
+Not fake — read local/demo data, unwired to real vault/chain. Retain + connect:
+Analytics, AdvancedAnalytics, PortfolioBenchmark, CorrelationMatrix,
+AssetCorrelationTimeline, PortfolioRiskScore, RiskScoring, SpendingPatterns,
+PLTracking, NetWorthTracker, Watchlist, NFTPortfolio, PortfolioSnapshots,
+OnChainAnalytics, PortfolioRewind, CustomIndexBuilder, SavingsGoals, BudgetLimits,
+InvoiceGenerator, TaxReport, FeeAnalytics, Calculator, AddressBook, SessionManager,
+SecurityCenter, AnomalyDetection, AuditLogPage, PriceAlerts, SmartAlerts,
+NotificationCentre, PushNotificationsPage.
+
+### Product decision — may NOT fit serverless self-custody (need a backend)
+Leaderboard, PublicProfiles, ReferralTracker, NewsSentimentPage. Decide whether a
+no-server self-custody wallet should carry a social/identity layer at all.
+
+### No tags — read needed
+BiometricAuth, VoiceCommands, Web3Browser, CustomDashboardWidgets, Subscription,
+HardwareWalletPage (honest "planned"), AIAssistant/AIPortfolioAdvisor/AIRebalancer
+(honest-disabled, GATED+SVC).
+
+### Rough buckets
+~22 self-custody (WALLET) → retain · ~6-8 FAKE → fix/disable · ~40 SVC shells →
+retainable, wire to real data · ~4 social/backend → product decision.
+
+### Next step
+Verify each page (methodology above), THEN update Feature-Status.md (confirmed-built)
+and Tiers.pricing.md (confirmed differentiators) — never from these tags alone.
