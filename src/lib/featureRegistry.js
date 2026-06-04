@@ -24,7 +24,7 @@ export const REASONS = {
 };
 
 // Explicit classifications. Seeded with the cuts the spec already locked (§4).
-export const FEATURE_REGISTRY = {
+const FEATURE_REGISTRY = {
   '/leaderboard': {
     status: 'cut',
     reason: REASONS.OFF_WEDGE,
