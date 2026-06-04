@@ -95,6 +95,7 @@ Sequence from here:
    (docs/Hosting.migration.md) — can land late, near launch.
 5. **MVP freeze.**
 
+
 **What blocks launch vs what's a fast-follow (clarification):**
 - **M2c/d (OS-enforced ACL) is a FAST-FOLLOW, not a launch blocker.** M2b (hardware-backed at-rest store + app-layer biometric gate) is the shippable security floor; M2c/d hardens it post-launch. The only catch: never claim OS-enforced hardware protection in-product until M2c/d is built AND real-device verified (see the Feature-Status M2c/d decision note). Shipping M2b honestly is fine.
 - **Per-asset send verification (A3) is harness-assisted but NOT automatable end-to-end.** The send scripts (`scripts/btc-testnet-send.mjs`, `scripts/sol-devnet-send.mjs`, and the EVM path) can broadcast real testnet txs, but the wallet must first be FUNDED from faucets (interactive, rate-limited — manual) and each result must be WITNESSED on a block explorer (amount / recipient / fee correct — human judgment). "Script broadcast OK" is necessary, not sufficient.
