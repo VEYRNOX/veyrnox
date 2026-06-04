@@ -6,6 +6,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
+import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -105,6 +106,7 @@ const SecurityScanner = lazy(() => import('./pages/SecurityScanner'));
 const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
 const ERC20Discovery = lazy(() => import('./pages/ERC20Discovery'));
 const Products = lazy(() => import('./pages/Products'));
+const Subscription = lazy(() => import('./pages/Subscription'));
 
 const AuthenticatedApp = () => {
   // Render the main app
@@ -223,6 +225,7 @@ const AuthenticatedApp = () => {
           <Route path="/products" element={<Products />} />
           <Route path="/docs" element={<Documentation />} />
           <Route path="/features" element={<Features />} />
+          <Route path="/plans" element={<Subscription />} />
         </Route>
         {/* Onboarding created a hosted-style wallet *entity* with a fabricated
             address. In the local build the real first run is the on-device
@@ -241,12 +244,14 @@ function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
       <WalletProvider>
-        <QueryClientProvider client={queryClientInstance}>
-          <Router>
-            <AuthenticatedApp />
-          </Router>
-          <Toaster />
-        </QueryClientProvider>
+        <TierProvider>
+          <QueryClientProvider client={queryClientInstance}>
+            <Router>
+              <AuthenticatedApp />
+            </Router>
+            <Toaster />
+          </QueryClientProvider>
+        </TierProvider>
       </WalletProvider>
     </ThemeProvider>
   )
