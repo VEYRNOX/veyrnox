@@ -5,7 +5,7 @@
 > chains you can use. Wedge: high-stakes / high-threat self-custodians (priced for
 > value protected, not for free-wallet volume).
 >
-> ⚠️ THIS IS A HYPOTHESIS, NOT VALIDATED. Prices ($12 / $40 / bespoke) and the
+> ⚠️ THIS IS A HYPOTHESIS, NOT VALIDATED. Prices (Pro ~$5–8 / Guardian $100+) and the
 > free-vs-paid split are unproven until tested with real prospective users. Do NOT
 > treat as fact in a deck — present as "model to validate." The single highest-value
 > next step is willingness-to-pay validation via customer conversations.
