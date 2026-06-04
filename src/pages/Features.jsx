@@ -166,7 +166,7 @@ const featureCategories = [
         name: "Hardware Wallet",
         status: "roadmap",
         summary: "Ledger / Trezor cold-key signing",
-        explanation: "Sign with an external hardware wallet so keys stay offline. Specced, not yet built — the current page is a UI preview, not a working device integration."
+        explanation: "Sign with an external hardware wallet so keys stay offline. Planned, not yet built — the page is an honest 'coming soon' placeholder, not a working device integration."
       }
     ]
   },
