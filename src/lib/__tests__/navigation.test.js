@@ -1,21 +1,18 @@
 // src/lib/__tests__/navigation.test.js
 import { describe, it, expect } from 'vitest';
 import { navGroups, searchableRoutes } from '../navigation';
+import { cutPaths } from '../featureRegistry';
 
 const allNavPaths = navGroups.flatMap((g) => g.items.map((i) => i.path));
 
 describe('navigation respects the feature registry', () => {
   it('drops every cut path from the sidebar/More nav', () => {
-    expect(allNavPaths).not.toContain('/leaderboard');
-    expect(allNavPaths).not.toContain('/public-profiles');
-    expect(allNavPaths).not.toContain('/shared-portfolio');
+    cutPaths().forEach((p) => expect(allNavPaths).not.toContain(p));
   });
 
   it('drops every cut path from search', () => {
     const searchPaths = searchableRoutes.map((r) => r.path);
-    expect(searchPaths).not.toContain('/leaderboard');
-    expect(searchPaths).not.toContain('/public-profiles');
-    expect(searchPaths).not.toContain('/shared-portfolio');
+    cutPaths().forEach((p) => expect(searchPaths).not.toContain(p));
   });
 
   it('keeps disabled features visible (referrals still in nav)', () => {
