@@ -10,6 +10,7 @@ import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import FeatureRoute from '@/components/FeatureRoute';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -169,8 +170,8 @@ const AuthenticatedApp = () => {
           <Route path="/fee-analytics" element={<FeeAnalytics />} />
           <Route path="/correlation-timeline" element={<AssetCorrelationTimeline />} />
           <Route path="/dashboard-widgets" element={<CustomDashboardWidgets />} />
-          <Route path="/shared-portfolio" element={<SharedPortfolioView />} />
-          <Route path="/referrals" element={<ReferralTracker />} />
+          <Route path="/shared-portfolio" element={<FeatureRoute path="/shared-portfolio"><SharedPortfolioView /></FeatureRoute>} />
+          <Route path="/referrals" element={<FeatureRoute path="/referrals"><ReferralTracker /></FeatureRoute>} />
           <Route path="/wallet-seed-qr" element={<WalletSeedQR />} />
           <Route path="/hardware-wallet" element={<HardwareWalletPage />} />
           <Route path="/biometric-auth" element={<BiometricAuth />} />
@@ -179,8 +180,8 @@ const AuthenticatedApp = () => {
           <Route path="/index-builder" element={<CustomIndexBuilder />} />
           <Route path="/messenger-alerts" element={<MessengerAlerts />} />
           <Route path="/voice-commands" element={<VoiceCommands />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/public-profiles" element={<PublicProfiles />} />
+          <Route path="/leaderboard" element={<FeatureRoute path="/leaderboard"><Leaderboard /></FeatureRoute>} />
+          <Route path="/public-profiles" element={<FeatureRoute path="/public-profiles"><PublicProfiles /></FeatureRoute>} />
           <Route path="/ai-rebalancer" element={<AIRebalancer />} />
           <Route path="/token-approvals" element={<TokenApprovals />} />
           <Route path="/network-manager" element={<NetworkManager />} />
