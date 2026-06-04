@@ -95,6 +95,12 @@ Sequence from here:
    (docs/Hosting.migration.md) — can land late, near launch.
 5. **MVP freeze.**
 
+**What blocks launch vs what's a fast-follow (clarification):**
+- **M2c/d (OS-enforced ACL) is a FAST-FOLLOW, not a launch blocker.** M2b (hardware-backed at-rest store + app-layer biometric gate) is the shippable security floor; M2c/d hardens it post-launch. The only catch: never claim OS-enforced hardware protection in-product until M2c/d is built AND real-device verified (see the Feature-Status M2c/d decision note). Shipping M2b honestly is fine.
+- **Per-asset send verification (A3) is harness-assisted but NOT automatable end-to-end.** The send scripts (`scripts/btc-testnet-send.mjs`, `scripts/sol-devnet-send.mjs`, and the EVM path) can broadcast real testnet txs, but the wallet must first be FUNDED from faucets (interactive, rate-limited — manual) and each result must be WITNESSED on a block explorer (amount / recipient / fee correct — human judgment). "Script broadcast OK" is necessary, not sufficient.
+- **Mainnet send verification is MANUAL ONLY — never automate it.** Real-value sends are done by hand, deliberately, checking every field. Do not drive mainnet sends from an agent or script.
+- **M2b requires REAL-DEVICE verification before mobile launch.** Simulators/emulators have no Secure Enclave / StrongBox; hardware-backed storage + biometric behaviour must be confirmed on a physical iPhone (SE) and a StrongBox Android device.
+
 ### TRACK B — Legal / accounts (your homework; start NOW — longest lead)
 - **Register a legal entity** (with professional advice — structure/jurisdiction
   matters for a crypto product AND for clean build-to-sell). THE KEYSTONE: it
