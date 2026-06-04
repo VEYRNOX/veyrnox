@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { base44, LLM_AVAILABLE } from "@/api/base44Client";
 import { Send, Bot, Trash2, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import LocalBuildNotice from "@/components/LocalBuildNotice";
 import ReactMarkdown from "react-markdown";
 
 const AGENT_NAME = "assistant";
@@ -83,11 +84,13 @@ export default function AIAssistant() {
   }, [messages]);
 
   const loadConversations = async () => {
+    if (!LLM_AVAILABLE) return;
     const list = await base44.agents.listConversations({ agent_name: AGENT_NAME });
     setConversations(list || []);
   };
 
   const startNewConversation = async () => {
+    if (!LLM_AVAILABLE) return;
     const conv = await base44.agents.createConversation({
       agent_name: AGENT_NAME,
       metadata: { name: `Chat ${new Date().toLocaleDateString()}` },
@@ -100,6 +103,7 @@ export default function AIAssistant() {
   };
 
   const openConversation = async (convId) => {
+    if (!LLM_AVAILABLE) return;
     const conv = await base44.agents.getConversation(convId);
     setConversation(conv);
     setMessages(conv.messages || []);
@@ -107,6 +111,7 @@ export default function AIAssistant() {
   };
 
   useEffect(() => {
+    if (!LLM_AVAILABLE) return;
     if (!conversation?.id) return;
     const unsub = base44.agents.subscribeToConversation(conversation.id, (data) => {
       setMessages(data.messages || []);
@@ -116,6 +121,7 @@ export default function AIAssistant() {
   }, [conversation?.id]);
 
   const send = async (text) => {
+    if (!LLM_AVAILABLE) return;
     const msg = text || input.trim();
     if (!msg || sending) return;
     setInput("");
@@ -182,7 +188,15 @@ export default function AIAssistant() {
 
       {/* Chat area */}
       <div className="flex-1 overflow-y-auto space-y-4 pb-2">
-        {messages.length === 0 && (
+        {!LLM_AVAILABLE && messages.length === 0 && (
+          <div className="py-4">
+            <LocalBuildNotice
+              feature="AI chat"
+              detail="It needs a connection to an LLM service, which this offline-first build doesn't include. The rest of the app stays fully local and usable; only the AI chat is disabled."
+            />
+          </div>
+        )}
+        {LLM_AVAILABLE && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-6 py-8">
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
               <Sparkles className="h-8 w-8 text-primary" />
@@ -223,12 +237,13 @@ export default function AIAssistant() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Ask anything about crypto, DeFi, your portfolio..."
+            placeholder={LLM_AVAILABLE ? "Ask anything about crypto, DeFi, your portfolio..." : "AI chat unavailable in this build"}
+            disabled={!LLM_AVAILABLE}
             rows={1}
-            className="flex-1 bg-transparent resize-none text-sm outline-none placeholder:text-muted-foreground max-h-32 py-1"
+            className="flex-1 bg-transparent resize-none text-sm outline-none placeholder:text-muted-foreground max-h-32 py-1 disabled:cursor-not-allowed"
             style={{ fieldSizing: "content" }}
           />
-          <Button size="icon" className="h-8 w-8 shrink-0 rounded-xl" disabled={!input.trim() || sending} onClick={() => send()}>
+          <Button size="icon" className="h-8 w-8 shrink-0 rounded-xl" disabled={!input.trim() || sending || !LLM_AVAILABLE} onClick={() => send()}>
             <Send className="h-3.5 w-3.5" />
           </Button>
         </div>
