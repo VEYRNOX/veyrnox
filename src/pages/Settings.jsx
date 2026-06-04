@@ -4,7 +4,7 @@ import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
-import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, ClipboardList, Trash2, AlertTriangle, Network, CloudUpload, Key } from "lucide-react";
+import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, ClipboardList, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -138,6 +138,20 @@ export default function Settings() {
           ))
         )}
       </div>
+
+      {/* Current plan (display-only — see pages/Subscription.jsx; tier stays Free) */}
+      <Link to="/plans" className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Current plan: Free</p>
+            <p className="text-xs text-muted-foreground">View plans</p>
+          </div>
+        </div>
+        <span className="text-sm text-primary font-medium">View plans</span>
+      </Link>
 
       {/* Withdrawal Address Whitelist */}
       <div className="p-5 rounded-xl border border-border bg-card">
