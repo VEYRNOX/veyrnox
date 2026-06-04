@@ -139,12 +139,21 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 > What would have to be true before building: (a) independent security audit of the chosen recovery primitive; (b) legal review in target jurisdictions (estate/probate/fiduciary/regulatory); (c) for the Shamir path, social recovery first un-removed and audited (reversing a deliberate cut). Until all hold, spec-only.
 > Build note: touches key material and recovery — the most catastrophic surface to get wrong. Defer to a dedicated, audited, legally-reviewed effort; never casual feature work.
 
-## 7. Security — S4 hardening — 🟡 first item built
+## 7. Security — S4 hardening — 🟡 2 of 5 built; rest blocked / native / audit-gated
 - RASP — 📋 UI shell only (`RASPSecurity.jsx`)
 - Audit log (opt-in, deniability-safe) — ✅ (PR #72) OFF by default; entries stored as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. Hard in-code denylist refuses duress/stealth/hidden/panic/decoy/seed events; logs only benign `{type, ts}`. Primitive built + tested; not yet wired into call sites. WIRING BLOCKED (finding): recordAuditEvent encrypts under the vault PASSWORD, but WalletProvider deliberately does NOT retain the password after unlock (it re-prompts for each re-encrypt), so events like send_completed/settings_changed cannot be logged passively. Wiring requires an auditLog.js keying redesign — likely keying the log off the primary mnemonic (which the provider does hold while unlocked) rather than the password — to be decided in a dedicated session (touches the crypto module).
-- Risk limits / scoring — 📋 not built
+- Risk / spend limits — ✅ (PR #75; per-tx + daily caps, warn-with-acknowledgement). Risk *scoring* is not a separate build — transaction risk heuristics are covered by anomaly/fraud detection (S2).
 - Encrypted cloud backup (ciphertext only) — 📋 UI shell only (`CloudBackup.jsx`)
 - No-telemetry / fully-local mode, privacy routing (Tor / RPC) — 💡
+
+> **Decision note — S4 completion status (what's left, and why none is a near-term build):**
+> S4 cannot be "finished" in the JS/web environment — the remaining items are each blocked on something structural:
+> - Risk / spend limits — ✅ DONE (#75). The built S4 item.
+> - Audit log — 🟡 built but WIRING BLOCKED (#72 primitive; #77 finding): recordAuditEvent encrypts under the vault password, which WalletProvider deliberately does not retain, so passive events have no key to encrypt with. Needs an auditLog.js keying redesign (re-key off the primary mnemonic) — a crypto-module change for a dedicated session.
+> - RASP — 📋 native, not buildable here. Jailbreak/root/debugger/tamper detection is iOS/Android platform code, unverifiable without real devices, audit-relevant (same class as M2c/d).
+> - Encrypted cloud backup — 📋 backend + audit gated. Ciphertext-only escrow of vault material needs a cloud target (backend was removed) and is key-handling — the catastrophic surface. Needs a backend decision + audit before any build.
+> - No-telemetry / privacy routing — 💡 largely already true: the wallet is no-phone-home by design (base44 removed; remote screening is a disclosed opt-in). "Completing" it is mostly documenting/enforcing the existing posture; Tor/RPC routing is a separate idea-stage item.
+> Bottom line: the buildable-in-JS S4 work is done. The remainder is a fresh crypto session (audit-log keying → wiring), a native-dev session with real devices (RASP), or backend+audit decisions (cloud backup) — none startable as casual feature work here.
 
 ## 8. SAST / validation hardening — ✅ merged
 - SAST M-1 (stealth slot-collision fund loss) — ✅ fixed (PR #33)
