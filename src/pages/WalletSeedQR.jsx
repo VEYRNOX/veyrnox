@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Eye, EyeOff, AlertTriangle, Shield, Printer } from "lucide-react";
@@ -6,46 +6,6 @@ import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-function SeedQRCanvas({ seed, size = 240 }) {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    if (!canvasRef.current || !seed) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, size, size);
-
-    const cells = 25;
-    const cellSize = size / cells;
-    const chars = seed.split("").map(c => c.charCodeAt(0));
-    const hashBase = chars.reduce((s, c) => s * 31 + c, 7);
-
-    ctx.fillStyle = "#111827";
-
-    // Finder patterns (corners)
-    [[0, 0], [cells - 7, 0], [0, cells - 7]].forEach(([ox, oy]) => {
-      for (let r = 0; r < 7; r++) {
-        for (let c = 0; c < 7; c++) {
-          const border = r === 0 || r === 6 || c === 0 || c === 6;
-          const inner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-          if (border || inner) ctx.fillRect((ox + c) * cellSize, (oy + r) * cellSize, cellSize, cellSize);
-        }
-      }
-    });
-
-    // Data cells
-    for (let r = 0; r < cells; r++) {
-      for (let c = 0; c < cells; c++) {
-        if ((r < 8 && c < 8) || (r < 8 && c >= cells - 8) || (r >= cells - 8 && c < 8)) continue;
-        const val = Math.sin(hashBase + r * 97 + c * 53 + r * c * 7) > 0.05;
-        if (val) ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
-      }
-    }
-  }, [seed, size]);
-
-  return <canvas ref={canvasRef} width={size} height={size} className="rounded-lg border border-border" />;
-}
 
 export default function WalletSeedQR() {
   const [selectedWalletId, setSelectedWalletId] = useState("");
@@ -55,6 +15,7 @@ export default function WalletSeedQR() {
   const [printed, setPrinted] = useState(false);
   const printRef = useRef(null);
 
+  // FOLLOW-UP (separate change): seed is sourced from the demo data layer (base44 mock), not the real vault. Rewire to WalletProvider before this is a real backup path. Tracked separately.
   const { data: wallets = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => base44.entities.Wallet.list() });
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
 
@@ -71,8 +32,6 @@ export default function WalletSeedQR() {
       <h2>${selectedWallet?.name || "Wallet"} — Seed Backup</h2>
       <p>${selectedWallet?.currency || ""} · ${selectedWallet?.address?.slice(0, 16) || ""}...</p>
       <div class="seed">${seedPhrase}</div>
-      <p>Scan QR code to import this wallet</p>
-      ${printRef.current?.innerHTML || ""}
       <p class="warning">⚠️ KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.</p>
     </body></html>`);
     w.document.close();
@@ -85,8 +44,8 @@ export default function WalletSeedQR() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold">Seed Key QR Generator</h1>
-        <p className="text-sm text-muted-foreground">Convert your wallet seed phrase into a scannable QR code for backup</p>
+        <h1 className="text-xl font-bold">Seed Phrase Backup</h1>
+        <p className="text-sm text-muted-foreground">Display and print your recovery phrase for secure offline backup.</p>
       </div>
 
       {/* Warning */}
@@ -97,8 +56,8 @@ export default function WalletSeedQR() {
         </div>
         <ul className="text-xs text-muted-foreground space-y-1 ml-7">
           <li>• Your seed phrase grants full wallet access — never share it</li>
-          <li>• Only generate QR codes in a private, secure environment</li>
-          <li>• Store printed QR codes in a fireproof safe or safety deposit box</li>
+          <li>• Only reveal your seed phrase in a private, secure environment</li>
+          <li>• Store the printed phrase in a fireproof safe or safety deposit box</li>
           <li>• This page never transmits or stores your seed phrase</li>
         </ul>
       </div>
@@ -143,8 +102,8 @@ export default function WalletSeedQR() {
       {isValidSeed && !confirmed && (
         <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5">
           <p className="text-sm font-semibold mb-2">Confirm you understand the risks</p>
-          <p className="text-xs text-muted-foreground mb-3">I understand this QR code contains my full wallet access and will store it securely offline.</p>
-          <Button size="sm" onClick={() => setConfirmed(true)} className="gap-2 w-full"><Shield className="h-4 w-4" /> I Understand — Generate QR</Button>
+          <p className="text-xs text-muted-foreground mb-3">I understand this reveals my full recovery phrase and will store it securely offline.</p>
+          <Button size="sm" onClick={() => setConfirmed(true)} className="gap-2 w-full"><Shield className="h-4 w-4" /> I Understand — Reveal Backup</Button>
         </div>
       )}
 
@@ -156,9 +115,9 @@ export default function WalletSeedQR() {
             <p className="text-sm font-semibold">{selectedWallet?.name || "Wallet"} Seed Backup</p>
           </div>
           <div className="flex justify-center" ref={printRef}>
-            <SeedQRCanvas seed={seedPhrase} size={220} />
+            <p className="font-mono text-sm break-all rounded-lg border border-border bg-muted/30 p-4 text-left">{seedPhrase}</p>
           </div>
-          <p className="text-xs text-muted-foreground">Scan with a wallet app to import</p>
+          <p className="text-xs text-muted-foreground">Write these words down in order and store them securely offline. Re-import by typing the words into a wallet — there is no scan-to-import.</p>
           {selectedWallet && (
             <p className="text-xs font-mono text-muted-foreground">{selectedWallet.currency} · {selectedWallet.address?.slice(0, 20)}...</p>
           )}
