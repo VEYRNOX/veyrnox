@@ -112,7 +112,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ## 7. Security — S4 hardening — 🟡 first item built
 - RASP — 📋 UI shell only (`RASPSecurity.jsx`)
-- Audit log (opt-in, deniability-safe) — ✅ (PR #72) OFF by default; entries stored as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. Hard in-code denylist refuses duress/stealth/hidden/panic/decoy/seed events; logs only benign `{type, ts}`. Primitive built + tested; not yet wired into call sites.
+- Audit log (opt-in, deniability-safe) — ✅ (PR #72) OFF by default; entries stored as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. Hard in-code denylist refuses duress/stealth/hidden/panic/decoy/seed events; logs only benign `{type, ts}`. Primitive built + tested; not yet wired into call sites. WIRING BLOCKED (finding): recordAuditEvent encrypts under the vault PASSWORD, but WalletProvider deliberately does NOT retain the password after unlock (it re-prompts for each re-encrypt), so events like send_completed/settings_changed cannot be logged passively. Wiring requires an auditLog.js keying redesign — likely keying the log off the primary mnemonic (which the provider does hold while unlocked) rather than the password — to be decided in a dedicated session (touches the crypto module).
 - Risk limits / scoring — 📋 not built
 - Encrypted cloud backup (ciphertext only) — 📋 UI shell only (`CloudBackup.jsx`)
 - No-telemetry / fully-local mode, privacy routing (Tor / RPC) — 💡
