@@ -105,10 +105,17 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Panic wipe (emergency local key destruction) — ✅ (`panic.js`; panic PIN at unlock + in-app guarded wipe; `inspectKeyMaterial()`)
 - Constant-KDF unlock timing across the deniability stack — ✅ (`deniabilityUnlock.js`; SAST M-2 fix)
 - Hardware wallet (Ledger / Trezor) — 📋 UI shell only (`HardwareWalletPage.jsx`, simulated connect; no HID/WebUSB)
-- Login activity (+ map) — 📋 UI shell only (needs backend)
+- Login activity (+ map) — ❌ re-scoped / out of scope (needs a backend removed with base44; a location/access-history log conflicts with the deniability stack). Best-of-breed successor specced below: "last successful unlock" timestamp. See S3 decision note.
 - Social recovery (guardian / SSS) — ❌ removed [audit-blocked-and-not-advertised] (never built; removed from UI/catalogue)
 - Crypto Will / inheritance — 📋 not built (roadmap; secret-sharing + dead-man's-switch design; audit + lawyer; defer)
 - Multi-sig (personal + treasury) — ❌ removed [audit-blocked-and-not-advertised] (was UI shell `MultiSigWallets.jsx` w/ fake addresses; page/route/nav/catalogue deleted)
+
+> **Decision note — Login activity re-scope (last-unlock timestamp):**
+> Original spec (cross-device sign-in history + location/map) is out of scope: needs a backend (removed with base44), and a location/IP/device access log is a surveillance/forensic artifact that conflicts with S3 — it can reveal that a hidden wallet was opened or when a duress credential was used. A self-custody deniable wallet has no account to show sign-in history for.
+> Best-of-breed successor (specced, NOT built): a "last successful unlock" timestamp, stored IN-VAULT (decoy vault carries its own independent value, cannot reveal the primary's), shown to the owner as a tamper signal. Deniability-clean.
+> Rejected: (B) plaintext failed-unlock counter — useful, but failed attempts occur BEFORE the vault is unlocked, so there is no key to encrypt under; forces an unencrypted on-disk artifact that display-suppression hides from a decoy session but not from forensic inspection, and panic-wipe must explicitly clear. Spends deniability for a failed-attempt count — bad trade for this product. (A) in-memory-only counter — deniability-clean but useless: does not survive app restart.
+> Structural blocker (shared with audit-log wiring, PR #77): cannot securely record an event that happens before the vault is unlocked — no key to encrypt under at that moment. Option C sidesteps it by recording only on successful unlock; failed-attempt tracking hits this wall.
+> Build note: Option C touches the unlock-success path in WalletProvider, must write/reset identically across primary/duress/hidden success (credential-blind), so deferred to a dedicated session.
 
 ## 7. Security — S4 hardening — 🟡 first item built
 - RASP — 📋 UI shell only (`RASPSecurity.jsx`)
