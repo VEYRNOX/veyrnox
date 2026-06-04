@@ -50,7 +50,7 @@ const FEATURE_REGISTRY = {
 const DEFAULT_ENTRY = { status: 'live' };
 
 export function getFeatureStatus(path) {
-  return FEATURE_REGISTRY[path] || DEFAULT_ENTRY;
+  return FEATURE_REGISTRY[path] ?? { ...DEFAULT_ENTRY };
 }
 
 export function isLive(path) {

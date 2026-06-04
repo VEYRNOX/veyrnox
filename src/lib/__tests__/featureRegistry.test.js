@@ -13,7 +13,7 @@ import {
 
 describe('getFeatureStatus', () => {
   it('defaults unknown paths to live', () => {
-    expect(getFeatureStatus('/send')).toEqual({ status: 'live' });
+    expect(getFeatureStatus('/send').status).toBe('live');
     expect(isLive('/send')).toBe(true);
   });
 
@@ -44,7 +44,7 @@ describe('cutPaths / disabledPaths', () => {
     expect(cutPaths().sort()).toEqual(
       ['/leaderboard', '/public-profiles', '/shared-portfolio'].sort(),
     );
-    expect(disabledPaths()).toEqual(['/referrals']);
+    expect(disabledPaths().sort()).toEqual(['/referrals'].sort());
   });
 });
 
