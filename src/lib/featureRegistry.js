@@ -50,7 +50,9 @@ const FEATURE_REGISTRY = {
 const DEFAULT_ENTRY = { status: 'live' };
 
 export function getFeatureStatus(path) {
-  return FEATURE_REGISTRY[path] ?? { ...DEFAULT_ENTRY };
+  // Always hand back a fresh copy so a caller mutating the result can't corrupt
+  // the shared registry entry (listed paths) — uniform with the default case.
+  return { ...(FEATURE_REGISTRY[path] ?? DEFAULT_ENTRY) };
 }
 
 export function isLive(path) {
