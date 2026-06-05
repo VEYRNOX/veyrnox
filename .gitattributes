@@ -1,0 +1,29 @@
+# Normalize line endings. Store LF in the repo for every text file AND check it
+# out as LF everywhere (this overrides core.autocrlf), so working trees stay
+# consistent across macOS/Linux/Windows and match CI. Fixes the recurring
+# "LF will be replaced by CRLF" churn — most visibly the android/*.gradle files.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF or they misbehave when run on Windows.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Unix shell scripts must stay LF (covers *.sh and the extension-less gradlew,
+# the latter via the default rule above — listed here for intent).
+*.sh    text eol=lf
+
+# Binary assets: never apply EOL conversion or text diffing.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.pdf   binary
+*.jar   binary
+*.keystore binary
