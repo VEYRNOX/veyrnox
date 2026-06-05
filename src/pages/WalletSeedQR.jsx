@@ -7,6 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Escape HTML metacharacters before interpolating user-controlled strings (the
+// wallet name and the seed phrase the user typed) into the print document's
+// markup. Without this, those values are written raw into document.write — a
+// (self-)injection shape in a seed-handling flow. Escaping is a no-op for normal
+// mnemonic words/labels, so it never changes the printed output.
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export default function WalletSeedQR() {
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [seedPhrase, setSeedPhrase] = useState("");
@@ -21,7 +35,8 @@ export default function WalletSeedQR() {
 
   const handlePrint = () => {
     const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>Seed Backup — ${selectedWallet?.name || "Wallet"}</title><style>
+    const nameHtml = escapeHtml(selectedWallet?.name || "Wallet");
+    w.document.write(`<html><head><title>Seed Backup — ${nameHtml}</title><style>
       body { font-family: monospace; text-align: center; padding: 40px; }
       h2 { margin-bottom: 8px; }
       p { color: #666; font-size: 13px; margin: 4px 0; }
@@ -29,9 +44,9 @@ export default function WalletSeedQR() {
       canvas { margin: 20px auto; display: block; }
       .warning { color: #ef4444; font-size: 12px; margin-top: 20px; }
     </style></head><body>
-      <h2>${selectedWallet?.name || "Wallet"} — Seed Backup</h2>
-      <p>${selectedWallet?.currency || ""} · ${selectedWallet?.address?.slice(0, 16) || ""}...</p>
-      <div class="seed">${seedPhrase}</div>
+      <h2>${nameHtml} — Seed Backup</h2>
+      <p>${escapeHtml(selectedWallet?.currency || "")} · ${escapeHtml(selectedWallet?.address?.slice(0, 16) || "")}...</p>
+      <div class="seed">${escapeHtml(seedPhrase)}</div>
       <p class="warning">⚠️ KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.</p>
     </body></html>`);
     w.document.close();

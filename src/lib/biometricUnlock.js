@@ -9,21 +9,53 @@
 // │     uses to decrypt the audited Argon2id+AES-GCM vault (untouched here).  │
 // │   - This module stores a copy of that password behind the platform's      │
 // │     biometric gate so a returning user can unlock with Face ID instead of │
-// │     re-typing it. Retrieval is gated by biometric (real OS prompt on a    │
-// │     native device; the simulated prompt in demo). The password itself is  │
-// │     ALWAYS the fallback — Face ID failing/being unavailable just routes   │
-// │     the user to the password field. No biometric, no funds: the cache is  │
-// │     useless without also satisfying the vault decrypt.                    │
+// │     re-typing it. The password itself is ALWAYS the fallback — Face ID    │
+// │     failing/being unavailable just routes the user to the password field. │
+// │     No biometric, no funds: the cache is useless without also satisfying  │
+// │     the vault decrypt.                                                     │
 // │   - It introduces NO numeric PIN or other weak standalone unlock.         │
+// │                                                                            │
+// │ HOW THE BIOMETRIC GATE IS ENFORCED (read this — it is precise on purpose) │
+// │   The underlying secure-storage plugin (@aparajita/capacitor-secure-      │
+// │   storage) can pin an item's *accessibility* (whenPasscodeSetThisDevice-  │
+// │   Only — hardware-backed, device-only, passcode-required) but it does NOT │
+// │   expose the iOS access-control / SecAccessControl biometry flags         │
+// │   (kSecAccessControlBiometryCurrentSet / .userPresence) nor the Android   │
+// │   Keystore setUserAuthenticationRequired equivalent. So the Keychain      │
+// │   alone would release the cached password to any in-app caller on a       │
+// │   merely-unlocked device — accessibility is NOT a biometric gate.         │
+// │                                                                            │
+// │   We therefore enforce the biometric requirement at a single STRUCTURAL   │
+// │   CHOKEPOINT: `retrieveUnlockSecret()` is the ONLY path that releases the │
+// │   plaintext, and on native it performs a REAL OS biometric authenticate   │
+// │   (@aparajita/capacitor-biometric-auth, same policy as the audited        │
+// │   keystore/native.js → authenticateOrThrow) as a hard precondition BEFORE │
+// │   it reads the item. A cancelled/failed match throws; the secret is never │
+// │   read. The raw store read is a private function with no other caller.    │
+// │   `hasStoredUnlockSecret()` is a metadata-only presence check that does   │
+// │   NOT prompt (so the entry screen can show the one-tap button without     │
+// │   firing Face ID).                                                         │
+// │                                                                            │
+// │   LIMITATION (honest): this is an OS-enforced biometric match gating the  │
+// │   release in code, NOT a Keychain-bound item. It does not get             │
+// │   biometryCurrentSet's auto-invalidation (wipe the item if biometrics are │
+// │   added/changed) — that needs a native shim and is a documented follow-up.│
+// │   Because the cache and the vault blob are separate Keychain items, each   │
+// │   biometric-gated independently, the native one-tap flow presents the OS  │
+// │   biometric sheet TWICE (once here for the cache, once inside the          │
+// │   untouchable keyStore.unlock() for the vault). That second sheet is the   │
+// │   accepted, disclosed cost of OS-enforcing the cache without touching      │
+// │   wallet-core crypto.                                                      │
 // │                                                                            │
 // │ It does NOT touch vault.js / vaultStore.js / signing / derivation /       │
 // │ keystore. It is a separate, additive app-layer module.                    │
 // │                                                                            │
 // │ DEMO honesty: in demo the cache lives in localStorage and the prompt is a │
 // │ clearly-labelled SIMULATION (see BiometricPrompt.jsx) — NOT real OS       │
-// │ security. On a real native device the cache lives in the hardware-backed, │
-// │ ThisDeviceOnly, passcode-gated secure store (same store class as          │
-// │ keystore/native.js), and the real OS biometric sheet gates the unlock.    │
+// │ security, and NOT an OS authenticate(). On a real native device the cache │
+// │ lives in the hardware-backed, ThisDeviceOnly, passcode-gated secure store │
+// │ (same store class as keystore/native.js), and the real OS biometric sheet │
+// │ gates the release as described above.                                     │
 // └─────────────────────────────────────────────────────────────────────────┘
 
 import { Capacitor } from '@capacitor/core';
@@ -50,12 +82,76 @@ async function nativeStore(pw) {
   await SecureStorage.setDefaultKeychainAccess(KeychainAccess.whenPasscodeSetThisDeviceOnly);
   await SecureStorage.set(NATIVE_KEY, pw);
 }
-async function nativeGet() {
+
+// PRIVATE raw read — releases the PLAINTEXT cached password. Never exported and
+// never called except from retrieveUnlockSecret() AFTER a successful biometric
+// match. This single-caller structure is what makes the biometric gate
+// non-bypassable in app code; a test pins it (biometricUnlock-native.test.js).
+async function nativeReadSecret() {
   const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
   await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
   const v = await SecureStorage.get(NATIVE_KEY, false);
   return v == null ? null : String(v);
 }
+
+// PRIVATE presence check — metadata only (lists keys, never reads the value), so
+// it neither releases the secret nor triggers a biometric prompt. Mirrors
+// keystore/native.js's "hasVault is a presence check that does NOT prompt".
+async function nativeHasSecret() {
+  try {
+    const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
+    await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
+    const keys = await SecureStorage.keys();
+    return Array.isArray(keys) && keys.includes(NATIVE_KEY);
+  } catch {
+    return false;
+  }
+}
+
+// Hard OS biometric precondition for releasing the cached password. Same policy
+// as the audited keystore/native.js → authenticateOrThrow: require a real
+// biometric match (no silent passcode fallback), with a deliberate ONE-TIME
+// device-credential fallback only on biometryLockout, and a passcode fallback
+// when biometrics are not enrolled but the device IS secured. THROWS on
+// cancel/failure/lockout so the secret is never read on a failed match.
+async function nativeAuthenticateOrThrow() {
+  const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+  const info = await BiometricAuth.checkBiometry();
+
+  // No device security at all → a passcode-gated item cannot have been stored,
+  // and there is nothing to authenticate against.
+  if (!info.isAvailable && !info.deviceIsSecure) {
+    throw new Error(
+      'This device has no passcode or biometrics set; cannot release the cached unlock secret',
+    );
+  }
+
+  const reason = 'Unlock your Veyrnox wallet';
+  if (info.isAvailable) {
+    try {
+      await BiometricAuth.authenticate({
+        reason,
+        cancelTitle: 'Cancel',
+        androidTitle: 'Veyrnox',
+        androidSubtitle: 'Unlock your wallet',
+        allowDeviceCredential: false,
+      });
+      return;
+    } catch (err) {
+      // Lockout (too many failed biometric attempts) → fall back ONCE to the
+      // device credential, exactly like the keystore unlock policy.
+      if (err && err.code === 'biometryLockout') {
+        await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+        return;
+      }
+      throw err;
+    }
+  }
+
+  // Biometrics not enrolled but device IS secured → deliberate passcode fallback.
+  await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+}
+
 async function nativeClear() {
   try {
     const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
@@ -77,7 +173,8 @@ export function biometricUnlockSupported() {
 /**
  * Cache the vault password behind the biometric gate. Only callers that legitimately
  * hold the plaintext password (first-run create/import, or a password change) use
- * this. No-op on plain web (returns false).
+ * this. Storing does NOT release a secret, so it does not itself prompt for
+ * biometrics. No-op on plain web (returns false).
  * @returns {Promise<boolean>} true if stored.
  */
 export async function storeUnlockSecret(password) {
@@ -87,13 +184,22 @@ export async function storeUnlockSecret(password) {
 }
 
 /**
- * Retrieve the cached vault password. The CALLER must have just satisfied the
- * biometric gate (demo simulated prompt / native OS sheet) before calling this.
+ * Retrieve the cached vault password — THE single chokepoint that releases the
+ * plaintext. On native this performs a REAL OS biometric authenticate as a hard
+ * precondition (throws on cancel/failure; the item is never read on a failed
+ * match), so the secret is unreleasable without a fresh biometric match enforced
+ * by the OS — not just app-layer convention. In demo the caller shows the
+ * clearly-labelled SIMULATED prompt (unchanged); this returns the localStorage
+ * copy. Plain web caches nothing → null.
  * @returns {Promise<string|null>}
+ * @throws on native biometric cancel/failure/lockout (a BiometryError).
  */
 export async function retrieveUnlockSecret() {
   if (DEMO) return demoGet();
-  if (Capacitor.isNativePlatform()) return nativeGet();
+  if (Capacitor.isNativePlatform()) {
+    await nativeAuthenticateOrThrow(); // hard OS biometric precondition
+    return nativeReadSecret();
+  }
   return null;
 }
 
@@ -103,7 +209,14 @@ export async function clearUnlockSecret() {
   if (Capacitor.isNativePlatform()) await nativeClear();
 }
 
-/** @returns {Promise<boolean>} whether a cached password is currently present. */
+/**
+ * Whether a cached password is currently present. METADATA ONLY — this never
+ * reads the secret and never prompts for biometrics, so the entry screen can
+ * decide whether to offer the one-tap button without firing Face ID.
+ * @returns {Promise<boolean>}
+ */
 export async function hasStoredUnlockSecret() {
-  return (await retrieveUnlockSecret()) != null;
+  if (DEMO) return demoGet() != null;
+  if (Capacitor.isNativePlatform()) return nativeHasSecret();
+  return false;
 }

@@ -1011,9 +1011,16 @@ export function WalletProvider({ children }) {
   }, []);
 
   // unlockWithBiometric(): the one-tap returning-user path. Satisfy the biometric
-  // gate (demo simulated prompt here; on native the real OS sheet fires inside
-  // keyStore.unlock below), retrieve the cached vault password, then unlock with
-  // it. We pass skipBiometric so the app-layer gate isn't run twice. THROWS a
+  // gate, retrieve the cached vault password, then unlock with it.
+  //   - demo: the clearly-labelled SIMULATED prompt is shown here.
+  //   - native: retrieveUnlockSecret() now performs a REAL OS biometric match as
+  //     a hard precondition of releasing the cached password (lib/biometricUnlock
+  //     chokepoint); a cancel/failure THROWS and the secret is never read. We map
+  //     that throw to a BiometricGateError so the UI falls back to the password.
+  //     keyStore.unlock() below then presents its OWN OS biometric sheet to gate
+  //     the vault-blob decrypt — so native one-tap shows the sheet twice (the
+  //     disclosed cost of OS-enforcing the cache without touching wallet-core).
+  // We pass skipBiometric so the app-layer (demo) gate isn't run twice. THROWS a
   // BiometricGateError on cancel/unavailable/missing-cache so the UI falls back
   // to the vault password field — which always works (it is the real key).
   const unlockWithBiometric = useCallback(async () => {
@@ -1023,8 +1030,16 @@ export function WalletProvider({ children }) {
       try { await showSimulatedPrompt(status); }
       catch (err) { throw new BiometricGateError('cancelled', err); }
     }
-    // native: the OS biometric sheet is presented inside keyStore.unlock().
-    const password = await retrieveUnlockSecret();
+    // native: the OS biometric sheet fires inside retrieveUnlockSecret() (to
+    // release the cache) and again inside keyStore.unlock() (to read the vault).
+    let password;
+    try {
+      password = await retrieveUnlockSecret();
+    } catch (err) {
+      // A cancelled/failed biometric match on the cache release. Fail closed and
+      // route to the password fallback, same as a cancelled demo prompt.
+      throw new BiometricGateError('cancelled', err);
+    }
     if (password == null) throw new BiometricGateError('no-secret');
     return unlock(password, { skipBiometric: true });
   }, [showSimulatedPrompt, unlock]);
