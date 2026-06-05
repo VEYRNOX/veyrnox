@@ -44,6 +44,19 @@ export const USD_RATES = byKey("usd");
  * presented as a real-time market value. Single source of truth for the wording.
  */
 export const USD_REFERENCE_NOTE = "Reference rate, not live market data";
+/**
+ * Format a USD figure that was DERIVED from the static USD_RATES table, marked
+ * approximate (≈) and rounded to whole dollars, so a reference-rate number is
+ * never shown as an exact amount. Pairs with USD_REFERENCE_NOTE: that discloses
+ * WHY the figure is approximate, this renders the number itself. Use ONLY for
+ * converted values — NEVER for user-entered caps, which are exact. Non-finite,
+ * zero, sub-dollar, and negative inputs all render as "≈$0".
+ */
+export function approxUsd(usd) {
+  const n = Number(usd);
+  const dollars = Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  return `≈$${dollars.toLocaleString('en-US')}`;
+}
 /** { BTC: "#F7931A", ... } brand colours. */
 export const CURRENCY_COLORS = byKey("color");
 /** { BTC: "₿", ... } single-char glyphs. */
