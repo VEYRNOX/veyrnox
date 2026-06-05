@@ -12,6 +12,7 @@
 //   dataSource: 'wallet-core' | 'on-device' | 'base44-entities' | 'external'
 //               | 'invented' | 'static'
 
+// Must remain de-duplicated — the completeness/phantom tests rely on it.
 export const ALL_ROUTE_PATHS = [
   '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
   '/analytics', '/tax', '/security', '/security-dashboard', '/audit', '/nft',

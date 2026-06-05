@@ -1,6 +1,6 @@
 // src/lib/__tests__/featureClassification.test.js
 import { describe, it, expect } from 'vitest';
-import { ALL_ROUTE_PATHS, CLASSIFICATION } from '../featureClassification';
+import { ALL_ROUTE_PATHS, CLASSIFICATION, registryEntriesFromClassification } from '../featureClassification';
 
 const VERDICTS = ['live', 'disabled', 'cut'];
 
@@ -30,5 +30,30 @@ describe('classification completeness', () => {
         expect(['leaks', 'server', 'unverified'], `${path} reason`).toContain(entry.reason);
       }
     }
+  });
+
+  it('every cut entry carries reason off-wedge', () => {
+    for (const [path, entry] of Object.entries(CLASSIFICATION)) {
+      if (entry.verdict === 'cut') {
+        expect(entry.reason, `${path} reason`).toBe('off-wedge');
+      }
+    }
+  });
+});
+
+describe('registryEntriesFromClassification', () => {
+  it('omits live routes and maps non-live verdicts to { status, reason, note }', () => {
+    const out = registryEntriesFromClassification();
+    // No live/unlisted route should appear
+    expect(out['/send']).toBeUndefined();
+    // A seeded cut entry maps verdict -> status with reason + note
+    expect(out['/leaderboard']).toMatchObject({ status: 'cut', reason: 'off-wedge' });
+    expect(typeof out['/leaderboard'].note).toBe('string');
+    // A seeded disabled entry maps through
+    expect(out['/referrals']).toMatchObject({ status: 'disabled', reason: 'server' });
+    // Only non-live entries present (today: 4 seeds)
+    expect(Object.keys(out).sort()).toEqual(
+      ['/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio'].sort(),
+    );
   });
 });
