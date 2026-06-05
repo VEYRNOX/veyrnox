@@ -40,11 +40,11 @@ describe('getFeatureStatus', () => {
 });
 
 describe('cutPaths / disabledPaths', () => {
-  it('returns the expected sets', () => {
-    expect(cutPaths().sort()).toEqual(
-      ['/leaderboard', '/public-profiles', '/shared-portfolio'].sort(),
-    );
-    expect(disabledPaths().sort()).toEqual(['/referrals'].sort());
+  it('includes the originally-locked decisions', () => {
+    for (const p of ['/leaderboard', '/public-profiles', '/shared-portfolio']) {
+      expect(cutPaths()).toContain(p);
+    }
+    expect(disabledPaths()).toContain('/referrals');
   });
 });
 

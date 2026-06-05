@@ -1,6 +1,7 @@
 // src/lib/__tests__/featureClassification.test.js
 import { describe, it, expect } from 'vitest';
 import { ALL_ROUTE_PATHS, CLASSIFICATION, registryEntriesFromClassification } from '../featureClassification';
+import { getFeatureStatus } from '../featureRegistry';
 
 const VERDICTS = ['live', 'disabled', 'cut'];
 
@@ -55,5 +56,14 @@ describe('registryEntriesFromClassification', () => {
     expect(Object.keys(out).sort()).toEqual(
       ['/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio'].sort(),
     );
+  });
+});
+
+describe('registry is consistent with the audit', () => {
+  it('every non-live verdict is reflected in the runtime registry status', () => {
+    for (const [path, entry] of Object.entries(CLASSIFICATION)) {
+      if (entry.verdict === 'live') continue;
+      expect(getFeatureStatus(path).status, path).toBe(entry.verdict);
+    }
   });
 });
