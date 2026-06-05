@@ -1,3 +1,4 @@
+import { USD_RATES } from "@/lib/cryptos";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -5,7 +6,6 @@ import { TrendingUp, Activity, Target, AlertTriangle, BarChart3, Shield } from "
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const VOLATILITY = { BTC: 0.72, ETH: 0.85, SOL: 1.2, USDC: 0.01, USDT: 0.01 };
 const SHARPE = { BTC: 1.4, ETH: 1.1, SOL: 0.9, USDC: 0.05, USDT: 0.05 };
 const CORRELATION = [

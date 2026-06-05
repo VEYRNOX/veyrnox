@@ -1,3 +1,4 @@
+import { USD_RATES } from "@/lib/cryptos";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -9,7 +10,6 @@ import {
 } from "lucide-react";
 import moment from "moment";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 function historicalRate(currency, dateStr) {
   const base = USD_RATES[currency] || 1;

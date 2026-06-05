@@ -37,6 +37,13 @@ const byKey = (key) =>
 
 /** { BTC: 68000, ... } reference USD prices (mock). */
 export const USD_RATES = byKey("usd");
+/**
+ * Canonical human-facing disclosure for ANY figure derived from USD_RATES. These
+ * are STATIC reference prices, not a live feed, so anything converted through them
+ * (portfolio totals, per-asset USD, etc.) must show this so the number is never
+ * presented as a real-time market value. Single source of truth for the wording.
+ */
+export const USD_REFERENCE_NOTE = "Reference rate, not live market data";
 /** { BTC: "#F7931A", ... } brand colours. */
 export const CURRENCY_COLORS = byKey("color");
 /** { BTC: "₿", ... } single-char glyphs. */
