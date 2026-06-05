@@ -411,25 +411,13 @@ const featureCategories = [
     ]
   },
   {
-    category: "Social",
+    category: "Referrals",
     features: [
       {
         name: "Referral Tracker",
         status: "roadmap",
-        summary: "Track referral sign-ups",
-        explanation: "Generate referral links and track sign-ups. Specced, not yet built, with privacy caveats."
-      },
-      {
-        name: "Leaderboard",
-        status: "roadmap",
-        summary: "Opt-in performance ranking",
-        explanation: "Opt-in ranking of participating users. Specced, not yet built, with privacy caveats."
-      },
-      {
-        name: "Public Profiles",
-        status: "roadmap",
-        summary: "Opt-in shareable profile",
-        explanation: "An opt-in, privacy-controlled public profile. Specced, not yet built, with privacy caveats."
+        summary: "Privacy-preserving referrals (if buildable serverlessly)",
+        explanation: "Public ranking and public-profile features were cut on principle — a wallet must not publish who holds what. Referrals are kept only as a future option, and only if they can work without a server that links referrer and referee."
       }
     ]
   },
