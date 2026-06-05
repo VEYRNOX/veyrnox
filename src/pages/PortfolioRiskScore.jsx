@@ -1,9 +1,9 @@
+import { USD_RATES } from "@/lib/cryptos";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Zap } from "lucide-react";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from "recharts";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 const VOLATILITY = { BTC: 0.65, ETH: 0.75, SOL: 0.85, USDC: 0.01, USDT: 0.01 };
 
 function getRiskLabel(score) {

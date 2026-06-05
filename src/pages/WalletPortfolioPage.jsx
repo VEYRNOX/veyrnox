@@ -29,6 +29,7 @@ import { ASSETS, getAsset } from "@/wallet-core/assets.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { formatFiat } from "@/components/FiatCurrencySelector";
+import { USD_REFERENCE_NOTE } from "@/lib/cryptos";
 
 const fmtAmount = (n) =>
   n === 0 ? "0" : n < 0.0001 ? n.toExponential(2) : n.toLocaleString(undefined, { maximumFractionDigits: 6 });
@@ -418,6 +419,7 @@ export default function WalletPortfolioPage() {
       <div className="text-center py-3">
         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{activePortfolioName} · Total Value</p>
         <p className="text-4xl font-bold">{formatFiat(pfTotal, "USD")}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">{USD_REFERENCE_NOTE}</p>
         <p className="text-xs text-muted-foreground mt-1">
           {pfWallets.length} wallet{pfWallets.length === 1 ? "" : "s"} in this portfolio
           {isDecoy ? " · decoy session" : isHidden ? " · hidden session" : ""}

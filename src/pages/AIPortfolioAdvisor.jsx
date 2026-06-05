@@ -1,3 +1,4 @@
+import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44, LLM_AVAILABLE } from "@/api/base44Client";
@@ -7,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import LocalBuildNotice from "@/components/LocalBuildNotice";
 import ReactMarkdown from "react-markdown";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 const SUGGESTED_PROMPTS = [
   "Analyse my portfolio and suggest rebalancing",
