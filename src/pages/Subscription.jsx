@@ -49,7 +49,7 @@ export default function Subscription() {
       </div>
 
       {/* Tier cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {tiers.map((tier) => {
           const isCurrent = tier.id === currentTier;
           return (
@@ -83,14 +83,22 @@ export default function Subscription() {
                 )}
                 {tier.id === "free" && (
                   <p className="text-sm text-muted-foreground">
-                    Everything you need to self-custody — all the wallet features
-                    available today, at no cost.
+                    The complete self-custody wallet plus all life-safety security
+                    (duress PIN, panic wipe, decoy balances) — at no cost, on principle.
+                  </p>
+                )}
+                {tier.id === "shield" && (
+                  <p className="text-sm text-muted-foreground">
+                    Everything in Pro, extended across time, devices and succession.
+                    Its distinguishing features (inheritance, software recovery,
+                    multi-device) are on the roadmap — this card is a preview only.
                   </p>
                 )}
                 {tier.id === "guardian" && (
                   <p className="text-sm text-muted-foreground">
-                    A high-touch tier offered by application. Details to be
-                    confirmed; this card is a preview only.
+                    Not a higher software rung — the SHIELD software plus a security
+                    team that operates it with you. Offered by application; details
+                    to be confirmed, preview only.
                   </p>
                 )}
               </CardContent>
