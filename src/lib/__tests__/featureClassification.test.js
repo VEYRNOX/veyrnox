@@ -52,9 +52,14 @@ describe('registryEntriesFromClassification', () => {
     expect(typeof out['/leaderboard'].note).toBe('string');
     // A seeded disabled entry maps through
     expect(out['/referrals']).toMatchObject({ status: 'disabled', reason: 'server' });
-    // Only non-live entries present (today: 4 seeds)
+    // Non-live entries: 4 original seeds + 9 Overview-group pages classified in batch 1
     expect(Object.keys(out).sort()).toEqual(
-      ['/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio'].sort(),
+      [
+        '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
+        '/analytics', '/advanced-analytics', '/advisor', '/ai-assistant',
+        '/benchmark', '/what-if', '/correlation', '/correlation-timeline',
+        '/news-sentiment',
+      ].sort(),
     );
   });
 });
