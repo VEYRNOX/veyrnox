@@ -1,4 +1,4 @@
-import { USD_RATES } from "@/lib/cryptos";
+import { USD_RATES, approxUsd } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -229,7 +229,7 @@ export default function SecurityCenter() {
                         <div className="flex justify-between text-[11px] text-muted-foreground">
                           <span>Sent today (local)</span>
                           <span className={spent >= l.daily_limit ? "text-destructive font-medium" : "text-foreground"}>
-                            ${Math.round(spent).toLocaleString()} / ${l.daily_limit.toLocaleString()}
+                            {approxUsd(spent)} / ${l.daily_limit.toLocaleString()}
                           </span>
                         </div>
                         <div className="h-1 rounded-full bg-secondary mt-1 overflow-hidden">
