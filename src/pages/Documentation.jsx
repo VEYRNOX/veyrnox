@@ -108,7 +108,7 @@ const features = [
     { name: "Recurring Payments", desc: "Self-initiated, user-signed each time (no auto-debit)", status: "roadmap" },
   ]},
   { category: "Referrals", icon: Users, items: [
-    { name: "Referral Tracker", desc: "Kept only if buildable serverlessly; ranking/profiles cut on principle", status: "roadmap" },
+    { name: "Referral Tracker", desc: "Privacy-preserving referral sign-ups; no ranking or public profiles (cut on principle)", status: "roadmap" },
   ]},
   { category: "AI Assistant (Advisory-Only)", icon: Zap, items: [
     { name: "Transaction Explanation", desc: "Plain-language description of a transaction", status: "roadmap" },
