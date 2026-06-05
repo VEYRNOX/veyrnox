@@ -30,8 +30,17 @@ const FEATURE_REGISTRY = registryEntriesFromClassification();
 
 const DEFAULT_ENTRY = { status: 'live' };
 
+// Normalise the lookup key so a trailing slash can't slip a classified route
+// past the gate: '/solana/' must resolve the same entry as '/solana'. Registry
+// keys are exact, flat paths, so stripping a trailing slash is sufficient today;
+// param/wildcard routes (none exist yet) would need pattern matching here.
+function normalizePath(path) {
+  if (typeof path !== 'string' || path === '/') return path;
+  return path.replace(/\/+$/, '') || '/';
+}
+
 export function getFeatureStatus(path) {
-  return FEATURE_REGISTRY[path] ?? { ...DEFAULT_ENTRY };
+  return FEATURE_REGISTRY[normalizePath(path)] ?? { ...DEFAULT_ENTRY };
 }
 
 export function isLive(path) {

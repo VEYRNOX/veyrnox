@@ -37,6 +37,13 @@ describe('getFeatureStatus', () => {
       expect(getFeatureStatus(path).note.length).toBeGreaterThan(0);
     }
   });
+
+  it('normalises a trailing slash so it cannot bypass the gate', () => {
+    expect(getFeatureStatus('/leaderboard/').status).toBe('cut');
+    expect(getFeatureStatus('/referrals/').status).toBe('disabled');
+    expect(featureRouteOutcome('/leaderboard/')).toBe('notFound');
+    expect(getFeatureStatus('/').status).toBe('live'); // root is untouched
+  });
 });
 
 describe('cutPaths / disabledPaths', () => {

@@ -327,7 +327,7 @@ export default function Layout() {
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/'}
           className="p-4"
         >
-          <SafeSuspense fallback={<TabSpinner />}><DashboardPage /></SafeSuspense>
+          <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/"><DashboardPage /></FeatureGate></SafeSuspense>
         </div>
         <div
           id="tab-panel-1"
@@ -336,7 +336,7 @@ export default function Layout() {
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/send'}
           className="p-4"
         >
-          <SafeSuspense fallback={<TabSpinner />}><SendCryptoPage /></SafeSuspense>
+          <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/send"><SendCryptoPage /></FeatureGate></SafeSuspense>
         </div>
         <div
           id="tab-panel-2"
@@ -345,7 +345,7 @@ export default function Layout() {
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/receive'}
           className="p-4"
         >
-          <SafeSuspense fallback={<TabSpinner />}><ReceiveCryptoPage /></SafeSuspense>
+          <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/receive"><ReceiveCryptoPage /></FeatureGate></SafeSuspense>
         </div>
       </div>
 
