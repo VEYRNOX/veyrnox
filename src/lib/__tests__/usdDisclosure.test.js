@@ -50,6 +50,12 @@ const importsDisplayComponent = (t) =>
   t.split('\n').some((l) => /^\s*import\b/.test(l) && DISPLAY_RE.test(l));
 const touchesUsd = (t) => importsUsdRates(t) || importsDisplayComponent(t);
 const hasDisclosureHelper = (t) => /\b(approxUsd|ReferenceRateNote)\b/.test(t);
+// A3 proves an `exempt` page renders no $ by the ABSENCE of these display
+// helpers. Blind spot: a raw inline dollar like `${v.toLocaleString()}` (the
+// very pattern #111/#114 replaced) carries no helper and would slip past A3.
+// The strict helper check is deliberate — a literal `$` regex false-positives
+// on JSX/template `${}` interpolation; tighten only if a real raw-$ exempt page
+// actually appears.
 const hasUsdDisplayHelper = (t) =>
   /\b(approxUsd|ReferenceRateNote)\b/.test(t) || /\bformatFiat\(/.test(t);
 
