@@ -195,6 +195,36 @@ export const CLASSIFICATION = {
     verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
     note: 'Reads real local Transaction, StakingPosition, and Wallet records, but the historicalRate() function produces pseudo-random prices from (timestamp % 10000) — fabricated cost basis figures. The page discloses "simulated historical prices" in an inline warning, but the FIFO gain/loss and staking income numbers are still invented and exported to CSV/PDF as if real.',
   },
+
+  // ── Assets group (audit batch 4) ─────────────────────────────────────────
+  '/watchlist': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'PersonalWatchlist records are real user-entered data, but the displayed prices (MOCK_PRICES), 24h change percentages, and computed high/low range all come from hardcoded stale constants in src/lib/cryptos.js. Buy/sell target alerts fire against these stale prices — a user comparing their target_buy against a silently outdated price could act on false signals.',
+  },
+  '/nft': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'NFTAsset records are real user-entered data (purchase_price, current_floor in ETH), but the "Portfolio Value" USD sub-label converts ETH to USD using ETH_PRICE = 3200, a hardcoded stale constant. The dollar figure shown to users will silently drift from reality as ETH price moves.',
+  },
+  '/nft-multichain': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'NFTAsset CRUD backed by local IndexedDB. All portfolio values are shown in ETH only — no USD conversion and no stale rate injection. Math.random() is used only for selecting a placeholder image URL (cosmetic), not financial data. Manual tracking, honestly labeled.',
+  },
+  '/spending': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Reads real local Transaction records but converts every crypto amount to USD using hardcoded stale USD_RATES (e.g. BTC: 68000, ETH: 3200). All displayed figures — Total Sent, Total Received, Avg Tx Size, This Month, monthly bar chart, and day-of-week chart — are denominated in these silently stale USD values.',
+  },
+  '/snapshots': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'PortfolioSnapshot saves a total_usd computed from real local Wallet balances multiplied by hardcoded stale USD_RATES (BTC: 68000, ETH: 3200, …). Snapshot values are stored and charted as if they represent real market USD values, but they were computed from rates that may be months out of date at the time of capture.',
+  },
+  '/onchain': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Aggregates base44.entities.Transaction (internal app records) and labels the result "On-Chain Analytics" — mislabeling a local transaction log as on-chain data. The address lookup searches only the local wallet/tx store; no actual blockchain query is made, yet the feature presents as a blockchain explorer.',
+  },
+  '/erc20-discovery': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
+    note: 'Entirely fabricated: handleScan() waits 2.5 s then picks a Math.random() subset of WELL_KNOWN_TOKENS with Math.random()-generated balances (generateBalance()). No blockchain, indexer, or RPC call is made. The UI explicitly says "Scanning blockchain… Querying Transfer events and token contracts" — false. Discovered tokens and balances are invented and presented as the user\'s real on-chain holdings.',
+  },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts

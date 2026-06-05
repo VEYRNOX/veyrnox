@@ -55,6 +55,7 @@ describe('registryEntriesFromClassification', () => {
     // Non-live entries: 4 original seeds + 9 Overview-group pages classified in batch 1
     // + 5 Wallet-group pages classified in batch 2
     // + 7 Invest/Finance pages classified in batch 3
+    // + 6 Assets-group pages classified in batch 4 (/nft-multichain is live)
     expect(Object.keys(out).sort()).toEqual(
       [
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
@@ -64,6 +65,7 @@ describe('registryEntriesFromClassification', () => {
         '/calculator', '/fee-analytics', '/receipt', '/recurring', '/split-bill',
         '/portfolio-rewind', '/index-builder', '/ai-rebalancer', '/pl',
         '/budget', '/net-worth', '/tax',
+        '/watchlist', '/nft', '/spending', '/snapshots', '/onchain', '/erc20-discovery',
       ].sort(),
     );
   });
