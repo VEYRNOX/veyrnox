@@ -57,7 +57,11 @@ describe('registryEntriesFromClassification', () => {
     // + 7 Invest/Finance pages classified in batch 3
     // + 6 Assets-group pages classified in batch 4 (/nft-multichain is live)
     // + 2 Security-group pages classified in batch A (/wallet-seed-qr, /hardware-wallet)
-    //   (10 Security pages are live; only 2 are disabled)
+    //   (10 Security-A pages are live; only 2 are disabled)
+    // + 5 Security-group pages classified in batch B (/anomaly-detection, /messenger-alerts,
+    //     /fraud, /smart-alerts, /alerts)
+    //   (6 Security-B pages are live: /biometric-auth, /voice-commands, /token-approvals,
+    //     /spam-filter, /trust-score, /audit)
     expect(Object.keys(out).sort()).toEqual(
       [
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
@@ -69,6 +73,7 @@ describe('registryEntriesFromClassification', () => {
         '/budget', '/net-worth', '/tax',
         '/watchlist', '/nft', '/spending', '/snapshots', '/onchain', '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
+        '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts', '/alerts',
       ].sort(),
     );
   });

@@ -275,6 +275,52 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Runs describeErc20Call from wallet-core/evm/calldata and assessEvmTransaction from wallet-core/evm/simulate over user-pasted calldata. Purely local decode + risk assessment (no key, no RPC). Explicitly states no on-chain dry-run is performed here and that absence of a finding is not a guarantee. Same logic as the Send flow pre-sign preview.',
   },
+
+  // ── Security group (audit batch B) ───────────────────────────────────────
+  '/biometric-auth': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Config stored in localStorage; passkey registration calls the real WebAuthn navigator.credentials.create() with a live challenge (window.PublicKeyCredential guard). The "Test Biometric Now" button is a UX confirmation stub (setTimeout) — it does not claim to perform a real auth challenge. Core vault-protection feature.',
+  },
+  '/anomaly-detection': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (base44.entities.Transaction), but the "Run AI Scan" button is a 2.2 s setTimeout with no analysis logic — the scan result is identical with or without clicking it. The page labels itself "AI Pattern Scanner" / "Machine learning analysis" for what is a simple statistical heuristic; the fake scan delay reinforces a false impression of active ML computation.',
+  },
+  '/messenger-alerts': {
+    verdict: 'disabled', reason: 'server', dataSource: 'static',
+    note: 'Config UI only (localStorage). "Send Test Message" for Telegram is a 1.5 s setTimeout — no HTTP call to Telegram is made. WhatsApp section explicitly states delivery requires Twilio or WhatsApp Business API. No actual alert delivery is implemented; a server relay (Telegram Bot API / Twilio) is required for any message to be sent.',
+  },
+  '/voice-commands': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Uses browser-native window.SpeechRecognition / window.webkitSpeechRecognition for transcription. Command matching and routing are local (phrase map + React Router navigate). No audio leaves the device; page explicitly discloses "No audio is sent to external servers." Degrades gracefully when the browser API is absent.',
+  },
+  '/token-approvals': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Imports summarizeAllowance, buildRevokeCalldata, sendRevoke from @/wallet-core/evm/approvals and getNetworkInfo from @/wallet-core/evm/networks. Risk badge derived from real calldata-decoded allowance (not a stored label). In DEMO mode revoke is simulated but exercises the real calldata builder and is clearly badged "Demo · simulated". In native/testnet mode a real approve(spender,0) is signed locally and broadcast.',
+  },
+  '/spam-filter': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Imports annotateTokens from @/wallet-core/evm/spam and getNetworkInfo from @/wallet-core/evm/networks. Runs the real wallet-core classifier over base44.entities.WalletToken records. User overrides persisted in localStorage. Explicitly discloses filtering is display-only and heuristic-based. Clearly badged "Demo · seeded" vs "Testnet".',
+  },
+  '/trust-score': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Imports classifyToken from @/wallet-core/evm/spam. Runs the real on-device heuristic classifier over user-supplied or preset token metadata. Extensive in-file honesty contract: never claims on-chain analysis, never asserts safety, explicitly labels results as local-heuristic only. No external call.',
+  },
+  '/audit': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Reads base44.entities.AuditLog records from local IndexedDB. Filterable by category and severity. No fabricated data, no external call, no USD conversion. The quality of the log depends on what in-app actions write to it, but the display is honest about showing all and only the records present.',
+  },
+  '/fraud': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Alert CRUD is real (base44.entities.FraudAlert), but runScan() is a 2 s setTimeout that always resolves "no new threats detected" — no analysis logic runs. The Detection Rules tab renders MOCK_RULES, a hardcoded constant array, presented as actively enforced rules. The page labels itself "AI Fraud Detection" / "Real-time monitoring" without delivering either.',
+  },
+  '/smart-alerts': {
+    verdict: 'disabled', reason: 'server', dataSource: 'base44-entities',
+    note: 'Alert configuration is stored in base44.entities.SmartAlert (local), but no trigger evaluation is wired in this component — no price or portfolio data is fetched. notify_email and notify_push flags are stored but no delivery mechanism exists client-side; email and push dispatch require a server. The feature stores settings honestly but cannot fire alerts in the local build.',
+  },
+  '/alerts': {
+    verdict: 'disabled', reason: 'leaks', dataSource: 'external',
+    note: 'fetchLivePrices() calls fetch("https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,...") — a third-party CryptoCompare API endpoint. The full coin symbol list is sent to CryptoCompare on every load and every 60-second refetchInterval. Price trigger evaluation itself is correct on-device logic, but the external price call is a mandatory dependency.',
+  },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
