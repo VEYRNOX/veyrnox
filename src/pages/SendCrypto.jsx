@@ -1,4 +1,4 @@
-import { USD_RATES } from "@/lib/cryptos";
+import { USD_RATES, approxUsd } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -624,8 +624,8 @@ export default function SendCrypto() {
               {limitEval.reasons.map((r, i) => (
                 <p key={i} className="text-destructive/90">
                   {r.kind === "per_tx"
-                    ? `This send (~$${Math.round(limitEval.amountUSD).toLocaleString()}) exceeds your ${r.currency === "ALL" ? "" : r.currency + " "}per-transaction cap of $${r.limitUSD.toLocaleString()}.`
-                    : `You've already sent ~$${Math.round(r.spentTodayUSD).toLocaleString()} today; this send (~$${Math.round(limitEval.amountUSD).toLocaleString()}) would reach ~$${Math.round(r.projectedUSD).toLocaleString()}, over your ${r.currency === "ALL" ? "" : r.currency + " "}daily cap of $${r.limitUSD.toLocaleString()}.`}
+                    ? `This send (${approxUsd(limitEval.amountUSD)}) exceeds your ${r.currency === "ALL" ? "" : r.currency + " "}per-transaction cap of $${r.limitUSD.toLocaleString()}.`
+                    : `You've already sent ${approxUsd(r.spentTodayUSD)} today; this send (${approxUsd(limitEval.amountUSD)}) would reach ${approxUsd(r.projectedUSD)}, over your ${r.currency === "ALL" ? "" : r.currency + " "}daily cap of $${r.limitUSD.toLocaleString()}.`}
                 </p>
               ))}
               <p className="text-destructive/70">Adjust the amount, or change the limit in Security Center.</p>

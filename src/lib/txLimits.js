@@ -17,10 +17,12 @@
 //     count toward the total. "Today" is the device's local day (midnight→now),
 //     so the cap matches the user's wall clock, not UTC.
 //   - Each amount is converted to USD with the SAME static USD_RATES table the
-//     Send/Security screens use (caps are denominated in USD). Records whose
-//     currency has no rate fall back to 1:1 — the conservative choice (never
-//     UNDER-counts spend, so the cap can't be silently bypassed by an unpriced
-//     asset).
+//     Send/Security screens use (caps are denominated in USD). These are static
+//     reference prices, so every converted figure is APPROXIMATE — the UI marks
+//     such values with approxUsd() / USD_REFERENCE_NOTE. Records whose currency
+//     has no rate fall back to 1:1, an arbitrary placeholder that is approximate
+//     in EITHER direction (it under-counts any coin worth >$1); it never fires
+//     for the 10 priced coins, so enforcement is unaffected in practice.
 //
 // This file performs NO crypto and touches NO key material — it is arithmetic
 // over already-loaded display records. WARNS/BLOCKS the UI action only; it never
@@ -45,7 +47,7 @@ export function isToday(dateValue, now = new Date()) {
 function toUsd(amount, currency, usdRates) {
   const n = Number(amount);
   if (!Number.isFinite(n) || n <= 0) return 0;
-  // Unknown currency → 1:1. Conservative: never under-count spend (see header).
+  // Unknown currency → 1:1 placeholder (approximate; never fires for priced coins — see header).
   const rate = usdRates?.[currency] ?? 1;
   return n * rate;
 }
