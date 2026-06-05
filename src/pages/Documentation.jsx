@@ -107,10 +107,8 @@ const features = [
     { name: "Payment Links", desc: "Shareable request-to-pay link / QR (no processing)", status: "roadmap" },
     { name: "Recurring Payments", desc: "Self-initiated, user-signed each time (no auto-debit)", status: "roadmap" },
   ]},
-  { category: "Social", icon: Users, items: [
-    { name: "Referral Tracker", desc: "Track referral sign-ups (privacy caveats)", status: "roadmap" },
-    { name: "Leaderboard", desc: "Opt-in performance ranking", status: "roadmap" },
-    { name: "Public Profiles", desc: "Opt-in, privacy-controlled profile", status: "roadmap" },
+  { category: "Referrals", icon: Users, items: [
+    { name: "Referral Tracker", desc: "Kept only if buildable serverlessly; ranking/profiles cut on principle", status: "roadmap" },
   ]},
   { category: "AI Assistant (Advisory-Only)", icon: Zap, items: [
     { name: "Transaction Explanation", desc: "Plain-language description of a transaction", status: "roadmap" },
