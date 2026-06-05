@@ -1,4 +1,5 @@
 import { USD_RATES } from "@/lib/cryptos";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44, EMAIL_AVAILABLE } from "@/api/base44Client";
@@ -724,6 +725,9 @@ export default function SendCrypto() {
               gasLimitHint={isErc20 ? 65000 : 21000}
               onChange={setSelectedFee}
             />
+            {/* The fee's fiat estimate (and the spend-cap previews) convert via
+                the static USD_RATES table, so disclose it's a reference rate. */}
+            <ReferenceRateNote className="text-center" />
 
             {/* 2FA method picker */}
             {!twoFAMethod && (
