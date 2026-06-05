@@ -210,8 +210,8 @@ export const CLASSIFICATION = {
     note: 'NFTAsset CRUD backed by local IndexedDB. All portfolio values are shown in ETH only — no USD conversion and no stale rate injection. Math.random() is used only for selecting a placeholder image URL (cosmetic), not financial data. Manual tracking, honestly labeled.',
   },
   '/spending': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Reads real local Transaction records but converts every crypto amount to USD using hardcoded stale USD_RATES (e.g. BTC: 68000, ETH: 3200). All displayed figures — Total Sent, Total Received, Avg Tx Size, This Month, monthly bar chart, and day-of-week chart — are denominated in these silently stale USD values.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Reports only real on-device transaction data: per-asset NATIVE amounts and transaction counts/timing (lib/spendingPatterns). The fabricated stale-USD aggregates were removed — no cross-asset fiat conversion is shown, so there is no silently-stale value. Honest activity view.',
   },
   '/snapshots': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
