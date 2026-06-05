@@ -5,7 +5,7 @@
 > chains you can use. Wedge: high-stakes / high-threat self-custodians (priced for
 > value protected, not for free-wallet volume).
 >
-> ⚠️ THIS IS A HYPOTHESIS, NOT VALIDATED. Prices ($12 / $40 / bespoke) and the
+> ⚠️ THIS IS A HYPOTHESIS, NOT VALIDATED. Prices (Pro ~$5–8 / Guardian $100+) and the
 > free-vs-paid split are unproven until tested with real prospective users. Do NOT
 > treat as fact in a deck — present as "model to validate." The single highest-value
 > next step is willingness-to-pay validation via customer conversations.
@@ -21,95 +21,60 @@
 > features are PROVISIONAL pending the independent audit. See docs/Feature-Status.md.
 
 ## Pricing
-- **Free** — full wallet + baseline security + LIFE-SAFETY features. Adoption engine + ethical floor.
-- **Secure — ~$12/mo** — privacy & advanced protection layer.
-- **Vault — ~$40/mo** — high-value-protection layer (inheritance roadmap, spending controls). (Multi-sig ❌ removed.)
-- **Guardian — bespoke, £100+/mo (by application / limited slots)** — human-expert security service on top of Vault. SERVICES line, not scalable SaaS (see limits below).
+- **Free** — full wallet + baseline security + ALL life-safety. Adoption engine + ethical floor; the headline is "we never paywall your safety."
+- **Pro — ~$5–8/mo (~$50–80/yr) [validate]** — privacy + advanced protection depth. Priced like a consumer security subscription (password manager / VPN anchor), for individuals.
+- **Guardian — $100+/mo, by application, limited slots** — Pro + a bespoke human-expert security service. A SERVICES line (capacity-limited by expert time), not scalable SaaS — treat its revenue as proof/credibility, not projection.
 
-## Tier × feature matrix
-Status per feature: ✅ built · 🟡 building · 📋 specced · 💡 planned.
-Tier = where it's offered once built. Chains/dApp access never gated — monetize depth, not access.
+> Prices are UNVALIDATED hypotheses. ~$5–8 and $100 are reasoned against consumer-security and bespoke-service anchors respectively — exactly as unproven as any other number until tested. The next real step is willingness-to-pay discovery, not refinement.
 
-| Feature (status) | Free | Secure ~$12 | Vault ~$40 | Guardian £100+ |
-|---|---|---|---|---|
-| **Core wallet** | | | | |
-| Multi-chain receive+balance: EVM (6) ✅, BTC ✅, SOL ✅ | ✅ | ✅ | ✅ | ✅ |
-| Send: ETH live ✅ / others receive_only 🟡 / receive ✅ / balances ✅ | ✅ | ✅ | ✅ | ✅ |
-| Multi-account HD ✅, import ✅, seed backup ✅ | ✅ | ✅ | ✅ | ✅ |
-| Gas control ✅, transaction history ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Baseline security** | | | | |
-| Encrypted vault ✅, biometric ✅, auto-lock ✅ | ✅ | ✅ | ✅ | ✅ |
-| Token-approval revoke ✅, calldata decode ✅, addr validation ✅ | ✅ | ✅ | ✅ | ✅ |
-| Address-poisoning / spam warnings ✅ | ✅ | ✅ | ✅ | ✅ |
-| Local threat-intel (open-source feeds) 💡 | ✅ | ✅ | ✅ | ✅ |
-| FIDO2 / passkeys (unlock gate) ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Life-safety (free by principle)** | | | | |
-| Duress PIN / decoy wallet ✅ | ✅ | ✅ | ✅ | ✅ |
-| Panic wipe ✅ | ✅ | ✅ | ✅ | ✅ |
-| **AI (advisory only — never holds keys)** | | | | |
-| Plain-language tx explanation 💡 | ✅ | ✅ | ✅ | ✅ |
-| Scam / phishing explanation 💡 | ✅ | ✅ | ✅ | ✅ |
-| Educational assistant 💡 | ✅ | ✅ | ✅ | ✅ |
-| Portfolio Q&A (public on-chain data) 💡 | — | ✅ | ✅ | ✅ |
-| AI portfolio advisor (advisory) 💡 | — | ✅ | ✅ | ✅ |
-| **Privacy & advanced protection** | | | | |
-| Stealth / hidden wallets ✅ | — | ✅ | ✅ | ✅ |
-| No-telemetry / fully-local mode 💡 | — | ✅ | ✅ | ✅ |
-| Privacy routing (Tor / RPC) 💡 | — | ✅ | ✅ | ✅ |
-| Hardware wallet integration 📋 | — | ✅ | ✅ | ✅ |
-| Social recovery (guardians) ❌ removed | — | — | — | — |
-| Transaction simulation ✅, anomaly detection ✅, RASP 📋, risk scoring 📋 | — | ✅ | ✅ | ✅ |
-| Login activity 📋 / security dashboard ✅ | — | ✅ | ✅ | ✅ |
-| Encrypted cloud backup (ciphertext) 📋 | — | ✅ | ✅ | ✅ |
-| **High-value protection** | | | | |
-| Inheritance / Crypto Will 📋 (roadmap) | — | — | ✅ | ✅ |
-| Personal multi-sig (2-of-3, 3-of-5) ❌ removed | — | — | — | — |
-| Spending policies / daily limits 💡 | — | — | ✅ | ✅ |
-| Time-locks 💡, address allowlists 💡 | — | — | ✅ | ✅ |
-| Audit log 📋, hardware-key enforcement 📋 | — | — | ✅ | ✅ |
-| **Niceties / analytics / utilities** | | | | |
-| Address book ✅, ENS/SNS resolution ✅, basic charts 💡 | ✅ | ✅ | ✅ | ✅ |
-| Net-worth / portfolio dashboard 💡 | — | ✅ | ✅ | ✅ |
-| Advanced / predictive analytics, tax reports 💡 | — | ✅ | ✅ | ✅ |
-| Notifications, widgets, voice commands 💡 | basic | ✅ | ✅ | ✅ |
-| Self-custody utilities (signing, savings, invoices) 💡 | basic | ✅ | ✅ | ✅ |
-| **Chains & dApp (not tier-gated)** | | | | |
-| More EVM chains / tokens 💡 | ✅ | ✅ | ✅ | ✅ |
-| WalletConnect / dApp / Web3 browser 📋 (post-audit) | ✅ | ✅ | ✅ | ✅ |
-| **Guardian — human-expert service** | | | | |
-| 1:1 setup session, written threat model | — | — | — | ✅ |
-| Quarterly review, priority support channel | — | — | — | ✅ |
-| Recovery / inheritance setup help (advisory) | — | — | — | ✅ |
-| DFIR advisory (post-incident triage, best-effort) | — | — | — | ✅ |
+## Tier × feature matrix — BUILT ONLY (sellable today)
+Only ✅ built / 🟡 built-but-gated appear here — this is the commercial promise. Roadmap items are NOT shown in priced columns (see Feature-Status.md). Chains/dApp access never gated.
 
-**Life-safety free — rationale:** paywalling features that protect at-risk people under
-coercion is an ethical hazard AND a brand risk for this audience AND bad funnel logic
-(they're the word-of-mouth magnet). Incumbents offer neither. Free is the right call.
+| Feature (status) | Free | Pro | Guardian |
+|---|:---:|:---:|:---:|
+| **Core wallet** | | | |
+| Multi-chain receive + balance: EVM ✅ BTC ✅ SOL ✅ | ✅ | ✅ | ✅ |
+| Send: ETH live ✅ / 9 others receive_only 🟡 | ✅ | ✅ | ✅ |
+| Multi-account HD ✅, import ✅, seed backup ✅ | ✅ | ✅ | ✅ |
+| Gas control ✅, transaction history ✅ | ✅ | ✅ | ✅ |
+| **Baseline security** | | | |
+| Encrypted vault ✅, biometric ✅, auto-lock ✅ | ✅ | ✅ | ✅ |
+| Approval revoke ✅, calldata decode ✅, addr validation ✅ | ✅ | ✅ | ✅ |
+| Address-poisoning / spam warnings ✅ | ✅ | ✅ | ✅ |
+| Suspicious-address + OFAC screening (local) ✅ | ✅ | ✅ | ✅ |
+| FIDO2 / passkeys ✅ | ✅ | ✅ | ✅ |
+| **Life-safety — FREE BY PRINCIPLE (the headline)** | | | |
+| Duress PIN / decoy ✅, panic wipe ✅, constant-KDF timing ✅ | ✅ | ✅ | ✅ |
+| **Privacy & advanced protection** | | | |
+| Stealth / hidden wallets ✅ | — | ✅ | ✅ |
+| Transaction simulation ✅ | — | ✅ | ✅ |
+| Anomaly / fraud detection ✅ | — | ✅ | ✅ |
+| Security dashboard ✅ | — | ✅ | ✅ |
+| Spending policies / daily limits ✅ | — | ✅ | ✅ |
+| **Niceties** | | | |
+| Address book ✅, ENS/SNS resolution ✅ | ✅ | ✅ | ✅ |
+| **Guardian — bounded human service** | | | |
+| 1:1 setup session + written threat model (onboarding) | — | — | ✅ |
+| Quarterly review + best-effort priority support | — | — | ✅ |
+| Recovery / inheritance setup assistance (advisory) | — | — | ✅ |
+| DFIR advisory (post-incident triage, best-effort) | — | — | ✅ |
 
-**AI-privacy tension:** AI features calling external LLMs are a PHONE-HOME surface that
-conflicts with the no-telemetry/privacy wedge. Prefer local/on-device; where a remote
-model is used, make it disclosed + optional, never default-on for privacy-tier users.
-AI is supporting cast, not a headline (incumbents are adding it too — not a differentiator).
+**⚠️ Pro currently has exactly 5 built differentiators over Free** (stealth wallets, transaction simulation, anomaly detection, security dashboard, spending limits). Validate whether that justifies a paid tier before launching it. Everything else that would sweeten Pro/Guardian is roadmap, not product.
 
-## Guardian — HUMAN-EXPERT SERVICE (bespoke tier only)
-Included (bounded deliverables — all advisory; client always holds their own keys):
-- 1:1 secure-setup session (~90 min, one at onboarding)
-- Personalised written threat model (onboarding; refreshed at quarterly review)
-- Recovery / inheritance setup ASSISTANCE (advisory; client holds keys)
-- Quarterly security review + threat-model refresh
-- Priority support channel — BEST-EFFORT, response target ~1 business day
-- DFIR advisory — post-incident triage guidance (best-effort, advisory only)
+**Roadmap features are tracked in `docs/Feature-Status.md` (the source of truth) — NOT duplicated here, and NEVER shown in a priced tier column.** Inheritance, hardware wallet, M2c/d, audit-log wiring, cloud backup, RASP, no-telemetry, privacy routing, time-locks, analytics, WalletConnect are all 📋/💡 there with their blockers.
 
-Explicitly NOT (critical limits — lawyer-review before advertising):
-- NOT a guarantee of protection / fund safety / attack prevention
-- NOT 24/7 emergency response or a "we'll save you" rescue service
-- NOT custody (never holds keys/funds; all advice advisory)
-- NOT legal/tax/financial advice (refer to their professionals)
-- NOT incident remediation / fund recovery (best-effort help only)
-Notes: services line, capacity-limited by expert time → keep slots limited. Needs
-professional-liability/insurance + lawyer review of the support-promise wording
-BEFORE it goes on a pricing page (the gap between what a desperate client hears and
-what can be delivered is where harm + liability live).
+## Guardian — human-expert service (bespoke tier; client always holds their own keys)
+Included (bounded, all advisory): 1:1 secure-setup session (~90 min, onboarding); personalised written threat model (refreshed quarterly); quarterly security review; priority support (best-effort, ~1 business day target); recovery/inheritance setup assistance (advisory); DFIR advisory (best-effort).
+
+Explicitly NOT (lawyer-review before advertising): NOT a guarantee of protection/fund safety/attack prevention; NOT 24/7 emergency response or a rescue service; NOT custody (never holds keys/funds); NOT legal/tax/financial advice; NOT incident remediation/fund recovery (best-effort only). Capacity-limited by expert time → keep slots limited. Needs professional-liability insurance + lawyer review of support-promise wording BEFORE any public pricing page.
+
+> Structural note: this is two cheap individual software tiers (Free, Pro ~$6) + one premium human-service tier (Guardian $100) — a ~15× Pro→Guardian gap. That holds ONLY because Guardian is a different category (bespoke service, by application, limited slots), not "the top software tier." A pricing page must present Guardian as a service offering, not as an adjacent software plan.
+
+## Changes from the original 3-tier model
+- Merged Secure + Vault into one **Pro** (for a high-threat/high-value niche the privacy-buyer and high-value-buyer are likely the same person; re-split only if discovery shows two populations).
+- Dropped **AI** as a tier lever (not built — no LLM integration; not a differentiator; external-LLM advisor contradicts the privacy wedge).
+- Matrix is now **built-only**; roadmap items live in Feature-Status.md, never in priced columns.
+- **Pro repriced** to a consumer-security anchor (~$5–8); **Guardian kept at $100+** as a bespoke, limited-slot service.
 
 ## Why this model (for the deck)
 - Solves the "how does a non-custodial / no-swap wallet make money" objection:
@@ -128,3 +93,31 @@ what can be delivered is where harm + liability live).
 - docs/WalletRoadmap.md — full feature roadmap + statuses (source of truth for scope)
 - docs/WalletFeatures.spec.md — canonical scope + competitor/out-of-scope split
 - docs/Security.roadmap.md — S1–S4 detail + AI guardrails
+
+---
+
+## PROVISIONAL / UNVALIDATED — DRAFT tier & pricing hypothesis (NOT live)
+
+> ⚠️ DRAFT, separate from the live tier matrix above. Prices are UNVALIDATED placeholders;
+> SHIELD is a NEW tier with NO set price; most features below are NOT BUILT. Do NOT advertise
+> or sell from this section. Features graduate into the live matrix ONLY when verified-real.
+> Source: docs/Master-feature-matrix.md (draft).
+
+### Draft tiers
+- Free $0 — full wallet + all life-safety security + baseline privacy.
+- Pro ~$5–8/mo (placeholder) — privacy & advanced protection; the 5 BUILT differentiators
+  (stealth, tx simulation, anomaly detection, security dashboard, spending limits) + audit log.
+- SHIELD (NEW, price UNSET) — all software features incl. Guardian's, self-serve, no consulting.
+- Guardian $100+/mo (placeholder) — SHIELD features + bespoke human service.
+
+### Draft placements of NOT-BUILT features (do not sell)
+- Pro (once built + verified): net worth, P&L, watchlist/alerts, fee analytics, tax, news.
+- Pro but OPT-IN + privacy-disclosed (leak address when enabled): analytics-by-address,
+  NFT/token enrichment & discovery, ERC-20 discovery, payment links.
+- SHIELD/Guardian (once built): full deniability suite, hardware wallet, inheritance.
+- NOT priceable: Solana/multi-asset (verify first), AI advisor (rebuild on-device first).
+- CUT (not in any tier): leaderboard, public profiles, referrals, social shared-portfolio.
+
+### Hard rule
+Nothing in this PROVISIONAL section is sellable. It moves into the live matrix above only
+when its build State is verified Real and the independent audit confirms the security calls.

@@ -27,6 +27,36 @@ import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
 import { getKeyStore } from '@/wallet-core/keystore';
+// MULTI-SEED VAULT (feat/multi-wallet-portfolio). ⚠️ AUDIT-CRITICAL container
+// layer that holds N independent seeds INSIDE the one encrypted blob. It does no
+// crypto — vault.js/keystore are unchanged; we just hand them a JSON container of
+// mnemonics instead of one bare mnemonic, and parse it back. See multiVault.js.
+import * as mv from '@/wallet-core/multiVault';
+import {
+  ensureWalletMeta,
+  getWalletMeta,
+  setWalletName,
+  setWalletBackedUp,
+  setEnabledAssets as setWalletEnabledAssets,
+  toggleWalletAsset as toggleWalletAssetMeta,
+  removeWalletMeta,
+  setActiveWalletId as persistActiveWalletId,
+  reconcileWalletMeta,
+  clearAllWalletMeta,
+  ALL_ASSET_SYMBOLS,
+} from '@/lib/walletMeta';
+// PORTFOLIOS (named groups of wallets; one-portfolio-per-wallet partition with an
+// always-present "Main"). Non-secret organisation only — no seeds. See portfolios.js.
+import {
+  MAIN_PORTFOLIO_ID,
+  reconcilePortfolios,
+  createPortfolio as createPortfolioStore,
+  renamePortfolio as renamePortfolioStore,
+  deletePortfolio as deletePortfolioStore,
+  assignWalletToPortfolio as assignWalletToPortfolioStore,
+  setActivePortfolioId as persistActivePortfolioId,
+  clearAllPortfolios,
+} from '@/lib/portfolios';
 import {
   setDuressVault,
   clearDuressVault,
@@ -100,8 +130,37 @@ const ACTIVITY_THROTTLE_MS = 1000;
 const keyStore = getKeyStore();
 
 export function WalletProvider({ children }) {
-  const mnemonicRef = useRef(null);      // LIVE SECRET while unlocked
+  // MULTI-SEED CONTAINER (LIVE SECRETS while unlocked). Holds the parsed vault
+  // container { wallets: [{ id, mnemonic }, ...] } — ALL seeds the vault unlocked.
+  // Kept in a ref (not state) so live mnemonics are never copied into render
+  // snapshots / devtools, exactly as the single mnemonic was before.
+  const containerRef = useRef(null);
+  // The active wallet's id, mirrored in a ref for synchronous reads by the
+  // derive/sign helpers (which must not depend on a React state flush).
+  const activeIdRef = useRef(null);
+  // Active portfolio id mirrored in a ref so mutations (e.g. a newly added wallet
+  // joining the current portfolio) read it without a stale-closure hazard.
+  const activePortfolioRef = useRef(MAIN_PORTFOLIO_ID);
   const [isUnlocked, setUnlocked] = useState(false);
+  // Public, non-secret per-wallet info for the UI: [{ id, name, backedUp,
+  // enabledAssets }] — NO mnemonics. Derived from the container ids + walletMeta.
+  const [wallets, setWallets] = useState([]);
+  // Which wallet send/receive/derivation acts on (the "active wallet").
+  const [activeWalletId, setActiveWalletIdState] = useState(null);
+  // Public addresses per wallet for the unified portfolio: { id: {evm,btc,sol} }.
+  // Derived locally from each seed — no network, no balances here.
+  const [walletAddresses, setWalletAddresses] = useState({});
+  // PORTFOLIOS: named groups of wallets. portfolios=[{id,name}]; walletPortfolioMap
+  // maps walletId -> portfolioId (each wallet in exactly one). activePortfolioId is
+  // the group currently shown. "Main" always exists and holds unassigned wallets.
+  const [portfolios, setPortfolios] = useState([]);
+  const [walletPortfolioMap, setWalletPortfolioMap] = useState({});
+  const [activePortfolioId, setActivePortfolioIdState] = useState(MAIN_PORTFOLIO_ID);
+  // EXPLORE-FIRST ONBOARDING: true when the device has NO vault and the user is
+  // browsing the real UI VIEW-ONLY (honest $0 empty states, no auth, nothing to
+  // protect). Wallet-requiring actions call requireWallet() to leave explore and
+  // enter the create/import flow. Returning users (vault exists) never explore.
+  const [exploreMode, setExploreMode] = useState(false);
   // DURESS / DECOY (S3): true when the CURRENT session was opened with the
   // duress password (a decoy vault) rather than the real one. Internal flag for
   // app logic; the normal wallet UI deliberately does NOT surface it, so a
@@ -264,14 +323,26 @@ export function WalletProvider({ children }) {
   }, [showSimulatedPasskeyPrompt]);
 
   const lock = useCallback(() => {
-    if (mnemonicRef.current) {
-      // best-effort overwrite before dropping the reference
-      try { mnemonicRef.current = '\u0000'.repeat(mnemonicRef.current.length); } catch { /* noop */ }
+    const c = containerRef.current;
+    if (c && Array.isArray(c.wallets)) {
+      // best-effort overwrite of EVERY seed before dropping the container — the
+      // same hygiene the single mnemonic got, applied across all wallets.
+      for (const w of c.wallets) {
+        try { w.mnemonic = ' '.repeat(w.mnemonic.length); } catch { /* noop */ }
+      }
     }
-    mnemonicRef.current = null;
+    containerRef.current = null;
+    activeIdRef.current = null;
+    activePortfolioRef.current = MAIN_PORTFOLIO_ID;
     setUnlocked(false);
     setIsDecoy(false);
     setIsHidden(false);
+    setWallets([]);
+    setActiveWalletIdState(null);
+    setWalletAddresses({});
+    setPortfolios([]);
+    setWalletPortfolioMap({});
+    setActivePortfolioIdState(MAIN_PORTFOLIO_ID);
     setAccounts([]);
     setBtcAccount(null);
     setSolAccount(null);
@@ -284,7 +355,7 @@ export function WalletProvider({ children }) {
   // idle-lock mechanism — it routes through lock() exactly like every other path.
   const armTimer = useCallback(() => {
     if (lockTimer.current) { clearTimeout(lockTimer.current); lockTimer.current = null; }
-    if (!mnemonicRef.current) return;        // locked → nothing to arm
+    if (!containerRef.current) return;       // locked → nothing to arm
     const ms = autoLockMsRef.current;
     if (ms == null) return;                  // "Never" → no idle lock
     lockTimer.current = setTimeout(lock, ms);
@@ -350,12 +421,72 @@ export function WalletProvider({ children }) {
     return () => keyStore.setLockHook?.(null);
   }, [lock]);
 
+  // ── MULTI-SEED SESSION HELPERS ─────────────────────────────────────────────
+  // The single source of truth for "which seed do send/receive/derivation use":
+  // the ACTIVE wallet's mnemonic, read synchronously from the container. Returns
+  // null when locked (no container). Falls back to the first wallet if the active
+  // id is somehow stale, so a session never derives from a missing wallet.
+  const getActiveMnemonic = useCallback(() => {
+    const c = containerRef.current;
+    if (!c || !c.wallets || c.wallets.length === 0) return null;
+    const w = mv.findWallet(c, activeIdRef.current) || c.wallets[0];
+    return w ? w.mnemonic : null;
+  }, []);
+
+  // Rebuild the public `wallets` state from the container ids + walletMeta. NO
+  // mnemonics leave the ref. Used after any add/remove/rename/backup change.
+  const refreshWalletsState = useCallback(() => {
+    const c = containerRef.current;
+    if (!c) { setWallets([]); return; }
+    const ids = mv.listWalletIds(c);
+    setWallets(ids.map((id, i) => {
+      const m = getWalletMeta(id, `Wallet ${i + 1}`);
+      return { id, name: m.name, backedUp: m.backedUp, enabledAssets: m.enabledAssets };
+    }));
+    setActiveWalletIdState(activeIdRef.current);
+  }, []);
+
+  // Reconcile + load portfolio state against the current container's wallet ids.
+  // Ensures "Main" exists, every wallet is in exactly one portfolio, orphan
+  // mappings are pruned, and the active portfolio is valid. Non-secret.
+  const refreshPortfoliosState = useCallback(() => {
+    const c = containerRef.current;
+    if (!c) { setPortfolios([]); setWalletPortfolioMap({}); setActivePortfolioIdState(MAIN_PORTFOLIO_ID); return; }
+    const { portfolios: pf, walletMap, activePortfolioId: active } = reconcilePortfolios(mv.listWalletIds(c));
+    setPortfolios(pf);
+    setWalletPortfolioMap(walletMap);
+    activePortfolioRef.current = active;
+    setActivePortfolioIdState(active);
+  }, []);
+
+  // ── PORTFOLIO ADDRESS DERIVATION ────────────────────────────────────────────
+  // Derive every wallet's PUBLIC multi-chain addresses (evm/btc/sol) for the
+  // unified portfolio. Local-only: no network, no balances, no private keys
+  // retained. Each wallet derives strictly from its OWN seed (isolation).
+  const deriveAllAddresses = useCallback(() => {
+    const c = containerRef.current;
+    if (!c) { setWalletAddresses({}); return {}; }
+    const map = {};
+    for (const w of c.wallets) {
+      try {
+        map[w.id] = {
+          evm: deriveEvmAccount(w.mnemonic, 0).address,
+          btc: deriveBtcAccount(w.mnemonic, { networkKey: 'testnet' }).address,
+          sol: deriveSolAccount(w.mnemonic).address,
+        };
+      } catch { /* skip a wallet that fails to derive rather than break the view */ }
+    }
+    setWalletAddresses(map);
+    return map;
+  }, []);
+
   // Derive a set of public accounts from the in-memory mnemonic.
   const deriveAccounts = useCallback((count = 1) => {
-    if (!mnemonicRef.current) throw new Error('Wallet is locked');
+    const active = getActiveMnemonic();
+    if (!active) throw new Error('Wallet is locked');
     const list = [];
     for (let i = 0; i < count; i++) {
-      const { address, path } = deriveEvmAccount(mnemonicRef.current, i);
+      const { address, path } = deriveEvmAccount(active, i);
       list.push({ address, path, index: i }); // NOTE: no privateKey stored here
     }
     setAccounts(list);
@@ -366,8 +497,9 @@ export function WalletProvider({ children }) {
   // mnemonic. Separate from deriveAccounts() so the EVM path is untouched.
   // Defaults to testnet; returns {address, path}. No keys stored here.
   const deriveBtc = useCallback((networkKey = 'testnet') => {
-    if (!mnemonicRef.current) throw new Error('Wallet is locked');
-    const { address, path } = deriveBtcAccount(mnemonicRef.current, { networkKey });
+    const active = getActiveMnemonic();
+    if (!active) throw new Error('Wallet is locked');
+    const { address, path } = deriveBtcAccount(active, { networkKey });
     const acct = { address, path, networkKey };
     setBtcAccount(acct);
     return acct;
@@ -377,12 +509,24 @@ export function WalletProvider({ children }) {
   // ed25519 / SLIP-0010 — a different curve from EVM/BTC, separate from both
   // derivation paths. Defaults to devnet; returns {address, path}. No keys stored.
   const deriveSol = useCallback((networkKey = 'devnet') => {
-    if (!mnemonicRef.current) throw new Error('Wallet is locked');
-    const { address, path } = deriveSolAccount(mnemonicRef.current);
+    const active = getActiveMnemonic();
+    if (!active) throw new Error('Wallet is locked');
+    const { address, path } = deriveSolAccount(active);
     const acct = { address, path, networkKey };
     setSolAccount(acct);
     return acct;
   }, []);
+
+  // Derive the ACTIVE wallet's accounts (EVM/BTC/SOL) AND every wallet's public
+  // portfolio addresses, in one call. Used after unlock / create / import /
+  // switch / add / remove so both the active-wallet views and the unified
+  // portfolio stay in sync.
+  const deriveActiveAndAll = useCallback(() => {
+    deriveAccounts(1);
+    deriveBtc();
+    deriveSol();
+    deriveAllAddresses();
+  }, [deriveAccounts, deriveBtc, deriveSol, deriveAllAddresses]);
 
   // PANIC WIPE (S3 — Direction-C). ⚠️ DESTRUCTIVE + SAFETY-CRITICAL — see
   // wallet-core/panic.js. Irreversibly destroy ALL local key material:
@@ -402,19 +546,38 @@ export function WalletProvider({ children }) {
     // the vault password, so a wipe must take it too.
     setBiometricUnlockEnabled(false);
     try { await clearUnlockSecret(); } catch { /* best-effort */ }
+    // Multi-wallet metadata (names/backup-flags/asset prefs/active pointer) is
+    // non-secret, but a wipe should leave no residue tying the device to the
+    // destroyed wallets. Clearing it also makes the next launch a clean
+    // explore-mode first-run rather than referencing wallets that no longer exist.
+    clearAllWalletMeta();
+    clearAllPortfolios();
     lock();              // drop in-memory secret + reset session flags
     setWasWiped(true);   // UX/proof signal only (not a secret)
     return residual;     // { indexedDbKeys, vaultBlobCount, localStorageResidue, clean }
   }, [lock]);
 
-  // Create a brand-new wallet: generate -> encrypt -> persist ciphertext -> unlock.
+  // Create a brand-new wallet (the FIRST wallet on this device): generate one
+  // seed, wrap it in a fresh multi-seed container as wallet #1, encrypt the
+  // SERIALISED container, persist ciphertext, unlock. The crypto is unchanged —
+  // we hand keyStore the container JSON instead of a bare mnemonic.
+  //
+  // BACKUP TRACKING: the new wallet is recorded as NOT-yet-backed-up
+  // (backedUp:false) so the mandatory backup screen + the prominent unbacked
+  // warning are live until the user confirms via confirmWalletBackup(). New
+  // wallets default to the headline assets (the other EVM chains are opt-in).
   const createWallet = useCallback(async (password, strength = 128) => {
     const mnemonic = generateMnemonic(strength);
-    await keyStore.createVault(mnemonic, password);
-    mnemonicRef.current = mnemonic;
+    const { container, walletId } = mv.migrateLegacyMnemonic(mnemonic);
+    await keyStore.createVault(mv.serializeContainer(container), password);
+    containerRef.current = container;
+    activeIdRef.current = walletId;
+    ensureWalletMeta(walletId, { name: 'Wallet 1', backedUp: false });
+    persistActiveWalletId(walletId);
     setUnlocked(true);
     setIsDecoy(false);
     setIsHidden(false);
+    setExploreMode(false);
     setWasWiped(false); // a fresh wallet exists again; clear any prior wipe signal
     // A brand-new wallet must not inherit a previous wallet's biometric one-tap
     // cache/preference (its password wouldn't decrypt this vault). Reset so
@@ -426,32 +589,212 @@ export function WalletProvider({ children }) {
     // — universal among users — rather than to hidden-wallet usage. Best-effort:
     // a storage hiccup must never break wallet creation.
     void ensureStealthPool().catch(() => {});
+    refreshWalletsState();
+    refreshPortfoliosState();
     touch();
-    deriveAccounts(1);
-    deriveBtc();
-    deriveSol();
+    deriveActiveAndAll();
     // Return mnemonic ONCE for the user to back up; caller must not persist it.
     return mnemonic;
-  }, [deriveAccounts, deriveBtc, deriveSol, touch]);
+  }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
-  // Import an existing mnemonic.
+  // Import an existing mnemonic as the FIRST wallet on this device. Wrapped as
+  // wallet #1 of a fresh container. Marked backedUp:true — the user supplied the
+  // seed, so by definition they hold the backup (no nag for an imported wallet).
   const importWallet = useCallback(async (mnemonic, password) => {
     if (!validateMnemonic(mnemonic)) throw new Error('Invalid recovery phrase');
-    await keyStore.createVault(mnemonic, password);
-    mnemonicRef.current = mnemonic;
+    const { container, walletId } = mv.migrateLegacyMnemonic(mnemonic);
+    await keyStore.createVault(mv.serializeContainer(container), password);
+    containerRef.current = container;
+    activeIdRef.current = walletId;
+    ensureWalletMeta(walletId, { name: 'Wallet 1', backedUp: true });
+    persistActiveWalletId(walletId);
     setUnlocked(true);
     setIsDecoy(false);
     setIsHidden(false);
+    setExploreMode(false);
     setWasWiped(false); // a fresh wallet exists again; clear any prior wipe signal
     // Reset any prior wallet's biometric one-tap cache/preference (see createWallet).
     setBiometricUnlockEnabled(false);
     void clearUnlockSecret().catch(() => {});
     void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
+    refreshWalletsState();
+    refreshPortfoliosState();
     touch();
-    deriveAccounts(1);
-    deriveBtc();
-    deriveSol();
-  }, [deriveAccounts, deriveBtc, deriveSol, touch]);
+    deriveActiveAndAll();
+  }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
+
+  // ── MULTI-WALLET MANAGEMENT (re-prompt password to mutate the SEED SET) ──────
+  //
+  // Adding/importing/removing a SEED re-encrypts the multi-seed container, which
+  // needs the vault password. By design we do NOT keep the password in memory
+  // (only the seeds are resident, as before) — instead each of these operations
+  // takes the password and RE-AUTHENTICATES by decrypting the current vault. A
+  // wrong password throws the SAME generic error as unlock and changes nothing.
+  // Re-auth before touching the key vault is a deliberate security property.
+  //
+  // Decrypt the CURRENT primary vault, returning the authoritative container.
+  // Doubles as password verification for the mutations below. Primary-only.
+  const decryptPrimaryContainer = useCallback(async (password) => {
+    const plaintext = await keyStore.unlock(password); // generic throw on wrong pw / no vault
+    return mv.parseVault(plaintext).container;
+  }, []);
+
+  // ADD a brand-new wallet (new seed) to the vault. Returns { walletId, mnemonic }
+  // — the mnemonic ONCE so the UI can run the MANDATORY per-wallet backup screen.
+  // The wallet is recorded backedUp:false until confirmWalletBackup() so the
+  // prominent unbacked-wallet warning is live until the user confirms.
+  const addWallet = useCallback(async (password, opts = {}) => {
+    if (isDecoy || isHidden) throw new Error('Adding wallets is unavailable in this session.');
+    const { strength = 128, name, enabledAssets } = opts;
+    const current = await decryptPrimaryContainer(password); // verifies password
+    const mnemonic = generateMnemonic(strength);
+    const { container, walletId } = mv.addWallet(current, mnemonic);
+    await keyStore.createVault(mv.serializeContainer(container), password);
+    containerRef.current = container;
+    ensureWalletMeta(walletId, { name: name || `Wallet ${mv.walletCount(container)}`, backedUp: false, enabledAssets });
+    assignWalletToPortfolioStore(walletId, activePortfolioRef.current); // joins the current portfolio
+    activeIdRef.current = walletId;
+    persistActiveWalletId(walletId);
+    reconcileWalletMeta(mv.listWalletIds(container));
+    refreshWalletsState();
+    refreshPortfoliosState();
+    touch();
+    deriveActiveAndAll();
+    return { walletId, mnemonic };
+  }, [isDecoy, isHidden, decryptPrimaryContainer, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
+
+  // IMPORT an existing seed as an ADDITIONAL wallet in the vault. Marked
+  // backedUp:true (the user supplied the seed). Rejects a seed already present.
+  const importAdditionalWallet = useCallback(async (password, mnemonic, opts = {}) => {
+    if (isDecoy || isHidden) throw new Error('Importing wallets is unavailable in this session.');
+    const { name, enabledAssets } = opts;
+    const current = await decryptPrimaryContainer(password);
+    const { container, walletId } = mv.addWallet(current, (mnemonic || '').trim()); // validates + dedupes
+    await keyStore.createVault(mv.serializeContainer(container), password);
+    containerRef.current = container;
+    ensureWalletMeta(walletId, { name: name || `Wallet ${mv.walletCount(container)}`, backedUp: true, enabledAssets });
+    assignWalletToPortfolioStore(walletId, activePortfolioRef.current); // joins the current portfolio
+    activeIdRef.current = walletId;
+    persistActiveWalletId(walletId);
+    reconcileWalletMeta(mv.listWalletIds(container));
+    refreshWalletsState();
+    refreshPortfoliosState();
+    touch();
+    deriveActiveAndAll();
+    return { walletId };
+  }, [isDecoy, isHidden, decryptPrimaryContainer, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
+
+  // REMOVE a wallet (seed) from the vault. Refuses to remove the last wallet (use
+  // panicWipe / clearVault to leave nothing). The other wallets are untouched.
+  const removeWallet = useCallback(async (password, walletId) => {
+    if (isDecoy || isHidden) throw new Error('Removing wallets is unavailable in this session.');
+    const current = await decryptPrimaryContainer(password);
+    const container = mv.removeWallet(current, walletId); // throws if last / not found
+    await keyStore.createVault(mv.serializeContainer(container), password);
+    containerRef.current = container;
+    removeWalletMeta(walletId);
+    const ids = mv.listWalletIds(container);
+    if (activeIdRef.current === walletId) {
+      activeIdRef.current = ids[0];
+      persistActiveWalletId(ids[0]);
+    }
+    reconcileWalletMeta(ids);
+    refreshWalletsState();
+    refreshPortfoliosState();
+    touch();
+    deriveActiveAndAll();
+  }, [isDecoy, isHidden, decryptPrimaryContainer, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
+
+  // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container (the
+  // session already holds every seed while unlocked, so this needs no password —
+  // it is the same exposure as withPrivateKey). LIVE SECRET: the caller shows it
+  // once for backup and must never persist it. Returns null when locked.
+  const revealWalletMnemonic = useCallback((walletId) => {
+    const c = containerRef.current;
+    if (!c) return null;
+    const w = mv.findWallet(c, walletId || activeIdRef.current);
+    return w ? w.mnemonic : null;
+  }, []);
+
+  // Confirm the user has backed up a wallet's seed (defaults to the active one).
+  // Cheap localStorage flip — no password, no re-encrypt (it is not secret).
+  const confirmWalletBackup = useCallback((walletId) => {
+    const id = walletId || activeIdRef.current;
+    if (!id) return;
+    setWalletBackedUp(id, true);
+    refreshWalletsState();
+  }, [refreshWalletsState]);
+
+  // Rename a wallet (cosmetic, non-secret localStorage; no password needed).
+  const renameWallet = useCallback((walletId, name) => {
+    setWalletName(walletId, name);
+    refreshWalletsState();
+  }, [refreshWalletsState]);
+
+  // Switch the ACTIVE wallet (what send/receive/derivation act on). Cheap —
+  // re-derives the active accounts; no password, no vault read.
+  const switchWallet = useCallback((walletId) => {
+    const c = containerRef.current;
+    if (!c || !mv.findWallet(c, walletId)) return;
+    activeIdRef.current = walletId;
+    persistActiveWalletId(walletId);
+    setActiveWalletIdState(walletId);
+    touch();
+    deriveActiveAndAll();
+  }, [deriveActiveAndAll, touch]);
+
+  // Per-wallet asset visibility (non-secret localStorage; no password).
+  const setWalletAssets = useCallback((walletId, symbols) => {
+    setWalletEnabledAssets(walletId, symbols);
+    refreshWalletsState();
+  }, [refreshWalletsState]);
+  const toggleWalletAsset = useCallback((walletId, symbol) => {
+    toggleWalletAssetMeta(walletId, symbol);
+    refreshWalletsState();
+  }, [refreshWalletsState]);
+
+  // ── EXPLORE-FIRST ONBOARDING ────────────────────────────────────────────────
+  const enterExplore = useCallback(() => setExploreMode(true), []);
+  const leaveExplore = useCallback(() => setExploreMode(false), []);
+  // requireWallet(): a wallet-requiring action was tapped while exploring (no
+  // vault yet). Leave explore so the gate surfaces the create/import flow. Returns
+  // true when the action is BLOCKED (no unlocked wallet) so callers short-circuit.
+  const requireWallet = useCallback(() => {
+    if (isUnlocked) return false;
+    setExploreMode(false);
+    return true;
+  }, [isUnlocked]);
+
+  // ── PORTFOLIO MANAGEMENT (non-secret grouping; no password, no vault read) ───
+  // Disabled in a decoy/hidden session (single-wallet, ephemeral — never mutate
+  // the persisted portfolio store there).
+  const setActivePortfolio = useCallback((portfolioId) => {
+    const id = portfolioId || MAIN_PORTFOLIO_ID;
+    activePortfolioRef.current = id;
+    persistActivePortfolioId(id);
+    setActivePortfolioIdState(id);
+  }, []);
+  const createPortfolio = useCallback((name) => {
+    if (isDecoy || isHidden) return null;
+    const p = createPortfolioStore(name);
+    refreshPortfoliosState();
+    return p;
+  }, [isDecoy, isHidden, refreshPortfoliosState]);
+  const renamePortfolio = useCallback((id, name) => {
+    if (isDecoy || isHidden) return;
+    renamePortfolioStore(id, name);
+    refreshPortfoliosState();
+  }, [isDecoy, isHidden, refreshPortfoliosState]);
+  const deletePortfolio = useCallback((id) => {
+    if (isDecoy || isHidden) return;
+    deletePortfolioStore(id);
+    refreshPortfoliosState();
+  }, [isDecoy, isHidden, refreshPortfoliosState]);
+  const assignWalletToPortfolio = useCallback((walletId, portfolioId) => {
+    if (isDecoy || isHidden) return;
+    assignWalletToPortfolioStore(walletId, portfolioId);
+    refreshPortfoliosState();
+  }, [isDecoy, isHidden, refreshPortfoliosState]);
 
   // CHANGE THE VAULT PASSWORD (S1 — Account Access / Reset). Re-encrypt the
   // existing vault under a new password while keeping the SAME seed. This is the
@@ -570,23 +913,69 @@ export function WalletProvider({ children }) {
         throw primaryErr;
       }
     }
-    mnemonicRef.current = mnemonic;
+    // `mnemonic` here is the DECRYPTED payload: on the primary path it is a
+    // multi-seed container JSON (or a legacy bare mnemonic to be migrated); on
+    // the deniability path it is a single bare decoy/hidden mnemonic. parseVault
+    // normalises both into a container (the decoy/hidden one in-memory only).
+    const { container, migrated } = mv.parseVault(mnemonic);
+    containerRef.current = container;
+    const isPrimary = !decoy && !hidden;
+
+    if (isPrimary) {
+      // LOSSLESS SINGLE-SEED -> MULTI-SEED MIGRATION. If the primary vault was a
+      // legacy bare mnemonic, re-encrypt it as a container under the SAME password
+      // and persist. Best-effort (mirrors the M3 KDF rekey): a failed re-encrypt
+      // must NOT block unlock — the user still gets their wallet and migration
+      // retries on the next unlock. The decrypt above already used the unchanged
+      // crypto, so the wallet's funds/addresses are byte-identical.
+      if (migrated) {
+        const firstId = mv.listWalletIds(container)[0];
+        // The migrated wallet went through mandatory backup at its ORIGINAL
+        // creation, so backedUp:true (no spurious nag for existing users), and it
+        // keeps ALL assets visible so nothing the user saw disappears.
+        ensureWalletMeta(firstId, { name: 'Wallet 1', backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] });
+        try { await keyStore.createVault(mv.serializeContainer(container), password); }
+        catch { /* best-effort; retried next unlock */ }
+      }
+      const { activeWalletId: active } = reconcileWalletMeta(mv.listWalletIds(container));
+      activeIdRef.current = active;
+      setIsDecoy(false);
+      setIsHidden(false);
+      refreshWalletsState();
+      refreshPortfoliosState();
+    } else {
+      // DECOY / HIDDEN: a single-wallet, EPHEMERAL session. We do NOT persist a
+      // container or touch walletMeta — the duress/stealth storages stay exactly
+      // as those features wrote them (a single bare mnemonic), preserving their
+      // plausible deniability. Build transient public state in-memory only, so the
+      // coerced/observed view looks like an ordinary single-wallet wallet.
+      const ids = mv.listWalletIds(container);
+      activeIdRef.current = ids[0];
+      setIsDecoy(decoy);
+      setIsHidden(hidden);
+      setWallets(ids.map((id, i) => ({ id, name: `Wallet ${i + 1}`, backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] })));
+      setActiveWalletIdState(ids[0]);
+      // Transient single "Main" portfolio for the decoy/hidden session — never
+      // touch the persisted portfolio store (deniability + no pollution).
+      setPortfolios([{ id: MAIN_PORTFOLIO_ID, name: 'Main' }]);
+      setWalletPortfolioMap({ [ids[0]]: MAIN_PORTFOLIO_ID });
+      activePortfolioRef.current = MAIN_PORTFOLIO_ID;
+      setActivePortfolioIdState(MAIN_PORTFOLIO_ID);
+    }
+
     setUnlocked(true);
-    setIsDecoy(decoy);
-    setIsHidden(hidden);
+    setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
     // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
     void ensureStealthPool().catch(() => {});
     touch();
-    deriveAccounts(1);
-    deriveBtc();
-    deriveSol();
+    deriveActiveAndAll();
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
     return { passkeySkipped, biometricSkipped };
-  }, [deriveAccounts, deriveBtc, deriveSol, touch, runBiometricGate, runPasskeyGate, panicWipe]);
+  }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).
   //
@@ -693,9 +1082,10 @@ export function WalletProvider({ children }) {
   // sign, WITHOUT storing it. The caller (send flow) uses it immediately and
   // lets it go out of scope. Never log or persist the return value.
   const withPrivateKey = useCallback((index, fn) => {
-    if (!mnemonicRef.current) throw new Error('Wallet is locked');
+    const active = getActiveMnemonic();
+    if (!active) throw new Error('Wallet is locked');
     touch();
-    const { privateKey } = deriveEvmAccount(mnemonicRef.current, index);
+    const { privateKey } = deriveEvmAccount(active, index);
     return fn(privateKey);
   }, [touch]);
 
@@ -703,9 +1093,10 @@ export function WalletProvider({ children }) {
   // account transiently to a signer (e.g. the send path), WITHOUT storing them.
   // Same contract as withPrivateKey — used immediately, then dropped. Never log.
   const withBtcPrivateKey = useCallback((fn, networkKey = 'testnet') => {
-    if (!mnemonicRef.current) throw new Error('Wallet is locked');
+    const active = getActiveMnemonic();
+    if (!active) throw new Error('Wallet is locked');
     touch();
-    const { privateKey, publicKey, address } = deriveBtcAccount(mnemonicRef.current, { networkKey });
+    const { privateKey, publicKey, address } = deriveBtcAccount(active, { networkKey });
     return fn({ privateKey, publicKey, address });
   }, [touch]);
 
@@ -715,9 +1106,10 @@ export function WalletProvider({ children }) {
   // used immediately, then dropped. Never log. networkKey is accepted for API
   // symmetry (the same address derives across all Solana clusters).
   const withSolPrivateKey = useCallback((fn) => {
-    if (!mnemonicRef.current) throw new Error('Wallet is locked');
+    const active = getActiveMnemonic();
+    if (!active) throw new Error('Wallet is locked');
     touch();
-    const { privateKey, publicKey, address } = deriveSolAccount(mnemonicRef.current);
+    const { privateKey, publicKey, address } = deriveSolAccount(active);
     return fn({ privateKey, publicKey, address });
   }, [touch]);
 
@@ -802,6 +1194,40 @@ export function WalletProvider({ children }) {
 
   const value = {
     isUnlocked,
+    // ── MULTI-WALLET (feat/multi-wallet-portfolio) ──
+    // Public per-wallet info [{ id, name, backedUp, enabledAssets }] — no seeds.
+    wallets,
+    // Active wallet id (what send/receive/derivation act on) + switcher.
+    activeWalletId,
+    switchWallet,
+    // Public addresses per wallet for the unified portfolio: { id: {evm,btc,sol} }.
+    walletAddresses,
+    // Mutations: add (new seed), import-additional (existing seed), remove. Each
+    // takes the vault password (re-auth) and re-encrypts the multi-seed container.
+    addWallet,
+    importAdditionalWallet,
+    removeWallet,
+    // Cheap, non-secret (localStorage) per-wallet updates — no password needed.
+    confirmWalletBackup,
+    renameWallet,
+    setWalletAssets,
+    toggleWalletAsset,
+    // Reveal a wallet's seed for the mandatory backup screen (LIVE SECRET).
+    revealWalletMnemonic,
+    // PORTFOLIOS: named groups of wallets (one-portfolio-per-wallet; "Main" default).
+    portfolios,
+    activePortfolioId,
+    walletPortfolioMap,
+    setActivePortfolio,
+    createPortfolio,
+    renamePortfolio,
+    deletePortfolio,
+    assignWalletToPortfolio,
+    // EXPLORE-FIRST ONBOARDING: view-only browse before any wallet exists.
+    exploreMode,
+    enterExplore,
+    leaveExplore,
+    requireWallet,
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
     isDecoy,
     // STEALTH (S3): is the current session a revealed HIDDEN wallet? Off by

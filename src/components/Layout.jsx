@@ -16,6 +16,7 @@ import BackButton from "./BackButton";
 import SessionRevocationGuard from "./SessionRevocationGuard";
 import PullToRefreshContainer from "./PullToRefreshContainer";
 import { ErrorBoundary } from "./ErrorBoundary";
+import FeatureGate from './FeatureGate';
 import VeyrnoxLogo from "./VeyrnoxLogo";
 import { navGroups, groupColor } from "@/lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -294,7 +295,7 @@ export default function Layout() {
               are top-level destinations and don't get a back control. */}
           {!isRootTab && <BackButton className="mb-4" />}
           <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">
-            <ErrorBoundary key={location.pathname}><Outlet /></ErrorBoundary>
+            <ErrorBoundary key={location.pathname}><FeatureGate><Outlet /></FeatureGate></ErrorBoundary>
           </PullToRefreshContainer>
         </motion.main>
       </AnimatePresence>
@@ -313,7 +314,7 @@ export default function Layout() {
               className="p-4"
             >
               <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">
-                <ErrorBoundary key={location.pathname}><Outlet /></ErrorBoundary>
+                <ErrorBoundary key={location.pathname}><FeatureGate><Outlet /></FeatureGate></ErrorBoundary>
               </PullToRefreshContainer>
             </motion.div>
           )}
@@ -326,7 +327,7 @@ export default function Layout() {
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/'}
           className="p-4"
         >
-          <SafeSuspense fallback={<TabSpinner />}><DashboardPage /></SafeSuspense>
+          <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/"><DashboardPage /></FeatureGate></SafeSuspense>
         </div>
         <div
           id="tab-panel-1"
@@ -335,7 +336,7 @@ export default function Layout() {
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/send'}
           className="p-4"
         >
-          <SafeSuspense fallback={<TabSpinner />}><SendCryptoPage /></SafeSuspense>
+          <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/send"><SendCryptoPage /></FeatureGate></SafeSuspense>
         </div>
         <div
           id="tab-panel-2"
@@ -344,7 +345,7 @@ export default function Layout() {
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/receive'}
           className="p-4"
         >
-          <SafeSuspense fallback={<TabSpinner />}><ReceiveCryptoPage /></SafeSuspense>
+          <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/receive"><ReceiveCryptoPage /></FeatureGate></SafeSuspense>
         </div>
       </div>
 

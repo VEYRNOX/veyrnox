@@ -7,7 +7,8 @@ import {
 } from "@/components/ui/table";
 
 import { Button } from "@/components/ui/button";
-import { FileText, Search, Download } from "lucide-react";
+import { Link } from "react-router-dom";
+import { FileText, Search, Download, Sparkles } from "lucide-react";
 import { exportCataloguePdf } from "@/lib/pdfExport";
 import { toast } from "sonner";
 
@@ -166,7 +167,7 @@ const featureCategories = [
         name: "Hardware Wallet",
         status: "roadmap",
         summary: "Ledger / Trezor cold-key signing",
-        explanation: "Sign with an external hardware wallet so keys stay offline. Specced, not yet built — the current page is a UI preview, not a working device integration."
+        explanation: "Sign with an external hardware wallet so keys stay offline. Planned, not yet built — the page is an honest 'coming soon' placeholder, not a working device integration."
       }
     ]
   },
@@ -587,6 +588,15 @@ export default function Features() {
           </Button>
         </div>
       </div>
+
+      {/* Current plan (display-only — see pages/Subscription.jsx; tier stays Free) */}
+      <Link to="/plans" className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors">
+        <div className="flex items-center gap-3">
+          <Sparkles className="h-5 w-5 text-primary shrink-0" />
+          <p className="text-sm font-medium">Current plan: Free</p>
+        </div>
+        <span className="text-sm text-primary font-medium">View plans</span>
+      </Link>
 
       {/* Search */}
       <div className="relative">

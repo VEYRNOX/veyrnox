@@ -26,6 +26,7 @@ import {
   Coins,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb,
 } from "lucide-react";
+import { isCut } from './featureRegistry';
 
 // Each feature group gets its own accent colour so the menus read as
 // colour-coded sections rather than one long undifferentiated list.
@@ -41,7 +42,7 @@ export const GROUP_COLORS = {
 };
 export const groupColor = (label) => GROUP_COLORS[label] || "#8b5cf6";
 
-export const navGroups = [
+const RAW_NAV_GROUPS = [
   {
     label: "Overview",
     items: [
@@ -71,7 +72,6 @@ export const navGroups = [
       { path: "/receive", label: "Receive", icon: Download },
       { path: "/tx-history", label: "Transaction History", icon: History },
       { path: "/payment-links", label: "Payment Links", icon: Link2 },
-      { path: "/merchant-qr", label: "Merchant QR", icon: QrCode },
       { path: "/split-bill", label: "Split Bill", icon: Scissors },
       { path: "/receipt", label: "TX Receipts", icon: Receipt },
       { path: "/fee-analytics", label: "Fee Analytics", icon: Fuel },
@@ -96,13 +96,11 @@ export const navGroups = [
     label: "Assets",
     items: [
       { path: "/watchlist", label: "Watchlist", icon: Eye },
-      { path: "/nft-gallery", label: "NFT Gallery", icon: Frame },
       { path: "/nft", label: "NFT Portfolio", icon: Image },
       { path: "/nft-multichain", label: "Multi-Chain NFT", icon: Layers },
       { path: "/spending", label: "Spending", icon: PieChart },
       { path: "/snapshots", label: "Snapshots", icon: Camera },
       { path: "/onchain", label: "On-Chain", icon: Network },
-      { path: "/carbon", label: "Carbon Tracker", icon: Leaf },
       { path: "/erc20-discovery", label: "ERC-20 Discovery", icon: Coins },
     ],
   },
@@ -114,8 +112,6 @@ export const navGroups = [
       { path: "/net-worth", label: "Net Worth", icon: TrendingUp },
       { path: "/invoices", label: "Invoice Generator", icon: FileText },
       { path: "/tax", label: "Tax Report", icon: Receipt },
-      { path: "/will", label: "Crypto Will", icon: ScrollText },
-      { path: "/community", label: "Community", icon: Users },
     ],
   },
   {
@@ -124,7 +120,6 @@ export const navGroups = [
       { path: "/security-dashboard", label: "Security Dashboard", icon: ShieldCheck },
       { path: "/security", label: "Security Center", icon: ShieldAlert },
       { path: "/wallet-access", label: "Access & Recovery", icon: KeyRound },
-      { path: "/login-map", label: "Login Activity Map", icon: MapPin },
       { path: "/session-manager", label: "Session Manager", icon: ShieldCheck },
       { path: "/duress-pin", label: "Duress PIN", icon: Lock },
       { path: "/stealth-wallets", label: "Stealth Wallets", icon: Ghost },
@@ -132,7 +127,6 @@ export const navGroups = [
       { path: "/address-checker", label: "Address Screening", icon: ShieldQuestion },
       { path: "/wallet-seed-qr", label: "Seed Key QR", icon: Key },
       { path: "/hardware-wallet", label: "Hardware Wallets", icon: Cpu },
-      { path: "/cloud-backup", label: "Encrypted Cloud Backup", icon: CloudUpload },
       { path: "/dapp-alerts", label: "dApp Domain Check", icon: ShieldAlert },
       { path: "/security-scanner", label: "Pre-Sign Scanner", icon: ScanSearch },
       { path: "/biometric-auth", label: "Biometric Auth", icon: Fingerprint },
@@ -154,21 +148,23 @@ export const navGroups = [
       { path: "/address-book", label: "Address Book", icon: Users },
       { path: "/watch-wallets", label: "Watch Wallets", icon: Eye },
       { path: "/live-balances", label: "Live Balances (RPC)", icon: Wifi },
-      { path: "/dapp-connect", label: "dApp Connector", icon: Plug },
       { path: "/network-manager", label: "Network Manager", icon: Network },
       { path: "/solana", label: "Solana / SPL", icon: Layers },
-      { path: "/tron", label: "TRON / TRX", icon: Zap },
       { path: "/price-charts", label: "Price Charts", icon: BarChart3 },
       { path: "/gas-fees", label: "Gas Fees", icon: Gauge },
       { path: "/connect", label: "Connect Wallet", icon: Plug },
-      { path: "/walletconnect", label: "WalletConnect", icon: Link2 },
       { path: "/web3", label: "Web3 Browser", icon: Globe },
-      { path: "/account-access", label: "Account Access", icon: Users },
       { path: "/push", label: "Notifications", icon: BellDot },
-      { path: "/block-explorer", label: "Block Explorer", icon: Compass },
     ],
   },
 ];
+
+// Cut features (feature registry) are removed from nav + search entirely; the
+// route also resolves to Not Found via FeatureGate. Disabled features stay
+// visible here and render an honest notice when opened. Empty RAW_NAV_GROUPS groups are dropped.
+export const navGroups = RAW_NAV_GROUPS
+  .map((group) => ({ ...group, items: group.items.filter((item) => !isCut(item.path)) }))
+  .filter((group) => group.items.length > 0);
 
 // Top-level destinations that live OUTSIDE the sidebar feature groups — the
 // sidebar renders Settings on its own, and Documentation hangs off the Help
@@ -189,5 +185,5 @@ export const searchableRoutes = [
   ...navGroups.flatMap((group) =>
     group.items.map((item) => ({ ...item, group: group.label })),
   ),
-  ...EXTRA_ROUTES,
+  ...EXTRA_ROUTES.filter((item) => !isCut(item.path)),
 ];

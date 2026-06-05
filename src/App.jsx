@@ -6,6 +6,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
+import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -28,18 +29,13 @@ const SpendingPatterns = lazy(() => import('./pages/SpendingPatterns'));
 const AIPortfolioAdvisor = lazy(() => import('./pages/AIPortfolioAdvisor'));
 const SmartAlerts = lazy(() => import('./pages/SmartAlerts'));
 const RecurringPayments = lazy(() => import('./pages/RecurringPayments'));
-const WalletConnectPage = lazy(() => import('./pages/WalletConnectPage'));
 const PushNotificationsPage = lazy(() => import('./pages/PushNotificationsPage'));
 const AdvancedAnalytics = lazy(() => import('./pages/AdvancedAnalytics'));
-const Community = lazy(() => import('./pages/Community'));
 const Web3Browser = lazy(() => import('./pages/Web3Browser'));
 const MultiChainNFT = lazy(() => import('./pages/MultiChainNFT'));
 const FraudDetection = lazy(() => import('./pages/FraudDetection'));
-const AccountAccess = lazy(() => import('./pages/AccountAccess'));
 const PaymentLinks = lazy(() => import('./pages/PaymentLinks'));
 const RiskScoring = lazy(() => import('./pages/RiskScoring'));
-const CarbonTracker = lazy(() => import('./pages/CarbonTracker'));
-const CryptoWillPage = lazy(() => import('./pages/CryptoWillPage'));
 const NewsSentimentPage = lazy(() => import('./pages/NewsSentimentPage'));
 const NotificationCentre = lazy(() => import('./pages/NotificationCentre'));
 const SavingsGoals = lazy(() => import('./pages/SavingsGoals'));
@@ -51,12 +47,10 @@ const NetWorthTracker = lazy(() => import('./pages/NetWorthTracker'));
 const PortfolioBenchmark = lazy(() => import('./pages/PortfolioBenchmark'));
 const WhatIfSimulator = lazy(() => import('./pages/WhatIfSimulator'));
 const BudgetLimits = lazy(() => import('./pages/BudgetLimits'));
-const LoginActivityMap = lazy(() => import('./pages/LoginActivityMap'));
 const FeeAnalytics = lazy(() => import('./pages/FeeAnalytics'));
 const HardwareWalletPage = lazy(() => import('./pages/HardwareWalletPage'));
 const BiometricAuth = lazy(() => import('./pages/BiometricAuth'));
 const AnomalyDetection = lazy(() => import('./pages/AnomalyDetection'));
-const TaxHarvesting = lazy(() => import('./pages/TaxHarvesting'));
 const PortfolioRewind = lazy(() => import('./pages/PortfolioRewind'));
 const CustomIndexBuilder = lazy(() => import('./pages/CustomIndexBuilder'));
 const MessengerAlerts = lazy(() => import('./pages/MessengerAlerts'));
@@ -76,7 +70,6 @@ const PanicWipe = lazy(() => import('./pages/PanicWipe'));
 const PortfolioRiskScore = lazy(() => import('./pages/PortfolioRiskScore'));
 const CorrelationMatrix = lazy(() => import('./pages/CorrelationMatrix'));
 const SplitBill = lazy(() => import('./pages/SplitBill'));
-const MerchantQR = lazy(() => import('./pages/MerchantQR'));
 const SessionManager = lazy(() => import('./pages/SessionManager'));
 const TransactionReceipt = lazy(() => import('./pages/TransactionReceipt'));
 const TransactionHistory = lazy(() => import('./pages/TransactionHistory'));
@@ -90,21 +83,17 @@ const SpamTokenFilter = lazy(() => import('./pages/SpamTokenFilter'));
 const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
 const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
-const TronWallet = lazy(() => import('./pages/TronWallet'));
-const NFTGallery = lazy(() => import('./pages/NFTGallery'));
 const CryptoSigning = lazy(() => import('./pages/CryptoSigning'));
 const LiveBalances = lazy(() => import('./pages/LiveBalances'));
-const DAppConnector = lazy(() => import('./pages/DAppConnector'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Documentation = lazy(() => import('./pages/Documentation'));
 const Features = lazy(() => import('./pages/Features'));
-const CloudBackup = lazy(() => import('./pages/CloudBackup'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
-const BlockExplorer = lazy(() => import('./pages/BlockExplorer'));
 const SecurityScanner = lazy(() => import('./pages/SecurityScanner'));
 const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
 const ERC20Discovery = lazy(() => import('./pages/ERC20Discovery'));
 const Products = lazy(() => import('./pages/Products'));
+const Subscription = lazy(() => import('./pages/Subscription'));
 
 const AuthenticatedApp = () => {
   // Render the main app
@@ -148,18 +137,13 @@ const AuthenticatedApp = () => {
           <Route path="/advisor" element={<AIPortfolioAdvisor />} />
           <Route path="/smart-alerts" element={<SmartAlerts />} />
           <Route path="/recurring" element={<RecurringPayments />} />
-          <Route path="/walletconnect" element={<WalletConnectPage />} />
           <Route path="/push" element={<PushNotificationsPage />} />
           <Route path="/advanced-analytics" element={<AdvancedAnalytics />} />
-          <Route path="/community" element={<Community />} />
           <Route path="/web3" element={<Web3Browser />} />
           <Route path="/nft-multichain" element={<MultiChainNFT />} />
           <Route path="/fraud" element={<FraudDetection />} />
-          <Route path="/account-access" element={<AccountAccess />} />
           <Route path="/payment-links" element={<PaymentLinks />} />
           <Route path="/risk" element={<RiskScoring />} />
-          <Route path="/carbon" element={<CarbonTracker />} />
-          <Route path="/will" element={<CryptoWillPage />} />
           <Route path="/news-sentiment" element={<NewsSentimentPage />} />
           <Route path="/notifications" element={<NotificationCentre />} />
           <Route path="/savings" element={<SavingsGoals />} />
@@ -171,7 +155,6 @@ const AuthenticatedApp = () => {
           <Route path="/benchmark" element={<PortfolioBenchmark />} />
           <Route path="/what-if" element={<WhatIfSimulator />} />
           <Route path="/budget" element={<BudgetLimits />} />
-          <Route path="/login-map" element={<LoginActivityMap />} />
           <Route path="/duress-pin" element={<DuressPin />} />
           <Route path="/wallet-access" element={<WalletAccessReset />} />
           <Route path="/stealth-wallets" element={<StealthWallets />} />
@@ -179,7 +162,6 @@ const AuthenticatedApp = () => {
           <Route path="/risk-score" element={<PortfolioRiskScore />} />
           <Route path="/correlation" element={<CorrelationMatrix />} />
           <Route path="/split-bill" element={<SplitBill />} />
-          <Route path="/merchant-qr" element={<MerchantQR />} />
           <Route path="/session-manager" element={<SessionManager />} />
           <Route path="/receipt" element={<TransactionReceipt />} />
           <Route path="/tx-history" element={<TransactionHistory />} />
@@ -193,7 +175,6 @@ const AuthenticatedApp = () => {
           <Route path="/hardware-wallet" element={<HardwareWalletPage />} />
           <Route path="/biometric-auth" element={<BiometricAuth />} />
           <Route path="/anomaly-detection" element={<AnomalyDetection />} />
-          <Route path="/tax-harvest" element={<TaxHarvesting />} />
           <Route path="/portfolio-rewind" element={<PortfolioRewind />} />
           <Route path="/index-builder" element={<CustomIndexBuilder />} />
           <Route path="/messenger-alerts" element={<MessengerAlerts />} />
@@ -210,19 +191,15 @@ const AuthenticatedApp = () => {
           <Route path="/hd-wallet" element={<HDWalletManager />} />
           <Route path="/trust-score" element={<TrustScore />} />
           <Route path="/solana" element={<SolanaTokens />} />
-          <Route path="/tron" element={<TronWallet />} />
-          <Route path="/nft-gallery" element={<NFTGallery />} />
           <Route path="/crypto-signing" element={<CryptoSigning />} />
           <Route path="/live-balances" element={<LiveBalances />} />
-          <Route path="/dapp-connect" element={<DAppConnector />} />
-          <Route path="/cloud-backup" element={<CloudBackup />} />
           <Route path="/dapp-alerts" element={<DAppSecurityAlerts />} />
-          <Route path="/block-explorer" element={<BlockExplorer />} />
           <Route path="/security-scanner" element={<SecurityScanner />} />
           <Route path="/erc20-discovery" element={<ERC20Discovery />} />
           <Route path="/products" element={<Products />} />
           <Route path="/docs" element={<Documentation />} />
           <Route path="/features" element={<Features />} />
+          <Route path="/plans" element={<Subscription />} />
         </Route>
         {/* Onboarding created a hosted-style wallet *entity* with a fabricated
             address. In the local build the real first run is the on-device
@@ -241,12 +218,14 @@ function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
       <WalletProvider>
-        <QueryClientProvider client={queryClientInstance}>
-          <Router>
-            <AuthenticatedApp />
-          </Router>
-          <Toaster />
-        </QueryClientProvider>
+        <TierProvider>
+          <QueryClientProvider client={queryClientInstance}>
+            <Router>
+              <AuthenticatedApp />
+            </Router>
+            <Toaster />
+          </QueryClientProvider>
+        </TierProvider>
       </WalletProvider>
     </ThemeProvider>
   )
