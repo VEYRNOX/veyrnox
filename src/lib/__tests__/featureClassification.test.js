@@ -62,6 +62,10 @@ describe('registryEntriesFromClassification', () => {
     //     /fraud, /smart-alerts, /alerts)
     //   (6 Security-B pages are live: /biometric-auth, /voice-commands, /token-approvals,
     //     /spam-filter, /trust-score, /audit)
+    // + 5 Connect/Core pages classified in batch 5 (/watch-wallets, /solana, /price-charts,
+    //     /web3, /products)
+    //   (10 Connect/Core pages are live: /address-book, /live-balances, /network-manager,
+    //     /gas-fees, /connect, /push, /settings, /docs, /features, /plans)
     expect(Object.keys(out).sort()).toEqual(
       [
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
@@ -74,6 +78,7 @@ describe('registryEntriesFromClassification', () => {
         '/watchlist', '/nft', '/spending', '/snapshots', '/onchain', '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
         '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts', '/alerts',
+        '/watch-wallets', '/solana', '/price-charts', '/web3', '/products',
       ].sort(),
     );
   });

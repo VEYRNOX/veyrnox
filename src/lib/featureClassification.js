@@ -321,6 +321,70 @@ export const CLASSIFICATION = {
     verdict: 'disabled', reason: 'leaks', dataSource: 'external',
     note: 'fetchLivePrices() calls fetch("https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,...") — a third-party CryptoCompare API endpoint. The full coin symbol list is sent to CryptoCompare on every load and every 60-second refetchInterval. Price trigger evaluation itself is correct on-device logic, but the external price call is a mandatory dependency.',
   },
+
+  // ── Connect group (audit batch 5) ─────────────────────────────────────────
+  '/address-book': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Pure CRUD on base44.entities.AddressBook (local IndexedDB). Address entry is validated on save via isValidAddressForCurrency/addressKindLabel from lib/addressValidation — the same validators used by the Send flow. No external call, no fabricated data, no USD conversion.',
+  },
+  '/watch-wallets': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
+    note: 'MOCK is a hardcoded array (Vitalik.eth 1580.42 ETH, Whale #1 12.5 BTC) used as the fallback whenever the real entity list is empty. The displayed USD values are computed from hardcoded stale USD_RATES (ETH: 3200, BTC: 68000). No live balance fetch is performed for any watched address — the balance field is whatever was last entered by the user or zero.',
+  },
+  '/live-balances': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'All balance reads go through wallet-core: getBalanceEth + getProvider from @/wallet-core/evm/provider and ERC-20 balanceOf from @/wallet-core/evm/tokens. Networks come from listEnabledNetworks() (testnet-only gate). No third-party indexer or price feed is used — token discovery is limited to the wallet\'s own verified token registry. Gas price also read from the same provider.',
+  },
+  '/network-manager': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'CRUD on base44.entities.NetworkConfig (local IndexedDB). The component itself makes no live RPC calls — it manages the user-controlled RPC endpoint list. The "Connected" badge is cosmetic (not a live ping). Custom RPC entry is user-controlled plumbing. Honestly displays chain IDs and RPC URLs.',
+  },
+  '/solana': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
+    note: 'SOL_WALLET, SOL_BALANCE, SOL_USD, and all SPL_TOKENS (including balances and prices) are hardcoded constants presented as the user\'s real Solana portfolio. Per-token 24h changes are generated with Math.random() on every render. No Solana RPC or wallet-core call is made. The Send dialog builds no real transaction. The entire page is a fabricated Solana wallet view.',
+  },
+  '/price-charts': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
+    note: 'generateOHLCV() builds OHLCV data with Math.random() seeded from the static reference price in lib/cryptos.js. The resulting candlestick chart is re-generated on every asset/period selection and presented as a price chart with no disclaimer. No real price history feed is consulted — all candles, volume, and displayed percentage changes are invented at render time.',
+  },
+  '/gas-fees': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'FeeSelector calls estimateEvmFeeTiers, estimateBtcFeeTiers, estimateSolFeeTiers from wallet-core providers (testnet/devnet only via CHAINS config). The selected fee in native units (wei/sat/lamports) is the authoritative value that flows into the Send signing path. usdRate constants are used only to display an approximate fiat estimate alongside the native fee — not as a financial record.',
+  },
+  '/connect': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom). Balance reads go through the injected provider API (eth_getBalance) or a public Solana JSON-RPC call (user-initiated, single request on connect, not a background feed). Imports to base44.entities.Wallet as a read-only snapshot with an honest disclosure. No private key access.',
+  },
+  '/web3': {
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
+    note: 'A dApp directory/launcher with a static DAPPS list; "browsing" opens the external browser — no in-app iframe, no WalletConnect, no signing path wired. Features.jsx and Documentation.jsx both list Web3 Browser as "roadmap, post-audit only". Exposing dApp interaction is off-wedge for the coercion-resistant self-custody vault job.',
+  },
+  '/push': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Uses browser-native Notification API (Notification.requestPermission / new Notification()). Preferences stored in localStorage only. No push service, server relay, or third-party SDK is involved. The page explicitly states "No personal data is shared with third-party notification services". Test notification is a real browser Notification(), not a stub.',
+  },
+
+  // ── Core / Preferences group (audit batch 5) ──────────────────────────────
+  '/settings': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'On-device preferences: theme via next-themes (localStorage), BiometricUnlockSettings/PasskeyUnlockSettings use WebAuthn navigator.credentials, SessionSettings manages auto-lock via WalletProvider, per-wallet passkey registration updates base44.entities.Wallet (local). Delete Account clears local entity records and locks the vault. No external call, no fabricated data.',
+  },
+  '/docs': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Purely static informational copy. Feature statuses (available/roadmap) are honest and cross-checked against actual implementation per the in-file scope contract comment. Workflows describe real implemented flows. No fabricated availability claims — unbuilt features are clearly labelled "roadmap". PDF export is functional via lib/pdfExport.',
+  },
+  '/features': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Purely static feature catalogue with honest available/roadmap two-status model. The file\'s own comment explicitly states status is "cross-checked against actual implementation (wallet-core modules + real routes), not aspiration." No unbuilt feature is presented as working. Custodial/regulated features are listed as explicitly excluded, not as roadmap. Consistent with Documentation.jsx.',
+  },
+  '/products': {
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'base44-entities',
+    note: 'A generic product/SKU catalog CRUD tool (product name, SKU, description, price_usd, category, stock). Stores records in base44.entities.Product. This is an e-commerce inventory tool with no connection to the self-custody vault job.',
+  },
+  '/plans': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") and PRO_FEATURES from lib/tier. The upgrade button is permanently disabled with an honest disclosure: "no payment system is active" and "no payment can be made on this screen." Preview disclosure banner explicitly warns pricing is not final. No fabricated capabilities listed as currently available.',
+  },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
