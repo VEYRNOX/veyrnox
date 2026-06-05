@@ -46,6 +46,7 @@ const DISPLAY_RE = new RegExp(`\\b(${USD_DISPLAY_COMPONENTS.join('|')})\\b`);
 const importsUsdRates = (t) =>
   /import\s*\{[^}]*\bUSD_RATES\b[^}]*\}\s*from\s*['"]@\/lib\/cryptos['"]/.test(t);
 const importsDisplayComponent = (t) =>
+  USD_DISPLAY_COMPONENTS.length > 0 &&
   t.split('\n').some((l) => /^\s*import\b/.test(l) && DISPLAY_RE.test(l));
 const touchesUsd = (t) => importsUsdRates(t) || importsDisplayComponent(t);
 const hasDisclosureHelper = (t) => /\b(approxUsd|ReferenceRateNote)\b/.test(t);
