@@ -234,3 +234,28 @@ value / mutate balances without a user signature through wallet-core signing).
 - `docs/Security.roadmap.md` — S1–S4 detail + deniability stack write-ups
 - `docs/Tiers.pricing.md` — pricing model (hypothesis, not validated)
 - `docs/PhaseBTC.verification.md` — the hands-on BTC send sign-off procedure
+
+---
+
+## PROVISIONAL / UNVERIFIED — NOT BUILT (do not treat as status)
+
+> ⚠️ This section is a PLANNING DRAFT, separate from the verified status above. Everything
+> here is a classifier ESTIMATE or roadmap intent, NOT confirmed built. Do NOT sell, market,
+> or report these as available. Items graduate INTO the verified status above ONLY after a
+> per-page code read confirms them real. Source: docs/Master-feature-matrix.md (draft).
+
+### Not-built feature shells (salvage candidates — estimated, unverified)
+Net worth, P&L, spending patterns, snapshots, watchlist, price/smart alerts, fee analytics,
+calculator, address book, session manager, notifications, tax report, invoice generator,
+news sentiment, price charts, analytics/benchmark/correlation, NFT/token enrichment &
+discovery, ERC-20 discovery, payment links, fraud detection. State: shell/fake, unwired.
+Disposition: wire per docs/Salvage-roadmap.md; the ⚠ address-leaking ones (analytics, NFT/
+token, ERC-20) become opt-in + privacy-disclosed per docs/Backend-security-architecture.md.
+
+### Blocked (not cut, cannot complete yet)
+Solana / multi-asset send (gated on per-asset verification). AI advisor/assistant (disabled
+#89; not tier-eligible until rebuilt on-device or stripped — never raw wallet data).
+
+### Cut (removed on principle — security + positioning §4)
+Leaderboard, public profiles (targeting/identity exposure). Shared portfolio → keep only as
+signed local export. Referral tracker → only if fully serverless.
