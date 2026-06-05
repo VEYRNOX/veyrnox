@@ -3,6 +3,9 @@ node_modules/
 
 # Per-branch worktrees (see scripts/worktree.ps1 and docs/worktrees.md)
 .worktrees/
+# Worktrees created by the Claude Code harness (EnterWorktree) — local-only,
+# never commit. Note: .claude/launch.json IS tracked, so scope to this subdir.
+.claude/worktrees/
 
 # Build output
 dist/
