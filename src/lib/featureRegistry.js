@@ -51,7 +51,7 @@ export function disabledPaths() {
   return Object.keys(FEATURE_REGISTRY).filter(isDisabled);
 }
 
-// Pure mapping from a path to how <FeatureRoute> should render it. Extracted so
+// Pure mapping from a path to how FeatureGate should render it. Extracted so
 // the gate's branching is unit-tested without rendering React.
 export function featureRouteOutcome(path) {
   const { status } = getFeatureStatus(path);
