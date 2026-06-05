@@ -40,7 +40,9 @@ function normalizePath(path) {
 }
 
 export function getFeatureStatus(path) {
-  return FEATURE_REGISTRY[normalizePath(path)] ?? { ...DEFAULT_ENTRY };
+  // Spread so callers always get a fresh object — a mutated result must not be
+  // able to corrupt the shared registry entry for listed paths.
+  return { ...(FEATURE_REGISTRY[normalizePath(path)] ?? DEFAULT_ENTRY) };
 }
 
 export function isLive(path) {
