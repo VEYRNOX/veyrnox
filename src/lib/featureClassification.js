@@ -151,6 +151,50 @@ export const CLASSIFICATION = {
     verdict: 'disabled', reason: 'leaks', dataSource: 'external',
     note: 'Calls fetch("https://min-api.cryptocompare.com/data/pricemulti?...") — a third-party price-feed API. Sends the list of crypto symbols to CryptoCompare on every load and every 30-second refresh interval.',
   },
+
+  // ── Invest group (audit batch 3) ──────────────────────────────────────────
+  '/portfolio-rewind': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
+    note: 'Reads real local wallet balances via base44.entities.Wallet but applies hardcoded PRICE_HISTORY multipliers (e.g. BTC 30d = 0.85×, 2y = 0.31×) to fabricate past USD values. The chart is a synthetic linear interpolation between invented past and stale-rate present — no real price history is consulted.',
+  },
+  '/index-builder': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
+    note: 'Index definitions are real local records (base44.entities.CustomIndex), but the displayed performance figure is computed from a hardcoded PERF object (e.g. BTC: 8.2, ETH: 12.4, SOL: 23.1) presented as the index\'s return — these percentages are not derived from any real price history.',
+  },
+  '/ai-rebalancer': {
+    verdict: 'disabled', reason: 'server', dataSource: 'external',
+    note: 'Calls base44.integrations.Core.InvokeLLM for portfolio analysis. Correctly guarded with LLM_AVAILABLE; shows LocalBuildNotice when the LLM endpoint is unavailable in the local build.',
+  },
+  '/pl': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Trade records are real user-entered data (base44.entities.PLRecord), but unrealised P&L on open positions and the "Close" action both use hardcoded stale CURRENT_PRICES (BTC: 68000, ETH: 3200, …) as the current market price — figures will be silently wrong as markets move.',
+  },
+  '/risk': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Derives risk score from real local wallet balances (base44.entities.Wallet) and borrow counts (LendingPosition). Formula uses transparent static coefficients (concentration × 0.5, leverage × 15, volatile-asset count × 5). HEDGING list is generic advice, not presented as user-specific data. No fabrication.',
+  },
+
+  // ── Finance group (audit batch 3) ─────────────────────────────────────────
+  '/savings': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Pure local CRUD on base44.entities.SavingsGoal. Users enter USD target and current amounts directly; progress bars are computed from those user-entered values. No currency conversion, no fabricated data, no external call.',
+  },
+  '/budget': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Reads real local Transaction records (base44.entities.Transaction) and BudgetLimit records, but all crypto-to-USD conversion for "Total Spent This Month" and per-budget spend uses hardcoded stale USD_RATES — displayed spend figures will silently drift from reality as markets move.',
+  },
+  '/net-worth': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Aggregates real local wallet balances (base44.entities.Wallet) and user-entered NetWorthAsset records, but crypto holdings are converted to USD using hardcoded stale USD_RATES. The "Total Assets" and "Net Worth" figures will be silently wrong relative to actual market prices.',
+  },
+  '/invoices': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Pure CRUD on base44.entities.Invoice. Invoices are denominated in user-chosen crypto amounts — no USD conversion, no stale price usage, no fabricated data. Invoice number derived from Date.now() as a non-financial identifier only.',
+  },
+  '/tax': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Reads real local Transaction, StakingPosition, and Wallet records, but the historicalRate() function produces pseudo-random prices from (timestamp % 10000) — fabricated cost basis figures. The page discloses "simulated historical prices" in an inline warning, but the FIFO gain/loss and staking income numbers are still invented and exported to CSV/PDF as if real.',
+  },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
