@@ -93,3 +93,31 @@ Explicitly NOT (lawyer-review before advertising): NOT a guarantee of protection
 - docs/WalletRoadmap.md — full feature roadmap + statuses (source of truth for scope)
 - docs/WalletFeatures.spec.md — canonical scope + competitor/out-of-scope split
 - docs/Security.roadmap.md — S1–S4 detail + AI guardrails
+
+---
+
+## PROVISIONAL / UNVALIDATED — DRAFT tier & pricing hypothesis (NOT live)
+
+> ⚠️ DRAFT, separate from the live tier matrix above. Prices are UNVALIDATED placeholders;
+> SHIELD is a NEW tier with NO set price; most features below are NOT BUILT. Do NOT advertise
+> or sell from this section. Features graduate into the live matrix ONLY when verified-real.
+> Source: docs/Master-feature-matrix.md (draft).
+
+### Draft tiers
+- Free $0 — full wallet + all life-safety security + baseline privacy.
+- Pro ~$5–8/mo (placeholder) — privacy & advanced protection; the 5 BUILT differentiators
+  (stealth, tx simulation, anomaly detection, security dashboard, spending limits) + audit log.
+- SHIELD (NEW, price UNSET) — all software features incl. Guardian's, self-serve, no consulting.
+- Guardian $100+/mo (placeholder) — SHIELD features + bespoke human service.
+
+### Draft placements of NOT-BUILT features (do not sell)
+- Pro (once built + verified): net worth, P&L, watchlist/alerts, fee analytics, tax, news.
+- Pro but OPT-IN + privacy-disclosed (leak address when enabled): analytics-by-address,
+  NFT/token enrichment & discovery, ERC-20 discovery, payment links.
+- SHIELD/Guardian (once built): full deniability suite, hardware wallet, inheritance.
+- NOT priceable: Solana/multi-asset (verify first), AI advisor (rebuild on-device first).
+- CUT (not in any tier): leaderboard, public profiles, referrals, social shared-portfolio.
+
+### Hard rule
+Nothing in this PROVISIONAL section is sellable. It moves into the live matrix above only
+when its build State is verified Real and the independent audit confirms the security calls.
