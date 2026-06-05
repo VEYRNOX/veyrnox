@@ -18,26 +18,38 @@ export function getCurrentTier() {
   return 'free';
 }
 
-// The three tiers shown on the plans screen. Prices are a WORKING MODEL, not
-// final, and nothing here grants access to anything — it is copy for the cards.
+// The tiers shown on the plans screen. Two AXES, not one ladder (spec §5):
+//   - Software axis (DIY):  Free -> Pro -> SHIELD. More money = more protection depth.
+//   - Service axis:         Guardian sits ON TOP of the software (it INCLUDES SHIELD
+//                           and adds humans) — it is not a higher software rung.
+// Life-safety security (duress PIN, panic wipe, decoy balances) is FREE on principle.
+// Prices are a WORKING MODEL, not final, and nothing here grants access to anything —
+// it is copy for the cards. Pro = harden the present; SHIELD = harden across time,
+// devices and succession; Guardian = our team operates it with you.
 export const TIERS = [
   {
     id: 'free',
     name: 'Free',
     price: '$0',
-    tagline: 'The full self-custody wallet, no account required.',
+    tagline: 'The full self-custody wallet plus all life-safety security. No account required.',
   },
   {
     id: 'pro',
     name: 'Pro',
     price: '~$5-8/mo, not final',
-    tagline: 'Advanced security tooling for active users.',
+    tagline: 'Harden your wallet day to day.',
+  },
+  {
+    id: 'shield',
+    name: 'SHIELD',
+    price: 'Top software tier — price TBC',
+    tagline: 'Harden across time, devices, and succession.',
   },
   {
     id: 'guardian',
     name: 'Guardian',
     price: '$100+/mo, by application',
-    tagline: 'High-touch protection for high-value holders.',
+    tagline: 'Our security team operates it with you.',
   },
 ];
 
