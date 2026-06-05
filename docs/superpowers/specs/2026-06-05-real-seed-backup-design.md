@@ -176,3 +176,71 @@ DO NOT build the crypto from this document alone. It fixes the feature shape; th
 - #87 (fake seed-QR removal — the reason this exists) · #104 (classification audit + FeatureGate) ·
   docs/Production-readiness.md (audit blocker) · docs/Backend-security-architecture.md (I1/I2 on-device, no egress) ·
   wallet-core RNG (`check:rng`).
+
+---
+
+## 9. Cloud-assisted self-recovery (extension)
+
+**Need:** the most common way people lose self-custodied funds is a lost/broken/stolen/damaged
+device with no recovery path — which pushes users to screenshot their seed (worse). A real
+recovery path is pro-user AND pro-security. This section extends the encrypted-backup artifact
+(B1–B7) to support user-initiated recovery from the user's OWN personal cloud.
+
+**Architecture (stays self-custodial):**
+- The artifact is the SAME §1–§8 encrypted backup (seed encrypted on-device with a user
+  passphrase, authenticated, versioned). NO new crypto.
+- The user stores that artifact in THEIR OWN cloud (iCloud / Google Drive / OneDrive). Veyrnox
+  never holds the vault, never has an account, never has keys, never has a server in the path.
+  Veyrnox stays out of the cloud relationship entirely.
+- On a new device, Veyrnox imports the artifact and decrypts it with the passphrase to re-onboard.
+- This is recovery, not custody: a total Veyrnox compromise or shutdown loses the user nothing,
+  and a total cloud breach yields only ciphertext.
+
+**Invariants (additional to B1–B7):**
+- C1 — Manual, not API-integrated. The user places/retrieves the file themselves. NO "connect
+  your Google Drive" OAuth integration (that is egress + account surface the wedge forbids). The
+  wallet exports a file; the user puts it where they like; the wallet imports a file.
+- C2 — Portable, NOT Veyrnox-locked. Use standard, documented, audited encryption so the user
+  COULD decrypt the artifact independently of Veyrnox if the app vanished. App-exclusive formats
+  are (a) fake security — a client-side app can be reverse-engineered, the passphrase+KDF is the
+  only real protection — and (b) soft custody, trapping funds in the app. True self-custody means
+  recovery does not depend on us.
+- C3 — Assume the file is stolen. Cloud = breachable, syncable, subpoena-able, coercible. Design
+  as if the attacker HAS the artifact. Therefore the passphrase + KDF is the ENTIRE defence.
+- C4 — Passphrase strength is do-or-die. Enforce a strong passphrase (not a reused/weak one) with
+  clear UX: for a cloud-stored vault, a weak passphrase = crackable offline by a motivated,
+  resourced attacker (the HNW persona's adversary). The audited, deliberately-expensive memory-hard
+  KDF (§5) is mandatory here — get it wrong and "encrypted cloud vault" silently degrades to
+  "findable seed."
+- C5 — Deniability carve-out. Cloud storage is DISCOVERABLE and COMPELLABLE ("unlock your iCloud").
+  Cloud recovery is for the PRIMARY wallet only. Hidden/decoy wallets MUST NOT be auto-stored to
+  cloud — doing so can leak their existence and defeats the deniability hero-feature (ties to B5/A3).
+- C6 — No backdoor, honest loss UX. Recovery without the passphrase is impossible by design (correct).
+  UX must state plainly: lose the passphrase = funds gone, even WITH the cloud vault. No false
+  reassurance that "it's in the cloud so you're safe."
+
+**Threat model (delta from §4 — cloud-specific):**
+| Threat | Mitigated by | Residual |
+|---|---|---|
+| Cloud account breach reads the file | Encryption (B2) | Offline brute-force of passphrase (C3/C4) |
+| Provider scans / indexes / lawful access | Ciphertext only | Metadata (file exists, size, timestamp) |
+| Sync spreads copies to other devices | Still ciphertext | Same offline-brute-force surface, wider |
+| Coerced "unlock your cloud" | Cloud password ≠ backup passphrase | Attacker gets ciphertext; passphrase still required (duress-refusable) |
+| Plaintext seed/QR in cloud | — | PROHIBITED. Never. Plaintext-in-cloud is a fund-loss feature; see §1. |
+
+**Hard prohibition:** plaintext seed (text OR QR) stored in cloud is NEVER permitted. A plaintext
+QR is a photograph of the seed; in a scanning, syncing, breach-prone, compellable system it is
+close to the worst possible backup for this persona. Only the encrypted artifact may go to cloud.
+
+**Build gate:** same as §7 — this is an EXTENSION of the audit-gated encrypted backup, not a
+separate build. The crypto (KDF/AEAD/params) is decided by the audit BEFORE coding. Cloud
+recovery does not change the gate; it raises the stakes on the KDF (C3/C4), making the audit MORE
+necessary, not less.
+
+**Acceptance criteria (additional):**
+- Recovery on a fresh device from a user-placed cloud artifact works and is round-trip verified.
+- No cloud API/OAuth integration ships (C1) — file in / file out only.
+- Artifact is decryptable by the documented standard scheme, not Veyrnox-exclusive (C2) — tested.
+- Strong-passphrase enforcement present (C4); loss-of-passphrase UX reviewed for honesty (C6).
+- Hidden/decoy wallets are excluded from any cloud path (C5) — tested.
+- Plaintext-to-cloud is impossible in the UI (hard prohibition) — verified.
