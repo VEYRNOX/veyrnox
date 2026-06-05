@@ -56,6 +56,8 @@ describe('registryEntriesFromClassification', () => {
     // + 5 Wallet-group pages classified in batch 2
     // + 7 Invest/Finance pages classified in batch 3
     // + 6 Assets-group pages classified in batch 4 (/nft-multichain is live)
+    // + 2 Security-group pages classified in batch A (/wallet-seed-qr, /hardware-wallet)
+    //   (10 Security pages are live; only 2 are disabled)
     expect(Object.keys(out).sort()).toEqual(
       [
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
@@ -66,6 +68,7 @@ describe('registryEntriesFromClassification', () => {
         '/portfolio-rewind', '/index-builder', '/ai-rebalancer', '/pl',
         '/budget', '/net-worth', '/tax',
         '/watchlist', '/nft', '/spending', '/snapshots', '/onchain', '/erc20-discovery',
+        '/wallet-seed-qr', '/hardware-wallet',
       ].sort(),
     );
   });

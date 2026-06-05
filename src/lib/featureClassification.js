@@ -225,6 +225,56 @@ export const CLASSIFICATION = {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
     note: 'Entirely fabricated: handleScan() waits 2.5 s then picks a Math.random() subset of WELL_KNOWN_TOKENS with Math.random()-generated balances (generateBalance()). No blockchain, indexer, or RPC call is made. The UI explicitly says "Scanning blockchain… Querying Transfer events and token contracts" — false. Discovered tokens and balances are invented and presented as the user\'s real on-chain holdings.',
   },
+
+  // ── Security group (audit batch A) ───────────────────────────────────────
+  '/security-dashboard': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Aggregates real local signals only: summarizeApprovals/summarizeSpamTokens/screenAddressHistory from lib/securityPosture.js (run over base44 entity records already held on device); biometric/passkey/session toggles from lib/biometric, lib/passkey, lib/session; hasDuressPin/hasStealthPool/hasPanicPin from WalletProvider (non-destructive IndexedDB reads). No external call, no fabrication. Explicitly disclaims being a guarantee.',
+  },
+  '/security': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Sessions tab manages local UserSession records via base44.entities; revocation enforced by lib/sessionRevocation (self-enforcing on each device). Limits tab stores TransactionLimit records in local IndexedDB; daily progress computed via lib/txLimits.js over local Transaction records. No external call, no fabricated data.',
+  },
+  '/wallet-access': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Change-password calls WalletProvider.changePassword (decrypt-then-re-encrypt the same seed under Argon2id+AES-GCM, on-device). Recovery calls WalletProvider.importWallet (BIP-39 checksum → local vault overwrite). Explicitly states no custodial reset path exists. DEMO panel exercises the real change-password code path on a throwaway vault.',
+  },
+  '/session-manager': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Lists and revokes UserSession records from local base44 store. Revocation is real: self-enforcement via lib/sessionRevocation locks the wallet and clears the local session token. Honestly discloses that remote devices apply revocation at next open, not instantly. geo_country/ip_address fields display "Unknown Location" if not populated — no server-side geolocation dependency for the revoke action.',
+  },
+  '/duress-pin': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Backed by wallet-core/duress.js: setDuressPin creates a real separately-encrypted decoy vault; the duress unlock path routes through the existing WalletProvider.unlock flow. Decoy balance read via lib/decoyBalance.js — live eth_getBalance on-chain in real/native builds, clearly labelled demo simulation in demo. Imports wallet-core/evm/networks. Explicitly discloses runtime-only deniability limitation (forensic inspection can detect a second vault).',
+  },
+  '/stealth-wallets': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Backed by wallet-core/stealth.js: addHiddenWallet encrypts and stores the wallet in a fixed chaff pool; reveal routes through WalletProvider.unlock. Multi-chain identity (EVM/BTC/SOL) from wallet-core/derivation.deriveEvmAccount and existing deriveBtc/deriveSol paths. Balance checks opt-in only via lib/hiddenBalance.js (explicitly warns each is a phone-home to a public node). Imports wallet-core/derivation.',
+  },
+  '/panic-wipe': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Backed by wallet-core/panic.js: setPanicPin/removePanicPin/panicWipe destroy the primary vault, duress decoy, entire stealth pool, and panic marker via WalletProvider; wipe is triggered via the real unlock path (no confirmation dialog under coercion). Honestly discloses: wipe destroys local copy only, seed backup elsewhere still recovers, on-chain history stays public, flash-media forensics out of scope.',
+  },
+  '/address-checker': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Runs isLocallyFlagged + screenRecipient from wallet-core/evm/poison.js over user-pasted address and local AddressBook contacts (base44.entities.AddressBook). Fully on-device: no network, no third-party reputation feed. Explicitly says "not flagged" is not a safety guarantee and that a live threat-intel feed is on the roadmap, not built.',
+  },
+  '/wallet-seed-qr': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Seed is user-typed (not read from the real vault) and the wallet selector queries base44.entities.Wallet (demo/local records, not the live HDWalletManager). An inline comment in the file explicitly flags this: "seed is sourced from the demo data layer (base44 mock), not the real vault. Rewire to WalletProvider before this is a real backup path." The page is not wired to the real vault and therefore cannot provide a genuine backup.',
+  },
+  '/hardware-wallet': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'static',
+    note: 'Honest placeholder: the page itself explicitly says "Planned — not yet available" and "nothing here connects to a real device". No Ledger/Trezor integration exists. Disabled so it does not appear as a live feature.',
+  },
+  '/dapp-alerts': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Checks a user-entered domain against LOCAL_KNOWN_BAD, a small hardcoded list — a pattern equivalent to isLocallyFlagged in wallet-core/evm/poison.js. No network call, no third-party feed. Explicitly labels the list as "illustrative/local and non-exhaustive", never asserts a domain is safe, and discloses a real threat feed is on the roadmap.',
+  },
+  '/security-scanner': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Runs describeErc20Call from wallet-core/evm/calldata and assessEvmTransaction from wallet-core/evm/simulate over user-pasted calldata. Purely local decode + risk assessment (no key, no RPC). Explicitly states no on-chain dry-run is performed here and that absence of a finding is not a guarantee. Same logic as the Send flow pre-sign preview.',
+  },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
