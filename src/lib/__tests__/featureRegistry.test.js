@@ -37,14 +37,30 @@ describe('getFeatureStatus', () => {
       expect(getFeatureStatus(path).note.length).toBeGreaterThan(0);
     }
   });
+
+  it('returns a fresh copy so a caller cannot corrupt the registry', () => {
+    const first = getFeatureStatus('/leaderboard'); // a listed (cut) path
+    first.status = 'live';
+    first.note = 'tampered';
+    const second = getFeatureStatus('/leaderboard');
+    expect(second.status).toBe('cut');
+    expect(second.note).not.toBe('tampered');
+  });
+
+  it('normalises a trailing slash so it cannot bypass the gate', () => {
+    expect(getFeatureStatus('/leaderboard/').status).toBe('cut');
+    expect(getFeatureStatus('/referrals/').status).toBe('disabled');
+    expect(featureRouteOutcome('/leaderboard/')).toBe('notFound');
+    expect(getFeatureStatus('/').status).toBe('live'); // root is untouched
+  });
 });
 
 describe('cutPaths / disabledPaths', () => {
-  it('returns the expected sets', () => {
-    expect(cutPaths().sort()).toEqual(
-      ['/leaderboard', '/public-profiles', '/shared-portfolio'].sort(),
-    );
-    expect(disabledPaths().sort()).toEqual(['/referrals'].sort());
+  it('includes the originally-locked decisions', () => {
+    for (const p of ['/leaderboard', '/public-profiles', '/shared-portfolio']) {
+      expect(cutPaths()).toContain(p);
+    }
+    expect(disabledPaths()).toContain('/referrals');
   });
 });
 

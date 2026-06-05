@@ -1,8 +1,7 @@
 // src/lib/featureRegistry.js
 //
-// SINGLE SOURCE OF TRUTH for each route's honesty classification, per the
-// wedge-alignment filter in
-// docs/superpowers/specs/2026-06-04-veyrnox-positioning-scope-design.md (§2).
+// Runtime feature registry. The classification audit in featureClassification.js
+// is the single source of truth; FEATURE_REGISTRY is derived from it.
 //
 // status:
 //   'live'     — passes all four gates; renders normally.
@@ -15,6 +14,8 @@
 // Anything NOT listed here defaults to { status: 'live' } — adding the registry
 // disables nothing by itself; only explicit entries change behaviour.
 
+import { registryEntriesFromClassification } from './featureClassification';
+
 // User-facing reason codes (drive the notice heading in HonestDisabledPage).
 export const REASONS = {
   LEAKS: 'leaks',           // needs a third-party indexer that would reveal your address
@@ -23,34 +24,25 @@ export const REASONS = {
   OFF_WEDGE: 'off-wedge',   // exposes holdings/identity — a targeting vector
 };
 
-// Explicit classifications. Seeded with the cuts the spec already locked (§4).
-const FEATURE_REGISTRY = {
-  '/leaderboard': {
-    status: 'cut',
-    reason: REASONS.OFF_WEDGE,
-    note: 'A public ranking of who holds what is a targeting list aimed at our users. Removed on principle.',
-  },
-  '/public-profiles': {
-    status: 'cut',
-    reason: REASONS.OFF_WEDGE,
-    note: 'Public identity and holdings exposure is the threat model we defend against, not a feature.',
-  },
-  '/shared-portfolio': {
-    status: 'cut',
-    reason: REASONS.OFF_WEDGE,
-    note: 'Social portfolio sharing exposes holdings. A deliberate, encrypted signed export will replace it.',
-  },
-  '/referrals': {
-    status: 'disabled',
-    reason: REASONS.SERVER,
-    note: 'Referrals return once they can work without a server that links referrer and referee.',
-  },
-};
+// Runtime exceptions are derived from the classification audit (single source
+// of truth). Unlisted paths still default to { status: 'live' }.
+const FEATURE_REGISTRY = registryEntriesFromClassification();
 
 const DEFAULT_ENTRY = { status: 'live' };
 
+// Normalise the lookup key so a trailing slash can't slip a classified route
+// past the gate: '/solana/' must resolve the same entry as '/solana'. Registry
+// keys are exact, flat paths, so stripping a trailing slash is sufficient today;
+// param/wildcard routes (none exist yet) would need pattern matching here.
+function normalizePath(path) {
+  if (typeof path !== 'string' || path === '/') return path;
+  return path.replace(/\/+$/, '') || '/';
+}
+
 export function getFeatureStatus(path) {
-  return FEATURE_REGISTRY[path] ?? { ...DEFAULT_ENTRY };
+  // Spread so callers always get a fresh object — a mutated result must not be
+  // able to corrupt the shared registry entry for listed paths.
+  return { ...(FEATURE_REGISTRY[normalizePath(path)] ?? DEFAULT_ENTRY) };
 }
 
 export function isLive(path) {
@@ -70,7 +62,7 @@ export function disabledPaths() {
   return Object.keys(FEATURE_REGISTRY).filter(isDisabled);
 }
 
-// Pure mapping from a path to how <FeatureRoute> should render it. Extracted so
+// Pure mapping from a path to how FeatureGate should render it. Extracted so
 // the gate's branching is unit-tested without rendering React.
 export function featureRouteOutcome(path) {
   const { status } = getFeatureStatus(path);

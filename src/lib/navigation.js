@@ -160,7 +160,7 @@ const RAW_NAV_GROUPS = [
 ];
 
 // Cut features (feature registry) are removed from nav + search entirely; the
-// route also resolves to Not Found via <FeatureRoute>. Disabled features stay
+// route also resolves to Not Found via FeatureGate. Disabled features stay
 // visible here and render an honest notice when opened. Empty RAW_NAV_GROUPS groups are dropped.
 export const navGroups = RAW_NAV_GROUPS
   .map((group) => ({ ...group, items: group.items.filter((item) => !isCut(item.path)) }))
@@ -185,5 +185,5 @@ export const searchableRoutes = [
   ...navGroups.flatMap((group) =>
     group.items.map((item) => ({ ...item, group: group.label })),
   ),
-  ...EXTRA_ROUTES,
+  ...EXTRA_ROUTES.filter((item) => !isCut(item.path)),
 ];
