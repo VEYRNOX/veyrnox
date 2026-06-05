@@ -1,3 +1,5 @@
+import { USD_RATES } from "@/lib/cryptos";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -13,7 +15,6 @@ import { toast } from "sonner";
 import moment from "moment";
 import { sumSentTodayUSD } from "@/lib/txLimits";
 
-const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 function getDeviceInfo() {
   const ua = navigator.userAgent;
@@ -248,6 +249,9 @@ export default function SecurityCenter() {
               </div>
             ))
           )}
+          {/* "Sent today" totals convert local tx amounts via the static
+              USD_RATES table — disclose they're a reference rate, not live. */}
+          {limits.length > 0 && <ReferenceRateNote className="mt-2" />}
         </TabsContent>
       </Tabs>
 

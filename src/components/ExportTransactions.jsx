@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileDown, FileText, Table2, Loader2 } from "lucide-react";
 import moment from "moment";
-
-const USD_RATES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
+import { USD_RATES } from "@/lib/cryptos";
 
 function buildRows(transactions) {
   return transactions.map(tx => ({
