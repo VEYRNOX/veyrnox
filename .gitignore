@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Per-branch worktrees (see scripts/worktree.ps1 and docs/worktrees.md)
+.worktrees/
+
 # Build output
 dist/
 build/
