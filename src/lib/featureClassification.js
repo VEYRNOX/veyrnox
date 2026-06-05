@@ -105,6 +105,52 @@ export const CLASSIFICATION = {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
     note: 'MOCK_NEWS is a hardcoded array of specific headlines attributed to real outlets (Bloomberg, Reuters, CoinDesk) presented prominently as current market news. LocalBuildNotice does disclose these are "illustrative sample data" but the fabricated articles still dominate the visible UI. AI refresh correctly disabled via LLM_AVAILABLE guard.',
   },
+
+  // ── Wallet group (audit batch 2) ───────────────────────────────────────────
+  '/send': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Full EVM send path: signAndBroadcast/sendToken from @/wallet-core/evm/send and token-send; balance read live via getBalanceEth/getTokenBalance; pre-sign simulation via simulateEvmTransaction; capability gate via canSend(); tx recorded with real chain hash. Core vault job.',
+  },
+  '/receive': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Derives the correct receive address from the unlocked HD accounts (accounts[0].address for EVM, btcAccount/solAccount) via resolveReceive(); renders QR and copy. Purely on-device — no external call, no fabrication.',
+  },
+  '/tx-history': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'BTC history from wallet-core/btc/provider (Esplora — same endpoint used for UTXOs/broadcast); SOL from wallet-core/sol/provider (same RPC used for balance/broadcast); EVM explicitly unsupported (no third-party indexer added — shows honest explorer fallback). Demo rows clearly badged "Sample". Privacy disclosure surfaced in-app.',
+  },
+  '/payment-links': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Fully user-driven: stores PaymentLink records in local IndexedDB via base44.entities.PaymentLink. Link URL is constructed from user-entered wallet address + amount — no external call, no fabricated data. link_id uses Math.random() as a non-financial identifier only.',
+  },
+  '/split-bill': {
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'base44-entities',
+    note: 'Bill-splitting tool: divides a user-entered USD total among named wallet addresses using hardcoded stale USD_RATES. No signing, no actual on-chain tx. Does not serve the coercion-resistant vault job.',
+  },
+  '/receipt': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Reads real local Transaction records but the "USD Value" line on every receipt is computed from hardcoded stale USD_RATES constants — presenting a silently stale dollar figure as fact on a document intended to be a financial record.',
+  },
+  '/fee-analytics': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Aggregates fee data from real local Transaction records, but all USD conversions ("Total Fees Paid", "This Month", "Avg Per Transaction") use hardcoded stale USD_RATES — figures will silently drift from reality as markets move.',
+  },
+  '/hd-wallet': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Core HD wallet management: createWallet/importWallet/unlock/lock/deriveAccounts from useWallet(); live per-chain balances via getBalanceEth/getTokenBalance; only public addresses cached in base44. Seed/keys never leave device.',
+  },
+  '/crypto-signing': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Entirely local: ethers.Wallet.createRandom() for key gen, ethers.HDNodeWallet.fromPhrase() for derivation, wallet.signMessage()/signTransaction() for signing — all client-side ethers.js v6, no external call. Standard cryptographic signing utility.',
+  },
+  '/recurring': {
+    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
+    note: 'Explicitly stubbed: page warns "schedules & reminders only" and the execute path redirects to /send for manual signing (promptSignInSend). Feature cannot actually execute recurring transfers — presents as "Automate regular crypto transfers" but does not deliver that capability.',
+  },
+  '/calculator': {
+    verdict: 'disabled', reason: 'leaks', dataSource: 'external',
+    note: 'Calls fetch("https://min-api.cryptocompare.com/data/pricemulti?...") — a third-party price-feed API. Sends the list of crypto symbols to CryptoCompare on every load and every 30-second refresh interval.',
+  },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
