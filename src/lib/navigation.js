@@ -185,5 +185,5 @@ export const searchableRoutes = [
   ...navGroups.flatMap((group) =>
     group.items.map((item) => ({ ...item, group: group.label })),
   ),
-  ...EXTRA_ROUTES,
+  ...EXTRA_ROUTES.filter((item) => !isCut(item.path)),
 ];

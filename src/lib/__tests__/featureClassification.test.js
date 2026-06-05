@@ -6,8 +6,8 @@ import { getFeatureStatus } from '../featureRegistry';
 const VERDICTS = ['live', 'disabled', 'cut'];
 
 describe('classification completeness', () => {
-  // SKIPPED until the sweep (Tasks 3-10) classifies every route; Task 11 un-skips.
-  it.skip('assigns a deliberate verdict to EVERY route (no route left unclassified)', () => {
+  // All routes classified by the sweep; this now enforces completeness.
+  it('assigns a deliberate verdict to EVERY route (no route left unclassified)', () => {
     const missing = ALL_ROUTE_PATHS.filter((p) => !CLASSIFICATION[p]);
     expect(missing).toEqual([]);
   });
@@ -37,6 +37,14 @@ describe('classification completeness', () => {
     for (const [path, entry] of Object.entries(CLASSIFICATION)) {
       if (entry.verdict === 'cut') {
         expect(entry.reason, `${path} reason`).toBe('off-wedge');
+      }
+    }
+  });
+
+  it('no unverified or off-wedge page is live in the runtime registry', () => {
+    for (const [path, entry] of Object.entries(CLASSIFICATION)) {
+      if (entry.reason === 'unverified' || entry.reason === 'off-wedge') {
+        expect(getFeatureStatus(path).status, path).not.toBe('live');
       }
     }
   });
