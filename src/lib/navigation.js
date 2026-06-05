@@ -26,6 +26,7 @@ import {
   Coins,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb,
 } from "lucide-react";
+import { isCut } from './featureRegistry';
 
 // Each feature group gets its own accent colour so the menus read as
 // colour-coded sections rather than one long undifferentiated list.
@@ -41,7 +42,7 @@ export const GROUP_COLORS = {
 };
 export const groupColor = (label) => GROUP_COLORS[label] || "#8b5cf6";
 
-export const navGroups = [
+const RAW_NAV_GROUPS = [
   {
     label: "Overview",
     items: [
@@ -157,6 +158,13 @@ export const navGroups = [
     ],
   },
 ];
+
+// Cut features (feature registry) are removed from nav + search entirely; the
+// route also resolves to Not Found via <FeatureRoute>. Disabled features stay
+// visible here and render an honest notice when opened. Empty RAW_NAV_GROUPS groups are dropped.
+export const navGroups = RAW_NAV_GROUPS
+  .map((group) => ({ ...group, items: group.items.filter((item) => !isCut(item.path)) }))
+  .filter((group) => group.items.length > 0);
 
 // Top-level destinations that live OUTSIDE the sidebar feature groups — the
 // sidebar renders Settings on its own, and Documentation hangs off the Help
