@@ -56,9 +56,12 @@ status changes; no new fee UI.
 - No BTC fee-rate selector and no SOL priority-fee selector — sends use the
   auto-fetched fee rate (BTC) / base fee (SOL). The existing EIP-1559
   `FeeSelector` is rendered for EVM only.
-- No live on-chain balance read for BTC/SOL — the max-check falls back to the DB
-  balance; the wallet-core send functions enforce the real balance / coin-
-  selection / rent constraints internally and throw actionable errors.
+- No live on-chain balance read for BTC/SOL. Because the DB balance for a
+  not-yet-live asset is `0`, the UI max-check (`amount > effectiveBalance`) is
+  **skipped** when the balance is unknown (BTC/SOL) rather than blocking every
+  send against a phantom `0`; the wallet-core send functions enforce the real
+  balance / coin-selection / rent constraints internally and throw actionable
+  errors.
 - No status flips. BTC and SOL stay `receive_only` in `assets.js`. An asset moves
   to `live` only after a confirmed testnet/devnet txid (per the checklist).
 - No change to any wallet-core send/derivation module — they are reused verbatim.
@@ -102,10 +105,12 @@ Both functions are pure and have no React / network dependency.
    lookup gated to EVM families; for BTC/SOL derive `nativeSymbol` from the
    currency (BTC/SOL) instead of the `"ETH"` fallback, and `networkName` from the
    asset.
-3. **Live-balance query:** gate `enabled` with `(isEvmFamily(selectedAsset) ||
-   isErc20)` so `getBalanceEth` never fires for a BTC/SOL address. With the query
-   disabled, `liveBalance` stays `undefined` and `effectiveBalance` falls back to
-   `selectedWallet.balance` (the DB value).
+3. **Live-balance query + max-check:** gate `enabled` with
+   `(isEvmFamily(selectedAsset) || isErc20)` so `getBalanceEth` never fires for a
+   BTC/SOL address. With the query disabled, `liveBalance` stays `undefined`. A
+   `balanceKnown = isEvmFamily(selectedAsset) || isErc20` flag gates the Continue
+   button's `amount > effectiveBalance` check so BTC/SOL are not blocked against a
+   phantom `0` DB balance; the send function enforces real funds.
 4. **Dispatch** in the `sendTx` mutation, branching on `selectedAsset.family`
    (the hard `canSend()`-or-`devUngated` gate above it is unchanged):
    - `btc`:
@@ -158,14 +163,21 @@ user amount "0.0005" (BTC, form)
 - `src/lib/__tests__/sendDispatch.test.js` — `toBaseUnits` (8- and 9-dp happy
   paths, trailing-zero normalization, over-precision throws, zero / negative /
   empty / non-numeric throw); `normalizeSendResult` for each family.
-- `src/wallet-core/__tests__/btc-send-signing.test.js` — **fills the current gap**
-  (there is no BTC send-level test today): `buildAndSignTx` produces a finalized
-  P2WPKH transaction committing to the correct recipient and amount; the
-  fee/change conservation backstop holds (a mismatched plan fee is rejected); and
-  the key-controls-`fromAddress` guard fires. Mirrors `evm-send-signing.test.js`.
-- SOL signing: `sol-send.test.js` already covers the rent planner; add a focused
-  assertion on `buildAndSignSol` (System transfer to the correct recipient pubkey
-  and lamports; fee payer = sender) if not already present.
+- `src/wallet-core/__tests__/sol-send-signing.test.js` — **fills the real gap**:
+  `sol-send.test.js` covers only the rent *planner* (`planSolTransfer`); the local
+  ed25519 signing (`buildAndSignSol`) is untested. This new test asserts
+  `buildAndSignSol` produces a transaction whose System-transfer instruction
+  targets the correct recipient pubkey and lamports, whose fee payer is the
+  sender, and that carries a signature. Network-free (a fixed blockhash is
+  supplied). Mirrors `evm-send-signing.test.js`'s "the signed bytes commit to the
+  right recipient/value" property.
+- **No new BTC signing test** — `buildAndSignTx` is *already* covered end-to-end
+  (derive → coin-select → build → sign → assert signed-bytes fee == planned fee,
+  and reject an inconsistent plan) by `btc-coinselect.test.js` (the
+  "coinselect + signing pipeline (offline)" block). The slice's new BTC logic is
+  the amount→sats conversion and result mapping, both covered by
+  `sendDispatch.test.js`. Adding a second BTC signing test would duplicate
+  existing coverage.
 - **Honest coverage statement:** there is no `SendCrypto` React component test
   (the repo has no React Testing Library). The new React glue is covered by the
   pure `sendDispatch` tests plus the manual testnet verification checklist —
