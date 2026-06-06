@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, ShieldAlert, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel } from "lucide-react";
+import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, ShieldAlert, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
@@ -27,6 +27,7 @@ import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
+import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
@@ -60,8 +61,9 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, accounts, withPrivateKey } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey } = useWallet();
   const [walletId, setWalletId] = useState("");
+  const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -100,10 +102,37 @@ export default function SendCrypto() {
   };
 
 
-  const { data: wallets = [] } = useQuery({
-    queryKey: ["wallets"],
-    queryFn: () => base44.entities.Wallet.list(),
-  });
+  // FROM-WALLET SOURCE (live vault via useWallet) — the SAME source the dashboard
+  // reads. Replaces the old base44.entities.Wallet.list() (the DEMO data layer, empty
+  // in a live build, which left this dropdown blank). A wallet here is a SEED holding
+  // every chain; the Asset picker chooses which asset/chain to send.
+  const enabledAssets = walletAssetSymbols(wallets, walletId);
+  // The trigger must display the wallet NAME. The selected SelectItem's content
+  // isn't mounted until the dropdown opens, so the underlying Radix trigger would
+  // otherwise fall back to rendering the raw wallet id — hand it the name explicitly.
+  const selectedWalletName = wallets.find((w) => w.id === walletId)?.name || "";
+
+  // Pre-select the wallet the dashboard marks Active (single wallet → auto-select),
+  // and keep the pick valid if the wallet set changes. Deniability-safe: no count is
+  // derived or shown.
+  useEffect(() => {
+    setWalletId((cur) => (cur && wallets.some((w) => w.id === cur)) ? cur : defaultWalletId(wallets, activeWalletId));
+  }, [wallets, activeWalletId]);
+
+  // The selected wallet must be the ACTIVE wallet, so the derived accounts
+  // (accounts/btcAccount/solAccount) — and therefore the send address + signing key —
+  // belong to it. Switching is cheap (re-derives public addresses; no vault read).
+  useEffect(() => {
+    if (walletId && walletId !== activeWalletId && wallets.some((w) => w.id === walletId)) {
+      switchWallet(walletId);
+    }
+  }, [walletId, activeWalletId, wallets, switchWallet]);
+
+  // Default/clamp the asset to one this wallet actually shows (prefer ETH, the one
+  // sendable asset). Re-runs when the wallet (and thus its asset list) changes.
+  useEffect(() => {
+    setAssetSymbol((cur) => defaultAssetSymbol(enabledAssets, cur));
+  }, [walletId, enabledAssets.join(",")]);
 
   const { data: whitelist = [] } = useQuery({
     queryKey: ["whitelisted-addresses"],
@@ -138,7 +167,11 @@ export default function SendCrypto() {
     try { localStorage.setItem("veyrnox-remote-screen", v ? "1" : "0"); } catch { /* ignore */ }
   };
 
-  const selectedWallet = wallets.find(w => w.id === walletId);
+  // Synthesise the per-(wallet, asset) record the rest of this screen expects
+  // (.currency/.address/.balance) from the live source, so downstream send / limit /
+  // screening logic is unchanged. Address comes from the active wallet's derived
+  // accounts (EVM shared / BTC / SOL) via resolveReceive.
+  const selectedWallet = buildSendWallet({ wallets, walletId, assetSymbol, accounts, btcAccount, solAccount });
 
   // Capability gate: only assets whose status is `live` may move funds. ETH is
   // live (Phase A); ERC-20 tokens (Phase B) are receive_only until a testnet
@@ -165,7 +198,9 @@ export default function SendCrypto() {
     queryFn: () => isErc20
       ? getTokenBalance({ networkKey: networkKey, symbol: selectedAsset.symbol, owner: selectedWallet.address })
       : getBalanceEth(networkKey, selectedWallet.address),
-    enabled: !!selectedWallet?.address && canReceive(selectedAsset),
+    // EVM-family only: getBalanceEth / getTokenBalance are EVM reads, so a BTC/SOL
+    // selection must NOT issue a wrong-network balance request.
+    enabled: !!selectedWallet?.address && canReceive(selectedAsset) && (isEvmFamily(selectedAsset) || isErc20),
     refetchInterval: 15000,
   });
 
@@ -497,16 +532,44 @@ export default function SendCrypto() {
         <div>
           <Label>From Wallet</Label>
           <Select value={walletId} onValueChange={setWalletId}>
-            <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select wallet" /></SelectTrigger>
+            <SelectTrigger className="mt-1.5">
+              <SelectValue placeholder="Select wallet">
+                {selectedWalletName ? (
+                  <span className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    {selectedWalletName}
+                  </span>
+                ) : null}
+              </SelectValue>
+            </SelectTrigger>
             <SelectContent>
               {wallets.map(w => (
                 <SelectItem key={w.id} value={w.id}>
                   <div className="flex items-center gap-2">
-                    <CoinLogo symbol={w.currency} size={20} />
-                    <span>{w.name} — {w.balance} {w.currency}</span>
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <span>{w.name}</span>
                   </div>
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Asset</Label>
+          <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
+            <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select asset" /></SelectTrigger>
+            <SelectContent>
+              {enabledAssets.map(sym => {
+                const a = getAsset(sym);
+                return (
+                  <SelectItem key={sym} value={sym}>
+                    <div className="flex items-center gap-2">
+                      <CoinLogo symbol={sym} size={20} />
+                      <span>{a?.name || sym} — {sym}</span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>
@@ -640,7 +703,7 @@ export default function SendCrypto() {
         {step === "form" && (
           <Button
             className="w-full"
-            disabled={!walletId || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !sendEnabled || (sendEnabled && !isUnlocked) || (limitEval.blocked && !limitAck)}
+            disabled={!walletId || !assetSymbol || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !sendEnabled || (sendEnabled && !isUnlocked) || (limitEval.blocked && !limitAck)}
             onClick={() => setStep("verify")}
           >
             <ArrowUpRight className="h-4 w-4 mr-1.5" />
