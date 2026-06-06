@@ -19,6 +19,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
+import { isDevSendUngated } from "@/lib/devSendOverride";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
@@ -180,6 +181,20 @@ export default function SendCrypto() {
   const sendEnabled = canSend(selectedAsset);
   const isErc20 = selectedAsset?.family === "erc20";
 
+  // DEV-ONLY testnet send ungate (see lib/devSendOverride.js). Lets a developer
+  // exercise the real send path for a `receive_only` asset on TESTNET to obtain an
+  // on-chain txid during per-asset verification — WITHOUT changing the asset's
+  // status (canSend remains the production truth) and dead-code-eliminated from any
+  // production build. `flowSendEnabled` is the UI-flow gate; the HARD signing gate
+  // below still consults canSend() directly and only relaxes when this is true.
+  // The leading `import.meta.env.DEV &&` is the build-time lock: a production
+  // `vite build` statically replaces it with `false`, collapsing this to `false`
+  // so the bypass branch is dead-code-eliminable from the shipped bundle (and is
+  // in any case never true at runtime in prod). isDevSendUngated() re-checks DEV
+  // too, so the gate is testable in isolation.
+  const devUngated = import.meta.env.DEV && isDevSendUngated();
+  const flowSendEnabled = sendEnabled || devUngated;
+
   // Phase C: the active chain follows the selected asset — each EVM asset carries
   // its own (testnet) network key (e.g. MATIC -> polygonAmoy). The native gas
   // symbol and chain name come from the network registry, NEVER hardcoded "ETH";
@@ -233,7 +248,7 @@ export default function SendCrypto() {
 
   // Effective balance for max/limit checks: chain read for live assets, falling
   // back to the DB value only for not-yet-live assets (display only).
-  const effectiveBalance = sendEnabled && liveBalance != null
+  const effectiveBalance = flowSendEnabled && liveBalance != null
     ? parseFloat(liveBalance)
     : (selectedWallet?.balance || 0);
 
@@ -342,8 +357,11 @@ export default function SendCrypto() {
   const sendTx = useMutation({
     mutationFn: async () => {
       // HARD capability gate: only `live` assets may move funds. This is the
-      // exact failure mode of the original code (sending on fake assets).
-      if (!canSend(selectedAsset)) {
+      // exact failure mode of the original code (sending on fake assets). The gate
+      // still calls canSend() directly (production truth); it is relaxed ONLY by the
+      // dev-only, testnet-only, build-time-eliminated ungate (see devUngated above).
+      // Note mainnet stays independently gated in networks.js even when ungated.
+      if (!canSend(selectedAsset) && !devUngated) {
         throw new Error(`Sending is not yet enabled for ${selectedWallet?.currency}.`);
       }
       if (!isUnlocked) throw new Error("Unlock your wallet to send");
@@ -652,20 +670,28 @@ export default function SendCrypto() {
           <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
           {selectedWallet && (
             <p className="text-xs text-muted-foreground mt-1">
-              {sendEnabled
+              {flowSendEnabled
                 ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
                 : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
             </p>
           )}
         </div>
 
-        {selectedWallet && !sendEnabled && (
+        {selectedWallet && !sendEnabled && !devUngated && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. Only ETH (Sepolia testnet) is live in this build; other assets are receive/roadmap only until their crypto path is verified.</p>
           </div>
         )}
-        {selectedWallet && sendEnabled && !isUnlocked && (
+        {selectedWallet && !sendEnabled && devUngated && (
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-orange-500/10 border border-orange-500/40">
+            <AlertTriangle className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-orange-300">
+              <strong>DEV UNGATE ACTIVE</strong> — the send gate is bypassed for {selectedWallet.currency} via VITE_DEV_UNGATE_SEND (dev build only). This asset's status is unchanged (still <strong>not</strong> live); mainnet remains gated. Testnet verification only — never ship this build.
+            </p>
+          </div>
+        )}
+        {selectedWallet && flowSendEnabled && !isUnlocked && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30">
             <Lock className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">Your wallet is locked. Unlock it in the HD Wallet Manager to sign and send.</p>
@@ -703,7 +729,7 @@ export default function SendCrypto() {
         {step === "form" && (
           <Button
             className="w-full"
-            disabled={!walletId || !assetSymbol || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !sendEnabled || (sendEnabled && !isUnlocked) || (limitEval.blocked && !limitAck)}
+            disabled={!walletId || !assetSymbol || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !flowSendEnabled || (flowSendEnabled && !isUnlocked) || (limitEval.blocked && !limitAck)}
             onClick={() => setStep("verify")}
           >
             <ArrowUpRight className="h-4 w-4 mr-1.5" />
