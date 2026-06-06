@@ -251,9 +251,14 @@ describe('buildAndSignSol — local ed25519 signing commits to the right transfe
     expect(ix.keys[0].pubkey.equals(sender.publicKey)).toBe(true);
     expect(ix.keys[1].pubkey.equals(recipient)).toBe(true);
 
-    // The decoded transfer amount matches what we asked to send.
-    const decoded = SystemProgram.decodeTransfer(ix);
-    expect(BigInt(decoded.lamports.toString())).toBe(amountLamports);
+    // The transfer amount matches what we asked to send. Decode the System
+    // transfer instruction data directly — @solana/web3.js v1.x dropped
+    // SystemProgram.decodeTransfer. Layout: u32 LE instruction index (2 =
+    // Transfer) followed by u64 LE lamports.
+    const data = ix.data;
+    const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    expect(dv.getUint32(0, true)).toBe(2);             // SystemInstruction::Transfer
+    expect(dv.getBigUint64(4, true)).toBe(amountLamports);
 
     // The signature actually verifies against the sender's key (real ed25519).
     expect(tx.verifySignatures()).toBe(true);
@@ -278,8 +283,9 @@ describe('buildAndSignSol — local ed25519 signing commits to the right transfe
 - [ ] **Step 2: Run it and confirm it PASSES**
 
 Run: `npx vitest run src/wallet-core/__tests__/sol-send-signing.test.js`
-Expected: PASS — both tests green (exercises existing `buildAndSignSol`).
-If `SystemProgram.decodeTransfer` is unavailable in the installed `@solana/web3.js`, that is a real finding — report it (do NOT delete the amount assertion); the rest of the test still pins recipient/feePayer/signature.
+Expected: PASS — both tests green (exercises existing `buildAndSignSol`). The amount
+assertion decodes the instruction data directly (`@solana/web3.js` v1.x has no
+`SystemProgram.decodeTransfer`).
 
 - [ ] **Step 3: Commit**
 
