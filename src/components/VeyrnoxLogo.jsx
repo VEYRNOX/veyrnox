@@ -1,11 +1,22 @@
-// Veyrnox brand mark — a secure-silicon chip with a red security shield,
-// recreated as a crisp, scalable SVG so it renders sharply at every size
-// (header, auth, etc.). `bg` draws the dark rounded-square app-icon tile.
+// Veyrnox brand mark — a teal hexagon enclosing a gradient "V", drawn as a
+// crisp scalable SVG so it renders sharply at every size (header, sidebar,
+// auth front door, app icon). ONE teal accent (#4ADAC2), calm near-black —
+// the design-system palette. `bg` optionally draws the dark rounded app-icon
+// tile (off by default so the mark sits directly on the near-black UI, matching
+// the brand lockup).
 
-const PIN_CENTERS = [150, 192, 234, 276, 318, 360];
-const BG = "#28333F";
+import { useId } from "react";
 
-export default function VeyrnoxLogo({ size = 32, bg = true, className = "" }) {
+export default function VeyrnoxLogo({ size = 32, bg = false, className = "" }) {
+  // Unique gradient ids per instance. The layout renders TWO marks (desktop
+  // sidebar + mobile header) and one is always display:none for the current
+  // breakpoint; with shared ids the visible mark would reference a gradient
+  // inside the hidden subtree, which browsers don't paint — making the mark
+  // invisible. useId() guarantees each instance references its OWN gradients.
+  const uid = useId().replace(/:/g, "");
+  const hex = `vx-hex-${uid}`;
+  const v = `vx-v-${uid}`;
+  const fill = `vx-fill-${uid}`;
   return (
     <svg
       width={size}
@@ -18,36 +29,56 @@ export default function VeyrnoxLogo({ size = 32, bg = true, className = "" }) {
       aria-label="Veyrnox"
     >
       <defs>
-        <linearGradient id="vx-chip" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#C9D4DF" />
-          <stop offset="1" stopColor="#9EABB9" />
+        {/* Mint → teal, the single brand accent. */}
+        <linearGradient id={hex} x1="120" y1="80" x2="392" y2="432" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#7BEBD7" />
+          <stop offset="1" stopColor="#32B6A0" />
         </linearGradient>
-        <linearGradient id="vx-shield" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#F0554D" />
-          <stop offset="1" stopColor="#D42C2C" />
+        <linearGradient id={v} x1="188" y1="180" x2="324" y2="340" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#86EEDB" />
+          <stop offset="1" stopColor="#3CC3AD" />
+        </linearGradient>
+        {/* Subtle interior depth (teal-tinted near-black). */}
+        <linearGradient id={fill} x1="256" y1="104" x2="256" y2="408" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#12211F" />
+          <stop offset="1" stopColor="#0A0F12" />
         </linearGradient>
       </defs>
 
-      {bg && <rect x="0" y="0" width="512" height="512" rx="112" fill={BG} />}
+      {/* Optional app-icon tile (favicon / touch icon). */}
+      {bg && <rect x="0" y="0" width="512" height="512" rx="112" fill="#0B0F14" />}
 
-      {/* pins on all four sides */}
-      {PIN_CENTERS.map((c) => (
-        <g key={c} fill="#A9B6C3">
-          <rect x={c - 9} y={96}  width={18} height={48} rx={6} />
-          <rect x={c - 9} y={368} width={18} height={48} rx={6} />
-          <rect x={96}  y={c - 9} width={48} height={18} rx={6} />
-          <rect x={368} y={c - 9} width={48} height={18} rx={6} />
-        </g>
-      ))}
-
-      {/* chip body */}
-      <rect x="132" y="132" width="248" height="248" rx="34" fill="url(#vx-chip)" />
-
-      {/* red security shield */}
+      {/* Flat-top hexagon: subtle fill + teal gradient stroke. */}
       <path
-        d="M194 190 Q194 184 200 184 L312 184 Q318 184 318 190 L318 258 Q318 306 256 336 Q194 306 194 258 Z"
-        fill="url(#vx-shield)"
+        d="M169 104 L343 104 L431 256 L343 408 L169 408 L81 256 Z"
+        fill={`url(#${fill})`}
+        stroke={`url(#${hex})`}
+        strokeWidth="20"
+        strokeLinejoin="round"
+      />
+
+      {/* The "V". */}
+      <path
+        d="M188 188 L256 330 L324 188"
+        fill="none"
+        stroke={`url(#${v})`}
+        strokeWidth="42"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+// Wordmark lockup — "VEYRNOX" in the brand voice: Schibsted Grotesk, bold,
+// tracked, uppercase, with a calm light→muted vertical gradient (theme-aware
+// via tokens, so it inverts correctly in light mode). Pair it with the mark.
+export function VeyrnoxWordmark({ className = "" }) {
+  return (
+    <span
+      className={`font-sans font-bold uppercase tracking-[0.14em] bg-gradient-to-b from-foreground to-muted-foreground bg-clip-text text-transparent ${className}`}
+    >
+      Veyrnox
+    </span>
   );
 }

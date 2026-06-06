@@ -73,10 +73,10 @@ export default function BiometricUnlockSettings() {
       </div>
 
       {/* PROVISIONAL banner — honest about what this is. */}
-      <div className="flex items-start gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 px-3 py-2">
-        <ShieldAlert className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2">
+        <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-yellow-600">Provisional.</span>{' '}
+          <span className="font-semibold text-caution">Provisional.</span>{' '}
           App-layer biometric gate pending security audit and likely OS-enforced
           rework. Not a guarantee of hardware-bound security.
         </p>
@@ -120,7 +120,7 @@ export default function BiometricUnlockSettings() {
           </span>
         ) : available ? (
           <span className="flex items-start gap-1.5 text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" />
+            <ShieldCheck className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
             <span>
               {label} available{simulated ? ' (simulated in demo)' : ''}. {status.detail}
             </span>
@@ -142,7 +142,7 @@ export default function BiometricUnlockSettings() {
               : <><ScanFace className="h-4 w-4" /> Preview prompt</>}
           </Button>
           {testResult === 'ok' && (
-            <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
+            <p className="text-xs text-success mt-2 flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" /> Simulated authentication succeeded
             </p>
           )}

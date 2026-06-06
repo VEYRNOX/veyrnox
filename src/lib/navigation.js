@@ -28,19 +28,23 @@ import {
 } from "lucide-react";
 import { isCut } from './featureRegistry';
 
-// Each feature group gets its own accent colour so the menus read as
-// colour-coded sections rather than one long undifferentiated list.
+// Brand teal is the primary accent (active destination). Each feature group also
+// carries a SUBTLE secondary hue, used only as a low-intensity tint/border in the
+// "More" drawer so the sections are easy to tell apart — never as loud fills. The
+// palette is drawn from the design-system semantic colours (info / teal / amber /
+// coral) plus a few harmonious neighbours, so it reads calm, not casino.
+export const GROUP_ACCENT = "#4ADAC2";
 export const GROUP_COLORS = {
-  Overview: "#3b82f6", // blue
-  Wallet:   "#8b5cf6", // violet
-  Invest:   "#22c55e", // green
-  Assets:   "#f59e0b", // amber
-  Finance:  "#06b6d4", // cyan
-  Security: "#ef4444", // red
-  Connect:  "#ec4899", // pink
-  Preferences: "#64748b", // slate
+  Overview: "#6FA8FF", // info blue
+  Wallet:   "#4ADAC2", // brand teal
+  Invest:   "#5FD08A", // green
+  Assets:   "#E7B14C", // amber
+  Finance:  "#56C7D8", // cyan
+  Security: "#F06A5A", // coral
+  Connect:  "#B98CF0", // violet
+  Preferences: "#8FA0B5", // slate
 };
-export const groupColor = (label) => GROUP_COLORS[label] || "#8b5cf6";
+export const groupColor = (label) => GROUP_COLORS[label] || GROUP_ACCENT;
 
 const RAW_NAV_GROUPS = [
   {
