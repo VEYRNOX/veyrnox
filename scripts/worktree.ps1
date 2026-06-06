@@ -76,7 +76,13 @@ function Invoke-New {
   if (Test-Path $dir) { throw "Worktree directory already exists: $dir" }
   if (-not (Test-Path $WtRoot)) { New-Item -ItemType Directory -Path $WtRoot | Out-Null }
 
-  & git fetch origin --prune | Out-Null
+  # `$null = & git ...` (NOT `| Out-Null` or `2>$null`): piping/redirecting a
+  # native command's stderr while $ErrorActionPreference='Stop' turns git's
+  # progress output (e.g. "From <url>") into a terminating NativeCommandError in
+  # non-interactive PowerShell, aborting `new` before any worktree is created.
+  # Assignment discards stdout and lets stderr flow harmlessly. Fetch is
+  # best-effort (exit code ignored) so an offline `new` still works.
+  $null = & git fetch origin --prune
 
   $hasLocal = [bool](& git -C $RepoRoot branch --list $Branch)
   $hasRemote = [bool](& git -C $RepoRoot ls-remote --heads origin $Branch)
