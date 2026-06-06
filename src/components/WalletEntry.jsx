@@ -50,6 +50,7 @@ import {
   getBiometricStatus,
 } from "@/lib/biometric";
 import { hasStoredUnlockSecret } from "@/lib/biometricUnlock";
+import { resolveEntryScreen, initialEntryView } from "@/lib/entryGate";
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
@@ -210,7 +211,7 @@ export default function WalletEntry() {
       .then(async v => {
         if (!active) return;
         setVaultExists(v);
-        setView(v ? "unlock" : "choose");
+        setView(initialEntryView(v));
         // EXPLORE-FIRST: with NO vault, default to view-only explore mode so the
         // first open is the real app (honest $0 empty states), not a wall. A
         // returning user (vault exists) never explores — they get the unlock gate.
@@ -350,20 +351,26 @@ export default function WalletEntry() {
     finally { setBusy(false); }
   };
 
-  // Unlocked → reveal the app. The ONLY exception is the one-time seed-backup
-  // screen during first-run create: the vault is already unlocked, but we keep
-  // holding while `generatedSeed` is set until the user confirms the backup.
-  if (isUnlocked && !generatedSeed) return <Outlet />;
+  // The top-level screen is a single pure decision (lib/entryGate.js) so the
+  // onboarding invariant — the unlock wall appears ONLY when a vault exists — is
+  // unit-tested and can't silently regress. The view-driven forms below are only
+  // reached when this resolves to 'form'.
+  const screen = resolveEntryScreen({ isUnlocked, vaultExists, exploreMode, generatedSeed });
+
+  // Unlocked → reveal the app. The ONLY exception (kept as 'form' by the gate) is
+  // the one-time seed-backup screen during first-run create: the vault is already
+  // unlocked, but we hold while `generatedSeed` is set until the backup is confirmed.
+  if (screen === "app") return <Outlet />;
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
   // Render the real app behind a persistent create/import CTA. Tapping it (or any
   // wallet-requiring action via requireWallet()) leaves explore → the choose view.
-  if (vaultExists === false && exploreMode && !generatedSeed) {
+  if (screen === "explore") {
     return <ExploreShell onCreate={leaveExplore}><Outlet /></ExploreShell>;
   }
 
   // Initial probe in flight (only relevant while still locked).
-  if (vaultExists === null) {
+  if (screen === "loading") {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
