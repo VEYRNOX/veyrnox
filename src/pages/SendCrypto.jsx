@@ -20,6 +20,9 @@ import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { isDevSendUngated } from "@/lib/devSendOverride";
+import { signAndBroadcastBtc } from "@/wallet-core/btc/send";
+import { signAndBroadcastSol } from "@/wallet-core/sol/send";
+import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
@@ -62,7 +65,7 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey } = useWallet();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -195,14 +198,22 @@ export default function SendCrypto() {
   const devUngated = import.meta.env.DEV && isDevSendUngated();
   const flowSendEnabled = sendEnabled || devUngated;
 
-  // Phase C: the active chain follows the selected asset — each EVM asset carries
-  // its own (testnet) network key (e.g. MATIC -> polygonAmoy). The native gas
-  // symbol and chain name come from the network registry, NEVER hardcoded "ETH";
-  // Arbitrum/Optimism resolve to ETH because that genuinely is their gas token.
-  const networkKey = (isEvmFamily(selectedAsset) && selectedAsset?.chain) || "sepolia";
-  const activeNetwork = getNetworkInfo(networkKey);
-  const nativeSymbol = activeNetwork?.symbol || "ETH";
+  // The active chain follows the selected asset. EVM assets carry their own
+  // (testnet) network key (e.g. MATIC -> polygonAmoy); BTC carries 'testnet' and
+  // SOL 'devnet'. Family drives both dispatch and which network registry applies.
+  const family = selectedAsset?.family;
+  const isBtc = family === "btc";
+  const isSolana = family === "solana";
+  const networkKey = selectedAsset?.chain || "sepolia";
+  // The EVM network registry only describes EVM chains; for BTC/SOL there is no
+  // EIP-1559 fee model and the native symbol is just the asset's own currency.
+  const activeNetwork = (isEvmFamily(selectedAsset) || isErc20) ? getNetworkInfo(networkKey) : null;
+  const nativeSymbol = activeNetwork?.symbol || selectedWallet?.currency || "ETH";
   const networkName = activeNetwork?.name || networkKey;
+  // Whether we know a live balance for this asset (EVM/ERC-20 read it on-chain).
+  // For BTC/SOL we don't read it this slice, so the UI max-check is skipped and
+  // the send function enforces real funds (coin-selection / rent).
+  const balanceKnown = isEvmFamily(selectedAsset) || isErc20;
 
   // Chain is the source of truth for balance — read it live, never the DB.
   // Native (ETH) reads via getBalanceEth; ERC-20 reads via the token contract's
@@ -387,43 +398,58 @@ export default function SendCrypto() {
         );
       }
 
-      // Map the selected wallet to its HD derivation index (public address match).
-      const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
-      if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
-
       // Unlimited approvals must be explicitly acknowledged before signing.
       if (blockedByApproval) {
         throw new Error("Confirm the unlimited-approval warning before signing.");
       }
 
-      // Sign LOCALLY and broadcast. privateKey is transient and never persisted.
-      // Branch on the asset family: ERC-20 tokens go through the token contract's
-      // transfer; native EVM coins (ETH) use the native value transfer.
-      // The user-selected EIP-1559 fee (slow/avg/fast or custom) flows straight
-      // into the signing call. When null (estimate unavailable) the send path
-      // falls back to ethers' auto-filled fee — never blocks the send.
-      const fee = selectedFee?.fee || undefined;
-      const tx = await withPrivateKey(acct.index, (privateKey) =>
-        isErc20
-          ? sendToken({
-              networkKey: networkKey,
-              privateKey,
-              symbol: selectedAsset.symbol,
-              to: toAddress,
-              amount,
-              fee,
-            })
-          : signAndBroadcast({
-              networkKey: networkKey,
-              privateKey,
-              to: toAddress,
-              amountEth: amount,
-              fee,
-            })
-      );
+      // Sign LOCALLY and broadcast. The signing key is transient and never
+      // persisted. Branch on the asset family — each has its own derivation/
+      // signing stack and send function; the human-entered `amount` is converted
+      // to that chain's integer base unit (sats / lamports / wei) for signing.
+      let raw;
+      if (isBtc) {
+        // BTC (BIP-84 P2WPKH). Auto fee-rate this slice (no fee UI). BTC -> sats.
+        raw = await withBtcPrivateKey(({ privateKey, publicKey, address }) =>
+          signAndBroadcastBtc({
+            networkKey,
+            privateKey,
+            publicKey,
+            fromAddress: address,
+            toAddress,
+            amountSats: toBaseUnits(amount, 8),
+          })
+        );
+      } else if (isSolana) {
+        // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
+        raw = await withSolPrivateKey(({ privateKey, address }) =>
+          signAndBroadcastSol({
+            networkKey,
+            privateKey,
+            fromAddress: address,
+            toAddress,
+            amountLamports: toBaseUnits(amount, 9),
+          })
+        );
+      } else {
+        // EVM native + ERC-20. Map the wallet to its HD derivation index (public
+        // address match). The user-selected EIP-1559 fee flows straight into the
+        // signing call; null falls back to ethers' auto-fill (never blocks send).
+        const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
+        if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
+        const fee = selectedFee?.fee || undefined;
+        raw = await withPrivateKey(acct.index, (privateKey) =>
+          isErc20
+            ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount, fee })
+            : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: amount, fee })
+        );
+      }
 
-      // Record the REAL chain hash as 'pending'. Do NOT write balances — the
-      // chain is the source of truth and is read live elsewhere.
+      // Normalize each family's distinct result shape to one record shape.
+      const { hash, explorerUrl } = normalizeSendResult(family, raw);
+
+      // Record the REAL chain hash/signature as 'pending'. Do NOT write balances —
+      // the chain is the source of truth and is read live elsewhere.
       await base44.entities.Transaction.create({
         wallet_id: walletId,
         type: "send",
@@ -431,19 +457,25 @@ export default function SendCrypto() {
         currency: selectedWallet.currency,
         to_address: toAddress,
         from_address: selectedWallet.address,
-        status: "pending",        // becomes confirmed after tx.wait()
-        tx_hash: tx.hash,          // REAL chain hash
-        explorer_url: tx.explorerUrl,
+        status: "pending",
+        tx_hash: hash,            // REAL chain txid / signature
+        explorer_url: explorerUrl,
         note,
       });
 
-      // Confirm in the background, then refresh balance + history from chain.
-      tx.wait(1).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet.address] });
+      // Refresh views. Only the EVM result exposes tx.wait(1) for background
+      // confirmation; BTC is broadcast and SOL confirms internally, so for those
+      // we just invalidate the transaction list (status stays 'pending').
+      if (typeof raw.wait === "function") {
+        raw.wait(1).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet.address] });
+          queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        }).catch(() => {/* surface a "still pending / failed" state in UI */});
+      } else {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      }).catch(() => {/* surface a "still pending / failed" state in UI */});
+      }
 
-      return { hash: tx.hash, explorerUrl: tx.explorerUrl };
+      return { hash, explorerUrl };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet?.address] });
@@ -729,7 +761,7 @@ export default function SendCrypto() {
         {step === "form" && (
           <Button
             className="w-full"
-            disabled={!walletId || !assetSymbol || !toAddress || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > effectiveBalance || !addressFormatValid || !flowSendEnabled || (flowSendEnabled && !isUnlocked) || (limitEval.blocked && !limitAck)}
+            disabled={!walletId || !assetSymbol || !toAddress || !amount || parseFloat(amount) <= 0 || (balanceKnown && parseFloat(amount) > effectiveBalance) || !addressFormatValid || !flowSendEnabled || (flowSendEnabled && !isUnlocked) || (limitEval.blocked && !limitAck)}
             onClick={() => setStep("verify")}
           >
             <ArrowUpRight className="h-4 w-4 mr-1.5" />
@@ -803,17 +835,24 @@ export default function SendCrypto() {
               </div>
             )}
 
-            {/* Per-chain fee control. The live send path is EVM (EIP-1559); the
-                chosen tier/custom fee is passed into signAndBroadcast/sendToken. */}
-            <FeeSelector
-              chain="evm"
-              networkKey={networkKey}
-              symbol={nativeSymbol}
-              decimals={activeNetwork?.decimals ?? 18}
-              usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
-              gasLimitHint={isErc20 ? 65000 : 21000}
-              onChange={setSelectedFee}
-            />
+            {/* Per-chain fee control. The EVM send path is EIP-1559; the chosen
+                tier/custom fee is passed into signAndBroadcast/sendToken. BTC/SOL
+                use an automatic fee this slice (no selector). */}
+            {!isBtc && !isSolana ? (
+              <FeeSelector
+                chain="evm"
+                networkKey={networkKey}
+                symbol={nativeSymbol}
+                decimals={activeNetwork?.decimals ?? 18}
+                usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
+                gasLimitHint={isErc20 ? 65000 : 21000}
+                onChange={setSelectedFee}
+              />
+            ) : (
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                <Fuel className="h-3 w-3 shrink-0" /> Network fee is set automatically for {selectedWallet?.currency} ({networkName}) on this testnet.
+              </p>
+            )}
             {/* The fee's fiat estimate (and the spend-cap previews) convert via
                 the static USD_RATES table, so disclose it's a reference rate. */}
             <ReferenceRateNote className="text-center" />
