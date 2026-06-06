@@ -41,6 +41,8 @@ All EVM/ERC-20 assets derive the **same address as your Sepolia ETH wallet**
 | BNB | BNB Smart Chain Testnet (97) | **tBNB** | [BNB testnet faucet](https://www.bnbchain.org/en/testnet-faucet) | `https://testnet.bscscan.com/tx/<hash>` | Native tBNB transfer succeeds; fee/balance UI shows **tBNB**. ⚠️ See BNB gas note | _(pending)_ |
 | USDC | Sepolia (11155111) | ETH (for gas) | [Circle faucet → Ethereum Sepolia](https://faucet.circle.com/) for USDC; Sepolia ETH faucet for gas | `https://sepolia.etherscan.io/tx/<hash>` | `transfer()` to USDC contract `0x1c7D…7238`; recipient USDC ↑ by amount; 6-dec scaling | _(pending)_ |
 | USDT | Sepolia (11155111) — Aave faucet stand-in | ETH (for gas) | [Aave faucet → mint test USDT](https://gho.aave.com/faucet/); Sepolia ETH for gas | `https://sepolia.etherscan.io/tx/<hash>` | `transfer()` to test-USDT `0xaA8E…33D0`; recipient USDT ↑ by amount; **6-dec** scaling (not 18) | _(pending)_ |
+| BTC | Bitcoin testnet (BIP-84, `tb1…` P2WPKH) | BTC (sat/vB, auto fee-rate) | [mempool testnet faucet](https://mempool.space/testnet) / [bitcoinfaucet.uo1.net](https://bitcoinfaucet.uo1.net/) | `https://mempool.space/testnet/tx/<txid>` | P2WPKH send succeeds; sum(inputs)=outputs+fee; change returns to self; 8-dec (sats) scaling | _(pending)_ |
+| SOL | Solana devnet | SOL (base fee, auto) | `solana airdrop 2 <addr> --url devnet` or [faucet.solana.com](https://faucet.solana.com/) | `https://explorer.solana.com/tx/<sig>?cluster=devnet` | System transfer succeeds; rent-exempt minimum respected; recipient SOL ↑; 9-dec (lamports) scaling | _(pending)_ |
 
 ### ⚠️ BNB gas note
 BNB testnet supports EIP-1559 (Hertz hardfork) but pins **baseFee = 0**, and BSC
@@ -61,8 +63,20 @@ No asset moves to `live` before its row above has a real confirmed txid.
 - `__tests__/chainid-guard.test.js` — pre-broadcast wrong-chain guard fires per chain.
 - `__tests__/evm-send-signing.test.js` — native sends: signed bytes commit to the correct chainId/recipient/value/fee and recover to the sender (ETH control + ARB/OP/MATIC/AVAX/BNB); cross-chain replay isolation.
 - `__tests__/evm-token-send-signing.test.js` — ERC-20 sends: signed bytes are `transfer()` to the correct token contract, 6-dec scaling, on-chain decimals cross-check aborts a mismatch before signing (USDC + USDT).
+- `lib/__tests__/sendDispatch.test.js` — the BTC/SOL dispatch units: `toBaseUnits` (BigInt-only decimal→sats/lamports; over-precision and non-positive amounts throw) and `normalizeSendResult` (per-family result shape).
+- `__tests__/sol-send-signing.test.js` — SOL local signing: `buildAndSignSol` produces a System transfer to the correct recipient/lamports, fee payer = sender, signature verifies. (BTC's `buildAndSignTx` is already covered by `btc-coinselect.test.js`.)
 - `__tests__/erc20.test.js` — calldata decode, exact-unit scaling, registry guard, unlimited-approval warning.
 - `lib/__tests__/devSendOverride.test.js` — the dev ungate is false in every combination except dev-build + explicit opt-in.
 
-## NOT in this batch (handled separately — needs Section C dispatch wiring)
-- **BTC** (Bitcoin testnet, BIP-84) and **SOL** (Solana devnet) — their send code exists and is unit-tested, but `SendCrypto.jsx` does not yet route the `btc`/`solana` families (it would fall through to the EVM path with `networkKey` defaulting to `sepolia`). Wiring + their signing tests are a separate step.
+## Now wired in this batch (BTC + SOL dispatch)
+- **BTC** (Bitcoin testnet, BIP-84) and **SOL** (Solana devnet) are now routed by
+  `SendCrypto.jsx` to `wallet-core/btc/send.js` / `wallet-core/sol/send.js` via the
+  pure `lib/sendDispatch.js` (family dispatch + amount→sats/lamports conversion).
+  They remain `receive_only` until a confirmed txid is pasted above — identical
+  honest-tagging discipline as the EVM assets.
+
+## Deferred (not in this batch)
+- BTC fee-rate (sat/vB) selector and SOL priority-fee selector — sends use the
+  auto-fetched fee rate / base fee.
+- Live on-chain balance reads for BTC/SOL — the UI max-check is skipped for them;
+  the send path enforces real funds (BTC coin-selection, SOL rent/balance).
