@@ -27,6 +27,7 @@ import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
+import { buildHdWalletOptions, resolveSendWallets, autoSelectWalletId, buildSendAssetOptions, resolveSelectedSendWallet } from "@/lib/sendWalletOptions";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
@@ -60,8 +61,9 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, accounts, withPrivateKey } = useWallet();
+  const { isUnlocked, accounts, withPrivateKey, wallets: hdWallets, walletAddresses, switchWallet } = useWallet();
   const [walletId, setWalletId] = useState("");
+  const [assetSymbol, setAssetSymbol] = useState("ETH"); // HD-mode asset selector (Model B)
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -100,10 +102,40 @@ export default function SendCrypto() {
   };
 
 
-  const { data: wallets = [] } = useQuery({
+  // base44.entities.Wallet is a CACHE of public addresses — only ever written as
+  // a side effect of opening the HD Wallet Manager (its persistAccounts sync). It
+  // backs the demo tour (pre-seeded) but is EMPTY for a freshly created real
+  // wallet, which is why the picker was inert. The authoritative source for a
+  // real wallet is the unlocked HD session below; see lib/sendWalletOptions.js.
+  const { data: entityWallets = [] } = useQuery({
     queryKey: ["wallets"],
     queryFn: () => base44.entities.Wallet.list(),
   });
+
+  // One sendable ETH option per HD wallet, resolved to its primary EVM address.
+  const hdWalletOptions = useMemo(
+    () => buildHdWalletOptions(hdWallets, walletAddresses),
+    [hdWallets, walletAddresses]
+  );
+  // Picker source: prefer the authoritative HD session when unlocked (correct
+  // names, always present for a real wallet); fall back to the entity store for
+  // the demo tour and while addresses are still deriving.
+  const wallets = useMemo(
+    () => resolveSendWallets({ isUnlocked, hdOptions: hdWalletOptions, entityWallets }),
+    [isUnlocked, hdWalletOptions, entityWallets]
+  );
+
+  // When there's exactly one wallet, auto-select it instead of showing an empty
+  // "Select wallet" prompt. switchWallet keeps the HD signing set (accounts) in
+  // sync with the picker so the send path resolves the right derived key; it is a
+  // no-op in demo (no unlocked container) and for an already-active wallet.
+  useEffect(() => {
+    const next = autoSelectWalletId(wallets, walletId);
+    if (next && next !== walletId) {
+      setWalletId(next);
+      switchWallet(next);
+    }
+  }, [wallets, walletId, switchWallet]);
 
   const { data: whitelist = [] } = useQuery({
     queryKey: ["whitelisted-addresses"],
@@ -138,7 +170,21 @@ export default function SendCrypto() {
     try { localStorage.setItem("veyrnox-remote-screen", v ? "1" : "0"); } catch { /* ignore */ }
   };
 
-  const selectedWallet = wallets.find(w => w.id === walletId);
+  // Model B: a wallet is one HD seed; the chosen asset drives chain / from-address
+  // / balance / gas / signing. In HD (unlocked) mode an Asset selector is shown
+  // and `assetSymbol` is folded onto the picked wallet to produce selectedWallet.
+  // In demo mode each entity row IS an asset, so the asset selector is hidden and
+  // the picked row is used unchanged. Everything below reads selectedWallet
+  // .currency/.address generically — see lib/sendWalletOptions.js.
+  const assetMode = isUnlocked && hdWalletOptions.length > 0;
+  const assetOptions = useMemo(() => buildSendAssetOptions(), []);
+  const walletPick = wallets.find(w => w.id === walletId);
+  const selectedWallet = resolveSelectedSendWallet({
+    isAssetMode: assetMode,
+    walletPick,
+    assetSymbol,
+    walletAddresses,
+  });
 
   // Capability gate: only assets whose status is `live` may move funds. ETH is
   // live (Phase A); ERC-20 tokens (Phase B) are receive_only until a testnet
@@ -496,20 +542,56 @@ export default function SendCrypto() {
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
         <div>
           <Label>From Wallet</Label>
-          <Select value={walletId} onValueChange={setWalletId}>
+          <Select value={walletId} onValueChange={(id) => { setWalletId(id); switchWallet(id); }}>
             <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select wallet" /></SelectTrigger>
             <SelectContent>
               {wallets.map(w => (
                 <SelectItem key={w.id} value={w.id}>
                   <div className="flex items-center gap-2">
-                    <CoinLogo symbol={w.currency} size={20} />
-                    <span>{w.name} — {w.balance} {w.currency}</span>
+                    {/* In HD (asset) mode a wallet is one seed across all chains,
+                        so don't tag the row with a single coin — the Asset
+                        selector below owns that. In demo each row IS an asset, so
+                        keep its coin logo + cached balance. */}
+                    {!assetMode && <CoinLogo symbol={w.currency} size={20} />}
+                    <span>
+                      {w.name}
+                      {!assetMode && w.balance > 0
+                        ? ` — ${w.balance} ${w.currency}`
+                        : w.address
+                          ? ` — ${w.address.slice(0, 6)}…${w.address.slice(-4)}`
+                          : ` — ${w.currency}`}
+                    </span>
                   </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
+        {/* Asset selector (HD mode only — Model B). Choosing the asset drives the
+            chain, from-address, balance read, gas symbol and signing scheme
+            together. EVM + ERC-20 are selectable; BTC/SOL are shown disabled
+            ("coming soon") because this screen's dispatch is EVM-only. Sends stay
+            ETH-only via the canSend gate below until each asset is verified. */}
+        {assetMode && (
+          <div>
+            <Label>Asset</Label>
+            <Select value={assetSymbol} onValueChange={setAssetSymbol}>
+              <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select asset" /></SelectTrigger>
+              <SelectContent>
+                {assetOptions.map(a => (
+                  <SelectItem key={a.symbol} value={a.symbol} disabled={a.disabled}>
+                    <div className="flex items-center gap-2">
+                      <CoinLogo symbol={a.symbol} size={20} />
+                      <span>{a.name} <span className="text-muted-foreground">({a.symbol})</span></span>
+                      {a.disabled && <span className="text-[10px] uppercase tracking-wide text-muted-foreground">· coming soon</span>}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div>
           <Label>Recipient Address or ENS/SNS Name</Label>
           <div className="flex gap-2 mt-1.5">
