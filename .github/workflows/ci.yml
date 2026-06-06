@@ -20,8 +20,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+      # The lockfile is authored with npm 11; Node 22 ships npm 10, which rejects
+      # it (optional native dep resolution). Pin npm 11 to match the toolchain.
+      - run: npm install -g npm@11
       - run: npm ci
       - run: npm run lint
       - run: npm run build
