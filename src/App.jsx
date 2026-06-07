@@ -10,6 +10,7 @@ import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import EnvBadge from '@/components/EnvBadge';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -221,6 +222,7 @@ function App() {
         <TierProvider>
           <QueryClientProvider client={queryClientInstance}>
             <Router>
+              <EnvBadge />
               <AuthenticatedApp />
             </Router>
             <Toaster />
