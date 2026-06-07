@@ -119,7 +119,7 @@ export default function Settings() {
       {/* Wallet Passkeys (per-wallet — used for transaction verification in the Send flow) */}
       <div className="space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
-          <Fingerprint className="h-4 w-4 text-accent" />
+          <Fingerprint className="h-4 w-4 text-primary" />
           Wallet Passkeys
         </h2>
         {wallets.length === 0 ? (

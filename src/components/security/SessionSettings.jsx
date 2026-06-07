@@ -54,7 +54,7 @@ export default function SessionSettings() {
         <span
           className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
             isUnlocked
-              ? 'bg-green-500/10 text-green-500'
+              ? 'bg-success/10 text-success'
               : 'bg-secondary text-muted-foreground'
           }`}
         >
@@ -128,7 +128,7 @@ export default function SessionSettings() {
                 </p>
               </div>
               {s.current && (
-                <span className="text-[10px] font-semibold text-green-500 shrink-0">This device</span>
+                <span className="text-[10px] font-semibold text-success shrink-0">This device</span>
               )}
             </div>
           ))}

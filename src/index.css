@@ -3,105 +3,102 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 240 6% 10%;
-    --foreground: 0 0% 95%;
-    --card: 240 5% 13%;
-    --card-foreground: 0 0% 95%;
-    --popover: 240 5% 13%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 28 95% 54%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 18%;
-    --secondary-foreground: 0 0% 80%;
-    --muted: 240 5% 18%;
-    --muted-foreground: 240 5% 55%;
-    --accent: 28 95% 54%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 58%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5% 20%;
-    --input: 240 5% 20%;
-    --ring: 28 95% 54%;
-    --chart-1: 28 95% 54%;
-    --chart-2: 199 89% 52%;
-    --chart-3: 142 71% 45%;
-    --chart-4: 270 70% 60%;
-    --chart-5: 0 72% 58%;
+  /* ── Veyrnox design system (source of truth) ───────────────────────────────
+     Calm near-black surfaces (#050608 → #1D222B), ONE teal accent
+     (#4ADAC2 = verified / primary action). Semantic colours only:
+     caution #E7B14C, risk #F06A5A, info #6FA8FF. No second decorative accent.
+
+     The app runs `defaultTheme="dark"` (next-themes adds the `.dark` class), so
+     the dark palette is authoritative; `:root` carries the same values as the
+     no-class fallback to avoid a flash before hydration. `.light` is a coherent
+     light variant of the SAME system (teal accent, same semantics). */
+  :root,
+  .dark {
+    --background: 222 30% 3%;        /* #050608 — deepest surface */
+    --foreground: 210 20% 92%;       /* calm off-white */
+    --card: 220 24% 6%;              /* raised surface */
+    --card-foreground: 210 20% 92%;
+    --popover: 220 26% 7%;
+    --popover-foreground: 210 20% 92%;
+    --primary: 170 66% 57%;          /* #4ADAC2 teal — verified / primary */
+    --primary-foreground: 200 45% 6%;/* near-black on teal */
+    --secondary: 218 20% 13%;        /* #1D222B — top of the surface ramp */
+    --secondary-foreground: 210 16% 86%;
+    --muted: 220 18% 11%;
+    --muted-foreground: 215 15% 62%;
+    --accent: 170 66% 57%;           /* same teal — the ONLY accent */
+    --accent-foreground: 200 45% 6%;
+    --destructive: 6 83% 65%;        /* #F06A5A risk */
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 18% 15%;
+    --input: 218 18% 15%;
+    --ring: 170 66% 57%;             /* teal focus ring */
+    /* Semantic (functional) colours — pair with an icon/text, never colour-only */
+    --caution: 39 76% 60%;           /* #E7B14C */
+    --caution-foreground: 40 60% 8%;
+    --risk: 6 83% 65%;               /* #F06A5A */
+    --risk-foreground: 0 0% 100%;
+    --info: 216 100% 72%;            /* #6FA8FF */
+    --info-foreground: 216 60% 10%;
+    --success: 170 66% 57%;          /* teal = verified */
+    --success-foreground: 200 45% 6%;
+    --chart-1: 170 66% 57%;          /* teal */
+    --chart-2: 216 100% 72%;         /* info blue */
+    --chart-3: 39 76% 60%;           /* caution amber */
+    --chart-4: 6 83% 65%;            /* risk */
+    --chart-5: 262 52% 64%;          /* violet — data-series only, not UI chrome */
     --radius: 0.75rem;
-    --sidebar-background: 240 6% 8%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 28 95% 54%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 15%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 240 5% 20%;
-    --sidebar-ring: 28 95% 54%;
+    --sidebar-background: 222 32% 2.5%;
+    --sidebar-foreground: 210 18% 88%;
+    --sidebar-primary: 170 66% 57%;
+    --sidebar-primary-foreground: 200 45% 6%;
+    --sidebar-accent: 220 20% 10%;
+    --sidebar-accent-foreground: 210 20% 92%;
+    --sidebar-border: 218 18% 14%;
+    --sidebar-ring: 170 66% 57%;
   }
 
   .light {
-    --background: 0 0% 98%;
-    --foreground: 240 6% 10%;
+    --background: 210 30% 98%;
+    --foreground: 220 30% 8%;
     --card: 0 0% 100%;
-    --card-foreground: 240 6% 10%;
+    --card-foreground: 220 30% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 6% 10%;
-    --primary: 28 95% 50%;
+    --popover-foreground: 220 30% 8%;
+    --primary: 172 72% 36%;          /* darker teal for AA contrast on white */
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 92%;
-    --secondary-foreground: 240 6% 20%;
-    --muted: 240 5% 92%;
-    --muted-foreground: 240 5% 45%;
-    --accent: 28 95% 50%;
+    --secondary: 210 20% 93%;
+    --secondary-foreground: 220 20% 20%;
+    --muted: 210 20% 93%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 172 72% 36%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
+    --destructive: 6 74% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 5% 85%;
-    --input: 240 5% 85%;
-    --ring: 28 95% 50%;
-    --sidebar-background: 240 6% 95%;
-    --sidebar-foreground: 240 6% 10%;
-    --sidebar-primary: 28 95% 50%;
+    --border: 214 20% 86%;
+    --input: 214 20% 86%;
+    --ring: 172 72% 38%;
+    --caution: 38 82% 42%;
+    --caution-foreground: 0 0% 100%;
+    --risk: 6 74% 52%;
+    --risk-foreground: 0 0% 100%;
+    --info: 216 80% 50%;
+    --info-foreground: 0 0% 100%;
+    --success: 172 72% 36%;
+    --success-foreground: 0 0% 100%;
+    --chart-1: 172 72% 36%;
+    --chart-2: 216 80% 50%;
+    --chart-3: 38 82% 42%;
+    --chart-4: 6 74% 52%;
+    --chart-5: 262 52% 52%;
+    --sidebar-background: 210 28% 96%;
+    --sidebar-foreground: 220 30% 8%;
+    --sidebar-primary: 172 72% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 88%;
-    --sidebar-accent-foreground: 240 6% 10%;
-    --sidebar-border: 240 5% 85%;
-    --sidebar-ring: 28 95% 50%;
-  }
-
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 210 22% 90%;
+    --sidebar-accent-foreground: 220 30% 8%;
+    --sidebar-border: 214 20% 86%;
+    --sidebar-ring: 172 72% 38%;
   }
 
   * {
@@ -110,12 +107,46 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
     padding-top: env(safe-area-inset-top);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* Verifiable values — addresses, amounts, fees, chain IDs, hashes — render in
+     IBM Plex Mono with tabular figures so columns don't shift and characters can
+     be checked one-by-one. Apply `.mono-value` (or Tailwind `font-mono`). */
+  .mono-value {
+    font-family: theme('fontFamily.mono');
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+    letter-spacing: -0.01em;
+  }
+
+  /* "More" drawer feature tiles. The per-group colour is passed in via CSS vars
+     (set inline per tile), so resting / hover / press are PURE CSS — reliable on
+     both mouse hover and finger tap, with no JS/React style reconciliation to
+     fight. The hover/press highlight is intentionally strong (bright fill + full
+     border + glow) so it's obvious to a fingertip on mobile. */
+  .more-tile {
+    background-color: var(--mt-bg);
+    border-color: var(--mt-bd);
+  }
+  .more-tile[data-active] {
+    background-color: var(--mt-abg);
+    border-color: var(--mt-abd);
+  }
+  .more-tile:hover,
+  .more-tile:active {
+    background-color: var(--mt-hbg);
+    border-color: var(--mt-hbd);
+    box-shadow: 0 0 0 1px var(--mt-hbd), 0 8px 22px -8px var(--mt-glow);
+  }
+  .more-tile:active {
+    transform: scale(0.96);
   }
 
   /* On mobile the app shell is pinned to the viewport with position:fixed +

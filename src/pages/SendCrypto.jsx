@@ -500,12 +500,12 @@ export default function SendCrypto() {
         </div>
         <h2 className="text-xl font-bold">Transaction Broadcast</h2>
         <p className="text-sm text-muted-foreground">
-          {amount} {selectedWallet?.currency} signed locally and sent to the network
+          <span className="mono-value text-foreground">{amount} {selectedWallet?.currency}</span> signed locally and sent to the network
         </p>
         {txResult?.hash && (
           <div className="p-3 rounded-lg bg-secondary/30 border border-border text-left space-y-2">
             <p className="text-xs text-muted-foreground">Transaction hash</p>
-            <p className="text-xs font-mono break-all">{txResult.hash}</p>
+            <p className="text-xs mono-value break-all">{txResult.hash}</p>
             {txResult.explorerUrl && (
               <a href={txResult.explorerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
                 View on block explorer <ExternalLink className="h-3 w-3" />
@@ -584,13 +584,13 @@ export default function SendCrypto() {
               className={`font-mono text-sm ${!addressFormatValid ? 'border-destructive' : ''}`}
             />
             {ensResolving && <Loader2 className="h-4 w-4 animate-spin self-center shrink-0 text-muted-foreground" />}
-            <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={() => setShowScanner(true)}>
+            <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label="Scan QR code" title="Scan QR code" onClick={() => setShowScanner(true)}>
               <ScanLine className="h-4 w-4" />
             </Button>
           </div>
           {ensResolved && (
-            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-green-400">
-              <CheckCircle2 className="h-3 w-3" /> {ensResolved.name} → <span className="font-mono truncate">{ensResolved.address}</span>
+            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-success">
+              <CheckCircle2 className="h-3 w-3 shrink-0" /> {ensResolved.name} → <span className="mono-value truncate">{ensResolved.address}</span>
             </div>
           )}
         </div>
@@ -601,9 +601,9 @@ export default function SendCrypto() {
           </p>
         )}
         {toAddress && addressFormatValid && !isAddressWhitelisted && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 -mt-2">
-            <AlertTriangle className="h-3.5 w-3.5 text-yellow-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-yellow-300">This address is not on your whitelist. Double-check before proceeding. You can add trusted addresses in Settings.</p>
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30 -mt-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
+            <p className="text-xs text-caution">This address is not on your whitelist. Double-check before proceeding. You can add trusted addresses in Settings.</p>
           </div>
         )}
 
@@ -653,8 +653,8 @@ export default function SendCrypto() {
           {selectedWallet && (
             <p className="text-xs text-muted-foreground mt-1">
               {sendEnabled
-                ? <>Balance: {liveBalance != null ? `${liveBalance} ${selectedWallet.currency}` : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
-                : <>Balance: {selectedWallet.balance} {selectedWallet.currency}</>}
+                ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
+                : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
             </p>
           )}
         </div>
@@ -666,9 +666,9 @@ export default function SendCrypto() {
           </div>
         )}
         {selectedWallet && sendEnabled && !isUnlocked && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-            <Lock className="h-3.5 w-3.5 text-yellow-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-yellow-300">Your wallet is locked. Unlock it in the HD Wallet Manager to sign and send.</p>
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30">
+            <Lock className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
+            <p className="text-xs text-caution">Your wallet is locked. Unlock it in the HD Wallet Manager to sign and send.</p>
           </div>
         )}
         <div>
@@ -716,8 +716,8 @@ export default function SendCrypto() {
             {/* Summary */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
               <p className="text-xs text-muted-foreground mb-1">You're sending</p>
-              <p className="text-lg font-bold">{amount} {selectedWallet?.currency}</p>
-              <p className="text-xs text-muted-foreground font-mono mt-1 truncate">{toAddress}</p>
+              <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
+              <p className="text-xs text-muted-foreground mono-value mt-1 truncate">{toAddress}</p>
             </div>
 
             {/* Address-poisoning warning repeated at the point of signing. */}
@@ -739,18 +739,18 @@ export default function SendCrypto() {
                 </p>
                 {tokenCalldata.kind === "transfer" && (
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="font-mono font-semibold">transfer</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="mono-value font-semibold">transfer</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Amount</span><span className="font-mono font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Recipient</span><span className="font-mono truncate">{tokenCalldata.to}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Amount</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
+                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Recipient</span><span className="mono-value truncate">{tokenCalldata.to}</span></div>
                   </div>
                 )}
                 {tokenCalldata.kind === "approve" && (
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="font-mono font-semibold">approve</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="mono-value font-semibold">approve</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Allowance</span><span className={`font-mono font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.amount}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Spender</span><span className="font-mono truncate">{tokenCalldata.spender}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Allowance</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.amount}</span></div>
+                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Spender</span><span className="mono-value truncate">{tokenCalldata.spender}</span></div>
                   </div>
                 )}
                 {tokenCalldata.kind === "unknown" && (
@@ -844,9 +844,9 @@ export default function SendCrypto() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                      <ShieldCheck className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
-                      <p className="text-xs text-green-300">A 6-digit code was sent to your registered email. Enter it below to authorise this transaction.</p>
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
+                      <ShieldCheck className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                      <p className="text-xs text-success">A 6-digit code was sent to your registered email. Enter it below to authorise this transaction.</p>
                     </div>
                     <div className="space-y-1.5">
                       <input
@@ -856,7 +856,8 @@ export default function SendCrypto() {
                         value={otpCode}
                         onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
                         placeholder="000000"
-                        className="w-full text-center text-2xl font-mono tracking-[0.5em] h-14 rounded-lg border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+                        aria-label="6-digit verification code"
+                        className="w-full text-center text-2xl mono-value tracking-[0.5em] h-14 rounded-lg border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
                         autoFocus
                       />
                     </div>

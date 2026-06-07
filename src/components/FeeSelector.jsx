@@ -174,7 +174,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
       )}
 
       {isError && (
-        <div className="flex items-start gap-2 text-xs text-yellow-400">
+        <div className="flex items-start gap-2 text-xs text-caution">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>Couldn't read live fees ({String(error?.message || "network error")}). The wallet will use a safe default fee.</span>
         </div>
@@ -198,7 +198,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground"}`} />
                     <span className="text-xs font-semibold">{t.label}</span>
                   </div>
-                  <p className="text-[11px] font-mono font-semibold truncate">{d.nativeText}</p>
+                  <p className="text-[11px] mono-value font-semibold truncate">{d.nativeText}</p>
                   {d.fiatText && <p className="text-[10px] text-muted-foreground">{d.fiatText}</p>}
                   <p className="text-[10px] text-muted-foreground">{d.eta}</p>
                 </button>
@@ -224,14 +224,14 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
               >
                 <SlidersHorizontal className={`h-3.5 w-3.5 ${selectedId === "custom" ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="text-xs font-semibold">Custom</span>
-                {customPreview && <span className="text-[10px] text-muted-foreground ml-auto font-mono">{customPreview.nativeText}{customPreview.fiatText ? ` · ${customPreview.fiatText}` : ""}</span>}
+                {customPreview && <span className="text-[10px] text-muted-foreground ml-auto mono-value">{customPreview.nativeText}{customPreview.fiatText ? ` · ${customPreview.fiatText}` : ""}</span>}
               </button>
               {selectedId === "custom" && (
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   <div>
                     <Label className="text-[10px]">Max base (Gwei)</Label>
                     <Input
-                      type="number" inputMode="decimal" className="mt-1 h-8 text-xs font-mono"
+                      type="number" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
                       value={custom.maxBaseFeeGwei}
                       placeholder={data ? fmtNative(BigInt(data.baseFeePerGasWei) * 2n, 9, 2) : "0"}
                       onChange={(e) => setCustom((c) => ({ ...c, maxBaseFeeGwei: e.target.value }))}
@@ -240,7 +240,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                   <div>
                     <Label className="text-[10px]">Priority (Gwei)</Label>
                     <Input
-                      type="number" inputMode="decimal" className="mt-1 h-8 text-xs font-mono"
+                      type="number" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
                       value={custom.priorityGwei}
                       placeholder={data ? fmtNative(data.suggestedTipWei, 9, 3) : "0"}
                       onChange={(e) => setCustom((c) => ({ ...c, priorityGwei: e.target.value }))}
@@ -249,7 +249,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                   <div>
                     <Label className="text-[10px]">Gas limit</Label>
                     <Input
-                      type="number" inputMode="numeric" className="mt-1 h-8 text-xs font-mono"
+                      type="number" inputMode="numeric" className="mt-1 h-8 text-xs mono-value"
                       value={custom.gasLimit}
                       placeholder={String(gasLimitHint || data?.gasLimit || 21000)}
                       onChange={(e) => setCustom((c) => ({ ...c, gasLimit: e.target.value }))}
