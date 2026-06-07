@@ -17,7 +17,7 @@ import SessionRevocationGuard from "./SessionRevocationGuard";
 import PullToRefreshContainer from "./PullToRefreshContainer";
 import { ErrorBoundary } from "./ErrorBoundary";
 import FeatureGate from './FeatureGate';
-import VeyrnoxLogo from "./VeyrnoxLogo";
+import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
 import { navGroups, groupColor } from "@/lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -120,10 +120,10 @@ export default function Layout() {
         {/* Logo + Search */}
         <div className="flex flex-col border-b border-border">
           <div className="flex items-center gap-3 px-4 py-4">
-            <VeyrnoxLogo size={34} className="shadow-sm shrink-0" />
+            <VeyrnoxLogo size={34} className="shrink-0" />
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <h1 className="text-sm font-bold tracking-tight">Veyrnox</h1>
+                <VeyrnoxWordmark className="text-sm" />
                 <p className="text-[9px] text-muted-foreground tracking-widest uppercase">Wallet</p>
               </div>
             )}
@@ -164,12 +164,9 @@ export default function Layout() {
               {!collapsed && (
                 <button
                   onClick={() => toggleGroup(group.label)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-secondary/50 transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: groupColor(group.label) }} />
-                    <span style={{ color: groupColor(group.label) }}>{group.label}</span>
-                  </span>
+                  <span>{group.label}</span>
                   <ChevronDown className={`h-3 w-3 text-muted-foreground/50 transition-transform ${openGroups[group.label] ? 'rotate-180' : ''}`} />
                 </button>
               )}
@@ -178,22 +175,19 @@ export default function Layout() {
                 <div className="space-y-0.5 mt-1">
                   {group.items.map((item) => {
                     const active = location.pathname === item.path;
-                    const color = groupColor(group.label);
                     return (
                       <Link
                         key={item.path}
                         to={item.path}
                         title={collapsed ? item.label : undefined}
-                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] border transition-all duration-150 group ${collapsed ? 'justify-center' : ''} ${
+                        aria-current={active ? "page" : undefined}
+                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] transition-colors duration-150 group ${collapsed ? 'justify-center' : ''} ${
                           active
-                            ? "bg-primary text-primary-foreground font-semibold shadow-sm border-transparent"
-                            : "text-foreground/80 hover:text-foreground"
+                            ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                            : "text-foreground/80 hover:text-foreground hover:bg-secondary"
                         }`}
-                        style={active ? undefined : { background: color + "14", borderColor: color + "33" }}
-                        onMouseEnter={active ? undefined : (e) => { e.currentTarget.style.background = color + "22"; }}
-                        onMouseLeave={active ? undefined : (e) => { e.currentTarget.style.background = color + "14"; }}
                       >
-                        <item.icon className={`h-3.5 w-3.5 shrink-0 ${active ? "text-primary-foreground" : "group-hover:text-foreground"}`} style={active ? undefined : { color }} />
+                        <item.icon className={`h-3.5 w-3.5 shrink-0 ${active ? "text-primary-foreground" : "group-hover:text-foreground"}`} />
                         {!collapsed && <span className="truncate">{item.label}</span>}
                       </Link>
                     );
@@ -205,7 +199,7 @@ export default function Layout() {
 
           {/* Settings */}
           <div className="mb-1">
-            {!collapsed && <p className="px-3 pt-3 pb-1 text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">Preferences</p>}
+            {!collapsed && <p className="px-3 pt-3 pb-1 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Preferences</p>}
             {collapsed && <div className="mt-2" />}
             <Link
               to="/settings"
@@ -247,7 +241,7 @@ export default function Layout() {
           {isRootTab ? (
             <>
               <VeyrnoxLogo size={30} className="shrink-0" />
-              <span className="text-sm font-bold tracking-tight">Veyrnox</span>
+              <VeyrnoxWordmark className="text-sm" />
             </>
           ) : (
             <button
@@ -260,17 +254,17 @@ export default function Layout() {
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+          <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <Search className="h-4 w-4" aria-hidden="true" />
           </button>
-          <Link to="/notifications" aria-label="Notifications" title="Notifications" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+          <Link to="/notifications" aria-label="Notifications" title="Notifications" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <Bell className="h-4 w-4" aria-hidden="true" />
           </Link>
-          <HelpMenu triggerClassName="p-2 active:bg-secondary" />
-          <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+          <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[40px] min-w-[40px]" />
+          <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <Settings className="h-4 w-4" aria-hidden="true" />
           </Link>
-          <button onClick={signOut} aria-label="Exit — lock wallet" title="Exit — lock wallet" className="p-2 rounded-lg text-muted-foreground active:bg-secondary transition-colors">
+          <button onClick={signOut} aria-label="Exit — lock wallet" title="Exit — lock wallet" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
@@ -367,8 +361,8 @@ export default function Layout() {
               aria-controls={`tab-panel-${index}`}
               tabIndex={active ? 0 : -1}
               onClick={() => handleMobileTabClick(item.path)}
-              className={`flex flex-col items-center justify-center gap-1 py-3 flex-1 transition-colors active:bg-secondary select-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${
-                active ? "text-primary" : "text-muted-foreground"
+              className={`flex flex-col items-center justify-center gap-1 py-3 flex-1 transition-colors hover:bg-secondary/60 active:bg-secondary select-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
               aria-label={item.label}
             >
@@ -379,7 +373,7 @@ export default function Layout() {
         })}
         <button
           onClick={() => setMoreOpen(true)}
-          className="flex flex-col items-center justify-center gap-1 py-3 flex-1 text-muted-foreground active:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
+          className="flex flex-col items-center justify-center gap-1 py-3 flex-1 text-muted-foreground hover:bg-secondary/60 hover:text-foreground active:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
           aria-label="More features"
           aria-expanded={moreOpen}
         >
@@ -399,25 +393,27 @@ export default function Layout() {
             {navGroups.map(group => {
               const color = groupColor(group.label);
               return (
-              <div key={group.label} className="rounded-2xl p-2.5" style={{ background: color + "0d", border: `1px solid ${color}22` }}>
+              <div key={group.label} className="rounded-2xl p-2.5 border" style={{ backgroundColor: color + "0d", borderColor: color + "33" }}>
                 <div className="flex items-center gap-2 px-1 pb-2">
-                  <span className="h-2 w-2 rounded-full" style={{ background: color }} />
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color }}>{group.label}</p>
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: color }} />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{group.label}</p>
                 </div>
                 <div className="grid grid-cols-4 gap-1">
                   {group.items.map(item => {
                     const active = location.pathname === item.path;
                     return (
                       <Link key={item.path} to={item.path} onClick={() => setMoreOpen(false)}
-                        className="flex flex-col items-center gap-1 p-2 rounded-xl border transition-colors"
-                        style={active
-                          ? { background: color + "26", borderColor: color + "55", color }
-                          : { background: color + "14", borderColor: color + "33", color }}
-                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = color + "22"; }}
-                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = color + "14"; }}
+                        aria-current={active ? "page" : undefined}
+                        data-active={active ? "" : undefined}
+                        className="more-tile flex flex-col items-center justify-center gap-1 p-2 min-h-[60px] rounded-xl border cursor-pointer select-none transition-[transform,background-color,border-color,box-shadow] duration-150 text-foreground/90 hover:text-foreground"
+                        style={{
+                          "--mt-bg": color + "1c", "--mt-bd": color + "40",
+                          "--mt-hbg": color + "59", "--mt-hbd": color + "ee", "--mt-glow": color + "b3",
+                          "--mt-abg": color + "3a", "--mt-abd": color + "99",
+                        }}
                       >
-                        <item.icon className="h-5 w-5" />
-                        <span className="text-[9px] font-medium text-center leading-tight line-clamp-2 text-foreground/80">{item.label}</span>
+                        <item.icon className="h-5 w-5" style={active ? { color } : undefined} />
+                        <span className="text-[9px] font-medium text-center leading-tight line-clamp-2">{item.label}</span>
                       </Link>
                     );
                   })}

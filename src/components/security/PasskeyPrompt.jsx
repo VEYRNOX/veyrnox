@@ -41,7 +41,7 @@ export default function PasskeyPrompt({ label = 'Passkey', onResult }) {
     >
       <div className="w-full sm:max-w-sm m-0 sm:m-4 rounded-t-2xl sm:rounded-2xl border border-border bg-card p-6 text-center shadow-2xl">
         {/* Unmissable "this is a stub" banner. */}
-        <div className="mb-4 flex items-center justify-center gap-1.5 rounded-md bg-yellow-500/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-yellow-500">
+        <div className="mb-4 flex items-center justify-center gap-1.5 rounded-md bg-caution/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-caution">
           <ShieldAlert className="h-3.5 w-3.5" />
           Simulated — demo mode
         </div>
