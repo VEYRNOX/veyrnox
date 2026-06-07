@@ -41,7 +41,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import VeyrnoxLogo from "@/components/VeyrnoxLogo";
+import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
 import {
@@ -59,8 +59,8 @@ function EntryShell({ error, children }) {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <VeyrnoxLogo size={56} className="mx-auto shadow-sm" />
-          <h1 className="text-xl font-bold">Veyrnox</h1>
+          <VeyrnoxLogo size={56} className="mx-auto" />
+          <VeyrnoxWordmark className="text-xl block" />
           <p className="text-sm text-muted-foreground">Your seed phrase is your account. We never hold your keys.</p>
         </div>
         {error && (
@@ -498,16 +498,16 @@ export default function WalletEntry() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold">Your Seed Phrase (shown once)</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground">{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                  <button onClick={copySeed} className="p-1.5 text-muted-foreground hover:text-foreground">{copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}</button>
+                  <button onClick={() => setShowSeed(s => !s)} aria-label={showSeed ? "Hide seed phrase" : "Reveal seed phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+                  <button onClick={copySeed} aria-label={copied ? "Seed phrase copied" : "Copy seed phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                 </div>
               </div>
               {showSeed ? (
                 <div className="grid grid-cols-3 gap-2">
                   {generatedSeed.split(" ").map((w, i) => (
                     <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary text-xs">
-                      <span className="text-muted-foreground w-4 text-right">{i + 1}.</span>
-                      <span className="font-mono font-semibold">{w}</span>
+                      <span className="text-muted-foreground w-4 text-right mono-value">{i + 1}.</span>
+                      <span className="mono-value font-semibold">{w}</span>
                     </div>
                   ))}
                 </div>
@@ -540,17 +540,17 @@ export default function WalletEntry() {
       <div className="space-y-4">
         <button type="button" onClick={() => { setError(""); setView(vaultExists ? "unlock" : "choose"); setRecovering(false); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
         {recovering && (
-          <div className="p-3 rounded-xl border border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-600 flex items-start gap-2">
+          <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
             <span>There is <b>no custodial password reset</b> — we never hold your keys. Restore access by re-importing your seed phrase and setting a new vault password. This replaces the local vault on this device with the same wallet.</span>
           </div>
         )}
-        <div className="p-3 rounded-xl border border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-500">
+        <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution">
           Never share your seed phrase. It is validated and encrypted locally with your password — it is never sent to a server.
         </div>
         <div>
           <Label>12 or 24-word BIP-39 Seed Phrase</Label>
-          <textarea value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+          <textarea value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
         </div>
         <div>
           <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>

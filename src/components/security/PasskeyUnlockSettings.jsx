@@ -138,9 +138,9 @@ export default function PasskeyUnlockSettings() {
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-lg border border-success/20 bg-success/5 px-3 py-2.5">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <CheckCircle2 className="h-4 w-4 text-success" />
               <span className="text-sm font-medium">
                 Passkey registered{simulated ? ' (simulated)' : ''}
               </span>
@@ -188,7 +188,7 @@ export default function PasskeyUnlockSettings() {
           </span>
         ) : available ? (
           <span className="flex items-start gap-1.5 text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" />
+            <ShieldCheck className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
             <span>{simulated ? `${label} simulated in demo. ` : ''}{status.detail}</span>
           </span>
         ) : (
@@ -208,7 +208,7 @@ export default function PasskeyUnlockSettings() {
               : <><KeyRound className="h-4 w-4" /> Preview passkey prompt</>}
           </Button>
           {testResult === 'ok' && (
-            <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
+            <p className="text-xs text-success mt-2 flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" /> {simulated ? 'Simulated ' : ''}passkey verified
             </p>
           )}

@@ -19,7 +19,7 @@ import {
 
 const LEVEL_STYLES = {
   high:   { box: "bg-destructive/10 border-destructive/40", text: "text-destructive", Icon: ShieldAlert },
-  medium: { box: "bg-yellow-500/10 border-yellow-500/30", text: "text-yellow-300", Icon: AlertTriangle },
+  medium: { box: "bg-caution/10 border-caution/30", text: "text-caution", Icon: AlertTriangle },
   info:   { box: "bg-secondary/40 border-border", text: "text-muted-foreground", Icon: Info },
 };
 
@@ -56,7 +56,7 @@ export default function TransactionPreview({ result, loading, error }) {
   if (error && !result) {
     // Degrade, never block — a simulation we couldn't run is not a green light.
     return (
-      <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-start gap-2 text-xs text-yellow-300">
+      <div className="p-3 rounded-lg bg-caution/10 border border-caution/30 flex items-start gap-2 text-xs text-caution">
         <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
         <span>Couldn't simulate this transaction (your RPC was unreachable). This is not a green light — review the recipient, amount and contract yourself before signing.</span>
       </div>
@@ -99,10 +99,10 @@ export default function TransactionPreview({ result, loading, error }) {
               <span className="flex items-center gap-1.5 text-muted-foreground min-w-0">
                 {c.direction === "out"
                   ? <ArrowUpRight className="h-3.5 w-3.5 text-destructive shrink-0" />
-                  : <ArrowDownLeft className="h-3.5 w-3.5 text-green-400 shrink-0" />}
+                  : <ArrowDownLeft className="h-3.5 w-3.5 text-success shrink-0" />}
                 <span className="truncate">{c.label}{c.who ? ` · ${shorten(c.who)}` : ""}</span>
               </span>
-              <span className={`font-mono font-semibold shrink-0 ${c.direction === "out" ? "text-destructive" : "text-green-400"}`}>
+              <span className={`mono-value font-semibold shrink-0 ${c.direction === "out" ? "text-destructive" : "text-success"}`}>
                 {c.direction === "out" ? "−" : "+"}{c.amount} {c.symbol}
               </span>
             </div>
@@ -116,7 +116,7 @@ export default function TransactionPreview({ result, loading, error }) {
           {result.chain === "evm" && (
             <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Action</span>
-              <span className="font-mono font-semibold">
+              <span className="mono-value font-semibold">
                 {result.decoded.kind === "native" ? "native transfer"
                   : result.decoded.kind === "transfer" ? "ERC-20 transfer"
                   : result.decoded.kind === "approve" ? "ERC-20 approve"
@@ -127,18 +127,18 @@ export default function TransactionPreview({ result, loading, error }) {
           )}
           {result.chain === "btc" && (
             <>
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Inputs</span><span className="font-mono">{result.decoded.inputCount} (total {result.decoded.totalIn} BTC)</span></div>
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Outputs</span><span className="font-mono">{result.decoded.outputCount}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Inputs</span><span className="mono-value">{result.decoded.inputCount} (total {result.decoded.totalIn} BTC)</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Outputs</span><span className="mono-value">{result.decoded.outputCount}</span></div>
             </>
           )}
           {result.chain === "sol" && (
-            <div className="flex justify-between gap-2"><span className="text-muted-foreground">Instruction</span><span className="font-mono font-semibold">{result.decoded.instruction}</span></div>
+            <div className="flex justify-between gap-2"><span className="text-muted-foreground">Instruction</span><span className="mono-value font-semibold">{result.decoded.instruction}</span></div>
           )}
           {result.fee && (
             <div className="flex justify-between gap-2 items-start">
               <span className="text-muted-foreground flex items-center gap-1.5"><Fuel className="h-3 w-3" /> Network fee</span>
               <span className="text-right">
-                <span className="font-mono">{result.fee.amount} {result.fee.symbol}</span>
+                <span className="mono-value">{result.fee.amount} {result.fee.symbol}</span>
                 {result.fee.sub && <span className="block text-[10px] text-muted-foreground">{result.fee.sub}</span>}
               </span>
             </div>
