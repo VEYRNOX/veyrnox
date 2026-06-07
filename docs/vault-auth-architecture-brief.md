@@ -2,17 +2,47 @@
 
 *Status convention:*
 - ***BUILT*** *= implemented on main today.*
-- ***BUILT (PROVISIONAL)*** *= code-complete and tests green, but **not** independently
-  audited and **not** on-chain verified. Audit-gated (§24), testnet/demo only. "BUILT"
-  here NEVER means "verified" — a feature is verified only after a real on-chain testnet
-  transaction confirms with a user-supplied txid.*
+- ***UNAUDITED-PROVISIONAL*** *= code-complete and tests green, but **not** independently
+  audited and **not** on-chain verified. Audit-gated (§24), testnet/demo only. The
+  "UNAUDITED" is folded into the tier name on purpose — so the caveat can't be dropped
+  when the status is quoted. It NEVER means "verified" — a feature is verified only after
+  a real on-chain testnet transaction confirms with a user-supplied txid.*
 - ***TARGET*** *= design only, audit-gated (§24), not in code.*
 - ***PLANNED*** *= roadmap, not yet specced.*
+
+> **Verification block (2026-06-07, against `main`).** Proof gathered confirming the
+> coercion layer is merged on `main` (not worktree-only) and that the §1/§5 claims match
+> the code. This is *"verified merged + tests green,"* **never** *"verified secure."*
+>
+> - **Merged on `main`.** `duress` / `stealth` / `panic` / `deniabilityUnlock` are
+>   committed to `main`, not worktree-only. History: PRs #34 (M2 constant-KDF timing) and
+>   #35 (M3 Argon2id params) are merged; the SAST fix chain is on `main` — `3890cb8`
+>   (M2, constant KDF count on wrong unlock), `bb9afaa` (M3, at-rest Argon2id 64→192 MiB),
+>   `7bbad7b` (dummy-KDF chaff pinned to current params, so M3's raise can't reopen the
+>   M2 timing tell).
+> - **§1 confirmed — no KEK indirection.** `src/wallet-core/vault.js` derives the AES key
+>   **directly** from the password via Argon2id (hash-wasm, `vault.js:78–90`); there is no
+>   KEK-wrapping implementation. *(The literal token "KEK" appears nowhere in `src`; the
+>   only mention of wrapping the vault key in a hardware keystore is an aspirational
+>   comment at `vault.js:22–24`.)* Hardware-KEK-via-passkey stays **TARGET** —
+>   `isSecureHardwareAvailable()` returns `false` on web (`keystore/web.js:16`).
+> - **§5 residual confirmed minor.** `grep walletMeta src/wallet-core/stealth.js
+>   src/wallet-core/duress.js` → empty. Stealth/duress keep separate storage; the
+>   `walletMeta` residual exposes only the visible wallet-set (openly added anyway), not
+>   hidden wallets — deniability holds at this layer. (`WalletProvider.jsx:948` confirms
+>   duress/stealth storage is untouched on the decoy/hidden unlock op.)
+> - **Tests:** 291/291 green across 27 files in `src/wallet-core/__tests__/` (~237s;
+>   Argon2id at 192 MiB is the runtime cost). Deniability has dedicated tests: no-tell on
+>   wrong/chaff secrets, constant slot count, byte-shape indistinguishability, and the M1
+>   collision→distinct-slots case.
+> - **Gate intact.** The §24 independent audit is still required before ship. Unit tests
+>   confirm intended behavior; they do **not** confirm absence of side-channels. Nothing
+>   here is marked audited, hardware-backed, or on-chain verified.
 
 > **Reconciliation note (2026-06-06).** An earlier draft of this brief described the
 > coercion-resistance layer (§4–§5) as "design only, none built yet." That was stale:
 > the duress/decoy, stealth/hidden, and panic-wipe modules are in code and wired into
-> the live unlock flow. They are **BUILT (PROVISIONAL)** — code-complete, tested, but
+> the live unlock flow. They are **UNAUDITED-PROVISIONAL** — code-complete, tested, but
 > unaudited and not on-chain verified. This brief now matches the canonical in-repo
 > status doc (`docs/Feature-Status.md`, last verified 2026-06-03) and the code.
 
@@ -51,8 +81,8 @@ second factor, no email, no OTP** anywhere in the model.
 
 Three unlock methods, in priority order:
 1. **PIN / password** — Argon2id KDF input. — **BUILT**
-2. **Biometric** (FIDO2 / passkey) — **BUILT (PROVISIONAL, app-layer gate)**
-3. **Face ID** (FIDO2 / passkey) — **BUILT (PROVISIONAL, app-layer gate)**
+2. **Biometric** (FIDO2 / passkey) — **UNAUDITED-PROVISIONAL** (app-layer gate, not OS-enforced ACL)
+3. **Face ID** (FIDO2 / passkey) — **UNAUDITED-PROVISIONAL** (app-layer gate, not OS-enforced ACL)
 
 If 2 or 3 are unavailable, the fallback is **1 (PIN/password)**.
 
@@ -65,7 +95,7 @@ How each relates to the vault key:
   (`runPasskeyGate` / `biometric.js`) that runs *before* the vault is read and is
   **independent of the vault key** — losing the passkey never costs funds (passkey loss
   ≠ fund loss), and a deliberate password-only escape hatch fails closed. It is **not**
-  yet an OS-enforced ACL or a secure-element key-wrap. — **BUILT (PROVISIONAL)**
+  yet an OS-enforced ACL or a secure-element key-wrap. — **UNAUDITED-PROVISIONAL** (app-layer gate, not OS-enforced ACL)
 
 Unifying model: **multiple authenticators, one wrapped vault key, seed transient
 in memory.**
@@ -97,7 +127,7 @@ rename**, and **per-wallet backup tracking** (each seed warns until confirmed ba
 
 ---
 
-## 4. Coercion-resistance model — BUILT (PROVISIONAL), audit-gated §24
+## 4. Coercion-resistance model — UNAUDITED-PROVISIONAL, audit-gated §24
 
 **This layer is in code and wired into the live unlock flow — but it is PROVISIONAL:
 testnet/demo, not independently audited, not on-chain verified.** It must not be
@@ -118,9 +148,9 @@ panic → duress → hidden. The real unlock flow is untouched on a correct pass
 | Credential | Outcome | Status |
 |---|---|---|
 | Normal PIN / biometric / FIDO2 | Real wallet-set | **BUILT** |
-| Duress PIN/password | Opens the decoy — a **real, separately-encrypted vault**, not a fake-balance UI (`duress.js`) | **BUILT (PROVISIONAL)**, §24 |
-| Stealth / hidden secret | Reveals a hidden wallet from a chaff-slot pool (`stealth.js`; 256-slot pool, multi-chain reveal) | **BUILT (PROVISIONAL)**, §24 |
-| Wipe / panic / nuke PIN | Destroys local key material — fires `panicWipe()` with no confirmation dialog (`panic.js`) | **BUILT (PROVISIONAL)**, §24 |
+| Duress PIN/password | Opens the decoy — a **real, separately-encrypted vault**, not a fake-balance UI (`duress.js`) | **UNAUDITED-PROVISIONAL**, §24 |
+| Stealth / hidden secret | Reveals a hidden wallet from a chaff-slot pool (`stealth.js`; 256-slot pool, multi-chain reveal) | **UNAUDITED-PROVISIONAL**, §24 |
+| Wipe / panic / nuke PIN | Destroys local key material — fires `panicWipe()` with no confirmation dialog (`panic.js`) | **UNAUDITED-PROVISIONAL**, §24 |
 
 Terminology:
 - A **duress PIN** is an alternate secret used under coercion; here it opens the
@@ -134,23 +164,23 @@ Terminology:
 
 ---
 
-## 5. Deniability constraints — BUILT (PROVISIONAL) in part; some guarantees still TARGET
+## 5. Deniability constraints — UNAUDITED-PROVISIONAL in part; some guarantees still TARGET
 
 These are non-negotiable. Status per constraint reflects what the code achieves today
 versus what still needs the audit:
 
 - **One vault, credential-determined real + decoy structure.** The decoy is a property
-  of *how the vault unlocks*, not a separate enumerable container. — **BUILT (PROVISIONAL)**
+  of *how the vault unlocks*, not a separate enumerable container. — **UNAUDITED-PROVISIONAL**
 - The **decoy is structurally identical** to the real wallet — it *is* a real,
   fully-functional vault with real derived addresses and genuinely-empty testnet
   history. Same layout, same chrome; no "decoy mode" branch for an observer. —
-  **BUILT (PROVISIONAL)**
+  **UNAUDITED-PROVISIONAL**
 - **Constant-time resolution:** a wrong/duress/hidden/panic attempt costs the same fixed
   number of Argon2id KDFs, so feature configuration is not inferable by timing
-  (`deniabilityUnlock.js`, SAST M2). — **BUILT (PROVISIONAL)**
+  (`deniabilityUnlock.js`, SAST M2). — **UNAUDITED-PROVISIONAL**
 - **Shared storage, no naming tell:** decoy / stealth / panic blobs live in the **same**
   IndexedDB store as the primary under neutral keys — there is no database literally
-  named "duress." — **BUILT (PROVISIONAL)**
+  named "duress." — **UNAUDITED-PROVISIONAL**
 - **Cryptographically indistinguishable from noise/free space** (hidden existence
   protected by crypto, not just UI). The chaff-slot pool approximates this, but the
   strong "indistinguishable from free space at the storage layer" guarantee is
@@ -197,7 +227,7 @@ versus what still needs the audit:
 wallet-set; create-new and import-seed (MetaMask migration); named portfolios + per-wallet
 rename/backup tracking.
 
-**BUILT (PROVISIONAL) — in code, tested, but UNAUDITED and not on-chain verified;
+**UNAUDITED-PROVISIONAL — in code, tested, but unaudited and not on-chain verified;
 testnet/demo, audit-gated §24:** duress PIN → decoy vault; stealth / hidden wallets
 (chaff-slot pool); panic / wipe PIN (local key destruction); constant-KDF unlock timing;
 Argon2id work-factor raise (SAST M3, params pending audit); biometric/passkey app-layer
