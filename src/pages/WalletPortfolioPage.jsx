@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   Wallet, Plus, Send, Download, ShieldAlert, Eye, EyeOff, Copy, Check,
   RefreshCw, MoreVertical, Pencil, Trash2, SlidersHorizontal, Star, FolderPlus,
-  Folder, ArrowRightLeft,
+  Folder, ArrowRightLeft, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,8 @@ import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { formatFiat } from "@/components/FiatCurrencySelector";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
+import CoinLogo from "@/components/CoinLogo";
+import QuickAccessGrid from "@/components/QuickAccessGrid";
 
 const fmtAmount = (n) =>
   n === 0 ? "0" : n < 0.0001 ? n.toExponential(2) : n.toLocaleString(undefined, { maximumFractionDigits: 6 });
@@ -360,8 +362,12 @@ export default function WalletPortfolioPage() {
   const [menuFor, setMenuFor] = useState(null);
   const [backupTarget, setBackupTarget] = useState(null);
   const [pfManageOpen, setPfManageOpen] = useState(false);
+  // Zero-state: when the active portfolio is genuinely $0, the per-wallet asset
+  // rows are collapsed behind a calm "Wallet ready" panel. This toggle reveals
+  // the real (all-zero) rows on demand — nothing is hidden dishonestly.
+  const [showZeroAssets, setShowZeroAssets] = useState(false);
 
-  const { data: portfolio } = usePortfolio(wallets, walletAddresses);
+  const { data: portfolio, isLoading: portfolioLoading } = usePortfolio(wallets, walletAddresses);
   const byWallet = portfolio?.byWallet || {};
 
   const canManage = isUnlocked && !isDecoy && !isHidden;
@@ -397,6 +403,70 @@ export default function WalletPortfolioPage() {
   const activePortfolioName = portfolios.find((p) => p.id === activePortfolioId)?.name || "Main";
   const activeWallet = wallets.find((w) => w.id === activeWalletId);
   const activeInThisPortfolio = activeWallet && inActive(activeWallet);
+
+  // Genuine $0 zero-state: the portfolio has wallet(s) but no value anywhere, and
+  // balances have finished loading (so we don't flash this over a pending fetch).
+  // Testnet balances are commonly 0, so this is the expected fresh-wallet view.
+  const isZeroState = !portfolioLoading && pfWallets.length > 0 && pfTotal === 0;
+
+  // Per-wallet cards (active portfolio). Built once so the same markup serves both
+  // the funded view and the expanded zero-state — no duplication.
+  const walletCards = pfWallets.map((w) => {
+    const data = byWallet[w.id] || { assets: [], total: 0 };
+    const isActive = w.id === activeWalletId;
+    return (
+      <div key={w.id} className="rounded-2xl border border-border bg-card overflow-hidden">
+        <button onClick={() => switchWallet(w.id)} className="w-full text-left flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              {isActive && <Star className="h-3 w-3 text-primary fill-primary shrink-0" />}
+              <p className="text-sm font-semibold truncate">{w.name}</p>
+              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary">Active</span>}
+              {w.backedUp
+                ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-500">Backed up</span>
+                : <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500">Back up</span>}
+            </div>
+            <p className="text-xs text-muted-foreground">{formatFiat(data.total, "USD")}</p>
+          </div>
+          {canManage && (
+            <span className="relative" onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === w.id ? null : w.id); }}>
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
+              {menuFor === w.id && (
+                <div className="absolute right-0 top-6 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
+                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> Manage assets</button>
+                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> Rename</button>
+                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> Move to portfolio</button>
+                  {!w.backedUp && <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setBackupTarget({ id: w.id, name: w.name, mnemonic: revealWalletMnemonic(w.id) }); }}><ShieldAlert className="h-3.5 w-3.5" /> Back up</button>}
+                  <button className="w-full text-left px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> Remove</button>
+                </div>
+              )}
+            </span>
+          )}
+        </button>
+        <div className="divide-y divide-border">
+          {(w.enabledAssets || []).length === 0 ? (
+            <p className="px-4 py-4 text-xs text-muted-foreground text-center">No assets shown. Use “Manage assets”.</p>
+          ) : (w.enabledAssets || []).map((symbol) => {
+            const a = getAsset(symbol);
+            const row = data.assets.find((x) => x.symbol === symbol) || { amount: 0, usd: 0 };
+            return (
+              <div key={symbol} className="flex items-center gap-3 px-4 py-2.5">
+                <CoinLogo symbol={symbol} size={36} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{symbol}</p>
+                  <p className="text-xs text-muted-foreground truncate">{a?.name}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-mono">{fmtAmount(row.amount)}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatFiat(row.usd, "USD")}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
@@ -463,55 +533,43 @@ export default function WalletPortfolioPage() {
         <div className="text-center py-10 text-sm text-muted-foreground">
           No wallets in “{activePortfolioName}”. Add a wallet, or move one here from its menu.
         </div>
-      ) : pfWallets.map((w) => {
-        const data = byWallet[w.id] || { assets: [], total: 0 };
-        const isActive = w.id === activeWalletId;
-        return (
-          <div key={w.id} className="rounded-2xl border border-border bg-card overflow-hidden">
-            <button onClick={() => switchWallet(w.id)} className="w-full text-left flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  {isActive && <Star className="h-3 w-3 text-primary fill-primary shrink-0" />}
-                  <p className="text-sm font-semibold truncate">{w.name}</p>
-                  {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary">Active</span>}
-                  {w.backedUp
-                    ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-500">Backed up</span>
-                    : <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500">Back up</span>}
-                </div>
-                <p className="text-xs text-muted-foreground">{formatFiat(data.total, "USD")}</p>
-              </div>
-              {canManage && (
-                <span className="relative" onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === w.id ? null : w.id); }}>
-                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                  {menuFor === w.id && (
-                    <div className="absolute right-0 top-6 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
-                      <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> Manage assets</button>
-                      <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> Rename</button>
-                      <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> Move to portfolio</button>
-                      {!w.backedUp && <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setBackupTarget({ id: w.id, name: w.name, mnemonic: revealWalletMnemonic(w.id) }); }}><ShieldAlert className="h-3.5 w-3.5" /> Back up</button>}
-                      <button className="w-full text-left px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> Remove</button>
-                    </div>
-                  )}
-                </span>
-              )}
-            </button>
-            <div className="divide-y divide-border">
-              {(w.enabledAssets || []).length === 0 ? (
-                <p className="px-4 py-4 text-xs text-muted-foreground text-center">No assets shown. Use “Manage assets”.</p>
-              ) : (w.enabledAssets || []).map((symbol) => {
-                const a = getAsset(symbol);
-                const row = data.assets.find((x) => x.symbol === symbol) || { amount: 0, usd: 0 };
-                return (
-                  <div key={symbol} className="flex items-center justify-between px-4 py-2.5">
-                    <div className="flex items-center gap-2"><span className="text-sm font-medium">{symbol}</span><span className="text-xs text-muted-foreground">{a?.name}</span></div>
-                    <div className="text-right"><p className="text-sm font-mono">{fmtAmount(row.amount)}</p><p className="text-[10px] text-muted-foreground">{formatFiat(row.usd, "USD")}</p></div>
-                  </div>
-                );
-              })}
+      ) : isZeroState ? (
+        <div className="space-y-3">
+          {/* Calm "ready to fund" affordance instead of a wall of all-zero rows.
+              The claim below is precise: keys never leave the device (I1). The
+              address itself IS shared with public RPC/explorer nodes to read
+              balances, so we deliberately do NOT claim the address is device-only. */}
+          <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-4">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Download className="h-6 w-6 text-primary" />
             </div>
+            <div className="space-y-1">
+              <p className="text-base font-semibold">Your wallet is ready</p>
+              <p className="text-sm text-muted-foreground">
+                This portfolio has no balance yet. Receive crypto to fund it — your keys never leave this device.
+              </p>
+            </div>
+            <Button className="w-full gap-2" onClick={() => navigate("/receive")}>
+              <Download className="h-4 w-4" /> Receive
+            </Button>
           </div>
-        );
-      })}
+          {/* Asset-scoped disclosure (no count → cannot be misread as a wallet
+              count). Reveals the real, all-zero rows on demand. */}
+          <button
+            onClick={() => setShowZeroAssets((s) => !s)}
+            className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+          >
+            {showZeroAssets ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {showZeroAssets ? "Hide assets" : "Show all assets"}
+          </button>
+          {showZeroAssets && <div className="space-y-4">{walletCards}</div>}
+        </div>
+      ) : (
+        walletCards
+      )}
+
+      {/* Quick access to genuinely BUILT features (see QuickAccessGrid). */}
+      <QuickAccessGrid />
 
       {addOpen && <AddWalletDialog onClose={() => setAddOpen(false)} />}
       {manageWallet && <ManageAssetsDialog wallet={manageWallet} onClose={() => setManageWallet(null)} />}
