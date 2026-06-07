@@ -20,7 +20,11 @@
     "mobile:build:release": "VITE_RELEASE=1 vite build && cap sync",
     "android:sync": "vite build && cap sync android",
     "android:open": "cap open android",
-    "android:run": "vite build && cap run android"
+    "android:run": "vite build && cap run android",
+    "build:sit": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=SIT vite build",
+    "build:uat": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=UAT vite build",
+    "mobile:build:sit": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=SIT vite build && cap sync",
+    "mobile:build:uat": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=UAT vite build && cap sync"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
@@ -110,6 +114,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "baseline-browser-mapping": "^2.8.32",
+    "cross-env": "^10.1.0",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",
