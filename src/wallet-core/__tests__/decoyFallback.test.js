@@ -58,4 +58,16 @@ describe('decoyFallback — deterministic, memory-hard decoy derivation', () => 
     expect(localStorage.getItem(SALT_KEY)).toBeTruthy();
     expect(s1.length).toBe(16);
   });
+
+  it('getOrCreateDeviceSalt returns a usable 16-byte salt even when storage read throws', () => {
+    const realGet = localStorage.getItem;
+    try {
+      localStorage.getItem = () => { throw new Error('storage unavailable'); };
+      const salt = getOrCreateDeviceSalt();
+      expect(salt).toBeInstanceOf(Uint8Array);
+      expect(salt.length).toBe(16);
+    } finally {
+      localStorage.getItem = realGet;
+    }
+  });
 });

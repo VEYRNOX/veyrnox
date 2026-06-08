@@ -14,7 +14,7 @@
 // enrolled paths each run one Argon2id KDF (~0.4-1.7 s); a cheap-hash fallback
 // would return near-instantly and that delta would distinguish "enrolled" from
 // "garbage" straight off the clock — the exact oracle Option A exists to erase. So
-// we run argon2id at the shared KDF_PARAMS, and deniabilityUnlock.js invokes this
+// we run argon2id at the shared KDF_PARAMS, and deniabilityUnlock.js MUST invoke this
 // as a 4th CONSTANT slot, UNCONDITIONALLY, so total-miss costs the same as any hit.
 //
 // Determinism is for PLAUSIBILITY, not secrecy: the same wrong PIN always opens the
@@ -69,7 +69,7 @@ export async function deriveDeterministicDecoyMnemonic(pin, deviceSalt) {
     parallelism: KDF_PARAMS.parallelism,
     iterations: KDF_PARAMS.iterations,
     memorySize: KDF_PARAMS.memorySize, // SAME memory-hardness as a real attempt
-    hashLength: KDF_PARAMS.hashLength,
+    hashLength: KDF_PARAMS.hashLength, // stays 32 so KDF output size matches a real unlock attempt (timing)
     outputType: 'binary',
   });
   const entropy = raw.slice(0, 16); // 128-bit => 12-word mnemonic
