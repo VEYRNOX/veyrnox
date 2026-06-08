@@ -94,6 +94,12 @@ describe('buildRiskInputs — totality + mapping', () => {
     expect(activeSetLocalState.counterparties).toEqual([{ address: A, label: 'x' }]);
     expect(activeSetLocalState.knownGoodSpenders).toEqual([{ address: TO, currency: 'ETH' }]);
   });
+
+  it('maps to_address from history records into sendHistory for S1', () => {
+    const history = [{ type: 'send', to_address: TO, currency: 'ETH', amount: '1' }];
+    const { activeSetLocalState } = buildRiskInputs({ to: TO, amountText: '1', history });
+    expect(activeSetLocalState.sendHistory).toEqual([{ to: TO }]);
+  });
 });
 
 describe('buildRiskInputs — integrates with score()', () => {
@@ -115,5 +121,17 @@ describe('buildRiskInputs — integrates with score()', () => {
     const verdict = score(inputs.unsignedTx, inputs.activeSetLocalState, inputs.chainData);
     expect(verdict.requiresConfirmation).toBe(false);
     expect([LEVEL.OK, LEVEL.INFO]).toContain(verdict.level);
+  });
+
+  it('ENS-mismatch yields a RISK composite owned by S5', () => {
+    // displayedEns resolves (cache) to A, but the tx is going to TO (A !== TO).
+    const inputs = buildRiskInputs({
+      to: TO, amountText: '0.1', assetCurrency: 'ETH',
+      displayedEns: 'alice.eth', ensResolvedAddress: A,
+      recipientCode: '0x', // EOA, so S7 stays OK
+    });
+    const verdict = score(inputs.unsignedTx, inputs.activeSetLocalState, inputs.chainData);
+    expect(verdict.level).toBe(LEVEL.RISK);
+    expect(verdict.signalId).toBe('S5');
   });
 });
