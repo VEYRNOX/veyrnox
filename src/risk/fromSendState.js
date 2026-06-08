@@ -98,6 +98,15 @@ export function buildRiskInputs({
 
   // chainData (S7): pass recipientCode through verbatim. undefined => S7 fails
   // closed (INDETERMINATE -> CAUTION) per I4.
+  //
+  // NOTE on ERC-20: recipientCode is eth_getCode of the ACTUAL signed tx target.
+  // For a token send that target is the token CONTRACT (not `to`, the logical
+  // token recipient), so S7 correctly sees calldata + contract -> OK. We do NOT
+  // fetch the token recipient's own code here — that would be a second network
+  // call (I2 forbids it), and S7's question is about the tx target's code, which
+  // for ERC-20 is the contract. `to` above remains the logical recipient so the
+  // recipient-screening signals (S1 fresh, S4 poisoning, S5 ENS) judge the right
+  // address; only S7 reads recipientCode.
   const chainData = { recipientCode };
 
   return { unsignedTx, activeSetLocalState, chainData };

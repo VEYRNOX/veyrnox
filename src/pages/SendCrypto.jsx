@@ -356,15 +356,18 @@ export default function SendCrypto() {
   // PRE-SIGN RISK SCORE (src/risk) — the authoritative one-sentence verdict + the
   // RISK gate. Pure + local: maps the SAME local state the existing warnings read
   // into score()'s inputs (no new fetch, no signer/seed). recipientCode (S7) is
-  // reused from the simulation's already-fetched eth_getCode (I2). In DEMO there
-  // is no live RPC, so recipients are treated as EOAs ('0x'): the verdict is a
-  // real computation over the entered inputs; only the chain fact behind S7 is
-  // demo-seeded. We wait for the simulation to settle (data or error) before
-  // judging so S7 doesn't flash a transient fail-closed CAUTION while it loads.
+  // reused from the simulation's already-fetched eth_getCode (I2).
   const riskReady = DEMO || !!txSim.data || txSim.isError;
-  const riskVerdict = useMemo(() => {
-    if (!toAddress || !addressFormatValid || !(isEvmFamily(selectedAsset) || isErc20)) return null;
-    if (!riskReady) return null;
+
+  // SINGLE source of truth for the verdict: maps the live send state → score().
+  // BOTH the displayed banner and the hard pre-sign gate call this, so the
+  // verdict the user sees and the verdict the gate enforces can never diverge
+  // (a divergence would let the gate block a verdict that was never shown, or
+  // vice-versa). recipientCode is the only timing-dependent input — read at call
+  // time. In DEMO there is no live RPC, so recipients are treated as EOAs ('0x'):
+  // the verdict is a real computation over the entered inputs; only the chain
+  // fact behind S7 is demo-seeded.
+  const scoreCurrentSend = () => {
     const recipientCode = DEMO ? '0x' : txSim.data?.recipientCode;
     const { unsignedTx, activeSetLocalState, chainData } = buildRiskInputs({
       to: toAddress,
@@ -381,14 +384,32 @@ export default function SendCrypto() {
       recipientCode,
     });
     return score(unsignedTx, activeSetLocalState, chainData);
-  }, [toAddress, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
+  };
+
+  // Does the risk score apply to this send at all? (EVM family / ERC-20 with a
+  // format-valid recipient.) Non-EVM sends are not scored.
+  const riskApplicable = !!toAddress && addressFormatValid && (isEvmFamily(selectedAsset) || isErc20);
+  // We wait for the simulation to settle (data or error) before judging so S7
+  // doesn't flash a transient fail-closed CAUTION while eth_getCode loads.
+  const riskVerdict = useMemo(() => {
+    if (!riskApplicable || !riskReady) return null;
+    return scoreCurrentSend();
+    // scoreCurrentSend reads the live send state via closure; deps below mirror
+    // every input it touches (amount included — native sends carry value, not
+    // calldata, so amount must invalidate even when riskCalldata is null).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toAddress, amount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
 
   // RISK acknowledgement ("Sign anyway"). Reset whenever the breach could change —
   // amount, asset, or recipient — so a stale ack never carries into a changed send
   // (same freshness discipline as limitAck above).
   const [riskAck, setRiskAck] = useState(false);
   useEffect(() => { setRiskAck(false); }, [amount, selectedWallet?.currency, toAddress]);
-  const blockedByRisk = !!riskVerdict?.requiresConfirmation && !riskAck;
+  // While the score is still computing (simulation in flight) the verdict is
+  // unknown — block the verify buttons rather than letting the user proceed into
+  // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
+  const riskPending = riskApplicable && !riskReady;
+  const blockedByRisk = riskPending || (!!riskVerdict?.requiresConfirmation && !riskAck);
 
   const sendTx = useMutation({
     mutationFn: async () => {
@@ -423,17 +444,12 @@ export default function SendCrypto() {
       // HARD pre-sign RISK gate (defense-in-depth). The verify buttons are already
       // disabled on an unacknowledged RISK, but re-evaluate at signing time so a
       // RISK composite can never be bypassed by stale UI — mirroring the spend-limit
-      // re-check above. Fail closed: if scoring itself throws, do NOT sign.
+      // re-check above. Uses the SAME scoreCurrentSend() the banner renders, so the
+      // enforced verdict matches what the user saw. Fail closed: if scoring itself
+      // throws, do NOT sign.
       let riskGate;
       try {
-        const recipientCode = DEMO ? '0x' : txSim.data?.recipientCode;
-        const inputs = buildRiskInputs({
-          to: toAddress, amountText: amount, isErc20, calldata: riskCalldata,
-          displayedEns: ensResolved?.name ?? null, ensResolvedAddress: ensResolved?.address ?? null,
-          chainId: activeNetwork?.chainId, assetCurrency: selectedWallet.currency,
-          history, knownAddresses, whitelist, recipientCode,
-        });
-        riskGate = score(inputs.unsignedTx, inputs.activeSetLocalState, inputs.chainData);
+        riskGate = scoreCurrentSend();
       } catch {
         throw new Error('Could not complete the pre-sign risk checks — not signing.');
       }
@@ -796,7 +812,7 @@ export default function SendCrypto() {
                 RISK shows the "Sign anyway" destructive-confirm. Replaces the
                 repeated poison box here — poisoning is now one of the signals it
                 composes (the form-step PoisonWarning stays as early feedback). */}
-            <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} />
+            <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
 
             {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
                 KNOWN risk flags, dry-run against your own RPC before you confirm.

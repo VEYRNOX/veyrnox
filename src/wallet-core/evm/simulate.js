@@ -388,7 +388,6 @@ export async function simulateEvmTransaction({
     chain: 'evm',
     simulated: true, // a real on-chain dry-run (eth_call) ran
     recipientCode,    // raw eth_getCode hex of `to` (null if unfetchable) — risk S7 input
-    targetIsContract, // convenience boolean derived from recipientCode
     willRevert,
     revertReason,
     decoded,
