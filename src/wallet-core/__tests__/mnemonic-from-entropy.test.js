@@ -11,9 +11,10 @@ describe('mnemonicFromEntropy', () => {
     expect(validateMnemonic(m)).toBe(true);
   });
 
-  it('is deterministic and produces a valid mnemonic for arbitrary entropy', () => {
+  it('maps fixed non-zero entropy to its known mnemonic (regression anchor)', () => {
     const entropy = new Uint8Array(16).fill(7);
-    expect(mnemonicFromEntropy(entropy)).toBe(mnemonicFromEntropy(entropy));
-    expect(validateMnemonic(mnemonicFromEntropy(entropy))).toBe(true);
+    const m = mnemonicFromEntropy(entropy);
+    expect(m).toBe('alpha deal scrub asthma idea logic bright thought alpha deal scrub autumn');
+    expect(validateMnemonic(m)).toBe(true);
   });
 });

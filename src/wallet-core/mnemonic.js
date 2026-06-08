@@ -67,13 +67,15 @@ export function mnemonicToSeed(mnemonic, passphrase = '') {
 }
 
 /**
- * Deterministically map raw entropy bytes to a checksummed BIP-39 mnemonic.
- * Used by the deterministic decoy fallback (wallet-core/decoyFallback.js): the
+ * Deterministically map raw entropy bytes to a checksummed BIP-39 mnemonic. The
  * SAME entropy always yields the SAME mnemonic. 16 bytes => 12 words, 32 => 24.
  * @param {Uint8Array} entropy - 16 or 32 bytes
- * @returns {string} mnemonic (LIVE-ish: an empty decoy wallet's phrase)
+ * @returns {string} a checksummed BIP-39 mnemonic (LIVE SECRET)
  */
 export function mnemonicFromEntropy(entropy) {
+  if (!(entropy instanceof Uint8Array) || (entropy.length !== 16 && entropy.length !== 32)) {
+    throw new Error('entropy must be a Uint8Array of 16 or 32 bytes');
+  }
   return entropyToMnemonic(entropy, wordlist);
 }
 
