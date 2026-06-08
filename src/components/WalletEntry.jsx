@@ -28,8 +28,25 @@
 // password behind the biometric gate; the password always works as the fallback).
 // No crypto is implemented here — it calls only WalletProvider methods
 // (createWallet / importWallet / unlock / unlockWithBiometric / enableBiometricUnlock
-// / hasVault). Advanced security (duress / stealth / panic) is set up in-app
-// later and deliberately NEVER appears in onboarding.
+// / hasVault). In the legacy PASSWORD cohort, advanced security (duress / stealth /
+// panic) is set up in-app later and never appears in onboarding. In the v1 PIN
+// cohort it is different: onboarding provisions a real PIN, a duress PIN + decoy,
+// and an OPTIONAL panic PIN (so Face-ID-to-decoy is live from day one); stealth/
+// hidden remains an in-app, post-onboarding feature.
+//
+// ── v1 PIN AUTH (UNAUDITED-PROVISIONAL) ──────────────────────────────────────
+// THREAT MODEL: v1 is SOFTWARE key derivation. It resists OBSERVED coercion —
+// Face ID and the duress PIN both yield the surrendered decoy; the panic PIN
+// wipes; and no 6-digit PIN produces an error-state oracle (Option A) or a timing
+// oracle (the 4th constant KDF slot, deniabilityUnlock.js). It does NOT fully
+// resist OFFLINE analysis of a SEIZED device: a 6-digit PIN (10^6) over Argon2id
+// is exhaustible offline in hours-days, and the PIN path cannot raise Argon2id
+// without diverging from the shared stealth-chaff params (a deniability tell) —
+// flagged as the #1 audit line-item, not patched here. Hardware binding (the KEK
+// layer) is the planned fast-follow that closes the offline gap. KNOWN LIMIT:
+// under repeated LIVE probing the configured lived-in decoy stands out from empty
+// Option-A fallbacks — accepted for v1 (see docs/superpowers/specs/2026-06-08-
+// v1-pin-auth-ux-design.md §7).
 
 import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
