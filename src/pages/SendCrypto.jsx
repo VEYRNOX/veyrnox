@@ -22,6 +22,8 @@ import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
+import RiskVerdictBanner from "@/components/RiskVerdictBanner";
+import { score, buildRiskInputs } from "@/risk";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
@@ -339,6 +341,55 @@ export default function SendCrypto() {
     staleTime: 10000,
   });
 
+  // Raw calldata for the risk scorer (S2/S3/S7 read tx.data). Distinct from
+  // tokenCalldata above, which is the human-readable DECODE. Native sends have no
+  // calldata. Cheap + local; recomputed with the same inputs as the decode.
+  const riskCalldata = useMemo(() => {
+    if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
+    try {
+      return buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount }).data;
+    } catch {
+      return null;
+    }
+  }, [isErc20, selectedAsset, toAddress, amount, networkKey]);
+
+  // PRE-SIGN RISK SCORE (src/risk) — the authoritative one-sentence verdict + the
+  // RISK gate. Pure + local: maps the SAME local state the existing warnings read
+  // into score()'s inputs (no new fetch, no signer/seed). recipientCode (S7) is
+  // reused from the simulation's already-fetched eth_getCode (I2). In DEMO there
+  // is no live RPC, so recipients are treated as EOAs ('0x'): the verdict is a
+  // real computation over the entered inputs; only the chain fact behind S7 is
+  // demo-seeded. We wait for the simulation to settle (data or error) before
+  // judging so S7 doesn't flash a transient fail-closed CAUTION while it loads.
+  const riskReady = DEMO || !!txSim.data || txSim.isError;
+  const riskVerdict = useMemo(() => {
+    if (!toAddress || !addressFormatValid || !(isEvmFamily(selectedAsset) || isErc20)) return null;
+    if (!riskReady) return null;
+    const recipientCode = DEMO ? '0x' : txSim.data?.recipientCode;
+    const { unsignedTx, activeSetLocalState, chainData } = buildRiskInputs({
+      to: toAddress,
+      amountText: amount,
+      isErc20,
+      calldata: riskCalldata,
+      displayedEns: ensResolved?.name ?? null,
+      ensResolvedAddress: ensResolved?.address ?? null,
+      chainId: activeNetwork?.chainId,
+      assetCurrency: selectedWallet?.currency,
+      history,
+      knownAddresses,
+      whitelist,
+      recipientCode,
+    });
+    return score(unsignedTx, activeSetLocalState, chainData);
+  }, [toAddress, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
+
+  // RISK acknowledgement ("Sign anyway"). Reset whenever the breach could change —
+  // amount, asset, or recipient — so a stale ack never carries into a changed send
+  // (same freshness discipline as limitAck above).
+  const [riskAck, setRiskAck] = useState(false);
+  useEffect(() => { setRiskAck(false); }, [amount, selectedWallet?.currency, toAddress]);
+  const blockedByRisk = !!riskVerdict?.requiresConfirmation && !riskAck;
+
   const sendTx = useMutation({
     mutationFn: async () => {
       // HARD capability gate: only `live` assets may move funds. This is the
@@ -367,6 +418,27 @@ export default function SendCrypto() {
             ? `Daily spending limit reached: this send would put today's total over your $${daily.limitUSD.toLocaleString()} cap.`
             : `This send exceeds your per-transaction spending limit.`
         );
+      }
+
+      // HARD pre-sign RISK gate (defense-in-depth). The verify buttons are already
+      // disabled on an unacknowledged RISK, but re-evaluate at signing time so a
+      // RISK composite can never be bypassed by stale UI — mirroring the spend-limit
+      // re-check above. Fail closed: if scoring itself throws, do NOT sign.
+      let riskGate;
+      try {
+        const recipientCode = DEMO ? '0x' : txSim.data?.recipientCode;
+        const inputs = buildRiskInputs({
+          to: toAddress, amountText: amount, isErc20, calldata: riskCalldata,
+          displayedEns: ensResolved?.name ?? null, ensResolvedAddress: ensResolved?.address ?? null,
+          chainId: activeNetwork?.chainId, assetCurrency: selectedWallet.currency,
+          history, knownAddresses, whitelist, recipientCode,
+        });
+        riskGate = score(inputs.unsignedTx, inputs.activeSetLocalState, inputs.chainData);
+      } catch {
+        throw new Error('Could not complete the pre-sign risk checks — not signing.');
+      }
+      if (riskGate.requiresConfirmation && !riskAck) {
+        throw new Error('Confirm the risk warning before signing.');
       }
 
       // Map the selected wallet to its HD derivation index (public address match).
@@ -720,8 +792,11 @@ export default function SendCrypto() {
               <p className="text-xs text-muted-foreground mono-value mt-1 truncate">{toAddress}</p>
             </div>
 
-            {/* Address-poisoning warning repeated at the point of signing. */}
-            <PoisonWarning screen={poisonScreen} />
+            {/* AUTHORITATIVE pre-sign verdict (src/risk composite). One sentence;
+                RISK shows the "Sign anyway" destructive-confirm. Replaces the
+                repeated poison box here — poisoning is now one of the signals it
+                composes (the form-step PoisonWarning stays as early feedback). */}
+            <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} />
 
             {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
                 KNOWN risk flags, dry-run against your own RPC before you confirm.
@@ -797,12 +872,12 @@ export default function SendCrypto() {
               <div className="space-y-2">
                 <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-widest">Verify your identity</p>
                 {selectedWallet?.passkey_registered && window.PublicKeyCredential && (
-                  <Button className="w-full gap-2" disabled={blockedByApproval} onClick={() => { setTwoFAMethod("passkey"); verifyPasskey(); }}>
+                  <Button className="w-full gap-2" disabled={blockedByApproval || blockedByRisk} onClick={() => { setTwoFAMethod("passkey"); verifyPasskey(); }}>
                     <Fingerprint className="h-4 w-4" />
                     Use Passkey / Biometric
                   </Button>
                 )}
-                <Button variant="outline" className="w-full gap-2" disabled={!EMAIL_AVAILABLE || blockedByApproval} onClick={() => { setTwoFAMethod("otp"); sendOTP(); }}>
+                <Button variant="outline" className="w-full gap-2" disabled={!EMAIL_AVAILABLE || blockedByApproval || blockedByRisk} onClick={() => { setTwoFAMethod("otp"); sendOTP(); }}>
                   {otpSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                   {EMAIL_AVAILABLE ? "Send Email OTP" : "Email OTP unavailable offline"}
                 </Button>
@@ -863,7 +938,7 @@ export default function SendCrypto() {
                     </div>
                     <Button
                       className="w-full gap-2"
-                      disabled={otpCode.length !== 6 || sendTx.isPending || blockedByApproval}
+                      disabled={otpCode.length !== 6 || sendTx.isPending || blockedByApproval || blockedByRisk}
                       onClick={verifyOTP}
                     >
                       {sendTx.isPending
