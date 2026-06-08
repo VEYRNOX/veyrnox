@@ -18,7 +18,6 @@
 
 import { deriveBtcAccount } from '../src/wallet-core/btc/derivation.js';
 import { getUtxos, getBalanceSats, getFeeRate } from '../src/wallet-core/btc/provider.js';
-import { selectCoins } from '../src/wallet-core/btc/coinselect.js';
 import { signAndBroadcastBtc, estimateBtcSend } from '../src/wallet-core/btc/send.js';
 import { getBtcNetworkInfo } from '../src/wallet-core/btc/networks.js';
 

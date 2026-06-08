@@ -5,6 +5,9 @@
 //
 //   node scripts/verify-stealth.mjs
 import 'fake-indexeddb/auto';
+// fake-indexeddb/auto installs a global `indexedDB` at runtime; declare it so the
+// Node-scoped lint config (no browser globals) doesn't flag the dump helper below.
+/* global indexedDB */
 import { webKeyStore } from '../src/wallet-core/keystore/web.js';
 import { generateMnemonic } from '../src/wallet-core/mnemonic.js';
 import { deriveEvmAccount } from '../src/wallet-core/derivation.js';
