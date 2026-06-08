@@ -14,7 +14,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Hoisted counter shared with the mock factory (vi.mock is hoisted above imports).
-const kdf = vi.hoisted(() => ({ count: 0, memorySizes: [] }));
+const kdf = vi.hoisted(() => ({ count: 0, memorySizes: [], salts: [] }));
 vi.mock('hash-wasm', async (importOriginal) => {
   const orig = await importOriginal();
   return {
@@ -22,6 +22,7 @@ vi.mock('hash-wasm', async (importOriginal) => {
     argon2id: (opts, ...rest) => {
       kdf.count += 1;
       kdf.memorySizes.push(opts && opts.memorySize);
+      kdf.salts.push(opts && opts.salt ? Array.from(opts.salt) : null);
       return orig.argon2id(opts, ...rest);
     },
   };
@@ -29,6 +30,8 @@ vi.mock('hash-wasm', async (importOriginal) => {
 
 import { resolveDeniabilityUnlock } from '../deniabilityUnlock.js';
 import { KDF_PARAMS } from '../vault.js';
+import { getOrCreateDeviceSalt } from '../decoyFallback.js';
+import { validateMnemonic } from '../mnemonic.js';
 import { setDuressVault, clearDuressVault, tryDuressUnlock } from '../duress.js';
 import { setPanicVault, clearPanicVault } from '../panic.js';
 import {
@@ -143,5 +146,83 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
     const decoy = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
     await setDuressVault(decoy, 'rt-duress');
     expect(await tryDuressUnlock('rt-duress')).toBe(decoy);
+  });
+});
+
+describe('PIN cohort (Option A) — 4th constant slot EXECUTES unconditionally', () => {
+  // The deterministic-fallback slot must run on EVERY post-miss outcome — even when
+  // an enrolled path (panic/duress/hidden) wins — or total-miss becomes timeable.
+  // We assert per-slot EXECUTION (the fallback's deviceSalt appears among the KDF
+  // salts) on each outcome, not merely that argon2id was called four times.
+  const EXPECTED_PIN_KDFS = 4;
+  let deviceSalt;
+
+  beforeEach(async () => {
+    localStorage.clear();
+    await resetDevice();
+    deviceSalt = getOrCreateDeviceSalt();
+  });
+
+  function fallbackRan() {
+    // The fallback slot is the ONLY KDF keyed by the fixed deviceSalt.
+    return kdf.salts.some((s) => s && s.length === deviceSalt.length
+      && s.every((b, i) => b === deviceSalt[i]));
+  }
+
+  async function resolvePin(pw) {
+    await ensureStealthPool();
+    kdf.count = 0; kdf.memorySizes = []; kdf.salts = [];
+    return resolveDeniabilityUnlock(pw, { deterministicFallback: true, deviceSalt });
+  }
+
+  const outcomes = [
+    { name: 'total miss', setup: async () => {}, pw: WRONG_PW },
+    {
+      name: 'duress hit',
+      setup: async () => { await setDuressVault('legal winner thank year wave sausage worth useful legal winner thank yellow', 'duress-pin-1'); },
+      pw: 'duress-pin-1',
+    },
+    {
+      name: 'panic hit',
+      setup: async () => { await setPanicVault('panic-pin-1'); },
+      pw: 'panic-pin-1',
+    },
+    {
+      name: 'hidden hit',
+      setup: async () => { await createHiddenWallet('hidden-secret-1'); },
+      pw: 'hidden-secret-1',
+    },
+  ];
+
+  for (const o of outcomes) {
+    it(`spends ${EXPECTED_PIN_KDFS} KDFs AND the fallback slot executes — ${o.name}`, async () => {
+      await o.setup();
+      const r = await resolvePin(o.pw);
+      // Exactly four KDFs, all at the shared params.
+      expect(kdf.count).toBe(EXPECTED_PIN_KDFS);
+      for (const m of kdf.memorySizes) expect(m).toBe(KDF_PARAMS.memorySize);
+      // The 4th slot EXECUTED — even when an enrolled path won (no short-circuit).
+      expect(fallbackRan()).toBe(true);
+    });
+  }
+
+  it('total miss returns a valid deterministic fallback decoy (no throw, no error state)', async () => {
+    const r = await resolvePin(WRONG_PW);
+    expect(r.panic).toBe(false);
+    expect(r.duressMnemonic).toBeNull();
+    expect(r.hiddenMnemonic).toBeNull();
+    expect(r.fallbackDecoyMnemonic).toBeTruthy();
+    expect(validateMnemonic(r.fallbackDecoyMnemonic)).toBe(true);
+    // Deterministic: same PIN+salt resolves to the same empty wallet.
+    const again = await resolvePin(WRONG_PW);
+    expect(again.fallbackDecoyMnemonic).toBe(r.fallbackDecoyMnemonic);
+  });
+
+  it('password cohort is unchanged: no fallback slot, 3 KDFs, null fallback', async () => {
+    await ensureStealthPool();
+    kdf.count = 0; kdf.salts = [];
+    const r = await resolveDeniabilityUnlock(WRONG_PW); // no opts => password cohort
+    expect(kdf.count).toBe(3);
+    expect(r.fallbackDecoyMnemonic ?? null).toBeNull();
   });
 });
