@@ -492,7 +492,13 @@ export default function WalletPortfolioPage() {
         <ReferenceRateNote />
         <p className="text-xs text-muted-foreground mt-1">
           {pfWallets.length} wallet{pfWallets.length === 1 ? "" : "s"} in this portfolio
-          {isDecoy ? " · decoy session" : isHidden ? " · hidden session" : ""}
+          {/* DENIABILITY (I3 / KEK spec §5): the normal wallet UI must NOT surface
+              that the current session is a decoy/hidden one — a "· decoy session"
+              tell on the dashboard reveals to a coercer that a real set exists
+              elsewhere, defeating the terminus property. With v1 Face-ID-to-decoy
+              and Option A making the decoy the everyday + fallback path, this label
+              is load-bearing-wrong, so it is removed. isDecoy/isHidden stay internal
+              flags that gate mutations (add/remove wallet), never a visible badge. */}
         </p>
       </div>
 

@@ -67,6 +67,7 @@ import { decryptVault, KDF_PARAMS } from './vault.js';
 import { hasPanicVault, tryPanicUnlock } from './panic.js';
 import { hasDuressVault, tryDuressUnlock } from './duress.js';
 import { ensureStealthPool, tryRevealHidden } from './stealth.js';
+import { deriveDeterministicDecoyMnemonic } from './decoyFallback.js';
 
 function randomBytes(n) {
   const b = new Uint8Array(n);
@@ -136,17 +137,30 @@ async function constantDuress(password) {
  * total miss is indistinguishable from "no features configured" at the prompt.
  *
  * @param {string} password
- * @returns {Promise<{ panic: boolean, duressMnemonic: string|null, hiddenMnemonic: string|null }>}
+ * @returns {Promise<{ panic: boolean, duressMnemonic: string|null, hiddenMnemonic: string|null, fallbackDecoyMnemonic: string|null }>}
  */
-export async function resolveDeniabilityUnlock(password) {
+export async function resolveDeniabilityUnlock(password, opts = {}) {
   // Guarantee the stealth slot holds a blob so the reveal attempt is always one
   // KDF (idempotent, non-destructive, NO KDF of its own).
   await ensureStealthPool();
 
-  // Exactly three KDFs, evaluated unconditionally — no short-circuit between them.
+  // Slots 1-3: exactly three KDFs, evaluated unconditionally — no short-circuit.
   const panic = await constantPanic(password);
   const duressMnemonic = await constantDuress(password);
   const hiddenMnemonic = await tryRevealHidden(password); // pool seeded => 1 KDF
 
-  return { panic, duressMnemonic, hiddenMnemonic };
+  // Slot 4 (PIN cohort only — Option A, §7): the deterministic decoy. Runs
+  // UNCONDITIONALLY (even when an enrolled path above already won) so total-miss
+  // costs the SAME four KDFs as any hit and is timing-indistinguishable. The
+  // caller only USES it on a total miss (priority panic > duress > hidden >
+  // fallback), but it is always EXECUTED. MUST be memory-hard Argon2id at the
+  // shared params (decoyFallback.js), never a cheap hash, or the miss path leaks.
+  // The password cohort passes no opts, so this slot does not run (3 KDFs + the
+  // caller throws on a total miss, unchanged).
+  let fallbackDecoyMnemonic = null;
+  if (opts.deterministicFallback) {
+    fallbackDecoyMnemonic = await deriveDeterministicDecoyMnemonic(password, opts.deviceSalt);
+  }
+
+  return { panic, duressMnemonic, hiddenMnemonic, fallbackDecoyMnemonic };
 }
