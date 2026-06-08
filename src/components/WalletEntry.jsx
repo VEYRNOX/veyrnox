@@ -324,10 +324,15 @@ export default function WalletEntry() {
     } finally { setBusy(false); }
   };
 
-  // Finish PIN onboarding: create the real wallet under the real PIN, provision a
-  // lived-in decoy under the duress PIN (so Face-ID-to-decoy works from day one),
-  // optionally set a panic PIN, mark the cohort, seed the device salt, and (if the
-  // user opted in) cache the DURESS PIN behind Face ID — NEVER the real PIN.
+  // Finish PIN onboarding (PROVISION phase): create the real wallet under the real
+  // PIN, provision a lived-in decoy under the duress PIN (so Face-ID-to-decoy works
+  // from day one), optionally set a panic PIN, mark the cohort, and seed the device
+  // salt. The Face-ID-to-decoy enrolment decision is made on the NEXT (seed-backup)
+  // screen via BiometricOffer and applied in finishPinBackup — so that toggle is
+  // actually functional (it renders AFTER this runs). The transient plaintext PIN
+  // React states are wiped here as soon as the vault layer has consumed them
+  // (parity with finishCreate's createdPasswordRef hygiene); duressPinRef survives
+  // to the backup screen because Face-ID caches the DURESS PIN there, never the real.
   const finishPinCreate = async () => {
     setBusy(true);
     try {
@@ -336,15 +341,31 @@ export default function WalletEntry() {
       if (panicPin) { try { await setPanicPin(panicPin); } catch { /* optional */ } }
       setAuthModel("pin");                               // select PIN surface + Option A
       getOrCreateDeviceSalt();                           // seed the deterministic-decoy salt
-      if (bioEnabled && bioStatus?.available) {
-        // Face-ID-to-decoy: cache the DURESS PIN, never the real PIN.
-        const ok = await enableBiometricUnlock(duressPinRef.current);
-        if (!ok) toast.warning("Face ID wasn't enabled — your PIN is always your way in.");
-      }
+      setRealPin(""); setRealPinConfirm(""); setDuressPin_(""); setPanicPin_(""); // wipe transient PINs
       setGeneratedSeed(seed);  // hold on the mandatory backup screen
       setShowSeed(false);
     } catch (e) { setError(e?.message || "Failed to create wallet"); }
     finally { setBusy(false); }
+  };
+
+  // Seed-backup screen action (PIN cohort): confirm the mandatory backup, apply the
+  // Face-ID-to-decoy enrolment the user chose via BiometricOffer (caches the DURESS
+  // PIN, NEVER the real PIN), wipe the last live PIN ref, and enter the wallet (the
+  // vault is already unlocked, so clearing generatedSeed lets the Outlet render).
+  const finishPinBackup = async () => {
+    setBusy(true);
+    try {
+      confirmWalletBackup();
+      if (bioEnabled && bioStatus?.available) {
+        const ok = await enableBiometricUnlock(duressPinRef.current);
+        if (!ok) toast.warning("Face ID wasn't enabled — your PIN is always your way in.");
+      }
+    } finally {
+      duressPinRef.current = ""; // wipe the last live PIN string
+      setGeneratedSeed("");
+      setShowSeed(false);
+      setBusy(false);
+    }
   };
 
   // ---- Create: generate the wallet (vault password mandatory) ----
@@ -393,6 +414,12 @@ export default function WalletEntry() {
     setBusy(true);
     try {
       await importWallet(importPhrase.trim(), importPassword); // validates BIP-39 + unlocks
+      // A restored/imported wallet is password-encrypted. If this device was in the
+      // PIN cohort (e.g. PIN forgotten → "Restore from seed phrase"), leave the PIN
+      // cohort so the returning surface matches the vault — otherwise the stale 'pin'
+      // marker would render a PIN pad that cannot open this password vault. Done on
+      // SUCCESS only: abandoning recovery leaves the existing PIN vault untouched.
+      setAuthModel("password"); setAuthModelState("password");
       // Optionally enable Face ID for next time (importWallet reset any prior
       // wallet's biometric state, so we enable AFTER it). The vault password is
       // always the fallback.
@@ -446,11 +473,27 @@ export default function WalletEntry() {
               </div>
             </>
           )}
+          {bioReady && biometricFailed && (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {bioLabel} didn't work. Enter your PIN below — it's your real key and always works.
+            </p>
+          )}
           <div className="flex items-center justify-center gap-2 text-sm font-medium">
             <Lock className="h-4 w-4 text-muted-foreground" /> Enter your PIN
           </div>
           <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} />
         </div>
+
+        {/* HONEST recovery: no custodial reset. A forgotten PIN is recovered ONLY by
+            re-importing the seed phrase (which re-provisions the device under a
+            password — see handleImport's authModel transition). */}
+        <button
+          type="button"
+          onClick={() => { setError(""); setRecovering(true); setView("import"); }}
+          className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Forgot your PIN? <span className="text-primary">Restore from seed phrase</span>
+        </button>
       </EntryShell>
     );
   }
@@ -642,7 +685,7 @@ export default function WalletEntry() {
             <span>Back up your phrase before continuing — it is never shown again and we cannot recover it for you.</span>
           </div>
           <BiometricOffer status={bioStatus} enabled={bioEnabled} onToggle={setBioEnabled} />
-          <Button className="w-full gap-2" disabled={busy} onClick={() => { confirmWalletBackup(); setGeneratedSeed(""); setShowSeed(false); setView("unlock"); }}>
+          <Button className="w-full gap-2" disabled={busy} onClick={finishPinBackup}>
             {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} I've backed it up — Enter Wallet
           </Button>
         </div>
