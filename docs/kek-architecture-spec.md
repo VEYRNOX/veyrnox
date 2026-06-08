@@ -10,6 +10,16 @@ keying construction, the four credential paths, the deniability rules, and the
 open empirical/audit questions, so it stands alone as an audit input and as the
 brief a Claude Code session builds from.
 
+> **Single-mode by design.** Veyrnox ships exactly one unlock machine. Face-ID-to-decoy
+> is **universal** — there is no "real-only" / "duress-off" configuration, and no
+> user-facing toggle for deniability. Every device is the same machine; the only thing
+> that varies is which credential slots a given user has populated, and that variation
+> is invisible to anyone inspecting the device. **This uniformity is itself a security
+> property:** if some devices ran a real-only mode and others didn't, the *mode* would
+> be an oracle ("is duress configured?" → "give me the real PIN"). One mode means there
+> is nothing to distinguish, one threat model to reason about, and one configuration for
+> the audit to review. The rejected real-only variant is recorded in §11.
+
 ---
 
 ## 1. The problem this closes
@@ -168,7 +178,15 @@ credibility is operational, not merely structural.
 
 ---
 
-## 7. The non-enrolled PIN problem (genuinely unsolved — needs a decision)
+## 7. The non-enrolled PIN problem (BLOCKING — must be settled before build)
+
+**This is the linchpin of single-mode indistinguishability, not a side decision.** In
+one mode, a device where the user keeps a hidden real set behind the PIN must be
+indistinguishable from a device the user treats as their only wallet. The thing that
+makes those two cases identical is *what happens when a PIN doesn't resolve to an
+enrolled set* — so this resolution is load-bearing for the core deniability claim, and
+the two-config product would have depended on it too. **The build cannot ship without
+it settled.**
 
 A PIN that is **not** real / duress / panic cannot produce an *error*, because "wrong
 PIN" is an oracle: it tells an attacker the entered PIN wasn't one of the enrolled
@@ -250,3 +268,29 @@ hand-rolled. Same posture as the R2 capability-proof and the audit-log storage s
 > properties. A bug here doesn't just lose money — under §5 it can lose someone's
 > plausible deniability under coercion. That asymmetry is why this waits for the
 > auditor.
+
+---
+
+## 11. Rejected: the real-only / high-value variant
+
+A "real-only" configuration was considered — Face ID / biometric opens the **real**
+wallet directly, no decoy, for users who don't want the duress model (framed as a
+high-value / convenience option). **Rejected.** Recorded here so it isn't
+re-litigated.
+
+Two reasons:
+
+1. **It is a coercion bypass.** If Face ID opens the real set, a compelled face (mugger,
+   border, court order) opens the real wallet, and the entire duress stack becomes
+   theatre — the attacker never needs to ask for a PIN. §2's asymmetry forbids this.
+
+2. **The trade is backwards for exactly the people who would ask for it.** High-value
+   holders are *higher* coercion targets, not lower. Offering them convenience-over-
+   coercion-resistance optimizes the wrong axis for the worst-exposed users.
+
+There is also a structural reason single-mode is safer than offering both: if some
+devices ran real-only and others didn't, the **mode itself** becomes an oracle — an
+attacker who can establish "this device has duress configured" knows to demand the
+real PIN. Single-mode removes the question by making every device the same machine
+(see the framing note at the top). Deniability is a property of the whole device's
+observable state, not of one user's settings.
