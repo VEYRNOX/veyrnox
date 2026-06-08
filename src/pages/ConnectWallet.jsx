@@ -62,7 +62,9 @@ async function connectPhantom() {
     });
     const data = await res.json();
     balance = (data.result?.value || 0) / 1e9;
-  } catch {}
+  } catch {
+    // Best-effort balance read; on network/parse error leave balance at 0.
+  }
   return [{ currency: "SOL", address, balance }];
 }
 

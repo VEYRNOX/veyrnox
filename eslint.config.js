@@ -39,6 +39,13 @@ export default [
       "unused-imports": pluginUnusedImports,
     },
     rules: {
+      // Apply @eslint/js recommended to app code. NOTE: this MUST be spread
+      // inside `rules` (not as a top-level `...pluginJs.configs.recommended`
+      // spread on the config object) — a sibling spread's `rules` key is
+      // overwritten by this explicit `rules` block, which is why recommended
+      // was previously not taking effect here. The explicit overrides below
+      // (e.g. no-unused-vars off, the react rules) still win as they come after.
+      ...pluginJs.configs.recommended.rules,
       "no-unused-vars": "off",
       "react/jsx-uses-vars": "error",
       "react/jsx-uses-react": "error",

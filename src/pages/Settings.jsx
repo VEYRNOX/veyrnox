@@ -32,7 +32,9 @@ export default function Settings() {
         ...walletList.map(w => base44.entities.Wallet.delete(w.id)),
         ...txList.map(t => base44.entities.Transaction.delete(t.id)),
       ]);
-    } catch {}
+    } catch {
+      // Best-effort local cache clear; proceed to lock / sign-out regardless.
+    }
     // Sign out (base44 removal, Phase 2). No hosted account in the local build —
     // lock the on-device vault so the WalletGate front door reappears. (This
     // clears the local entity cache; destroying key material is Panic Wipe.)

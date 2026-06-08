@@ -23,7 +23,7 @@ export default function PushNotificationsPage() {
   useEffect(() => {
     // Load saved prefs from localStorage
     const saved = localStorage.getItem("notification_prefs");
-    if (saved) { try { setPrefs(JSON.parse(saved)); } catch {} }
+    if (saved) { try { setPrefs(JSON.parse(saved)); } catch { /* ignore corrupt stored prefs; keep defaults */ } }
   }, []);
 
   const savePrefs = (newPrefs) => {
