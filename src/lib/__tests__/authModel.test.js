@@ -16,9 +16,13 @@ describe('authModel — cohort marker', () => {
     expect(getAuthModel()).toBe('pin');
     expect(isPinModel()).toBe(true);
   });
+
+  it('setAuthModel throws on an unknown model (fail fast on misclassification)', () => {
+    expect(() => setAuthModel('magic')).toThrow(/Unknown auth model/);
+  });
 });
 
-describe('shouldCacheUnlockSecret — never re-cache the real PIN (review item 3)', () => {
+describe('shouldCacheUnlockSecret — never re-cache the real PIN (§2/§11)', () => {
   it('password cohort with biometric on: re-cache allowed', () => {
     expect(shouldCacheUnlockSecret({ authModel: 'password', biometricEnabled: true })).toBe(true);
   });

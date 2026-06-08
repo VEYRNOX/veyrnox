@@ -9,14 +9,20 @@
 
 const KEY = 'veyrnox-auth-model';
 
-/** @returns {'pin'|'password'} */
+/**
+ * Read the persisted cohort marker for this device.
+ * @returns {'pin'|'password'}
+ */
 export function getAuthModel() {
   try { return localStorage.getItem(KEY) === 'pin' ? 'pin' : 'password'; }
   catch { return 'password'; }
 }
 
 export function setAuthModel(model) {
-  try { localStorage.setItem(KEY, model === 'pin' ? 'pin' : 'password'); }
+  if (model !== 'pin' && model !== 'password') {
+    throw new Error(`Unknown auth model: ${model}`);
+  }
+  try { localStorage.setItem(KEY, model); }
   catch { /* best-effort; defaults to password on read */ }
 }
 
