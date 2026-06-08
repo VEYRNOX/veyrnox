@@ -83,11 +83,20 @@ then the caller branches:  panic > duress > hidden > fallback
   difference *between* cohorts leaks nothing the UI doesn't already show. Within
   each cohort, all post-miss outcomes are uniform.
 
-**Test (new, mandatory).** A constant-work test asserting the PIN-cohort resolution
-spends exactly 4 KDFs — all at `KDF_PARAMS.memorySize` — across enrolled-hit,
-duress-hit, panic-hit, and total-miss. The existing determinism / no-throw unit
-tests will NOT catch a timing regression, so this is its own explicit assertion or
-the oracle silently reappears later.
+**Test (new, mandatory).** A constant-work test asserting that **all four KDF slots
+(panic / duress / hidden / deterministic-fallback) EXECUTE unconditionally on every
+post-miss unlock** — across enrolled-hit, duress-hit, panic-hit, and total-miss —
+with no data-dependent short-circuit or early exit, each at `KDF_PARAMS.memorySize`.
+
+> **Assert execution, not callability/count.** A bare "Argon2id was called 4 times"
+> assertion passes even if some slot is conditionally skipped on a branch (e.g. the
+> fallback short-circuited once duress hit) and a different slot ran twice — which
+> reopens the timing oracle. The test must observe that **each specific slot's KDF
+> ran regardless of which path ultimately wins** (e.g. tag/identify each slot's KDF
+> invocation and assert all four are present on every outcome), not merely that the
+> total reached four. This is the single assertion the whole timing-
+> indistinguishability claim rests on. The existing determinism / no-throw unit
+> tests will NOT catch a timing regression, so this is its own explicit assertion.
 
 ## 4. Components
 
@@ -196,6 +205,20 @@ caveat cannot drop until the audit reviews it.
 > `kek-architecture-spec.md` §3) is the planned fast-follow that makes the seed
 > undecryptable without this device's secure element.
 
+**Known accepted limitation — empty-vs-lived-in decoy under repeated live probing.**
+The Option-A fallback opens a fresh-**empty** deterministic wallet, while the duress
+PIN opens the **lived-in** configured decoy (both `isDecoy`). A live coercer who
+makes the user enter several PINs in succession sees that one of them opens a wallet
+with real, ongoing activity while the others open empty ones — which faintly hints
+the empty ones are fallbacks and that a configured set (hence a real set) exists
+elsewhere. This is **accepted for v1, not fixed**: the single-probe and offline
+cases are already covered (the entry surface is uniform; offline is subsumed by the
+conceded seized-device threat in §6), and it is the *live multi-probe* case that is
+named here so the auditor can weigh it as a stated decision rather than an unstated
+default. The mitigation is product, not code (the configured decoy must be genuinely
+lived-in per spec §5; a freshly-set-up decoy is itself thin), and the durable fix
+rides with the hardware-KEK fast-follow.
+
 ## 8. Invariant compliance
 
 | Invariant | How v1 holds it |
@@ -211,9 +234,12 @@ caveat cannot drop until the audit reviews it.
 - **`decoyFallback.js` (unit):** determinism (same pin+salt → same mnemonic);
   distinct pins → distinct, valid BIP-39 wallets; uses Argon2id at `KDF_PARAMS`
   (not a cheap hash).
-- **Timing/constant-work (new, mandatory — §3):** PIN-cohort resolution spends
-  exactly 4 KDFs, all at `KDF_PARAMS.memorySize`, across enrolled-hit / duress-hit /
-  panic-hit / total-miss. Password cohort still spends 3 and throws on miss.
+- **Timing/constant-work (new, mandatory — §3):** assert all four slots (panic /
+  duress / hidden / deterministic-fallback) **execute unconditionally** on every
+  PIN-cohort post-miss outcome (enrolled-hit / duress-hit / panic-hit / total-miss),
+  each at `KDF_PARAMS.memorySize`, with no data-dependent short-circuit — observing
+  per-slot execution, NOT just a total count of 4 (§3). Password cohort still spends
+  3 and throws on miss.
 - **`unlock` Option A (integration):** a non-enrolled PIN opens an `isDecoy`
   session with NO throw; never persists a container/walletMeta; duress PIN still
   opens the *configured* decoy; panic still wipes.
