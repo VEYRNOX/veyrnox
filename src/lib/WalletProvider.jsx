@@ -815,7 +815,9 @@ export function WalletProvider({ children }) {
     // If biometric one-tap unlock is on, the cached password just went stale —
     // re-cache the NEW one so Face ID keeps working. (Best-effort; if it fails
     // the user still has the new password as the fallback.)
-    // REVIEW ITEM 3: never re-cache the REAL PIN behind the biometric gate. In the
+    // Never re-cache the REAL PIN behind the biometric gate (KEK spec §2/§11
+    // Face-ID-to-decoy guard; decision lives in shouldCacheUnlockSecret,
+    // lib/authModel.js). In the
     // PIN cohort the biometric cache holds the DURESS PIN (Face-ID-to-decoy); the
     // secret changed here is the REAL PIN, and caching it would make Face ID open
     // the real set — the coercion bypass §2/§11 forbid. Password cohort is
@@ -904,6 +906,9 @@ export function WalletProvider({ children }) {
       //      opens a low-value decoy surrendered under coercion.
       //   2. STEALTH / HIDDEN WALLETS (wallet-core/stealth.js): a dedicated secret
       //      that reveals one of the user's HIDDEN wallets, via the SAME prompt.
+      // opts.pinModel: set by the PIN-cohort entry point (WalletEntry's PIN pad).
+      // It enables Option A — a non-enrolled PIN opens a deterministic decoy below
+      // instead of throwing. The password cohort never sets it (unchanged behaviour).
       const pinModel = opts.pinModel === true;
       const { panic, duressMnemonic, hiddenMnemonic, fallbackDecoyMnemonic } =
         await resolveDeniabilityUnlock(
