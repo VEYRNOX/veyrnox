@@ -81,6 +81,8 @@ import {
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
+import { getOrCreateDeviceSalt } from '@/wallet-core/decoyFallback';
+import { getAuthModel, shouldCacheUnlockSecret } from '@/lib/authModel';
 import {
   isBiometricUnlockEnabled,
   setBiometricUnlockEnabled,
@@ -813,7 +815,14 @@ export function WalletProvider({ children }) {
     // If biometric one-tap unlock is on, the cached password just went stale —
     // re-cache the NEW one so Face ID keeps working. (Best-effort; if it fails
     // the user still has the new password as the fallback.)
-    if (isBiometricUnlockEnabled()) {
+    // Never re-cache the REAL PIN behind the biometric gate (KEK spec §2/§11
+    // Face-ID-to-decoy guard; decision lives in shouldCacheUnlockSecret,
+    // lib/authModel.js). In the
+    // PIN cohort the biometric cache holds the DURESS PIN (Face-ID-to-decoy); the
+    // secret changed here is the REAL PIN, and caching it would make Face ID open
+    // the real set — the coercion bypass §2/§11 forbid. Password cohort is
+    // unchanged (re-cache the new password so Face ID keeps working).
+    if (shouldCacheUnlockSecret({ authModel: getAuthModel(), biometricEnabled: isBiometricUnlockEnabled() })) {
       try { await storeUnlockSecret(newPassword); } catch { /* fall back to password */ }
     }
     // Keep the session alive on its existing in-memory secret. touch() resets the
@@ -897,8 +906,17 @@ export function WalletProvider({ children }) {
       //      opens a low-value decoy surrendered under coercion.
       //   2. STEALTH / HIDDEN WALLETS (wallet-core/stealth.js): a dedicated secret
       //      that reveals one of the user's HIDDEN wallets, via the SAME prompt.
-      const { panic, duressMnemonic, hiddenMnemonic } =
-        await resolveDeniabilityUnlock(password);
+      // opts.pinModel: set by the PIN-cohort entry point (WalletEntry's PIN pad).
+      // It enables Option A — a non-enrolled PIN opens a deterministic decoy below
+      // instead of throwing. The password cohort never sets it (unchanged behaviour).
+      const pinModel = opts.pinModel === true;
+      const { panic, duressMnemonic, hiddenMnemonic, fallbackDecoyMnemonic } =
+        await resolveDeniabilityUnlock(
+          password,
+          pinModel
+            ? { deterministicFallback: true, deviceSalt: getOrCreateDeviceSalt() }
+            : {},
+        );
       if (panic) {
         await panicWipe();
         throw primaryErr; // keys destroyed; surface a plain wrong-password failure
@@ -909,8 +927,14 @@ export function WalletProvider({ children }) {
       } else if (hiddenMnemonic != null) {
         mnemonic = hiddenMnemonic;
         hidden = true;
+      } else if (fallbackDecoyMnemonic != null) {
+        // OPTION A (§7): a non-enrolled PIN opens a fresh, empty, deterministic
+        // decoy as an ephemeral session — NO error state, NO oracle. PIN cohort
+        // only (fallback is null for the password cohort, which throws below).
+        mnemonic = fallbackDecoyMnemonic;
+        decoy = true;
       } else {
-        throw primaryErr;
+        throw primaryErr; // password cohort total miss: unchanged behaviour
       }
     }
     // `mnemonic` here is the DECRYPTED payload: on the primary path it is a
