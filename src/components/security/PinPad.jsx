@@ -9,7 +9,7 @@ import { Delete } from "lucide-react";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];
 
-export default function PinPad({ value, onChange, onComplete, disabled = false, length = 6 }) {
+export default function PinPad({ value = "", onChange, onComplete, disabled = false, length = 6 }) {
   const press = (k) => {
     if (disabled) return;
     if (k === "back") { onChange(value.slice(0, -1)); return; }
@@ -39,6 +39,7 @@ export default function PinPad({ value, onChange, onComplete, disabled = false, 
               <button
                 key={k}
                 type="button"
+                aria-label="Clear — re-enter PIN"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
                 className="h-14 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-40"
