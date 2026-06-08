@@ -315,11 +315,15 @@ export async function simulateEvmTransaction({
     ? describeErc20Call({ data, tokenSymbol, decimals: tokenDecimals })
     : { kind: 'native' };
 
-  // Is the tx target a contract? (eth_getCode)
+  // Is the tx target a contract? (eth_getCode) Capture the raw code too so
+  // downstream consumers (risk S7) can reuse this already-fetched read instead of
+  // issuing a second eth_getCode (I2: no new network call).
   let targetIsContract = false;
+  let recipientCode = null;
   try {
     const code = await provider.getCode(to);
     queries.push('eth_getCode');
+    recipientCode = code;
     targetIsContract = !!code && code !== '0x';
   } catch { /* RPC unreachable — degrade, never block */ }
 
@@ -383,6 +387,8 @@ export async function simulateEvmTransaction({
   return {
     chain: 'evm',
     simulated: true, // a real on-chain dry-run (eth_call) ran
+    recipientCode,    // raw eth_getCode hex of `to` (null if unfetchable) — risk S7 input
+    targetIsContract, // convenience boolean derived from recipientCode
     willRevert,
     revertReason,
     decoded,
