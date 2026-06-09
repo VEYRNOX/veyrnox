@@ -70,6 +70,8 @@ import { hasStoredUnlockSecret } from "@/lib/biometricUnlock";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { getOrCreateDeviceSalt } from "@/wallet-core/decoyFallback";
+import { provisionPinRecovery } from "@/lib/pinRecovery";
+import { validateMnemonic } from "@/wallet-core/mnemonic";
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
@@ -210,7 +212,12 @@ export default function WalletEntry() {
   const [authModel, setAuthModelState] = useState("password");
   // PIN onboarding sub-steps: 'real' -> 'real-confirm' -> 'duress' -> 'panic' ->
   // (backup screen, gated by generatedSeed). Returning PIN users enter on the pad.
+  // PIN RECOVERY (§4) reuses these same steps but adds a 'seed' step at the front
+  // (enter the recovery phrase) and seeds the wallet from it instead of generating.
   const [pinStep, setPinStep] = useState("real");
+  // The validated recovery phrase held across the PIN-recovery steps (§4). Lives
+  // only until finishPinRecover consumes it; wiped on success/abandon.
+  const [recoverySeed, setRecoverySeed] = useState("");
   const [realPin, setRealPin] = useState("");
   const [realPinConfirm, setRealPinConfirm] = useState("");
   const [duressPin, setDuressPin_] = useState("");
@@ -385,6 +392,30 @@ export default function WalletEntry() {
     }
   };
 
+  // ---- PIN recovery (§4): forgot PIN -> restore seed, RE-PROVISION into the PIN
+  // cohort (NOT password). Mirrors finishPinCreate but seeds the wallet from the
+  // imported phrase, so the post-recovery entry surface is the identical PIN pad a
+  // non-recovered user sees — closing the cohort-transition leak the old recovery
+  // (handleImport -> setAuthModel("password")) introduced. No seed-backup screen:
+  // the user just supplied the seed. importWallet (inside provisionPinRecovery)
+  // unlocks the vault, so on success the Outlet renders the app. Fail-closed: a bad
+  // phrase throws BEFORE any cohort/slot change, leaving the existing PIN vault intact.
+  const finishPinRecover = async (panicValue) => {
+    setBusy(true);
+    try {
+      await provisionPinRecovery(
+        { importWallet, setDuressPin, setPanicPin, setAuthModel, getOrCreateDeviceSalt },
+        { seed: recoverySeed, realPin, duressPin: duressPinRef.current, panicPin: panicValue },
+      );
+      setAuthModelState("pin"); // keep the component's cohort state in sync (parity with handleImport)
+      setRecoverySeed(""); setRealPin(""); setRealPinConfirm(""); setDuressPin_(""); setPanicPin_("");
+      duressPinRef.current = "";
+      setRecovering(false);
+    } catch (e) {
+      setError(e?.message || "Couldn't restore from that seed phrase");
+    } finally { setBusy(false); }
+  };
+
   // ---- Create: generate the wallet (vault password mandatory) ----
   const handleGenerate = async () => {
     setError("");
@@ -502,11 +533,17 @@ export default function WalletEntry() {
         </div>
 
         {/* HONEST recovery: no custodial reset. A forgotten PIN is recovered ONLY by
-            re-importing the seed phrase (which re-provisions the device under a
-            password — see handleImport's authModel transition). */}
+            re-importing the seed phrase, which RE-PROVISIONS the device back into the
+            PIN cohort (§4) — set a new PIN, restore the seed under it, decoy/wipe slots
+            re-provision. The post-recovery surface is this same PIN pad, so recovery
+            leaves no observable "this user recovered" tell (see finishPinRecover). */}
         <button
           type="button"
-          onClick={() => { setError(""); setRecovering(true); setView("import"); }}
+          onClick={() => {
+            setError(""); setRecovering(true);
+            setRecoverySeed(""); setRealPin(""); setRealPinConfirm(""); setDuressPin_(""); setPanicPin_("");
+            duressPinRef.current = ""; setPinStep("seed"); setView("pin-recover");
+          }}
           className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           Forgot your PIN? <span className="text-primary">Restore from seed phrase</span>
@@ -705,6 +742,87 @@ export default function WalletEntry() {
           <Button className="w-full gap-2" disabled={busy} onClick={finishPinBackup}>
             {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} I've backed it up — Enter Wallet
           </Button>
+        </div>
+      </EntryShell>
+    );
+  }
+
+  // ---- View: PIN recovery (§4) — seed → new PIN → confirm → duress → optional panic ----
+  // Re-provisions a forgotten-PIN restore back into the PIN cohort so the result is
+  // indistinguishable from a fresh onboarding (same PIN pad, same slots). No seed-
+  // backup screen — the user just supplied the seed. finishPinRecover does the work.
+  if (view === "pin-recover") {
+    return (
+      <EntryShell error={error}>
+        <div className="space-y-5">
+          <button type="button" onClick={() => { setError(""); setRecovering(false); setView("unlock"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+
+          {pinStep === "seed" && (
+            <div className="space-y-4">
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium">Restore from your seed phrase</p>
+                <p className="text-xs text-muted-foreground">Enter your 12 or 24-word recovery phrase, then set a new PIN. There is no custodial reset — only you hold the seed.</p>
+              </div>
+              <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally — it never leaves this device.</span>
+              </div>
+              <div>
+                <Label>12 or 24-word recovery phrase</Label>
+                <textarea value={recoverySeed} onChange={e => setRecoverySeed(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+              </div>
+              <Button className="w-full gap-2" disabled={!recoverySeed.trim() || busy} onClick={() => {
+                const phrase = recoverySeed.trim().replace(/\s+/g, " ");
+                if (!validateMnemonic(phrase)) { setError("That doesn't look like a valid recovery phrase. Check the words and try again."); return; }
+                setRecoverySeed(phrase); setError(""); setRealPin(""); setRealPinConfirm(""); setPinStep("real");
+              }}>
+                <Download className="h-4 w-4" /> Continue
+              </Button>
+            </div>
+          )}
+
+          {pinStep === "real" && (
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-medium">Choose a new 6-digit PIN</p>
+              <p className="text-xs text-muted-foreground">This unlocks your restored wallet. It encrypts your seed on this device (Argon2id + AES-256-GCM).</p>
+              <PinPad value={realPin} onChange={setRealPin} onComplete={() => { setError(""); setRealPinConfirm(""); setPinStep("real-confirm"); }} />
+            </div>
+          )}
+
+          {pinStep === "real-confirm" && (
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-medium">Confirm your new PIN</p>
+              <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
+                if (p !== realPin) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
+                setError(""); setPinStep("duress");
+              }} />
+            </div>
+          )}
+
+          {pinStep === "duress" && (
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-medium">Set a duress PIN</p>
+              <p className="text-xs text-muted-foreground">If you're ever forced to unlock, enter this instead — it opens a separate everyday wallet, never your real one. Face ID opens this wallet too. Use it day-to-day so it looks lived-in.</p>
+              <PinPad value={duressPin} onChange={setDuressPin_} onComplete={(p) => {
+                if (p === realPin) { setError("Your duress PIN must be different from your real PIN."); setDuressPin_(""); return; }
+                setError(""); duressPinRef.current = p; setPinStep("panic");
+              }} />
+            </div>
+          )}
+
+          {pinStep === "panic" && (
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-medium">Set a panic PIN <span className="text-muted-foreground font-normal">(optional)</span></p>
+              <p className="text-xs text-muted-foreground">Entering this at unlock <b>irreversibly wipes</b> this device's wallet copy. Choose something you'd never type by accident, or skip it.</p>
+              <PinPad value={panicPin} onChange={setPanicPin_} onComplete={(p) => {
+                if (p === realPin || p === duressPinRef.current) { setError("Your panic PIN must differ from your real and duress PINs."); setPanicPin_(""); return; }
+                setError(""); finishPinRecover(p);
+              }} />
+              <button type="button" disabled={busy} onClick={() => { setPanicPin_(""); finishPinRecover(""); }} className="text-xs text-muted-foreground hover:text-foreground underline">
+                Skip — don't set a panic PIN
+              </button>
+            </div>
+          )}
         </div>
       </EntryShell>
     );
