@@ -81,9 +81,9 @@ import {
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
-import { getOrCreateDeviceSalt } from '@/wallet-core/decoyFallback';
+import { getOrCreateDeviceSalt, clearDeviceSalt } from '@/wallet-core/decoyFallback';
 import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
-import { getAuthModel, shouldCacheUnlockSecret } from '@/lib/authModel';
+import { getAuthModel, shouldCacheUnlockSecret, clearAuthModel } from '@/lib/authModel';
 import {
   isBiometricUnlockEnabled,
   setBiometricUnlockEnabled,
@@ -558,6 +558,25 @@ export function WalletProvider({ children }) {
     lock();              // drop in-memory secret + reset session flags
     setWasWiped(true);   // UX/proof signal only (not a secret)
     return residual;     // { indexedDbKeys, vaultBlobCount, localStorageResidue, clean }
+  }, [lock]);
+
+  // FAIL-CLOSED ONBOARDING ROLLBACK. Tear down a half-provisioned PIN wallet when
+  // chaff provisioning fails mid-creation (see lib/pinOnboarding.js). This is the
+  // local teardown panicWipe does, MINUS the wasWiped panic UX — a setup rollback,
+  // not a user-invoked wipe. Leaves a clean first-run: no primary, no chaff slots,
+  // no cohort marker, no decoy salt, in-memory secret dropped. Best-effort per step
+  // so a flaky sub-clear can't strand a defenseless-but-"ready" wallet behind it.
+  const discardIncompleteWallet = useCallback(async () => {
+    try { await keyStore.clearVault(); } catch { /* native branch; may already be gone */ }
+    try { await panicWipeLocal(); } catch { /* best-effort */ }
+    setBiometricUnlockEnabled(false);
+    try { await clearUnlockSecret(); } catch { /* best-effort */ }
+    clearAllWalletMeta();
+    clearAllPortfolios();
+    clearAuthModel();   // drop any 'pin' cohort marker (matters for the recovery rollback case)
+    clearDeviceSalt();  // drop any seeded decoy salt (recovery rollback case)
+    lock();             // drop the in-memory secret + reset session flags (isUnlocked -> false)
+    // Deliberately NO setWasWiped(true): this is a setup-failure rollback, not a panic wipe.
   }, [lock]);
 
   // Create a brand-new wallet (the FIRST wallet on this device): generate one
@@ -1300,6 +1319,10 @@ export function WalletProvider({ children }) {
     // inspectKeyMaterial(): non-destructive proof of what local key material exists.
     wasWiped,
     panicWipe,
+    // FAIL-CLOSED ONBOARDING ROLLBACK: tear down a half-provisioned PIN wallet
+    // when chaff provisioning fails mid-creation (lib/pinOnboarding.js). Setup
+    // rollback, not a panic wipe (no wasWiped). Wired by WalletEntry's orchestrators.
+    discardIncompleteWallet,
     hasPanicPin: hasPanicVault,
     setPanicPin,
     removePanicPin,

@@ -77,6 +77,7 @@ import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { getOrCreateDeviceSalt } from "@/wallet-core/decoyFallback";
 import { provisionDeniabilityChaff } from "@/wallet-core/provisionChaff";
+import { provisionPinWallet } from "@/lib/pinOnboarding";
 import { provisionPinRecovery } from "@/lib/pinRecovery";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 
@@ -168,6 +169,7 @@ function ExploreShell({ onCreate, children }) {
 export default function WalletEntry() {
   const {
     isUnlocked, createWallet, importWallet, unlock, hasVault,
+    discardIncompleteWallet,
     enableBiometricUnlock, unlockWithBiometric,
     exploreMode, enterExplore, leaveExplore, confirmWalletBackup,
   } = useWallet();
@@ -227,6 +229,10 @@ export default function WalletEntry() {
   const [realPin, setRealPin] = useState("");
   const [realPinConfirm, setRealPinConfirm] = useState("");
   const [unlockPin, setUnlockPin] = useState("");
+  // True while a PIN wallet is being ATOMICALLY provisioned (create + both chaff
+  // slots + cohort + salt). Holds the dashboard back until everything is committed;
+  // on failure the vault is torn down (fail closed) and we show an honest error.
+  const [provisioning, setProvisioning] = useState(false);
 
   // Resolve biometric availability once on mount (cheap; used by both the
   // onboarding offer and the returning one-tap button).
@@ -349,23 +355,27 @@ export default function WalletEntry() {
     } finally { setBusy(false); }
   };
 
-  // Finish PIN onboarding: create the real wallet under the real PIN, silently
-  // always-provision both deniability slots with chaff (so every PIN device is
-  // structurally identical), mark the cohort + seed the decoy salt, then enter the
-  // app. No duress/panic steps, no seed-backup screen — the wallet is created
-  // backedUp:false and the dashboard's existing unbacked-wallet nudge covers backup.
+  // Atomic, FAIL-CLOSED PIN onboarding (see lib/pinOnboarding.js): create the real
+  // wallet, provision BOTH deniability chaff slots, then mark the cohort + seed the
+  // decoy salt — all before the dashboard renders (the `provisioning` gate below).
+  // If chaff fails, provisionPinWallet tears the vault down; we surface an honest
+  // error and nothing is saved — never a half-provisioned, defenseless wallet.
   const finishPinCreate = async () => {
-    setBusy(true);
+    setBusy(true); setProvisioning(true); setError("");
     try {
-      await createWallet(realPin);            // real wallet, real PIN
-      await provisionDeniabilityChaff();      // chaff into 'secondary' + 'tertiary'
-      setAuthModel("pin");                     // select PIN surface + Option A
-      getOrCreateDeviceSalt();                 // seed the deterministic-decoy salt
-      setRealPin(""); setRealPinConfirm("");   // wipe transient PINs
-      // createWallet already unlocked the vault; with no seed-backup hold the app
-      // renders immediately.
-    } catch (e) { setError(e?.message || "Failed to create wallet"); }
-    finally { setBusy(false); }
+      await provisionPinWallet(
+        { createWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
+        { pin: realPin },
+      );
+      setAuthModelState("pin");
+      setRealPin(""); setRealPinConfirm("");
+      setProvisioning(false);   // release the gate → a fully-provisioned device renders the app
+    } catch (e) {
+      // provisionPinWallet already discarded the half-provisioned vault. Return to a clean PIN entry.
+      setProvisioning(false);
+      setPinStep("real"); setRealPin(""); setRealPinConfirm("");
+      setError("Wallet setup couldn't finish securely, so nothing was saved. Please try again.");
+    } finally { setBusy(false); }
   };
 
   // ---- PIN recovery (§4): forgot PIN -> restore seed, RE-PROVISION into the PIN
@@ -377,16 +387,18 @@ export default function WalletEntry() {
   // unlocks the vault, so on success the Outlet renders the app. Fail-closed: a bad
   // phrase throws BEFORE any cohort/slot change, leaving the existing PIN vault intact.
   const finishPinRecover = async () => {
-    setBusy(true);
+    setBusy(true); setProvisioning(true); setError("");
     try {
       await provisionPinRecovery(
-        { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt },
+        { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
         { seed: recoverySeed, realPin },
       );
       setAuthModelState("pin");
       setRecoverySeed(""); setRealPin(""); setRealPinConfirm("");
       setRecovering(false);
+      setProvisioning(false);
     } catch (e) {
+      setProvisioning(false);
       setError(e?.message || "Couldn't restore from that seed phrase");
     } finally { setBusy(false); }
   };
@@ -460,6 +472,22 @@ export default function WalletEntry() {
   // Unlocked → reveal the app. The ONLY exception is the one-time seed-backup
   // screen during first-run create: the vault is already unlocked, but we keep
   // holding while `generatedSeed` is set until the user confirms the backup.
+  // Hold the dashboard back while a PIN wallet is being atomically provisioned — it
+  // must not render until primary + both chaff slots + cohort marker + salt are all
+  // committed (fail-closed onboarding). On failure the vault is torn down and we
+  // fall through to the PIN entry with an error.
+  if (provisioning) {
+    return (
+      <EntryShell error={error}>
+        <div className="p-6 rounded-xl border border-border bg-card text-center space-y-3">
+          <RefreshCw className="h-6 w-6 text-primary mx-auto animate-spin" />
+          <p className="text-sm font-medium">Setting up your wallet…</p>
+          <p className="text-xs text-muted-foreground">Securing your wallet on this device. This takes a moment.</p>
+        </div>
+      </EntryShell>
+    );
+  }
+
   if (isUnlocked && !generatedSeed) return <Outlet />;
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
