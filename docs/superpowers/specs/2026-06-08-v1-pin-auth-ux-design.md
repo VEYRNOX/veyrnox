@@ -267,3 +267,64 @@ rides with the hardware-KEK fast-follow.
 - The stealth/hidden onboarding (hidden wallets remain an in-app, post-onboarding
   feature; the hidden path stays wired in unlock but is not a v1 onboarding step).
 - Raising Argon2id params (device-wide, deniability-sensitive, audit-gated — §6).
+
+## 12. Seed recovery — PIN-cohort re-provision (v1-auth-surface-brief §4)
+
+**Status:** BUILT (testnet, UNAUDITED-PROVISIONAL). Reviewed against the brief's
+intended model; check 3 was failing in the shipped #138 build and is now fixed.
+
+**Intended model.** A forgotten PIN is recovered ONLY by re-importing the seed and
+setting a NEW PIN — never a custodial reset, never seed-as-instant-real-login. The
+seed self-derives its wallet, so recovery is **seed-scoped**: enter seed → derive its
+wallet → set a new PIN. The deniability slots (decoy/duress, panic, Option-A salt)
+re-provision around the new PIN, so a recovered device is, by construction,
+indistinguishable from a freshly-onboarded one (§5 entry-surface uniformity).
+
+**The leak that was fixed (check 3).** #138's recovery reused the password import
+flow (`WalletEntry.handleImport`) and flipped the device to the **password cohort**
+on success (`setAuthModel('password')`). A PIN user who recovered then saw a free-text
+password screen instead of everyone else's PIN pad — an observable "this user forgot
+their PIN and recovered" state §0 forbids. **Fix:** a PIN-cohort "Forgot your PIN?"
+now routes to a dedicated `pin-recover` flow (`WalletEntry`, view `pin-recover`):
+enter seed → new PIN → confirm → duress → optional panic, then
+`lib/pinRecovery.provisionPinRecovery()` runs the same provisioning as onboarding but
+seeds the wallet from the imported phrase:
+
+1. `importWallet(seed, newPin)` — encrypt the recovered seed under the new PIN;
+2. `setDuressPin(duressPin)` — provision the lived-in decoy;
+3. optional `setPanicPin` (best-effort, like onboarding);
+4. `setAuthModel('pin')` — **never** `'password'`;
+5. `getOrCreateDeviceSalt()` — seed the Option-A deterministic-decoy salt.
+
+**Fail-closed ordering.** Everything after the import runs only once `importWallet`
+resolves. A bad phrase throws BEFORE any cohort/slot change, leaving the existing PIN
+vault and cohort untouched (no half-provisioned device). No seed-backup screen — the
+user just supplied the seed.
+
+**Gating checklist (brief §4) — outcome:**
+1. Decoy's seed re-provisions the decoy, reveals nothing about a real set — **yes**
+   (seed-scoped import + slot re-provision; no matching against device state).
+2. "Wallet not found" / unrecognized-seed oracle — **none**. The only error is a
+   BIP-39 checksum failure (intrinsic to the typed phrase, not device state).
+3. Post-recovery surface is the PIN pad (not password) — **yes (fixed)**. Was the
+   leak above; now re-provisions into the PIN cohort.
+4. Instant real-set access without a new secret — **no**. A new PIN is required.
+
+**Honest user-facing note (carried in `lib/pinRecovery.js` header + below).** The
+seed is the root secret — whoever holds the real seed holds the real wallet, full
+stop. The duress/decoy model protects the **day-to-day unlock** (give the duress PIN
+under coercion), **not** the seed backup. A coercer who extracts the real *seed*
+bypasses the PIN model entirely. This is unchanged by recovery and is the same
+disclosure §4 of the brief requires.
+
+**Verification.** `lib/__tests__/pinRecovery.test.js` (8 tests) locks the invariant
+(re-provisions `'pin'`, never `'password'`; fail-closed on import error; optional
+panic). Preview-driven end-to-end on testnet: onboard PIN wallet → lock → "Forgot
+your PIN?" → restore a valid seed → new PIN → confirmed the device stays in the PIN
+cohort, the salt is seeded, the post-recovery+lock surface is the PIN pad (no password
+field), and the restored vault opens with the new PIN.
+
+**Out of scope (tracked separately, NOT folded in):** first-run "Import an existing
+seed" (no prior PIN vault) still lands in the **password cohort** via `handleImport`.
+That is the same class of import-from-scratch cohort tell, but broader than §4's
+recovery scope; flagged for a follow-up rather than changed here.
