@@ -19,6 +19,18 @@ import { jsPDF } from "jspdf";
 const BRAND = [255, 107, 53]; // Veyrnox orange (matches the old server template)
 
 /**
+ * Map a catalogue status to its PDF tag. Three honest states; the retired
+ * two-state "available" string degrades to [Built] so an older caller's
+ * code-complete features are never silently dropped or mislabelled verified.
+ * @param {string} status - 'verified' | 'built' | 'roadmap' (or legacy 'available')
+ */
+export function pdfStatusTag(status) {
+  if (status === "verified") return "[Verified]";
+  if (status === "built" || status === "available") return "[Built]";
+  return "[Roadmap]";
+}
+
+/**
  * Build and download a feature-catalogue PDF entirely in the browser.
  *
  * @param {object}   opts
@@ -60,14 +72,18 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
     y += lines.length * 5 + 4;
   }
 
-  // ── Totals ──
+  // ── Totals ── three honest states (verified / built / roadmap). Older
+  // callers that still pass the retired "available" string are counted as built
+  // (code-complete) so the PDF degrades honestly rather than dropping them.
   const allItems = categories.flatMap((c) => c.items || []);
-  const available = allItems.filter((i) => i.status === "available").length;
+  const verified = allItems.filter((i) => i.status === "verified").length;
+  const built = allItems.filter((i) => i.status === "built" || i.status === "available").length;
+  const roadmap = allItems.length - verified - built;
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(
-    `${allItems.length} features across ${categories.length} categories — ${available} available today, ${allItems.length - available} on the roadmap.`,
+    `${allItems.length} features across ${categories.length} categories — ${verified} verified on-chain, ${built} built (code-complete, unproven on-chain), ${roadmap} on the roadmap.`,
     margin,
     y,
   );
@@ -94,7 +110,7 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
-      const tag = item.status === "available" ? "[Available]" : "[Roadmap]";
+      const tag = pdfStatusTag(item.status);
       const head = doc.splitTextToSize(`• ${item.name}  ${tag}`, contentWidth);
       doc.text(head, margin, y);
       y += head.length * 4.5;
