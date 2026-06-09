@@ -24,7 +24,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { useWallet } from "@/lib/WalletProvider";
-import { usePortfolio } from "@/lib/portfolioBalances";
+import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
 import { ASSETS, getAsset } from "@/wallet-core/assets.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
@@ -34,7 +34,10 @@ import CoinLogo from "@/components/CoinLogo";
 import QuickAccessGrid from "@/components/QuickAccessGrid";
 
 const fmtAmount = (n) =>
-  n === 0 ? "0" : n < 0.0001 ? n.toExponential(2) : n.toLocaleString(undefined, { maximumFractionDigits: 6 });
+  n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
+    : n === 0 ? "0"
+    : n < 0.0001 ? n.toExponential(2)
+    : n.toLocaleString(undefined, { maximumFractionDigits: 6 });
 
 // Seed reveal grid (shared by the create-backup step and the "back up" action).
 function SeedGrid({ mnemonic }) {
@@ -367,6 +370,10 @@ export default function WalletPortfolioPage() {
   // the real (all-zero) rows on demand — nothing is hidden dishonestly.
   const [showZeroAssets, setShowZeroAssets] = useState(false);
 
+  // The I3 set-seal is UPSTREAM of this call: `wallets`/`walletAddresses` are
+  // only the seeds THIS unlock decrypted (decoy unlock → decoy seeds, real →
+  // real). So "across ALL wallets" is already scoped to the unlocked set — the
+  // provider never decrypted another set, and usePortfolio cannot reach one.
   const { data: portfolio, isLoading: portfolioLoading } = usePortfolio(wallets, walletAddresses);
   const byWallet = portfolio?.byWallet || {};
 
@@ -399,7 +406,10 @@ export default function WalletPortfolioPage() {
   // Wallets in the ACTIVE portfolio, and that portfolio's USD total.
   const inActive = (w) => (walletPortfolioMap[w.id] || MAIN_PORTFOLIO_ID) === activePortfolioId;
   const pfWallets = wallets.filter(inActive);
-  const pfTotal = pfWallets.reduce((sum, w) => sum + (byWallet[w.id]?.total ?? 0), 0);
+  // pfIncomplete = at least one constituent balance read FAILED, so pfTotal sums
+  // only what was readable and is understated. We surface that rather than fold
+  // failure into a confident number (I4 fail-closed). Identical in decoy/real.
+  const { total: pfTotal, indeterminate: pfIncomplete } = sumPortfolioTotal(pfWallets, byWallet);
   const activePortfolioName = portfolios.find((p) => p.id === activePortfolioId)?.name || "Main";
   const activeWallet = wallets.find((w) => w.id === activeWalletId);
   const activeInThisPortfolio = activeWallet && inActive(activeWallet);
@@ -407,7 +417,9 @@ export default function WalletPortfolioPage() {
   // Genuine $0 zero-state: the portfolio has wallet(s) but no value anywhere, and
   // balances have finished loading (so we don't flash this over a pending fetch).
   // Testnet balances are commonly 0, so this is the expected fresh-wallet view.
-  const isZeroState = !portfolioLoading && pfWallets.length > 0 && pfTotal === 0;
+  // Fail-closed: a $0 total that is actually INCOMPLETE (a read failed) must NOT
+  // claim "no balance yet" — we can't assert emptiness we couldn't confirm.
+  const isZeroState = !portfolioLoading && pfWallets.length > 0 && pfTotal === 0 && !pfIncomplete;
 
   // Per-wallet cards (active portfolio). Built once so the same markup serves both
   // the funded view and the expanded zero-state — no duplication.
@@ -426,7 +438,10 @@ export default function WalletPortfolioPage() {
                 ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-500">Backed up</span>
                 : <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500">Back up</span>}
             </div>
-            <p className="text-xs text-muted-foreground">{formatFiat(data.total, "USD")}</p>
+            <p className="text-xs text-muted-foreground">
+              {formatFiat(data.total, "USD")}
+              {data.indeterminate && <span className="text-amber-600 dark:text-amber-400"> · partial</span>}
+            </p>
           </div>
           {canManage && (
             <span className="relative" onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === w.id ? null : w.id); }}>
@@ -458,7 +473,8 @@ export default function WalletPortfolioPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-mono">{fmtAmount(row.amount)}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatFiat(row.usd, "USD")}</p>
+                  {/* indeterminate read → "—", not a misleading $0.00 */}
+                  <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : formatFiat(row.usd, "USD")}</p>
                 </div>
               </div>
             );
@@ -489,6 +505,14 @@ export default function WalletPortfolioPage() {
       <div className="text-center py-3">
         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{activePortfolioName} · Total Value</p>
         <p className="text-4xl font-bold">{formatFiat(pfTotal, "USD")}</p>
+        {/* I4 fail-closed: when a balance read failed, the total is incomplete —
+            say so rather than presenting a silently-understated figure as fact.
+            Same copy in decoy and real sessions (no isDecoy branch). */}
+        {pfIncomplete && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            Some balances couldn’t be loaded — this total may be incomplete.
+          </p>
+        )}
         <ReferenceRateNote />
         <p className="text-xs text-muted-foreground mt-1">
           {pfWallets.length} wallet{pfWallets.length === 1 ? "" : "s"} in this portfolio
