@@ -364,6 +364,8 @@ export default function WalletEntry() {
     setupPin(realPin);                 // authModel + salt + pendingPin + enter explore
     setAuthModelState("pin");
     setRealPin(""); setRealPinConfirm(""); setError(""); setPinStep("real");
+    setView("choose");                 // post-Phase-1: leaving explore lands on the create/import choice
+    setChoosePinImport(false);         // reset the Phase-2 import sub-toggle
   };
 
   // PHASE 2 (create): leave Phase 1's markers in place and atomically materialize the
