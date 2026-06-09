@@ -1,3 +1,5 @@
+> ⚠️ **SUPERSEDED** by `2026-06-09-onboarding-pin-setup-then-create-design.md` (v2). The provision-at-PIN model below (PIN creation == wallet creation) was reworked: onboarding is now Phase 1 = PIN-setup (credential markers only, no wallet) → empty dashboard → Phase 2 = a separate, deliberate Create-Wallet/Import action that atomically writes the real wallet + both chaff slots. The chaff helper, framing oracle removal, and fail-closed machinery below survive and are reused by v2.
+
 # Design spec: simplify new-user onboarding (single PIN → dashboard)
 
 **Date:** 2026-06-09
