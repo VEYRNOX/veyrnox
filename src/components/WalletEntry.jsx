@@ -693,14 +693,14 @@ export default function WalletEntry() {
 
             {pinStep === "panic" && (
               <div className="space-y-3 text-center">
-                <p className="text-sm font-medium">Set a panic PIN <span className="text-muted-foreground font-normal">(optional)</span></p>
+                <p className="text-sm font-medium">Set a panic/wipe PIN <span className="text-muted-foreground font-normal">(optional)</span></p>
                 <p className="text-xs text-muted-foreground">Entering this at unlock <b>irreversibly wipes</b> this device's wallet copy. Choose something you'd never type by accident, or skip it.</p>
                 <PinPad value={panicPin} onChange={setPanicPin_} onComplete={(p) => {
-                  if (p === realPin || p === duressPinRef.current) { setError("Your panic PIN must differ from your real and duress PINs."); setPanicPin_(""); return; }
+                  if (p === realPin || p === duressPinRef.current) { setError("Your panic/wipe PIN must differ from your real and duress PINs."); setPanicPin_(""); return; }
                   setError(""); finishPinCreate();
                 }} />
                 <button type="button" disabled={busy} onClick={() => { setPanicPin_(""); finishPinCreate(); }} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Skip — don't set a panic PIN
+                  Skip — don't set a panic/wipe PIN
                 </button>
               </div>
             )}
@@ -812,14 +812,14 @@ export default function WalletEntry() {
 
           {pinStep === "panic" && (
             <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Set a panic PIN <span className="text-muted-foreground font-normal">(optional)</span></p>
+              <p className="text-sm font-medium">Set a panic/wipe PIN <span className="text-muted-foreground font-normal">(optional)</span></p>
               <p className="text-xs text-muted-foreground">Entering this at unlock <b>irreversibly wipes</b> this device's wallet copy. Choose something you'd never type by accident, or skip it.</p>
               <PinPad value={panicPin} onChange={setPanicPin_} onComplete={(p) => {
-                if (p === realPin || p === duressPinRef.current) { setError("Your panic PIN must differ from your real and duress PINs."); setPanicPin_(""); return; }
+                if (p === realPin || p === duressPinRef.current) { setError("Your panic/wipe PIN must differ from your real and duress PINs."); setPanicPin_(""); return; }
                 setError(""); finishPinRecover(p);
               }} />
               <button type="button" disabled={busy} onClick={() => { setPanicPin_(""); finishPinRecover(""); }} className="text-xs text-muted-foreground hover:text-foreground underline">
-                Skip — don't set a panic PIN
+                Skip — don't set a panic/wipe PIN
               </button>
             </div>
           )}

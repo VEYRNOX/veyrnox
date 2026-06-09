@@ -289,7 +289,7 @@ see the removed record under "Explicitly EXCLUDED".)
   decryptVault for the panic marker and re-opens the shared IndexedDB by name,
   plain storage plumbing only).
   - **TWO TRIGGERS (the misfire/threat-model tradeoff, documented).**
-    (1) **Panic PIN at unlock** (primary, duress-appropriate): a dedicated PIN
+    (1) **Panic/wipe PIN at unlock** (primary, duress-appropriate): a dedicated PIN
     entered at the SAME unlock prompt as every other secret fires the wipe with
     **NO confirmation** — under genuine duress a "are you sure?" dialog is a
     liability (a coercer can cancel it; it signals what's happening). Wired into
@@ -301,7 +301,7 @@ see the removed record under "Explicitly EXCLUDED".)
     it is checked only AFTER the primary unlock fails (your REAL password never
     wipes); and it requires a deliberate ≥6-char PIN (vs duress's 4) chosen
     specifically to destroy. The accepted residual: a user who types EXACTLY their
-    panic PIN by accident loses the local copy — mitigated by the length floor +
+    panic/wipe PIN by accident loses the local copy — mitigated by the length floor +
     "set it to something you'd never type" guidance, accepted because
     duress-usability requires no dialog. (2) **In-app guarded action**
     (deliberate, non-duress decommissioning): a type-to-confirm (`WIPE`) +
@@ -324,9 +324,9 @@ see the removed record under "Explicitly EXCLUDED".)
     SCOPE — we delete logical IndexedDB records, NOT cryptographically sanitise the
     storage medium (wear-levelling/snapshots/swap); the mitigation is that only
     ciphertext (Argon2id + AES-GCM) was ever stored, so a recovered blob is still
-    gated by the never-stored password. TIMING: like duress, when a panic PIN IS
+    gated by the never-stored password. TIMING: like duress, when a panic/wipe PIN IS
     configured the unlock-miss path runs one extra KDF, so the *presence* (not the
-    value) of a panic PIN is in principle timeable. Native hardware-backed
+    value) of a panic/wipe PIN is in principle timeable. Native hardware-backed
     duress/stealth still not wired (web/demo today). Provisional; this path needs
     specific audit scrutiny.
   - **RESIDUAL-STORAGE PROOF.** `inspectKeyMaterial()` (non-destructive) enumerates

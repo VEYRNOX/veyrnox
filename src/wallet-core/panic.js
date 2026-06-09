@@ -151,7 +151,7 @@ export async function hasPanicVault() {
  */
 export async function setPanicVault(panicPassword) {
   if (typeof panicPassword !== 'string' || panicPassword.length < MIN_PANIC_LEN) {
-    throw new Error(`Panic PIN must be at least ${MIN_PANIC_LEN} characters`);
+    throw new Error(`Panic/wipe PIN must be at least ${MIN_PANIC_LEN} characters`);
   }
   const marker = generateMnemonic(128); // throwaway; only its decryptability matters
   const blob = await encryptVault(marker, panicPassword);
