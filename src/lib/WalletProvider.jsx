@@ -83,7 +83,9 @@ import {
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
 import { getOrCreateDeviceSalt, clearDeviceSalt } from '@/wallet-core/decoyFallback';
 import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
-import { getAuthModel, shouldCacheUnlockSecret, clearAuthModel } from '@/lib/authModel';
+import { getAuthModel, setAuthModel, shouldCacheUnlockSecret, clearAuthModel } from '@/lib/authModel';
+import { provisionPinWallet } from '@/lib/pinOnboarding';
+import { provisionPinRecovery } from '@/lib/pinRecovery';
 import {
   isBiometricUnlockEnabled,
   setBiometricUnlockEnabled,
@@ -144,6 +146,11 @@ export function WalletProvider({ children }) {
   // Active portfolio id mirrored in a ref so mutations (e.g. a newly added wallet
   // joining the current portfolio) read it without a stale-closure hazard.
   const activePortfolioRef = useRef(MAIN_PORTFOLIO_ID);
+  // PHASE-1 transient: the PIN chosen during setup, held in memory ONLY until Phase-2
+  // wallet creation consumes it. NEVER persisted (markers-only model). A ref so it
+  // never lands in a render snapshot; cleared on EVERY exit (success, failure,
+  // lock/background, abandonment).
+  const pendingPinRef = useRef(null);
   const [isUnlocked, setUnlocked] = useState(false);
   // Public, non-secret per-wallet info for the UI: [{ id, name, backedUp,
   // enabledAssets }] — NO mnemonics. Derived from the container ids + walletMeta.
@@ -337,6 +344,7 @@ export function WalletProvider({ children }) {
     containerRef.current = null;
     activeIdRef.current = null;
     activePortfolioRef.current = MAIN_PORTFOLIO_ID;
+    pendingPinRef.current = null;
     setUnlocked(false);
     setIsDecoy(false);
     setIsHidden(false);
@@ -787,6 +795,44 @@ export function WalletProvider({ children }) {
     return true;
   }, [isUnlocked]);
 
+  // PHASE 1: persist credential MARKERS ONLY + hold the PIN in memory; enter explore
+  // so the empty dashboard renders. Writes NO primary/secondary/tertiary, no verifier.
+  const setupPin = useCallback((pin) => {
+    setAuthModel('pin');
+    getOrCreateDeviceSalt();
+    pendingPinRef.current = pin;
+    setExploreMode(true);
+  }, []);
+
+  // PHASE 2 (create): atomically create the real wallet + both chaff slots under the
+  // in-memory pendingPin, fail-closed (provisionPinWallet tears down on chaff failure
+  // and rethrows). Clears pendingPin only on success.
+  const createWalletFromPendingPin = useCallback(async () => {
+    const pin = pendingPinRef.current;
+    if (!pin) throw new Error('No PIN set; complete PIN setup first');
+    await provisionPinWallet(
+      { createWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
+      { pin },
+    );
+    pendingPinRef.current = null;
+  }, [createWallet, discardIncompleteWallet]);
+
+  // PHASE 2 (import): import a seed under pendingPin + provision both chaff slots in
+  // the SAME fail-closed block (mirrors provisionPinRecovery). Device stays PIN cohort
+  // (never setAuthModel('password')). Clears pendingPin on success.
+  const importWalletForPendingPin = useCallback(async (mnemonic) => {
+    const pin = pendingPinRef.current;
+    if (!pin) throw new Error('No PIN set; complete PIN setup first');
+    await provisionPinRecovery(
+      { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
+      { seed: mnemonic, realPin: pin },
+    );
+    pendingPinRef.current = null;
+  }, [importWallet, discardIncompleteWallet]);
+
+  // Clear the Phase-1 PIN on abandonment / Phase-2 failure (Hold: never linger).
+  const clearPendingPin = useCallback(() => { pendingPinRef.current = null; }, []);
+
   // ── PORTFOLIO MANAGEMENT (non-secret grouping; no password, no vault read) ───
   // Disabled in a decoy/hidden session (single-wallet, ephemeral — never mutate
   // the persisted portfolio store there).
@@ -987,13 +1033,6 @@ export function WalletProvider({ children }) {
       setIsHidden(false);
       refreshWalletsState();
       refreshPortfoliosState();
-      // SELF-HEAL: a PIN-cohort device must always carry both deniability slots
-      // (storage-footprint parity). If an earlier provision failed, backfill chaff
-      // now. Idempotent + never-overwrite, so this never clobbers a personalized
-      // credential and never runs for the password cohort. Best-effort (mirrors
-      // ensureStealthPool): a storage hiccup must not block unlock. opts.pinModel
-      // is the PIN-cohort gate (pinModel const is scoped to the catch block above).
-      if (opts.pinModel === true) void provisionDeniabilityChaff().catch(() => {});
     } else {
       // DECOY / HIDDEN: a single-wallet, EPHEMERAL session. We do NOT persist a
       // container or touch walletMeta — the duress/stealth storages stay exactly
@@ -1279,6 +1318,13 @@ export function WalletProvider({ children }) {
     enterExplore,
     leaveExplore,
     requireWallet,
+    // PIN ONBOARDING (two-phase): Phase 1 holds the PIN in memory + marks the cohort;
+    // Phase 2 atomically creates/imports the real wallet + chaff under it, fail-closed.
+    setupPin,
+    createWalletFromPendingPin,
+    importWalletForPendingPin,
+    clearPendingPin,
+    hasPendingPin: pendingPinRef.current != null,
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
     isDecoy,
     // STEALTH (S3): is the current session a revealed HIDDEN wallet? Off by
