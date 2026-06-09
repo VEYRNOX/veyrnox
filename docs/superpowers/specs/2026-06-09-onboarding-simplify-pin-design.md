@@ -53,7 +53,7 @@ Removed from the forced path: the duress-PIN step, the panic-PIN step, the seed-
 
 ## 4. Silent always-provision — implementation
 
-New wallet-core helper `ensureDeniabilityChaff()` (testable without React). It writes **both** chaff blobs through the **identical credential path** used by real personalization — no chaff-specific branch — and is **idempotent**, mirroring the existing `ensureStealthPool()` pattern:
+New wallet-core helper `provisionDeniabilityChaff()` (testable without React). It writes **both** chaff blobs through the **identical credential path** used by real personalization — no chaff-specific branch — and is **idempotent**, mirroring the existing `ensureStealthPool()` pattern:
 
 ```
 // wallet-core/provisionChaff.js (new)
@@ -69,7 +69,7 @@ function throwawayPassword() { /* crypto.getRandomValues(32) → base64 */ }
 // Idempotent: provision a chaff blob ONLY when the slot is empty. NEVER
 // overwrites an existing blob — so a personalized duress/panic credential is
 // preserved, and a missing slot (failed earlier write) is backfilled.
-export async function ensureDeniabilityChaff() {
+export async function provisionDeniabilityChaff() {
   if (!(await hasDuressVault())) {
     await setDuressVault(generateMnemonic(128), throwawayPassword()); // → 'secondary'
   }
@@ -147,7 +147,7 @@ Load-bearing test is the **chaff structural-parity** test (§ must-have #1) — 
 3. **Chaff structural parity (MUST assert shape, not presence):** compare the `secondary`/`tertiary` blobs from a simple-onboarded device against the blobs from a device that later personalized duress/panic. Assert equality of: blob **format** (keys `v, kdf, salt, iv, ct`), **`kdf` params** (`name` + every `KDF_PARAMS` field), and **byte-lengths** of `salt` (16), `iv` (12), and `ct`. A test that only checks "both blobs exist" is insufficient — it passes while the oracle stays open.
 4. **Option-A fall-through:** entering a non-real PIN still opens the deterministic decoy (chaff never matches); behavior identical whether the slot holds chaff or a personalized blob.
 5. **Personalization overwrites:** setting a custom duress/panic PIN (via `setDuressVault`/`setPanicVault`) replaces the chaff at the same key and then opens correctly; the resulting blob is byte-parity with the chaff blob per (3) for format/params.
-6. **Idempotent / never-overwrite:** calling `ensureDeniabilityChaff()` when a slot already holds a blob (chaff **or** personalized) is a no-op — it must NOT clobber a personalized credential. Calling it when a slot is empty backfills chaff. (Covers the unlock-time self-heal call.)
+6. **Idempotent / never-overwrite:** calling `provisionDeniabilityChaff()` when a slot already holds a blob (chaff **or** personalized) is a no-op — it must NOT clobber a personalized credential. Calling it when a slot is empty backfills chaff. (Covers the unlock-time self-heal call.)
 7. **Recovery path:** `finishPinRecover()` also provisions both chaff blobs (re-run (2)–(3) for the recovery flow).
 8. **Regression:** returning-user PIN login, password cohort, and import path unchanged.
 9. **Framing:** grep gate (no enable/not-configured copy) + logic check (no configured-state computed/displayed from blob presence in Security UI).
