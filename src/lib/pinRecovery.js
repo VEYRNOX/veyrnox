@@ -16,7 +16,10 @@
 //   1. importWallet(seed, realPin)        — encrypt the recovered seed under the new PIN
 //   2. provisionDeniabilityChaff()         — silently provision BOTH deniability slots
 //                                            with chaff, exactly as fresh PIN onboarding,
-//                                            so the storage footprint is identical
+//                                            so the storage footprint is identical. If
+//                                            this throws, TEAR THE VAULT DOWN
+//                                            (discardIncompleteWallet) and rethrow — never
+//                                            leave a primary vault with missing chaff slots.
 //   3. setAuthModel('pin')                 — select the PIN entry surface + Option A
 //   4. getOrCreateDeviceSalt()             — seed the deterministic-decoy salt so a
 //                                            non-enrolled PIN opens an empty decoy, never errors
@@ -26,6 +29,9 @@
 // error propagates and the device is left exactly as it was — the existing PIN vault
 // and cohort are untouched. We must NEVER half-provision: flipping the cohort before
 // a confirmed import could strand the user, and is the precise failure §4 guards.
+// And if chaff provisioning throws AFTER the import wrote the primary vault, we tear
+// that vault down before rethrowing — a recovered device with a primary vault but no
+// chaff slots is the same defenseless, fail-OPEN half-provisioned state I4 forbids.
 //
 // SECURITY INVARIANT: this path calls setAuthModel('pin') and never 'password'.
 // A recovered device is, by construction, indistinguishable from an onboarded one.
@@ -48,12 +54,13 @@
  *   provisionDeniabilityChaff: () => Promise<void>,
  *   setAuthModel: (model: 'pin'|'password') => void,
  *   getOrCreateDeviceSalt: () => Uint8Array,
+ *   discardIncompleteWallet: () => Promise<void>,
  * }} deps
  * @param {{ seed: string, realPin: string }} params
  * @returns {Promise<void>}
  */
 export async function provisionPinRecovery(deps, params) {
-  const { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt } = deps;
+  const { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet } = deps;
   const { seed, realPin } = params;
 
   // 1. Import the recovered seed under the new real PIN. A throw here (invalid
@@ -62,7 +69,15 @@ export async function provisionPinRecovery(deps, params) {
 
   // 2. Silently provision both deniability slots with chaff, exactly as fresh PIN
   //    onboarding does, so the recovered device's storage footprint is identical.
-  await provisionDeniabilityChaff();
+  //    FAIL CLOSED: if chaff fails after the import wrote the primary vault, tear the
+  //    vault down so no half-provisioned, defenseless wallet survives, then rethrow
+  //    the ORIGINAL error (a teardown failure must not mask it).
+  try {
+    await provisionDeniabilityChaff();
+  } catch (e) {
+    try { await discardIncompleteWallet(); } catch { /* keep the original error */ }
+    throw e;
+  }
 
   // 3. Select the PIN cohort — the whole point of §4. Never 'password'.
   setAuthModel('pin');
