@@ -29,16 +29,22 @@
 // No crypto is implemented here — it calls only WalletProvider methods
 // (createWallet / importWallet / unlock / unlockWithBiometric / enableBiometricUnlock
 // / hasVault). In the legacy PASSWORD cohort, advanced security (duress / stealth /
-// panic) is set up in-app later and never appears in onboarding. In the v1 PIN
-// cohort it is different: onboarding provisions a real PIN, a duress PIN + decoy,
-// and an OPTIONAL panic PIN (so Face-ID-to-decoy is live from day one); stealth/
-// hidden remains an in-app, post-onboarding feature.
+// panic) is set up in-app later and never appears in onboarding. The v1 PIN cohort
+// follows the SAME principle: onboarding provisions ONLY a real PIN, then silently
+// provisions CHAFF into both deniability slots (no user-chosen duress/panic at
+// onboarding — see wallet-core/provisionChaff.js), so every PIN device is
+// structurally identical regardless of what the user later personalizes. Duress and
+// panic credentials are personalized later in-app (Security); stealth/hidden likewise
+// remains an in-app, post-onboarding feature.
 //
 // ── v1 PIN AUTH (UNAUDITED-PROVISIONAL) ──────────────────────────────────────
-// THREAT MODEL: v1 is SOFTWARE key derivation. It resists OBSERVED coercion —
-// Face ID and the duress PIN both yield the surrendered decoy; the panic PIN
-// wipes; and no 6-digit PIN produces an error-state oracle (Option A) or a timing
-// oracle (the 4th constant KDF slot, deniabilityUnlock.js). It does NOT fully
+// THREAT MODEL: v1 is SOFTWARE key derivation. It resists OBSERVED coercion — a
+// non-enrolled PIN falls through to the Option-A deterministic decoy (see
+// deniabilityUnlock.js / decoyFallback.js) rather than erroring, and once duress/
+// panic are personalized in-app the duress credential yields the surrendered decoy
+// while the panic credential wipes; no 6-digit PIN produces an error-state oracle
+// (Option A) or a timing oracle (the 4th constant KDF slot, deniabilityUnlock.js).
+// It does NOT fully
 // resist OFFLINE analysis of a SEIZED device: a 6-digit PIN (10^6) over Argon2id
 // is exhaustible offline in hours-days, and the PIN path cannot raise Argon2id
 // without diverging from the shared stealth-chaff params (a deniability tell) —
