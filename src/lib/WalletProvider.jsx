@@ -86,6 +86,7 @@ import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
 import { getAuthModel, setAuthModel, shouldCacheUnlockSecret, clearAuthModel } from '@/lib/authModel';
 import { provisionPinWallet } from '@/lib/pinOnboarding';
 import { provisionPinRecovery } from '@/lib/pinRecovery';
+import { consumePendingPin } from '@/lib/pendingPinFlow';
 import {
   isBiometricUnlockEnabled,
   setBiometricUnlockEnabled,
@@ -807,28 +808,26 @@ export function WalletProvider({ children }) {
   // PHASE 2 (create): atomically create the real wallet + both chaff slots under the
   // in-memory pendingPin, fail-closed (provisionPinWallet tears down on chaff failure
   // and rethrows). Clears pendingPin only on success.
-  const createWalletFromPendingPin = useCallback(async () => {
-    const pin = pendingPinRef.current;
-    if (!pin) throw new Error('No PIN set; complete PIN setup first');
-    await provisionPinWallet(
+  const createWalletFromPendingPin = useCallback(() => consumePendingPin(
+    () => pendingPinRef.current,
+    () => { pendingPinRef.current = null; },
+    (pin) => provisionPinWallet(
       { createWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
       { pin },
-    );
-    pendingPinRef.current = null;
-  }, [createWallet, discardIncompleteWallet]);
+    ),
+  ), [createWallet, discardIncompleteWallet]);
 
   // PHASE 2 (import): import a seed under pendingPin + provision both chaff slots in
   // the SAME fail-closed block (mirrors provisionPinRecovery). Device stays PIN cohort
   // (never setAuthModel('password')). Clears pendingPin on success.
-  const importWalletForPendingPin = useCallback(async (mnemonic) => {
-    const pin = pendingPinRef.current;
-    if (!pin) throw new Error('No PIN set; complete PIN setup first');
-    await provisionPinRecovery(
+  const importWalletForPendingPin = useCallback((mnemonic) => consumePendingPin(
+    () => pendingPinRef.current,
+    () => { pendingPinRef.current = null; },
+    (pin) => provisionPinRecovery(
       { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
       { seed: mnemonic, realPin: pin },
-    );
-    pendingPinRef.current = null;
-  }, [importWallet, discardIncompleteWallet]);
+    ),
+  ), [importWallet, discardIncompleteWallet]);
 
   // Clear the Phase-1 PIN on abandonment / Phase-2 failure (Hold: never linger).
   const clearPendingPin = useCallback(() => { pendingPinRef.current = null; }, []);

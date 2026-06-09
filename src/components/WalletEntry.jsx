@@ -417,6 +417,10 @@ export default function WalletEntry() {
       setRecovering(false);
       setProvisioning(false);
     } catch (e) {
+      // setupPin() flipped exploreMode true while bridging the new PIN; a failed
+      // recovery must not leave the session stuck in explore. Inert today (the
+      // recover view stays mounted), but keeps the failure state coherent.
+      leaveExplore();
       clearPendingPin(); setProvisioning(false);
       setError(e?.message || "Couldn't restore from that seed phrase");
     } finally { setBusy(false); }
