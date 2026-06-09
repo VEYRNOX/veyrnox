@@ -53,6 +53,11 @@ export function getOrCreateDeviceSalt() {
   return salt;
 }
 
+/** Clear the device decoy salt (used by fail-closed onboarding teardown). */
+export function clearDeviceSalt() {
+  try { localStorage.removeItem(SALT_KEY); } catch { /* best-effort */ }
+}
+
 /**
  * Deterministically derive an empty-but-real decoy mnemonic from a PIN. Runs ONE
  * Argon2id at the shared KDF_PARAMS (memory-hard — see header), then uses the first

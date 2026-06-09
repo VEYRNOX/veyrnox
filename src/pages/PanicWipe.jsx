@@ -36,7 +36,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import {
-  Bomb, AlertTriangle, AlertOctagon, ShieldOff, CheckCircle2, Eye, EyeOff,
+  Bomb, AlertOctagon, ShieldOff, CheckCircle2, Eye, EyeOff,
   FlaskConical, Lock, Trash2, Database, HardDrive, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -93,13 +93,12 @@ function KeyMaterialReport({ report, title }) {
 export default function PanicWipe() {
   const {
     isUnlocked, wasWiped,
-    hasVault, hasDuressPin, setDuressPin,
-    hasPanicPin, setPanicPin, removePanicPin, panicWipe, inspectKeyMaterial,
+    hasVault, setDuressPin,
+    setPanicPin, panicWipe, inspectKeyMaterial,
     addHiddenWallet, createWallet, unlock, lock,
   } = useWallet();
 
   // ----- setup card state -----
-  const [panicActive, setPanicActive] = useState(false);
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [showPin, setShowPin] = useState(false);
@@ -121,9 +120,8 @@ export default function PanicWipe() {
   const [demoErr, setDemoErr] = useState("");
 
   const refresh = useCallback(async () => {
-    try { setPanicActive(await hasPanicPin()); } catch { /* noop */ }
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
-  }, [hasPanicPin, hasVault]);
+  }, [hasVault]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -143,12 +141,6 @@ export default function PanicWipe() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleRemove = async () => {
-    setSaving(true);
-    try { await removePanicPin(); setSaved(false); await refresh(); }
-    finally { setSaving(false); }
   };
 
   // ----- in-app guarded wipe -----
@@ -271,20 +263,9 @@ export default function PanicWipe() {
 
       {/* Setup card — set / remove panic PIN */}
       <div className="p-5 rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {panicActive
-              ? <CheckCircle2 className="h-5 w-5 text-green-500" />
-              : <AlertTriangle className="h-5 w-5 text-yellow-500" />}
-            <span className="font-medium">
-              {panicActive ? "Panic/wipe PIN is active" : "No panic/wipe PIN set"}
-            </span>
-          </div>
-          {panicActive && (
-            <Button variant="outline" size="sm" disabled={saving} onClick={handleRemove}>
-              {saving ? "Removing…" : "Remove PIN"}
-            </Button>
-          )}
+        <div className="flex items-center gap-2 mb-4">
+          <Bomb className="h-5 w-5 text-destructive" />
+          <span className="font-medium">Set a panic/wipe PIN</span>
         </div>
 
         <div className="space-y-4">
@@ -329,7 +310,7 @@ export default function PanicWipe() {
           {error && <p className="text-xs text-destructive">{error}</p>}
           {saved && <p className="text-xs text-green-600">✓ Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}
           <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
-            {saving ? "Saving…" : panicActive ? "Update panic/wipe PIN" : "Set panic/wipe PIN"}
+            {saving ? "Saving…" : "Set / Change panic/wipe PIN"}
           </Button>
         </div>
       </div>

@@ -29,16 +29,22 @@
 // No crypto is implemented here — it calls only WalletProvider methods
 // (createWallet / importWallet / unlock / unlockWithBiometric / enableBiometricUnlock
 // / hasVault). In the legacy PASSWORD cohort, advanced security (duress / stealth /
-// panic) is set up in-app later and never appears in onboarding. In the v1 PIN
-// cohort it is different: onboarding provisions a real PIN, a duress PIN + decoy,
-// and an OPTIONAL panic PIN (so Face-ID-to-decoy is live from day one); stealth/
-// hidden remains an in-app, post-onboarding feature.
+// panic) is set up in-app later and never appears in onboarding. The v1 PIN cohort
+// follows the SAME principle: onboarding provisions ONLY a real PIN, then silently
+// provisions CHAFF into both deniability slots (no user-chosen duress/panic at
+// onboarding — see wallet-core/provisionChaff.js), so every PIN device is
+// structurally identical regardless of what the user later personalizes. Duress and
+// panic credentials are personalized later in-app (Security); stealth/hidden likewise
+// remains an in-app, post-onboarding feature.
 //
 // ── v1 PIN AUTH (UNAUDITED-PROVISIONAL) ──────────────────────────────────────
-// THREAT MODEL: v1 is SOFTWARE key derivation. It resists OBSERVED coercion —
-// Face ID and the duress PIN both yield the surrendered decoy; the panic PIN
-// wipes; and no 6-digit PIN produces an error-state oracle (Option A) or a timing
-// oracle (the 4th constant KDF slot, deniabilityUnlock.js). It does NOT fully
+// THREAT MODEL: v1 is SOFTWARE key derivation. It resists OBSERVED coercion — a
+// non-enrolled PIN falls through to the Option-A deterministic decoy (see
+// deniabilityUnlock.js / decoyFallback.js) rather than erroring, and once duress/
+// panic are personalized in-app the duress credential yields the surrendered decoy
+// while the panic credential wipes; no 6-digit PIN produces an error-state oracle
+// (Option A) or a timing oracle (the 4th constant KDF slot, deniabilityUnlock.js).
+// It does NOT fully
 // resist OFFLINE analysis of a SEIZED device: a 6-digit PIN (10^6) over Argon2id
 // is exhaustible offline in hours-days, and the PIN path cannot raise Argon2id
 // without diverging from the shared stealth-chaff params (a deniability tell) —
@@ -69,8 +75,6 @@ import {
 import { hasStoredUnlockSecret } from "@/lib/biometricUnlock";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
-import { getOrCreateDeviceSalt } from "@/wallet-core/decoyFallback";
-import { provisionPinRecovery } from "@/lib/pinRecovery";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
@@ -163,7 +167,8 @@ export default function WalletEntry() {
     isUnlocked, createWallet, importWallet, unlock, hasVault,
     enableBiometricUnlock, unlockWithBiometric,
     exploreMode, enterExplore, leaveExplore, confirmWalletBackup,
-    setDuressPin, setPanicPin,
+    setupPin, createWalletFromPendingPin, importWalletForPendingPin,
+    clearPendingPin, hasPendingPin,
   } = useWallet();
 
   // null until we know whether a vault exists; drives unlock vs first-run.
@@ -210,22 +215,26 @@ export default function WalletEntry() {
 
   // v1 PIN cohort. authModel is read once the vault-existence probe resolves.
   const [authModel, setAuthModelState] = useState("password");
-  // PIN onboarding sub-steps: 'real' -> 'real-confirm' -> 'duress' -> 'panic' ->
-  // (backup screen, gated by generatedSeed). Returning PIN users enter on the pad.
-  // PIN RECOVERY (§4) reuses these same steps but adds a 'seed' step at the front
-  // (enter the recovery phrase) and seeds the wallet from it instead of generating.
+  // PIN onboarding sub-steps: 'real' -> 'real-confirm' -> Dashboard. Returning PIN
+  // users enter on the pad. PIN RECOVERY (§4) reuses these same steps but adds a
+  // 'seed' step at the front (enter the recovery phrase) and seeds the wallet from
+  // it instead of generating.
   const [pinStep, setPinStep] = useState("real");
   // The validated recovery phrase held across the PIN-recovery steps (§4). Lives
   // only until finishPinRecover consumes it; wiped on success/abandon.
   const [recoverySeed, setRecoverySeed] = useState("");
   const [realPin, setRealPin] = useState("");
   const [realPinConfirm, setRealPinConfirm] = useState("");
-  const [duressPin, setDuressPin_] = useState("");
-  const [panicPin, setPanicPin_] = useState("");
   const [unlockPin, setUnlockPin] = useState("");
-  // Hold the chosen duress PIN across onboarding so we can cache it for Face ID
-  // (Face-ID-to-decoy) at the end. A ref so it never lands in a render snapshot.
-  const duressPinRef = useRef("");
+  // PHASE 2 (post-PIN, from the empty dashboard): the seed textarea for "Import an
+  // existing seed", and a toggle for the Phase-2 import sub-view within the choose
+  // block. The PIN is the credential here — there is NO vault-password field.
+  const [importPhrasePin, setImportPhrasePin] = useState("");
+  const [choosePinImport, setChoosePinImport] = useState(false);
+  // True while a PIN wallet is being ATOMICALLY provisioned (create + both chaff
+  // slots + cohort + salt). Holds the dashboard back until everything is committed;
+  // on failure the vault is torn down (fail closed) and we show an honest error.
+  const [provisioning, setProvisioning] = useState(false);
 
   // Resolve biometric availability once on mount (cheap; used by both the
   // onboarding offer and the returning one-tap button).
@@ -348,70 +357,71 @@ export default function WalletEntry() {
     } finally { setBusy(false); }
   };
 
-  // Finish PIN onboarding (PROVISION phase): create the real wallet under the real
-  // PIN, provision a lived-in decoy under the duress PIN (so Face-ID-to-decoy works
-  // from day one), optionally set a panic PIN, mark the cohort, and seed the device
-  // salt. The Face-ID-to-decoy enrolment decision is made on the NEXT (seed-backup)
-  // screen via BiometricOffer and applied in finishPinBackup — so that toggle is
-  // actually functional (it renders AFTER this runs). The transient plaintext PIN
-  // React states are wiped here as soon as the vault layer has consumed them
-  // (parity with finishCreate's createdPasswordRef hygiene); duressPinRef survives
-  // to the backup screen because Face-ID caches the DURESS PIN there, never the real.
-  const finishPinCreate = async () => {
-    setBusy(true);
-    try {
-      const seed = await createWallet(realPin);          // real wallet, real PIN
-      await setDuressPin(duressPinRef.current);          // decoy under duress PIN
-      if (panicPin) { try { await setPanicPin(panicPin); } catch { /* optional */ } }
-      setAuthModel("pin");                               // select PIN surface + Option A
-      getOrCreateDeviceSalt();                           // seed the deterministic-decoy salt
-      setRealPin(""); setRealPinConfirm(""); setDuressPin_(""); setPanicPin_(""); // wipe transient PINs
-      setGeneratedSeed(seed);  // hold on the mandatory backup screen
-      setShowSeed(false);
-    } catch (e) { setError(e?.message || "Failed to create wallet"); }
-    finally { setBusy(false); }
+  // PHASE 1: PIN setup writes credential markers only (provider.setupPin) and enters
+  // the empty dashboard. NO wallet is created here — that's Phase 2 (a separate
+  // dashboard action). pendingPin (in the provider) bridges the two.
+  const finishPinSetup = () => {
+    setupPin(realPin);                 // authModel + salt + pendingPin + enter explore
+    setAuthModelState("pin");
+    setRealPin(""); setRealPinConfirm(""); setError(""); setPinStep("real");
+    setView("choose");                 // post-Phase-1: leaving explore lands on the create/import choice
+    setChoosePinImport(false);         // reset the Phase-2 import sub-toggle
   };
 
-  // Seed-backup screen action (PIN cohort): confirm the mandatory backup, apply the
-  // Face-ID-to-decoy enrolment the user chose via BiometricOffer (caches the DURESS
-  // PIN, NEVER the real PIN), wipe the last live PIN ref, and enter the wallet (the
-  // vault is already unlocked, so clearing generatedSeed lets the Outlet render).
-  const finishPinBackup = async () => {
-    setBusy(true);
-    try {
-      confirmWalletBackup();
-      if (bioEnabled && bioStatus?.available) {
-        const ok = await enableBiometricUnlock(duressPinRef.current);
-        if (!ok) toast.warning("Face ID wasn't enabled — your PIN is always your way in.");
-      }
-    } finally {
-      duressPinRef.current = ""; // wipe the last live PIN string
-      setGeneratedSeed("");
-      setShowSeed(false);
-      setBusy(false);
-    }
+  // PHASE 2 (create): leave Phase 1's markers in place and atomically materialize the
+  // real wallet + both chaff slots under the in-memory pendingPin (provider method,
+  // fail-closed). The provisioning gate below holds the dashboard back until it commits.
+  const doCreateWallet = async () => {
+    setBusy(true); setProvisioning(true); setError("");
+    try { await createWalletFromPendingPin(); setProvisioning(false); }
+    catch {
+      clearPendingPin(); setProvisioning(false);
+      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
+      setError(msg);
+      toast.error(msg);
+    } finally { setBusy(false); }
+  };
+
+  // PHASE 2 (import): import an existing seed under the in-memory pendingPin via the
+  // provider method (PIN-cohort re-provision, so the device stays PIN cohort, never
+  // 'password').
+  const doImportWallet = async () => {
+    const phrase = importPhrasePin.trim().replace(/\s+/g, " ");
+    if (!phrase) return;
+    setBusy(true); setProvisioning(true); setError("");
+    try { await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
+    catch (e) {
+      clearPendingPin(); setProvisioning(false);
+      const msg = e?.message || "Couldn't import that seed phrase. Please set your PIN and try again.";
+      setError(msg);
+      toast.error(msg);
+    } finally { setBusy(false); }
   };
 
   // ---- PIN recovery (§4): forgot PIN -> restore seed, RE-PROVISION into the PIN
-  // cohort (NOT password). Mirrors finishPinCreate but seeds the wallet from the
-  // imported phrase, so the post-recovery entry surface is the identical PIN pad a
-  // non-recovered user sees — closing the cohort-transition leak the old recovery
-  // (handleImport -> setAuthModel("password")) introduced. No seed-backup screen:
-  // the user just supplied the seed. importWallet (inside provisionPinRecovery)
-  // unlocks the vault, so on success the Outlet renders the app. Fail-closed: a bad
-  // phrase throws BEFORE any cohort/slot change, leaving the existing PIN vault intact.
-  const finishPinRecover = async (panicValue) => {
-    setBusy(true);
+  // cohort (NOT password), so the post-recovery entry surface is the identical PIN pad
+  // a non-recovered user sees — closing the cohort-transition leak the old recovery
+  // (handleImport -> setAuthModel("password")) introduced. Routes through the SAME
+  // provider Phase-1/Phase-2 spine: setupPin(newPin) bridges the in-memory pendingPin,
+  // then importWalletForPendingPin (the PIN-cohort re-provision) seeds + provisions +
+  // unlocks in one fail-closed block. No seed-backup screen — the user supplied the seed.
+  // Fail-closed: a bad phrase throws inside the import, leaving the existing vault
+  // untouched; we clear the bridged pendingPin so no stale PIN lingers.
+  const finishPinRecover = async () => {
+    setBusy(true); setProvisioning(true); setError("");
     try {
-      await provisionPinRecovery(
-        { importWallet, setDuressPin, setPanicPin, setAuthModel, getOrCreateDeviceSalt },
-        { seed: recoverySeed, realPin, duressPin: duressPinRef.current, panicPin: panicValue },
-      );
-      setAuthModelState("pin"); // keep the component's cohort state in sync (parity with handleImport)
-      setRecoverySeed(""); setRealPin(""); setRealPinConfirm(""); setDuressPin_(""); setPanicPin_("");
-      duressPinRef.current = "";
+      setupPin(realPin);               // bridge the new PIN as pendingPin (markers + salt)
+      await importWalletForPendingPin(recoverySeed);
+      setAuthModelState("pin");
+      setRecoverySeed(""); setRealPin(""); setRealPinConfirm("");
       setRecovering(false);
+      setProvisioning(false);
     } catch (e) {
+      // setupPin() flipped exploreMode true while bridging the new PIN; a failed
+      // recovery must not leave the session stuck in explore. Inert today (the
+      // recover view stays mounted), but keeps the failure state coherent.
+      leaveExplore();
+      clearPendingPin(); setProvisioning(false);
       setError(e?.message || "Couldn't restore from that seed phrase");
     } finally { setBusy(false); }
   };
@@ -485,13 +495,33 @@ export default function WalletEntry() {
   // Unlocked → reveal the app. The ONLY exception is the one-time seed-backup
   // screen during first-run create: the vault is already unlocked, but we keep
   // holding while `generatedSeed` is set until the user confirms the backup.
+  // Hold the dashboard back while a PIN wallet is being atomically provisioned — it
+  // must not render until primary + both chaff slots + cohort marker + salt are all
+  // committed (fail-closed onboarding). On failure the vault is torn down and we
+  // fall through to the PIN entry with an error.
+  if (provisioning) {
+    return (
+      <EntryShell error={error}>
+        <div className="p-6 rounded-xl border border-border bg-card text-center space-y-3">
+          <RefreshCw className="h-6 w-6 text-primary mx-auto animate-spin" />
+          <p className="text-sm font-medium">Setting up your wallet…</p>
+          <p className="text-xs text-muted-foreground">Securing your wallet on this device. This takes a moment.</p>
+        </div>
+      </EntryShell>
+    );
+  }
+
   if (isUnlocked && !generatedSeed) return <Outlet />;
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
   // Render the real app behind a persistent create/import CTA. Tapping it (or any
   // wallet-requiring action via requireWallet()) leaves explore → the choose view.
   if (vaultExists === false && exploreMode && !generatedSeed) {
-    return <ExploreShell onCreate={leaveExplore}><Outlet /></ExploreShell>;
+    // Leaving explore lands on the choose block, which branches on hasPendingPin
+    // (pre-PIN → pin-create CTA; post-PIN → Phase-2 Create/Import). Reset view +
+    // the Phase-2 import sub-toggle so the branch reliably takes over.
+    const onCreate = () => { setError(""); setChoosePinImport(false); setView("choose"); leaveExplore(); };
+    return <ExploreShell onCreate={onCreate}><Outlet /></ExploreShell>;
   }
 
   // Initial probe in flight (only relevant while still locked).
@@ -541,8 +571,8 @@ export default function WalletEntry() {
           type="button"
           onClick={() => {
             setError(""); setRecovering(true);
-            setRecoverySeed(""); setRealPin(""); setRealPinConfirm(""); setDuressPin_(""); setPanicPin_("");
-            duressPinRef.current = ""; setPinStep("seed"); setView("pin-recover");
+            setRecoverySeed(""); setRealPin(""); setRealPinConfirm("");
+            setPinStep("seed"); setView("pin-recover");
           }}
           className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
@@ -631,19 +661,67 @@ export default function WalletEntry() {
     );
   }
 
-  // ---- View: First-run choose (ONE clear decision) ----
+  // ---- View: choose (no vault, not exploring) ----
+  // Reached by LEAVING explore (the "Create or import" CTA or any wallet-requiring
+  // action via requireWallet()). Branches on hasPendingPin:
+  //   • PIN already set (Phase 1 done) → Phase-2 choice: materialize the wallet now,
+  //     either fresh (createWalletFromPendingPin) or from an imported seed
+  //     (importWalletForPendingPin). The PIN is the credential — NO password field.
+  //   • No PIN yet → a single CTA into PIN-create (Phase 1); both create and import
+  //     require a PIN first.
   if (view === "choose") {
+    if (hasPendingPin) {
+      return (
+        <EntryShell error={error}>
+          <div className="p-6 rounded-xl border border-dashed border-border bg-card space-y-4">
+            {!choosePinImport ? (
+              <>
+                <div className="text-center space-y-2">
+                  <Wallet className="h-8 w-8 text-primary mx-auto" />
+                  <p className="text-sm font-medium">No wallet yet</p>
+                  <p className="text-xs text-muted-foreground">Your PIN is set. Create a fresh self-custody wallet, or import an existing seed phrase — it'll be encrypted under your PIN on this device. Keys never leave it.</p>
+                </div>
+                <div className="space-y-2">
+                  <Button className="w-full gap-2" disabled={busy} onClick={doCreateWallet}>
+                    <Shield className="h-4 w-4" /> Create Wallet
+                  </Button>
+                  <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(true); }}>
+                    <Download className="h-4 w-4" /> Import an existing seed
+                  </Button>
+                </div>
+                <button type="button" onClick={() => { setError(""); enterExplore(); }} className="block w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  ← Keep exploring (view only)
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+                <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally under your PIN — it never leaves this device.</span>
+                </div>
+                <div>
+                  <Label>12 or 24-word BIP-39 Seed Phrase</Label>
+                  <textarea value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+                <Button className="w-full gap-2" disabled={!importPhrasePin.trim() || busy} onClick={doImportWallet}>
+                  {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Restore / Import
+                </Button>
+              </>
+            )}
+          </div>
+        </EntryShell>
+      );
+    }
     return (
       <EntryShell error={error}>
         <div className="p-6 rounded-xl border border-dashed border-border bg-card text-center space-y-4">
           <Wallet className="h-8 w-8 text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">No wallet on this device yet. Create a new self-custody wallet, or import an existing seed phrase. Your password encrypts it locally — keys never leave this device.</p>
+          <p className="text-sm font-medium">Set up your wallet</p>
+          <p className="text-sm text-muted-foreground">No wallet on this device yet. Set a 6-digit PIN, then create a new self-custody wallet or import an existing seed phrase. Your PIN encrypts it locally — keys never leave this device.</p>
           <div className="space-y-2">
-            <Button className="w-full gap-2" onClick={() => { setError(""); setBioEnabled(false); setPinStep("real"); setRealPin(""); setRealPinConfirm(""); setDuressPin_(""); setPanicPin_(""); duressPinRef.current = ""; setView("pin-create"); }}>
-              <Shield className="h-4 w-4" /> Create a new wallet
-            </Button>
-            <Button variant="outline" className="w-full gap-2" onClick={() => { setError(""); setBioEnabled(false); setRecovering(false); setView("import"); }}>
-              <Download className="h-4 w-4" /> Import an existing seed
+            <Button className="w-full gap-2" onClick={() => { setError(""); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("pin-create"); }}>
+              <Shield className="h-4 w-4" /> Create or import a wallet
             </Button>
           </div>
           <button type="button" onClick={() => enterExplore()} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -654,100 +732,36 @@ export default function WalletEntry() {
     );
   }
 
-  // ---- View: Create (PIN cohort) — real PIN → confirm → duress → optional panic → seed backup ----
+  // ---- View: Create (PIN cohort) — choose PIN → confirm → Dashboard ----
   if (view === "pin-create") {
-    if (!generatedSeed) {
-      return (
-        <EntryShell error={error}>
-          <div className="space-y-5">
-            <button type="button" onClick={() => { setError(""); setView("choose"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
-
-            {pinStep === "real" && (
-              <div className="space-y-3 text-center">
-                <p className="text-sm font-medium">Choose a 6-digit PIN</p>
-                <p className="text-xs text-muted-foreground">This unlocks your wallet. It encrypts your seed on this device (Argon2id + AES-256-GCM).</p>
-                <PinPad value={realPin} onChange={setRealPin} onComplete={() => { setError(""); setRealPinConfirm(""); setPinStep("real-confirm"); }} />
-              </div>
-            )}
-
-            {pinStep === "real-confirm" && (
-              <div className="space-y-3 text-center">
-                <p className="text-sm font-medium">Confirm your PIN</p>
-                <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
-                  if (p !== realPin) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
-                  setError(""); setPinStep("duress");
-                }} />
-              </div>
-            )}
-
-            {pinStep === "duress" && (
-              <div className="space-y-3 text-center">
-                <p className="text-sm font-medium">Set a duress PIN</p>
-                <p className="text-xs text-muted-foreground">If you're ever forced to unlock, enter this instead — it opens a separate everyday wallet, never your real one. Face ID opens this wallet too. Use it day-to-day so it looks lived-in.</p>
-                <PinPad value={duressPin} onChange={setDuressPin_} onComplete={(p) => {
-                  if (p === realPin) { setError("Your duress PIN must be different from your real PIN."); setDuressPin_(""); return; }
-                  setError(""); duressPinRef.current = p; setPinStep("panic");
-                }} />
-              </div>
-            )}
-
-            {pinStep === "panic" && (
-              <div className="space-y-3 text-center">
-                <p className="text-sm font-medium">Set a panic/wipe PIN <span className="text-muted-foreground font-normal">(optional)</span></p>
-                <p className="text-xs text-muted-foreground">Entering this at unlock <b>irreversibly wipes</b> this device's wallet copy. Choose something you'd never type by accident, or skip it.</p>
-                <PinPad value={panicPin} onChange={setPanicPin_} onComplete={(p) => {
-                  if (p === realPin || p === duressPinRef.current) { setError("Your panic/wipe PIN must differ from your real and duress PINs."); setPanicPin_(""); return; }
-                  setError(""); finishPinCreate();
-                }} />
-                <button type="button" disabled={busy} onClick={() => { setPanicPin_(""); finishPinCreate(); }} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Skip — don't set a panic/wipe PIN
-                </button>
-              </div>
-            )}
-          </div>
-        </EntryShell>
-      );
-    }
     return (
       <EntryShell error={error}>
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-border bg-card">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold">Your Seed Phrase (shown once)</p>
-              <div className="flex gap-2">
-                <button onClick={() => setShowSeed(s => !s)} aria-label={showSeed ? "Hide seed phrase" : "Reveal seed phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                <button onClick={copySeed} aria-label={copied ? "Seed phrase copied" : "Copy seed phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
-              </div>
+        <div className="space-y-5">
+          <button type="button" onClick={() => { setError(""); clearPendingPin(); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("choose"); enterExplore(); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+
+          {pinStep === "real" && (
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-medium">Choose a 6-digit PIN</p>
+              <p className="text-xs text-muted-foreground">This unlocks your wallet. It encrypts your wallet on this device (Argon2id + AES-256-GCM).</p>
+              <PinPad value={realPin} onChange={setRealPin} onComplete={() => { setError(""); setRealPinConfirm(""); setPinStep("real-confirm"); }} />
             </div>
-            {showSeed ? (
-              <div className="grid grid-cols-3 gap-2">
-                {generatedSeed.split(" ").map((w, i) => (
-                  <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary text-xs">
-                    <span className="text-muted-foreground w-4 text-right mono-value">{i + 1}.</span>
-                    <span className="mono-value font-semibold">{w}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-20 flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">Tap the eye icon to reveal your seed phrase</p>
-              </div>
-            )}
-          </div>
-          <div className="p-3 rounded-xl bg-secondary/30 text-xs text-muted-foreground flex items-start gap-2">
-            <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <span>Back up your phrase before continuing — it is never shown again and we cannot recover it for you.</span>
-          </div>
-          <BiometricOffer status={bioStatus} enabled={bioEnabled} onToggle={setBioEnabled} />
-          <Button className="w-full gap-2" disabled={busy} onClick={finishPinBackup}>
-            {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} I've backed it up — Enter Wallet
-          </Button>
+          )}
+
+          {pinStep === "real-confirm" && (
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-medium">Confirm your PIN</p>
+              <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
+                if (p !== realPin) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
+                finishPinSetup();
+              }} />
+            </div>
+          )}
         </div>
       </EntryShell>
     );
   }
 
-  // ---- View: PIN recovery (§4) — seed → new PIN → confirm → duress → optional panic ----
+  // ---- View: PIN recovery (§4) — seed → new PIN → confirm → Dashboard ----
   // Re-provisions a forgotten-PIN restore back into the PIN cohort so the result is
   // indistinguishable from a fresh onboarding (same PIN pad, same slots). No seed-
   // backup screen — the user just supplied the seed. finishPinRecover does the work.
@@ -794,33 +808,8 @@ export default function WalletEntry() {
               <p className="text-sm font-medium">Confirm your new PIN</p>
               <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
                 if (p !== realPin) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
-                setError(""); setPinStep("duress");
+                setError(""); finishPinRecover();
               }} />
-            </div>
-          )}
-
-          {pinStep === "duress" && (
-            <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Set a duress PIN</p>
-              <p className="text-xs text-muted-foreground">If you're ever forced to unlock, enter this instead — it opens a separate everyday wallet, never your real one. Face ID opens this wallet too. Use it day-to-day so it looks lived-in.</p>
-              <PinPad value={duressPin} onChange={setDuressPin_} onComplete={(p) => {
-                if (p === realPin) { setError("Your duress PIN must be different from your real PIN."); setDuressPin_(""); return; }
-                setError(""); duressPinRef.current = p; setPinStep("panic");
-              }} />
-            </div>
-          )}
-
-          {pinStep === "panic" && (
-            <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Set a panic/wipe PIN <span className="text-muted-foreground font-normal">(optional)</span></p>
-              <p className="text-xs text-muted-foreground">Entering this at unlock <b>irreversibly wipes</b> this device's wallet copy. Choose something you'd never type by accident, or skip it.</p>
-              <PinPad value={panicPin} onChange={setPanicPin_} onComplete={(p) => {
-                if (p === realPin || p === duressPinRef.current) { setError("Your panic/wipe PIN must differ from your real and duress PINs."); setPanicPin_(""); return; }
-                setError(""); finishPinRecover(p);
-              }} />
-              <button type="button" disabled={busy} onClick={() => { setPanicPin_(""); finishPinRecover(""); }} className="text-xs text-muted-foreground hover:text-foreground underline">
-                Skip — don't set a panic/wipe PIN
-              </button>
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  getAuthModel, setAuthModel, isPinModel, shouldCacheUnlockSecret,
+  getAuthModel, setAuthModel, isPinModel, shouldCacheUnlockSecret, clearAuthModel,
 } from '../authModel.js';
 
 describe('authModel — cohort marker', () => {
@@ -19,6 +19,13 @@ describe('authModel — cohort marker', () => {
 
   it('setAuthModel throws on an unknown model (fail fast on misclassification)', () => {
     expect(() => setAuthModel('magic')).toThrow(/Unknown auth model/);
+  });
+
+  it('clearAuthModel reverts to the password default (fail-closed teardown)', () => {
+    setAuthModel('pin');
+    expect(getAuthModel()).toBe('pin');
+    clearAuthModel();
+    expect(getAuthModel()).toBe('password');
   });
 });
 
