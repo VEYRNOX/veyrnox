@@ -33,7 +33,7 @@ import {
 } from "@/lib/decoyBalance";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
-  Shield, Eye, EyeOff, CheckCircle2, AlertTriangle, Lock, Unlock, FlaskConical,
+  Shield, Eye, EyeOff, AlertTriangle, Lock, Unlock, FlaskConical,
   Copy, Check, RefreshCw, Coins, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,12 +87,11 @@ export default function DuressPin() {
   const wallet = useWallet();
   const {
     isUnlocked, isDecoy, accounts,
-    hasVault, hasDuressPin, setDuressPin, removeDuressPin,
+    hasVault, setDuressPin, removeDuressPin,
     createWallet, unlock, lock, clearVault,
   } = wallet;
 
   // ----- setup card state -----
-  const [duressActive, setDuressActive] = useState(false);
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [showPin, setShowPin] = useState(false);
@@ -111,9 +110,8 @@ export default function DuressPin() {
   const [busy, setBusy] = useState("");
 
   const refresh = useCallback(async () => {
-    try { setDuressActive(await hasDuressPin()); } catch { /* noop */ }
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
-  }, [hasDuressPin, hasVault]);
+  }, [hasVault]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -141,12 +139,6 @@ export default function DuressPin() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleRemove = async () => {
-    setSaving(true);
-    try { await removeDuressPin(); setSavedPhrase(""); setSavedAddr(""); await refresh(); }
-    finally { setSaving(false); }
   };
 
   // DEMO ONLY: simulate funding the decoy address with a plausible small balance.
@@ -274,20 +266,9 @@ export default function DuressPin() {
 
       {/* Setup card */}
       <div className="p-5 rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {duressActive
-              ? <CheckCircle2 className="h-5 w-5 text-green-500" />
-              : <AlertTriangle className="h-5 w-5 text-yellow-500" />}
-            <span className="font-medium">
-              {duressActive ? "Duress PIN is active" : "No Duress PIN set"}
-            </span>
-          </div>
-          {duressActive && (
-            <Button variant="destructive" size="sm" disabled={saving} onClick={handleRemove}>
-              {saving ? "Removing…" : "Remove PIN"}
-            </Button>
-          )}
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="h-5 w-5 text-primary" />
+          <span className="font-medium">Set a custom duress PIN</span>
         </div>
 
         <div className="space-y-4">
@@ -324,7 +305,7 @@ export default function DuressPin() {
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
-            {saving ? "Saving…" : duressActive ? "Update Duress PIN" : "Set Duress PIN"}
+            {saving ? "Saving…" : "Set / Change duress PIN"}
           </Button>
         </div>
 

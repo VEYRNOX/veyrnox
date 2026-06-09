@@ -15,7 +15,7 @@ import { isPasskeyUnlockEnabled, isPasskeyRegistered } from "@/lib/passkey";
 import { loadAutoLockValue, AUTO_LOCK_OPTIONS } from "@/lib/session";
 import {
   Shield, ShieldAlert, ShieldCheck, AlertTriangle, ChevronRight, Loader2,
-  Fingerprint, KeyRound, Lock, Ghost, Bomb, ScanSearch, ShieldOff, FilterX, ShieldQuestion,
+  Fingerprint, KeyRound, Lock, Ghost, ScanSearch, ShieldOff, FilterX, ShieldQuestion,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,7 +27,8 @@ import {
 //   • addresses   → base44 Transaction     + securityPosture.screenAddressHistory
 //                   (reuses wallet-core/evm/poison.js look-alike + flagged screen)
 //   • protections → lib/biometric, lib/passkey, lib/session + WalletProvider
-//                   (hasDuressPin / hasStealthPool / hasPanicPin)
+//                   (stealth-pool marker only; duress/panic configured-state is
+//                    NOT read or shown — always-provisioned slots = coercion oracle)
 // LOCAL-ONLY: every input is data the app already holds on-device (demo seeds, or
 // existing local reads on a real build). No new third-party source, no phone-home.
 // HONESTY: surfaces KNOWN, locally-detectable signals — it never claims the wallet
@@ -99,8 +100,11 @@ export default function SecurityDashboard() {
     queryFn: () => base44.entities.Transaction.list(),
   });
 
-  // ── Feature toggles. Sync ones read directly; the IndexedDB-backed S3 markers
-  //    (duress/stealth/panic) are resolved via WalletProvider, off when unset. ──
+  // ── Feature toggles. Sync ones read directly; the stealth-pool marker is
+  //    resolved via WalletProvider. NOTE: duress/panic configured-state is
+  //    deliberately NOT read or displayed — those slots are always-provisioned,
+  //    so any "is it set?" readout would be both wrong and a coercion oracle
+  //    (deniability invariant — see src/__tests__/security-framing.test.js). ──
   const autoLockValue = loadAutoLockValue();
   const autoLockLabel = (AUTO_LOCK_OPTIONS.find((o) => o.value === autoLockValue) || {}).label || "5 min";
   const autoLockNever = autoLockValue === "never";
@@ -110,14 +114,12 @@ export default function SecurityDashboard() {
   const { data: s3 = {} } = useQuery({
     queryKey: ["security-posture-s3"],
     queryFn: async () => {
-      // hasDuressPin / hasStealthPool / hasPanicPin are non-destructive store
-      // reads (no key material, no network). Best-effort: default to off on error.
-      const [duress, stealth, panic] = await Promise.all([
-        wallet.hasDuressPin().catch(() => false),
-        wallet.hasStealthPool().catch(() => false),
-        wallet.hasPanicPin().catch(() => false),
-      ]);
-      return { duress, stealth, panic };
+      // hasStealthPool is a non-destructive store read (no key material, no
+      // network). The stealth pool is universally seeded and pre-dates the
+      // deniability work; it is NOT the duress/panic oracle. Best-effort: off
+      // on error.
+      const stealth = await wallet.hasStealthPool().catch(() => false);
+      return { stealth };
     },
   });
 
@@ -168,7 +170,7 @@ export default function SecurityDashboard() {
                   {highCount > 0 && <span className="text-destructive"> · {highCount} high-risk</span>}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Protections on: {[biometricOn && "biometric", passkeyOn && "passkey", !autoLockNever && `auto-lock ${autoLockLabel}`, s3.duress && "duress PIN", s3.panic && "panic wipe"].filter(Boolean).join(", ") || "none"}.
+                  Protections on: {[biometricOn && "biometric", passkeyOn && "passkey", !autoLockNever && `auto-lock ${autoLockLabel}`].filter(Boolean).join(", ") || "none"}.
                 </p>
               </>
             ) : (
@@ -241,9 +243,11 @@ export default function SecurityDashboard() {
           <FeatureRow icon={Fingerprint} label="Biometric unlock" on={biometricOn} detail={biometricOn ? "Required to unlock" : "Not required"} path="/biometric-auth" />
           <FeatureRow icon={KeyRound} label="Passkey unlock" on={passkeyOn} detail={passkeyOn ? "Registered & required" : isPasskeyRegistered() ? "Registered, not required" : "Not registered"} path="/settings" />
           <FeatureRow icon={Lock} label="Auto-lock" on={!autoLockNever} detail={autoLockNever ? "Never — won't lock when idle" : `Locks after ${autoLockLabel} idle`} path="/settings" />
-          <FeatureRow icon={Lock} label="Duress PIN" on={s3.duress} detail={s3.duress ? "Decoy wallet configured" : "No decoy configured"} path="/duress-pin" gapWhenOff={false} />
+          {/* Duress PIN / Panic wipe rows intentionally omitted: those slots are
+              always-provisioned, so showing a configured-vs-not state would be both
+              wrong and a coercion oracle (deniability invariant). They remain
+              reachable via Settings. */}
           <FeatureRow icon={Ghost} label="Stealth wallets" on={s3.stealth} detail={s3.stealth ? "Hidden-wallet pool seeded" : "Pool not seeded"} path="/stealth-wallets" gapWhenOff={false} />
-          <FeatureRow icon={Bomb} label="Panic wipe" on={s3.panic} detail={s3.panic ? "Panic/wipe PIN configured" : "No panic/wipe PIN"} path="/panic-wipe" gapWhenOff={false} />
         </div>
       </div>
 

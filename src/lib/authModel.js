@@ -28,6 +28,11 @@ export function setAuthModel(model) {
 
 export function isPinModel() { return getAuthModel() === 'pin'; }
 
+/** Clear the persisted cohort marker (used by fail-closed onboarding teardown). */
+export function clearAuthModel() {
+  try { localStorage.removeItem(KEY); } catch { /* best-effort */ }
+}
+
 /**
  * Whether changePassword may re-cache the NEW secret behind the biometric gate.
  * REVIEW ITEM 3: in the PIN cohort the biometric cache holds the DURESS PIN, and

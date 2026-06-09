@@ -15,7 +15,7 @@ vi.mock('hash-wasm', async (importOriginal) => {
   };
 });
 
-import { deriveDeterministicDecoyMnemonic, getOrCreateDeviceSalt } from '../decoyFallback.js';
+import { deriveDeterministicDecoyMnemonic, getOrCreateDeviceSalt, clearDeviceSalt } from '../decoyFallback.js';
 import { KDF_PARAMS } from '../vault.js';
 import { validateMnemonic } from '../mnemonic.js';
 
@@ -57,6 +57,13 @@ describe('decoyFallback — deterministic, memory-hard decoy derivation', () => 
     expect(Array.from(s1)).toEqual(Array.from(s2));
     expect(localStorage.getItem(SALT_KEY)).toBeTruthy();
     expect(s1.length).toBe(16);
+  });
+
+  it('clearDeviceSalt removes the persisted salt (fail-closed teardown)', () => {
+    getOrCreateDeviceSalt();
+    expect(localStorage.getItem(SALT_KEY)).toBeTruthy();
+    clearDeviceSalt();
+    expect(localStorage.getItem(SALT_KEY)).toBeNull();
   });
 
   it('getOrCreateDeviceSalt returns a usable 16-byte salt even when storage read throws', () => {
