@@ -376,7 +376,9 @@ export default function WalletEntry() {
     try { await createWalletFromPendingPin(); setProvisioning(false); }
     catch {
       clearPendingPin(); setProvisioning(false);
-      setError("Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.");
+      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
+      setError(msg);
+      toast.error(msg);
     } finally { setBusy(false); }
   };
 
@@ -390,7 +392,9 @@ export default function WalletEntry() {
     try { await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
     catch (e) {
       clearPendingPin(); setProvisioning(false);
-      setError(e?.message || "Couldn't import that seed phrase. Please set your PIN and try again.");
+      const msg = e?.message || "Couldn't import that seed phrase. Please set your PIN and try again.";
+      setError(msg);
+      toast.error(msg);
     } finally { setBusy(false); }
   };
 
