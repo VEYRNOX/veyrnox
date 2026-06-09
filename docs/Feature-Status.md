@@ -115,7 +115,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 ## 6. Security — S3 access & recovery (deniability stack — PROVISIONAL, testnet/demo)
 - Duress PIN / decoy wallet — ✅ (`duress.js`)
 - Stealth / hidden wallets (deniable chaff-slot pool) — ✅ (`stealth.js`; 256-slot pool after SAST M-1 collision fix; multi-chain reveal; move-existing variant)
-- Panic wipe (emergency local key destruction) — ✅ (`panic.js`; panic PIN at unlock + in-app guarded wipe; `inspectKeyMaterial()`)
+- Panic wipe (emergency local key destruction) — ✅ (`panic.js`; panic/wipe PIN at unlock + in-app guarded wipe; `inspectKeyMaterial()`)
 - Constant-KDF unlock timing across the deniability stack — ✅ (`deniabilityUnlock.js`; SAST M-2 fix)
 - Hardware wallet (Ledger / Trezor) — 📋 UI shell only (`HardwareWalletPage.jsx`, simulated connect; no HID/WebUSB)
 - Login activity (+ map) — ❌ re-scoped / out of scope (needs a backend removed with base44; a location/access-history log conflicts with the deniability stack). Best-of-breed successor specced below: "last successful unlock" timestamp. See S3 decision note.

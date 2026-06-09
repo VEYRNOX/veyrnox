@@ -243,7 +243,7 @@ export default function SecurityDashboard() {
           <FeatureRow icon={Lock} label="Auto-lock" on={!autoLockNever} detail={autoLockNever ? "Never — won't lock when idle" : `Locks after ${autoLockLabel} idle`} path="/settings" />
           <FeatureRow icon={Lock} label="Duress PIN" on={s3.duress} detail={s3.duress ? "Decoy wallet configured" : "No decoy configured"} path="/duress-pin" gapWhenOff={false} />
           <FeatureRow icon={Ghost} label="Stealth wallets" on={s3.stealth} detail={s3.stealth ? "Hidden-wallet pool seeded" : "Pool not seeded"} path="/stealth-wallets" gapWhenOff={false} />
-          <FeatureRow icon={Bomb} label="Panic wipe" on={s3.panic} detail={s3.panic ? "Panic PIN configured" : "No panic PIN"} path="/panic-wipe" gapWhenOff={false} />
+          <FeatureRow icon={Bomb} label="Panic wipe" on={s3.panic} detail={s3.panic ? "Panic/wipe PIN configured" : "No panic/wipe PIN"} path="/panic-wipe" gapWhenOff={false} />
         </div>
       </div>
 

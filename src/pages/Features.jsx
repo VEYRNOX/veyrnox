@@ -237,7 +237,7 @@ const featureCategories = [
         name: "Panic Wipe",
         status: "available",
         summary: "Irreversible local key-material destruction",
-        explanation: "An emergency wipe irreversibly destroys local key material — available both as a panic PIN at unlock and as a guarded in-app action. Destroys local data only; on-chain funds are unaffected."
+        explanation: "An emergency wipe irreversibly destroys local key material — available both as a panic/wipe PIN at unlock and as a guarded in-app action. Destroys local data only; on-chain funds are unaffected."
       },
       {
         name: "Crypto Will / Inheritance",
