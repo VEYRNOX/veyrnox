@@ -11,8 +11,8 @@
 // kind of device a fresh PIN onboarding produces, so the post-recovery surface is
 // the identical PIN pad.
 //
-// It mirrors WalletEntry.finishPinCreate, but seeds the wallet from the IMPORTED
-// seed instead of a generated one:
+// It mirrors the Phase-2 atomic create path (provisionPinWallet), but seeds the
+// wallet from the IMPORTED seed instead of a generated one:
 //   1. importWallet(seed, realPin)        — encrypt the recovered seed under the new PIN
 //   2. provisionDeniabilityChaff()         — silently provision BOTH deniability slots
 //                                            with chaff, exactly as fresh PIN onboarding,
