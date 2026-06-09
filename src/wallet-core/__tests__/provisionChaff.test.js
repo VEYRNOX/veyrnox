@@ -102,4 +102,18 @@ describe('provisionDeniabilityChaff', () => {
     expect(await getBlob('secondary')).toEqual(realDuress); // untouched
     expect(await hasPanicVault()).toBe(true);               // backfilled
   });
+
+  it('chaff slots are not openable by guessable passwords (throwaway pw is unrecoverable)', async () => {
+    await provisionDeniabilityChaff();
+    // The chaff blobs exist...
+    expect(await hasDuressVault()).toBe(true);
+    expect(await hasPanicVault()).toBe(true);
+    // ...but no guessable PIN opens them — they are pure unrecoverable chaff.
+    expect(await tryDuressUnlock('')).toBeNull();
+    expect(await tryDuressUnlock('000000')).toBeNull();
+    expect(await tryDuressUnlock('123456')).toBeNull();
+    expect(await tryPanicUnlock('')).toBe(false);
+    expect(await tryPanicUnlock('000000')).toBe(false);
+    expect(await tryPanicUnlock('123456')).toBe(false);
+  });
 });
