@@ -82,6 +82,7 @@ import {
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
 import { getOrCreateDeviceSalt } from '@/wallet-core/decoyFallback';
+import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
 import { getAuthModel, shouldCacheUnlockSecret } from '@/lib/authModel';
 import {
   isBiometricUnlockEnabled,
@@ -967,6 +968,13 @@ export function WalletProvider({ children }) {
       setIsHidden(false);
       refreshWalletsState();
       refreshPortfoliosState();
+      // SELF-HEAL: a PIN-cohort device must always carry both deniability slots
+      // (storage-footprint parity). If an earlier provision failed, backfill chaff
+      // now. Idempotent + never-overwrite, so this never clobbers a personalized
+      // credential and never runs for the password cohort. Best-effort (mirrors
+      // ensureStealthPool): a storage hiccup must not block unlock. opts.pinModel
+      // is the PIN-cohort gate (pinModel const is scoped to the catch block above).
+      if (opts.pinModel === true) void provisionDeniabilityChaff().catch(() => {});
     } else {
       // DECOY / HIDDEN: a single-wallet, EPHEMERAL session. We do NOT persist a
       // container or touch walletMeta — the duress/stealth storages stay exactly
