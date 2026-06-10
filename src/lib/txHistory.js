@@ -147,6 +147,11 @@ export function normalizeBtcTx(tx, address, networkKey) {
   const magnitude = net < 0n ? -net : net;
   const net_info = getBtcNetworkInfo(networkKey);
   const confirmed = !!tx.status?.confirmed;
+  // Fee enrichment (native units). Esplora reports the absolute tx fee in sats as
+  // a top-level `fee`. We paid it only if we funded any input (inFromUs > 0); on a
+  // pure receive the sender paid it, so it must not be attributed to us. If the
+  // indexer omits the fee we report null (fail honest) rather than guessing.
+  const feeReported = tx.fee != null && Number.isFinite(Number(tx.fee));
   return {
     id: tx.txid,
     hash: tx.txid,
@@ -156,6 +161,8 @@ export function normalizeBtcTx(tx, address, networkKey) {
     type,
     status: confirmed ? 'confirmed' : 'pending',
     amount: trimAmount((Number(magnitude) / SATS_PER_BTC).toFixed(8)),
+    feeNative: feeReported ? trimAmount((Number(tx.fee) / SATS_PER_BTC).toFixed(8)) : null,
+    feePaidByUs: inFromUs > 0n,
     counterparty,
     timestamp: confirmed && tx.status?.block_time ? tx.status.block_time * 1000 : null,
     explorerUrl: net_info ? `${net_info.explorer}/tx/${tx.txid}` : '',
@@ -204,6 +211,13 @@ export function normalizeSolEntry(entry, address, networkKey) {
   }
 
   const blockTime = sig.blockTime ?? parsed?.blockTime ?? null;
+  // Fee enrichment (native units). Solana charges the fee to the fee payer, which
+  // is always the first account (accountKeys[0]); we paid it only if that account
+  // is ours. `meta.fee` is the absolute fee in lamports — null if the RPC omits it
+  // (fail honest). A failed tx still pays its fee, so this is reported regardless.
+  const feePayer = msg?.accountKeys?.[0];
+  const feePayerAddr = feePayer?.pubkey || feePayer || null;
+  const feeReported = meta?.fee != null && Number.isFinite(Number(meta.fee));
   return {
     id: sig.signature,
     hash: sig.signature,
@@ -213,6 +227,8 @@ export function normalizeSolEntry(entry, address, networkKey) {
     type,
     status,
     amount: trimAmount((lamports / LAMPORTS_PER_SOL).toFixed(9)),
+    feeNative: feeReported ? trimAmount((Number(meta.fee) / LAMPORTS_PER_SOL).toFixed(9)) : null,
+    feePaidByUs: feePayerAddr === address,
     counterparty,
     timestamp: blockTime ? blockTime * 1000 : null,
     explorerUrl: solExplorerUrl(networkKey, 'tx', sig.signature),
@@ -315,6 +331,12 @@ const DEMO_AMOUNTS = {
   OP: '60', AVAX: '12.5', BNB: '1.5', BTC: '0.012', SOL: '3.2',
 };
 
+// Plausible native-unit demo fees by NATIVE-COIN family (clearly sample data; the
+// rows carry demo:true). ERC-20 tokens are omitted on purpose: their gas is paid
+// in the native coin (ETH), not the token, so a per-token native-unit fee view
+// has no fee of its own to show — it stays fee-less rather than inventing one.
+const DEMO_FEE_BY_FAMILY = { evm: '0.000315', btc: '0.00000141', solana: '0.000005' };
+
 /**
  * Build clearly-labelled sample history for an asset (demo mode only). Rows carry
  * demo:true so the page can badge them as sample data; explorer links still point
@@ -324,6 +346,9 @@ export function demoHistoryForAsset(asset) {
   const base = DEMO_AMOUNTS[asset.symbol] || '1.0';
   const amt = (m) => trimAmount((parseFloat(base) * m).toFixed(8));
   const source = getHistorySource(asset);
+  // Native-coin demo fee (null for ERC-20 — see DEMO_FEE_BY_FAMILY). Attributed
+  // to us only on sends, mirroring the live normalizers' feePaidByUs semantics.
+  const demoFee = DEMO_FEE_BY_FAMILY[asset.family] ?? null;
   const txUrl = (h) => {
     if (asset.family === 'solana') return solExplorerUrl(asset.chain, 'tx', h);
     return source.explorerBase ? `${source.explorerBase}/tx/${h}` : '';
@@ -348,6 +373,8 @@ export function demoHistoryForAsset(asset) {
       type: r.type,
       status: r.status,
       amount: amt(r.mult),
+      feeNative: demoFee,
+      feePaidByUs: demoFee != null && r.type === 'send',
       counterparty: demoCounterparty(asset, r.s),
       timestamp: r.status === 'pending' ? null : new Date(DEMO_TS[i % DEMO_TS.length]).getTime(),
       explorerUrl: txUrl(h),

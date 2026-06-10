@@ -132,8 +132,8 @@ export const CLASSIFICATION = {
     note: 'Reads real local Transaction records but the "USD Value" line on every receipt is computed from hardcoded stale USD_RATES constants — presenting a silently stale dollar figure as fact on a document intended to be a financial record.',
   },
   '/fee-analytics': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Aggregates fee data from real local Transaction records, but all USD conversions ("Total Fees Paid", "This Month", "Avg Per Transaction") use hardcoded stale USD_RATES — figures will silently drift from reality as markets move.',
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Rebuilt (Slice 1): stateless native-unit fee analytics computed on-device from the active set\'s chain history via the same on-demand fetch the history view uses — no fiat, no persistence, no new egress. Sums only fees the set actually paid (BTC/SOL); EVM has no in-app indexer so it fails honest to "unavailable", and a paid tx with no indexer-reported fee is shown as unknown, never guessed. UNAUDITED-PROVISIONAL: verified against fixtures, not yet a real on-chain txid.',
   },
   '/hd-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
