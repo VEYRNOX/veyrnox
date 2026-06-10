@@ -61,4 +61,36 @@ export default [
       "react-hooks/rules-of-hooks": "error",
     },
   },
+  {
+    // Node CLI scripts + verification harnesses (NOT app code — no React/JSX).
+    // `eslint .` already traverses scripts/, but with no matching config block the
+    // resolved rule set was empty there (parse errors only). This applies a
+    // Node-oriented rule set so real violations are enforced. Mirrors the src
+    // block's unused-imports handling and layers @eslint/js recommended on top.
+    files: ["scripts/**/*.{js,mjs,cjs}"],
+    languageOptions: {
+      globals: globals.node,
+      ecmaVersion: 2022,
+      sourceType: "module",
+    },
+    plugins: {
+      "unused-imports": pluginUnusedImports,
+    },
+    rules: {
+      ...pluginJs.configs.recommended.rules,
+      // Defer unused-var reporting to the plugin (warn, _-prefix escape hatch),
+      // matching the src block, so the core error rule doesn't double-report.
+      "no-unused-vars": "off",
+      "unused-imports/no-unused-imports": "error",
+      "unused-imports/no-unused-vars": [
+        "warn",
+        {
+          vars: "all",
+          varsIgnorePattern: "^_",
+          args: "after-used",
+          argsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ];
