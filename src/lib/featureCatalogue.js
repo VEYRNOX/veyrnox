@@ -326,9 +326,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Fee Analytics',
-        status: 'roadmap',
-        summary: 'Track and optimise fees paid',
-        explanation: 'Track gas / network fees paid across transactions and chains to spot optimisation opportunities. Read-only; specced, not yet built.',
+        status: 'built',
+        summary: 'Track fees paid, in native units',
+        explanation: 'Stateless native-unit fee analytics (Slice 1): totals the network fees the active set actually paid, computed on-device from chain history via the same on-demand fetch the history view uses — no fiat, no persistence, no new egress. EVM has no in-app indexer so it fails honest to "unavailable". Built and fixture-tested; UNAUDITED-PROVISIONAL — not verified against a real on-chain txid. Fiat cost-basis P&L is a separate, audit-gated slice.',
       },
       {
         name: 'What-If Simulator',
