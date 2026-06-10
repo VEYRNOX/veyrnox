@@ -104,6 +104,33 @@ updated `SendCrypto.jsx`. BTC/SOL still go `live` only on a confirmed testnet/de
 
 ---
 
+## UI send path: the 2FA wall (finding from driving PR #123)
+
+Driving PR #123's Send UI headlessly (PIN onboarding → import the funded seed → select SOL
+→ recipient + amount → Continue → verify step) reaches the SOL-specific dispatch render
+("Network fee set automatically for SOL (devnet)", amount via `toBaseUnits`) but **cannot
+complete the broadcast** in a local/offline PIN-cohort build. The verify step gates
+`sendTx.mutate()` (which runs #123's dispatch → `signAndBroadcastSol`) behind a **2FA
+identity check** with two methods, and in this build neither is available:
+
+- **Passkey** renders only if `selectedWallet.passkey_registered && window.PublicKeyCredential`
+  — a PIN-cohort wallet has no passkey registered.
+- **Email OTP** is disabled when `!EMAIL_AVAILABLE` — the local build ships no mail server.
+
+Key point: **`VITE_DEV_UNGATE_SEND` flips the *capability* gate (`canSend`) but NOT the 2FA
+*identity* gate.** So the dev ungate alone is insufficient to complete a UI send; a working
+2FA method (registered passkey, or a mail/OTP stand-in) is also required. The underlying
+broadcast is independently proven — `signAndBroadcastSol` produced a real devnet txid via
+`scripts/sol-devnet-send.mjs` (the exact function the UI dispatch calls). What remains
+UI-unverified in the offline build is only the verify-step→mutate glue (`toBaseUnits(amount,9)`,
+`withSolPrivateKey`, `normalizeSendResult`), which is covered by `sendDispatch` unit tests.
+
+To verify the full UI path end-to-end, run with a 2FA method available (register a passkey
+on a device/authenticator that supports WebAuthn, or wire a local OTP stand-in). Do NOT mock
+WebAuthn to look real — that violates the no-fake-security rule.
+
+---
+
 ## Honest scope
 
 Running these grows the verified-asset count (SOL, then BTC/ETH once funded). It does NOT
