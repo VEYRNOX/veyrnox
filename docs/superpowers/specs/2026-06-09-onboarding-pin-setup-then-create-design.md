@@ -2,12 +2,14 @@
 
 **Date:** 2026-06-09
 **Status:** UNAUDITED-PROVISIONAL · testnet · PIN cohort · `src/` → PR, verify gate
-**Authoritative source:** `onboarding-rework-authoritative-brief.md` (matches the signed-off diagram).
+**Authoritative source:** `onboarding-authoritative-flow-brief.md` (PIN-first; matches the diagram Al confirmed). This **supersedes** the earlier `onboarding-rework-authoritative-brief.md` explore-first ordering.
 **Supersedes:** `2026-06-09-onboarding-simplify-pin-design.md` (the provision-at-PIN model — PIN creation == wallet creation — is the WRONG model and is reworked here).
+
+> **CORRECTION (PIN-first).** An earlier revision of this spec said "explore-first preserved" (fresh device → empty dashboard → PIN-create). The authoritative brief reverses that: **PIN-create comes BEFORE the dashboard.** A fresh device routes to PIN-create FIRST; the empty dashboard is reached only AFTER the PIN is set. The diagram and clarifications below are updated to match.
 
 Clarifications resolved with the user (this turn):
 - **PIN credential = markers only.** Phase 1 persists ONLY `authModel='pin'` + the device decoy salt; `realPin` is held in memory for the session. No PIN secret/verifier on disk. On restart with no wallet, the PIN is re-picked.
-- **Explore-first preserved.** A fresh device still lands on the view-only empty dashboard; the create CTA routes into PIN-create.
+- **PIN-first ordering.** A fresh device lands on **PIN-create**, before any dashboard. The view-only empty dashboard is rendered only after Phase-1 PIN setup commits its markers; it is never the cold-mount landing. (Pinned by `lib/onboardingEntry.js` + its test.)
 - **Import = under PIN + chaff (atomic).** Importing a seed from the empty dashboard encrypts it under the in-memory `realPin` and provisions both chaff slots in the same fail-closed atomic block as Create Wallet; the device stays PIN cohort.
 
 ---
@@ -17,27 +19,26 @@ Clarifications resolved with the user (this turn):
 Wallet creation is split into two deliberate phases. **A decoy is a decoy *of the real wallet*, so the deniability chaff slots can only be written once the real wallet exists (Phase 2).** That is structural, not a preference.
 
 ```
-fresh device ─► EXPLORE (view-only empty dashboard)
-                   │  tap "Create or import a wallet"
-                   ▼
-              PHASE 1: PIN setup (credential markers only)
+fresh device ─► PHASE 1: PIN setup (credential markers only)   ◄── FIRST, before any dashboard
                    │  choose 6-digit PIN ─► confirm
                    │  persist authModel='pin' + device salt; hold realPin in memory
                    ▼
-              EMPTY DASHBOARD (real app shell, no wallet)  ── "No wallet yet"
+              EMPTY DASHBOARD (real app shell, no wallet)  ── "No wallet yet"   ◄── AFTER the PIN
                    │  ┌─ "Create Wallet" ─┐         ┌─ "Import an existing seed" ─┐
                    ▼  ▼                   ▼         ▼                             ▼
               PHASE 2: atomic, fail-closed wallet provisioning (uses in-memory realPin)
                    primary + stealth pool + secondary(chaff) + tertiary(chaff), backedUp:false
                    ▼ commit
               WALLET DASHBOARD (+ existing unbacked-wallet backup nudge)
+                   ▼ reload
+              PIN PAD ("Enter your PIN")
 ```
 
 ---
 
 ## Phase 1 — PIN setup writes CREDENTIAL MARKERS ONLY (no wallet)
 
-Entry: from explore, "Create or import a wallet" → PIN-create view.
+Entry: the fresh-open landing. A vault-less cold mount routes directly to the PIN-create view (PIN-first; no pre-PIN dashboard).
 
 1. Choose a 6-digit PIN (`realPin` in memory).
 2. Confirm (re-enter, must match).
@@ -50,7 +51,7 @@ Entry: from explore, "Create or import a wallet" → PIN-create view.
 
 **On-disk after Phase 1:** `authModel='pin'` + device salt; `primary`/`secondary`/`tertiary` absent. State = "PIN set (this session), no wallet."
 
-**Restart in this state:** `pendingPin` is gone (memory cleared); `hasVault()===false` → explore-first; the create CTA routes back to PIN-create (re-pick). The stale `authModel='pin'` marker is harmless (no vault to unlock). Re-picking is cheap and writes the same markers.
+**Restart in this state:** `pendingPin` is gone (memory cleared); `hasVault()===false` → PIN-first, so the cold mount lands back on PIN-create (re-pick). The stale `authModel='pin'` marker is harmless (no vault to unlock). Re-picking is cheap and writes the same markers.
 
 ---
 
@@ -118,7 +119,8 @@ The Phase-1 "PIN set, no wallet" state is **observable**: a device with `authMod
 4. **Import-under-PIN:** importing from the empty dashboard → wallet under PIN + both chaff; `authModel='pin'` (not 'password'); same parity + fail-closed.
 5. **Defect-A memory:** Phase-2 sequential KDFs do not exhaust memory under app-mounted / mobile-like constraints.
 6. **Option-A fall-through:** a non-enrolled PIN opens the deterministic decoy (no error); chaff blobs don't match.
-7. **Restart:** "PIN set, no wallet" → re-pick PIN (explore-first; create CTA → PIN-create); no stale-state breakage.
+7. **Restart:** "PIN set, no wallet" → cold mount lands on PIN-create (PIN-first; re-pick PIN); no stale-state breakage.
+9. **PIN-first ordering (regression guard for the prior explore-first mis-build):** a fresh device (no vault) lands on PIN-create, NOT the empty dashboard. Unit-pinned by `lib/onboardingEntry.js` (`resolveOnboardingEntry`); confirm in-browser the first screen is the PIN pad, not the dashboard.
 8. **Regression:** returning-user PIN unlock, password cohort, and the Security framing unchanged.
 
 ## Process

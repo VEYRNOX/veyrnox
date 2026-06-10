@@ -75,6 +75,7 @@ import {
 import { hasStoredUnlockSecret } from "@/lib/biometricUnlock";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
+import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
@@ -138,11 +139,12 @@ function BiometricOffer({ status, enabled, onToggle }) {
   );
 }
 
-// EXPLORE-MODE SHELL — renders the real app (Outlet) VIEW-ONLY behind a
-// persistent, non-dismissable "Create or import a wallet" CTA. There is nothing
-// to authenticate (no vault exists), so this is genuinely no-auth browsing; any
-// wallet-requiring action calls requireWallet() which leaves explore and shows
-// the create/import flow.
+// POST-PIN EMPTY-DASHBOARD SHELL — renders the real app (Outlet) VIEW-ONLY behind
+// a persistent, non-dismissable "Create or import a wallet" CTA. Shown AFTER
+// Phase-1 PIN setup (PIN-first onboarding), never as the fresh-open landing. There
+// is nothing to authenticate (no vault exists yet), so this is genuinely no-auth
+// browsing; any wallet-requiring action calls requireWallet() which leaves this
+// view and shows the Phase-2 create/import flow.
 function ExploreShell({ onCreate, children }) {
   return (
     <div className="min-h-screen">
@@ -262,11 +264,15 @@ export default function WalletEntry() {
         if (!active) return;
         setVaultExists(v);
         setAuthModelState(getAuthModel());
-        setView(v ? "unlock" : "choose");
-        // EXPLORE-FIRST: with NO vault, default to view-only explore mode so the
-        // first open is the real app (honest $0 empty states), not a wall. A
-        // returning user (vault exists) never explores — they get the unlock gate.
-        if (!v) enterExplore();
+        // PIN-FIRST onboarding (authoritative brief): a fresh device (no vault)
+        // routes to PIN-create BEFORE any dashboard — never explore-first. The
+        // empty (explore) dashboard is a POST-PIN state, entered later by the
+        // provider's setupPin() once Phase 1 commits its credential markers; it
+        // is never the cold-mount landing. A returning user (vault exists) gets
+        // the unlock gate. See lib/onboardingEntry.js for the pinned invariant.
+        const entry = resolveOnboardingEntry({ hasVault: v });
+        setView(entry);
+        if (entry === "pin-create") { setRealPin(""); setRealPinConfirm(""); setPinStep("real"); }
         if (v && isBiometricUnlockEnabled()) {
           try { setBioReady(await hasStoredUnlockSecret()); }
           catch { setBioReady(false); }
@@ -274,7 +280,7 @@ export default function WalletEntry() {
           setBioReady(false);
         }
       })
-      .catch(() => { if (active) { setVaultExists(false); setView("choose"); setBioReady(false); } });
+      .catch(() => { if (active) { setVaultExists(false); setView("pin-create"); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setBioReady(false); } });
     return () => { active = false; };
   }, [hasVault, isUnlocked]);
 
@@ -713,6 +719,10 @@ export default function WalletEntry() {
         </EntryShell>
       );
     }
+    // PIN-FIRST: the pre-PIN intro. A fresh device lands directly on PIN-create
+    // (see the mount probe); this card is the Back target from there. It routes
+    // ONLY into PIN-create — there is deliberately NO "explore the dashboard"
+    // affordance before a PIN is set (the empty dashboard is a post-PIN state).
     return (
       <EntryShell error={error}>
         <div className="p-6 rounded-xl border border-dashed border-border bg-card text-center space-y-4">
@@ -721,12 +731,9 @@ export default function WalletEntry() {
           <p className="text-sm text-muted-foreground">No wallet on this device yet. Set a 6-digit PIN, then create a new self-custody wallet or import an existing seed phrase. Your PIN encrypts it locally — keys never leave this device.</p>
           <div className="space-y-2">
             <Button className="w-full gap-2" onClick={() => { setError(""); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("pin-create"); }}>
-              <Shield className="h-4 w-4" /> Create or import a wallet
+              <Shield className="h-4 w-4" /> Set a PIN to continue
             </Button>
           </div>
-          <button type="button" onClick={() => enterExplore()} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-            ← Keep exploring (view only)
-          </button>
         </div>
       </EntryShell>
     );
@@ -737,7 +744,9 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <div className="space-y-5">
-          <button type="button" onClick={() => { setError(""); clearPendingPin(); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("choose"); enterExplore(); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+          {/* PIN-FIRST: Back returns to the pre-PIN intro card, NOT the dashboard —
+              the empty dashboard is only reachable AFTER the PIN is set. */}
+          <button type="button" onClick={() => { setError(""); clearPendingPin(); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("choose"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
 
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
