@@ -27,6 +27,7 @@ import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
+import { notifySendConfirmed } from "@/notify/sources";
 import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 
@@ -420,9 +421,15 @@ export default function SendCrypto() {
       });
 
       // Confirm in the background, then refresh balance + history from chain.
+      // The notify emit rides the SAME 1-conf receipt — it is the "send confirmed"
+      // trigger (brief PR-2 §3). Fire-and-forget AFTER the chain reads are queued:
+      // notifySendConfirmed swallows any throw (I4), so it can never unwind or
+      // delay the send/refresh path. `to`/`amount` are the active set's own values;
+      // `ts` is supplied here to keep the pure mapper clock-free.
       tx.wait(1).then(() => {
         queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet.address] });
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        notifySendConfirmed({ amount: `${amount} ${selectedWallet.currency}`, to: toAddress, ts: Date.now() });
       }).catch(() => {/* surface a "still pending / failed" state in UI */});
 
       return { hash: tx.hash, explorerUrl: tx.explorerUrl };
