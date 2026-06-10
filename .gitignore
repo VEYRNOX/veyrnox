@@ -11,6 +11,14 @@ node_modules/
 dist/
 build/
 
+# Local-only test/config overrides — NEVER commit (CI uses a full checkout).
+# e.g. the worktree vitest shim that extends vitest.config.js with a server.fs.allow
+# widening so the parent repo's node_modules resolves under Vite's /@fs guard.
+# Structurally prevented from staging per build brief §10 (a stray fs.allow
+# widening must not escape into a squash-merge).
+*.local.mjs
+vitest.worktree.local.mjs
+
 # Secrets / environment — NEVER commit these
 .env
 .env.*
