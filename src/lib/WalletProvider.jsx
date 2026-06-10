@@ -167,10 +167,13 @@ export function WalletProvider({ children }) {
   const [portfolios, setPortfolios] = useState([]);
   const [walletPortfolioMap, setWalletPortfolioMap] = useState({});
   const [activePortfolioId, setActivePortfolioIdState] = useState(MAIN_PORTFOLIO_ID);
-  // EXPLORE-FIRST ONBOARDING: true when the device has NO vault and the user is
-  // browsing the real UI VIEW-ONLY (honest $0 empty states, no auth, nothing to
-  // protect). Wallet-requiring actions call requireWallet() to leave explore and
-  // enter the create/import flow. Returning users (vault exists) never explore.
+  // POST-PIN EMPTY DASHBOARD (PIN-first onboarding): true once Phase-1 setupPin()
+  // has committed the credential markers but no wallet exists yet — the user
+  // browses the real UI VIEW-ONLY (honest $0 empty states) with Create/Import
+  // affordances. NOT the fresh-open landing: a vault-less cold mount routes to
+  // PIN-create first (see WalletEntry's mount probe / lib/onboardingEntry.js).
+  // Wallet-requiring actions call requireWallet() to leave this view and run the
+  // Phase-2 create/import. Returning users (vault exists) never enter it.
   const [exploreMode, setExploreMode] = useState(false);
   // DURESS / DECOY (S3): true when the CURRENT session was opened with the
   // duress password (a decoy vault) rather than the real one. Internal flag for
@@ -784,12 +787,15 @@ export function WalletProvider({ children }) {
     refreshWalletsState();
   }, [refreshWalletsState]);
 
-  // ── EXPLORE-FIRST ONBOARDING ────────────────────────────────────────────────
+  // ── POST-PIN EMPTY DASHBOARD (explore) ──────────────────────────────────────
+  // The view-only empty dashboard shown AFTER Phase-1 PIN setup (not before — a
+  // fresh device lands on PIN-create first; see onboardingEntry.js).
   const enterExplore = useCallback(() => setExploreMode(true), []);
   const leaveExplore = useCallback(() => setExploreMode(false), []);
-  // requireWallet(): a wallet-requiring action was tapped while exploring (no
-  // vault yet). Leave explore so the gate surfaces the create/import flow. Returns
-  // true when the action is BLOCKED (no unlocked wallet) so callers short-circuit.
+  // requireWallet(): a wallet-requiring action was tapped on the post-PIN empty
+  // dashboard (no vault yet). Leave it so the gate surfaces the Phase-2 create/
+  // import flow. Returns true when the action is BLOCKED (no unlocked wallet) so
+  // callers short-circuit.
   const requireWallet = useCallback(() => {
     if (isUnlocked) return false;
     setExploreMode(false);
