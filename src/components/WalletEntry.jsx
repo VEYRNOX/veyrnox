@@ -71,6 +71,7 @@ import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { getOrCreateDeviceSalt } from "@/wallet-core/decoyFallback";
 import { provisionPinRecovery } from "@/lib/pinRecovery";
+import { seedImportRoute } from "@/lib/seedImportRoute";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
@@ -646,10 +647,12 @@ export default function WalletEntry() {
             <Button variant="outline" className="w-full gap-2" onClick={() => {
               // First-run import provisions a PIN-cohort wallet (same as Create), NOT a
               // password vault — so an imported-from-scratch device is indistinguishable
-              // from a created one (§0/§5). Reuses the pin-recover flow with recovering=false.
-              setError(""); setBioEnabled(false); setRecovering(false);
+              // from a created one (§0/§5). Routing is pinned by lib/seedImportRoute.js
+              // (view 'pin-recover', recovering=false — never the legacy password import).
+              const r = seedImportRoute({ recovering: false });
+              setError(""); setBioEnabled(false); setRecovering(r.recovering);
               setRecoverySeed(""); setRealPin(""); setRealPinConfirm(""); setDuressPin_(""); setPanicPin_("");
-              duressPinRef.current = ""; setPinStep("seed"); setView("pin-recover");
+              duressPinRef.current = ""; setPinStep(r.pinStep); setView(r.view);
             }}>
               <Download className="h-4 w-4" /> Import an existing seed
             </Button>
