@@ -12,6 +12,7 @@ import PasskeySetup from "../components/PasskeySetup";
 import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
 import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
 import SessionSettings from "../components/security/SessionSettings";
+import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -100,6 +101,10 @@ export default function Settings() {
 
       {/* Session & auto-lock (idle + background → WalletProvider.lock()) */}
       <SessionSettings />
+
+      {/* Deniability rehearsal — read-only lens over the active set (overlay,
+          no route). Verifies the decoy is indistinguishable to an adversary. */}
+      <RehearsalSettingsRow />
 
       {/* Security Overview */}
       <div className="p-5 rounded-xl border border-border bg-card space-y-1">
