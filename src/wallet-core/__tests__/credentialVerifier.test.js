@@ -23,6 +23,10 @@ describe('constantTimeEqual', () => {
   it('false for different lengths', () => {
     expect(constantTimeEqual(Uint8Array.of(1, 2), Uint8Array.of(1, 2, 3))).toBe(false);
   });
+  it('false when either array is null/undefined (guarded, no throw)', () => {
+    expect(constantTimeEqual(null, Uint8Array.of(1))).toBe(false);
+    expect(constantTimeEqual(Uint8Array.of(1), undefined)).toBe(false);
+  });
 });
 
 describe('createCredentialVerifier / verifyCredential', () => {
@@ -54,6 +58,12 @@ describe('createCredentialVerifier / verifyCredential', () => {
   it('returns false (never throws) when the verifier is null/absent — fail closed', async () => {
     expect(await verifyCredential(null, 'anything')).toBe(false);
     expect(await verifyCredential(undefined, 'anything')).toBe(false);
+  });
+
+  it('returns false (never throws) when verifier.params is structurally incomplete', async () => {
+    const v = await createCredentialVerifier('123456', { params: CHEAP });
+    const broken = { ...v, params: { parallelism: 1, iterations: 1 } }; // missing memorySize/hashLength
+    expect(await verifyCredential(broken, '123456')).toBe(false);
   });
 
   // CONFIRMATION #1 (load-bearing): the default verifier params ARE the vault unlock

@@ -59,8 +59,16 @@ export async function createCredentialVerifier(credential, { params = KDF_PARAMS
  */
 export async function verifyCredential(verifier, entered) {
   if (!verifier || !verifier.hash || !verifier.salt) return false;
-  const h = await deriveRaw(entered, verifier.salt, verifier.params ?? KDF_PARAMS);
-  return constantTimeEqual(h, verifier.hash);
+  const params = verifier.params ?? KDF_PARAMS;
+  // Fail closed (never throw) if params is structurally incomplete — honours the
+  // "never throws" contract rather than passing undefined fields into argon2id.
+  const wellFormed = [params.parallelism, params.iterations, params.memorySize, params.hashLength]
+    .every((n) => Number.isInteger(n) && n > 0);
+  if (!wellFormed) return false;
+  const h = await deriveRaw(entered, verifier.salt, params);
+  const match = constantTimeEqual(h, verifier.hash);
+  h.fill(0); // best-effort zeroize the transient hash of the entered secret (mirrors vault.js zero())
+  return match;
 }
 
 /**
@@ -68,6 +76,8 @@ export async function verifyCredential(verifier, entered) {
  * return on the first differing byte (avoids a timing side channel).
  */
 export function constantTimeEqual(a, b) {
+  // Length mismatch returns early (leaks only length, not content). For all real calls
+  // both sides are hashLength (32) bytes, so lengths are structurally equal anyway.
   if (!a || !b || a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
