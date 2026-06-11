@@ -183,6 +183,16 @@ export function WalletProvider({ children }) {
   // Wallet-requiring actions call requireWallet() to leave this view and run the
   // Phase-2 create/import. Returning users (vault exists) never enter it.
   const [exploreMode, setExploreMode] = useState(false);
+  // VAULT-EXISTENCE PROBE (LandingGuard, I4): resolved once on mount so a
+  // synchronous <Route element> guard can read it (keyStore.hasVault is async and
+  // a route element cannot await). vaultExists: true | false | null(unknown/error);
+  // vaultChecking: true until the first resolution. The /landing guard reveals the
+  // public page ONLY on a confirmed `false`; null and the checking window both
+  // fail closed to the gate. Resolved by the dedicated effect below — deliberately
+  // SEPARATE from the stealth-pool seeding effect, whose swallow-all failure
+  // semantics differ. See src/components/LandingGuard.jsx.
+  const [vaultExists, setVaultExists] = useState(null);   // null = unknown / not yet resolved
+  const [vaultChecking, setVaultChecking] = useState(true);
   // DURESS / DECOY (S3): true when the CURRENT session was opened with the
   // duress password (a decoy vault) rather than the real one. Internal flag for
   // app logic; the normal wallet UI deliberately does NOT surface it, so a
@@ -411,6 +421,21 @@ export function WalletProvider({ children }) {
     keyStore.hasVault()
       .then((has) => { if (has && !cancelled) return ensureStealthPool(); })
       .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // VAULT-EXISTENCE PROBE (LandingGuard, I4): resolve vault existence once on
+  // mount into synchronous state the /landing route guard can read. DEDICATED and
+  // independent of the stealth-pool effect above — it must not share that effect's
+  // swallow-all semantics. On error vaultExists stays null (treated as "do not
+  // reveal" by the guard) while vaultChecking flips false: the fail-closed point,
+  // so a confirmed "no vault" — and only that — ever unlocks the public page.
+  useEffect(() => {
+    let cancelled = false;
+    keyStore.hasVault()
+      .then((has) => { if (!cancelled) setVaultExists(!!has); })
+      .catch(() => { if (!cancelled) setVaultExists(null); })   // unknown on error → guard fails closed
+      .finally(() => { if (!cancelled) setVaultChecking(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -1396,6 +1421,12 @@ export function WalletProvider({ children }) {
     deriveSol,
     withSolPrivateKey,
     hasVault: keyStore.hasVault,
+    // Resolved vault-existence for the synchronous /landing route guard (I4).
+    // vaultExists: true | false | null(unknown); vaultChecking: true until first
+    // resolution. See src/components/LandingGuard.jsx. The raw async hasVault
+    // above is kept for callers that await it.
+    vaultExists,        // resolved boolean | null
+    vaultChecking,      // true until first resolution
     // Duress / decoy controls (see wallet-core/duress.js). hasDuressPin() is the
     // raw store check; set/remove manage the decoy vault.
     hasDuressPin: hasDuressVault,
