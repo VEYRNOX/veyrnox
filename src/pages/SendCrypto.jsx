@@ -32,6 +32,9 @@ import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
 
+// Maximum wrong-credential attempts before the vault locks (step-up re-auth).
+const REAUTH_CAP = 5;
+
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
@@ -75,11 +78,11 @@ export default function SendCrypto() {
   const [selectedFee, setSelectedFee] = useState(null); // user-chosen EIP-1559 fee (FeeSelector)
 
   // STEP-UP RE-AUTH state (replaces the stranded passkey/OTP 2FA).
-  const REAUTH_CAP = 5;
   const [reauthValue, setReauthValue] = useState("");
   const [reauthError, setReauthError] = useState("");
   const [reauthAttempts, setReauthAttempts] = useState(0);
   const [reauthPending, setReauthPending] = useState(false);
+  const [, setReauthTick] = useState(0); // bump to force a re-render so the window check re-evaluates
   const [ensName, setEnsName] = useState("");
   const [ensResolving, setEnsResolving] = useState(false);
   const [ensResolved, setEnsResolved] = useState(null);
@@ -778,7 +781,13 @@ export default function SendCrypto() {
                   <Button
                     className="w-full gap-2"
                     disabled={blockedByApproval || sendTx.isPending}
-                    onClick={() => sendTx.mutate()}
+                    onClick={() => {
+                      // Re-check freshness at click time (isSendReauthRequired reads a ref, always
+                      // current). If the window lapsed while idle on this screen, force a re-render so
+                      // the block below switches to the step-up prompt instead of sending.
+                      if (!DEMO && isSendReauthRequired()) { setReauthTick((t) => t + 1); return; }
+                      sendTx.mutate();
+                    }}
                   >
                     {sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
                     Confirm &amp; Send
@@ -791,7 +800,7 @@ export default function SendCrypto() {
                   <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-widest">
                     Re-enter your {authModel === "pin" ? "PIN" : "password"} to authorise
                   </p>
-                  {reauthError && <p className="text-xs text-center text-destructive">{reauthError}</p>}
+                  {reauthError && <p role="alert" className="text-xs text-center text-destructive">{reauthError}</p>}
                   {authModel === "pin" ? (
                     <PinPad
                       value={reauthValue}
@@ -806,6 +815,7 @@ export default function SendCrypto() {
                         value={reauthValue}
                         onChange={(e) => setReauthValue(e.target.value)}
                         placeholder="Vault password"
+                        aria-label="Vault password for send authorisation"
                         autoFocus
                         onKeyDown={(e) => { if (e.key === "Enter" && reauthValue && !reauthPending) submitReauth(reauthValue); }}
                       />
@@ -815,7 +825,7 @@ export default function SendCrypto() {
                         onClick={() => submitReauth(reauthValue)}
                       >
                         {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-                        Authorize &amp; Send
+                        Authorise &amp; Send
                       </Button>
                     </>
                   )}
