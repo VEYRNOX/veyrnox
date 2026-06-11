@@ -15,7 +15,7 @@
 // Must remain de-duplicated — the completeness/phantom tests rely on it.
 export const ALL_ROUTE_PATHS = [
   '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
-  '/analytics', '/tax', '/security', '/security-dashboard', '/audit', '/nft',
+  '/analytics', '/tax', '/security', '/security-dashboard', '/nft',
   '/snapshots', '/pl', '/onchain', '/spending', '/advisor', '/smart-alerts',
   '/recurring', '/push', '/advanced-analytics', '/web3', '/nft-multichain',
   '/fraud', '/payment-links', '/risk', '/news-sentiment', '/notifications',
@@ -304,10 +304,6 @@ export const CLASSIFICATION = {
   '/trust-score': {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Imports classifyToken from @/wallet-core/evm/spam. Runs the real on-device heuristic classifier over user-supplied or preset token metadata. Extensive in-file honesty contract: never claims on-chain analysis, never asserts safety, explicitly labels results as local-heuristic only. No external call.',
-  },
-  '/audit': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Reads base44.entities.AuditLog records from local IndexedDB. Filterable by category and severity. No fabricated data, no external call, no USD conversion. The quality of the log depends on what in-app actions write to it, but the display is honest about showing all and only the records present.',
   },
   '/fraud': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',

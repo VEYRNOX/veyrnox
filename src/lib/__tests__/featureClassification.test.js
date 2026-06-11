@@ -68,8 +68,8 @@ describe('registryEntriesFromClassification', () => {
     //   (10 Security-A pages are live; only 2 are disabled)
     // + 5 Security-group pages classified in batch B (/anomaly-detection, /messenger-alerts,
     //     /fraud, /smart-alerts, /alerts)
-    //   (6 Security-B pages are live: /biometric-auth, /voice-commands, /token-approvals,
-    //     /spam-filter, /trust-score, /audit)
+    //   (5 Security-B pages are live: /biometric-auth, /voice-commands, /token-approvals,
+    //     /spam-filter, /trust-score — /audit removed in the deniability hide)
     // + 5 Connect/Core pages classified in batch 5 (/watch-wallets, /solana, /price-charts,
     //     /web3, /products)
     //   (10 Connect/Core pages are live: /address-book, /live-balances, /network-manager,
