@@ -2,12 +2,12 @@ import { USD_RATES, approxUsd } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44, EMAIL_AVAILABLE } from "@/api/base44Client";
+import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, ShieldAlert, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet } from "lucide-react";
+import { ArrowUpRight, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
@@ -29,6 +29,8 @@ import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
+import PinPad from "@/components/security/PinPad";
+import { getAuthModel } from "@/lib/authModel";
 
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
@@ -61,7 +63,7 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, lock, verifyActiveCredential, isSendReauthRequired } = useWallet();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -72,13 +74,12 @@ export default function SendCrypto() {
   const [txResult, setTxResult] = useState(null); // { hash, explorerUrl } from a real broadcast
   const [selectedFee, setSelectedFee] = useState(null); // user-chosen EIP-1559 fee (FeeSelector)
 
-  // 2FA state
-  const [otpCode, setOtpCode]         = useState("");
-  const [otpSent, setOtpSent]         = useState(false);
-  const [otpSecret, setOtpSecret]     = useState("");
-  const [otpSending, setOtpSending]   = useState(false);
-  const [passkeyPending, setPasskeyPending] = useState(false);
-  const [twoFAMethod, setTwoFAMethod] = useState(null); // null | "passkey" | "otp"
+  // STEP-UP RE-AUTH state (replaces the stranded passkey/OTP 2FA).
+  const REAUTH_CAP = 5;
+  const [reauthValue, setReauthValue] = useState("");
+  const [reauthError, setReauthError] = useState("");
+  const [reauthAttempts, setReauthAttempts] = useState(0);
+  const [reauthPending, setReauthPending] = useState(false);
   const [ensName, setEnsName] = useState("");
   const [ensResolving, setEnsResolving] = useState(false);
   const [ensResolved, setEnsResolved] = useState(null);
@@ -438,58 +439,34 @@ export default function SendCrypto() {
     },
   });
 
-  const verifyPasskey = async () => {
-    setPasskeyPending(true);
+  // STEP-UP: verify the re-entered credential, then send. 5 wrong → lock() (fail closed,
+  // identical in real and decoy sessions — no lockout tell).
+  const submitReauth = async (entered) => {
+    if (reauthPending || sendTx.isPending) return;
+    setReauthPending(true);
+    setReauthError("");
     try {
-      await navigator.credentials.get({
-        publicKey: {
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          timeout: 60000,
-          userVerification: "required",
-          rpId: window.location.hostname,
-        },
-      });
-      sendTx.mutate();
-    } catch (e) {
-      if (e.name !== "NotAllowedError") toast.error("Passkey verification failed. Try email OTP instead.");
+      const ok = await verifyActiveCredential(entered);
+      if (ok) {
+        setReauthValue("");
+        sendTx.mutate();
+        return;
+      }
+      const n = reauthAttempts + 1;
+      setReauthAttempts(n);
+      setReauthValue("");
+      if (n >= REAUTH_CAP) {
+        lock();
+        return;
+      }
+      setReauthError(`Incorrect — try again (${REAUTH_CAP - n} left)`);
     } finally {
-      setPasskeyPending(false);
+      setReauthPending(false);
     }
-  };
-
-  const sendOTP = async () => {
-    // Email delivery needs a backend mail sender the local build doesn't ship.
-    if (!EMAIL_AVAILABLE) return;
-    setOtpSending(true);
-    try {
-      const user = await base44.auth.me();
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      setOtpSecret(code);
-      await base44.integrations.Core.SendEmail({
-        to: user.email,
-        subject: "Veyrnox — Your 2FA Code",
-        body: `Your one-time verification code is: ${code}\n\nYou are authorising a send of ${amount} ${selectedWallet?.currency} to ${toAddress}.\n\nThis code expires in 10 minutes. If you didn't request this, ignore this email.`,
-      });
-      setOtpSent(true);
-      toast.success("OTP sent to your email");
-    } catch {
-      toast.error("Failed to send OTP");
-    } finally {
-      setOtpSending(false);
-    }
-  };
-
-  const verifyOTP = () => {
-    if (otpCode.trim() !== otpSecret) {
-      toast.error("Incorrect code. Please try again.");
-      setOtpCode("");
-      return;
-    }
-    sendTx.mutate();
   };
 
   const resetVerify = () => {
-    setTwoFAMethod(null); setOtpSent(false); setOtpCode(""); setOtpSecret(""); setApprovalAck(false);
+    setReauthValue(""); setReauthError(""); setReauthAttempts(0); setApprovalAck(false);
   };
 
   if (step === "done") {
@@ -792,93 +769,59 @@ export default function SendCrypto() {
                 the static USD_RATES table, so disclose it's a reference rate. */}
             <ReferenceRateNote className="text-center" />
 
-            {/* 2FA method picker */}
-            {!twoFAMethod && (
-              <div className="space-y-2">
-                <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-widest">Verify your identity</p>
-                {selectedWallet?.passkey_registered && window.PublicKeyCredential && (
-                  <Button className="w-full gap-2" disabled={blockedByApproval} onClick={() => { setTwoFAMethod("passkey"); verifyPasskey(); }}>
-                    <Fingerprint className="h-4 w-4" />
-                    Use Passkey / Biometric
+            {/* STEP-UP RE-AUTH: friction-free within the recent-auth window; re-enter the
+                vault credential once it has lapsed. Skipped in demo (fake sends, no vault). */}
+            {(() => {
+              const reauthRequired = !DEMO && isSendReauthRequired();
+              if (!reauthRequired) {
+                return (
+                  <Button
+                    className="w-full gap-2"
+                    disabled={blockedByApproval || sendTx.isPending}
+                    onClick={() => sendTx.mutate()}
+                  >
+                    {sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
+                    Confirm &amp; Send
                   </Button>
-                )}
-                <Button variant="outline" className="w-full gap-2" disabled={!EMAIL_AVAILABLE || blockedByApproval} onClick={() => { setTwoFAMethod("otp"); sendOTP(); }}>
-                  {otpSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                  {EMAIL_AVAILABLE ? "Send Email OTP" : "Email OTP unavailable offline"}
-                </Button>
-                {!EMAIL_AVAILABLE && (
-                  <p className="text-[11px] text-muted-foreground text-center">
-                    Email OTP needs a mail server, which this local build doesn't include.
-                    {selectedWallet?.passkey_registered ? " Use passkey verification instead." : " Register a passkey for this wallet to authorise sends on this device."}
+                );
+              }
+              const authModel = getAuthModel();
+              return (
+                <div className="space-y-3">
+                  <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-widest">
+                    Re-enter your {authModel === "pin" ? "PIN" : "password"} to authorise
                   </p>
-                )}
-              </div>
-            )}
-
-            {/* Passkey in progress */}
-            {twoFAMethod === "passkey" && (
-              <div className="space-y-3 text-center">
-                {passkeyPending ? (
-                  <div className="py-4 space-y-2">
-                    <Fingerprint className="h-10 w-10 text-primary mx-auto animate-pulse" />
-                    <p className="text-sm text-muted-foreground">Follow the prompt on your device…</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Button className="w-full gap-2" onClick={verifyPasskey} disabled={passkeyPending || sendTx.isPending}>
-                      <Fingerprint className="h-4 w-4" /> Retry Passkey
-                    </Button>
-                    <Button variant="ghost" size="sm" className="w-full" onClick={resetVerify}>Try another method</Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* OTP flow */}
-            {twoFAMethod === "otp" && (
-              <div className="space-y-3">
-                {!otpSent ? (
-                  <div className="text-center py-3">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
-                    <p className="text-xs text-muted-foreground mt-2">Sending code…</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
-                      <ShieldCheck className="h-4 w-4 text-success shrink-0 mt-0.5" />
-                      <p className="text-xs text-success">A 6-digit code was sent to your registered email. Enter it below to authorise this transaction.</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        value={otpCode}
-                        onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                        placeholder="000000"
-                        aria-label="6-digit verification code"
-                        className="w-full text-center text-2xl mono-value tracking-[0.5em] h-14 rounded-lg border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+                  {reauthError && <p className="text-xs text-center text-destructive">{reauthError}</p>}
+                  {authModel === "pin" ? (
+                    <PinPad
+                      value={reauthValue}
+                      onChange={setReauthValue}
+                      onComplete={submitReauth}
+                      disabled={reauthPending || sendTx.isPending || blockedByApproval}
+                    />
+                  ) : (
+                    <>
+                      <Input
+                        type="password"
+                        value={reauthValue}
+                        onChange={(e) => setReauthValue(e.target.value)}
+                        placeholder="Vault password"
                         autoFocus
+                        onKeyDown={(e) => { if (e.key === "Enter" && reauthValue && !reauthPending) submitReauth(reauthValue); }}
                       />
-                    </div>
-                    <Button
-                      className="w-full gap-2"
-                      disabled={otpCode.length !== 6 || sendTx.isPending || blockedByApproval}
-                      onClick={verifyOTP}
-                    >
-                      {sendTx.isPending
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : <KeyRound className="h-4 w-4" />}
-                      Verify &amp; Send
-                    </Button>
-                    <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={() => { setOtpSent(false); setOtpCode(""); sendOTP(); }}>
-                      <RefreshCw className="h-3.5 w-3.5" /> Resend Code
-                    </Button>
-                    <Button variant="ghost" size="sm" className="w-full" onClick={resetVerify}>Try another method</Button>
-                  </>
-                )}
-              </div>
-            )}
+                      <Button
+                        className="w-full gap-2"
+                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval}
+                        onClick={() => submitReauth(reauthValue)}
+                      >
+                        {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                        Authorize &amp; Send
+                      </Button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             <Button variant="ghost" className="w-full" onClick={() => { setStep("form"); resetVerify(); }}>Back</Button>
           </div>
