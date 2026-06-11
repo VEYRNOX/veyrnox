@@ -352,6 +352,13 @@ export default function SendCrypto() {
       }
       if (!isUnlocked) throw new Error("Unlock your wallet to send");
 
+      // STEP-UP defense-in-depth: re-assert the recent-auth gate at signing time so no
+      // code path can broadcast while re-auth is required (the UI already gates this, but
+      // a send is high-stakes — re-check here too). Demo has no vault, so it's exempt.
+      if (!DEMO && isSendReauthRequired()) {
+        throw new Error("Re-enter your PIN or password to authorise this send.");
+      }
+
       // HARD spend-limit gate (defense-in-depth). The Continue button is already
       // disabled on a breach, but re-evaluate at signing time so a per-tx OR
       // daily cap can never be bypassed by stale UI state. Re-computed here at
@@ -469,7 +476,11 @@ export default function SendCrypto() {
   };
 
   const resetVerify = () => {
-    setReauthValue(""); setReauthError(""); setReauthAttempts(0); setApprovalAck(false);
+    // Intentionally does NOT reset reauthAttempts — going Back to edit must not reset the
+    // wrong-attempt cap within an unlocked session. Attempts reset on a new send (Send
+    // Another) or on lock/unmount. (The 192 MiB Argon2id per attempt is the real rate
+    // limiter; the 5-cap → lock is the UX backstop on top of it.)
+    setReauthValue(""); setReauthError(""); setApprovalAck(false);
   };
 
   if (step === "done") {
@@ -494,7 +505,7 @@ export default function SendCrypto() {
             <p className="text-[11px] text-muted-foreground">Pending until confirmed on-chain. Balance updates from the chain, not a stored value.</p>
           </div>
         )}
-        <Button variant="outline" onClick={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); }}>
+        <Button variant="outline" onClick={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); setReauthAttempts(0); }}>
           Send Another
         </Button>
       </div>
