@@ -15,7 +15,7 @@
 // Must remain de-duplicated — the completeness/phantom tests rely on it.
 export const ALL_ROUTE_PATHS = [
   '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
-  '/analytics', '/tax', '/security', '/security-dashboard', '/nft',
+  '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects', '/nft',
   '/snapshots', '/pl', '/onchain', '/spending', '/advisor', '/smart-alerts',
   '/recurring', '/push', '/advanced-analytics', '/web3', '/nft-multichain',
   '/fraud', '/payment-links', '/risk', '/news-sentiment', '/notifications',
@@ -234,6 +234,10 @@ export const CLASSIFICATION = {
   '/security': {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'Sessions tab manages local UserSession records via base44.entities; revocation enforced by lib/sessionRevocation (self-enforcing on each device). Limits tab stores TransactionLimit records in local IndexedDB; daily progress computed via lib/txLimits.js over local Transaction records. No external call, no fabricated data.',
+  },
+  '/what-this-protects': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Phase 2 seized-device PIN disclosure (C-screen). Purely static plain-language copy explaining the 6-digit-PIN offline-brute-force limit (what it does / can\'t do / what helps / what\'s coming — hardware key-binding framed as not-yet-shipped). No external call, no fabrication, no per-session/config reads. Deniability: reads identically in real and decoy sessions, names no set\'s existence, never touches coercion/decoy/hidden; guarded by security-framing.test.js.',
   },
   '/wallet-access': {
     verdict: 'live', dataSource: 'wallet-core',

@@ -751,7 +751,7 @@ export default function WalletEntry() {
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Choose a 6-digit PIN</p>
-              <p className="text-xs text-muted-foreground">This unlocks your wallet. It encrypts your wallet on this device (Argon2id + AES-256-GCM).</p>
+              <p className="text-xs text-muted-foreground">This unlocks your wallet. Your PIN encrypts the wallet on this device (Argon2id + AES-256-GCM). It is 6 digits — strong against a quick grab, but not against someone who keeps the device to try PINs offline. Guard the device itself.</p>
               <PinPad value={realPin} onChange={setRealPin} onComplete={() => { setError(""); setRealPinConfirm(""); setPinStep("real-confirm"); }} />
             </div>
           )}
