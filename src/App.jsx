@@ -21,7 +21,6 @@ const Calculator = lazy(() => import('./pages/Calculator'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const TaxReport = lazy(() => import('./pages/TaxReport'));
 const SecurityCenter = lazy(() => import('./pages/SecurityCenter'));
-const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
 const NFTPortfolio = lazy(() => import('./pages/NFTPortfolio'));
 const PortfolioSnapshots = lazy(() => import('./pages/PortfolioSnapshots'));
 const PLTracking = lazy(() => import('./pages/PLTracking'));
@@ -133,7 +132,6 @@ const AuthenticatedApp = () => {
           <Route path="/tax" element={<TaxReport />} />
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/security-dashboard" element={<SecurityDashboard />} />
-          <Route path="/audit" element={<AuditLogPage />} />
           <Route path="/nft" element={<NFTPortfolio />} />
           <Route path="/snapshots" element={<PortfolioSnapshots />} />
           <Route path="/pl" element={<PLTracking />} />
