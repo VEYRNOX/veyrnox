@@ -357,6 +357,7 @@ export function WalletProvider({ children }) {
     activeIdRef.current = null;
     activePortfolioRef.current = MAIN_PORTFOLIO_ID;
     pendingPinRef.current = null;
+    if (verifierRef.current?.hash) { try { verifierRef.current.hash.fill(0); } catch { /* noop */ } }
     verifierRef.current = null;
     lastAuthAtRef.current = null;
     setUnlocked(false);
@@ -637,6 +638,13 @@ export function WalletProvider({ children }) {
     refreshPortfoliosState();
     touch();
     deriveActiveAndAll();
+    lastAuthAtRef.current = Date.now();
+    try {
+      verifierRef.current = await createCredentialVerifier(password);
+    } catch (err) {
+      verifierRef.current = null;
+      if (import.meta.env.DEV) console.error('[WalletProvider] send-verifier capture failed:', err);
+    }
     // Return mnemonic ONCE for the user to back up; caller must not persist it.
     return mnemonic;
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
@@ -665,6 +673,13 @@ export function WalletProvider({ children }) {
     refreshPortfoliosState();
     touch();
     deriveActiveAndAll();
+    lastAuthAtRef.current = Date.now();
+    try {
+      verifierRef.current = await createCredentialVerifier(password);
+    } catch (err) {
+      verifierRef.current = null;
+      if (import.meta.env.DEV) console.error('[WalletProvider] send-verifier capture failed:', err);
+    }
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // ── MULTI-WALLET MANAGEMENT (re-prompt password to mutate the SEED SET) ──────
@@ -1101,7 +1116,15 @@ export function WalletProvider({ children }) {
     // NOTE: this is one extra Argon2id at unlock; credentialVerifier.deriveRaw yields
     // between KDFs (Defect-A mitigation) so peak memory stays one-KDF-at-a-time.
     lastAuthAtRef.current = Date.now();
-    verifierRef.current = await createCredentialVerifier(password);
+    try {
+      verifierRef.current = await createCredentialVerifier(password);
+    } catch (err) {
+      // Graceful degrade: the vault already decrypted and the session is live. A verifier
+      // failure (e.g. low-memory Argon2id OOM, Defect-A) must NOT turn a valid unlock into
+      // an error. Leave the verifier null; the send path fails closed until a re-unlock.
+      verifierRef.current = null;
+      if (import.meta.env.DEV) console.error('[WalletProvider] send-verifier capture failed:', err);
+    }
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
