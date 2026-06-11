@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-  Shield, Smartphone, Lock, Zap, TrendingUp, Eye, ArrowRight,
-  CheckCircle2, ArrowDownUp, Bell, BarChart3, Key, Menu, X
+  Shield, Smartphone, Lock, Zap, Eye, ArrowRight,
+  CheckCircle2, Bell, BarChart3, Key, Menu, X
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -70,14 +70,14 @@ export default function LandingPage() {
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="inline-block px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-                <span className="text-sm font-semibold text-primary">🔐 Enterprise-Grade Security</span>
+                <span className="text-sm font-semibold text-primary">🧪 Testnet Beta · Self-Custody</span>
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight">
-                Your Crypto,<br />
-                <span className="text-primary">Fully Secured</span>
+                Your keys,<br />
+                <span className="text-primary">on your device</span>
               </h1>
               <p className="text-xl text-slate-400 max-w-lg">
-                The most secure self-custody wallet for managing, trading, and growing your digital assets with industry-leading security features.
+                A self-custody, coercion-resistant crypto wallet. Testnet beta — testnet funds only; security features are provisional and unaudited pending an independent review.
               </p>
             </div>
 
@@ -94,16 +94,16 @@ export default function LandingPage() {
             {/* Trust Indicators */}
             <div className="pt-8 grid grid-cols-3 gap-4 border-t border-slate-700/50">
               <div>
-                <p className="text-2xl font-bold text-primary">100K+</p>
-                <p className="text-sm text-slate-400">Active Users</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-primary">$50B+</p>
-                <p className="text-sm text-slate-400">Assets Secured</p>
-              </div>
-              <div>
                 <p className="text-2xl font-bold text-primary">0</p>
-                <p className="text-sm text-slate-400">Breaches Ever</p>
+                <p className="text-sm text-slate-400">Keys we hold</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-primary">Testnet</p>
+                <p className="text-sm text-slate-400">Beta — no real funds</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-primary">Pending</p>
+                <p className="text-sm text-slate-400">Independent audit</p>
               </div>
             </div>
           </div>
@@ -137,16 +137,16 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">Security at the Core</h2>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              Bank-grade encryption and multi-layered protection to keep your assets safe
+              On-device AES-256-GCM encryption and layered, provisional protections — testnet beta, not yet independently audited
             </p>
           </div>
 
           <div className="grid md:grid-cols-4 gap-6">
             {[
-              { icon: Lock, title: "Passkey Auth", desc: "WebAuthn/FIDO2 biometric login" },
-              { icon: Shield, title: "Duress PIN", desc: "Decoy wallet under coercion" },
+              { icon: Lock, title: "Passkey / biometric unlock", desc: "WebAuthn/FIDO2 or device biometric to unlock — your password always works too" },
+              { icon: Shield, title: "Duress PIN", desc: "Decoy wallet under coercion (provisional, unaudited)" },
               { icon: Eye, title: "Whitelist", desc: "Restrict withdrawals to approved addresses" },
-              { icon: Zap, title: "2FA", desc: "Email OTP for high-risk actions" },
+              { icon: Zap, title: "Step-up re-auth", desc: "Re-enter your PIN to authorise a send" },
             ].map((item, idx) => (
               <div key={idx} className="p-6 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:border-primary/50 transition">
                 <item.icon className="w-8 h-8 text-primary mb-4" />
@@ -170,12 +170,12 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Smartphone, title: "Multi-Chain", desc: "Support for Bitcoin, Ethereum, Solana, Polygon, and more" },
-              { icon: ArrowDownUp, title: "Instant Swaps", desc: "Aggregate DEX swaps across multiple chains" },
-              { icon: TrendingUp, title: "Staking", desc: "Earn yield on your crypto assets" },
-              { icon: BarChart3, title: "Analytics", desc: "Advanced portfolio tracking and P&L reports" },
-              { icon: Bell, title: "Smart Alerts", desc: "Real-time price and security notifications" },
-              { icon: Key, title: "Hardware Wallet", desc: "Ledger, Trezor, and Coldcard integration" },
+              { icon: Smartphone, title: "Multi-Chain", desc: "Receive & balances on 10 assets; send on Ethereum (testnet verified)" },
+              { icon: Shield, title: "Coercion resistance", desc: "Duress PIN, decoy & panic wipe (provisional, unaudited)" },
+              { icon: Eye, title: "Pre-sign screening", desc: "Local tx simulation + address-poisoning / look-alike checks" },
+              { icon: BarChart3, title: "Analytics", desc: "Portfolio tracking and P&L reports" },
+              { icon: Bell, title: "Smart Alerts", desc: "Price and local security notifications" },
+              { icon: Key, title: "Self-custody", desc: "Keys are generated and stay on your device — we hold none" },
             ].map((item, idx) => (
               <div key={idx} className="p-6 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:border-primary/50 transition group cursor-pointer">
                 <item.icon className="w-8 h-8 text-primary mb-4 group-hover:scale-110 transition" />
@@ -196,10 +196,10 @@ export default function LandingPage() {
                 <span className="text-sm font-semibold text-primary">🛡️ Security First</span>
               </div>
               <h2 className="text-4xl font-bold">
-                Military-Grade Protection
+                Coercion-resistant by design
               </h2>
               <p className="text-lg text-slate-400">
-                Your private keys never leave your device. We have zero access to your funds, ever.
+                Your private keys never leave your device, and we have zero access to your funds. The coercion features are provisional and unaudited — see the limits below.
               </p>
 
               <div className="space-y-4">
@@ -221,9 +221,9 @@ export default function LandingPage() {
 
             <div className="p-8 rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-800/50 to-slate-900/50">
               <Shield className="w-12 h-12 text-primary mb-6" />
-              <h3 className="text-2xl font-bold mb-4">Zero Compromise Security</h3>
+              <h3 className="text-2xl font-bold mb-4">Self-custody, on your device</h3>
               <p className="text-slate-400 mb-6">
-                Your private keys are generated on your device and stored exclusively on it in an AES-GCM encrypted vault. Hardware-backed secure-enclave storage is on the roadmap, not yet active. We never have access to your funds.
+                Your private keys are generated on your device and stored only there, in an AES-256-GCM vault. We never have access to your funds. <span className="text-slate-300">Known limit:</span> a 6-digit PIN is offline-brute-forceable on a seized device — hardware-backed key binding is a planned fast-follow, not yet active.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-slate-900/50">
@@ -251,8 +251,8 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-primary/10 via-blue-500/10 to-primary/10 border-y border-slate-700/50">
         <div className="max-w-4xl mx-auto px-6 text-center space-y-8">
-          <h2 className="text-4xl font-bold">Ready to Secure Your Assets?</h2>
-          <p className="text-xl text-slate-400">Join thousands of users who trust Veyrnox with their crypto</p>
+          <h2 className="text-4xl font-bold">Try the testnet beta</h2>
+          <p className="text-xl text-slate-400">Testnet funds only — nothing real at stake. Help us find out what works.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-lg px-8">
               Start Now
@@ -270,7 +270,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <p className="font-bold text-lg mb-4">Veyrnox</p>
-              <p className="text-sm text-slate-400">The most secure self-custody wallet for your digital assets</p>
+              <p className="text-sm text-slate-400">A self-custody, coercion-resistant wallet — testnet beta</p>
             </div>
             <div>
               <p className="font-semibold mb-4">Product</p>
