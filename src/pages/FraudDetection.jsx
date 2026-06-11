@@ -130,7 +130,7 @@ export default function FraudDetection() {
             ))}
           </div>
           {isLoading ? <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
-            : filtered.length === 0 ? <div className="text-center py-10 text-muted-foreground"><ShieldAlert className="h-10 w-10 mx-auto mb-2 opacity-30" /><p className="text-sm">No alerts found — your wallet is secure</p></div>
+            : filtered.length === 0 ? <div className="text-center py-10 text-muted-foreground"><ShieldAlert className="h-10 w-10 mx-auto mb-2 opacity-30" /><p className="text-sm">No known risks flagged — this is not a safety verdict; always verify independently before signing</p></div>
             : filtered.map(a => <AlertCard key={a.id} a={a} />)}
         </TabsContent>
 
