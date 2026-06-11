@@ -7,7 +7,11 @@ import pluginUnusedImports from "eslint-plugin-unused-imports";
 export default [
   {
     // Build artifacts / generated output — not linted (mirrors .gitignore).
-    ignores: ["ios/**", "android/**", "dist/**", "build/**"],
+    // `.claude/**` excludes nested git worktrees (each a full repo copy with its own
+    // android/dist build output); without it `eslint .` descends into them and lints
+    // their generated artifacts (e.g. a Capacitor native-bridge.js with a TS-only
+    // disable directive), failing on rules this JS project doesn't register.
+    ignores: ["ios/**", "android/**", "dist/**", "build/**", ".claude/**", "**/build/**"],
   },
   {
     files: [
