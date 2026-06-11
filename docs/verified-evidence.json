@@ -8,6 +8,11 @@
       "chain": "solana-devnet",
       "txid": "cCqCiKMdfXDHJRc75bn8u2uDBReuo3rfT2NLXMx26W8eWp7omMnSU3gTu3RMMZkQuUdJMZoFYdpV2wR8zZTEXic",
       "date": "2026-06-11"
+    },
+    "Send Crypto — ETH (full UI path, Sepolia, step-up gate)": {
+      "chain": "sepolia",
+      "txid": "0x2d4d5df057c6f61abaf78383d6cad9d1f7f66abfa2b2aec6520a0be8811b8ea9",
+      "date": "2026-06-11"
     }
   }
 }

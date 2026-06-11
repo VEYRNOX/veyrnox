@@ -38,7 +38,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 | Asset | Family | Network | Receive + balance | Send | Status |
 |---|---|---|---|---|---|
-| ETH | evm | Sepolia | ✅ | ✅ verified on-chain | ✅ **live** |
+| ETH | evm | Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x2d4d5d…`) | ✅ **live** |
 | USDC | erc20 | Sepolia | ✅ | gated, unverified | 🟡 receive_only |
 | USDT | erc20 | Sepolia (Aave faucet stand-in) | ✅ | gated, unverified | 🟡 receive_only |
 | MATIC | evm | Polygon Amoy | ✅ | gated, unverified | 🟡 receive_only |
@@ -61,7 +61,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - HD wallet generate (BIP-39), import (seed / private key), multi-account derivation — ✅
 - Encrypted vault (Argon2id + AES-256-GCM) — ✅ (KDF work factor raised to 192 MiB, with param migration — SAST M3)
 - Backup / reveal seed — ✅
-- Send native coin — ✅ for ETH only (verified Sepolia); all other assets 🟡 receive_only
+- Send native coin — ✅ for ETH only (full UI path verified on Sepolia, txid `0x2d4d5d…`, 2026-06-11, user-confirmed); all other assets 🟡 receive_only
 - Receive (per-chain address + local QR) — ✅ (`receiveAddress.js`, `ReceiveCrypto.jsx`, `QRCodeDisplay.jsx`)
 - View balances (from chain) — ✅
 - Transaction history (read-only) — ✅ (`txHistory.js`: BTC/SOL via providers, EVM explorer-fallback, no indexer)
@@ -69,7 +69,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - 10-asset standardization — ✅ (`assets.js` / `TOP_CRYPTOS`)
 
 ## 3. Chains & assets
-- Ethereum (Sepolia) — ✅ live send
+- Ethereum (Sepolia) — ✅ live send — **full UI path verified on-chain** (step-up gate; txid `0x2d4d5d…`, 2026-06-11, user-confirmed)
 - Polygon / Arbitrum / Optimism / Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated)
 - ERC-20 (USDC, USDT — Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
 - Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
