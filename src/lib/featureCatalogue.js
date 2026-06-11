@@ -278,22 +278,10 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Runtime application self-protection: detect jailbroken / rooted / tampered environments and respond. Specced, not yet built.',
       },
       {
-        name: 'Audit Log',
-        status: 'built',
-        summary: 'Opt-in, encrypted local activity record',
-        explanation: 'An opt-in, OFF-by-default local record of a few benign actions (a settings change, a completed send, an approval grant/revoke), serialised and stored as a SINGLE AES-GCM vault blob under a neutral key — byte-shaped like every other vault blob, so it leaves no tell-tale "audit" artifact and panic-wipe destroys it for free. Built (provisional); never logs duress/hidden-wallet events.',
-      },
-      {
         name: 'Risk Limits / Risk Scoring',
         status: 'built',
         summary: 'Rule-based, transparent transaction risk scoring',
         explanation: 'A transparent, rule-based risk score over a pending transaction from on-device signals (fresh recipient, unlimited approval, fresh-spender approval, address poisoning, ENS mismatch, dust input, calldata mismatch, value anomaly) combined into a level. Built (unaudited-provisional) in src/risk/; rule-based and explainable, never an opaque custodial trust score.',
-      },
-      {
-        name: 'Login Activity',
-        status: 'roadmap',
-        summary: 'Login history and map view',
-        explanation: 'A history of access events with an optional map view. Specced, not yet built.',
       },
     ],
   },
