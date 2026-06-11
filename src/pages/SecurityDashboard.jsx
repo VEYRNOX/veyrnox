@@ -251,6 +251,22 @@ export default function SecurityDashboard() {
         </div>
       </div>
 
+      {/* Plain-language threat-model explainer (Phase 2 — seized-device PIN
+          disclosure). Static, session-independent copy; no configured-state. */}
+      <Link
+        to="/what-this-protects"
+        className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-secondary/40 transition-colors"
+      >
+        <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+          <ShieldQuestion className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium">What your PIN protects — and what it doesn't</span>
+          <p className="text-xs text-muted-foreground">Plain-language: what a 6-digit PIN defends against, and what it can't.</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+      </Link>
+
       {/* Honest coverage note — KNOWN signals only, never a guarantee. */}
       <div className="p-3 rounded-xl bg-secondary/50 border border-border">
         <p className="text-xs text-muted-foreground">
