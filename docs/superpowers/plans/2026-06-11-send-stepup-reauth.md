@@ -12,6 +12,8 @@
 
 **Known cost (accept for v1):** capturing the verifier adds one Argon2id (~the unlock KDF cost) to each `unlock()`. This keeps the verifier path-agnostic (same for real/decoy → deniability stays simple). Future optimization (derive cheaply from the unlock's existing Argon2 output) is out of scope; note it, don't build it.
 
+**Confirmation #4 — manage the unlock-time KDF memory (Defect-A).** The verifier KDF makes **two sequential 192 MiB Argon2id derivations at `unlock()`** (vault decrypt + verifier). That is the precise pattern that caused the Defect-A `RangeError` in onboarding. `deriveRaw` in Task 1 **must** yield (`setTimeout 0`) between derivations so each WASM instance GCs before the next allocates (mirrors `vault.js` `deriveKey`) — never run them concurrently/back-to-back without the yield. Manual verification (Task 5) **must include a mobile-like / memory-constrained run**, not just the dev box.
+
 ---
 
 ## File Structure
@@ -134,7 +136,7 @@ function randomSalt() {
 }
 
 async function deriveRaw(credential, salt, params) {
-  return argon2id({
+  const raw = await argon2id({
     password: enc.encode(String(credential).normalize('NFKC')),
     salt,
     parallelism: params.parallelism,
@@ -143,6 +145,14 @@ async function deriveRaw(credential, salt, params) {
     hashLength: params.hashLength,
     outputType: 'binary',
   });
+  // DEFECT-A memory management (mirrors wallet-core/vault.js deriveKey). At unlock the
+  // vault decrypt KDF and THIS verifier KDF run back-to-back; both allocate ~192 MiB in
+  // hash-wasm. Yield to a macrotask so this derivation's WASM instance becomes
+  // GC-eligible BEFORE the next sequential 192 MiB allocation — without it, that is the
+  // exact two-concurrent-192-MiB pattern that caused the Defect-A RangeError in
+  // onboarding. Keeps peak memory one-KDF-at-a-time. Negligible latency.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  return raw;
 }
 
 /**
@@ -535,7 +545,11 @@ Expected: all tests pass, lint clean, build green.
 - [ ] **Step 2: Manual testnet send gate (the real verification)**
 
 Per repo rule, a `src/` change to the send path is verified by a real send, not a green suite. With `VITE_DEV_UNGATE_SEND=1` in `.env.local`, `npm run dev`:
-1. Create/import a real wallet (PIN cohort), unlock.
+1. Create/import a real wallet (PIN cohort), unlock. **Confirmation #4:** on a
+   memory-constrained / CPU-throttled device profile (DevTools → Performance → 4x/6x
+   CPU + a low-memory device, or a real low-end phone), confirm `unlock()` completes and
+   does **not** throw a `RangeError` from the two sequential 192 MiB KDFs (vault +
+   verifier). If it does, the `deriveRaw` yield is missing/insufficient — fix before merge.
 2. Send ETH (Sepolia) immediately after unlock → **within the window → plain Confirm & Send** (no re-prompt) → real tx broadcasts.
 3. Wait > 2 minutes, send again → **step-up prompt appears** → correct PIN → broadcasts; wrong PIN ×5 → wallet locks.
 4. Capture the explorer txid(s). Record results; do NOT mark anything "verified" without a real explorer-confirmed txid.
@@ -551,3 +565,4 @@ UNAUDITED-PROVISIONAL; flag the §24 audit item (touches unlock/verify path; hol
 - **Do NOT** make `verifyActiveCredential` call `unlock()` or `resolveDeniabilityUnlock()` — that would reintroduce panic/decoy side effects. It must only re-derive + compare. This is the load-bearing safety property.
 - **Do NOT** lower the verifier Argon2id params below `KDF_PARAMS` in production. The `params` override on `createCredentialVerifier` exists only for fast tests.
 - The verifier is captured from `password` inside `unlock()` for every session type, so the decoy/duress holder re-enters the decoy credential and the decoy sends normally — never re-decrypt the primary container to verify (it would fail in a decoy session = a deniability tell).
+- **Confirmation #4 (Defect-A):** keep the `setTimeout(0)` yield in `credentialVerifier.deriveRaw`. Without it, the vault-decrypt KDF and the verifier KDF are two concurrent/back-to-back 192 MiB allocations — the exact RangeError that broke onboarding. "Same KDF for security" (correct) must not obscure "two sequential 192 MiB KDFs" (a known failure mode). Verify on a memory-constrained profile (Task 5 Step 2.1).
