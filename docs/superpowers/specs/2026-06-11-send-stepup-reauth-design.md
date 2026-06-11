@@ -33,12 +33,26 @@ The 2FA gate was designed for the removed hosted/base44 era and is now stranded.
 
 ## Decision
 
-The vault is already unlocked by the user's real key (PIN/password, Argon2id) before a send.
-Replace the stranded 2FA picker with a **step-up re-auth**: before signing, re-enter the
-device's existing vault credential, verified against the **active session**. This re-confirms
-the holder at signing time (meaningful because idle/background auto-lock can leave a session
-unlocked while the user stepped away) without introducing any new factor, mail server, or
-audit-gated hardware.
+The vault is already unlocked by the user's real key (PIN/password, Argon2id) before a send,
+so re-entering the same credential is **not a second factor** — its only genuine security
+value is the **unattended unlocked-session window**: the gap between unlock and idle/background
+auto-lock, during which a walked-up-to or grabbed session could send.
+
+So the gate is **conditional on authentication freshness (a recent-auth window)**:
+
+- If the session was authenticated **recently** (within a short window — default **2 minutes**
+  — measured from the last unlock or the last successful step-up), the send goes straight to a
+  plain **Confirm & Send** screen (no credential re-entry).
+- Once that window has **lapsed**, the send requires **step-up re-auth**: re-enter the device's
+  existing vault credential, verified against the **active session**. A successful step-up
+  refreshes the window.
+
+This targets exactly the unattended window with minimal friction, adds no new factor, mail
+server, or audit-gated hardware, and replaces a gate that is currently impossible to satisfy.
+
+The window resets **only on authentication events** (unlock, successful step-up) — explicitly
+**not** on general activity, or an attacker actively using the open session would keep it
+fresh and defeat the guard.
 
 ## Design
 
@@ -68,15 +82,27 @@ audit-gated hardware.
      "is this the real wallet?" oracle.
    - Returns `false` (not throw) if no session/verifier exists (fail closed).
 
-3. **Send verify-step UI (SendCrypto.jsx).**
-   - Replace the 2FA picker (`twoFAMethod`, passkey block, OTP block) with a single step-up
-     prompt: a `PinPad` for the PIN cohort or a password `Input` for the password cohort,
-     selected by `getAuthModel()`.
-   - "Authorize & Send" calls `verifyActiveCredential(entered)`:
-     - `true` → `sendTx.mutate()` (the existing dispatch; unchanged).
-     - `false` → clear the entry, show "Incorrect — try again", increment an attempt counter.
-   - **Attempt cap = 5.** Exhausting it calls `lock()` (fail closed → returns to the unlock
-     gate), matching the unlock surface. No new lockout state machine.
+3. **Recent-auth window (WalletProvider + pure helper).**
+   - A `lastAuthAt` ref set to `Date.now()` on every successful `unlock()` and on every
+     successful `verifyActiveCredential`. Cleared (to null) in `lock()`.
+   - A **pure** helper `sendReauthRequired({ lastAuthAt, now, windowMs }): boolean` —
+     `true` when `lastAuthAt == null` or `now - lastAuthAt > windowMs`. Extracted so it is
+     unit-testable with no React/clock. `windowMs` default = `2 * 60_000`.
+   - Window resets only on auth events (above), never on the existing idle `touch()` activity.
+   - `windowMs` is a fixed v1 default; making it user-configurable (e.g. alongside the
+     auto-lock setting) is out of scope.
+
+4. **Send verify-step UI (SendCrypto.jsx).** The verify step branches on
+   `sendReauthRequired(...)`:
+   - **Within window → plain confirm.** Render the existing send summary with a single
+     **Confirm & Send** button that calls `sendTx.mutate()` directly. No credential entry.
+   - **Window lapsed → step-up.** Render a step-up prompt — a `PinPad` (PIN cohort) or a
+     password `Input` (password cohort), per `getAuthModel()`. **Authorize & Send** calls
+     `verifyActiveCredential(entered)`:
+     - `true` → refresh `lastAuthAt`, then `sendTx.mutate()` (existing dispatch; unchanged).
+     - `false` → clear the entry, "Incorrect — try again", increment an attempt counter.
+     - **Attempt cap = 5** → `lock()` (fail closed → returns to the unlock gate). No new
+       lockout state machine.
    - Remove `verifyPasskey`, `sendOTP`, `verifyOTP`, the `otp*`/`twoFAMethod`/`passkey*`
      state, and the now-unused `EMAIL_AVAILABLE` import (if unused elsewhere in the file).
 
@@ -104,6 +130,16 @@ explicitly **not** used.
 - `buildSendWallet` shape — unchanged; we simply stop reading `passkey_registered`.
 - The send **dispatch** itself (`signAndBroadcast*`, `toBaseUnits`, etc.) — unchanged.
 
+### Residual risk (disclosed, accepted)
+
+Any window > 0 leaves a gap: for up to `windowMs` after a legitimate auth, a send proceeds
+without re-entry, so a session unlocked-then-left-unattended within that window could be used
+to send. This is the deliberate security-per-friction trade: a shorter window shrinks the gap
+at the cost of more prompts; idle/background **auto-lock** remains the outer bound. Step-up is
+also a UI-level gate only — it does not defend against malware with code execution (the keys
+are already in memory once unlocked) or against someone who knows the credential. It is not a
+second factor; it guards exactly one thing — the unattended-unlocked-session window.
+
 ## Testing
 
 Pure-logic unit tests (the codebase pattern — extract verify logic so it needs no React):
@@ -117,6 +153,10 @@ Pure-logic unit tests (the codebase pattern — extract verify logic so it needs
 5. Attempt cap: the 5th wrong entry calls `lock()`.
 6. A live (`buildSendWallet`-sourced) wallet reaches an authorize-able state in the verify
    step (regression test for the original bug).
+7. `sendReauthRequired`: within window → `false`; beyond window → `true`; `lastAuthAt == null`
+   → `true` (fail closed).
+8. Window freshness: resets on unlock and on a successful step-up; a wrong step-up and general
+   activity do **not** refresh it.
 
 No mocked security controls. No real-send broadcast in these tests (dispatch is already
 covered elsewhere).
