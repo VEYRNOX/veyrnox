@@ -3,5 +3,11 @@
   "_example": {
     "Send Crypto": { "chain": "sepolia", "txid": "0x…", "date": "2026-01-01" }
   },
-  "evidence": {}
+  "evidence": {
+    "Solana send (wallet-core module, devnet script)": {
+      "chain": "solana-devnet",
+      "txid": "cCqCiKMdfXDHJRc75bn8u2uDBReuo3rfT2NLXMx26W8eWp7omMnSU3gTu3RMMZkQuUdJMZoFYdpV2wR8zZTEXic",
+      "date": "2026-06-11"
+    }
+  }
 }

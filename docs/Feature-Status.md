@@ -47,7 +47,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | AVAX | evm | Avalanche Fuji | ✅ | gated, unverified | 🟡 receive_only |
 | BNB | evm | BNB testnet | ✅ | gated, unverified | 🟡 receive_only |
 | BTC | btc | Bitcoin testnet (BIP-84) | ✅ | built+tested, gated | 🟡 receive_only |
-| SOL | solana | Solana devnet (ed25519) | ✅ | built+tested, gated | 🟡 receive_only |
+| SOL | solana | Solana devnet (ed25519) | ✅ | ✅ module verified on-chain (devnet) | 🟡 receive_only |
 
 > **Honest framing:** the EVM send path is exercised by ETH/Sepolia (so the
 > shared code works), but each *other* asset/chain stays `receive_only` until a
@@ -73,7 +73,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Polygon / Arbitrum / Optimism / Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated)
 - ERC-20 (USDC, USDT — Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
 - Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
-- Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
+- Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — devnet script `signAndBroadcastSol`, txid `cCqCiKM…`, 2026-06-11, user-decoded + confirmed; UI dispatch still gated on PR #123, so status stays receive_only)
 - More EVM chains / more ERC-20 tokens — 💡
 - Other stacks (XRP, ADA, TRON…) — 💡
 - Cosmos / IBC, Sui — ❌ removed from the app (PR #48); `deriveCosmosAccount` stub left in `derivation.js` (throws, unwired)
