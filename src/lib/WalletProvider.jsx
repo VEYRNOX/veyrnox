@@ -26,7 +26,7 @@ import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
-import { createCredentialVerifier, verifyCredential } from '@/wallet-core/credentialVerifier';
+import { captureVerifierSafe, verifyCredential } from '@/wallet-core/credentialVerifier';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore } from '@/wallet-core/keystore';
 // MULTI-SEED VAULT (feat/multi-wallet-portfolio). ⚠️ AUDIT-CRITICAL container
@@ -639,12 +639,7 @@ export function WalletProvider({ children }) {
     touch();
     deriveActiveAndAll();
     lastAuthAtRef.current = Date.now();
-    try {
-      verifierRef.current = await createCredentialVerifier(password);
-    } catch (err) {
-      verifierRef.current = null;
-      if (import.meta.env.DEV) console.error('[WalletProvider] send-verifier capture failed:', err);
-    }
+    verifierRef.current = await captureVerifierSafe(password); // never throws; null degrades safely
     // Return mnemonic ONCE for the user to back up; caller must not persist it.
     return mnemonic;
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
@@ -674,12 +669,7 @@ export function WalletProvider({ children }) {
     touch();
     deriveActiveAndAll();
     lastAuthAtRef.current = Date.now();
-    try {
-      verifierRef.current = await createCredentialVerifier(password);
-    } catch (err) {
-      verifierRef.current = null;
-      if (import.meta.env.DEV) console.error('[WalletProvider] send-verifier capture failed:', err);
-    }
+    verifierRef.current = await captureVerifierSafe(password); // never throws; null degrades safely
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // ── MULTI-WALLET MANAGEMENT (re-prompt password to mutate the SEED SET) ──────
@@ -1116,15 +1106,10 @@ export function WalletProvider({ children }) {
     // NOTE: this is one extra Argon2id at unlock; credentialVerifier.deriveRaw yields
     // between KDFs (Defect-A mitigation) so peak memory stays one-KDF-at-a-time.
     lastAuthAtRef.current = Date.now();
-    try {
-      verifierRef.current = await createCredentialVerifier(password);
-    } catch (err) {
-      // Graceful degrade: the vault already decrypted and the session is live. A verifier
-      // failure (e.g. low-memory Argon2id OOM, Defect-A) must NOT turn a valid unlock into
-      // an error. Leave the verifier null; the send path fails closed until a re-unlock.
-      verifierRef.current = null;
-      if (import.meta.env.DEV) console.error('[WalletProvider] send-verifier capture failed:', err);
-    }
+    // captureVerifierSafe never throws — a verifier-KDF failure (e.g. low-memory Argon2id
+    // OOM, Defect-A) must NOT turn a valid unlock into an error. null degrades safely: the
+    // send path then fails closed until a re-unlock. See wallet-core/credentialVerifier.js.
+    verifierRef.current = await captureVerifierSafe(password);
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.

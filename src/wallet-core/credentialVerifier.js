@@ -53,6 +53,24 @@ export async function createCredentialVerifier(credential, { params = KDF_PARAMS
 }
 
 /**
+ * Capture a verifier but NEVER throw — returns null on any failure (e.g. a low-memory
+ * Argon2id OOM / Defect-A). LOAD-BEARING: the caller awaits this inside `unlock()` /
+ * `createWallet` / `importWallet`; a throw here would abort an otherwise-successful
+ * unlock and lock the user out of a valid wallet. A null verifier degrades safely — the
+ * send path then fails closed (verifyCredential(null) === false) until a re-unlock.
+ * `create` is injectable ONLY for tests (to force the failure path); production passes
+ * nothing, so it uses createCredentialVerifier at the default vault KDF params.
+ * @returns {Promise<{ salt: Uint8Array, hash: Uint8Array, params: object } | null>}
+ */
+export async function captureVerifierSafe(credential, { create = createCredentialVerifier, ...opts } = {}) {
+  try {
+    return await create(credential, opts);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * True iff `entered` reproduces `verifier.hash` (same salt + params). Constant-time
  * compare. Returns false (never throws) if the verifier is absent — fail closed.
  * @returns {Promise<boolean>}

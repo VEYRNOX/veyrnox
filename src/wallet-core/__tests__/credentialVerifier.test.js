@@ -3,6 +3,7 @@ import {
   createCredentialVerifier,
   verifyCredential,
   constantTimeEqual,
+  captureVerifierSafe,
 } from '../credentialVerifier.js';
 import { KDF_PARAMS } from '../vault.js';
 
@@ -71,5 +72,28 @@ describe('createCredentialVerifier / verifyCredential', () => {
   it('defaults to the vault KDF_PARAMS (verifier no weaker than the vault)', async () => {
     const v = await createCredentialVerifier('x');
     expect(v.params).toBe(KDF_PARAMS);
+  });
+});
+
+describe('captureVerifierSafe (graceful degrade — load-bearing)', () => {
+  it('returns the verifier on success', async () => {
+    const v = await captureVerifierSafe('123456', { params: CHEAP });
+    expect(v).not.toBeNull();
+    expect(v.hash.length).toBe(32);
+    expect(await verifyCredential(v, '123456')).toBe(true);
+  });
+
+  // REGRESSION GUARD for the worst bug in this build: a verifier-KDF failure (e.g.
+  // low-memory Argon2id OOM) must NOT propagate out of capture — it returns null so the
+  // awaiting unlock() can never be aborted by a downstream verifier failure. This test
+  // FAILS (throws) if the try/catch in captureVerifierSafe is removed.
+  it('swallows a KDF failure and returns null (never throws)', async () => {
+    const throwingCreate = async () => { throw new Error('simulated Argon2id OOM'); };
+    // If the try/catch in captureVerifierSafe were removed, this await would REJECT and
+    // fail the test — that is the regression guard for the worst bug in this build.
+    const result = await captureVerifierSafe('123456', { create: throwingCreate });
+    expect(result).toBeNull();
+    // And a null verifier fails closed (send path cannot proceed) — not fails open.
+    expect(await verifyCredential(result, '123456')).toBe(false);
   });
 });
