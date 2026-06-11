@@ -86,7 +86,11 @@ const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
 const CryptoSigning = lazy(() => import('./pages/CryptoSigning'));
 const LiveBalances = lazy(() => import('./pages/LiveBalances'));
-const LandingPage = lazy(() => import('./pages/LandingPage'));
+// LandingGuard owns the public /landing route: it renders LandingPage ONLY on a
+// confirmed no-vault device and otherwise redirects through WalletGate to the PIN
+// pad (closes the reload-to-/landing lock bypass). It imports LandingPage itself,
+// so keeping the guard lazy preserves the page's code-split chunk.
+const LandingGuard = lazy(() => import('./components/LandingGuard'));
 const Documentation = lazy(() => import('./pages/Documentation'));
 const Features = lazy(() => import('./pages/Features'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
@@ -101,7 +105,7 @@ const AuthenticatedApp = () => {
   return (
     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" /></div>}>
     <Routes>
-      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/landing" element={<LandingGuard />} />
       {/* Hosted-account auth routes are gone (base44 removal complete, Phase 4).
           There is no hosted account — the seed/vault is the identity — so any
           stale /login, /register, /forgot-password, /reset-password or
