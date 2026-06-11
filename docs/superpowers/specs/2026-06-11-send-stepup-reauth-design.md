@@ -65,20 +65,24 @@ fresh and defeat the guard.
      `hash = argon2id(enteredCredential, salt)` and `salt` is a fresh CSPRNG per-session salt.
      The entered credential is the `password` argument to `unlock()`, which is exactly what
      opened the session regardless of which path matched.
+   - **The Argon2id params MUST equal the vault unlock KDF params** (reuse the keystore's
+     params — do NOT pick a cheaper "fixed" set). A reduced-cost hash of a short PIN held in
+     memory would be *more* brute-forceable than the vault itself, which would make the
+     verifier the weakest link. Same params → the verifier hash is no weaker than the vault's
+     own at-rest protection.
    - Held in a ref for the session lifetime; **cleared in `lock()`** alongside the other
      in-memory secrets.
    - Rationale for a salted hash over the raw secret: a memory scrape yields only a salted
-     hash. (A 6-digit PIN is still brute-forceable, but the decrypted mnemonic is already in
-     memory while unlocked, so this is a modest, disclosed increment — not a new at-rest
-     exposure.)
+     hash derived at the same cost as the vault (and the decrypted mnemonic is already in
+     memory while unlocked anyway), so this adds no new at-rest exposure.
 
 2. **`verifyActiveCredential(entered): Promise<boolean>` (WalletProvider).**
-   - Re-derives `argon2id(entered, verifier.salt)` and **constant-time compares** to
-     `verifier.hash`. Returns match/no-match.
+   - Re-derives `argon2id(entered, verifier.salt)` with the **same params as the vault unlock
+     KDF** and **constant-time compares** to `verifier.hash`. Returns match/no-match.
    - **No side effects:** never calls `keyStore.unlock()` / `resolveDeniabilityUnlock()` —
      so it can NEVER trigger panic-wipe, a duress/decoy switch, or any session mutation.
      This is the load-bearing safety property.
-   - Constant-work (fixed Argon2id params, single derivation) → no timing oracle and no
+   - Single derivation, identical params each call → constant-work, no timing oracle and no
      "is this the real wallet?" oracle.
    - Returns `false` (not throw) if no session/verifier exists (fail closed).
 
@@ -150,7 +154,8 @@ Pure-logic unit tests (the codebase pattern — extract verify logic so it needs
    unlock/panic/decoy and never mutates session state.
 4. Decoy-session parity: a session opened by a decoy credential verifies against that decoy
    credential (not the primary) — asserted without leaking which session is which.
-5. Attempt cap: the 5th wrong entry calls `lock()`.
+5. Attempt cap: the 5th wrong entry calls `lock()` — **identically in a real and a decoy
+   session** (no tell from the lockout).
 6. A live (`buildSendWallet`-sourced) wallet reaches an authorize-able state in the verify
    step (regression test for the original bug).
 7. `sendReauthRequired`: within window → `false`; beyond window → `true`; `lastAuthAt == null`
