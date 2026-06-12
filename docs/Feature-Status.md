@@ -38,7 +38,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 | Asset | Family | Network | Receive + balance | Send | Status |
 |---|---|---|---|---|---|
-| ETH | evm | Sepolia | ✅ | ✅ verified on-chain | ✅ **live** |
+| ETH | evm | Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x2d4d5d…`) | ✅ **live** |
 | USDC | erc20 | Sepolia | ✅ | gated, unverified | 🟡 receive_only |
 | USDT | erc20 | Sepolia (Aave faucet stand-in) | ✅ | gated, unverified | 🟡 receive_only |
 | MATIC | evm | Polygon Amoy | ✅ | gated, unverified | 🟡 receive_only |
@@ -46,14 +46,17 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | OP | evm | Optimism Sepolia | ✅ | gated, unverified | 🟡 receive_only |
 | AVAX | evm | Avalanche Fuji | ✅ | gated, unverified | 🟡 receive_only |
 | BNB | evm | BNB testnet | ✅ | gated, unverified | 🟡 receive_only |
-| BTC | btc | Bitcoin testnet (BIP-84) | ✅ | built+tested, gated | 🟡 receive_only |
-| SOL | solana | Solana devnet (ed25519) | ✅ | built+tested, gated | 🟡 receive_only |
+| BTC | btc | Bitcoin testnet (BIP-84) | ✅ | ✅ module verified on-chain (testnet) | 🟡 receive_only |
+| SOL | solana | Solana devnet (ed25519) | ✅ | ✅ module verified on-chain (devnet) | 🟡 receive_only |
 
-> **Honest framing:** the EVM send path is exercised by ETH/Sepolia (so the
-> shared code works), but each *other* asset/chain stays `receive_only` until a
-> real testnet send on THAT asset is verified on-chain and reviewed. BTC and SOL
-> have a full build+sign+broadcast path with tests, but no hands-on testnet
-> broadcast has been signed off yet (see `docs/PhaseBTC.verification.md`).
+> **Honest framing:** the EVM send path is exercised by ETH/Sepolia (full UI
+> path, verified on-chain). BTC and SOL send **modules** are now also verified
+> on-chain via their wallet-core broadcast paths (real testnet txids in
+> `verified-evidence.json`, user-confirmed) — but they stay `receive_only`
+> because those families are **not wired into the Send UI dispatch** (gated on
+> PR #123); the module being verified is not the same as the asset being
+> app-sendable. All other assets stay `receive_only` until a real testnet send
+> on THAT asset is verified on-chain (see `docs/PhaseBTC.verification.md`).
 
 ---
 
@@ -61,7 +64,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - HD wallet generate (BIP-39), import (seed / private key), multi-account derivation — ✅
 - Encrypted vault (Argon2id + AES-256-GCM) — ✅ (KDF work factor raised to 192 MiB, with param migration — SAST M3)
 - Backup / reveal seed — ✅
-- Send native coin — ✅ for ETH only (verified Sepolia); all other assets 🟡 receive_only
+- Send native coin — ✅ for ETH only (full UI path verified on Sepolia, txid `0x2d4d5d…`, 2026-06-11, user-confirmed); all other assets 🟡 receive_only
 - Receive (per-chain address + local QR) — ✅ (`receiveAddress.js`, `ReceiveCrypto.jsx`, `QRCodeDisplay.jsx`)
 - View balances (from chain) — ✅
 - Transaction history (read-only) — ✅ (`txHistory.js`: BTC/SOL via providers, EVM explorer-fallback, no indexer)
@@ -69,11 +72,11 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - 10-asset standardization — ✅ (`assets.js` / `TOP_CRYPTOS`)
 
 ## 3. Chains & assets
-- Ethereum (Sepolia) — ✅ live send
+- Ethereum (Sepolia) — ✅ live send — **full UI path verified on-chain** (step-up gate; txid `0x2d4d5d…`, 2026-06-11, user-confirmed)
 - Polygon / Arbitrum / Optimism / Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated)
 - ERC-20 (USDC, USDT — Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
-- Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
-- Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
+- Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — testnet script `signAndBroadcastBtc`, txid `d9cc11…`, block 4990393, 2026-06-12, user-confirmed; UI dispatch still gated on PR #123, so status stays receive_only)
+- Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — devnet script `signAndBroadcastSol`, txid `cCqCiKM…`, 2026-06-11, user-decoded + confirmed; UI dispatch still gated on PR #123, so status stays receive_only)
 - More EVM chains / more ERC-20 tokens — 💡
 - Other stacks (XRP, ADA, TRON…) — 💡
 - Cosmos / IBC, Sui — ❌ removed from the app (PR #48); `deriveCosmosAccount` stub left in `derivation.js` (throws, unwired)
@@ -141,7 +144,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ## 7. Security — S4 hardening — 🟡 2 of 5 built; rest blocked / native / audit-gated
 - RASP — 📋 UI shell only (`RASPSecurity.jsx`)
-- Audit log (opt-in, deniability-safe) — ✅ (PR #72) OFF by default; entries stored as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. Hard in-code denylist refuses duress/stealth/hidden/panic/decoy/seed events; logs only benign `{type, ts}`. Primitive built + tested; not yet wired into call sites. WIRING BLOCKED (finding): recordAuditEvent encrypts under the vault PASSWORD, but WalletProvider deliberately does NOT retain the password after unlock (it re-prompts for each re-encrypt), so events like send_completed/settings_changed cannot be logged passively. Wiring requires an auditLog.js keying redesign — likely keying the log off the primary mnemonic (which the provider does hold while unlocked) rather than the password — to be decided in a dedicated session (touches the crypto module).
+- Audit log (opt-in, deniability-safe) — 🟡 (PR #72 — primitive only, UNWIRED & not surfaced) OFF by default; entries stored as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. Hard in-code denylist refuses duress/stealth/hidden/panic/decoy/seed events; logs only benign `{type, ts}`. Primitive built + tested; not yet wired into call sites. WIRING BLOCKED (finding): recordAuditEvent encrypts under the vault PASSWORD, but WalletProvider deliberately does NOT retain the password after unlock (it re-prompts for each re-encrypt), so events like send_completed/settings_changed cannot be logged passively. Wiring requires an auditLog.js keying redesign — likely keying the log off the primary mnemonic (which the provider does hold while unlocked) rather than the password — to be decided in a dedicated session (touches the crypto module). Surfacing stays HONEST-DISABLED and the storage shape is audit-gated — see `docs/audit-log-login-activity-deniability-decision.md`.
 - Risk / spend limits — ✅ (PR #75; per-tx + daily caps, warn-with-acknowledgement). Risk *scoring* is not a separate build — transaction risk heuristics are covered by anomaly/fraud detection (S2).
 - Encrypted cloud backup (ciphertext only) — 📋 UI shell only (`CloudBackup.jsx`)
 - No-telemetry / fully-local mode, privacy routing (Tor / RPC) — 💡

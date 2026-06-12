@@ -32,6 +32,7 @@ import { formatFiat } from "@/components/FiatCurrencySelector";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import CoinLogo from "@/components/CoinLogo";
 import QuickAccessGrid from "@/components/QuickAccessGrid";
+import SpendingPatternsCard from "@/components/SpendingPatternsCard";
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -597,6 +598,11 @@ export default function WalletPortfolioPage() {
       ) : (
         walletCards
       )}
+
+      {/* Spending patterns — outflow over time, per-asset native units. Reads the
+          active wallet's send history ON DEMAND only (collapsed until tapped), so
+          it adds no background indexer disclosure. Identical in decoy and real. */}
+      <SpendingPatternsCard />
 
       {/* Quick access to genuinely BUILT features (see QuickAccessGrid). */}
       <QuickAccessGrid />

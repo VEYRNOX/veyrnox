@@ -77,9 +77,7 @@ const features = [
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
     { name: "RASP", desc: "Jailbreak / root / tamper detection", status: "roadmap" },
-    { name: "Audit Log", desc: "Local record of security-relevant actions", status: "roadmap" },
     { name: "Spending Limits", desc: "Rule-based per-transaction and daily spending limits (warn-with-acknowledgement)", status: "available" },
-    { name: "Login Activity", desc: "Login history and map view", status: "roadmap" },
   ]},
   { category: "Portfolio & Analytics", icon: BarChart3, items: [
     { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains", status: "roadmap" },

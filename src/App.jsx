@@ -21,7 +21,6 @@ const Calculator = lazy(() => import('./pages/Calculator'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const TaxReport = lazy(() => import('./pages/TaxReport'));
 const SecurityCenter = lazy(() => import('./pages/SecurityCenter'));
-const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
 const NFTPortfolio = lazy(() => import('./pages/NFTPortfolio'));
 const PortfolioSnapshots = lazy(() => import('./pages/PortfolioSnapshots'));
 const PLTracking = lazy(() => import('./pages/PLTracking'));
@@ -35,6 +34,7 @@ const AdvancedAnalytics = lazy(() => import('./pages/AdvancedAnalytics'));
 const Web3Browser = lazy(() => import('./pages/Web3Browser'));
 const MultiChainNFT = lazy(() => import('./pages/MultiChainNFT'));
 const FraudDetection = lazy(() => import('./pages/FraudDetection'));
+const RaspSecurity = lazy(() => import('./pages/RaspSecurity'));
 const PaymentLinks = lazy(() => import('./pages/PaymentLinks'));
 const RiskScoring = lazy(() => import('./pages/RiskScoring'));
 const NewsSentimentPage = lazy(() => import('./pages/NewsSentimentPage'));
@@ -96,6 +96,8 @@ const Features = lazy(() => import('./pages/Features'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
 const SecurityScanner = lazy(() => import('./pages/SecurityScanner'));
 const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
+const WhatThisProtects = lazy(() => import('./pages/WhatThisProtects'));
+const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const ERC20Discovery = lazy(() => import('./pages/ERC20Discovery'));
 const Products = lazy(() => import('./pages/Products'));
 const Subscription = lazy(() => import('./pages/Subscription'));
@@ -133,7 +135,8 @@ const AuthenticatedApp = () => {
           <Route path="/tax" element={<TaxReport />} />
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/security-dashboard" element={<SecurityDashboard />} />
-          <Route path="/audit" element={<AuditLogPage />} />
+          <Route path="/what-this-protects" element={<WhatThisProtects />} />
+          <Route path="/terms-legal" element={<TermsLegal />} />
           <Route path="/nft" element={<NFTPortfolio />} />
           <Route path="/snapshots" element={<PortfolioSnapshots />} />
           <Route path="/pl" element={<PLTracking />} />
@@ -147,6 +150,7 @@ const AuthenticatedApp = () => {
           <Route path="/web3" element={<Web3Browser />} />
           <Route path="/nft-multichain" element={<MultiChainNFT />} />
           <Route path="/fraud" element={<FraudDetection />} />
+          <Route path="/rasp-security" element={<RaspSecurity />} />
           <Route path="/payment-links" element={<PaymentLinks />} />
           <Route path="/risk" element={<RiskScoring />} />
           <Route path="/news-sentiment" element={<NewsSentimentPage />} />
