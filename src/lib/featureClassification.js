@@ -223,7 +223,7 @@ export const CLASSIFICATION = {
   },
   '/erc20-discovery': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Entirely fabricated: handleScan() waits 2.5 s then picks a Math.random() subset of WELL_KNOWN_TOKENS with Math.random()-generated balances (generateBalance()). No blockchain, indexer, or RPC call is made. The UI explicitly says "Scanning blockchain… Querying Transfer events and token contracts" — false. Discovered tokens and balances are invented and presented as the user\'s real on-chain holdings.',
+    note: 'Token discovery across an address needs an ERC-20 Transfer-event scan via a third-party indexer this build does not run (and which would reveal the address). Not built. The earlier version fabricated the scan (Math.random balances over a random subset of well-known tokens, random spam scores) and presented it as real holdings; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
   },
 
   // ── Security group (audit batch A) ───────────────────────────────────────
@@ -311,7 +311,7 @@ export const CLASSIFICATION = {
   },
   '/fraud': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Alert CRUD is real (base44.entities.FraudAlert), but runScan() is a 2 s setTimeout that always resolves "no new threats detected" — no analysis logic runs. The Detection Rules tab renders MOCK_RULES, a hardcoded constant array, presented as actively enforced rules. The page labels itself "AI Fraud Detection" / "Real-time monitoring" without delivering either.',
+    note: 'No automated/AI fraud analysis or rule engine runs in this build. The earlier version labelled itself "AI Fraud Detection" / "Real-time monitoring" but ran no analysis — its scan was a 2 s timeout that always reported "no new threats detected", and its Detection Rules tab rendered a hardcoded list presented as actively enforced. That theatre has been removed; the page is now an honest placeholder behind this gate. Real pre-sign risk lives in the Pre-Sign Scanner, Address Screening, Trust Score and Security Dashboard.',
   },
   '/smart-alerts': {
     verdict: 'disabled', reason: 'server', dataSource: 'base44-entities',
@@ -341,7 +341,7 @@ export const CLASSIFICATION = {
   },
   '/solana': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'SOL_WALLET, SOL_BALANCE, SOL_USD, and all SPL_TOKENS (including balances and prices) are hardcoded constants presented as the user\'s real Solana portfolio. Per-token 24h changes are generated with Math.random() on every render. No Solana RPC or wallet-core call is made. The Send dialog builds no real transaction. The entire page is a fabricated Solana wallet view.',
+    note: 'A live Solana view needs real balance/token reads from a Solana RPC wired through wallet-core, plus Solana send dispatch — not built (the seed can derive a Solana account, but it is not yet wired into send). The earlier version hardcoded a fake Solana wallet (fixed address, balance, SPL list and prices, Math.random 24h changes) with a Send dialog that built no real transaction; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
   },
   '/price-charts': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
