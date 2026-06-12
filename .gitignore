@@ -26,6 +26,9 @@ vitest.worktree.local.mjs
 *.pem
 *.keystore
 secrets.json
+# ...except the committed template of var NAMES (no values). The negation must
+# come AFTER the .env.* rule above or git keeps ignoring it.
+!.env.example
 
 # Logs
 *.log

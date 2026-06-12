@@ -59,4 +59,13 @@ describe('S4 address poisoning', () => {
   it('not applicable: a non-EVM / unparseable recipient → OK (no hex body to compare)', () => {
     expect(s4AddressPoisoning(tx('bc1qxyznotanevmaddress'), set([KNOWN]), {}).level).toBe(LEVEL.OK);
   });
+
+  it('names the resembled counterparty in the sentence when the entry has a label', () => {
+    const poison = '0xa11c00000000000000000000000000000000ffee';
+    const { level, evidence } = s4AddressPoisoning(tx(poison), set([{ address: KNOWN, label: 'Alice' }]), {});
+    expect(level).toBe(LEVEL.RISK);
+    expect(evidence.reason).toContain('Alice');
+    // The full resembled address is still carried for character-by-character comparison.
+    expect(evidence.values.resembles.toLowerCase()).toBe(KNOWN);
+  });
 });

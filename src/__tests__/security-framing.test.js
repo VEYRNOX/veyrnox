@@ -11,9 +11,19 @@ const read = (rel) => readFileSync(resolve(here, '..', rel), 'utf8');
 
 // Setup pages whose copy is specific to the duress/panic set/change flow.
 const SETUP_PAGES = ['pages/DuressPin.jsx', 'pages/PanicWipe.jsx'];
+// Plain-language security disclosure surfaces (Phase 2 — seized-device PIN
+// disclosure). Static, session-independent copy that explains the threat model;
+// it must hold to the same no-configured-state guard as the setup pages so a
+// security surface never drifts outside the deniability check.
+// TermsLegal §D is a static reference copy of the coercion-feature limits; it
+// must hold to the same no-configured-state guard so this consolidated surface
+// never drifts into an "is it set?" readout.
+const DISCLOSURE_PAGES = ['pages/WhatThisProtects.jsx', 'pages/TermsLegal.jsx'];
+// Pages whose copy must not frame a configured-vs-not state.
+const COPY_GUARDED_PAGES = [...SETUP_PAGES, ...DISCLOSURE_PAGES];
 // Every page that must not COMPUTE configured-vs-not from the slot — including the
 // aggregate Security Dashboard, which reads the same WalletProvider markers.
-const ALL_SECURITY_PAGES = [...SETUP_PAGES, 'pages/SecurityDashboard.jsx'];
+const ALL_SECURITY_PAGES = [...COPY_GUARDED_PAGES, 'pages/SecurityDashboard.jsx'];
 
 // Copy that frames the slot as a toggle / reveals configured state.
 const FORBIDDEN_COPY = [
@@ -24,7 +34,7 @@ const FORBIDDEN_COPY = [
 const FORBIDDEN_LOGIC = ['hasDuressPin(', 'hasPanicPin('];
 
 describe('Security framing — no configured-state oracle', () => {
-  for (const page of SETUP_PAGES) {
+  for (const page of COPY_GUARDED_PAGES) {
     it(`${page} has no configured-vs-not copy`, () => {
       const src = read(page);
       for (const s of FORBIDDEN_COPY) expect(src, `forbidden copy: "${s}"`).not.toContain(s);
