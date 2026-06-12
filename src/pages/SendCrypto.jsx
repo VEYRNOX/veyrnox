@@ -2,12 +2,12 @@ import { USD_RATES, approxUsd } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44, EMAIL_AVAILABLE } from "@/api/base44Client";
+import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, Mail, ShieldCheck, ShieldAlert, KeyRound, RefreshCw, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet } from "lucide-react";
+import { ArrowUpRight, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
@@ -26,13 +26,21 @@ import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
+import RiskVerdictBanner from "@/components/RiskVerdictBanner";
+import { score, buildRiskInputs } from "@/risk";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
+import { notifySendConfirmed } from "@/notify/sources";
 import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
+import PinPad from "@/components/security/PinPad";
+import { getAuthModel } from "@/lib/authModel";
+
+// Maximum wrong-credential attempts before the vault locks (step-up re-auth).
+const REAUTH_CAP = 5;
 
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
@@ -65,7 +73,7 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired } = useWallet();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -76,13 +84,12 @@ export default function SendCrypto() {
   const [txResult, setTxResult] = useState(null); // { hash, explorerUrl } from a real broadcast
   const [selectedFee, setSelectedFee] = useState(null); // user-chosen EIP-1559 fee (FeeSelector)
 
-  // 2FA state
-  const [otpCode, setOtpCode]         = useState("");
-  const [otpSent, setOtpSent]         = useState(false);
-  const [otpSecret, setOtpSecret]     = useState("");
-  const [otpSending, setOtpSending]   = useState(false);
-  const [passkeyPending, setPasskeyPending] = useState(false);
-  const [twoFAMethod, setTwoFAMethod] = useState(null); // null | "passkey" | "otp"
+  // STEP-UP RE-AUTH state (replaces the stranded passkey/OTP 2FA).
+  const [reauthValue, setReauthValue] = useState("");
+  const [reauthError, setReauthError] = useState("");
+  const [reauthAttempts, setReauthAttempts] = useState(0);
+  const [reauthPending, setReauthPending] = useState(false);
+  const [, setReauthTick] = useState(0); // bump to force a re-render so the window check re-evaluates
   const [ensName, setEnsName] = useState("");
   const [ensResolving, setEnsResolving] = useState(false);
   const [ensResolved, setEnsResolved] = useState(null);
@@ -365,6 +372,76 @@ export default function SendCrypto() {
     staleTime: 10000,
   });
 
+  // Raw calldata for the risk scorer (S2/S3/S7 read tx.data). Distinct from
+  // tokenCalldata above, which is the human-readable DECODE. Native sends have no
+  // calldata. Cheap + local; recomputed with the same inputs as the decode.
+  const riskCalldata = useMemo(() => {
+    if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
+    try {
+      return buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount }).data;
+    } catch {
+      return null;
+    }
+  }, [isErc20, selectedAsset, toAddress, amount, networkKey]);
+
+  // PRE-SIGN RISK SCORE (src/risk) — the authoritative one-sentence verdict + the
+  // RISK gate. Pure + local: maps the SAME local state the existing warnings read
+  // into score()'s inputs (no new fetch, no signer/seed). recipientCode (S7) is
+  // reused from the simulation's already-fetched eth_getCode (I2).
+  const riskReady = DEMO || !!txSim.data || txSim.isError;
+
+  // SINGLE source of truth for the verdict: maps the live send state → score().
+  // BOTH the displayed banner and the hard pre-sign gate call this, so the
+  // verdict the user sees and the verdict the gate enforces can never diverge
+  // (a divergence would let the gate block a verdict that was never shown, or
+  // vice-versa). recipientCode is the only timing-dependent input — read at call
+  // time. In DEMO there is no live RPC, so recipients are treated as EOAs ('0x'):
+  // the verdict is a real computation over the entered inputs; only the chain
+  // fact behind S7 is demo-seeded.
+  const scoreCurrentSend = () => {
+    const recipientCode = DEMO ? '0x' : txSim.data?.recipientCode;
+    const { unsignedTx, activeSetLocalState, chainData } = buildRiskInputs({
+      to: toAddress,
+      amountText: amount,
+      isErc20,
+      calldata: riskCalldata,
+      displayedEns: ensResolved?.name ?? null,
+      ensResolvedAddress: ensResolved?.address ?? null,
+      chainId: activeNetwork?.chainId,
+      assetCurrency: selectedWallet?.currency,
+      history,
+      knownAddresses,
+      whitelist,
+      recipientCode,
+    });
+    return score(unsignedTx, activeSetLocalState, chainData);
+  };
+
+  // Does the risk score apply to this send at all? (EVM family / ERC-20 with a
+  // format-valid recipient.) Non-EVM sends are not scored.
+  const riskApplicable = !!toAddress && addressFormatValid && (isEvmFamily(selectedAsset) || isErc20);
+  // We wait for the simulation to settle (data or error) before judging so S7
+  // doesn't flash a transient fail-closed CAUTION while eth_getCode loads.
+  const riskVerdict = useMemo(() => {
+    if (!riskApplicable || !riskReady) return null;
+    return scoreCurrentSend();
+    // scoreCurrentSend reads the live send state via closure; deps below mirror
+    // every input it touches (amount included — native sends carry value, not
+    // calldata, so amount must invalidate even when riskCalldata is null).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toAddress, amount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
+
+  // RISK acknowledgement ("Sign anyway"). Reset whenever the breach could change —
+  // amount, asset, or recipient — so a stale ack never carries into a changed send
+  // (same freshness discipline as limitAck above).
+  const [riskAck, setRiskAck] = useState(false);
+  useEffect(() => { setRiskAck(false); }, [amount, selectedWallet?.currency, toAddress]);
+  // While the score is still computing (simulation in flight) the verdict is
+  // unknown — block the verify buttons rather than letting the user proceed into
+  // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
+  const riskPending = riskApplicable && !riskReady;
+  const blockedByRisk = riskPending || (!!riskVerdict?.requiresConfirmation && !riskAck);
+
   const sendTx = useMutation({
     mutationFn: async () => {
       // HARD capability gate: only `live` assets may move funds. This is the
@@ -376,6 +453,13 @@ export default function SendCrypto() {
         throw new Error(`Sending is not yet enabled for ${selectedWallet?.currency}.`);
       }
       if (!isUnlocked) throw new Error("Unlock your wallet to send");
+
+      // STEP-UP defense-in-depth: re-assert the recent-auth gate at signing time so no
+      // code path can broadcast while re-auth is required (the UI already gates this, but
+      // a send is high-stakes — re-check here too). Demo has no vault, so it's exempt.
+      if (!DEMO && isSendReauthRequired()) {
+        throw new Error("Re-enter your PIN or password to authorise this send.");
+      }
 
       // HARD spend-limit gate (defense-in-depth). The Continue button is already
       // disabled on a breach, but re-evaluate at signing time so a per-tx OR
@@ -397,6 +481,27 @@ export default function SendCrypto() {
             : `This send exceeds your per-transaction spending limit.`
         );
       }
+
+      // HARD pre-sign RISK gate (defense-in-depth). The verify buttons are already
+      // disabled on an unacknowledged RISK, but re-evaluate at signing time so a
+      // RISK composite can never be bypassed by stale UI — mirroring the spend-limit
+      // re-check above. Uses the SAME scoreCurrentSend() the banner renders, so the
+      // enforced verdict matches what the user saw. Fail closed: if scoring itself
+      // throws, do NOT sign.
+      let riskGate;
+      try {
+        riskGate = scoreCurrentSend();
+      } catch {
+        throw new Error('Could not complete the pre-sign risk checks — not signing.');
+      }
+      if (riskGate.requiresConfirmation && !riskAck) {
+        throw new Error('Confirm the risk warning before signing.');
+      }
+      // NOTE: the HD-account lookup that main did here is intentionally NOT hoisted —
+      // it is EVM-only (matches selectedWallet.address against an EVM account) and now
+      // lives inside the EVM branch of the family dispatch below. Hoisting it would
+      // throw "not in the unlocked HD set" for BTC/SOL, whose address is not an EVM
+      // account.
 
       // Unlimited approvals must be explicitly acknowledged before signing.
       if (blockedByApproval) {
@@ -463,13 +568,17 @@ export default function SendCrypto() {
         note,
       });
 
-      // Refresh views. Only the EVM result exposes tx.wait(1) for background
-      // confirmation; BTC is broadcast and SOL confirms internally, so for those
-      // we just invalidate the transaction list (status stays 'pending').
+      // Refresh views. Only the EVM result exposes raw.wait(1) for a 1-conf receipt;
+      // BTC is broadcast and SOL confirms internally, so for those we just invalidate
+      // the transaction list (status stays 'pending'). The send-confirmed notify
+      // (brief PR-2 §3) rides the EVM 1-conf receipt — it is fire-and-forget and
+      // swallows any throw (I4). BTC/SOL have no confirmation callback here, so they
+      // do NOT emit a (false) "confirmed" notification.
       if (typeof raw.wait === "function") {
         raw.wait(1).then(() => {
           queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet.address] });
           queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          notifySendConfirmed({ amount: `${amount} ${selectedWallet.currency}`, to: toAddress, ts: Date.now() });
         }).catch(() => {/* surface a "still pending / failed" state in UI */});
       } else {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -488,58 +597,38 @@ export default function SendCrypto() {
     },
   });
 
-  const verifyPasskey = async () => {
-    setPasskeyPending(true);
+  // STEP-UP: verify the re-entered credential, then send. 5 wrong → lock() (fail closed,
+  // identical in real and decoy sessions — no lockout tell).
+  const submitReauth = async (entered) => {
+    if (reauthPending || sendTx.isPending) return;
+    setReauthPending(true);
+    setReauthError("");
     try {
-      await navigator.credentials.get({
-        publicKey: {
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          timeout: 60000,
-          userVerification: "required",
-          rpId: window.location.hostname,
-        },
-      });
-      sendTx.mutate();
-    } catch (e) {
-      if (e.name !== "NotAllowedError") toast.error("Passkey verification failed. Try email OTP instead.");
+      const ok = await verifyActiveCredential(entered);
+      if (ok) {
+        setReauthValue("");
+        sendTx.mutate();
+        return;
+      }
+      const n = reauthAttempts + 1;
+      setReauthAttempts(n);
+      setReauthValue("");
+      if (n >= REAUTH_CAP) {
+        lock();
+        return;
+      }
+      setReauthError(`Incorrect — try again (${REAUTH_CAP - n} left)`);
     } finally {
-      setPasskeyPending(false);
+      setReauthPending(false);
     }
-  };
-
-  const sendOTP = async () => {
-    // Email delivery needs a backend mail sender the local build doesn't ship.
-    if (!EMAIL_AVAILABLE) return;
-    setOtpSending(true);
-    try {
-      const user = await base44.auth.me();
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      setOtpSecret(code);
-      await base44.integrations.Core.SendEmail({
-        to: user.email,
-        subject: "Veyrnox — Your 2FA Code",
-        body: `Your one-time verification code is: ${code}\n\nYou are authorising a send of ${amount} ${selectedWallet?.currency} to ${toAddress}.\n\nThis code expires in 10 minutes. If you didn't request this, ignore this email.`,
-      });
-      setOtpSent(true);
-      toast.success("OTP sent to your email");
-    } catch {
-      toast.error("Failed to send OTP");
-    } finally {
-      setOtpSending(false);
-    }
-  };
-
-  const verifyOTP = () => {
-    if (otpCode.trim() !== otpSecret) {
-      toast.error("Incorrect code. Please try again.");
-      setOtpCode("");
-      return;
-    }
-    sendTx.mutate();
   };
 
   const resetVerify = () => {
-    setTwoFAMethod(null); setOtpSent(false); setOtpCode(""); setOtpSecret(""); setApprovalAck(false);
+    // Intentionally does NOT reset reauthAttempts — going Back to edit must not reset the
+    // wrong-attempt cap within an unlocked session. Attempts reset on a new send (Send
+    // Another) or on lock/unmount. (The 192 MiB Argon2id per attempt is the real rate
+    // limiter; the 5-cap → lock is the UX backstop on top of it.)
+    setReauthValue(""); setReauthError(""); setApprovalAck(false);
   };
 
   if (step === "done") {
@@ -564,7 +653,7 @@ export default function SendCrypto() {
             <p className="text-[11px] text-muted-foreground">Pending until confirmed on-chain. Balance updates from the chain, not a stored value.</p>
           </div>
         )}
-        <Button variant="outline" onClick={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); }}>
+        <Button variant="outline" onClick={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); setReauthAttempts(0); }}>
           Send Another
         </Button>
       </div>
@@ -778,8 +867,11 @@ export default function SendCrypto() {
               <p className="text-xs text-muted-foreground mono-value mt-1 truncate">{toAddress}</p>
             </div>
 
-            {/* Address-poisoning warning repeated at the point of signing. */}
-            <PoisonWarning screen={poisonScreen} />
+            {/* AUTHORITATIVE pre-sign verdict (src/risk composite). One sentence;
+                RISK shows the "Sign anyway" destructive-confirm. Replaces the
+                repeated poison box here — poisoning is now one of the signals it
+                composes (the form-step PoisonWarning stays as early feedback). */}
+            <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
 
             {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
                 KNOWN risk flags, dry-run against your own RPC before you confirm.
@@ -857,93 +949,68 @@ export default function SendCrypto() {
                 the static USD_RATES table, so disclose it's a reference rate. */}
             <ReferenceRateNote className="text-center" />
 
-            {/* 2FA method picker */}
-            {!twoFAMethod && (
-              <div className="space-y-2">
-                <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-widest">Verify your identity</p>
-                {selectedWallet?.passkey_registered && window.PublicKeyCredential && (
-                  <Button className="w-full gap-2" disabled={blockedByApproval} onClick={() => { setTwoFAMethod("passkey"); verifyPasskey(); }}>
-                    <Fingerprint className="h-4 w-4" />
-                    Use Passkey / Biometric
+            {/* STEP-UP RE-AUTH: friction-free within the recent-auth window; re-enter the
+                vault credential once it has lapsed. Skipped in demo (fake sends, no vault).
+                The #137 risk gate (blockedByRisk) ALSO hard-disables the send action here, so
+                a high-risk verdict blocks even an authorised user — both gates must pass. */}
+            {(() => {
+              const reauthRequired = !DEMO && isSendReauthRequired();
+              if (!reauthRequired) {
+                return (
+                  <Button
+                    className="w-full gap-2"
+                    disabled={blockedByApproval || blockedByRisk || sendTx.isPending}
+                    onClick={() => {
+                      // Re-check freshness at click time (isSendReauthRequired reads a ref, always
+                      // current). If the window lapsed while idle on this screen, force a re-render so
+                      // the block below switches to the step-up prompt instead of sending.
+                      if (!DEMO && isSendReauthRequired()) { setReauthTick((t) => t + 1); return; }
+                      sendTx.mutate();
+                    }}
+                  >
+                    {sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
+                    Confirm &amp; Send
                   </Button>
-                )}
-                <Button variant="outline" className="w-full gap-2" disabled={!EMAIL_AVAILABLE || blockedByApproval} onClick={() => { setTwoFAMethod("otp"); sendOTP(); }}>
-                  {otpSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                  {EMAIL_AVAILABLE ? "Send Email OTP" : "Email OTP unavailable offline"}
-                </Button>
-                {!EMAIL_AVAILABLE && (
-                  <p className="text-[11px] text-muted-foreground text-center">
-                    Email OTP needs a mail server, which this local build doesn't include.
-                    {selectedWallet?.passkey_registered ? " Use passkey verification instead." : " Register a passkey for this wallet to authorise sends on this device."}
+                );
+              }
+              const authModel = getAuthModel();
+              return (
+                <div className="space-y-3">
+                  <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-widest">
+                    Re-enter your {authModel === "pin" ? "PIN" : "password"} to authorise
                   </p>
-                )}
-              </div>
-            )}
-
-            {/* Passkey in progress */}
-            {twoFAMethod === "passkey" && (
-              <div className="space-y-3 text-center">
-                {passkeyPending ? (
-                  <div className="py-4 space-y-2">
-                    <Fingerprint className="h-10 w-10 text-primary mx-auto animate-pulse" />
-                    <p className="text-sm text-muted-foreground">Follow the prompt on your device…</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Button className="w-full gap-2" onClick={verifyPasskey} disabled={passkeyPending || sendTx.isPending}>
-                      <Fingerprint className="h-4 w-4" /> Retry Passkey
-                    </Button>
-                    <Button variant="ghost" size="sm" className="w-full" onClick={resetVerify}>Try another method</Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* OTP flow */}
-            {twoFAMethod === "otp" && (
-              <div className="space-y-3">
-                {!otpSent ? (
-                  <div className="text-center py-3">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
-                    <p className="text-xs text-muted-foreground mt-2">Sending code…</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
-                      <ShieldCheck className="h-4 w-4 text-success shrink-0 mt-0.5" />
-                      <p className="text-xs text-success">A 6-digit code was sent to your registered email. Enter it below to authorise this transaction.</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        value={otpCode}
-                        onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                        placeholder="000000"
-                        aria-label="6-digit verification code"
-                        className="w-full text-center text-2xl mono-value tracking-[0.5em] h-14 rounded-lg border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+                  {reauthError && <p role="alert" className="text-xs text-center text-destructive">{reauthError}</p>}
+                  {authModel === "pin" ? (
+                    <PinPad
+                      value={reauthValue}
+                      onChange={setReauthValue}
+                      onComplete={submitReauth}
+                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk}
+                    />
+                  ) : (
+                    <>
+                      <Input
+                        type="password"
+                        value={reauthValue}
+                        onChange={(e) => setReauthValue(e.target.value)}
+                        placeholder="Vault password"
+                        aria-label="Vault password for send authorisation"
                         autoFocus
+                        onKeyDown={(e) => { if (e.key === "Enter" && reauthValue && !reauthPending) submitReauth(reauthValue); }}
                       />
-                    </div>
-                    <Button
-                      className="w-full gap-2"
-                      disabled={otpCode.length !== 6 || sendTx.isPending || blockedByApproval}
-                      onClick={verifyOTP}
-                    >
-                      {sendTx.isPending
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : <KeyRound className="h-4 w-4" />}
-                      Verify &amp; Send
-                    </Button>
-                    <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={() => { setOtpSent(false); setOtpCode(""); sendOTP(); }}>
-                      <RefreshCw className="h-3.5 w-3.5" /> Resend Code
-                    </Button>
-                    <Button variant="ghost" size="sm" className="w-full" onClick={resetVerify}>Try another method</Button>
-                  </>
-                )}
-              </div>
-            )}
+                      <Button
+                        className="w-full gap-2"
+                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk}
+                        onClick={() => submitReauth(reauthValue)}
+                      >
+                        {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                        Authorise &amp; Send
+                      </Button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             <Button variant="ghost" className="w-full" onClick={() => { setStep("form"); resetVerify(); }}>Back</Button>
           </div>

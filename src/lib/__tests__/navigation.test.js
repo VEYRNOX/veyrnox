@@ -24,6 +24,12 @@ describe('navigation respects the feature registry', () => {
     expect(allNavPaths).toContain('/duress-pin');
   });
 
+  it('includes the RASP Security tile in the nav (Security group)', () => {
+    expect(allNavPaths).toContain('/rasp-security');
+    const rasp = navGroups.flatMap((g) => g.items).find((i) => i.path === '/rasp-security');
+    expect(rasp?.label).toBe('RASP Security');
+  });
+
   it('drops no group entirely (no empty groups rendered)', () => {
     expect(navGroups.every((g) => g.items.length > 0)).toBe(true);
   });
