@@ -26,6 +26,8 @@ import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
+import { captureVerifierSafe, verifyCredential } from '@/wallet-core/credentialVerifier';
+import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore } from '@/wallet-core/keystore';
 // MULTI-SEED VAULT (feat/multi-wallet-portfolio). ⚠️ AUDIT-CRITICAL container
 // layer that holds N independent seeds INSIDE the one encrypted blob. It does no
@@ -152,6 +154,12 @@ export function WalletProvider({ children }) {
   // never lands in a render snapshot; cleared on EVERY exit (success, failure,
   // lock/background, abandonment).
   const pendingPinRef = useRef(null);
+  // SEND STEP-UP RE-AUTH. verifierRef holds a per-session salted Argon2id verifier for
+  // whatever credential opened THIS session (real or decoy) — see wallet-core/
+  // credentialVerifier.js. lastAuthAtRef is the recent-auth-window clock. Both are refs
+  // (never a render snapshot) and are cleared in lock().
+  const verifierRef = useRef(null);
+  const lastAuthAtRef = useRef(null);
   const [isUnlocked, setUnlocked] = useState(false);
   // Public, non-secret per-wallet info for the UI: [{ id, name, backedUp,
   // enabledAssets }] — NO mnemonics. Derived from the container ids + walletMeta.
@@ -359,6 +367,9 @@ export function WalletProvider({ children }) {
     activeIdRef.current = null;
     activePortfolioRef.current = MAIN_PORTFOLIO_ID;
     pendingPinRef.current = null;
+    if (verifierRef.current?.hash) { try { verifierRef.current.hash.fill(0); } catch { /* noop */ } }
+    verifierRef.current = null;
+    lastAuthAtRef.current = null;
     setUnlocked(false);
     setIsDecoy(false);
     setIsHidden(false);
@@ -652,6 +663,8 @@ export function WalletProvider({ children }) {
     refreshPortfoliosState();
     touch();
     deriveActiveAndAll();
+    lastAuthAtRef.current = Date.now();
+    verifierRef.current = await captureVerifierSafe(password); // never throws; null degrades safely
     // Return mnemonic ONCE for the user to back up; caller must not persist it.
     return mnemonic;
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
@@ -680,6 +693,8 @@ export function WalletProvider({ children }) {
     refreshPortfoliosState();
     touch();
     deriveActiveAndAll();
+    lastAuthAtRef.current = Date.now();
+    verifierRef.current = await captureVerifierSafe(password); // never throws; null degrades safely
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // ── MULTI-WALLET MANAGEMENT (re-prompt password to mutate the SEED SET) ──────
@@ -835,6 +850,23 @@ export function WalletProvider({ children }) {
     pendingPinRef.current = pin;
     setExploreMode(true);
   }, []);
+
+  // STEP-UP: verify a re-entered credential against the ACTIVE session's verifier. Never
+  // calls unlock()/resolveDeniabilityUnlock — so it can NEVER trigger panic/decoy. A
+  // successful verify refreshes the recent-auth window. Returns false (never throws) if
+  // there is no session/verifier (fail closed).
+  const verifyActiveCredential = useCallback(async (entered) => {
+    const ok = await verifyCredential(verifierRef.current, entered);
+    if (ok) lastAuthAtRef.current = Date.now();
+    return ok;
+  }, []);
+
+  // STEP-UP: is re-auth required before a send? True when the recent-auth window has
+  // lapsed (or no session). Resets only on unlock + successful verifyActiveCredential.
+  const isSendReauthRequired = useCallback(
+    () => sendReauthRequired({ lastAuthAt: lastAuthAtRef.current, now: Date.now(), windowMs: REAUTH_WINDOW_MS }),
+    [],
+  );
 
   // PHASE 2 (create): atomically create the real wallet + both chaff slots under the
   // in-memory pendingPin, fail-closed (provisionPinWallet tears down on chaff failure
@@ -1091,6 +1123,18 @@ export function WalletProvider({ children }) {
     void ensureStealthPool().catch(() => {});
     touch();
     deriveActiveAndAll();
+    // STEP-UP capture: a per-session verifier for the credential that opened THIS
+    // session (real OR decoy — `password` is whatever the user typed). Path-agnostic by
+    // design, so step-up behaves identically across session types (no deniability tell).
+    // Set the window clock FIRST so it starts at unlock — a (rare) send during the ~1s
+    // verifier derivation is then friction-free (within window) and needs no verifier.
+    // NOTE: this is one extra Argon2id at unlock; credentialVerifier.deriveRaw yields
+    // between KDFs (Defect-A mitigation) so peak memory stays one-KDF-at-a-time.
+    lastAuthAtRef.current = Date.now();
+    // captureVerifierSafe never throws — a verifier-KDF failure (e.g. low-memory Argon2id
+    // OOM, Defect-A) must NOT turn a valid unlock into an error. null degrades safely: the
+    // send path then fails closed until a re-unlock. See wallet-core/credentialVerifier.js.
+    verifierRef.current = await captureVerifierSafe(password);
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
@@ -1354,6 +1398,9 @@ export function WalletProvider({ children }) {
     createWalletFromPendingPin,
     importWalletForPendingPin,
     clearPendingPin,
+    // SEND STEP-UP RE-AUTH (see lib/sendReauth.js + wallet-core/credentialVerifier.js).
+    verifyActiveCredential,
+    isSendReauthRequired,
     hasPendingPin: pendingPinRef.current != null,
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
     isDecoy,
