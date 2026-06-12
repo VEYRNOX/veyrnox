@@ -13,6 +13,7 @@
 
 export { score, SIGNALS } from './score.js';
 export { LEVEL, PRIORITY } from './levels.js';
+export { buildRiskInputs } from './fromSendState.js';
 
 export { s1FreshRecipient } from './signals/s1-fresh-recipient.js';
 export { s2UnlimitedApproval } from './signals/s2-unlimited-approval.js';

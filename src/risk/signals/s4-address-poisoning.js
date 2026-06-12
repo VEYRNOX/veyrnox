@@ -38,25 +38,33 @@ export function s4AddressPoisoning(unsignedTx, activeSetLocalState, _chainData) 
   // Not applicable: non-EVM/unparseable recipient has no hex body to compare.
   if (!recipient) return { level: LEVEL.OK, evidence: { reason: 'Recipient not screened for lookalikes.' } };
 
-  // De-duplicate the reference set by address.
-  const known = new Set();
+  // Normalise the reference set to { addr, label } entries, de-duplicated by
+  // address. The label (e.g. "an address you've paid before", a saved-contact
+  // name) is kept so the verdict can name WHICH counterparty the recipient
+  // resembles — the contextual cue ("this looks like Alice") that makes
+  // poisoning recognizable. Bare-string counterparties carry no label.
+  const entries = [];
+  const seen = new Set();
   for (const c of counterparties) {
     const addr = entryAddr(c);
-    if (addr) known.add(addr);
+    if (!addr || seen.has(addr)) continue;
+    seen.add(addr);
+    entries.push({ addr, label: c && typeof c === 'object' ? c.label || null : null });
   }
 
   // An exact match to a known-good counterparty is the opposite of poisoning.
-  if (known.has(recipient)) {
+  if (seen.has(recipient)) {
     return { level: LEVEL.OK, evidence: { reason: 'Recipient is a known counterparty.' } };
   }
 
-  for (const candidate of known) {
-    if (isLookAlike(recipient, candidate) || isNearDuplicate(recipient, candidate, S4_LEVENSHTEIN_MAX)) {
+  for (const { addr, label } of entries) {
+    if (isLookAlike(recipient, addr) || isNearDuplicate(recipient, addr, S4_LEVENSHTEIN_MAX)) {
+      const ref = label ? `“${label}”` : 'an address you have used before';
       return {
         level: LEVEL.RISK,
         evidence: {
-          reason: 'This recipient closely resembles an address you have used before — check every character.',
-          values: { recipient, resembles: candidate },
+          reason: `This recipient closely resembles ${ref} — check every character against the full address below.`,
+          values: { recipient, resembles: addr },
         },
       };
     }

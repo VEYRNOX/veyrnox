@@ -14,6 +14,7 @@
 // to form a baseline → OK (honest gating — an INFO that can't baseline must NOT
 // escalate); value missing/invalid → INDETERMINATE (fail closed).
 
+import { formatEther } from 'ethers';
 import { LEVEL } from '../levels.js';
 
 export const S8_CONSTANTS = Object.freeze({
@@ -72,7 +73,12 @@ export function s8ValueAnomaly(unsignedTx, activeSetLocalState, _chainData) {
       level: LEVEL.INFO,
       evidence: {
         reason: 'This amount is much larger than your usual send.',
-        values: { value: value.toString(), typical: median.toString() },
+        // Display as human-readable units, not raw wei — these are the values the
+        // user verifies in the banner. The comparison math above stays in wei;
+        // only the rendered strings are formatted. Assumes 18-decimal native
+        // (true for every current EVM native asset; the adapter only feeds
+        // native-send wei to S8).
+        values: { value: formatEther(value), typical: formatEther(median) },
       },
     };
   }
