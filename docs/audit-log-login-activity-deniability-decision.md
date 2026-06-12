@@ -1,8 +1,10 @@
 # Design decision: Audit Log & Login Activity vs. deniability (I3)
 
-**Status:** DECISION REQUIRED before any code. Both features are **HONEST-DISABLED** until this decision is made and reviewed.
+**Status:** PRE-AUDIT · surface state **HONEST-DISABLED** (Audit Log not surfaced; Login Activity deferred).
+**Update (PR #72 — supersedes "before any code"):** a *conservative* LOCAL primitive now exists — `src/wallet-core/auditLog.js`: OFF by default, stored in-vault under a neutral byte-shaped blob, with a hard in-code denylist that refuses every duress/stealth/hidden/panic/decoy/seed event and logs only benign `{type, ts}`. It is **unwired and not surfaced.** That route is deliberately *narrower* than the D1–D7 construction sketched below — it avoids the I3 hazard by refusing to log sensitive events at all, rather than by the per-vault-scoped storage shape. The D1–D7 storage shape (§4 sub-decision #1) and any wiring remain **audit-gated**; nothing is surfaced.
 **Owner:** Al · **Reviewer (required):** independent audit
 **Framing:** PRE-AUDIT.
+**Cross-refs:** `docs/Security.roadmap.md` (S4 → Audit Log) · `docs/Feature-Status.md` · surfacing guard: `src/lib/__tests__/featureCatalogue.test.js`.
 
 ---
 
@@ -45,6 +47,7 @@ The throughline: **logs are state, state has a footprint, and a footprint that d
 
 - **Login Activity:** remain **HONEST-DISABLED**. Do not build for parity. Revisit only with a named user-security justification.
 - **Audit Log:** may proceed to *design* under D1–D7, but **no implementation before the independent audit reviews the storage-shape construction** (sub-decision #1). On any build, ship as **UNAUDITED-PROVISIONAL** — and unlike a funds bug, a logging bug here doesn't lose money, it loses someone's plausible deniability under coercion. That asymmetry is why this one waits for the auditor.
+- **Status note (PR #72 interim):** the conservative primitive described in the header is the interim posture — denylist + benign-events-only, **unwired, unsurfaced.** It does **not** implement the D1–D7 storage shape (sub-decision #1), and its existence does **not** lift the audit gate: no wiring into call sites and no catalogue surfacing until the auditor reviews the construction. The catalogue surfacing guard (`featureCatalogue.test.js`) enforces the "not surfaced" half.
 
 ## 6. What this is really telling you
 
