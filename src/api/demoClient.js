@@ -24,14 +24,19 @@ export const DEMO = (() => {
     //     simulator builds produced with `VITE_DEMO_MODE=1 npm run mobile:build`.
     if (import.meta.env.VITE_DEMO_MODE === "1") return true;
 
-    // (1) Browser query param / persisted preference.
-    try {
-      const p = new URLSearchParams(window.location.search);
-      if (p.get("demo") === "0") localStorage.removeItem("veyrnox-demo");
-      else if (p.has("demo")) localStorage.setItem("veyrnox-demo", "1");
-      if (localStorage.getItem("veyrnox-demo") === "1") return true;
-    } catch {
-      // window/localStorage unavailable — fall through to the native check.
+    // (1) Browser query param / persisted preference — DEV / non-release ONLY. In a
+    //     release build (VITE_RELEASE=1) a stray `?demo` link must NOT be able to flip
+    //     a real tester into the fake-seeded demo, so this opt-in trap is statically
+    //     dead-code-eliminated (import.meta.env.VITE_RELEASE is replaced at build time).
+    if (import.meta.env.VITE_RELEASE !== "1") {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get("demo") === "0") localStorage.removeItem("veyrnox-demo");
+        else if (p.has("demo")) localStorage.setItem("veyrnox-demo", "1");
+        if (localStorage.getItem("veyrnox-demo") === "1") return true;
+      } catch {
+        // window/localStorage unavailable — fall through to the native check.
+      }
     }
 
     // (3) Native dev builds (e.g. `cap run` against the dev server) default to
