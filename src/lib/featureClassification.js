@@ -26,7 +26,7 @@ export const ALL_ROUTE_PATHS = [
   '/correlation', '/split-bill', '/session-manager', '/receipt', '/tx-history',
   '/address-checker', '/fee-analytics', '/correlation-timeline',
   '/dashboard-widgets', '/shared-portfolio', '/referrals', '/wallet-seed-qr',
-  '/hardware-wallet', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
+  '/hardware-wallet', '/rasp-security', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
   '/index-builder', '/messenger-alerts', '/voice-commands', '/leaderboard',
   '/public-profiles', '/ai-rebalancer', '/token-approvals', '/network-manager',
   '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
@@ -317,6 +317,10 @@ export const CLASSIFICATION = {
   '/fraud': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
     note: 'No automated/AI fraud analysis or rule engine runs in this build. The earlier version labelled itself "AI Fraud Detection" / "Real-time monitoring" but ran no analysis — its scan was a 2 s timeout that always reported "no new threats detected", and its Detection Rules tab rendered a hardcoded list presented as actively enforced. That theatre has been removed; the page is now an honest placeholder behind this gate. Real pre-sign risk lives in the Pre-Sign Scanner, Address Screening, Trust Score and Security Dashboard.',
+  },
+  '/rasp-security': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Honest current-state RASP surface. Renders only global build-state facts (policy built, detection pending, unwired, unaudited) read from featureCatalogue (resolveStatus), plus the DESIGNED allow/warn/block ladder as static copy. It imports no degrade()/detect() runtime and makes no network call — pure presentation. The honesty-lock (§5) means it cannot show "active" unless the catalogue resolves RASP to verified, which it cannot until the detector legs land and verify.',
   },
   '/smart-alerts': {
     verdict: 'disabled', reason: 'server', dataSource: 'base44-entities',

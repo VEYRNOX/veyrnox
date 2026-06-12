@@ -135,6 +135,7 @@ const RAW_NAV_GROUPS = [
       { path: "/security-scanner", label: "Pre-Sign Scanner", icon: ScanSearch },
       { path: "/biometric-auth", label: "Biometric Auth", icon: Fingerprint },
       { path: "/anomaly-detection", label: "Anomaly Detection", icon: ShieldAlert },
+      { path: "/rasp-security", label: "RASP Security", icon: Cpu },
       { path: "/messenger-alerts", label: "Messenger Alerts", icon: MessageSquare },
       { path: "/voice-commands", label: "Voice Commands", icon: Mic },
       { path: "/token-approvals", label: "Token Approvals", icon: ShieldOff },
