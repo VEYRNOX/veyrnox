@@ -13,6 +13,11 @@
       "chain": "sepolia",
       "txid": "0x2d4d5df057c6f61abaf78383d6cad9d1f7f66abfa2b2aec6520a0be8811b8ea9",
       "date": "2026-06-11"
+    },
+    "Bitcoin send (wallet-core module, testnet script)": {
+      "chain": "bitcoin-testnet",
+      "txid": "d9cc113f2c9c94d7175e546e29b16920aeadd9d34baca7596a0394ab2362a62e",
+      "date": "2026-06-12"
     }
   }
 }

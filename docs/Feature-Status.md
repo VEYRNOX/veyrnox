@@ -46,14 +46,17 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | OP | evm | Optimism Sepolia | ✅ | gated, unverified | 🟡 receive_only |
 | AVAX | evm | Avalanche Fuji | ✅ | gated, unverified | 🟡 receive_only |
 | BNB | evm | BNB testnet | ✅ | gated, unverified | 🟡 receive_only |
-| BTC | btc | Bitcoin testnet (BIP-84) | ✅ | built+tested, gated | 🟡 receive_only |
+| BTC | btc | Bitcoin testnet (BIP-84) | ✅ | ✅ module verified on-chain (testnet) | 🟡 receive_only |
 | SOL | solana | Solana devnet (ed25519) | ✅ | ✅ module verified on-chain (devnet) | 🟡 receive_only |
 
-> **Honest framing:** the EVM send path is exercised by ETH/Sepolia (so the
-> shared code works), but each *other* asset/chain stays `receive_only` until a
-> real testnet send on THAT asset is verified on-chain and reviewed. BTC and SOL
-> have a full build+sign+broadcast path with tests, but no hands-on testnet
-> broadcast has been signed off yet (see `docs/PhaseBTC.verification.md`).
+> **Honest framing:** the EVM send path is exercised by ETH/Sepolia (full UI
+> path, verified on-chain). BTC and SOL send **modules** are now also verified
+> on-chain via their wallet-core broadcast paths (real testnet txids in
+> `verified-evidence.json`, user-confirmed) — but they stay `receive_only`
+> because those families are **not wired into the Send UI dispatch** (gated on
+> PR #123); the module being verified is not the same as the asset being
+> app-sendable. All other assets stay `receive_only` until a real testnet send
+> on THAT asset is verified on-chain (see `docs/PhaseBTC.verification.md`).
 
 ---
 
@@ -72,7 +75,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Ethereum (Sepolia) — ✅ live send — **full UI path verified on-chain** (step-up gate; txid `0x2d4d5d…`, 2026-06-11, user-confirmed)
 - Polygon / Arbitrum / Optimism / Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated)
 - ERC-20 (USDC, USDT — Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
-- Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
+- Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — testnet script `signAndBroadcastBtc`, txid `d9cc11…`, block 4990393, 2026-06-12, user-confirmed; UI dispatch still gated on PR #123, so status stays receive_only)
 - Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — devnet script `signAndBroadcastSol`, txid `cCqCiKM…`, 2026-06-11, user-decoded + confirmed; UI dispatch still gated on PR #123, so status stays receive_only)
 - More EVM chains / more ERC-20 tokens — 💡
 - Other stacks (XRP, ADA, TRON…) — 💡
