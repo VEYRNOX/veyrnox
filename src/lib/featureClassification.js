@@ -15,7 +15,8 @@
 // Must remain de-duplicated — the completeness/phantom tests rely on it.
 export const ALL_ROUTE_PATHS = [
   '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
-  '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects', '/nft',
+  '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects',
+  '/terms-legal', '/nft',
   '/snapshots', '/pl', '/onchain', '/spending', '/advisor', '/smart-alerts',
   '/recurring', '/push', '/advanced-analytics', '/web3', '/nft-multichain',
   '/fraud', '/payment-links', '/risk', '/news-sentiment', '/notifications',
@@ -238,6 +239,10 @@ export const CLASSIFICATION = {
   '/what-this-protects': {
     verdict: 'live', dataSource: 'static',
     note: 'Phase 2 seized-device PIN disclosure (C-screen). Purely static plain-language copy explaining the 6-digit-PIN offline-brute-force limit (what it does / can\'t do / what helps / what\'s coming — hardware key-binding framed as not-yet-shipped). No external call, no fabrication, no per-session/config reads. Deniability: reads identically in real and decoy sessions, names no set\'s existence, never touches coercion/decoy/hidden; guarded by security-framing.test.js.',
+  },
+  '/terms-legal': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Static Terms / Legal reference screen reachable from Settings. §A/§B are clearly-marked owner/counsel "to be supplied" placeholders (never invented legal text); §C reuses the existing testnet-beta/provisional-and-unaudited status language; §D is a condensed reference copy of the coercion-feature honest limits already shown inline on DuressPin/StealthWallets/PanicWipe (does not replace them). No acceptance gate, no storage write, no external call — reads identically in real and decoy sessions. Guarded by terms-legal.test.js and security-framing.test.js.',
   },
   '/wallet-access': {
     verdict: 'live', dataSource: 'wallet-core',

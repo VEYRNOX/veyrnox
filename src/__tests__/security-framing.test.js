@@ -15,7 +15,10 @@ const SETUP_PAGES = ['pages/DuressPin.jsx', 'pages/PanicWipe.jsx'];
 // disclosure). Static, session-independent copy that explains the threat model;
 // it must hold to the same no-configured-state guard as the setup pages so a
 // security surface never drifts outside the deniability check.
-const DISCLOSURE_PAGES = ['pages/WhatThisProtects.jsx'];
+// TermsLegal §D is a static reference copy of the coercion-feature limits; it
+// must hold to the same no-configured-state guard so this consolidated surface
+// never drifts into an "is it set?" readout.
+const DISCLOSURE_PAGES = ['pages/WhatThisProtects.jsx', 'pages/TermsLegal.jsx'];
 // Pages whose copy must not frame a configured-vs-not state.
 const COPY_GUARDED_PAGES = [...SETUP_PAGES, ...DISCLOSURE_PAGES];
 // Every page that must not COMPUTE configured-vs-not from the slot — including the
