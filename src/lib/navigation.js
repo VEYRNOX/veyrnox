@@ -81,7 +81,7 @@ const RAW_NAV_GROUPS = [
       { path: "/fee-analytics", label: "Fee Analytics", icon: Fuel },
       { path: "/tax-harvest", label: "Tax Harvesting", icon: TrendingDown },
       { path: "/hd-wallet", label: "HD Wallet Manager", icon: KeyRound },
-      { path: "/crypto-signing", label: "Crypto Signing (Live)", icon: Pen },
+      { path: "/crypto-signing", label: "Crypto Signing", icon: Pen },
       { path: "/recurring", label: "Recurring Payments", icon: Repeat },
       { path: "/calculator", label: "Convert", icon: Calculator },
     ],
