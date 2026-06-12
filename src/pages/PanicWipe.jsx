@@ -207,9 +207,10 @@ export default function PanicWipe() {
       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
         <AlertOctagon className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet) · destructive · safety-critical.</b> A panic wipe
-          permanently destroys the local copy of your keys. It is flagged for
-          specific security-audit scrutiny. There is no undo.
+          <b>Provisional (testnet), pending independent audit · destructive ·
+          safety-critical.</b> A panic wipe permanently destroys the local copy of
+          your keys — there is no undo, and it's flagged for specific
+          security-audit scrutiny.
         </span>
       </div>
 
@@ -247,17 +248,14 @@ export default function PanicWipe() {
         </div>
         <p className="text-xs font-medium text-foreground">Destroys (local device):</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Your <b>primary encrypted vault</b>.</li>
-          <li>The <b>duress decoy</b> vault, if set.</li>
-          <li>The <b>entire stealth / hidden-wallet pool</b> (real + chaff slots).</li>
-          <li>The panic marker itself, plus demo address residue — the whole vault store is cleared and the database deleted.</li>
+          <li>Your <b>primary vault</b>, the <b>duress decoy</b>, and the <b>entire stealth / hidden-wallet pool</b> (real + chaff slots).</li>
+          <li>The <b>panic marker</b> and demo address residue — the whole vault store is cleared and the database deleted.</li>
         </ul>
         <p className="text-xs font-medium text-foreground mt-2">Does NOT destroy:</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li><b>A seed backup you hold elsewhere</b> (paper, password manager, another device) — the wallet is still recoverable from it. This is intended: wipe protects the <i>device</i>, not the <i>seed</i>.</li>
+          <li><b>A seed backup you hold elsewhere</b> (paper, password manager, another device) — the wallet is still recoverable from it. Wipe protects the device, not the seed.</li>
           <li><b>On-chain state</b> — {explorerNote}</li>
-          <li><b>Flash-media forensics</b> — we delete logical records, not cryptographically sanitise the storage medium. The mitigation is that only ciphertext (Argon2id + AES-GCM) was ever stored.</li>
-          <li>Provisional, testnet-only, pending independent audit.</li>
+          <li><b>Flash-media forensics</b> — we delete logical records, not sanitise the medium; the mitigation is that only ciphertext (Argon2id + AES-GCM) was ever stored.</li>
         </ul>
       </div>
 
