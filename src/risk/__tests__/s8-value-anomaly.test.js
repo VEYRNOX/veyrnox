@@ -24,7 +24,10 @@ describe('S8 value-vs-history anomaly', () => {
   it('HIT: value far above the typical send (median) → INFO', () => {
     const { level, evidence } = s8ValueAnomaly(tx(parseEther('5')), set(typical), {});
     expect(level).toBe(LEVEL.INFO);
-    expect(evidence.values).toHaveProperty('value');
+    // Evidence is shown human-readable (ether), NOT raw wei, so the banner row
+    // is verifiable rather than an 18-digit integer.
+    expect(evidence.values.value).toBe('5.0');
+    expect(evidence.values.typical).toBe('0.0225'); // median of [0.02,0.02,0.025,0.03]
   });
 
   it('MISS: value in line with the typical send → OK', () => {
