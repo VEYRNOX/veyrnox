@@ -56,10 +56,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Shield, Wallet, Lock, Unlock, KeyRound, Download, RefreshCw,
-  Eye, EyeOff, Copy, Check, AlertTriangle, ArrowLeft, Fingerprint, ScanFace,
+  Eye, EyeOff, Copy, Check, AlertTriangle, ArrowLeft, Fingerprint, ScanFace, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,6 +98,89 @@ function EntryShell({ error, children }) {
         )}
         {children}
       </div>
+    </div>
+  );
+}
+
+// FIRST-RUN WELCOME — the branded VEYRNOX hero a fresh device lands on BEFORE the
+// 6-digit PIN (lib/onboardingEntry.js: no-vault → 'welcome'). PURE PRESENTATION: it
+// holds no wallet and no balances; its single "Get Started" action advances to
+// PIN-create (Phase 1), so the PIN-first security order is intact. Copy is honest —
+// self-custody, testnet, provisional framing (CLAUDE.md); deliberately NO "Mainnet",
+// NO "partial-custody", NO shipped-AI claims. Module-level so its identity is stable
+// across WalletEntry re-renders. The Framer Motion entrance + looping logo glow
+// degrade to an instant, static render under prefers-reduced-motion.
+function WelcomeHero({ onGetStarted }) {
+  const reduce = useReducedMotion();
+  const container = {
+    hidden: {},
+    show: { transition: reduce ? {} : { staggerChildren: 0.09, delayChildren: 0.05 } },
+  };
+  const item = reduce
+    ? { hidden: { opacity: 1, y: 0 }, show: { opacity: 1, y: 0 } }
+    : {
+        hidden: { opacity: 0, y: 14 },
+        show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+      };
+  const features = [
+    { icon: Fingerprint, label: "Biometric + PIN unlock" },
+    { icon: Eye, label: "Pre-sign screening" },
+    { icon: Zap, label: "Multi-chain receive & balances" },
+    { icon: Lock, label: "On-device encrypted vault" },
+  ];
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background overflow-hidden">
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="w-full max-w-sm flex flex-col items-center text-center"
+      >
+        {/* Brand mark with a soft pulsing teal glow. The loop is CSS-driven
+            (motion-safe:animate-pulse) rather than a Framer infinite animation: it
+            stays GPU-side, respects prefers-reduced-motion, and lets the JS frame
+            loop go idle once the finite entrance below settles. */}
+        <motion.div variants={item} className="relative mb-6">
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10 rounded-full bg-primary/25 blur-3xl motion-safe:animate-pulse"
+          />
+          <VeyrnoxLogo size={76} />
+        </motion.div>
+
+        <motion.div variants={item}>
+          <VeyrnoxWordmark className="text-3xl block" />
+        </motion.div>
+
+        <motion.p variants={item} className="mt-3 text-sm leading-relaxed text-muted-foreground max-w-[18rem]">
+          Self-custody, coercion-resistant. Your keys never leave this device.
+        </motion.p>
+
+        {/* Honest feature bullets — provisional/testnet framing, no overclaims. */}
+        <motion.ul variants={item} className="mt-8 w-full space-y-3 text-left">
+          {features.map(({ icon: Icon, label }) => (
+            <li key={label} className="flex items-center gap-3 text-sm text-foreground/90">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
+                <Icon className="h-4 w-4 text-primary" />
+              </span>
+              {label}
+            </li>
+          ))}
+        </motion.ul>
+
+        {/* The ONLY action: hand off to PIN-create. Create vs import is chosen later. */}
+        <motion.div variants={item} className="mt-9 w-full">
+          <motion.div whileTap={reduce ? undefined : { scale: 0.97 }} whileHover={reduce ? undefined : { scale: 1.01 }}>
+            <Button className="w-full h-12 text-base gap-2" onClick={onGetStarted}>
+              <Shield className="h-5 w-5" /> Get Started
+            </Button>
+          </motion.div>
+        </motion.div>
+
+        <motion.p variants={item} className="mt-6 text-[11px] text-muted-foreground">
+          v1.0 · Testnet beta · keys stay on-device
+        </motion.p>
+      </motion.div>
     </div>
   );
 }
@@ -539,6 +623,21 @@ export default function WalletEntry() {
     );
   }
 
+  // ---- View: Welcome (fresh-device landing, AHEAD of the PIN) ----
+  // No vault exists; show the branded hero. "Get Started" advances to PIN-create,
+  // resetting the PIN sub-state exactly as the cold-mount path used to.
+  if (view === "welcome") {
+    return (
+      <WelcomeHero
+        onGetStarted={() => {
+          setError("");
+          setRealPin(""); setRealPinConfirm(""); setPinStep("real");
+          setView("pin-create");
+        }}
+      />
+    );
+  }
+
   // ---- View: Unlock (PIN cohort) ----
   if (view === "unlock" && authModel === "pin") {
     const bioLabel = bioStatus?.label || "Face ID";
@@ -744,9 +843,10 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <div className="space-y-5">
-          {/* PIN-FIRST: Back returns to the pre-PIN intro card, NOT the dashboard —
-              the empty dashboard is only reachable AFTER the PIN is set. */}
-          <button type="button" onClick={() => { setError(""); clearPendingPin(); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("choose"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+          {/* PIN-FIRST: Back returns to the branded welcome hero (the fresh-device
+              landing ahead of the PIN), NOT a dashboard — the empty dashboard is
+              only reachable AFTER the PIN is set. */}
+          <button type="button" onClick={() => { setError(""); clearPendingPin(); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
 
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
