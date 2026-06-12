@@ -10,9 +10,12 @@
 import { isAddress } from "ethers";
 import { isValidSolAddress } from "@/wallet-core";
 
-// Shallow Bitcoin format check (legacy 1…, P2SH 3…, bech32 bc1…). Format-only —
-// kept identical to the Send flow's pattern so both surfaces accept the same set.
-const BTC_ADDRESS = /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/;
+// Shallow Bitcoin format check. Mainnet (legacy 1…, P2SH 3…, bech32 bc1…) AND
+// testnet/regtest bech32 (tb1…, bcrt1…) — the app is testnet-only, so a recipient
+// is a tb1… address (the wallet's own BIP-84 address included); without these the
+// send flow rejects every valid testnet recipient. Format-only — the authoritative
+// checksum + network match are enforced by @scure/btc-signer at sign time.
+const BTC_ADDRESS = /^(1|3|bc1|tb1|bcrt1)[a-zA-Z0-9]{25,62}$/;
 
 // Currencies whose on-chain address is a standard 20-byte EVM 0x-address.
 const EVM_CURRENCIES = new Set(["ETH", "USDC", "USDT", "BNB", "MATIC", "ARB", "OP", "AVAX"]);
