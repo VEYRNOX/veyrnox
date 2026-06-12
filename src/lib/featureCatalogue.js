@@ -275,7 +275,7 @@ export const FEATURE_CATEGORIES = [
         name: 'RASP',
         status: 'roadmap',
         summary: 'Jailbreak / root / tamper detection',
-        explanation: 'Runtime application self-protection: detect jailbroken / rooted / tampered environments and respond. Specced, not yet built.',
+        explanation: 'Runtime application self-protection: detect jailbroken / rooted / tampered / emulated / hooked environments and respond with graduated friction before signing. The degradation policy (condition → response tier) and its deniability (I3 response-symmetry) guard are built and unit-tested — pre-audit-safe — in src/rasp/; the detector legs (the Play Integrity verdict and the self-attested probes) are audit-gated and need real-device verification, so the feature stays roadmap until detection is real.',
       },
       {
         name: 'Risk Limits / Risk Scoring',
