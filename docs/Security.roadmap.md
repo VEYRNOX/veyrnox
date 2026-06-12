@@ -404,7 +404,7 @@ see the removed record under "Explicitly EXCLUDED".)
 - **RASP** (Runtime App Self-Protection) — jailbreak/root/tamper/debugger/emulator
   detection on mobile; warn/lock on compromise. Via a mobile security SDK or
   vetted libs. Pure defensive tech, NO regulatory downside; helps store review.
-- **Audit Log** — ✅ BUILT (PR #72, opt-in, OFF by default, LOCAL — no backend). `auditLog.js` stores entries as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. A hard in-code denylist refuses any duress/stealth/hidden/panic/decoy/seed event (independent of the allowlist); only benign `{type, ts}` events are logged, ring-buffered. NOTE: built as a local in-vault primitive, NOT the "needs backend" design originally sketched here; not yet wired into call sites.
+- **Audit Log** — 🟡 primitive built, WIRING BLOCKED (keying redesign) (PR #72, opt-in, OFF by default, LOCAL — no backend). `auditLog.js` stores entries as a single AES-GCM blob in the shared vault store under a neutral key, byte-shaped like every other vault blob (not a forensic tell) and destroyed by panic wipe. A hard in-code denylist refuses any duress/stealth/hidden/panic/decoy/seed event (independent of the allowlist); only benign `{type, ts}` events are logged, ring-buffered. NOTE: built as a local in-vault primitive, NOT the "needs backend" design originally sketched here; not yet wired into call sites.
 - **Wallet Risk Limits / Risk Scoring** — rule-based send limits / risk flags.
   Start simple (rules), evolve.
 - **Encrypted Cloud Backup** — back up the CIPHERTEXT vault only (NEVER plaintext
