@@ -4,7 +4,7 @@ import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
-import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, ClipboardList, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles } from "lucide-react";
+import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles, Scale } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -12,6 +12,7 @@ import PasskeySetup from "../components/PasskeySetup";
 import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
 import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
 import SessionSettings from "../components/security/SessionSettings";
+import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -101,6 +102,10 @@ export default function Settings() {
       {/* Session & auto-lock (idle + background → WalletProvider.lock()) */}
       <SessionSettings />
 
+      {/* Deniability rehearsal — read-only lens over the active set (overlay,
+          no route). Verifies the decoy is indistinguishable to an adversary. */}
+      <RehearsalSettingsRow />
+
       {/* Security Overview */}
       <div className="p-5 rounded-xl border border-border bg-card space-y-1">
         <div className="flex items-center gap-2 mb-3">
@@ -167,13 +172,6 @@ export default function Settings() {
             <p className="text-xs text-muted-foreground">Sessions &amp; Limits</p>
           </div>
         </Link>
-        <Link to="/audit" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
-          <ClipboardList className="h-5 w-5 text-primary shrink-0" />
-          <div>
-            <p className="text-sm font-medium">Audit Log</p>
-            <p className="text-xs text-muted-foreground">Account history</p>
-          </div>
-        </Link>
         <Link to="/network-manager" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <Network className="h-5 w-5 text-primary shrink-0" />
           <div>
@@ -203,6 +201,21 @@ export default function Settings() {
           </div>
         </Link>
       </div>
+
+      {/* Terms & legal — ordinary nav row to the static reference screen. No
+          badge, no status, no count (deniability framing: nothing to read here). */}
+      <Link to="/terms-legal" className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Scale className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Terms &amp; legal</p>
+            <p className="text-xs text-muted-foreground">Terms, disclosures &amp; honest limits</p>
+          </div>
+        </div>
+        <span className="text-sm text-primary font-medium">View</span>
+      </Link>
 
       {/* Danger Zone */}
       <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">

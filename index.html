@@ -7,13 +7,11 @@
     <meta name="theme-color" content="#050608" />
     <link rel="apple-touch-icon" href="/veyrnox-icon.svg" />
     <!-- Brand type: Schibsted Grotesk for prose/labels, IBM Plex Mono for every
-         verifiable value (addresses, amounts, fees, chain IDs, hashes). -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
+         verifiable value (addresses, amounts, fees, chain IDs, hashes). The
+         faces are self-hosted (woff2 under src/assets/fonts/, declared via
+         @font-face in src/index.css) — no Google-Fonts CDN fetch at runtime,
+         so first-screen text LCP gates on a local file and no font request
+         leaves the device (I2). -->
     <title>Veyrnox</title>
   </head>
   <body>

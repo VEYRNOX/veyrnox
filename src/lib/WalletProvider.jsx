@@ -81,6 +81,12 @@ import {
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
+import { getOrCreateDeviceSalt, clearDeviceSalt } from '@/wallet-core/decoyFallback';
+import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
+import { getAuthModel, setAuthModel, shouldCacheUnlockSecret, clearAuthModel } from '@/lib/authModel';
+import { provisionPinWallet } from '@/lib/pinOnboarding';
+import { provisionPinRecovery } from '@/lib/pinRecovery';
+import { consumePendingPin } from '@/lib/pendingPinFlow';
 import {
   isBiometricUnlockEnabled,
   setBiometricUnlockEnabled,
@@ -141,6 +147,11 @@ export function WalletProvider({ children }) {
   // Active portfolio id mirrored in a ref so mutations (e.g. a newly added wallet
   // joining the current portfolio) read it without a stale-closure hazard.
   const activePortfolioRef = useRef(MAIN_PORTFOLIO_ID);
+  // PHASE-1 transient: the PIN chosen during setup, held in memory ONLY until Phase-2
+  // wallet creation consumes it. NEVER persisted (markers-only model). A ref so it
+  // never lands in a render snapshot; cleared on EVERY exit (success, failure,
+  // lock/background, abandonment).
+  const pendingPinRef = useRef(null);
   const [isUnlocked, setUnlocked] = useState(false);
   // Public, non-secret per-wallet info for the UI: [{ id, name, backedUp,
   // enabledAssets }] — NO mnemonics. Derived from the container ids + walletMeta.
@@ -156,11 +167,24 @@ export function WalletProvider({ children }) {
   const [portfolios, setPortfolios] = useState([]);
   const [walletPortfolioMap, setWalletPortfolioMap] = useState({});
   const [activePortfolioId, setActivePortfolioIdState] = useState(MAIN_PORTFOLIO_ID);
-  // EXPLORE-FIRST ONBOARDING: true when the device has NO vault and the user is
-  // browsing the real UI VIEW-ONLY (honest $0 empty states, no auth, nothing to
-  // protect). Wallet-requiring actions call requireWallet() to leave explore and
-  // enter the create/import flow. Returning users (vault exists) never explore.
+  // POST-PIN EMPTY DASHBOARD (PIN-first onboarding): true once Phase-1 setupPin()
+  // has committed the credential markers but no wallet exists yet — the user
+  // browses the real UI VIEW-ONLY (honest $0 empty states) with Create/Import
+  // affordances. NOT the fresh-open landing: a vault-less cold mount routes to
+  // the welcome hero → PIN-create (see WalletEntry's mount probe / lib/onboardingEntry.js).
+  // Wallet-requiring actions call requireWallet() to leave this view and run the
+  // Phase-2 create/import. Returning users (vault exists) never enter it.
   const [exploreMode, setExploreMode] = useState(false);
+  // VAULT-EXISTENCE PROBE (LandingGuard, I4): resolved once on mount so a
+  // synchronous <Route element> guard can read it (keyStore.hasVault is async and
+  // a route element cannot await). vaultExists: true | false | null(unknown/error);
+  // vaultChecking: true until the first resolution. The /landing guard reveals the
+  // public page ONLY on a confirmed `false`; null and the checking window both
+  // fail closed to the gate. Resolved by the dedicated effect below — deliberately
+  // SEPARATE from the stealth-pool seeding effect, whose swallow-all failure
+  // semantics differ. See src/components/LandingGuard.jsx.
+  const [vaultExists, setVaultExists] = useState(null);   // null = unknown / not yet resolved
+  const [vaultChecking, setVaultChecking] = useState(true);
   // DURESS / DECOY (S3): true when the CURRENT session was opened with the
   // duress password (a decoy vault) rather than the real one. Internal flag for
   // app logic; the normal wallet UI deliberately does NOT surface it, so a
@@ -334,6 +358,7 @@ export function WalletProvider({ children }) {
     containerRef.current = null;
     activeIdRef.current = null;
     activePortfolioRef.current = MAIN_PORTFOLIO_ID;
+    pendingPinRef.current = null;
     setUnlocked(false);
     setIsDecoy(false);
     setIsHidden(false);
@@ -385,6 +410,21 @@ export function WalletProvider({ children }) {
     keyStore.hasVault()
       .then((has) => { if (has && !cancelled) return ensureStealthPool(); })
       .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // VAULT-EXISTENCE PROBE (LandingGuard, I4): resolve vault existence once on
+  // mount into synchronous state the /landing route guard can read. DEDICATED and
+  // independent of the stealth-pool effect above — it must not share that effect's
+  // swallow-all semantics. On error vaultExists stays null (treated as "do not
+  // reveal" by the guard) while vaultChecking flips false: the fail-closed point,
+  // so a confirmed "no vault" — and only that — ever unlocks the public page.
+  useEffect(() => {
+    let cancelled = false;
+    keyStore.hasVault()
+      .then((has) => { if (!cancelled) setVaultExists(!!has); })
+      .catch(() => { if (!cancelled) setVaultExists(null); })   // unknown on error → guard fails closed
+      .finally(() => { if (!cancelled) setVaultChecking(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -555,6 +595,25 @@ export function WalletProvider({ children }) {
     lock();              // drop in-memory secret + reset session flags
     setWasWiped(true);   // UX/proof signal only (not a secret)
     return residual;     // { indexedDbKeys, vaultBlobCount, localStorageResidue, clean }
+  }, [lock]);
+
+  // FAIL-CLOSED ONBOARDING ROLLBACK. Tear down a half-provisioned PIN wallet when
+  // chaff provisioning fails mid-creation (see lib/pinOnboarding.js). This is the
+  // local teardown panicWipe does, MINUS the wasWiped panic UX — a setup rollback,
+  // not a user-invoked wipe. Leaves a clean first-run: no primary, no chaff slots,
+  // no cohort marker, no decoy salt, in-memory secret dropped. Best-effort per step
+  // so a flaky sub-clear can't strand a defenseless-but-"ready" wallet behind it.
+  const discardIncompleteWallet = useCallback(async () => {
+    try { await keyStore.clearVault(); } catch { /* native branch; may already be gone */ }
+    try { await panicWipeLocal(); } catch { /* best-effort */ }
+    setBiometricUnlockEnabled(false);
+    try { await clearUnlockSecret(); } catch { /* best-effort */ }
+    clearAllWalletMeta();
+    clearAllPortfolios();
+    clearAuthModel();   // drop any 'pin' cohort marker (matters for the recovery rollback case)
+    clearDeviceSalt();  // drop any seeded decoy salt (recovery rollback case)
+    lock();             // drop the in-memory secret + reset session flags (isUnlocked -> false)
+    // Deliberately NO setWasWiped(true): this is a setup-failure rollback, not a panic wipe.
   }, [lock]);
 
   // Create a brand-new wallet (the FIRST wallet on this device): generate one
@@ -753,17 +812,56 @@ export function WalletProvider({ children }) {
     refreshWalletsState();
   }, [refreshWalletsState]);
 
-  // ── EXPLORE-FIRST ONBOARDING ────────────────────────────────────────────────
+  // ── POST-PIN EMPTY DASHBOARD (explore) ──────────────────────────────────────
+  // The view-only empty dashboard shown AFTER Phase-1 PIN setup (not before — a
+  // fresh device lands on the welcome hero, then PIN-create; see onboardingEntry.js).
   const enterExplore = useCallback(() => setExploreMode(true), []);
   const leaveExplore = useCallback(() => setExploreMode(false), []);
-  // requireWallet(): a wallet-requiring action was tapped while exploring (no
-  // vault yet). Leave explore so the gate surfaces the create/import flow. Returns
-  // true when the action is BLOCKED (no unlocked wallet) so callers short-circuit.
+  // requireWallet(): a wallet-requiring action was tapped on the post-PIN empty
+  // dashboard (no vault yet). Leave it so the gate surfaces the Phase-2 create/
+  // import flow. Returns true when the action is BLOCKED (no unlocked wallet) so
+  // callers short-circuit.
   const requireWallet = useCallback(() => {
     if (isUnlocked) return false;
     setExploreMode(false);
     return true;
   }, [isUnlocked]);
+
+  // PHASE 1: persist credential MARKERS ONLY + hold the PIN in memory; enter explore
+  // so the empty dashboard renders. Writes NO primary/secondary/tertiary, no verifier.
+  const setupPin = useCallback((pin) => {
+    setAuthModel('pin');
+    getOrCreateDeviceSalt();
+    pendingPinRef.current = pin;
+    setExploreMode(true);
+  }, []);
+
+  // PHASE 2 (create): atomically create the real wallet + both chaff slots under the
+  // in-memory pendingPin, fail-closed (provisionPinWallet tears down on chaff failure
+  // and rethrows). Clears pendingPin only on success.
+  const createWalletFromPendingPin = useCallback(() => consumePendingPin(
+    () => pendingPinRef.current,
+    () => { pendingPinRef.current = null; },
+    (pin) => provisionPinWallet(
+      { createWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
+      { pin },
+    ),
+  ), [createWallet, discardIncompleteWallet]);
+
+  // PHASE 2 (import): import a seed under pendingPin + provision both chaff slots in
+  // the SAME fail-closed block (mirrors provisionPinRecovery). Device stays PIN cohort
+  // (never setAuthModel('password')). Clears pendingPin on success.
+  const importWalletForPendingPin = useCallback((mnemonic) => consumePendingPin(
+    () => pendingPinRef.current,
+    () => { pendingPinRef.current = null; },
+    (pin) => provisionPinRecovery(
+      { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
+      { seed: mnemonic, realPin: pin },
+    ),
+  ), [importWallet, discardIncompleteWallet]);
+
+  // Clear the Phase-1 PIN on abandonment / Phase-2 failure (Hold: never linger).
+  const clearPendingPin = useCallback(() => { pendingPinRef.current = null; }, []);
 
   // ── PORTFOLIO MANAGEMENT (non-secret grouping; no password, no vault read) ───
   // Disabled in a decoy/hidden session (single-wallet, ephemeral — never mutate
@@ -813,7 +911,14 @@ export function WalletProvider({ children }) {
     // If biometric one-tap unlock is on, the cached password just went stale —
     // re-cache the NEW one so Face ID keeps working. (Best-effort; if it fails
     // the user still has the new password as the fallback.)
-    if (isBiometricUnlockEnabled()) {
+    // Never re-cache the REAL PIN behind the biometric gate (KEK spec §2/§11
+    // Face-ID-to-decoy guard; decision lives in shouldCacheUnlockSecret,
+    // lib/authModel.js). In the
+    // PIN cohort the biometric cache holds the DURESS PIN (Face-ID-to-decoy); the
+    // secret changed here is the REAL PIN, and caching it would make Face ID open
+    // the real set — the coercion bypass §2/§11 forbid. Password cohort is
+    // unchanged (re-cache the new password so Face ID keeps working).
+    if (shouldCacheUnlockSecret({ authModel: getAuthModel(), biometricEnabled: isBiometricUnlockEnabled() })) {
       try { await storeUnlockSecret(newPassword); } catch { /* fall back to password */ }
     }
     // Keep the session alive on its existing in-memory secret. touch() resets the
@@ -897,8 +1002,17 @@ export function WalletProvider({ children }) {
       //      opens a low-value decoy surrendered under coercion.
       //   2. STEALTH / HIDDEN WALLETS (wallet-core/stealth.js): a dedicated secret
       //      that reveals one of the user's HIDDEN wallets, via the SAME prompt.
-      const { panic, duressMnemonic, hiddenMnemonic } =
-        await resolveDeniabilityUnlock(password);
+      // opts.pinModel: set by the PIN-cohort entry point (WalletEntry's PIN pad).
+      // It enables Option A — a non-enrolled PIN opens a deterministic decoy below
+      // instead of throwing. The password cohort never sets it (unchanged behaviour).
+      const pinModel = opts.pinModel === true;
+      const { panic, duressMnemonic, hiddenMnemonic, fallbackDecoyMnemonic } =
+        await resolveDeniabilityUnlock(
+          password,
+          pinModel
+            ? { deterministicFallback: true, deviceSalt: getOrCreateDeviceSalt() }
+            : {},
+        );
       if (panic) {
         await panicWipe();
         throw primaryErr; // keys destroyed; surface a plain wrong-password failure
@@ -909,8 +1023,14 @@ export function WalletProvider({ children }) {
       } else if (hiddenMnemonic != null) {
         mnemonic = hiddenMnemonic;
         hidden = true;
+      } else if (fallbackDecoyMnemonic != null) {
+        // OPTION A (§7): a non-enrolled PIN opens a fresh, empty, deterministic
+        // decoy as an ephemeral session — NO error state, NO oracle. PIN cohort
+        // only (fallback is null for the password cohort, which throws below).
+        mnemonic = fallbackDecoyMnemonic;
+        decoy = true;
       } else {
-        throw primaryErr;
+        throw primaryErr; // password cohort total miss: unchanged behaviour
       }
     }
     // `mnemonic` here is the DECRYPTED payload: on the primary path it is a
@@ -1228,6 +1348,13 @@ export function WalletProvider({ children }) {
     enterExplore,
     leaveExplore,
     requireWallet,
+    // PIN ONBOARDING (two-phase): Phase 1 holds the PIN in memory + marks the cohort;
+    // Phase 2 atomically creates/imports the real wallet + chaff under it, fail-closed.
+    setupPin,
+    createWalletFromPendingPin,
+    importWalletForPendingPin,
+    clearPendingPin,
+    hasPendingPin: pendingPinRef.current != null,
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
     isDecoy,
     // STEALTH (S3): is the current session a revealed HIDDEN wallet? Off by
@@ -1247,6 +1374,12 @@ export function WalletProvider({ children }) {
     deriveSol,
     withSolPrivateKey,
     hasVault: keyStore.hasVault,
+    // Resolved vault-existence for the synchronous /landing route guard (I4).
+    // vaultExists: true | false | null(unknown); vaultChecking: true until first
+    // resolution. See src/components/LandingGuard.jsx. The raw async hasVault
+    // above is kept for callers that await it.
+    vaultExists,        // resolved boolean | null
+    vaultChecking,      // true until first resolution
     // Duress / decoy controls (see wallet-core/duress.js). hasDuressPin() is the
     // raw store check; set/remove manage the decoy vault.
     hasDuressPin: hasDuressVault,
@@ -1268,6 +1401,10 @@ export function WalletProvider({ children }) {
     // inspectKeyMaterial(): non-destructive proof of what local key material exists.
     wasWiped,
     panicWipe,
+    // FAIL-CLOSED ONBOARDING ROLLBACK: tear down a half-provisioned PIN wallet
+    // when chaff provisioning fails mid-creation (lib/pinOnboarding.js). Setup
+    // rollback, not a panic wipe (no wasWiped). Wired by WalletEntry's orchestrators.
+    discardIncompleteWallet,
     hasPanicPin: hasPanicVault,
     setPanicPin,
     removePanicPin,

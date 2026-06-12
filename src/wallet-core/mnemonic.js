@@ -24,7 +24,7 @@
 //     it to a backend, minimize its lifetime, and hand it to the vault
 //     (see vault.js) for encryption as soon as possible.
 
-import { generateMnemonic as scureGenerate, validateMnemonic as scureValidate, mnemonicToSeedSync } from '@scure/bip39';
+import { generateMnemonic as scureGenerate, validateMnemonic as scureValidate, mnemonicToSeedSync, entropyToMnemonic } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 
 /**
@@ -64,6 +64,19 @@ export function mnemonicToSeed(mnemonic, passphrase = '') {
     throw new Error('Invalid mnemonic: failed BIP-39 checksum/wordlist check');
   }
   return mnemonicToSeedSync(normalize(mnemonic), passphrase);
+}
+
+/**
+ * Deterministically map raw entropy bytes to a checksummed BIP-39 mnemonic. The
+ * SAME entropy always yields the SAME mnemonic. 16 bytes => 12 words, 32 => 24.
+ * @param {Uint8Array} entropy - 16 or 32 bytes
+ * @returns {string} a checksummed BIP-39 mnemonic (LIVE SECRET)
+ */
+export function mnemonicFromEntropy(entropy) {
+  if (!(entropy instanceof Uint8Array) || (entropy.length !== 16 && entropy.length !== 32)) {
+    throw new Error('entropy must be a Uint8Array of 16 or 32 bytes');
+  }
+  return entropyToMnemonic(entropy, wordlist);
 }
 
 // BIP-39 normalization: trim, collapse whitespace, lowercase, NFKD.

@@ -1,148 +1,266 @@
-import { USD_RATES } from "@/lib/cryptos";
+// src/pages/FeeAnalytics.jsx
+//
+// Slice 1 — STATELESS native-unit fee analytics. Reads the active set's per-asset
+// chain history via the SAME on-demand fetch the history view uses (no new data
+// source, no persistence, no fiat), and aggregates the fees THIS set actually
+// paid via src/analytics/feeAnalytics.js. Honest by construction:
+//   - EVM has no in-app history (no JSON-RPC list method, no third-party indexer
+//     by design) → fee analytics is "unavailable", with the explorer fallback.
+//   - A locked wallet is indeterminate, not "$0 / no fees".
+//   - A paid tx whose fee the indexer didn't report is surfaced as "unknown",
+//     never folded into the total as a guess.
+// Native units only — fiat cost basis is Slice 2 (audit-gated), deliberately not
+// here. Verifiable values are set in IBM Plex Mono (font-mono); prose in the
+// default sans (Schibsted Grotesk) per the design system.
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
-import { Fuel, TrendingDown, DollarSign, Zap } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
+import moment from "moment";
+import {
+  Fuel, ArrowUpRight, ArrowLeftRight, CheckCircle2, XCircle, Clock,
+  ExternalLink, Loader2, AlertTriangle, Lock, ShieldCheck, Info,
+} from "lucide-react";
+import { DEMO } from "@/api/demoClient";
+import { useWallet } from "@/lib/WalletProvider";
+import { ASSETS, canReceive } from "@/wallet-core/assets";
+import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
+import { computeFeeAnalytics } from "@/analytics/feeAnalytics";
 
-const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#eab308"];
+// Fee analytics mirrors the wallet's receivable assets (an asset needs a derived
+// address to have history). ETH is first/default — and is also the canonical
+// "in-app history unavailable" case the view explains honestly.
+const FEE_ASSETS = ASSETS.filter((a) => canReceive(a));
 
-function groupByMonth(txs) {
-  const grouped = {};
-  txs.forEach(tx => {
-    if (!tx.fee || tx.fee === 0) return;
-    const key = new Date(tx.created_date).toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
-    const feeUSD = (tx.fee || 0) * (USD_RATES[tx.currency] || 1);
-    grouped[key] = (grouped[key] || 0) + feeUSD;
-  });
-  return Object.entries(grouped).map(([month, fees]) => ({ month, fees: parseFloat(fees.toFixed(4)) }));
+const statusMeta = {
+  pending: { icon: Clock, cls: "text-yellow-500", label: "Pending" },
+  confirmed: { icon: CheckCircle2, cls: "text-primary", label: "Confirmed" },
+  failed: { icon: XCircle, cls: "text-destructive", label: "Failed" },
+};
+
+const short = (a) => (a && a.length > 16 ? `${a.slice(0, 10)}…${a.slice(-6)}` : a || "—");
+
+// Resolve the derived address for the selected asset's family from the unlocked
+// wallet. In demo mode this is unused (demo history is local sample data).
+function addressFor(asset, wallet) {
+  if (asset.family === "btc") return wallet.btcAccount?.address || null;
+  if (asset.family === "solana") return wallet.solAccount?.address || null;
+  return wallet.accounts?.[0]?.address || null; // evm / erc20 share one address
 }
 
-function groupByCurrency(txs) {
-  const grouped = {};
-  txs.forEach(tx => {
-    if (!tx.fee || tx.fee === 0) return;
-    const feeUSD = (tx.fee || 0) * (USD_RATES[tx.currency] || 1);
-    grouped[tx.currency] = (grouped[tx.currency] || 0) + feeUSD;
-  });
-  return Object.entries(grouped).map(([currency, value]) => ({ currency, value: parseFloat(value.toFixed(4)) }));
+function StatCard({ label, value, symbol, mono = true }) {
+  return (
+    <div className="p-4 rounded-xl border border-border bg-card">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className={`font-semibold text-lg ${mono ? "font-mono" : ""}`}>
+        {value}{symbol ? <span className="text-sm text-muted-foreground"> {symbol}</span> : null}
+      </p>
+    </div>
+  );
+}
+
+function FeeRow({ tx, symbol }) {
+  const sMeta = statusMeta[tx.status] || statusMeta.confirmed;
+  const StatusIcon = sMeta.icon;
+  const DirIcon = tx.type === "self" ? ArrowLeftRight : ArrowUpRight;
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+      <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-destructive/10">
+        <DirIcon className="h-4 w-4 text-destructive" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-medium capitalize">{tx.type}</p>
+          <StatusIcon className={`h-3.5 w-3.5 ${sMeta.cls}`} title={sMeta.label} />
+          {tx.demo && (
+            <span className="text-[9px] px-1 py-0.5 rounded bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">Sample</span>
+          )}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          {tx.timestamp ? moment(tx.timestamp).fromNow() : "awaiting confirmation"}
+        </p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-sm font-semibold font-mono text-foreground">{tx.feeNative} {symbol}</p>
+        <p className="text-[10px] text-muted-foreground">network fee</p>
+      </div>
+      {tx.explorerUrl && (
+        <a
+          href={tx.explorerUrl}
+          target="_blank"
+          rel="noreferrer"
+          title="View on block explorer"
+          className="shrink-0 p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      )}
+    </div>
+  );
 }
 
 export default function FeeAnalytics() {
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: () => base44.entities.Transaction.list("-created_date", 500),
+  const wallet = useWallet();
+  const [symbol, setSymbol] = useState("BTC"); // a chain with in-app history by default
+  const asset = useMemo(() => FEE_ASSETS.find((a) => a.symbol === symbol) || FEE_ASSETS[0], [symbol]);
+  const address = DEMO ? null : addressFor(asset, wallet);
+
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ["fee-analytics", asset.symbol, address, DEMO],
+    queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
+    // Like the history view, this is a snapshot the user explicitly opens — no
+    // background refetch (that would repeat the address->indexer disclosure).
+    refetchOnWindowFocus: false,
+    staleTime: 30000,
+    retry: 1,
   });
 
-  const feeTxs = transactions.filter(tx => tx.fee && tx.fee > 0);
-  const totalFeesUSD = feeTxs.reduce((s, tx) => s + (tx.fee || 0) * (USD_RATES[tx.currency] || 1), 0);
-  const avgFeeUSD = feeTxs.length > 0 ? totalFeesUSD / feeTxs.length : 0;
-  const monthlyData = groupByMonth(transactions);
-  const byCurrency = groupByCurrency(transactions);
-
-  const thisMonth = new Date().toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
-  const thisMonthFees = monthlyData.find(m => m.month === thisMonth)?.fees || 0;
-
-  const cheapestDay = (() => {
-    const byDay = {};
-    feeTxs.forEach(tx => {
-      const day = new Date(tx.created_date).toLocaleDateString("en-GB", { weekday: "short" });
-      const feeUSD = (tx.fee || 0) * (USD_RATES[tx.currency] || 1);
-      byDay[day] = byDay[day] || { total: 0, count: 0 };
-      byDay[day].total += feeUSD;
-      byDay[day].count += 1;
-    });
-    const entries = Object.entries(byDay).map(([day, d]) => ({ day, avg: d.total / d.count }));
-    return entries.sort((a, b) => a.avg - b.avg)[0]?.day || "—";
-  })();
-
-  if (isLoading) return <div className="flex justify-center py-20"><div className="h-8 w-8 rounded-full border-4 border-border border-t-primary animate-spin" /></div>;
+  const source = data?.source;
+  const analytics = useMemo(() => (data ? computeFeeAnalytics(data, asset) : null), [data, asset]);
+  const lockedLive = !DEMO && data?.reason === "locked";
+  const evmNoIndexer = data?.supported === false && data?.reason === "evm-no-indexer";
+  const isErc20Empty = analytics?.available && analytics.paidTxCount === 0 && asset.family === "erc20";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-bold">Fee Analytics</h1>
-        <p className="text-sm text-muted-foreground">Track all network fees paid across transactions</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Fuel className="h-5 w-5 text-primary" /> Fee Analytics
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Network fees you’ve paid, in native units, computed on-device from chain history — no fiat, nothing stored.
+          </p>
+        </div>
+        <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
+          {DEMO ? "Demo · sample data" : "Testnet"}
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { label: "Total Fees Paid", value: `$${totalFeesUSD.toFixed(4)}`, icon: <Fuel className="h-4 w-4 text-primary" /> },
-          { label: "This Month", value: `$${thisMonthFees.toFixed(4)}`, icon: <DollarSign className="h-4 w-4 text-green-500" /> },
-          { label: "Avg Per Transaction", value: `$${avgFeeUSD.toFixed(4)}`, icon: <TrendingDown className="h-4 w-4 text-blue-500" /> },
-          { label: "Cheapest Day", value: cheapestDay, icon: <Zap className="h-4 w-4 text-yellow-500" /> },
-        ].map(c => (
-          <div key={c.label} className="p-4 rounded-xl border border-border bg-card">
-            <div className="flex items-center gap-2 mb-1">{c.icon}<p className="text-xs text-muted-foreground">{c.label}</p></div>
-            <p className="font-bold text-lg">{c.value}</p>
-          </div>
+      {/* Asset selector */}
+      <div className="flex gap-2 flex-wrap">
+        {FEE_ASSETS.map((a) => (
+          <button
+            key={a.symbol}
+            onClick={() => setSymbol(a.symbol)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              a.symbol === symbol
+                ? "bg-primary text-primary-foreground border-transparent"
+                : "bg-card border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {a.symbol}
+          </button>
         ))}
       </div>
 
-      {feeTxs.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Fuel className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No fee data yet</p>
-          <p className="text-sm mt-1">Fees will appear here once you have transactions with fee data</p>
+      {/* Privacy / data-source disclosure — same honest phone-home note as history. */}
+      {source && (
+        <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">
+          <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <p>
+            <span className="font-semibold text-foreground">{source.networkName}</span>{" · "}
+            {DEMO
+              ? "Demo mode — nothing is queried over the network; the figures below are computed from local sample data."
+              : source.privacyNote}
+          </p>
         </div>
-      ) : (
+      )}
+
+      {isLoading && (
+        <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Reading {asset.symbol} history…
+        </div>
+      )}
+
+      {isError && !isLoading && (
+        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
+          <div className="flex items-start gap-2 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>Couldn’t read history: {error?.message || "the indexer/RPC didn’t respond"}.</span>
+          </div>
+          <button onClick={() => refetch()} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary">
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* EVM: no in-app history → fees can't be computed in-app. Honest, not zero. */}
+      {evmNoIndexer && !isLoading && (
+        <div className="p-5 rounded-xl border border-dashed border-border bg-card/50 space-y-3 text-center">
+          <ShieldCheck className="h-6 w-6 text-primary mx-auto" />
+          <p className="text-sm font-medium">Fee analytics isn’t available in-app for {asset.name}</p>
+          <p className="text-xs text-muted-foreground">
+            A plain JSON-RPC node can’t list an address’s transactions, and we deliberately don’t add a
+            third-party indexer (a new data source &amp; phone-home surface). Per-tx fees are on the block explorer.
+          </p>
+          {address && (
+            <a href={explorerAddressUrl(asset, address)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+              View {short(address)} on {source?.networkName} explorer <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Live mode, locked wallet: indeterminate, NOT zero fees. */}
+      {lockedLive && !isLoading && (
+        <div className="p-8 text-center rounded-xl border border-dashed border-border space-y-2">
+          <Lock className="h-6 w-6 text-muted-foreground mx-auto" />
+          <p className="text-sm font-medium">Wallet locked</p>
+          <p className="text-xs text-muted-foreground">Unlock your wallet to derive your {asset.symbol} address and compute its fees.</p>
+        </div>
+      )}
+
+      {/* Available view */}
+      {!isLoading && !isError && analytics?.available && !lockedLive && (
         <>
-          {monthlyData.length > 0 && (
-            <div className="p-4 rounded-xl border border-border bg-card">
-              <p className="text-sm font-semibold mb-4">Monthly Fees (USD)</p>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={monthlyData}>
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
-                  <Tooltip formatter={v => [`$${v}`, "Fees"]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
-                  <Bar dataKey="fees" fill="#f97316" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          {analytics.paidTxCount === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground rounded-xl border border-dashed border-border space-y-1">
+              <Fuel className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="font-medium text-foreground">No fees paid yet</p>
+              <p className="text-xs">
+                {isErc20Empty
+                  ? `${asset.symbol} transfers pay gas in the native coin — those fees appear under ETH, not ${asset.symbol}.`
+                  : `Fees you pay sending ${asset.symbol} on ${source?.networkName} will be totalled here.`}
+              </p>
             </div>
-          )}
-
-          {byCurrency.length > 0 && (
-            <div className="p-4 rounded-xl border border-border bg-card">
-              <p className="text-sm font-semibold mb-4">Fees by Network</p>
-              <div className="flex items-center gap-4">
-                <ResponsiveContainer width="40%" height={160}>
-                  <PieChart>
-                    <Pie data={byCurrency} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={70}>
-                      {byCurrency.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={v => [`$${v}`, "Fees"]} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-2">
-                  {byCurrency.map((d, i) => (
-                    <div key={d.currency} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-                        {d.currency}
-                      </div>
-                      <span className="font-semibold">${d.value}</span>
-                    </div>
-                  ))}
-                </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard label="Total fees paid" value={analytics.totalFeeNative} symbol={analytics.assetSymbol} />
+                <StatCard label="Transactions" value={String(analytics.paidTxCount)} mono={false} />
+                <StatCard label="Average fee" value={analytics.avgFeeNative} symbol={analytics.assetSymbol} />
+                <StatCard label="Highest fee" value={analytics.maxFeeNative} symbol={analytics.assetSymbol} />
               </div>
-            </div>
+
+              {/* I4 honesty: paid txs whose fee the indexer didn't report. */}
+              {analytics.unknownFeeCount > 0 && (
+                <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">
+                  <Info className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+                  <p>
+                    {analytics.unknownFeeCount} paid transaction{analytics.unknownFeeCount !== 1 ? "s" : ""} had no
+                    fee reported by the indexer and {analytics.unknownFeeCount !== 1 ? "are" : "is"} excluded from the
+                    total — shown as unknown rather than guessed.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">Fees paid ({analytics.paidTxCount})</p>
+                {analytics.perTx.map((tx) => (
+                  <FeeRow key={tx.id} tx={tx} symbol={analytics.assetSymbol} />
+                ))}
+              </div>
+            </>
           )}
 
-          <div className="p-4 rounded-xl border border-border bg-card">
-            <p className="text-sm font-semibold mb-3">Recent Fee Transactions</p>
-            <div className="space-y-2">
-              {feeTxs.slice(0, 10).map(tx => (
-                <div key={tx.id} className="flex justify-between text-xs py-1.5 border-b border-border/50 last:border-0">
-                  <div>
-                    <p className="font-medium capitalize">{tx.type || "Transfer"} — {tx.currency}</p>
-                    <p className="text-muted-foreground">{new Date(tx.created_date).toLocaleDateString("en-GB")}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{tx.fee} {tx.currency}</p>
-                    <p className="text-muted-foreground">${((tx.fee || 0) * (USD_RATES[tx.currency] || 1)).toFixed(4)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="flex items-center justify-end text-xs text-muted-foreground">
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
+            >
+              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Fuel className="h-3.5 w-3.5" />}
+              Refresh
+            </button>
           </div>
         </>
       )}

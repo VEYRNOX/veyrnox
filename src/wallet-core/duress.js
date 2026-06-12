@@ -85,15 +85,21 @@ function store(db, mode) {
   return db.transaction(STORE, mode).objectStore(STORE);
 }
 
+// NOTE: every DB open below MUST close in a `finally` (mirrors panic.js). A
+// leaked open connection blocks indexedDB.deleteDatabase during the fail-closed
+// onboarding rollback (discardIncompleteWallet -> panicWipeLocal), so a write
+// failure here must never leave a connection open.
 async function loadDecoy() {
   const db = await openDb();
-  const out = await new Promise((res, rej) => {
-    const r = store(db, 'readonly').get(DECOY_KEY);
-    r.onsuccess = () => res(r.result || null);
-    r.onerror = () => rej(r.error);
-  });
-  db.close();
-  return out;
+  try {
+    return await new Promise((res, rej) => {
+      const r = store(db, 'readonly').get(DECOY_KEY);
+      r.onsuccess = () => res(r.result || null);
+      r.onerror = () => rej(r.error);
+    });
+  } finally {
+    db.close();
+  }
 }
 
 /** Whether a decoy (duress) vault is currently configured. */
@@ -115,12 +121,15 @@ export async function setDuressVault(decoyMnemonic, duressPassword) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }
   const db = await openDb();
-  await new Promise((res, rej) => {
-    const r = store(db, 'readwrite').put(blob, DECOY_KEY);
-    r.onsuccess = () => res();
-    r.onerror = () => rej(r.error);
-  });
-  db.close();
+  try {
+    await new Promise((res, rej) => {
+      const r = store(db, 'readwrite').put(blob, DECOY_KEY);
+      r.onsuccess = () => res();
+      r.onerror = () => rej(r.error);
+    });
+  } finally {
+    db.close();
+  }
 }
 
 /**
@@ -145,10 +154,13 @@ export async function tryDuressUnlock(password) {
 /** Remove the decoy vault. */
 export async function clearDuressVault() {
   const db = await openDb();
-  await new Promise((res, rej) => {
-    const r = store(db, 'readwrite').delete(DECOY_KEY);
-    r.onsuccess = () => res();
-    r.onerror = () => rej(r.error);
-  });
-  db.close();
+  try {
+    await new Promise((res, rej) => {
+      const r = store(db, 'readwrite').delete(DECOY_KEY);
+      r.onsuccess = () => res();
+      r.onerror = () => rej(r.error);
+    });
+  } finally {
+    db.close();
+  }
 }

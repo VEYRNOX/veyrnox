@@ -21,7 +21,6 @@ const Calculator = lazy(() => import('./pages/Calculator'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const TaxReport = lazy(() => import('./pages/TaxReport'));
 const SecurityCenter = lazy(() => import('./pages/SecurityCenter'));
-const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
 const NFTPortfolio = lazy(() => import('./pages/NFTPortfolio'));
 const PortfolioSnapshots = lazy(() => import('./pages/PortfolioSnapshots'));
 const PLTracking = lazy(() => import('./pages/PLTracking'));
@@ -86,12 +85,18 @@ const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
 const CryptoSigning = lazy(() => import('./pages/CryptoSigning'));
 const LiveBalances = lazy(() => import('./pages/LiveBalances'));
-const LandingPage = lazy(() => import('./pages/LandingPage'));
+// LandingGuard owns the public /landing route: it renders LandingPage ONLY on a
+// confirmed no-vault device and otherwise redirects through WalletGate to the PIN
+// pad (closes the reload-to-/landing lock bypass). It imports LandingPage itself,
+// so keeping the guard lazy preserves the page's code-split chunk.
+const LandingGuard = lazy(() => import('./components/LandingGuard'));
 const Documentation = lazy(() => import('./pages/Documentation'));
 const Features = lazy(() => import('./pages/Features'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
 const SecurityScanner = lazy(() => import('./pages/SecurityScanner'));
 const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
+const WhatThisProtects = lazy(() => import('./pages/WhatThisProtects'));
+const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const ERC20Discovery = lazy(() => import('./pages/ERC20Discovery'));
 const Products = lazy(() => import('./pages/Products'));
 const Subscription = lazy(() => import('./pages/Subscription'));
@@ -101,7 +106,7 @@ const AuthenticatedApp = () => {
   return (
     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" /></div>}>
     <Routes>
-      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/landing" element={<LandingGuard />} />
       {/* Hosted-account auth routes are gone (base44 removal complete, Phase 4).
           There is no hosted account — the seed/vault is the identity — so any
           stale /login, /register, /forgot-password, /reset-password or
@@ -129,7 +134,8 @@ const AuthenticatedApp = () => {
           <Route path="/tax" element={<TaxReport />} />
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/security-dashboard" element={<SecurityDashboard />} />
-          <Route path="/audit" element={<AuditLogPage />} />
+          <Route path="/what-this-protects" element={<WhatThisProtects />} />
+          <Route path="/terms-legal" element={<TermsLegal />} />
           <Route path="/nft" element={<NFTPortfolio />} />
           <Route path="/snapshots" element={<PortfolioSnapshots />} />
           <Route path="/pl" element={<PLTracking />} />

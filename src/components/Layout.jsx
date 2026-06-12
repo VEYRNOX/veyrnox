@@ -6,7 +6,7 @@ import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
 import HelpMenu from "./HelpMenu";
 import {
-  LayoutDashboard, Send, Download, Settings, LogOut, Bell, Search,
+  LayoutDashboard, Send, Download, Settings, LogOut, Search,
   MoreHorizontal, ChevronLeft, ChevronRight, X, ChevronDown,
 } from "lucide-react";
 import { base44, WALLET_GATE } from "@/api/base44Client";
@@ -20,6 +20,9 @@ import FeatureGate from './FeatureGate';
 import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
 import { navGroups, groupColor } from "@/lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNotifications } from "@/notify/useNotifications";
+import NotificationToast from "./NotificationToast";
+import NotificationBell from "./NotificationBell";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
 const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
@@ -94,6 +97,16 @@ export default function Layout() {
     }
   }, [mobileTab, location.pathname, navigate]);
   usePriceAlertNotifier();
+  // In-app Notifications v1 (brief PR-2 §3). ONE hook instance for the whole
+  // authenticated shell: the toast (latest) and the bell badge (unseenCount) read
+  // the same session-scoped queue. Mounted inside WalletGate, so it unmounts and
+  // wipes on lock/reload — never hydrated from a store (deniability: no residual).
+  // Opening the bell marks all seen and routes to the notification centre.
+  const { latest, unseenCount, dismiss, markAllSeen } = useNotifications();
+  const openNotifications = useCallback(() => {
+    markAllSeen();
+    navigate("/notifications");
+  }, [markAllSeen, navigate]);
   const queryClient = useQueryClient();
   const handleRefresh = async () => {
     await Promise.all([
@@ -127,6 +140,7 @@ export default function Layout() {
                 <p className="text-[9px] text-muted-foreground tracking-widest uppercase">Wallet</p>
               </div>
             )}
+            {!collapsed && <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} className="h-8 w-8" />}
             <HelpMenu triggerClassName="p-1 hover:bg-secondary" />
             <button
               onClick={() => setCollapsed(c => !c)}
@@ -232,6 +246,17 @@ export default function Layout() {
       {/* Command Palette */}
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
 
+      {/* In-app notification toast (brief PR-2 §3/§5). Transient, session-scoped:
+          shows the latest notification from the one shell-level queue and
+          auto-dismisses. Fixed above the mobile bottom nav; identical chrome in
+          real and decoy sessions (I3 — nothing here branches on the active set). */}
+      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center md:justify-end px-4 pointer-events-none"
+           style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}>
+        <div className="w-full max-w-sm pointer-events-auto">
+          <NotificationToast notification={latest} onDismiss={dismiss} />
+        </div>
+      </div>
+
       {/* ── Mobile Top Bar ── */}
       <header
         className="md:hidden flex items-center justify-between px-4 bg-card border-b border-border sticky top-0 z-30"
@@ -257,9 +282,7 @@ export default function Layout() {
           <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <Search className="h-4 w-4" aria-hidden="true" />
           </button>
-          <Link to="/notifications" aria-label="Notifications" title="Notifications" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
-            <Bell className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} />
           <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[40px] min-w-[40px]" />
           <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <Settings className="h-4 w-4" aria-hidden="true" />

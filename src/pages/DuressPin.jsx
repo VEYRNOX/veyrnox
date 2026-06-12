@@ -33,7 +33,7 @@ import {
 } from "@/lib/decoyBalance";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
-  Shield, Eye, EyeOff, CheckCircle2, AlertTriangle, Lock, Unlock, FlaskConical,
+  Shield, Eye, EyeOff, AlertTriangle, Lock, Unlock, FlaskConical,
   Copy, Check, RefreshCw, Coins, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,12 +87,11 @@ export default function DuressPin() {
   const wallet = useWallet();
   const {
     isUnlocked, isDecoy, accounts,
-    hasVault, hasDuressPin, setDuressPin, removeDuressPin,
+    hasVault, setDuressPin, removeDuressPin,
     createWallet, unlock, lock, clearVault,
   } = wallet;
 
   // ----- setup card state -----
-  const [duressActive, setDuressActive] = useState(false);
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [showPin, setShowPin] = useState(false);
@@ -111,9 +110,8 @@ export default function DuressPin() {
   const [busy, setBusy] = useState("");
 
   const refresh = useCallback(async () => {
-    try { setDuressActive(await hasDuressPin()); } catch { /* noop */ }
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
-  }, [hasDuressPin, hasVault]);
+  }, [hasVault]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -141,12 +139,6 @@ export default function DuressPin() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleRemove = async () => {
-    setSaving(true);
-    try { await removeDuressPin(); setSavedPhrase(""); setSavedAddr(""); await refresh(); }
-    finally { setSaving(false); }
   };
 
   // DEMO ONLY: simulate funding the decoy address with a plausible small balance.
@@ -228,9 +220,10 @@ export default function DuressPin() {
       <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet).</b> Provides runtime deniability (identical UI,
-          errors, and timing at unlock). It is not hidden-volume storage: a
-          forensic inspection of device storage can reveal a second vault exists.
+          <b>Provisional (testnet), pending independent audit.</b> This is runtime
+          deniability only (identical UI, errors, and timing at unlock) — not
+          hidden-volume storage: a forensic inspection of device storage can reveal
+          a second vault exists.
         </span>
       </div>
 
@@ -241,12 +234,10 @@ export default function DuressPin() {
           <div>
             <p className="text-sm font-semibold">How it works</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Set a duress PIN that is different from your real one. If you are
-              ever coerced into unlocking, enter the <b>duress PIN</b> at the
-              normal unlock screen. The app opens a separate <b>decoy wallet</b>{" "}
-              with its own address. Your real wallet stays encrypted and is not
-              referenced anywhere in the decoy session — to an observer there is no
-              sign it exists.
+              Set a <b>duress PIN</b> different from your real one. Entered at the
+              normal unlock screen, it opens a separate <b>decoy wallet</b> with its
+              own address; your real wallet stays encrypted and is never referenced
+              in the decoy session — to an observer there's no sign it exists.
             </p>
           </div>
         </div>
@@ -259,35 +250,22 @@ export default function DuressPin() {
           <p className="text-sm font-semibold">Make the decoy plausible: fund it</p>
         </div>
         <p className="text-xs text-muted-foreground">
-          An <b>empty</b> decoy is suspicious — why protect a wallet with nothing
-          in it? Send a small amount you're willing to sacrifice to the decoy
-          address (below). The balance shown is read{" "}
-          <b>live from the chain</b> (the same number a coercer sees if they check
-          the address on a block explorer), so it can't be a fake display value.
+          An <b>empty</b> decoy is suspicious. Send a small amount you're willing to
+          sacrifice to the decoy address below. Its balance is read{" "}
+          <b>live from the chain</b> — the same number a coercer sees on a block
+          explorer — so it can't be faked.
         </p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Honest limits: a freshly funded decoy has <b>no transaction history</b>, so it can look less "lived-in" than a wallet used over time.</li>
-          <li>A <b>sophisticated coercer</b> who knows this feature exists, or who inspects device storage, may still suspect a hidden wallet. This is runtime deniability, not steganographic hiding.</li>
-          <li>Provisional, testnet-only, pending independent audit.</li>
+          <li>Honest limit: a freshly funded decoy has <b>no transaction history</b>, so it looks less "lived-in" than a wallet used over time.</li>
+          <li>A <b>sophisticated coercer</b> who knows this feature exists, or inspects device storage, may still suspect a hidden wallet — this is runtime deniability, not steganographic hiding.</li>
         </ul>
       </div>
 
       {/* Setup card */}
       <div className="p-5 rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {duressActive
-              ? <CheckCircle2 className="h-5 w-5 text-green-500" />
-              : <AlertTriangle className="h-5 w-5 text-yellow-500" />}
-            <span className="font-medium">
-              {duressActive ? "Duress PIN is active" : "No Duress PIN set"}
-            </span>
-          </div>
-          {duressActive && (
-            <Button variant="destructive" size="sm" disabled={saving} onClick={handleRemove}>
-              {saving ? "Removing…" : "Remove PIN"}
-            </Button>
-          )}
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="h-5 w-5 text-primary" />
+          <span className="font-medium">Set a custom duress PIN</span>
         </div>
 
         <div className="space-y-4">
@@ -324,7 +302,7 @@ export default function DuressPin() {
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
-            {saving ? "Saving…" : duressActive ? "Update Duress PIN" : "Set Duress PIN"}
+            {saving ? "Saving…" : "Set / Change duress PIN"}
           </Button>
         </div>
 

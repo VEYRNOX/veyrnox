@@ -1,0 +1,18 @@
+{
+  "_schema": "feature-name -> { chain, txid, date }. A catalogue feature is 'verified' ONLY when a real, explorer-confirmed testnet txid exists here. This file is the SOLE source of the 'verified' state; the catalogue reads it and nothing else writes it. Code inspection, passing tests, and clean review NEVER promote a feature to verified (see CLAUDE.md 'Verify, don't assert'). Empty = nothing on-chain-verified yet; every code-complete feature shows 'built' until a txid lands here.",
+  "_example": {
+    "Send Crypto": { "chain": "sepolia", "txid": "0x…", "date": "2026-01-01" }
+  },
+  "evidence": {
+    "Solana send (wallet-core module, devnet script)": {
+      "chain": "solana-devnet",
+      "txid": "cCqCiKMdfXDHJRc75bn8u2uDBReuo3rfT2NLXMx26W8eWp7omMnSU3gTu3RMMZkQuUdJMZoFYdpV2wR8zZTEXic",
+      "date": "2026-06-11"
+    },
+    "Send Crypto — ETH (full UI path, Sepolia, step-up gate)": {
+      "chain": "sepolia",
+      "txid": "0x2d4d5df057c6f61abaf78383d6cad9d1f7f66abfa2b2aec6520a0be8811b8ea9",
+      "date": "2026-06-11"
+    }
+  }
+}

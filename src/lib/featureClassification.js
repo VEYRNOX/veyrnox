@@ -15,7 +15,8 @@
 // Must remain de-duplicated — the completeness/phantom tests rely on it.
 export const ALL_ROUTE_PATHS = [
   '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
-  '/analytics', '/tax', '/security', '/security-dashboard', '/audit', '/nft',
+  '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects',
+  '/terms-legal', '/nft',
   '/snapshots', '/pl', '/onchain', '/spending', '/advisor', '/smart-alerts',
   '/recurring', '/push', '/advanced-analytics', '/web3', '/nft-multichain',
   '/fraud', '/payment-links', '/risk', '/news-sentiment', '/notifications',
@@ -132,8 +133,8 @@ export const CLASSIFICATION = {
     note: 'Reads real local Transaction records but the "USD Value" line on every receipt is computed from hardcoded stale USD_RATES constants — presenting a silently stale dollar figure as fact on a document intended to be a financial record.',
   },
   '/fee-analytics': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Aggregates fee data from real local Transaction records, but all USD conversions ("Total Fees Paid", "This Month", "Avg Per Transaction") use hardcoded stale USD_RATES — figures will silently drift from reality as markets move.',
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Rebuilt (Slice 1): stateless native-unit fee analytics computed on-device from the active set\'s chain history via the same on-demand fetch the history view uses — no fiat, no persistence, no new egress. Sums only fees the set actually paid (BTC/SOL); EVM has no in-app indexer so it fails honest to "unavailable", and a paid tx with no indexer-reported fee is shown as unknown, never guessed. UNAUDITED-PROVISIONAL: verified against fixtures, not yet a real on-chain txid.',
   },
   '/hd-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -223,7 +224,7 @@ export const CLASSIFICATION = {
   },
   '/erc20-discovery': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Entirely fabricated: handleScan() waits 2.5 s then picks a Math.random() subset of WELL_KNOWN_TOKENS with Math.random()-generated balances (generateBalance()). No blockchain, indexer, or RPC call is made. The UI explicitly says "Scanning blockchain… Querying Transfer events and token contracts" — false. Discovered tokens and balances are invented and presented as the user\'s real on-chain holdings.',
+    note: 'Token discovery across an address needs an ERC-20 Transfer-event scan via a third-party indexer this build does not run (and which would reveal the address). Not built. The earlier version fabricated the scan (Math.random balances over a random subset of well-known tokens, random spam scores) and presented it as real holdings; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
   },
 
   // ── Security group (audit batch A) ───────────────────────────────────────
@@ -234,6 +235,14 @@ export const CLASSIFICATION = {
   '/security': {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'Sessions tab manages local UserSession records via base44.entities; revocation enforced by lib/sessionRevocation (self-enforcing on each device). Limits tab stores TransactionLimit records in local IndexedDB; daily progress computed via lib/txLimits.js over local Transaction records. No external call, no fabricated data.',
+  },
+  '/what-this-protects': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Phase 2 seized-device PIN disclosure (C-screen). Purely static plain-language copy explaining the 6-digit-PIN offline-brute-force limit (what it does / can\'t do / what helps / what\'s coming — hardware key-binding framed as not-yet-shipped). No external call, no fabrication, no per-session/config reads. Deniability: reads identically in real and decoy sessions, names no set\'s existence, never touches coercion/decoy/hidden; guarded by security-framing.test.js.',
+  },
+  '/terms-legal': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Static Terms / Legal reference screen reachable from Settings. §A/§B are clearly-marked owner/counsel "to be supplied" placeholders (never invented legal text); §C reuses the existing testnet-beta/provisional-and-unaudited status language; §D is a condensed reference copy of the coercion-feature honest limits already shown inline on DuressPin/StealthWallets/PanicWipe (does not replace them). No acceptance gate, no storage write, no external call — reads identically in real and decoy sessions. Guarded by terms-legal.test.js and security-framing.test.js.',
   },
   '/wallet-access': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -305,13 +314,9 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Imports classifyToken from @/wallet-core/evm/spam. Runs the real on-device heuristic classifier over user-supplied or preset token metadata. Extensive in-file honesty contract: never claims on-chain analysis, never asserts safety, explicitly labels results as local-heuristic only. No external call.',
   },
-  '/audit': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Reads base44.entities.AuditLog records from local IndexedDB. Filterable by category and severity. No fabricated data, no external call, no USD conversion. The quality of the log depends on what in-app actions write to it, but the display is honest about showing all and only the records present.',
-  },
   '/fraud': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Alert CRUD is real (base44.entities.FraudAlert), but runScan() is a 2 s setTimeout that always resolves "no new threats detected" — no analysis logic runs. The Detection Rules tab renders MOCK_RULES, a hardcoded constant array, presented as actively enforced rules. The page labels itself "AI Fraud Detection" / "Real-time monitoring" without delivering either.',
+    note: 'No automated/AI fraud analysis or rule engine runs in this build. The earlier version labelled itself "AI Fraud Detection" / "Real-time monitoring" but ran no analysis — its scan was a 2 s timeout that always reported "no new threats detected", and its Detection Rules tab rendered a hardcoded list presented as actively enforced. That theatre has been removed; the page is now an honest placeholder behind this gate. Real pre-sign risk lives in the Pre-Sign Scanner, Address Screening, Trust Score and Security Dashboard.',
   },
   '/smart-alerts': {
     verdict: 'disabled', reason: 'server', dataSource: 'base44-entities',
@@ -341,7 +346,7 @@ export const CLASSIFICATION = {
   },
   '/solana': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'SOL_WALLET, SOL_BALANCE, SOL_USD, and all SPL_TOKENS (including balances and prices) are hardcoded constants presented as the user\'s real Solana portfolio. Per-token 24h changes are generated with Math.random() on every render. No Solana RPC or wallet-core call is made. The Send dialog builds no real transaction. The entire page is a fabricated Solana wallet view.',
+    note: 'A live Solana view needs real balance/token reads from a Solana RPC wired through wallet-core, plus Solana send dispatch — not built (the seed can derive a Solana account, but it is not yet wired into send). The earlier version hardcoded a fake Solana wallet (fixed address, balance, SPL list and prices, Math.random 24h changes) with a Send dialog that built no real transaction; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
   },
   '/price-charts': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',

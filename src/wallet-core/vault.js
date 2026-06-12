@@ -89,6 +89,14 @@ async function deriveKey(password, salt, params = KDF_PARAMS) {
   // Import into WebCrypto as a non-extractable AES-GCM key.
   const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
   zero(raw);
+  // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's ~192 MiB Argon2
+  // WASM instance from THIS derivation becomes GC-eligible before the next sequential
+  // derivation allocates its own 192 MiB — keeping peak memory one-at-a-time rather
+  // than concurrent. Best-effort (GC is non-deterministic) and negligible latency;
+  // the v2 onboarding architecture (create from the light empty dashboard) is the
+  // primary mitigation. Web-Worker-per-KDF is the documented escalation if on-device
+  // testing surfaces a failure. KDF_PARAMS are NOT changed (chaff/personalized parity).
+  await new Promise((resolve) => setTimeout(resolve, 0));
   return key;
 }
 

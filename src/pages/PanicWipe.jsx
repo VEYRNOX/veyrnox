@@ -36,7 +36,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import {
-  Bomb, AlertTriangle, AlertOctagon, ShieldOff, CheckCircle2, Eye, EyeOff,
+  Bomb, AlertOctagon, ShieldOff, CheckCircle2, Eye, EyeOff,
   FlaskConical, Lock, Trash2, Database, HardDrive, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -93,13 +93,12 @@ function KeyMaterialReport({ report, title }) {
 export default function PanicWipe() {
   const {
     isUnlocked, wasWiped,
-    hasVault, hasDuressPin, setDuressPin,
-    hasPanicPin, setPanicPin, removePanicPin, panicWipe, inspectKeyMaterial,
+    hasVault, setDuressPin,
+    setPanicPin, panicWipe, inspectKeyMaterial,
     addHiddenWallet, createWallet, unlock, lock,
   } = useWallet();
 
   // ----- setup card state -----
-  const [panicActive, setPanicActive] = useState(false);
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [showPin, setShowPin] = useState(false);
@@ -121,16 +120,15 @@ export default function PanicWipe() {
   const [demoErr, setDemoErr] = useState("");
 
   const refresh = useCallback(async () => {
-    try { setPanicActive(await hasPanicPin()); } catch { /* noop */ }
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
-  }, [hasPanicPin, hasVault]);
+  }, [hasVault]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
   // ----- setup handlers -----
   const handleSave = async () => {
     setError(""); setSaved(false);
-    if (pin.length < 6) { setError("Panic PIN must be at least 6 characters"); return; }
+    if (pin.length < 6) { setError("Panic/wipe PIN must be at least 6 characters"); return; }
     if (pin !== confirmPin) { setError("PINs do not match"); return; }
     setSaving(true);
     try {
@@ -139,16 +137,10 @@ export default function PanicWipe() {
       setPin(""); setConfirmPin("");
       await refresh();
     } catch (e) {
-      setError(e?.message || "Could not save panic PIN");
+      setError(e?.message || "Could not save panic/wipe PIN");
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleRemove = async () => {
-    setSaving(true);
-    try { await removePanicPin(); setSaved(false); await refresh(); }
-    finally { setSaving(false); }
   };
 
   // ----- in-app guarded wipe -----
@@ -187,7 +179,7 @@ export default function PanicWipe() {
   // what a user under threat would do. unlock() runs the wipe then throws the
   // generic wrong-password error (no "wiped!" tell), which we swallow here.
   const demoPanicUnlock = async () => {
-    setBusy("Entering panic PIN at unlock…"); setDemoErr("");
+    setBusy("Entering panic/wipe PIN at unlock…"); setDemoErr("");
     try {
       await unlock(DEMO_PANIC_PW);
     } catch {
@@ -215,9 +207,10 @@ export default function PanicWipe() {
       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
         <AlertOctagon className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet) · destructive · safety-critical.</b> A panic wipe
-          permanently destroys the local copy of your keys. It is flagged for
-          specific security-audit scrutiny. There is no undo.
+          <b>Provisional (testnet), pending independent audit · destructive ·
+          safety-critical.</b> A panic wipe permanently destroys the local copy of
+          your keys — there is no undo, and it's flagged for specific
+          security-audit scrutiny.
         </span>
       </div>
 
@@ -229,11 +222,11 @@ export default function PanicWipe() {
             <p className="text-sm font-semibold">How it fires</p>
             <ul className="text-xs text-muted-foreground mt-1 space-y-1.5 list-disc pl-4">
               <li>
-                <b>Panic PIN at unlock</b> — set a dedicated PIN below. Entered at
+                <b>Panic/wipe PIN at unlock</b> — set a dedicated PIN below. Entered at
                 the <i>normal unlock screen</i>, it destroys your keys instantly
                 with <b>no confirmation dialog</b>. Under genuine duress a
                 "are you sure?" prompt is a liability — a coercer could cancel it,
-                and it would signal what's happening. So the panic PIN fires
+                and it would signal what's happening. So the panic/wipe PIN fires
                 silently and immediately.
               </li>
               <li>
@@ -255,41 +248,27 @@ export default function PanicWipe() {
         </div>
         <p className="text-xs font-medium text-foreground">Destroys (local device):</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Your <b>primary encrypted vault</b>.</li>
-          <li>The <b>duress decoy</b> vault, if set.</li>
-          <li>The <b>entire stealth / hidden-wallet pool</b> (real + chaff slots).</li>
-          <li>The panic marker itself, plus demo address residue — the whole vault store is cleared and the database deleted.</li>
+          <li>Your <b>primary vault</b>, the <b>duress decoy</b>, and the <b>entire stealth / hidden-wallet pool</b> (real + chaff slots).</li>
+          <li>The <b>panic marker</b> and demo address residue — the whole vault store is cleared and the database deleted.</li>
         </ul>
         <p className="text-xs font-medium text-foreground mt-2">Does NOT destroy:</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li><b>A seed backup you hold elsewhere</b> (paper, password manager, another device) — the wallet is still recoverable from it. This is intended: wipe protects the <i>device</i>, not the <i>seed</i>.</li>
+          <li><b>A seed backup you hold elsewhere</b> (paper, password manager, another device) — the wallet is still recoverable from it. Wipe protects the device, not the seed.</li>
           <li><b>On-chain state</b> — {explorerNote}</li>
-          <li><b>Flash-media forensics</b> — we delete logical records, not cryptographically sanitise the storage medium. The mitigation is that only ciphertext (Argon2id + AES-GCM) was ever stored.</li>
-          <li>Provisional, testnet-only, pending independent audit.</li>
+          <li><b>Flash-media forensics</b> — we delete logical records, not sanitise the medium; the mitigation is that only ciphertext (Argon2id + AES-GCM) was ever stored.</li>
         </ul>
       </div>
 
       {/* Setup card — set / remove panic PIN */}
       <div className="p-5 rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {panicActive
-              ? <CheckCircle2 className="h-5 w-5 text-green-500" />
-              : <AlertTriangle className="h-5 w-5 text-yellow-500" />}
-            <span className="font-medium">
-              {panicActive ? "Panic PIN is active" : "No Panic PIN set"}
-            </span>
-          </div>
-          {panicActive && (
-            <Button variant="outline" size="sm" disabled={saving} onClick={handleRemove}>
-              {saving ? "Removing…" : "Remove PIN"}
-            </Button>
-          )}
+        <div className="flex items-center gap-2 mb-4">
+          <Bomb className="h-5 w-5 text-destructive" />
+          <span className="font-medium">Set a panic/wipe PIN</span>
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label>New Panic PIN</Label>
+            <Label>New panic/wipe PIN</Label>
             <div className="relative mt-1.5">
               <Input
                 type={showPin ? "text" : "password"}
@@ -309,7 +288,7 @@ export default function PanicWipe() {
             </div>
           </div>
           <div>
-            <Label>Confirm Panic PIN</Label>
+            <Label>Confirm panic/wipe PIN</Label>
             <Input
               type={showPin ? "text" : "password"}
               maxLength={64}
@@ -320,16 +299,16 @@ export default function PanicWipe() {
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            ⚠️ The panic PIN must be <b>different</b> from your real password, any
+            ⚠️ The panic/wipe PIN must be <b>different</b> from your real password, any
             duress PIN, and any hidden-wallet secret — otherwise that path opens at
             unlock and the wipe never fires. We can't check this for you (we never
             hold those in plaintext). Entering this PIN at unlock will
             <b> destroy your keys</b>.
           </p>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          {saved && <p className="text-xs text-green-600">✓ Panic PIN saved. Entering it at the unlock screen will wipe this device.</p>}
+          {saved && <p className="text-xs text-green-600">✓ Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}
           <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
-            {saving ? "Saving…" : panicActive ? "Update Panic PIN" : "Set Panic PIN"}
+            {saving ? "Saving…" : "Set / Change panic/wipe PIN"}
           </Button>
         </div>
       </div>
@@ -391,9 +370,9 @@ export default function PanicWipe() {
           <p className="text-xs text-muted-foreground">
             Stands up a throwaway real wallet (<code>{DEMO_REAL_PW}</code>), a duress
             decoy (<code>{DEMO_DURESS_PW}</code>), a hidden wallet
-            (<code>{DEMO_HIDDEN_SECRET}</code>), and a panic PIN
+            (<code>{DEMO_HIDDEN_SECRET}</code>), and a panic/wipe PIN
             (<code>{DEMO_PANIC_PW}</code>). Step 1 snapshots the local key material;
-            step 2 enters the panic PIN at the <i>real</i> unlock prompt to fire the
+            step 2 enters the panic/wipe PIN at the <i>real</i> unlock prompt to fire the
             wipe; then it snapshots again to prove nothing recoverable remains.
           </p>
 
@@ -402,7 +381,7 @@ export default function PanicWipe() {
               <KeyRound className="h-3.5 w-3.5 mr-1" /> 1. Set up & snapshot
             </Button>
             <Button size="sm" variant="destructive" disabled={!!busy || !before} onClick={demoPanicUnlock}>
-              <Bomb className="h-3.5 w-3.5 mr-1" /> 2. Enter panic PIN at unlock
+              <Bomb className="h-3.5 w-3.5 mr-1" /> 2. Enter panic/wipe PIN at unlock
             </Button>
             {isUnlocked && (
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => lock()}>
@@ -418,7 +397,7 @@ export default function PanicWipe() {
             <KeyMaterialReport report={before} title="BEFORE — local key material present" />
             {before && after && (
               <div className="flex items-center justify-center text-muted-foreground">
-                <HardDrive className="h-4 w-4 mr-1" /> <span className="text-xs">panic PIN entered → wipe fired</span>
+                <HardDrive className="h-4 w-4 mr-1" /> <span className="text-xs">panic/wipe PIN entered → wipe fired</span>
               </div>
             )}
             <KeyMaterialReport report={after} title="AFTER — nothing recoverable" />
@@ -434,7 +413,7 @@ export default function PanicWipe() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            To use the panic PIN: lock your wallet, then enter the panic PIN at the
+            To use the panic/wipe PIN: lock your wallet, then enter the panic/wipe PIN at the
             unlock screen — your local keys are destroyed immediately with no
             prompt. Keep a seed backup elsewhere if you ever want the wallet again.
           </p>
