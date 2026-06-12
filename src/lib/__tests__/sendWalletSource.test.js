@@ -13,6 +13,7 @@ import {
   walletAssetSymbols,
   defaultAssetSymbol,
   buildSendWallet,
+  demoWalletsToSendModel,
 } from '@/lib/sendWalletSource';
 
 // Distinct, format-plausible addresses so a chain mix-up would be caught.
@@ -100,6 +101,45 @@ describe('sendWalletSource — binding Send to the live vault source', () => {
     });
     it('unknown wallet id → null', () => {
       expect(buildSendWallet({ wallets, walletId: 'nope', assetSymbol: 'ETH', ...derived })).toBeNull();
+    });
+    it('demo wallet (no derived accounts) → falls back to the wallet\'s own address', () => {
+      // The demo path has no derived vault accounts, so resolveReceive yields null;
+      // the demo wallet's placeholder address must carry through for display.
+      const demoModel = demoWalletsToSendModel([{ id: 'w1', name: 'Main ETH', currency: 'ETH', address: EVM }]);
+      const s = buildSendWallet({ wallets: demoModel, walletId: 'w1', assetSymbol: 'ETH', accounts: [], btcAccount: null, solAccount: null });
+      expect(s.address).toBe(EVM);
+      expect(s.currency).toBe('ETH');
+    });
+  });
+
+  describe('demoWalletsToSendModel — restoring the From-Wallet picker in demo', () => {
+    const demoWallets = [
+      { id: 'w1', name: 'Main ETH', currency: 'ETH', address: EVM, balance: 2.4831 },
+      { id: 'w2', name: 'Bitcoin Vault', currency: 'BTC', address: BTC, balance: 0.0521 },
+      { id: 'w3', name: 'Solana', currency: 'SOL', address: SOL, balance: 18.42 },
+    ];
+    it('maps each single-currency demo entity to the Send model with a singleton enabledAssets', () => {
+      expect(demoWalletsToSendModel(demoWallets)).toEqual([
+        { id: 'w1', name: 'Main ETH', enabledAssets: ['ETH'], address: EVM },
+        { id: 'w2', name: 'Bitcoin Vault', enabledAssets: ['BTC'], address: BTC },
+        { id: 'w3', name: 'Solana', enabledAssets: ['SOL'], address: SOL },
+      ]);
+    });
+    it('the mapped shape feeds the existing pickers (wallet → its one asset)', () => {
+      const model = demoWalletsToSendModel(demoWallets);
+      expect(defaultWalletId(model, null)).toBe('w1');
+      expect(walletAssetSymbols(model, 'w2')).toEqual(['BTC']);
+      expect(defaultAssetSymbol(walletAssetSymbols(model, 'w2'), null)).toBe('BTC');
+    });
+    it('drops malformed entities (missing id or currency) and tolerates non-arrays', () => {
+      expect(demoWalletsToSendModel([{ name: 'no id', currency: 'ETH' }, { id: 'x' }])).toEqual([]);
+      expect(demoWalletsToSendModel(undefined)).toEqual([]);
+      expect(demoWalletsToSendModel(null)).toEqual([]);
+    });
+    it('name falls back to the currency when absent', () => {
+      expect(demoWalletsToSendModel([{ id: 'w9', currency: 'ETH' }])).toEqual([
+        { id: 'w9', name: 'ETH', enabledAssets: ['ETH'], address: null },
+      ]);
     });
   });
 });

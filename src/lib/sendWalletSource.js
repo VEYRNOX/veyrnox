@@ -25,6 +25,33 @@
 import { resolveReceive } from '@/lib/receiveAddress';
 
 /**
+ * Adapt the DEMO `Wallet` entities (base44.entities.Wallet.list() — single-currency
+ * records shaped { id, name, currency, address, balance }) into the Send screen's
+ * wallet model { id, name, enabledAssets, address }.
+ *
+ * DEMO ONLY. In a live build the vault supplies this shape via useWallet(); the demo
+ * path never unlocks the vault, so useWallet().wallets is empty and the From-Wallet /
+ * Asset pickers go blank (the bug this restores). The demo Wallet entity is one
+ * currency per record, so enabledAssets is the singleton [currency]; demo sends are
+ * simulated, so the entity's placeholder `address` is carried through for display
+ * (there are no derived vault accounts in demo).
+ *
+ * @param {Array} demoWallets base44 demo Wallet entities
+ * @returns {Array<{id:string,name:string,enabledAssets:string[],address:(string|null)}>}
+ */
+export function demoWalletsToSendModel(demoWallets) {
+  if (!Array.isArray(demoWallets)) return [];
+  return demoWallets
+    .filter((w) => w && w.id && w.currency)
+    .map((w) => ({
+      id: w.id,
+      name: w.name || w.currency,
+      enabledAssets: [w.currency],
+      address: w.address ?? null,
+    }));
+}
+
+/**
  * Default "From Wallet": the active wallet when it is in the list, else the first
  * wallet, else "" (no wallet — locked/explore). Mirrors WalletProvider's own
  * active-id fallback so Send pre-selects exactly the wallet the dashboard marks
@@ -80,7 +107,10 @@ export function buildSendWallet({ wallets, walletId, assetSymbol, accounts, btcA
     id: w.id,
     name: w.name,
     currency: assetSymbol,
-    address: r?.address ?? null,
+    // Live: the per-asset address from the active wallet's derived accounts. Demo:
+    // no derived accounts exist, so fall back to the demo wallet's own placeholder
+    // address (live vault wallets carry no `.address`, so this is demo-only).
+    address: r?.address ?? w.address ?? null,
     // The live model holds no stored balance — the chain is the source of truth and
     // is read live in the Send screen. 0 is the display fallback for not-yet-live
     // assets (whose live balance read is intentionally skipped).

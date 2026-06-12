@@ -30,7 +30,7 @@ import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { notifySendConfirmed } from "@/notify/sources";
-import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet } from "@/lib/sendWalletSource";
+import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet, demoWalletsToSendModel } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
@@ -69,7 +69,7 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, lock, verifyActiveCredential, isSendReauthRequired } = useWallet();
+  const { isUnlocked, wallets: liveWallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, lock, verifyActiveCredential, isSendReauthRequired } = useWallet();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -109,10 +109,22 @@ export default function SendCrypto() {
   };
 
 
-  // FROM-WALLET SOURCE (live vault via useWallet) — the SAME source the dashboard
-  // reads. Replaces the old base44.entities.Wallet.list() (the DEMO data layer, empty
-  // in a live build, which left this dropdown blank). A wallet here is a SEED holding
-  // every chain; the Asset picker chooses which asset/chain to send.
+  // FROM-WALLET SOURCE. Live build: the on-device vault via useWallet() — a wallet is
+  // a SEED holding every chain, and the Asset picker chooses which asset/chain to send.
+  // DEMO: the vault is never unlocked, so liveWallets is empty and this dropdown would
+  // go blank. In demo we instead read the SAME base44 demo Wallet entities the
+  // dashboard renders and adapt them to this model, so the picker works (sends are
+  // simulated). This is the inverse of the old bug, where the dropdown read the demo
+  // layer and went blank in a LIVE build.
+  const { data: demoWalletEntities = [] } = useQuery({
+    queryKey: ["wallets"],
+    queryFn: () => base44.entities.Wallet.list(),
+    enabled: DEMO,
+  });
+  const wallets = useMemo(
+    () => (DEMO ? demoWalletsToSendModel(demoWalletEntities) : liveWallets),
+    [demoWalletEntities, liveWallets],
+  );
   const enabledAssets = walletAssetSymbols(wallets, walletId);
   // The trigger must display the wallet NAME. The selected SelectItem's content
   // isn't mounted until the dropdown opens, so the underlying Radix trigger would
@@ -130,7 +142,9 @@ export default function SendCrypto() {
   // (accounts/btcAccount/solAccount) — and therefore the send address + signing key —
   // belong to it. Switching is cheap (re-derives public addresses; no vault read).
   useEffect(() => {
-    if (walletId && walletId !== activeWalletId && wallets.some((w) => w.id === walletId)) {
+    // DEMO has no live vault to switch (its wallets are simulated entities), so the
+    // switch only applies to live vault wallets.
+    if (!DEMO && walletId && walletId !== activeWalletId && wallets.some((w) => w.id === walletId)) {
       switchWallet(walletId);
     }
   }, [walletId, activeWalletId, wallets, switchWallet]);
