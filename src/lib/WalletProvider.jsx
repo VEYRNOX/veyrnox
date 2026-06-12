@@ -179,7 +179,7 @@ export function WalletProvider({ children }) {
   // has committed the credential markers but no wallet exists yet — the user
   // browses the real UI VIEW-ONLY (honest $0 empty states) with Create/Import
   // affordances. NOT the fresh-open landing: a vault-less cold mount routes to
-  // PIN-create first (see WalletEntry's mount probe / lib/onboardingEntry.js).
+  // the welcome hero → PIN-create (see WalletEntry's mount probe / lib/onboardingEntry.js).
   // Wallet-requiring actions call requireWallet() to leave this view and run the
   // Phase-2 create/import. Returning users (vault exists) never enter it.
   const [exploreMode, setExploreMode] = useState(false);
@@ -829,7 +829,7 @@ export function WalletProvider({ children }) {
 
   // ── POST-PIN EMPTY DASHBOARD (explore) ──────────────────────────────────────
   // The view-only empty dashboard shown AFTER Phase-1 PIN setup (not before — a
-  // fresh device lands on PIN-create first; see onboardingEntry.js).
+  // fresh device lands on the welcome hero, then PIN-create; see onboardingEntry.js).
   const enterExplore = useCallback(() => setExploreMode(true), []);
   const leaveExplore = useCallback(() => setExploreMode(false), []);
   // requireWallet(): a wallet-requiring action was tapped on the post-PIN empty

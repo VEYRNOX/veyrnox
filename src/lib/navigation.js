@@ -14,7 +14,7 @@
 
 import {
   LayoutDashboard, Send, Download, Settings, ShieldCheck, Plug, Bell, Calculator, BarChart2, Zap,
-  Receipt, Repeat, ShieldAlert, ClipboardList, Globe, Image,
+  Receipt, Repeat, ShieldAlert, Globe, Image,
   BarChart3, Camera, TrendingUp, Network, PieChart, Sparkles, BellRing, Link2, BellDot, Users,
   Activity, Bot, Layers, Fingerprint, Cpu,
   MessageSquare, Leaf, ScrollText, Newspaper,
@@ -135,12 +135,12 @@ const RAW_NAV_GROUPS = [
       { path: "/security-scanner", label: "Pre-Sign Scanner", icon: ScanSearch },
       { path: "/biometric-auth", label: "Biometric Auth", icon: Fingerprint },
       { path: "/anomaly-detection", label: "Anomaly Detection", icon: ShieldAlert },
+      { path: "/rasp-security", label: "RASP Security", icon: Cpu },
       { path: "/messenger-alerts", label: "Messenger Alerts", icon: MessageSquare },
       { path: "/voice-commands", label: "Voice Commands", icon: Mic },
       { path: "/token-approvals", label: "Token Approvals", icon: ShieldOff },
       { path: "/spam-filter", label: "Spam Filter", icon: FilterX },
       { path: "/trust-score", label: "Token Spam Screening", icon: ScanLine },
-      { path: "/audit", label: "Audit Log", icon: ClipboardList },
       { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
       { path: "/smart-alerts", label: "Smart Alerts", icon: BellRing },
       { path: "/alerts", label: "Price Alerts", icon: Bell },
