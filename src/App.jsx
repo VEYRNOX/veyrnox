@@ -34,6 +34,7 @@ const AdvancedAnalytics = lazy(() => import('./pages/AdvancedAnalytics'));
 const Web3Browser = lazy(() => import('./pages/Web3Browser'));
 const MultiChainNFT = lazy(() => import('./pages/MultiChainNFT'));
 const FraudDetection = lazy(() => import('./pages/FraudDetection'));
+const RaspSecurity = lazy(() => import('./pages/RaspSecurity'));
 const PaymentLinks = lazy(() => import('./pages/PaymentLinks'));
 const RiskScoring = lazy(() => import('./pages/RiskScoring'));
 const NewsSentimentPage = lazy(() => import('./pages/NewsSentimentPage'));
@@ -149,6 +150,7 @@ const AuthenticatedApp = () => {
           <Route path="/web3" element={<Web3Browser />} />
           <Route path="/nft-multichain" element={<MultiChainNFT />} />
           <Route path="/fraud" element={<FraudDetection />} />
+          <Route path="/rasp-security" element={<RaspSecurity />} />
           <Route path="/payment-links" element={<PaymentLinks />} />
           <Route path="/risk" element={<RiskScoring />} />
           <Route path="/news-sentiment" element={<NewsSentimentPage />} />
