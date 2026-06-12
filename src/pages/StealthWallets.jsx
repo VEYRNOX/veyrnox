@@ -526,11 +526,11 @@ export default function StealthWallets() {
       <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet).</b> Provides runtime + count deniability
-          (identical UI, errors, and timing at unlock; the number of hidden wallets
-          is not revealed). It is not hidden-volume storage: a forensic inspection
-          can see a fixed pool of vault-shaped slots exists, but cannot tell which —
-          or how many — are real wallets versus random chaff.
+          <b>Provisional (testnet), pending independent audit.</b> Runtime + count
+          deniability (identical UI, errors, and timing at unlock; the number of
+          hidden wallets isn't revealed) — not hidden-volume storage: a forensic
+          inspection sees a fixed pool of vault-shaped slots, but can't tell which,
+          or how many, are real wallets versus random chaff.
         </span>
       </div>
 
@@ -542,12 +542,12 @@ export default function StealthWallets() {
             <p className="text-sm font-semibold">How it works</p>
             <p className="text-xs text-muted-foreground mt-1">
               Create a hidden wallet with its own <b>reveal secret</b> (different
-              from your main password and any duress PIN). It will <b>not</b> appear
-              anywhere in the app — no list, no count, no indicator. To open it,
-              type its secret at the <b>normal unlock screen</b>; the app opens that
-              hidden wallet — with its full <b>Ethereum, Bitcoin and Solana</b>{" "}
-              identity — instead of your visible one. To anyone inspecting the
-              unlocked app there is no sign a hidden wallet exists.
+              from your main password and any duress PIN). It appears nowhere in the
+              app — <b>no list, no count, no indicator</b>. Type its secret at the
+              <b> normal unlock screen</b> and the app opens that hidden wallet, with
+              its full <b>Ethereum, Bitcoin and Solana</b> identity, instead of your
+              visible one. To anyone inspecting the unlocked app there's no sign it
+              exists.
             </p>
           </div>
         </div>
@@ -560,12 +560,10 @@ export default function StealthWallets() {
           <p className="text-sm font-semibold">What this protects — and what it does not</p>
         </div>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Hidden wallets are stored among a fixed pool of identical, vault-shaped slots — some real, the rest random <b>chaff</b>. Without the secret, real and chaff are indistinguishable, so the <b>count</b> of hidden wallets is not revealed.</li>
+          <li>Hidden wallets sit among a fixed pool of identical vault-shaped slots — some real, the rest random <b>chaff</b> — so the <b>count</b> of hidden wallets is never revealed, and a forensic examiner can't tell which slots (if any) are real.</li>
           <li>The pool is seeded for <b>every</b> wallet on the device, so its presence means "this device has a Veyrnox wallet" — not "this device has hidden wallets".</li>
-          <li>This is <b>not</b> a hidden volume. A forensic examiner comparing against a pristine install can see the pool itself exists; they just cannot learn how many slots (if any) are real or what they hold.</li>
-          <li><b>Stealth hides a wallet in the app, not on-chain.</b> A hidden wallet's Ethereum, Bitcoin and Solana addresses are public — anyone who knows one can see its balance and history on a block explorer. Hiding is local; the chain is not.</li>
-          <li>We keep <b>no list</b> of your hidden wallets — by design. A forgotten secret means that hidden wallet is unrecoverable from this app. Remember each secret.</li>
-          <li>Provisional, testnet-only, pending independent audit.</li>
+          <li><b>Stealth hides a wallet in the app, not on-chain.</b> A hidden wallet's Ethereum, Bitcoin and Solana addresses are public — anyone who knows one can see its balance and history on a block explorer.</li>
+          <li>We keep <b>no list</b> of your hidden wallets, so a forgotten secret makes that wallet unrecoverable from this app. Remember each secret.</li>
         </ul>
       </div>
 
