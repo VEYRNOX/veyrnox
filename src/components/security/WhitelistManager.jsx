@@ -12,7 +12,7 @@ import { toast } from "sonner";
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
 const ADDRESS_PATTERNS = {
-  BTC: /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/,
+  BTC: /^(1|3|bc1|tb1|bcrt1)[a-zA-Z0-9]{25,62}$/, // mainnet + testnet/regtest bech32 (app is testnet-only)
   ETH: /^0x[0-9a-fA-F]{40}$/,
   SOL: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
   USDC: /^0x[0-9a-fA-F]{40}$/,
