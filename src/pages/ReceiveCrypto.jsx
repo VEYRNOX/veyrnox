@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
 import { resolveReceive } from "@/lib/receiveAddress";
+import { demoSendSource } from "@/lib/sendWalletSource";
+import { DEMO } from "@/api/demoClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -27,7 +29,18 @@ export default function ReceiveCrypto() {
   const [symbol, setSymbol] = useState("ETH");
   const [copied, setCopied] = useState(false);
 
-  const r = resolveReceive(symbol, { accounts, btcAccount, solAccount });
+  // DEMO address source. A backend-less walkthrough has no unlocked vault, so the
+  // derived accounts are empty and EVERY asset would render the locked "unlock to
+  // reveal" state. Reuse the SAME demo wallet source the Send form uses, so the demo
+  // receive address per chain matches the demo send "from" address (one wallet) and
+  // the walkthrough actually shows a QR/address. Demo-only: in a real session this is
+  // skipped and the live derived accounts are used unchanged.
+  const demo = DEMO && !accounts?.length ? demoSendSource() : null;
+  const acc = demo ? demo.accounts : accounts;
+  const btc = demo ? demo.btcAccount : btcAccount;
+  const sol = demo ? demo.solAccount : solAccount;
+
+  const r = resolveReceive(symbol, { accounts: acc, btcAccount: btc, solAccount: sol });
 
   const copyAddress = async () => {
     if (!r?.address) return;
@@ -157,7 +170,7 @@ export default function ReceiveCrypto() {
         )}
       </div>
 
-      {!isUnlocked && (
+      {!isUnlocked && !demo && (
         <p className="text-center text-[11px] text-muted-foreground">
           Addresses come from your on-device wallet and only appear while it's unlocked.
         </p>
