@@ -29,10 +29,19 @@ describe('isDevSendUngated — both locks required', () => {
     expect(isDevSendUngated({ DEV: true, VITE_DEV_UNGATE_SEND: '' })).toBe(false);
   });
 
-  it('is FALSE when neither lock is set, and never throws on empty/undefined env', () => {
+  it('fails closed on an absent/empty env — NO ambient import.meta.env fallback', () => {
+    // SEAL: the function is pure and reads ONLY its argument. An absent (undefined/
+    // null) or empty env returns false WITHOUT consulting the surrounding
+    // import.meta.env, so the ungate can never switch on from ambient process env.
+    // These assertions exercise the real predicate against an absent env (they no
+    // longer route through a `= import.meta.env` default), so they go RED if anyone
+    // reintroduces an ambient or otherwise permissive default. They are NOT coupled
+    // to the test runner's ambient env, so they are deterministic in CI.
     expect(isDevSendUngated({})).toBe(false);
     expect(isDevSendUngated(undefined)).toBe(false);
     expect(isDevSendUngated(null)).toBe(false);
+    // Opt-in present but the build-time DEV lock absent → still closed.
+    expect(isDevSendUngated({ VITE_DEV_UNGATE_SEND: '1' })).toBe(false);
   });
 
   it('requires DEV to be the boolean true, not a truthy string', () => {
