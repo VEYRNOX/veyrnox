@@ -94,30 +94,34 @@ demo smoke check, which closes the integration-path gap named in the section bel
 ## Correcting the record (prior `verify-send` wiring brief was wrong)
 
 An earlier brief proposed building a new `verify-send.mjs` orchestrator. It was dropped —
-it would duplicate the four scripts above. Two specific errors in it must not propagate:
+it would duplicate the four scripts above. That decision still stands. Two specific claims it
+made were true at the time but have since changed on `main` (the **#137 wiring** landed) — the
+record is corrected here rather than left to mislead, since this file "wins" when docs disagree:
 
-**Error 1 — `buildRiskInputs` does not exist.** Repo-wide search returns zero matches. The
-brief said "import the REAL `buildRiskInputs`"; there is no such export. The gate's real
-entry point is:
+**`buildRiskInputs` now EXISTS (#137) — earlier it did not.** When the prior brief was written,
+a repo-wide search returned zero matches and the gate's only entry point was `score()`. Today
+`src/risk/index.js` re-exports the adapter (`export { buildRiskInputs } from './fromSendState.js'`),
+which maps live send state to `score()`'s three inputs:
 ```js
-import { score } from 'src/risk/index.js';
-// score(unsignedTx, activeSetLocalState, chainData)
+import { score, buildRiskInputs } from 'src/risk/index.js';
+const { unsignedTx, activeSetLocalState, chainData } = buildRiskInputs({ /* live send state */ });
+score(unsignedTx, activeSetLocalState, chainData);
 //   -> { level, sentence, evidence, signalId, requiresConfirmation, signals }
 ```
-There is no separate input-builder in front of it.
 
-**Error 2 — two distinct gate paths; do not conflate them.** The standalone gate API is
-`score()`. But on `main` today, `src/pages/SendCrypto.jsx` does NOT call
-`score`/`buildRiskInputs` — its pre-sign flagging runs through `simulateEvmTransaction(...)`
-and `screenRecipient` (from `@/wallet-core/evm/poison`). So:
+**`SendCrypto.jsx` now CALLS `score()`/`buildRiskInputs` (#137) — earlier it did not.** Pre-#137
+its pre-sign flagging ran only through `simulateEvmTransaction(...)` + `screenRecipient`. Since
+#137, `SendCrypto.jsx` ALSO computes the authoritative composite verdict via
+`buildRiskInputs` → `score()` and renders it in `RiskVerdictBanner` at the verify step behind a
+hard "Sign anyway" gate (see `src/pages/SendCrypto.jsx` — import line 30, `buildRiskInputs`/`score`
+around lines 428/442). The simulation + screening signals still run (they feed the same preview);
+`score()` is the one-sentence gate layered on top.
 
-- `scripts/verify-risk/run.mjs` exercises **`score()` directly** — the standalone composite scorer.
-- That is **NOT** the same as exercising **SendCrypto's `simulate` / `screenRecipient`
-  flow**, which is the path the Send screen actually runs.
-
-The #137 harness verifies the scorer's behaviour on constructed input. It does not, by
-itself, prove the SendCrypto integration path. Name that gap explicitly rather than
-implying one covers the other.
+**What the headless harness still does NOT cover.** `scripts/verify-risk/run.mjs` exercises
+`score()` directly on constructed input — it proves the scorer's behaviour, not the SendCrypto
+render/gate integration. That UI-integration gap is exactly what the **"#137 render verification"**
+smoke check above closes (manual demo: single banner render + the gate hard-blocking Confirm &
+Send). Keep the two distinct: a green headless run is NOT a verified UI render.
 
 **Forward note (PR #123).** The description above reflects `main` today, where BTC/SOL are
 NOT wired into `SendCrypto.jsx` dispatch (they fell through to the EVM path with
