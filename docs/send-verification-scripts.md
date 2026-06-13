@@ -65,6 +65,30 @@ With no funds it prints the address + faucet hints and exits (code 2).
 node scripts/verify-risk/run.mjs
 ```
 
+### #137 render verification — manual demo smoke (CLOSED)
+
+The headless harness above proves `score()`'s behaviour on constructed input. The **render +
+gate integration** through `SendCrypto.jsx`'s verify step was confirmed separately by a manual
+demo smoke check, which closes the integration-path gap named in the section below:
+
+- **what:** `RiskVerdictBanner` render + RISK gate, end-to-end, mobile DEMO (`/send?demo=1`, 375px).
+- **inputs:** `DEMO_POISON_ADDRESS` (the S4 look-alike of a seeded counterparty) → RISK; a fresh,
+  never-seen valid EVM recipient → INFO.
+- **observed:** a SINGLE banner instance (no duplicate after #180); coral `#F06A5C`
+  (`bg-risk/10` / `border-risk/40`, computed `rgb(240,106,92)`); the verdict sentence present;
+  recipient + resembled address rendered in IBM Plex Mono, FULL/untruncated; the "Sign anyway"
+  acknowledgement **hard-blocks** Confirm & Send (button disabled → enabled only on tick).
+- **basis:** the #178 + #180 integration in demo — both now on `main` (#180 `f74c3ac`,
+  #178 `dab1d7f`), so `main`'s demo verify-step is reachable and single-mounted. Date 2026-06-13;
+  screenshot retained.
+- **caveat (honest, per the verify-don't-assert + honesty-oracle discipline):** verified in
+  **DEMO mode only**. Demo-verified ≠ release-verified. #137 is a real-path control (not
+  demo-gated), so the `build:release` real-RPC verify-step render is *expected* identical — but it
+  has **not** been eyeballed. This is left as a low-priority optional check; we do **not** claim
+  `build:release` render-verified. This is also **not** a catalogue "verified" promotion: no
+  on-chain txid is involved, so `docs/verified-evidence.json` is intentionally NOT touched (it
+  stays txid-only, per its `_schema`).
+
 ---
 
 ## Correcting the record (prior `verify-send` wiring brief was wrong)
