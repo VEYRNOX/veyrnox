@@ -28,6 +28,8 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
+import { degrade, detect, TIER } from "@/rasp";
+import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
@@ -440,7 +442,28 @@ export default function SendCrypto() {
   // unknown — block the verify buttons rather than letting the user proceed into
   // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
   const riskPending = riskApplicable && !riskReady;
-  const blockedByRisk = riskPending || (!!riskVerdict?.requiresConfirmation && !riskAck);
+
+  // RASP §7 — pre-sign ENVIRONMENT gate (roadmap Phase 3). BEHIND A FLAG, OFF BY
+  // DEFAULT: flag-off → raspTier = ALLOW, so the composite below reduces to the
+  // tx-risk gate (current behaviour, zero RASP friction in production). Flag-on
+  // (dev/tests) → the REAL detector runs; on a build with no native probe it
+  // fail-closes to INTEGRITY_UNAVAILABLE → WARN (degrade), NEVER a fake CLEAN.
+  // detect()/degrade() are pure functions of the ENVIRONMENT only — no walletSet
+  // handle (I3). import.meta.env is build-time, so the branch is dead-code-
+  // eliminated from production when the flag is unset. I4: a RASP crash fails
+  // closed to the strongest BLOCK, never silent-allow.
+  const RASP_PRESIGN_GATE = import.meta.env.VITE_RASP_PRESIGN_GATE === '1';
+  let raspArtifact = null;
+  if (RASP_PRESIGN_GATE) {
+    try { raspArtifact = degrade(detect()); } catch { raspArtifact = degrade(undefined); }
+  }
+  const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+
+  // The COMPOSITE pre-sign decision (RASP env plane ⊕ tx-risk plane), set-blind by
+  // construction (presignGate takes no wallet-set handle). The signer path
+  // (mutationFn) re-derives the SAME gate, so UI and enforcement cannot diverge.
+  const presign = riskVerdict ? presignGate(raspTier, riskVerdict.level, riskAck) : null;
+  const blockedByRisk = riskPending || (presign ? !presign.proceedAllowed : false);
 
   const sendTx = useMutation({
     mutationFn: async () => {
@@ -494,7 +517,17 @@ export default function SendCrypto() {
       } catch {
         throw new Error('Could not complete the pre-sign risk checks — not signing.');
       }
-      if (riskGate.requiresConfirmation && !riskAck) {
+      // Compose the tx verdict with the RASP environment tier (Phase 3; raspTier is
+      // ALLOW when the flag is off → reduces to the tx-risk gate). Re-derived here so
+      // a stale UI can never bypass it (mirrors the spend-limit re-check).
+      const presignAtSign = presignGate(raspTier, riskGate.level, riskAck);
+      if (!presignAtSign.proceedAllowed) {
+        if (!presignAtSign.signerReachable) {
+          // BLOCK — a hostile runtime. No override: the confirmation itself can be
+          // hooked, so a hostile runtime is not something the user can confirm past.
+          throw new Error('Signing is turned off: this device did not pass a runtime safety check.');
+        }
+        // CONFIRM — tx-level risk needs the explicit "sign anyway" acknowledgement.
         throw new Error('Confirm the risk warning before signing.');
       }
       // NOTE: the HD-account lookup that main did here is intentionally NOT hoisted —
@@ -867,11 +900,19 @@ export default function SendCrypto() {
               <p className="text-xs text-muted-foreground mono-value mt-1 truncate">{toAddress}</p>
             </div>
 
-            {/* AUTHORITATIVE pre-sign verdict (src/risk composite). One sentence;
-                RISK shows the "Sign anyway" destructive-confirm. Replaces the
-                repeated poison box here — poisoning is now one of the signals it
-                composes (the form-step PoisonWarning stays as early feedback). */}
-            <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
+            {/* AUTHORITATIVE pre-sign verdict — ONE sentence at the chokepoint. The
+                composite gate (presign) decides which plane OWNS the copy: when the
+                RASP environment plane owns (Phase 3, flag-on), its sentence shows and
+                the tx banner is suppressed (never two stacked warnings). When tx owns
+                (or the flag is off), the src/risk RiskVerdictBanner shows as before. */}
+            {presign?.owner === 'rasp' && raspArtifact?.sentence ? (
+              <div className={`flex items-start gap-2 p-3 rounded-lg border ${presign.decision === 'block' ? 'bg-risk/10 border-risk/40 text-risk' : 'bg-caution/10 border-caution/30 text-caution'}`}>
+                <ShieldAlert aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5" />
+                <p className="text-xs font-medium">{raspArtifact.sentence}</p>
+              </div>
+            ) : (
+              <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
+            )}
 
             {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
                 KNOWN risk flags, dry-run against your own RPC before you confirm.
