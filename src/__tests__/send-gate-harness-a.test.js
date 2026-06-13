@@ -172,7 +172,13 @@ describe('Harness A · G3 — the dev ungate relaxes the FLOW, never the status'
     expect(isDevSendUngated(PROD_ENV)).toBe(false); // prod build → impossible
     expect(isDevSendUngated({ DEV: true })).toBe(false); // opt-in absent
     expect(isDevSendUngated({})).toBe(false);
+    // SEAL: an absent env fails closed WITHOUT reaching ambient import.meta.env —
+    // upholding this file's "injected, never read from import.meta.env" contract
+    // (§ UNGATE_ON above). The function is pure with no ambient default, so these
+    // exercise the real predicate (not the runner's env) and go RED if a permissive
+    // or ambient default is ever reintroduced.
     expect(isDevSendUngated(undefined)).toBe(false);
+    expect(isDevSendUngated(null)).toBe(false);
   });
 
   it('with the ungate ACTIVE, every receive_only asset KEEPS its status + stays unsendable', () => {

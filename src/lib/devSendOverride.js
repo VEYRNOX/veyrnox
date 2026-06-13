@@ -23,11 +23,16 @@
 // production build, and never by silently relabeling an asset as live.
 
 /**
- * Is the dev-only send ungate active? Pass `env` for testability; defaults to the
- * Vite-injected `import.meta.env`.
+ * Is the dev-only send ungate active? PURE — a boolean of the `env` the CALLER
+ * injects, with NO ambient reach. There is deliberately no `= import.meta.env`
+ * default: a missing/empty `env` fails closed (returns false) instead of silently
+ * falling back to the surrounding `import.meta.env`. The one runtime caller
+ * (SendCrypto.jsx) passes `import.meta.env` explicitly; tests inject a controlled
+ * env. Keeping the function pure means the closed-on-absence contract is genuinely
+ * assertable — an absent-env test exercises THIS logic, not the runner's ambient env.
  * @param {{ DEV?: boolean, VITE_DEV_UNGATE_SEND?: string }} [env]
  * @returns {boolean}
  */
-export function isDevSendUngated(env = import.meta.env) {
+export function isDevSendUngated(env) {
   return env?.DEV === true && env?.VITE_DEV_UNGATE_SEND === '1';
 }
