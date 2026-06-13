@@ -181,8 +181,13 @@ test.describe('Harness B · broadcast (supervised — emits a real testnet txid)
         expect(p.getByText(/in this portfolio/i)).toBeVisible({ timeout: HUMAN_WAIT_MS }),
     });
 
-    // ── Navigate to the real Send screen ────────────────────────────────────────
-    await page.goto(`${BASE}/send?demo=0`);
+    // ── Navigate to the real Send screen via IN-APP nav (NOT page.goto) ─────────
+    // A full page.goto('/send') is a hard reload: it drops the in-memory vault and
+    // re-locks the wallet, landing on the "Enter your PIN" gate — which would force
+    // a SECOND unlock right after the human just unlocked. Click the in-app "Send"
+    // link instead, so the unlocked session is preserved. (Verified via a
+    // throwaway-wallet smoke: page.goto here re-locked; in-app nav reaches the form.)
+    await page.getByRole('link', { name: 'Send', exact: true }).click();
     // The recipient field only renders past the unlock gate — its presence proves
     // we are on the real Send form, not the gate.
     const recipient = page.getByPlaceholder(/0x\.\.\. or .*\.eth/i);
