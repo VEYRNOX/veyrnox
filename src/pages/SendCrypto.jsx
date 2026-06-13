@@ -220,9 +220,10 @@ export default function SendCrypto() {
   // The leading `import.meta.env.DEV &&` is the build-time lock: a production
   // `vite build` statically replaces it with `false`, collapsing this to `false`
   // so the bypass branch is dead-code-eliminable from the shipped bundle (and is
-  // in any case never true at runtime in prod). isDevSendUngated() re-checks DEV
-  // too, so the gate is testable in isolation.
-  const devUngated = import.meta.env.DEV && isDevSendUngated();
+  // in any case never true at runtime in prod). isDevSendUngated(import.meta.env)
+  // re-checks DEV too; the env is injected explicitly (the function is pure and has
+  // no ambient fallback), so the gate is testable in isolation and fails closed.
+  const devUngated = import.meta.env.DEV && isDevSendUngated(import.meta.env);
   const flowSendEnabled = sendEnabled || devUngated;
 
   // The active chain follows the selected asset. EVM assets carry their own
