@@ -23,6 +23,49 @@
 // wallet active (switchWallet) so `accounts`/`btcAccount`/`solAccount` belong to it.
 
 import { resolveReceive } from '@/lib/receiveAddress';
+import { DEFAULT_ENABLED_ASSETS } from '@/lib/walletMeta';
+
+// ── DEMO SEND SOURCE ────────────────────────────────────────────────────────
+// Demo is a backend-less walkthrough with NO unlocked on-device vault, so the
+// live useWallet() wallet set + derived accounts are EMPTY. After #127 bound the
+// Send screen to useWallet() (to fix the live build, where the old base44 demo
+// source was empty), the demo build regressed the OTHER way: both the From-Wallet
+// and Asset pickers had nothing to list, so the Asset bottom-sheet opened with
+// zero options and an asset could never be picked.
+//
+// demoSendSource() supplies a single synthetic multi-asset wallet plus
+// deterministic PUBLIC testnet addresses so the demo Send form populates and is
+// exercisable end-to-end (pick asset → Continue → pre-sign risk banner). It holds
+// NO keys and is dead weight in a live session — the caller only uses it when
+// DEMO is on AND the live vault is empty, so the real send path is untouched
+// (deniability I3 preserved: a real session never reads this).
+export const DEMO_SEND_WALLET_ID = 'demo-send-wallet';
+
+// Deterministic, format-plausible demo addresses (public only; never signed with).
+// The EVM one echoes the seeded demo portfolio's 0x3a18… card address.
+const DEMO_EVM_ADDRESS = '0x3a183a183a183a183a183a183a183a183a183a18';
+const DEMO_BTC_ADDRESS = 'tb1qdemodemodemodemodemodemodemodemo0xphr7';
+const DEMO_SOL_ADDRESS = 'So1Veyrnoxdemo1111111111111111111111111111';
+
+// Per-asset demo balances — mirror the seeded demo portfolio so the displayed
+// number matches the dashboard. Display/limit-check only; fake data, never sent.
+const DEMO_SEND_BALANCES = { ETH: 2.4831, BTC: 0.0521, SOL: 18.42, USDC: 1250, USDT: 540 };
+
+/**
+ * The demo Send source: one multi-asset wallet + derived public addresses + the
+ * per-asset display balances. Shaped like the live useWallet() subset the Send
+ * screen consumes ({ wallets, accounts, btcAccount, solAccount }), plus a
+ * `balances` map for the demo balance display / max check.
+ */
+export function demoSendSource() {
+  return {
+    wallets: [{ id: DEMO_SEND_WALLET_ID, name: 'Wallet 1', backedUp: true, enabledAssets: [...DEFAULT_ENABLED_ASSETS] }],
+    accounts: [{ address: DEMO_EVM_ADDRESS, path: "m/44'/60'/0'/0/0", index: 0 }],
+    btcAccount: { address: DEMO_BTC_ADDRESS, path: "m/84'/1'/0'/0/0", networkKey: 'testnet' },
+    solAccount: { address: DEMO_SOL_ADDRESS, path: "m/44'/501'/0'/0'" },
+    balances: { ...DEMO_SEND_BALANCES },
+  };
+}
 
 /**
  * Default "From Wallet": the active wallet when it is in the list, else the first

@@ -13,7 +13,10 @@ import {
   walletAssetSymbols,
   defaultAssetSymbol,
   buildSendWallet,
+  demoSendSource,
+  DEMO_SEND_WALLET_ID,
 } from '@/lib/sendWalletSource';
+import { DEFAULT_ENABLED_ASSETS } from '@/lib/walletMeta';
 
 // Distinct, format-plausible addresses so a chain mix-up would be caught.
 const EVM = '0xAbC0000000000000000000000000000000000001';
@@ -100,6 +103,41 @@ describe('sendWalletSource — binding Send to the live vault source', () => {
     });
     it('unknown wallet id → null', () => {
       expect(buildSendWallet({ wallets, walletId: 'nope', assetSymbol: 'ETH', ...derived })).toBeNull();
+    });
+  });
+
+  // REGRESSION (demo): #127 bound Send to the live useWallet() source, which is
+  // EMPTY in demo (no unlocked vault) — so both pickers were blank and the Asset
+  // bottom-sheet opened with zero options. demoSendSource() repopulates the demo
+  // form from a synthetic multi-asset wallet so an asset can be picked again.
+  describe('demoSendSource — repopulates the demo Send form', () => {
+    it('exposes a single multi-asset wallet with the default enabled assets', () => {
+      const { wallets: w } = demoSendSource();
+      expect(w).toHaveLength(1);
+      expect(w[0].id).toBe(DEMO_SEND_WALLET_ID);
+      expect(w[0].enabledAssets).toEqual([...DEFAULT_ENABLED_ASSETS]);
+    });
+
+    it('its wallet flows through the existing helpers (asset list, default, default wallet)', () => {
+      const src = demoSendSource();
+      expect(defaultWalletId(src.wallets, '')).toBe(DEMO_SEND_WALLET_ID);
+      expect(walletAssetSymbols(src.wallets, DEMO_SEND_WALLET_ID)).toContain('ETH');
+      // ETH is enabled, so the auto-pick prefers it (the one sendable asset).
+      expect(defaultAssetSymbol(walletAssetSymbols(src.wallets, DEMO_SEND_WALLET_ID), '')).toBe('ETH');
+    });
+
+    it('buildSendWallet resolves the per-chain demo address from the demo accounts', () => {
+      const src = demoSendSource();
+      const eth = buildSendWallet({ wallets: src.wallets, walletId: DEMO_SEND_WALLET_ID, assetSymbol: 'ETH', accounts: src.accounts, btcAccount: src.btcAccount, solAccount: src.solAccount });
+      expect(eth.address).toBe(src.accounts[0].address);
+      const btc = buildSendWallet({ wallets: src.wallets, walletId: DEMO_SEND_WALLET_ID, assetSymbol: 'BTC', accounts: src.accounts, btcAccount: src.btcAccount, solAccount: src.solAccount });
+      expect(btc.address).toBe(src.btcAccount.address);
+      // EVM and BTC addresses must NOT collide (a chain mix-up loses funds).
+      expect(btc.address).not.toBe(eth.address);
+    });
+
+    it('carries a demo balance for ETH (drives the demo balance display / max check)', () => {
+      expect(demoSendSource().balances.ETH).toBeGreaterThan(0);
     });
   });
 });
