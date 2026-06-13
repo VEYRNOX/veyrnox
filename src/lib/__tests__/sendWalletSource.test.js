@@ -139,5 +139,15 @@ describe('sendWalletSource — binding Send to the live vault source', () => {
     it('carries a demo balance for ETH (drives the demo balance display / max check)', () => {
       expect(demoSendSource().balances.ETH).toBeGreaterThan(0);
     });
+
+    it('seeds a positive demo balance for EVERY default-enabled asset (no bare-0 in the picker)', () => {
+      // The demo wallet enables DEFAULT_ENABLED_ASSETS; each must have a seeded
+      // balance or the demo Asset picker shows it at 0 (looks broken). Guards the
+      // demo balances from drifting behind a change to the default asset set.
+      const { wallets, balances } = demoSendSource();
+      for (const symbol of wallets[0].enabledAssets) {
+        expect(balances[symbol]).toBeGreaterThan(0);
+      }
+    });
   });
 });

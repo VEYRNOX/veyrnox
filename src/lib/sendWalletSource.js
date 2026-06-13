@@ -47,9 +47,16 @@ const DEMO_EVM_ADDRESS = '0x3a183a183a183a183a183a183a183a183a183a18';
 const DEMO_BTC_ADDRESS = 'tb1qdemodemodemodemodemodemodemodemo0xphr7';
 const DEMO_SOL_ADDRESS = 'So1Veyrnoxdemo1111111111111111111111111111';
 
-// Per-asset demo balances — mirror the seeded demo portfolio so the displayed
-// number matches the dashboard. Display/limit-check only; fake data, never sent.
-const DEMO_SEND_BALANCES = { ETH: 2.4831, BTC: 0.0521, SOL: 18.42, USDC: 1250, USDT: 540 };
+// Per-asset demo balances. The headline five mirror the seeded demo portfolio so
+// the displayed number matches the dashboard cards (demoClient). The EVM L2s have
+// no dashboard card but are now default-enabled, so they carry their own demo
+// seed here — otherwise the demo Asset picker would show them at a bare 0. Keys
+// MUST cover every symbol in DEFAULT_ENABLED_ASSETS. Display/limit-check only;
+// fake data, never sent.
+const DEMO_SEND_BALANCES = {
+  ETH: 2.4831, BTC: 0.0521, SOL: 18.42, USDC: 1250, USDT: 540,
+  MATIC: 420.5, ARB: 1.85, OP: 2.4, AVAX: 9.6, BNB: 0.75,
+};
 
 /**
  * The demo Send source: one multi-asset wallet + derived public addresses + the

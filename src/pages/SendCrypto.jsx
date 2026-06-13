@@ -35,6 +35,7 @@ import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
+import { evaluateSendGate } from "@/lib/sendGate";
 import { notifySendConfirmed } from "@/notify/sources";
 import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
@@ -491,27 +492,14 @@ export default function SendCrypto() {
 
   const sendTx = useMutation({
     mutationFn: async () => {
-      // HARD capability gate: only `live` assets may move funds. This is the
-      // exact failure mode of the original code (sending on fake assets). The gate
-      // still calls canSend() directly (production truth); it is relaxed ONLY by the
-      // dev-only, testnet-only, build-time-eliminated ungate (see devUngated above).
-      // Note mainnet stays independently gated in networks.js even when ungated.
-      if (!canSend(selectedAsset) && !devUngated) {
-        throw new Error(`Sending is not yet enabled for ${selectedWallet?.currency}.`);
-      }
-      if (!isUnlocked) throw new Error("Unlock your wallet to send");
+      // DEFENSE-IN-DEPTH: re-assert EVERY UI gate at signing time, as one ordered
+      // decision, so no stale UI state can broadcast past a tripped gate. The order
+      // and the user-facing messages live in the pure evaluateSendGate()
+      // (lib/sendGate.js), which is exhaustively unit-tested — so the enforced
+      // verdict cannot drift from this call site. Each raw input below is recomputed
+      // here against live state / a fresh risk score.
 
-      // STEP-UP defense-in-depth: re-assert the recent-auth gate at signing time so no
-      // code path can broadcast while re-auth is required (the UI already gates this, but
-      // a send is high-stakes — re-check here too). Demo has no vault, so it's exempt.
-      if (!DEMO && isSendReauthRequired()) {
-        throw new Error("Re-enter your PIN or password to authorise this send.");
-      }
-
-      // HARD spend-limit gate (defense-in-depth). The Continue button is already
-      // disabled on a breach, but re-evaluate at signing time so a per-tx OR
-      // daily cap can never be bypassed by stale UI state. Re-computed here at
-      // the moment of signing against the latest local history. See lib/txLimits.js.
+      // 7 — spend limits, recomputed against the latest local history (per-tx + daily).
       const limitGate = evaluateSendAgainstLimits({
         amount,
         currency: selectedWallet.currency,
@@ -520,50 +508,43 @@ export default function SendCrypto() {
         limits: txLimits,
         now: new Date(),
       });
-      if (limitGate.blocked && !limitAck) {
-        const daily = limitGate.reasons.find((r) => r.kind === "daily");
-        throw new Error(
-          daily
-            ? `Daily spending limit reached: this send would put today's total over your $${daily.limitUSD.toLocaleString()} cap.`
-            : `This send exceeds your per-transaction spending limit.`
-        );
+
+      // 8 — pre-sign risk. Uses the SAME scoreCurrentSend() the banner renders, so the
+      // enforced verdict matches what the user saw. Fail closed: if scoring throws,
+      // mark it failed and the gate refuses to sign. Otherwise compose the tx verdict
+      // with the RASP environment tier (Phase 3; raspTier is ALLOW when the flag is
+      // off → reduces to the tx-risk gate).
+      let riskScoreFailed = false;
+      let presignAtSign = null;
+      try {
+        presignAtSign = presignGate(raspTier, scoreCurrentSend().level, riskAck);
+      } catch {
+        riskScoreFailed = true;
       }
 
-      // HARD pre-sign RISK gate (defense-in-depth). The verify buttons are already
-      // disabled on an unacknowledged RISK, but re-evaluate at signing time so a
-      // RISK composite can never be bypassed by stale UI — mirroring the spend-limit
-      // re-check above. Uses the SAME scoreCurrentSend() the banner renders, so the
-      // enforced verdict matches what the user saw. Fail closed: if scoring itself
-      // throws, do NOT sign.
-      let riskGate;
-      try {
-        riskGate = scoreCurrentSend();
-      } catch {
-        throw new Error('Could not complete the pre-sign risk checks — not signing.');
-      }
-      // Compose the tx verdict with the RASP environment tier (Phase 3; raspTier is
-      // ALLOW when the flag is off → reduces to the tx-risk gate). Re-derived here so
-      // a stale UI can never bypass it (mirrors the spend-limit re-check).
-      const presignAtSign = presignGate(raspTier, riskGate.level, riskAck);
-      if (!presignAtSign.proceedAllowed) {
-        if (!presignAtSign.signerReachable) {
-          // BLOCK — a hostile runtime. No override: the confirmation itself can be
-          // hooked, so a hostile runtime is not something the user can confirm past.
-          throw new Error('Signing is turned off: this device did not pass a runtime safety check.');
-        }
-        // CONFIRM — tx-level risk needs the explicit "sign anyway" acknowledgement.
-        throw new Error('Confirm the risk warning before signing.');
-      }
+      // The single ordered verdict (capability → unlock → re-auth → limits → risk →
+      // approval). canSend() stays the production truth, relaxed only by the dev,
+      // testnet-only, build-eliminated ungate. Mainnet stays gated in networks.js.
+      const gate = evaluateSendGate({
+        canSend: canSend(selectedAsset),
+        devUngated,
+        currency: selectedWallet?.currency,
+        isUnlocked,
+        demo: DEMO,                                    // demo has no vault → re-auth exempt
+        reauthRequired: DEMO ? false : isSendReauthRequired(),
+        limit: limitGate,
+        limitAck,
+        riskScoreFailed,
+        presign: presignAtSign,
+        blockedByApproval,
+      });
+      if (!gate.allowed) throw new Error(gate.message);
+
       // NOTE: the HD-account lookup that main did here is intentionally NOT hoisted —
       // it is EVM-only (matches selectedWallet.address against an EVM account) and now
       // lives inside the EVM branch of the family dispatch below. Hoisting it would
       // throw "not in the unlocked HD set" for BTC/SOL, whose address is not an EVM
       // account.
-
-      // Unlimited approvals must be explicitly acknowledged before signing.
-      if (blockedByApproval) {
-        throw new Error("Confirm the unlimited-approval warning before signing.");
-      }
 
       // Sign LOCALLY and broadcast. The signing key is transient and never
       // persisted. Branch on the asset family — each has its own derivation/

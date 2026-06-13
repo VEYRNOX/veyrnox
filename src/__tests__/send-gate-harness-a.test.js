@@ -202,9 +202,17 @@ describe('Harness A · G3 — the dev ungate relaxes the FLOW, never the status'
     const src = read('../pages/SendCrypto.jsx');
     // flow gate is canSend OR ungate …
     expect(src).toContain('const flowSendEnabled = sendEnabled || devUngated;');
-    // … and the HARD sign-time gate STILL calls canSend() directly, relaxing only
-    // when devUngated — never reading status from the flag.
-    expect(src).toContain('if (!canSend(selectedAsset) && !devUngated) {');
+    // … and the HARD sign-time gate STILL feeds the live canSend() truth + the
+    // devUngated flag into the pure ordered gate (lib/sendGate.js) — relaxing only
+    // on devUngated, never reading status from the flag. The capability check was
+    // extracted into evaluateSendGate(); the call site passes both in.
+    expect(src).toContain('const gate = evaluateSendGate({');
+    expect(src).toContain('canSend: canSend(selectedAsset),');
+    expect(src).toContain('devUngated,');
+    // The capability logic itself (block unless canSend OR ungate) lives in the pure
+    // helper, exhaustively unit-tested in lib/__tests__/sendGate.test.js.
+    const gateSrc = read('../lib/sendGate.js');
+    expect(gateSrc).toContain('if (!canSend && !devUngated) {');
   });
 
   it('SOURCE CONTRACT: assets.js (the status source of truth) is ungate-free', () => {
