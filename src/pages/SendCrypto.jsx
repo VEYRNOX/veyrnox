@@ -36,7 +36,7 @@ import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { notifySendConfirmed } from "@/notify/sources";
-import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet } from "@/lib/sendWalletSource";
+import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
@@ -119,27 +119,44 @@ export default function SendCrypto() {
   // reads. Replaces the old base44.entities.Wallet.list() (the DEMO data layer, empty
   // in a live build, which left this dropdown blank). A wallet here is a SEED holding
   // every chain; the Asset picker chooses which asset/chain to send.
-  const enabledAssets = walletAssetSymbols(wallets, walletId);
+  //
+  // DEMO FALLBACK. Demo is a backend-less walkthrough with NO unlocked vault, so the
+  // live source above is EMPTY in demo — which left BOTH pickers blank (the Asset
+  // bottom-sheet opened with zero options: the reported bug). When DEMO is on AND the
+  // live vault is empty, source the form from a synthetic demo wallet instead. Strictly
+  // demo-only: in a real session `demoActive` is false and every value below is the
+  // live one, so the real send path — and its deniability guarantees (I3) — is
+  // byte-identical (a real session never reads the demo source).
+  const demoActive = DEMO && wallets.length === 0;
+  const demoSrc = useMemo(() => (demoActive ? demoSendSource() : null), [demoActive]);
+  const srcWallets    = demoSrc ? demoSrc.wallets    : wallets;
+  const srcAccounts   = demoSrc ? demoSrc.accounts   : accounts;
+  const srcBtcAccount = demoSrc ? demoSrc.btcAccount : btcAccount;
+  const srcSolAccount = demoSrc ? demoSrc.solAccount : solAccount;
+
+  const enabledAssets = walletAssetSymbols(srcWallets, walletId);
   // The trigger must display the wallet NAME. The selected SelectItem's content
   // isn't mounted until the dropdown opens, so the underlying Radix trigger would
   // otherwise fall back to rendering the raw wallet id — hand it the name explicitly.
-  const selectedWalletName = wallets.find((w) => w.id === walletId)?.name || "";
+  const selectedWalletName = srcWallets.find((w) => w.id === walletId)?.name || "";
 
   // Pre-select the wallet the dashboard marks Active (single wallet → auto-select),
   // and keep the pick valid if the wallet set changes. Deniability-safe: no count is
   // derived or shown.
   useEffect(() => {
-    setWalletId((cur) => (cur && wallets.some((w) => w.id === cur)) ? cur : defaultWalletId(wallets, activeWalletId));
-  }, [wallets, activeWalletId]);
+    setWalletId((cur) => (cur && srcWallets.some((w) => w.id === cur)) ? cur : defaultWalletId(srcWallets, activeWalletId));
+  }, [srcWallets, activeWalletId]);
 
   // The selected wallet must be the ACTIVE wallet, so the derived accounts
   // (accounts/btcAccount/solAccount) — and therefore the send address + signing key —
   // belong to it. Switching is cheap (re-derives public addresses; no vault read).
+  // In demo there is no vault, so switchWallet is a no-op (it early-returns with no
+  // container) and the demo wallet id simply selects the synthetic demo source.
   useEffect(() => {
-    if (walletId && walletId !== activeWalletId && wallets.some((w) => w.id === walletId)) {
+    if (walletId && walletId !== activeWalletId && srcWallets.some((w) => w.id === walletId)) {
       switchWallet(walletId);
     }
-  }, [walletId, activeWalletId, wallets, switchWallet]);
+  }, [walletId, activeWalletId, srcWallets, switchWallet]);
 
   // Default/clamp the asset to one this wallet actually shows (prefer ETH, the one
   // sendable asset). Re-runs when the wallet (and thus its asset list) changes.
@@ -184,7 +201,7 @@ export default function SendCrypto() {
   // (.currency/.address/.balance) from the live source, so downstream send / limit /
   // screening logic is unchanged. Address comes from the active wallet's derived
   // accounts (EVM shared / BTC / SOL) via resolveReceive.
-  const selectedWallet = buildSendWallet({ wallets, walletId, assetSymbol, accounts, btcAccount, solAccount });
+  const selectedWallet = buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount });
 
   // Capability gate: only assets whose status is `live` may move funds. ETH is
   // live (Phase A); ERC-20 tokens (Phase B) are receive_only until a testnet
@@ -235,9 +252,13 @@ export default function SendCrypto() {
       : getBalanceEth(networkKey, selectedWallet.address),
     // EVM-family only: getBalanceEth / getTokenBalance are EVM reads, so a BTC/SOL
     // selection must NOT issue a wrong-network balance request.
-    enabled: !!selectedWallet?.address && canReceive(selectedAsset) && (isEvmFamily(selectedAsset) || isErc20),
+    enabled: !demoActive && !!selectedWallet?.address && canReceive(selectedAsset) && (isEvmFamily(selectedAsset) || isErc20),
     refetchInterval: 15000,
   });
+
+  // Demo balance for the selected asset (display + the max/limit check). Mirrors the
+  // seeded demo portfolio; no live RPC is issued in demo (the query above is disabled).
+  const demoBalance = demoSrc ? (demoSrc.balances[assetSymbol] ?? 0) : null;
 
   // Decode EXACTLY what an ERC-20 send will sign, for display on the confirm
   // screen BEFORE any signature (the anti-blind-signing control). Transfers show
@@ -268,9 +289,11 @@ export default function SendCrypto() {
 
   // Effective balance for max/limit checks: chain read for live assets, falling
   // back to the DB value only for not-yet-live assets (display only).
-  const effectiveBalance = flowSendEnabled && liveBalance != null
-    ? parseFloat(liveBalance)
-    : (selectedWallet?.balance || 0);
+  const effectiveBalance = demoActive
+    ? (demoBalance ?? 0)
+    : (flowSendEnabled && liveBalance != null
+        ? parseFloat(liveBalance)
+        : (selectedWallet?.balance || 0));
 
   const addressFormatValid = !toAddress || !selectedWallet
     ? true
@@ -824,9 +847,11 @@ export default function SendCrypto() {
           <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
           {selectedWallet && (
             <p className="text-xs text-muted-foreground mt-1">
-              {flowSendEnabled
-                ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
-                : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
+              {demoActive
+                ? <>Balance: <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">(demo)</span></>
+                : flowSendEnabled
+                  ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
+                  : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
             </p>
           )}
         </div>
@@ -845,7 +870,7 @@ export default function SendCrypto() {
             </p>
           </div>
         )}
-        {selectedWallet && flowSendEnabled && !isUnlocked && (
+        {selectedWallet && flowSendEnabled && !isUnlocked && !demoActive && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30">
             <Lock className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">Your wallet is locked. Unlock it in the HD Wallet Manager to sign and send.</p>
@@ -883,7 +908,7 @@ export default function SendCrypto() {
         {step === "form" && (
           <Button
             className="w-full"
-            disabled={!walletId || !assetSymbol || !toAddress || !amount || parseFloat(amount) <= 0 || (balanceKnown && parseFloat(amount) > effectiveBalance) || !addressFormatValid || !flowSendEnabled || (flowSendEnabled && !isUnlocked) || (limitEval.blocked && !limitAck)}
+            disabled={!walletId || !assetSymbol || !toAddress || !amount || parseFloat(amount) <= 0 || (balanceKnown && parseFloat(amount) > effectiveBalance) || !addressFormatValid || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive) || (limitEval.blocked && !limitAck)}
             onClick={() => setStep("verify")}
           >
             <ArrowUpRight className="h-4 w-4 mr-1.5" />
