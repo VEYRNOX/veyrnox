@@ -82,14 +82,21 @@ describe('Recipient field — isValidAddressForCurrency I/O', () => {
   });
 });
 
-describe('FLAG S3 — self-send is not blocked', () => {
+describe('FLAG S3 — self-send is now guarded (#179)', () => {
   const send = read('../../pages/SendCrypto.jsx');
 
-  // Recon found NO comparison of the recipient against the sender's own address
-  // anywhere in the Send flow or its libs. Sending to yourself is permitted (burns
-  // fees; common footgun the brief calls out under "Recipient field — self-send").
-  it.fails('IDEAL: the Send flow compares recipient to the active wallet address', () => {
-    expect(send).toMatch(/toAddress[^\n]*(===|toLowerCase\(\)\s*===)[^\n]*(selectedWallet|fromAddress|wallet\.address)/);
+  // RESOLVED: the Send flow now compares the recipient (toAddress) against the
+  // active wallet's own address (selectedWallet?.address) via the pure
+  // isSelfSend() helper (lib/selfSend.js), and surfaces a plain-language
+  // WARN-not-block notice before signing. Per-currency normalization (EVM
+  // case-insensitive; BTC/SOL case-significant) lives in the helper, which is
+  // unit-tested in lib/__tests__/selfSend.test.js.
+  it('the Send flow compares the recipient to the active wallet address', () => {
+    expect(send).toMatch(/isSelfSend\(\s*toAddress\s*,\s*selectedWallet\??\.address/);
+  });
+
+  it('imports the pure self-send helper rather than inlining the compare', () => {
+    expect(send).toMatch(/import\s*\{\s*isSelfSend\s*\}\s*from\s*["']@\/lib\/selfSend["']/);
   });
 });
 

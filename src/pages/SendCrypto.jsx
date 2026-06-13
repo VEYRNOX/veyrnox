@@ -34,6 +34,7 @@ import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
+import { isSelfSend } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { notifySendConfirmed } from "@/notify/sources";
 import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
@@ -299,6 +300,14 @@ export default function SendCrypto() {
   const addressFormatValid = !toAddress || !selectedWallet
     ? true
     : isValidAddressForCurrency(toAddress, selectedWallet.currency);
+
+  // SELF-SEND guard (#179 S3). Compares the recipient against the active wallet's
+  // OWN address for this asset, with per-currency normalization (EVM case-
+  // insensitive; BTC/SOL case-significant — see lib/selfSend.js). WARN-not-block:
+  // sending to yourself burns fees for no transfer (a common footgun), but a user
+  // may legitimately self-transfer, so this surfaces a clear, plain-language
+  // warning — it never disables Continue. Pure + local; no key/seed/network.
+  const isSelfSendRecipient = isSelfSend(toAddress, selectedWallet?.address, selectedWallet?.currency);
 
   const currencyWhitelist = whitelist.filter(w => w.currency === selectedWallet?.currency);
   const isAddressWhitelisted = currencyWhitelist.length === 0
@@ -800,6 +809,19 @@ export default function SendCrypto() {
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30 -mt-2">
             <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">This address is not on your whitelist. Double-check before proceeding. You can add trusted addresses in Settings.</p>
+          </div>
+        )}
+
+        {/* Self-send warning (#179 S3). The recipient is THIS wallet's own address
+            for this asset. WARN-not-block: it burns fees for no transfer, but the
+            user may genuinely intend it, so we inform clearly and leave Continue
+            enabled. Local string compare only — no key/seed/network touched. */}
+        {toAddress && addressFormatValid && isSelfSendRecipient && (
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30 -mt-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
+            <p className="text-xs text-caution">
+              You're sending to your own wallet address. This moves nothing between wallets and still costs a network fee. Double-check the recipient before continuing.
+            </p>
           </div>
         )}
 
