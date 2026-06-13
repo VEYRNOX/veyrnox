@@ -29,12 +29,16 @@ import { ASSETS } from '@/wallet-core/assets.js';
 const META_KEY = 'veyrnox-wallet-meta';     // { [walletId]: { name, backedUp, enabledAssets } }
 const ACTIVE_KEY = 'veyrnox-active-wallet';  // walletId string
 
-// Default assets shown for a NEWLY created wallet: the headline five. The other
-// five EVM chains are opt-in so a new wallet isn't cluttered (the user enables
-// them per-wallet). The migrated legacy wallet keeps ALL assets (see
-// WalletProvider) so existing users see no asset disappear.
-export const DEFAULT_ENABLED_ASSETS = Object.freeze(['ETH', 'BTC', 'SOL', 'USDC', 'USDT']);
+// Default assets shown for a NEWLY created or freshly imported wallet: EVERY
+// supported asset, in canonical ASSETS order. Both onboarding paths — createWallet
+// ("Create Wallet") and importWallet ("Import an existing seed") — fall back to
+// this set, so all ten chains (including the five EVM L2s MATIC/ARB/OP/AVAX/BNB)
+// are visible and selectable from the start. A user can still hide any per-wallet
+// via "Manage assets". Derived from ASSETS so a newly added asset is included
+// automatically. The migrated legacy wallet likewise keeps ALL assets (see
+// WalletProvider), so no existing user ever sees an asset disappear.
 export const ALL_ASSET_SYMBOLS = Object.freeze(ASSETS.map((a) => a.symbol));
+export const DEFAULT_ENABLED_ASSETS = ALL_ASSET_SYMBOLS;
 
 function readMap() {
   try {
