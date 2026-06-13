@@ -24,7 +24,12 @@ function useIsMobile() {
 const MobileSelectCtx = React.createContext(null);
 
 // ── Smart Select root ───────────────────────────────────────────────
-function Select({ children, value, onValueChange, defaultValue, open, onOpenChange, ...props }) {
+// `disabled` is pulled out explicitly so BOTH paths honour it. On desktop Radix's
+// Root consumes it (via the spread). On mobile the Root is replaced by a context +
+// a plain <button> trigger, and the prop was previously swallowed by `...props` and
+// never forwarded — so a disabled Select still opened its bottom-sheet. We now thread
+// it through the context to the mobile trigger.
+function Select({ children, value, onValueChange, defaultValue, open, onOpenChange, disabled, ...props }) {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [internalValue, setInternalValue] = React.useState(defaultValue ?? "");
@@ -39,6 +44,7 @@ function Select({ children, value, onValueChange, defaultValue, open, onOpenChan
         defaultValue={defaultValue}
         open={open}
         onOpenChange={onOpenChange}
+        disabled={disabled}
         {...props}
       >
         {children}
@@ -50,6 +56,7 @@ function Select({ children, value, onValueChange, defaultValue, open, onOpenChan
     <MobileSelectCtx.Provider value={{
       value: currentValue,
       selectedLabel,
+      disabled,
       onValueChange: (v, label) => {
         if (value === undefined) setInternalValue(v);
         if (label) setSelectedLabel(label);
@@ -97,7 +104,8 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
       <button
         ref={ref}
         type="button"
-        onClick={() => ctx.setMobileOpen(true)}
+        disabled={ctx.disabled}
+        onClick={() => { if (!ctx.disabled) ctx.setMobileOpen(true); }}
         className={cn(
           "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
           className
