@@ -37,6 +37,27 @@ const TabSpinner = () => (
 // navGroups + groupColor now live in lib/navigation.js — the single source of
 // truth shared with the command palette / search so the two can't drift.
 
+// Viewport gate for the main-content region (Tailwind `md` = 768px). The desktop
+// `<main>` (Outlet) and the mobile content (tab panels + sub-page Outlet) were both
+// kept in the tree and merely toggled with `hidden md:flex` / `md:hidden` CSS — so
+// React MOUNTED BOTH, double-mounting EVERY page (two SendCrypto forms, two preview
+// widgets, double RPC/queries/effects). This hook lets us render exactly ONE of the
+// two regions, so each page mounts once. It tracks the SAME 768px breakpoint as the
+// CSS, so the JS gate and the responsive classes never disagree. No SSR here (Vite
+// SPA), so the initial value is correct on first paint — no flash, no double mount.
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    () => (typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : true)
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const handler = (e) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isDesktop;
+}
+
 const mobileBottomNav = [
   { path: "/", label: "Home", icon: LayoutDashboard },
   { path: "/send", label: "Send", icon: Send },
@@ -69,6 +90,10 @@ export default function Layout() {
   };
   const ROOT_TABS = ['/', '/send', '/receive', '/settings'];
   const isRootTab = ROOT_TABS.includes(location.pathname);
+  // Render the desktop OR the mobile main-content region — never both — so a page
+  // mounts exactly once (see useIsDesktop). The nav chrome (sidebar / top bar /
+  // bottom nav) stays CSS-toggled; only the heavy page-hosting regions are gated.
+  const isDesktop = useIsDesktop();
   const MOBILE_TABS = ['/', '/send', '/receive'];
   const [mobileTab, setMobileTab] = useState(
     MOBILE_TABS.includes(location.pathname) ? location.pathname : '/'
@@ -293,7 +318,11 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* ── Main Content — Desktop (unchanged Outlet + animation) ── */}
+      {/* ── Main Content — Desktop (Outlet + animation) ──
+          Mounted ONLY on desktop (isDesktop) so the page isn't also mounted by the
+          mobile region below. The `hidden md:flex` class is kept as belt-and-braces
+          (same 768px breakpoint as the gate). */}
+      {isDesktop && (
       <AnimatePresence mode="wait" initial={false}>
         <motion.main
           key={location.pathname}
@@ -316,8 +345,13 @@ export default function Layout() {
           </PullToRefreshContainer>
         </motion.main>
       </AnimatePresence>
+      )}
 
-      {/* ── Main Content — Mobile (all 4 root tabs stay mounted) ── */}
+      {/* ── Main Content — Mobile (all 3 root tabs stay mounted) ──
+          Mounted ONLY on mobile (!isDesktop) so the page isn't also mounted by the
+          desktop region above. Within mobile, the three root tab panels stay mounted
+          and toggle via `hidden` to preserve per-tab state (the original intent). */}
+      {!isDesktop && (
       <div id="main-scroll" className="md:hidden flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] pb-28" role="region" aria-label="Main content">
         {/* Sub-pages: rendered via Outlet only when not on a root tab with slide transition */}
         <AnimatePresence mode="wait">
@@ -365,6 +399,7 @@ export default function Layout() {
           <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/receive"><ReceiveCryptoPage /></FeatureGate></SafeSuspense>
         </div>
       </div>
+      )}
 
       {/* ── Mobile Bottom Navigation ── */}
       <nav
