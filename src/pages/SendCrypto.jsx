@@ -1,4 +1,4 @@
-import { USD_RATES, approxUsd } from "@/lib/cryptos";
+import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -299,6 +299,15 @@ export default function SendCrypto() {
     : (flowSendEnabled && liveBalance != null
         ? parseFloat(liveBalance)
         : (selectedWallet?.balance || 0));
+
+  // USD conversions for the Send screen (DISPLAY ONLY — derived from the static
+  // USD_RATES reference table, never a live feed; disclosed via USD_REFERENCE_NOTE).
+  // `null` for an asset we have no reference price for (e.g. MATIC/AVAX) so we render
+  // the crypto amount alone rather than a misleading ≈$0.
+  const sendUsdRate = selectedWallet?.currency ? (USD_RATES[selectedWallet.currency] ?? null) : null;
+  const balanceUsd = sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
+  const amountNum = parseFloat(amount);
+  const amountUsd = sendUsdRate != null && Number.isFinite(amountNum) && amountNum > 0 ? amountNum * sendUsdRate : null;
 
   const addressFormatValid = !toAddress || !selectedWallet
     ? true
@@ -830,6 +839,9 @@ export default function SendCrypto() {
         <div>
           <Label>Amount</Label>
           <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
+          {amountUsd != null && (
+            <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> being sent</p>
+          )}
           {selectedWallet && (
             <p className="text-xs text-muted-foreground mt-1">
               {demoActive
@@ -837,7 +849,11 @@ export default function SendCrypto() {
                 : flowSendEnabled
                   ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
                   : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
+              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span> left</>}
             </p>
+          )}
+          {(amountUsd != null || balanceUsd != null) && (
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">{USD_REFERENCE_NOTE}</p>
           )}
         </div>
 
@@ -907,6 +923,7 @@ export default function SendCrypto() {
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
               <p className="text-xs text-muted-foreground mb-1">You're sending</p>
               <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
+              {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
               <p className="text-xs text-muted-foreground mono-value mt-1 truncate">{toAddress}</p>
             </div>
 
