@@ -4,12 +4,34 @@ import { Bell, ShieldAlert, AlertTriangle, TrendingUp, CheckCircle2, X } from "l
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import moment from "moment";
+import { useNotifications } from "@/notify/useNotifications";
 
 const TABS = ["All", "Alerts", "Security", "Fraud"];
+
+// In-app notification display level -> the Centre's severity bucket.
+const INAPP_SEVERITY = { risk: "high", caution: "medium", info: "low" };
+
+// One-line body from an in-app notification's evidence (purely cosmetic — the
+// evidence object is the same set-blind shape produced by notify.js).
+function describeInApp(evidence = {}) {
+  const short = (s) => (typeof s === "string" && s.length > 14 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s);
+  if (evidence.amount && evidence.to) return `${evidence.amount} → ${short(evidence.to)}`;
+  if (evidence.amount) return `${evidence.amount}`;
+  if (evidence.reason) return evidence.reason;
+  if (evidence.spender) return `Spender ${short(evidence.spender)}`;
+  return "";
+}
 
 export default function NotificationCentre() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("All");
+
+  // In-app session notifications — the SAME in-memory queue the header bell badge
+  // and toast read (lifted into NotificationsProvider). Session-only, never
+  // persisted, so the Centre can no longer disagree with the bell. Previously the
+  // Centre read only the base44 alert entities and showed nothing for send/price
+  // events, which surfaced as "All clear" even with unseen items on the bell.
+  const { notifications: inAppNotes = [], dismiss: dismissInApp } = useNotifications();
 
   const { data: priceAlerts = [] } = useQuery({
     queryKey: ["price-alerts-triggered"],
@@ -42,6 +64,14 @@ export default function NotificationCentre() {
   });
 
   const allNotifications = [
+    ...inAppNotes.map(n => ({
+      id: n.id, type: "inapp", category: "Alerts",
+      title: n.message,
+      body: describeInApp(n.evidence),
+      severity: INAPP_SEVERITY[n.level] || "low",
+      time: n.ts,
+      onDismiss: () => dismissInApp(n.id),
+    })),
     ...priceAlerts.map(a => ({
       id: a.id, type: "alert", category: "Alerts",
       title: `${a.currency} Price Alert`,
