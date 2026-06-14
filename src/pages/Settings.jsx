@@ -11,6 +11,7 @@ import BackButton from "@/components/BackButton";
 import PasskeySetup from "../components/PasskeySetup";
 import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
 import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
+import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 
@@ -98,6 +99,10 @@ export default function Settings() {
 
       {/* Passkey unlock (S1 — FIDO2/WebAuthn gate, parallel to biometric) */}
       <PasskeyUnlockSettings />
+
+      {/* Two-factor at CRITICAL actions (send / reveal seed / duress / stealth) —
+          PIN + Action Password OR PIN + Passkey. Enforced by useActionGuard. */}
+      <TwoFactorSettings />
 
       {/* Session & auto-lock (idle + background → WalletProvider.lock()) */}
       <SessionSettings />

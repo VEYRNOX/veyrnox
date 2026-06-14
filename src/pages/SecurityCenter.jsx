@@ -36,6 +36,9 @@ export default function SecurityCenter() {
   const [dailyLimit, setDailyLimit] = useState("");
   const [perTxLimit, setPerTxLimit] = useState("");
 
+  // Two-factor (Action Password / passkey) now lives in Security Settings →
+  // "Two-factor at critical actions". The Security Center is alerts/sessions/limits.
+
   const { data: sessions = [] } = useQuery({
     queryKey: ["sessions"],
     queryFn: () => base44.entities.UserSession.filter({ status: "active" }),

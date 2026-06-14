@@ -72,6 +72,11 @@ import { DEMO } from '@/api/demoClient';
 // secret: PREF is a boolean flag; CRED is a PUBLIC credential id + UI metadata.
 export const PASSKEY_PREF_KEY = 'veyrnox-passkey-unlock';
 export const PASSKEY_CRED_KEY = 'veyrnox-passkey-cred';
+// Separate preference for "use my passkey as the SECOND FACTOR at critical actions"
+// (send, reveal seed, duress/stealth setup). Independent of the unlock pref above so
+// a user can use a passkey for ONE without the other. Device-global (the passkey
+// lives in this device's authenticator), unlike the per-set Action Password.
+export const TWOFACTOR_PASSKEY_KEY = 'veyrnox-2fa-passkey';
 
 // Sentinel credential id used by the demo/simulated path so the rest of the app
 // can treat "a passkey is registered" uniformly without a real authenticator.
@@ -108,6 +113,25 @@ export function setPasskeyUnlockEnabled(on) {
   try {
     if (on) ls()?.setItem(PASSKEY_PREF_KEY, '1');
     else ls()?.removeItem(PASSKEY_PREF_KEY);
+  } catch {
+    /* storage unavailable — preference is best-effort, non-fatal. */
+  }
+}
+
+/** @returns {boolean} has the user turned on "passkey as my critical-action second factor"? */
+export function is2faPasskeyEnabled() {
+  try {
+    return ls()?.getItem(TWOFACTOR_PASSKEY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Persist the "passkey is my critical-action second factor" preference. */
+export function set2faPasskeyEnabled(on) {
+  try {
+    if (on) ls()?.setItem(TWOFACTOR_PASSKEY_KEY, '1');
+    else ls()?.removeItem(TWOFACTOR_PASSKEY_KEY);
   } catch {
     /* storage unavailable — preference is best-effort, non-fatal. */
   }

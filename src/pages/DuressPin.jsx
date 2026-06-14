@@ -27,6 +27,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/lib/WalletProvider";
+import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
@@ -90,6 +91,7 @@ export default function DuressPin() {
     hasVault, setDuressPin, removeDuressPin,
     createWallet, unlock, lock, clearVault,
   } = wallet;
+  const { requireTwoFactor, gateModal } = useActionGuard();
 
   // ----- setup card state -----
   const [pin, setPin] = useState("");
@@ -125,20 +127,25 @@ export default function DuressPin() {
     setError(""); setSavedPhrase(""); setSavedAddr("");
     if (pin.length < 4) { setError("Duress PIN must be at least 4 characters"); return; }
     if (pin !== confirmPin) { setError("PINs do not match"); return; }
-    setSaving(true);
-    try {
-      // setDuressPin now returns { mnemonic, address } so the user can FUND the
-      // decoy. The decoy is a real wallet that can actually receive testnet funds.
-      const { mnemonic, address } = await setDuressPin(pin);
-      setSavedPhrase(mnemonic);
-      setSavedAddr(address);
-      setPin(""); setConfirmPin("");
-      await refresh();
-    } catch (e) {
-      setError(e?.message || "Could not save duress PIN");
-    } finally {
-      setSaving(false);
-    }
+    // CRITICAL: configuring the decoy/duress system is gated behind the second
+    // factor when one is set (no-op otherwise). Runs after local validation so a
+    // mismatched PIN never reaches the gate.
+    requireTwoFactor(async () => {
+      setSaving(true);
+      try {
+        // setDuressPin now returns { mnemonic, address } so the user can FUND the
+        // decoy. The decoy is a real wallet that can actually receive testnet funds.
+        const { mnemonic, address } = await setDuressPin(pin);
+        setSavedPhrase(mnemonic);
+        setSavedAddr(address);
+        setPin(""); setConfirmPin("");
+        await refresh();
+      } catch (e) {
+        setError(e?.message || "Could not save duress PIN");
+      } finally {
+        setSaving(false);
+      }
+    }, { title: "Set your duress PIN" });
   };
 
   // DEMO ONLY: simulate funding the decoy address with a plausible small balance.
@@ -463,6 +470,8 @@ export default function DuressPin() {
           </p>
         </div>
       )}
+      {/* PIN + Action Password 2FA gate — no-op until an Action Password is set */}
+      {gateModal}
     </div>
   );
 }

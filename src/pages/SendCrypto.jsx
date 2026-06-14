@@ -1,4 +1,4 @@
-import { USD_RATES, approxUsd } from "@/lib/cryptos";
+import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,6 +37,8 @@ import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { isSelfSend } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate } from "@/lib/sendGate";
+import { evaluateTwoFactor } from "@/lib/twoFactorGate";
+import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
@@ -77,7 +79,7 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword } = useWallet();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -298,6 +300,15 @@ export default function SendCrypto() {
     : (flowSendEnabled && liveBalance != null
         ? parseFloat(liveBalance)
         : (selectedWallet?.balance || 0));
+
+  // USD conversions for the Send screen (DISPLAY ONLY — derived from the static
+  // USD_RATES reference table, never a live feed; disclosed via USD_REFERENCE_NOTE).
+  // `null` for an asset we have no reference price for (e.g. MATIC/AVAX) so we render
+  // the crypto amount alone rather than a misleading ≈$0.
+  const sendUsdRate = selectedWallet?.currency ? (USD_RATES[selectedWallet.currency] ?? null) : null;
+  const balanceUsd = sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
+  const amountNum = parseFloat(amount);
+  const amountUsd = sendUsdRate != null && Number.isFinite(amountNum) && amountNum > 0 ? amountNum * sendUsdRate : null;
 
   const addressFormatValid = !toAddress || !selectedWallet
     ? true
@@ -850,6 +861,9 @@ export default function SendCrypto() {
         <div>
           <Label>Amount</Label>
           <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
+          {amountUsd != null && (
+            <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> being sent</p>
+          )}
           {selectedWallet && (
             <p className="text-xs text-muted-foreground mt-1">
               {demoActive
@@ -857,7 +871,11 @@ export default function SendCrypto() {
                 : flowSendEnabled
                   ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
                   : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
+              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span> left</>}
             </p>
+          )}
+          {(amountUsd != null || balanceUsd != null) && (
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">{USD_REFERENCE_NOTE}</p>
           )}
         </div>
 
@@ -927,6 +945,7 @@ export default function SendCrypto() {
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
               <p className="text-xs text-muted-foreground mb-1">You're sending</p>
               <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
+              {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
               <p className="text-xs text-muted-foreground mono-value mt-1 truncate">{toAddress}</p>
             </div>
 
@@ -1025,6 +1044,27 @@ export default function SendCrypto() {
                 The #137 risk gate (blockedByRisk) ALSO hard-disables the send action here, so
                 a high-risk verdict blocks even an authorised user — both gates must pass. */}
             {(() => {
+              // ACTION PASSWORD (2FA): once configured, EVERY send requires the PIN +
+              // the Action Password (no recent-auth window — you opted into every-time).
+              // Additive + OPT-IN: with no Action Password set this branch is skipped and
+              // the existing windowed PIN step-up below is byte-unchanged. Risk/approval
+              // gates still come first (the gate is hidden until those pass). The two
+              // 192 MiB Argon2id checks run SEQUENTIALLY (one-at-a-time — Defect-A safe).
+              if (!DEMO && actionPasswordConfigured && !blockedByApproval && !blockedByRisk) {
+                return (
+                  <TwoFactorGate
+                    title="Authorise this send with your PIN + Action Password"
+                    onCancel={() => { setStep("form"); resetVerify(); }}
+                    onLock={lock}
+                    onSuccess={() => sendTx.mutate()}
+                    verify={async ({ pin, password }) => {
+                      const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
+                      const passwordOk = await verifyActionPassword(password);
+                      return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
+                    }}
+                  />
+                );
+              }
               const reauthRequired = !DEMO && isSendReauthRequired();
               if (!reauthRequired) {
                 return (
