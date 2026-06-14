@@ -66,3 +66,35 @@ describe('buildAndSignSol — local ed25519 signing commits to the right transfe
     expect(tx.instructions).toHaveLength(3);
   });
 });
+
+// CONSOLE-1 (#179) regression lock — BYTE-FOR-BYTE serializer output.
+//
+// The buffer.Buffer browser-externalization warning originated inside
+// @solana/web3.js (its bundled bn.js probes for a Node `Buffer`). The fix
+// installs a real `Buffer` global (src/main.jsx) + resolves the bare `buffer`
+// specifier to the genuine polyfill (vite.config.js). @solana/web3.js serializes
+// transactions via Buffer, so this test PINS the exact serialized bytes for a
+// fixed transfer: if any Buffer-handling change ever altered the wire bytes (a
+// silent fund-safety regression), this hash mismatch fails loudly. The vector is
+// independent of any global Buffer state — Transaction.serialize() must produce
+// identical bytes whether Buffer is the polyfill or absent.
+describe('buildAndSignSol — serialized bytes are pinned (CONSOLE-1 #179 regression lock)', () => {
+  // Authoritative wire bytes for sender=seed(1), recipient=seed(2),
+  // blockhash=base58(seed(3)), amount=123_456_789 lamports, base-fee-only.
+  // Trailing `15cd5b0700000000` = 123456789 as u64 LE — the transfer amount.
+  const PINNED_TX_HEX =
+    '010aec448bf22a54b587133dfddcf709442fff83a6443acd49b21d3a3210a6b5b4b501a0059aa53b42c73196160c56f79df485d74c2ff613d10f2734c5aa2faa09010001038a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b3940000000000000000000000000000000000000000000000000000000000000000030303030303030303030303030303030303030303030303030303030303030301020200010c0200000015cd5b0700000000';
+
+  it('serializes the fixed transfer to the exact pinned bytes', () => {
+    const { rawTx } = buildAndSignSol({
+      keypair: sender,
+      toPubkey: recipient,
+      amountLamports: 123_456_789n,
+      blockhash: BLOCKHASH,
+    });
+    const hex = Array.from(Uint8Array.from(rawTx))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    expect(hex).toBe(PINNED_TX_HEX);
+  });
+});
