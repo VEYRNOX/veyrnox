@@ -50,14 +50,17 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | BTC | btc | Bitcoin testnet (BIP-84) | ✅ | ✅ module verified on-chain (testnet) | 🟡 receive_only |
 | SOL | solana | Solana devnet (ed25519) | ✅ | ✅ module verified on-chain (devnet) | 🟡 receive_only |
 
-> **Honest framing:** the EVM send path is exercised by ETH/Sepolia (full UI
-> path, verified on-chain). BTC and SOL send **modules** are now also verified
+> **Honest framing:** the EVM send path is verified end-to-end for ETH/ARB/OP
+> (full UI path, on-chain). BTC and SOL send **modules** are also verified
 > on-chain via their wallet-core broadcast paths (real testnet txids in
-> `verified-evidence.json`, user-confirmed) — but they stay `receive_only`
-> because those families are **not wired into the Send UI dispatch** (gated on
-> PR #123); the module being verified is not the same as the asset being
-> app-sendable. All other assets stay `receive_only` until a real testnet send
-> on THAT asset is verified on-chain (see `docs/PhaseBTC.verification.md`).
+> `verified-evidence.json`, user-confirmed). The BTC/SOL Send **UI dispatch IS
+> wired** — PR #123 (merged 2026-06-12) branches SendCrypto to
+> `signAndBroadcastBtc`/`signAndBroadcastSol` with the correct testnet/devnet
+> `networkKey` — so under the dev ungate they ARE app-sendable. They stay
+> `receive_only` for one reason only: no real **UI-path** send has been verified
+> on-chain yet (a module/script send is not the UI path). Every not-yet-live
+> asset stays `receive_only` until a real UI-path send on THAT asset is verified
+> on-chain — the exact bar ARB and OP cleared this round.
 
 ---
 
@@ -78,8 +81,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Optimism (OP Sepolia) — ✅ live send — **full UI path verified on-chain** (txid `0xc3fd1e…`, 2026-06-14; funded by bridging Sepolia ETH through the OptimismPortal)
 - Polygon / Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated — not yet funded/verified)
 - ERC-20 (USDC, USDT — Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
-- Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — testnet script `signAndBroadcastBtc`, txid `d9cc11…`, block 4990393, 2026-06-12, user-confirmed; UI dispatch still gated on PR #123, so status stays receive_only)
-- Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — devnet script `signAndBroadcastSol`, txid `cCqCiKM…`, 2026-06-11, user-decoded + confirmed; UI dispatch still gated on PR #123, so status stays receive_only)
+- Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — testnet script `signAndBroadcastBtc`, txid `d9cc11…`, block 4990393, 2026-06-12, user-confirmed). UI dispatch IS wired (PR #123, merged 2026-06-12); stays receive_only only until a real **UI-path** send is verified on-chain.
+- Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — devnet script `signAndBroadcastSol`, txid `cCqCiKM…`, 2026-06-11, user-decoded + confirmed). UI dispatch IS wired (PR #123, merged 2026-06-12); stays receive_only only until a real **UI-path** send is verified on-chain.
 - More EVM chains / more ERC-20 tokens — 💡
 - Other stacks (XRP, ADA, TRON…) — 💡
 - Cosmos / IBC, Sui — ❌ removed from the app (PR #48); `deriveCosmosAccount` stub left in `derivation.js` (throws, unwired)
