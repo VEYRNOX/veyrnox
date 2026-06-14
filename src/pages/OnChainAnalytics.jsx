@@ -29,6 +29,10 @@ export default function OnChainAnalytics() {
   const totalReceived = transactions.filter(t => t.type === "receive").reduce((s, t) => s + (t.amount || 0), 0);
   const confirmedCount = transactions.filter(t => t.status === "confirmed").length;
   const failedCount = transactions.filter(t => t.status === "failed").length;
+  // Deniability (CLAUDE.md "never show wallet count/list"): the summary tiles must
+  // not publish wallets.length. "Pending" is a transaction-derived stat that
+  // carries no wallet cardinality, so it replaces the former "Wallets" count tile.
+  const pendingCount = transactions.filter(t => t.status !== "confirmed" && t.status !== "failed").length;
 
   // Daily volume chart
   const volumeByDay = {};
@@ -75,7 +79,7 @@ export default function OnChainAnalytics() {
           { label: "Total Txs", value: transactions.length, icon: Activity },
           { label: "Confirmed", value: confirmedCount, icon: Activity },
           { label: "Failed", value: failedCount, icon: Activity },
-          { label: "Wallets", value: wallets.length, icon: Activity },
+          { label: "Pending", value: pendingCount, icon: Activity },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
             <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
