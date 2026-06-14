@@ -23,7 +23,7 @@
 // wallet active (switchWallet) so `accounts`/`btcAccount`/`solAccount` belong to it.
 
 import { resolveReceive } from '@/lib/receiveAddress';
-import { DEFAULT_ENABLED_ASSETS } from '@/lib/walletMeta';
+import { DEFAULT_ENABLED_ASSETS, ALL_ASSET_SYMBOLS } from '@/lib/walletMeta';
 
 // ── DEMO SEND SOURCE ────────────────────────────────────────────────────────
 // Demo is a backend-less walkthrough with NO unlocked on-device vault, so the
@@ -94,6 +94,24 @@ export function defaultWalletId(wallets, activeWalletId) {
 export function walletAssetSymbols(wallets, walletId) {
   const w = (wallets || []).find((x) => x.id === walletId);
   return Array.isArray(w?.enabledAssets) ? w.enabledAssets : [];
+}
+
+/**
+ * Asset symbols to OFFER in the Send asset picker. Normally a wallet's own
+ * enabledAssets (the same list the dashboard shows). When the dev-real testnet
+ * send ungate is active, surface EVERY supported asset so any `receive_only`
+ * asset can be exercised through the real send path for verification WITHOUT first
+ * enabling it per-wallet (older wallets predate the all-assets default). This is a
+ * VIEW-ONLY override — it never mutates the wallet's stored enabledAssets — and,
+ * gated on the build-time DEV lock at the call site, is dead-code-eliminated from
+ * any production build.
+ * @param {Array}   wallets
+ * @param {string}  walletId
+ * @param {boolean} [ungated]  the dev-only testnet send ungate is active
+ * @returns {string[]}
+ */
+export function sendAssetSymbols(wallets, walletId, ungated = false) {
+  return ungated ? [...ALL_ASSET_SYMBOLS] : walletAssetSymbols(wallets, walletId);
 }
 
 /**

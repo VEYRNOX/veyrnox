@@ -11,12 +11,13 @@ import { describe, it, expect } from 'vitest';
 import {
   defaultWalletId,
   walletAssetSymbols,
+  sendAssetSymbols,
   defaultAssetSymbol,
   buildSendWallet,
   demoSendSource,
   DEMO_SEND_WALLET_ID,
 } from '@/lib/sendWalletSource';
-import { DEFAULT_ENABLED_ASSETS } from '@/lib/walletMeta';
+import { DEFAULT_ENABLED_ASSETS, ALL_ASSET_SYMBOLS } from '@/lib/walletMeta';
 
 // Distinct, format-plausible addresses so a chain mix-up would be caught.
 const EVM = '0xAbC0000000000000000000000000000000000001';
@@ -54,6 +55,25 @@ describe('sendWalletSource — binding Send to the live vault source', () => {
     it('empty for an unknown wallet id', () => {
       expect(walletAssetSymbols(wallets, 'nope')).toEqual([]);
       expect(walletAssetSymbols(undefined, 'w1')).toEqual([]);
+    });
+  });
+
+  describe('sendAssetSymbols — picker options (dev-real ungate widens to all)', () => {
+    it('returns the wallet enabledAssets when NOT ungated (same as the dashboard)', () => {
+      expect(sendAssetSymbols(wallets, 'w1')).toEqual(['ETH', 'USDC', 'USDT', 'BTC', 'SOL']);
+      expect(sendAssetSymbols(wallets, 'w2', false)).toEqual(['ETH', 'BTC']);
+    });
+    it('surfaces EVERY supported asset when the dev ungate is active', () => {
+      expect(sendAssetSymbols(wallets, 'w2', true)).toEqual([...ALL_ASSET_SYMBOLS]);
+    });
+    it('the ungate override is VIEW-ONLY — it never mutates the wallet enabledAssets', () => {
+      const before = wallets[1].enabledAssets;
+      sendAssetSymbols(wallets, 'w2', true);
+      expect(wallets[1].enabledAssets).toBe(before); // same reference, untouched
+      expect(wallets[1].enabledAssets).toEqual(['ETH', 'BTC']);
+    });
+    it('the ungate widens even an unknown wallet id (every asset still available)', () => {
+      expect(sendAssetSymbols(wallets, 'nope', true)).toEqual([...ALL_ASSET_SYMBOLS]);
     });
   });
 

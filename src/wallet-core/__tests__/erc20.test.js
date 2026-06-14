@@ -142,8 +142,8 @@ describe('asset status gating (Phase B)', () => {
     expect(canSend(usdt)).toBe(false); // HARD-gated until a verified testnet send
   });
 
-  it('ETH remains the only sendable (live) asset', () => {
-    expect(ASSETS_LIVE()).toEqual(['ETH']);
+  it('the ERC-20s stay receive_only — the live set is the verified natives (ETH, ARB, OP, BTC, SOL)', () => {
+    expect(ASSETS_LIVE()).toEqual(['ETH', 'ARB', 'OP', 'BTC', 'SOL']);
   });
 });
 

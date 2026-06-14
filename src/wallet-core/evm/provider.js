@@ -25,7 +25,20 @@ export function getProvider(networkKey) {
   if (_cache[networkKey]) return _cache[networkKey];
   const url = _overrides[networkKey] || net.defaultRpcUrl;
   // staticNetwork avoids an extra eth_chainId round-trip and pins the chainId.
-  const provider = new JsonRpcProvider(url, { chainId: net.chainId, name: net.name });
+  //
+  // batchMaxCount: 1 DISABLES JSON-RPC request batching. ethers v6 batches calls
+  // into a single `[...]` POST by default; several public testnet RPCs (incl.
+  // Arbitrum Sepolia) return a batched response that ethers cannot map in the
+  // browser, throwing "could not coalesce error" from inside sendTransaction —
+  // which surfaced as a Send that span forever and never broadcast (nonce never
+  // advanced). Node tolerated the batch; the browser did not. One call per POST
+  // costs a little latency but is correct everywhere. (Verified: Arbitrum Sepolia
+  // tx 0x87ca786e… broadcast + confirmed from the browser with batching off.)
+  const provider = new JsonRpcProvider(
+    url,
+    { chainId: net.chainId, name: net.name },
+    { staticNetwork: true, batchMaxCount: 1 },
+  );
   _cache[networkKey] = provider;
   return provider;
 }
