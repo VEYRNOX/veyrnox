@@ -221,28 +221,66 @@ versus what still needs the audit:
 
 ---
 
-## 6b. Action Password (second knowledge factor) — BUILT (primary), TARGET (decoy/hidden)
+## 6b. Two-factor at critical actions — BUILT (primary), TARGET (decoy/hidden)
 
-**What it is.** A second *knowledge* credential, distinct from the unlock PIN/password,
-required at CRITICAL points: send, reveal-recovery-phrase, set-duress-PIN,
-create-hidden-wallet, hide-existing-wallet. Set/changed/removed in the Security Center
-"2FA" card. Pure verdict logic in `src/lib/twoFactorGate.js`; persistable Argon2id
-verifier record in `src/wallet-core/actionPassword.js`; the record is stored **inside the
-encrypted multi-vault container** (`multiVault.js`), so its presence is invisible at rest
-(no separate blob, no on-disk tell). Enforcement is composed by `useActionGuard()` +
-`TwoFactorGate` (PR #195).
+**Where it's configured.** **Security Settings → "Two-factor at critical actions"**
+(`pages/Settings.jsx` → `components/security/TwoFactorSettings.jsx`), NOT the Security
+Center. The Security Center is alerts / sessions / spend-limits only; two-factor is auth
+configuration and lives with the other auth factors (biometric, passkey-unlock). The
+section explicitly lists WHICH actions it gates so the protection is legible (PR #195).
+
+**The gated CRITICAL actions** (the `useActionGuard` call sites): send, reveal-recovery-
+phrase, set-duress-PIN, create-hidden-wallet, hide-existing-wallet. Two methods are
+offered; the user picks one (passkey wins if both are somehow set).
+
+**Method 1 — PIN + Action Password (two knowledge factors).** A second *knowledge*
+credential, distinct from the unlock PIN/password. Pure verdict logic in
+`src/lib/twoFactorGate.js`; persistable Argon2id verifier record in
+`src/wallet-core/actionPassword.js`; the record is stored **inside the encrypted
+multi-vault container** (`multiVault.js`), so its presence is invisible at rest (no
+separate blob, no on-disk tell) and it is **per wallet-set**. Enforcement is composed by
+`useActionGuard()` + `TwoFactorGate` (mode `password`).
 
 **Concurrency invariant.** The gate verifies the unlock credential **and** the Action
 Password — two full-cost (192 MiB) Argon2id derivations. They run **sequentially**, never
 `Promise.all`, so only one 192 MiB allocation is live at a time (Defect-A). Any new
 consumer of `useActionGuard` inherits this; do not parallelise the two checks.
 
-**Honest scope.** Two knowledge factors on one device is **not** hardware 2FA — both are
-derived/stored on the same device. It raises the bar against a PIN-only / shoulder-surf
-compromise, not against full device seizure with the vault password. UNAUDITED-PROVISIONAL.
+**Honest scope (Method 1).** Two knowledge factors on one device is **not** hardware 2FA
+— both are derived/stored on the same device. It raises the bar against a PIN-only /
+shoulder-surf compromise, not against full device seizure with the vault password.
+UNAUDITED-PROVISIONAL.
 
-**Decoy/hidden parity — TARGET, audit-gated (the design constraint).** Enforcement is
-**active-set (primary) only.** Decoy (`duress.js: encryptVault(decoyMnemonic, …)`) and
+**Method 2 — PIN + Passkey/FIDO2 (knowledge + possession).** The PIN plus a WebAuthn
+assertion against the device's registered passkey (`lib/passkey.js: verifyPasskeyAssertion`,
+reused from the unlock path; `TwoFactorGate` mode `passkey`). This adds a genuine
+**possession** factor — the unlock gate's Method-1 weakness ("everything is something you
+*know*") is exactly what this closes. **Fails closed (I4):** in `useActionGuard`, any
+assertion error / user-cancel / timeout / missing-authenticator counts as **not verified**
+— the deliberate *inverse* of the unlock passkey gate, whose SAST-flagged degrade-to-
+password path (M-1/M-2) must NOT exist for a critical-action second factor. Toggle is a
+device pref (`veyrnox-2fa-passkey`, separate from the unlock pref), so a passkey can guard
+actions without changing how you unlock; losing the passkey never costs funds (the
+PIN + password path is independent).
+
+**Deniability distinction between the two methods — IMPORTANT.** They have *different*
+deniability models, and this is intentional:
+- **Method 1 (Action Password) is per-set.** The verifier lives inside each container, so a
+  set without one simply doesn't prompt. Today only the **primary** set can carry one
+  (decoy/hidden are bare-mnemonic — the TARGET below).
+- **Method 2 (Passkey) is device-global.** The pref + the registered passkey are on the
+  device, not in any container, so when enabled it prompts in **every** session on this
+  device — real, decoy, AND hidden alike. That is *consistent* (it reveals nothing that
+  distinguishes one set from another, so it is not itself a tell), but it is **not** the
+  per-set model: an attacker in a coerced decoy session who is asked for a passkey learns a
+  passkey 2FA exists device-wide, and a decoy meant to be *frictionlessly operable under
+  coercion* will demand it too. Whether that is desirable is the same open threat-model
+  question as the decoy-parity item below. Method 2 also stores no secret in any container,
+  so it sidesteps the chaff-length constraint entirely — but at the cost of not being
+  per-set. UNAUDITED-PROVISIONAL.
+
+**Decoy/hidden parity (Method 1) — TARGET, audit-gated (the design constraint).**
+Enforcement of the **Action Password** is **active-set (primary) only.** Decoy (`duress.js: encryptVault(decoyMnemonic, …)`) and
 hidden (`stealth.js: encryptVault(mnemonic, secret)`) slots encrypt a **bare mnemonic
 string**, not a container, so there is no field to carry a per-set Action Password record.
 The naive fix — wrap their plaintext in a container — **breaks deniability**: the stealth
@@ -270,7 +308,8 @@ rename/backup tracking.
 testnet/demo, audit-gated §24:** duress PIN → decoy vault; stealth / hidden wallets
 (chaff-slot pool); panic / wipe PIN (local key destruction); constant-KDF unlock timing;
 Argon2id work-factor raise (SAST M3, params pending audit); biometric/passkey app-layer
-unlock gate; **Action Password second factor at critical points (primary set; §6b).**
+unlock gate; **two-factor at critical points — PIN + Action Password (per-set, primary) OR
+PIN + Passkey/FIDO2 (device-global, fail-closed); configured in Security Settings; §6b.**
 
 **TARGET / not built:** hardware-KEK release via passkey (secure-element / OS-enforced
 ACL binding, M2c/M2d); the audited "indistinguishable from free space" deniability
