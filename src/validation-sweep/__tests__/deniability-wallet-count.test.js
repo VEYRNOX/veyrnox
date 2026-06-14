@@ -38,44 +38,34 @@ const onchain = read('../../pages/OnChainAnalytics.jsx');
 const risk = read('../../pages/RiskScoring.jsx');
 
 describe('FLAG D1 — the real-build dashboard renders a wallet-count string', () => {
-  // WalletPortfolioPage.jsx:519
+  // FIXED: WalletPortfolioPage.jsx previously rendered
   //   {pfWallets.length} wallet{pfWallets.length === 1 ? "" : "s"} in this portfolio
-  it('CONFIRMED present today (characterization — turns red if the line changes)', () => {
-    expect(portfolio).toContain('wallet{pfWallets.length === 1 ? "" : "s"} in this portfolio');
-  });
-
-  it.fails('IDEAL: the dashboard renders NO "{n} wallet(s) in this portfolio" count', () => {
+  // The count string was removed (the wallet list below already shows what is here).
+  it('IDEAL: the dashboard renders NO "{n} wallet(s) in this portfolio" count', () => {
     expect(portfolio).not.toMatch(/\{pfWallets\.length\}\s*wallet/);
+    expect(portfolio).not.toContain('in this portfolio');
   });
 });
 
 describe('FLAG D2 — StealthWallets surfaces a visible wallet count', () => {
-  // StealthWallets.jsx:289 :  Your visible wallets ({evmWallets.length}):
-  it('CONFIRMED present today (characterization)', () => {
-    expect(stealth).toContain('Your visible wallets ({evmWallets.length})');
-  });
-
-  it.fails('IDEAL: no visible "Your visible wallets (N)" count is rendered', () => {
+  // FIXED: StealthWallets.jsx previously rendered
+  //   Your visible wallets ({evmWallets.length}):
+  // The count interpolation was removed; the functional selectable list remains.
+  it('IDEAL: no visible "Your visible wallets (N)" count is rendered', () => {
     expect(stealth).not.toMatch(/visible wallets \(\{[^}]*\.length\}\)/);
+    expect(stealth).not.toMatch(/\(\{evmWallets\.length\}\)/);
   });
 });
 
 describe('FLAG D3 — analytics surfaces expose wallets.length as a labelled stat', () => {
-  // OnChainAnalytics.jsx:78 : { label: "Wallets", value: wallets.length, ... }
-  it('OnChainAnalytics CONFIRMED present today (characterization)', () => {
-    expect(onchain).toContain('value: wallets.length');
-    expect(onchain).toMatch(/label:\s*"Wallets"/);
-  });
-
-  // RiskScoring.jsx:55 : { label: "Diversification", value: wallets.length, unit: " wallets" }
-  it('RiskScoring CONFIRMED present today (characterization)', () => {
-    expect(risk).toContain('value: wallets.length');
-    expect(risk).toContain('unit: " wallets"');
-  });
-
-  it.fails('IDEAL: analytics stat tiles do NOT publish wallets.length as a count', () => {
+  // FIXED: OnChainAnalytics.jsx swapped the "Wallets" count tile for a
+  // transaction-derived "Pending" stat; RiskScoring.jsx made "Diversification"
+  // a score-derived /100 reading instead of wallets.length + " wallets".
+  it('IDEAL: analytics stat tiles do NOT publish wallets.length as a count', () => {
     expect(onchain).not.toContain('value: wallets.length');
     expect(risk).not.toContain('value: wallets.length');
+    expect(onchain).not.toMatch(/label:\s*"Wallets"/);
+    expect(risk).not.toContain('unit: " wallets"');
   });
 });
 

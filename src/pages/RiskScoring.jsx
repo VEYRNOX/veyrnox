@@ -52,7 +52,11 @@ export default function RiskScoring() {
     { label: "Concentration Risk", value: score !== null ? Math.min(100, score + 5) : "—", unit: "/100", color: "text-orange-400" },
     { label: "Leverage Risk", value: score !== null ? positions.filter(p => p.type === "borrow").length * 15 : "—", unit: "%", color: "text-yellow-400" },
     { label: "Volatility Index", value: score !== null ? Math.round(score * 0.8) : "—", unit: "/100", color: "text-destructive" },
-    { label: "Diversification", value: wallets.length, unit: " wallets", color: "text-green-400" },
+    // Deniability (CLAUDE.md "never show wallet count/list"): this tile must not
+    // publish wallets.length. Diversification is now a score-derived /100 reading
+    // (higher = better spread, inverse of the concentration-weighted risk score),
+    // gated on an analysis run like the other metrics — no wallet cardinality.
+    { label: "Diversification", value: score !== null ? Math.max(0, 100 - score) : "—", unit: "/100", color: "text-green-400" },
   ];
 
   return (

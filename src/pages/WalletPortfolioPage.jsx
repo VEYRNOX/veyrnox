@@ -515,16 +515,14 @@ export default function WalletPortfolioPage() {
           </p>
         )}
         <ReferenceRateNote />
-        <p className="text-xs text-muted-foreground mt-1">
-          {pfWallets.length} wallet{pfWallets.length === 1 ? "" : "s"} in this portfolio
-          {/* DENIABILITY (I3 / KEK spec §5): the normal wallet UI must NOT surface
-              that the current session is a decoy/hidden one — a "· decoy session"
-              tell on the dashboard reveals to a coercer that a real set exists
-              elsewhere, defeating the terminus property. With v1 Face-ID-to-decoy
-              and Option A making the decoy the everyday + fallback path, this label
-              is load-bearing-wrong, so it is removed. isDecoy/isHidden stay internal
-              flags that gate mutations (add/remove wallet), never a visible badge. */}
-        </p>
+        {/* DENIABILITY (CLAUDE.md "never show wallet count/list" · I3 / KEK spec §5):
+            a wallet-COUNT line is a cardinality tell — it reveals how many wallets
+            the active context holds, and a coercer comparing counts across unlocks
+            can infer a real set exists elsewhere, defeating the terminus property.
+            The count carried no user-facing function (the wallet list below already
+            shows what is here), so it is removed outright. isDecoy/isHidden stay
+            internal flags that gate mutations (add/remove wallet), never a visible
+            badge or count. */}
       </div>
 
       {/* Global unbacked-wallet warning (fund-loss risk spans all portfolios) */}

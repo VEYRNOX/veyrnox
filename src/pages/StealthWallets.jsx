@@ -284,9 +284,13 @@ function MoveExistingWallet() {
         </ul>
       </div>
 
-      {/* Live visible-wallet list — so the disappearance after a move is visible. */}
+      {/* Live visible-wallet list — so the disappearance after a move is visible.
+          DENIABILITY (CLAUDE.md "never show wallet count/list"): the heading must
+          NOT interpolate the visible-wallet count — that publishes the active-
+          context cardinality. The selectable list below is functionally required
+          (the user picks which wallet to hide), but the count is not. */}
       <div className="text-[11px] text-muted-foreground">
-        Your visible wallets ({evmWallets.length}):
+        Choose a visible wallet to move into hidden:
       </div>
       <div className="space-y-1.5">
         {evmWallets.length === 0 && (
