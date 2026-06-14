@@ -79,6 +79,13 @@ export default defineConfig(({ command }) => {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
+        // CONSOLE-1 (#179): resolve the bare `buffer` specifier to the real
+        // `buffer` npm polyfill (already in the tree via @solana/web3.js) instead
+        // of Vite's throwing/warning browser-external stub. src/main.jsx imports
+        // `buffer` to install a global Buffer; without this alias that import
+        // hits the stub and yields `undefined`. See src/main.jsx for the full
+        // rationale. Browser-safe; no signer/serializer bytes change.
+        buffer: 'buffer',
       },
     },
     plugins: [
@@ -90,7 +97,7 @@ export default defineConfig(({ command }) => {
     // blank page on first load). hash-wasm inlines its WASM as base64, so no WASM
     // plugin is needed.
     optimizeDeps: {
-      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers'],
+      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer'],
     },
   };
 });
