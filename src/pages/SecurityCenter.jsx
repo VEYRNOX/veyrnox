@@ -3,7 +3,8 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Monitor, Trash2, Plus, DollarSign, ShieldCheck, LogOut } from "lucide-react";
+import { Monitor, Trash2, Plus, DollarSign, ShieldCheck, LogOut, KeyRound, Lock } from "lucide-react";
+import { useWallet } from "@/lib/WalletProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,44 @@ export default function SecurityCenter() {
   const [limitCurrency, setLimitCurrency] = useState("ALL");
   const [dailyLimit, setDailyLimit] = useState("");
   const [perTxLimit, setPerTxLimit] = useState("");
+
+  // ── ACTION PASSWORD (2FA second factor) ──
+  const { actionPasswordConfigured, setActionPassword, clearActionPassword, isDecoy, isHidden } = useWallet();
+  const [apVaultPw, setApVaultPw] = useState("");   // the unlock credential (PIN/password), re-auth
+  const [apNew, setApNew] = useState("");           // the new Action Password
+  const [apConfirm, setApConfirm] = useState("");    // confirm
+  const [apBusy, setApBusy] = useState(false);
+  const apTooShort = apNew.length > 0 && apNew.length < 8;
+  const apMismatch = apConfirm.length > 0 && apConfirm !== apNew;
+  const apCanSave = !!apVaultPw && apNew.length >= 8 && apConfirm === apNew && !apBusy;
+  const resetApForm = () => { setApVaultPw(""); setApNew(""); setApConfirm(""); };
+
+  const handleSetActionPassword = async () => {
+    setApBusy(true);
+    try {
+      await setActionPassword(apVaultPw, apNew); // verifies the vault password; re-encrypts the container
+      resetApForm();
+      toast.success(actionPasswordConfigured ? "Action Password changed" : "Action Password set");
+    } catch (e) {
+      toast.error(e?.message || "Could not set the Action Password");
+    } finally {
+      setApBusy(false);
+    }
+  };
+
+  const handleClearActionPassword = async () => {
+    if (!apVaultPw) { toast.error("Enter your wallet PIN / password to confirm"); return; }
+    setApBusy(true);
+    try {
+      await clearActionPassword(apVaultPw);
+      resetApForm();
+      toast.success("Action Password removed");
+    } catch (e) {
+      toast.error(e?.message || "Could not remove the Action Password");
+    } finally {
+      setApBusy(false);
+    }
+  };
 
   const { data: sessions = [] } = useQuery({
     queryKey: ["sessions"],
@@ -129,6 +168,7 @@ export default function SecurityCenter() {
         <TabsList className="w-full bg-secondary">
           <TabsTrigger value="sessions" className="flex-1">Sessions</TabsTrigger>
           <TabsTrigger value="limits" className="flex-1">Tx Limits</TabsTrigger>
+          <TabsTrigger value="auth" className="flex-1">2FA</TabsTrigger>
         </TabsList>
 
         {/* ── Sessions Tab ── */}
@@ -252,6 +292,65 @@ export default function SecurityCenter() {
           {/* "Sent today" totals convert local tx amounts via the static
               USD_RATES table — disclose they're a reference rate, not live. */}
           {limits.length > 0 && <ReferenceRateNote className="mt-2" />}
+        </TabsContent>
+
+        {/* ── Action Password (2FA second factor) Tab ── */}
+        <TabsContent value="auth" className="mt-4 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            A second password, required <strong>together with your PIN</strong> at critical actions
+            (sending, revealing your seed, changing security settings).
+          </p>
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
+            <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Verified at full vault strength (Argon2id). This is two things you know on one device —
+              strong defense-in-depth, <strong>not</strong> hardware two-factor. Stored only inside your
+              encrypted vault; if you forget it, you can reset it here with your wallet PIN / password.
+            </p>
+          </div>
+
+          {/* Status */}
+          <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card">
+            <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${actionPasswordConfigured ? "bg-primary/10" : "bg-secondary"}`}>
+              {actionPasswordConfigured ? <Lock className="h-5 w-5 text-primary" /> : <KeyRound className="h-5 w-5 text-muted-foreground" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">{actionPasswordConfigured ? "Action Password is ON" : "No Action Password set"}</p>
+              <p className="text-xs text-muted-foreground">
+                {actionPasswordConfigured ? "Critical actions require your PIN + this password." : "Set one to require a second factor at critical actions."}
+              </p>
+            </div>
+          </div>
+
+          {/* Set / change / remove form */}
+          <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+            <div>
+              <Label htmlFor="ap-vault">Wallet PIN / password</Label>
+              <Input id="ap-vault" type="password" autoComplete="current-password" value={apVaultPw}
+                onChange={e => setApVaultPw(e.target.value)} placeholder="Confirm it's you" className="mt-1.5 mono-value" />
+            </div>
+            <div>
+              <Label htmlFor="ap-new">{actionPasswordConfigured ? "New Action Password" : "Action Password"}</Label>
+              <Input id="ap-new" type="password" autoComplete="new-password" value={apNew}
+                onChange={e => setApNew(e.target.value)} placeholder="At least 8 characters" className="mt-1.5 mono-value" />
+              {apTooShort && <p className="text-[11px] text-destructive mt-1">Use at least 8 characters.</p>}
+            </div>
+            <div>
+              <Label htmlFor="ap-confirm">Confirm</Label>
+              <Input id="ap-confirm" type="password" autoComplete="new-password" value={apConfirm}
+                onChange={e => setApConfirm(e.target.value)} placeholder="Re-enter the Action Password" className="mt-1.5 mono-value" />
+              {apMismatch && <p className="text-[11px] text-destructive mt-1">Passwords don't match.</p>}
+            </div>
+            <Button className="w-full gap-2" onClick={handleSetActionPassword} disabled={!apCanSave}>
+              <KeyRound className="h-4 w-4" /> {actionPasswordConfigured ? "Change Action Password" : "Set Action Password"}
+            </Button>
+            {actionPasswordConfigured && (
+              <Button variant="ghost" className="w-full text-destructive hover:bg-destructive/10 gap-2"
+                onClick={handleClearActionPassword} disabled={apBusy}>
+                <Trash2 className="h-4 w-4" /> Remove Action Password
+              </Button>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
