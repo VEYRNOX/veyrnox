@@ -37,6 +37,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@/lib/WalletProvider";
+import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
 import { base44 } from "@/api/base44Client";
 import {
@@ -177,6 +178,7 @@ const DEMO_MOVE_LABEL = "Spare ETH (movable demo)";
 // purges its visible record so no leftover label/address/balance remains in-app.
 function MoveExistingWallet() {
   const { moveWalletToHidden, peekHiddenWallet } = useWallet();
+  const { requireTwoFactor, gateModal } = useActionGuard();
   const qc = useQueryClient();
   const { data: wallets = [] } = useQuery({
     queryKey: ["wallets"],
@@ -219,23 +221,27 @@ function MoveExistingWallet() {
       setError("That recovery phrase does not derive this wallet's address. You can only hide a wallet you control.");
       return;
     }
-    setBusy(true);
-    try {
-      // 1) Store + SELF-VERIFY in the hidden pool. moveWalletToHidden throws if the
-      //    wallet isn't revealable afterwards, so we never delete a still-visible
-      //    record for a wallet that didn't actually get hidden.
-      await moveWalletToHidden(m, secret);
-      // 2) ONLY NOW purge the visible record + caches so no residual tell remains.
-      await base44.entities.Wallet.delete(selected.id);
-      qc.invalidateQueries({ queryKey: ["wallets"] });
-      qc.invalidateQueries({ queryKey: ["hd-wallets"] });
-      setDone({ name: selected.name, address: selected.address });
-      reset();
-    } catch (e) {
-      setError(e?.message || "Could not hide the wallet.");
-    } finally {
-      setBusy(false);
-    }
+    // CRITICAL: hiding a previously-visible wallet (irreversibly purges its visible
+    // record) is gated behind the second factor when one is set (no-op otherwise).
+    requireTwoFactor(async () => {
+      setBusy(true);
+      try {
+        // 1) Store + SELF-VERIFY in the hidden pool. moveWalletToHidden throws if the
+        //    wallet isn't revealable afterwards, so we never delete a still-visible
+        //    record for a wallet that didn't actually get hidden.
+        await moveWalletToHidden(m, secret);
+        // 2) ONLY NOW purge the visible record + caches so no residual tell remains.
+        await base44.entities.Wallet.delete(selected.id);
+        qc.invalidateQueries({ queryKey: ["wallets"] });
+        qc.invalidateQueries({ queryKey: ["hd-wallets"] });
+        setDone({ name: selected.name, address: selected.address });
+        reset();
+      } catch (e) {
+        setError(e?.message || "Could not hide the wallet.");
+      } finally {
+        setBusy(false);
+      }
+    }, { title: "Hide this wallet" });
   };
 
   const verifyReveal = async (sec) => {
@@ -384,6 +390,7 @@ function MoveExistingWallet() {
           </div>
         </div>
       )}
+      {gateModal}
     </div>
   );
 }
@@ -395,6 +402,7 @@ export default function StealthWallets() {
     hasVault, addHiddenWallet, initStealthPool, removeAllHiddenWallets,
     createWallet, unlock, lock, clearVault,
   } = wallet;
+  const { requireTwoFactor, gateModal } = useActionGuard();
 
   // ----- create card state -----
   const [secret, setSecret] = useState("");
@@ -430,18 +438,22 @@ export default function StealthWallets() {
     setError(""); setSavedPhrase(""); setSavedIdentity(null);
     if (secret.length < 4) { setError("Reveal secret must be at least 4 characters"); return; }
     if (secret !== confirm) { setError("Secrets do not match"); return; }
-    setSaving(true);
-    try {
-      const { mnemonic, evm, btc, sol } = await addHiddenWallet(secret);
-      setSavedPhrase(mnemonic);
-      setSavedIdentity({ evm: evm.address, btc: btc.address, sol: sol.address });
-      setSecret(""); setConfirm("");
-      await refresh();
-    } catch (e) {
-      setError(e?.message || "Could not create hidden wallet");
-    } finally {
-      setSaving(false);
-    }
+    // CRITICAL: creating a hidden wallet is gated behind the second factor when one
+    // is set (no-op otherwise). Runs after local validation.
+    requireTwoFactor(async () => {
+      setSaving(true);
+      try {
+        const { mnemonic, evm, btc, sol } = await addHiddenWallet(secret);
+        setSavedPhrase(mnemonic);
+        setSavedIdentity({ evm: evm.address, btc: btc.address, sol: sol.address });
+        setSecret(""); setConfirm("");
+        await refresh();
+      } catch (e) {
+        setError(e?.message || "Could not create hidden wallet");
+      } finally {
+        setSaving(false);
+      }
+    }, { title: "Create a hidden wallet" });
   };
 
   // ----- demo handlers (use the REAL unlock path) -----
@@ -774,6 +786,7 @@ export default function StealthWallets() {
           </p>
         </div>
       )}
+      {gateModal}
     </div>
   );
 }
