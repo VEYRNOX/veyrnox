@@ -26,7 +26,8 @@ import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
-import { captureVerifierSafe, verifyCredential } from '@/wallet-core/credentialVerifier';
+import { captureVerifierSafe, verifyCredential, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
+import { serializeActionPasswordRecord } from '@/wallet-core/actionPassword';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore } from '@/wallet-core/keystore';
 // MULTI-SEED VAULT (feat/multi-wallet-portfolio). ⚠️ AUDIT-CRITICAL container
@@ -161,6 +162,11 @@ export function WalletProvider({ children }) {
   const verifierRef = useRef(null);
   const lastAuthAtRef = useRef(null);
   const [isUnlocked, setUnlocked] = useState(false);
+  // ACTION PASSWORD (2FA second factor): does the ACTIVE set have one configured?
+  // Reactive (drives the gate UI). The verifier RECORD itself lives inside the
+  // encrypted container (containerRef) — this is only the non-secret boolean. False
+  // in a decoy/hidden session (those carry no container record this phase).
+  const [actionPasswordConfigured, setActionPasswordConfigured] = useState(false);
   // Public, non-secret per-wallet info for the UI: [{ id, name, backedUp,
   // enabledAssets }] — NO mnemonics. Derived from the container ids + walletMeta.
   const [wallets, setWallets] = useState([]);
@@ -370,6 +376,7 @@ export function WalletProvider({ children }) {
     if (verifierRef.current?.hash) { try { verifierRef.current.hash.fill(0); } catch { /* noop */ } }
     verifierRef.current = null;
     lastAuthAtRef.current = null;
+    setActionPasswordConfigured(false); // the record lives in containerRef (cleared above)
     setUnlocked(false);
     setIsDecoy(false);
     setIsHidden(false);
@@ -779,6 +786,53 @@ export function WalletProvider({ children }) {
     deriveActiveAndAll();
   }, [isDecoy, isHidden, decryptPrimaryContainer, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
+  // ── ACTION PASSWORD (2FA second factor) — PRIMARY SET (this phase) ──────────────
+  // A separate credential, set in the Security Center, required WITH the PIN at
+  // critical actions (see lib/twoFactorGate.js). Stored per-set inside the encrypted
+  // container (multiVault.js). Verified at the FULL vault Argon2id cost via the proven
+  // credentialVerifier — so it is no weaker than the vault itself, and verify can never
+  // trigger panic/decoy (credentialVerifier is unlock-/deniability-free).
+  // SCOPE: decoy/hidden sessions are bare-mnemonic (no container), so they cannot
+  // carry/persist a record this phase — full gate parity in those sessions is a flagged
+  // follow-up that must change the duress/stealth storage under deniability review.
+
+  /** True iff the ACTIVE set has an Action Password configured. */
+  const hasActionPassword = useCallback(() => mv.getActionPasswordRecord(containerRef.current) != null, []);
+
+  /** Verify an entered Action Password against the ACTIVE set's record. Fails closed. */
+  const verifyActionPassword = useCallback(
+    (entered) => verifyCredential(mv.getActionPasswordRecord(containerRef.current), entered),
+    [],
+  );
+
+  /**
+   * Set/replace the Action Password on the PRIMARY set: re-auth with the vault
+   * password, capture a verifier at full vault KDF cost, and re-encrypt the container
+   * (mirrors addWallet). Unavailable in a decoy/hidden session.
+   */
+  const setActionPassword = useCallback(async (password, actionPassword) => {
+    if (isDecoy || isHidden) throw new Error('Setting an Action Password is unavailable in this session.');
+    if (!actionPassword) throw new Error('Action Password cannot be empty.');
+    const current = await decryptPrimaryContainer(password); // verifies the vault password
+    const verifier = await createCredentialVerifier(actionPassword); // full vault Argon2id cost
+    const container = mv.withActionPasswordRecord(current, serializeActionPasswordRecord(verifier));
+    await keyStore.createVault(mv.serializeContainer(container), password);
+    containerRef.current = container;
+    setActionPasswordConfigured(true);
+    touch();
+  }, [isDecoy, isHidden, decryptPrimaryContainer, touch]);
+
+  /** Remove the Action Password from the PRIMARY set (disables the second factor). */
+  const clearActionPassword = useCallback(async (password) => {
+    if (isDecoy || isHidden) throw new Error('Changing the Action Password is unavailable in this session.');
+    const current = await decryptPrimaryContainer(password);
+    const container = mv.clearActionPasswordRecord(current);
+    await keyStore.createVault(mv.serializeContainer(container), password);
+    containerRef.current = container;
+    setActionPasswordConfigured(false);
+    touch();
+  }, [isDecoy, isHidden, decryptPrimaryContainer, touch]);
+
   // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container (the
   // session already holds every seed while unlocked, so this needs no password —
   // it is the same exposure as withPrivateKey). LIVE SECRET: the caller shows it
@@ -1071,6 +1125,10 @@ export function WalletProvider({ children }) {
     // normalises both into a container (the decoy/hidden one in-memory only).
     const { container, migrated } = mv.parseVault(mnemonic);
     containerRef.current = container;
+    // ACTION PASSWORD: reflect whatever the ACTIVE set carries. Primary sets persist
+    // a per-set record; a decoy/hidden session is a bare mnemonic (no container
+    // record), so this is false there — the gate stays honest about the active set.
+    setActionPasswordConfigured(mv.getActionPasswordRecord(container) != null);
     const isPrimary = !decoy && !hidden;
 
     if (isPrimary) {
@@ -1401,6 +1459,13 @@ export function WalletProvider({ children }) {
     // SEND STEP-UP RE-AUTH (see lib/sendReauth.js + wallet-core/credentialVerifier.js).
     verifyActiveCredential,
     isSendReauthRequired,
+    // ACTION PASSWORD (2FA second factor) — PRIMARY set this phase. See twoFactorGate.js
+    // for the PIN+password verdict the critical-action gate composes from these.
+    actionPasswordConfigured,
+    hasActionPassword,
+    verifyActionPassword,
+    setActionPassword,
+    clearActionPassword,
     hasPendingPin: pendingPinRef.current != null,
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
     isDecoy,
