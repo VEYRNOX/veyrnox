@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, Fingerprint } from 'lucide-react';
 
 const ATTEMPT_CAP = 5;
 
@@ -27,16 +27,21 @@ const ATTEMPT_CAP = 5;
  * @param {() => void} props.onSuccess  called once on an allowed verdict
  * @param {() => void} [props.onCancel]
  * @param {() => void} [props.onLock]   called after ATTEMPT_CAP wrong attempts (caller locks)
+ * @param {'password'|'passkey'} [props.mode]  second-factor type. 'passkey' collects the
+ *   PIN then triggers a WebAuthn assertion inside verify() (no password field).
  * @param {string} [props.title]
  */
-export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, title = 'Confirm with your PIN + Action Password' }) {
+export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mode = 'password', title }) {
   const [pin, setPin] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
 
-  const canSubmit = !busy && pin.length > 0 && password.length > 0;
+  const isPasskey = mode === 'passkey';
+  const resolvedTitle = title || (isPasskey ? 'Confirm with your PIN + passkey' : 'Confirm with your PIN + Action Password');
+  // Passkey mode needs only the PIN in-field; the second factor is the WebAuthn tap.
+  const canSubmit = !busy && pin.length > 0 && (isPasskey || password.length > 0);
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -68,9 +73,11 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, tit
     <div className="space-y-3 p-4 rounded-xl border border-border bg-card">
       <div className="flex items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-primary" />
-        <p className="text-sm font-medium">{title}</p>
+        <p className="text-sm font-medium">{resolvedTitle}</p>
       </div>
-      <p className="text-[11px] text-muted-foreground">Both factors are required for this action.</p>
+      <p className="text-[11px] text-muted-foreground">
+        {isPasskey ? 'Your PIN and a passkey tap are required for this action.' : 'Both factors are required for this action.'}
+      </p>
       <div>
         <Label htmlFor="tfg-pin">PIN / password</Label>
         <Input
@@ -79,30 +86,36 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, tit
           autoComplete="off"
           value={pin}
           onChange={(e) => setPin(e.target.value)}
+          onKeyDown={(e) => { if (isPasskey && e.key === 'Enter') submit(); }}
           className="mt-1.5 mono-value"
           disabled={busy}
         />
       </div>
-      <div>
-        <Label htmlFor="tfg-ap">Action Password</Label>
-        <Input
-          id="tfg-ap"
-          type="password"
-          autoComplete="off"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-          className="mt-1.5 mono-value"
-          disabled={busy}
-        />
-      </div>
+      {!isPasskey && (
+        <div>
+          <Label htmlFor="tfg-ap">Action Password</Label>
+          <Input
+            id="tfg-ap"
+            type="password"
+            autoComplete="off"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+            className="mt-1.5 mono-value"
+            disabled={busy}
+          />
+        </div>
+      )}
+      {isPasskey && (
+        <p className="text-[11px] text-muted-foreground">After your PIN, your browser will ask you to tap your passkey or security key.</p>
+      )}
       {error && <p className="text-[11px] text-destructive">{error}</p>}
       <div className="flex gap-2">
         {onCancel && (
           <Button variant="ghost" className="flex-1" onClick={onCancel} disabled={busy}>Back</Button>
         )}
         <Button className="flex-1 gap-2" onClick={submit} disabled={!canSubmit}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Verify &amp; continue
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : (isPasskey ? <Fingerprint className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />)} {isPasskey ? 'Verify with passkey' : 'Verify & continue'}
         </Button>
       </div>
     </div>
