@@ -48,8 +48,21 @@ export const ASSETS = Object.freeze([
   // NOTE: gas/native token differs per chain (Polygon=POL, Avalanche=AVAX,
   // BNB=tBNB, but Arbitrum/Optimism=ETH); the UI reads that from networks.js.
   { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygonAmoy',     status: ASSET_STATUS.RECEIVE_ONLY },
-  { symbol: 'ARB',   name: 'Arbitrum',  family: 'evm',    chain: 'arbitrumSepolia', status: ASSET_STATUS.RECEIVE_ONLY },
-  { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.RECEIVE_ONLY },
+  // ARB: VERIFIED LIVE. A real testnet transfer was constructed, signed, and
+  // broadcast through the full in-app UI send path (asset picker → recipient →
+  // amount → fee → Confirm & Send → step-up re-auth) and confirmed on-chain:
+  //   tx 0x797928efdccfe85e858c4050c979b6b69b324c42b11eb642b8c5607109bdca39
+  //   (Arbitrum Sepolia, status SUCCESS, from m/44'/60'/0'/0/0, gasUsed 23534)
+  //   https://sepolia.arbiscan.io/tx/0x797928efdccfe85e858c4050c979b6b69b324c42b11eb642b8c5607109bdca39
+  // Mainnet stays gated in networks.js (this is the Arbitrum SEPOLIA testnet).
+  { symbol: 'ARB',   name: 'Arbitrum',  family: 'evm',    chain: 'arbitrumSepolia', status: ASSET_STATUS.LIVE },
+  // OP: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path,
+  // confirmed on-chain:
+  //   tx 0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
+  //   (OP Sepolia, status SUCCESS, from m/44'/60'/0'/0/0, gasUsed 21000)
+  //   https://sepolia-optimism.etherscan.io/tx/0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
+  // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
+  { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.LIVE },
   { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.RECEIVE_ONLY },
   { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.RECEIVE_ONLY },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind

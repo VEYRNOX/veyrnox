@@ -9,9 +9,9 @@ describe('asset registry', () => {
     expect(symbols).toEqual(['ETH','USDC','USDT','MATIC','ARB','OP','AVAX','BNB','BTC','SOL']);
   });
 
-  it('only ETH is live (sendable) right now', () => {
+  it('the live (sendable) set is ETH, ARB, OP — each UI-verified on-chain', () => {
     const sendable = ASSETS.filter(canSend).map(a => a.symbol);
-    expect(sendable).toEqual(['ETH']);
+    expect(sendable).toEqual(['ETH', 'ARB', 'OP']);
   });
 
   it('USDT is receive_only ERC-20 on Sepolia — real address + balance, no send yet', () => {
@@ -60,18 +60,22 @@ describe('asset registry', () => {
   });
 });
 
-describe('Phase C — five EVM chains reachable on testnet (receive_only, not live)', () => {
+describe('Phase C — five EVM chains reachable on testnet (ARB/OP now live, rest receive_only)', () => {
   // Each new asset points at its VERIFIED testnet network key; mainnets are gated.
-  const NEW = [
+  // ARB and OP have since earned `live` via real explorer-confirmed UI-path sends
+  // (see assets.js); MATIC/AVAX/BNB stay receive_only until each is likewise verified.
+  const PENDING = [
     { symbol: 'MATIC', chain: 'polygonAmoy' },
-    { symbol: 'ARB',   chain: 'arbitrumSepolia' },
-    { symbol: 'OP',    chain: 'optimismSepolia' },
     { symbol: 'AVAX',  chain: 'avalancheFuji' },
     { symbol: 'BNB',   chain: 'bnbTestnet' },
   ];
+  const VERIFIED_LIVE = [
+    { symbol: 'ARB', chain: 'arbitrumSepolia' },
+    { symbol: 'OP',  chain: 'optimismSepolia' },
+  ];
 
-  it('each new chain asset is receive_only on its TESTNET and EVM-family', () => {
-    for (const n of NEW) {
+  it('the not-yet-verified chain assets stay receive_only on their TESTNET (EVM-family)', () => {
+    for (const n of PENDING) {
       const a = getAsset(n.symbol);
       expect(a.chain).toBe(n.chain);          // verified testnet key, not a mainnet
       expect(a.family).toBe('evm');
@@ -82,9 +86,20 @@ describe('Phase C — five EVM chains reachable on testnet (receive_only, not li
     }
   });
 
-  it('NONE of the new assets were flipped to live (ETH stays the only sendable)', () => {
+  it('ARB and OP are live on their TESTNET after a verified UI-path send', () => {
+    for (const n of VERIFIED_LIVE) {
+      const a = getAsset(n.symbol);
+      expect(a.chain).toBe(n.chain);
+      expect(a.family).toBe('evm');
+      expect(a.status).toBe(ASSET_STATUS.LIVE);
+      expect(canSend(a)).toBe(true);
+      expect(canReceive(a)).toBe(true);
+    }
+  });
+
+  it('only the verified assets are sendable (ETH, ARB, OP); the rest are not', () => {
     const sendable = ASSETS.filter(canSend).map(a => a.symbol);
-    expect(sendable).toEqual(['ETH']);
+    expect(sendable).toEqual(['ETH', 'ARB', 'OP']);
   });
 
   it('every receivable EVM asset maps to an ENABLED (ungated) network', () => {

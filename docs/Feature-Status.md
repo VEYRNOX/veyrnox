@@ -10,14 +10,15 @@
 >
 > Standing rules (unchanged, still true): **testnet/devnet only; mainnet gated**
 > until an independent audit clears; every security/crypto feature is
-> **PROVISIONAL pending that audit**. Status last verified: 2026-06-03.
+> **PROVISIONAL pending that audit**. Status last verified: 2026-06-14.
 
 ---
 
 ## Reality check (read first)
 - **Test suite:** 390 tests across 39 files, all green (`npm test`); `check:rng` green.
-- **What actually SENDS on-chain today:** **only ETH on Sepolia** is `live`
-  (send verified end-to-end). **Every other asset is `receive_only`** — see the
+- **What actually SENDS on-chain today:** **ETH (Sepolia), ARB (Arbitrum Sepolia),
+  and OP (OP Sepolia)** are `live` — each send verified end-to-end through the full
+  in-app UI path on-chain. **The other seven assets are `receive_only`** — see the
   table below. Receiving and balance reads work for all 10 assets; the send
   *code path* exists and is unit-tested for EVM/ERC-20/BTC/SOL, but is HARD-gated
   off until a real on-chain send is done by hand and reviewed.
@@ -42,8 +43,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | USDC | erc20 | Sepolia | ✅ | gated, unverified | 🟡 receive_only |
 | USDT | erc20 | Sepolia (Aave faucet stand-in) | ✅ | gated, unverified | 🟡 receive_only |
 | MATIC | evm | Polygon Amoy | ✅ | gated, unverified | 🟡 receive_only |
-| ARB | evm | Arbitrum Sepolia | ✅ | gated, unverified | 🟡 receive_only |
-| OP | evm | Optimism Sepolia | ✅ | gated, unverified | 🟡 receive_only |
+| ARB | evm | Arbitrum Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x797928…`, 2026-06-14) | ✅ **live** |
+| OP | evm | Optimism Sepolia | ✅ | ✅ verified on-chain (full UI path, `0xc3fd1e…`, 2026-06-14) | ✅ **live** |
 | AVAX | evm | Avalanche Fuji | ✅ | gated, unverified | 🟡 receive_only |
 | BNB | evm | BNB testnet | ✅ | gated, unverified | 🟡 receive_only |
 | BTC | btc | Bitcoin testnet (BIP-84) | ✅ | ✅ module verified on-chain (testnet) | 🟡 receive_only |
@@ -64,7 +65,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - HD wallet generate (BIP-39), import (seed / private key), multi-account derivation — ✅
 - Encrypted vault (Argon2id + AES-256-GCM) — ✅ (KDF work factor raised to 192 MiB, with param migration — SAST M3)
 - Backup / reveal seed — ✅
-- Send native coin — ✅ for ETH only (full UI path verified on Sepolia, txid `0x2d4d5d…`, 2026-06-11, user-confirmed); all other assets 🟡 receive_only
+- Send native coin — ✅ for ETH (Sepolia), ARB (Arbitrum Sepolia), OP (OP Sepolia) — each full UI path verified on-chain (ETH `0x2d4d5d…` 2026-06-11; ARB `0x797928…`, OP `0xc3fd1e…` 2026-06-14); other natives 🟡 receive_only
 - Receive (per-chain address + local QR) — ✅ (`receiveAddress.js`, `ReceiveCrypto.jsx`, `QRCodeDisplay.jsx`)
 - View balances (from chain) — ✅
 - Transaction history (read-only) — ✅ (`txHistory.js`: BTC/SOL via providers, EVM explorer-fallback, no indexer)
@@ -73,7 +74,9 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ## 3. Chains & assets
 - Ethereum (Sepolia) — ✅ live send — **full UI path verified on-chain** (step-up gate; txid `0x2d4d5d…`, 2026-06-11, user-confirmed)
-- Polygon / Arbitrum / Optimism / Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated)
+- Arbitrum (Arbitrum Sepolia) — ✅ live send — **full UI path verified on-chain** (txid `0x797928…`, 2026-06-14; uncovered + fixed two real send bugs en route: ethers RPC batching → silent broadcast hang, and a hardcoded 21000 gasLimit rejected on L2 as "intrinsic gas too low")
+- Optimism (OP Sepolia) — ✅ live send — **full UI path verified on-chain** (txid `0xc3fd1e…`, 2026-06-14; funded by bridging Sepolia ETH through the OptimismPortal)
+- Polygon / Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated — not yet funded/verified)
 - ERC-20 (USDC, USDT — Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
 - Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — testnet script `signAndBroadcastBtc`, txid `d9cc11…`, block 4990393, 2026-06-12, user-confirmed; UI dispatch still gated on PR #123, so status stays receive_only)
 - Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; **send module verified on-chain** — devnet script `signAndBroadcastSol`, txid `cCqCiKM…`, 2026-06-11, user-decoded + confirmed; UI dispatch still gated on PR #123, so status stays receive_only)

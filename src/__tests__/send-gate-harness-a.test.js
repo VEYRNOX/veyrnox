@@ -134,10 +134,14 @@ describe('Harness A · G1 — demo-active predicate (and the persisted-flag trap
 // ─────────────────────────────────────────────────────────────────────────────
 // G2 — canSend().  false for every receive_only asset; true ONLY for the live set.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Harness A · G2 — canSend() is true only for the live set (ETH)', () => {
-  it('the live (sendable) set is exactly [ETH]', () => {
+describe('Harness A · G2 — canSend() is true only for the live set (ETH, ARB, OP)', () => {
+  it('the live (sendable) set is exactly [ETH, ARB, OP]', () => {
+    // Each earned `live` via a real explorer-confirmed UI-path testnet send:
+    //   ETH  0x3ebb8fd7c844cdb88455408a8a17a4cd242b61ea2c475444fa334ef8a0a2b5c3 (Sepolia)
+    //   ARB  0x797928efdccfe85e858c4050c979b6b69b324c42b11eb642b8c5607109bdca39 (Arbitrum Sepolia)
+    //   OP   0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47 (OP Sepolia)
     const sendable = ASSETS.filter(canSend).map((a) => a.symbol);
-    expect(sendable).toEqual(['ETH']);
+    expect(sendable).toEqual(['ETH', 'ARB', 'OP']);
   });
 
   it('canSend() is FALSE for every receive_only asset', () => {
@@ -194,8 +198,8 @@ describe('Harness A · G3 — the dev ungate relaxes the FLOW, never the status'
         expect(canSend(fresh)).toBe(false); // live-classification untouched
       }
     }
-    // And the live set is STILL exactly [ETH] — the ungate didn't widen it.
-    expect(ASSETS.filter(canSend).map((a) => a.symbol)).toEqual(['ETH']);
+    // And the live set is STILL exactly the verified set — the ungate didn't widen it.
+    expect(ASSETS.filter(canSend).map((a) => a.symbol)).toEqual(['ETH', 'ARB', 'OP']);
   });
 
   it('SOURCE CONTRACT: ungate relaxes the UI flow + the sign-time gate, nothing else', () => {
@@ -293,12 +297,16 @@ describe('Harness A · drift-guard — a module-verified txid does NOT make an a
     expect(getAsset('SOL').status).toBe(ASSET_STATUS.RECEIVE_ONLY);
   });
 
-  it('ONLY ETH — which passed the build:release bar — is live; its verified txid is the reference', () => {
-    // The ETH Sepolia txid is what "live" actually looks like (brief §2). It is the
-    // reference, not the cause: canSend(ETH) is true because status is `live`.
+  it('the live set (ETH, ARB, OP) each passed the build:release bar; a verified UI txid is the reference', () => {
+    // A real explorer-confirmed UI-path txid is what "live" actually looks like
+    // (brief §2). It is the reference, not the cause: canSend() is true because the
+    // status is `live`. ETH/ARB/OP each cleared that bar; BTC/SOL (module-only txids
+    // above) did not, and stay receive_only.
     expect(TXID.ethSepoliaVerified).toMatch(/^0x[0-9a-f]{64}$/i);
-    expect(canSend(getAsset('ETH'))).toBe(true);
-    expect(getAsset('ETH').status).toBe(ASSET_STATUS.LIVE);
+    for (const sym of ['ETH', 'ARB', 'OP']) {
+      expect(canSend(getAsset(sym))).toBe(true);
+      expect(getAsset(sym).status).toBe(ASSET_STATUS.LIVE);
+    }
   });
 
   it('the public fixtures are well-formed testnet addresses (shape only; B decodes on-device)', () => {
