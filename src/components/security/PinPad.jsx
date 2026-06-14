@@ -4,24 +4,50 @@
 // it only collects six digits and hands them up. The "Re-enter" (clear) control is
 // ALWAYS present and set-existence-independent — it leaks nothing about whether a
 // real / duress / hidden set is configured. No security logic lives here.
+//
+// Input boundaries (numeric-only, the 6-digit cap, auto-submit at length) live in
+// the PURE reducer src/lib/pinPadReducer.js so the on-screen buttons and the
+// physical-keyboard path share one source of truth (report T-INFRA-3). The pad is
+// a focusable container (role="group", tabIndex=0) with an onKeyDown handler so a
+// keyboard-only user can type their PIN directly (report A11Y-PIN-1) — scoped to
+// when the pad is mounted/focused, not a global window listener. Digits are never
+// rendered: keyboard entry stays as shoulder-surf-safe as the buttons.
 
 import { Delete } from "lucide-react";
+import { pinPadReduce, keyToPinAction } from "@/lib/pinPadReducer";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];
 
 export default function PinPad({ value = "", onChange, onComplete, disabled = false, length = 6 }) {
-  const press = (k) => {
+  // Single dispatch for both button presses and physical keys: the reducer is the
+  // only place the cap / numeric-only / auto-submit rules live.
+  const dispatch = (action) => {
     if (disabled) return;
-    if (k === "back") { onChange(value.slice(0, -1)); return; }
-    if (k === "clear") { onChange(""); return; }
-    if (value.length >= length) return;
-    const next = value + k;
-    onChange(next);
-    if (next.length === length) onComplete?.(next);
+    const r = pinPadReduce(value, action, length);
+    if (!r.changed) return;
+    onChange(r.value);
+    if (r.complete) onComplete?.(r.value);
+  };
+
+  const press = (k) => dispatch(k);
+
+  const onKeyDown = (e) => {
+    if (disabled) return;
+    const action = keyToPinAction(e.key);
+    if (action == null) return; // leave Tab / arrows / etc. to the browser
+    // Consume only keys the pad acts on so Backspace doesn't navigate back, etc.
+    e.preventDefault();
+    dispatch(action);
   };
 
   return (
-    <div className="space-y-5">
+    <div
+      className="space-y-5 outline-none"
+      role="group"
+      aria-label="PIN entry"
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={onKeyDown}
+    >
       {/* Six position dots — no value echoed, identical in every configuration. */}
       <div className="flex justify-center gap-3" role="status" aria-label={`${value.length} of ${length} digits entered`}>
         {Array.from({ length }, (_, i) => (
@@ -39,6 +65,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
               <button
                 key={k}
                 type="button"
+                tabIndex={-1}
                 aria-label="Clear — re-enter PIN"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
@@ -53,6 +80,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
               <button
                 key={k}
                 type="button"
+                tabIndex={-1}
                 aria-label="Delete last digit"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
@@ -66,6 +94,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
             <button
               key={k}
               type="button"
+              tabIndex={-1}
               disabled={disabled}
               onClick={() => press(k)}
               className="h-14 rounded-xl bg-secondary/40 hover:bg-secondary text-xl font-semibold mono-value disabled:opacity-40"

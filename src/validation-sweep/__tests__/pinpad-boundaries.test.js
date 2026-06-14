@@ -6,11 +6,12 @@
 // the committed vitest.config.js has no @vitejs/plugin-react, so JSX would compile
 // with the classic runtime and need a globalThis.React shim (see landing-guard.test.jsx).
 //
-// What is testable here (rendered contract) vs not (live interaction) is itself a
-// finding — the dynamic boundaries (6-digit cap firing onComplete exactly once,
-// rapid double-tap, confirm-mismatch reset) live inside the un-exported press()
-// closure and the stateful PARENT (WalletEntry, hook-driven). With no RTL/Playwright
-// in the gate they are NOT unit-testable. See report: FLAG T-INFRA-1.
+// The dynamic boundaries (6-digit cap, auto-submit exactly at length, numeric-only,
+// backspace, clear) have been EXTRACTED into the pure reducer src/lib/pinPadReducer.js
+// (report T-INFRA-3) and are unit-tested there without a browser — see
+// src/lib/__tests__/pinPadReducer.test.js. This file asserts the rendered contract
+// of PinPad itself (keypad composition, ARIA, no paste surface) plus the SOURCE
+// contract that the keyboard handler and the reducer are wired in.
 
 import { describe, it, expect } from 'vitest';
 import React from 'react';
@@ -18,6 +19,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import PinPad from '@/components/security/PinPad';
+import { pinPadReduce, keyToPinAction } from '@/lib/pinPadReducer';
 
 // The committed vitest.config.js has no @vitejs/plugin-react, so PinPad's JSX is
 // compiled with the CLASSIC runtime (`React.createElement` as a free identifier).
@@ -69,19 +71,59 @@ describe('PIN pad — rendered keypad composition (numeric-only, no paste surfac
   });
 });
 
-describe('PIN pad — boundary logic is present in source (cap + auto-submit)', () => {
-  const src = read('../../components/security/PinPad.jsx');
-
-  it('blocks input at length and fires onComplete exactly at length', () => {
-    // Source contract for the boundaries we cannot drive live in the gate.
-    expect(src).toContain('if (value.length >= length) return;');
-    expect(src).toContain('if (next.length === length) onComplete?.(next);');
+describe('PIN pad — boundary logic (cap + auto-submit + numeric-only) via the pure reducer', () => {
+  // The boundaries now live in src/lib/pinPadReducer.js (report T-INFRA-3), so the
+  // gate can drive them directly instead of asserting on source strings.
+  it('blocks input at length', () => {
+    expect(pinPadReduce('123456', '7')).toEqual({ value: '123456', changed: false, complete: false });
   });
 
-  // FLAG A11Y-PIN-1 — keyboard-only entry: there is NO keydown handler, so physical
-  // number-key / paste entry is impossible; a keyboard user must Tab to each of the
-  // 12 buttons and press Space/Enter. Documented as a flag, not asserted-away.
-  it('CONFIRMED: no physical-keyboard digit handler (onKeyDown/onKeyPress absent)', () => {
-    expect(src).not.toMatch(/onKeyDown|onKeyPress|addEventListener\(['"]key/);
+  it('fires complete exactly at length, not before', () => {
+    expect(pinPadReduce('12345', '6').complete).toBe(true);
+    expect(pinPadReduce('1234', '5').complete).toBe(false);
+  });
+
+  it('is numeric-only (non-digit and multi-char actions are inert)', () => {
+    expect(pinPadReduce('1', 'x').changed).toBe(false);
+    expect(pinPadReduce('', '12').changed).toBe(false);
+  });
+
+  it('backspace deletes the last digit; clear empties', () => {
+    expect(pinPadReduce('123', 'back').value).toBe('12');
+    expect(pinPadReduce('123', 'clear').value).toBe('');
+  });
+});
+
+// FLAG A11Y-PIN-1 — RESOLVED. PinPad now has a keydown handler on a focusable
+// container so a keyboard-only user can type their PIN directly (digits enter,
+// Backspace deletes, Escape/Delete clears) instead of Tab-cycling 12 buttons.
+describe('PIN pad — physical-keyboard entry is present (A11Y-PIN-1 fixed)', () => {
+  const src = read('../../components/security/PinPad.jsx');
+
+  it('wires a keydown handler on a focusable group container', () => {
+    expect(src).toMatch(/onKeyDown/);
+    expect(src).toMatch(/tabIndex/);
+    expect(src).toContain('role="group"');
+  });
+
+  it('routes keys through the shared pure reducer (one source of truth)', () => {
+    expect(src).toMatch(/keyToPinAction/);
+    expect(src).toMatch(/pinPadReduce/);
+  });
+
+  it('the rendered container exposes the focusable PIN-entry group', () => {
+    const out = html({ value: '' });
+    expect(out).toContain('role="group"');
+    expect(out).toContain('aria-label="PIN entry"');
+    expect(out).toMatch(/tabindex="0"/i);
+  });
+
+  it('the key->action map covers digits, Backspace and Escape/Delete (and nothing else)', () => {
+    expect(keyToPinAction('5')).toBe('5');
+    expect(keyToPinAction('Backspace')).toBe('back');
+    expect(keyToPinAction('Escape')).toBe('clear');
+    expect(keyToPinAction('Delete')).toBe('clear');
+    expect(keyToPinAction('Enter')).toBeNull();
+    expect(keyToPinAction('a')).toBeNull();
   });
 });

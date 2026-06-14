@@ -116,11 +116,13 @@ test.describe('PIN pad a11y / keyboard (browser-only — see FLAG A11Y-PIN-1)', 
     await expect(page.getByRole('status', { name: '1 of 6 digits entered' })).toBeVisible();
   });
 
-  // EXPECTED TO FAIL until fixed — documents FLAG A11Y-PIN-1: there is no keydown
-  // handler, so a physical number key does NOT enter a digit. Remove `.fail` when fixed.
-  test.fail('physical number-key press enters a PIN digit (keyboard-only users)', async ({ page }) => {
+  // A11Y-PIN-1 FIXED — PinPad has a keydown handler on a focusable container, so a
+  // physical number key enters a digit. The pad's group container must be focused for
+  // the key to land (one tab stop replaces the old 12-button Tab cycle).
+  test('physical number-key press enters a PIN digit (keyboard-only users)', async ({ page }) => {
     await freshLocalBuild(page);
     await page.getByRole('button', { name: 'Get Started' }).click();
+    await page.getByRole('group', { name: 'PIN entry' }).focus();
     await page.keyboard.press('Digit1');
     await expect(page.getByRole('status', { name: '1 of 6 digits entered' })).toBeVisible();
   });
