@@ -9,9 +9,9 @@ describe('asset registry', () => {
     expect(symbols).toEqual(['ETH','USDC','USDT','MATIC','ARB','OP','AVAX','BNB','BTC','SOL']);
   });
 
-  it('the live (sendable) set is ETH, ARB, OP — each UI-verified on-chain', () => {
+  it('the live (sendable) set is ETH, ARB, OP, BTC, SOL — each UI-verified on-chain', () => {
     const sendable = ASSETS.filter(canSend).map(a => a.symbol);
-    expect(sendable).toEqual(['ETH', 'ARB', 'OP']);
+    expect(sendable).toEqual(['ETH', 'ARB', 'OP', 'BTC', 'SOL']);
   });
 
   it('USDT is receive_only ERC-20 on Sepolia — real address + balance, no send yet', () => {
@@ -34,22 +34,22 @@ describe('asset registry', () => {
     expect(ASSETS.some(a => a.status === ASSET_STATUS.COMING_SOON)).toBe(false);
   });
 
-  it('BTC (Phase BTC) is receive_only on testnet — real address, no send yet', () => {
+  it('BTC (Phase BTC) is LIVE on testnet — UI-path send verified on-chain', () => {
     const btc = getAsset('BTC');
-    expect(btc.status).toBe(ASSET_STATUS.RECEIVE_ONLY);
+    expect(btc.status).toBe(ASSET_STATUS.LIVE); // flipped after a real UI-path testnet send
     expect(btc.family).toBe('btc');
-    expect(btc.chain).toBe('testnet');     // gated-aware BTC network key
+    expect(btc.chain).toBe('testnet');     // gated-aware BTC network key (mainnet still gated)
     expect(canReceive(btc)).toBe(true);     // real BIP-84 address derivable
-    expect(canSend(btc)).toBe(false);       // HARD-gated until a verified testnet send
+    expect(canSend(btc)).toBe(true);        // verified: tx 2da87a27…, block 4990901
   });
 
-  it('SOL (Phase SOL) is receive_only on devnet — real ed25519 address, no send yet', () => {
+  it('SOL (Phase SOL) is LIVE on devnet — UI-path send verified on-chain', () => {
     const sol = getAsset('SOL');
-    expect(sol.status).toBe(ASSET_STATUS.RECEIVE_ONLY);
+    expect(sol.status).toBe(ASSET_STATUS.LIVE); // flipped after a real UI-path devnet send
     expect(sol.family).toBe('solana');
-    expect(sol.chain).toBe('devnet');       // gated-aware Solana network key
+    expect(sol.chain).toBe('devnet');       // gated-aware Solana network key (mainnet still gated)
     expect(canReceive(sol)).toBe(true);     // real SLIP-0010 address derivable
-    expect(canSend(sol)).toBe(false);       // HARD-gated until a verified devnet send
+    expect(canSend(sol)).toBe(true);        // verified: sig 5KGXAGTJ…, finalized
   });
 
   it('classifies EVM family (incl. ERC-20) correctly', () => {
@@ -97,9 +97,9 @@ describe('Phase C — five EVM chains reachable on testnet (ARB/OP now live, res
     }
   });
 
-  it('only the verified assets are sendable (ETH, ARB, OP); the rest are not', () => {
+  it('only the verified assets are sendable (ETH, ARB, OP, BTC, SOL); the rest are not', () => {
     const sendable = ASSETS.filter(canSend).map(a => a.symbol);
-    expect(sendable).toEqual(['ETH', 'ARB', 'OP']);
+    expect(sendable).toEqual(['ETH', 'ARB', 'OP', 'BTC', 'SOL']);
   });
 
   it('every receivable EVM asset maps to an ENABLED (ungated) network', () => {

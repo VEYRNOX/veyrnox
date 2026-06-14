@@ -71,7 +71,13 @@ export const ASSETS = Object.freeze([
   // built and tested, but stays HARD-gated at receive_only until a real testnet
   // send is verified on-chain and reviewed — only then does it flip to LIVE.
   // `chain` points at the verified testnet network key in btc/networks.js.
-  { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'testnet',   status: ASSET_STATUS.RECEIVE_ONLY },
+  // BTC: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path
+  // (BIP-84 P2WPKH, signAndBroadcastBtc), confirmed on-chain:
+  //   tx 2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
+  //   (Bitcoin testnet, block 4990901, spends from tb1qztdfvzkd…, 0.0001 BTC + change)
+  //   https://mempool.space/testnet/tx/2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
+  // Mainnet stays gated in btc/networks.js.
+  { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'testnet',   status: ASSET_STATUS.LIVE },
   // Phase SOL: real ed25519 / SLIP-0010 derivation on Solana DEVNET, behind the
   // mainnet gate (sol/networks.js). Address derivation + live balance reads are
   // wired now (receive_only). The SEND path (build/sign/broadcast, with explicit
@@ -79,7 +85,13 @@ export const ASSETS = Object.freeze([
   // HARD-gated at receive_only until a real devnet send is verified on-chain and
   // reviewed — only then does it flip to LIVE. `chain` points at the verified
   // devnet network key in sol/networks.js.
-  { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'devnet',    status: ASSET_STATUS.RECEIVE_ONLY },
+  // SOL: VERIFIED LIVE. Real devnet transfer through the full in-app UI send path
+  // (ed25519/SLIP-0010, signAndBroadcastSol), confirmed on-chain:
+  //   sig 5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv
+  //   (Solana devnet, FINALIZED, fee payer Cp5MYrCM…, 0.01 SOL, err: null)
+  //   https://explorer.solana.com/tx/5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv?cluster=devnet
+  // Mainnet stays gated in sol/networks.js.
+  { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'devnet',    status: ASSET_STATUS.LIVE },
 ]);
 
 export function getAsset(symbol) {
