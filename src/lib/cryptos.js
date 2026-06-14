@@ -35,8 +35,19 @@ export const TOP_SYMBOLS = Object.freeze(TOP_CRYPTOS.map(c => c.symbol));
 const byKey = (key) =>
   Object.freeze(Object.fromEntries(TOP_CRYPTOS.map(c => [c.symbol, c[key]])));
 
-/** { BTC: 68000, ... } reference USD prices (mock). */
-export const USD_RATES = byKey("usd");
+/**
+ * { BTC: 68000, ... } reference USD prices (mock).
+ *
+ * ARB and OP are native-GAS assets: on Arbitrum/Optimism the gas token is ETH, so one
+ * unit of the in-app 'ARB'/'OP' asset IS one ETH on that rollup. They therefore price
+ * at the ETH rate — NOT the ARB/OP governance-token price. Aliased here (rather than
+ * added to TOP_CRYPTOS) so the spend-cap USD conversion (txLimits.toUsd) values them
+ * correctly now that they are `live`, without changing the top-10 display list. When
+ * MATIC/AVAX/BNB are later verified+flipped, add their native rates the same way
+ * (BNB already priced; POL/AVAX would need entries).
+ */
+const _usd = byKey("usd");
+export const USD_RATES = Object.freeze({ ..._usd, ARB: _usd.ETH, OP: _usd.ETH });
 /**
  * Canonical human-facing disclosure for ANY figure derived from USD_RATES. These
  * are STATIC reference prices, not a live feed, so anything converted through them

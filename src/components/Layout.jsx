@@ -353,11 +353,21 @@ export default function Layout() {
           and toggle via `hidden` to preserve per-tab state (the original intent). */}
       {!isDesktop && (
       <div id="main-scroll" className="md:hidden flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] pb-28" role="region" aria-label="Main content">
-        {/* Sub-pages: rendered via Outlet only when not on a root tab with slide transition */}
-        <AnimatePresence mode="wait">
-          {!MOBILE_TABS.includes(location.pathname) && (
+        {/* Sub-pages: rendered via Outlet only when not on a root tab with slide
+            transition. The MOBILE_TABS guard wraps AnimatePresence (not its child)
+            ON PURPOSE: when the child was gated INSIDE AnimatePresence, leaving a
+            sub-page back to a root tab asked AnimatePresence to exit-animate the
+            child — and if that exit never completed, the Outlet stayed mounted and
+            rendered a SECOND copy of the now-active root-tab page (a duplicate Send
+            form stacked under the real tab panel). Gating the whole AnimatePresence
+            makes the mutual exclusion STRUCTURAL: on a root tab React unmounts the
+            subtree outright, so no ghost can survive. Sub-page→sub-page still
+            animates (key follows the path; AnimatePresence stays mounted while both
+            are sub-pages). */}
+        {!MOBILE_TABS.includes(location.pathname) && (
+          <AnimatePresence mode="wait">
             <motion.div
-              key="subpage"
+              key={location.pathname}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -368,8 +378,8 @@ export default function Layout() {
                 <ErrorBoundary key={location.pathname}><FeatureGate><Outlet /></FeatureGate></ErrorBoundary>
               </PullToRefreshContainer>
             </motion.div>
-          )}
-        </AnimatePresence>
+          </AnimatePresence>
+        )}
         {/* Root tab pages — always mounted, toggled via hidden to preserve state */}
         <div
           id="tab-panel-0"

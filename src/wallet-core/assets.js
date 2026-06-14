@@ -48,8 +48,21 @@ export const ASSETS = Object.freeze([
   // NOTE: gas/native token differs per chain (Polygon=POL, Avalanche=AVAX,
   // BNB=tBNB, but Arbitrum/Optimism=ETH); the UI reads that from networks.js.
   { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygonAmoy',     status: ASSET_STATUS.RECEIVE_ONLY },
-  { symbol: 'ARB',   name: 'Arbitrum',  family: 'evm',    chain: 'arbitrumSepolia', status: ASSET_STATUS.RECEIVE_ONLY },
-  { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.RECEIVE_ONLY },
+  // ARB: VERIFIED LIVE. A real testnet transfer was constructed, signed, and
+  // broadcast through the full in-app UI send path (asset picker → recipient →
+  // amount → fee → Confirm & Send → step-up re-auth) and confirmed on-chain:
+  //   tx 0x797928efdccfe85e858c4050c979b6b69b324c42b11eb642b8c5607109bdca39
+  //   (Arbitrum Sepolia, status SUCCESS, from m/44'/60'/0'/0/0, gasUsed 23534)
+  //   https://sepolia.arbiscan.io/tx/0x797928efdccfe85e858c4050c979b6b69b324c42b11eb642b8c5607109bdca39
+  // Mainnet stays gated in networks.js (this is the Arbitrum SEPOLIA testnet).
+  { symbol: 'ARB',   name: 'Arbitrum',  family: 'evm',    chain: 'arbitrumSepolia', status: ASSET_STATUS.LIVE },
+  // OP: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path,
+  // confirmed on-chain:
+  //   tx 0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
+  //   (OP Sepolia, status SUCCESS, from m/44'/60'/0'/0/0, gasUsed 21000)
+  //   https://sepolia-optimism.etherscan.io/tx/0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
+  // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
+  { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.LIVE },
   { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.RECEIVE_ONLY },
   { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.RECEIVE_ONLY },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
@@ -58,7 +71,13 @@ export const ASSETS = Object.freeze([
   // built and tested, but stays HARD-gated at receive_only until a real testnet
   // send is verified on-chain and reviewed — only then does it flip to LIVE.
   // `chain` points at the verified testnet network key in btc/networks.js.
-  { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'testnet',   status: ASSET_STATUS.RECEIVE_ONLY },
+  // BTC: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path
+  // (BIP-84 P2WPKH, signAndBroadcastBtc), confirmed on-chain:
+  //   tx 2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
+  //   (Bitcoin testnet, block 4990901, spends from tb1qztdfvzkd…, 0.0001 BTC + change)
+  //   https://mempool.space/testnet/tx/2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
+  // Mainnet stays gated in btc/networks.js.
+  { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'testnet',   status: ASSET_STATUS.LIVE },
   // Phase SOL: real ed25519 / SLIP-0010 derivation on Solana DEVNET, behind the
   // mainnet gate (sol/networks.js). Address derivation + live balance reads are
   // wired now (receive_only). The SEND path (build/sign/broadcast, with explicit
@@ -66,7 +85,13 @@ export const ASSETS = Object.freeze([
   // HARD-gated at receive_only until a real devnet send is verified on-chain and
   // reviewed — only then does it flip to LIVE. `chain` points at the verified
   // devnet network key in sol/networks.js.
-  { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'devnet',    status: ASSET_STATUS.RECEIVE_ONLY },
+  // SOL: VERIFIED LIVE. Real devnet transfer through the full in-app UI send path
+  // (ed25519/SLIP-0010, signAndBroadcastSol), confirmed on-chain:
+  //   sig 5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv
+  //   (Solana devnet, FINALIZED, fee payer Cp5MYrCM…, 0.01 SOL, err: null)
+  //   https://explorer.solana.com/tx/5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv?cluster=devnet
+  // Mainnet stays gated in sol/networks.js.
+  { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'devnet',    status: ASSET_STATUS.LIVE },
 ]);
 
 export function getAsset(symbol) {

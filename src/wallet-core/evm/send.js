@@ -60,11 +60,28 @@ export async function signAndBroadcast({ networkKey, privateKey, to, amountEth, 
   // ethers fills nonce, signs LOCALLY, and broadcasts. The user-selected fee
   // overrides (if any) are the EXACT EIP-1559 fields that get signed; with no
   // override ethers auto-fills them.
-  const txResponse = await wallet.sendTransaction({
-    to,
-    value: parseEther(String(amountEth)),
-    ...evmFeeOverrides(fee),
-  });
+  const value = parseEther(String(amountEth));
+  const overrides = evmFeeOverrides(fee);
+
+  // GAS LIMIT must be estimated PER CHAIN. The fee tier carries a gasLimit that is
+  // only a DISPLAY hint (21000 — an Ethereum-L1 simple-transfer assumption). L2s
+  // (Arbitrum, Optimism, …) require MORE intrinsic gas for the L1 data-posting
+  // component, so signing a hardcoded 21000 is rejected by the RPC as "intrinsic
+  // gas too low" and the send silently fails. Estimate the real limit for THIS
+  // chain and sign with it (the user's chosen fee PRICE is preserved); honour a
+  // larger user-supplied custom limit. If estimation fails, fall back to whatever
+  // the fee carried — or ethers' own auto-fill when no override was given.
+  try {
+    const est = await provider.estimateGas({ from: wallet.address, to, value });
+    const withHeadroom = (est * 12n) / 10n; // +20% so a tight estimate can't strand it
+    overrides.gasLimit = overrides.gasLimit && overrides.gasLimit > withHeadroom
+      ? overrides.gasLimit
+      : withHeadroom;
+  } catch {
+    /* keep the hinted gasLimit (or ethers auto-fill if none was provided) */
+  }
+
+  const txResponse = await wallet.sendTransaction({ to, value, ...overrides });
 
   return {
     hash: txResponse.hash,          // REAL hash from the network

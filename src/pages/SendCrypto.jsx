@@ -38,7 +38,7 @@ import { isSelfSend } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate } from "@/lib/sendGate";
 import { notifySendConfirmed } from "@/notify/sources";
-import { defaultWalletId, walletAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
+import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
@@ -136,7 +136,17 @@ export default function SendCrypto() {
   const srcBtcAccount = demoSrc ? demoSrc.btcAccount : btcAccount;
   const srcSolAccount = demoSrc ? demoSrc.solAccount : solAccount;
 
-  const enabledAssets = walletAssetSymbols(srcWallets, walletId);
+  // DEV-ONLY testnet send ungate (lib/devSendOverride.js). The leading
+  // import.meta.env.DEV is the build-time lock — a prod `vite build` collapses it to
+  // false, so every ungate branch is dead-code-eliminated. isDevSendUngated() is pure
+  // (env injected, no ambient fallback) → fails closed and is testable in isolation.
+  const devUngated = import.meta.env.DEV && isDevSendUngated(import.meta.env);
+
+  // Asset picker options. Normally the wallet's own enabledAssets (the list the
+  // dashboard shows); in the dev-real ungate, surface EVERY supported asset so any
+  // receive_only asset is verifiable without first enabling it per-wallet (older
+  // wallets predate the all-assets default). VIEW-ONLY — never mutates the stored set.
+  const enabledAssets = sendAssetSymbols(srcWallets, walletId, devUngated);
   // The trigger must display the wallet NAME. The selected SelectItem's content
   // isn't mounted until the dropdown opens, so the underlying Radix trigger would
   // otherwise fall back to rendering the raw wallet id — hand it the name explicitly.
@@ -212,19 +222,10 @@ export default function SendCrypto() {
   const sendEnabled = canSend(selectedAsset);
   const isErc20 = selectedAsset?.family === "erc20";
 
-  // DEV-ONLY testnet send ungate (see lib/devSendOverride.js). Lets a developer
-  // exercise the real send path for a `receive_only` asset on TESTNET to obtain an
-  // on-chain txid during per-asset verification — WITHOUT changing the asset's
-  // status (canSend remains the production truth) and dead-code-eliminated from any
-  // production build. `flowSendEnabled` is the UI-flow gate; the HARD signing gate
-  // below still consults canSend() directly and only relaxes when this is true.
-  // The leading `import.meta.env.DEV &&` is the build-time lock: a production
-  // `vite build` statically replaces it with `false`, collapsing this to `false`
-  // so the bypass branch is dead-code-eliminable from the shipped bundle (and is
-  // in any case never true at runtime in prod). isDevSendUngated(import.meta.env)
-  // re-checks DEV too; the env is injected explicitly (the function is pure and has
-  // no ambient fallback), so the gate is testable in isolation and fails closed.
-  const devUngated = import.meta.env.DEV && isDevSendUngated(import.meta.env);
+  // `flowSendEnabled` is the UI-flow gate: it relaxes for a receive_only asset when
+  // the dev ungate is active (devUngated, computed above with the build-time DCE
+  // lock). The HARD signing gate (sendTx mutationFn) re-checks canSend() directly and
+  // likewise relaxes only on devUngated, so the asset's status is never changed.
   const flowSendEnabled = sendEnabled || devUngated;
 
   // The active chain follows the selected asset. EVM assets carry their own

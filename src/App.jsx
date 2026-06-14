@@ -8,6 +8,7 @@ import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
+import { NotificationsProvider } from '@/notify/useNotifications';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import EnvBadge from '@/components/EnvBadge';
@@ -123,6 +124,11 @@ const AuthenticatedApp = () => {
           now the SOLE access gate (the former hosted-account ProtectedRoute was
           removed with the SDK). In demo mode it is a pass-through. */}
       <Route element={<WalletGate />}>
+        {/* One session notification queue for the whole authenticated shell — the
+            bell badge + toast (Layout) and the Notification Centre page read the
+            SAME store. Mounted here, under WalletGate, so it unmounts and wipes on
+            lock/reload (I3 deniability — no residual). */}
+        <Route element={<NotificationsProvider />}>
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/send" element={<SendCrypto />} />
@@ -209,6 +215,7 @@ const AuthenticatedApp = () => {
           <Route path="/docs" element={<Documentation />} />
           <Route path="/features" element={<Features />} />
           <Route path="/plans" element={<Subscription />} />
+        </Route>
         </Route>
         {/* Onboarding created a hosted-style wallet *entity* with a fabricated
             address. In the local build the real first run is the on-device
