@@ -36,6 +36,8 @@ import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate } from "@/lib/sendGate";
+import { evaluateTwoFactor } from "@/lib/twoFactorGate";
+import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
@@ -76,7 +78,7 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword } = useWallet();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -1003,6 +1005,27 @@ export default function SendCrypto() {
                 The #137 risk gate (blockedByRisk) ALSO hard-disables the send action here, so
                 a high-risk verdict blocks even an authorised user — both gates must pass. */}
             {(() => {
+              // ACTION PASSWORD (2FA): once configured, EVERY send requires the PIN +
+              // the Action Password (no recent-auth window — you opted into every-time).
+              // Additive + OPT-IN: with no Action Password set this branch is skipped and
+              // the existing windowed PIN step-up below is byte-unchanged. Risk/approval
+              // gates still come first (the gate is hidden until those pass). The two
+              // 192 MiB Argon2id checks run SEQUENTIALLY (one-at-a-time — Defect-A safe).
+              if (!DEMO && actionPasswordConfigured && !blockedByApproval && !blockedByRisk) {
+                return (
+                  <TwoFactorGate
+                    title="Authorise this send with your PIN + Action Password"
+                    onCancel={() => { setStep("form"); resetVerify(); }}
+                    onLock={lock}
+                    onSuccess={() => sendTx.mutate()}
+                    verify={async ({ pin, password }) => {
+                      const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
+                      const passwordOk = await verifyActionPassword(password);
+                      return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
+                    }}
+                  />
+                );
+              }
               const reauthRequired = !DEMO && isSendReauthRequired();
               if (!reauthRequired) {
                 return (
