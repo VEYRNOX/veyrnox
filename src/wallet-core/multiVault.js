@@ -47,6 +47,7 @@
 //   that wrapping (those stay single-seed by design — see WalletProvider).
 
 import { validateMnemonic } from './mnemonic.js';
+import { hasActionPasswordRecord } from './actionPassword.js';
 
 // Marker that distinguishes a multi-seed container from a legacy bare mnemonic.
 // Chosen to be unmistakable and to never collide with BIP-39 text.
@@ -79,12 +80,20 @@ export function isMultiContainer(obj) {
  * Build a fresh container from a list of wallet entries (each already shaped
  * { id, mnemonic }). Defensive copy so callers can't alias our internal array.
  */
-function makeContainer(wallets) {
-  return {
+function makeContainer(wallets, actionPassword) {
+  const c = {
     vlt: MULTI_VAULT_TAG,
     v: CONTAINER_VERSION,
     wallets: wallets.map((w) => ({ id: w.id, mnemonic: w.mnemonic })),
   };
+  // Optional per-SET Action Password (the 2FA second factor) — a serialized Argon2id
+  // verifier record (see actionPassword.js). Lives INSIDE the encrypted container so
+  // its PRESENCE is not an on-disk tell (deniability I3): each set (real/duress/decoy)
+  // is a separate blob and carries its own. Attached ONLY when present, so a container
+  // without one serialises byte-identically to before — no on-disk churn for existing
+  // vaults. Structural validity is enforced in validateContainer.
+  if (actionPassword != null) c.actionPassword = actionPassword;
+  return c;
 }
 
 /**
@@ -128,9 +137,11 @@ export function parseVault(plaintext) {
   if (isMultiContainer(parsed)) {
     validateContainer(parsed);
     // Normalise (defensive copy + strip any unknown fields) so downstream code
-    // sees a canonical shape regardless of what was on disk.
+    // sees a canonical shape regardless of what was on disk. The per-set Action
+    // Password record (if any) is carried over — validateContainer above has
+    // already confirmed it is well-formed.
     return {
-      container: makeContainer(parsed.wallets),
+      container: makeContainer(parsed.wallets, parsed.actionPassword),
       migrated: false,
     };
   }
@@ -159,17 +170,29 @@ export function validateContainer(container) {
     if (ids.has(w.id)) throw new Error('Duplicate wallet id in container');
     ids.add(w.id);
   }
+  // An Action Password record is OPTIONAL, but if present it must be a well-formed
+  // serialized verifier — a garbage record must not masquerade as a usable second
+  // factor (fail closed: a malformed one would deserialise to null at verify time
+  // anyway, but we reject it at the structural boundary too).
+  if (container.actionPassword != null && !hasActionPasswordRecord(container.actionPassword)) {
+    throw new Error('Container has a malformed Action Password record');
+  }
   return true;
 }
 
 /** Serialise a container to the string handed to encryptVault(). */
 export function serializeContainer(container) {
   validateContainer(container);
-  return JSON.stringify({
+  const out = {
     vlt: MULTI_VAULT_TAG,
     v: CONTAINER_VERSION,
     wallets: container.wallets.map((w) => ({ id: w.id, mnemonic: w.mnemonic })),
-  });
+  };
+  // Include the Action Password record ONLY when configured (JSON.stringify already
+  // drops undefined, but being explicit keeps a no-2FA container's payload identical
+  // to the pre-feature shape).
+  if (container.actionPassword != null) out.actionPassword = container.actionPassword;
+  return JSON.stringify(out);
 }
 
 /** Public wallet ids in container order. */
@@ -211,7 +234,9 @@ export function addWallet(container, mnemonic) {
     throw new Error('This recovery phrase is already in your wallet');
   }
   const id = newWalletId();
-  const next = makeContainer([...container.wallets, { id, mnemonic }]);
+  // Carry the set's Action Password through unchanged (it is a property of the SET,
+  // not of any one wallet).
+  const next = makeContainer([...container.wallets, { id, mnemonic }], container.actionPassword);
   return { container: next, walletId: id };
 }
 
@@ -227,5 +252,37 @@ export function removeWallet(container, walletId) {
   if (container.wallets.length <= 1) {
     throw new Error('Cannot remove the last wallet; wipe the vault instead');
   }
-  return makeContainer(container.wallets.filter((w) => w.id !== walletId));
+  return makeContainer(container.wallets.filter((w) => w.id !== walletId), container.actionPassword);
+}
+
+// ── Action Password (2FA second factor) — per-SET, carried inside the container ──
+
+/**
+ * The active set's Action Password verifier record, or null if none is configured.
+ * Feeds the `actionPasswordConfigured` input of evaluateTwoFactor() and the verify
+ * call (verifyCredential(record, entered)).
+ * @returns {object|null}
+ */
+export function getActionPasswordRecord(container) {
+  return container && container.actionPassword != null ? container.actionPassword : null;
+}
+
+/**
+ * Return a NEW container with the Action Password record set/replaced. The wallets
+ * are carried over unchanged (isolation invariant #2) — setting the second factor
+ * never touches any seed. `record` must be a well-formed serialized verifier.
+ * @returns {object} the new container
+ */
+export function withActionPasswordRecord(container, record) {
+  if (!hasActionPasswordRecord(record)) throw new Error('withActionPasswordRecord: invalid Action Password record');
+  return makeContainer(container.wallets, record);
+}
+
+/**
+ * Return a NEW container with the Action Password removed (disables the second
+ * factor for THIS set only). Wallets are carried over unchanged.
+ * @returns {object} the new container
+ */
+export function clearActionPasswordRecord(container) {
+  return makeContainer(container.wallets, undefined);
 }
