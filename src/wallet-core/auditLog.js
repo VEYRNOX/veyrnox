@@ -122,10 +122,15 @@ const MAX_ENTRIES = 100;
 // non-deniability-sensitive actions.
 export const ALLOWED_EVENT_TYPES = Object.freeze([
   'settings_changed',
-  'approval_granted',
   'approval_revoked',
   'send_completed',
 ]);
+// 'approval_granted' is deliberately ABSENT. The app never grants ERC-20
+// allowances — approve(spender, amount) is HONEST-DISABLED across wallet-core
+// (evm/approvals.js only revokes-to-zero; evm/token-send.js withholds approve;
+// notify/events.js exposes no approval emitter). The audit log declares no event
+// it cannot honestly produce. If an audited grant flow is ever added, add it back
+// here as part of that change.
 
 // HARD DENYLIST (defence in depth, enforced IN CODE). Any event type containing
 // one of these substrings is REFUSED even if some future edit mistakenly adds it
@@ -230,12 +235,12 @@ function isLoggableType(type) {
 // Decrypt the stored blob (if any) back to the entries array. A missing blob is
 // an empty log. A blob that fails to parse is treated as empty rather than
 // throwing — we never want a corrupt log to break a recording write — but a
-// genuine wrong-password decrypt error from decryptVault is allowed to propagate
-// (the caller is in an unlocked session and holds the real password).
-async function readEntries(db, password) {
+// genuine wrong-secret decrypt error from decryptVault is allowed to propagate
+// (the caller is in an unlocked session and holds the real audit secret).
+async function readEntries(db, auditSecret) {
   const blob = await getKey(db, AUDIT_KEY);
   if (!blob) return [];
-  const json = await decryptVault(blob, password); // throws on wrong password
+  const json = await decryptVault(blob, auditSecret); // throws on wrong secret
   try {
     const parsed = JSON.parse(json);
     return Array.isArray(parsed) ? parsed : [];
@@ -251,30 +256,31 @@ async function readEntries(db, password) {
  * On success appends { type, ts } and re-encrypts the whole log as a single
  * vault-shaped blob, ring-buffered to the most recent MAX_ENTRIES.
  *
- * Requires the unlock `password` (the caller has it during an unlocked session);
- * nothing is ever persisted in plaintext.
+ * Requires the HKDF-derived audit secret (the caller derives it during an unlocked
+ * session via deriveAuditSecret / auditSecretForSession); nothing is ever persisted
+ * in plaintext.
  *
- * @param {string} type     one of ALLOWED_EVENT_TYPES
- * @param {string} password the unlock password (read-modify-write the blob)
+ * @param {string} type        one of ALLOWED_EVENT_TYPES
+ * @param {string} auditSecret the HKDF-derived audit key (see deriveAuditSecret)
  * @returns {Promise<void>}
  */
-export async function recordAuditEvent(type, password) {
+export async function recordAuditEvent(type, auditSecret) {
   // OFF by default: write NOTHING. A non-user leaves zero audit artifact.
   if (!isAuditLogEnabled()) return;
   // Allowlist + hard denylist. A rejected event is silently dropped, never thrown
   // and never written — including every duress/stealth/hidden/panic/decoy/seed
   // event, even if such a type were mistakenly allowlisted.
   if (!isLoggableType(type)) return;
-  if (typeof password !== 'string' || password.length === 0) return;
+  if (typeof auditSecret !== 'string' || auditSecret.length === 0) return;
 
   const db = await openDb();
   try {
-    const entries = await readEntries(db, password);
+    const entries = await readEntries(db, auditSecret);
     // { type, ts } ONLY — no amounts, recipients, addresses, or which-wallet/seed.
     entries.push({ type, ts: Date.now() });
     // Ring buffer: keep only the most recent MAX_ENTRIES, oldest dropped.
     const trimmed = entries.slice(-MAX_ENTRIES);
-    const blob = await encryptVault(JSON.stringify(trimmed), password);
+    const blob = await encryptVault(JSON.stringify(trimmed), auditSecret);
     // Mirror vaultStore/panic's guard: refuse anything that is not an encrypted
     // blob (so a future change to encryptVault cannot silently store plaintext).
     if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
@@ -289,16 +295,16 @@ export async function recordAuditEvent(type, password) {
 /**
  * Decrypt and return the audit log entries (oldest-first). Returns [] when the
  * log is empty or has never been written. Only works while unlocked — it needs
- * the password to decrypt; a wrong password makes decryptVault throw (same
+ * the audit secret to decrypt; a wrong secret makes decryptVault throw (same
  * behaviour as every other vault read).
  *
- * @param {string} password the unlock password
+ * @param {string} auditSecret the HKDF-derived audit key (see deriveAuditSecret)
  * @returns {Promise<Array<{ type: string, ts: number }>>}
  */
-export async function readAuditLog(password) {
+export async function readAuditLog(auditSecret) {
   const db = await openDb();
   try {
-    return await readEntries(db, password);
+    return await readEntries(db, auditSecret);
   } finally {
     db.close();
   }
