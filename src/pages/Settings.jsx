@@ -4,7 +4,8 @@ import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
-import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles, Scale } from "lucide-react";
+import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
+import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles, Scale, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -21,6 +22,7 @@ export default function Settings() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [livePrices, setLivePrices] = useState(() => isLivePricesEnabled());
 
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== "DELETE") return;
@@ -92,6 +94,30 @@ export default function Settings() {
             onCheckedChange={(checked) => { setTheme(checked ? 'dark' : 'light'); recordAudit('settings_changed'); }}
           />
         </div>
+      </div>
+
+      {/* Live market prices (OPT-IN, off by default — I2 no silent egress) */}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Live market prices</p>
+              <p className="text-xs text-muted-foreground">Off by default · USD values use reference rates until enabled</p>
+            </div>
+          </div>
+          <Switch
+            checked={livePrices}
+            onCheckedChange={(checked) => { setLivePricesEnabled(checked); setLivePrices(checked); recordAudit('settings_changed'); }}
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          When on, your wallet fetches current prices from CryptoCompare. The request sends only a fixed list
+          of supported coins — never your holdings, balances, or addresses. Off by default; no price calls are
+          made until you turn this on.
+        </p>
       </div>
 
       {/* Biometric unlock (PROVISIONAL — M2b app-layer gate) */}
