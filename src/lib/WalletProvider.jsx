@@ -86,6 +86,7 @@ import {
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
 import { getOrCreateDeviceSalt, clearDeviceSalt } from '@/wallet-core/decoyFallback';
 import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
+import { recordAuditEvent, auditSecretForSession } from '@/wallet-core/auditLog';
 import { getAuthModel, setAuthModel, shouldCacheUnlockSecret, clearAuthModel } from '@/lib/authModel';
 import { provisionPinWallet } from '@/lib/pinOnboarding';
 import { provisionPinRecovery } from '@/lib/pinRecovery';
@@ -1414,6 +1415,26 @@ export function WalletProvider({ children }) {
   const setPanicPin = useCallback((panicPassword) => setPanicVault(panicPassword), []);
   const removePanicPin = useCallback(() => clearPanicVault(), []);
 
+  // AUDIT LOG (S4, opt-in, PROVISIONAL — primary-session wiring authorized by the
+  // 2026-06-16 owner override; see docs/audit-log-login-activity-deniability-decision.md).
+  // Thin glue over auditLog.js. The gate + key derivation live in the pure
+  // auditSecretForSession helper: it returns null (record nothing) in a decoy/hidden
+  // session or when locked. A logging failure must NEVER break the user's actual
+  // action, so the whole thing is best-effort.
+  const recordAudit = useCallback(async (type) => {
+    try {
+      const secret = auditSecretForSession({
+        isDecoy,
+        isHidden,
+        primaryMnemonic: containerRef.current?.wallets?.[0]?.mnemonic,
+      });
+      if (!secret) return;
+      await recordAuditEvent(type, secret);
+    } catch {
+      /* non-security-critical aid — swallow (I4-style fail-safe for a convenience) */
+    }
+  }, [isDecoy, isHidden]);
+
   const value = {
     isUnlocked,
     // ── MULTI-WALLET (feat/multi-wallet-portfolio) ──
@@ -1550,6 +1571,10 @@ export function WalletProvider({ children }) {
     // timeout preference and changes it; lock status is `isUnlocked` above.
     autoLockValue,
     setAutoLockTimeout,
+    // AUDIT LOG (opt-in, unsurfaced). recordAudit(type) logs an allowlisted
+    // benign event in the PRIMARY session only; no-op in decoy/hidden or when the
+    // user hasn't opted in. See wallet-core/auditLog.js.
+    recordAudit,
   };
 
   return (
