@@ -296,7 +296,7 @@ export function withLastUnlockAt(container, ts) {
  */
 export function withActionPasswordRecord(container, record) {
   if (!hasActionPasswordRecord(record)) throw new Error('withActionPasswordRecord: invalid Action Password record');
-  return makeContainer(container.wallets, record);
+  return makeContainer(container.wallets, record, container.lastUnlockAt);
 }
 
 /**
@@ -305,5 +305,5 @@ export function withActionPasswordRecord(container, record) {
  * @returns {object} the new container
  */
 export function clearActionPasswordRecord(container) {
-  return makeContainer(container.wallets, undefined);
+  return makeContainer(container.wallets, undefined, container.lastUnlockAt);
 }

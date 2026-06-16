@@ -33,9 +33,12 @@ import {
   containsMnemonic,
   validateContainer,
   withLastUnlockAt,
+  withActionPasswordRecord,
+  clearActionPasswordRecord,
 } from '../multiVault.js';
 import { encryptVault, decryptVault } from '../vault.js';
 import { generateMnemonic } from '../mnemonic.js';
+import { serializeActionPasswordRecord } from '../actionPassword.js';
 import { deriveEvmAccount } from '../derivation.js';
 import { deriveBtcAccount } from '../btc/derivation.js';
 import { deriveSolAccount } from '../sol/derivation.js';
@@ -271,5 +274,18 @@ describe('container lastUnlockAt field', () => {
 
   it('validateContainer rejects a non-number lastUnlockAt', () => {
     expect(() => validateContainer({ ...base, lastUnlockAt: 'nope' })).toThrow();
+  });
+
+  it('withActionPasswordRecord and clearActionPasswordRecord carry lastUnlockAt over unchanged', () => {
+    const REC = serializeActionPasswordRecord({
+      salt: new Uint8Array([1, 2, 3, 4]),
+      hash: new Uint8Array(Array.from({ length: 32 }, (_, i) => i)),
+      params: { parallelism: 1, iterations: 3, memorySize: 196608, hashLength: 32 },
+    });
+    const stamped = withLastUnlockAt(base, 4242);
+    const withAp = withActionPasswordRecord(stamped, REC);
+    expect(withAp.lastUnlockAt).toBe(4242);
+    const cleared = clearActionPasswordRecord(withAp);
+    expect(cleared.lastUnlockAt).toBe(4242);
   });
 });
