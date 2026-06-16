@@ -80,7 +80,7 @@ export function isMultiContainer(obj) {
  * Build a fresh container from a list of wallet entries (each already shaped
  * { id, mnemonic }). Defensive copy so callers can't alias our internal array.
  */
-function makeContainer(wallets, actionPassword) {
+function makeContainer(wallets, actionPassword, lastUnlockAt) {
   const c = {
     vlt: MULTI_VAULT_TAG,
     v: CONTAINER_VERSION,
@@ -93,6 +93,11 @@ function makeContainer(wallets, actionPassword) {
   // without one serialises byte-identically to before — no on-disk churn for existing
   // vaults. Structural validity is enforced in validateContainer.
   if (actionPassword != null) c.actionPassword = actionPassword;
+  // Optional last-successful-unlock timestamp (epoch ms). Like actionPassword it
+  // lives INSIDE the encrypted container (so its presence is not an on-disk tell)
+  // and is attached ONLY when set, so a container without it serialises byte-
+  // identically to before. Primary-set only — decoy/hidden are never persisted.
+  if (lastUnlockAt != null) c.lastUnlockAt = lastUnlockAt;
   return c;
 }
 
@@ -141,7 +146,7 @@ export function parseVault(plaintext) {
     // Password record (if any) is carried over — validateContainer above has
     // already confirmed it is well-formed.
     return {
-      container: makeContainer(parsed.wallets, parsed.actionPassword),
+      container: makeContainer(parsed.wallets, parsed.actionPassword, parsed.lastUnlockAt),
       migrated: false,
     };
   }
@@ -177,6 +182,9 @@ export function validateContainer(container) {
   if (container.actionPassword != null && !hasActionPasswordRecord(container.actionPassword)) {
     throw new Error('Container has a malformed Action Password record');
   }
+  if (container.lastUnlockAt != null && typeof container.lastUnlockAt !== 'number') {
+    throw new Error('Container has a malformed lastUnlockAt');
+  }
   return true;
 }
 
@@ -192,6 +200,7 @@ export function serializeContainer(container) {
   // drops undefined, but being explicit keeps a no-2FA container's payload identical
   // to the pre-feature shape).
   if (container.actionPassword != null) out.actionPassword = container.actionPassword;
+  if (container.lastUnlockAt != null) out.lastUnlockAt = container.lastUnlockAt;
   return JSON.stringify(out);
 }
 
@@ -236,7 +245,7 @@ export function addWallet(container, mnemonic) {
   const id = newWalletId();
   // Carry the set's Action Password through unchanged (it is a property of the SET,
   // not of any one wallet).
-  const next = makeContainer([...container.wallets, { id, mnemonic }], container.actionPassword);
+  const next = makeContainer([...container.wallets, { id, mnemonic }], container.actionPassword, container.lastUnlockAt);
   return { container: next, walletId: id };
 }
 
@@ -252,7 +261,7 @@ export function removeWallet(container, walletId) {
   if (container.wallets.length <= 1) {
     throw new Error('Cannot remove the last wallet; wipe the vault instead');
   }
-  return makeContainer(container.wallets.filter((w) => w.id !== walletId), container.actionPassword);
+  return makeContainer(container.wallets.filter((w) => w.id !== walletId), container.actionPassword, container.lastUnlockAt);
 }
 
 // ── Action Password (2FA second factor) — per-SET, carried inside the container ──
@@ -265,6 +274,18 @@ export function removeWallet(container, walletId) {
  */
 export function getActionPasswordRecord(container) {
   return container && container.actionPassword != null ? container.actionPassword : null;
+}
+
+/**
+ * Return a NEW container with the last-successful-unlock timestamp set. Pure;
+ * does not mutate the input. The timestamp is a SET-level field (per unlock
+ * identity), independent of which wallet is active.
+ * @param {object} container
+ * @param {number} ts epoch ms
+ * @returns {object}
+ */
+export function withLastUnlockAt(container, ts) {
+  return makeContainer(container.wallets, container.actionPassword, ts);
 }
 
 /**

@@ -32,6 +32,7 @@ import {
   walletCount,
   containsMnemonic,
   validateContainer,
+  withLastUnlockAt,
 } from '../multiVault.js';
 import { encryptVault, decryptVault } from '../vault.js';
 import { generateMnemonic } from '../mnemonic.js';
@@ -226,5 +227,49 @@ describe('multiVault — guards', () => {
   it('validateContainer rejects duplicate ids', () => {
     const bad = { vlt: MULTI_VAULT_TAG, v: 1, wallets: [{ id: 'x', mnemonic: SEED_A }, { id: 'x', mnemonic: SEED_B }] };
     expect(() => validateContainer(bad)).toThrow(/duplicate/i);
+  });
+});
+
+describe('container lastUnlockAt field', () => {
+  const m1 = generateMnemonic(128);
+  const m2 = generateMnemonic(128);
+  // A container with two wallets, no lastUnlockAt yet.
+  const base = parseVault(serializeContainer(addWallet(parseVault(m1).container, m2).container)).container;
+
+  it('withLastUnlockAt sets the field, returns a new object, preserves wallets', () => {
+    const out = withLastUnlockAt(base, 1750000000000);
+    expect(out).not.toBe(base);                 // new object, no mutation
+    expect(base.lastUnlockAt).toBeUndefined();  // input untouched
+    expect(out.lastUnlockAt).toBe(1750000000000);
+    expect(out.wallets.map((w) => w.id)).toEqual(base.wallets.map((w) => w.id));
+  });
+
+  it('withLastUnlockAt overwrites an existing value and preserves actionPassword', () => {
+    const withAp = { ...base, actionPassword: { kdf: 'argon2id', salt: 'x', hash: 'y' } };
+    const out = withLastUnlockAt(withLastUnlockAt(withAp, 1), 2);
+    expect(out.lastUnlockAt).toBe(2);
+    expect(out.actionPassword).toEqual(withAp.actionPassword);
+  });
+
+  it('serialize -> parse round-trips lastUnlockAt', () => {
+    const stamped = withLastUnlockAt(base, 1750000000000);
+    const round = parseVault(serializeContainer(stamped)).container;
+    expect(round.lastUnlockAt).toBe(1750000000000);
+  });
+
+  it('a container without lastUnlockAt serialises without the key (no tell)', () => {
+    expect(JSON.parse(serializeContainer(base))).not.toHaveProperty('lastUnlockAt');
+  });
+
+  it('addWallet and removeWallet carry lastUnlockAt over unchanged', () => {
+    const stamped = withLastUnlockAt(base, 4242);
+    const added = addWallet(stamped, generateMnemonic(128)).container;
+    expect(added.lastUnlockAt).toBe(4242);
+    const removed = removeWallet(added, added.wallets[0].id);
+    expect(removed.lastUnlockAt).toBe(4242);
+  });
+
+  it('validateContainer rejects a non-number lastUnlockAt', () => {
+    expect(() => validateContainer({ ...base, lastUnlockAt: 'nope' })).toThrow();
   });
 });
