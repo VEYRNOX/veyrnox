@@ -13,9 +13,10 @@ import {
 import { isBiometricUnlockEnabled } from "@/lib/biometric";
 import { isPasskeyUnlockEnabled, isPasskeyRegistered } from "@/lib/passkey";
 import { loadAutoLockValue, AUTO_LOCK_OPTIONS } from "@/lib/session";
+import { formatUnlockTime } from "@/lib/formatUnlockTime";
 import {
   Shield, ShieldAlert, ShieldCheck, AlertTriangle, ChevronRight, Loader2,
-  Fingerprint, KeyRound, Lock, Ghost, ScanSearch, ShieldOff, FilterX, ShieldQuestion,
+  Fingerprint, KeyRound, Lock, Ghost, ScanSearch, ShieldOff, FilterX, ShieldQuestion, History,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -248,6 +249,20 @@ export default function SecurityDashboard() {
               wrong and a coercion oracle (deniability invariant). They remain
               reachable via Settings. */}
           <FeatureRow icon={Ghost} label="Stealth wallets" on={s3.stealth} detail={s3.stealth ? "Hidden-wallet pool seeded" : "Pool not seeded"} path="/stealth-wallets" gapWhenOff={false} />
+        </div>
+      </div>
+
+      {/* Last opened — a deniability-clean tamper signal. Primary-session only;
+          null shows "First open on this device". IBM Plex Mono for the value. */}
+      <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
+        <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+          <History className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium">Last opened</span>
+          <p className="text-xs text-muted-foreground font-mono mono-value">
+            {formatUnlockTime(wallet.lastUnlockAt)}
+          </p>
         </div>
       </div>
 

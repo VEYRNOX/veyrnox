@@ -32,9 +32,13 @@ import {
   walletCount,
   containsMnemonic,
   validateContainer,
+  withLastUnlockAt,
+  withActionPasswordRecord,
+  clearActionPasswordRecord,
 } from '../multiVault.js';
 import { encryptVault, decryptVault } from '../vault.js';
 import { generateMnemonic } from '../mnemonic.js';
+import { serializeActionPasswordRecord } from '../actionPassword.js';
 import { deriveEvmAccount } from '../derivation.js';
 import { deriveBtcAccount } from '../btc/derivation.js';
 import { deriveSolAccount } from '../sol/derivation.js';
@@ -226,5 +230,74 @@ describe('multiVault — guards', () => {
   it('validateContainer rejects duplicate ids', () => {
     const bad = { vlt: MULTI_VAULT_TAG, v: 1, wallets: [{ id: 'x', mnemonic: SEED_A }, { id: 'x', mnemonic: SEED_B }] };
     expect(() => validateContainer(bad)).toThrow(/duplicate/i);
+  });
+});
+
+describe('container lastUnlockAt field', () => {
+  const m1 = generateMnemonic(128);
+  const m2 = generateMnemonic(128);
+  // A container with two wallets, no lastUnlockAt yet.
+  const base = parseVault(serializeContainer(addWallet(parseVault(m1).container, m2).container)).container;
+
+  it('withLastUnlockAt sets the field, returns a new object, preserves wallets', () => {
+    const out = withLastUnlockAt(base, 1750000000000);
+    expect(out).not.toBe(base);                 // new object, no mutation
+    expect(base.lastUnlockAt).toBeUndefined();  // input untouched
+    expect(out.lastUnlockAt).toBe(1750000000000);
+    expect(out.wallets.map((w) => w.id)).toEqual(base.wallets.map((w) => w.id));
+  });
+
+  it('withLastUnlockAt overwrites an existing value and preserves actionPassword', () => {
+    const withAp = { ...base, actionPassword: { kdf: 'argon2id', salt: 'x', hash: 'y' } };
+    const out = withLastUnlockAt(withLastUnlockAt(withAp, 1), 2);
+    expect(out.lastUnlockAt).toBe(2);
+    expect(out.actionPassword).toEqual(withAp.actionPassword);
+  });
+
+  it('serialize -> parse round-trips lastUnlockAt', () => {
+    const stamped = withLastUnlockAt(base, 1750000000000);
+    const round = parseVault(serializeContainer(stamped)).container;
+    expect(round.lastUnlockAt).toBe(1750000000000);
+  });
+
+  it('a container without lastUnlockAt serialises without the key (no tell)', () => {
+    expect(JSON.parse(serializeContainer(base))).not.toHaveProperty('lastUnlockAt');
+  });
+
+  it('addWallet and removeWallet carry lastUnlockAt over unchanged', () => {
+    const stamped = withLastUnlockAt(base, 4242);
+    const added = addWallet(stamped, generateMnemonic(128)).container;
+    expect(added.lastUnlockAt).toBe(4242);
+    const removed = removeWallet(added, added.wallets[0].id);
+    expect(removed.lastUnlockAt).toBe(4242);
+  });
+
+  it('validateContainer rejects a non-number lastUnlockAt', () => {
+    expect(() => validateContainer({ ...base, lastUnlockAt: 'nope' })).toThrow();
+  });
+
+  it('validateContainer rejects a non-finite lastUnlockAt (NaN/Infinity)', () => {
+    expect(() => validateContainer({ ...base, lastUnlockAt: NaN })).toThrow();
+    expect(() => validateContainer({ ...base, lastUnlockAt: Infinity })).toThrow();
+  });
+
+  it('withLastUnlockAt rejects a non-positive or non-finite timestamp', () => {
+    expect(() => withLastUnlockAt(base, NaN)).toThrow();
+    expect(() => withLastUnlockAt(base, 0)).toThrow();
+    expect(() => withLastUnlockAt(base, -1)).toThrow();
+    expect(() => withLastUnlockAt(base, '1750000000000')).toThrow();
+  });
+
+  it('withActionPasswordRecord and clearActionPasswordRecord carry lastUnlockAt over unchanged', () => {
+    const REC = serializeActionPasswordRecord({
+      salt: new Uint8Array([1, 2, 3, 4]),
+      hash: new Uint8Array(Array.from({ length: 32 }, (_, i) => i)),
+      params: { parallelism: 1, iterations: 3, memorySize: 196608, hashLength: 32 },
+    });
+    const stamped = withLastUnlockAt(base, 4242);
+    const withAp = withActionPasswordRecord(stamped, REC);
+    expect(withAp.lastUnlockAt).toBe(4242);
+    const cleared = clearActionPasswordRecord(withAp);
+    expect(cleared.lastUnlockAt).toBe(4242);
   });
 });
