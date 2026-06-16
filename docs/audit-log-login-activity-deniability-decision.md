@@ -49,6 +49,32 @@ The throughline: **logs are state, state has a footprint, and a footprint that d
 - **Audit Log:** may proceed to *design* under D1–D7, but **no implementation before the independent audit reviews the storage-shape construction** (sub-decision #1). On any build, ship as **UNAUDITED-PROVISIONAL** — and unlike a funds bug, a logging bug here doesn't lose money, it loses someone's plausible deniability under coercion. That asymmetry is why this one waits for the auditor.
 - **Status note (PR #72 interim):** the conservative primitive described in the header is the interim posture — denylist + benign-events-only, **unwired, unsurfaced.** It does **not** implement the D1–D7 storage shape (sub-decision #1), and its existence does **not** lift the audit gate: no wiring into call sites and no catalogue surfacing until the auditor reviews the construction. The catalogue surfacing guard (`featureCatalogue.test.js`) enforces the "not surfaced" half.
 
+## Owner override — primary-session wiring landed PRE-AUDIT (2026-06-16)
+
+**This is an explicit, documented decision by the owner to wire the audit log before the
+independent audit — NOT a sign the audit cleared.** It is recorded here so the override is
+auditable and not mistaken for audit sign-off.
+
+- **What was lifted:** §5's "no wiring into call sites until the auditor reviews the construction"
+  and the zero-importer half of the `audit-log-honest-disabled.test.js` guard. The owner chose to
+  wire the primitive's primary-session path now.
+- **What was NOT lifted (still gated / still honest-disabled):**
+  - **Surfacing.** No UI toggle, no page/route; the `featureCatalogue.test.js` guard still enforces
+    "not surfaced." In shipped builds nothing logs unless a user manually sets the `veyrnox-audit-log`
+    localStorage pref.
+  - **The D1–D7 multi-set storage shape** (sub-decision #1) is NOT built. Logging is **primary-session
+    only** and **hard-off in decoy/hidden** (`auditSecretForSession` returns null there), so the
+    real-vs-decoy distinguisher hazard the auditor was to review is **never introduced** by this change.
+  - **The hard denylist** (duress/stealth/hidden/panic/decoy/seed) is intact.
+- **How the guard changed (not deleted):** `audit-log-honest-disabled.test.js` now permits exactly ONE
+  approved importer — `lib/WalletProvider.jsx`, which owns the gated `recordAudit(type)` entry. Call
+  sites reach the log only through that provider, never by importing `auditLog.js` directly. Routes/pages
+  remain forbidden. Widening the approved-wirer set is itself a deliberate decision.
+- **Residual risk accepted by the owner:** per §5, a logging bug here costs plausible deniability rather
+  than funds. The narrowing above (primary-only, decoy/hidden-off, unsurfaced, no multi-set shape) keeps
+  the residual surface small, but this path has **not** had the independent review §5 called for. Status
+  stays **BUILT / UNAUDITED-PROVISIONAL**; the multi-set storage shape + surfacing still require the audit.
+
 ## 6. What this is really telling you
 
 The roadmap line "Audit Log ❌ / Login Activity ❌" flattens a security distinction: two of the four MONITORING items are on-device primitives (RASP, Risk Scoring) and two are metadata-logging hazards. Both logging features point at the same gate — the audit. That's not a coincidence to engineer around; it's a signal that **the audit is the unblock**, not more building.

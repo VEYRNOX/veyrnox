@@ -146,18 +146,26 @@ describe('local audit log (S4)', () => {
     expect(Object.keys(store)).not.toContain(AUDIT_KEY);
   });
 
+  it('refuses approval_granted now that granting is HONEST-DISABLED (removed from allowlist)', async () => {
+    setAuditLogEnabled(true);
+    await recordAuditEvent('approval_granted', REAL_PW); // no longer allowlisted
+    const store = await dumpVaultStore();
+    expect(Object.keys(store)).not.toContain(AUDIT_KEY);
+    expect(await readAuditLog(REAL_PW)).toEqual([]);
+  });
+
   // ---- happy path: allowlisted events round-trip ----
 
   it('records allowlisted events as { type, ts } only and reads them back in order', async () => {
     setAuditLogEnabled(true);
     await recordAuditEvent('settings_changed', REAL_PW);
     await recordAuditEvent('send_completed', REAL_PW);
-    await recordAuditEvent('approval_granted', REAL_PW);
+    await recordAuditEvent('approval_revoked', REAL_PW);
 
     const log = await readAuditLog(REAL_PW);
     expect(log.length).toBe(3);
     expect(log.map((e) => e.type)).toEqual([
-      'settings_changed', 'send_completed', 'approval_granted',
+      'settings_changed', 'send_completed', 'approval_revoked',
     ]);
     // Each entry has EXACTLY { type, ts } — no amounts/recipients/addresses/seed.
     for (const e of log) {
@@ -287,7 +295,7 @@ describe('local audit log (S4)', () => {
   it('panic wipe destroys the audit blob (it is just another vault entry)', async () => {
     setAuditLogEnabled(true);
     await webKeyStore.createVault(generateMnemonic(128), REAL_PW);
-    await recordAuditEvent('approval_granted', REAL_PW);
+    await recordAuditEvent('approval_revoked', REAL_PW);
     // The audit blob exists before the wipe.
     expect(Object.keys(await dumpVaultStore())).toContain(AUDIT_KEY);
 
