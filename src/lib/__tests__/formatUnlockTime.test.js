@@ -23,4 +23,9 @@ describe('formatUnlockTime', () => {
     expect(formatUnlockTime(NaN)).toBe('First open on this device');
     expect(formatUnlockTime(Infinity)).toBe('First open on this device');
   });
+
+  it('treats zero and negative timestamps as no value (no 1970/1969 date)', () => {
+    expect(formatUnlockTime(0)).toBe('First open on this device');
+    expect(formatUnlockTime(-1)).toBe('First open on this device');
+  });
 });

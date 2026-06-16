@@ -7,7 +7,12 @@
  * @returns {string}
  */
 export function formatUnlockTime(ts) {
-  if (typeof ts !== 'number' || !Number.isFinite(ts)) {
+  // A real unlock timestamp is always a positive finite epoch-ms (the only writer
+  // is withLastUnlockAt(container, Date.now()), which itself rejects ts <= 0). Treat
+  // anything else — null/undefined/non-number/non-finite/non-positive — as no prior
+  // value so a stray 0 or negative can never render a 1970/1969 date. We never
+  // fabricate a time.
+  if (typeof ts !== 'number' || !Number.isFinite(ts) || ts <= 0) {
     return 'First open on this device';
   }
   // Absolute local date + time. Local (not UTC) so the owner recognises the
