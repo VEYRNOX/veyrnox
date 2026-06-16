@@ -22,7 +22,7 @@ function deviceIcon(ua) {
 }
 
 export default function SessionSettings() {
-  const { isUnlocked, lock, autoLockValue, setAutoLockTimeout } = useWallet();
+  const { isUnlocked, lock, autoLockValue, setAutoLockTimeout, recordAudit } = useWallet();
 
   // Recent session info — cheap, best-effort. Demo mode seeds one UserSession
   // (api/demoClient.js); a real backend returns the user's device sessions.
@@ -74,7 +74,7 @@ export default function SessionSettings() {
             return (
               <button
                 key={opt.value}
-                onClick={() => setAutoLockTimeout(opt.value)}
+                onClick={() => { setAutoLockTimeout(opt.value); recordAudit('settings_changed'); }}
                 aria-pressed={active}
                 className={`min-h-[44px] px-2 py-2 rounded-lg border text-sm font-medium transition-colors select-none ${
                   active

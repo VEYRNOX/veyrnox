@@ -21,7 +21,7 @@ import {
 } from '@/lib/biometric';
 
 export default function BiometricUnlockSettings() {
-  const { biometricPreview, disableBiometricUnlock } = useWallet();
+  const { biometricPreview, disableBiometricUnlock, recordAudit } = useWallet();
   const [enabled, setEnabled] = useState(() => isBiometricUnlockEnabled());
   const [status, setStatus] = useState(null); // null while loading
   const [testResult, setTestResult] = useState(null); // null | 'ok' | 'cancel'
@@ -43,6 +43,7 @@ export default function BiometricUnlockSettings() {
       disableBiometricUnlock();
     }
     setTestResult(null);
+    recordAudit('settings_changed');
   };
 
   const runTest = async () => {

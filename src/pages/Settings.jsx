@@ -17,7 +17,7 @@ import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 
 export default function Settings() {
   const queryClient = useQueryClient();
-  const { lock } = useWallet();
+  const { lock, recordAudit } = useWallet();
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -89,7 +89,7 @@ export default function Settings() {
           </div>
           <Switch
             checked={isDark}
-            onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+            onCheckedChange={(checked) => { setTheme(checked ? 'dark' : 'light'); recordAudit('settings_changed'); }}
           />
         </div>
       </div>
