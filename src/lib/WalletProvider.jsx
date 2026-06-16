@@ -212,6 +212,10 @@ export function WalletProvider({ children }) {
   // surface it, so an observer sees no "hidden wallet" indicator. A hidden
   // wallet is a real, independently-encrypted vault — see wallet-core/stealth.js.
   const [isHidden, setIsHidden] = useState(false);
+  // Last SUCCESSFUL unlock timestamp (epoch ms) of the PREVIOUS primary unlock,
+  // read from the container at unlock and shown to the owner as a tamper signal.
+  // null in decoy/hidden/first-open. Primary-session only (deniability I3).
+  const [lastUnlockAt, setLastUnlockAt] = useState(null);
   // PANIC WIPE (S3 — Direction-C): set true once a panic wipe has destroyed the
   // local key material this session, so the UI can confirm the wipe + show the
   // residual report. Reset on the next create/import/unlock (a fresh wallet).
@@ -381,6 +385,7 @@ export function WalletProvider({ children }) {
     setUnlocked(false);
     setIsDecoy(false);
     setIsHidden(false);
+    setLastUnlockAt(null);
     setWallets([]);
     setActiveWalletIdState(null);
     setWalletAddresses({});
@@ -655,6 +660,7 @@ export function WalletProvider({ children }) {
     setUnlocked(true);
     setIsDecoy(false);
     setIsHidden(false);
+    setLastUnlockAt(null);
     setExploreMode(false);
     setWasWiped(false); // a fresh wallet exists again; clear any prior wipe signal
     // A brand-new wallet must not inherit a previous wallet's biometric one-tap
@@ -691,6 +697,7 @@ export function WalletProvider({ children }) {
     setUnlocked(true);
     setIsDecoy(false);
     setIsHidden(false);
+    setLastUnlockAt(null);
     setExploreMode(false);
     setWasWiped(false); // a fresh wallet exists again; clear any prior wipe signal
     // Reset any prior wallet's biometric one-tap cache/preference (see createWallet).
@@ -1133,22 +1140,35 @@ export function WalletProvider({ children }) {
     const isPrimary = !decoy && !hidden;
 
     if (isPrimary) {
+      // Capture the PREVIOUS unlock time for display (read for free — already
+      // decrypted), then stamp NOW onto the container for next time.
+      const prevLastUnlock = container.lastUnlockAt ?? null;
+      setLastUnlockAt(prevLastUnlock);
+      const stamped = mv.withLastUnlockAt(container, Date.now());
+      containerRef.current = stamped; // so in-session mutations carry it forward
+
       // LOSSLESS SINGLE-SEED -> MULTI-SEED MIGRATION. If the primary vault was a
       // legacy bare mnemonic, re-encrypt it as a container under the SAME password
       // and persist. Best-effort (mirrors the M3 KDF rekey): a failed re-encrypt
       // must NOT block unlock — the user still gets their wallet and migration
       // retries on the next unlock. The decrypt above already used the unchanged
-      // crypto, so the wallet's funds/addresses are byte-identical.
+      // crypto, so the wallet's funds/addresses are byte-identical. Persist the
+      // STAMPED container so migration + last-unlock are ONE write, not two.
       if (migrated) {
-        const firstId = mv.listWalletIds(container)[0];
+        const firstId = mv.listWalletIds(stamped)[0];
         // The migrated wallet went through mandatory backup at its ORIGINAL
         // creation, so backedUp:true (no spurious nag for existing users), and it
         // keeps ALL assets visible so nothing the user saw disappears.
         ensureWalletMeta(firstId, { name: 'Wallet 1', backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] });
-        try { await keyStore.createVault(mv.serializeContainer(container), password); }
+        try { await keyStore.createVault(mv.serializeContainer(stamped), password); }
         catch { /* best-effort; retried next unlock */ }
+      } else {
+        // Persist the new last-unlock stamp. Best-effort + async: a failed write
+        // never blocks unlock and can only lose a timestamp (IndexedDB put at key
+        // 'primary' is atomic; the prior blob is retained on failure).
+        void keyStore.createVault(mv.serializeContainer(stamped), password).catch(() => {});
       }
-      const { activeWalletId: active } = reconcileWalletMeta(mv.listWalletIds(container));
+      const { activeWalletId: active } = reconcileWalletMeta(mv.listWalletIds(stamped));
       activeIdRef.current = active;
       setIsDecoy(false);
       setIsHidden(false);
@@ -1164,6 +1184,7 @@ export function WalletProvider({ children }) {
       activeIdRef.current = ids[0];
       setIsDecoy(decoy);
       setIsHidden(hidden);
+      setLastUnlockAt(null); // never surface a last-unlock in a decoy/hidden session
       setWallets(ids.map((id, i) => ({ id, name: `Wallet ${i + 1}`, backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] })));
       setActiveWalletIdState(ids[0]);
       // Transient single "Main" portfolio for the decoy/hidden session — never
@@ -1575,6 +1596,9 @@ export function WalletProvider({ children }) {
     // benign event in the PRIMARY session only; no-op in decoy/hidden or when the
     // user hasn't opted in. See wallet-core/auditLog.js.
     recordAudit,
+    // Last successful unlock (previous primary unlock; null in decoy/hidden/first
+    // open). Shown read-only on the Security Dashboard as a tamper signal.
+    lastUnlockAt,
   };
 
   return (
