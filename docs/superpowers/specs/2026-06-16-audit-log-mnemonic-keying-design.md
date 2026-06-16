@@ -33,8 +33,12 @@ cannot be logged without an intrusive re-prompt.
    (`isDecoy`) or hidden (`isHidden`) sessions `recordAudit` is a strict no-op and never reads/writes the
    `quaternary` blob. This sidesteps the D1–D7 multi-set storage shape (sub-decision #1 of the decision
    doc), which remains audit-gated.
-2. **Call-site scope: all four allowlisted events** — `send_completed`, `approval_granted`,
-   `approval_revoked`, `settings_changed`.
+2. **Call-site scope: the events that have real call sites** — `send_completed` (SendCrypto),
+   `approval_revoked` (TokenApprovals, real revoke only), and `settings_changed` (session / biometric /
+   2FA / theme). **`approval_granted` is REMOVED from `ALLOWED_EVENT_TYPES`**: tracing the data flow showed
+   the app never grants ERC-20 allowances — `approve()` is HONEST-DISABLED across `evm/approvals.js`
+   (revoke-to-zero only), `evm/token-send.js` (withholds approve), and `notify/events.js` (no approval
+   emitter). The audit log declares no event it cannot honestly produce.
 3. **Keying mechanism: Approach A** — HKDF-SHA256 of the primary mnemonic → derived secret → `encryptVault`
    verbatim. Chosen over passing the raw mnemonic (keeps the live seed off the auditLog API boundary;
    adds domain separation) and over caching the password (rejected: violates the no-password-in-memory
@@ -55,8 +59,9 @@ helper; call sites emit through that one helper.
   `decryptVault` calls (now receiving `auditSecret` as the key input), same `quaternary` key, same
   100-entry ring buffer, same `{ type, ts }` shape, same byte-shape guard. The blob stays byte-identical to
   every other vault blob (no new tell).
-- `clearAuditLog()`, `isAuditLogEnabled()`, `setAuditLogEnabled()`, `ALLOWED_EVENT_TYPES`, `DENY_TERMS`:
-  untouched.
+- `ALLOWED_EVENT_TYPES`: **`approval_granted` removed** (see decision 2); the remaining three types and the
+  hard `DENY_TERMS` denylist are otherwise unchanged.
+- `clearAuditLog()`, `isAuditLogEnabled()`, `setAuditLogEnabled()`: untouched.
 
 ### 4.2 `src/lib/WalletProvider.jsx` — one gated helper
 - `recordAudit(type)`:
@@ -73,9 +78,12 @@ helper; call sites emit through that one helper.
   the user has opted in.
 
 ### 4.3 Call sites (primary session only, all via `recordAudit`)
-- `send_completed` — after a confirmed broadcast in `src/pages/SendCrypto.jsx`.
-- `approval_granted` / `approval_revoked` — after the allowance tx confirms in `src/pages/TokenApprovals.jsx`.
-- `settings_changed` — on a settings mutation in `src/pages/Settings.jsx`.
+- `send_completed` — after a confirmed broadcast in `src/pages/SendCrypto.jsx` (send mutation `onSuccess`).
+- `approval_revoked` — after a real revoke broadcast in `src/pages/TokenApprovals.jsx` (revoke mutation
+  `onSuccess`, non-demo branch only).
+- `settings_changed` — from the key settings mutations in `src/components/security/SessionSettings.jsx`,
+  `BiometricUnlockSettings.jsx`, `TwoFactorSettings.jsx`, and the theme toggle in `src/pages/Settings.jsx`.
+- `approval_granted` — **no call site; removed from the allowlist** (granting is HONEST-DISABLED).
 
 Routing every call through the provider's `recordAudit` keeps the decoy/hidden gate and the enable-pref in
 one place; call sites never touch `auditLog.js` directly.

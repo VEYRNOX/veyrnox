@@ -4,7 +4,7 @@
 
 **Goal:** Re-key the audit-log primitive off the in-memory primary mnemonic (HKDF) instead of the vault password, then wire it into the call sites that actually exist, so passive events can be logged without the password WalletProvider deliberately does not retain.
 
-**Architecture:** A pure, unit-testable helper `auditSecretForSession({isDecoy, isHidden, primaryMnemonic})` in `auditLog.js` holds BOTH the decoy/hidden hard-off gate AND the HKDF key derivation (this codebase has **no React component/hook test harness**, so the security-critical logic must live in a pure function, not inline in the provider). `recordAuditEvent`/`readAuditLog` swap their `password` param for that derived `auditSecret`. WalletProvider exposes a thin `recordAudit(type)` glue method; real call sites (`send_completed`, `approval_revoked`, `settings_changed`) call it. `approval_granted` stays allowlisted-but-unwired (the app has no allowance-grant flow).
+**Architecture:** A pure, unit-testable helper `auditSecretForSession({isDecoy, isHidden, primaryMnemonic})` in `auditLog.js` holds BOTH the decoy/hidden hard-off gate AND the HKDF key derivation (this codebase has **no React component/hook test harness**, so the security-critical logic must live in a pure function, not inline in the provider). `recordAuditEvent`/`readAuditLog` swap their `password` param for that derived `auditSecret`. WalletProvider exposes a thin `recordAudit(type)` glue method; real call sites (`send_completed`, `approval_revoked`, `settings_changed`) call it. `approval_granted` is **removed from the allowlist**: the app never grants ERC-20 allowances (`approve()` is HONEST-DISABLED across `evm/approvals.js`, `evm/token-send.js`, and `notify/events.js`), so the audit log declares no event it cannot honestly produce.
 
 **Tech Stack:** JS (ESM), Vitest, `@noble/hashes` (hkdf + sha256, already a dependency), existing `vault.js` Argon2id+AES-GCM (reused verbatim), React context (`WalletProvider`).
 
@@ -16,9 +16,9 @@
 
 ## File Structure
 
-- `src/wallet-core/auditLog.js` — **modify.** Add `deriveAuditSecret` + `auditSecretForSession` pure helpers; rename the `password` param of `recordAuditEvent`/`readAuditLog`/`readEntries` to `auditSecret` (the value is now an HKDF output, not a password); document `approval_granted` as intentionally unwired.
+- `src/wallet-core/auditLog.js` — **modify.** Add `deriveAuditSecret` + `auditSecretForSession` pure helpers; rename the `password` param of `recordAuditEvent`/`readAuditLog`/`readEntries` to `auditSecret` (the value is now an HKDF output, not a password); **remove `approval_granted` from `ALLOWED_EVENT_TYPES`** (the app never grants allowances — `approve()` is HONEST-DISABLED across wallet-core).
 - `src/wallet-core/__tests__/audit-secret.test.js` — **create.** Unit tests for the two new pure helpers.
-- `src/wallet-core/__tests__/audit-log.test.js` — **unchanged** (the param rename is transparent: the tests already pass a string secret).
+- `src/wallet-core/__tests__/audit-log.test.js` — **modify.** The param rename is transparent, but the `approval_granted` removal requires swapping its two usages to `approval_revoked` and adding a "now-refused" assertion.
 - `src/lib/WalletProvider.jsx` — **modify.** Import the helpers; add the `recordAudit(type)` callback; expose it on the context value.
 - `src/pages/SendCrypto.jsx` — **modify.** Emit `send_completed` in the send mutation's `onSuccess`.
 - `src/pages/TokenApprovals.jsx` — **modify.** Emit `approval_revoked` in the revoke mutation's `onSuccess`, real-broadcast branch only.
@@ -222,27 +222,81 @@ export async function readAuditLog(auditSecret) {
 
 Also update the JSDoc `@param {string} password` lines to `@param {string} auditSecret the HKDF-derived audit key (see deriveAuditSecret)`.
 
-- [ ] **Step 3: Document `approval_granted` as intentionally unwired**
+- [ ] **Step 3: Remove `approval_granted` from `ALLOWED_EVENT_TYPES`**
 
-In `auditLog.js`, append a sentence to the `ALLOWED_EVENT_TYPES` comment block:
+In `auditLog.js`, the current allowlist (lines ~82–87) is:
 
 ```js
-// NOTE: 'approval_granted' is allowlisted but has NO call site — the app only
-// VIEWS and REVOKES ERC-20 allowances (TokenApprovals.jsx), there is no
-// allowance-grant flow to emit it. It stays on the list so a future grant flow
-// can use it without re-touching the primitive.
+export const ALLOWED_EVENT_TYPES = Object.freeze([
+  'settings_changed',
+  'approval_granted',
+  'approval_revoked',
+  'send_completed',
+]);
 ```
 
-- [ ] **Step 4: Run the existing suite to verify it still passes**
+Replace it with (drop `approval_granted`, add the HONEST-DISABLED rationale):
+
+```js
+export const ALLOWED_EVENT_TYPES = Object.freeze([
+  'settings_changed',
+  'approval_revoked',
+  'send_completed',
+]);
+// 'approval_granted' is deliberately ABSENT. The app never grants ERC-20
+// allowances — approve(spender, amount) is HONEST-DISABLED across wallet-core
+// (evm/approvals.js only revokes-to-zero; evm/token-send.js withholds approve;
+// notify/events.js exposes no approval emitter). The audit log declares no event
+// it cannot honestly produce. If an audited grant flow is ever added, add it back
+// here as part of that change.
+```
+
+- [ ] **Step 4: Update `audit-log.test.js` for the removal**
+
+In `src/wallet-core/__tests__/audit-log.test.js`:
+
+(a) The happy-path round-trip test (around lines 151–168) records `approval_granted`. Swap it to `approval_revoked` and fix the expected order array:
+
+```js
+    await recordAuditEvent('settings_changed', REAL_PW);
+    await recordAuditEvent('send_completed', REAL_PW);
+    await recordAuditEvent('approval_revoked', REAL_PW);
+
+    const log = await readAuditLog(REAL_PW);
+    expect(log.length).toBe(3);
+    expect(log.map((e) => e.type)).toEqual([
+      'settings_changed', 'send_completed', 'approval_revoked',
+    ]);
+```
+
+(b) The panic-wipe test (around line 290) records `approval_granted` — swap to `approval_revoked`:
+
+```js
+    await recordAuditEvent('approval_revoked', REAL_PW);
+```
+
+(c) Add a new test asserting the removal is honest (the type is now refused), placed in the allowlist/denylist section:
+
+```js
+  it('refuses approval_granted now that granting is HONEST-DISABLED (removed from allowlist)', async () => {
+    setAuditLogEnabled(true);
+    await recordAuditEvent('approval_granted', REAL_PW); // no longer allowlisted
+    const store = await dumpVaultStore();
+    expect(Object.keys(store)).not.toContain(AUDIT_KEY);
+    expect(await readAuditLog(REAL_PW)).toEqual([]);
+  });
+```
+
+- [ ] **Step 5: Run the audit-log suite to verify it passes**
 
 Run: `npx vitest run src/wallet-core/__tests__/audit-log.test.js`
-Expected: PASS (unchanged — the rename is transparent to callers passing a string).
+Expected: PASS (the swapped round-trip + the new "refuses approval_granted" test green; all others unchanged).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/wallet-core/auditLog.js
-git commit -m "refactor(audit-log): rename password param to auditSecret; document approval_granted as unwired"
+git add src/wallet-core/auditLog.js src/wallet-core/__tests__/audit-log.test.js
+git commit -m "refactor(audit-log): rename password param to auditSecret; drop approval_granted (granting is HONEST-DISABLED)"
 ```
 
 ---
@@ -511,8 +565,9 @@ In `docs/Feature-Status.md` §7, the audit-log bullet currently says the primiti
   mnemonic (`deriveAuditSecret`) via the pure `auditSecretForSession` gate, which records in the PRIMARY
   session only (decoy/hidden hard-off) — so WalletProvider no longer needs the password it deliberately
   doesn't retain. Wired into send_completed (SendCrypto), approval_revoked (TokenApprovals, real revoke
-  only), and settings_changed (session / biometric / 2FA / theme). approval_granted stays allowlisted but
-  unwired (no grant flow exists). STILL audit-gated: the D1–D7 multi-set storage shape (decoy/hidden each
+  only), and settings_changed (session / biometric / 2FA / theme). approval_granted was REMOVED from the
+  allowlist — granting is HONEST-DISABLED (approve() is never exposed), so the log declares no such event.
+  STILL audit-gated: the D1–D7 multi-set storage shape (decoy/hidden each
   keeping an own log without a real-vs-decoy distinguisher) and any UI surfacing — nothing is surfaced;
   the featureCatalogue guard still enforces that. No on-chain artifact → not "verified".
 ```
