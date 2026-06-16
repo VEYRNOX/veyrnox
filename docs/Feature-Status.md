@@ -16,11 +16,12 @@
 
 ## Reality check (read first)
 - **Test suite:** 390 tests across 39 files, all green (`npm test`); `check:rng` green.
-- **What actually SENDS on-chain today:** **ETH (Sepolia), ARB (Arbitrum Sepolia),
-  OP (OP Sepolia), BTC (Bitcoin testnet), and SOL (Solana devnet)** are `live` —
-  each send verified end-to-end through the full in-app UI path on-chain (one per
-  asset family: EVM L1, two EVM L2s, BTC UTXO, SOL ed25519). **The other five
-  assets (USDC, USDT, MATIC, AVAX, BNB) are `receive_only`** — see the table below.
+- **What actually SENDS on-chain today:** **ETH (Sepolia), USDC (Sepolia),
+  USDT (Sepolia), ARB (Arbitrum Sepolia), OP (OP Sepolia), BTC (Bitcoin testnet),
+  and SOL (Solana devnet)** are `live` — each send verified end-to-end through the
+  full in-app UI path on-chain (covering every send family: EVM L1 native, ERC-20
+  contract-call, two EVM L2s, BTC UTXO, SOL ed25519). **The other three assets
+  (MATIC, AVAX, BNB) are `receive_only`** — see the table below.
   Receiving and balance reads work for all 10 assets; the send *code path* exists
   and is unit-tested for EVM/ERC-20/BTC/SOL, but is HARD-gated off until a real
   on-chain send is done by hand and reviewed.
@@ -42,8 +43,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | Asset | Family | Network | Receive + balance | Send | Status |
 |---|---|---|---|---|---|
 | ETH | evm | Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x2d4d5d…`) | ✅ **live** |
-| USDC | erc20 | Sepolia | ✅ | gated, unverified | 🟡 receive_only |
-| USDT | erc20 | Sepolia (Aave faucet stand-in) | ✅ | gated, unverified | 🟡 receive_only |
+| USDC | erc20 | Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x687d8c…`, block 11074999, 2026-06-16) | ✅ **live** |
+| USDT | erc20 | Sepolia (Aave faucet stand-in) | ✅ | ✅ verified on-chain (full UI path, `0x3168e4…`, block 11075008, 2026-06-16) | ✅ **live** |
 | MATIC | evm | Polygon Amoy | ✅ | gated, unverified | 🟡 receive_only |
 | ARB | evm | Arbitrum Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x797928…`, 2026-06-14) | ✅ **live** |
 | OP | evm | Optimism Sepolia | ✅ | ✅ verified on-chain (full UI path, `0xc3fd1e…`, 2026-06-14) | ✅ **live** |
@@ -82,7 +83,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Arbitrum (Arbitrum Sepolia) — ✅ live send — **full UI path verified on-chain** (txid `0x797928…`, 2026-06-14; uncovered + fixed two real send bugs en route: ethers RPC batching → silent broadcast hang, and a hardcoded 21000 gasLimit rejected on L2 as "intrinsic gas too low")
 - Optimism (OP Sepolia) — ✅ live send — **full UI path verified on-chain** (txid `0xc3fd1e…`, 2026-06-14; funded by bridging Sepolia ETH through the OptimismPortal)
 - Polygon / Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated — not yet funded/verified)
-- ERC-20 (USDC, USDT — Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
+- ERC-20 (USDC, USDT — Sepolia) — ✅ live send — **full UI path verified on-chain** (ERC-20 `transfer`, `sendToken`; USDC txid `0x687d8c…` block 11074999, USDT txid `0x3168e4…` block 11075008, both 2026-06-16, 1 token each from `0x90f9f1…E68a729` → `0xd8dA6BF2…aA96045`, status SUCCESS, decimals 6 re-checked on-chain). Mainnet stays gated.
 - Bitcoin (BIP-84 testnet) — ✅ live send — **full UI path verified on-chain** (BIP-84 P2WPKH, `signAndBroadcastBtc`; txid `2da87a27…`, block 4990901, 2026-06-14, user-driven UI send). Mainnet stays gated.
 - Solana (ed25519 devnet) — ✅ live send — **full UI path verified on-chain** (ed25519/SLIP-0010, `signAndBroadcastSol`; sig `5KGXAGTJ…`, FINALIZED, 2026-06-14, user-driven UI send). Mainnet stays gated.
 - More EVM chains / more ERC-20 tokens — 💡
