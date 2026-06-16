@@ -10,25 +10,23 @@ import path from 'node:path';
 //  - The '@/...' alias mirrors jsconfig.json so wallet-core imports resolve.
 //  - Git worktrees share the root node_modules (worktree node_modules/ is empty).
 //    Vite's /@fs/ server only serves files within the worktree root by default, so
-//    it cannot resolve packages from the parent. The alias below redirects the
-//    package specifiers to their absolute paths in the root node_modules, and
-//    server.fs.allow opens the parent dir so Vite will serve those files.
+//    it cannot resolve packages from the repo-root node_modules (three levels up).
+//    Whitelisting repoRoot via server.fs.allow lets Vite serve those files without
+//    disabling fs.strict entirely. Normal Node resolution already finds fake-indexeddb
+//    there; no alias is needed.
 const __dir = fileURLToPath(new URL('.', import.meta.url));
-const rootNodeModules = path.resolve(__dir, '../../node_modules');
+// This worktree lives at Veyrnox/.claude/worktrees/<name>; the repo root is ../../..
+const repoRoot = path.resolve(__dir, '../../..');
 
 export default defineConfig({
   server: {
     fs: {
-      allow: [__dir, rootNodeModules],
-      strict: false,
+      allow: [__dir, repoRoot],
     },
   },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      // Redirect packages that live only in the root node_modules so Vite's
-      // module graph can find them without crossing the /@fs/ boundary.
-      'fake-indexeddb/auto': path.join(rootNodeModules, 'fake-indexeddb/auto/index.mjs'),
     },
   },
   test: {
