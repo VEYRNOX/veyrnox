@@ -182,7 +182,8 @@ export function validateContainer(container) {
   if (container.actionPassword != null && !hasActionPasswordRecord(container.actionPassword)) {
     throw new Error('Container has a malformed Action Password record');
   }
-  if (container.lastUnlockAt != null && typeof container.lastUnlockAt !== 'number') {
+  if (container.lastUnlockAt != null &&
+      (typeof container.lastUnlockAt !== 'number' || !Number.isFinite(container.lastUnlockAt))) {
     throw new Error('Container has a malformed lastUnlockAt');
   }
   return true;
@@ -285,6 +286,9 @@ export function getActionPasswordRecord(container) {
  * @returns {object}
  */
 export function withLastUnlockAt(container, ts) {
+  if (typeof ts !== 'number' || !Number.isFinite(ts) || ts <= 0) {
+    throw new Error('withLastUnlockAt requires a positive epoch-ms timestamp');
+  }
   return makeContainer(container.wallets, container.actionPassword, ts);
 }
 

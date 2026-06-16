@@ -276,6 +276,18 @@ describe('container lastUnlockAt field', () => {
     expect(() => validateContainer({ ...base, lastUnlockAt: 'nope' })).toThrow();
   });
 
+  it('validateContainer rejects a non-finite lastUnlockAt (NaN/Infinity)', () => {
+    expect(() => validateContainer({ ...base, lastUnlockAt: NaN })).toThrow();
+    expect(() => validateContainer({ ...base, lastUnlockAt: Infinity })).toThrow();
+  });
+
+  it('withLastUnlockAt rejects a non-positive or non-finite timestamp', () => {
+    expect(() => withLastUnlockAt(base, NaN)).toThrow();
+    expect(() => withLastUnlockAt(base, 0)).toThrow();
+    expect(() => withLastUnlockAt(base, -1)).toThrow();
+    expect(() => withLastUnlockAt(base, '1750000000000')).toThrow();
+  });
+
   it('withActionPasswordRecord and clearActionPasswordRecord carry lastUnlockAt over unchanged', () => {
     const REC = serializeActionPasswordRecord({
       salt: new Uint8Array([1, 2, 3, 4]),
