@@ -54,7 +54,14 @@ export const ASSETS = Object.freeze([
   // chain is verified on-chain and reviewed — only then does it flip to LIVE.
   // NOTE: gas/native token differs per chain (Polygon=POL, Avalanche=AVAX,
   // BNB=tBNB, but Arbitrum/Optimism=ETH); the UI reads that from networks.js.
-  { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygonAmoy',     status: ASSET_STATUS.RECEIVE_ONLY },
+  // MATIC: VERIFIED LIVE. Real native transfer through the full in-app UI send path,
+  // confirmed on-chain:
+  //   tx 0x6a4dede58e578f10dfa2039e2af3230c0d0e7b18596c0832f0a84348cea954a7
+  //   (Polygon Amoy, chainId 80002, status SUCCESS, block 40274236, 0.01 POL,
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 21000)
+  //   https://amoy.polygonscan.com/tx/0x6a4dede58e578f10dfa2039e2af3230c0d0e7b18596c0832f0a84348cea954a7
+  // Native gas token is POL on Amoy (see networks.js). Mainnet stays gated.
+  { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygonAmoy',     status: ASSET_STATUS.LIVE },
   // ARB: VERIFIED LIVE. A real testnet transfer was constructed, signed, and
   // broadcast through the full in-app UI send path (asset picker → recipient →
   // amount → fee → Confirm & Send → step-up re-auth) and confirmed on-chain:

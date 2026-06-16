@@ -142,8 +142,8 @@ describe('asset status gating (Phase B)', () => {
     expect(canSend(usdt)).toBe(true);
   });
 
-  it('the ERC-20s are now live alongside the verified natives (ETH, USDC, USDT, ARB, OP, BTC, SOL)', () => {
-    expect(ASSETS_LIVE()).toEqual(['ETH', 'USDC', 'USDT', 'ARB', 'OP', 'BTC', 'SOL']);
+  it('the ERC-20s are now live alongside the verified natives (ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL)', () => {
+    expect(ASSETS_LIVE()).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BTC', 'SOL']);
   });
 });
 
