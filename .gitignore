@@ -44,3 +44,9 @@ Thumbs.db
 *.mnemonic
 *.seed
 wallet-backup*
+
+# ruflo / ECC memory tooling — local-only state dropped into the worktree by the
+# MCP memory/swarm tools (memory_store, swarm_init, etc.). Never commit.
+.swarm/
+ruvector.db
+*.ruvector.db

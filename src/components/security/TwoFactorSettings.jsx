@@ -37,7 +37,7 @@ const GATED_ACTIONS = [
 
 export default function TwoFactorSettings() {
   const {
-    actionPasswordConfigured, setActionPassword, clearActionPassword, isDecoy, isHidden,
+    actionPasswordConfigured, setActionPassword, clearActionPassword, isDecoy, isHidden, recordAudit,
   } = useWallet();
 
   // ── Action Password (knowledge) form ──
@@ -57,6 +57,7 @@ export default function TwoFactorSettings() {
       await setActionPassword(apVaultPw, apNew);
       resetApForm();
       toast.success(actionPasswordConfigured ? 'Action Password changed' : 'Action Password set');
+      recordAudit('settings_changed');
     } catch (e) {
       toast.error(e?.message || 'Could not set the Action Password');
     } finally { setApBusy(false); }
@@ -69,6 +70,7 @@ export default function TwoFactorSettings() {
       await clearActionPassword(apVaultPw);
       resetApForm();
       toast.success('Action Password removed');
+      recordAudit('settings_changed');
     } catch (e) {
       toast.error(e?.message || 'Could not remove the Action Password');
     } finally { setApBusy(false); }
@@ -86,6 +88,7 @@ export default function TwoFactorSettings() {
     set2faPasskeyEnabled(on);
     setPasskey2fa(on);
     toast.success(on ? 'Passkey second factor on' : 'Passkey second factor off');
+    recordAudit('settings_changed');
   };
 
   // Which method the guard will actually enforce (passkey wins if both are set).

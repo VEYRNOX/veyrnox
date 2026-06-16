@@ -1,12 +1,19 @@
-// Guard: the Audit Log primitive stays HONEST-DISABLED and UNWIRED.
+// Guard: the Audit Log primitive stays HONEST-DISABLED and TIGHTLY-WIRED.
 //
-// docs/audit-log-login-activity-deniability-decision.md keeps Audit Log
-// audit-gated: the wallet-core/auditLog.js primitive may exist in code (PR #72)
-// but must remain (a) NOT wired into any runtime call site and (b) NOT reachable
-// as a page/route, until the independent audit reviews the storage-shape
-// construction. This test locks both halves so the posture can't silently
-// regress. (Whether it is advertised in the feature catalogue is separately
-// guarded by featureCatalogue.test.js — this guards the wiring/route surface.)
+// OWNER OVERRIDE (2026-06-16) — documented in
+// docs/audit-log-login-activity-deniability-decision.md §"Owner override":
+// the audit gate that kept wallet-core/auditLog.js imported by ZERO runtime
+// modules has been DELIBERATELY lifted to allow the PRIMARY-SESSION wiring path,
+// pre-audit. The override is intentionally NARROW: auditLog.js may now be imported
+// by exactly ONE approved wiring point (lib/WalletProvider.jsx, which owns the
+// gated recordAudit(type) entry); call sites reach it only through that provider,
+// never by importing auditLog.js directly. Everything else the gate protected
+// still holds: still NOT reachable as a page/route, still NOT surfaced in the
+// feature catalogue (guarded by featureCatalogue.test.js), and the D1–D7 multi-set
+// storage shape the auditor was to review is NOT built — logging is primary-session
+// only and hard-off in decoy/hidden, so the real-vs-decoy distinguisher hazard is
+// never introduced. This test still locks the posture so it can't drift wider:
+// any importer other than the approved wirer, any route/page, fails here.
 //
 // It also pins the removal of the orphaned, base44-mock AuditLogPage.jsx (a dead,
 // unrouted page that read base44.entities.AuditLog and claimed a "Full history of
@@ -39,17 +46,24 @@ function runtimeFiles(dir) {
 // not match — only a real module wiring does.
 const IMPORTS_AUDITLOG = /(?:from|import\s*\(|require\s*\()\s*['"][^'"]*auditLog[^'"]*['"]/;
 
-describe('Audit Log stays HONEST-DISABLED + UNWIRED (deniability decision)', () => {
+describe('Audit Log stays HONEST-DISABLED + TIGHTLY-WIRED (deniability decision + 2026-06-16 owner override)', () => {
   const primitive = resolve(srcDir, 'wallet-core/auditLog.js');
 
-  it('the deniability-safe primitive is imported by NO runtime module', () => {
+  // The ONLY runtime module permitted to import auditLog.js. The gated
+  // recordAudit(type) entry point lives here; everything else must reach the log
+  // through the provider, never by importing the primitive directly. Widening this
+  // set is a deliberate security decision, not a routine edit.
+  const APPROVED_WIRERS = new Set(['lib/WalletProvider.jsx']);
+
+  it('the deniability-safe primitive is imported ONLY by the approved wiring point', () => {
     const offenders = runtimeFiles(srcDir)
       .filter((f) => f !== primitive)
       .filter((f) => IMPORTS_AUDITLOG.test(readFileSync(f, 'utf8')))
-      .map((f) => f.slice(srcDir.length + 1).replace(/\\/g, '/'));
+      .map((f) => f.slice(srcDir.length + 1).replace(/\\/g, '/'))
+      .filter((rel) => !APPROVED_WIRERS.has(rel));
     expect(
       offenders,
-      `auditLog.js must stay unwired until the audit; imported by: ${offenders.join(', ')}`
+      `auditLog.js may be imported only by ${[...APPROVED_WIRERS].join(', ')}; also imported by: ${offenders.join(', ')}`
     ).toEqual([]);
   });
 
