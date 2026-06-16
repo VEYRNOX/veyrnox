@@ -47,8 +47,12 @@
 // SCOPE: like duress.js / stealth.js / panic.js, this re-opens the shared
 // IndexedDB by NAME (plain storage plumbing) and reuses encryptVault/decryptVault
 // VERBATIM. It does NOT import or modify the vault crypto internals
-// (vault.js / vaultStore.js) — and it is NOT yet wired into any call site; this
-// PR delivers the primitive + tests only.
+// (vault.js / vaultStore.js). As of the 2026-06-16 owner override it IS wired —
+// but only via WalletProvider's gated recordAudit(type) (the single approved
+// importer), PRIMARY-session only and decoy/hidden hard-off (see
+// auditSecretForSession + docs/audit-log-login-activity-deniability-decision.md
+// "Owner override"). UI surfacing and the D1–D7 multi-set storage shape remain
+// audit-gated and unbuilt.
 
 import { encryptVault, decryptVault } from './vault.js';
 import { hkdf } from '@noble/hashes/hkdf';
