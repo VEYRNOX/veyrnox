@@ -1,20 +1,12 @@
-// Guard: the Audit Log primitive stays HONEST-DISABLED and its wiring surface
-// is locked to a single approved point.
+// Guard: the Audit Log primitive stays HONEST-DISABLED and UNWIRED.
 //
 // docs/audit-log-login-activity-deniability-decision.md keeps Audit Log
 // audit-gated: the wallet-core/auditLog.js primitive may exist in code (PR #72)
-// but must remain (a) wired only through the single approved thin-glue entry point
-// (WalletProvider.jsx — see audit-log mnemonic-keying plan) and (b) NOT reachable
+// but must remain (a) NOT wired into any runtime call site and (b) NOT reachable
 // as a page/route, until the independent audit reviews the storage-shape
 // construction. This test locks both halves so the posture can't silently
 // regress. (Whether it is advertised in the feature catalogue is separately
 // guarded by featureCatalogue.test.js — this guards the wiring/route surface.)
-//
-// APPROVED WIRING POINT (primary-session plan, T3): WalletProvider.jsx is the
-// single thin-glue importer. All other runtime files are still prohibited.
-// The gate (decoy/hidden hard-off) and HKDF key derivation live in the pure
-// auditSecretForSession helper (wallet-core/auditLog.js) so the critical logic
-// is unit-tested independently of the React component.
 //
 // It also pins the removal of the orphaned, base44-mock AuditLogPage.jsx (a dead,
 // unrouted page that read base44.entities.AuditLog and claimed a "Full history of
@@ -47,23 +39,17 @@ function runtimeFiles(dir) {
 // not match — only a real module wiring does.
 const IMPORTS_AUDITLOG = /(?:from|import\s*\(|require\s*\()\s*['"][^'"]*auditLog[^'"]*['"]/;
 
-// The single approved wiring point (primary-session mnemonic-keying plan, T3).
-// WalletProvider is the thin glue layer; it exposes recordAudit(type) on context
-// so call sites never import auditLog directly. No other file may import it.
-const APPROVED_WIRERS = new Set(['lib/WalletProvider.jsx']);
-
 describe('Audit Log stays HONEST-DISABLED + UNWIRED (deniability decision)', () => {
   const primitive = resolve(srcDir, 'wallet-core/auditLog.js');
 
-  it('the deniability-safe primitive is imported ONLY by the approved thin-glue wiring point', () => {
+  it('the deniability-safe primitive is imported by NO runtime module', () => {
     const offenders = runtimeFiles(srcDir)
       .filter((f) => f !== primitive)
       .filter((f) => IMPORTS_AUDITLOG.test(readFileSync(f, 'utf8')))
-      .map((f) => f.slice(srcDir.length + 1).replace(/\\/g, '/'))
-      .filter((rel) => !APPROVED_WIRERS.has(rel));
+      .map((f) => f.slice(srcDir.length + 1).replace(/\\/g, '/'));
     expect(
       offenders,
-      `auditLog.js must only be imported via the approved wiring point; unexpected importers: ${offenders.join(', ')}`
+      `auditLog.js must stay unwired until the audit; imported by: ${offenders.join(', ')}`
     ).toEqual([]);
   });
 
