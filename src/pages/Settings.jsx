@@ -97,7 +97,7 @@ export default function Settings() {
       </div>
 
       {/* Live market prices (OPT-IN, off by default — I2 no silent egress) */}
-      <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="p-5 rounded-xl border border-border bg-card">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
