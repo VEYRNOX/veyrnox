@@ -88,6 +88,7 @@ export default function TokenApprovals() {
     onSuccess: (r) => {
       setResult(r);
       qc.invalidateQueries({ queryKey: ["token-approvals"] });
+      if (!r.simulated) wallet.recordAudit("approval_revoked"); // real testnet revoke only
     },
     onError: (e) => setError(e?.message || "Revoke failed"),
   });
