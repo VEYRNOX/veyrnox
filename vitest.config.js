@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 // Test config for the wallet-core slice.
 //  - jsdom gives us window.crypto.subtle + DOM globals so vault.js (WebCrypto
@@ -7,10 +8,27 @@ import { fileURLToPath } from 'node:url';
 //  - fake-indexeddb/auto installs an in-memory IndexedDB so vaultStore tests
 //    run without a browser.
 //  - The '@/...' alias mirrors jsconfig.json so wallet-core imports resolve.
+//  - Git worktrees share the root node_modules (worktree node_modules/ is empty).
+//    Vite's /@fs/ server only serves files within the worktree root by default, so
+//    it cannot resolve packages from the parent. The alias below redirects the
+//    package specifiers to their absolute paths in the root node_modules, and
+//    server.fs.allow opens the parent dir so Vite will serve those files.
+const __dir = fileURLToPath(new URL('.', import.meta.url));
+const rootNodeModules = path.resolve(__dir, '../../node_modules');
+
 export default defineConfig({
+  server: {
+    fs: {
+      allow: [__dir, rootNodeModules],
+      strict: false,
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Redirect packages that live only in the root node_modules so Vite's
+      // module graph can find them without crossing the /@fs/ boundary.
+      'fake-indexeddb/auto': path.join(rootNodeModules, 'fake-indexeddb/auto/index.mjs'),
     },
   },
   test: {

@@ -51,6 +51,9 @@
 // PR delivers the primitive + tests only.
 
 import { encryptVault, decryptVault } from './vault.js';
+import { hkdf } from '@noble/hashes/hkdf';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
 
 // Same database + store as the primary vault (evm/vaultStore.js), the duress
 // decoy ('secondary'), the stealth pool ('vault:N'), and the panic marker
@@ -69,6 +72,44 @@ const AUDIT_KEY = 'quaternary';
 // lib/session.js conventions: stored as "1" (on) / ABSENT (off). Absence = OFF is
 // deliberate — a fresh device, and any user who never opts in, leaves no trace.
 export const AUDIT_LOG_PREF_KEY = 'veyrnox-audit-log';
+
+// HKDF domain-separation label for the audit-log key. Bumping this rotates the
+// key (and orphans any prior blob) — there is none in the wild (feature never
+// shipped enabled/surfaced), so v1 is the first and only version.
+const AUDIT_HKDF_INFO = 'veyrnox-audit-v1';
+
+/**
+ * Derive the audit-log encryption secret from the primary mnemonic.
+ * HKDF-SHA256 gives domain separation (this key cannot collide with any other
+ * use of the raw seed) and a high-entropy input; the raw mnemonic never crosses
+ * the auditLog read/write API. Returns 32 bytes as a hex string, fed to
+ * encryptVault/decryptVault exactly where the password used to go.
+ * @param {string} primaryMnemonic the unlocked primary set's first-wallet seed
+ * @returns {string} 64-char hex secret
+ */
+export function deriveAuditSecret(primaryMnemonic) {
+  if (typeof primaryMnemonic !== 'string' || primaryMnemonic.length === 0) {
+    throw new Error('deriveAuditSecret requires a non-empty mnemonic');
+  }
+  const ikm = utf8ToBytes(primaryMnemonic);
+  return bytesToHex(hkdf(sha256, ikm, undefined /* salt */, AUDIT_HKDF_INFO, 32));
+}
+
+/**
+ * The single gate that decides whether — and under what key — an audit event may
+ * be recorded this session. Returns null (record NOTHING) in a decoy/hidden
+ * session (the D1–D7 multi-set storage shape is audit-gated, so logging runs in
+ * the primary session ONLY) or when no mnemonic is resident. Otherwise returns
+ * the derived secret. Pure + side-effect-free so it is unit-testable without a
+ * React render harness.
+ * @param {{isDecoy:boolean, isHidden:boolean, primaryMnemonic:string|null|undefined}} session
+ * @returns {string|null}
+ */
+export function auditSecretForSession({ isDecoy, isHidden, primaryMnemonic }) {
+  if (isDecoy || isHidden) return null;
+  if (typeof primaryMnemonic !== 'string' || primaryMnemonic.length === 0) return null;
+  return deriveAuditSecret(primaryMnemonic);
+}
 
 // Ring-buffer cap. Oldest entries are dropped once the log exceeds this — the log
 // is a recent-activity aid, not an unbounded history, and a bounded log keeps the
