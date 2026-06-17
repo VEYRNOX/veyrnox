@@ -191,6 +191,13 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Address book — ✅ (with per-chain validation on save)
 - ENS / SNS **resolution** in Send — ✅ (resolve-only); ENS **registration** — ❌ removed (PR #48)
 - Price charts / watchlist / portfolio / net-worth / analytics / tax / signing / savings — 💡 (UI present in places, not core-wired)
+- Live market prices (opt-in) — 🟡 BUILT / UNAUDITED-PROVISIONAL. `lib/priceFeed.js`: OFF by default
+  (I2 — no price egress until the user enables it in Settings), holdings-agnostic request (fixed full
+  supported-symbol list, never holdings/balances/addresses), injected through `portfolioBalances` so the
+  Dashboard portfolio total shows a live USD figure ("Live · HH:MM" + refresh) when on, or the
+  disclosed-approximate `USD_RATES` reference rate when off/unavailable (I4 — never stale-as-live). Wired
+  into the Dashboard total only; NetWorth promotion (honest-disabled → live) is a separate follow-on. See
+  `docs/superpowers/specs/2026-06-16-live-price-helper-design.md`.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅
