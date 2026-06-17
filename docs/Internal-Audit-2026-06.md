@@ -56,13 +56,14 @@ involved) — these are review findings.
 | EVM-#1 gate-bypassing signing.js | INFO (pre-mainnet) | ✅ FIXED | dead module + barrel export deleted |
 | OFAC snapshot age not surfaced | LOW | ✅ FIXED (r5) | `ofacSnapshotAgeDays`/`ofacSnapshotDisclosure` (pure, tested); the sanctions warning now states "OFAC data as of <date> — N days old; a more recent sanctioning may not be reflected" |
 | §3 native secure storage | — | ⛔ OPEN | not assessable here; real-device verification |
-| Supply chain (21 vulns, 8 high) | — | ⛔ OPEN | transitive `ws`/`jayson`; triage/pin/upgrade |
+| Supply chain (21 vulns, 8 high) | — | 🟡 PARTIAL (r6) | runtime `ws` highs (ethers + rpc-websockets, the wallet's RPC layer) patched to 8.21.0 via scoped `overrides` — jayson untouched (its ws@7 was never in range). Remaining 7 highs are **dev/build tooling** (esbuild/rollup/vite/lodash/minimatch/picomatch/flatted), not shipped runtime — fixable via plain `npm audit fix`, deferred as dev-hygiene. |
 
 **Round-1 (2026-06-17):** C-1, H-1 (partial), H-3, M-1, EVM-#1.
 **Round-2 (2026-06-17):** M-4, M-5 (deniability hardening).
 **Round-3 (2026-06-17):** M-3, M-6 (UI: ENS confirm + stealth backup warning).
 **Round-4 (2026-06-17):** H-1 completed (BTC fee/plan preview wired) + M-2 partial (same).
 **Round-5 (2026-06-17):** OFAC snapshot-age disclosure (LOW).
+**Round-6 (2026-06-17):** supply chain — runtime `ws` highs patched (scoped override).
 **Running total:** 1 CRITICAL fixed, **3 of 3 HIGH fixed** (H-2 excepted — see below),
 5 of 6 MEDIUM fixed (M-2 partial), the foot-gun removed.
 
