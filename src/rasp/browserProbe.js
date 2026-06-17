@@ -52,14 +52,16 @@ function sampleSignals() {
       document.documentElement.getAttribute('data-automation') === 'true');
 
   // Legacy fingerprints: PhantomJS, older Selenium wrappers.
+  // Cast to any — these are non-standard properties not in the TS Window type.
+  const w = /** @type {any} */ (window);
   const legacyPhantom =
-    typeof window.callPhantom !== 'undefined' ||
-    typeof window._phantom !== 'undefined';
+    typeof w.callPhantom !== 'undefined' ||
+    typeof w._phantom !== 'undefined';
 
   const legacySelenium =
-    typeof window.__selenium_unwrapped !== 'undefined' ||
-    typeof window.__webdriver_evaluate !== 'undefined' ||
-    typeof window.__webdriver_script_fn !== 'undefined';
+    typeof w.__selenium_unwrapped !== 'undefined' ||
+    typeof w.__webdriver_evaluate !== 'undefined' ||
+    typeof w.__webdriver_script_fn !== 'undefined';
 
   const hooked = webdriverFlag || webdriverAttr || legacyPhantom || legacySelenium;
 
