@@ -10,8 +10,8 @@
 //         a block explorer.
 //       * decimals: pinned here AND re-checked against the on-chain `decimals()`
 //         at read/send time (see token-send.js) — a mismatch throws.
-//   - Mainnet entries are intentionally absent; they stay out until ALLOW_MAINNET
-//     and the independent audit (testnet-only for now).
+//   - Mainnet entries added 2026-06-17 after owner sign-off (ALLOW_MAINNET = true)
+//     and internal audit completion.
 
 // USDC on Sepolia — Circle's official testnet deployment (a verified
 // FiatTokenProxy, © Circle Internet Financial). Verified three ways:
@@ -36,12 +36,26 @@ const SEPOLIA_USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
 //   hand-verified before flipping USDT to live.
 const SEPOLIA_USDT = '0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0';
 
+// USDC on Ethereum Mainnet — Circle's official deployment (FiatTokenProxy).
+// Verified: https://developers.circle.com/stablecoins/usdc-contract-addresses
+// Cross-checked on Etherscan: name=USD Coin, symbol=USDC, decimals=6
+const MAINNET_USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+
+// USDT on Ethereum Mainnet — Tether's official deployment (TetherToken).
+// Verified: https://tether.to/en/transparency/
+// Cross-checked on Etherscan: name=Tether USD, symbol=USDT, decimals=6
+const MAINNET_USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+
 export const TOKENS = {
   sepolia: {
     USDC: { address: SEPOLIA_USDC, decimals: 6, symbol: 'USDC' },
     USDT: { address: SEPOLIA_USDT, decimals: 6, symbol: 'USDT' },
   },
-  // mainnet: { ... }  // stays unused until ALLOW_MAINNET + audit
+  // Mainnet entries added 2026-06-17 after owner sign-off (ALLOW_MAINNET = true).
+  mainnet: {
+    USDC: { address: MAINNET_USDC, decimals: 6, symbol: 'USDC' },
+    USDT: { address: MAINNET_USDT, decimals: 6, symbol: 'USDT' },
+  },
 };
 
 /**

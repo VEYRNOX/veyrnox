@@ -34,6 +34,10 @@ secrets.json
 *.log
 npm-debug.log*
 
+# Audit harness run artifacts — generated, timestamped output of
+# scripts/audit/eth-wallet-audit.mjs. Regenerated on demand; never commit.
+docs/audit-runs/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

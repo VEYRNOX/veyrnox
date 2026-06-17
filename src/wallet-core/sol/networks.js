@@ -58,16 +58,15 @@ export const SOL_NETWORKS = {
     explorer: 'https://explorer.solana.com',
     explorerCluster: null, // mainnet needs no cluster query param
     isTestnet: false,
-    // GATED: stays false until the audit clears AND a devnet send is verified.
-    // Do not flip without sign-off. Mirrors ALLOW_BTC_MAINNET / EVM discipline.
-    enabled: false,
+    enabled: true, // unlocked 2026-06-17 owner sign-off
   },
 };
 
 // Master switch, mirroring ALLOW_BTC_MAINNET / EVM's ALLOW_MAINNET. Even if a
-// network's `enabled` were true, mainnet ALSO requires this. Keep false until
-// audit + a verified devnet send.
-export const ALLOW_SOL_MAINNET = false;
+// network's `enabled` were true, mainnet ALSO requires this.
+// Flipped true: 2026-06-17 — owner sign-off after internal security audit
+// (docs/audit-triage/internal-audit-2026-06-17.md). 0 crit/high/med findings.
+export const ALLOW_SOL_MAINNET = true;
 
 /**
  * Display-only lookup. Returns the raw entry (or null) WITHOUT the mainnet gate,

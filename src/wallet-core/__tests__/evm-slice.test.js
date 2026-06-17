@@ -14,16 +14,15 @@ describe('network gating', () => {
     expect(net.isTestnet).toBe(true);
   });
 
-  it('GATES mainnet until ALLOW_MAINNET is set', () => {
-    // This is the financial safety gate: real funds cannot move pre-audit.
-    expect(ALLOW_MAINNET).toBe(false);
-    expect(() => getNetwork('mainnet')).toThrow(/gated/i);
+  it('ALLOW_MAINNET is true — unlocked 2026-06-17 after owner sign-off', () => {
+    expect(ALLOW_MAINNET).toBe(true);
+    expect(() => getNetwork('mainnet')).not.toThrow();
   });
 
-  it('does not list mainnet among enabled networks while gated', () => {
+  it('lists mainnet among enabled networks after unlock', () => {
     const keys = listEnabledNetworks().map(n => n.key);
     expect(keys).toContain('sepolia');
-    expect(keys).not.toContain('mainnet');
+    expect(keys).toContain('mainnet');
   });
 });
 

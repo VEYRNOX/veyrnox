@@ -21,6 +21,8 @@ import { getProvider } from './provider.js';
 import { getNetwork } from './networks.js';
 import { getToken, ERC20_ABI } from './tokens.js';
 import { evmFeeOverrides } from './fees.js';
+import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
+import { assertDecimalAmount } from '../amount.js';
 
 const erc20Interface = new Interface(ERC20_ABI);
 
@@ -62,6 +64,7 @@ export async function getTokenBalance({ networkKey, symbol, owner }) {
 export function buildTokenTransfer({ networkKey, symbol, to, amount }) {
   if (!isAddress(to)) throw new Error('Invalid recipient address');
   const t = getToken(networkKey, symbol);
+  assertDecimalAmount(amount, t.decimals); // family-consistent strict validation
   const value = parseUnits(String(amount), t.decimals); // correct-decimals scaling
   const data = erc20Interface.encodeFunctionData('transfer', [to, value]);
   return { data, contract: t.address, value, token: t };
@@ -82,18 +85,24 @@ export async function sendToken({ networkKey, privateKey, symbol, to, amount, fe
 
   const wallet = new Wallet(privateKey, provider);
 
-  // Defense-in-depth: confirm the live network matches the intended chainId.
-  const live = await provider.getNetwork();
-  if (Number(live.chainId) !== net.chainId) {
-    throw new Error(`Wrong network: provider chainId ${live.chainId}, expected ${net.chainId}`);
-  }
+  // Defense-in-depth: confirm the RPC is ACTUALLY on the intended chain via a raw
+  // eth_chainId read (getNetwork() can't under staticNetwork; see preflight.js).
+  await verifyLiveChainId(provider, net.chainId);
 
   const c = new Contract(t.address, ERC20_ABI, wallet);
   await assertDecimals(c, t); // never scale by an unverified power of ten
+  assertDecimalAmount(amount, t.decimals); // family-consistent strict validation
   const value = parseUnits(String(amount), t.decimals); // exact base units, no float
-  // The trailing overrides object carries the user-selected EIP-1559 fee (if any);
-  // ethers treats the last arg as the tx overrides for a contract method call.
-  const txResponse = await c.transfer(to, value, evmFeeOverrides(fee)); // signed LOCALLY + broadcast
+  // Estimate the gas LIMIT for the ERC-20 transfer (+20% headroom). A token
+  // transfer needs ~45-65k gas — far above a fee tier's hinted 21000, which would
+  // otherwise be signed and revert/stall (same class as the native L2 fix).
+  const data = erc20Interface.encodeFunctionData('transfer', [to, value]);
+  const overrides = await applyEstimatedGasLimit(
+    provider, { from: wallet.address, to: t.address, data }, evmFeeOverrides(fee),
+  );
+  // The trailing overrides object carries the user-selected EIP-1559 fee (if any)
+  // plus the estimated gasLimit; ethers treats the last arg as the tx overrides.
+  const txResponse = await c.transfer(to, value, overrides); // signed LOCALLY + broadcast
 
   return {
     hash: txResponse.hash, // REAL hash from the network

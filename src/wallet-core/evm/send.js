@@ -11,28 +11,8 @@ import { Wallet, parseEther, isAddress } from 'ethers';
 import { getProvider } from './provider.js';
 import { getNetwork } from './networks.js';
 import { evmFeeOverrides } from './fees.js';
-
-/**
- * Estimate the total cost (value + gas) before the user confirms.
- * Returns strings in ETH for display.
- */
-export async function estimateSend({ networkKey, from, to, amountEth }) {
-  if (!isAddress(to)) throw new Error('Invalid recipient address');
-  const provider = getProvider(networkKey);
-  const value = parseEther(String(amountEth));
-  const [feeData, gasLimit] = await Promise.all([
-    provider.getFeeData(),
-    provider.estimateGas({ from, to, value }),
-  ]);
-  const maxFeePerGas = feeData.maxFeePerGas ?? feeData.gasPrice ?? 0n;
-  const gasCostWei = gasLimit * maxFeePerGas;
-  return {
-    gasLimit: gasLimit.toString(),
-    maxFeePerGasWei: maxFeePerGas.toString(),
-    estGasCostWei: gasCostWei.toString(),
-    totalWei: (value + BigInt(gasCostWei)).toString(),
-  };
-}
+import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
+import { assertDecimalAmount } from '../amount.js';
 
 /**
  * Sign locally and broadcast. `privateKey` is supplied transiently by the
@@ -51,35 +31,20 @@ export async function signAndBroadcast({ networkKey, privateKey, to, amountEth, 
   const provider = getProvider(networkKey);
   const wallet = new Wallet(privateKey, provider);
 
-  // Defense-in-depth: verify the live network matches the intended chainId.
-  const live = await provider.getNetwork();
-  if (Number(live.chainId) !== net.chainId) {
-    throw new Error(`Wrong network: provider chainId ${live.chainId}, expected ${net.chainId}`);
-  }
+  // Defense-in-depth: confirm the RPC is ACTUALLY on the intended chain via a raw
+  // eth_chainId read (provider.getNetwork() can't — it returns the pinned chainId
+  // under staticNetwork; see preflight.js). Fail closed on mismatch.
+  await verifyLiveChainId(provider, net.chainId);
 
   // ethers fills nonce, signs LOCALLY, and broadcasts. The user-selected fee
   // overrides (if any) are the EXACT EIP-1559 fields that get signed; with no
   // override ethers auto-fills them.
+  assertDecimalAmount(amountEth, 18); // family-consistent strict validation (ETH = 18 dp)
   const value = parseEther(String(amountEth));
   const overrides = evmFeeOverrides(fee);
-
-  // GAS LIMIT must be estimated PER CHAIN. The fee tier carries a gasLimit that is
-  // only a DISPLAY hint (21000 — an Ethereum-L1 simple-transfer assumption). L2s
-  // (Arbitrum, Optimism, …) require MORE intrinsic gas for the L1 data-posting
-  // component, so signing a hardcoded 21000 is rejected by the RPC as "intrinsic
-  // gas too low" and the send silently fails. Estimate the real limit for THIS
-  // chain and sign with it (the user's chosen fee PRICE is preserved); honour a
-  // larger user-supplied custom limit. If estimation fails, fall back to whatever
-  // the fee carried — or ethers' own auto-fill when no override was given.
-  try {
-    const est = await provider.estimateGas({ from: wallet.address, to, value });
-    const withHeadroom = (est * 12n) / 10n; // +20% so a tight estimate can't strand it
-    overrides.gasLimit = overrides.gasLimit && overrides.gasLimit > withHeadroom
-      ? overrides.gasLimit
-      : withHeadroom;
-  } catch {
-    /* keep the hinted gasLimit (or ethers auto-fill if none was provided) */
-  }
+  // Estimate the gas LIMIT per chain (+20% headroom) — a tier's hinted 21000 is an
+  // L1 simple-transfer assumption that L2s reject (see preflight.js).
+  await applyEstimatedGasLimit(provider, { from: wallet.address, to, value }, overrides);
 
   const txResponse = await wallet.sendTransaction({ to, value, ...overrides });
 

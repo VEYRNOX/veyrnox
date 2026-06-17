@@ -52,8 +52,7 @@ export const NETWORKS = {
     defaultRpcUrl: 'https://eth.llamarpc.com',
     explorer: 'https://etherscan.io',
     isTestnet: false,
-    // GATED: stays false until the audit clears. Do not flip without sign-off.
-    enabled: false,
+    enabled: true, // unlocked 2026-06-17 owner sign-off
   },
 
   // ---- Polygon (gas token: POL, formerly MATIC — NOT ETH) ----
@@ -77,7 +76,7 @@ export const NETWORKS = {
     defaultRpcUrl: 'https://polygon-bor-rpc.publicnode.com',
     explorer: 'https://polygonscan.com',
     isTestnet: false,
-    enabled: false, // GATED until audit + ALLOW_MAINNET
+    enabled: true, // unlocked 2026-06-17 owner sign-off
   },
 
   // ---- Arbitrum (L2; gas token: ETH) ----
@@ -101,7 +100,7 @@ export const NETWORKS = {
     defaultRpcUrl: 'https://arbitrum-one-rpc.publicnode.com',
     explorer: 'https://arbiscan.io',
     isTestnet: false,
-    enabled: false, // GATED
+    enabled: true, // unlocked 2026-06-17 owner sign-off
   },
 
   // ---- Optimism (L2; gas token: ETH) ----
@@ -125,7 +124,7 @@ export const NETWORKS = {
     defaultRpcUrl: 'https://optimism-rpc.publicnode.com',
     explorer: 'https://optimistic.etherscan.io',
     isTestnet: false,
-    enabled: false, // GATED
+    enabled: true, // unlocked 2026-06-17 owner sign-off
   },
 
   // ---- Avalanche C-Chain (gas token: AVAX — NOT ETH) ----
@@ -149,7 +148,7 @@ export const NETWORKS = {
     defaultRpcUrl: 'https://avalanche-c-chain-rpc.publicnode.com',
     explorer: 'https://snowtrace.io',
     isTestnet: false,
-    enabled: false, // GATED
+    enabled: true, // unlocked 2026-06-17 owner sign-off
   },
 
   // ---- BNB Smart Chain (gas token: BNB; testnet faucet token tBNB — NOT ETH) ----
@@ -173,13 +172,15 @@ export const NETWORKS = {
     defaultRpcUrl: 'https://bsc-rpc.publicnode.com',
     explorer: 'https://bscscan.com',
     isTestnet: false,
-    enabled: false, // GATED
+    enabled: true, // unlocked 2026-06-17 owner sign-off
   },
 };
 
 // Master switch. Even if a network's `enabled` is true, mainnet also requires
-// this to be explicitly turned on. Keep false until audit + verification done.
-export const ALLOW_MAINNET = false;
+// this to be explicitly turned on.
+// Flipped true: 2026-06-17 — owner sign-off after internal security audit
+// (docs/audit-triage/internal-audit-2026-06-17.md). 0 crit/high/med findings.
+export const ALLOW_MAINNET = true;
 
 /**
  * Display-only lookup. Returns the raw network entry (or null) WITHOUT applying

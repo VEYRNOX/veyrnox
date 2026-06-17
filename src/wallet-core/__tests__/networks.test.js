@@ -76,31 +76,34 @@ describe('Phase C network registry — chainIds verified, not guessed', () => {
   });
 });
 
-describe('Phase C mainnet gating — present but unreachable', () => {
-  it('keeps ALLOW_MAINNET false (financial safety gate unchanged)', () => {
-    expect(ALLOW_MAINNET).toBe(false);
+describe('Phase C mainnet — unlocked 2026-06-17 after owner sign-off', () => {
+  it('ALLOW_MAINNET is true (owner sign-off 2026-06-17, internal audit complete)', () => {
+    expect(ALLOW_MAINNET).toBe(true);
   });
 
-  it('registers every mainnet with the verified chainId but GATED (enabled:false)', () => {
+  it('registers every mainnet with the verified chainId and enabled:true', () => {
     for (const m of MAINNETS) {
       const raw = getNetworkInfo(m.key);
       expect(raw).not.toBeNull();
       expect(raw.chainId).toBe(m.chainId);
       expect(raw.symbol).toBe(m.symbol);
       expect(raw.isTestnet).toBe(false);
-      expect(raw.enabled).toBe(false);
+      expect(raw.enabled).toBe(true);
     }
   });
 
-  it('getNetwork() refuses every mainnet while gated', () => {
+  it('getNetwork() resolves every mainnet key without throwing', () => {
     for (const m of MAINNETS) {
-      expect(() => getNetwork(m.key)).toThrow(/gated|not enabled/i);
+      expect(() => getNetwork(m.key)).not.toThrow();
+      const net = getNetwork(m.key);
+      expect(net.chainId).toBe(m.chainId);
+      expect(net.symbol).toBe(m.symbol);
     }
   });
 
-  it('listEnabledNetworks() returns all testnets and NO mainnet', () => {
+  it('listEnabledNetworks() returns all testnets AND all mainnets', () => {
     const keys = listEnabledNetworks().map(n => n.key);
     for (const t of TESTNETS) expect(keys).toContain(t.key);
-    for (const m of MAINNETS) expect(keys).not.toContain(m.key);
+    for (const m of MAINNETS) expect(keys).toContain(m.key);
   });
 });

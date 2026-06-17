@@ -220,7 +220,27 @@ conflate "audited + in the store" with "mainnet on."
 - [ ] Repo access (read-only) + build/run instructions ready.
 - [ ] Internal self-review pass done first (cheap bugs found before paid hours) —
       see docs/SECURITY_REVIEW_CHECKLIST.md.
+- [ ] Automated pre-audit self-review green — `npm run audit:eth`
+      (`scripts/audit/eth-wallet-audit.mjs`): gate-integrity assertions
+      (ALLOW_MAINNET + BTC/SOL switches stay closed), secret/key-egress scan,
+      crypto-hygiene checks, and the repo gates (`check:rng`, full test suite,
+      `npm audit`). See the note below on what a green run does and does NOT mean.
 - [ ] Decide remediation + re-review budget up front.
+
+> **What the automated harness IS — and is NOT.**
+> `npm run audit:eth` is ONE input to the internal audit, not the whole gate. A
+> green run means the automated checks found no red flags — but a grep+test
+> harness cannot find the bug classes that drain wallets: key-lifetime leaks,
+> signing/replay flaws, fee/change logic errors, deniability tells, supply-chain
+> backdoors that pass `npm audit`. "The automated checks found nothing" is not
+> "there is nothing." So a green harness run ALONE does NOT authorize flipping
+> ALLOW_MAINNET — the gate is the full internal flow in the GATE block above
+> (harness + SECURITY_REVIEW_CHECKLIST self-review + owner code review →
+> remediate all crit/high/med → re-review → owner sign-off). An independent
+> third-party audit is the strongest assurance and is recommended, but is not
+> required to flip under the current owner policy. This is an I4 (fail-honest)
+> control: the harness must never be relabeled as "the audit," and "internal"
+> must never be presented as "independent."
 
 ## After the audit
 - **Internal audit (the gate):** remediate all critical/high (and reasonable
