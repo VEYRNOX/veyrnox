@@ -114,7 +114,7 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          When on, your wallet fetches current prices from CryptoCompare. The request sends only a fixed list
+          When on, your wallet fetches current prices and 24h changes from CryptoCompare. The request sends only a fixed list
           of supported coins — never your holdings, balances, or addresses. Off by default; no price calls are
           made until you turn this on.
         </p>
