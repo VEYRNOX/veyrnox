@@ -220,7 +220,27 @@ conflate "audited + in the store" with "mainnet on."
 - [ ] Repo access (read-only) + build/run instructions ready.
 - [ ] Internal self-review pass done first (cheap bugs found before paid hours) —
       see docs/SECURITY_REVIEW_CHECKLIST.md.
+- [ ] Automated pre-audit self-review green — `npm run audit:eth`
+      (`scripts/audit/eth-wallet-audit.mjs`): gate-integrity assertions
+      (ALLOW_MAINNET + BTC/SOL switches stay closed), secret/key-egress scan,
+      crypto-hygiene checks, and the repo gates (`check:rng`, full test suite,
+      `npm audit`). See the note below on what a green run does and does NOT mean.
 - [ ] Decide remediation + re-review budget up front.
+
+> **What the automated pre-audit self-review IS — and is NOT.**
+> `npm run audit:eth` is a PRECONDITION, not the audit. A green run means the
+> automated checks found no red flags — it is a discount lever (see "Good docs +
+> tests cut cost 15–25%" above), the cheap pass done BEFORE the paid firm starts.
+> It is NOT the independent third-party audit, it does NOT satisfy the HARD LINE,
+> and a green run (even with zero critical/high/medium) does NOT authorize
+> flipping ALLOW_MAINNET or any mainnet gate. A grep+test harness cannot find the
+> bug classes that drain wallets — key-lifetime leaks, signing/replay flaws,
+> fee/change logic errors, deniability tells, supply-chain backdoors that pass
+> `npm audit` — which is exactly why the human audit is the gate. "The automated
+> checks found nothing" is not "there is nothing." The gate-flip sequence is
+> unchanged: independent audit → remediate critical/high → re-review → only THEN
+> consider flipping, per the hard line. This is an I4 (fail-honest, fail-closed)
+> control: it must never be relabeled as, or wired to stand in for, the audit.
 
 ## After the audit
 - **Internal audit (the gate):** remediate all critical/high (and reasonable
