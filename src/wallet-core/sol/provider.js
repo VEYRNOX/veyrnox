@@ -197,3 +197,32 @@ export async function confirmTx(networkKey, signature, blockhash, lastValidBlock
   const conn = getConnection(networkKey);
   return conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
 }
+
+/**
+ * Did a broadcast signature actually land on-chain? Used by send.js BEFORE it
+ * rebuilds-and-resends on a blockhash-expiry error (internal audit M-1): a
+ * `TransactionExpired*` from confirmTx only means the client stopped observing
+ * before the deadline — NOT that the tx was excluded. Rebuilding produces a fresh
+ * signature, so resending after a silent inclusion would DOUBLE-SEND. This checks
+ * the just-broadcast signature's status (searching tx history) so the caller only
+ * rebuilds when inclusion is genuinely absent.
+ *
+ * Returns:
+ *   { landed: true,  err }  — found on-chain (err is the on-chain error or null)
+ *   { landed: false, err: null } — definitively not found (safe to rebuild)
+ *   { landed: null,  err: null } — could NOT determine (RPC failed): caller MUST
+ *                                  treat as "do not risk a resend", not as absent.
+ * @param {string} networkKey
+ * @param {string} signature
+ * @returns {Promise<{landed: boolean|null, err: unknown}>}
+ */
+export async function getSignatureLanding(networkKey, signature) {
+  try {
+    const conn = getConnection(networkKey);
+    const { value } = await conn.getSignatureStatus(signature, { searchTransactionHistory: true });
+    if (value == null) return { landed: false, err: null };
+    return { landed: true, err: value.err ?? null };
+  } catch {
+    return { landed: null, err: null }; // uncertain — never assume non-inclusion
+  }
+}
