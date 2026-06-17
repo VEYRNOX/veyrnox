@@ -1,4 +1,3 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -10,13 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
+
+const FMT_USD = { maximumFractionDigits: 0 };
 
 export default function BudgetLimits() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ currency: "ETH", period: "monthly", limit_usd: "", alert_at_percent: 80, enabled: true });
+
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
 
   const { data: budgets = [] } = useQuery({ queryKey: ["budgets"], queryFn: () => base44.entities.BudgetLimit.list() });
   const { data: transactions = [] } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500) });
@@ -34,21 +39,32 @@ export default function BudgetLimits() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["budgets"] }),
   });
 
+  // Returns null when live prices are off — can't convert native amounts to USD honestly.
   const getSpent = (budget) => {
+    if (!liveOn) return null;
     const now = new Date();
     const periodStart = new Date();
     if (budget.period === "daily") periodStart.setDate(now.getDate() - 1);
     else if (budget.period === "weekly") periodStart.setDate(now.getDate() - 7);
     else periodStart.setDate(1);
-
     return transactions
       .filter(tx => tx.type === "send" && tx.currency === budget.currency && new Date(tx.created_date) >= periodStart)
-      .reduce((s, tx) => s + (tx.amount || 0) * (USD_RATES[tx.currency] || 1), 0);
+      .reduce((s, tx) => {
+        const rate = prices?.[tx.currency] ?? null;
+        return rate != null ? s + (tx.amount || 0) * rate : s;
+      }, 0);
   };
 
-  const totalSpend = transactions
-    .filter(tx => tx.type === "send" && new Date(tx.created_date) >= new Date(new Date().setDate(1)))
-    .reduce((s, tx) => s + (tx.amount || 0) * (USD_RATES[tx.currency] || 1), 0);
+  const totalSpend = (() => {
+    if (!liveOn) return null;
+    const monthStart = new Date(new Date().setDate(1));
+    return transactions
+      .filter(tx => tx.type === "send" && new Date(tx.created_date) >= monthStart)
+      .reduce((s, tx) => {
+        const rate = prices?.[tx.currency] ?? null;
+        return rate != null ? s + (tx.amount || 0) * rate : s;
+      }, 0);
+  })();
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -60,9 +76,17 @@ export default function BudgetLimits() {
         <Button onClick={() => setOpen(true)} className="gap-2"><Plus className="h-4 w-4" /> Add Limit</Button>
       </div>
 
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — spend totals require real-time prices to convert native amounts to USD. Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span>.
+        </div>
+      )}
+
       <div className="p-4 rounded-xl border border-border bg-card">
         <p className="text-xs text-muted-foreground">Total Spent This Month</p>
-        <p className="text-2xl font-bold mt-1">${totalSpend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+        <p className="text-2xl font-bold mt-1">
+          {totalSpend != null ? `$${totalSpend.toLocaleString(undefined, FMT_USD)}` : "—"}
+        </p>
       </div>
 
       {budgets.length === 0 ? (
@@ -75,9 +99,9 @@ export default function BudgetLimits() {
         <div className="space-y-3">
           {budgets.map(b => {
             const spent = getSpent(b);
-            const pct = Math.min((spent / b.limit_usd) * 100, 100);
-            const isAlert = pct >= b.alert_at_percent;
-            const isOver = pct >= 100;
+            const pct = spent != null ? Math.min((spent / b.limit_usd) * 100, 100) : null;
+            const isAlert = pct != null && pct >= b.alert_at_percent;
+            const isOver = pct != null && pct >= 100;
             return (
               <div key={b.id} className={`p-4 rounded-xl border bg-card transition-colors ${isOver ? "border-destructive/40" : isAlert ? "border-yellow-500/40" : "border-border"}`}>
                 <div className="flex items-center justify-between mb-3">
@@ -97,10 +121,10 @@ export default function BudgetLimits() {
                     </button>
                   </div>
                 </div>
-                <Progress value={pct} className="h-2 mb-2" />
+                <Progress value={pct ?? 0} className="h-2 mb-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>${spent.toLocaleString(undefined, { maximumFractionDigits: 0 })} spent</span>
-                  <span className={isOver ? "text-destructive font-semibold" : ""}>${b.limit_usd.toLocaleString()} limit · {pct.toFixed(0)}%</span>
+                  <span>{spent != null ? `$${spent.toLocaleString(undefined, FMT_USD)} spent` : "—"}</span>
+                  <span className={isOver ? "text-destructive font-semibold" : ""}>${b.limit_usd.toLocaleString()} limit{pct != null ? ` · ${pct.toFixed(0)}%` : ""}</span>
                 </div>
               </div>
             );

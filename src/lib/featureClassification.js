@@ -181,8 +181,8 @@ export const CLASSIFICATION = {
     note: 'Pure local CRUD on base44.entities.SavingsGoal. Users enter USD target and current amounts directly; progress bars are computed from those user-entered values. No currency conversion, no fabricated data, no external call.',
   },
   '/budget': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Reads real local Transaction records (base44.entities.Transaction) and BudgetLimit records, but all crypto-to-USD conversion for "Total Spent This Month" and per-budget spend uses hardcoded stale USD_RATES — displayed spend figures will silently drift from reality as markets move.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Reads real local Transaction and BudgetLimit records. USD spend conversion uses opt-in live prices (useLivePrices); shows "—" when live prices are off — no stale USD_RATES.',
   },
   '/net-worth': {
     verdict: 'live', dataSource: 'wallet-core',

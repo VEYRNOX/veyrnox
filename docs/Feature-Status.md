@@ -236,6 +236,13 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   persisted in the record — those figures remain accurate regardless of later price moves. Exit price is now
   required for manually-added closed trades (no silent stale-price fill). Trade records persist via
   `base44.entities.PLRecord` (on-device). Off-state verified in-browser; live-data render UNAUDITED-PROVISIONAL.
+- Budget Limits (`/budget`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live. The
+  hardcoded stale `USD_RATES` object used to convert native transaction amounts to USD is gone. "Total Spent
+  This Month" and per-budget spend now come from `useLivePrices()` gated behind `isLivePricesEnabled()` (I2).
+  When off: all spend totals show "—", progress bars show empty, alert/over indicators are suppressed, and a
+  banner directs the user to Settings → Live Prices (I4). Budget limits themselves (`limit_usd`) are
+  user-entered constants — unaffected. Records persist via `base44.entities.BudgetLimit` and
+  `base44.entities.Transaction` (on-device). Live-data render UNAUDITED-PROVISIONAL.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅

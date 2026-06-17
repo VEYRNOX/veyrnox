@@ -85,7 +85,8 @@ describe('registryEntriesFromClassification', () => {
         '/receipt', '/recurring', '/split-bill',
         '/portfolio-rewind', '/index-builder', '/ai-rebalancer',
         // '/pl' reclassified disabled→live (CURRENT_PRICES replaced with opt-in live feed), so it drops out here.
-        '/budget', '/tax',
+        // '/budget' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices), so it drops out here.
+        '/tax',
         // '/watchlist' reclassified disabled→live (real opt-in price feeds), so it drops out here.
         '/nft', '/snapshots', '/onchain', '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
