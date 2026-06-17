@@ -29,6 +29,9 @@ const TO = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
 function providerReporting(chainId) {
   return {
     getNetwork: async () => ({ chainId: BigInt(chainId) }),
+    // The guard now reads the RPC's REAL chainId via raw eth_chainId (not
+    // getNetwork, which is pinned under staticNetwork). Report it as a hex quantity.
+    send: async (method) => (method === 'eth_chainId' ? '0x' + chainId.toString(16) : undefined),
   };
 }
 
@@ -68,5 +71,20 @@ describe('chainId-verify guard rejects a mismatched network per chain', () => {
     await expect(
       signAndBroadcast({ networkKey: 'sepolia', privateKey: VALID_PK, to: 'not-an-address', amountEth: '1' })
     ).rejects.toThrow(/invalid recipient/i);
+  });
+
+  // Regression: the guard must trust the RAW eth_chainId, not provider.getNetwork()
+  // (which returns the constructor-pinned chainId under staticNetwork and so can be
+  // a lie). A provider whose getNetwork reports the EXPECTED chain but whose real
+  // eth_chainId is a DIFFERENT chain must still be rejected — this is the exact
+  // staticNetwork no-op that previously made the guard dead.
+  it('rejects when getNetwork lies but raw eth_chainId reveals the wrong chain', async () => {
+    getProvider.mockReturnValue({
+      getNetwork: async () => ({ chainId: BigInt(11155111) }),               // pinned lie (== expected)
+      send: async (m) => (m === 'eth_chainId' ? '0x' + (1).toString(16) : undefined), // real chain = 1
+    });
+    await expect(
+      signAndBroadcast({ networkKey: 'sepolia', privateKey: VALID_PK, to: TO, amountEth: '0.001' })
+    ).rejects.toThrow(/wrong network/i);
   });
 });

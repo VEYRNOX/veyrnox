@@ -65,6 +65,7 @@ const CHAINS = [
 function makeFakeProvider(chainId, capture) {
   return {
     getNetwork: async () => ({ chainId: BigInt(chainId), name: `test-${chainId}` }),
+    send: async (method) => (method === 'eth_chainId' ? '0x' + chainId.toString(16) : undefined),
     getTransactionCount: async () => 7, // arbitrary fixed nonce
     broadcastTransaction: async (signedTx) => {
       capture.raw = signedTx;

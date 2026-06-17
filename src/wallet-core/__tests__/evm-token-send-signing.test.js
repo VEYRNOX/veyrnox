@@ -45,6 +45,7 @@ const FEE = {
 function makeFakeProvider(chainId, capture, decimalsAnswer) {
   return {
     getNetwork: async () => ({ chainId: BigInt(chainId), name: `test-${chainId}` }),
+    send: async (method) => (method === 'eth_chainId' ? '0x' + chainId.toString(16) : undefined),
     getTransactionCount: async () => 3,
     // ethers Contract.decimals() -> signer.call() -> provider.call(); return uint8.
     call: async () => abi.encode(['uint8'], [decimalsAnswer]),
