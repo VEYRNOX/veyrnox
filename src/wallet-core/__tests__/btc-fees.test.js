@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildBtcTiers, clampMonotonic, BTC_TIERS, TYPICAL_INPUTS, TYPICAL_OUTPUTS } from '../btc/fees.js';
 import { selectCoins, estimateFeeSats } from '../btc/coinselect.js';
+import { clampFeeRate, MAX_FEE_RATE } from '../btc/provider.js';
 
 describe('buildBtcTiers — sat/vByte tiers + display estimate', () => {
   it('assembles slow/standard/fast with a typical-tx fee estimate', () => {
@@ -33,6 +34,27 @@ describe('clampMonotonic — never show Slow > Fast on a quiet testnet', () => {
   });
   it('leaves equal rates equal (no invented spread)', () => {
     expect(clampMonotonic([3, 3, 3])).toEqual([3, 3, 3]);
+  });
+});
+
+describe('clampFeeRate — bound the untrusted indexer fee rate (audit H-1)', () => {
+  it('floors fractional/zero/garbage to 1 sat/vB', () => {
+    expect(clampFeeRate(0)).toBe(1);
+    expect(clampFeeRate(0.3)).toBe(1);
+    expect(clampFeeRate(-5)).toBe(1);
+    expect(clampFeeRate(undefined)).toBe(1);
+    expect(clampFeeRate('not-a-number')).toBe(1);
+  });
+  it('passes through legitimate rates (rounded up)', () => {
+    expect(clampFeeRate(1)).toBe(1);
+    expect(clampFeeRate(7)).toBe(7);
+    expect(clampFeeRate(12.1)).toBe(13);
+    expect(clampFeeRate(MAX_FEE_RATE)).toBe(MAX_FEE_RATE);
+  });
+  it('clamps a hostile/absurd indexer rate to the ceiling (no drain-as-fee)', () => {
+    expect(clampFeeRate(500000)).toBe(MAX_FEE_RATE);
+    expect(clampFeeRate(MAX_FEE_RATE + 1)).toBe(MAX_FEE_RATE);
+    expect(clampFeeRate(Number.MAX_SAFE_INTEGER)).toBe(MAX_FEE_RATE);
   });
 });
 

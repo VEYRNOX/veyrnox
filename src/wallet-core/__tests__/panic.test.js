@@ -150,6 +150,28 @@ describe('panic wipe', () => {
     expect(after.clean).toBe(true);
   });
 
+  it('wipes the deniability tells in localStorage and reports them honestly (C-1)', async () => {
+    // The forensic artifacts a panic wipe must also destroy — leaving any of these
+    // proves the coercion-resistance stack was in use (and the decoy salt + a
+    // coerced PIN reproduces the deterministic decoy). Internal audit C-1.
+    const TELLS = ['veyrnox-pin-decoy-salt', 'veyrnox-auth-model', 'veyrnox-audit-log'];
+    await populateDevice();
+    for (const k of TELLS) localStorage.setItem(k, 'x');
+
+    // Before: inspection must SEE the tells (clean is honestly false).
+    const before = await inspectKeyMaterial();
+    expect(before.clean).toBe(false);
+    for (const k of TELLS) expect(before.localStorageResidue).toContain(k);
+
+    const report = await panicWipeLocal();
+
+    // After: every tell is gone from storage AND the report says clean.
+    for (const k of TELLS) expect(localStorage.getItem(k)).toBeNull();
+    expect(report.localStorageResidue).toEqual([]);
+    expect(report.clean).toBe(true);
+    expect((await inspectKeyMaterial()).clean).toBe(true);
+  });
+
   it('removing the panic PIN wipes nothing else', async () => {
     await populateDevice();
     await clearPanicVault();
