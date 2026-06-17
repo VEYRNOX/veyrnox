@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { fetchMarketPricesUsd, MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,18 +11,7 @@ import { Bell, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, CheckCircle2 }
 import { toast } from "sonner";
 import moment from "moment";
 
-const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
-
-async function fetchLivePrices() {
-  const res = await fetch(
-    "https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,USDT,BNB,SOL,USDC,XRP,DOGE,ADA,TRX&tsyms=USD&extraParams=safecryptowallet"
-  );
-  const data = await res.json();
-  const prices = {};
-  for (const [coin, val] of Object.entries(data)) prices[coin] = val.USD;
-  return prices;
-}
 
 export default function PriceAlerts() {
   const queryClient = useQueryClient();
@@ -49,7 +39,7 @@ export default function PriceAlerts() {
 
   const { data: prices = {} } = useQuery({
     queryKey: ["live-prices"],
-    queryFn: fetchLivePrices,
+    queryFn: fetchMarketPricesUsd,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -83,7 +73,7 @@ export default function PriceAlerts() {
   const checkNow = async () => {
     setChecking(true);
     try {
-      const livePrices = await fetchLivePrices();
+      const livePrices = await fetchMarketPricesUsd();
       const active = await base44.entities.PriceAlert.filter({ status: "active" });
       let triggered = 0;
       for (const alert of active) {
@@ -153,7 +143,7 @@ export default function PriceAlerts() {
 
       {/* Live prices ticker */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {CURRENCIES.map(c => (
+        {MARKET_SYMBOLS.map(c => (
           <div key={c} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border">
             <div className="h-2 w-2 rounded-full" style={{ background: CURRENCY_COLORS[c] }} />
             <span className="text-xs font-mono font-semibold">{c}</span>
@@ -255,7 +245,7 @@ export default function PriceAlerts() {
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {CURRENCIES.map(c => (
+                  {MARKET_SYMBOLS.map(c => (
                     <SelectItem key={c} value={c}>
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full" style={{ background: CURRENCY_COLORS[c] }} />
