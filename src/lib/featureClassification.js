@@ -26,7 +26,7 @@ export const ALL_ROUTE_PATHS = [
   '/correlation', '/split-bill', '/session-manager', '/receipt', '/tx-history',
   '/address-checker', '/fee-analytics', '/correlation-timeline',
   '/dashboard-widgets', '/shared-portfolio', '/referrals', '/wallet-seed-qr',
-  '/hardware-wallet', '/rasp-security', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
+  '/hardware-wallet', '/rasp-security', '/audit-log', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
   '/index-builder', '/messenger-alerts', '/voice-commands', '/leaderboard',
   '/public-profiles', '/ai-rebalancer', '/token-approvals', '/network-manager',
   '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
@@ -320,7 +320,11 @@ export const CLASSIFICATION = {
   },
   '/rasp-security': {
     verdict: 'live', dataSource: 'static',
-    note: 'Honest current-state RASP surface. Renders only global build-state facts (policy built, detection pending, unwired, unaudited) read from featureCatalogue (resolveStatus), plus the DESIGNED allow/warn/block ladder as static copy. It imports no degrade()/detect() runtime and makes no network call — pure presentation. The honesty-lock (§5) means it cannot show "active" unless the catalogue resolves RASP to verified, which it cannot until the detector legs land and verify.',
+    note: 'RASP surface — browser-level detection now active. Calls detect(browserProbeSource) at render time (set-blind, pure environment function); shows live condition value. raspSurfaceModel derives "browser-active" from BUILT catalogue status. Stat tiles updated: detection=browser-active, wired-to-send=yes. OS-level probes (root/jailbreak) still audit-gated. UNAUDITED-PROVISIONAL.',
+  },
+  '/audit-log': {
+    verdict: 'live', dataSource: 'local-vault',
+    note: 'Opt-in encrypted audit log viewer. Reads the AES-GCM ring-buffer blob from the primary vault (quaternary key) via WalletProvider.readAuditLogEntries(). auditLog.js is never imported by the page directly (enforced by audit-log-honest-disabled.test.js). Off by default; primary-session only; returns [] in decoy/hidden sessions. Displays at most 100 entries ({ type, ts } ONLY). Toggle + clear via WalletProvider context.',
   },
   '/smart-alerts': {
     verdict: 'live', dataSource: 'base44-entities',

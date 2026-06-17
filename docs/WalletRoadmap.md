@@ -67,8 +67,8 @@
 - Watch wallets — ✅ (MOCK removed; USD_RATES → useLivePrices opt-in)
 
 ## PHASE S4 — Hardening & monitoring
-- RASP (jailbreak/root/tamper) — 🟡 (degradation policy + response-symmetry guard built + unit-tested in src/rasp/; detector legs audit-gated pending real-device verification)
-- Audit log — 🟡 (ring-buffer AES-GCM in quaternary vault blob built in wallet-core/auditLog.js; UI surfacing audit-gated per source: "UI surfacing … remain audit-gated and unbuilt")
+- RASP (jailbreak/root/tamper) — ✅ browser-level (navigator.webdriver → HOOKED → signing blocked; CLEAN for normal browsers; degradation policy + send-path wiring + I3 guard built + tested; OS-level probes audit-gated pending native plugin + real-device verification)
+- Audit log — ✅ (/audit-log live; AES-GCM ring-buffer 100 entries { type, ts } ONLY; opt-in off-by-default; no-op in decoy/hidden; UI surfaced via WalletProvider gated context; D1–D7 multi-set shape not built)
 - Risk limits / risk scoring (rule-based) — ✅ (rule-based on-device risk score in src/risk/; transparent, explainable, UNAUDITED-PROVISIONAL)
 - Encrypted cloud backup (ciphertext only) — 📋
 

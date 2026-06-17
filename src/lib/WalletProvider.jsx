@@ -86,7 +86,10 @@ import {
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
 import { getOrCreateDeviceSalt, clearDeviceSalt } from '@/wallet-core/decoyFallback';
 import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
-import { recordAuditEvent, auditSecretForSession } from '@/wallet-core/auditLog';
+import {
+  recordAuditEvent, readAuditLog, clearAuditLog,
+  auditSecretForSession, isAuditLogEnabled, setAuditLogEnabled,
+} from '@/wallet-core/auditLog';
 import { getAuthModel, setAuthModel, shouldCacheUnlockSecret, clearAuthModel } from '@/lib/authModel';
 import { provisionPinWallet } from '@/lib/pinOnboarding';
 import { provisionPinRecovery } from '@/lib/pinRecovery';
@@ -1477,6 +1480,34 @@ export function WalletProvider({ children }) {
     }
   }, [isDecoy, isHidden]);
 
+  // Audit log opt-in state (React-tracked; localStorage is the persistent source).
+  const [auditLogEnabled, setAuditLogEnabledState] = useState(() => {
+    try { return isAuditLogEnabled(); } catch { return false; }
+  });
+
+  const toggleAuditLog = useCallback((on) => {
+    setAuditLogEnabled(on);       // persist to localStorage
+    setAuditLogEnabledState(on);  // update React state so the UI re-renders
+  }, []);
+
+  // Read the encrypted audit log for the primary session. Returns [] in a
+  // decoy/hidden session, when locked, or if the log has never been written.
+  // Safe to call from any page — auditLog.js is never imported by pages directly.
+  const readAuditLogEntries = useCallback(async () => {
+    const secret = auditSecretForSession({
+      isDecoy,
+      isHidden,
+      primaryMnemonic: containerRef.current?.wallets?.[0]?.mnemonic,
+    });
+    if (!secret) return [];
+    try { return await readAuditLog(secret); } catch { return []; }
+  }, [isDecoy, isHidden]);
+
+  // Delete the audit blob without touching any other vault key.
+  const clearAuditLogEntries = useCallback(async () => {
+    try { await clearAuditLog(); } catch { /* non-critical */ }
+  }, []);
+
   const value = {
     isUnlocked,
     // ── MULTI-WALLET (feat/multi-wallet-portfolio) ──
@@ -1613,10 +1644,14 @@ export function WalletProvider({ children }) {
     // timeout preference and changes it; lock status is `isUnlocked` above.
     autoLockValue,
     setAutoLockTimeout,
-    // AUDIT LOG (opt-in, unsurfaced). recordAudit(type) logs an allowlisted
-    // benign event in the PRIMARY session only; no-op in decoy/hidden or when the
-    // user hasn't opted in. See wallet-core/auditLog.js.
+    // AUDIT LOG (opt-in). recordAudit(type) writes; the rest are the read/toggle
+    // surface now that /audit-log is live. All four reach auditLog.js only via
+    // this provider — pages never import auditLog.js directly.
     recordAudit,
+    auditLogEnabled,
+    toggleAuditLog,
+    readAuditLogEntries,
+    clearAuditLogEntries,
     // Last successful unlock (previous primary unlock; null in decoy/hidden/first
     // open). Shown read-only on the Security Dashboard as a tamper signal.
     lastUnlockAt,
