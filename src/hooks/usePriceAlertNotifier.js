@@ -61,10 +61,14 @@ export function usePriceAlertNotifier() {
 
     const pollAlerts = async () => {
       try {
-        const current = await fetchMarketPricesUsd(); // { [coin]: usdNumber }, fixed MARKET_SYMBOLS
-
-        const prev = prevPricesRef.current;
+        // Local-first: read the active alerts (local IndexedDB) BEFORE any
+        // network call. No active alerts ⇒ nothing to evaluate ⇒ NO price
+        // egress (I2: no third-party heartbeat for a user who set no alerts).
         const alerts = await base44.entities.PriceAlert.filter({ status: "active" });
+        if (alerts.length === 0) return;
+
+        const current = await fetchMarketPricesUsd(); // { [coin]: usdNumber }, fixed MARKET_SYMBOLS
+        const prev = prevPricesRef.current;
 
         for (const alert of alerts) {
           const c = alert.currency;
