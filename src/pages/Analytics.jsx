@@ -1,4 +1,3 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -7,7 +6,8 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   BarChart, Bar, Legend,
 } from "@/lib/recharts";
-import { TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2 } from "lucide-react";
+const fmt = (/** @type {number} */ v) => Number(v).toLocaleString();
+import { TrendingUp, DollarSign, Wallet, BarChart2 } from "lucide-react";
 import moment from "moment";
 
 const COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
@@ -17,9 +17,6 @@ const RANGES = [
   { label: "90D", days: 90 },
   { label: "1Y", days: 365 },
 ];
-
-const fmt = (n) => "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-const fmtSmall = (n) => "$" + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 const CustomTooltip = (/** @type {any} */ { active, payload, label } = {}) => {
   if (!active || !payload?.length) return null;
@@ -59,24 +56,20 @@ export default function Analytics() {
     queryFn: () => base44.entities.Transaction.list("-created_date", 500),
   });
 
-  const totalUSD = useMemo(
-    () => wallets.reduce((sum, w) => sum + (w.balance || 0) * (USD_RATES[w.currency] || 1), 0),
-    [wallets]
-  );
-
+  // Native balance per currency — no stale USD conversion.
   const allocationData = useMemo(() => {
     const grouped = {};
     for (const w of wallets) {
-      const usd = (w.balance || 0) * (USD_RATES[w.currency] || 1);
-      grouped[w.currency] = (grouped[w.currency] || 0) + usd;
+      grouped[w.currency] = (grouped[w.currency] || 0) + (w.balance || 0);
     }
     return Object.entries(grouped)
-      .map(([name, value]) => ({ name, value: Math.round(value) }))
+      .map(([name, value]) => ({ name, value }))
       .filter(d => d.value > 0)
       .sort((a, b) => b.value - a.value);
   }, [wallets]);
 
-  const monthlyData = useMemo(() => {
+  // Transaction counts per day — no USD needed.
+  const txCountData = useMemo(() => {
     const cutoff = moment().subtract(range, "days");
     const filtered = transactions.filter(tx => moment(tx.created_date).isAfter(cutoff));
     const buckets = {};
@@ -84,50 +77,33 @@ export default function Analytics() {
       const key = moment().subtract(i, "days").format(range <= 30 ? "MMM D" : "MMM 'YY");
       if (!buckets[key]) buckets[key] = 0;
     }
-    let running = totalUSD;
-    const sorted = [...filtered].sort((a, b) => /** @type {any} */ (new Date(b.created_date)) - /** @type {any} */ (new Date(a.created_date)));
-    for (const tx of sorted) {
+    for (const tx of filtered) {
       const key = moment(tx.created_date).format(range <= 30 ? "MMM D" : "MMM 'YY");
-      const usd = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);
-      if (tx.type === "send" || tx.type === "swap") running += usd;
-      else running -= usd;
-      if (buckets[key] !== undefined) buckets[key] = Math.max(0, running);
+      if (buckets[key] !== undefined) buckets[key] += 1;
     }
-    const entries = Object.entries(buckets);
-    let last = totalUSD;
-    for (let i = entries.length - 1; i >= 0; i--) {
-      if (entries[i][1] === 0) entries[i][1] = last;
-      else last = entries[i][1];
-    }
-    return entries
+    return Object.entries(buckets)
       .filter((_, idx) => range > 30 ? idx % 7 === 0 : true)
-      .map(([date, value]) => ({ date, value: Math.round(value) }));
-  }, [transactions, totalUSD, range]);
+      .map(([date, value]) => ({ date, value }));
+  }, [transactions, range]);
 
-  const pnlData = useMemo(() => {
+  // Monthly sent/received counts.
+  const activityData = useMemo(() => {
     const months = {};
     for (let i = 5; i >= 0; i--) {
       const key = moment().subtract(i, "months").format("MMM");
-      months[key] = { month: key, gains: 0, losses: 0 };
+      months[key] = { month: key, received: 0, sent: 0 };
     }
     for (const tx of transactions) {
       const key = moment(tx.created_date).format("MMM");
       if (!months[key]) continue;
-      const usd = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);
-      if (tx.type === "receive") months[key].gains += usd;
-      if (tx.type === "send") months[key].losses += usd;
+      if (tx.type === "receive") months[key].received += 1;
+      if (tx.type === "send") months[key].sent += 1;
     }
-    return Object.values(months).map(m => ({
-      ...m,
-      gains: Math.round(m.gains),
-      losses: Math.round(m.losses),
-    }));
+    return Object.values(months);
   }, [transactions]);
 
-  const totalGains = pnlData.reduce((s, m) => s + m.gains, 0);
-  const totalLosses = pnlData.reduce((s, m) => s + m.losses, 0);
-  const netPnL = totalGains - totalLosses;
   const bestAsset = allocationData[0];
+  const totalTx = transactions.length;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -141,20 +117,16 @@ export default function Analytics() {
         <div className="rounded-xl border border-border bg-card p-3 space-y-1">
           <div className="flex items-center gap-1 text-muted-foreground">
             <Wallet className="h-3.5 w-3.5" />
-            <span className="text-[10px] uppercase tracking-wide">Total Value</span>
+            <span className="text-[10px] uppercase tracking-wide">Wallets</span>
           </div>
-          <p className="text-base font-bold">{fmt(totalUSD)}</p>
+          <p className="text-base font-bold">{wallets.length}</p>
         </div>
-        <div className={`rounded-xl border bg-card p-3 space-y-1 ${netPnL >= 0 ? "border-green-500/30" : "border-destructive/30"}`}>
+        <div className="rounded-xl border border-border bg-card p-3 space-y-1">
           <div className="flex items-center gap-1 text-muted-foreground">
-            {netPnL >= 0
-              ? <TrendingUp className="h-3.5 w-3.5 text-green-400" />
-              : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
-            <span className="text-[10px] uppercase tracking-wide">Net PnL</span>
+            <BarChart2 className="h-3.5 w-3.5" />
+            <span className="text-[10px] uppercase tracking-wide">Transactions</span>
           </div>
-          <p className={`text-base font-bold ${netPnL >= 0 ? "text-green-400" : "text-destructive"}`}>
-            {netPnL >= 0 ? "+" : "-"}{fmtSmall(netPnL)}
-          </p>
+          <p className="text-base font-bold">{totalTx}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-3 space-y-1">
           <div className="flex items-center gap-1 text-muted-foreground">
@@ -165,12 +137,12 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Portfolio Growth Chart */}
+      {/* Transaction Activity Chart */}
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
-            <p className="text-sm font-semibold">Portfolio Value</p>
+            <p className="text-sm font-semibold">Transaction Activity</p>
           </div>
           <div className="flex items-center gap-1">
             {RANGES.map(r => (
@@ -187,7 +159,7 @@ export default function Analytics() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={180}>
-          <AreaChart data={monthlyData}>
+          <AreaChart data={txCountData}>
             <defs>
               <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(28,95%,54%)" stopOpacity={0.3} />
@@ -196,9 +168,9 @@ export default function Analytics() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(240,5%,20%)" />
             <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
+            <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} width={28} />
             <Tooltip content={<CustomTooltip />} />
-            <Area type="monotone" dataKey="value" name="Portfolio" stroke="hsl(28,95%,54%)" fill="url(#areaGrad)" strokeWidth={2} dot={false} />
+            <Area type="monotone" dataKey="value" name="Transactions" stroke="hsl(28,95%,54%)" fill="url(#areaGrad)" strokeWidth={2} dot={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -225,7 +197,8 @@ export default function Analytics() {
             </ResponsiveContainer>
             <div className="flex-1 space-y-2">
               {allocationData.map(d => {
-                const pct = totalUSD > 0 ? ((d.value / totalUSD) * 100).toFixed(1) : "0";
+                const total = allocationData.reduce((s, x) => s + x.value, 0);
+                const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : "0";
                 return (
                   <div key={d.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -233,7 +206,7 @@ export default function Analytics() {
                       <span className="text-xs font-semibold">{d.name}</span>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-mono">{fmt(d.value)}</p>
+                      <p className="text-xs font-mono">{d.value.toFixed(4)}</p>
                       <p className="text-[10px] text-muted-foreground">{pct}%</p>
                     </div>
                   </div>
@@ -244,21 +217,21 @@ export default function Analytics() {
         )}
       </div>
 
-      {/* Monthly PnL */}
+      {/* Monthly Transaction Counts */}
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2">
           <BarChart2 className="h-4 w-4 text-primary" />
           <p className="text-sm font-semibold">Monthly Activity (6 months)</p>
         </div>
         <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={pnlData} barCategoryGap="30%">
+          <BarChart data={activityData} barCategoryGap="30%">
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(240,5%,20%)" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
+            <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} width={28} />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
-            <Bar dataKey="gains" name="Received" fill="#22c55e" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="losses" name="Sent" fill="#ef4444" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="received" name="Received" fill="#22c55e" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="sent" name="Sent" fill="#ef4444" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

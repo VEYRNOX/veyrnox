@@ -80,6 +80,7 @@ const TokenApprovals = lazy(() => import('./pages/TokenApprovals'));
 const NetworkManager = lazy(() => import('./pages/NetworkManager'));
 const WatchWallets = lazy(() => import('./pages/WatchWallets'));
 const PriceCharts = lazy(() => import('./pages/PriceCharts'));
+const CloudBackup = lazy(() => import('./pages/CloudBackup'));
 const GasFeeControl = lazy(() => import('./pages/GasFeeControl'));
 const SpamTokenFilter = lazy(() => import('./pages/SpamTokenFilter'));
 const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
@@ -188,6 +189,7 @@ const AuthenticatedApp = () => {
           <Route path="/referrals" element={<ReferralTracker />} />
           <Route path="/wallet-seed-qr" element={<WalletSeedQR />} />
           <Route path="/hardware-wallet" element={<HardwareWalletPage />} />
+          <Route path="/cloud-backup" element={<CloudBackup />} />
           <Route path="/biometric-auth" element={<BiometricAuth />} />
           <Route path="/anomaly-detection" element={<AnomalyDetection />} />
           <Route path="/portfolio-rewind" element={<PortfolioRewind />} />

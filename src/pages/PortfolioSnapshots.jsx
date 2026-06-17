@@ -1,13 +1,11 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Camera, Trash2, TrendingUp, TrendingDown } from "lucide-react";
+import { Camera, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "@/lib/recharts";
 import { toast } from "sonner";
 import moment from "moment";
 
@@ -28,16 +26,19 @@ export default function PortfolioSnapshots() {
     queryFn: () => base44.entities.Wallet.list(),
   });
 
-  const currentTotalUSD = wallets.reduce((s, w) => s + (w.balance || 0) * (USD_RATES[w.currency] || 1), 0);
+  // Native balances grouped by currency — no stale USD conversion.
+  const nativeBreakdown = wallets.reduce((acc, w) => {
+    acc[w.currency] = (acc[w.currency] || 0) + (w.balance || 0);
+    return acc;
+  }, {});
+  const walletCount = wallets.length;
 
   const saveSnapshot = useMutation({
     mutationFn: () => {
-      const breakdown = {};
-      wallets.forEach(w => { breakdown[w.currency] = (breakdown[w.currency] || 0) + (w.balance || 0) * (USD_RATES[w.currency] || 1); });
       return base44.entities.PortfolioSnapshot.create({
         label: label || moment().format("DD MMM YYYY HH:mm"),
-        total_usd: currentTotalUSD,
-        breakdown,
+        total_usd: 0,
+        breakdown: nativeBreakdown,
         note,
       });
     },
@@ -54,17 +55,6 @@ export default function PortfolioSnapshots() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] }),
   });
 
-  // Chart data (oldest first)
-  const chartData = [...snapshots].reverse().map(s => ({
-    date: moment(s.created_date).format("DD MMM"),
-    value: s.total_usd,
-    label: s.label,
-  }));
-
-  const latest = snapshots[0];
-  const previous = snapshots[1];
-  const change = latest && previous ? latest.total_usd - previous.total_usd : null;
-  const changePct = change != null && previous ? (change / previous.total_usd) * 100 : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -78,41 +68,20 @@ export default function PortfolioSnapshots() {
         </Button>
       </div>
 
-      {/* Current vs Last */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-4 rounded-xl border border-border bg-card">
-          <p className="text-xs text-muted-foreground mb-1">Current Value</p>
-          <p className="text-xl font-bold">${currentTotalUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-        </div>
-        <div className="p-4 rounded-xl border border-border bg-card">
-          <p className="text-xs text-muted-foreground mb-1">Since Last Snapshot</p>
-          {change != null ? (
-            <div className={`flex items-center gap-1 text-lg font-bold ${change >= 0 ? "text-green-400" : "text-destructive"}`}>
-              {change >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-              {change >= 0 ? "+" : ""}${Math.abs(change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              <span className="text-sm">({changePct?.toFixed(1)}%)</span>
+      {/* Current holdings */}
+      <div className="p-4 rounded-xl border border-border bg-card space-y-1">
+        <p className="text-xs text-muted-foreground mb-2">Current Holdings ({walletCount} wallet{walletCount !== 1 ? "s" : ""})</p>
+        {Object.keys(nativeBreakdown).length === 0
+          ? <p className="text-sm text-muted-foreground">No wallets yet</p>
+          : Object.entries(nativeBreakdown).map(([cur, bal]) => (
+            <div key={cur} className="flex justify-between text-sm">
+              <span className="font-mono text-muted-foreground">{cur}</span>
+              <span className="font-semibold">{bal.toFixed(6)}</span>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No data yet</p>
-          )}
-        </div>
+          ))}
+        <p className="text-[10px] text-muted-foreground pt-1">Snapshots store native balances — no stale USD conversion</p>
       </div>
 
-      {/* Chart */}
-      {chartData.length > 1 && (
-        <div className="p-4 rounded-xl border border-border bg-card">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-4">Value Over Time</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <Tooltip formatter={(v) => [`$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, "Portfolio"]} labelFormatter={l => l} />
-              <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
 
       {/* Snapshot List */}
       {isLoading ? (
@@ -138,12 +107,12 @@ export default function PortfolioSnapshots() {
                   {s.note && <p className="text-xs text-muted-foreground italic">{s.note}</p>}
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold">${s.total_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                  {diff != null && (
-                    <p className={`text-xs ${diff >= 0 ? "text-green-400" : "text-destructive"}`}>
-                      {diff >= 0 ? "+" : ""}${diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </p>
-                  )}
+                  {s.breakdown && Object.keys(s.breakdown).length > 0
+                    ? Object.entries(s.breakdown).slice(0, 3).map(([cur, bal]) => (
+                      <p key={cur} className="text-xs font-mono">{Number(bal).toFixed(4)} {cur}</p>
+                    ))
+                    : <p className="text-xs text-muted-foreground">No breakdown</p>
+                  }
                 </div>
                 <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => deleteSnapshot.mutate(s.id)}>
                   <Trash2 className="h-4 w-4" />
@@ -158,9 +127,14 @@ export default function PortfolioSnapshots() {
         <DialogContent>
           <DialogHeader><DialogTitle>Save Portfolio Snapshot</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Current value to snapshot</p>
-              <p className="text-xl font-bold">${currentTotalUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-1">
+              <p className="text-xs text-muted-foreground">Native balances to snapshot ({walletCount} wallet{walletCount !== 1 ? "s" : ""})</p>
+              {Object.entries(nativeBreakdown).map(([cur, bal]) => (
+                <div key={cur} className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{cur}</span>
+                  <span className="font-semibold font-mono">{bal.toFixed(6)}</span>
+                </div>
+              ))}
             </div>
             <div>
               <Label>Label (optional)</Label>

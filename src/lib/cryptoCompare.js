@@ -72,3 +72,21 @@ export async function fetchMarketChanges24h() {
   }
   return out;
 }
+
+/**
+ * OHLCV candles for a single user-selected symbol from the TOP_CRYPTOS list.
+ * This is user-initiated market data (not a background holdings oracle) — the
+ * symbol is chosen from a fixed display list, not derived from the user's wallet.
+ * Gated behind isLivePricesEnabled() at the call site.
+ *
+ * @param {string} fsym - symbol from TOP_CRYPTOS (BTC, ETH, etc.)
+ * @param {'minute'|'hour'|'day'} resolution
+ * @param {number} limit - number of candles (max 2000)
+ * @returns {Promise<Array<{time:number,open:number,high:number,low:number,close:number,volumefrom:number}>>}
+ */
+export async function fetchOHLCV(fsym, resolution = 'hour', limit = 24) {
+  const endpoint = resolution === 'day' ? 'histoday' : resolution === 'minute' ? 'histominute' : 'histohour';
+  const raw = await getJson(`${BASE}/v2/${endpoint}?fsym=${fsym}&tsym=USD&limit=${limit}&${EXTRA}`);
+  if (raw.Response !== 'Success') throw new Error(`cryptocompare OHLCV: ${raw.Message || raw.Response}`);
+  return raw.Data.Data;
+}

@@ -1,4 +1,3 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -38,7 +37,6 @@ export default function TransactionReceipt() {
     win.print();
   };
 
-  const usdValue = selected ? (selected.amount || 0) * (USD_RATES[selected.currency] || 1) : 0;
   const fee = selected ? (selected.fee || 0) : 0;
 
   return (
@@ -95,7 +93,6 @@ export default function TransactionReceipt() {
                 ["Type", (selected.type || "Transfer").toUpperCase()],
                 ["Asset", selected.currency],
                 ["Amount", `${selected.amount} ${selected.currency}`],
-                ["USD Value", `$${usdValue.toFixed(2)}`],
                 ["Network Fee", fee > 0 ? `${fee} ${selected.currency}` : "—"],
                 ["Status", (selected.status || "completed").toUpperCase()],
                 ["To", selected.recipient_address ? selected.recipient_address.slice(0, 20) + "..." : "—"],

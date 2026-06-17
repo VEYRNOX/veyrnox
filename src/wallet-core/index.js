@@ -10,7 +10,6 @@ export {
   deriveBitcoinAccount,
   deriveSolanaAccount,
   deriveCosmosAccount,
-  deriveTronAccount,
 } from './derivation.js';
 export { encryptVault, decryptVault } from './vault.js';
 // NOTE: the old top-level signing.js (makeSigner/sendNativeTransfer) was removed
