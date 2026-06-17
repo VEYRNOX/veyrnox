@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Newspaper, TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { Newspaper, Clock } from "lucide-react";
 import moment from "moment";
 
 export default function AssetCorrelationTimeline() {
