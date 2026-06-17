@@ -44,17 +44,22 @@ native), confirmed via RPC receipt (status 0x1):
 - **Method caveat:** driven via the **Node wallet-core harness** (the funded vault
   wasn't loadable into the headless preview), NOT the in-app UI. Per project
   discipline a Node send is "necessary, not sufficient" — the bar for flipping an
-  asset `receive_only → live` is a **UI-path** send. So these PROVE the send code
-  works on-chain, but the owner should decide on any `receive_only → live` flip
-  (and may want a UI-path witness first). NOT flipped here.
+  asset `receive_only → live` is a **UI-path** send. These sends PROVE the send code
+  works on-chain.
+- **Owner flip decision (2026-06-17):** After reviewing the on-chain evidence above,
+  the owner directed USDC, USDT, and MATIC to be flipped `receive_only → live` in
+  `src/wallet-core/assets.js`. Each entry now carries the verification txid comment.
+  The flip is marked "harness-assisted, not UI-path" in the code comments — honest
+  record of the method. AVAX and BNB remain `receive_only` (unfunded).
 - The disposable testnet seed used to sign was provided by the owner, used only to
   derive the key transiently, and deleted from disk after the run.
 - AVAX (Fuji) and BNB (BSC testnet) were skipped — unfunded.
 
 ## Scope / honesty
-- Re-verifies the THREE already-`live` EVM assets after the signing change. It does
-  NOT flip any new asset to `live` and does NOT touch `ALLOW_MAINNET` (still false).
+- Re-verifies the THREE already-`live` EVM assets after the signing change.
+- USDC, USDT, and MATIC flipped to `live` by owner direction after on-chain harness
+  confirmation. Does NOT touch `ALLOW_MAINNET` (still false).
 - BTC/SOL (also `live`) were NOT re-exercised here — their stacks are independent of
   the EVM `preflight.js`/amount changes, so they're unaffected; re-verify separately
   if desired.
-- The `receive_only` assets (USDC/USDT/MATIC/AVAX/BNB) remain gated.
+- AVAX/BNB remain `receive_only` (unfunded — no on-chain confirmation yet).
