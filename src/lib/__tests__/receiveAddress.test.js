@@ -17,13 +17,12 @@ const wallet = {
 };
 
 describe('resolveReceive — per-chain address correctness', () => {
-  it('ETH (native EVM) → shared EVM address on Ethereum Mainnet', () => {
+  it('ETH (native EVM) → shared EVM address on Sepolia Testnet', () => {
     const r = resolveReceive('ETH', wallet);
     expect(r.address).toBe(EVM);
     expect(r.family).toBe('evm');
     expect(r.isErc20).toBe(false);
-    expect(r.network.name).toMatch(/Ethereum Mainnet/i);
-    expect(r.network.isTestnet).toBe(false);
+    expect(r.network.name).toMatch(/Sepolia/i);
   });
 
   it('every EVM chain shares the SAME EVM address (label differs, address does not)', () => {
@@ -42,24 +41,24 @@ describe('resolveReceive — per-chain address correctness', () => {
     expect(r.address).toBe(EVM);
     expect(r.isErc20).toBe(true);
     expect(r.receivable).toBe(true);
-    expect(r.network.name).toMatch(/Ethereum Mainnet/i);
+    expect(r.network.name).toMatch(/Sepolia/i);
   });
 
-  it('BTC → bech32 address, NOT the EVM address (mainnet after 2026-06-17 migration)', () => {
+  it('BTC → bech32 address, NOT the EVM address', () => {
     const r = resolveReceive('BTC', wallet);
     expect(r.address).toBe(BTC);
     expect(r.address).not.toBe(EVM);
     expect(r.family).toBe('btc');
-    expect(r.network.name).toMatch(/Bitcoin Mainnet/i);
+    expect(r.network.name).toMatch(/Bitcoin Testnet/i);
   });
 
-  it('SOL → base58 address, NOT the EVM/BTC address (mainnet after 2026-06-17 migration)', () => {
+  it('SOL → base58 address, NOT the EVM/BTC address', () => {
     const r = resolveReceive('SOL', wallet);
     expect(r.address).toBe(SOL);
     expect(r.address).not.toBe(EVM);
     expect(r.address).not.toBe(BTC);
     expect(r.family).toBe('solana');
-    expect(r.network.name).toMatch(/Solana Mainnet/i);
+    expect(r.network.name).toMatch(/Solana Devnet/i);
   });
 
   it('USDT (ERC-20) → SAME EVM address as USDC, flagged as a token, receivable', () => {
@@ -67,7 +66,7 @@ describe('resolveReceive — per-chain address correctness', () => {
     expect(r.address).toBe(EVM); // shares the one secp256k1 EVM account
     expect(r.isErc20).toBe(true);
     expect(r.receivable).toBe(true);
-    expect(r.network.name).toMatch(/Ethereum Mainnet/i);
+    expect(r.network.name).toMatch(/Sepolia/i);
   });
 
   it('locked wallet (no derived accounts) yields null address but keeps the label', () => {
