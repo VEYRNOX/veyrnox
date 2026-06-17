@@ -945,8 +945,14 @@ export default function SendCrypto() {
                 : flowSendEnabled
                   ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
                   : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
-              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span> left</>}
+              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
             </p>
+          )}
+          {amount && Number.isFinite(amountNum) && amountNum <= 0 && (
+            <p className="text-xs text-destructive mt-1">Amount must be greater than zero</p>
+          )}
+          {balanceKnown && amount && Number.isFinite(amountNum) && amountNum > 0 && amountNum > effectiveBalance && (
+            <p className="text-xs text-destructive mt-1">Insufficient balance</p>
           )}
           {(amountUsd != null || balanceUsd != null) && (
             <p className="text-[10px] text-muted-foreground/70 mt-0.5">{USD_REFERENCE_NOTE}</p>
