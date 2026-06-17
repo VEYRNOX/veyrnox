@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchMarketChanges24h } from "@/lib/cryptoCompare.js";
+import { isLivePricesEnabled } from "@/lib/priceFeed.js";
 
 // ── Fixed-basket 24h price-change feed (HOLDINGS-DECOUPLED). ──────────────────
 //
@@ -29,6 +30,7 @@ export function useBasketPrices() {
   const { data, isError, isSuccess } = useQuery({
     queryKey: ["basket-prices"],
     queryFn: fetchMarketChanges24h,
+    enabled: isLivePricesEnabled(),   // off by default ⇒ no 24h-change egress
     staleTime: CACHE_MS,
     refetchInterval: CACHE_MS,
     retry: 1,
