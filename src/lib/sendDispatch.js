@@ -6,6 +6,8 @@
 // amount to a chain's integer base unit without floating-point error, and (2)
 // normalizing each family's distinct send-result shape to one record shape.
 
+import { assertDecimalAmount } from '../wallet-core/amount.js';
+
 /**
  * Convert a decimal amount STRING to integer base units (BTC->sats at 8 decimals,
  * SOL->lamports at 9) using BigInt only — never floating point, which loses
@@ -17,18 +19,11 @@
  * @returns {bigint} amount in integer base units
  */
 export function toBaseUnits(amountStr, decimals) {
-  const s = String(amountStr).trim();
-  // Accept "123", "123.45", or ".45"; reject empty, signs, multiple dots, letters.
-  if (!/^\d+(\.\d+)?$|^\.\d+$/.test(s)) {
-    throw new Error(`Invalid amount: "${amountStr}"`);
-  }
+  // Shared validation rule (the same one the EVM send path now uses) — see
+  // wallet-core/amount.js. Throws on malformed / non-positive / over-precise input.
+  const s = assertDecimalAmount(amountStr, decimals);
   const [whole = '', frac = ''] = s.split('.');
-  if (frac.length > decimals) {
-    throw new Error(`Amount "${amountStr}" has more than ${decimals} decimal places.`);
-  }
-  const units = BigInt((whole || '0') + frac.padEnd(decimals, '0'));
-  if (units <= 0n) throw new Error(`Amount must be positive: "${amountStr}"`);
-  return units;
+  return BigInt((whole || '0') + frac.padEnd(decimals, '0'));
 }
 
 /**
