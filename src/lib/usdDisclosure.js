@@ -16,6 +16,14 @@ export const USD_DISCLOSURE = {
     exempt: 'internal-math',
     note: 'USD_RATES feeds risk ratios only; the page renders a 0–10 score, no $ figure.',
   },
+  '/anomaly-detection': {
+    exempt: 'internal-math',
+    note: 'USD_RATES used for z-score thresholds (large-transfer outlier detection) only; no $ figure is rendered.',
+  },
+  '/fraud': {
+    exempt: 'internal-math',
+    note: 'USD_RATES used for normalising tx amounts into a comparable unit for outlier scoring only; no $ figure is rendered.',
+  },
 };
 
 // Components (not routes) that render a USD_RATES-derived $ figure. A page that

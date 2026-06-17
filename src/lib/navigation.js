@@ -131,6 +131,7 @@ const RAW_NAV_GROUPS = [
       { path: "/address-checker", label: "Address Screening", icon: ShieldQuestion },
       { path: "/wallet-seed-qr", label: "Seed Key QR", icon: Key },
       { path: "/hardware-wallet", label: "Hardware Wallets", icon: Cpu },
+      { path: "/cloud-backup", label: "Cloud Backup", icon: CloudUpload },
       { path: "/dapp-alerts", label: "dApp Domain Check", icon: ShieldAlert },
       { path: "/security-scanner", label: "Pre-Sign Scanner", icon: ScanSearch },
       { path: "/biometric-auth", label: "Biometric Auth", icon: Fingerprint },

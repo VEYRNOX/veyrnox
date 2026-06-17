@@ -69,8 +69,8 @@ export default function OnChainAnalytics() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">On-Chain Analytics</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Transaction activity and wallet insights</p>
+        <h1 className="text-2xl font-bold tracking-tight">Transaction History</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Activity from your local transaction records · no blockchain query is made</p>
       </div>
 
       {/* Summary Stats */}

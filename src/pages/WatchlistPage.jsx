@@ -1,25 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Trash2, TrendingUp, TrendingDown, Star, Edit2, Check } from "lucide-react";
+import { Plus, Trash2, Star, Edit2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { TOP_CRYPTOS, TOP_SYMBOLS } from "@/lib/cryptos";
+import { TOP_SYMBOLS } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
-
-// Top 10 by market cap, from the canonical source. 24h high/low are synthesized
-// around the reference price for the mock display.
-const MOCK_PRICES = Object.fromEntries(
-  TOP_CRYPTOS.map(c => [c.symbol, {
-    price: c.usd,
-    change: c.change24h,
-    high: +(c.usd * 1.04).toPrecision(6),
-    low: +(c.usd * 0.96).toPrecision(6),
-  }])
-);
 
 const POPULAR = TOP_SYMBOLS;
 
@@ -91,30 +79,26 @@ export default function WatchlistPage() {
       ) : (
         <div className="space-y-2">
           {items.map(item => {
-            const data = MOCK_PRICES[item.symbol] || { price: 0, change: 0, high: 0, low: 0 };
-            const up = data.change >= 0;
-            const atBuy = item.target_buy && data.price <= item.target_buy;
-            const atSell = item.target_sell && data.price >= item.target_sell;
-
             return (
-              <div key={item.id} className={`bg-card border rounded-2xl p-4 transition-colors ${atBuy ? "border-green-500/50" : atSell ? "border-red-500/50" : "border-border"}`}>
+              <div key={item.id} className="bg-card border border-border rounded-2xl p-4 transition-colors">
                 <div className="flex items-center gap-3">
                   <CoinLogo symbol={item.symbol} size={40} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold">{item.symbol}</p>
-                      {atBuy && <Badge className="text-[9px] bg-green-500/20 text-green-500 border-green-500/30">Buy Target</Badge>}
-                      {atSell && <Badge className="text-[9px] bg-red-500/20 text-red-500 border-red-500/30">Sell Target</Badge>}
                     </div>
                     {item.note && <p className="text-xs text-muted-foreground truncate">{item.note}</p>}
-                    <p className="text-[10px] text-muted-foreground">H: ${data.high?.toLocaleString()} · L: ${data.low?.toLocaleString()}</p>
+                    {(item.target_buy || item.target_sell) && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {item.target_buy ? `Buy target: $${item.target_buy}` : ""}
+                        {item.target_buy && item.target_sell ? " · " : ""}
+                        {item.target_sell ? `Sell target: $${item.target_sell}` : ""}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">${data.price.toLocaleString()}</p>
-                    <p className={`text-xs flex items-center gap-0.5 justify-end ${up ? "text-green-500" : "text-red-500"}`}>
-                      {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      {up ? "+" : ""}{data.change}%
-                    </p>
+                    <p className="text-xs text-muted-foreground">Price unavailable</p>
+                    <p className="text-[10px] text-muted-foreground">Connect a live feed</p>
                   </div>
                   <div className="flex gap-1">
                     <button onClick={() => { setEditId(item.id); setForm({ symbol: item.symbol, name: item.name || "", note: item.note || "", target_buy: item.target_buy || "", target_sell: item.target_sell || "" }); }}

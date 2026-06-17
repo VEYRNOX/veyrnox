@@ -2,7 +2,7 @@ import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Sparkles, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
+import { ScanLine, AlertTriangle, CheckCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 
@@ -51,58 +51,107 @@ const SEVERITY_CONFIG = {
 
 const TYPE_LABELS = { large_transfer: "Large Transfer", rapid_transactions: "Rapid Transactions", unusual_hour: "Unusual Hour" };
 
+const CHECKS = [
+  { key: "large_transfer", label: "Large transfer outliers", desc: "Flags sends >2.5σ above your own average" },
+  { key: "rapid_transactions", label: "Velocity bursts", desc: "3+ transactions within a 1-hour window" },
+  { key: "unusual_hour", label: "Off-hours activity", desc: "Transactions between 02:00–05:00 local time" },
+];
+
 export default function AnomalyDetection() {
   const [scanning, setScanning] = useState(false);
-  const [scanned, setScanned] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
   const [dismissed, setDismissed] = useState([]);
 
-  const { data: transactions = [] } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 200) });
+  const { data: transactions = [], isLoading } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 200) });
   const { data: fraudAlerts = [] } = useQuery({ queryKey: ["fraud-alerts"], queryFn: () => base44.entities.FraudAlert.list("-created_date", 20) });
 
-  const scan = async () => {
+  const scan = () => {
     setScanning(true);
-    await new Promise(r => setTimeout(r, 2200));
-    setScanned(true);
+    const found = detectAnomalies(transactions);
+    setScanResult({ anomalies: found, scannedAt: new Date(), total: transactions.length });
+    setDismissed([]);
     setScanning(false);
   };
 
-  const anomalies = detectAnomalies(transactions).filter(a => !dismissed.includes(a.id));
-  const allAlerts = [...anomalies, ...fraudAlerts.map(f => ({ id: f.id, type: f.alert_type, severity: f.severity, detail: f.description, usd: f.amount || 0, fromDB: true }))];
+  const activeAnomalies = scanResult
+    ? scanResult.anomalies.filter(a => !dismissed.includes(a.id))
+    : [];
+  const dbAlerts = fraudAlerts.map(f => ({ id: f.id, type: f.alert_type, severity: f.severity, detail: f.description, usd: f.amount || 0, fromDB: true }));
+  const allAlerts = scanResult ? [...activeAnomalies, ...dbAlerts] : dbAlerts;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div><h1 className="text-xl font-bold">AI Anomaly Detection</h1><p className="text-sm text-muted-foreground">Machine learning analysis of your transaction patterns</p></div>
-
-      <div className="p-5 rounded-xl border border-primary/30 bg-primary/5 text-center space-y-3">
-        <div className="flex justify-center"><Sparkles className="h-8 w-8 text-primary" /></div>
-        <p className="font-semibold">AI Pattern Scanner</p>
-        <p className="text-sm text-muted-foreground">Analyzes {transactions.length} transactions for statistical outliers, velocity spikes, unusual hours and risk patterns</p>
-        <Button onClick={scan} disabled={scanning} className="gap-2"><RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />{scanning ? "Scanning..." : "Run AI Scan"}</Button>
-        {scanned && <p className="text-xs text-green-500">✓ Scan complete — {anomalies.length} anomalies detected</p>}
+      <div>
+        <h1 className="text-xl font-bold">Transaction Anomaly Detection</h1>
+        <p className="text-sm text-muted-foreground">Statistical analysis of your transaction patterns — runs entirely on-device</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Critical", count: allAlerts.filter(a => a.severity === "critical").length, color: "text-destructive" },
-          { label: "High", count: allAlerts.filter(a => a.severity === "high").length, color: "text-orange-500" },
-          { label: "Medium / Low", count: allAlerts.filter(a => ["medium", "low"].includes(a.severity)).length, color: "text-yellow-500" },
-        ].map(s => (
-          <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
-            <p className={`font-bold text-2xl ${s.color}`}>{s.count}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+      <div className="p-5 rounded-xl border border-primary/30 bg-primary/5 space-y-4">
+        <div className="flex items-center gap-3">
+          <ScanLine className="h-6 w-6 text-primary shrink-0" />
+          <div>
+            <p className="font-semibold text-sm">Pattern Scanner</p>
+            <p className="text-xs text-muted-foreground">{isLoading ? "Loading transactions…" : `${transactions.length} transactions loaded · 3 heuristic checks`}</p>
           </div>
-        ))}
+          <Button onClick={scan} disabled={scanning || isLoading} className="gap-2 ml-auto">
+            <RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
+            {scanning ? "Scanning…" : scanResult ? "Re-scan" : "Run Scan"}
+          </Button>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {CHECKS.map(c => (
+            <div key={c.key} className="rounded-lg border border-border bg-background/60 px-3 py-2">
+              <p className="text-xs font-medium">{c.label}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{c.desc}</p>
+              {scanResult && (
+                <p className="text-[10px] font-semibold mt-1 text-primary">
+                  {scanResult.anomalies.filter(a => a.type === c.key).length} found
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+        {scanResult && (
+          <p className="text-xs text-muted-foreground">
+            Last scan: {scanResult.scannedAt.toLocaleTimeString("en-GB")} · {scanResult.total} transactions analysed
+          </p>
+        )}
       </div>
 
-      {allAlerts.length === 0 ? (
+      {scanResult && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Critical", count: allAlerts.filter(a => a.severity === "critical").length, color: "text-destructive" },
+            { label: "High", count: allAlerts.filter(a => a.severity === "high").length, color: "text-orange-500" },
+            { label: "Medium / Low", count: allAlerts.filter(a => ["medium", "low"].includes(a.severity)).length, color: "text-yellow-500" },
+          ].map(s => (
+            <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
+              <p className={`font-bold text-2xl ${s.color}`}>{s.count}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!scanResult && dbAlerts.length === 0 && (
+        <div className="text-center py-14 text-muted-foreground">
+          <ShieldCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium text-foreground">Run a scan to check your transactions</p>
+          <p className="text-sm mt-1">All checks run locally — nothing leaves your device</p>
+        </div>
+      )}
+
+      {scanResult && allAlerts.length === 0 && (
         <div className="text-center py-14 text-muted-foreground">
           <CheckCircle className="h-10 w-10 mx-auto mb-3 text-green-500 opacity-60" />
           <p className="font-medium text-foreground">All Clear</p>
           <p className="text-sm mt-1">No anomalies detected in your transaction history</p>
         </div>
-      ) : (
+      )}
+
+      {allAlerts.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold">{allAlerts.length} Anomalies Found</p>
+          <p className="text-sm font-semibold">{allAlerts.length} {allAlerts.length === 1 ? "Anomaly" : "Anomalies"} Found</p>
           {allAlerts.map(a => {
             const cfg = SEVERITY_CONFIG[a.severity] || SEVERITY_CONFIG.low;
             return (

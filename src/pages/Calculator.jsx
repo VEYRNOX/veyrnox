@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { ArrowLeftRight, RefreshCw, TrendingUp } from "lucide-react";
 import { fetchMarketPricesFiat, MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
+import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
@@ -36,6 +37,7 @@ export default function Calculator() {
     queryFn: fetchPrices,
     refetchInterval: 30_000,
     staleTime: 20_000,
+    enabled: isLivePricesEnabled(),
   });
 
   const rate = prices?.[fromCrypto]?.[toFiat] ?? null;
@@ -75,8 +77,25 @@ export default function Calculator() {
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : null;
 
+  const livePricesOn = isLivePricesEnabled();
+
   return (
     <div className="max-w-lg mx-auto space-y-6">
+      {!livePricesOn && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5">
+          <div className="flex-1 space-y-1">
+            <p className="text-sm font-semibold text-yellow-400">Live prices off</p>
+            <p className="text-xs text-muted-foreground">
+              The converter requires a live price feed (CryptoCompare). Enable live prices in Settings to use it.
+              When on, a fixed public symbol list is sent to CryptoCompare — not your holdings.
+            </p>
+          </div>
+          <button onClick={() => { setLivePricesEnabled(true); window.location.reload(); }}
+            className="shrink-0 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg">
+            Enable
+          </button>
+        </div>
+      )}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Converter</h1>

@@ -1,4 +1,3 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -11,11 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
-const MOCK = [
-  { id: "m1", name: "Vitalik.eth", address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", network: "Ethereum", currency: "ETH", balance: 1580.42, note: "Ethereum founder wallet", is_watch_only: true },
-  { id: "m2", name: "Whale #1", address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", network: "Bitcoin", currency: "BTC", balance: 12.5, note: "Large BTC holder", is_watch_only: true },
-];
-
 export default function WatchWallets() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -23,7 +17,7 @@ export default function WatchWallets() {
   const [form, setForm] = useState({ name: "", address: "", network: "Ethereum", currency: "ETH", note: "", is_watch_only: true });
 
   const { data: wallets = [] } = useQuery({ queryKey: ["watch-wallets"], queryFn: () => base44.entities.Wallet.filter({ is_watch_only: true }) });
-  const displayed = wallets.length > 0 ? wallets : MOCK;
+  const displayed = wallets;
 
   const create = useMutation({
     mutationFn: (/** @type {any} */ d) => base44.entities.Wallet.create({ ...d, balance: 0, is_watch_only: true }),
@@ -62,7 +56,6 @@ export default function WatchWallets() {
       ) : (
         <div className="space-y-3">
           {displayed.map(w => {
-            const usdValue = (w.balance || 0) * (USD_RATES[w.currency] || 1);
             const explorer = EXPLORERS[w.network];
             return (
               <div key={w.id} className="p-4 rounded-xl border border-border bg-card">
@@ -90,7 +83,6 @@ export default function WatchWallets() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-bold">{w.balance > 0 ? w.balance.toFixed(4) : "—"} {w.currency}</p>
-                    <p className="text-xs text-muted-foreground">${usdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                     <button onClick={() => remove.mutate(w.id)} className="mt-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
