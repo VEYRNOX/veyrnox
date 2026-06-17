@@ -89,7 +89,7 @@ describe('registryEntriesFromClassification', () => {
         // '/recurring' reclassified disabled→live (honest CRUD with non-custodial banner; redirects to /send for signing), so it drops out here.
         // '/receipt' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices; shows "—" when off), so it drops out here.
         '/split-bill',
-        '/portfolio-rewind',
+        // '/portfolio-rewind' reclassified disabled→live (PRICE_HISTORY removed; real histoday from CryptoCompare, I2 gated), so it drops out here.
         // '/index-builder' reclassified disabled→live (PERF removed; spot prices from useLivePrices per component; no fabricated return), so it drops out here.
         '/ai-rebalancer',
         // '/pl' reclassified disabled→live (CURRENT_PRICES replaced with opt-in live feed), so it drops out here.

@@ -155,8 +155,8 @@ export const CLASSIFICATION = {
 
   // ── Invest group (audit batch 3) ──────────────────────────────────────────
   '/portfolio-rewind': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Reads real local wallet balances via base44.entities.Wallet but applies hardcoded PRICE_HISTORY multipliers (e.g. BTC 30d = 0.85×, 2y = 0.31×) to fabricate past USD values. The chart is a synthetic linear interpolation between invented past and stale-rate present — no real price history is consulted.',
+    verdict: 'live', dataSource: 'external',
+    note: 'PRICE_HISTORY multipliers and USD_RATES removed. Real histoday closes (limit=730) fetched from CryptoCompare for user-held assets via Promise.all, gated on isLivePricesEnabled() (I2). Portfolio value per day = Σ(balance × historical close). Current value uses useLivePrices(). Chart thinned to ~30 points per period. Honest disclaimer: assumes current holdings throughout. Off-state: disabled prompt (I4). staleTime 30min. UNAUDITED-PROVISIONAL.',
   },
   '/index-builder': {
     verdict: 'live', dataSource: 'base44-entities+opt-in-live-prices',

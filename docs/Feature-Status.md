@@ -332,6 +332,12 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   REF_SHARPE), clearly labeled in the UI with an "industry reference estimates" disclaimer. Duplicate
   static Correlation tab dropped (real Pearson available at `/correlation`). Off-state: top banner +
   "—" for all USD metrics. UNAUDITED-PROVISIONAL.
+- Portfolio Rewind (`/portfolio-rewind`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. `PRICE_HISTORY` multipliers and `USD_RATES` removed. Real `histoday` closes (limit=730) fetched from
+  CryptoCompare for user-held assets via `Promise.all`, gated on `isLivePricesEnabled()` (I2). Portfolio value
+  per day = Σ(balance × historical close). Current value uses `useLivePrices()`. Chart thinned to ~30 points
+  per period. Honest disclaimer shown: "assumes you held the same assets throughout." Off-state: disabled
+  prompt (I4). staleTime 30min. Off-state verified in-browser. UNAUDITED-PROVISIONAL.
 - Custom Index Builder (`/index-builder`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
   live. Hardcoded `PERF` object (e.g. BTC: 8.2, ETH: 12.4, SOL: 23.1 — fake weighted return %) removed.
   No fabricated performance figure shown. CRUD (create/edit/delete indexes) and pie chart unchanged — all
