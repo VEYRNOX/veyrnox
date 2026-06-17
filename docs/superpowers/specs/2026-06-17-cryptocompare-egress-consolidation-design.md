@@ -10,6 +10,11 @@ UNAUDITED-PROVISIONAL** (testnet; behavior-preserving — no new user capability
 
 ---
 
+> **Execution note (2026-06-17):** the recon under-counted — there were **five** price callers, not four.
+> `src/pages/PriceAlerts.jsx` had its own inline `fetchLivePrices` (found during Task 3) and was migrated
+> too. Everything below applies to it identically (market USD universe). The "four" framing in this section
+> is the original count; the built feature centralizes all five.
+
 ## 1. Problem
 
 Four files independently call the CryptoCompare price API, each re-declaring the base URL/params and each
