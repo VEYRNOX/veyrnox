@@ -11,9 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { toast } from "sonner";
 import moment from "moment";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
 const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
-const CURRENT_PRICES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 const EMPTY = { asset: "BTC", entry_price: "", exit_price: "", quantity: "", entry_date: "", exit_date: "", status: "open", note: "" };
 
@@ -22,6 +22,10 @@ export default function PLTracking() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY);
 
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
+  const livePrice = (asset) => (liveOn ? (prices?.[asset] ?? null) : null);
+
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["pl-records"],
     queryFn: () => base44.entities.PLRecord.list("-created_date"),
@@ -29,12 +33,15 @@ export default function PLTracking() {
 
   const addRecord = useMutation({
     mutationFn: () => {
-      const exitP = form.status === "closed" && form.exit_price ? parseFloat(form.exit_price) : CURRENT_PRICES[form.asset];
       const qty = parseFloat(form.quantity);
       const entryP = parseFloat(form.entry_price);
-      const pnl_usd = (exitP - entryP) * qty;
-      const pnl_pct = ((exitP - entryP) / entryP) * 100;
-      return base44.entities.PLRecord.create({ ...form, entry_price: entryP, exit_price: exitP, quantity: qty, pnl_usd, pnl_pct });
+      if (form.status === "closed") {
+        const exitP = parseFloat(form.exit_price);
+        const pnl_usd = (exitP - entryP) * qty;
+        const pnl_pct = ((exitP - entryP) / entryP) * 100;
+        return base44.entities.PLRecord.create({ ...form, entry_price: entryP, exit_price: exitP, quantity: qty, pnl_usd, pnl_pct });
+      }
+      return base44.entities.PLRecord.create({ ...form, entry_price: entryP, quantity: qty, exit_price: null, pnl_usd: null, pnl_pct: null });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pl-records"] });
@@ -44,8 +51,7 @@ export default function PLTracking() {
   });
 
   const closeRecord = useMutation({
-    mutationFn: ({ id, asset, entry_price, quantity }) => {
-      const exitP = CURRENT_PRICES[asset];
+    mutationFn: ({ id, entry_price, quantity, exitP }) => {
       const pnl_usd = (exitP - entry_price) * quantity;
       const pnl_pct = ((exitP - entry_price) / entry_price) * 100;
       return base44.entities.PLRecord.update(id, { status: "closed", exit_price: exitP, exit_date: new Date().toISOString(), pnl_usd, pnl_pct });
@@ -61,18 +67,23 @@ export default function PLTracking() {
   const closed = records.filter(r => r.status === "closed");
   const open = records.filter(r => r.status === "open");
   const totalRealised = closed.reduce((s, r) => s + (r.pnl_usd || 0), 0);
-  const totalUnrealised = open.reduce((s, r) => {
-    const cur = CURRENT_PRICES[r.asset] || r.entry_price;
-    return s + (cur - r.entry_price) * r.quantity;
-  }, 0);
+
+  // Unrealised P&L — only from open positions where we have a live price.
+  const openWithPrice = open.filter(r => livePrice(r.asset) != null);
+  const totalUnrealised = openWithPrice.reduce((s, r) => s + (livePrice(r.asset) - r.entry_price) * r.quantity, 0);
+  const showUnrealised = openWithPrice.length > 0;
+
   const winRate = closed.length ? Math.round((closed.filter(r => r.pnl_usd > 0).length / closed.length) * 100) : 0;
 
   const chartData = closed.slice(0, 10).reverse().map(r => ({ label: `${r.asset} ${moment(r.exit_date || r.created_date).format("MMM D")}`, pnl: parseFloat(r.pnl_usd?.toFixed(2) || 0) }));
 
   const RecordRow = ({ r }) => {
-    const unrealisedPnl = r.status === "open" ? ((CURRENT_PRICES[r.asset] || r.entry_price) - r.entry_price) * r.quantity : null;
+    const curP = r.status === "open" ? livePrice(r.asset) : null;
+    const unrealisedPnl = curP != null ? (curP - r.entry_price) * r.quantity : null;
     const displayPnl = r.status === "closed" ? r.pnl_usd : unrealisedPnl;
-    const displayPct = r.status === "closed" ? r.pnl_pct : r.entry_price ? (((CURRENT_PRICES[r.asset] || r.entry_price) - r.entry_price) / r.entry_price) * 100 : 0;
+    const displayPct = r.status === "closed" ? r.pnl_pct : (curP != null && r.entry_price ? ((curP - r.entry_price) / r.entry_price) * 100 : null);
+    const pnlColor = displayPnl != null ? (displayPnl >= 0 ? "text-green-400" : "text-destructive") : "text-muted-foreground";
+    const pctColor = displayPct != null ? (displayPct >= 0 ? "text-green-400" : "text-destructive") : "text-muted-foreground";
     return (
       <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card">
         <div className="flex-1 min-w-0">
@@ -84,17 +95,27 @@ export default function PLTracking() {
           <p className="text-xs text-muted-foreground">{moment(r.entry_date).format("DD MMM YY")}{r.exit_date ? ` → ${moment(r.exit_date).format("DD MMM YY")}` : ""}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className={`text-sm font-bold ${displayPnl >= 0 ? "text-green-400" : "text-destructive"}`}>
-            {displayPnl >= 0 ? "+" : ""}${displayPnl?.toFixed(2)}
+          <p className={`text-sm font-bold ${pnlColor}`}>
+            {displayPnl != null ? `${displayPnl >= 0 ? "+" : ""}$${displayPnl.toFixed(2)}` : "—"}
           </p>
-          <p className={`text-xs ${displayPct >= 0 ? "text-green-400" : "text-destructive"}`}>{displayPct >= 0 ? "+" : ""}{displayPct?.toFixed(1)}%</p>
+          <p className={`text-xs ${pctColor}`}>
+            {displayPct != null ? `${displayPct >= 0 ? "+" : ""}${displayPct.toFixed(1)}%` : ""}
+          </p>
         </div>
         <div className="flex gap-1">
-          {r.status === "open" && (
-            <Button variant="outline" size="sm" onClick={() => closeRecord.mutate({ id: r.id, asset: r.asset, entry_price: r.entry_price, quantity: r.quantity })}>
-              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Close
-            </Button>
-          )}
+          {r.status === "open" && (() => {
+            const exitP = livePrice(r.asset);
+            return (
+              <Button
+                variant="outline" size="sm"
+                disabled={exitP == null}
+                title={exitP == null ? "Enable live prices to close at market" : undefined}
+                onClick={() => exitP != null && closeRecord.mutate({ id: r.id, asset: r.asset, entry_price: r.entry_price, quantity: r.quantity, exitP })}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Close
+              </Button>
+            );
+          })()}
           <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => deleteRecord.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
         </div>
       </div>
@@ -111,10 +132,16 @@ export default function PLTracking() {
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Trade</Button>
       </div>
 
+      {!liveOn && open.length > 0 && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — unrealised P&L and Close Position require real-time prices. Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span>.
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Realised P&L", value: `${totalRealised >= 0 ? "+" : ""}$${totalRealised.toFixed(2)}`, color: totalRealised >= 0 ? "text-green-400" : "text-destructive" },
-          { label: "Unrealised P&L", value: `${totalUnrealised >= 0 ? "+" : ""}$${totalUnrealised.toFixed(2)}`, color: totalUnrealised >= 0 ? "text-green-400" : "text-destructive" },
+          { label: "Unrealised P&L", value: showUnrealised ? `${totalUnrealised >= 0 ? "+" : ""}$${totalUnrealised.toFixed(2)}` : "—", color: showUnrealised ? (totalUnrealised >= 0 ? "text-green-400" : "text-destructive") : "" },
           { label: "Win Rate", value: `${winRate}%`, color: winRate >= 50 ? "text-green-400" : "text-destructive" },
           { label: "Total Trades", value: records.length },
         ].map(s => (
@@ -180,7 +207,7 @@ export default function PLTracking() {
             {[
               { label: "Entry Price (USD) *", key: "entry_price", placeholder: "50000" },
               { label: "Quantity *", key: "quantity", placeholder: "0.5" },
-              ...(form.status === "closed" ? [{ label: "Exit Price (USD)", key: "exit_price", placeholder: "55000" }] : []),
+              ...(form.status === "closed" ? [{ label: "Exit Price (USD) *", key: "exit_price", placeholder: "55000" }] : []),
             ].map(f => (
               <div key={f.key}><Label>{f.label}</Label><Input type="number" value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} className="mt-1" /></div>
             ))}
@@ -189,7 +216,13 @@ export default function PLTracking() {
               {form.status === "closed" && <div><Label>Exit Date</Label><Input type="date" value={form.exit_date} onChange={e => setForm(p => ({ ...p, exit_date: e.target.value }))} className="mt-1" /></div>}
             </div>
             <div><Label>Note</Label><Input value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} placeholder="Optional..." className="mt-1" /></div>
-            <Button className="w-full" onClick={() => addRecord.mutate()} disabled={!form.entry_price || !form.quantity || !form.entry_date || addRecord.isPending}>Save Trade</Button>
+            <Button
+              className="w-full"
+              onClick={() => addRecord.mutate()}
+              disabled={!form.entry_price || !form.quantity || !form.entry_date || (form.status === "closed" && !form.exit_price) || addRecord.isPending}
+            >
+              Save Trade
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

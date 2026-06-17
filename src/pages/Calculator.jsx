@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { ArrowLeftRight, RefreshCw, TrendingUp } from "lucide-react";
+import { isLivePricesEnabled } from "@/lib/priceFeed";
 
 const CRYPTOS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
@@ -38,10 +39,13 @@ export default function Calculator() {
   const [fiatAmount, setFiatAmount] = useState("");
   const [lastEdited, setLastEdited] = useState("crypto"); // "crypto" | "fiat"
 
+  const liveOn = isLivePricesEnabled();
+
   const { data: prices, isLoading, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["conversion-prices"],
     queryFn: fetchPrices,
-    refetchInterval: 30_000,
+    enabled: liveOn,
+    refetchInterval: liveOn ? 30_000 : false,
     staleTime: 20_000,
   });
 
@@ -97,6 +101,12 @@ export default function Calculator() {
           {lastUpdated ? `Updated ${lastUpdated}` : "Refresh"}
         </button>
       </div>
+
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off. Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span> to see conversion rates.
+        </div>
+      )}
 
       {/* Conversion card */}
       <div className="rounded-2xl border border-border bg-card p-5 space-y-3">

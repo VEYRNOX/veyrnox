@@ -215,6 +215,21 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   in-browser; live-data render is unit-tested (`parseBasket`) but not yet eyeballed on a real network. No
   on-chain artifact → not a catalogue "verified" promotion. See
   `docs/superpowers/specs/2026-06-17-watchlist-real-prices-design.md`.
+- Calculator (`/calculator`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `leaks`-disabled → live. The
+  unconditional CryptoCompare `pricemulti` fetch (10 cryptos × 8 fiats) is now gated behind
+  `isLivePricesEnabled()` — `enabled: liveOn` in the `useQuery`, no network call until the user opts in via
+  Settings → Live Prices (I2 fixed). When off: the converter UI renders with null rates and an "Enable live
+  prices" prompt (I4 — no fabricated or stale rate). Symbol list is fixed and holdings-agnostic. Off-state
+  verified in-browser; live-data render UNAUDITED-PROVISIONAL (external network blocked in preview sandbox).
+- P&L Tracking (`/pl`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live. The
+  hardcoded stale `CURRENT_PRICES` object (BTC: 68000, ETH: 3200, …) is gone. Unrealised P&L on open
+  positions and the "Close Position" exit price now come from `useLivePrices()` gated behind
+  `isLivePricesEnabled()` (I2). When off or a symbol is absent from the feed: unrealised P&L shows "—",
+  the "Close Position" button is disabled with a tooltip, the summary card shows no fabricated figure (I4).
+  Closed-trade P&L is computed from the user-supplied or live exit price at the moment of closing and
+  persisted in the record — those figures remain accurate regardless of later price moves. Exit price is now
+  required for manually-added closed trades (no silent stale-price fill). Trade records persist via
+  `base44.entities.PLRecord` (on-device). Off-state verified in-browser; live-data render UNAUDITED-PROVISIONAL.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅
@@ -288,10 +303,11 @@ value / mutate balances without a user signature through wallet-core signing).
 > per-page code read confirms them real. Source: docs/Master-feature-matrix.md (draft).
 
 ### Not-built feature shells (salvage candidates — estimated, unverified)
-Net worth, P&L, spending patterns, snapshots, watchlist, price/smart alerts, fee analytics,
-calculator, address book, session manager, notifications, tax report, invoice generator,
-news sentiment, price charts, analytics/benchmark/correlation, NFT/token enrichment &
-discovery, ERC-20 discovery, payment links, fraud detection. State: shell/fake, unwired.
+Snapshots, price/smart alerts, tax report, invoice generator, news sentiment, price charts,
+analytics/benchmark/correlation, NFT/token enrichment & discovery, ERC-20 discovery,
+payment links, fraud detection. State: shell/fake, unwired.
+(Net worth, fee analytics, watchlist, calculator, P&L, spending patterns, address book
+graduated to verified status above.)
 Disposition: wire per docs/Salvage-roadmap.md; the ⚠ address-leaking ones (analytics, NFT/
 token, ERC-20) become opt-in + privacy-disclosed per docs/Backend-security-architecture.md.
 

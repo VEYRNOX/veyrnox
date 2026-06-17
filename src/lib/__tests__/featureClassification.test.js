@@ -81,8 +81,10 @@ describe('registryEntriesFromClassification', () => {
         '/benchmark', '/what-if', '/correlation', '/correlation-timeline',
         '/news-sentiment',
         // '/fee-analytics' reclassified disabled→live (Slice 1 native-unit rebuild), so it drops out here.
-        '/calculator', '/receipt', '/recurring', '/split-bill',
-        '/portfolio-rewind', '/index-builder', '/ai-rebalancer', '/pl',
+        // '/calculator' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
+        '/receipt', '/recurring', '/split-bill',
+        '/portfolio-rewind', '/index-builder', '/ai-rebalancer',
+        // '/pl' reclassified disabled→live (CURRENT_PRICES replaced with opt-in live feed), so it drops out here.
         '/budget', '/tax',
         // '/watchlist' reclassified disabled→live (real opt-in price feeds), so it drops out here.
         '/nft', '/snapshots', '/onchain', '/erc20-discovery',

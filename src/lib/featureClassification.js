@@ -149,8 +149,8 @@ export const CLASSIFICATION = {
     note: 'Explicitly stubbed: page warns "schedules & reminders only" and the execute path redirects to /send for manual signing (promptSignInSend). Feature cannot actually execute recurring transfers — presents as "Automate regular crypto transfers" but does not deliver that capability.',
   },
   '/calculator': {
-    verdict: 'disabled', reason: 'leaks', dataSource: 'external',
-    note: 'Calls fetch("https://min-api.cryptocompare.com/data/pricemulti?...") — a third-party price-feed API. Sends the list of crypto symbols to CryptoCompare on every load and every 30-second refresh interval.',
+    verdict: 'live', dataSource: 'external',
+    note: 'Crypto ↔ multi-fiat converter. Fetches CryptoCompare pricemulti (10 cryptos × 8 fiats) gated behind isLivePricesEnabled() — no network call unless the user has opted in via Settings → Live Prices (I2). When off the UI renders with null rates and an "Enable live prices" prompt (I4 — never a stale or fabricated rate). The symbol list is fixed and holdings-agnostic. Off-state verified in-browser; live-data render is unit-tested indirectly through fetchPrices but not eyeballed on a real network — UNAUDITED-PROVISIONAL.',
   },
 
   // ── Invest group (audit batch 3) ──────────────────────────────────────────
@@ -167,8 +167,8 @@ export const CLASSIFICATION = {
     note: 'Calls base44.integrations.Core.InvokeLLM for portfolio analysis. Correctly guarded with LLM_AVAILABLE; shows LocalBuildNotice when the LLM endpoint is unavailable in the local build.',
   },
   '/pl': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Trade records are real user-entered data (base44.entities.PLRecord), but unrealised P&L on open positions and the "Close" action both use hardcoded stale CURRENT_PRICES (BTC: 68000, ETH: 3200, …) as the current market price — figures will be silently wrong as markets move.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Trade records are real user-entered data (base44.entities.PLRecord). Unrealised P&L on open positions and the "Close Position" action now use useLivePrices() gated behind isLivePricesEnabled() (I2 — no egress until opted in). When off or the feed is unavailable: unrealised P&L shows "—", the Close button is disabled, and the summary card shows no fabricated figure (I4). The old hardcoded CURRENT_PRICES (BTC: 68000, ETH: 3200, …) are gone. Closed-trade P&L uses the user-supplied or live exit price recorded at close time. Off-state verified in-browser; live-data render UNAUDITED-PROVISIONAL.',
   },
   '/risk': {
     verdict: 'live', dataSource: 'base44-entities',
