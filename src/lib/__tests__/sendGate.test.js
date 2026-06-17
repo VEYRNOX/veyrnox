@@ -162,11 +162,28 @@ describe('gate 8b — composite pre-sign verdict', () => {
   });
 });
 
+describe('gate 8c — BTC pre-sign risk acknowledgement (M-2)', () => {
+  it('blocks an unacknowledged high-severity BTC risk as RISK_CONFIRM', () => {
+    const r = evaluateSendGate({ ...PASS, presign: null, btcRiskBlocked: true });
+    expect(r.allowed).toBe(false);
+    expect(r.code).toBe(SEND_GATE.RISK_CONFIRM);
+    expect(r.message).toBe('Confirm the risk warning before signing.');
+  });
+  it('allows once the BTC risk is acknowledged (btcRiskBlocked false)', () => {
+    const r = evaluateSendGate({ ...PASS, presign: null, btcRiskBlocked: false });
+    expect(r.allowed).toBe(true);
+  });
+});
+
 describe('gate 9 — unlimited approval acknowledgement', () => {
   it('blocks an unacknowledged unlimited approval', () => {
     const r = evaluateSendGate({ ...PASS, blockedByApproval: true });
     expect(r.code).toBe(SEND_GATE.APPROVAL);
     expect(r.message).toBe('Confirm the unlimited-approval warning before signing.');
+  });
+  it('the BTC risk gate (8c) outranks approval', () => {
+    const r = evaluateSendGate({ ...PASS, presign: null, btcRiskBlocked: true, blockedByApproval: true });
+    expect(r.code).toBe(SEND_GATE.RISK_CONFIRM);
   });
 });
 

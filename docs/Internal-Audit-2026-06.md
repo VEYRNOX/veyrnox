@@ -48,7 +48,7 @@ involved) — these are review findings.
 | H-2 6-digit PIN sole at-rest factor (web) | HIGH | ⛔ OPEN | needs the hardware-bound KEK (native + audit); honestly documented, unbuilt |
 | H-3 ENS/SNS egress from deniable session | HIGH | ✅ FIXED | resolution fails closed when `isDecoy \|\| isHidden` |
 | M-1 SOL double-send on retry | MEDIUM | ✅ FIXED | `getSignatureLanding` recheck before rebuild; uncertain → no resend |
-| M-2 BTC preview/risk gate not wired | MEDIUM | 🟡 PARTIAL (r4) | BTC tx preview (inputs/outputs/change/**fee** + decode-only risk flags) now rendered at the verify step via the existing TransactionPreview. **Open:** routing BTC into the `score()`-based hard gate (EVM-shaped today) — preview warns, doesn't block. |
+| M-2 BTC preview/risk gate not wired | MEDIUM | ✅ FIXED (r4+r7) | BTC tx preview (inputs/outputs/change/**fee** + decode-only risk flags) rendered at the verify step (r4); a **high-severity BTC flag now gates the send** behind an explicit acknowledgement (r7) — a dedicated `btcRiskBlocked` → `RISK_CONFIRM` path in the pure `evaluateSendGate` (unit-tested), enforced in both the UI and the sign-time re-check. (A purpose-built BTC gate rather than forcing BTC through the EVM-shaped `score()` engine.) |
 | M-3 untrusted ENS resolver → signing target | MEDIUM | ✅ FIXED (r3) | resolved address is held pending; user must click "Use this address" before it becomes the signing target |
 | M-4 verifier-KDF timing distinguisher | MEDIUM | ✅ FIXED (r2) | password-cohort total-miss now spends an equal verifier KDF before throwing; miss == hit cost. Caller-level timing harness still a follow-up. |
 | M-5 password-cohort storage footprint | MEDIUM | ✅ FIXED (r2) | createWallet + importWallet now provision duress/panic chaff (best-effort, idempotent), matching the PIN cohort; blob count is config-independent. |
@@ -64,6 +64,7 @@ involved) — these are review findings.
 **Round-4 (2026-06-17):** H-1 completed (BTC fee/plan preview wired) + M-2 partial (same).
 **Round-5 (2026-06-17):** OFAC snapshot-age disclosure (LOW).
 **Round-6 (2026-06-17):** supply chain — runtime `ws` highs patched (scoped override).
+**Round-7 (2026-06-17):** M-2 completed — high-severity BTC flag now gates the send (ack).
 **Running total:** 1 CRITICAL fixed, **3 of 3 HIGH fixed** (H-2 excepted — see below),
 5 of 6 MEDIUM fixed (M-2 partial), the foot-gun removed.
 
