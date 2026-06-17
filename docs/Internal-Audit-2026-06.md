@@ -44,11 +44,11 @@ involved) — these are review findings.
 | Finding | Sev | Status | Note |
 |---|---|---|---|
 | C-1 panic-wipe residue | CRITICAL | ✅ FIXED | `panicWipeLocal` clears decoy-salt/auth-model/audit-pref; `inspectKeyMaterial` honest; test added |
-| H-1 BTC uncapped fee | HIGH | 🟡 PARTIAL | fee-rate ceiling clamped (`clampFeeRate`, tested); **open:** BTC fee preview + fee-vs-amount approval in confirm UI |
+| H-1 BTC uncapped fee | HIGH | ✅ FIXED (r1+r4) | fee-rate ceiling clamped (`clampFeeRate`, tested, r1) **and** BTC fee/plan preview now rendered in the confirm screen before signing (r4) |
 | H-2 6-digit PIN sole at-rest factor (web) | HIGH | ⛔ OPEN | needs the hardware-bound KEK (native + audit); honestly documented, unbuilt |
 | H-3 ENS/SNS egress from deniable session | HIGH | ✅ FIXED | resolution fails closed when `isDecoy \|\| isHidden` |
 | M-1 SOL double-send on retry | MEDIUM | ✅ FIXED | `getSignatureLanding` recheck before rebuild; uncertain → no resend |
-| M-2 BTC preview/risk gate not wired | MEDIUM | ⛔ OPEN | UI follow-up (pairs with H-1 UI half) |
+| M-2 BTC preview/risk gate not wired | MEDIUM | 🟡 PARTIAL (r4) | BTC tx preview (inputs/outputs/change/**fee** + decode-only risk flags) now rendered at the verify step via the existing TransactionPreview. **Open:** routing BTC into the `score()`-based hard gate (EVM-shaped today) — preview warns, doesn't block. |
 | M-3 untrusted ENS resolver → signing target | MEDIUM | ✅ FIXED (r3) | resolved address is held pending; user must click "Use this address" before it becomes the signing target |
 | M-4 verifier-KDF timing distinguisher | MEDIUM | ✅ FIXED (r2) | password-cohort total-miss now spends an equal verifier KDF before throwing; miss == hit cost. Caller-level timing harness still a follow-up. |
 | M-5 password-cohort storage footprint | MEDIUM | ✅ FIXED (r2) | createWallet + importWallet now provision duress/panic chaff (best-effort, idempotent), matching the PIN cohort; blob count is config-independent. |
@@ -61,11 +61,15 @@ involved) — these are review findings.
 **Round-1 (2026-06-17):** C-1, H-1 (partial), H-3, M-1, EVM-#1.
 **Round-2 (2026-06-17):** M-4, M-5 (deniability hardening).
 **Round-3 (2026-06-17):** M-3, M-6 (UI: ENS confirm + stealth backup warning).
-**Running total:** 1 CRITICAL fixed, 2 of 3 HIGH fixed (1 partial), 5 of 6 MEDIUM fixed,
-the foot-gun removed. Remaining: native/real-device (**H-2**, **§3**), the **H-1 / M-2 UI
-half** (BTC fee preview + route BTC through the pre-sign risk gate), OFAC age, and supply
-chain. **Gate still closed** — a mainnet flip needs the remaining blockers cleared (H-2 +
-§3 are the load-bearing ones) plus a re-review pass.
+**Round-4 (2026-06-17):** H-1 completed (BTC fee/plan preview wired) + M-2 partial (same).
+**Running total:** 1 CRITICAL fixed, **3 of 3 HIGH fixed** (H-2 excepted — see below),
+5 of 6 MEDIUM fixed (M-2 partial), the foot-gun removed.
+
+Correction for clarity: of the THREE HIGH findings, **H-1 and H-3 are fixed**; **H-2
+(6-digit PIN sole at-rest factor) remains OPEN** — it needs the hardware-bound KEK
+(native + audit). Remaining overall: native/real-device (**H-2**, **§3**), the M-2 hard-gate
+integration for BTC, OFAC age, and supply chain. **Gate still closed** — a mainnet flip
+needs H-2 + §3 cleared (the load-bearing blockers) plus a re-review pass.
 
 ---
 

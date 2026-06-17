@@ -14,13 +14,14 @@ import CoinLogo from "@/components/CoinLogo";
 import TransactionPreview from "@/components/TransactionPreview";
 import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import { toast } from "sonner";
-import { parseEther } from "ethers";
+import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { isDevSendUngated } from "@/lib/devSendOverride";
-import { signAndBroadcastBtc } from "@/wallet-core/btc/send";
+import { signAndBroadcastBtc, estimateBtcSend } from "@/wallet-core/btc/send";
+import { describeBtcPlan } from "@/wallet-core/btc/simulate";
 import { signAndBroadcastSol } from "@/wallet-core/sol/send";
 import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
@@ -430,6 +431,28 @@ export default function SendCrypto() {
       });
     },
     enabled: step === "verify" && !DEMO && (isEvmFamily(selectedAsset) || isErc20)
+      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
+    retry: false,
+    staleTime: 10000,
+  });
+
+  // BTC PRE-SIGN PREVIEW (internal audit H-1/M-2). Bitcoin has no programmable
+  // execution to dry-run, so this is an HONEST decode of the EXACT transaction the
+  // user is about to sign — inputs, outputs, change, and FEE — from the live
+  // coin-selection plan (estimateBtcSend) decoded by describeBtcPlan. Previously the
+  // BTC send showed NO fee and ran no preview; the indexer-reported fee (now clamped
+  // in btc/provider.js) flowed straight into a signed tx. This surfaces the fee +
+  // plan + decode-only risk flags (entire_balance / large_outflow) BEFORE signing.
+  // LOCAL: only the existing Esplora indexer; no third-party scorer; no keys.
+  const btcSim = useQuery({
+    queryKey: ["btc-sim", networkKey, selectedWallet?.address, toAddress, amount],
+    queryFn: async () => {
+      const fromAddress = selectedWallet.address;
+      const amountSats = parseUnits(String(amount), 8); // BTC has 8 decimals; exact, no float
+      const { plan } = await estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats });
+      return describeBtcPlan({ plan, fromAddress });
+    },
+    enabled: step === "verify" && !DEMO && isBtc
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
@@ -1003,6 +1026,10 @@ export default function SendCrypto() {
                 Local-only; warns, never blocks; never claims "safe". */}
             {(isEvmFamily(selectedAsset) || isErc20) && (
               <TransactionPreview result={txSim.data} loading={txSim.isFetching && !txSim.data} error={txSim.error} />
+            )}
+            {/* BTC preview (H-1/M-2): the exact decoded tx + fee before signing. */}
+            {isBtc && (
+              <TransactionPreview result={btcSim.data} loading={btcSim.isFetching && !btcSim.data} error={btcSim.error} />
             )}
 
             {/* Decoded calldata for ERC-20 sends — show EXACTLY what will be
