@@ -20,6 +20,22 @@ export default function PortfolioSnapshots() {
   const [, setTick] = useState(0);
   const bump = () => setTick(n => n + 1);
 
+  // ALL hooks and derived values BEFORE any conditional return:
+  const snapshots = useMemo(() => listSnapshots(walletAddresses), [walletAddresses, showSave]);
+  const currentTotalUSD = portfolio?.grandTotal ?? 0;
+
+  // Chart data (oldest first)
+  const chartData = [...snapshots].reverse().map(s => ({
+    date: new Date(s.created_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+    value: s.total_usd,
+    label: s.label,
+  }));
+
+  const latest = snapshots[0];
+  const previous = snapshots[1];
+  const change = latest && previous ? latest.total_usd - previous.total_usd : null;
+  const changePct = change != null && previous ? (change / previous.total_usd) * 100 : null;
+
   if (!isUnlocked) {
     return (
       <div className="max-w-2xl mx-auto pt-10 text-center space-y-2">
@@ -28,10 +44,6 @@ export default function PortfolioSnapshots() {
       </div>
     );
   }
-
-  const snapshots = useMemo(() => listSnapshots(walletAddresses), [walletAddresses, showSave]);
-
-  const currentTotalUSD = portfolio?.grandTotal ?? 0;
 
   function handleSave() {
     const result = saveSnapshot(walletAddresses, portfolio, label, note);
@@ -49,18 +61,6 @@ export default function PortfolioSnapshots() {
     deleteSnapshot(walletAddresses, id);
     bump();
   }
-
-  // Chart data (oldest first)
-  const chartData = [...snapshots].reverse().map(s => ({
-    date: new Date(s.created_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-    value: s.total_usd,
-    label: s.label,
-  }));
-
-  const latest = snapshots[0];
-  const previous = snapshots[1];
-  const change = latest && previous ? latest.total_usd - previous.total_usd : null;
-  const changePct = change != null && previous ? (change / previous.total_usd) * 100 : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
