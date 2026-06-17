@@ -127,5 +127,5 @@ export function evaluateSendAgainstLimits({
     }
   }
 
-  return { blocked: reasons.length > 0, amountUSD, reasons };
+  return { blocked: reasons.length > 0, amountUSD, reasons: /** @type {Array<{kind:'daily'|'per_tx', currency:string, limitUSD:number, spentTodayUSD?:number, projectedUSD?:number}>} */ (reasons) };
 }

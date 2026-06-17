@@ -82,7 +82,7 @@ async function downloadPDF(rows) {
     const truncate = (s, max) => s.length > max ? s.slice(0, max - 1) + "…" : s;
 
     doc.text(r.date, colX[0], y);
-    doc.setTextColor(...typeColor);
+    doc.setTextColor(...(/** @type {[number, number, number]} */ (typeColor)));
     doc.text(r.type.toUpperCase(), colX[1], y);
     doc.setTextColor(80, 80, 80);
     doc.text(r.asset, colX[2], y);

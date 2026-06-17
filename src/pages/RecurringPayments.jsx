@@ -44,12 +44,12 @@ export default function RecurringPayments() {
   });
 
   const toggleStatus = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.RecurringPayment.update(id, { status: status === "active" ? "paused" : "active" }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.RecurringPayment.update(vars.id, { status: vars.status === "active" ? "paused" : "active" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }),
   });
 
   const deletePayment = useMutation({
-    mutationFn: (id) => base44.entities.RecurringPayment.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.RecurringPayment.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }); toast.success("Payment deleted"); },
   });
 

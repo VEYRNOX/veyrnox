@@ -382,7 +382,7 @@ export default function WalletPortfolioPage() {
   // real). So "across ALL wallets" is already scoped to the unlocked set — the
   // provider never decrypted another set, and usePortfolio cannot reach one.
   const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
-  const byWallet = portfolio?.byWallet || {};
+  const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
 
   const canManage = isUnlocked && !isDecoy && !isHidden;
   const unbacked = canManage ? wallets.filter((w) => !w.backedUp) : [];

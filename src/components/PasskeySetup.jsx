@@ -45,7 +45,7 @@ export default function PasskeySetup({ wallet, onRegistered }) {
           timeout: 60000,
         },
       });
-      const credentialId = bufferToBase64(credential.rawId);
+      const credentialId = bufferToBase64((/** @type {any} */ (credential)).rawId);
       await onRegistered(credentialId);
       setVerified(true);
       toast.success("Passkey registered successfully");

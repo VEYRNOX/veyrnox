@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "@/lib/recharts";
 import { toast } from "sonner";
 import moment from "moment";
 
@@ -50,7 +50,7 @@ export default function PortfolioSnapshots() {
   });
 
   const deleteSnapshot = useMutation({
-    mutationFn: (id) => base44.entities.PortfolioSnapshot.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PortfolioSnapshot.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] }),
   });
 

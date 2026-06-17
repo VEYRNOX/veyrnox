@@ -161,5 +161,5 @@ export function buildReviewItems({ approvals, spam, addresses, features = {} }) 
     });
   }
 
-  return { review };
+  return { review: /** @type {Array<{severity:'medium'|'high', text:string, path:string}>} */ (review) };
 }

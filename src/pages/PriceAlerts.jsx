@@ -45,7 +45,7 @@ export default function PriceAlerts() {
   });
 
   const createAlert = useMutation({
-    mutationFn: (data) => base44.entities.PriceAlert.create(data),
+    mutationFn: (/** @type {any} */ data) => base44.entities.PriceAlert.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
       setOpen(false);
@@ -55,12 +55,12 @@ export default function PriceAlerts() {
   });
 
   const deleteAlert = useMutation({
-    mutationFn: (id) => base44.entities.PriceAlert.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PriceAlert.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts"] }),
   });
 
   const dismissAlert = useMutation({
-    mutationFn: (id) => base44.entities.PriceAlert.update(id, { status: "dismissed" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PriceAlert.update(id, { status: "dismissed" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts"] }),
   });
 

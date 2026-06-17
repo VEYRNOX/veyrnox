@@ -33,7 +33,7 @@ function NewsCard({ article }) {
           src={article.imageurl}
           alt=""
           className="h-14 w-14 rounded-lg object-cover shrink-0 bg-secondary"
-          onError={e => { e.target.style.display = "none"; }}
+          onError={e => { (/** @type {any} */ (e.target)).style.display = "none"; }}
         />
       )}
       <div className="flex-1 min-w-0 space-y-1">

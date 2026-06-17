@@ -59,7 +59,7 @@ export default function SpendingPatternsCard() {
 
   // Re-aggregating on a granularity change needs no refetch — same data, recomputed.
   const result = useMemo(
-    () => (data ? spendByPeriod(data, granularity) : null),
+    () => (data ? spendByPeriod(data, /** @type {"month"|"week"} */ (granularity)) : null),
     [data, granularity],
   );
 

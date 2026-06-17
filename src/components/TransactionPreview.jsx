@@ -43,7 +43,7 @@ function RiskRow({ risk }) {
   );
 }
 
-export default function TransactionPreview({ result, loading, error }) {
+export default function TransactionPreview({ result, loading = undefined, error = undefined }) {
   if (loading) {
     return (
       <div className="p-3 rounded-lg bg-secondary/30 border border-border flex items-center gap-2 text-xs text-muted-foreground">

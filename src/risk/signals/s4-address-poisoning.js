@@ -49,7 +49,7 @@ export function s4AddressPoisoning(unsignedTx, activeSetLocalState, _chainData) 
     const addr = entryAddr(c);
     if (!addr || seen.has(addr)) continue;
     seen.add(addr);
-    entries.push({ addr, label: c && typeof c === 'object' ? c.label || null : null });
+    entries.push({ addr, label: c && typeof c === 'object' ? (/** @type {any} */ (c)).label || null : null });
   }
 
   // An exact match to a known-good counterparty is the opposite of poisoning.

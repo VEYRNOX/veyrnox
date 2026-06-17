@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "@/lib/recharts";
 import { toast } from "sonner";
 import moment from "moment";
 
@@ -44,7 +44,8 @@ export default function PLTracking() {
   });
 
   const closeRecord = useMutation({
-    mutationFn: ({ id, asset, entry_price, quantity }) => {
+    mutationFn: (/** @type {any} */ vars) => {
+      const { id, asset, entry_price, quantity } = vars;
       const exitP = CURRENT_PRICES[asset];
       const pnl_usd = (exitP - entry_price) * quantity;
       const pnl_pct = ((exitP - entry_price) / entry_price) * 100;
@@ -54,7 +55,7 @@ export default function PLTracking() {
   });
 
   const deleteRecord = useMutation({
-    mutationFn: (id) => base44.entities.PLRecord.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PLRecord.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pl-records"] }),
   });
 

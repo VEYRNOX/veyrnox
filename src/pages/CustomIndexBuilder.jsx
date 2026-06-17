@@ -25,7 +25,7 @@ export default function CustomIndexBuilder() {
 
   const { data: indexes = [] } = useQuery({ queryKey: ["custom-indexes"], queryFn: () => base44.entities.CustomIndex.list() });
 
-  const totalWeight = components.reduce((s, c) => s + (parseFloat(c.weight) || 0), 0);
+  const totalWeight = components.reduce((s, c) => s + (parseFloat(/** @type {any} */ (c.weight)) || 0), 0);
 
   const addComponent = () => setComponents(c => [...c, { asset: "SOL", weight: 0 }]);
   const removeComponent = (i) => setComponents(c => c.filter((_, idx) => idx !== i));
@@ -37,7 +37,7 @@ export default function CustomIndexBuilder() {
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.CustomIndex.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.CustomIndex.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["custom-indexes"] }),
   });
 

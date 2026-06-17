@@ -82,7 +82,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
   const [custom, setCustom] = useState({ maxBaseFeeGwei: "", priorityGwei: "", gasLimit: "" });
 
   const queryFn = useMemo(() => {
-    if (chain === "evm") return () => estimateEvmFeeTiers({ networkKey, gasLimit: gasLimitHint });
+    if (chain === "evm") return () => estimateEvmFeeTiers(/** @type {any} */ ({ networkKey, gasLimit: gasLimitHint }));
     if (chain === "btc") return () => estimateBtcFeeTiers({ networkKey });
     return () => estimateSolFeeTiers({ networkKey });
   }, [chain, networkKey, gasLimitHint]);
@@ -160,8 +160,8 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
         </p>
         {data?.tiers && (
           <span className="text-[10px] text-muted-foreground">
-            {chain === "evm" && `base ${fmtNative(data.baseFeePerGasWei, 9, 2)} Gwei`}
-            {chain === "sol" && `base ${Number(data.baseLamports).toLocaleString()} lamports/sig`}
+            {chain === "evm" && `base ${fmtNative((/** @type {any} */ (data)).baseFeePerGasWei, 9, 2)} Gwei`}
+            {chain === "sol" && `base ${Number((/** @type {any} */ (data)).baseLamports).toLocaleString()} lamports/sig`}
             {chain === "btc" && "sat/vByte"}
           </span>
         )}
@@ -233,7 +233,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Input
                       type="number" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
                       value={custom.maxBaseFeeGwei}
-                      placeholder={data ? fmtNative(BigInt(data.baseFeePerGasWei) * 2n, 9, 2) : "0"}
+                      placeholder={data ? fmtNative(BigInt((/** @type {any} */ (data)).baseFeePerGasWei) * 2n, 9, 2) : "0"}
                       onChange={(e) => setCustom((c) => ({ ...c, maxBaseFeeGwei: e.target.value }))}
                     />
                   </div>
@@ -242,7 +242,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Input
                       type="number" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
                       value={custom.priorityGwei}
-                      placeholder={data ? fmtNative(data.suggestedTipWei, 9, 3) : "0"}
+                      placeholder={data ? fmtNative((/** @type {any} */ (data)).suggestedTipWei, 9, 3) : "0"}
                       onChange={(e) => setCustom((c) => ({ ...c, priorityGwei: e.target.value }))}
                     />
                   </div>
@@ -251,7 +251,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Input
                       type="number" inputMode="numeric" className="mt-1 h-8 text-xs mono-value"
                       value={custom.gasLimit}
-                      placeholder={String(gasLimitHint || data?.gasLimit || 21000)}
+                      placeholder={String(gasLimitHint || (/** @type {any} */ (data))?.gasLimit || 21000)}
                       onChange={(e) => setCustom((c) => ({ ...c, gasLimit: e.target.value }))}
                     />
                   </div>

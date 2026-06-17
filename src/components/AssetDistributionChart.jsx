@@ -3,7 +3,7 @@ import { USD_RATES } from "@/lib/cryptos";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
-function CustomTooltip({ active, payload }) {
+function CustomTooltip({ active = undefined, payload = undefined }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
@@ -15,7 +15,7 @@ function CustomTooltip({ active, payload }) {
   );
 }
 
-function CustomLegend({ payload }) {
+function CustomLegend({ payload = undefined }) {
   return (
     <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-2">
       {payload.map((entry, i) => (

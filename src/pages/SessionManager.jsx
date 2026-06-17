@@ -28,7 +28,7 @@ export default function SessionManager() {
   });
 
   const revoke = useMutation({
-    mutationFn: (id) => base44.entities.UserSession.update(id, { status: "revoked" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.UserSession.update(id, { status: "revoked" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["user-sessions"] }),
   });
 

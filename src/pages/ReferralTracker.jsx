@@ -22,22 +22,22 @@ export default function ReferralTracker() {
   const { data: referrals = [] } = useQuery({ queryKey: ["referrals"], queryFn: () => base44.entities.ReferralRecord.list("-created_date") });
 
   const create = useMutation({
-    mutationFn: (d) => base44.entities.ReferralRecord.create(d),
+    mutationFn: (/** @type {any} */ d) => base44.entities.ReferralRecord.create(d),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["referrals"] }); setOpen(false); setForm({ referred_email: "", referred_name: "", note: "" }); },
   });
 
   const markJoined = useMutation({
-    mutationFn: (id) => base44.entities.ReferralRecord.update(id, { status: "joined" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.ReferralRecord.update(id, { status: "joined" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["referrals"] }),
   });
 
   const markRewarded = useMutation({
-    mutationFn: (id) => base44.entities.ReferralRecord.update(id, { status: "rewarded", reward_paid: true }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.ReferralRecord.update(id, { status: "rewarded", reward_paid: true }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["referrals"] }),
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.ReferralRecord.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.ReferralRecord.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["referrals"] }),
   });
 

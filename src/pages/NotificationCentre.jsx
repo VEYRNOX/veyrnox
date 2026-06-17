@@ -54,12 +54,12 @@ export default function NotificationCentre() {
   });
 
   const dismissFraud = useMutation({
-    mutationFn: (id) => base44.entities.FraudAlert.update(id, { status: "dismissed" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.FraudAlert.update(id, { status: "dismissed" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["fraud-alerts-open"] }),
   });
 
   const dismissPrice = useMutation({
-    mutationFn: (id) => base44.entities.PriceAlert.update(id, { status: "dismissed" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PriceAlert.update(id, { status: "dismissed" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts-triggered"] }),
   });
 
@@ -100,7 +100,7 @@ export default function NotificationCentre() {
       severity: "low", time: a.created_date,
       onDismiss: null,
     })),
-  ].sort((a, b) => new Date(b.time) - new Date(a.time));
+  ].sort((a, b) => /** @type {any} */ (new Date(b.time)) - /** @type {any} */ (new Date(a.time)));
 
   const filtered = tab === "All" ? allNotifications : allNotifications.filter(n => n.category === tab);
 

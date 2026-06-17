@@ -46,7 +46,7 @@ function addressFor(asset, wallet) {
   return wallet.accounts?.[0]?.address || null; // evm / erc20 share one address
 }
 
-function StatCard({ label, value, symbol, mono = true }) {
+function StatCard({ label, value, symbol = undefined, mono = true }) {
   return (
     <div className="p-4 rounded-xl border border-border bg-card">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
