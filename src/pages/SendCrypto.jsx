@@ -1074,7 +1074,7 @@ export default function SendCrypto() {
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="mono-value font-semibold">transfer</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Amount</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Recipient</span><span className="mono-value break-all text-right">{tokenCalldata.to}</span></div>
+                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Recipient</span><span className="mono-value break-all">{tokenCalldata.to}</span></div>
                   </div>
                 )}
                 {tokenCalldata.kind === "approve" && (
@@ -1082,7 +1082,7 @@ export default function SendCrypto() {
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="mono-value font-semibold">approve</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Allowance</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.amount}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Spender</span><span className="mono-value break-all text-right">{tokenCalldata.spender}</span></div>
+                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Spender</span><span className="mono-value break-all">{tokenCalldata.spender}</span></div>
                   </div>
                 )}
                 {tokenCalldata.kind === "unknown" && (
