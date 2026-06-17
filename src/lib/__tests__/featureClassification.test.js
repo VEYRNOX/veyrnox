@@ -88,7 +88,8 @@ describe('registryEntriesFromClassification', () => {
         // '/budget' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices), so it drops out here.
         '/tax',
         // '/watchlist' reclassified disabled→live (real opt-in price feeds), so it drops out here.
-        '/nft', '/snapshots', '/onchain', '/erc20-discovery',
+        // '/snapshots' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices at capture time), so it drops out here.
+        '/nft', '/onchain', '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
         // '/alerts' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
         '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts',

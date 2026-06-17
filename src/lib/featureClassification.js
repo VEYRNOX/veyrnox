@@ -215,8 +215,8 @@ export const CLASSIFICATION = {
     note: 'Reports only real on-device transaction data: per-asset NATIVE amounts and transaction counts/timing (lib/spendingPatterns). The fabricated stale-USD aggregates were removed — no cross-asset fiat conversion is shown, so there is no silently-stale value. Honest activity view.',
   },
   '/snapshots': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'PortfolioSnapshot saves a total_usd computed from real local Wallet balances multiplied by hardcoded stale USD_RATES (BTC: 68000, ETH: 3200, …). Snapshot values are stored and charted as if they represent real market USD values, but they were computed from rates that may be months out of date at the time of capture.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Reads real local Wallet and PortfolioSnapshot records. New snapshot capture uses opt-in live prices (useLivePrices) gated by isLivePricesEnabled; Save Snapshot is disabled when off. Existing stored snapshots display as-is. No stale USD_RATES.',
   },
   '/onchain': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',

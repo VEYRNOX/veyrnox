@@ -236,6 +236,14 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   persisted in the record — those figures remain accurate regardless of later price moves. Exit price is now
   required for manually-added closed trades (no silent stale-price fill). Trade records persist via
   `base44.entities.PLRecord` (on-device). Off-state verified in-browser; live-data render UNAUDITED-PROVISIONAL.
+- Portfolio Snapshots (`/snapshots`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live. The
+  hardcoded stale `USD_RATES` used to compute `total_usd` at snapshot-capture time is gone. New snapshots compute
+  their USD value from `useLivePrices()` gated behind `isLivePricesEnabled()` (I2); the Save Snapshot button is
+  disabled (with tooltip) when off — no snapshot can be captured with fabricated values (I4). The "Current Value"
+  preview card shows "—" when off. Existing stored snapshots are displayed as-is (their persisted `total_usd` is
+  historical fact, not recomputable). Chart and delta comparison read persisted values — unaffected. Records persist
+  via `base44.entities.PortfolioSnapshot` and `base44.entities.Wallet` (on-device). Verified in-browser; live-data
+  render UNAUDITED-PROVISIONAL.
 - Budget Limits (`/budget`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live. The
   hardcoded stale `USD_RATES` object used to convert native transaction amounts to USD is gone. "Total Spent
   This Month" and per-budget spend now come from `useLivePrices()` gated behind `isLivePricesEnabled()` (I2).

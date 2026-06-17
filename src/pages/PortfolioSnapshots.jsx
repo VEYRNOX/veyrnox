@@ -1,4 +1,3 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -10,13 +9,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { toast } from "sonner";
 import moment from "moment";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
+const FMT2 = { maximumFractionDigits: 2 };
+const FMT0 = { maximumFractionDigits: 0 };
 
 export default function PortfolioSnapshots() {
   const queryClient = useQueryClient();
   const [showSave, setShowSave] = useState(false);
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
+
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
 
   const { data: snapshots = [], isLoading } = useQuery({
     queryKey: ["portfolio-snapshots"],
@@ -28,15 +33,28 @@ export default function PortfolioSnapshots() {
     queryFn: () => base44.entities.Wallet.list(),
   });
 
-  const currentTotalUSD = wallets.reduce((s, w) => s + (w.balance || 0) * (USD_RATES[w.currency] || 1), 0);
+  // null when live prices are off — can't compute an honest USD total without them.
+  const currentTotalUSD = liveOn
+    ? wallets.reduce((s, w) => {
+        const rate = prices?.[w.currency] ?? null;
+        return rate != null ? s + (w.balance || 0) * rate : s;
+      }, 0)
+    : null;
 
   const saveSnapshot = useMutation({
     mutationFn: () => {
       const breakdown = {};
-      wallets.forEach(w => { breakdown[w.currency] = (breakdown[w.currency] || 0) + (w.balance || 0) * (USD_RATES[w.currency] || 1); });
+      let total = 0;
+      wallets.forEach(w => {
+        const rate = prices?.[w.currency] ?? null;
+        if (rate == null) return;
+        const usd = (w.balance || 0) * rate;
+        breakdown[w.currency] = (breakdown[w.currency] || 0) + usd;
+        total += usd;
+      });
       return base44.entities.PortfolioSnapshot.create({
         label: label || moment().format("DD MMM YYYY HH:mm"),
-        total_usd: currentTotalUSD,
+        total_usd: total,
         breakdown,
         note,
       });
@@ -54,7 +72,6 @@ export default function PortfolioSnapshots() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] }),
   });
 
-  // Chart data (oldest first)
   const chartData = [...snapshots].reverse().map(s => ({
     date: moment(s.created_date).format("DD MMM"),
     value: s.total_usd,
@@ -73,23 +90,34 @@ export default function PortfolioSnapshots() {
           <h1 className="text-2xl font-bold tracking-tight">Portfolio Snapshots</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Save and compare historical portfolio values</p>
         </div>
-        <Button onClick={() => setShowSave(true)}>
+        <Button
+          onClick={() => setShowSave(true)}
+          disabled={!liveOn}
+          title={!liveOn ? "Enable live prices to capture a snapshot" : undefined}
+        >
           <Camera className="h-4 w-4 mr-1.5" /> Save Snapshot
         </Button>
       </div>
 
-      {/* Current vs Last */}
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — saving a new snapshot requires real-time prices to compute your USD portfolio value. Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span>. Existing snapshots are shown as saved.
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground mb-1">Current Value</p>
-          <p className="text-xl font-bold">${currentTotalUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+          <p className="text-xl font-bold">
+            {currentTotalUSD != null ? `$${currentTotalUSD.toLocaleString(undefined, FMT2)}` : "—"}
+          </p>
         </div>
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground mb-1">Since Last Snapshot</p>
           {change != null ? (
             <div className={`flex items-center gap-1 text-lg font-bold ${change >= 0 ? "text-green-400" : "text-destructive"}`}>
               {change >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-              {change >= 0 ? "+" : ""}${Math.abs(change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              {change >= 0 ? "+" : ""}${Math.abs(change).toLocaleString(undefined, FMT0)}
               <span className="text-sm">({changePct?.toFixed(1)}%)</span>
             </div>
           ) : (
@@ -98,7 +126,6 @@ export default function PortfolioSnapshots() {
         </div>
       </div>
 
-      {/* Chart */}
       {chartData.length > 1 && (
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-4">Value Over Time</p>
@@ -107,14 +134,13 @@ export default function PortfolioSnapshots() {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
               <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <Tooltip formatter={(v) => [`$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, "Portfolio"]} labelFormatter={l => l} />
+              <Tooltip formatter={(v) => [`$${v.toLocaleString(undefined, FMT2)}`, "Portfolio"]} labelFormatter={l => l} />
               <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {/* Snapshot List */}
       {isLoading ? (
         <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
       ) : snapshots.length === 0 ? (
@@ -138,10 +164,10 @@ export default function PortfolioSnapshots() {
                   {s.note && <p className="text-xs text-muted-foreground italic">{s.note}</p>}
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold">${s.total_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                  <p className="text-sm font-bold">${s.total_usd.toLocaleString(undefined, FMT0)}</p>
                   {diff != null && (
                     <p className={`text-xs ${diff >= 0 ? "text-green-400" : "text-destructive"}`}>
-                      {diff >= 0 ? "+" : ""}${diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {diff >= 0 ? "+" : ""}${diff.toLocaleString(undefined, FMT0)}
                     </p>
                   )}
                 </div>
@@ -160,7 +186,9 @@ export default function PortfolioSnapshots() {
           <div className="space-y-4 pt-2">
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
               <p className="text-xs text-muted-foreground mb-1">Current value to snapshot</p>
-              <p className="text-xl font-bold">${currentTotalUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+              <p className="text-xl font-bold">
+                {currentTotalUSD != null ? `$${currentTotalUSD.toLocaleString(undefined, FMT2)}` : "—"}
+              </p>
             </div>
             <div>
               <Label>Label (optional)</Label>
@@ -170,7 +198,11 @@ export default function PortfolioSnapshots() {
               <Label>Note (optional)</Label>
               <Input value={note} onChange={e => setNote(e.target.value)} placeholder="Any notes..." className="mt-1.5" />
             </div>
-            <Button className="w-full" onClick={() => saveSnapshot.mutate()} disabled={saveSnapshot.isPending}>
+            <Button
+              className="w-full"
+              onClick={() => saveSnapshot.mutate()}
+              disabled={saveSnapshot.isPending || currentTotalUSD == null}
+            >
               <Camera className="h-4 w-4 mr-1.5" /> Save Snapshot
             </Button>
           </div>
