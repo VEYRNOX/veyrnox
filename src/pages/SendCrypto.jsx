@@ -29,7 +29,7 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
-import { degrade, detect, TIER } from "@/rasp";
+import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
@@ -527,20 +527,14 @@ export default function SendCrypto() {
   // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
   const riskPending = riskApplicable && !riskReady;
 
-  // RASP §7 — pre-sign ENVIRONMENT gate (roadmap Phase 3). BEHIND A FLAG, OFF BY
-  // DEFAULT: flag-off → raspTier = ALLOW, so the composite below reduces to the
-  // tx-risk gate (current behaviour, zero RASP friction in production). Flag-on
-  // (dev/tests) → the REAL detector runs; on a build with no native probe it
-  // fail-closes to INTEGRITY_UNAVAILABLE → WARN (degrade), NEVER a fake CLEAN.
-  // detect()/degrade() are pure functions of the ENVIRONMENT only — no walletSet
-  // handle (I3). import.meta.env is build-time, so the branch is dead-code-
-  // eliminated from production when the flag is unset. I4: a RASP crash fails
-  // closed to the strongest BLOCK, never silent-allow.
-  const RASP_PRESIGN_GATE = import.meta.env.VITE_RASP_PRESIGN_GATE === '1';
+  // RASP §7 — pre-sign ENVIRONMENT gate (Phase 3, browser-level detection active).
+  // detect(browserProbeSource) runs on every render; a normal browser returns
+  // CLEAN → ALLOW (no added friction). Automation/WebDriver → HOOKED → BLOCK.
+  // OS-level probes (root/jailbreak) are not yet available (need native plugin).
+  // I3: detect()/degrade() are pure functions of the ENVIRONMENT only — no
+  // walletSet handle. I4: a RASP crash fails closed to the strongest BLOCK.
   let raspArtifact = null;
-  if (RASP_PRESIGN_GATE) {
-    try { raspArtifact = degrade(detect()); } catch { raspArtifact = degrade(undefined); }
-  }
+  try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
   const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
 
   // The COMPOSITE pre-sign decision (RASP env plane ⊕ tx-risk plane), set-blind by

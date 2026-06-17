@@ -180,9 +180,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Hardware Wallet',
-        status: 'roadmap',
-        summary: 'Ledger / Trezor cold-key signing',
-        explanation: 'Sign with an external hardware wallet so keys stay offline. Planned, not yet built — the page is an honest ‘coming soon’ placeholder, not a working device integration.',
+        status: ‘built’,
+        summary: ‘Ledger WebHID address read + Trezor Safe 5 guide’,
+        explanation: ‘Built (/hardware-wallet): Ledger tab uses browser WebHID to read the first ETH address (m/44\’/60\’/0\’/0/0) directly from the device — no third party, Chrome only. The read address auto-fills a watch-only wallet import. Trezor Safe 5 tab provides a platform-aware setup guide (Android full / iPhone watch-only / desktop) with honest iOS limitation note (Safe 5 has no Bluetooth; Safe 7 does). Cold-key transaction signing is post-audit scope.’,
       },
     ],
   },
@@ -273,9 +273,15 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'RASP',
-        status: 'roadmap',
-        summary: 'Jailbreak / root / tamper detection',
-        explanation: 'Runtime application self-protection: detect jailbroken / rooted / tampered / emulated / hooked environments and respond with graduated friction before signing. The degradation policy (condition → response tier) and its deniability (I3 response-symmetry) guard are built and unit-tested — pre-audit-safe — in src/rasp/; the detector legs (the Play Integrity verdict and the self-attested probes) are audit-gated and need real-device verification, so the feature stays roadmap until detection is real.',
+        status: 'built',
+        summary: 'Runtime environment detection + graduated degradation',
+        explanation: 'Built (UNAUDITED-PROVISIONAL). Browser-level detection active: navigator.webdriver + legacy automation fingerprints → HOOKED → signing blocked. Normal browser → CLEAN → ALLOW (no friction). Degradation policy (condition → tier) and I3 response-symmetry guard built + tested in src/rasp/. Wired to the send path via detect(browserProbeSource) → degrade() → presignGate(). OS-level probes (root/jailbreak/tamper) require a native Capacitor plugin — audit-gated pending real-device verification.',
+      },
+      {
+        name: 'Audit Log',
+        status: 'built',
+        summary: 'Optional encrypted local activity record',
+        explanation: 'Built (/audit-log). Opt-in, off by default. Stores at most 100 entries ({ type, ts } ONLY — no amounts, addresses, or wallet identity) as an AES-GCM encrypted blob in the primary vault store (quaternary key). Hard allowlist of 3 event types; hard denylist of 7 sensitive terms. No-op in decoy/hidden sessions; panic wipe destroys it. UNAUDITED-PROVISIONAL.',
       },
       {
         name: 'Risk Limits / Risk Scoring',
@@ -342,16 +348,16 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Historical price charts for supported assets. Specced, not yet built.',
       },
       {
-        name: 'Price Alerts',
-        status: 'roadmap',
-        summary: 'Threshold price notifications',
-        explanation: 'Notify when an asset crosses a target price. Specced, not yet built — and advisory only; alerts never trade on the user’s behalf.',
+        name: ‘Price Alerts’,
+        status: ‘built’,
+        summary: ‘Threshold price notifications’,
+        explanation: ‘Built (/alerts): threshold-based price alert rules stored on-device. Evaluation is I2-gated behind the live prices opt-in. Advisory only — alerts never trade.’,
       },
       {
-        name: 'Watchlist',
-        status: 'roadmap',
-        summary: 'Track assets you don’t hold',
-        explanation: 'Follow assets you do not hold. Specced, not yet built.',
+        name: ‘Watchlist’,
+        status: ‘built’,
+        summary: ‘Track assets you do not hold’,
+        explanation: ‘Built (/watchlist): follow assets independently of the active wallet with real opt-in price feeds from CryptoCompare (I2-gated; shows "—" when live prices are off).’,
       },
       {
         name: 'Notifications & Push',
