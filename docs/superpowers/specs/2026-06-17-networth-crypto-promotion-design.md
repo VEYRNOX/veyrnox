@@ -60,8 +60,10 @@ No `base44.entities.Wallet`, no direct `USD_RATES` math, no `NetWorthAsset`.
   lines 44–50 forbids a `reason:'unverified'` route being live).
 - `featureClassification.test.js`: remove `'/net-worth'` from the hard-coded non-live expected list
   (currently line 86), exactly as `/fee-analytics` was removed on its promotion (precedent in that file).
-- `usdDisclosure.js`: add `'/net-worth': { discloses: true }` — a live route showing USD; the page keeps
-  `approxUsd`/`ReferenceRateNote` for the approximate state so `usdDisclosure.test.js` A1/A2 pass.
+- `usdDisclosure.js`: **no entry** — refined during planning. The rewritten page imports neither `USD_RATES`
+  nor a `USD_DISPLAY_COMPONENT`, so the disclosure scanner doesn't classify it as USD-touching; A1 doesn't
+  require an entry and A4 would FAIL if one were added (it'd be a "stale" entry). The honest disclosure lives
+  in the UI: the page renders `ReferenceRateNote` whenever it shows approximate figures.
 - Un-gates automatically: `featureRouteOutcome('/net-worth')` returns `'render'` once verdict is `live`, so
   `FeatureGate` renders the component instead of `HonestDisabledPage`.
 
@@ -88,8 +90,8 @@ No `base44.entities.Wallet`, no direct `USD_RATES` math, no `NetWorthAsset`.
 ## 6. Scope guard
 
 - **Touched:** `src/pages/NetWorthTracker.jsx`, `src/lib/featureClassification.js`,
-  `src/lib/__tests__/featureClassification.test.js`, `src/lib/usdDisclosure.js`, a new
-  `buildAllocation` helper (+ test), `docs/Feature-Status.md`.
+  `src/lib/__tests__/featureClassification.test.js`, a new `buildAllocation` helper (+ test),
+  `docs/Feature-Status.md`. (`usdDisclosure.js` is **not** modified — no entry; see §3.3.)
 - **NOT touched:** `usePortfolio`/`portfolioBalances` (consumed as-is), the deniability stack, the
   `NetWorthAsset` store itself (just no longer used here), the live-price helper.
 
