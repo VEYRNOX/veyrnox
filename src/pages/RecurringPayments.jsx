@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import moment from "moment";
+import { addDays, isBefore, formatDistanceToNow } from "date-fns";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
@@ -49,7 +49,7 @@ export default function RecurringPayments() {
 
   const addPayment = useMutation({
     mutationFn: () => {
-      const nextRun = moment().add(FREQ_DAYS[form.frequency], "days").toISOString();
+      const nextRun = addDays(new Date(), FREQ_DAYS[form.frequency]).toISOString();
       const wallet = wallets.find(w => w.id === form.wallet_id);
       return base44.entities.RecurringPayment.create({ ...form, amount: parseFloat(form.amount), currency: wallet?.currency || form.currency, next_run_at: nextRun, status: "active" });
     },
@@ -81,7 +81,7 @@ export default function RecurringPayments() {
   // Fire a browser notification for each due active payment (once per session).
   useEffect(() => {
     if (notifPerm !== "granted" || payments.length === 0) return;
-    const due = payments.filter(p => p.status === "active" && p.next_run_at && moment(p.next_run_at).isBefore(moment()));
+    const due = payments.filter(p => p.status === "active" && p.next_run_at && isBefore(new Date(p.next_run_at), new Date()));
     for (const p of due) {
       new Notification(`Recurring payment due: ${p.label}`, {
         body: `${p.amount} ${p.currency} to ${p.to_address.slice(0, 10)}… — open Veyrnox to sign`,
@@ -178,7 +178,7 @@ export default function RecurringPayments() {
           <div className="space-y-3">
             {payments.map(p => {
               const wallet = wallets.find(w => w.id === p.wallet_id);
-              const isDue = p.next_run_at && moment(p.next_run_at).isBefore(moment());
+              const isDue = p.next_run_at && isBefore(new Date(p.next_run_at), new Date());
               return (
                 <div key={p.id} className={`p-4 rounded-xl border bg-card ${p.status === "active" ? "border-border" : "border-border/40 opacity-60"}`}>
                   <div className="flex items-start gap-3">
@@ -194,7 +194,7 @@ export default function RecurringPayments() {
                       <p className="text-xs font-mono text-muted-foreground truncate">{p.to_address}</p>
                       {wallet && <p className="text-xs text-muted-foreground">From: {wallet.name}</p>}
                       <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
-                        {p.next_run_at && <span>Next: {moment(p.next_run_at).fromNow()}</span>}
+                        {p.next_run_at && <span>Next: {formatDistanceToNow(new Date(p.next_run_at), { addSuffix: true })}</span>}
                         {p.run_count > 0 && <span>· {p.run_count} runs · {p.total_sent?.toFixed(4)} sent</span>}
                       </div>
                     </div>

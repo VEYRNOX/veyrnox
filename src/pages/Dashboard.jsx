@@ -22,7 +22,7 @@ import PortfolioHealthScore from "../components/PortfolioHealthScore";
 import WatchlistWidget from "../components/WatchlistWidget";
 import DashboardWidgetSettings, { DEFAULT_WIDGETS } from "../components/DashboardWidgetSettings";
 import TransactionFilters from "../components/TransactionFilters";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 import { DEMO } from "@/api/demoClient";
 import WalletPortfolioPage from "./WalletPortfolioPage";
 import { USD_RATES } from "@/lib/cryptos";
@@ -332,7 +332,7 @@ function DemoDashboard() {
                   <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-green-500"}`}>
                     {tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">{moment(tx.created_date).fromNow()}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(tx.created_date), { addSuffix: true })}</p>
                 </div>
               </div>
             ))

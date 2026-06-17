@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import moment from "moment";
+import { format } from "date-fns";
 
 
 export default function PortfolioSnapshots() {
@@ -36,7 +36,7 @@ export default function PortfolioSnapshots() {
   const saveSnapshot = useMutation({
     mutationFn: () => {
       return base44.entities.PortfolioSnapshot.create({
-        label: label || moment().format("DD MMM YYYY HH:mm"),
+        label: label || format(new Date(), "dd MMM yyyy HH:mm"),
         total_usd: 0,
         breakdown: nativeBreakdown,
         note,
@@ -103,7 +103,7 @@ export default function PortfolioSnapshots() {
                     <p className="text-sm font-medium truncate">{s.label}</p>
                     {i === 0 && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Latest</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground">{moment(s.created_date).format("DD MMM YYYY, HH:mm")}</p>
+                  <p className="text-xs text-muted-foreground">{format(new Date(s.created_date), "dd MMM yyyy, HH:mm")}</p>
                   {s.note && <p className="text-xs text-muted-foreground italic">{s.note}</p>}
                 </div>
                 <div className="text-right shrink-0">

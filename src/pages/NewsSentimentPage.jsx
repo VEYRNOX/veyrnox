@@ -5,7 +5,7 @@ import { Newspaper, TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import LocalBuildNotice from "@/components/LocalBuildNotice";
 import { toast } from "sonner";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 
 const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -130,7 +130,7 @@ export default function NewsSentimentPage() {
               {n.summary && <p className="text-xs text-muted-foreground">{n.summary}</p>}
               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                 <span>{n.source}</span>
-                <span>{moment(n.published_at).fromNow()}</span>
+                <span>{formatDistanceToNow(new Date(n.published_at), { addSuffix: true })}</span>
               </div>
             </div>
           );

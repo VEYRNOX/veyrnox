@@ -9,7 +9,7 @@
 // figures need no price and are genuinely real, so the page can be honest+live.
 //
 // Extracted as a pure function so the aggregation is unit-tested without React.
-import moment from 'moment';
+import { format, subMonths } from 'date-fns';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -25,7 +25,7 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
  * }}
  */
 export function summarizeSpending(transactions, now = undefined) {
-  const ref = now ? moment(now) : moment();
+  const ref = now ? new Date(now) : new Date();
   const txns = Array.isArray(transactions) ? transactions : [];
   const sends = txns.filter((t) => t && t.type === 'send');
   const receives = txns.filter((t) => t && t.type === 'receive');
@@ -47,18 +47,18 @@ export function summarizeSpending(transactions, now = undefined) {
   // Monthly transaction counts over a rolling 6-month window ending at `ref`.
   const monthly = {};
   for (let i = 5; i >= 0; i--) {
-    const m = moment(ref).subtract(i, 'months').format('MMM YY');
+    const m = format(subMonths(ref, i), 'MMM yy');
     monthly[m] = { month: m, sent: 0, received: 0 };
   }
-  for (const t of sends) { const m = moment(t.created_date).format('MMM YY'); if (monthly[m]) monthly[m].sent += 1; }
-  for (const t of receives) { const m = moment(t.created_date).format('MMM YY'); if (monthly[m]) monthly[m].received += 1; }
+  for (const t of sends) { const m = format(new Date(t.created_date), 'MMM yy'); if (monthly[m]) monthly[m].sent += 1; }
+  for (const t of receives) { const m = format(new Date(t.created_date), 'MMM yy'); if (monthly[m]) monthly[m].received += 1; }
 
   // Day-of-week transaction counts.
   const dow = Object.fromEntries(DOW.map((d) => [d, { day: d, sent: 0, received: 0 }]));
-  for (const t of sends) { const d = moment(t.created_date).format('ddd'); if (dow[d]) dow[d].sent += 1; }
-  for (const t of receives) { const d = moment(t.created_date).format('ddd'); if (dow[d]) dow[d].received += 1; }
+  for (const t of sends) { const d = format(new Date(t.created_date), 'eee'); if (dow[d]) dow[d].sent += 1; }
+  for (const t of receives) { const d = format(new Date(t.created_date), 'eee'); if (dow[d]) dow[d].received += 1; }
 
-  const thisMonthKey = moment(ref).format('MMM YY');
+  const thisMonthKey = format(ref, 'MMM yy');
   const counts = {
     sent: sends.length,
     received: receives.length,

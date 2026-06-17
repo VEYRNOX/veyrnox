@@ -8,7 +8,7 @@ import {
 } from "@/lib/recharts";
 const fmt = (/** @type {number} */ v) => Number(v).toLocaleString();
 import { TrendingUp, DollarSign, Wallet, BarChart2 } from "lucide-react";
-import moment from "moment";
+import { format, subDays, subMonths, isAfter } from "date-fns";
 
 const COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 const RANGES = [
@@ -70,15 +70,15 @@ export default function Analytics() {
 
   // Transaction counts per day — no USD needed.
   const txCountData = useMemo(() => {
-    const cutoff = moment().subtract(range, "days");
-    const filtered = transactions.filter(tx => moment(tx.created_date).isAfter(cutoff));
+    const cutoff = subDays(new Date(), range);
+    const filtered = transactions.filter(tx => isAfter(new Date(tx.created_date), cutoff));
     const buckets = {};
     for (let i = range; i >= 0; i--) {
-      const key = moment().subtract(i, "days").format(range <= 30 ? "MMM D" : "MMM 'YY");
+      const key = format(subDays(new Date(), i), range <= 30 ? "MMM d" : "MMM yy");
       if (!buckets[key]) buckets[key] = 0;
     }
     for (const tx of filtered) {
-      const key = moment(tx.created_date).format(range <= 30 ? "MMM D" : "MMM 'YY");
+      const key = format(new Date(tx.created_date), range <= 30 ? "MMM d" : "MMM yy");
       if (buckets[key] !== undefined) buckets[key] += 1;
     }
     return Object.entries(buckets)
@@ -90,11 +90,11 @@ export default function Analytics() {
   const activityData = useMemo(() => {
     const months = {};
     for (let i = 5; i >= 0; i--) {
-      const key = moment().subtract(i, "months").format("MMM");
+      const key = format(subMonths(new Date(), i), "MMM");
       months[key] = { month: key, received: 0, sent: 0 };
     }
     for (const tx of transactions) {
-      const key = moment(tx.created_date).format("MMM");
+      const key = format(new Date(tx.created_date), "MMM");
       if (!months[key]) continue;
       if (tx.type === "receive") months[key].received += 1;
       if (tx.type === "send") months[key].sent += 1;
