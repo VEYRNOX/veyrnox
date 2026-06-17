@@ -1,4 +1,3 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -9,6 +8,7 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2 } from "lucide-react";
 import moment from "moment";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
 const COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 const RANGES = [
@@ -49,6 +49,10 @@ const PieTooltip = ({ active, payload }) => {
 export default function Analytics() {
   const [range, setRange] = useState(30);
 
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
+  const rate = (sym) => liveOn ? (prices?.[sym] ?? 0) : 0;
+
   const { data: wallets = [] } = useQuery({
     queryKey: ["wallets"],
     queryFn: () => base44.entities.Wallet.list(),
@@ -60,23 +64,25 @@ export default function Analytics() {
   });
 
   const totalUSD = useMemo(
-    () => wallets.reduce((sum, w) => sum + (w.balance || 0) * (USD_RATES[w.currency] || 1), 0),
-    [wallets]
+    () => liveOn ? wallets.reduce((sum, w) => sum + (w.balance || 0) * rate(w.currency), 0) : null,
+    [wallets, liveOn, prices]
   );
 
   const allocationData = useMemo(() => {
+    if (!liveOn) return [];
     const grouped = {};
     for (const w of wallets) {
-      const usd = (w.balance || 0) * (USD_RATES[w.currency] || 1);
+      const usd = (w.balance || 0) * rate(w.currency);
       grouped[w.currency] = (grouped[w.currency] || 0) + usd;
     }
     return Object.entries(grouped)
       .map(([name, value]) => ({ name, value: Math.round(value) }))
       .filter(d => d.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [wallets]);
+  }, [wallets, liveOn, prices]);
 
   const monthlyData = useMemo(() => {
+    if (!liveOn || totalUSD == null) return [];
     const cutoff = moment().subtract(range, "days");
     const filtered = transactions.filter(tx => moment(tx.created_date).isAfter(cutoff));
     const buckets = {};
@@ -88,7 +94,7 @@ export default function Analytics() {
     const sorted = [...filtered].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
     for (const tx of sorted) {
       const key = moment(tx.created_date).format(range <= 30 ? "MMM D" : "MMM 'YY");
-      const usd = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);
+      const usd = (tx.amount || 0) * rate(tx.currency);
       if (tx.type === "send" || tx.type === "swap") running += usd;
       else running -= usd;
       if (buckets[key] !== undefined) buckets[key] = Math.max(0, running);
@@ -102,7 +108,7 @@ export default function Analytics() {
     return entries
       .filter((_, idx) => range > 30 ? idx % 7 === 0 : true)
       .map(([date, value]) => ({ date, value: Math.round(value) }));
-  }, [transactions, totalUSD, range]);
+  }, [transactions, totalUSD, range, liveOn, prices]);
 
   const pnlData = useMemo(() => {
     const months = {};
@@ -113,7 +119,7 @@ export default function Analytics() {
     for (const tx of transactions) {
       const key = moment(tx.created_date).format("MMM");
       if (!months[key]) continue;
-      const usd = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);
+      const usd = (tx.amount || 0) * rate(tx.currency);
       if (tx.type === "receive") months[key].gains += usd;
       if (tx.type === "send") months[key].losses += usd;
     }
@@ -122,11 +128,11 @@ export default function Analytics() {
       gains: Math.round(m.gains),
       losses: Math.round(m.losses),
     }));
-  }, [transactions]);
+  }, [transactions, liveOn, prices]);
 
   const totalGains = pnlData.reduce((s, m) => s + m.gains, 0);
   const totalLosses = pnlData.reduce((s, m) => s + m.losses, 0);
-  const netPnL = totalGains - totalLosses;
+  const netPnL = liveOn ? totalGains - totalLosses : null;
   const bestAsset = allocationData[0];
 
   return (
@@ -136,6 +142,12 @@ export default function Analytics() {
         <p className="text-sm text-muted-foreground mt-0.5">Portfolio performance &amp; insights</p>
       </div>
 
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — USD values and charts require real-time prices. Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span>.
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-xl border border-border bg-card p-3 space-y-1">
@@ -143,17 +155,19 @@ export default function Analytics() {
             <Wallet className="h-3.5 w-3.5" />
             <span className="text-[10px] uppercase tracking-wide">Total Value</span>
           </div>
-          <p className="text-base font-bold">{fmt(totalUSD)}</p>
+          <p className="text-base font-bold">{totalUSD != null ? fmt(totalUSD) : "—"}</p>
         </div>
-        <div className={`rounded-xl border bg-card p-3 space-y-1 ${netPnL >= 0 ? "border-green-500/30" : "border-destructive/30"}`}>
+        <div className={`rounded-xl border bg-card p-3 space-y-1 ${netPnL != null && netPnL >= 0 ? "border-green-500/30" : netPnL != null ? "border-destructive/30" : "border-border"}`}>
           <div className="flex items-center gap-1 text-muted-foreground">
-            {netPnL >= 0
+            {netPnL != null && netPnL >= 0
               ? <TrendingUp className="h-3.5 w-3.5 text-green-400" />
-              : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
+              : netPnL != null
+              ? <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+              : <TrendingUp className="h-3.5 w-3.5" />}
             <span className="text-[10px] uppercase tracking-wide">Net PnL</span>
           </div>
-          <p className={`text-base font-bold ${netPnL >= 0 ? "text-green-400" : "text-destructive"}`}>
-            {netPnL >= 0 ? "+" : "-"}{fmtSmall(netPnL)}
+          <p className={`text-base font-bold ${netPnL != null && netPnL >= 0 ? "text-green-400" : netPnL != null ? "text-destructive" : ""}`}>
+            {netPnL != null ? `${netPnL >= 0 ? "+" : "-"}${fmtSmall(netPnL)}` : "—"}
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-3 space-y-1">
@@ -165,103 +179,112 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Portfolio Growth Chart */}
-      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <p className="text-sm font-semibold">Portfolio Value</p>
-          </div>
-          <div className="flex items-center gap-1">
-            {RANGES.map(r => (
-              <button
-                key={r.days}
-                onClick={() => setRange(r.days)}
-                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                  range === r.days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <ResponsiveContainer width="100%" height={180}>
-          <AreaChart data={monthlyData}>
-            <defs>
-              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(28,95%,54%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(28,95%,54%)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(240,5%,20%)" />
-            <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
-            <Tooltip content={<CustomTooltip />} />
-            <Area type="monotone" dataKey="value" name="Portfolio" stroke="hsl(28,95%,54%)" fill="url(#areaGrad)" strokeWidth={2} dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Asset Allocation */}
-      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <BarChart2 className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">Asset Allocation</p>
-        </div>
-        {allocationData.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">No wallet data yet</p>
-        ) : (
-          <div className="flex items-center gap-4">
-            <ResponsiveContainer width="50%" height={160}>
-              <PieChart>
-                <Pie data={allocationData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
-                  {allocationData.map((entry) => (
-                    <Cell key={entry.name} fill={COLORS[entry.name] || "#888"} />
-                  ))}
-                </Pie>
-                <Tooltip content={<PieTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex-1 space-y-2">
-              {allocationData.map(d => {
-                const pct = totalUSD > 0 ? ((d.value / totalUSD) * 100).toFixed(1) : "0";
-                return (
-                  <div key={d.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full shrink-0" style={{ background: COLORS[d.name] || "#888" }} />
-                      <span className="text-xs font-semibold">{d.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-mono">{fmt(d.value)}</p>
-                      <p className="text-[10px] text-muted-foreground">{pct}%</p>
-                    </div>
-                  </div>
-                );
-              })}
+      {liveOn ? (
+        <>
+          {/* Portfolio Growth Chart */}
+          <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">Portfolio Value</p>
+              </div>
+              <div className="flex items-center gap-1">
+                {RANGES.map(r => (
+                  <button
+                    key={r.days}
+                    onClick={() => setRange(r.days)}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      range === r.days ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
             </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={monthlyData}>
+                <defs>
+                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(28,95%,54%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(28,95%,54%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(240,5%,20%)" />
+                <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="value" name="Portfolio" stroke="hsl(28,95%,54%)" fill="url(#areaGrad)" strokeWidth={2} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        )}
-      </div>
 
-      {/* Monthly PnL */}
-      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <BarChart2 className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">Monthly Activity (6 months)</p>
+          {/* Asset Allocation */}
+          <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">Asset Allocation</p>
+            </div>
+            {allocationData.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No wallet data yet</p>
+            ) : (
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width="50%" height={160}>
+                  <PieChart>
+                    <Pie data={allocationData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                      {allocationData.map((entry) => (
+                        <Cell key={entry.name} fill={COLORS[entry.name] || "#888"} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<PieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex-1 space-y-2">
+                  {allocationData.map(d => {
+                    const pct = totalUSD > 0 ? ((d.value / totalUSD) * 100).toFixed(1) : "0";
+                    return (
+                      <div key={d.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full shrink-0" style={{ background: COLORS[d.name] || "#888" }} />
+                          <span className="text-xs font-semibold">{d.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-mono">{fmt(d.value)}</p>
+                          <p className="text-[10px] text-muted-foreground">{pct}%</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Monthly PnL */}
+          <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">Monthly Activity (6 months)</p>
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={pnlData} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(240,5%,20%)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
+                <Bar dataKey="gains" name="Received" fill="#22c55e" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="losses" name="Sent" fill="#ef4444" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      ) : (
+        <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground space-y-2">
+          <BarChart2 className="h-8 w-8 mx-auto opacity-30" />
+          <p className="text-sm">Enable live prices to see portfolio charts and USD allocation</p>
         </div>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={pnlData} barCategoryGap="30%">
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(240,5%,20%)" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
-            <Bar dataKey="gains" name="Received" fill="#22c55e" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="losses" name="Sent" fill="#ef4444" radius={[3, 3, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      )}
     </div>
   );
 }

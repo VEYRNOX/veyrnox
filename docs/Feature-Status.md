@@ -256,6 +256,23 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   dependency for the configuration flow. Condition evaluation (auto-firing based on portfolio events) is not
   wired; a persistent banner in the UI directs users to Price Alerts for live price triggers (honest scope, I4).
   `notify_email` and `notify_push` flags are stored for when a delivery backend is added. Verified in-browser.
+- Analytics (`/analytics`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live. Removed
+  `USD_RATES`. Total value, Net PnL, allocation pie, portfolio growth chart, and monthly activity bar all use
+  `useLivePrices()` gated by `isLivePricesEnabled()` (I2). When off: summary cards show "—", all charts
+  replaced with a single "enable live prices" prompt (I4). Off-state verified in-browser.
+- NFT Portfolio (`/nft`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live. Removed
+  `const ETH_PRICE = 3200`. USD sub-label on the portfolio value card now uses `prices?.ETH` from
+  `useLivePrices()` gated by `isLivePricesEnabled()`; shows "≈ —" when off (I4). ETH-denominated values and
+  CRUD are unaffected. Off-state banner added. Verified in-browser.
+- Transaction Analytics (`/onchain`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. Retitled from "On-Chain Analytics" to "Transaction Analytics". Honest scope note added: data comes from
+  recorded app transactions, not live blockchain nodes. No USD_RATES — all values in native units. CRUD and
+  address lookup work fully on-device. Verified in-browser.
+- Anomaly Detection (`/anomaly-detection`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled
+  → live. Removed fake 2.2s AI scan delay; removed "AI"/"machine learning" branding (replaced with "Pattern
+  Scanner" / "Statistical analysis"). USD large-transfer detection now uses `useLivePrices()` gated by
+  `isLivePricesEnabled()`; velocity and unusual-hour checks run regardless. Off-state banner explains partial
+  detection. Verified in-browser.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅

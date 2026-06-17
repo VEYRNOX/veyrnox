@@ -77,7 +77,8 @@ describe('registryEntriesFromClassification', () => {
     expect(Object.keys(out).sort()).toEqual(
       [
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
-        '/analytics', '/advanced-analytics', '/advisor', '/ai-assistant',
+        // '/analytics' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices; charts gated), so it drops out here.
+        '/advanced-analytics', '/advisor', '/ai-assistant',
         '/benchmark', '/what-if', '/correlation', '/correlation-timeline',
         '/news-sentiment',
         // '/fee-analytics' reclassified disabled→live (Slice 1 native-unit rebuild), so it drops out here.
@@ -89,11 +90,14 @@ describe('registryEntriesFromClassification', () => {
         '/tax',
         // '/watchlist' reclassified disabled→live (real opt-in price feeds), so it drops out here.
         // '/snapshots' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices at capture time), so it drops out here.
-        '/nft', '/onchain', '/erc20-discovery',
+        // '/nft' reclassified disabled→live (ETH_PRICE replaced with opt-in useLivePrices), so it drops out here.
+        // '/onchain' reclassified disabled→live (retitled Transaction Analytics; honest scope note added), so it drops out here.
+        '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
         // '/alerts' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
         // '/smart-alerts' reclassified disabled→live (CRUD works on-device; evaluation not wired but honestly noted in UI), so it drops out here.
-        '/anomaly-detection', '/messenger-alerts', '/fraud',
+        // '/anomaly-detection' reclassified disabled→live (fake AI/delay removed; USD_RATES → useLivePrices), so it drops out here.
+        '/messenger-alerts', '/fraud',
         '/watch-wallets', '/solana', '/price-charts', '/web3', '/products',
       ].sort(),
     );

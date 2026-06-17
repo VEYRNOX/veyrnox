@@ -8,15 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
-const ETH_PRICE = 3200;
 const CHAIN_COLORS = { ethereum: "bg-blue-500/10 text-blue-400", solana: "bg-purple-500/10 text-purple-400", polygon: "bg-violet-500/10 text-violet-400", base: "bg-sky-500/10 text-sky-400" };
 const STATUS_COLORS = { holding: "bg-green-500/10 text-green-400", listed: "bg-yellow-500/10 text-yellow-400", sold: "bg-muted text-muted-foreground" };
+
+const FMT0 = { maximumFractionDigits: 0 };
 
 export default function NFTPortfolio() {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: "", collection: "", token_id: "", contract_address: "", chain: "ethereum", image_url: "", purchase_price: "", current_floor: "", status: "holding", note: "" });
+
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
+  const ethPrice = liveOn ? (prices?.ETH ?? null) : null;
 
   const { data: nfts = [], isLoading } = useQuery({
     queryKey: ["nft-assets"],
@@ -44,6 +50,7 @@ export default function NFTPortfolio() {
 
   const totalValueETH = nfts.filter(n => n.status !== "sold").reduce((s, n) => s + (n.current_floor || n.purchase_price || 0), 0);
   const totalPnlETH = nfts.reduce((s, n) => s + ((n.current_floor || 0) - (n.purchase_price || 0)), 0);
+  const usdSub = ethPrice != null ? `≈ $${(totalValueETH * ethPrice).toLocaleString(undefined, FMT0)}` : "≈ —";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -55,11 +62,16 @@ export default function NFTPortfolio() {
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> Add NFT</Button>
       </div>
 
-      {/* Stats */}
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — USD equivalents require real-time ETH prices. Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span>. ETH-denominated values are unaffected.
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total Holdings", value: `${nfts.filter(n => n.status === "holding").length}` },
-          { label: "Portfolio Value", value: `${totalValueETH.toFixed(3)} ETH`, sub: `≈ $${(totalValueETH * ETH_PRICE).toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
+          { label: "Portfolio Value", value: `${totalValueETH.toFixed(3)} ETH`, sub: usdSub },
           { label: "Unrealised P&L", value: `${totalPnlETH >= 0 ? "+" : ""}${totalPnlETH.toFixed(3)} ETH`, positive: totalPnlETH >= 0 },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
@@ -70,7 +82,6 @@ export default function NFTPortfolio() {
         ))}
       </div>
 
-      {/* NFT Grid */}
       {isLoading ? (
         <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
       ) : nfts.length === 0 ? (

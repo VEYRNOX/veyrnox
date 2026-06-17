@@ -63,8 +63,8 @@ export const CLASSIFICATION = {
     note: 'Aggregates PriceAlert, FraudAlert, RASPEvent, SmartAlert from local IndexedDB (localBase44); all records are user-generated on-device — no external source or fabrication.',
   },
   '/analytics': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Wallet/Transaction data is real local data but all USD values are derived from hardcoded stale USD_RATES constants; the "Net PnL" chart conflates sent/received amounts with profit/loss and the portfolio value shown will silently drift from reality as markets move.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'USD values (total, allocation, charts) use opt-in live prices (useLivePrices) gated by isLivePricesEnabled. When off: summary cards show "—", charts replaced by an enable-prices prompt. No stale USD_RATES.',
   },
   '/advanced-analytics': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
@@ -203,8 +203,8 @@ export const CLASSIFICATION = {
     note: 'PersonalWatchlist records are real on-device user data; the displayed price / 24h change / 24h high-low now come from the opt-in, holdings-blind live feeds (useLivePrices spot + useBasketPrices 24h change & high/low), OFF by default — no price egress until the user enables live prices in Settings (I2). When off or the feed is unavailable each row shows no number and the Buy/Sell-target badges do not evaluate (fail-honest, I4); the old MOCK_PRICES static prices + synthesized ±4% high/low are gone. Off-state + fail-honest verified in-browser; the live-data render is unit-tested (parseBasket) but not yet eyeballed on a real network — UNAUDITED-PROVISIONAL. See docs/superpowers/specs/2026-06-17-watchlist-real-prices-design.md.',
   },
   '/nft': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'NFTAsset records are real user-entered data (purchase_price, current_floor in ETH), but the "Portfolio Value" USD sub-label converts ETH to USD using ETH_PRICE = 3200, a hardcoded stale constant. The dollar figure shown to users will silently drift from reality as ETH price moves.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'NFTAsset CRUD and ETH-denominated P&L are fully on-device. USD sub-label uses live ETH price from useLivePrices() gated by isLivePricesEnabled; shows "≈ —" when off. No stale ETH_PRICE constant.',
   },
   '/nft-multichain': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -219,8 +219,8 @@ export const CLASSIFICATION = {
     note: 'Reads real local Wallet and PortfolioSnapshot records. New snapshot capture uses opt-in live prices (useLivePrices) gated by isLivePricesEnabled; Save Snapshot is disabled when off. Existing stored snapshots display as-is. No stale USD_RATES.',
   },
   '/onchain': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Aggregates base44.entities.Transaction (internal app records) and labels the result "On-Chain Analytics" — mislabeling a local transaction log as on-chain data. The address lookup searches only the local wallet/tx store; no actual blockchain query is made, yet the feature presents as a blockchain explorer.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Retitled "Transaction Analytics". Reads real local Transaction/Wallet records; honest scope note added clarifying data comes from recorded transactions, not live blockchain nodes. No USD_RATES — all values in native units.',
   },
   '/erc20-discovery': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
@@ -291,8 +291,8 @@ export const CLASSIFICATION = {
     note: 'Config stored in localStorage; passkey registration calls the real WebAuthn navigator.credentials.create() with a live challenge (window.PublicKeyCredential guard). The "Test Biometric Now" button is a UX confirmation stub (setTimeout) — it does not claim to perform a real auth challenge. Core vault-protection feature.',
   },
   '/anomaly-detection': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (base44.entities.Transaction), but the "Run AI Scan" button is a 2.2 s setTimeout with no analysis logic — the scan result is identical with or without clicking it. The page labels itself "AI Pattern Scanner" / "Machine learning analysis" for what is a simple statistical heuristic; the fake scan delay reinforces a false impression of active ML computation.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Sigma-threshold analysis runs on real local Transaction records. Fake 2.2s AI delay removed; "AI" branding replaced with "Pattern Scanner" / statistical analysis. USD large-transfer check uses useLivePrices() when on; velocity and unusual-hour checks run regardless.',
   },
   '/messenger-alerts': {
     verdict: 'disabled', reason: 'server', dataSource: 'static',

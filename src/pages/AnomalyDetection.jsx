@@ -1,41 +1,49 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Sparkles, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
+import { Shield, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
-
-function detectAnomalies(transactions) {
+function detectAnomalies(transactions, prices, liveOn) {
   const anomalies = [];
   if (!transactions.length) return anomalies;
 
-  const amounts = transactions.map(t => (t.amount || 0) * (USD_RATES[t.currency] || 1));
-  const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
-  const std = Math.sqrt(amounts.map(a => Math.pow(a - avg, 2)).reduce((a, b) => a + b, 0) / amounts.length);
+  const toUsd = (tx) => liveOn ? (tx.amount || 0) * (prices?.[tx.currency] ?? 0) : 0;
 
-  transactions.forEach(tx => {
-    const usd = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);
-    if (usd > avg + 2.5 * std && usd > 500) {
-      anomalies.push({ id: tx.id, type: "large_transfer", severity: usd > avg + 4 * std ? "critical" : "high", tx, detail: `$${usd.toFixed(0)} — ${((usd - avg) / std).toFixed(1)}σ above average`, usd });
-    }
-  });
+  // Large transfer: only meaningful with live prices for cross-currency USD comparison.
+  if (liveOn) {
+    const amounts = transactions.map(t => toUsd(t));
+    const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+    const std = Math.sqrt(amounts.map(a => Math.pow(a - avg, 2)).reduce((a, b) => a + b, 0) / amounts.length);
 
-  // Rapid transactions (3+ in 10 minutes window - simulated)
+    transactions.forEach(tx => {
+      const usd = toUsd(tx);
+      if (usd > avg + 2.5 * std && usd > 500) {
+        anomalies.push({
+          id: tx.id, type: "large_transfer",
+          severity: usd > avg + 4 * std ? "critical" : "high",
+          tx, detail: `$${usd.toFixed(0)} — ${((usd - avg) / std).toFixed(1)}σ above average`, usd,
+        });
+      }
+    });
+  }
+
+  // Rapid transactions: 3+ within 1 hour (works without live prices).
   const sorted = [...transactions].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
   const recent = sorted.slice(0, 5);
   if (recent.length >= 3) {
     const first = new Date(recent[0].created_date), last = new Date(recent[recent.length - 1].created_date);
     if ((first - last) / 60000 < 60) {
-      anomalies.push({ id: "rapid-" + Date.now(), type: "rapid_transactions", severity: "medium", detail: `${recent.length} transactions within 1 hour`, usd: 0 });
+      anomalies.push({ id: "rapid-tx", type: "rapid_transactions", severity: "medium", detail: `${recent.length} transactions within 1 hour`, usd: 0 });
     }
   }
 
-  // Unusual hour (between 2am-5am)
+  // Unusual hour (2 am–5 am): works without live prices.
   transactions.slice(0, 10).forEach(tx => {
     const h = new Date(tx.created_date).getHours();
     if (h >= 2 && h <= 5) {
-      anomalies.push({ id: "hour-" + tx.id, type: "unusual_hour", severity: "low", tx, detail: `Transaction at ${h}:00 — unusual activity hour`, usd: (tx.amount || 0) * (USD_RATES[tx.currency] || 1) });
+      anomalies.push({ id: "hour-" + tx.id, type: "unusual_hour", severity: "low", tx, detail: `Transaction at ${h}:00 — unusual activity hour`, usd: toUsd(tx) });
     }
   });
 
@@ -56,28 +64,42 @@ export default function AnomalyDetection() {
   const [scanned, setScanned] = useState(false);
   const [dismissed, setDismissed] = useState([]);
 
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
+
   const { data: transactions = [] } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 200) });
   const { data: fraudAlerts = [] } = useQuery({ queryKey: ["fraud-alerts"], queryFn: () => base44.entities.FraudAlert.list("-created_date", 20) });
 
   const scan = async () => {
     setScanning(true);
-    await new Promise(r => setTimeout(r, 2200));
     setScanned(true);
     setScanning(false);
   };
 
-  const anomalies = detectAnomalies(transactions).filter(a => !dismissed.includes(a.id));
+  const anomalies = detectAnomalies(transactions, prices, liveOn).filter(a => !dismissed.includes(a.id));
   const allAlerts = [...anomalies, ...fraudAlerts.map(f => ({ id: f.id, type: f.alert_type, severity: f.severity, detail: f.description, usd: f.amount || 0, fromDB: true }))];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div><h1 className="text-xl font-bold">AI Anomaly Detection</h1><p className="text-sm text-muted-foreground">Machine learning analysis of your transaction patterns</p></div>
+      <div>
+        <h1 className="text-xl font-bold">Anomaly Detection</h1>
+        <p className="text-sm text-muted-foreground">Statistical analysis of your transaction patterns</p>
+      </div>
+
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — USD-based large-transfer detection is disabled. Velocity and unusual-hour checks still run. Turn on <span className="font-medium text-foreground">Settings → Live Prices</span> for full cross-currency analysis.
+        </div>
+      )}
 
       <div className="p-5 rounded-xl border border-primary/30 bg-primary/5 text-center space-y-3">
-        <div className="flex justify-center"><Sparkles className="h-8 w-8 text-primary" /></div>
-        <p className="font-semibold">AI Pattern Scanner</p>
-        <p className="text-sm text-muted-foreground">Analyzes {transactions.length} transactions for statistical outliers, velocity spikes, unusual hours and risk patterns</p>
-        <Button onClick={scan} disabled={scanning} className="gap-2"><RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />{scanning ? "Scanning..." : "Run AI Scan"}</Button>
+        <div className="flex justify-center"><Shield className="h-8 w-8 text-primary" /></div>
+        <p className="font-semibold">Pattern Scanner</p>
+        <p className="text-sm text-muted-foreground">Analyses {transactions.length} transactions for statistical outliers, velocity spikes, and unusual activity hours</p>
+        <Button onClick={scan} disabled={scanning} className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
+          {scanning ? "Scanning..." : "Run Scan"}
+        </Button>
         {scanned && <p className="text-xs text-green-500">✓ Scan complete — {anomalies.length} anomalies detected</p>}
       </div>
 

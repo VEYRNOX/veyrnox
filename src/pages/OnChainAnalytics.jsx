@@ -69,8 +69,12 @@ export default function OnChainAnalytics() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">On-Chain Analytics</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Transaction activity and wallet insights</p>
+        <h1 className="text-2xl font-bold tracking-tight">Transaction Analytics</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Activity analysis from your recorded transactions</p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+        Analytics are derived from transactions you have recorded in this app — not from live blockchain nodes. For real on-chain data use a block explorer.
       </div>
 
       {/* Summary Stats */}
