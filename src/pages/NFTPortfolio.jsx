@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-const ETH_PRICE = 3200;
 const CHAIN_COLORS = { ethereum: "bg-blue-500/10 text-blue-400", solana: "bg-purple-500/10 text-purple-400", polygon: "bg-violet-500/10 text-violet-400", base: "bg-sky-500/10 text-sky-400" };
 const STATUS_COLORS = { holding: "bg-green-500/10 text-green-400", listed: "bg-yellow-500/10 text-yellow-400", sold: "bg-muted text-muted-foreground" };
 
@@ -59,7 +58,7 @@ export default function NFTPortfolio() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total Holdings", value: `${nfts.filter(n => n.status === "holding").length}` },
-          { label: "Portfolio Value", value: `${totalValueETH.toFixed(3)} ETH`, sub: `≈ $${(totalValueETH * ETH_PRICE).toLocaleString(undefined, { maximumFractionDigits: 0 })}` },
+          { label: "Portfolio Value", value: `${totalValueETH.toFixed(3)} ETH` },
           { label: "Unrealised P&L", value: `${totalPnlETH >= 0 ? "+" : ""}${totalPnlETH.toFixed(3)} ETH`, positive: totalPnlETH >= 0 },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">

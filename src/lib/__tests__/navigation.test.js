@@ -15,8 +15,8 @@ describe('navigation respects the feature registry', () => {
     cutPaths().forEach((p) => expect(searchPaths).not.toContain(p));
   });
 
-  it('keeps disabled features visible (referrals still in nav)', () => {
-    expect(allNavPaths).toContain('/referrals');
+  it('drops cut features (referrals cut for this release, not in nav)', () => {
+    expect(allNavPaths).not.toContain('/referrals');
   });
 
   it('leaves live features untouched', () => {

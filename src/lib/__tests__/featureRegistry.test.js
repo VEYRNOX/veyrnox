@@ -24,11 +24,10 @@ describe('getFeatureStatus', () => {
     expect(isCut('/leaderboard')).toBe(true);
   });
 
-  it('classifies referrals as disabled pending a serverless build (spec §4)', () => {
+  it('classifies referrals as cut for this release (spec §4)', () => {
     const entry = getFeatureStatus('/referrals');
-    expect(entry.status).toBe('disabled');
-    expect(entry.reason).toBe(REASONS.SERVER);
-    expect(isDisabled('/referrals')).toBe(true);
+    expect(entry.status).toBe('cut');
+    expect(isCut('/referrals')).toBe(true);
   });
 
   it('every cut/disabled entry carries a user-facing note', () => {
@@ -49,7 +48,7 @@ describe('getFeatureStatus', () => {
 
   it('normalises a trailing slash so it cannot bypass the gate', () => {
     expect(getFeatureStatus('/leaderboard/').status).toBe('cut');
-    expect(getFeatureStatus('/referrals/').status).toBe('disabled');
+    expect(getFeatureStatus('/referrals/').status).toBe('cut');
     expect(featureRouteOutcome('/leaderboard/')).toBe('notFound');
     expect(getFeatureStatus('/').status).toBe('live'); // root is untouched
   });
@@ -60,14 +59,14 @@ describe('cutPaths / disabledPaths', () => {
     for (const p of ['/leaderboard', '/public-profiles', '/shared-portfolio']) {
       expect(cutPaths()).toContain(p);
     }
-    expect(disabledPaths()).toContain('/referrals');
+    expect(cutPaths()).toContain('/referrals');
   });
 });
 
 describe('featureRouteOutcome', () => {
   it('maps status to a render outcome', () => {
     expect(featureRouteOutcome('/send')).toBe('render');
-    expect(featureRouteOutcome('/referrals')).toBe('disabled');
+    expect(featureRouteOutcome('/referrals')).toBe('notFound');
     expect(featureRouteOutcome('/leaderboard')).toBe('notFound');
   });
 });

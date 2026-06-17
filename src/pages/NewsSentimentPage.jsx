@@ -17,14 +17,6 @@ const SENTIMENT_CONFIG = {
   very_bearish: { icon: TrendingDown, color: "text-destructive", bg: "bg-destructive/10 border-destructive/20", label: "Very Bearish", bar: 0 },
 };
 
-const MOCK_NEWS = [
-  { asset: "BTC", headline: "BlackRock Bitcoin ETF hits $50B AUM milestone", source: "Bloomberg", sentiment: "very_bullish", score: 0.92, published_at: "2026-05-27T08:00:00Z", summary: "Institutional demand continues to surge as BlackRock's spot Bitcoin ETF reaches a new record, signalling strong long-term confidence." },
-  { asset: "ETH", headline: "Ethereum Layer 2 TVL surpasses $80B for first time", source: "The Block", sentiment: "bullish", score: 0.71, published_at: "2026-05-27T07:30:00Z", summary: "The Ethereum L2 ecosystem continues its explosive growth, with Base and Arbitrum leading the charge in TVL accumulation." },
-  { asset: "SOL", headline: "Solana network experiences brief congestion during memecoin surge", source: "CoinDesk", sentiment: "bearish", score: -0.38, published_at: "2026-05-27T06:15:00Z", summary: "A wave of memecoin activity caused temporary slowdowns on the Solana network, raising concerns about scalability." },
-  { asset: "BTC", headline: "US Fed signals potential rate cut in Q3 2026", source: "Reuters", sentiment: "bullish", score: 0.65, published_at: "2026-05-26T22:00:00Z", summary: "Risk assets including Bitcoin react positively as Fed minutes hint at possible monetary easing later this year." },
-  { asset: "ETH", headline: "Ethereum staking withdrawals spike amid market uncertainty", source: "Decrypt", sentiment: "bearish", score: -0.42, published_at: "2026-05-26T18:00:00Z", summary: "Validators are unstaking ETH at elevated rates as market participants seek liquidity amid ongoing volatility." },
-  { asset: "SOL", headline: "Solana overtakes Ethereum in daily DEX volume", source: "DeFiLlama", sentiment: "very_bullish", score: 0.88, published_at: "2026-05-26T15:00:00Z", summary: "Solana's DEX ecosystem, driven by Jupiter and Raydium, surpasses Ethereum in 24-hour trading volume for the first time." },
-];
 
 function AssetSentimentBar({ asset, news }) {
   const assetNews = news.filter(n => n.asset === asset);
@@ -50,7 +42,7 @@ export default function NewsSentimentPage() {
 
   const { data: saved = [] } = useQuery({ queryKey: ["news-sentiment"], queryFn: () => base44.entities.NewsSentiment.list("-created_date") });
 
-  const allNews = [...MOCK_NEWS, ...saved];
+  const allNews = saved;
   const filtered = filterAsset === "all" ? allNews : allNews.filter(n => n.asset === filterAsset);
 
   const runAI = useMutation({
@@ -94,6 +86,13 @@ export default function NewsSentimentPage() {
           detail="Fetching fresh AI-scored sentiment needs an LLM service with internet context, which this offline-first build doesn't include. The sentiment shown below is illustrative sample data."
         />
       )}
+
+      <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/30 border border-border">
+        <Newspaper className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-xs text-muted-foreground">
+          No live news feed is connected. Articles shown here come from records saved by AI Refresh (requires the LLM endpoint). A real-time news API integration is on the roadmap.
+        </p>
+      </div>
 
       {/* Overall sentiment bars */}
       <div className="p-4 rounded-xl border border-border bg-card space-y-3">

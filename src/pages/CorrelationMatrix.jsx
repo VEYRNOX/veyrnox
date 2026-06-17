@@ -55,6 +55,9 @@ export default function CorrelationMatrix() {
           <Info className="h-4 w-4 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">Correlation ranges from -1 (opposite) to +1 (identical). Aim for assets with correlation below 0.5.</p>
         </div>
+        <div className="flex items-start gap-2 mb-3 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <p className="text-[10px] text-yellow-400">These coefficients are reference/illustrative values — not live market data. Real correlations shift over time with market regimes. Do not use these figures for financial decisions.</p>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead>

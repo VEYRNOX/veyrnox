@@ -1,17 +1,13 @@
-import { useState, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
-import { Eye, EyeOff, AlertTriangle, Shield, Printer } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound } from "lucide-react";
 import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useWallet } from "@/lib/WalletProvider";
+import { useActionGuard } from "@/components/security/useActionGuard";
 
-// Escape HTML metacharacters before interpolating user-controlled strings (the
-// wallet name and the seed phrase the user typed) into the print document's
-// markup. Without this, those values are written raw into document.write — a
-// (self-)injection shape in a seed-handling flow. Escaping is a no-op for normal
-// mnemonic words/labels, so it never changes the printed output.
+// Escape HTML metacharacters before interpolating into the print document.
 function escapeHtml(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -22,18 +18,41 @@ function escapeHtml(s) {
 }
 
 export default function WalletSeedQR() {
-  const [selectedWalletId, setSelectedWalletId] = useState("");
-  const [seedPhrase, setSeedPhrase] = useState("");
-  const [showSeed, setShowSeed] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
-  const [printed, setPrinted] = useState(false);
-  const printRef = useRef(null);
+  const { wallets, revealWalletMnemonic, confirmWalletBackup } = useWallet();
+  const { requireTwoFactor, gateModal } = useActionGuard();
 
-  // FOLLOW-UP (separate change): seed is sourced from the demo data layer (base44 mock), not the real vault. Rewire to WalletProvider before this is a real backup path. Tracked separately.
-  const { data: wallets = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => base44.entities.Wallet.list() });
+  const [selectedWalletId, setSelectedWalletId] = useState("");
+  const [mnemonic, setMnemonic] = useState(null);
+  const [showSeed, setShowSeed] = useState(false);
+  const [printed, setPrinted] = useState(false);
+  const mnemonicRef = useRef(null);
+
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
 
+  // Clear mnemonic from memory when wallet changes or component unmounts.
+  useEffect(() => {
+    setMnemonic(null);
+    setShowSeed(false);
+    setPrinted(false);
+  }, [selectedWalletId]);
+
+  useEffect(() => {
+    return () => { setMnemonic(null); };
+  }, []);
+
+  const handleReveal = () => {
+    if (!selectedWalletId) return;
+    requireTwoFactor(() => {
+      const phrase = revealWalletMnemonic(selectedWalletId);
+      if (phrase) {
+        setMnemonic(phrase);
+        mnemonicRef.current = phrase;
+      }
+    }, { title: 'Reveal seed phrase' });
+  };
+
   const handlePrint = () => {
+    if (!mnemonic) return;
     const w = window.open("", "_blank");
     const nameHtml = escapeHtml(selectedWallet?.name || "Wallet");
     w.document.write(`<html><head><title>Seed Backup — ${nameHtml}</title><style>
@@ -41,20 +60,27 @@ export default function WalletSeedQR() {
       h2 { margin-bottom: 8px; }
       p { color: #666; font-size: 13px; margin: 4px 0; }
       .seed { font-size: 14px; font-weight: bold; margin: 20px 0; word-break: break-all; background: #f5f5f5; padding: 16px; border-radius: 8px; }
-      canvas { margin: 20px auto; display: block; }
       .warning { color: #ef4444; font-size: 12px; margin-top: 20px; }
     </style></head><body>
       <h2>${nameHtml} — Seed Backup</h2>
       <p>${escapeHtml(selectedWallet?.currency || "")} · ${escapeHtml(selectedWallet?.address?.slice(0, 16) || "")}...</p>
-      <div class="seed">${escapeHtml(seedPhrase)}</div>
+      <div class="seed">${escapeHtml(mnemonic)}</div>
       <p class="warning">⚠️ KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.</p>
     </body></html>`);
     w.document.close();
     w.print();
     setPrinted(true);
+    confirmWalletBackup(selectedWalletId);
   };
 
-  const isValidSeed = seedPhrase.trim().split(/\s+/).length >= 12;
+  const handleClear = () => {
+    setMnemonic(null);
+    mnemonicRef.current = null;
+    setShowSeed(false);
+    setPrinted(false);
+  };
+
+  const words = mnemonic ? mnemonic.trim().split(/\s+/) : [];
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -73,7 +99,7 @@ export default function WalletSeedQR() {
           <li>• Your seed phrase grants full wallet access — never share it</li>
           <li>• Only reveal your seed phrase in a private, secure environment</li>
           <li>• Store the printed phrase in a fireproof safe or safety deposit box</li>
-          <li>• This page never transmits or stores your seed phrase</li>
+          <li>• This page never transmits your seed phrase — it reads from your local vault</li>
         </ul>
       </div>
 
@@ -81,70 +107,83 @@ export default function WalletSeedQR() {
       <div>
         <Label>Select Wallet</Label>
         <Select value={selectedWalletId} onValueChange={setSelectedWalletId}>
-          <SelectTrigger className="mt-1.5"><SelectValue placeholder="Choose wallet..." /></SelectTrigger>
+          <SelectTrigger className="mt-1.5">
+            <SelectValue placeholder="Choose wallet..." />
+          </SelectTrigger>
           <SelectContent>
-            {wallets.map(w => <SelectItem key={w.id} value={w.id}><span className="flex items-center gap-2"><CoinLogo symbol={w.currency} size={18} />{w.name} ({w.currency})</span></SelectItem>)}
+            {wallets.map(w => (
+              <SelectItem key={w.id} value={w.id}>
+                <span className="flex items-center gap-2">
+                  <CoinLogo symbol={w.currency} size={18} />
+                  {w.name} ({w.currency})
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Seed phrase input */}
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <Label>Seed Phrase (12 or 24 words)</Label>
-          <button onClick={() => setShowSeed(s => !s)} className="text-muted-foreground hover:text-foreground transition-colors">
-            {showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-        <textarea
-          rows={3}
-          value={seedPhrase}
-          onChange={e => { setSeedPhrase(e.target.value); setConfirmed(false); }}
-          placeholder="word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
-          className={`w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono ${!showSeed && seedPhrase ? "text-transparent bg-clip-text" : ""}`}
-          style={!showSeed && seedPhrase ? /** @type {any} */ ({ WebkitTextSecurity: "disc" }) : {}}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        {seedPhrase && (
-          <p className={`text-xs mt-1 ${isValidSeed ? "text-green-500" : "text-yellow-500"}`}>
-            {seedPhrase.trim().split(/\s+/).length} words {isValidSeed ? "✓" : "(need at least 12)"}
-          </p>
-        )}
-      </div>
-
-      {/* Confirmation */}
-      {isValidSeed && !confirmed && (
-        <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5">
-          <p className="text-sm font-semibold mb-2">Confirm you understand the risks</p>
-          <p className="text-xs text-muted-foreground mb-3">I understand this reveals my full recovery phrase and will store it securely offline.</p>
-          <Button size="sm" onClick={() => setConfirmed(true)} className="gap-2 w-full"><Shield className="h-4 w-4" /> I Understand — Reveal Backup</Button>
-        </div>
+      {/* Reveal button — shown when wallet selected but mnemonic not yet revealed */}
+      {selectedWalletId && !mnemonic && (
+        <Button onClick={handleReveal} className="gap-2 w-full">
+          <KeyRound className="h-4 w-4" /> Reveal Seed Phrase
+        </Button>
       )}
 
-      {/* QR Output */}
-      {confirmed && isValidSeed && (
-        <div className="p-5 rounded-xl border border-border bg-card text-center space-y-4">
-          <div className="flex items-center justify-center gap-2">
-            <Shield className="h-4 w-4 text-green-500" />
-            <p className="text-sm font-semibold">{selectedWallet?.name || "Wallet"} Seed Backup</p>
+      {/* Revealed mnemonic */}
+      {mnemonic && (
+        <div className="p-5 rounded-xl border border-border bg-card space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-green-500" />
+              <p className="text-sm font-semibold">{selectedWallet?.name || "Wallet"} — Seed Phrase</p>
+            </div>
+            <button
+              onClick={() => setShowSeed(s => !s)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={showSeed ? "Hide seed" : "Show seed"}
+            >
+              {showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
-          <div className="flex justify-center" ref={printRef}>
-            <p className="font-mono text-sm break-all rounded-lg border border-border bg-muted/30 p-4 text-left">{seedPhrase}</p>
-          </div>
-          <p className="text-xs text-muted-foreground">Write these words down in order and store them securely offline. Re-import by typing the words into a wallet — there is no scan-to-import.</p>
-          {selectedWallet && (
-            <p className="text-xs font-mono text-muted-foreground">{selectedWallet.currency} · {selectedWallet.address?.slice(0, 20)}...</p>
+
+          {showSeed ? (
+            <div className="grid grid-cols-3 gap-2">
+              {words.map((word, i) => (
+                <div key={i} className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1.5">
+                  <span className="text-[10px] text-muted-foreground w-4 text-right shrink-0">{i + 1}</span>
+                  <span className="font-mono text-xs font-medium">{word}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-center">
+              <p className="text-sm text-muted-foreground">Tap the eye to reveal your {words.length}-word phrase</p>
+            </div>
           )}
+
+          <p className="text-xs text-muted-foreground">
+            Write these words down in order and store them securely offline.
+            {selectedWallet && <span className="font-mono"> {selectedWallet.currency} · {selectedWallet.address?.slice(0, 20)}…</span>}
+          </p>
+
           <Button onClick={handlePrint} className="gap-2 w-full" variant="outline">
             <Printer className="h-4 w-4" /> Print Secure Backup
           </Button>
-          {printed && <p className="text-xs text-green-500">✓ Printed. Store securely.</p>}
-          <Button size="sm" variant="ghost" className="text-destructive text-xs" onClick={() => { setSeedPhrase(""); setConfirmed(false); setPrinted(false); }}>
-            Clear Seed from Memory
+          {printed && <p className="text-xs text-green-500">✓ Printed — backup confirmed.</p>}
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive text-xs w-full"
+            onClick={handleClear}
+          >
+            Clear seed from memory
           </Button>
         </div>
       )}
+
+      {gateModal}
     </div>
   );
 }

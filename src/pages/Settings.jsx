@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
-import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles, Scale, TrendingUp } from "lucide-react";
+import { Shield, Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles, Scale, TrendingUp, ScrollText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -18,11 +18,18 @@ import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 
 export default function Settings() {
   const queryClient = useQueryClient();
-  const { lock, recordAudit } = useWallet();
+  const { lock, recordAudit, getAuditLogEnabled, toggleAuditLog, fetchAuditEntries } = useWallet();
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [livePrices, setLivePrices] = useState(() => isLivePricesEnabled());
+  const [auditLog, setAuditLog] = useState(() => getAuditLogEnabled());
+  const [auditEntries, setAuditEntries] = useState(null);
+
+  useEffect(() => {
+    if (!auditLog) { setAuditEntries(null); return; }
+    fetchAuditEntries().then(setAuditEntries).catch(() => setAuditEntries([]));
+  }, [auditLog, fetchAuditEntries]);
 
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== "DELETE") return;
@@ -118,6 +125,50 @@ export default function Settings() {
           of supported coins — never your holdings, balances, or addresses. Off by default; no price calls are
           made until you turn this on.
         </p>
+      </div>
+
+      {/* Activity log (opt-in, off by default — deniability-safe S4) */}
+      <div className="p-5 rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <ScrollText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Activity log</p>
+              <p className="text-xs text-muted-foreground">Off by default · encrypted on-device only</p>
+            </div>
+          </div>
+          <Switch
+            checked={auditLog}
+            onCheckedChange={async (checked) => {
+              await toggleAuditLog(checked);
+              setAuditLog(checked);
+              recordAudit('settings_changed');
+            }}
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          When on, keeps a local encrypted record of three event types: settings changed, send completed, approval revoked.
+          No amounts, addresses, or wallet identity are stored. Encrypted with a key derived from your seed — never
+          readable without unlocking. Wiped automatically by Panic Wipe. Turning this off deletes the log immediately.
+        </p>
+        {auditLog && auditEntries !== null && (
+          <div className="mt-3 border-t border-border pt-3">
+            {auditEntries.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No events recorded yet.</p>
+            ) : (
+              <ul className="space-y-1">
+                {[...auditEntries].reverse().map((e, i) => (
+                  <li key={i} className="flex justify-between text-xs text-muted-foreground">
+                    <span className="font-mono">{e.type.replace(/_/g, ' ')}</span>
+                    <span>{new Date(e.ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Biometric unlock (PROVISIONAL — M2b app-layer gate) */}

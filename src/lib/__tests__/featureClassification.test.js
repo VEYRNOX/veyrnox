@@ -58,8 +58,8 @@ describe('registryEntriesFromClassification', () => {
     // A seeded cut entry maps verdict -> status with reason + note
     expect(out['/leaderboard']).toMatchObject({ status: 'cut', reason: 'off-wedge' });
     expect(typeof out['/leaderboard'].note).toBe('string');
-    // A seeded disabled entry maps through
-    expect(out['/referrals']).toMatchObject({ status: 'disabled', reason: 'server' });
+    // /referrals is now cut for this release
+    expect(out['/referrals']).toMatchObject({ status: 'cut', reason: 'off-wedge' });
     // Non-live entries: 4 original seeds + 9 Overview-group pages classified in batch 1
     // + 5 Wallet-group pages classified in batch 2
     // + 7 Invest/Finance pages classified in batch 3
@@ -76,18 +76,22 @@ describe('registryEntriesFromClassification', () => {
     //     /gas-fees, /connect, /push, /settings, /docs, /features, /plans)
     expect(Object.keys(out).sort()).toEqual(
       [
+        // cut: off-wedge / server / unverified — these are the only non-live routes
+        // remaining after the S-phase promotion sweep.
+        // Promoted to live (removed from this list):
+        //   /analytics, /advanced-analytics, /benchmark, /correlation,
+        //   /correlation-timeline, /news-sentiment, /calculator, /receipt,
+        //   /recurring, /portfolio-rewind, /index-builder, /pl, /budget, /tax,
+        //   /watchlist, /nft, /snapshots, /onchain, /wallet-seed-qr,
+        //   /hardware-wallet (M-complexity build), /anomaly-detection,
+        //   /fraud (M-complexity build), /alerts, /watch-wallets, /solana,
+        //   /price-charts (M-complexity build).
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
-        '/analytics', '/advanced-analytics', '/advisor', '/ai-assistant',
-        '/benchmark', '/what-if', '/correlation', '/correlation-timeline',
-        '/news-sentiment',
-        // '/fee-analytics' reclassified disabled→live (Slice 1 native-unit rebuild), so it drops out here.
-        '/calculator', '/receipt', '/recurring', '/split-bill',
-        '/portfolio-rewind', '/index-builder', '/ai-rebalancer', '/pl',
-        '/budget', '/tax',
-        '/watchlist', '/nft', '/snapshots', '/onchain', '/erc20-discovery',
-        '/wallet-seed-qr', '/hardware-wallet',
-        '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts', '/alerts',
-        '/watch-wallets', '/solana', '/price-charts', '/web3', '/products',
+        '/advisor', '/ai-assistant', '/ai-rebalancer',
+        '/what-if', '/split-bill',
+        '/erc20-discovery',
+        '/messenger-alerts', '/smart-alerts',
+        '/web3', '/products',
       ].sort(),
     );
   });

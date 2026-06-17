@@ -1,11 +1,14 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { TrendingUp, Activity, Target, AlertTriangle, BarChart3, Shield } from "lucide-react";
+import { TrendingUp, Activity, Target, BarChart3, Shield, AlertTriangle } from "lucide-react";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "@/lib/recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import moment from "moment";
 
+// Reference volatility and Sharpe constants — same approach as /risk-score (which is live).
+// These are NOT live-market figures; they are calibration constants that qualitatively
+// rank assets by historic risk profile. Labeled as such in the UI.
 const VOLATILITY = { BTC: 0.72, ETH: 0.85, SOL: 1.2, USDC: 0.01, USDT: 0.01 };
 const SHARPE = { BTC: 1.4, ETH: 1.1, SOL: 0.9, USDC: 0.05, USDT: 0.05 };
 const CORRELATION = [
@@ -15,63 +18,69 @@ const CORRELATION = [
   { asset: "USDC", BTC: -0.05, ETH: -0.03, SOL: -0.01, USDC: 1, USDT: 0.99 },
   { asset: "USDT", BTC: -0.04, ETH: -0.02, SOL: -0.01, USDC: 0.99, USDT: 1 },
 ];
-// The matrix only has data for these 5 assets — drive BOTH the header and the
-// per-row columns from this list so we never index a column a row doesn't have
-// (which would crash on `.toFixed`).
 const CORRELATION_ASSETS = ["BTC", "ETH", "SOL", "USDC", "USDT"];
-// Lookups default to mid-range so an asset missing from the tables above
-// renders a sensible value instead of NaN.
 const DEFAULT_VOLATILITY = 0.5;
 const DEFAULT_SHARPE = 0.5;
-const MONTHLY_PERFORMANCE = [
-  { month: "Nov", portfolio: 4.2, btc: 5.1, sp500: 2.1 },
-  { month: "Dec", portfolio: -2.1, btc: -3.4, sp500: -1.2 },
-  { month: "Jan", portfolio: 8.4, btc: 9.2, sp500: 1.8 },
-  { month: "Feb", portfolio: 3.1, btc: 2.8, sp500: 2.4 },
-  { month: "Mar", portfolio: -1.4, btc: -2.1, sp500: 1.1 },
-  { month: "Apr", portfolio: 6.7, btc: 7.3, sp500: 2.9 },
-];
 
 export default function AdvancedAnalytics() {
   const { data: wallets = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => base44.entities.Wallet.list() });
+  const { data: transactions = [] } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500) });
 
+  // Native balance per currency (no USD weights — avoids stale price dependency).
   const holdings = useMemo(() => {
     const map = {};
     for (const w of wallets) map[w.currency] = (map[w.currency] || 0) + (w.balance || 0);
     return map;
   }, [wallets]);
 
-  const totalUSD = useMemo(() => Object.entries(holdings).reduce((s, [c, b]) => s + b * (USD_RATES[c] || 1), 0), [holdings]);
   const assets = Object.keys(holdings).filter(c => holdings[c] > 0);
+  const totalNative = Object.values(holdings).reduce((s, b) => s + b, 0);
 
-  const portfolioVolatility = useMemo(() => {
-    if (totalUSD === 0) return 0;
-    return assets.reduce((s, c) => s + (holdings[c] * USD_RATES[c] / totalUSD) * (VOLATILITY[c] || 0.5), 0);
-  }, [assets, holdings, totalUSD]);
-
-  const portfolioSharpe = useMemo(() => {
-    if (totalUSD === 0) return 0;
-    return assets.reduce((s, c) => s + (holdings[c] * USD_RATES[c] / totalUSD) * (SHARPE[c] || 0.5), 0);
-  }, [assets, holdings, totalUSD]);
-
+  // Diversification: HHI on wallet-count per currency (unit-agnostic proxy).
+  const walletCountByCurrency = wallets.reduce((acc, w) => {
+    acc[w.currency] = (acc[w.currency] || 0) + 1;
+    return acc;
+  }, {});
+  const totalWallets = wallets.length || 1;
   const diversificationScore = useMemo(() => {
-    if (assets.length === 0) return 0;
-    const weights = assets.map(c => holdings[c] * USD_RATES[c] / totalUSD);
+    const weights = Object.values(walletCountByCurrency).map(n => n / totalWallets);
     const hhi = weights.reduce((s, w) => s + w * w, 0);
     return Math.round((1 - hhi) * 100);
-  }, [assets, holdings, totalUSD]);
+  }, [walletCountByCurrency, totalWallets]);
 
-  const stableRatio = useMemo(() => {
-    const stables = ["USDC", "USDT"];
-    const stableUSD = stables.reduce((s, c) => s + (holdings[c] || 0) * (USD_RATES[c] || 1), 0);
-    return totalUSD > 0 ? ((stableUSD / totalUSD) * 100).toFixed(1) : 0;
-  }, [holdings, totalUSD]);
+  // Volatility / Sharpe — weighted by wallet count (unit-agnostic proxy).
+  const portfolioVolatility = useMemo(() =>
+    assets.reduce((s, c) => s + ((walletCountByCurrency[c] || 1) / totalWallets) * (VOLATILITY[c] || DEFAULT_VOLATILITY), 0)
+  , [assets, walletCountByCurrency, totalWallets]);
+
+  const portfolioSharpe = useMemo(() =>
+    assets.reduce((s, c) => s + ((walletCountByCurrency[c] || 1) / totalWallets) * (SHARPE[c] || DEFAULT_SHARPE), 0)
+  , [assets, walletCountByCurrency, totalWallets]);
+
+  const stableCount = ["USDC","USDT"].reduce((s, c) => s + (walletCountByCurrency[c] || 0), 0);
+  const stableRatio = totalWallets > 0 ? ((stableCount / totalWallets) * 100).toFixed(1) : 0;
+
+  // Monthly sent/received counts — real tx data, no USD needed.
+  const activityData = useMemo(() => {
+    const months = {};
+    for (let i = 5; i >= 0; i--) {
+      const key = moment().subtract(i, "months").format("MMM");
+      months[key] = { month: key, received: 0, sent: 0 };
+    }
+    for (const tx of transactions) {
+      const key = moment(tx.created_date).format("MMM");
+      if (!months[key]) continue;
+      if (tx.type === "receive") months[key].received += 1;
+      if (tx.type === "send") months[key].sent += 1;
+    }
+    return Object.values(months);
+  }, [transactions]);
 
   const radarData = assets.slice(0, 5).map(c => ({
     asset: c,
-    allocation: totalUSD > 0 ? Math.round((holdings[c] * USD_RATES[c] / totalUSD) * 100) : 0,
-    volatility: Math.round((VOLATILITY[c] || 0.5) * 100),
-    sharpe: Math.round((SHARPE[c] || 0.5) * 100),
+    wallets: walletCountByCurrency[c] || 0,
+    volatility: Math.round((VOLATILITY[c] || DEFAULT_VOLATILITY) * 100),
+    sharpe: Math.round((SHARPE[c] || DEFAULT_SHARPE) * 100),
   }));
 
   const riskLevel = portfolioVolatility < 0.3
@@ -82,7 +91,7 @@ export default function AdvancedAnalytics() {
 
   const metrics = [
     { label: "Portfolio Risk", value: riskLevel.label, color: riskLevel.color, bg: riskLevel.bg, icon: Shield },
-    { label: "Sharpe Ratio", value: portfolioSharpe.toFixed(2), icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Ref. Sharpe", value: portfolioSharpe.toFixed(2), icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
     { label: "Diversification", value: `${diversificationScore}%`, icon: Target, color: "text-blue-400", bg: "bg-blue-500/10" },
     { label: "Stable Ratio", value: `${stableRatio}%`, icon: Activity, color: "text-purple-400", bg: "bg-purple-500/10" },
   ];
@@ -93,7 +102,7 @@ export default function AdvancedAnalytics() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><BarChart3 className="h-6 w-6 text-primary" /> Advanced Analytics</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">In-depth risk analysis and performance metrics</p>
+        <p className="text-sm text-muted-foreground mt-0.5">In-depth risk analysis and activity metrics</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -106,47 +115,44 @@ export default function AdvancedAnalytics() {
         ))}
       </div>
 
-      <Tabs defaultValue="performance">
+      <div className="flex items-start gap-2 p-3 rounded-xl bg-secondary/40 border border-border text-xs text-muted-foreground">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-yellow-500" />
+        <span>Volatility and Sharpe figures are reference constants (same per-asset calibration as Risk Score), not live market data. Risk / diversification metrics weight by wallet count — a unit-agnostic proxy.</span>
+      </div>
+
+      <Tabs defaultValue="activity">
         <TabsList className="w-full bg-secondary">
-          <TabsTrigger value="performance" className="flex-1">Performance</TabsTrigger>
+          <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
           <TabsTrigger value="risk" className="flex-1">Risk</TabsTrigger>
           <TabsTrigger value="correlation" className="flex-1">Correlation</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="performance" className="mt-3 space-y-4">
+        <TabsContent value="activity" className="mt-3 space-y-4">
           <div className="p-4 rounded-xl border border-border bg-card">
-            <p className="text-sm font-semibold mb-3">Monthly Returns vs Benchmarks</p>
+            <p className="text-sm font-semibold mb-3">Monthly Sent / Received (6 months)</p>
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={MONTHLY_PERFORMANCE}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `${v}%`} />
-                <Tooltip formatter={(v) => `${v}%`} contentStyle={chartStyle} />
-                <Legend />
-                <Bar dataKey="portfolio" name="Your Portfolio" fill="hsl(var(--primary))" radius={[4,4,0,0]} />
-                <Bar dataKey="btc" name="BTC" fill="#F7931A" radius={[4,4,0,0]} />
-                <Bar dataKey="sp500" name="S&amp;P 500" fill="#627EEA" radius={[4,4,0,0]} />
+              <BarChart data={activityData} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={28} />
+                <Tooltip contentStyle={chartStyle} />
+                <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
+                <Bar dataKey="received" name="Received" fill="#22c55e" radius={[4,4,0,0]} />
+                <Bar dataKey="sent" name="Sent" fill="#ef4444" radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[{ label: "Best Month", value: "+8.4%", color: "text-green-400" }, { label: "Worst Month", value: "-2.1%", color: "text-destructive" }, { label: "Win Rate", value: "67%", color: "text-primary" }].map(s => (
-              <div key={s.label} className="p-3 rounded-xl border border-border bg-card text-center">
-                <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-              </div>
-            ))}
+            <p className="text-[10px] text-muted-foreground mt-2">Transaction counts from local history — no USD conversion</p>
           </div>
         </TabsContent>
 
         <TabsContent value="risk" className="mt-3 space-y-4">
           <div className="p-4 rounded-xl border border-border bg-card">
-            <p className="text-sm font-semibold mb-3">Risk / Return Profile</p>
+            <p className="text-sm font-semibold mb-3">Risk / Return Profile (reference constants)</p>
             <ResponsiveContainer width="100%" height={220}>
               <RadarChart data={radarData}>
                 <PolarGrid stroke="hsl(var(--border))" />
                 <PolarAngleAxis dataKey="asset" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Radar name="Allocation" dataKey="allocation" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
+                <Radar name="Wallets" dataKey="wallets" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
                 <Radar name="Volatility" dataKey="volatility" stroke="#EF4444" fill="#EF4444" fillOpacity={0.1} />
                 <Tooltip contentStyle={chartStyle} />
                 <Legend />
@@ -175,7 +181,7 @@ export default function AdvancedAnalytics() {
           {portfolioVolatility > 0.5 && (
             <div className="flex gap-3 p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
               <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground">High portfolio volatility detected. Consider increasing stablecoin allocation to reduce risk.</p>
+              <p className="text-xs text-muted-foreground">High reference-volatility portfolio. Consider increasing stablecoin allocation to reduce risk.</p>
             </div>
           )}
         </TabsContent>
@@ -183,7 +189,8 @@ export default function AdvancedAnalytics() {
         <TabsContent value="correlation" className="mt-3 space-y-4">
           <div className="p-4 rounded-xl border border-border bg-card">
             <p className="text-sm font-semibold mb-1">Asset Correlation Matrix</p>
-            <p className="text-xs text-muted-foreground mb-3">How your assets move together (1 = perfect correlation)</p>
+            <p className="text-xs text-muted-foreground mb-1">How your assets tend to move together (1 = perfect correlation)</p>
+            <p className="text-[10px] text-yellow-400 mb-3">Reference constants — not live market data. Correlations shift over time; do not use for financial decisions.</p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
@@ -213,7 +220,7 @@ export default function AdvancedAnalytics() {
           </div>
           <div className="flex gap-3 items-start p-3 rounded-xl border border-border bg-card text-xs text-muted-foreground">
             <Activity className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <span>Assets with low correlation (blue) improve diversification. Highly correlated assets (yellow) provide less risk reduction benefit when combined.</span>
+            <span>Assets with low correlation improve diversification. Highly correlated assets provide less risk reduction benefit when combined.</span>
           </div>
         </TabsContent>
       </Tabs>
