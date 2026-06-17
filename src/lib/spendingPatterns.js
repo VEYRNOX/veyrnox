@@ -9,10 +9,11 @@
 // figures need no price and are genuinely real, so the page can be honest+live.
 //
 // Extracted as a pure function so the aggregation is unit-tested without React.
-import { format, subMonths } from 'date-fns';
+import { format, subMonths, isValid } from 'date-fns';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const safeDate = (v) => { const d = new Date(v); return isValid(d) ? d : null; };
 
 /**
  * @param {Array<{type,currency,amount,created_date}>} transactions - real local tx records
@@ -50,13 +51,13 @@ export function summarizeSpending(transactions, now = undefined) {
     const m = format(subMonths(ref, i), 'MMM yy');
     monthly[m] = { month: m, sent: 0, received: 0 };
   }
-  for (const t of sends) { const m = format(new Date(t.created_date), 'MMM yy'); if (monthly[m]) monthly[m].sent += 1; }
-  for (const t of receives) { const m = format(new Date(t.created_date), 'MMM yy'); if (monthly[m]) monthly[m].received += 1; }
+  for (const t of sends) { const d = safeDate(t.created_date); if (!d) continue; const m = format(d, 'MMM yy'); if (monthly[m]) monthly[m].sent += 1; }
+  for (const t of receives) { const d = safeDate(t.created_date); if (!d) continue; const m = format(d, 'MMM yy'); if (monthly[m]) monthly[m].received += 1; }
 
   // Day-of-week transaction counts.
   const dow = Object.fromEntries(DOW.map((d) => [d, { day: d, sent: 0, received: 0 }]));
-  for (const t of sends) { const d = format(new Date(t.created_date), 'eee'); if (dow[d]) dow[d].sent += 1; }
-  for (const t of receives) { const d = format(new Date(t.created_date), 'eee'); if (dow[d]) dow[d].received += 1; }
+  for (const t of sends) { const d = safeDate(t.created_date); if (!d) continue; const label = format(d, 'eee'); if (dow[label]) dow[label].sent += 1; }
+  for (const t of receives) { const d = safeDate(t.created_date); if (!d) continue; const label = format(d, 'eee'); if (dow[label]) dow[label].received += 1; }
 
   const thisMonthKey = format(ref, 'MMM yy');
   const counts = {
