@@ -145,8 +145,8 @@ export const CLASSIFICATION = {
     note: 'Entirely local: ethers.Wallet.createRandom() for key gen, ethers.HDNodeWallet.fromPhrase() for derivation, wallet.signMessage()/signTransaction() for signing — all client-side ethers.js v6, no external call. Standard cryptographic signing utility.',
   },
   '/recurring': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Explicitly stubbed: page warns "schedules & reminders only" and the execute path redirects to /send for manual signing (promptSignInSend). Feature cannot actually execute recurring transfers — presents as "Automate regular crypto transfers" but does not deliver that capability.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Scheduling/reminder store for recurring payment intentions. Page explicitly warns "schedules & reminders only"; execution redirects to /send for manual user signing (promptSignInSend). CRUD is fully on-device via base44-entities. Does not attempt autonomous transfers — honestly scoped.',
   },
   '/calculator': {
     verdict: 'live', dataSource: 'external',
@@ -315,8 +315,8 @@ export const CLASSIFICATION = {
     note: 'Imports classifyToken from @/wallet-core/evm/spam. Runs the real on-device heuristic classifier over user-supplied or preset token metadata. Extensive in-file honesty contract: never claims on-chain analysis, never asserts safety, explicitly labels results as local-heuristic only. No external call.',
   },
   '/fraud': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'No automated/AI fraud analysis or rule engine runs in this build. The earlier version labelled itself "AI Fraud Detection" / "Real-time monitoring" but ran no analysis — its scan was a 2 s timeout that always reported "no new threats detected", and its Detection Rules tab rendered a hardcoded list presented as actively enforced. That theatre has been removed; the page is now an honest placeholder behind this gate. Real pre-sign risk lives in the Pre-Sign Scanner, Address Screening, Trust Score and Security Dashboard.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Honest security-awareness page. The earlier AI/detection theatre (2 s fake scan, hardcoded "enforced" rules) has been removed; the page surfaces the real on-device security tools (Pre-Sign Scanner, Address Screening, Trust Score) and explains their scope honestly. No external calls. No invented threat data.',
   },
   '/rasp-security': {
     verdict: 'live', dataSource: 'static',

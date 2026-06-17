@@ -273,6 +273,17 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   Scanner" / "Statistical analysis"). USD large-transfer detection now uses `useLivePrices()` gated by
   `isLivePricesEnabled()`; velocity and unusual-hour checks run regardless. Off-state banner explains partial
   detection. Verified in-browser.
+- Fraud Detection (`/fraud`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live.
+  Earlier AI/detection theatre (2 s fake scan, hardcoded "enforced" rule list) had already been removed by
+  prior developer; the page is an honest security-awareness surface that directs users to the real on-device
+  tools (Pre-Sign Scanner, Address Screening, Trust Score). No external calls, no invented threat data. Zero
+  code changes needed — classification flip only.
+- Recurring Payments (`/recurring`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. CRUD (create/edit/toggle/delete recurring schedules) works fully on-device via
+  `base44.entities.RecurringPayment`. Page permanently warns "schedules & reminders only"; the execute path
+  calls `promptSignInSend()` which redirects to `/send` for manual user signing — no autonomous transfer is
+  attempted. The gap between the original "Automate regular crypto transfers" framing and actual capability
+  is closed by the honest scope banner. Zero code changes needed — classification flip only.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅

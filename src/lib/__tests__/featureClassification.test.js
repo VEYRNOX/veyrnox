@@ -83,7 +83,8 @@ describe('registryEntriesFromClassification', () => {
         '/news-sentiment',
         // '/fee-analytics' reclassified disabled→live (Slice 1 native-unit rebuild), so it drops out here.
         // '/calculator' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
-        '/receipt', '/recurring', '/split-bill',
+        // '/recurring' reclassified disabled→live (honest CRUD with non-custodial banner; redirects to /send for signing), so it drops out here.
+        '/receipt', '/split-bill',
         '/portfolio-rewind', '/index-builder', '/ai-rebalancer',
         // '/pl' reclassified disabled→live (CURRENT_PRICES replaced with opt-in live feed), so it drops out here.
         // '/budget' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices), so it drops out here.
@@ -97,7 +98,8 @@ describe('registryEntriesFromClassification', () => {
         // '/alerts' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
         // '/smart-alerts' reclassified disabled→live (CRUD works on-device; evaluation not wired but honestly noted in UI), so it drops out here.
         // '/anomaly-detection' reclassified disabled→live (fake AI/delay removed; USD_RATES → useLivePrices), so it drops out here.
-        '/messenger-alerts', '/fraud',
+        // '/fraud' reclassified disabled→live (AI theatre removed; honest security-awareness page directing to real on-device tools), so it drops out here.
+        '/messenger-alerts',
         '/watch-wallets', '/solana', '/price-charts', '/web3', '/products',
       ].sort(),
     );
