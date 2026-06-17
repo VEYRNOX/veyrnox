@@ -549,6 +549,18 @@ export default function SendCrypto() {
   const presign = riskVerdict ? presignGate(raspTier, riskVerdict.level, riskAck) : null;
   const blockedByRisk = riskPending || (presign ? !presign.proceedAllowed : false);
 
+  // BTC pre-sign risk gate (internal audit M-2). BTC isn't EVM-shaped, so it has no
+  // `presign` verdict — instead its honest decode (btcSim → describeBtcPlan) raises
+  // high-severity flags (e.g. entire_balance). A high flag requires the same explicit
+  // acknowledgement as an EVM RISK verdict before signing; we also block while the BTC
+  // preview is still loading so a send can never be confirmed before the user has seen
+  // the fee/plan. Ack resets on any change to the breach inputs (same discipline as riskAck).
+  const [btcRiskAck, setBtcRiskAck] = useState(false);
+  useEffect(() => { setBtcRiskAck(false); }, [amount, selectedWallet?.currency, toAddress]);
+  const btcRiskHigh = isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high");
+  const btcRiskPending = isBtc && btcSim.isFetching && !btcSim.data;
+  const blockedByBtcRisk = btcRiskPending || (btcRiskHigh && !btcRiskAck);
+
   const sendTx = useMutation({
     mutationFn: async () => {
       // DEFENSE-IN-DEPTH: re-assert EVERY UI gate at signing time, as one ordered
@@ -595,6 +607,10 @@ export default function SendCrypto() {
         limitAck,
         riskScoreFailed,
         presign: presignAtSign,
+        // BTC risk re-checked from the settled preview at signing time (M-2), so a
+        // high decode flag can't be bypassed by stale UI state — mirrors how the EVM
+        // verdict is recomputed above.
+        btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
         blockedByApproval,
       });
       if (!gate.allowed) throw new Error(gate.message);
@@ -1031,6 +1047,20 @@ export default function SendCrypto() {
             {isBtc && (
               <TransactionPreview result={btcSim.data} loading={btcSim.isFetching && !btcSim.data} error={btcSim.error} />
             )}
+            {/* BTC risk gate (M-2): a high-severity decode flag (e.g. sends all inputs /
+                no change) must be explicitly acknowledged before Confirm & Send. */}
+            {btcRiskHigh && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/40 space-y-2">
+                <p className="text-xs text-destructive flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  {(btcSim.data?.risks || []).find((r) => r.level === "high")?.detail || "This transaction has a high-severity warning."}
+                </p>
+                <label className="flex items-start gap-2 text-xs text-destructive cursor-pointer">
+                  <input type="checkbox" checked={btcRiskAck} onChange={e => setBtcRiskAck(e.target.checked)} className="mt-0.5" />
+                  I understand this warning and want to send anyway.
+                </label>
+              </div>
+            )}
 
             {/* Decoded calldata for ERC-20 sends — show EXACTLY what will be
                 signed before any signature (anti-blind-signing control). */}
@@ -1112,7 +1142,7 @@ export default function SendCrypto() {
               // the existing windowed PIN step-up below is byte-unchanged. Risk/approval
               // gates still come first (the gate is hidden until those pass). The two
               // 192 MiB Argon2id checks run SEQUENTIALLY (one-at-a-time — Defect-A safe).
-              if (!DEMO && actionPasswordConfigured && !blockedByApproval && !blockedByRisk) {
+              if (!DEMO && actionPasswordConfigured && !blockedByApproval && !blockedByRisk && !blockedByBtcRisk) {
                 return (
                   <TwoFactorGate
                     title="Authorise this send with your PIN + Action Password"
@@ -1132,7 +1162,7 @@ export default function SendCrypto() {
                 return (
                   <Button
                     className="w-full gap-2"
-                    disabled={blockedByApproval || blockedByRisk || sendTx.isPending}
+                    disabled={blockedByApproval || blockedByRisk || blockedByBtcRisk || sendTx.isPending}
                     onClick={() => {
                       // Re-check freshness at click time (isSendReauthRequired reads a ref, always
                       // current). If the window lapsed while idle on this screen, force a re-render so
@@ -1158,7 +1188,7 @@ export default function SendCrypto() {
                       value={reauthValue}
                       onChange={setReauthValue}
                       onComplete={submitReauth}
-                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk}
+                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByBtcRisk}
                     />
                   ) : (
                     <>
@@ -1173,7 +1203,7 @@ export default function SendCrypto() {
                       />
                       <Button
                         className="w-full gap-2"
-                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk}
+                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByBtcRisk}
                         onClick={() => submitReauth(reauthValue)}
                       >
                         {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
