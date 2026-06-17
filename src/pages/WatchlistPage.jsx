@@ -7,19 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { TOP_CRYPTOS, TOP_SYMBOLS } from "@/lib/cryptos";
+import { TOP_SYMBOLS } from "@/lib/cryptos";
+import { useLivePrices, isLivePricesEnabled } from "@/lib/priceFeed";
+import { useBasketPrices } from "@/hooks/useBasketPrices";
 import CoinLogo from "@/components/CoinLogo";
-
-// Top 10 by market cap, from the canonical source. 24h high/low are synthesized
-// around the reference price for the mock display.
-const MOCK_PRICES = Object.fromEntries(
-  TOP_CRYPTOS.map(c => [c.symbol, {
-    price: c.usd,
-    change: c.change24h,
-    high: +(c.usd * 1.04).toPrecision(6),
-    low: +(c.usd * 0.96).toPrecision(6),
-  }])
-);
 
 const POPULAR = TOP_SYMBOLS;
 
@@ -28,6 +19,13 @@ export default function WatchlistPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ symbol: "", name: "", note: "", target_buy: "", target_sell: "" });
+
+  // Real, opt-in, holdings-blind price data. When live prices are OFF (default),
+  // neither feed fetches (I2 — zero egress) and every figure below stays null:
+  // we render an honest disabled state, never a fabricated or stale number.
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
+  const { changeFor, highLowFor } = useBasketPrices({ enabled: liveOn });
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["watchlist"],
@@ -64,6 +62,13 @@ export default function WatchlistPage() {
         <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Asset</Button>
       </div>
 
+      {/* Honest disabled state — no live feed unless the user opted in (I2). */}
+      {!liveOn && items.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+          Live prices are off. Turn them on in <span className="font-medium text-foreground">Settings</span> to see prices, 24h change and targets.
+        </div>
+      )}
+
       {/* Quick Add Popular */}
       <div>
         <p className="text-xs text-muted-foreground mb-2">Quick Add Popular</p>
@@ -91,10 +96,15 @@ export default function WatchlistPage() {
       ) : (
         <div className="space-y-2">
           {items.map(item => {
-            const data = MOCK_PRICES[item.symbol] || { price: 0, change: 0, high: 0, low: 0 };
-            const up = data.change >= 0;
-            const atBuy = item.target_buy && data.price <= item.target_buy;
-            const atSell = item.target_sell && data.price >= item.target_sell;
+            // All figures are honest: null when off (no fetch) or unavailable
+            // (fetch failed / symbol not in feed). Never a fabricated number.
+            const price = liveOn ? (prices?.[item.symbol] ?? null) : null;
+            const change = changeFor(item.symbol);
+            const hl = highLowFor(item.symbol);
+            const up = change != null && change >= 0;
+            // Target badges evaluate ONLY against a real live price.
+            const atBuy = price != null && item.target_buy && price <= item.target_buy;
+            const atSell = price != null && item.target_sell && price >= item.target_sell;
 
             return (
               <div key={item.id} className={`bg-card border rounded-2xl p-4 transition-colors ${atBuy ? "border-green-500/50" : atSell ? "border-red-500/50" : "border-border"}`}>
@@ -107,14 +117,26 @@ export default function WatchlistPage() {
                       {atSell && <Badge className="text-[9px] bg-red-500/20 text-red-500 border-red-500/30">Sell Target</Badge>}
                     </div>
                     {item.note && <p className="text-xs text-muted-foreground truncate">{item.note}</p>}
-                    <p className="text-[10px] text-muted-foreground">H: ${data.high?.toLocaleString()} · L: ${data.low?.toLocaleString()}</p>
+                    {hl && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {hl.high != null && <>H: ${hl.high.toLocaleString()}</>}
+                        {hl.high != null && hl.low != null && " · "}
+                        {hl.low != null && <>L: ${hl.low.toLocaleString()}</>}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">${data.price.toLocaleString()}</p>
-                    <p className={`text-xs flex items-center gap-0.5 justify-end ${up ? "text-green-500" : "text-red-500"}`}>
-                      {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      {up ? "+" : ""}{data.change}%
-                    </p>
+                    {price != null ? (
+                      <p className="font-bold">${price.toLocaleString()}</p>
+                    ) : (
+                      <p className="font-bold text-muted-foreground">{liveOn ? "—" : "Off"}</p>
+                    )}
+                    {change != null && (
+                      <p className={`text-xs flex items-center gap-0.5 justify-end ${up ? "text-green-500" : "text-red-500"}`}>
+                        {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {up ? "+" : ""}{change.toFixed(2)}%
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <button onClick={() => { setEditId(item.id); setForm({ symbol: item.symbol, name: item.name || "", note: item.note || "", target_buy: item.target_buy || "", target_sell: item.target_sell || "" }); }}
