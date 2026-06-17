@@ -79,7 +79,7 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden } = useWallet();
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -102,6 +102,15 @@ export default function SendCrypto() {
 
   const resolveENS = async (name) => {
     if (!name || (!name.endsWith(".eth") && !name.endsWith(".sol"))) return;
+    // I3 / deniability (internal audit H-3): ENS/SNS resolution is a THIRD-PARTY
+    // network call. In a decoy or hidden session it must NOT fire — a deniable
+    // session makes zero backend calls, and an observer must not see a resolver
+    // query tied to a send from a hidden wallet. Fail closed: paste the 0x/base58
+    // address directly in these sessions (resolution is a convenience, not a gate).
+    if (isDecoy || isHidden) {
+      toast.error("Name resolution is off in this session — paste the address directly.");
+      return;
+    }
     setEnsResolving(true); setEnsResolved(null);
     try {
       if (name.endsWith(".eth")) {
