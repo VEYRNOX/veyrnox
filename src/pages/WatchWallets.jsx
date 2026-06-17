@@ -1,4 +1,3 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -9,12 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-
-const MOCK = [
-  { id: "m1", name: "Vitalik.eth", address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", network: "Ethereum", currency: "ETH", balance: 1580.42, note: "Ethereum founder wallet", is_watch_only: true },
-  { id: "m2", name: "Whale #1", address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", network: "Bitcoin", currency: "BTC", balance: 12.5, note: "Large BTC holder", is_watch_only: true },
-];
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
 export default function WatchWallets() {
   const qc = useQueryClient();
@@ -22,8 +16,10 @@ export default function WatchWallets() {
   const [copied, setCopied] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", network: "Ethereum", currency: "ETH", note: "", is_watch_only: true });
 
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
+
   const { data: wallets = [] } = useQuery({ queryKey: ["watch-wallets"], queryFn: () => base44.entities.Wallet.filter({ is_watch_only: true }) });
-  const displayed = wallets.length > 0 ? wallets : MOCK;
 
   const create = useMutation({
     mutationFn: (d) => base44.entities.Wallet.create({ ...d, balance: 0, is_watch_only: true }),
@@ -53,7 +49,13 @@ export default function WatchWallets() {
         Watch-only mode lets you monitor any wallet balance and transactions without importing private keys or seed phrases. Your keys are never required.
       </div>
 
-      {displayed.length === 0 ? (
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — USD values show "—". Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span>.
+        </div>
+      )}
+
+      {wallets.length === 0 ? (
         <div className="text-center py-14 text-muted-foreground">
           <Eye className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No watched wallets</p>
@@ -61,8 +63,9 @@ export default function WatchWallets() {
         </div>
       ) : (
         <div className="space-y-3">
-          {displayed.map(w => {
-            const usdValue = (w.balance || 0) * (USD_RATES[w.currency] || 1);
+          {wallets.map(w => {
+            const rate = liveOn ? (prices?.[w.currency] ?? null) : null;
+            const usdValue = rate != null ? (w.balance || 0) * rate : null;
             const explorer = EXPLORERS[w.network];
             return (
               <div key={w.id} className="p-4 rounded-xl border border-border bg-card">
@@ -90,7 +93,7 @@ export default function WatchWallets() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-bold">{w.balance > 0 ? w.balance.toFixed(4) : "—"} {w.currency}</p>
-                    <p className="text-xs text-muted-foreground">${usdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <p className="text-xs text-muted-foreground">{usdValue != null ? "$" + usdValue.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}</p>
                     <button onClick={() => remove.mutate(w.id)} className="mt-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>

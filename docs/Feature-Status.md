@@ -284,6 +284,17 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   calls `promptSignInSend()` which redirects to `/send` for manual user signing — no autonomous transfer is
   attempted. The gap between the original "Automate regular crypto transfers" framing and actual capability
   is closed by the honest scope banner. Zero code changes needed — classification flip only.
+- Watch-only Wallets (`/watch-wallets`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. `MOCK` fallback array (Vitalik.eth / Whale #1 hardcoded) removed — empty state now shows an honest
+  "No watched wallets" prompt. `USD_RATES` removed; USD value per address uses `useLivePrices()` gated by
+  `isLivePricesEnabled()` (I2). When off: USD shows "—" (I4). Off-state banner added. Note: balance field
+  reflects user-entered values — no live on-chain balance fetch (presented honestly). CRUD persists via
+  `base44.entities.Wallet` (is_watch_only: true) on-device.
+- Transaction Receipts (`/receipt`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. `USD_RATES` removed; the "USD Value" line on printed receipts now uses `useLivePrices()` gated by
+  `isLivePricesEnabled()` (I2). When off or symbol absent: USD Value shows "—" — never a stale dollar
+  figure on a document (I4). Off-state banner added. All other receipt fields (ID, date, type, amount,
+  fee, status, address) come from real local `Transaction` records and are unaffected by the opt-in state.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅

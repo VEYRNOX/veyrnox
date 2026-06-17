@@ -84,7 +84,8 @@ describe('registryEntriesFromClassification', () => {
         // '/fee-analytics' reclassified disabled→live (Slice 1 native-unit rebuild), so it drops out here.
         // '/calculator' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
         // '/recurring' reclassified disabled→live (honest CRUD with non-custodial banner; redirects to /send for signing), so it drops out here.
-        '/receipt', '/split-bill',
+        // '/receipt' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices; shows "—" when off), so it drops out here.
+        '/split-bill',
         '/portfolio-rewind', '/index-builder', '/ai-rebalancer',
         // '/pl' reclassified disabled→live (CURRENT_PRICES replaced with opt-in live feed), so it drops out here.
         // '/budget' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices), so it drops out here.
@@ -100,7 +101,8 @@ describe('registryEntriesFromClassification', () => {
         // '/anomaly-detection' reclassified disabled→live (fake AI/delay removed; USD_RATES → useLivePrices), so it drops out here.
         // '/fraud' reclassified disabled→live (AI theatre removed; honest security-awareness page directing to real on-device tools), so it drops out here.
         '/messenger-alerts',
-        '/watch-wallets', '/solana', '/price-charts', '/web3', '/products',
+        // '/watch-wallets' reclassified disabled→live (MOCK removed; USD_RATES → useLivePrices opt-in), so it drops out here.
+        '/solana', '/price-charts', '/web3', '/products',
       ].sort(),
     );
   });

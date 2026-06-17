@@ -129,8 +129,8 @@ export const CLASSIFICATION = {
     note: 'Bill-splitting tool: divides a user-entered USD total among named wallet addresses using hardcoded stale USD_RATES. No signing, no actual on-chain tx. Does not serve the coercion-resistant vault job.',
   },
   '/receipt': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Reads real local Transaction records but the "USD Value" line on every receipt is computed from hardcoded stale USD_RATES constants — presenting a silently stale dollar figure as fact on a document intended to be a financial record.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Reads real local Transaction records. USD_RATES removed; USD Value line now comes from useLivePrices() gated by isLivePricesEnabled() (I2). When off or symbol absent: USD Value shows "—" — never a stale figure on a printed document (I4). Off-state banner added.',
   },
   '/fee-analytics': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -337,8 +337,8 @@ export const CLASSIFICATION = {
     note: 'Pure CRUD on base44.entities.AddressBook (local IndexedDB). Address entry is validated on save via isValidAddressForCurrency/addressKindLabel from lib/addressValidation — the same validators used by the Send flow. No external call, no fabricated data, no USD conversion.',
   },
   '/watch-wallets': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'MOCK is a hardcoded array (Vitalik.eth 1580.42 ETH, Whale #1 12.5 BTC) used as the fallback whenever the real entity list is empty. The displayed USD values are computed from hardcoded stale USD_RATES (ETH: 3200, BTC: 68000). No live balance fetch is performed for any watched address — the balance field is whatever was last entered by the user or zero.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'MOCK fallback array removed; empty state shows honest "No watched wallets" prompt. USD_RATES removed; USD value per watched address comes from useLivePrices() gated by isLivePricesEnabled() (I2). When off: USD shows "—" (I4). Balance field reflects what the user entered — no live on-chain balance fetch (honestly presented). Off-state banner added.',
   },
   '/live-balances': {
     verdict: 'live', dataSource: 'wallet-core',

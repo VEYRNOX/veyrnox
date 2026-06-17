@@ -1,10 +1,10 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Search, Printer, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
 const STATUS_ICON = { completed: <CheckCircle2 className="h-4 w-4 text-green-500" />, failed: <XCircle className="h-4 w-4 text-destructive" />, pending: <Clock className="h-4 w-4 text-yellow-500" /> };
 
@@ -12,6 +12,9 @@ export default function TransactionReceipt() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const receiptRef = useRef(null);
+
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions"],
@@ -38,7 +41,8 @@ export default function TransactionReceipt() {
     win.print();
   };
 
-  const usdValue = selected ? (selected.amount || 0) * (USD_RATES[selected.currency] || 1) : 0;
+  const rate = selected && liveOn ? (prices?.[selected.currency] ?? null) : null;
+  const usdValue = rate != null ? (selected.amount || 0) * rate : null;
   const fee = selected ? (selected.fee || 0) : 0;
 
   return (
@@ -47,6 +51,12 @@ export default function TransactionReceipt() {
         <h1 className="text-xl font-bold">Transaction Receipts</h1>
         <p className="text-sm text-muted-foreground">Generate printable receipts for any transaction</p>
       </div>
+
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — USD Value on receipts shows "—". Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span>.
+        </div>
+      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -95,7 +105,7 @@ export default function TransactionReceipt() {
                 ["Type", (selected.type || "Transfer").toUpperCase()],
                 ["Asset", selected.currency],
                 ["Amount", `${selected.amount} ${selected.currency}`],
-                ["USD Value", `$${usdValue.toFixed(2)}`],
+                ["USD Value", usdValue != null ? `$${usdValue.toFixed(2)}` : "—"],
                 ["Network Fee", fee > 0 ? `${fee} ${selected.currency}` : "—"],
                 ["Status", (selected.status || "completed").toUpperCase()],
                 ["To", selected.recipient_address ? selected.recipient_address.slice(0, 20) + "..." : "—"],
