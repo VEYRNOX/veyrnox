@@ -1,17 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, TrendingUp, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import moment from "moment";
-
 const CATEGORY_COLORS = {
   BTC: "#F7931A", ETH: "#627EEA", SOL: "#9945FF",
   USDC: "#2775CA", USDT: "#26A17B",
 };
 
+function timeAgo(unixSecs) {
+  const diff = Math.floor(Date.now() / 1000) - unixSecs;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 async function fetchCryptoNews() {
   const res = await fetch(
     "https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest&extraParams=safecryptowallet"
   );
+  if (!res.ok) throw new Error(`cryptocompare news HTTP ${res.status}`);
   const data = await res.json();
   return data.Data?.slice(0, 15) || [];
 }
@@ -58,7 +65,7 @@ function NewsCard({ article }) {
             </span>
           ))}
           <span className="text-[10px] text-muted-foreground ml-auto">
-            {article.source_info?.name || article.source} · {moment.unix(article.published_on).fromNow()}
+            {article.source_info?.name || article.source} · {timeAgo(article.published_on)}
           </span>
         </div>
       </div>

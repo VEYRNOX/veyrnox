@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 
 const CONDITIONS = {
   portfolio_drop: { label: "Portfolio Drop", desc: "Alert when portfolio drops by X%", unit: "%" },
@@ -106,7 +106,7 @@ export default function SmartAlerts() {
                     <div className="flex gap-3 mt-1">
                       {a.notify_email && <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full">Email</span>}
                       {a.notify_push && <span className="text-[10px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded-full">Push</span>}
-                      {a.last_triggered && <span className="text-[10px] text-muted-foreground">Triggered {moment(a.last_triggered).fromNow()}</span>}
+                      {a.last_triggered && <span className="text-[10px] text-muted-foreground">Triggered {formatDistanceToNow(new Date(a.last_triggered), { addSuffix: true })}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

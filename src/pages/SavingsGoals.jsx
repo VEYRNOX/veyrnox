@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import moment from "moment";
+import { differenceInDays } from "date-fns";
 
 const EMOJIS = ["🎯","🏠","🚀","✈️","💎","🏖️","🎓","💻","🏋️","🎸"];
 
@@ -76,7 +76,7 @@ export default function SavingsGoals() {
         <div className="grid gap-3">
           {goals.map(goal => {
             const pct = goal.target_amount_usd > 0 ? Math.min((goal.current_amount_usd / goal.target_amount_usd) * 100, 100) : 0;
-            const daysLeft = goal.target_date ? moment(goal.target_date).diff(moment(), "days") : null;
+            const daysLeft = goal.target_date ? differenceInDays(new Date(goal.target_date), new Date()) : null;
             const done = pct >= 100;
 
             return (

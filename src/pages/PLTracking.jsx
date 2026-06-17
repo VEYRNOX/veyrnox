@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "@/lib/recharts";
 import { toast } from "sonner";
-import moment from "moment";
+import { format } from "date-fns";
 
 const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -68,7 +68,7 @@ export default function PLTracking() {
   const totalUnrealised = null; // requires live price feed — not available
   const winRate = closed.length ? Math.round((closed.filter(r => r.pnl_usd > 0).length / closed.length) * 100) : 0;
 
-  const chartData = closed.slice(0, 10).reverse().map(r => ({ label: `${r.asset} ${moment(r.exit_date || r.created_date).format("MMM D")}`, pnl: parseFloat(r.pnl_usd?.toFixed(2) || 0) }));
+  const chartData = closed.slice(0, 10).reverse().map(r => ({ label: `${r.asset} ${format(new Date(r.exit_date || r.created_date), "MMM d")}`, pnl: parseFloat(r.pnl_usd?.toFixed(2) || 0) }));
 
   const RecordRow = ({ r }) => {
     const isClosing = closingId === r.id;
@@ -81,7 +81,7 @@ export default function PLTracking() {
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${r.status === "open" ? "bg-blue-500/10 text-blue-400" : "bg-secondary text-muted-foreground"}`}>{r.status}</span>
             </div>
             <p className="text-xs text-muted-foreground">{r.quantity} units · Entry ${r.entry_price?.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">{moment(r.entry_date).format("DD MMM YY")}{r.exit_date ? ` → ${moment(r.exit_date).format("DD MMM YY")}` : ""}</p>
+            <p className="text-xs text-muted-foreground">{format(new Date(r.entry_date), "dd MMM yy")}{r.exit_date ? ` → ${format(new Date(r.exit_date), "dd MMM yy")}` : ""}</p>
           </div>
           <div className="text-right shrink-0">
             {r.status === "closed" && r.pnl_usd != null ? (
