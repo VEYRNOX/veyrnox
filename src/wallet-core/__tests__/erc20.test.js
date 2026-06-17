@@ -128,22 +128,22 @@ describe('amount scaling (exact base units, no float)', () => {
 });
 
 describe('asset status gating (Phase B)', () => {
-  it('USDC is receive_only: can receive/show balance, cannot send yet', () => {
+  it('USDC is LIVE: can receive/show balance AND send (UI-path verified on-chain)', () => {
     const usdc = getAsset('USDC');
-    expect(usdc.status).toBe('receive_only');
+    expect(usdc.status).toBe('live'); // flipped after tx 0x687d8c…, block 11074999
     expect(canReceive(usdc)).toBe(true);
-    expect(canSend(usdc)).toBe(false);
+    expect(canSend(usdc)).toBe(true);
   });
 
-  it('USDT is now receive_only: can receive/show balance, cannot send yet', () => {
+  it('USDT is LIVE: can receive/show balance AND send (UI-path verified on-chain)', () => {
     const usdt = getAsset('USDT');
-    expect(usdt.status).toBe('receive_only');
+    expect(usdt.status).toBe('live'); // flipped after tx 0x3168e4…, block 11075008
     expect(canReceive(usdt)).toBe(true);
-    expect(canSend(usdt)).toBe(false); // HARD-gated until a verified testnet send
+    expect(canSend(usdt)).toBe(true);
   });
 
-  it('the ERC-20s stay receive_only — the live set is the verified natives (ETH, ARB, OP, BTC, SOL)', () => {
-    expect(ASSETS_LIVE()).toEqual(['ETH', 'ARB', 'OP', 'BTC', 'SOL']);
+  it('the ERC-20s are now live alongside the verified natives (ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL)', () => {
+    expect(ASSETS_LIVE()).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BTC', 'SOL']);
   });
 });
 

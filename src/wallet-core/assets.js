@@ -27,18 +27,25 @@ export const ASSET_STATUS = Object.freeze({
 //   solana - Solana (separate: ed25519, base58)
 export const ASSETS = Object.freeze([
   { symbol: 'ETH',   name: 'Ethereum',  family: 'evm',    chain: 'sepolia',   status: ASSET_STATUS.LIVE },
-  // USDC (Phase B): real address + live balance reads are wired and verified
-  // (Circle's official Sepolia USDC). Send stays HARD-gated at receive_only
-  // until a testnet transfer is verified on-chain and reviewed, then flip to
-  // LIVE. See src/wallet-core/evm/tokens.js.
-  { symbol: 'USDC',  name: 'USD Coin',  family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.RECEIVE_ONLY },
-  // USDT: routes through the SAME ERC-20 path as USDC. Tether ships no official
-  // Sepolia deployment, so we use the authoritative Aave faucet test-USDT as a
-  // verified 6-decimal stand-in (see evm/tokens.js). Real address + live balance
-  // reads + receive are wired now (receive_only); decimals (6) are pinned and
-  // re-checked on-chain. SEND stays HARD-gated until a real testnet transfer is
-  // verified on-chain and reviewed, then flip to LIVE — same discipline as USDC.
-  { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.RECEIVE_ONLY },
+  // USDC: VERIFIED LIVE. Real ERC-20 transfer constructed, signed, and broadcast
+  // through the full in-app UI send path (asset picker → recipient → amount →
+  // Standard fee → step-up PIN re-auth → broadcast) and confirmed on-chain:
+  //   tx 0x687d8ce3b2cf4dba3cf007b2dc13510af6102d1c02dff2ab9dd5fbfe2bf6e298
+  //   (Sepolia, status SUCCESS, block 11074999, transfer 1 USDC
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 45059, decimals 6)
+  //   https://sepolia.etherscan.io/tx/0x687d8ce3b2cf4dba3cf007b2dc13510af6102d1c02dff2ab9dd5fbfe2bf6e298
+  // Contract = Circle's official Sepolia USDC (evm/tokens.js). Mainnet stays gated.
+  { symbol: 'USDC',  name: 'USD Coin',  family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.LIVE },
+  // USDT: VERIFIED LIVE. Routes through the SAME ERC-20 path as USDC. Tether ships
+  // no official Sepolia deployment, so we use the authoritative Aave faucet
+  // test-USDT as a verified 6-decimal stand-in (evm/tokens.js). Real UI-path
+  // transfer confirmed on-chain:
+  //   tx 0x3168e46f467483ee20c176575d4ac11ff4528c90c951fc68de657b86866c447d
+  //   (Sepolia, status SUCCESS, block 11075008, transfer 1 USDT
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 34546, decimals 6)
+  //   https://sepolia.etherscan.io/tx/0x3168e46f467483ee20c176575d4ac11ff4528c90c951fc68de657b86866c447d
+  // Mainnet stays gated — same discipline as USDC.
+  { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.LIVE },
   // Phase C: five EVM chains added on their TESTNETS, behind the mainnet gate.
   // Each shares the SAME secp256k1 / m/44'/60'/0'/0/0 address as ETH, so the
   // address derivation + live per-chain balance reads are wired now (receive_only).
@@ -47,7 +54,14 @@ export const ASSETS = Object.freeze([
   // chain is verified on-chain and reviewed — only then does it flip to LIVE.
   // NOTE: gas/native token differs per chain (Polygon=POL, Avalanche=AVAX,
   // BNB=tBNB, but Arbitrum/Optimism=ETH); the UI reads that from networks.js.
-  { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygonAmoy',     status: ASSET_STATUS.RECEIVE_ONLY },
+  // MATIC: VERIFIED LIVE. Real native transfer through the full in-app UI send path,
+  // confirmed on-chain:
+  //   tx 0x6a4dede58e578f10dfa2039e2af3230c0d0e7b18596c0832f0a84348cea954a7
+  //   (Polygon Amoy, chainId 80002, status SUCCESS, block 40274236, 0.01 POL,
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 21000)
+  //   https://amoy.polygonscan.com/tx/0x6a4dede58e578f10dfa2039e2af3230c0d0e7b18596c0832f0a84348cea954a7
+  // Native gas token is POL on Amoy (see networks.js). Mainnet stays gated.
+  { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygonAmoy',     status: ASSET_STATUS.LIVE },
   // ARB: VERIFIED LIVE. A real testnet transfer was constructed, signed, and
   // broadcast through the full in-app UI send path (asset picker → recipient →
   // amount → fee → Confirm & Send → step-up re-auth) and confirmed on-chain:

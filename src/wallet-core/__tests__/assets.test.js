@@ -9,20 +9,21 @@ describe('asset registry', () => {
     expect(symbols).toEqual(['ETH','USDC','USDT','MATIC','ARB','OP','AVAX','BNB','BTC','SOL']);
   });
 
-  it('the live (sendable) set is ETH, ARB, OP, BTC, SOL — each UI-verified on-chain', () => {
+  it('the live (sendable) set is ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL — each UI-verified on-chain', () => {
     const sendable = ASSETS.filter(canSend).map(a => a.symbol);
-    expect(sendable).toEqual(['ETH', 'ARB', 'OP', 'BTC', 'SOL']);
+    expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BTC', 'SOL']);
   });
 
-  it('USDT is receive_only ERC-20 on Sepolia — real address + balance, no send yet', () => {
-    // USDT now routes through the same ERC-20 path as USDC (Aave faucet test-USDT
-    // stand-in, 6 decimals — see evm/tokens.js). Receivable now; send HARD-gated.
+  it('USDT is LIVE ERC-20 on Sepolia — UI-path send verified on-chain', () => {
+    // USDT routes through the same ERC-20 path as USDC (Aave faucet test-USDT
+    // stand-in, 6 decimals — see evm/tokens.js). Flipped to live after a real
+    // UI-path testnet transfer confirmed on-chain (tx 0x3168e4…, block 11075008).
     const usdt = getAsset('USDT');
-    expect(usdt.status).toBe(ASSET_STATUS.RECEIVE_ONLY);
+    expect(usdt.status).toBe(ASSET_STATUS.LIVE);
     expect(usdt.family).toBe('erc20');
     expect(usdt.chain).toBe('sepolia');
     expect(canReceive(usdt)).toBe(true);
-    expect(canSend(usdt)).toBe(false);
+    expect(canSend(usdt)).toBe(true);
   });
 
   it('the coming_soon gate still blocks receive AND send (no asset is coming_soon now)', () => {
@@ -60,16 +61,16 @@ describe('asset registry', () => {
   });
 });
 
-describe('Phase C — five EVM chains reachable on testnet (ARB/OP now live, rest receive_only)', () => {
+describe('Phase C — five EVM chains reachable on testnet (MATIC/ARB/OP now live, rest receive_only)', () => {
   // Each new asset points at its VERIFIED testnet network key; mainnets are gated.
-  // ARB and OP have since earned `live` via real explorer-confirmed UI-path sends
-  // (see assets.js); MATIC/AVAX/BNB stay receive_only until each is likewise verified.
+  // MATIC, ARB and OP have since earned `live` via real explorer-confirmed UI-path
+  // sends (see assets.js); AVAX/BNB stay receive_only until each is likewise verified.
   const PENDING = [
-    { symbol: 'MATIC', chain: 'polygonAmoy' },
     { symbol: 'AVAX',  chain: 'avalancheFuji' },
     { symbol: 'BNB',   chain: 'bnbTestnet' },
   ];
   const VERIFIED_LIVE = [
+    { symbol: 'MATIC', chain: 'polygonAmoy' },
     { symbol: 'ARB', chain: 'arbitrumSepolia' },
     { symbol: 'OP',  chain: 'optimismSepolia' },
   ];
@@ -86,7 +87,7 @@ describe('Phase C — five EVM chains reachable on testnet (ARB/OP now live, res
     }
   });
 
-  it('ARB and OP are live on their TESTNET after a verified UI-path send', () => {
+  it('MATIC, ARB and OP are live on their TESTNET after a verified UI-path send', () => {
     for (const n of VERIFIED_LIVE) {
       const a = getAsset(n.symbol);
       expect(a.chain).toBe(n.chain);
@@ -97,9 +98,9 @@ describe('Phase C — five EVM chains reachable on testnet (ARB/OP now live, res
     }
   });
 
-  it('only the verified assets are sendable (ETH, ARB, OP, BTC, SOL); the rest are not', () => {
+  it('only the verified assets are sendable (ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL); the rest are not', () => {
     const sendable = ASSETS.filter(canSend).map(a => a.symbol);
-    expect(sendable).toEqual(['ETH', 'ARB', 'OP', 'BTC', 'SOL']);
+    expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BTC', 'SOL']);
   });
 
   it('every receivable EVM asset maps to an ENABLED (ungated) network', () => {
