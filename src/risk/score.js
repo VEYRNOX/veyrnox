@@ -70,7 +70,7 @@ function reportLevel(level) {
  *   signals: Array<{id, level, evidence}>, // every signal's result (fixed shape)
  * }}
  */
-export function score(unsignedTx, activeSetLocalState, chainData, signals = SIGNALS) {
+export function score(unsignedTx, activeSetLocalState, chainData, signals = /** @type {any} */ (SIGNALS)) {
   const evaluated = signals.map(({ id, fn }) => {
     try {
       const out = fn(unsignedTx, activeSetLocalState, chainData) || {};

@@ -525,5 +525,5 @@ export function resolveStatus(feature, verifiedNames = verifiedFeatureNames()) {
   if (feature.status === STATUS.VERIFIED) {
     return verifiedNames.has(feature.name) ? STATUS.VERIFIED : STATUS.BUILT;
   }
-  return feature.status;
+  return /** @type {'verified'|'built'|'roadmap'} */ (feature.status);
 }

@@ -652,7 +652,7 @@ export function WalletProvider({ children }) {
   // warning are live until the user confirms via confirmWalletBackup(). New
   // wallets default to the headline assets (the other EVM chains are opt-in).
   const createWallet = useCallback(async (password, strength = 128) => {
-    const mnemonic = generateMnemonic(strength);
+    const mnemonic = generateMnemonic(/** @type {128|256} */ (strength));
     const { container, walletId } = mv.migrateLegacyMnemonic(mnemonic);
     await keyStore.createVault(mv.serializeContainer(container), password);
     containerRef.current = container;
@@ -747,7 +747,7 @@ export function WalletProvider({ children }) {
     if (isDecoy || isHidden) throw new Error('Adding wallets is unavailable in this session.');
     const { strength = 128, name, enabledAssets } = opts;
     const current = await decryptPrimaryContainer(password); // verifies password
-    const mnemonic = generateMnemonic(strength);
+    const mnemonic = generateMnemonic(/** @type {128|256} */ (strength));
     const { container, walletId } = mv.addWallet(current, mnemonic);
     await keyStore.createVault(mv.serializeContainer(container), password);
     containerRef.current = container;
@@ -1387,7 +1387,7 @@ export function WalletProvider({ children }) {
   // validates) — if they matched, the primary unlock would win and the decoy
   // would never open. These never touch networks/signing: testnet-safe.
   const setDuressPin = useCallback(async (duressPassword, strength = 128) => {
-    const decoyMnemonic = generateMnemonic(strength);
+    const decoyMnemonic = generateMnemonic(/** @type {128|256} */ (strength));
     await setDuressVault(decoyMnemonic, duressPassword);
     // Also return the decoy's PUBLIC EVM address so the UI can show where to
     // FUND the decoy (a decoy is only plausible once it holds a small, real,
@@ -1415,7 +1415,7 @@ export function WalletProvider({ children }) {
   // local — no network query, no balance fetch (that is opt-in in the UI for
   // privacy; see lib/hiddenBalance.js).
   const addHiddenWallet = useCallback(async (secret, strength = 128) => {
-    const { mnemonic, address, evm, btc, sol, existing } = await createHiddenWallet(secret, strength);
+    const { mnemonic, address, evm, btc, sol, existing } = await createHiddenWallet(secret, /** @type {128|256} */ (strength));
     return { mnemonic, address, evm, btc, sol, existing };
   }, []);
 

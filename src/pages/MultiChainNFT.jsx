@@ -54,12 +54,12 @@ export default function MultiChainNFT() {
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.NFTAsset.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.NFTAsset.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["nfts"] }); toast.success("NFT removed"); },
   });
 
   const updateStatus = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.NFTAsset.update(id, { status }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.NFTAsset.update(vars.id, { status: vars.status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["nfts"] }),
   });
 
@@ -71,7 +71,7 @@ export default function MultiChainNFT() {
     return (
       <div className="rounded-xl border border-border bg-card overflow-hidden group">
         <div className="relative aspect-square bg-secondary overflow-hidden">
-          <img src={n.image_url} alt={n.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => { e.target.src = PLACEHOLDER_IMAGES[0]; }} />
+          <img src={n.image_url} alt={n.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => { (/** @type {any} */ (e.target)).src = PLACEHOLDER_IMAGES[0]; }} />
           <div className="absolute top-2 left-2"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${chain(n.chain)?.color || "bg-secondary text-muted-foreground"}`}>{chain(n.chain)?.icon} {chain(n.chain)?.label}</span></div>
           <div className="absolute top-2 right-2"><span className={`text-[10px] px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[n.status]}`}>{n.status}</span></div>
         </div>
@@ -96,7 +96,7 @@ export default function MultiChainNFT() {
     const pnl = (n.current_floor || 0) - (n.purchase_price || 0);
     return (
       <div className="p-3 rounded-xl border border-border bg-card flex items-center gap-3">
-        <img src={n.image_url} alt={n.name} className="h-12 w-12 rounded-lg object-cover" onError={e => { e.target.src = PLACEHOLDER_IMAGES[0]; }} />
+        <img src={n.image_url} alt={n.name} className="h-12 w-12 rounded-lg object-cover" onError={e => { (/** @type {any} */ (e.target)).src = PLACEHOLDER_IMAGES[0]; }} />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{n.name}</p>
           <div className="flex items-center gap-2">

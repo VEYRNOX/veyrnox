@@ -29,17 +29,17 @@ export default function InvoiceGenerator() {
   });
 
   const create = useMutation({
-    mutationFn: (d) => base44.entities.Invoice.create({ ...d, total_amount: parseFloat(d.total_amount), status: "draft" }),
+    mutationFn: (/** @type {any} */ d) => base44.entities.Invoice.create({ ...d, total_amount: parseFloat(d.total_amount), status: "draft" }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["invoices"] }); setOpen(false); },
   });
 
   const updateStatus = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.Invoice.update(id, { status }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.Invoice.update(vars.id, { status: vars.status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.Invoice.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.Invoice.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices"] }),
   });
 

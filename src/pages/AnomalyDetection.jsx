@@ -22,11 +22,11 @@ function detectAnomalies(transactions) {
   });
 
   // Rapid transactions (3+ in 10 minutes window - simulated)
-  const sorted = [...transactions].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+  const sorted = [...transactions].sort((a, b) => /** @type {any} */ (new Date(b.created_date)) - /** @type {any} */ (new Date(a.created_date)));
   const recent = sorted.slice(0, 5);
   if (recent.length >= 3) {
     const first = new Date(recent[0].created_date), last = new Date(recent[recent.length - 1].created_date);
-    if ((first - last) / 60000 < 60) {
+    if ((/** @type {any} */ (first) - /** @type {any} */ (last)) / 60000 < 60) {
       anomalies.push({ id: "rapid-" + Date.now(), type: "rapid_transactions", severity: "medium", detail: `${recent.length} transactions within 1 hour`, usd: 0 });
     }
   }

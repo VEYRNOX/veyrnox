@@ -75,7 +75,7 @@ export function evaluateSendGate({
   presign = null,
   btcRiskBlocked = false,
   blockedByApproval = false,
-} = {}) {
+} = /** @type {any} */ ({})) {
   // 2/3 — capability. Only `live` assets send; the dev ungate relaxes the gate
   // decision for testnet verification but NEVER changes the asset's status.
   if (!canSend && !devUngated) {

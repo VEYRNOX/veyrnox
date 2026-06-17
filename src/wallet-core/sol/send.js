@@ -221,6 +221,8 @@ export async function estimateSolSend({ networkKey, fromAddress, toAddress, amou
  * @param {string} params.toAddress
  * @param {bigint|number|string} [params.amountLamports]
  * @param {boolean} [params.sendMax=false]
+ * @param {number} [params.priorityMicroLamports=0]
+ * @param {number} [params.computeUnitLimit=0]
  * @returns {Promise<{ signature:string, explorerUrl:string, plan:object, attempts:number }>}
  */
 export async function signAndBroadcastSol({
@@ -259,7 +261,7 @@ export async function signAndBroadcastSol({
   const fee = BigInt(baseFee) + (priorityMicroLamports > 0 ? priorityFee : 0n);
   const plan = planSolTransfer({
     balanceLamports: balance,
-    amountLamports: sendMax ? undefined : amountLamports,
+    amountLamports: sendMax ? undefined : BigInt(amountLamports),
     feeLamports: fee,
     rentExemptMinLamports: rentMin,
     destBalanceLamports: destBalance,

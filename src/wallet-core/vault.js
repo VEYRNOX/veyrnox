@@ -87,7 +87,7 @@ async function deriveKey(password, salt, params = KDF_PARAMS) {
     outputType: 'binary',
   });
   // Import into WebCrypto as a non-extractable AES-GCM key.
-  const key = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (raw), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
   zero(raw);
   // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's ~192 MiB Argon2
   // WASM instance from THIS derivation becomes GC-eligible before the next sequential

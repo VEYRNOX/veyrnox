@@ -134,7 +134,7 @@ export function composeGate(raspTier, txLevel) {
 
   return {
     decision,
-    owner,
+    owner: /** @type {"tx"|"rasp"} */ (owner),
     signerReachable: decision !== DECISION.BLOCK,
   };
 }

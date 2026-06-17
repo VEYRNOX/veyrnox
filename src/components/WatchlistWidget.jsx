@@ -23,12 +23,12 @@ export default function WatchlistWidget() {
   });
 
   const add = useMutation({
-    mutationFn: (data) => base44.entities.PersonalWatchlist.create(data),
+    mutationFn: (/** @type {any} */ data) => base44.entities.PersonalWatchlist.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["watchlist"] }); setAdding(false); setSymbol(""); },
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.PersonalWatchlist.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PersonalWatchlist.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 

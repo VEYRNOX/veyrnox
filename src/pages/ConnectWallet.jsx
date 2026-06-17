@@ -87,9 +87,10 @@ export default function ConnectWallet() {
   const [imported, setImported] = useState(false);
 
   const importMutation = useMutation({
-    mutationFn: async ({ provider, assets }) => {
+    mutationFn: async (/** @type {any} */ vars) => {
+      const { provider, assets } = vars;
       await Promise.all(
-        assets.map(asset =>
+        assets.map((/** @type {any} */ asset) =>
           base44.entities.Wallet.create({
             name: `${provider.name} — ${asset.currency}`,
             currency: asset.currency,

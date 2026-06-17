@@ -19,7 +19,7 @@ export default function MessengerAlerts() {
   });
   const [copied, setCopied] = useState(null);
   const [testing, setTesting] = useState(null);
-  const [testResult, setTestResult] = useState({});
+  const [testResult, setTestResult] = useState(/** @type {any} */ ({}));
 
   const save = (updates) => {
     const c = { ...config, ...updates };

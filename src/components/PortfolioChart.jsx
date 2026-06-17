@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid
-} from "recharts";
+} from "@/lib/recharts";
 import moment from "moment";
 import { USD_RATES } from "@/lib/cryptos";
 
@@ -12,7 +12,7 @@ const PERIODS = [
   { key: "1y",  label: "1Y",  days: 365, unit: "weeks", fmt: "MMM 'YY",  tickCount: 12 },
 ];
 
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active = undefined, payload = undefined, label = undefined }) {
   if (!active || !payload?.length) return null;
   const val = payload[0]?.value;
   return (
@@ -27,7 +27,7 @@ function CustomTooltip({ active, payload, label }) {
 
 function buildDayMap(transactions) {
   const map = {};
-  const sorted = [...transactions].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+  const sorted = [...transactions].sort((a, b) => (/** @type {any} */ (new Date(a.created_date))) - (/** @type {any} */ (new Date(b.created_date))));
   sorted.forEach(tx => {
     const day = moment(tx.created_date).format("YYYY-MM-DD");
     const usdDelta = tx.amount * (USD_RATES[tx.currency] || 1);

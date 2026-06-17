@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "@/lib/recharts";
 
 const HISTORICAL_PRICES = {
   BTC: { "2020-01-01": 7200, "2021-01-01": 29000, "2022-01-01": 47000, "2023-01-01": 16500, "2024-01-01": 42000, "2024-06-01": 68000 },

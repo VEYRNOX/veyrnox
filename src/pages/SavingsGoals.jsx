@@ -25,17 +25,17 @@ export default function SavingsGoals() {
   });
 
   const create = useMutation({
-    mutationFn: (d) => base44.entities.SavingsGoal.create({ ...d, current_amount_usd: 0, status: "active" }),
+    mutationFn: (/** @type {any} */ d) => base44.entities.SavingsGoal.create({ ...d, current_amount_usd: 0, status: "active" }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["savings-goals"] }); setOpen(false); setForm({ title: "", target_amount_usd: "", currency: "USDC", target_date: "", emoji: "🎯", note: "" }); },
   });
 
   const deposit = useMutation({
-    mutationFn: ({ id, current, amount }) => base44.entities.SavingsGoal.update(id, { current_amount_usd: current + parseFloat(amount) }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.SavingsGoal.update(vars.id, { current_amount_usd: vars.current + parseFloat(vars.amount) }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["savings-goals"] }); setDepositId(null); setDepositAmount(""); },
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.SavingsGoal.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.SavingsGoal.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["savings-goals"] }),
   });
 

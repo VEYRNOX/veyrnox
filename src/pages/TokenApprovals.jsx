@@ -51,7 +51,7 @@ export default function TokenApprovals() {
   const approvals = useMemo(() => rows.map(decorate), [rows]);
 
   const revoke = useMutation({
-    mutationFn: async (a) => {
+    mutationFn: async (/** @type {any} */ a) => {
       setError(null);
       // Build + self-check the revoke calldata up front (reuses calldata.js):
       // this is the EXACT approve(spender, 0) that will be signed.

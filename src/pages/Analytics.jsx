@@ -6,7 +6,7 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   BarChart, Bar, Legend,
-} from "recharts";
+} from "@/lib/recharts";
 import { TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2 } from "lucide-react";
 import moment from "moment";
 
@@ -21,7 +21,7 @@ const RANGES = [
 const fmt = (n) => "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 const fmtSmall = (n) => "$" + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = (/** @type {any} */ { active, payload, label } = {}) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-border bg-card px-3 py-2 shadow-lg text-xs">
@@ -35,7 +35,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-const PieTooltip = ({ active, payload }) => {
+const PieTooltip = (/** @type {any} */ { active, payload } = {}) => {
   if (!active || !payload?.length) return null;
   const { name, value, percent } = payload[0];
   return (
@@ -85,7 +85,7 @@ export default function Analytics() {
       if (!buckets[key]) buckets[key] = 0;
     }
     let running = totalUSD;
-    const sorted = [...filtered].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    const sorted = [...filtered].sort((a, b) => /** @type {any} */ (new Date(b.created_date)) - /** @type {any} */ (new Date(a.created_date)));
     for (const tx of sorted) {
       const key = moment(tx.created_date).format(range <= 30 ? "MMM D" : "MMM 'YY");
       const usd = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);

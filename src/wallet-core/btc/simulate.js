@@ -35,10 +35,11 @@ function satsToBtc(sats) {
 /**
  * Decode a BTC coin-selection plan into a pre-sign preview.
  *
- * @param {object} p
- * @param {{ inputs: Array<{value}>, outputs: Array<{address,value}>, feeSats }} p.plan
- * @param {string} p.fromAddress        the wallet address (change returns here)
- * @param {Array}  [p.knownAddresses]   reserved (BTC has no EVM-style poison list)
+ * @param {object} [p]
+ * @param {{ inputs?: Array<{value:bigint|number|string}>, outputs?: Array<{address:string, value:bigint|number|string}>, feeSats?:bigint|number|string }} [p.plan]
+ * @param {string} [p.fromAddress]       the wallet address (change returns here)
+ * @param {Array}  [p.knownAddresses]    reserved (BTC has no EVM-style poison list)
+ * @param {number} [p.largeOutflowRatio] override the large-outflow warning threshold
  * @returns {object} preview result (same shape family as the EVM simulator).
  */
 export function describeBtcPlan({ plan, fromAddress, largeOutflowRatio = LARGE_OUTFLOW_RATIO } = {}) {

@@ -29,7 +29,7 @@ const MobileSelectCtx = React.createContext(null);
 // a plain <button> trigger, and the prop was previously swallowed by `...props` and
 // never forwarded — so a disabled Select still opened its bottom-sheet. We now thread
 // it through the context to the mobile trigger.
-function Select({ children, value, onValueChange, defaultValue, open, onOpenChange, disabled, ...props }) {
+function Select({ children, value, onValueChange, defaultValue = undefined, open = undefined, onOpenChange = undefined, disabled = undefined, ...props }) {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [internalValue, setInternalValue] = React.useState(defaultValue ?? "");
@@ -190,7 +190,7 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className
         )}
-        position={position}
+        position={/** @type {any} */ (position)}
         {...props}
       >
         <SelectScrollUpButton />

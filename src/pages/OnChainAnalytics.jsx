@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Activity, Hash, ArrowUpRight, ArrowDownLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/lib/recharts";
 import { toast } from "sonner";
 import moment from "moment";
 

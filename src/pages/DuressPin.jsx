@@ -58,7 +58,7 @@ function short(addr) {
 // Reads and shows the decoy's native testnet balance. REAL on-chain read in
 // real/native builds; SEEDED (clearly labelled) in demo. Never a hardcoded value.
 function DecoyBalance({ address, refreshKey }) {
-  const [state, setState] = useState({ loading: true });
+  const [state, setState] = useState(/** @type {any} */ ({ loading: true }));
   useEffect(() => {
     let active = true;
     setState({ loading: true });

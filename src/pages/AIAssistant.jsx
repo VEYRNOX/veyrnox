@@ -85,13 +85,13 @@ export default function AIAssistant() {
 
   const loadConversations = async () => {
     if (!LLM_AVAILABLE) return;
-    const list = await base44.agents.listConversations({ agent_name: AGENT_NAME });
+    const list = await (/** @type {any} */ (base44)).agents.listConversations({ agent_name: AGENT_NAME });
     setConversations(list || []);
   };
 
   const startNewConversation = async () => {
     if (!LLM_AVAILABLE) return;
-    const conv = await base44.agents.createConversation({
+    const conv = await (/** @type {any} */ (base44)).agents.createConversation({
       agent_name: AGENT_NAME,
       metadata: { name: `Chat ${new Date().toLocaleDateString()}` },
     });
@@ -104,7 +104,7 @@ export default function AIAssistant() {
 
   const openConversation = async (convId) => {
     if (!LLM_AVAILABLE) return;
-    const conv = await base44.agents.getConversation(convId);
+    const conv = await (/** @type {any} */ (base44)).agents.getConversation(convId);
     setConversation(conv);
     setMessages(conv.messages || []);
     setShowHistory(false);
@@ -113,7 +113,7 @@ export default function AIAssistant() {
   useEffect(() => {
     if (!LLM_AVAILABLE) return;
     if (!conversation?.id) return;
-    const unsub = base44.agents.subscribeToConversation(conversation.id, (data) => {
+    const unsub = (/** @type {any} */ (base44)).agents.subscribeToConversation(conversation.id, (data) => {
       setMessages(data.messages || []);
       setSending(false);
     });
@@ -128,7 +128,7 @@ export default function AIAssistant() {
 
     let conv = conversation;
     if (!conv) {
-      conv = await base44.agents.createConversation({
+      conv = await (/** @type {any} */ (base44)).agents.createConversation({
         agent_name: AGENT_NAME,
         metadata: { name: msg.slice(0, 40) },
       });
@@ -138,7 +138,7 @@ export default function AIAssistant() {
 
     setSending(true);
     setMessages(prev => [...prev, { role: "user", content: msg, id: Date.now() }]);
-    await base44.agents.addMessage(conv, { role: "user", content: msg });
+    await (/** @type {any} */ (base44)).agents.addMessage(conv, { role: "user", content: msg });
   };
 
   const isStreaming = messages.some(m => m.tool_calls?.some(tc => tc.status === "running" || tc.status === "in_progress")) || (sending && messages[messages.length - 1]?.role === "user");

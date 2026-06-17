@@ -69,9 +69,9 @@ function fmt(n) {
  * outflow and the user's OWN local history, return the deviation flags. Designed
  * to be folded into assessEvmTransaction's risk list (same object shape).
  *
- * @param {object} p
- * @param {string} p.kind                 'native' | 'transfer' | 'approve' | 'unknown'
- * @param {string} p.effectiveRecipient   who gains value (transfer/native) or power (approve)
+ * @param {object} [p]
+ * @param {string} [p.kind]               'native' | 'transfer' | 'approve' | 'unknown'
+ * @param {string} [p.effectiveRecipient] who gains value (transfer/native) or power (approve)
  * @param {number} [p.amount]             outflow in DISPLAY units (transfer/native); 0/undefined for approve
  * @param {string} [p.symbol]             asset symbol, for copy
  * @param {number} [p.balanceNum]         current balance in display units, for the fraction check
@@ -79,7 +79,7 @@ function fmt(n) {
  * @param {Array<string>} [p.knownCounterparties] addresses the user has transacted with / saved
  * @param {number} [p.multiple]           override ANOMALY_MULTIPLE (testing)
  * @param {number} [p.minHistory]         override MIN_HISTORY (testing)
- * @returns {Array<{level:'high'|'medium'|'info', code, title, detail}>}
+ * @returns {Array<{level:'high'|'medium'|'info', code:string, title:string, detail:string}>}
  */
 export function assessHistoryAnomalies({
   kind = 'native',
@@ -92,6 +92,7 @@ export function assessHistoryAnomalies({
   multiple = ANOMALY_MULTIPLE,
   minHistory = MIN_HISTORY,
 } = {}) {
+  /** @type {Array<{level:'high'|'medium'|'info', code:string, title:string, detail:string}>} */
   const risks = [];
   const sym = symbol || 'this asset';
   const known = new Set((knownCounterparties || []).map(norm).filter(Boolean));

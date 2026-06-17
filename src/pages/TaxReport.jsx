@@ -31,7 +31,7 @@ function computeFIFO(transactions, year) {
   const inYear = (d) => moment(d).isBetween(start, end, null, "[]");
 
   // Sort ALL transactions by date so FIFO is correct across years
-  const sorted = [...transactions].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+  const sorted = [...transactions].sort((a, b) => /** @type {any} */ (new Date(a.created_date)) - /** @type {any} */ (new Date(b.created_date)));
 
   // FIFO queues: { [currency]: [{units, costPerUnit, date}] }
   const queues = {};
@@ -302,7 +302,7 @@ async function downloadPDF(data, year) {
     doc.setFillColor(245, 245, 247);
     doc.roundedRect(bx, by, boxW, 18, 2, 2, "F");
     doc.setFontSize(7.5); doc.setTextColor(100, 100, 100); doc.text(item.label, bx + 4, by + 7);
-    doc.setFontSize(10);  doc.setTextColor(...item.color);  doc.text(item.value, bx + 4, by + 14);
+    doc.setFontSize(10);  doc.setTextColor(.../** @type {[number, number, number]} */ (item.color));  doc.text(item.value, bx + 4, by + 14);
   });
   y += 50;
 
@@ -324,7 +324,7 @@ async function downloadPDF(data, year) {
       doc.text(String(g.amount), cxG[3], y);
       doc.text("$" + g.proceeds.toFixed(0), cxG[4], y);
       doc.text("$" + g.costBasis.toFixed(0), cxG[5], y);
-      doc.setTextColor(...(g.gain >= 0 ? [34,140,90] : [200,50,50]));
+      doc.setTextColor(.../** @type {[number, number, number]} */ (g.gain >= 0 ? [34,140,90] : [200,50,50]));
       doc.text((g.gain >= 0 ? "+" : "") + "$" + g.gain.toFixed(0), cxG[6], y);
       doc.setTextColor(60, 60, 60); doc.text(g.term, cxG[7], y); y += 7;
     });
@@ -350,13 +350,13 @@ async function downloadPDF(data, year) {
       doc.text("$" + u.avgCostPerUnit.toFixed(2), cxU[3], y);
       doc.text("$" + u.costBasis.toFixed(0), cxU[4], y);
       doc.text("$" + u.currentValue.toFixed(0), cxU[5], y);
-      doc.setTextColor(...(u.unrealizedGain >= 0 ? [34,140,90] : [200,50,50]));
+      doc.setTextColor(.../** @type {[number, number, number]} */ (u.unrealizedGain >= 0 ? [34,140,90] : [200,50,50]));
       doc.text((u.unrealizedGain >= 0 ? "+" : "") + "$" + u.unrealizedGain.toFixed(0), cxU[6], y);
       doc.text((u.pctChange >= 0 ? "+" : "") + u.pctChange.toFixed(1) + "%", cxU[7], y); y += 7;
     });
   }
 
-  const pageCount = doc.internal.getNumberOfPages();
+  const pageCount = (/** @type {any} */ (doc.internal)).getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i); doc.setFontSize(7); doc.setTextColor(160, 160, 160);
     doc.text(`Page ${i} of ${pageCount}  |  SafeCrypto Wallet — FIFO Tax Report ${year}`, 14, doc.internal.pageSize.height - 6);

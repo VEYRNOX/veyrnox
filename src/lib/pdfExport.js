@@ -50,7 +50,7 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
   const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
   // ── Title band ──
-  doc.setFillColor(...BRAND);
+  doc.setFillColor(.../** @type {[number,number,number]} */ (BRAND));
   doc.rect(0, 0, pageWidth, 50, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(26);
@@ -101,7 +101,7 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
     ensureSpace(14);
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...BRAND);
+    doc.setTextColor(.../** @type {[number,number,number]} */ (BRAND));
     doc.text(cat.category, margin, y);
     y += 6;
 
@@ -128,7 +128,7 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
   });
 
   // ── Footer on every page ──
-  const totalPages = doc.internal.getNumberOfPages();
+  const totalPages = (/** @type {any} */ (doc.internal)).getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);

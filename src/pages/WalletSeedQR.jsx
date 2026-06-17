@@ -102,7 +102,7 @@ export default function WalletSeedQR() {
           onChange={e => { setSeedPhrase(e.target.value); setConfirmed(false); }}
           placeholder="word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
           className={`w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono ${!showSeed && seedPhrase ? "text-transparent bg-clip-text" : ""}`}
-          style={!showSeed && seedPhrase ? { WebkitTextSecurity: "disc" } : {}}
+          style={!showSeed && seedPhrase ? /** @type {any} */ ({ WebkitTextSecurity: "disc" }) : {}}
           autoComplete="off"
           spellCheck={false}
         />

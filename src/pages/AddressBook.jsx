@@ -26,17 +26,17 @@ export default function AddressBook() {
   });
 
   const create = useMutation({
-    mutationFn: (data) => base44.entities.AddressBook.create(data),
+    mutationFn: (/** @type {any} */ data) => base44.entities.AddressBook.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["address-book"] }); setOpen(false); setForm({ name: "", address: "", currency: "ETH", network: "Ethereum", emoji: "👤", note: "", is_trusted: false }); },
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.AddressBook.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.AddressBook.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["address-book"] }),
   });
 
   const toggleTrust = useMutation({
-    mutationFn: ({ id, is_trusted }) => base44.entities.AddressBook.update(id, { is_trusted }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.AddressBook.update(vars.id, { is_trusted: vars.is_trusted }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["address-book"] }),
   });
 

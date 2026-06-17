@@ -84,7 +84,7 @@ export default function SecurityCenter() {
   }, []);
 
   const revokeSession = useMutation({
-    mutationFn: (id) => base44.entities.UserSession.update(id, { status: "revoked" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.UserSession.update(id, { status: "revoked" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       // Honest scope: revoking marks the session revoked; the device with that
@@ -110,12 +110,12 @@ export default function SecurityCenter() {
   });
 
   const toggleLimit = useMutation({
-    mutationFn: ({ id, enabled }) => base44.entities.TransactionLimit.update(id, { enabled }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.TransactionLimit.update(vars.id, { enabled: vars.enabled }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tx-limits"] }),
   });
 
   const deleteLimit = useMutation({
-    mutationFn: (id) => base44.entities.TransactionLimit.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.TransactionLimit.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tx-limits"] }),
   });
 

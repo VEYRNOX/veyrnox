@@ -34,7 +34,7 @@ export default function WhitelistManager() {
   });
 
   const addAddress = useMutation({
-    mutationFn: (data) => base44.entities.WhitelistedAddress.create(data),
+    mutationFn: (/** @type {any} */ data) => base44.entities.WhitelistedAddress.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["whitelisted-addresses"] });
       setDialogOpen(false);
@@ -44,7 +44,7 @@ export default function WhitelistManager() {
   });
 
   const removeAddress = useMutation({
-    mutationFn: (id) => base44.entities.WhitelistedAddress.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.WhitelistedAddress.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["whitelisted-addresses"] });
       toast.success("Address removed from whitelist");

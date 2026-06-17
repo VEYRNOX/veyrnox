@@ -20,7 +20,7 @@ export default function SplitBill() {
   const { data: bills = [] } = useQuery({ queryKey: ["split-bills"], queryFn: () => base44.entities.SplitBill.list("-created_date") });
 
   const create = useMutation({
-    mutationFn: (d) => base44.entities.SplitBill.create(d),
+    mutationFn: (/** @type {any} */ d) => base44.entities.SplitBill.create(d),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["split-bills"] });
       setOpen(false);
@@ -30,12 +30,12 @@ export default function SplitBill() {
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.SplitBill.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.SplitBill.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["split-bills"] }),
   });
 
   const markDone = useMutation({
-    mutationFn: (id) => base44.entities.SplitBill.update(id, { status: "completed" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.SplitBill.update(id, { status: "completed" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["split-bills"] }),
   });
 

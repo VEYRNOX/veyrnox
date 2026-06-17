@@ -35,12 +35,12 @@ export default function PaymentLinks() {
   });
 
   const markPaid = useMutation({
-    mutationFn: (id) => base44.entities.PaymentLink.update(id, { status: "paid" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PaymentLink.update(id, { status: "paid" }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["payment-links"] }); toast.success("Marked as paid"); },
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.PaymentLink.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PaymentLink.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payment-links"] }),
   });
 

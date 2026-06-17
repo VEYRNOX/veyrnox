@@ -112,7 +112,7 @@ export default function SecurityDashboard() {
   const biometricOn = isBiometricUnlockEnabled();
   const passkeyOn = isPasskeyUnlockEnabled() && isPasskeyRegistered();
 
-  const { data: s3 = {} } = useQuery({
+  const { data: s3 = /** @type {any} */ ({}) } = useQuery({
     queryKey: ["security-posture-s3"],
     queryFn: async () => {
       // hasStealthPool is a non-destructive store read (no key material, no

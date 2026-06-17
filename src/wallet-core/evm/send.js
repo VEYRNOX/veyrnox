@@ -30,7 +30,7 @@ export async function estimateSend({ networkKey, from, to, amountEth }) {
     gasLimit: gasLimit.toString(),
     maxFeePerGasWei: maxFeePerGas.toString(),
     estGasCostWei: gasCostWei.toString(),
-    totalWei: (value + gasCostWei).toString(),
+    totalWei: (value + BigInt(gasCostWei)).toString(),
   };
 }
 
@@ -43,7 +43,7 @@ export async function estimateSend({ networkKey, from, to, amountEth }) {
  * auto-fills the fee as before (back-compat). When present, those EXACT values
  * are what get signed — see evmFeeOverrides().
  *
- * @returns {Promise<{ hash: string, wait: Function }>} REAL tx handle.
+ * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>} REAL tx handle.
  */
 export async function signAndBroadcast({ networkKey, privateKey, to, amountEth, fee }) {
   if (!isAddress(to)) throw new Error('Invalid recipient address');

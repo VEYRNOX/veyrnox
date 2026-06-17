@@ -42,12 +42,12 @@ export default function SmartAlerts() {
   });
 
   const toggleAlert = useMutation({
-    mutationFn: ({ id, enabled }) => base44.entities.SmartAlert.update(id, { enabled }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.SmartAlert.update(vars.id, { enabled: vars.enabled }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["smart-alerts"] }),
   });
 
   const deleteAlert = useMutation({
-    mutationFn: (id) => base44.entities.SmartAlert.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.SmartAlert.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["smart-alerts"] });
       toast.success("Alert deleted");

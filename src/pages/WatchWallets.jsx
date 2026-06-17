@@ -26,12 +26,12 @@ export default function WatchWallets() {
   const displayed = wallets.length > 0 ? wallets : MOCK;
 
   const create = useMutation({
-    mutationFn: (d) => base44.entities.Wallet.create({ ...d, balance: 0, is_watch_only: true }),
+    mutationFn: (/** @type {any} */ d) => base44.entities.Wallet.create({ ...d, balance: 0, is_watch_only: true }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["watch-wallets"] }); setOpen(false); setForm({ name: "", address: "", network: "Ethereum", currency: "ETH", note: "", is_watch_only: true }); },
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.Wallet.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.Wallet.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["watch-wallets"] }),
   });
 
