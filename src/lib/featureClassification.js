@@ -91,20 +91,20 @@ export const CLASSIFICATION = {
     note: 'Derives risk score from real local wallet balances, staking positions, and loan records via IndexedDB. Applies static per-asset volatility constants (reasonable calibration, not claimed to be live market data). No fabrication — formula is transparent and entirely driven by the user\'s actual holdings.',
   },
   '/correlation': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Presents a hardcoded CORRELATIONS matrix of specific coefficients (e.g. BTC↔ETH = 0.82) as if they reflect current market reality, with no disclaimer that these are fixed reference values. Uses wallet list only to filter which rows/columns to show — the coefficients themselves are static.',
+    verdict: 'live', dataSource: 'external',
+    note: 'Static CORRELATIONS matrix removed. Pearson correlation now computed from real 30-day daily closes fetched from CryptoCompare histoday for all 7 assets, gated on isLivePricesEnabled() (I2). Near-zero variance (stablecoins) correctly returns 0. Off-state: honest disabled prompt (I4). staleTime 10min. UNAUDITED-PROVISIONAL.',
   },
   '/correlation-timeline': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Entire PRICE_SERIES (30-day indexed arrays for BTC/ETH/SOL) and EVENTS list (Fed Rate Cut, SEC Approval, Exchange Hack, etc.) are hardcoded constants presented as a live 30-day price-and-events chart. No real price history or news data is used; the chart is wholly fabricated.',
+    verdict: 'live', dataSource: 'external',
+    note: 'Hardcoded PRICE_SERIES and fake EVENTS removed. Real 30-day histoday closes for BTC/ETH/SOL from CryptoCompare, normalized to index 100 at day 0, gated on isLivePricesEnabled() (I2). Off-state: honest disabled prompt (I4). staleTime 10min. UNAUDITED-PROVISIONAL.',
   },
   '/dashboard-widgets': {
     verdict: 'live', dataSource: 'on-device',
     note: 'A pure settings/preference UI: reads and writes widget visibility and order to localStorage only. No data fabrication, no external calls. Cleanly on-device.',
   },
   '/news-sentiment': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'MOCK_NEWS is a hardcoded array of specific headlines attributed to real outlets (Bloomberg, Reuters, CoinDesk) presented prominently as current market news. LocalBuildNotice does disclose these are "illustrative sample data" but the fabricated articles still dominate the visible UI. AI refresh correctly disabled via LLM_AVAILABLE guard.',
+    verdict: 'live', dataSource: 'external',
+    note: 'MOCK_NEWS and LLM/AI wiring removed. Real articles from CryptoCompare /data/v2/news/ (live feed), gated on isLivePricesEnabled() (I2). Asset filter maps to CryptoCompare categories parameter. No sentiment scoring — scores required an LLM not present in this build. Off-state: honest disabled prompt (I4). staleTime 5min. UNAUDITED-PROVISIONAL.',
   },
 
   // ── Wallet group (audit batch 2) ───────────────────────────────────────────

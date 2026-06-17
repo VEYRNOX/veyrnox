@@ -1,23 +1,44 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Info } from "lucide-react";
-
-// Realistic correlation coefficients between major crypto assets
-const CORRELATIONS = {
-  BTC:  { BTC: 1.00, ETH: 0.82, SOL: 0.74, USDC: -0.05, USDT: -0.04, BNB: 0.71, ADA: 0.68 },
-  ETH:  { BTC: 0.82, ETH: 1.00, SOL: 0.79, USDC: -0.06, USDT: -0.05, BNB: 0.75, ADA: 0.72 },
-  SOL:  { BTC: 0.74, ETH: 0.79, SOL: 1.00, USDC: -0.07, USDT: -0.06, BNB: 0.70, ADA: 0.66 },
-  USDC: { BTC: -0.05, ETH: -0.06, SOL: -0.07, USDC: 1.00, USDT: 0.98, BNB: -0.04, ADA: -0.05 },
-  USDT: { BTC: -0.04, ETH: -0.05, SOL: -0.06, USDC: 0.98, USDT: 1.00, BNB: -0.03, ADA: -0.04 },
-  BNB:  { BTC: 0.71, ETH: 0.75, SOL: 0.70, USDC: -0.04, USDT: -0.03, BNB: 1.00, ADA: 0.65 },
-  ADA:  { BTC: 0.68, ETH: 0.72, SOL: 0.66, USDC: -0.05, USDT: -0.04, BNB: 0.65, ADA: 1.00 },
-};
+import { Info, RefreshCw } from "lucide-react";
+import { isLivePricesEnabled } from "@/lib/priceFeed";
 
 const ALL_ASSETS = ["BTC", "ETH", "SOL", "USDC", "USDT", "BNB", "ADA"];
 
+async function fetchAllCloses() {
+  const results = await Promise.all(
+    ALL_ASSETS.map(sym =>
+      fetch(`https://min-api.cryptocompare.com/data/v2/histoday?fsym=${sym}&tsym=USD&limit=29`)
+        .then(r => r.json())
+        .then(json => {
+          if (json.Response !== "Success") throw new Error(json.Message || "API error");
+          return [sym, json.Data.Data.filter(d => d.close > 0).map(d => d.close)];
+        })
+    )
+  );
+  return Object.fromEntries(results);
+}
+
+function pearson(xs, ys) {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return null;
+  const slice = (arr) => arr.slice(arr.length - n);
+  const ax = slice(xs), ay = slice(ys);
+  const mx = ax.reduce((s, v) => s + v, 0) / n;
+  const my = ay.reduce((s, v) => s + v, 0) / n;
+  let num = 0, dx2 = 0, dy2 = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = ax[i] - mx, dy = ay[i] - my;
+    num += dx * dy; dx2 += dx * dx; dy2 += dy * dy;
+  }
+  if (dx2 < 1e-10 || dy2 < 1e-10) return 0;
+  return Math.max(-1, Math.min(1, num / Math.sqrt(dx2 * dy2)));
+}
+
 function getColor(value) {
-  if (value === 1) return "bg-primary/80 text-white";
+  if (value === null) return "bg-secondary text-muted-foreground";
+  if (value >= 0.99) return "bg-primary/80 text-white";
   if (value >= 0.7) return "bg-red-500/70 text-white";
   if (value >= 0.4) return "bg-orange-500/60 text-white";
   if (value >= 0.1) return "bg-yellow-500/50 text-foreground";
@@ -26,7 +47,8 @@ function getColor(value) {
 }
 
 function getLabel(value) {
-  if (value === 1) return "Perfect";
+  if (value === null) return "—";
+  if (value >= 0.99) return "Perfect";
   if (value >= 0.7) return "Strong +";
   if (value >= 0.4) return "Moderate +";
   if (value >= 0.1) return "Weak +";
@@ -35,86 +57,111 @@ function getLabel(value) {
 }
 
 export default function CorrelationMatrix() {
-  const [hovered, setHovered] = useState(null);
+  const liveOn = isLivePricesEnabled();
+
   const { data: wallets = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => base44.entities.Wallet.list() });
+  const { data: closesMap = {}, isLoading, isError } = useQuery({
+    queryKey: ["correlation-closes"],
+    queryFn: fetchAllCloses,
+    enabled: liveOn,
+    staleTime: 10 * 60 * 1000,
+  });
 
   const myAssets = [...new Set(wallets.map(w => w.currency).filter(c => ALL_ASSETS.includes(c)))];
   const assets = myAssets.length >= 2 ? myAssets : ALL_ASSETS;
 
-  const hoveredVal = hovered ? CORRELATIONS[hovered[0]]?.[hovered[1]] : null;
+  const matrix = useMemo(() => {
+    if (!Object.keys(closesMap).length) return {};
+    const result = {};
+    for (const row of assets) {
+      result[row] = {};
+      for (const col of assets) {
+        if (row === col) { result[row][col] = 1; continue; }
+        const xs = closesMap[row], ys = closesMap[col];
+        result[row][col] = xs?.length && ys?.length ? pearson(xs, ys) : null;
+      }
+    }
+    return result;
+  }, [closesMap, assets]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold">Correlation Matrix</h1>
-        <p className="text-sm text-muted-foreground">See how your assets move together — lower correlation means better diversification</p>
+        <p className="text-sm text-muted-foreground">30-day Pearson correlation · CryptoCompare</p>
       </div>
 
-      <div className="p-4 rounded-xl border border-border bg-card">
-        <div className="flex items-center gap-2 mb-4">
-          <Info className="h-4 w-4 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">Correlation ranges from -1 (opposite) to +1 (identical). Aim for assets with correlation below 0.5.</p>
+      {!liveOn ? (
+        <div className="rounded-2xl border border-border bg-card p-10 text-center space-y-3 text-muted-foreground">
+          <div className="h-10 w-10 mx-auto opacity-30 text-4xl font-mono">r</div>
+          <p className="font-medium text-foreground">Live prices are off</p>
+          <p className="text-sm">Enable live prices in <span className="font-medium text-foreground">Settings → Live Prices</span> to compute real correlations.</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr>
-                <th className="p-2 text-left text-muted-foreground font-normal w-12"></th>
-                {assets.map(a => <th key={a} className="p-2 text-center font-semibold w-14">{a}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {assets.map(row => (
-                <tr key={row}>
-                  <td className="p-2 font-semibold pr-3 text-right">{row}</td>
-                  {assets.map(col => {
-                    const val = CORRELATIONS[row]?.[col] ?? 0;
-                    const isHovered = hovered?.[0] === row && hovered?.[1] === col;
-                    return (
-                      <td key={col} className="p-1">
-                        <div
-                          onMouseEnter={() => setHovered([row, col])}
-                          onMouseLeave={() => setHovered(null)}
-                          className={`h-10 w-full rounded-lg flex items-center justify-center font-bold cursor-default transition-all ${getColor(val)} ${isHovered ? "ring-2 ring-ring scale-110" : ""}`}
-                        >
-                          {val.toFixed(2)}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
+      ) : isLoading ? (
+        <div className="p-4 rounded-xl border border-border bg-card h-48 flex items-center justify-center text-muted-foreground gap-2 text-sm">
+          <RefreshCw className="h-4 w-4 animate-spin" /> Computing correlations…
+        </div>
+      ) : isError ? (
+        <div className="p-4 rounded-xl border border-border bg-card h-48 flex items-center justify-center text-muted-foreground text-sm">
+          Failed to load price history — check your connection and try again.
+        </div>
+      ) : (
+        <>
+          <div className="p-4 rounded-xl border border-border bg-card">
+            <div className="flex items-center gap-2 mb-4">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Pearson correlation from 30-day daily closes. Ranges from −1 (opposite) to +1 (identical). Aim for assets below 0.5.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr>
+                    <th className="p-2 text-left text-muted-foreground font-normal w-12"></th>
+                    {assets.map(a => <th key={a} className="p-2 text-center font-semibold w-14">{a}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {assets.map(row => (
+                    <tr key={row}>
+                      <td className="p-2 font-semibold pr-3 text-right">{row}</td>
+                      {assets.map(col => {
+                        const val = matrix[row]?.[col] ?? null;
+                        return (
+                          <td key={col} className="p-1">
+                            <div className={`h-10 w-full rounded-lg flex items-center justify-center font-bold cursor-default ${getColor(val)}`}>
+                              {val !== null ? val.toFixed(2) : "—"}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="p-4 rounded-xl border border-border bg-card">
+            <p className="text-xs font-semibold mb-3">Legend</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "Strong Positive (0.7–1.0)", cls: "bg-red-500/70 text-white" },
+                { label: "Moderate (0.4–0.7)", cls: "bg-orange-500/60 text-white" },
+                { label: "Weak (0.1–0.4)", cls: "bg-yellow-500/50 text-foreground" },
+                { label: "Neutral (≈0)", cls: "bg-secondary text-muted-foreground" },
+                { label: "Negative (< 0)", cls: "bg-green-500/50 text-white" },
+              ].map(l => (
+                <div key={l.label} className={`text-[10px] px-2 py-1 rounded-md font-medium ${l.cls}`}>{l.label}</div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </div>
+          </div>
 
-      {hoveredVal !== null && (
-        <div className="p-4 rounded-xl border border-border bg-card text-sm">
-          <span className="font-semibold">{hovered[0]} ↔ {hovered[1]}: </span>
-          <span className="text-muted-foreground">Correlation = {hoveredVal.toFixed(2)} — <span className="font-medium text-foreground">{getLabel(hoveredVal)}</span></span>
-        </div>
+          <div className="p-3 rounded-xl bg-secondary/50 border border-border">
+            <p className="text-xs text-muted-foreground">Stablecoins (USDC, USDT) show near-zero correlation with volatile assets — this is correct and expected behaviour.</p>
+          </div>
+        </>
       )}
-
-      {/* Legend */}
-      <div className="p-4 rounded-xl border border-border bg-card">
-        <p className="text-xs font-semibold mb-3">Legend</p>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { label: "Strong Positive (0.7–1.0)", cls: "bg-red-500/70 text-white" },
-            { label: "Moderate (0.4–0.7)", cls: "bg-orange-500/60 text-white" },
-            { label: "Weak (0.1–0.4)", cls: "bg-yellow-500/50 text-foreground" },
-            { label: "Neutral (≈0)", cls: "bg-secondary text-muted-foreground" },
-            { label: "Negative (< 0)", cls: "bg-green-500/50 text-white" },
-          ].map(l => (
-            <div key={l.label} className={`text-[10px] px-2 py-1 rounded-md font-medium ${l.cls}`}>{l.label}</div>
-          ))}
-        </div>
-      </div>
-
-      <div className="p-3 rounded-xl bg-secondary/50 border border-border">
-        <p className="text-xs text-muted-foreground">💡 Tip: Adding stablecoins (USDC, USDT) to your portfolio significantly reduces overall correlation and acts as a hedge during market downturns.</p>
-      </div>
     </div>
   );
 }

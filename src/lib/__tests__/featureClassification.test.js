@@ -79,8 +79,10 @@ describe('registryEntriesFromClassification', () => {
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
         // '/analytics' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices; charts gated), so it drops out here.
         '/advanced-analytics', '/advisor', '/ai-assistant',
-        '/benchmark', '/what-if', '/correlation', '/correlation-timeline',
-        '/news-sentiment',
+        '/benchmark', '/what-if',
+        // '/correlation' reclassified disabled→live (real Pearson from 30d histoday closes, I2 gated), so it drops out here.
+        // '/correlation-timeline' reclassified disabled→live (real 30d histoday for BTC/ETH/SOL, I2 gated), so it drops out here.
+        // '/news-sentiment' reclassified disabled→live (MOCK_NEWS removed; real CryptoCompare news feed, I2 gated), so it drops out here.
         // '/fee-analytics' reclassified disabled→live (Slice 1 native-unit rebuild), so it drops out here.
         // '/calculator' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
         // '/recurring' reclassified disabled→live (honest CRUD with non-custodial banner; redirects to /send for signing), so it drops out here.

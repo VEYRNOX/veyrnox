@@ -290,6 +290,26 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   `isLivePricesEnabled()` (I2). When off: USD shows "—" (I4). Off-state banner added. Note: balance field
   reflects user-entered values — no live on-chain balance fetch (presented honestly). CRUD persists via
   `base44.entities.Wallet` (is_watch_only: true) on-device.
+- Crypto News (`/news-sentiment`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. `MOCK_NEWS` (hardcoded headlines attributed to Bloomberg/Reuters/CoinDesk) and LLM/AI wiring
+  removed entirely. Real articles fetched from CryptoCompare `/data/v2/news/` (live feed), gated on
+  `isLivePricesEnabled()` (I2). Asset filter (All/BTC/ETH/SOL/…) maps to CryptoCompare `categories`
+  parameter. Sentiment scoring removed — scores required an LLM not present in this build; page is now
+  an honest news reader, not an AI sentiment analyser (title updated to "Crypto News"). Off-state:
+  honest disabled prompt (I4). staleTime 5min. Live-data render UNAUDITED-PROVISIONAL.
+- Correlation Matrix (`/correlation`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. Static `CORRELATIONS` object (hardcoded coefficients e.g. BTC↔ETH = 0.82) removed. Pearson
+  correlation now computed live from 30-day daily closes (`histoday`, limit=29) fetched from CryptoCompare
+  for all 7 assets in a single `Promise.all`, gated on `isLivePricesEnabled()` (I2). Near-zero variance
+  series (stablecoins USDC/USDT) correctly returns 0 rather than NaN. Wallet list still used to scope
+  shown assets. Off-state: honest disabled prompt (I4). staleTime 10min. Live-data render
+  UNAUDITED-PROVISIONAL.
+- Asset Correlation Timeline (`/correlation-timeline`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted
+  `unverified`-disabled → live. Hardcoded `PRICE_SERIES` and fabricated `EVENTS` (Fed Rate Cut, SEC
+  Approval, Exchange Hack, etc.) removed. Real 30-day `histoday` closes for BTC, ETH, SOL from
+  CryptoCompare in a single `Promise.all`, normalised to index 100 at day 0, gated on
+  `isLivePricesEnabled()` (I2). Off-state: honest disabled prompt (I4). staleTime 10min. Live-data
+  render UNAUDITED-PROVISIONAL.
 - Price Charts (`/price-charts`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live.
   `generateOHLCV()` (Math.random candles) removed. Real OHLCV data fetched from CryptoCompare
   `histominute` / `histohour` / `histoday` endpoints, selected by period (1H/4H → histominute, 1D/1W →
