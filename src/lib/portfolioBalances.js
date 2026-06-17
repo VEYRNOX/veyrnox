@@ -27,9 +27,14 @@ import { getProvider, getBalanceEth } from '@/wallet-core/evm/provider.js';
 import { getToken, ERC20_ABI } from '@/wallet-core/evm/tokens.js';
 import { getBalanceSats } from '@/wallet-core/btc/provider.js';
 import { getBalanceSol } from '@/wallet-core/sol/provider.js';
+import { useLivePrices } from '@/lib/priceFeed.js';
 
-/** USD price for a symbol (mock rates, display only). Stablecoins ≈ 1. */
-export function usdRate(symbol) {
+/** USD price for a symbol. Uses livePrices map when given and finite, else falls
+ * back to USD_RATES (mock rates, display only). Stablecoins ≈ 1. The optional
+ * livePrices argument is additive — omitting it reproduces previous behaviour. */
+export function usdRate(symbol, livePrices) {
+  const live = livePrices && livePrices[symbol];
+  if (typeof live === 'number' && Number.isFinite(live)) return live;
   return USD_RATES[symbol] ?? (symbol === 'USDC' || symbol === 'USDT' ? 1 : 0);
 }
 
@@ -88,7 +93,7 @@ export async function fetchAssetAmount(asset, addr) {
  * @param {Array<{id,enabledAssets}>} wallets
  * @param {{[id]:{evm,btc,sol}}} walletAddresses
  */
-export async function computePortfolio(wallets, walletAddresses) {
+export async function computePortfolio(wallets, walletAddresses, livePrices) {
   const byWallet = {};
   const assetTotals = {};
   let grandTotal = 0;
@@ -111,7 +116,7 @@ export async function computePortfolio(wallets, walletAddresses) {
   const results = await Promise.all(jobs);
   for (const { walletId, symbol, amount } of results) {
     const indeterminate = amount === null; // read FAILED, not an empty wallet
-    const usd = indeterminate ? null : amount * usdRate(symbol);
+    const usd = indeterminate ? null : amount * usdRate(symbol, livePrices);
     byWallet[walletId].assets.push({ symbol, amount, usd, indeterminate });
     if (!assetTotals[symbol]) assetTotals[symbol] = { amount: 0, usd: 0, indeterminate: false };
     if (indeterminate) {
@@ -169,15 +174,25 @@ function portfolioKey(wallets, walletAddresses) {
  * React hook: live portfolio totals for the given wallets. Resilient + cached
  * (60s). Returns react-query's { data, isLoading, refetch } where data is the
  * computePortfolio() shape (or a zeroed shell while loading).
+ * Also composes useLivePrices and threads the live map into computePortfolio
+ * when prices are available (priceBasis === 'live'), else falls back to the
+ * built-in USD_RATES (priceBasis === 'approx'). Additive: existing callers
+ * that ignore priceBasis/pricesUpdatedAt/refetchPrices are unaffected.
  */
 export function usePortfolio(wallets, walletAddresses) {
   const enabled = Array.isArray(wallets) && wallets.length > 0;
-  return useQuery({
-    queryKey: ['portfolio', portfolioKey(wallets || [], walletAddresses || {})],
-    queryFn: () => computePortfolio(wallets, walletAddresses || {}),
+  const { prices, isError, updatedAt, refetch: refetchPrices } = useLivePrices();
+  // Live basis only when opted-in AND the fetch produced prices without error.
+  const liveOk = prices != null && !isError;
+  const livePrices = liveOk ? prices : undefined;
+  const query = useQuery({
+    // Key includes a live/approx marker so flipping the basis refetches the total.
+    queryKey: ['portfolio', liveOk ? 'live' : 'approx', portfolioKey(wallets || [], walletAddresses || {})],
+    queryFn: () => computePortfolio(wallets, walletAddresses || {}, livePrices),
     enabled,
     staleTime: 30_000,
     refetchInterval: 60_000,
     placeholderData: (prev) => prev,
   });
+  return { ...query, priceBasis: liveOk ? 'live' : 'approx', pricesUpdatedAt: updatedAt, refetchPrices };
 }

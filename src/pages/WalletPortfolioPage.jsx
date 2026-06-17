@@ -41,6 +41,9 @@ const fmtAmount = (n) =>
     : n < 0.0001 ? n.toExponential(2)
     : n.toLocaleString(undefined, { maximumFractionDigits: 6 });
 
+// "12:04" local time for the live-price freshness stamp.
+const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "");
+
 // Seed reveal grid (shared by the create-backup step and the "back up" action).
 function SeedGrid({ mnemonic }) {
   const [show, setShow] = useState(false);
@@ -378,7 +381,7 @@ export default function WalletPortfolioPage() {
   // only the seeds THIS unlock decrypted (decoy unlock → decoy seeds, real →
   // real). So "across ALL wallets" is already scoped to the unlocked set — the
   // provider never decrypted another set, and usePortfolio cannot reach one.
-  const { data: portfolio, isLoading: portfolioLoading } = usePortfolio(wallets, walletAddresses);
+  const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const byWallet = portfolio?.byWallet || {};
 
   const canManage = isUnlocked && !isDecoy && !isHidden;
@@ -517,6 +520,21 @@ export default function WalletPortfolioPage() {
             Some balances couldn’t be loaded — this total may be incomplete.
           </p>
         )}
+        <div className="mt-1 flex justify-center">
+          {priceBasis === "live" ? (
+            <button
+              type="button"
+              onClick={() => refetchPrices?.()}
+              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+              title="Refresh live prices"
+            >
+              <RefreshCw className="h-3 w-3" />
+              {"Live"}{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
+            </button>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">Approximate</span>
+          )}
+        </div>
         <ReferenceRateNote />
         {/* DENIABILITY (CLAUDE.md "never show wallet count/list" · I3 / KEK spec §5):
             a wallet-COUNT line is a cardinality tell — it reveals how many wallets

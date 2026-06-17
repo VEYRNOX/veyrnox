@@ -157,3 +157,24 @@ describe('computePortfolio — I3 seal (Finding 1)', () => {
     expect(queried.every((a) => a === '0xDECOYONLY')).toBe(true);
   });
 });
+
+describe('live-price injection (optional, default-preserving)', () => {
+  it('usdRate uses the live map when given, else falls back to USD_RATES', () => {
+    const fallback = usdRate('ETH');               // existing one-arg behaviour
+    expect(usdRate('ETH', { ETH: 4242 })).toBe(4242);
+    expect(usdRate('ETH', {})).toBe(fallback);     // empty map → fallback
+    expect(usdRate('ETH', undefined)).toBe(fallback);
+  });
+
+  it('computePortfolio applies the live map to USD when provided', async () => {
+    getBalanceEth.mockResolvedValue(2);
+    const live = { ETH: 1000 };
+    const { byWallet, grandTotal } = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['ETH'] }],
+      { w1: { evm: '0xabc' } },
+      live,
+    );
+    expect(byWallet.w1.assets[0].usd).toBe(2000); // 2 ETH * $1000 live
+    expect(grandTotal).toBe(2000);
+  });
+});
