@@ -596,8 +596,10 @@ export function WalletProvider({ children }) {
   // wallet-core/panic.js. Irreversibly destroy ALL local key material:
   //   - native (M2b): the hardware-backed primary vault, via keyStore.clearVault();
   //   - web: the entire 'veyrnox-vault' IndexedDB store (primary + duress decoy +
-  //     stealth pool + panic marker) and the demo address-residue maps, via
-  //     panicWipeLocal() — which also returns a post-wipe inspection report.
+  //     stealth pool + panic marker), the demo address-residue maps, AND the
+  //     deniability tells in localStorage (decoy salt / auth-model / audit-log
+  //     pref — internal audit C-1), via panicWipeLocal() — which also returns a
+  //     post-wipe inspection report whose `clean` now accounts for those tells.
   // Then drop the live in-memory secret (lock) and flag wasWiped so the UI can
   // confirm + display proof. HONEST LIMIT: this destroys the LOCAL device copy
   // only — a seed backup the user holds elsewhere still recovers the wallet (by

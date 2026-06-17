@@ -100,6 +100,26 @@ const LOCAL_RESIDUE_KEYS = Object.freeze([
   'veyrnox-hidden-demo-balances',
 ]);
 
+// DENIABILITY TELLS in localStorage that a wipe MUST also destroy (internal audit
+// C-1). These are not key material, but each is a forensic artifact that betrays
+// the coercion-resistance stack was in use — exactly what a panic wipe exists to
+// erase. Leaving them means a "successful" wipe still proves the stack was here
+// (and the decoy salt + a coerced PIN reproduces the deterministic decoy). Kept as
+// plain strings, mirroring the demo-residue pattern; source modules in comments:
+//   veyrnox-pin-decoy-salt — decoyFallback.js (seed of the deterministic decoy)
+//   veyrnox-auth-model      — lib/authModel.js (PIN-cohort marker)
+//   veyrnox-audit-log       — auditLog.js AUDIT_LOG_PREF_KEY (audit-log enabled tell)
+// The audit-log DATA blob ('quaternary') already dies with clearVaultStore(); this
+// removes the surviving enabled-pref. A test pins these so a key rename is caught.
+const DENIABILITY_RESIDUE_KEYS = Object.freeze([
+  'veyrnox-pin-decoy-salt',
+  'veyrnox-auth-model',
+  'veyrnox-audit-log',
+]);
+
+// Every localStorage key a wipe must remove + the inspection must account for.
+const ALL_RESIDUE_KEYS = Object.freeze([...LOCAL_RESIDUE_KEYS, ...DENIABILITY_RESIDUE_KEYS]);
+
 function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
@@ -218,20 +238,21 @@ export async function tryPanicUnlock(password) {
   }
 }
 
-// Clear the DEMO-only address-residue maps in localStorage. Guarded for
-// non-browser/test environments. Not key material; see header.
+// Clear every residue key in localStorage — the DEMO address maps AND the
+// deniability tells (C-1). Guarded for non-browser/test environments.
 function clearLocalAddressResidue() {
   try {
     if (typeof localStorage === 'undefined') return;
-    for (const k of LOCAL_RESIDUE_KEYS) localStorage.removeItem(k);
+    for (const k of ALL_RESIDUE_KEYS) localStorage.removeItem(k);
   } catch { /* storage may be unavailable; not key material */ }
 }
 
-// Which DEMO-only residue keys still exist in localStorage (for the report).
+// Which residue keys (demo maps + deniability tells) still exist in localStorage
+// (for the report). A non-empty result means the wipe was incomplete.
 function readLocalAddressResidue() {
   try {
     if (typeof localStorage === 'undefined') return [];
-    return LOCAL_RESIDUE_KEYS.filter((k) => localStorage.getItem(k) != null);
+    return ALL_RESIDUE_KEYS.filter((k) => localStorage.getItem(k) != null);
   } catch {
     return [];
   }
