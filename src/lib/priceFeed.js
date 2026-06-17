@@ -72,10 +72,15 @@ export function useLivePrices() {
     retry: 1,
   });
   return {
-    prices: q.data ?? null,
+    // Gate on `enabled` so the basis flips to approximate the INSTANT the user
+    // opts out — react-query keeps cached data for ~gcTime after a query goes
+    // disabled, and surfacing it would leave a stale "Live" label contradicting
+    // the just-expressed preference (fail honest, I4). No egress impact (the
+    // query is already not running); this only governs what we report.
+    prices: enabled ? (q.data ?? null) : null,
     isLoading: q.isLoading && enabled,
     isError: q.isError,
-    updatedAt: q.dataUpdatedAt || null,
+    updatedAt: enabled ? (q.dataUpdatedAt || null) : null,
     refetch: q.refetch,
   };
 }
