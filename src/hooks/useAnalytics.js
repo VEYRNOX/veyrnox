@@ -45,7 +45,7 @@ export function useAnalytics() {
           }
           if (!address) continue;
           try {
-            const result = await fetchAssetHistory({ asset, address });
+            const result = await fetchAssetHistory({ asset, address, demo: false });
             if (result.supported && result.transactions) {
               allTxs.push(...result.transactions);
             }

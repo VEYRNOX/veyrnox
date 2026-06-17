@@ -61,7 +61,7 @@ export function listSnapshots(walletAddresses) {
 /**
  * Saves a new snapshot and returns it, or null if the address set is empty/invalid.
  * @param {Record<string, {evm?: string|null, btc?: string|null, sol?: string|null}>} walletAddresses
- * @param {{ grandTotal?: number, assetTotals?: Record<string, {usd: number}>, indeterminate?: boolean }} portfolio
+ * @param {{ grandTotal?: number, assetTotals?: Record<string, {usd: number}> | object, indeterminate?: boolean, byWallet?: object }} portfolio
  * @param {string} label
  * @param {string} note
  * @returns {object|null}
