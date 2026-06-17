@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-
-const PRICE_URL = "https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,USDT,BNB,SOL,USDC,XRP,DOGE,ADA,TRX&tsyms=USD&extraParams=safecryptowallet";
+import { fetchMarketPricesUsd } from "@/lib/cryptoCompare.js";
 
 function sendNotification(title, body, icon = "/favicon.ico") {
   if (Notification.permission !== "granted") return;
@@ -62,10 +61,7 @@ export function usePriceAlertNotifier() {
 
     const pollAlerts = async () => {
       try {
-        const res = await fetch(PRICE_URL);
-        const raw = await res.json();
-        const current = {};
-        for (const [coin, val] of Object.entries(raw)) current[coin] = val.USD;
+        const current = await fetchMarketPricesUsd(); // { [coin]: usdNumber }, fixed MARKET_SYMBOLS
 
         const prev = prevPricesRef.current;
         const alerts = await base44.entities.PriceAlert.filter({ status: "active" });

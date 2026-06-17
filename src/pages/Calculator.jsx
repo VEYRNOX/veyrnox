@@ -3,22 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { ArrowLeftRight, RefreshCw, TrendingUp } from "lucide-react";
+import { fetchMarketPricesFiat, MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
 
-const CRYPTOS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
 const CRYPTO_ICONS = { BTC: "₿", ETH: "Ξ", SOL: "◎", USDC: "Ⓢ", USDT: "₮" };
 const FIAT_FLAGS = { USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "🇯🇵", CAD: "🇨🇦", AUD: "🇦🇺", CHF: "🇨🇭", CNY: "🇨🇳" };
 const CRYPTO_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
-async function fetchPrices() {
-  const fsyms = CRYPTOS.join(",");
-  const tsyms = FIATS.join(",");
-  const res = await fetch(
-    `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${fsyms}&tsyms=${tsyms}&extraParams=safecryptowallet`
-  );
-  return res.json();
-}
+const fetchPrices = () => fetchMarketPricesFiat(FIATS);
 
 function formatNumber(value, fiat) {
   if (value == null || isNaN(value)) return "—";
@@ -110,7 +103,7 @@ export default function Calculator() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CRYPTOS.map(c => (
+                {MARKET_SYMBOLS.map(c => (
                   <SelectItem key={c} value={c}>
                     <div className="flex items-center gap-2">
                       <span style={{ color: CRYPTO_COLORS[c] }} className="font-bold text-sm">{CRYPTO_ICONS[c]}</span>
@@ -224,7 +217,7 @@ export default function Calculator() {
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <p className="text-sm font-semibold">Cross-Crypto in {toFiat}</p>
         <div className="divide-y divide-border">
-          {CRYPTOS.map(c => {
+          {MARKET_SYMBOLS.map(c => {
             const r = prices?.[c]?.[toFiat];
             const isSelected = c === fromCrypto;
             return (
