@@ -41,8 +41,17 @@ describe('token registry guard', () => {
     expect(isTokenConfigured('sepolia', 'NOPE')).toBe(false);
   });
 
-  it('does not register any mainnet tokens (testnet-only until audit)', () => {
-    expect(TOKENS.mainnet).toBeUndefined();
+  it('registers mainnet USDC + USDT with verified addresses and 6 decimals (added 2026-06-17 after owner sign-off)', () => {
+    // Mainnet entries added after ALLOW_MAINNET = true and internal audit sign-off.
+    expect(TOKENS.mainnet).toBeDefined();
+    const usdc = getToken('mainnet', 'USDC');
+    expect(usdc.address).toBe('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
+    expect(usdc.decimals).toBe(6);
+    const usdt = getToken('mainnet', 'USDT');
+    expect(usdt.address).toBe('0xdAC17F958D2ee523a2206206994597C13D831ec7');
+    expect(usdt.decimals).toBe(6);
+    expect(isTokenConfigured('mainnet', 'USDC')).toBe(true);
+    expect(isTokenConfigured('mainnet', 'USDT')).toBe(true);
   });
 
   it('sendToken refuses any token not in the verified registry (no signing)', async () => {

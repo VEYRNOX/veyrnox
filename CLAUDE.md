@@ -6,12 +6,12 @@ identity; the app never holds keys server-side.
 
 ## Hard rules (do not violate)
 
-- **Testnet only.** Mainnet is gated behind the **internal security audit** (the hard
-  pass that flips `ALLOW_MAINNET`). An independent third-party audit is ALSO performed
-  as additional depth, but it is NOT the hard gate — the internal audit is. `ALLOW_MAINNET
-  = false` until the internal audit is complete + remediated + re-reviewed + owner sign-off.
-  Never enable a mainnet path or test against mainnet funds before then. "Internal" is never
-  to be presented as "independent" (I4 honesty). (See `docs/Audit.scope.md`.)
+- **Mainnet unlocked 2026-06-17.** Internal security audit complete; owner sign-off
+  recorded in `docs/audit-triage/internal-audit-2026-06-17.md`. `ALLOW_MAINNET = true`,
+  `ALLOW_BTC_MAINNET = true`, `ALLOW_SOL_MAINNET = true`. An independent third-party
+  audit is still RECOMMENDED for the strongest assurance but was not required under the
+  owner's gate policy. "Internal" is never to be presented as "independent" (I4 honesty).
+  (See `docs/Audit.scope.md`.)
 - **Verify, don't assert.** An asset/feature is "verified" ONLY after a real on-chain
   testnet transaction confirms on a block explorer with a txid the user supplies. Passing
   tests, clean review, or a green suite are NOT verification. Never flip an asset `status`
