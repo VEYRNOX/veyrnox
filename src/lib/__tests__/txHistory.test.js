@@ -236,7 +236,7 @@ describe('explorerAddressUrl', () => {
     expect(explorerAddressUrl(ETH, '0xabc')).toContain('/address/0xabc');
     expect(explorerAddressUrl(BTC, ME_BTC)).toContain(`/address/${ME_BTC}`);
     expect(explorerAddressUrl(SOL, ME_SOL)).toContain(`/address/${ME_SOL}`);
-    expect(explorerAddressUrl(SOL, ME_SOL)).toContain('cluster=devnet');
+    expect(explorerAddressUrl(SOL, ME_SOL)).not.toContain('cluster='); // mainnet needs no cluster param
     expect(explorerAddressUrl(ETH, '')).toBe('');
   });
 });

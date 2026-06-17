@@ -188,5 +188,22 @@ a block of zero bytes). Domain separation is correctly done via the `info` param
 3. ✅ ENS resolution built 2026-06-17 (on-chain, I2 compliant). No longer a scope gap.
 4. Acknowledge: this is an INTERNAL audit. "Internal" is not "independent." The independent third-party audit remains RECOMMENDED for the strongest assurance (see `docs/Audit.scope.md`).
 
-**When the owner has completed those items and is satisfied with this report:**
-flip `ALLOW_MAINNET = true` in `src/wallet-core/evm/networks.js`, `ALLOW_BTC_MAINNET = true` in `src/wallet-core/btc/networks.js`, and `ALLOW_SOL_MAINNET = true` in `src/wallet-core/sol/networks.js` with explicit sign-off (who, when, against this report).
+---
+
+## Owner sign-off
+
+**Signed off: 2026-06-17**
+**Owner:** aljobson (al.jobson@21stclick.co.uk)
+**Against:** this report (internal-audit-2026-06-17.md), harness run bvz408uy0 (127/127 green)
+
+Completed items:
+1. ✅ Mnemonic interop verified — seed imported into independent wallet, first EVM address confirmed matching
+2. ✅ Test suite green — 127/127 files, 1118 tests passing, 2 expected failures (run bvz408uy0)
+3. ✅ ENS resolution built (on-chain, I2 compliant, `src/lib/ens.js`)
+4. ✅ Acknowledged: this is an INTERNAL audit — no external firm reviewed this code. An independent third-party audit remains recommended. "Internal" is not "independent."
+
+**Flipped:**
+- `ALLOW_MAINNET = true` in `src/wallet-core/evm/networks.js`
+- `ALLOW_BTC_MAINNET = true` in `src/wallet-core/btc/networks.js`
+- `ALLOW_SOL_MAINNET = true` in `src/wallet-core/sol/networks.js`
+- All mainnet network entries `enabled: true`

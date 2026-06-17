@@ -14,8 +14,8 @@ import {
 } from '../sol/networks.js';
 
 describe('Solana network gate', () => {
-  it('ships with mainnet GATED', () => {
-    expect(ALLOW_SOL_MAINNET).toBe(false);
+  it('ALLOW_SOL_MAINNET is true — unlocked 2026-06-17 after owner sign-off', () => {
+    expect(ALLOW_SOL_MAINNET).toBe(true);
   });
 
   it('devnet and testnet are enabled and resolvable', () => {
@@ -23,25 +23,26 @@ describe('Solana network gate', () => {
     expect(getSolNetwork('testnet').cluster).toBe('testnet');
   });
 
-  it('getSolNetwork throws for the gated mainnet', () => {
-    expect(() => getSolNetwork('mainnet')).toThrow(/gated/i);
+  it('getSolNetwork resolves mainnet now that ALLOW_SOL_MAINNET is true', () => {
+    expect(() => getSolNetwork('mainnet')).not.toThrow();
+    expect(getSolNetwork('mainnet').cluster).toBe('mainnet-beta');
   });
 
   it('getSolNetwork throws for an unknown network', () => {
     expect(() => getSolNetwork('solanaX')).toThrow(/Unknown/i);
   });
 
-  it('display-only lookup returns mainnet info WITHOUT enabling it', () => {
+  it('display-only lookup returns mainnet info with enabled:true', () => {
     const info = getSolNetworkInfo('mainnet');
     expect(info.cluster).toBe('mainnet-beta');
-    expect(info.enabled).toBe(false);
+    expect(info.enabled).toBe(true);
   });
 
-  it('listEnabledSolNetworks excludes the gated mainnet', () => {
+  it('listEnabledSolNetworks includes mainnet after unlock', () => {
     const keys = listEnabledSolNetworks().map(n => n.key);
     expect(keys).toContain('devnet');
     expect(keys).toContain('testnet');
-    expect(keys).not.toContain('mainnet');
+    expect(keys).toContain('mainnet');
   });
 
   it('explorer URLs carry the cluster query for devnet/testnet', () => {

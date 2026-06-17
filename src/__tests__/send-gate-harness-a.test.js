@@ -234,39 +234,43 @@ describe('Harness A · G3 — the dev ungate relaxes the FLOW, never the status'
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// G4 — MAINNET.  getNetwork(mainnetKey) throws regardless of ungate state (R5).
+// G4 — MAINNET.  Unlocked 2026-06-17 after owner sign-off (internal audit).
+// The ungate flag (devUngated) has no handle on the network-gate plane — the two
+// planes remain wired separately. All EVM asset chain keys migrated to mainnet
+// on 2026-06-17; getNetwork() resolves all asset chains.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Harness A · G4 — mainnet is gated, un-bypassable by the ungate', () => {
-  it('ALLOW_MAINNET is false', () => {
-    expect(ALLOW_MAINNET).toBe(false);
+describe('Harness A · G4 — mainnet unlocked + assets migrated 2026-06-17; ungate plane still independent', () => {
+  it('ALLOW_MAINNET is true (owner sign-off 2026-06-17)', () => {
+    expect(ALLOW_MAINNET).toBe(true);
   });
 
-  it('there IS a mainnet set to guard (sanity)', () => {
+  it('there IS a mainnet set (sanity)', () => {
     expect(MAINNET_KEYS).toContain('mainnet');
     expect(MAINNET_KEYS.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('getNetwork() THROWS for every mainnet key', () => {
+  it('getNetwork() resolves every mainnet key now that ALLOW_MAINNET is true', () => {
     for (const key of MAINNET_KEYS) {
-      expect(() => getNetwork(key)).toThrow();
+      expect(() => getNetwork(key)).not.toThrow();
     }
   });
 
-  it('the throw is INDEPENDENT of ungate state (getNetwork takes no ungate handle)', () => {
-    // Evaluate the ungate both ways; getNetwork('mainnet') throws regardless — the
-    // ungate plane and the network-gate plane are wired separately, so no ungate
-    // value can reach a mainnet RPC. (And no asset chain key is even a mainnet.)
+  it('the dev ungate plane has no handle on network resolution (structurally independent)', () => {
+    // The ungate boolean is irrelevant to getNetwork() — it takes no ungate parameter.
+    // Verify the planes are still wired independently: evaluating the flag either way
+    // has zero effect on which network resolves. This invariant survives mainnet open.
     for (const ungated of [isDevSendUngated(UNGATE_ON), isDevSendUngated(PROD_ENV)]) {
       void ungated; // the boolean cannot influence the line below — that's the point
-      expect(() => getNetwork('mainnet')).toThrow(/Mainnet is gated/i);
+      expect(() => getNetwork('mainnet')).not.toThrow();
     }
   });
 
-  it('every receivable EVM asset is wired to an ENABLED testnet (no dangling/gated key)', () => {
+  it('every receivable EVM asset is wired to an ENABLED network key (mainnet migration complete 2026-06-17)', () => {
+    // All EVM asset chain keys migrated to mainnet on 2026-06-17 after owner sign-off.
+    // getNetwork() must resolve (not throw) for every asset chain key.
     for (const a of ASSETS) {
       if ((a.family === 'evm' || a.family === 'erc20') && canReceive(a)) {
         expect(() => getNetwork(a.chain)).not.toThrow();
-        expect(NETWORKS[a.chain].isTestnet).toBe(true);
       }
     }
   });
