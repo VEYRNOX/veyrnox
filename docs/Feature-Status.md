@@ -190,7 +190,13 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Help menu (top-bar Documentation entry) — ✅ (`HelpMenu.jsx`, PR #48)
 - Address book — ✅ (with per-chain validation on save)
 - ENS / SNS **resolution** in Send — ✅ (resolve-only); ENS **registration** — ❌ removed (PR #48)
-- Price charts / watchlist / portfolio / net-worth / analytics / tax / signing / savings — 💡 (UI present in places, not core-wired)
+- Price charts / watchlist / portfolio / analytics / tax / signing / savings — 💡 (UI present in places, not core-wired)
+- Crypto Net Worth (`/net-worth`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted honest-disabled → live
+  (verdict flip in `featureClassification.js`, the `/fee-analytics` precedent): real on-chain holdings via
+  `usePortfolio` (total + allocation donut + per-asset rows), USD shown live (opt-in feed) or
+  disclosed-approximate. **CRYPTO-ONLY** — the manual real-world assets were dropped (they lived in a global,
+  non-vault-scoped table a decoy session would expose — an I3 leak); a per-vault manual-assets store is a
+  deferred follow-on. See `docs/superpowers/specs/2026-06-17-networth-crypto-promotion-design.md`.
 - Live market prices (opt-in) — 🟡 BUILT / UNAUDITED-PROVISIONAL. `lib/priceFeed.js`: OFF by default
   (I2 — no price egress until the user enables it in Settings), holdings-agnostic request (fixed full
   supported-symbol list, never holdings/balances/addresses), injected through `portfolioBalances` so the

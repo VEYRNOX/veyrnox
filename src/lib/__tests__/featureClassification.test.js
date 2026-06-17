@@ -83,7 +83,7 @@ describe('registryEntriesFromClassification', () => {
         // '/fee-analytics' reclassified disabled→live (Slice 1 native-unit rebuild), so it drops out here.
         '/calculator', '/receipt', '/recurring', '/split-bill',
         '/portfolio-rewind', '/index-builder', '/ai-rebalancer', '/pl',
-        '/budget', '/net-worth', '/tax',
+        '/budget', '/tax',
         '/watchlist', '/nft', '/snapshots', '/onchain', '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
         '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts', '/alerts',

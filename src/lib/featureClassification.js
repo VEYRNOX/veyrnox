@@ -185,8 +185,8 @@ export const CLASSIFICATION = {
     note: 'Reads real local Transaction records (base44.entities.Transaction) and BudgetLimit records, but all crypto-to-USD conversion for "Total Spent This Month" and per-budget spend uses hardcoded stale USD_RATES — displayed spend figures will silently drift from reality as markets move.',
   },
   '/net-worth': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Aggregates real local wallet balances (base44.entities.Wallet) and user-entered NetWorthAsset records, but crypto holdings are converted to USD using hardcoded stale USD_RATES. The "Total Assets" and "Net Worth" figures will be silently wrong relative to actual market prices.',
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Crypto Net Worth (crypto-only): real on-chain balances via usePortfolio (grandTotal + assetTotals), USD shown live (opt-in price feed) or clearly-labeled approximate (reference rates) when off/unavailable. The fake base44-Wallet × stale-USD_RATES math and the global-table manual real-world assets (a decoy-session leak) were removed.',
   },
   '/invoices': {
     verdict: 'live', dataSource: 'base44-entities',
