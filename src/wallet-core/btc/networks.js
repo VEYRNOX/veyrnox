@@ -71,15 +71,15 @@ export const BTC_NETWORKS = {
     defaultEsploraUrl: 'https://mempool.space/api',
     explorer: 'https://mempool.space',
     isTestnet: false,
-    // GATED: stays false until the audit clears AND a testnet send is verified.
-    // Do not flip without sign-off. Mirrors EVM ALLOW_MAINNET discipline.
-    enabled: false,
+    enabled: true, // unlocked 2026-06-17 owner sign-off
   },
 };
 
 // Master switch, mirroring EVM's ALLOW_MAINNET. Even if a network's `enabled`
-// were true, mainnet ALSO requires this. Keep false until audit + verification.
-export const ALLOW_BTC_MAINNET = false;
+// were true, mainnet ALSO requires this.
+// Flipped true: 2026-06-17 — owner sign-off after internal security audit
+// (docs/audit-triage/internal-audit-2026-06-17.md). 0 crit/high/med findings.
+export const ALLOW_BTC_MAINNET = true;
 
 /**
  * Display-only lookup. Returns the raw entry (or null) WITHOUT the mainnet gate,

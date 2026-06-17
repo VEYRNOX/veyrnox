@@ -23,22 +23,21 @@ describe('BTC network gating', () => {
     expect(getBtcNetwork('signet').isTestnet).toBe(true);
   });
 
-  it('GATES mainnet until ALLOW_BTC_MAINNET is set', () => {
-    expect(ALLOW_BTC_MAINNET).toBe(false);
-    expect(() => getBtcNetwork('mainnet')).toThrow(/gated/i);
+  it('ALLOW_BTC_MAINNET is true — unlocked 2026-06-17 after owner sign-off', () => {
+    expect(ALLOW_BTC_MAINNET).toBe(true);
+    expect(() => getBtcNetwork('mainnet')).not.toThrow();
   });
 
-  it('does not list mainnet among enabled networks while gated', () => {
+  it('listEnabledBtcNetworks includes mainnet after unlock', () => {
     const keys = listEnabledBtcNetworks().map(n => n.key);
     expect(keys).toContain('testnet');
     expect(keys).toContain('signet');
-    expect(keys).not.toContain('mainnet');
+    expect(keys).toContain('mainnet');
   });
 
-  it('exposes mainnet info for display WITHOUT un-gating it', () => {
-    // Display lookup returns the entry (for labels) but never bypasses the gate.
+  it('mainnet info is accessible and enabled', () => {
     expect(getBtcNetworkInfo('mainnet').addressPrefix).toBe('bc1');
-    expect(() => getBtcNetwork('mainnet')).toThrow();
+    expect(getBtcNetwork('mainnet').isTestnet).toBe(false);
   });
 
   it('throws on an unknown network', () => {
