@@ -78,7 +78,8 @@ describe('registryEntriesFromClassification', () => {
       [
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
         // '/analytics' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices; charts gated), so it drops out here.
-        '/advanced-analytics', '/advisor', '/ai-assistant',
+        // '/advanced-analytics' reclassified disabled→live (USD_RATES removed; monthly activity from real Transactions; vol/Sharpe labeled as reference estimates), so it drops out here.
+        '/advisor', '/ai-assistant',
         '/benchmark', '/what-if',
         // '/correlation' reclassified disabled→live (real Pearson from 30d histoday closes, I2 gated), so it drops out here.
         // '/correlation-timeline' reclassified disabled→live (real 30d histoday for BTC/ETH/SOL, I2 gated), so it drops out here.
@@ -88,7 +89,9 @@ describe('registryEntriesFromClassification', () => {
         // '/recurring' reclassified disabled→live (honest CRUD with non-custodial banner; redirects to /send for signing), so it drops out here.
         // '/receipt' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices; shows "—" when off), so it drops out here.
         '/split-bill',
-        '/portfolio-rewind', '/index-builder', '/ai-rebalancer',
+        '/portfolio-rewind',
+        // '/index-builder' reclassified disabled→live (PERF removed; spot prices from useLivePrices per component; no fabricated return), so it drops out here.
+        '/ai-rebalancer',
         // '/pl' reclassified disabled→live (CURRENT_PRICES replaced with opt-in live feed), so it drops out here.
         // '/budget' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices), so it drops out here.
         '/tax',

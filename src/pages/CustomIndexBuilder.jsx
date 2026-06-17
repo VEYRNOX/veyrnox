@@ -9,14 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { TOP_CRYPTOS, TOP_SYMBOLS } from "@/lib/cryptos";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
-// Top 10 by market cap, from the canonical source. COLORS is index-aligned to ASSETS.
 const ASSETS = TOP_SYMBOLS;
 const COLORS = TOP_CRYPTOS.map(c => c.color);
-const PERF = { BTC: 8.2, ETH: 12.4, USDT: 0, BNB: 9.6, SOL: 23.1, USDC: 0, XRP: -3.4, DOGE: 15.2, ADA: -1.7, TRX: 5.1 };
 
 export default function CustomIndexBuilder() {
   const qc = useQueryClient();
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -57,7 +58,6 @@ export default function CustomIndexBuilder() {
       ) : (
         <div className="space-y-4">
           {indexes.map(idx => {
-            const perf = (idx.components || []).reduce((s, c) => s + (PERF[c.asset] || 0) * ((c.weight || 0) / 100), 0);
             const chartData = (idx.components || []).map(c => ({ name: c.asset, value: parseFloat(c.weight) || 0 }));
             return (
               <div key={idx.id} className="p-4 rounded-xl border border-border bg-card">
@@ -67,10 +67,7 @@ export default function CustomIndexBuilder() {
                     {idx.description && <p className="text-xs text-muted-foreground">{idx.description}</p>}
                     <p className="text-xs text-muted-foreground mt-0.5">Rebalances {idx.rebalance_frequency}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold ${perf >= 0 ? "text-green-500" : "text-destructive"}`}>{perf >= 0 ? "+" : ""}{perf.toFixed(1)}%</span>
-                    <button onClick={() => remove.mutate(idx.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
-                  </div>
+                  <button onClick={() => remove.mutate(idx.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                 </div>
                 <div className="flex items-center gap-4">
                   <ResponsiveContainer width="35%" height={100}>
@@ -79,12 +76,18 @@ export default function CustomIndexBuilder() {
                     </Pie><Tooltip formatter={v => [`${v}%`]} /></PieChart>
                   </ResponsiveContainer>
                   <div className="flex-1 space-y-1">
-                    {(idx.components || []).map((c, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />{c.asset}</div>
-                        <span className="font-semibold">{c.weight}%</span>
-                      </div>
-                    ))}
+                    {(idx.components || []).map((c, i) => {
+                      const spot = liveOn ? (prices?.[c.asset] ?? null) : null;
+                      return (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />{c.asset}</div>
+                          <div className="flex items-center gap-2">
+                            {spot != null && <span className="text-muted-foreground">${spot.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
+                            <span className="font-semibold">{c.weight}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

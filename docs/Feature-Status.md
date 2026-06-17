@@ -323,6 +323,21 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   `isLivePricesEnabled()` (I2). When off or symbol absent: USD Value shows "—" — never a stale dollar
   figure on a document (I4). Off-state banner added. All other receipt fields (ID, date, type, amount,
   fee, status, address) come from real local `Transaction` records and are unaffected by the opt-in state.
+- Advanced Analytics (`/advanced-analytics`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. `USD_RATES` removed; `totalUSD` and all derived metrics (portfolioVol, portfolioSharpe,
+  diversificationScore, stableRatio) now use `useLivePrices()` gated on `isLivePricesEnabled()` (I2).
+  Hardcoded `MONTHLY_PERFORMANCE` array (6-month fake returns labeled "Your Portfolio") removed; Activity
+  tab now shows monthly received/sent in USD computed from real `Transaction` records via
+  `base44.entities.Transaction`. `VOLATILITY`/`SHARPE` kept as industry reference estimates (REF_VOL /
+  REF_SHARPE), clearly labeled in the UI with an "industry reference estimates" disclaimer. Duplicate
+  static Correlation tab dropped (real Pearson available at `/correlation`). Off-state: top banner +
+  "—" for all USD metrics. UNAUDITED-PROVISIONAL.
+- Custom Index Builder (`/index-builder`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
+  live. Hardcoded `PERF` object (e.g. BTC: 8.2, ETH: 12.4, SOL: 23.1 — fake weighted return %) removed.
+  No fabricated performance figure shown. CRUD (create/edit/delete indexes) and pie chart unchanged — all
+  driven by real local records via `base44.entities.CustomIndex`. Component list now shows live spot prices
+  from `useLivePrices()` per asset when `isLivePricesEnabled()` is on; "—" equivalent (spot hidden) when
+  off. UNAUDITED-PROVISIONAL.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅

@@ -67,8 +67,8 @@ export const CLASSIFICATION = {
     note: 'USD values (total, allocation, charts) use opt-in live prices (useLivePrices) gated by isLivePricesEnabled. When off: summary cards show "—", charts replaced by an enable-prices prompt. No stale USD_RATES.',
   },
   '/advanced-analytics': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'MONTHLY_PERFORMANCE is a hardcoded array of specific monthly return percentages (Nov–Apr) presented under the label "Your Portfolio" — these numbers are not derived from the user\'s transaction history. Volatility and Sharpe values are also static constants, not computed from real price data.',
+    verdict: 'live', dataSource: 'base44-entities+opt-in-live-prices',
+    note: 'USD_RATES removed. totalUSD and all derived metrics (vol, Sharpe, diversification, stableRatio) use useLivePrices() gated on isLivePricesEnabled(). MONTHLY_PERFORMANCE replaced with monthly received/sent computed from real Transaction records. VOLATILITY/SHARPE kept as industry reference estimates, clearly labeled in the UI. Correlation tab dropped — real Pearson available at /correlation. Off-state shows "—" for all USD metrics. UNAUDITED-PROVISIONAL.',
   },
   '/advisor': {
     verdict: 'disabled', reason: 'server', dataSource: 'external',
@@ -159,8 +159,8 @@ export const CLASSIFICATION = {
     note: 'Reads real local wallet balances via base44.entities.Wallet but applies hardcoded PRICE_HISTORY multipliers (e.g. BTC 30d = 0.85×, 2y = 0.31×) to fabricate past USD values. The chart is a synthetic linear interpolation between invented past and stale-rate present — no real price history is consulted.',
   },
   '/index-builder': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Index definitions are real local records (base44.entities.CustomIndex), but the displayed performance figure is computed from a hardcoded PERF object (e.g. BTC: 8.2, ETH: 12.4, SOL: 23.1) presented as the index\'s return — these percentages are not derived from any real price history.',
+    verdict: 'live', dataSource: 'base44-entities+opt-in-live-prices',
+    note: 'PERF fake-return object removed. CRUD (create/edit/delete) and pie chart remain unchanged — real local records via base44.entities.CustomIndex. Component list now shows live spot prices from useLivePrices() when isLivePricesEnabled() is on, "—" when off. No fabricated return percentage. UNAUDITED-PROVISIONAL.',
   },
   '/ai-rebalancer': {
     verdict: 'disabled', reason: 'server', dataSource: 'external',
