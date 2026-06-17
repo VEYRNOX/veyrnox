@@ -26,4 +26,14 @@ describe('buildAllocation', () => {
     });
     expect(out).toEqual([{ symbol: 'ETH', usd: 3200 }]);
   });
+
+  it('excludes indeterminate assets EXPLICITLY, even with a (stale) positive usd', () => {
+    // Defends against a future aggregator that keeps a last-known usd alongside
+    // indeterminate:true — a failed read must never weight the chart (I4).
+    const out = buildAllocation({
+      ETH: { amount: 1, usd: 3200, indeterminate: false },
+      BTC: { amount: 0.1, usd: 6800, indeterminate: true },
+    });
+    expect(out).toEqual([{ symbol: 'ETH', usd: 3200 }]);
+  });
 });

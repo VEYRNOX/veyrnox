@@ -2,8 +2,10 @@
 //
 // Turns the portfolio aggregator's `assetTotals` ({ [symbol]: { amount, usd,
 // indeterminate } }) into allocation-donut segments: positive-USD assets only,
-// largest first. Indeterminate (failed-read, usd == null) assets are excluded —
-// they have no honest dollar weight to chart (I4: never treat a failed read as 0).
+// largest first. Indeterminate (failed-read) assets are excluded EXPLICITLY via
+// the flag — not by relying on the current `indeterminate ⇒ usd == null` coupling
+// — so a future aggregator that kept a stale `usd` alongside `indeterminate:true`
+// could never leak bad data into the chart (I4: never treat a failed read as 0).
 
 /**
  * @param {Record<string, { amount?: number, usd?: number|null, indeterminate?: boolean }>} assetTotals
@@ -11,7 +13,7 @@
  */
 export function buildAllocation(assetTotals) {
   return Object.entries(assetTotals || {})
-    .map(([symbol, t]) => ({ symbol, usd: t && typeof t.usd === 'number' ? t.usd : 0 }))
-    .filter((d) => d.usd > 0)
+    .filter(([, t]) => t && !t.indeterminate && typeof t.usd === 'number' && t.usd > 0)
+    .map(([symbol, t]) => ({ symbol, usd: t.usd }))
     .sort((a, b) => b.usd - a.usd);
 }
