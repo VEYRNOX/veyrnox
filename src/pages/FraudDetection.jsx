@@ -52,13 +52,13 @@ function detectAnomalies(transactions) {
   // Check 2 — velocity burst (3+ transactions in 1-hour window)
   const sorted = [...transactions].sort(
     (a, b) =>
-      new Date(b.created_date) - new Date(a.created_date)
+      new Date(b.created_date).getTime() - new Date(a.created_date).getTime()
   );
   const recent = sorted.slice(0, 5);
   if (recent.length >= 3) {
     const first = new Date(recent[0].created_date);
     const last = new Date(recent[recent.length - 1].created_date);
-    if ((first - last) / 60000 < 60) {
+    if ((first.getTime() - last.getTime()) / 60000 < 60) {
       anomalies.push({
         id: "rapid-" + first.getTime(),
         type: "rapid_transactions",

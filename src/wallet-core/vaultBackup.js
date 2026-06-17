@@ -50,10 +50,11 @@ function isValidBlob(b) {
  */
 export function isValidBackup(parsed) {
   if (!parsed || typeof parsed !== 'object') return false;
-  if (parsed.app !== BACKUP_APP) return false;
-  if (parsed.backup_v !== BACKUP_VERSION) return false;
-  if (!parsed.seals || typeof parsed.seals !== 'object') return false;
-  return isValidBlob(parsed.seals.password) && isValidBlob(parsed.seals.pin);
+  const p = /** @type {any} */ (parsed);
+  if (p.app !== BACKUP_APP) return false;
+  if (p.backup_v !== BACKUP_VERSION) return false;
+  if (!p.seals || typeof p.seals !== 'object') return false;
+  return isValidBlob(p.seals.password) && isValidBlob(p.seals.pin);
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────────

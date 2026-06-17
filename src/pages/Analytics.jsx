@@ -6,7 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   BarChart, Bar, Legend,
 } from "@/lib/recharts";
-// fmtSmall was USD-only — removed with USD_RATES
+const fmt = (/** @type {number} */ v) => Number(v).toLocaleString();
 import { TrendingUp, DollarSign, Wallet, BarChart2 } from "lucide-react";
 import moment from "moment";
 

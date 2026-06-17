@@ -17,7 +17,7 @@ import {
 
 // ── Local helpers ────────────────────────────────────────────────────────────
 
-function Field({ label, type = "text", value, onChange, placeholder, maxLength }) {
+function Field({ label, type = "text", value, onChange, placeholder, maxLength = undefined }) {
   return (
     <div className="space-y-1">
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
@@ -158,7 +158,7 @@ function RestoreTab({ lock }) {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const parsed = parseBackupFile(ev.target.result);
+        const parsed = parseBackupFile(/** @type {string} */ (ev.target.result));
         setEnvelope(parsed);
         setPhase("unlock");
       } catch (err) {

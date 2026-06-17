@@ -50,7 +50,7 @@ export default function HardwareWalletPage() {
       const transport = await TransportWebHID.create();
       transportRef.current = transport;
 
-      const rawDevice = transport.device;
+      const rawDevice = /** @type {any} */ (transport).device;
       if (rawDevice?.productName) {
         setDeviceName(rawDevice.productName);
       }
