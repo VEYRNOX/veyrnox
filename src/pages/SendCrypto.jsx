@@ -1,6 +1,6 @@
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -561,6 +561,11 @@ export default function SendCrypto() {
   const btcRiskPending = isBtc && btcSim.isFetching && !btcSim.data;
   const blockedByBtcRisk = btcRiskPending || (btcRiskHigh && !btcRiskAck);
 
+  // One-shot 2FA token (audit H1): TwoFactorGate.onSuccess sets this true; the signer
+  // (mutationFn) consumes it per attempt and passes it to evaluateSendGate, so the
+  // second factor is enforced at the chokepoint — not only by which JSX branch renders.
+  const twoFactorVerifiedRef = useRef(false);
+
   const sendTx = useMutation({
     mutationFn: async () => {
       // DEFENSE-IN-DEPTH: re-assert EVERY UI gate at signing time, as one ordered
@@ -596,6 +601,10 @@ export default function SendCrypto() {
       // The single ordered verdict (capability → unlock → re-auth → limits → risk →
       // approval). canSend() stays the production truth, relaxed only by the dev,
       // testnet-only, build-eliminated ungate. Mainnet stays gated in networks.js.
+      // One-shot: consume the 2FA token for THIS attempt (a retry must re-verify).
+      const twoFactorVerified = twoFactorVerifiedRef.current;
+      twoFactorVerifiedRef.current = false;
+
       const gate = evaluateSendGate({
         canSend: canSend(selectedAsset),
         devUngated,
@@ -603,6 +612,11 @@ export default function SendCrypto() {
         isUnlocked,
         demo: DEMO,                                    // demo has no vault → re-auth exempt
         reauthRequired: DEMO ? false : isSendReauthRequired(),
+        // Second factor (audit H1): when an Action Password is configured it must be
+        // verified THIS send — enforced here so a recently-authed session can't reach
+        // the signer on PIN recency alone. evaluateSendGate exempts demo internally.
+        twoFactorRequired: !DEMO && actionPasswordConfigured,
+        twoFactorVerified,
         limit: limitGate,
         limitAck,
         riskScoreFailed,
@@ -1148,7 +1162,7 @@ export default function SendCrypto() {
                     title="Authorise this send with your PIN + Action Password"
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
-                    onSuccess={() => sendTx.mutate()}
+                    onSuccess={() => { twoFactorVerifiedRef.current = true; sendTx.mutate(); }}
                     verify={async ({ pin, password }) => {
                       const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
                       const passwordOk = await verifyActionPassword(password);
