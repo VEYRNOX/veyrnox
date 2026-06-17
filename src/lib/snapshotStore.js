@@ -32,10 +32,11 @@ function storageKey(fingerprint) {
 }
 
 function defaultLabel() {
+  const d = new Date();
   return (
-    new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+    d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
     ' ' +
-    new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   );
 }
 
@@ -50,7 +51,8 @@ export function listSnapshots(walletAddresses) {
     if (!fp) return [];
     const raw = localStorage.getItem(storageKey(fp));
     if (!raw) return [];
-    return JSON.parse(raw);
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
   } catch {
     return [];
   }
