@@ -1,0 +1,70 @@
+import { useQuery } from '@tanstack/react-query';
+import { useWallet } from '../lib/WalletProvider';
+import { usePortfolio } from '../lib/portfolioBalances';
+import { useLivePrices, isLivePricesEnabled } from '../lib/priceFeed';
+import { fetchAssetHistory } from '../lib/txHistory';
+import { getAsset } from '../wallet-core/assets';
+
+export function useAnalytics() {
+  const { isUnlocked, wallets, walletAddresses } = useWallet();
+
+  const { data: portfolio, isLoading: portfolioLoading } = usePortfolio(
+    isUnlocked ? wallets : [],
+    walletAddresses
+  );
+
+  const { prices: livePrices, isLoading: pricesLoading } = useLivePrices();
+  const pricesEnabled = isLivePricesEnabled();
+
+  const walletKey = wallets
+    .map((w) => `${w.id}:${(w.enabledAssets || []).sort().join(',')}`)
+    .join('|');
+  const addrKey = Object.entries(walletAddresses)
+    .map(([id, a]) => `${id}:${a?.evm || ''}:${a?.btc || ''}:${a?.sol || ''}`)
+    .sort()
+    .join('|');
+
+  const historyQuery = useQuery({
+    queryKey: ['analytics-history', walletKey, addrKey],
+    queryFn: async () => {
+      const allTxs = [];
+      for (const wallet of wallets) {
+        const addrs = walletAddresses[wallet.id] || {};
+        for (const asset of wallet.enabledAssets || []) {
+          const assetDef = getAsset(asset);
+          if (!assetDef) continue;
+          const { family } = assetDef;
+          let address;
+          if (family === 'btc') {
+            address = addrs.btc;
+          } else if (family === 'solana') {
+            address = addrs.sol;
+          } else {
+            address = addrs.evm;
+          }
+          if (!address) continue;
+          try {
+            const result = await fetchAssetHistory({ asset, address });
+            if (result.supported && result.transactions) {
+              allTxs.push(...result.transactions);
+            }
+          } catch {
+            // skip failed asset history fetches
+          }
+        }
+      }
+      return allTxs;
+    },
+    enabled: isUnlocked && wallets.length > 0,
+    staleTime: 60_000,
+  });
+
+  return {
+    portfolio: isUnlocked ? (portfolio ?? null) : null,
+    history: historyQuery.data ?? [],
+    prices: pricesEnabled ? livePrices : null,
+    pricesEnabled,
+    loading: portfolioLoading || (historyQuery.isLoading && isUnlocked),
+    error: historyQuery.error ?? null,
+  };
+}
