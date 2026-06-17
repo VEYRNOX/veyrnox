@@ -1,60 +1,66 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
-import { Camera, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useWallet } from "@/lib/WalletProvider";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { listSnapshots, saveSnapshot, deleteSnapshot } from "@/lib/snapshotStore";
+import { Camera, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "@/lib/recharts";
 import { toast } from "sonner";
-import { format } from "date-fns";
 
 
 export default function PortfolioSnapshots() {
-  const queryClient = useQueryClient();
+  const { isUnlocked, walletAddresses } = useWallet();
+  const { portfolio } = useAnalytics();
   const [showSave, setShowSave] = useState(false);
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
+  const [, setTick] = useState(0);
+  const bump = () => setTick(n => n + 1);
 
-  const { data: snapshots = [], isLoading } = useQuery({
-    queryKey: ["portfolio-snapshots"],
-    queryFn: () => base44.entities.PortfolioSnapshot.list("-created_date"),
-  });
+  if (!isUnlocked) {
+    return (
+      <div className="max-w-2xl mx-auto pt-10 text-center space-y-2">
+        <h1 className="text-2xl font-bold tracking-tight">Portfolio Snapshots</h1>
+        <p className="text-sm text-muted-foreground">Unlock your wallet to manage snapshots.</p>
+      </div>
+    );
+  }
 
-  const { data: wallets = [] } = useQuery({
-    queryKey: ["wallets"],
-    queryFn: () => base44.entities.Wallet.list(),
-  });
+  const snapshots = useMemo(() => listSnapshots(walletAddresses), [walletAddresses, showSave]);
 
-  // Native balances grouped by currency — no stale USD conversion.
-  const nativeBreakdown = wallets.reduce((acc, w) => {
-    acc[w.currency] = (acc[w.currency] || 0) + (w.balance || 0);
-    return acc;
-  }, {});
-  const walletCount = wallets.length;
+  const currentTotalUSD = portfolio?.grandTotal ?? 0;
 
-  const saveSnapshot = useMutation({
-    mutationFn: () => {
-      return base44.entities.PortfolioSnapshot.create({
-        label: label || format(new Date(), "dd MMM yyyy HH:mm"),
-        total_usd: 0,
-        breakdown: nativeBreakdown,
-        note,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] });
-      setShowSave(false);
-      setLabel(""); setNote("");
-      toast.success("Snapshot saved");
-    },
-  });
+  function handleSave() {
+    const result = saveSnapshot(walletAddresses, portfolio, label, note);
+    if (result) {
+      toast.success('Snapshot saved');
+    } else {
+      toast.error('Could not save snapshot — wallet not unlocked');
+    }
+    setShowSave(false);
+    setLabel(''); setNote('');
+    bump();
+  }
 
-  const deleteSnapshot = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.PortfolioSnapshot.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolio-snapshots"] }),
-  });
+  function handleDelete(id) {
+    deleteSnapshot(walletAddresses, id);
+    bump();
+  }
 
+  // Chart data (oldest first)
+  const chartData = [...snapshots].reverse().map(s => ({
+    date: new Date(s.created_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+    value: s.total_usd,
+    label: s.label,
+  }));
+
+  const latest = snapshots[0];
+  const previous = snapshots[1];
+  const change = latest && previous ? latest.total_usd - previous.total_usd : null;
+  const changePct = change != null && previous ? (change / previous.total_usd) * 100 : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -68,25 +74,44 @@ export default function PortfolioSnapshots() {
         </Button>
       </div>
 
-      {/* Current holdings */}
-      <div className="p-4 rounded-xl border border-border bg-card space-y-1">
-        <p className="text-xs text-muted-foreground mb-2">Current Holdings ({walletCount} wallet{walletCount !== 1 ? "s" : ""})</p>
-        {Object.keys(nativeBreakdown).length === 0
-          ? <p className="text-sm text-muted-foreground">No wallets yet</p>
-          : Object.entries(nativeBreakdown).map(([cur, bal]) => (
-            <div key={cur} className="flex justify-between text-sm">
-              <span className="font-mono text-muted-foreground">{cur}</span>
-              <span className="font-semibold">{bal.toFixed(6)}</span>
+      {/* Current vs Last */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-xs text-muted-foreground mb-1">Current Value</p>
+          <p className="text-xl font-bold">${currentTotalUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-xs text-muted-foreground mb-1">Since Last Snapshot</p>
+          {change != null ? (
+            <div className={`flex items-center gap-1 text-lg font-bold ${change >= 0 ? "text-green-400" : "text-destructive"}`}>
+              {change >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+              {change >= 0 ? "+" : ""}${Math.abs(change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              <span className="text-sm">({changePct?.toFixed(1)}%)</span>
             </div>
-          ))}
-        <p className="text-[10px] text-muted-foreground pt-1">Snapshots store native balances — no stale USD conversion</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No data yet</p>
+          )}
+        </div>
       </div>
 
+      {/* Chart */}
+      {chartData.length > 1 && (
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-4">Value Over Time</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+              <Tooltip formatter={(v) => [`$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, "Portfolio"]} labelFormatter={l => l} />
+              <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Snapshot List */}
-      {isLoading ? (
-        <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-      ) : snapshots.length === 0 ? (
+      {snapshots.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Camera className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No snapshots yet — save one now</p>
@@ -103,18 +128,18 @@ export default function PortfolioSnapshots() {
                     <p className="text-sm font-medium truncate">{s.label}</p>
                     {i === 0 && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Latest</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground">{format(new Date(s.created_date), "dd MMM yyyy, HH:mm")}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(s.created_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   {s.note && <p className="text-xs text-muted-foreground italic">{s.note}</p>}
                 </div>
                 <div className="text-right shrink-0">
-                  {s.breakdown && Object.keys(s.breakdown).length > 0
-                    ? Object.entries(s.breakdown).slice(0, 3).map(([cur, bal]) => (
-                      <p key={cur} className="text-xs font-mono">{Number(bal).toFixed(4)} {cur}</p>
-                    ))
-                    : <p className="text-xs text-muted-foreground">No breakdown</p>
-                  }
+                  <p className="text-sm font-bold">${s.total_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                  {diff != null && (
+                    <p className={`text-xs ${diff >= 0 ? "text-green-400" : "text-destructive"}`}>
+                      {diff >= 0 ? "+" : ""}${diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </p>
+                  )}
                 </div>
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => deleteSnapshot.mutate(s.id)}>
+                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDelete(s.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -127,14 +152,9 @@ export default function PortfolioSnapshots() {
         <DialogContent>
           <DialogHeader><DialogTitle>Save Portfolio Snapshot</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-1">
-              <p className="text-xs text-muted-foreground">Native balances to snapshot ({walletCount} wallet{walletCount !== 1 ? "s" : ""})</p>
-              {Object.entries(nativeBreakdown).map(([cur, bal]) => (
-                <div key={cur} className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{cur}</span>
-                  <span className="font-semibold font-mono">{bal.toFixed(6)}</span>
-                </div>
-              ))}
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Current value to snapshot</p>
+              <p className="text-xl font-bold">${currentTotalUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
             </div>
             <div>
               <Label>Label (optional)</Label>
@@ -144,7 +164,7 @@ export default function PortfolioSnapshots() {
               <Label>Note (optional)</Label>
               <Input value={note} onChange={e => setNote(e.target.value)} placeholder="Any notes..." className="mt-1.5" />
             </div>
-            <Button className="w-full" onClick={() => saveSnapshot.mutate()} disabled={saveSnapshot.isPending}>
+            <Button className="w-full" onClick={handleSave}>
               <Camera className="h-4 w-4 mr-1.5" /> Save Snapshot
             </Button>
           </div>
