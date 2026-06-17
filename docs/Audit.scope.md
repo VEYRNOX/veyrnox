@@ -1,14 +1,22 @@
-# Independent Security Audit — Scope & Planning
+# Security Audit — Scope & Planning
 
-> Purpose: define exactly what an independent third-party audit of Veyrnox would
-> cover, so quotes are fast/accurate and the audit (the gate before any mainnet/
-> real-money use) is well-prepared. Scope now even though the audit runs AFTER
-> the MVP freeze — top firms have 2–3 month waitlists, so early scoping avoids
-> rush fees, and writing the scope forces a clean articulation of the system.
+> Purpose: define exactly what a security audit of Veyrnox covers, so reviews are
+> well-prepared and (for the independent pass) quotes are fast/accurate. This same
+> scope is used by BOTH the internal audit (the hard gate, below) and the
+> independent third-party audit (additional depth). Scope now even though audits
+> run AFTER the MVP freeze — top firms have 2–3 month waitlists, so early scoping
+> avoids rush fees, and writing the scope forces a clean articulation of the system.
 
-> HARD LINE: no mainnet / real funds until this audit is complete and findings
-> are remediated (and re-reviewed). Build MVP → freeze → audit → fix → re-review
-> → THEN flip ALLOW_MAINNET. Never the reverse.
+> HARD LINE: no mainnet / real funds until the **internal security audit** is
+> complete and its findings are remediated (and re-reviewed). **The internal audit
+> is the hard pass that opens the mainnet gate** (flips `ALLOW_MAINNET`). An
+> independent third-party audit will ALSO be performed against the scope below as
+> defensive depth, but it is NOT the hard gate — the internal audit is.
+> Build MVP → freeze → internal audit → fix → re-review → THEN flip ALLOW_MAINNET.
+> Never the reverse. (Honesty note: do not represent the product as
+> "independently audited" on the strength of the internal audit alone — the
+> internal audit is the gate; independence is a separate, additional claim only
+> once that pass is actually done.)
 
 ---
 
@@ -191,7 +199,12 @@ its own audit scope (and Phase D notably expands it a lot).
 - [ ] Decide remediation + re-review budget up front.
 
 ## After the audit
-- Remediate all critical/high (and reasonable medium) findings.
-- Pay for the re-review pass to confirm fixes don't introduce regressions.
-- Only THEN consider flipping ALLOW_MAINNET, per the hard line.
-- Keep the report — it's a material asset for build-to-sell due diligence.
+- **Internal audit (the gate):** remediate all critical/high (and reasonable
+  medium) findings; do the re-review pass to confirm fixes don't introduce
+  regressions. Only once the internal audit is complete + remediated + re-reviewed
+  may `ALLOW_MAINNET` be flipped, per the hard line above.
+- **Independent audit (additional depth, non-gating):** still commission it against
+  this scope; remediate + pay for its re-review. It strengthens assurance and is a
+  material asset for build-to-sell due diligence, but it does not gate mainnet —
+  the internal audit does. Only claim "independently audited" once this pass is
+  genuinely complete.
