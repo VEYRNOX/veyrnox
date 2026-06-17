@@ -68,6 +68,7 @@ function extractRevertReason(e) {
 
 // Large-outflow heuristic. Returns a risk object or null. Float ratio is fine for
 // a heuristic — we never move funds based on it, only flag it.
+/** @returns {{level:'high'|'medium'|'info', code:string, title:string, detail:string} | null} */
 function largeOutflowRisk({ kind, valueWei, nativeBalanceWei, nativeSymbol, decodedAmount, tokenSymbol, tokenBalance, ratio }) {
   let frac = null;
   let symbol = null;
@@ -114,14 +115,14 @@ function largeOutflowRisk({ kind, valueWei, nativeBalanceWei, nativeSymbol, deco
  * @returns {{
  *   kind: string,
  *   effectiveRecipient: string,
- *   balanceChanges: Array<{label,direction,amount,symbol,who?}>,
- *   risks: Array<{level:'high'|'medium'|'info', code, title, detail}>,
+ *   balanceChanges: Array<{label:string,direction:string,amount:string,symbol:string,who?:string}>,
+ *   risks: Array<{level:'high'|'medium'|'info', code:string, title:string, detail:string}>,
  * }}
  */
 export function assessEvmTransaction({
-  decoded,
-  txTo,                       // tx `to`: an EOA for native, the token contract for an ERC-20 call
-  valueWei = 0n,              // native value attached (0 for token calls)
+  decoded = /** @type {any} */ (undefined),
+  txTo = /** @type {string} */ (undefined),  // tx `to`: an EOA for native, the token contract for an ERC-20 call
+  valueWei = /** @type {bigint|number|string} */ (0n),  // native value attached (0 for token calls)
   nativeBalanceWei = null,    // sender native balance (string|bigint) or null if unknown
   nativeSymbol = 'ETH',
   networkKey = null,
@@ -134,6 +135,7 @@ export function assessEvmTransaction({
   priorSends = [],            // past OUTFLOW amounts of the SAME asset (display units) — history baseline
   knownCounterparties = [],   // addresses the user has transacted with / saved — for first-time-recipient
 } = {}) {
+  /** @type {Array<{level:'high'|'medium'|'info', code:string, title:string, detail:string}>} */
   const risks = [];
   const balanceChanges = [];
   const kind = decoded?.kind || 'native';

@@ -56,6 +56,11 @@
  *
  * @property {() => Promise<void>} clearVault
  *   Remove the stored vault from this device.
+ *
+ * @property {(cb: (() => void) | null) => void} [setLockHook]
+ *   NATIVE-ONLY (optional): register a callback fired when the OS backgrounds
+ *   the app, so the live secret can be cleared on a reliable native event. Web
+ *   has no equivalent, so callers invoke it optionally (`?.`) and web is a no-op.
  */
 
 export {};
