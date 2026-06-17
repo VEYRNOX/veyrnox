@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Bell, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import moment from "moment";
+import { isLivePricesEnabled } from "@/lib/priceFeed";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
@@ -25,6 +26,7 @@ async function fetchLivePrices() {
 
 export default function PriceAlerts() {
   const queryClient = useQueryClient();
+  const liveOn = isLivePricesEnabled();
   const [open, setOpen] = useState(false);
   const [currency, setCurrency] = useState("BTC");
   const [direction, setDirection] = useState("above");
@@ -50,7 +52,8 @@ export default function PriceAlerts() {
   const { data: prices = {} } = useQuery({
     queryKey: ["live-prices"],
     queryFn: fetchLivePrices,
-    refetchInterval: 60_000,
+    enabled: liveOn,
+    refetchInterval: liveOn ? 60_000 : false,
     staleTime: 30_000,
   });
 
@@ -81,6 +84,7 @@ export default function PriceAlerts() {
   // device's alerts, on demand. Volatility alerts are left to the in-app poller
   // (usePriceAlertNotifier) which needs two samples to measure a swing.
   const checkNow = async () => {
+    if (!liveOn) return;
     setChecking(true);
     try {
       const livePrices = await fetchLivePrices();
@@ -142,7 +146,12 @@ export default function PriceAlerts() {
           <p className="text-sm text-muted-foreground mt-0.5">Get notified when prices hit your targets</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={checkNow} disabled={checking}>
+          <Button
+            variant="outline" size="sm" className="gap-1.5"
+            onClick={checkNow}
+            disabled={checking || !liveOn}
+            title={!liveOn ? "Enable live prices to check alerts" : undefined}
+          >
             <RefreshCw className={`h-3.5 w-3.5 ${checking ? "animate-spin" : ""}`} /> Check Now
           </Button>
           <Button size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
@@ -150,6 +159,12 @@ export default function PriceAlerts() {
           </Button>
         </div>
       </div>
+
+      {!liveOn && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Live prices are off — alert evaluation and Check Now require real-time prices. Turn them on in <span className="font-medium text-foreground">Settings → Live Prices</span>.
+        </div>
+      )}
 
       {/* Live prices ticker */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">

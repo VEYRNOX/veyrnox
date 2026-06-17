@@ -221,6 +221,12 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   Settings → Live Prices (I2 fixed). When off: the converter UI renders with null rates and an "Enable live
   prices" prompt (I4 — no fabricated or stale rate). Symbol list is fixed and holdings-agnostic. Off-state
   verified in-browser; live-data render UNAUDITED-PROVISIONAL (external network blocked in preview sandbox).
+- Price Alerts (`/alerts`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `leaks`-disabled → live. The
+  unconditional CryptoCompare fetch and 60s auto-eval poll are now gated behind `isLivePricesEnabled()` —
+  `enabled:liveOn` in the `useQuery`; "Check Now" disabled when off (I2 fixed). When off: ticker shows "—",
+  alert-distance info hidden, off-state banner shown (I4). Alert CRUD + triggered/dismissed state machine work
+  regardless of opt-in state. On-device persistence via `base44.entities.PriceAlert`. Off-state verified
+  in-browser; live-data render UNAUDITED-PROVISIONAL.
 - P&L Tracking (`/pl`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live. The
   hardcoded stale `CURRENT_PRICES` object (BTC: 68000, ETH: 3200, …) is gone. Unrealised P&L on open
   positions and the "Close Position" exit price now come from `useLivePrices()` gated behind

@@ -89,7 +89,8 @@ describe('registryEntriesFromClassification', () => {
         // '/watchlist' reclassified disabled→live (real opt-in price feeds), so it drops out here.
         '/nft', '/snapshots', '/onchain', '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
-        '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts', '/alerts',
+        // '/alerts' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
+        '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts',
         '/watch-wallets', '/solana', '/price-charts', '/web3', '/products',
       ].sort(),
     );

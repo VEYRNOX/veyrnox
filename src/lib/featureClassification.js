@@ -327,8 +327,8 @@ export const CLASSIFICATION = {
     note: 'Alert configuration is stored in base44.entities.SmartAlert (local), but no trigger evaluation is wired in this component — no price or portfolio data is fetched. notify_email and notify_push flags are stored but no delivery mechanism exists client-side; email and push dispatch require a server. The feature stores settings honestly but cannot fire alerts in the local build.',
   },
   '/alerts': {
-    verdict: 'disabled', reason: 'leaks', dataSource: 'external',
-    note: 'fetchLivePrices() calls fetch("https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,...") — a third-party CryptoCompare API endpoint. The full coin symbol list is sent to CryptoCompare on every load and every 60-second refetchInterval. Price trigger evaluation itself is correct on-device logic, but the external price call is a mandatory dependency.',
+    verdict: 'live', dataSource: 'external',
+    note: 'Price alert persistence (PriceAlert entities, on-device) is real. The CryptoCompare pricemulti fetch and the 60s auto-eval poll are now gated behind isLivePricesEnabled() — enabled:liveOn in the useQuery, no network call until the user opts in via Settings → Live Prices (I2 fixed). Check Now is disabled when off. When off: the ticker shows "—", alert-distance info does not render, and an inline banner explains the requirement (I4). Alert CRUD and the triggered/dismissed state machine work regardless of the live-prices setting. Symbol list is fixed and holdings-agnostic. Off-state verified in-browser; live-data render UNAUDITED-PROVISIONAL.',
   },
 
   // ── Connect group (audit batch 5) ─────────────────────────────────────────
