@@ -35,17 +35,17 @@ export default function WatchlistPage() {
   });
 
   const add = useMutation({
-    mutationFn: (d) => base44.entities.PersonalWatchlist.create(d),
+    mutationFn: (/** @type {any} */ d) => base44.entities.PersonalWatchlist.create(d),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["watchlist"] }); setOpen(false); setForm({ symbol: "", name: "", note: "", target_buy: "", target_sell: "" }); },
   });
 
   const update = useMutation({
-    mutationFn: ({ id, ...d }) => base44.entities.PersonalWatchlist.update(id, d),
+    mutationFn: (/** @type {any} */ vars) => { const { id, ...d } = vars; return base44.entities.PersonalWatchlist.update(id, d); },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["watchlist"] }); setEditId(null); },
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.PersonalWatchlist.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PersonalWatchlist.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 

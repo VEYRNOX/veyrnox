@@ -90,7 +90,7 @@ function DemoDashboard() {
   });
 
   const createWallet = useMutation({
-    mutationFn: (data) => base44.entities.Wallet.create(data),
+    mutationFn: (/** @type {any} */ data) => base44.entities.Wallet.create(data),
     onSuccess: (newWallet) => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
       setSelectedWalletId(newWallet.id);
@@ -103,7 +103,7 @@ function DemoDashboard() {
   // (base44.entities.Wallet.update → IndexedDB), then refresh the wallets query
   // so every place the name shows (picker, cards, token list) updates.
   const renameWallet = useMutation({
-    mutationFn: ({ id, name }) => base44.entities.Wallet.update(id, { name }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.Wallet.update(vars.id, { name: vars.name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
       setRenameTarget(null);
@@ -161,7 +161,7 @@ function DemoDashboard() {
   const changePercent = wallets.length > 0 ? 2.34 : 0;
 
   const syncLabel = (() => {
-    const secs = Math.floor((Date.now() - lastSynced) / 1000);
+    const secs = Math.floor((Date.now() - /** @type {any} */ (lastSynced)) / 1000);
     if (secs < 10) return "Just now";
     if (secs < 60) return `${secs}s ago`;
     return `${Math.floor(secs / 60)}m ago`;

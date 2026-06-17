@@ -7,8 +7,8 @@
 // normalizing each family's distinct send-result shape to one record shape.
 
 /**
- * Convert a decimal amount STRING to integer base units (BTC->sats @8 decimals,
- * SOL->lamports @9) using BigInt only — never floating point, which loses
+ * Convert a decimal amount STRING to integer base units (BTC->sats at 8 decimals,
+ * SOL->lamports at 9) using BigInt only — never floating point, which loses
  * precision at 8-9 decimals. THROWS (never silently truncates) on a malformed,
  * non-positive, or over-precise amount.
  *

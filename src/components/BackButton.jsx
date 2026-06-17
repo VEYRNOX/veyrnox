@@ -7,7 +7,7 @@ import { ChevronLeft } from "lucide-react";
 // user. Defaults to history-back (returns to wherever you came from — the
 // Security Dashboard when you opened the setting from there); pass `to` for an
 // explicit destination.
-export default function BackButton({ to, label = "Back", className = "" }) {
+export default function BackButton({ to = undefined, label = "Back", className = "" }) {
   const navigate = useNavigate();
   return (
     <button

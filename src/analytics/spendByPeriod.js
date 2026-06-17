@@ -56,7 +56,7 @@ const indeterminate = (granularity) => ({ status: 'indeterminate', granularity, 
  *   `type`, `status`, `assetSymbol`, `amount` (native-unit string) and
  *   `timestamp` (block time in ms, or null while pending).
  * @param {'week'|'month'} [granularity='month']
- * @returns {{ status: 'ok'|'empty'|'indeterminate', granularity: 'week'|'month',
+ * @returns {{ status: string, granularity: string,
  *   buckets: Array<{ periodStart: number, byAsset: Record<string,string> }> }}
  *   buckets are ordered ascending by periodStart; byAsset maps each asset symbol
  *   to its trimmed native-unit total for that period. No cross-asset total.
@@ -107,5 +107,5 @@ export function spendByPeriod(history, granularity = 'month') {
       return { periodStart, byAsset };
     });
 
-  return { status: 'ok', granularity: gran, buckets };
+  return { status: 'ok', granularity: gran, buckets: /** @type {Array<{periodStart:number, byAsset:Record<string,string>}>} */ (buckets) };
 }

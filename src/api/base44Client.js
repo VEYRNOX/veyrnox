@@ -67,4 +67,29 @@ export const EMAIL_AVAILABLE = BACKEND !== 'local';
 
 // Every data-layer consumer imports `{ base44 }` from here. The implementation
 // behind this single export is swapped by mode — the call sites never change.
+//
+// The two data layers expose entities via a Proxy (any entity name resolves to
+// a CRUD object), so structurally TS infers `entities` as `{}`. This typedef
+// restores the real shape — an index of entity names to a CRUD API — so the ~89
+// consumers get `base44.entities.<Name>.list/get/create/update/delete` typed.
+/**
+ * @typedef {Object} EntityApi
+ * @property {(sort?: string, limit?: number) => Promise<any[]>} list
+ * @property {(query: any) => Promise<any[]>} filter
+ * @property {(id: string) => Promise<any>} get
+ * @property {(data: any) => Promise<any>} create
+ * @property {(id: string, data: any) => Promise<any>} update
+ * @property {(id: string) => Promise<any>} delete
+ * @property {(...args: any[]) => (() => void)} [subscribe]
+ */
+/**
+ * @typedef {Object} Base44Client
+ * @property {Object.<string, EntityApi>} entities
+ * @property {{ entities: Object.<string, EntityApi> }} [asServiceRole]
+ * @property {any} auth
+ * @property {any} functions
+ * @property {any} integrations
+ * @property {any} [agents]
+ */
+/** @type {Base44Client} */
 export const base44 = BACKEND === 'demo' ? demoBase44 : localBase44;

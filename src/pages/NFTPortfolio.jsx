@@ -38,7 +38,7 @@ export default function NFTPortfolio() {
   });
 
   const deleteNFT = useMutation({
-    mutationFn: (id) => base44.entities.NFTAsset.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.NFTAsset.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["nft-assets"] }),
   });
 

@@ -39,10 +39,10 @@ function lamToSol(lamports) {
 /**
  * Decode a Solana transfer plan into a pre-sign preview.
  *
- * @param {object} p
- * @param {{ amountLamports, feeLamports, baseFeeLamports?, priorityFeeLamports?, sendMax? }} p.plan
- * @param {string} p.fromAddress
- * @param {string} p.toAddress
+ * @param {object} [p]
+ * @param {{ amountLamports?:bigint|number|string, feeLamports?:bigint|number|string, baseFeeLamports?:bigint|number|string, priorityFeeLamports?:bigint|number|string, sendMax?:boolean }} [p.plan]
+ * @param {string} [p.fromAddress]
+ * @param {string} [p.toAddress]
  * @returns {object} preview result (same shape family as the EVM simulator).
  */
 export function describeSolTransfer({ plan, fromAddress, toAddress } = {}) {

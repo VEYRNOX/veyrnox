@@ -42,7 +42,7 @@ export const SUPPORTED_SYMBOLS = PORTFOLIO_SYMBOLS;
  * @returns {Promise<Record<string, number>>}
  */
 export async function fetchLivePricesUsd() {
-  return fetchPortfolioPricesUsd();
+  return /** @type {Promise<Record<string, number>>} */ (fetchPortfolioPricesUsd());
 }
 
 /**

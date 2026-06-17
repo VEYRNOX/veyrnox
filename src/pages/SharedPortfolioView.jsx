@@ -33,12 +33,12 @@ export default function SharedPortfolioView() {
   });
 
   const revoke = useMutation({
-    mutationFn: (id) => base44.entities.PortfolioShare.update(id, { status: "revoked" }),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PortfolioShare.update(id, { status: "revoked" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolio-shares"] }),
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.PortfolioShare.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.PortfolioShare.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolio-shares"] }),
   });
 

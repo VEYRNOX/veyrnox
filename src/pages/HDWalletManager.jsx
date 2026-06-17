@@ -105,7 +105,7 @@ export default function HDWalletManager() {
 
   // Persist any derived public addresses that aren't cached yet. Public only.
   const persistAccounts = useMutation({
-    mutationFn: async (accts) => {
+    mutationFn: async (/** @type {any} */ accts) => {
       const existing = new Set((hdWallets || []).map(w => (w.address || "").toLowerCase()));
       for (const a of accts) {
         if (existing.has(a.address.toLowerCase())) continue;
@@ -382,7 +382,7 @@ export default function HDWalletManager() {
             const address = receivable && isEvmFamily(asset) ? evmAddress : null;
             const badge = STATUS_BADGE[asset.status];
             const exp = expandedSymbol === asset.symbol;
-            const dim = asset.status === ASSET_STATUS.COMING_SOON;
+            const dim = /** @type {any} */ (asset.status) === ASSET_STATUS.COMING_SOON;
             return (
               <div key={asset.symbol} className={`rounded-xl border border-border bg-card overflow-hidden ${dim ? "opacity-60" : ""}`}>
                 <button onClick={() => setExpandedSymbol(exp ? null : asset.symbol)} className="w-full p-4 flex items-center gap-3 text-left" title={dim ? "Not yet available." : undefined}>

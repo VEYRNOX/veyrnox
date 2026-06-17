@@ -64,7 +64,7 @@ export function buildAndSignTx({ plan, privateKey, publicKey, params }) {
  * Estimate a send WITHOUT signing — for a confirm screen. Fetches live UTXOs and
  * fee rate, runs coin selection, and returns the plan (amounts in sats).
  */
-export async function estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats, sendMax = false, feeRate, changeAddress }) {
+export async function estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats, sendMax = false, feeRate = undefined, changeAddress = undefined }) {
   const net = getBtcNetwork(networkKey); // gate-aware
   const [utxos, rate] = await Promise.all([
     getUtxos(networkKey, fromAddress),

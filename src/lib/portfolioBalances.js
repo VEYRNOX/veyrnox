@@ -90,8 +90,8 @@ export async function fetchAssetAmount(asset, addr) {
  * `total`/`grandTotal`/`assetTotals` sum only what was readable; a true
  * `indeterminate` means the figure is incomplete, so the UI marks it rather than
  * presenting a silently-understated total as fact.
- * @param {Array<{id,enabledAssets}>} wallets
- * @param {{[id]:{evm,btc,sol}}} walletAddresses
+ * @param {Array<{id:any,enabledAssets:any}>} wallets
+ * @param {Object.<string,{evm:any,btc:any,sol:any}>} walletAddresses
  */
 export async function computePortfolio(wallets, walletAddresses, livePrices) {
   const byWallet = {};
@@ -145,8 +145,8 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
  * instead of silently understating it (I4 fail-closed, Finding 2). Pure and
  * session-agnostic — it takes NO isDecoy/isHidden context, so decoy and real
  * sessions render identically from identical data (Finding 3 uniformity).
- * @param {Array<{id}>} pfWallets - wallets in the active portfolio
- * @param {{[id]:{total:number, indeterminate?:boolean}}} byWallet
+ * @param {Array<{id:any}>} pfWallets - wallets in the active portfolio
+ * @param {Object.<string,{total:number, indeterminate?:boolean}>} byWallet
  * @returns {{total:number, indeterminate:boolean}}
  */
 export function sumPortfolioTotal(pfWallets, byWallet) {

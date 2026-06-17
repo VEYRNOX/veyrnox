@@ -65,7 +65,7 @@ export default function NewsSentimentPage() {
       });
     },
     onSuccess: async (res) => {
-      const items = res?.items || [];
+      const items = (/** @type {any} */ (res))?.items || [];
       for (const item of items) {
         await base44.entities.NewsSentiment.create(item);
       }

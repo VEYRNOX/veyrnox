@@ -318,7 +318,7 @@ export async function registerPasskeyCredential(opts = {}) {
 
   if (!credential) throw new Error('Passkey registration returned no credential');
 
-  const credentialId = bufferToBase64Url(credential.rawId);
+  const credentialId = bufferToBase64Url((/** @type {any} */ (credential)).rawId);
   const rec = {
     id: credentialId,
     rpId: window.location.hostname,

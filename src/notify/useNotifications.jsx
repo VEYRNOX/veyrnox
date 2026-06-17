@@ -61,14 +61,14 @@ export function NotificationsProvider() {
       } catch {
         return; // I4: drop a malformed event; never degrade or block.
       }
-      dispatch({ type: 'push', notification });
+      (/** @type {any} */ (dispatch))({ type: 'push', notification });
     });
     return unsub; // discard on unmount (lock/reload) — nothing persists.
   }, []);
 
-  const markAllSeen = useCallback(() => dispatch({ type: 'markAllSeen' }), []);
-  const dismiss = useCallback((id) => dispatch({ type: 'dismiss', id }), []);
-  const clear = useCallback(() => dispatch({ type: 'clear' }), []);
+  const markAllSeen = useCallback(() => (/** @type {any} */ (dispatch))({ type: 'markAllSeen' }), []);
+  const dismiss = useCallback((id) => (/** @type {any} */ (dispatch))({ type: 'dismiss', id }), []);
+  const clear = useCallback(() => (/** @type {any} */ (dispatch))({ type: 'clear' }), []);
 
   const value = useMemo(
     () => ({

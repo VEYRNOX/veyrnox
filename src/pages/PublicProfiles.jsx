@@ -17,7 +17,7 @@ export default function PublicProfiles() {
   const profile = profiles[0];
 
   const save = useMutation({
-    mutationFn: (d) => profile ? base44.entities.PublicProfile.update(profile.id, d) : base44.entities.PublicProfile.create(d),
+    mutationFn: (/** @type {any} */ d) => profile ? base44.entities.PublicProfile.update(profile.id, d) : base44.entities.PublicProfile.create(d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["public-profiles"] }); setEditMode(false); },
   });
 

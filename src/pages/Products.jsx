@@ -43,17 +43,17 @@ export default function Products() {
   });
 
   const createProduct = useMutation({
-    mutationFn: (data) => base44.entities.Product.create(data),
+    mutationFn: (/** @type {any} */ data) => base44.entities.Product.create(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["products"] }); toast.success("Product created"); closeDialog(); },
   });
 
   const updateProduct = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Product.update(id, data),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.Product.update(vars.id, vars.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["products"] }); toast.success("Product updated"); closeDialog(); },
   });
 
   const deleteProduct = useMutation({
-    mutationFn: (id) => base44.entities.Product.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.Product.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["products"] }); toast.success("Product deleted"); },
   });
 
@@ -63,7 +63,7 @@ export default function Products() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const data = { ...form, price_usd: parseFloat(form.price_usd), stock: parseInt(form.stock) || 0 };
+    const data = { ...form, price_usd: parseFloat(form.price_usd), stock: parseInt(/** @type {any} */ (form.stock)) || 0 };
     if (editingProduct) updateProduct.mutate({ id: editingProduct.id, data });
     else createProduct.mutate(data);
   };

@@ -22,15 +22,15 @@ export default function BudgetLimits() {
   const { data: transactions = [] } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500) });
 
   const create = useMutation({
-    mutationFn: (d) => base44.entities.BudgetLimit.create({ ...d, limit_usd: parseFloat(d.limit_usd) }),
+    mutationFn: (/** @type {any} */ d) => base44.entities.BudgetLimit.create({ ...d, limit_usd: parseFloat(d.limit_usd) }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["budgets"] }); setOpen(false); setForm({ currency: "ETH", period: "monthly", limit_usd: "", alert_at_percent: 80, enabled: true }); },
   });
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.BudgetLimit.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.BudgetLimit.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["budgets"] }),
   });
   const toggle = useMutation({
-    mutationFn: ({ id, enabled }) => base44.entities.BudgetLimit.update(id, { enabled }),
+    mutationFn: (/** @type {any} */ vars) => base44.entities.BudgetLimit.update(vars.id, { enabled: vars.enabled }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["budgets"] }),
   });
 

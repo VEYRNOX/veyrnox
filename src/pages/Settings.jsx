@@ -51,10 +51,10 @@ export default function Settings() {
   });
 
   const registerPasskey = useMutation({
-    mutationFn: ({ walletId, credentialId }) =>
-      base44.entities.Wallet.update(walletId, {
+    mutationFn: (/** @type {any} */ vars) =>
+      base44.entities.Wallet.update(vars.walletId, {
         passkey_registered: true,
-        passkey_credential_id: credentialId,
+        passkey_credential_id: vars.credentialId,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["wallets"] }),
   });

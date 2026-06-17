@@ -31,8 +31,10 @@ export const TYPICAL_OUTPUTS = 2; // recipient + change
  * a display fee estimate for a typical spend. The estimate uses the same
  * estimateFeeSats() the real coin selection uses, so it's consistent with what
  * the send path will charge for that shape.
+ * @param {number[]} tierRates  [slow, standard, fast] in sat/vB
  */
-export function buildBtcTiers([slow, standard, fast]) {
+export function buildBtcTiers(tierRates) {
+  const [slow, standard, fast] = tierRates;
   const rates = [slow, standard, fast];
   return BTC_TIERS.map((t, i) => {
     const feeRate = rates[i];
@@ -50,8 +52,10 @@ export function buildBtcTiers([slow, standard, fast]) {
  * PURE: keep three rates monotonic (slow ≤ standard ≤ fast) for display. A quiet
  * testnet often reports identical or inverted rates across targets; we never show
  * "Slow" costing more than "Fast". Does not invent spread — equal stays equal.
+ * @param {number[]} rates  [slow, standard, fast]
  */
-export function clampMonotonic([slow, standard, fast]) {
+export function clampMonotonic(rates) {
+  const [slow, standard, fast] = rates;
   const lo = Math.min(slow, standard, fast);
   const hi = Math.max(slow, standard, fast);
   const mid = Math.min(Math.max(standard, lo), hi);

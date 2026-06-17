@@ -26,7 +26,7 @@ export default function NetWorthTracker() {
 
   const total = portfolio?.grandTotal ?? 0;
   const incomplete = !!portfolio?.indeterminate;
-  const assetTotals = portfolio?.assetTotals || {};
+  const assetTotals = /** @type {Record<string, { amount?: number, usd?: number|null, indeterminate?: boolean }>} */ (portfolio?.assetTotals || {});
   const live = priceBasis === "live";
   // null amount/usd = indeterminate (read failed) → "—", never a misleading $0.
   const fmtUsd = (n) => (n == null ? "—" : live ? formatFiat(n, "USD") : approxUsd(n));

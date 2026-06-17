@@ -36,12 +36,12 @@ export default function NetworkManager() {
   });
 
   const create = useMutation({
-    mutationFn: (d) => base44.entities.NetworkConfig.create({ ...d, chain_id: parseInt(d.chain_id) }),
+    mutationFn: (/** @type {any} */ d) => base44.entities.NetworkConfig.create({ ...d, chain_id: parseInt(d.chain_id) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["networks"] }); setOpen(false); setForm({ name: "", rpc_url: "", chain_id: "", symbol: "", explorer_url: "", is_testnet: false, logo_color: "#627EEA" }); },
   });
 
   const remove = useMutation({
-    mutationFn: (id) => base44.entities.NetworkConfig.delete(id),
+    mutationFn: (/** @type {any} */ id) => base44.entities.NetworkConfig.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["networks"] }),
   });
 

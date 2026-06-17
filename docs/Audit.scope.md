@@ -1,22 +1,25 @@
 # Security Audit — Scope & Planning
 
-> Purpose: define exactly what a security audit of Veyrnox covers, so reviews are
-> well-prepared and (for the independent pass) quotes are fast/accurate. This same
-> scope is used by BOTH the internal audit (the hard gate, below) and the
-> independent third-party audit (additional depth). Scope now even though audits
-> run AFTER the MVP freeze — top firms have 2–3 month waitlists, so early scoping
-> avoids rush fees, and writing the scope forces a clean articulation of the system.
+> Purpose: define exactly what an independent third-party audit of Veyrnox would
+> cover, so quotes are fast/accurate and the audit is well-prepared. This
+> independent audit adds external depth and is intended BEFORE App Store
+> submission — but it is NOT the mainnet gate. The hard gate is Veyrnox's own
+> INTERNAL audit (see HARD LINE below); we are not dependent on a third party to
+> sign off. Scope now even though the audit runs AFTER the MVP freeze — top firms
+> have 2–3 month waitlists, so early scoping avoids rush fees, and writing the
+> scope forces a clean articulation of the system.
 
-> HARD LINE: no mainnet / real funds until the **internal security audit** is
-> complete and its findings are remediated (and re-reviewed). **The internal audit
-> is the hard pass that opens the mainnet gate** (flips `ALLOW_MAINNET`). An
-> independent third-party audit will ALSO be performed against the scope below as
-> defensive depth, but it is NOT the hard gate — the internal audit is.
-> Build MVP → freeze → internal audit → fix → re-review → THEN flip ALLOW_MAINNET.
-> Never the reverse. (Honesty note: do not represent the product as
-> "independently audited" on the strength of the internal audit alone — the
-> internal audit is the gate; independence is a separate, additional claim only
-> once that pass is actually done.)
+> HARD LINE: no mainnet / real funds until Veyrnox's INTERNAL audit is complete
+> and its findings are remediated and re-reviewed. The internal audit is the hard
+> gate and the pass that opens mainnet: it has the authority to flip
+> ALLOW_MAINNET, and we do not delegate that authority to any third party. Build
+> MVP → freeze → internal audit → fix → re-review → THEN flip ALLOW_MAINNET.
+> Never the reverse. The independent third-party audit scoped below runs for
+> additional depth and before App Store submission, but it does not gate — and
+> never performs — the flip.
+> (Honesty note: do not represent the product as "independently audited" on the
+> strength of the internal audit alone — independence is a separate, additional
+> claim only once that pass is genuinely done.)
 
 ---
 
@@ -90,7 +93,7 @@ audit surface; review independently of the EVM slice.
   existing audited bip39/bip32/noble stack). Added to the supply-chain review.
 - Status: BTC is **receive_only** until a real testnet send is verified on-chain
   and reviewed (see `docs/PhaseBTC.verification.md`), then → live; mainnet stays
-  gated until this audit clears.
+  gated until the internal audit clears (this independent review adds depth).
 
 ### 2c. Solana operations (Phase SOL, NEW CURVE — biggest divergence) — `src/wallet-core/sol/`
 A THIRD, distinct cryptographic family. Unlike EVM/BTC (both secp256k1), Solana
@@ -129,7 +132,7 @@ key/signing attack surface (the audit now covers TWO curves, not one).
   `derivation.js`), and the hands-on verification runs in Node.
 - Status: SOL is **receive_only** until a real devnet send is verified on-chain
   and reviewed (harness: `scripts/sol-devnet-send.mjs`), then → live; mainnet
-  stays gated until this audit clears.
+  stays gated until the internal audit clears (this independent review adds depth).
 
 ### 2d. Address screening (S2, NEW surface) — `src/wallet-core/evm/suspicious.js` + `src/wallet-core/data/`
 LOCAL-only recipient screening wired into the send risk assessment; warns-not-blocks, never asserts "safe". Pluggable-provider design; `screenAddress` routes by family so EVM and BTC addresses are both screened at runtime.
@@ -186,7 +189,28 @@ its own audit scope (and Phase D notably expands it a lot).
 
 ---
 
-## Pre-audit readiness checklist (do before requesting the scoped quote)
+## Two sequencing tracks (keep them separate — they run on independent timelines)
+One track gates **mainnet**; the other gates the **store listing**. They are
+decoupled; neither waits on the other.
+
+- **Track 1 — the mainnet flip (the hard gate):** INTERNAL audit → remediate →
+  re-review → owner flips `ALLOW_MAINNET`. Owned in-house; needs no third party.
+  Until this completes, the app is **testnet-only on every surface** (web and
+  stores alike).
+- **Track 2 — App Store submission:** the independent third-party audit scoped
+  here is intended **BEFORE store submission**, as external depth/assurance.
+  Because the store build ships **testnet-only** (non-custodial storage, no real
+  funds — approvable on Apple as storage, exempt from Google Play crypto
+  licensing), it can be listed once this track is ready **without the mainnet
+  flip having happened**. Mainnet stays dark in the shipped build until Track 1
+  clears.
+
+Net: you can be live in the App Store (testnet) on the strength of the
+independent audit while mainnet remains gated on the internal audit. The internal
+audit may clear before, after, or independently of the store launch — don't
+conflate "audited + in the store" with "mainnet on."
+
+## Pre-audit readiness checklist (Track 2 — do before requesting the scoped quote)
 - [ ] MVP feature-frozen (no churn during the audit window).
 - [ ] M2 native secure storage complete (if mobile is in the audited scope).
 - [ ] All tests green; `check:rng` green; CI documented.
@@ -201,10 +225,14 @@ its own audit scope (and Phase D notably expands it a lot).
 ## After the audit
 - **Internal audit (the gate):** remediate all critical/high (and reasonable
   medium) findings; do the re-review pass to confirm fixes don't introduce
-  regressions. Only once the internal audit is complete + remediated + re-reviewed
-  may `ALLOW_MAINNET` be flipped, per the hard line above.
+  regressions. The mainnet flip is an **OWNER action**, not the auditor's — once
+  the internal audit is complete, remediated, and re-reviewed (the hard-line
+  sequence above), the owner flips `ALLOW_MAINNET`. It is the action that closes
+  that sequence, not a fresh judgment call. The audit firm is a reviewer that
+  informs the owner's decision; it never flips the gate, and its sign-off is not
+  a precondition for the flip.
 - **Independent audit (additional depth, non-gating):** still commission it against
-  this scope; remediate + pay for its re-review. It strengthens assurance and is a
-  material asset for build-to-sell due diligence, but it does not gate mainnet —
-  the internal audit does. Only claim "independently audited" once this pass is
-  genuinely complete.
+  this scope; remediate + pay for its re-review pass. It strengthens assurance and
+  is a material asset for build-to-sell due diligence, but it does not gate
+  mainnet — the internal audit does. Only claim "independently audited" once this
+  pass is genuinely complete.
