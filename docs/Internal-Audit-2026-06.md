@@ -213,6 +213,8 @@ not buildable or honestly verifiable in this JS/web environment):
   `docs/multi-wallet-portfolio.manual-ios.md`, and the M2c/d adversarial device tests.
 
 These are the **load-bearing blockers** for a mainnet flip and should be tackled as a
-single dedicated native-device session. Non-native remainders still open but ahead of
-native in priority: the **M-2 BTC hard-gate** integration (architectural) and the
-**dev-tooling** supply-chain bumps (not shipped; defer as hygiene).
+single dedicated native-device session — see the entry-point runbook
+**`docs/native-session-handoff.md`** (ordered tasks, prerequisites, verification gates,
+mapped to the existing kek/M2c-d/PRF specs). The only non-native remainder still open is
+the **dev-tooling** supply-chain bumps (not shipped; defer as hygiene — the fix path
+breaks SOL). (M-2 BTC hard-gate is now DONE — see round 7.)
