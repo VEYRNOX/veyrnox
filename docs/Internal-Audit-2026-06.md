@@ -194,3 +194,24 @@ patched (or the deps pinned/upgraded) before mainnet. `check:rng` passes.
    gate — but the gate is THIS internal audit, and it does not clear today.
 
 Until then: **testnet only, `ALLOW_MAINNET = false`.**
+
+---
+
+## Remediation ordering — NATIVE work parked to LAST (decision 2026-06-17)
+
+By decision, all **NATIVE** audit/verification work is sequenced **LAST** in the
+remediation order — it is the final gate to clear, after everything web/JS-fixable
+is done (and that web/JS scope is now complete; see the round 1–6 status above).
+
+Parked-to-last (native — require Swift/Kotlin + **real iOS/Android devices** + audit;
+not buildable or honestly verifiable in this JS/web environment):
+- **H-2** — hardware-bound KEK (so a 6-digit PIN is not the sole at-rest factor).
+- **§3** — native secure storage: iOS Secure Enclave/Keychain + Android Keystore/
+  StrongBox OS-enforced ACL (M2c/M2d), and "keys never in webview/IndexedDB on native".
+- **Native manual-test items** — e.g. `docs/biometric-keychain-binding.manual-test.md`,
+  `docs/multi-wallet-portfolio.manual-ios.md`, and the M2c/d adversarial device tests.
+
+These are the **load-bearing blockers** for a mainnet flip and should be tackled as a
+single dedicated native-device session. Non-native remainders still open but ahead of
+native in priority: the **M-2 BTC hard-gate** integration (architectural) and the
+**dev-tooling** supply-chain bumps (not shipped; defer as hygiene).
