@@ -10,7 +10,7 @@
 // stale USD_RATES and label the figure approximate — never stale-as-live.
 
 import { useQuery } from '@tanstack/react-query';
-import { ASSETS } from '@/wallet-core/assets.js';
+import { fetchPortfolioPricesUsd, PORTFOLIO_SYMBOLS } from '@/lib/cryptoCompare.js';
 
 // localStorage opt-in pref. "1" = on / ABSENT = off (mirrors lib/biometric.js,
 // wallet-core/auditLog.js). Absence = off is deliberate: a fresh device makes no
@@ -31,30 +31,18 @@ export function setLivePricesEnabled(on) {
   } catch { /* best-effort */ }
 }
 
-// The FIXED request set: every supported asset symbol, holdings-agnostic. Derived
-// from the asset registry, deduped. The request is ALWAYS this full list, so it
-// never narrows to what the user holds (no oracle).
-export const SUPPORTED_SYMBOLS = Object.freeze([...new Set(ASSETS.map((a) => a.symbol))]);
+// Back-compat alias — the portfolio symbol universe now lives in cryptoCompare.js.
+export const SUPPORTED_SYMBOLS = PORTFOLIO_SYMBOLS;
 
 /**
  * Fetch current USD prices for the full supported-symbol list. Returns a flat
  * { [symbol]: number } map. Throws on network / non-OK HTTP (the caller treats a
  * throw as "live unavailable" and falls back to the disclosed stale rates).
+ * Delegates to cryptoCompare.fetchPortfolioPricesUsd().
  * @returns {Promise<Record<string, number>>}
  */
 export async function fetchLivePricesUsd() {
-  const fsyms = SUPPORTED_SYMBOLS.join(',');
-  const res = await fetch(
-    `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${fsyms}&tsyms=USD&extraParams=safecryptowallet`,
-  );
-  if (!res.ok) throw new Error(`price feed HTTP ${res.status}`);
-  const data = await res.json(); // { ETH: { USD: 3200 }, ... }
-  const out = {};
-  for (const s of SUPPORTED_SYMBOLS) {
-    const v = data?.[s]?.USD;
-    if (typeof v === 'number' && Number.isFinite(v)) out[s] = v;
-  }
-  return out;
+  return fetchPortfolioPricesUsd();
 }
 
 /**
