@@ -24,6 +24,14 @@ describe('navigation respects the feature registry', () => {
     expect(allNavPaths).toContain('/duress-pin');
   });
 
+  it('includes Cloud Backup in the Security group', () => {
+    expect(allNavPaths).toContain('/cloud-backup');
+    const entry = navGroups.flatMap((g) => g.items).find((i) => i.path === '/cloud-backup');
+    expect(entry?.label).toBe('Cloud Backup');
+    const secGroup = navGroups.find((g) => g.items.some((i) => i.path === '/cloud-backup'));
+    expect(secGroup?.label).toBe('Security');
+  });
+
   it('includes the RASP Security tile in the nav (Security group)', () => {
     expect(allNavPaths).toContain('/rasp-security');
     const rasp = navGroups.flatMap((g) => g.items).find((i) => i.path === '/rasp-security');
