@@ -22,8 +22,34 @@ import {
   localBlocklistProvider,
   DEFAULT_PROVIDERS,
   OFAC_SNAPSHOT_META,
+  ofacSnapshotAgeDays,
+  ofacSnapshotDisclosure,
 } from '../evm/suspicious.js';
 import ofacSnapshot from '../data/ofac-sanctioned.json';
+
+// OFAC snapshot-age disclosure (internal audit EVM-#2): the sanctions warning must
+// carry the data's vintage so a stale snapshot's false-NEGATIVE risk is visible.
+describe('OFAC snapshot age disclosure', () => {
+  // snapshotDate is fixed (2026-06-03); inject `now` so the test is deterministic.
+  const D = Date.parse(OFAC_SNAPSHOT_META.snapshotDate);
+  it('computes whole-day age from the snapshot date (now injected)', () => {
+    expect(ofacSnapshotAgeDays(D)).toBe(0);
+    expect(ofacSnapshotAgeDays(D + 10 * 86_400_000)).toBe(10);
+    expect(ofacSnapshotAgeDays(D + 86_400_000 * 1.9)).toBe(1); // floors
+  });
+  it('never reports a negative age (clock skew / pre-dated now)', () => {
+    expect(ofacSnapshotAgeDays(D - 5 * 86_400_000)).toBe(0);
+  });
+  it('disclosure names the date and the age, and flags possible newer sanctions', () => {
+    const s = ofacSnapshotDisclosure(D + 7 * 86_400_000);
+    expect(s).toContain(OFAC_SNAPSHOT_META.snapshotDate);
+    expect(s).toContain('7 days old');
+    expect(s).toMatch(/more recent sanctioning may not be reflected/i);
+  });
+  it('singularises one day', () => {
+    expect(ofacSnapshotDisclosure(D + 86_400_000)).toContain('1 day old');
+  });
+});
 
 // OFAC-designated (Apr 2022) — Lazarus Group / Ronin Bridge exploiter. Present in
 // BOTH the seed blocklist and the OFAC snapshot.

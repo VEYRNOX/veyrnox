@@ -164,6 +164,39 @@ export const localBlocklistProvider = makeBlocklistProvider();
 // 0xB10C), license, snapshotDate, counts, and the honesty notes.
 export const OFAC_SNAPSHOT_META = ofacSnapshot?._meta || null;
 
+/**
+ * PURE: age in whole days of the bundled OFAC SDN snapshot, or null if no dated
+ * snapshot. The snapshot is DATED and only shrinks (delistings) — so staleness
+ * can't cause false sanctions HITS, but it can cause false NEGATIVES (a newly
+ * sanctioned address won't be flagged). Internal audit (EVM-#2): surface this so a
+ * sanctions warning is never shown without an indication of how old the data is.
+ * `now` is injected for testability.
+ * @param {number} [now]
+ * @returns {number|null}
+ */
+export function ofacSnapshotAgeDays(now = Date.now()) {
+  const d = OFAC_SNAPSHOT_META?.snapshotDate;
+  if (!d) return null;
+  const t = Date.parse(d);
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.floor((now - t) / 86_400_000));
+}
+
+/**
+ * PURE: one-line human disclosure of the OFAC snapshot vintage for the screening
+ * UI, or null if undated. Shown alongside a sanctions warning so the user can
+ * weight it. Never claims completeness.
+ * @param {number} [now]
+ * @returns {string|null}
+ */
+export function ofacSnapshotDisclosure(now = Date.now()) {
+  const d = OFAC_SNAPSHOT_META?.snapshotDate;
+  if (!d) return null;
+  const age = ofacSnapshotAgeDays(now);
+  const ageText = age == null ? '' : ` — ${age} day${age === 1 ? '' : 's'} old`;
+  return `Based on bundled OFAC SDN data as of ${d}${ageText}; a more recent sanctioning may not be reflected.`;
+}
+
 // Build the EVM (normalised) and BTC (raw) lookup maps from the snapshot once.
 function buildOfacIndex(snapshot) {
   const evm = new Map(); // lowercase 0x -> entry
