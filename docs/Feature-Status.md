@@ -190,7 +190,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Help menu (top-bar Documentation entry) — ✅ (`HelpMenu.jsx`, PR #48)
 - Address book — ✅ (with per-chain validation on save)
 - ENS / SNS **resolution** in Send — ✅ (resolve-only); ENS **registration** — ❌ removed (PR #48)
-- Price charts / watchlist / portfolio / analytics / tax / signing / savings — 💡 (UI present in places, not core-wired)
+- Price charts / portfolio / analytics / tax / signing / savings — 💡 (UI present in places, not core-wired)
 - Crypto Net Worth (`/net-worth`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted honest-disabled → live
   (verdict flip in `featureClassification.js`, the `/fee-analytics` precedent): real on-chain holdings via
   `usePortfolio` (total + allocation donut + per-asset rows), USD shown live (opt-in feed) or
@@ -204,6 +204,17 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   disclosed-approximate `USD_RATES` reference rate when off/unavailable (I4 — never stale-as-live). Wired
   into the Dashboard total only; NetWorth promotion (honest-disabled → live) is a separate follow-on. See
   `docs/superpowers/specs/2026-06-16-live-price-helper-design.md`.
+- Watchlist (`/watchlist` + dashboard `WatchlistWidget`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted
+  honest-disabled → live (verdict flip in `featureClassification.js`, the `/net-worth` / `/fee-analytics`
+  precedent). Wired off the fabricated `MOCK_PRICES` (static prices + synthesized ±4% high/low) onto the real
+  opt-in feeds: `useLivePrices` (spot) + `useBasketPrices` (real 24h change + real 24h high/low, page only).
+  Holdings-blind, OFF by default (I2 — no egress until the Settings live-prices opt-in; `useBasketPrices` now
+  takes an `enabled` gate, scoped to the Watchlist — TokenList unchanged). Off/unavailable shows an honest
+  disabled state, never a fabricated or stale figure (I4); Buy/Sell-target badges evaluate only against a live
+  price. Persistence (`PersonalWatchlist`, on-device) was already real. Off-state + fail-honest verified
+  in-browser; live-data render is unit-tested (`parseBasket`) but not yet eyeballed on a real network. No
+  on-chain artifact → not a catalogue "verified" promotion. See
+  `docs/superpowers/specs/2026-06-17-watchlist-real-prices-design.md`.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅

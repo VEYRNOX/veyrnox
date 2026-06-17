@@ -63,7 +63,7 @@ describe('registryEntriesFromClassification', () => {
     // Non-live entries: 4 original seeds + 9 Overview-group pages classified in batch 1
     // + 5 Wallet-group pages classified in batch 2
     // + 7 Invest/Finance pages classified in batch 3
-    // + 5 Assets-group pages classified in batch 4 (/nft-multichain and /spending are live)
+    // + 4 Assets-group pages classified in batch 4 (/nft-multichain, /spending, and /watchlist are live)
     // + 2 Security-group pages classified in batch A (/wallet-seed-qr, /hardware-wallet)
     //   (10 Security-A pages are live; only 2 are disabled)
     // + 5 Security-group pages classified in batch B (/anomaly-detection, /messenger-alerts,
@@ -84,7 +84,8 @@ describe('registryEntriesFromClassification', () => {
         '/calculator', '/receipt', '/recurring', '/split-bill',
         '/portfolio-rewind', '/index-builder', '/ai-rebalancer', '/pl',
         '/budget', '/tax',
-        '/watchlist', '/nft', '/snapshots', '/onchain', '/erc20-discovery',
+        // '/watchlist' reclassified disabled→live (real opt-in price feeds), so it drops out here.
+        '/nft', '/snapshots', '/onchain', '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
         '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts', '/alerts',
         '/watch-wallets', '/solana', '/price-charts', '/web3', '/products',

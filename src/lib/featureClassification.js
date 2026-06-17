@@ -199,8 +199,8 @@ export const CLASSIFICATION = {
 
   // ── Assets group (audit batch 4) ─────────────────────────────────────────
   '/watchlist': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'PersonalWatchlist records are real user-entered data, but the displayed prices (MOCK_PRICES), 24h change percentages, and computed high/low range all come from hardcoded stale constants in src/lib/cryptos.js. Buy/sell target alerts fire against these stale prices — a user comparing their target_buy against a silently outdated price could act on false signals.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'PersonalWatchlist records are real on-device user data; the displayed price / 24h change / 24h high-low now come from the opt-in, holdings-blind live feeds (useLivePrices spot + useBasketPrices 24h change & high/low), OFF by default — no price egress until the user enables live prices in Settings (I2). When off or the feed is unavailable each row shows no number and the Buy/Sell-target badges do not evaluate (fail-honest, I4); the old MOCK_PRICES static prices + synthesized ±4% high/low are gone. Off-state + fail-honest verified in-browser; the live-data render is unit-tested (parseBasket) but not yet eyeballed on a real network — UNAUDITED-PROVISIONAL. See docs/superpowers/specs/2026-06-17-watchlist-real-prices-design.md.',
   },
   '/nft': {
     verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
