@@ -21,14 +21,16 @@
 // anyone has opened it (fail-closed, I4).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, extname, relative, dirname } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join, relative, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
+// Shared, self-tested scanner (regex/template-aware, line-number-preserving) —
+// one implementation shared with scripts/check-crypto-rng.mjs so they can't drift.
+import { walk, stripCommentsAndStrings } from './lib/source-scan.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..');
-const EXTS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs']);
 
 // ── result accumulation ──────────────────────────────────────────────────────
 const results = [];
@@ -42,23 +44,11 @@ function record(id, severity, title, detail = '') {
 
 // ── file walking ─────────────────────────────────────────────────────────────
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', '.git', 'android', 'ios', 'coverage']);
-function walk(dir, acc = []) {
-  let entries;
-  try { entries = readdirSync(dir); } catch { return acc; }
-  for (const name of entries) {
-    if (SKIP_DIRS.has(name)) continue;
-    const p = join(dir, name);
-    let s; try { s = statSync(p); } catch { continue; }
-    if (s.isDirectory()) walk(p, acc);
-    else if (EXTS.has(extname(p))) acc.push(p);
-  }
-  return acc;
-}
 const rel = (p) => relative(ROOT, p).replace(/\\/g, '/');
 const isTestOrDoc = (p) => /(__tests__|\.test\.|\.spec\.|\/scripts\/|\/docs\/|rehearsal|validation-sweep)/.test(rel(p));
 
 const SRC = join(ROOT, 'src');
-const allFiles = walk(SRC);
+const allFiles = walk(SRC, { skip: SKIP_DIRS });
 const prodFiles = allFiles.filter((p) => !isTestOrDoc(p));
 
 // Raw line scan — use when the literal TEXT matters (string/hex/mnemonic content).
@@ -70,34 +60,6 @@ function grepFiles(files, re) {
     lines.forEach((ln, i) => { if (re.test(ln)) hits.push(`${rel(f)}:${i + 1}: ${ln.trim().slice(0, 160)}`); });
   }
   return hits;
-}
-
-// Blank out comments + string/template contents (preserving line numbers) so we
-// match real CODE CONSTRUCTS, not prose that merely mentions them. Without this,
-// a comment like "// Math.random() is NOT a CSPRNG" or a note string would trip
-// the very check that warns against it — false positives that erode trust.
-function stripCommentsAndStrings(text) {
-  let out = '', i = 0, state = 'code';
-  const n = text.length;
-  while (i < n) {
-    const c = text[i], c2 = text[i + 1];
-    const blank = c === '\n' ? '\n' : c === '\t' ? '\t' : ' ';
-    if (state === 'code') {
-      if (c === '/' && c2 === '/') { state = 'line'; out += '  '; i += 2; continue; }
-      if (c === '/' && c2 === '*') { state = 'block'; out += '  '; i += 2; continue; }
-      if (c === "'") { state = 'sq'; out += ' '; i++; continue; }
-      if (c === '"') { state = 'dq'; out += ' '; i++; continue; }
-      if (c === '`') { state = 'tpl'; out += ' '; i++; continue; }
-      out += c; i++; continue;
-    }
-    if (state === 'line') { if (c === '\n') { state = 'code'; out += '\n'; i++; continue; } out += blank; i++; continue; }
-    if (state === 'block') { if (c === '*' && c2 === '/') { state = 'code'; out += '  '; i += 2; continue; } out += blank; i++; continue; }
-    // inside a string/template
-    if (c === '\\') { out += '  '; i += 2; continue; }
-    if ((state === 'sq' && c === "'") || (state === 'dq' && c === '"') || (state === 'tpl' && c === '`')) { state = 'code'; out += ' '; i++; continue; }
-    out += blank; i++;
-  }
-  return out;
 }
 
 // Code-construct scan — strips comments/strings first; shows the ORIGINAL line.
@@ -132,9 +94,19 @@ async function checkGates() {
     const NETWORKS = net.NETWORKS || {};
     const mainnets = Object.entries(NETWORKS).filter(([, n]) => n && n.isTestnet === false);
     let bad = [];
-    for (const [key, n] of mainnets) {
-      if (n.enabled !== false) bad.push(`${key}: enabled=${n.enabled}`);
-      try { net.getNetwork(key); bad.push(`${key}: getNetwork did NOT throw`); } catch { /* expected */ }
+    if (typeof net.getNetwork !== 'function') {
+      // Fail closed: a bare catch would otherwise read a "getNetwork is not a
+      // function" TypeError (after a rename/removal) as the expected gate throw.
+      bad.push('getNetwork export missing — gate function gone');
+    } else {
+      for (const [key, n] of mainnets) {
+        if (n.enabled !== false) bad.push(`${key}: enabled=${n.enabled}`);
+        let threw = null;
+        try { net.getNetwork(key); } catch (e) { threw = e; }
+        if (!threw) bad.push(`${key}: getNetwork did NOT throw`);
+        // The throw must be the GATE, not an incidental error (e.g. a TypeError).
+        else if (!/gated|mainnet|ALLOW_MAINNET/i.test(threw.message || '')) bad.push(`${key}: getNetwork threw a non-gate error (${threw.message})`);
+      }
     }
     if (mainnets.length === 0) record('A2', 'warn', 'No mainnet networks found in config to assert against');
     else if (bad.length === 0) record('A2', 'pass', `All ${mainnets.length} mainnet networks gated (enabled:false + getNetwork throws)`);
