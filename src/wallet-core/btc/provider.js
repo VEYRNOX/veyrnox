@@ -102,11 +102,36 @@ export async function getBalanceSats(networkKey, address, includeUnconfirmed = f
   );
 }
 
+// Upper bound on the indexer-reported fee rate (internal audit H-1). The Esplora
+// indexer is UNTRUSTED; without a ceiling a malicious/compromised one could return
+// e.g. 500000 sat/vB and we would build a transaction that pays it, draining the
+// UTXO as fee. 1000 sat/vB is far above any legitimate rate (even peak mainnet
+// congestion rarely exceeds a few hundred; testnet is ~1), so clamping here cannot
+// underprice a real send but bounds the catastrophic-overpay case. This is a
+// wallet-core backstop; the per-send fee preview + fee-vs-amount approval in the
+// confirm UI (H-1/M-2) is the complementary user-facing control.
+export const MAX_FEE_RATE = 1000;
+
+/**
+ * PURE: clamp an indexer-reported fee rate to the safe band [1, MAX_FEE_RATE].
+ * Extracted so the security-relevant bounds (untrusted-indexer ceiling, H-1) are
+ * unit-testable without network. A non-finite / sub-1 rate floors to 1 (testnet
+ * often reports fractional/zero rates that build a non-relayable tx); anything
+ * above the ceiling clamps down (a hostile indexer cannot dictate a drain-as-fee).
+ * @param {unknown} raw
+ * @returns {number} integer sat/vByte, 1 <= rate <= MAX_FEE_RATE
+ */
+export function clampFeeRate(raw) {
+  const rate = Number(raw);
+  if (!Number.isFinite(rate) || rate < 1) return 1;
+  return Math.min(Math.ceil(rate), MAX_FEE_RATE);
+}
+
 /**
  * Recommended fee rate in sat/vByte for a target confirmation. Esplora returns a
- * map of {blocks: sat/vB}. We clamp to a >=1 sat/vB floor (testnet often reports
- * fractional/zero rates that would build a non-relayable tx).
- * @returns {Promise<number>} sat/vByte (integer, >= 1)
+ * map of {blocks: sat/vB}; the result is clamped to [1, MAX_FEE_RATE] via
+ * clampFeeRate (the indexer is untrusted — see above).
+ * @returns {Promise<number>} sat/vByte (integer, 1 <= rate <= MAX_FEE_RATE)
  */
 export async function getFeeRate(networkKey, targetBlocks = 6) {
   let estimates;
@@ -116,9 +141,7 @@ export async function getFeeRate(networkKey, targetBlocks = 6) {
     estimates = null;
   }
   const raw = estimates?.[String(targetBlocks)] ?? estimates?.['6'] ?? estimates?.['1'];
-  const rate = Number(raw);
-  if (!Number.isFinite(rate) || rate < 1) return 1; // sane testnet floor
-  return Math.ceil(rate);
+  return clampFeeRate(raw);
 }
 
 /**

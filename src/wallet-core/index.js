@@ -13,7 +13,10 @@ export {
   deriveTronAccount,
 } from './derivation.js';
 export { encryptVault, decryptVault } from './vault.js';
-export { makeSigner, signMessage, sendNativeTransfer } from './signing.js';
+// NOTE: the old top-level signing.js (makeSigner/sendNativeTransfer) was removed
+// (internal audit EVM-#1). It built a raw JsonRpcProvider from an arbitrary rpcUrl
+// with NO ALLOW_MAINNET gate — a gate-bypassing foot-gun. It was dead (no live
+// caller); all real EVM sending goes through the gated evm/send.js + token-send.js.
 
 // --- Bitcoin (Phase BTC) — separate BIP-84 / UTXO / PSBT stack, testnet-first,
 // mainnet gated. Shares only the BIP-39 seed with the EVM family. See btc/. ---

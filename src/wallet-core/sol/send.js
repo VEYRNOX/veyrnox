@@ -48,6 +48,7 @@ import {
   getLamportsPerSignature,
   broadcastRawTx,
   confirmTx,
+  getSignatureLanding,
 } from './provider.js';
 
 const MAX_BLOCKHASH_RETRIES = 3;
@@ -300,7 +301,35 @@ export async function signAndBroadcastSol({
       const msg = String(e?.name || '') + ' ' + String(e?.message || '');
       const expired = /BlockheightExceeded|block height exceeded|blockhash.*expired/i.test(msg);
       if (!expired || attempt === MAX_BLOCKHASH_RETRIES) throw e;
-      // else: retry with a fresh blockhash
+
+      // DOUBLE-SEND GUARD (audit M-1): an expiry error means we stopped observing
+      // before the deadline, NOT that the tx was excluded. A rebuild uses a FRESH
+      // signature, so resending after a silent inclusion would move funds twice.
+      // Re-check the just-broadcast signature before rebuilding.
+      const landing = await getSignatureLanding(networkKey, signature);
+      if (landing.landed === true) {
+        if (landing.err) {
+          throw new Error(`Transaction failed on-chain: ${JSON.stringify(landing.err)}`);
+        }
+        // It actually landed — the "expiry" was a confirmation-observation miss.
+        return {
+          signature,
+          explorerUrl: solExplorerUrl(networkKey, 'tx', signature),
+          plan,
+          attempts: attempt,
+        };
+      }
+      if (landing.landed === null) {
+        // Inclusion is UNKNOWN (status RPC failed). Do NOT risk a double-send;
+        // surface for a manual explorer check rather than blindly resending.
+        throw new Error(
+          'Could not confirm whether the transaction landed before its blockhash ' +
+          'expired — check the explorer for this signature before resending. ' +
+          `Original error: ${msg.trim()}`,
+        );
+      }
+      // landing.landed === false -> definitively not included; safe to rebuild
+      // with a fresh blockhash on the next loop iteration.
     }
   }
   throw lastErr || new Error('Solana send failed after blockhash retries.');
