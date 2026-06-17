@@ -83,7 +83,7 @@ export function saveSnapshot(walletAddresses, portfolio, label, note) {
       note: note ?? '',
       total_usd: portfolio?.grandTotal ?? 0,
       breakdown,
-      indeterminate: portfolio?.indeterminate ?? false,
+      indeterminate: !!portfolio?.indeterminate,
     };
 
     const existing = listSnapshots(walletAddresses);
