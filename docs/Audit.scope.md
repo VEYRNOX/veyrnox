@@ -227,20 +227,20 @@ conflate "audited + in the store" with "mainnet on."
       `npm audit`). See the note below on what a green run does and does NOT mean.
 - [ ] Decide remediation + re-review budget up front.
 
-> **What the automated pre-audit self-review IS — and is NOT.**
-> `npm run audit:eth` is a PRECONDITION, not the audit. A green run means the
-> automated checks found no red flags — it is a discount lever (see "Good docs +
-> tests cut cost 15–25%" above), the cheap pass done BEFORE the paid firm starts.
-> It is NOT the independent third-party audit, it does NOT satisfy the HARD LINE,
-> and a green run (even with zero critical/high/medium) does NOT authorize
-> flipping ALLOW_MAINNET or any mainnet gate. A grep+test harness cannot find the
-> bug classes that drain wallets — key-lifetime leaks, signing/replay flaws,
-> fee/change logic errors, deniability tells, supply-chain backdoors that pass
-> `npm audit` — which is exactly why the human audit is the gate. "The automated
-> checks found nothing" is not "there is nothing." The gate-flip sequence is
-> unchanged: independent audit → remediate critical/high → re-review → only THEN
-> consider flipping, per the hard line. This is an I4 (fail-honest, fail-closed)
-> control: it must never be relabeled as, or wired to stand in for, the audit.
+> **What the automated harness IS — and is NOT.**
+> `npm run audit:eth` is ONE input to the internal audit, not the whole gate. A
+> green run means the automated checks found no red flags — but a grep+test
+> harness cannot find the bug classes that drain wallets: key-lifetime leaks,
+> signing/replay flaws, fee/change logic errors, deniability tells, supply-chain
+> backdoors that pass `npm audit`. "The automated checks found nothing" is not
+> "there is nothing." So a green harness run ALONE does NOT authorize flipping
+> ALLOW_MAINNET — the gate is the full internal flow in the GATE block above
+> (harness + SECURITY_REVIEW_CHECKLIST self-review + owner code review →
+> remediate all crit/high/med → re-review → owner sign-off). An independent
+> third-party audit is the strongest assurance and is recommended, but is not
+> required to flip under the current owner policy. This is an I4 (fail-honest)
+> control: the harness must never be relabeled as "the audit," and "internal"
+> must never be presented as "independent."
 
 ## After the audit
 - **Internal audit (the gate):** remediate all critical/high (and reasonable
