@@ -79,8 +79,8 @@ export const CLASSIFICATION = {
     note: 'Calls base44.agents.createConversation / addMessage / subscribeToConversation — all require the LLM agent backend. Correctly guards with LLM_AVAILABLE and shows LocalBuildNotice.',
   },
   '/benchmark': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'portfolioData is generated via genBenchmark(1.5, 0.025) — a Math.sin-based synthetic random walk — then labeled "Your Portfolio" in a returns chart alongside BTC, ETH, S&P 500. The user\'s actual transaction history is not consulted; these are fabricated performance numbers.',
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'invented',
+    note: 'Duplicates the portfolio-rewind job (/portfolio-rewind is live with real histoday data). The synthetic Math.sin genBenchmark walk and the static S&P 500 reference series both invent numbers the user did not enter. Off-wedge.',
   },
   '/what-if': {
     verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
@@ -223,8 +223,8 @@ export const CLASSIFICATION = {
     note: 'Retitled "Transaction Analytics". Reads real local Transaction/Wallet records; honest scope note added clarifying data comes from recorded transactions, not live blockchain nodes. No USD_RATES — all values in native units.',
   },
   '/erc20-discovery': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Token discovery across an address needs an ERC-20 Transfer-event scan via a third-party indexer this build does not run (and which would reveal the address). Not built. The earlier version fabricated the scan (Math.random balances over a random subset of well-known tokens, random spam scores) and presented it as real holdings; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Manual ERC-20 token tracker. No auto-discovery/indexer (which would reveal the address to a third party). Curated quick-add list (12 common tokens) + custom form (symbol, name, optional 0x contract address, decimals). All records stored in base44.entities.WalletToken (local IndexedDB). annotateTokens() from wallet-core/evm/spam runs over tracked tokens to surface suspected spam. USD spot price (USDC/USDT/MATIC only) from useLivePrices() gated on isLivePricesEnabled() (I2). Balance reads delegated to /live-balances (direct balanceOf RPC, not this page). No fabricated data.',
   },
 
   // ── Security group (audit batch A) ───────────────────────────────────────
@@ -269,12 +269,12 @@ export const CLASSIFICATION = {
     note: 'Runs isLocallyFlagged + screenRecipient from wallet-core/evm/poison.js over user-pasted address and local AddressBook contacts (base44.entities.AddressBook). Fully on-device: no network, no third-party reputation feed. Explicitly says "not flagged" is not a safety guarantee and that a live threat-intel feed is on the roadmap, not built.',
   },
   '/wallet-seed-qr': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Seed is user-typed (not read from the real vault) and the wallet selector queries base44.entities.Wallet (demo/local records, not the live HDWalletManager). An inline comment in the file explicitly flags this: "seed is sourced from the demo data layer (base44 mock), not the real vault. Rewire to WalletProvider before this is a real backup path." The page is not wired to the real vault and therefore cannot provide a genuine backup.',
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Rewired to WalletProvider: revealWalletMnemonic(walletId) reads the active seed directly from the in-memory vault container (never base44, never network). Wallet selector uses context wallets[] (public metadata only — no seeds). QR generated locally via qrcode lib (toDataURL) — raw BIP-39 mnemonic, universally importable, never transmitted. Explicit confirmation gate before any reveal. Eye-toggle hides word grid. confirmWalletBackup() marks wallet backed-up in localStorage. Print opens a local window with word grid + QR. Clear button zeros revealed state.',
   },
   '/hardware-wallet': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'static',
-    note: 'Honest placeholder: the page itself explicitly says "Planned — not yet available" and "nothing here connects to a real device". No Ledger/Trezor integration exists. Disabled so it does not appear as a live feature.',
+    verdict: 'live', dataSource: 'webhid+static',
+    note: 'Ledger: WebHID connect (dynamic import, Chrome-only guard via "hid" in navigator) → getAddress("44\'/60\'/0\'/0/0") on hw-app-eth → ETH address auto-fills watch import. Transport closed after read; private key never leaves device. Trezor Safe 5: compatibility table (Android full, iOS watch-only) with honest iOS limitation note, platform-detected setup steps (Android/iOS/Desktop), manual address import. Shared: address + label → base44.entities.Wallet.create({ is_watch_only: true }). In-app signing not wired — honest scope note shown for both devices. No financial data; no backend; no legal dependency.',
   },
   '/dapp-alerts': {
     verdict: 'live', dataSource: 'on-device',
@@ -349,8 +349,8 @@ export const CLASSIFICATION = {
     note: 'CRUD on base44.entities.NetworkConfig (local IndexedDB). The component itself makes no live RPC calls — it manages the user-controlled RPC endpoint list. The "Connected" badge is cosmetic (not a live ping). Custom RPC entry is user-controlled plumbing. Honestly displays chain IDs and RPC URLs.',
   },
   '/solana': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'A live Solana view needs real balance/token reads from a Solana RPC wired through wallet-core, plus Solana send dispatch — not built (the seed can derive a Solana account, but it is not yet wired into send). The earlier version hardcoded a fake Solana wallet (fixed address, balance, SPL list and prices, Math.random 24h changes) with a Send dialog that built no real transaction; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
+    verdict: 'live', dataSource: 'wallet-core-rpc',
+    note: 'Real Solana balance from wallet-core getBalanceSol (Solana JSON-RPC via @solana/web3.js). Derives ed25519 account via SLIP-0010 from local seed on unlock. Network selector covers devnet + testnet (mainnet gated: ALLOW_SOL_MAINNET=false). USD value gated on isLivePricesEnabled (I2). Send dispatches to /send page (already wired for SOL). SPL tokens honestly noted as not wired (requires on-chain indexer).',
   },
   '/price-charts': {
     verdict: 'live', dataSource: 'external',

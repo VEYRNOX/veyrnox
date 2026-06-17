@@ -10,7 +10,16 @@
 >
 > Standing rules (unchanged, still true): **testnet/devnet only; mainnet gated**
 > until an independent audit clears; every security/crypto feature is
-> **PROVISIONAL pending that audit**. Status last verified: 2026-06-14.
+> **PROVISIONAL pending that audit**. Status last verified: 2026-06-17.
+>
+> **2026-06-17 S1-S4 doc sync:** Documentation.jsx and featureCatalogue.js updated to
+> reflect all live routes. 17 items flipped from "roadmap" to "available"/"built":
+> Hardware Wallet, Additional Tokens, Additional Networks, Net-Worth Tracker, P&L
+> Tracking, On-Chain Analytics, Fee Analytics, Portfolio Dashboard, Price Charts,
+> Price Alerts, Watchlist, Notifications & Push, NFT Gallery, Multi-Chain NFT,
+> Message Signing, Payment Links, Recurring Payments, Voice Commands.
+> WalletRoadmap.md updated: S3 (hardware-wallet ✅, watch-wallets ✅); S4 (audit-log
+> 🟡 built-not-surfaced, risk-scoring ✅, RASP 🟡 policy-built/detectors-gated).
 
 ---
 
@@ -135,7 +144,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Constant-KDF unlock timing across the deniability stack — ✅ (`deniabilityUnlock.js`; SAST M-2 fix)
 - Action Password 2FA parity in decoy/hidden sessions — 🎯 TARGET / audit-gated (§24). The Action Password second factor (§5) enforces on the **primary set only**. Decoy (`duress.js`) and hidden (`stealth.js`) slots encrypt a **bare mnemonic** as plaintext (not the multi-vault container), so they have no field to carry a per-set Action Password record. **Design constraint (why this is not a mechanical wire):** the stealth chaff pool sizes every fake blob to a *bare-mnemonic* ciphertext length (`makeChaff` → `ptLen = encode(mnemonic).length + 16`) so real hidden slots and chaff share one length distribution. Switching decoy/hidden plaintext to a container to fit a record would inflate real slots past the chaff length → a **real-vs-chaff size distinguisher**, i.e. the exact deniability tell the chaff pool exists to prevent (variable-length-if-present is worse). **Threat-model question (open):** a decoy is meant to be *frictionlessly operable under coercion* — forcing a second factor inside it may be undesirable, not just hard. Safe paths (all audit-gated): (a) constant-size padded container for **all** slots incl. chaff; or (b) a deliberate, documented "decoy/hidden carry no second factor by design" decision. Do **not** build blind. **Note — the Passkey method (§5, Method 2) is different:** it is device-global (stored outside any container), so it *does* prompt in decoy/hidden sessions — but that is the consistent-everywhere model, not the per-set model, and carries its own threat-model trade-off (a coerced decoy will demand the passkey too). It sidesteps the chaff-length constraint at the cost of not being per-set. Full design note + both deniability models in `docs/vault-auth-architecture-brief.md` §6b.
 - v1 KEK-less PIN auth UX (6-digit PinPad, PIN onboarding + returning-PIN unlock, Face-ID-to-decoy, Option A deterministic decoy fallback) — 🟡 BUILT / UNAUDITED-PROVISIONAL, testnet (`security/PinPad.jsx`, `pinOnboarding.js`, `pinRecovery.js`, `authModel.js`, `decoyFallback.js`, `deniabilityUnlock.js`, `mnemonic.js`; cohort marker `veyrnox-auth-model` with fail-fast on unknown model; 4th unconditional KDF slot + four-slot constant-work execution assertion `deniability-timing.test.js`). **Headline audit item:** a 6-digit PIN over Argon2id is exhaustible offline on a seized device in hours–days — the hardware-KEK fast-follow is what closes it; see `docs/superpowers/specs/2026-06-08-v1-pin-auth-ux-design.md` §6. Landed incrementally via the #138/#154/#156/#161 line, not a single PR.
-- Hardware wallet (Ledger / Trezor) — 📋 UI shell only (`HardwareWalletPage.jsx`, simulated connect; no HID/WebUSB)
+- Hardware wallet (Ledger / Trezor) — ✅ LIVE (`HardwareWalletPage.jsx`): Ledger WebHID connect (dynamic import, Chrome-only guard), `getAddress("44'/60'/0'/0/0")` via hw-app-eth → ETH address auto-fills watch import; Trezor Safe 5 compatibility table (Android full / iPhone watch-only) with honest iOS limitation note, platform-detected setup steps (Android/iOS/Desktop), manual address import; shared `base44.entities.Wallet.create({ is_watch_only: true })` form; honest scope note (in-app signing not yet wired for either device)
 - Login activity (+ map) — ❌ original (backend/map) out of scope (needs a backend removed with base44; a location/access-history log conflicts with the deniability stack). **Best-of-breed successor BUILT: "last successful unlock" timestamp — 🟡 BUILT / UNAUDITED-PROVISIONAL.** Stored in-vault on the primary container (`lastUnlockAt` in `multiVault.js`, written at unlock via a best-effort re-encrypt), **primary-session only** (decoy/hidden never read or write it → no credential/hidden-set tell), destroyed by panic wipe for free, shown read-only on the Security Dashboard as a tamper signal (`formatUnlockTime`). No new blob, no new crypto. See `docs/superpowers/specs/2026-06-16-last-unlock-timestamp-design.md` and the S3 decision note below.
 - Social recovery (guardian / SSS) — ❌ removed [audit-blocked-and-not-advertised] (never built; removed from UI/catalogue)
 - Crypto Will / inheritance — 📋 not built, audit + legal gated (not a near-term build). See inheritance decision note.
@@ -310,6 +319,25 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   CryptoCompare in a single `Promise.all`, normalised to index 100 at day 0, gated on
   `isLivePricesEnabled()` (I2). Off-state: honest disabled prompt (I4). staleTime 10min. Live-data
   render UNAUDITED-PROVISIONAL.
+- Seed Phrase Backup (`/wallet-seed-qr`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live.
+  Manual textarea removed. Mnemonic now sourced from `revealWalletMnemonic(walletId)` via `WalletProvider`
+  context (reads the in-memory vault container — never base44, never network). Wallet selector uses
+  context `wallets[]` (public metadata only, no seeds). QR generated locally via `qrcode` `toDataURL`
+  (raw BIP-39, universally importable by any BIP-39 wallet; never transmitted off-device). Explicit
+  confirmation gate before reveal. Eye-toggle on word grid. `confirmWalletBackup()` marks the wallet as
+  backed up in localStorage. Print opens a local window with word grid + QR (no external call). Clear
+  button zeros revealed state.
+- Solana Dashboard (`/solana`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live.
+  Hardcoded fake wallet (fixed address, balance, SPL list, `Math.random()` 24h changes) removed in prior
+  session; placeholder promoted to real implementation. Derives ed25519 Solana account on unlock via
+  `deriveSol()` (SLIP-0010 m/44'/501'/0'/0', `@/lib/WalletProvider`). Balance fetched from real Solana
+  JSON-RPC via `getBalanceSol(networkKey, address)` (`wallet-core/sol/provider.js`, `@solana/web3.js`).
+  Network selector: devnet + testnet (mainnet gated: `ALLOW_SOL_MAINNET = false`). Devnet faucet link
+  shown when on devnet. USD value gated on `isLivePricesEnabled()` (I2); shows "—" when off (I4). Send
+  button navigates to `/send` (SOL send already wired there). Receive navigates to `/receive`. SPL tokens
+  honestly noted as not wired (requires on-chain indexer). Balance auto-refreshes every 60 s; manual
+  refresh button provided. Explorer link via `solExplorerUrl(networkKey, 'address', address)`.
+  UNAUDITED-PROVISIONAL (external RPC not reachable in preview sandbox).
 - Price Charts (`/price-charts`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live.
   `generateOHLCV()` (Math.random candles) removed. Real OHLCV data fetched from CryptoCompare
   `histominute` / `histohour` / `histoday` endpoints, selected by period (1H/4H → histominute, 1D/1W →
@@ -418,7 +446,9 @@ value / mutate balances without a user signature through wallet-core signing).
 
 ### Not-built feature shells (salvage candidates — estimated, unverified)
 Snapshots, price/smart alerts, tax report, invoice generator, news sentiment, price charts,
-analytics/benchmark/correlation, NFT/token enrichment & discovery, ERC-20 discovery,
+analytics/benchmark/correlation, NFT/token enrichment & discovery,
+(ERC-20 discovery graduated to live: manual token tracker, curated 12-token quick-add, WalletToken IndexedDB, spam detection, I2-gated USD.)
+
 payment links, fraud detection. State: shell/fake, unwired.
 (Net worth, fee analytics, watchlist, calculator, P&L, spending patterns, address book
 graduated to verified status above.)

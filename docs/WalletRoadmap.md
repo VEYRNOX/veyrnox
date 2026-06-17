@@ -60,16 +60,16 @@
 - Stealth / hidden wallets (deniable chaff-slot pool) — ✅ (SAST M-1 fix)
 - Panic wipe (emergency local key destruction) — ✅
 - Constant-KDF unlock timing across deniability stack — ✅ (SAST M-2 fix)
-- Hardware wallet (Ledger/Trezor) — 📋 (UI shell only)
+- Hardware wallet (Ledger/Trezor) — ✅ (WebHID Ledger address read + watch-only import; Trezor Safe 5 platform guide; cold-key tx signing post-audit)
 - Login activity (+ map) — 📋 (UI shell only)
 - Social recovery (guardian/SSS) — ❌ removed [audit-blocked-and-not-advertised] (never built; UI/catalogue removed)
 - Crypto Will / inheritance — 📋 (self-custody via secret-sharing + dead-man's-switch; audit + LAWYER)
-- Watch wallets — 📋
+- Watch wallets — ✅ (MOCK removed; USD_RATES → useLivePrices opt-in)
 
 ## PHASE S4 — Hardening & monitoring
-- RASP (jailbreak/root/tamper) — 📋
-- Audit log — 📋
-- Risk limits / risk scoring (rule-based) — 📋
+- RASP (jailbreak/root/tamper) — 🟡 (degradation policy + response-symmetry guard built + unit-tested in src/rasp/; detector legs audit-gated pending real-device verification)
+- Audit log — 🟡 (ring-buffer AES-GCM in quaternary vault blob built in wallet-core/auditLog.js; UI surfacing audit-gated per source: "UI surfacing … remain audit-gated and unbuilt")
+- Risk limits / risk scoring (rule-based) — ✅ (rule-based on-device risk score in src/risk/; transparent, explainable, UNAUDITED-PROVISIONAL)
 - Encrypted cloud backup (ciphertext only) — 📋
 
 ## PHASE UX — Wallet completeness (cheap, safe, parallelizable)

@@ -65,15 +65,16 @@ describe('registryEntriesFromClassification', () => {
     // + 7 Invest/Finance pages classified in batch 3
     // + 4 Assets-group pages classified in batch 4 (/nft-multichain, /spending, and /watchlist are live)
     // + 2 Security-group pages classified in batch A (/wallet-seed-qr, /hardware-wallet)
-    //   (10 Security-A pages are live; only 2 are disabled)
+    //   (12 Security-A pages are live: /wallet-seed-qr reclassified disabled→live: revealWalletMnemonic(), qrcode lib)
+    //   (/hardware-wallet reclassified disabled→live: WebHID Ledger, Trezor Safe 5 guide, watch-only import)
     // + 5 Security-group pages classified in batch B (/anomaly-detection, /messenger-alerts,
     //     /fraud, /smart-alerts, /alerts)
     //   (5 Security-B pages are live: /biometric-auth, /voice-commands, /token-approvals,
     //     /spam-filter, /trust-score — /audit removed in the deniability hide)
     // + 5 Connect/Core pages classified in batch 5 (/watch-wallets, /solana, /price-charts,
     //     /web3, /products)
-    //   (10 Connect/Core pages are live: /address-book, /live-balances, /network-manager,
-    //     /gas-fees, /connect, /push, /settings, /docs, /features, /plans)
+    //   (11 Connect/Core pages are live: /address-book, /live-balances, /network-manager,
+    //     /gas-fees, /connect, /push, /settings, /docs, /features, /plans, /solana)
     expect(Object.keys(out).sort()).toEqual(
       [
         '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
@@ -99,8 +100,9 @@ describe('registryEntriesFromClassification', () => {
         // '/snapshots' reclassified disabled→live (USD_RATES replaced with opt-in useLivePrices at capture time), so it drops out here.
         // '/nft' reclassified disabled→live (ETH_PRICE replaced with opt-in useLivePrices), so it drops out here.
         // '/onchain' reclassified disabled→live (retitled Transaction Analytics; honest scope note added), so it drops out here.
-        '/erc20-discovery',
-        '/wallet-seed-qr', '/hardware-wallet',
+        // '/erc20-discovery' reclassified disabled→live (manual token tracker; curated 12-token quick-add; WalletToken IndexedDB; spam via annotateTokens; I2-gated USD), so it drops out here.
+        // '/wallet-seed-qr' reclassified disabled→live (revealWalletMnemonic() from vault; QR via qrcode lib; confirmation gate), so it drops out here.
+        // '/hardware-wallet' reclassified disabled→live (WebHID Ledger connect, Trezor Safe 5 guide, watch-only address import), so it drops out here.
         // '/alerts' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
         // '/smart-alerts' reclassified disabled→live (CRUD works on-device; evaluation not wired but honestly noted in UI), so it drops out here.
         // '/anomaly-detection' reclassified disabled→live (fake AI/delay removed; USD_RATES → useLivePrices), so it drops out here.
@@ -108,7 +110,8 @@ describe('registryEntriesFromClassification', () => {
         '/messenger-alerts',
         // '/watch-wallets' reclassified disabled→live (MOCK removed; USD_RATES → useLivePrices opt-in), so it drops out here.
         // '/price-charts' reclassified disabled→live (generateOHLCV removed; real CryptoCompare OHLCV, I2 gated), so it drops out here.
-        '/solana', '/web3', '/products',
+        // '/solana' reclassified disabled→live (real getBalanceSol via wallet-core RPC; SLIP-0010 derivation; I2-gated USD; SPL honestly noted), so it drops out here.
+        '/web3', '/products',
       ].sort(),
     );
   });

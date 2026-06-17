@@ -97,7 +97,7 @@ export default defineConfig(({ command }) => {
     // blank page on first load). hash-wasm inlines its WASM as base64, so no WASM
     // plugin is needed.
     optimizeDeps: {
-      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer'],
+      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer', '@ledgerhq/hw-transport-webhid', '@ledgerhq/hw-app-eth'],
     },
   };
 });
