@@ -27,6 +27,30 @@ components' own React `onClick` handlers; the sends themselves are ordinary in-a
 UI-path sends — same `signAndBroadcast` the user's clicks would call.) The idle
 auto-lock was set to "Never" (the app's own setting) for the run.
 
+## receive_only assets — USDC / USDT / MATIC (harness-assisted, same day)
+
+Real on-chain self-sends from the SAME wallet, exercising the same wallet-core
+code (`sendToken` for ERC-20 incl. the gas-estimation fix; `signAndBroadcast` for
+native), confirmed via RPC receipt (status 0x1):
+
+| Asset | Network | chainId | txid | Verified |
+|---|---|---|---|---|
+| USDC | Sepolia | 11155111 | [`0x8a411f2b…fea823f6`](https://sepolia.etherscan.io/tx/0x8a411f2ba2a0a1e6df29c7286ece31e2c4cdb661af6ff790e5211c43fea823f6) | SUCCESS · to USDC `0x1c7d4b…` · `transfer` (0xa9059cbb) · 1 USDC (6-dec) · recipient self |
+| USDT | Sepolia | 11155111 | [`0x52ea35c6…c6e4d382`](https://sepolia.etherscan.io/tx/0x52ea35c6dc7cab00d6b0445a52d177a035e31b346819e42947402138c6e4d382) | SUCCESS · to USDT `0xaa8e23…` · `transfer` · 1 USDT · recipient self |
+| MATIC | Polygon Amoy | 80002 | [`0x46949715…b9e747dc`](https://amoy.polygonscan.com/tx/0x469497154ffea1b9df0009a41a77344c54dcf61078b4423bdc330cf7b9e747dc) | SUCCESS · native self-send 0.001 |
+
+- These are the **first on-chain confirmation of the ERC-20 gas-estimation fix**
+  (`token-send.js`, deep-review finding #2 — was unit-test only).
+- **Method caveat:** driven via the **Node wallet-core harness** (the funded vault
+  wasn't loadable into the headless preview), NOT the in-app UI. Per project
+  discipline a Node send is "necessary, not sufficient" — the bar for flipping an
+  asset `receive_only → live` is a **UI-path** send. So these PROVE the send code
+  works on-chain, but the owner should decide on any `receive_only → live` flip
+  (and may want a UI-path witness first). NOT flipped here.
+- The disposable testnet seed used to sign was provided by the owner, used only to
+  derive the key transiently, and deleted from disk after the run.
+- AVAX (Fuji) and BNB (BSC testnet) were skipped — unfunded.
+
 ## Scope / honesty
 - Re-verifies the THREE already-`live` EVM assets after the signing change. It does
   NOT flip any new asset to `live` and does NOT touch `ALLOW_MAINNET` (still false).
