@@ -280,17 +280,55 @@ function checkSubprocess({ skipTests, skipNpmAudit }) {
   }
 
   // D3: dependency vulnerability posture.
+  // Advisories that have been TRIAGED (reachability analysis done, documented,
+  // accepted) are keyed by GHSA id here. An accepted advisory is reported as an
+  // honest WARN ("triaged-accepted") — never silently dropped — so a documented
+  // not-reachable finding can't permanently false-block the gate, while any NEW
+  // untriaged high/critical still hard-FAILs. Only add entries WITH a doc ref.
+  const ACCEPTED_ADVISORIES = [
+    { id: 'GHSA-58qx-3vcg-4xpx', doc: 'docs/audit-triage/ethers-ws-advisory.md' }, // ws via ethers WebSocketProvider — not reachable (HTTPS-only, absent from bundle)
+    { id: 'GHSA-96hv-2xvq-fx4p', doc: 'docs/audit-triage/ethers-ws-advisory.md' }, // ws DoS — same path, not reachable
+  ];
+  const acceptedIds = ACCEPTED_ADVISORIES.map((a) => a.id);
   if (skipNpmAudit) record('D3', 'info', 'npm audit SKIPPED (--skip-npm-audit)');
   else {
     const a = run('npm audit --omit=dev --json');
     try {
       const j = JSON.parse(a.stdout);
+      const vulns = j.vulnerabilities || {};
+      const ghsaIds = (p) => (p.via || [])
+        .filter((v) => typeof v === 'object' && v.url)
+        .map((v) => (v.url.match(/GHSA-[\w-]+/) || [])[0])
+        .filter(Boolean);
+      // `npm audit --omit=dev` over-reports: it surfaces dev-only toolchain
+      // advisories (e.g. picomatch/lodash via Vite/eslint) as if production. The
+      // shipped client can only be affected by packages actually IN the prod
+      // tree, so cross-check each high/critical package with `npm ls <pkg>
+      // --omit=dev` — "(empty)" means not production-reachable (dev-only).
+      const accepted = [], devOnly = [], blocking = [];
+      for (const [name, p] of Object.entries(vulns)) {
+        if (!/high|critical/i.test(p.severity || '')) continue;
+        if (ghsaIds(p).some((id) => acceptedIds.includes(id))) { accepted.push(name); continue; }
+        const ls = run(`npm ls ${name} --omit=dev`);
+        const inProd = !/\(empty\)/.test(ls.stdout || ls.out || '');
+        (inProd ? blocking : devOnly).push(name);
+      }
       const v = (j.metadata && j.metadata.vulnerabilities) || {};
-      const high = (v.high || 0) + (v.critical || 0);
       const sev = `critical=${v.critical || 0} high=${v.high || 0} moderate=${v.moderate || 0} low=${v.low || 0}`;
-      if (high > 0) record('D3', 'fail', 'High/critical dependency vulnerabilities', sev);
-      else if ((v.moderate || 0) > 0) record('D3', 'warn', 'Moderate dependency vulnerabilities', sev);
-      else record('D3', 'pass', 'No high/critical production dependency vulnerabilities', sev);
+      const tail = [
+        accepted.length ? `accepted(triaged): ${accepted.join(', ')}` : '',
+        devOnly.length ? `dev-only (not in prod tree): ${devOnly.join(', ')}` : '',
+        sev,
+      ].filter(Boolean).join(' | ');
+      if (blocking.length > 0) {
+        record('D3', 'fail', `${blocking.length} untriaged high/critical in PROD tree: ${blocking.join(', ')}`, tail);
+      } else if (accepted.length || devOnly.length) {
+        record('D3', 'warn', 'high/critical advisories present, all triaged-accepted or dev-only (none production-reachable)', tail);
+      } else if ((v.moderate || 0) > 0) {
+        record('D3', 'warn', 'Moderate dependency vulnerabilities (no high/critical)', sev);
+      } else {
+        record('D3', 'pass', 'No high/critical production dependency vulnerabilities', sev);
+      }
     } catch {
       record('D3', 'warn', 'npm audit did not return parseable JSON', a.out.slice(0, 400));
     }
