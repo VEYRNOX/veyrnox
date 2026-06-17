@@ -31,5 +31,9 @@ jobs:
       # security-critical wallet-core slice); CI additionally holds the ENTIRE
       # tree at zero checkJs errors so UI-layer types can't silently drift.
       - run: npm run typecheck
+      # F5: run the CSPRNG guard as a dedicated required step, not only
+      # transitively via the test `pretest` hook (so it can't silently drop if
+      # the test script changes).
+      - run: npm run check:rng
       - run: npm run build
       - run: npm test

@@ -11,7 +11,7 @@
 //   npx vitest run
 
 import { describe, it, expect } from 'vitest';
-import { validateMnemonic, mnemonicToSeed } from '../mnemonic.js';
+import { generateMnemonic, validateMnemonic, mnemonicToSeed } from '../mnemonic.js';
 import { deriveEvmAccount } from '../derivation.js';
 import { encryptVault, decryptVault } from '../vault.js';
 import { bytesToHex } from '@noble/hashes/utils';
@@ -27,6 +27,24 @@ describe('BIP-39 mnemonic', () => {
   it('rejects a wrong-checksum mnemonic', () => {
     const bad = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon';
     expect(validateMnemonic(bad)).toBe(false);
+  });
+
+  // F2: CSPRNG-generated mnemonics (not just hardcoded vectors) must be valid
+  // BIP-39 at both supported strengths.
+  it('generates a valid 12-word (128-bit) mnemonic', () => {
+    const m = generateMnemonic(128);
+    expect(m.trim().split(/\s+/)).toHaveLength(12);
+    expect(validateMnemonic(m)).toBe(true);
+  });
+
+  it('generates a valid 24-word (256-bit) mnemonic', () => {
+    const m = generateMnemonic(256);
+    expect(m.trim().split(/\s+/)).toHaveLength(24);
+    expect(validateMnemonic(m)).toBe(true);
+  });
+
+  it('rejects an invalid entropy strength', () => {
+    expect(() => generateMnemonic(160)).toThrow();
   });
 
   it('produces the published seed (empty passphrase)', () => {
@@ -51,6 +69,18 @@ describe('EVM derivation (BIP-44 m/44\'/60\'/0\'/0/0)', () => {
     const a0 = deriveEvmAccount(TEST_MNEMONIC, 0).address;
     const a1 = deriveEvmAccount(TEST_MNEMONIC, 1).address;
     expect(a0).not.toBe(a1);
+  });
+
+  // F3: broaden index coverage — all distinct, correct path, valid EIP-55 shape.
+  // (Per-index pinning to published vectors still needs an external reference;
+  // this asserts distinctness + format across a range without fabricating values.)
+  it('derives distinct, well-formed addresses across indices 0..4', () => {
+    const accts = [0, 1, 2, 3, 4].map((i) => deriveEvmAccount(TEST_MNEMONIC, i));
+    accts.forEach((a, i) => {
+      expect(a.path).toBe(`m/44'/60'/0'/0/${i}`);
+      expect(a.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    });
+    expect(new Set(accts.map((a) => a.address)).size).toBe(5);
   });
 });
 
