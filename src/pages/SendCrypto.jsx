@@ -116,15 +116,21 @@ export default function SendCrypto() {
       if (name.endsWith(".eth")) {
         const res = await fetch(`https://api.ensideas.com/ens/resolve/${encodeURIComponent(name)}`);
         const data = await res.json();
-        if (data.address) { setToAddress(data.address); setEnsResolved({ name, address: data.address }); }
+        if (data.address) setEnsResolved({ name, address: data.address });
         else toast.error("ENS name not found");
       } else if (name.endsWith(".sol")) {
         const res = await fetch(`https://sns-sdk-proxy.bonfida.workers.dev/resolve/${name.replace(".sol", "")}`);
         const data = await res.json();
-        if (data.result) { setToAddress(data.result); setEnsResolved({ name, address: data.result }); }
+        if (data.result) setEnsResolved({ name, address: data.result });
         else toast.error("SNS name not found");
       }
     } catch { toast.error("Name resolution failed"); } finally { setEnsResolving(false); }
+    // M-3 (internal audit): do NOT auto-populate the signing target with a
+    // third-party-resolved address. The resolver is untrusted (a compromised/MITM'd
+    // response could substitute an attacker address, and the ENS-mismatch risk input
+    // can't catch it — it only compares the resolver's own output). The address stays
+    // pending in `ensResolved` until the user EXPLICITLY confirms it below; only then
+    // is it written to `toAddress` and signable.
   };
 
 
@@ -797,9 +803,28 @@ export default function SendCrypto() {
             </Button>
           </div>
           {ensResolved && (
-            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-success">
-              <CheckCircle2 className="h-3 w-3 shrink-0" /> {ensResolved.name} → <span className="mono-value truncate">{ensResolved.address}</span>
-            </div>
+            toAddress === ensResolved.address ? (
+              // Confirmed: the user accepted the resolved address as the recipient.
+              <div className="flex items-center gap-1.5 mt-1.5 text-xs text-success">
+                <CheckCircle2 className="h-3 w-3 shrink-0" /> Using {ensResolved.name} → <span className="mono-value truncate">{ensResolved.address}</span>
+              </div>
+            ) : (
+              // M-3: resolved via an untrusted third-party service — require an
+              // explicit confirmation before it becomes the signing target.
+              <div className="mt-1.5 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-600 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>
+                    <b>{ensResolved.name}</b> resolved via a third-party service to:
+                    <br /><span className="mono-value break-all text-foreground">{ensResolved.address}</span>
+                    <br />Confirm this address is correct before sending — name resolution is not part of Veyrnox's on-device checks.
+                  </span>
+                </div>
+                <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setToAddress(ensResolved.address)}>
+                  Use this address
+                </Button>
+              </div>
+            )
           )}
         </div>
 
