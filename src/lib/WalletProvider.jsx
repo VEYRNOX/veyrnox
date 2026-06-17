@@ -675,6 +675,14 @@ export function WalletProvider({ children }) {
     // — universal among users — rather than to hidden-wallet usage. Best-effort:
     // a storage hiccup must never break wallet creation.
     void ensureStealthPool().catch(() => {});
+    // M-5 (storage-footprint deniability, internal audit): always provision chaff
+    // into the duress + panic slots so the password cohort's blob count is
+    // configuration-independent — without this, the PRESENCE of secondary/tertiary
+    // blobs reveals whether duress/panic was set (a forensic tell). Idempotent +
+    // never-overwrite, and best-effort like ensureStealthPool above (a storage
+    // hiccup must never break wallet creation). The PIN cohort already provisions
+    // chaff via provisionPinWallet; this brings the password cohort to parity.
+    void provisionDeniabilityChaff().catch(() => {});
     refreshWalletsState();
     refreshPortfoliosState();
     touch();
@@ -706,6 +714,7 @@ export function WalletProvider({ children }) {
     setBiometricUnlockEnabled(false);
     void clearUnlockSecret().catch(() => {});
     void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
+    void provisionDeniabilityChaff().catch(() => {}); // M-5: duress/panic chaff parity (see createWallet)
     refreshWalletsState();
     refreshPortfoliosState();
     touch();
@@ -1126,7 +1135,17 @@ export function WalletProvider({ children }) {
         mnemonic = fallbackDecoyMnemonic;
         decoy = true;
       } else {
-        throw primaryErr; // password cohort total miss: unchanged behaviour
+        // M-4 (deniability timing, internal audit): a successful unlock — primary
+        // OR a duress/hidden hit — runs ONE verifier-capture Argon2id below
+        // (captureVerifierSafe). The password-cohort total miss throws here and
+        // would SKIP it, costing one KDF less than a hit and letting an observer at
+        // the prompt distinguish "a real secret was entered" from garbage. Spend an
+        // equivalent throwaway verifier KDF first so a miss and a hit cost the same
+        // number of KDFs. The result is discarded (we throw regardless). The PIN
+        // cohort never reaches this branch (its deterministic decoy always resolves),
+        // so this is password-cohort-only and changes no PIN-cohort behaviour.
+        await captureVerifierSafe(password);
+        throw primaryErr; // password cohort total miss: unchanged behaviour, equalized cost
       }
     }
     // `mnemonic` here is the DECRYPTED payload: on the primary path it is a
