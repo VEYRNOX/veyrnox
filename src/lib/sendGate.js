@@ -21,6 +21,8 @@
 //   8b  risk verdict composite RASP-env x tx-risk: BLOCK is a hard stop (no
 //                    override — a hostile runtime can hook the confirm itself),
 //                    CONFIRM needs the user's "sign anyway" acknowledgement
+//   8c  btc risk     a high-severity BTC decode flag (e.g. entire_balance) needs
+//                    the user's acknowledgement (BTC has no EVM-shaped verdict)
 //   9   approval     an unlimited ERC-20 approval must be acknowledged
 //
 // Pure and SET-BLIND (I3): it takes plain values, nothing that can reach wallet-set
@@ -56,6 +58,7 @@ const block = (code, message) => ({ allowed: false, code, message });
  * @param {boolean} [i.riskScoreFailed] the pre-sign risk score threw (fail closed)
  * @param {{proceedAllowed:boolean, signerReachable:boolean}|null} [i.presign]
  *                                      result of presignGate()
+ * @param {boolean} [i.btcRiskBlocked]  a high-severity BTC decode flag is unacknowledged
  * @param {boolean} [i.blockedByApproval] an unacknowledged unlimited approval
  * @returns {{ allowed: boolean, code: string, message: (string|null) }}
  */
@@ -70,6 +73,7 @@ export function evaluateSendGate({
   limitAck = false,
   riskScoreFailed = false,
   presign = null,
+  btcRiskBlocked = false,
   blockedByApproval = false,
 } = {}) {
   // 2/3 — capability. Only `live` assets send; the dev ungate relaxes the gate
@@ -110,6 +114,16 @@ export function evaluateSendGate({
     return presign.signerReachable
       ? block(SEND_GATE.RISK_CONFIRM, 'Confirm the risk warning before signing.')
       : block(SEND_GATE.RISK_BLOCK, 'Signing is turned off: this device did not pass a runtime safety check.');
+  }
+
+  // 8c — BTC pre-sign risk (internal audit M-2). BTC isn't EVM-shaped, so it has no
+  // `presign` verdict; instead its honest decode (btc/simulate.js describeBtcPlan)
+  // raises high-severity flags (e.g. entire_balance). When one is present and the
+  // user hasn't acknowledged it, require the same explicit confirmation as an EVM
+  // RISK_CONFIRM before signing. Warns-with-ack, never a hard BLOCK (these are
+  // amount-sanity flags, not a hostile-runtime signal).
+  if (btcRiskBlocked) {
+    return block(SEND_GATE.RISK_CONFIRM, 'Confirm the risk warning before signing.');
   }
 
   // 9 — an unlimited token approval must be explicitly acknowledged.
