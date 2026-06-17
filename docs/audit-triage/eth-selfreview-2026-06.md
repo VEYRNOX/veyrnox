@@ -24,6 +24,19 @@ hashes, no key egress, no plaintext persistence, mainnet gating intact.
 | F4 | low | Deps use caret ranges, not exact pins; reproducibility rests on lockfile + `npm ci`. | `package.json` (`ethers ^6.16.0`, `@noble/curves ^1.9.7`, …); `.github/workflows/ci.yml:28` | Decide: accept lockfile-enforced reproducibility, or pin crypto libs exactly. |
 | F5 | low | RNG guard runs in CI only transitively via `pretest`+`npm test`; no standalone `check:rng` CI step. If `npm test` is ever changed/skipped, the guard silently drops. | `package.json:15`, `.github/workflows/ci.yml:31` | Add a dedicated `npm run check:rng` CI step. |
 
+### Remediation status (2026-06-17)
+- **F1 — FIXED** (`838ceb0`): `truncate`→`break-all` at all four sign-step
+  address displays; verified in preview (desktop 1 line, mobile wraps full
+  42-char address, no ellipsis).
+- **F2 — FIXED** (`b968186`): tests assert CSPRNG-generated 12/24-word mnemonics
+  are valid BIP-39 + reject invalid strength.
+- **F3 — PARTIALLY FIXED** (`b968186`): index coverage broadened to 0..4
+  (distinct + EIP-55 shape). Per-index pinning to an external reference still
+  open (not fabricated).
+- **F4 — OPEN (owner decision):** caret ranges vs exact pins — lockfile + `npm
+  ci` enforce reproducibility today; pinning is a judgement call left to the owner.
+- **F5 — FIXED** (`b968186`): dedicated `npm run check:rng` CI step added.
+
 ## Section results (PASS items, with evidence)
 
 ### Entropy & key generation
