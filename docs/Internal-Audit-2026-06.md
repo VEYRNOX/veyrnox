@@ -32,6 +32,38 @@ involved) — these are review findings.
 
 ---
 
+## Remediation status — round 1 (2026-06-17)
+
+> First remediation pass on branch `claude/internal-audit-remediation`. Each fixed
+> item landed as its own commit with a regression test where unit-testable. **The
+> gate verdict is UNCHANGED: still closed** — the round-1 fixes do not clear it
+> because H-2 (hardware KEK), the native §3 items, and several MEDIUMs remain open
+> and require native/real-device work, UI/design, or an explicit accepted-guarantee
+> decision. A re-review pass is still owed on the fixed items.
+
+| Finding | Sev | Status | Note |
+|---|---|---|---|
+| C-1 panic-wipe residue | CRITICAL | ✅ FIXED | `panicWipeLocal` clears decoy-salt/auth-model/audit-pref; `inspectKeyMaterial` honest; test added |
+| H-1 BTC uncapped fee | HIGH | 🟡 PARTIAL | fee-rate ceiling clamped (`clampFeeRate`, tested); **open:** BTC fee preview + fee-vs-amount approval in confirm UI |
+| H-2 6-digit PIN sole at-rest factor (web) | HIGH | ⛔ OPEN | needs the hardware-bound KEK (native + audit); honestly documented, unbuilt |
+| H-3 ENS/SNS egress from deniable session | HIGH | ✅ FIXED | resolution fails closed when `isDecoy \|\| isHidden` |
+| M-1 SOL double-send on retry | MEDIUM | ✅ FIXED | `getSignatureLanding` recheck before rebuild; uncertain → no resend |
+| M-2 BTC preview/risk gate not wired | MEDIUM | ⛔ OPEN | UI follow-up (pairs with H-1 UI half) |
+| M-3 untrusted ENS resolver → signing target | MEDIUM | ⛔ OPEN | UI follow-up: require explicit confirm of resolved 0x |
+| M-4 verifier-KDF timing distinguisher | MEDIUM | ⛔ OPEN | add dummy KDF on password-cohort miss + timing test |
+| M-5 password-cohort storage footprint | MEDIUM | ⛔ OPEN | always-provision chaff for password cohort, or document |
+| M-6 stealth slot-collision overwrite | MEDIUM | ⛔ OPEN | needs per-hidden-wallet backup warning in UI |
+| EVM-#1 gate-bypassing signing.js | INFO (pre-mainnet) | ✅ FIXED | dead module + barrel export deleted |
+| OFAC snapshot age not surfaced | LOW | ⛔ OPEN | show snapshot age in screening UI |
+| §3 native secure storage | — | ⛔ OPEN | not assessable here; real-device verification |
+| Supply chain (21 vulns, 8 high) | — | ⛔ OPEN | transitive `ws`/`jayson`; triage/pin/upgrade |
+
+**Round-1 total:** 1 CRITICAL fixed, 2 of 3 HIGH fixed (1 partial), 1 of 6 MEDIUM fixed,
+the foot-gun removed. Remaining work is native/real-device (H-2, §3), UI/design
+(H-1 UI, M-2, M-3, M-6, OFAC age), deniability hardening (M-4, M-5), and supply chain.
+
+---
+
 ## Blockers (must fix + re-review before `ALLOW_MAINNET`)
 
 ### CRITICAL
