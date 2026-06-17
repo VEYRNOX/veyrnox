@@ -8,7 +8,7 @@ import { getAsset } from '../wallet-core/assets';
 export function useAnalytics() {
   const { isUnlocked, wallets, walletAddresses } = useWallet();
 
-  const { data: portfolio, isLoading: portfolioLoading } = usePortfolio(
+  const { data: portfolio, isLoading: portfolioLoading, error: portfolioError } = usePortfolio(
     isUnlocked ? wallets : [],
     walletAddresses
   );
@@ -28,6 +28,7 @@ export function useAnalytics() {
     queryKey: ['analytics-history', walletKey, addrKey],
     queryFn: async () => {
       const allTxs = [];
+      const failedAssets = [];
       for (const wallet of wallets) {
         const addrs = walletAddresses[wallet.id] || {};
         for (const asset of wallet.enabledAssets || []) {
@@ -49,11 +50,11 @@ export function useAnalytics() {
               allTxs.push(...result.transactions);
             }
           } catch {
-            // skip failed asset history fetches
+            failedAssets.push(asset);
           }
         }
       }
-      return allTxs;
+      return { transactions: allTxs, failedAssets };
     },
     enabled: isUnlocked && wallets.length > 0,
     staleTime: 60_000,
@@ -61,10 +62,11 @@ export function useAnalytics() {
 
   return {
     portfolio: isUnlocked ? (portfolio ?? null) : null,
-    history: historyQuery.data ?? [],
+    history: historyQuery.data?.transactions ?? [],
+    historyPartial: (historyQuery.data?.failedAssets?.length ?? 0) > 0,
     prices: pricesEnabled ? livePrices : null,
     pricesEnabled,
     loading: portfolioLoading || (historyQuery.isLoading && isUnlocked),
-    error: historyQuery.error ?? null,
+    error: historyQuery.error ?? portfolioError ?? null,
   };
 }
