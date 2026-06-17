@@ -44,10 +44,17 @@ const byKey = (key) =>
  * added to TOP_CRYPTOS) so the spend-cap USD conversion (txLimits.toUsd) values them
  * correctly now that they are `live`, without changing the top-10 display list. When
  * MATIC/AVAX/BNB are later verified+flipped, add their native rates the same way
- * (BNB already priced; POL/AVAX would need entries).
+ * (BNB already priced in TOP_CRYPTOS; POL/AVAX need explicit entries).
+ *
+ * MATIC: the in-app 'MATIC' asset settles on Polygon, whose native gas token is POL
+ * (the MATIC→POL rebrand). One unit IS one POL, so it prices at the POL reference rate
+ * (~$0.40), NOT $1. Aliased here (POL is not in the top-10 display list) now that MATIC
+ * is `live` — without a positive rate, txLimits.toUsd would value it 1:1 and under-count
+ * it against spend caps (see spendableAssetPricing.test.js). AVAX would need the same
+ * treatment when/if it is verified and flipped.
  */
 const _usd = byKey("usd");
-export const USD_RATES = Object.freeze({ ..._usd, ARB: _usd.ETH, OP: _usd.ETH });
+export const USD_RATES = Object.freeze({ ..._usd, ARB: _usd.ETH, OP: _usd.ETH, MATIC: 0.4 });
 /**
  * Canonical human-facing disclosure for ANY figure derived from USD_RATES. These
  * are STATIC reference prices, not a live feed, so anything converted through them
