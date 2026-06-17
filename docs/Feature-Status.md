@@ -290,6 +290,14 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   `isLivePricesEnabled()` (I2). When off: USD shows "—" (I4). Off-state banner added. Note: balance field
   reflects user-entered values — no live on-chain balance fetch (presented honestly). CRUD persists via
   `base44.entities.Wallet` (is_watch_only: true) on-device.
+- Price Charts (`/price-charts`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled → live.
+  `generateOHLCV()` (Math.random candles) removed. Real OHLCV data fetched from CryptoCompare
+  `histominute` / `histohour` / `histoday` endpoints, selected by period (1H/4H → histominute, 1D/1W →
+  histohour, 1M → histoday). Fully gated on `isLivePricesEnabled()` (I2) — `enabled: liveOn` in
+  `useQuery`, no network call when off. When off: honest "Enable live prices" prompt replaces the chart
+  (I4). Spot price header uses `useLivePrices()`. Period-change percentage computed from first/last candle
+  close. CandlestickBar and CustomTooltip chart infrastructure retained unchanged. staleTime 60s.
+  Live-data render UNAUDITED-PROVISIONAL (external network not reachable in preview sandbox).
 - Transaction Receipts (`/receipt`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `unverified`-disabled →
   live. `USD_RATES` removed; the "USD Value" line on printed receipts now uses `useLivePrices()` gated by
   `isLivePricesEnabled()` (I2). When off or symbol absent: USD Value shows "—" — never a stale dollar

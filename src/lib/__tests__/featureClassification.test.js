@@ -102,7 +102,8 @@ describe('registryEntriesFromClassification', () => {
         // '/fraud' reclassified disabled→live (AI theatre removed; honest security-awareness page directing to real on-device tools), so it drops out here.
         '/messenger-alerts',
         // '/watch-wallets' reclassified disabled→live (MOCK removed; USD_RATES → useLivePrices opt-in), so it drops out here.
-        '/solana', '/price-charts', '/web3', '/products',
+        // '/price-charts' reclassified disabled→live (generateOHLCV removed; real CryptoCompare OHLCV, I2 gated), so it drops out here.
+        '/solana', '/web3', '/products',
       ].sort(),
     );
   });

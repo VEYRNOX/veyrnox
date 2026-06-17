@@ -1,34 +1,37 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ResponsiveContainer, ComposedChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from "recharts";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, BarChart2, RefreshCw } from "lucide-react";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
+import { isLivePricesEnabled, useLivePrices } from "@/lib/priceFeed";
 
-// Top 10 by market cap, derived from the canonical source so every feature
-// stays in sync. `price` mirrors the canonical reference `usd`.
 const ASSETS = TOP_CRYPTOS.map(c => ({
-  symbol: c.symbol, name: c.name, price: c.usd, change24h: c.change24h, color: c.color, mcap: c.mcap,
+  symbol: c.symbol, name: c.name, change24h: c.change24h, color: c.color, mcap: c.mcap,
 }));
 
 const PERIODS = ["1H", "4H", "1D", "1W", "1M"];
 
-function generateOHLCV(basePrice, count, volatility = 0.02) {
-  const data = [];
-  let price = basePrice;
-  const now = Date.now();
-  for (let i = count; i >= 0; i--) {
-    const change = (Math.random() - 0.48) * volatility;
-    const open = price;
-    price = price * (1 + change);
-    const high = Math.max(open, price) * (1 + Math.random() * volatility * 0.5);
-    const low = Math.min(open, price) * (1 - Math.random() * volatility * 0.5);
-    const volume = Math.random() * basePrice * 10000;
-    data.push({ open, close: price, high, low, volume, price, time: new Date(now - i * 3600000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) });
-  }
-  return data;
+const PERIOD_CFG = {
+  "1H": { endpoint: "histominute", limit: 60,  fmt: t => new Date(t * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) },
+  "4H": { endpoint: "histominute", limit: 240, fmt: t => new Date(t * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) },
+  "1D": { endpoint: "histohour",   limit: 24,  fmt: t => new Date(t * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) },
+  "1W": { endpoint: "histohour",   limit: 168, fmt: t => new Date(t * 1000).toLocaleDateString("en-GB", { month: "short", day: "numeric" }) },
+  "1M": { endpoint: "histoday",    limit: 30,  fmt: t => new Date(t * 1000).toLocaleDateString("en-GB", { month: "short", day: "numeric" }) },
+};
+
+async function fetchOHLCV(symbol, period) {
+  const { endpoint, limit, fmt } = PERIOD_CFG[period];
+  const res = await fetch(`https://min-api.cryptocompare.com/data/v2/${endpoint}?fsym=${symbol}&tsym=USD&limit=${limit}`);
+  if (!res.ok) throw new Error("Fetch failed");
+  const json = await res.json();
+  if (json.Response !== "Success") throw new Error(json.Message || "API error");
+  return json.Data.Data
+    .filter(d => d.close > 0)
+    .map(d => ({ time: fmt(d.time), open: d.open, high: d.high, low: d.low, close: d.close, price: d.close, volume: d.volumefrom }));
 }
 
 const CandlestickBar = (props) => {
-  const { x, y, width, height, open, close, high, low, chartHeight, yMin, yRange } = props;
+  const { x, width, open, close, high, low, chartHeight, yMin, yRange } = props;
   if (!open || !close) return null;
   const isUp = close >= open;
   const color = isUp ? "#22C55E" : "#EF4444";
@@ -66,87 +69,135 @@ export default function PriceCharts() {
   const [selected, setSelected] = useState("BTC");
   const [period, setPeriod] = useState("1D");
 
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
+
+  const { data: ohlcv = [], isLoading, isError } = useQuery({
+    queryKey: ["ohlcv", selected, period],
+    queryFn: () => fetchOHLCV(selected, period),
+    enabled: liveOn,
+    staleTime: 60_000,
+  });
+
   const asset = ASSETS.find(a => a.symbol === selected);
-  const countMap = { "1H": 60, "4H": 48, "1D": 72, "1W": 84, "1M": 90 };
-  const volMap = { "1H": 0.008, "4H": 0.015, "1D": 0.025, "1W": 0.04, "1M": 0.06 };
+  const spotPrice = prices?.[selected] ?? null;
 
-  const data = useMemo(() => generateOHLCV(asset.price, countMap[period], volMap[period]), [selected, period]);
-
-  const prices = data.map(d => d.price);
-  const yMin = Math.min(...prices) * 0.998;
-  const yMax = Math.max(...prices) * 1.002;
-  const yRange = yMax - yMin;
-  const firstPrice = data[0]?.price;
-  const lastPrice = data[data.length - 1]?.price;
-  const change = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2);
-  const isUp = parseFloat(change) >= 0;
+  const allPrices = ohlcv.flatMap(d => [d.high, d.low]).filter(Boolean);
+  const yMin = allPrices.length ? Math.min(...allPrices) * 0.998 : 0;
+  const yMax = allPrices.length ? Math.max(...allPrices) * 1.002 : 1;
+  const yRange = yMax - yMin || 1;
+  const firstPrice = ohlcv[0]?.close;
+  const lastPrice = ohlcv[ohlcv.length - 1]?.close;
+  const displayPrice = spotPrice ?? lastPrice ?? null;
+  const change = firstPrice && lastPrice ? ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2) : null;
+  const isUp = change != null ? parseFloat(change) >= 0 : true;
   const chartH = 300;
+  const ticks = ohlcv.filter((_, i) => i % Math.max(1, Math.floor(ohlcv.length / 6)) === 0).map(d => d.time);
 
-  const ticks = data.filter((_, i) => i % Math.floor(data.length / 6) === 0).map(d => d.time);
+  const AssetSelector = ({ showChange }) => (
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      {ASSETS.map(a => (
+        <button key={a.symbol} onClick={() => setSelected(a.symbol)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold shrink-0 transition-colors ${selected === a.symbol ? "border-transparent text-white" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
+          style={selected === a.symbol ? { backgroundColor: a.color } : {}}>
+          {a.symbol}
+          {showChange && a.change24h != null && (
+            <span className={`text-[10px] ${a.change24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+              {a.change24h >= 0 ? "+" : ""}{a.change24h}%
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      <div><h1 className="text-xl font-bold">Price Charts</h1><p className="text-sm text-muted-foreground">Candlestick charts for major assets</p></div>
-
-      {/* Asset selector */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {ASSETS.map(a => (
-          <button key={a.symbol} onClick={() => setSelected(a.symbol)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold shrink-0 transition-colors ${selected === a.symbol ? "border-transparent text-white" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
-            style={selected === a.symbol ? { backgroundColor: a.color } : {}}>
-            {a.symbol}
-            <span className={`text-[10px] ${a.change24h >= 0 ? "text-green-400" : "text-red-400"} ${selected === a.symbol ? "" : ""}`}>
-              {a.change24h >= 0 ? "+" : ""}{a.change24h}%
-            </span>
-          </button>
-        ))}
+      <div>
+        <h1 className="text-xl font-bold">Price Charts</h1>
+        <p className="text-sm text-muted-foreground">Candlestick charts · CryptoCompare</p>
       </div>
 
-      {/* Price header */}
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-3xl font-bold">${lastPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-          <div className={`flex items-center gap-1 mt-0.5 text-sm font-medium ${isUp ? "text-green-500" : "text-destructive"}`}>
-            {isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-            {isUp ? "+" : ""}{change}% · {period}
+      {!liveOn ? (
+        <>
+          <AssetSelector showChange={false} />
+          <div className="rounded-2xl border border-border bg-card p-10 text-center space-y-3 text-muted-foreground">
+            <BarChart2 className="h-10 w-10 mx-auto opacity-30" />
+            <p className="font-medium text-foreground">Live prices are off</p>
+            <p className="text-sm">Enable live prices in <span className="font-medium text-foreground">Settings → Live Prices</span> to see real candlestick charts.</p>
           </div>
-        </div>
-        <div className="text-right text-xs text-muted-foreground">
-          <p>Mkt Cap ${asset.mcap}</p>
-          <p className="mt-0.5">{asset.name}</p>
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          <AssetSelector showChange={true} />
 
-      {/* Period selector */}
-      <div className="flex gap-1">
-        {PERIODS.map(p => (
-          <button key={p} onClick={() => setPeriod(p)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{p}</button>
-        ))}
-      </div>
+          {/* Price header */}
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-3xl font-bold">
+                {displayPrice != null ? `$${displayPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
+              </p>
+              <div className={`flex items-center gap-1 mt-0.5 text-sm font-medium ${change != null ? (isUp ? "text-green-500" : "text-destructive") : "text-muted-foreground"}`}>
+                {change != null ? (
+                  <>{isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />} {isUp ? "+" : ""}{change}% · {period}</>
+                ) : (
+                  <span>{period}</span>
+                )}
+              </div>
+            </div>
+            <div className="text-right text-xs text-muted-foreground">
+              <p>Mkt Cap {asset.mcap}</p>
+              <p className="mt-0.5">{asset.name}</p>
+            </div>
+          </div>
 
-      {/* Candlestick chart */}
-      <div className="p-4 rounded-xl border border-border bg-card">
-        <ResponsiveContainer width="100%" height={chartH}>
-          <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-            <XAxis dataKey="time" ticks={ticks} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-            <YAxis domain={[yMin, yMax]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `$${v >= 1000 ? (v / 1000).toFixed(1) + "k" : v.toFixed(0)}`} axisLine={false} tickLine={false} width={52} />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }} />
-            <ReferenceLine y={firstPrice} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeOpacity={0.4} />
-            <Bar dataKey="close" shape={(props) => <CandlestickBar {...props} open={props.open} close={props.close} high={props.high} low={props.low} chartHeight={chartH} yMin={yMin} yRange={yRange} />} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+          {/* Period selector */}
+          <div className="flex gap-1">
+            {PERIODS.map(p => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                {p}
+              </button>
+            ))}
+          </div>
 
-      {/* Volume bar */}
-      <div className="p-4 rounded-xl border border-border bg-card">
-        <p className="text-xs text-muted-foreground mb-2 font-semibold">Volume</p>
-        <ResponsiveContainer width="100%" height={60}>
-          <ComposedChart data={data}>
-            <Bar dataKey="volume" fill="hsl(var(--primary))" opacity={0.4} radius={[2, 2, 0, 0]} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+          {isLoading ? (
+            <div className="p-4 rounded-xl border border-border bg-card h-80 flex items-center justify-center text-muted-foreground gap-2 text-sm">
+              <RefreshCw className="h-4 w-4 animate-spin" /> Loading chart data…
+            </div>
+          ) : isError ? (
+            <div className="p-4 rounded-xl border border-border bg-card h-80 flex items-center justify-center text-muted-foreground text-sm">
+              Failed to load chart data — check your connection and try again.
+            </div>
+          ) : (
+            <>
+              {/* Candlestick chart */}
+              <div className="p-4 rounded-xl border border-border bg-card">
+                <ResponsiveContainer width="100%" height={chartH}>
+                  <ComposedChart data={ohlcv} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="time" ticks={ticks} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[yMin, yMax]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `$${v >= 1000 ? (v / 1000).toFixed(1) + "k" : v.toFixed(0)}`} axisLine={false} tickLine={false} width={52} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }} />
+                    {firstPrice && <ReferenceLine y={firstPrice} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeOpacity={0.4} />}
+                    <Bar dataKey="close" shape={(props) => <CandlestickBar {...props} chartHeight={chartH} yMin={yMin} yRange={yRange} />} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Volume bar */}
+              <div className="p-4 rounded-xl border border-border bg-card">
+                <p className="text-xs text-muted-foreground mb-2 font-semibold">Volume</p>
+                <ResponsiveContainer width="100%" height={60}>
+                  <ComposedChart data={ohlcv}>
+                    <Bar dataKey="volume" fill="hsl(var(--primary))" opacity={0.4} radius={[2, 2, 0, 0]} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }

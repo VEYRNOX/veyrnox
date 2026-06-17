@@ -353,8 +353,8 @@ export const CLASSIFICATION = {
     note: 'A live Solana view needs real balance/token reads from a Solana RPC wired through wallet-core, plus Solana send dispatch — not built (the seed can derive a Solana account, but it is not yet wired into send). The earlier version hardcoded a fake Solana wallet (fixed address, balance, SPL list and prices, Math.random 24h changes) with a Send dialog that built no real transaction; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
   },
   '/price-charts': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'generateOHLCV() builds OHLCV data with Math.random() seeded from the static reference price in lib/cryptos.js. The resulting candlestick chart is re-generated on every asset/period selection and presented as a price chart with no disclaimer. No real price history feed is consulted — all candles, volume, and displayed percentage changes are invented at render time.',
+    verdict: 'live', dataSource: 'external',
+    note: 'generateOHLCV() removed. Real OHLCV data from CryptoCompare histominute/histohour/histoday, gated behind isLivePricesEnabled() (I2). Period → endpoint: 1H/4H → histominute, 1D/1W → histohour, 1M → histoday. Spot price header from useLivePrices(). When off: honest disabled prompt, no chart rendered (I4). staleTime 60s. UNAUDITED-PROVISIONAL (external network).',
   },
   '/gas-fees': {
     verdict: 'live', dataSource: 'wallet-core',
