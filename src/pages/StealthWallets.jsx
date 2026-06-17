@@ -580,6 +580,7 @@ export default function StealthWallets() {
           <li>The pool is seeded for <b>every</b> wallet on the device, so its presence means "this device has a Veyrnox wallet" — not "this device has hidden wallets".</li>
           <li><b>Stealth hides a wallet in the app, not on-chain.</b> A hidden wallet's Ethereum, Bitcoin and Solana addresses are public — anyone who knows one can see its balance and history on a block explorer.</li>
           <li>We keep <b>no list</b> of your hidden wallets, so a forgotten secret makes that wallet unrecoverable from this app. Remember each secret.</li>
+          <li><b>Back up each hidden wallet's recovery phrase separately, right after you create it.</b> Because the pool hides the count, two hidden wallets can — rarely — land in the same slot, and creating the second silently replaces the first. With the seed backed up, the wallet is still recoverable; without it, it's gone. Don't rely on this app as the only copy.</li>
         </ul>
       </div>
 
