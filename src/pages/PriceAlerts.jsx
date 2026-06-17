@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Bell, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -178,7 +178,7 @@ export default function PriceAlerts() {
                   {alert.currency} hit ${alert.triggered_price?.toLocaleString()} ({alert.direction} ${alert.target_price?.toLocaleString()})
                 </p>
                 {alert.note && <p className="text-xs text-muted-foreground">{alert.note}</p>}
-                <p className="text-[10px] text-muted-foreground">{moment(alert.triggered_at).fromNow()}</p>
+                <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(alert.triggered_at), { addSuffix: true })}</p>
               </div>
               <Button variant="ghost" size="sm" className="text-xs shrink-0" onClick={() => dismissAlert.mutate(alert.id)}>
                 Dismiss

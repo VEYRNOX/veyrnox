@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Newspaper, Clock } from "lucide-react";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 
 export default function AssetCorrelationTimeline() {
   const { data: newsSentiments = [] } = useQuery({
@@ -44,7 +44,7 @@ export default function AssetCorrelationTimeline() {
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${n.sentiment?.includes("bullish") ? "bg-green-500/10 text-green-500" : n.sentiment?.includes("bearish") ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground"}`}>{n.asset}</span>
               <div className="flex-1">
                 <p className="text-muted-foreground">{n.headline}</p>
-                <p className="text-[10px] text-muted-foreground/60">{moment(n.published_at).fromNow()}</p>
+                <p className="text-[10px] text-muted-foreground/60">{formatDistanceToNow(new Date(n.published_at), { addSuffix: true })}</p>
               </div>
             </div>
           ))}

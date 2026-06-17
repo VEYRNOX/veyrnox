@@ -4,12 +4,12 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileDown, FileText, Table2, Loader2 } from "lucide-react";
-import moment from "moment";
+import { format } from "date-fns";
 import { USD_RATES } from "@/lib/cryptos";
 
 function buildRows(transactions) {
   return transactions.map(tx => ({
-    date: moment(tx.created_date).format("YYYY-MM-DD HH:mm"),
+    date: format(new Date(tx.created_date), "yyyy-MM-dd HH:mm"),
     type: tx.type,
     asset: tx.currency,
     amount: tx.amount ?? 0,
@@ -34,7 +34,7 @@ function downloadCSV(rows) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `transactions_${moment().format("YYYY-MM-DD")}.csv`;
+  a.download = `transactions_${format(new Date(), "yyyy-MM-dd")}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -50,7 +50,7 @@ async function downloadPDF(rows) {
 
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Generated: ${moment().format("MMMM D, YYYY [at] HH:mm")}  |  ${rows.length} transactions`, 14, 23);
+  doc.text(`Generated: ${format(new Date(), "MMMM d, yyyy 'at' HH:mm")}  |  ${rows.length} transactions`, 14, 23);
 
   // Table headers
   const cols = ["Date", "Type", "Asset", "Amount", "USD Value", "Status", "Note"];
@@ -98,7 +98,7 @@ async function downloadPDF(rows) {
   doc.setTextColor(160, 160, 160);
   doc.text("SafeCrypto Wallet — Confidential", 14, doc.internal.pageSize.height - 6);
 
-  doc.save(`transactions_${moment().format("YYYY-MM-DD")}.pdf`);
+  doc.save(`transactions_${format(new Date(), "yyyy-MM-dd")}.pdf`);
 }
 
 export default function ExportTransactions({ transactions: propTransactions }) {

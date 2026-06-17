@@ -1,5 +1,5 @@
 import { ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle } from "lucide-react";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 
 const statusIcons = {
   pending: <Clock className="h-3.5 w-3.5 text-yellow-500" />,
@@ -46,7 +46,7 @@ export default function TransactionList({ transactions = [] }) {
               {tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              {moment(tx.created_date).fromNow()}
+              {formatDistanceToNow(new Date(tx.created_date), { addSuffix: true })}
             </p>
           </div>
         </div>

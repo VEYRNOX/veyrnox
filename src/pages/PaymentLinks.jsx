@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const STATUS_STYLES = {
@@ -106,7 +106,7 @@ export default function PaymentLinks() {
                   <X className="h-3 w-3" />
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground">Created {moment(link.created_date).fromNow()} · Used {link.times_used || 0}×</p>
+              <p className="text-[10px] text-muted-foreground">Created {formatDistanceToNow(new Date(link.created_date), { addSuffix: true })} · Used {link.times_used || 0}×</p>
             </div>
           ))}
         </div>

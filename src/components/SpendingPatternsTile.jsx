@@ -16,13 +16,13 @@
 //   - Deniability (D2/D3): identical render logic in real and decoy mode, so an
 //     equivalent-shaped history produces a structurally identical tile.
 
-import moment from 'moment';
+import { format } from 'date-fns';
 
 const TITLE = 'Spending patterns';
 const SUBTITLE = 'Outflow over time · native units, no fiat';
 
 function periodLabel(periodStart, granularity) {
-  return moment.utc(periodStart).format(granularity === 'week' ? 'D MMM' : "MMM 'YY");
+  return format(new Date(periodStart), granularity === 'week' ? 'd MMM' : 'MMM yy');
 }
 
 // Tile chrome is identical in every state (deniability: nothing about the frame

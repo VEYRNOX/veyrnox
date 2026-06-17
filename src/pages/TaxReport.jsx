@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { FileText, Table2, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import moment from "moment";
+import { format } from "date-fns";
 
 // Raw CSV — date, type, asset, amount, fee, tx_hash only.
 // No fabricated cost basis, no invented USD rates.
@@ -13,7 +13,7 @@ function downloadRawCSV(transactions) {
     ["Date", "Type", "Asset", "Amount", "Fee", "TxHash", "Status"].map(esc).join(","),
     ...transactions.map(tx =>
       [
-        moment(tx.created_date).format("YYYY-MM-DD HH:mm:ss"),
+        format(new Date(tx.created_date), "yyyy-MM-dd HH:mm:ss"),
         tx.type || "",
         tx.currency || "",
         tx.amount ?? "",
@@ -27,7 +27,7 @@ function downloadRawCSV(transactions) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `transactions_raw_${moment().format("YYYY-MM-DD")}.csv`;
+  a.download = `transactions_raw_${format(new Date(), "yyyy-MM-dd")}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

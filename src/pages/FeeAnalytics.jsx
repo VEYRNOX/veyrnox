@@ -14,7 +14,7 @@
 // default sans (Schibsted Grotesk) per the design system.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 import {
   Fuel, ArrowUpRight, ArrowLeftRight, CheckCircle2, XCircle, Clock,
   ExternalLink, Loader2, AlertTriangle, Lock, ShieldCheck, Info,
@@ -75,7 +75,7 @@ function FeeRow({ tx, symbol }) {
           )}
         </div>
         <p className="text-[10px] text-muted-foreground">
-          {tx.timestamp ? moment(tx.timestamp).fromNow() : "awaiting confirmation"}
+          {tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : "awaiting confirmation"}
         </p>
       </div>
       <div className="text-right shrink-0">

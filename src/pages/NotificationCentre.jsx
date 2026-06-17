@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Bell, ShieldAlert, AlertTriangle, TrendingUp, CheckCircle2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 import { useNotifications } from "@/notify/useNotifications";
 
 const TABS = ["All", "Alerts", "Security", "Fraud"];
@@ -168,7 +168,7 @@ export default function NotificationCentre() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{n.body}</p>
-                <p className="text-[10px] text-muted-foreground/60 mt-1">{moment(n.time).fromNow()}</p>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">{formatDistanceToNow(new Date(n.time), { addSuffix: true })}</p>
               </div>
               {n.onDismiss && (
                 <button onClick={n.onDismiss} className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0">

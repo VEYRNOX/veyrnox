@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { TrendingUp, Activity, Target, BarChart3, Shield, AlertTriangle } from "lucide-react";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "@/lib/recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import moment from "moment";
+import { format, subMonths } from "date-fns";
 
 // Reference volatility and Sharpe constants — same approach as /risk-score (which is live).
 // These are NOT live-market figures; they are calibration constants that qualitatively
@@ -64,11 +64,11 @@ export default function AdvancedAnalytics() {
   const activityData = useMemo(() => {
     const months = {};
     for (let i = 5; i >= 0; i--) {
-      const key = moment().subtract(i, "months").format("MMM");
+      const key = format(subMonths(new Date(), i), "MMM");
       months[key] = { month: key, received: 0, sent: 0 };
     }
     for (const tx of transactions) {
-      const key = moment(tx.created_date).format("MMM");
+      const key = format(new Date(tx.created_date), "MMM");
       if (!months[key]) continue;
       if (tx.type === "receive") months[key].received += 1;
       if (tx.type === "send") months[key].sent += 1;

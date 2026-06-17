@@ -99,5 +99,18 @@ export default defineConfig(({ command }) => {
     optimizeDeps: {
       include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer'],
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // recharts + d3 deps are ~350KB and only needed on chart pages —
+            // split them out so the dashboard initial load doesn't pay for them.
+            if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-')) {
+              return 'charts';
+            }
+          },
+        },
+      },
+    },
   };
 });

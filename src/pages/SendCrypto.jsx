@@ -1,6 +1,6 @@
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import { toast } from "sonner";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
+import { useNavigate } from "react-router-dom";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
@@ -80,7 +81,18 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden } = useWallet();
+  const navigate = useNavigate();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
+
+  // Cold-load / deep-link guard: if the vault is confirmed absent (new install),
+  // redirect home rather than hanging on an empty form.
+  const redirected = useRef(false);
+  useEffect(() => {
+    if (!redirected.current && !vaultChecking && vaultExists === false) {
+      redirected.current = true;
+      navigate('/', { replace: true });
+    }
+  }, [vaultChecking, vaultExists, navigate]);
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -945,8 +957,14 @@ export default function SendCrypto() {
                 : flowSendEnabled
                   ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
                   : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
-              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span> left</>}
+              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
             </p>
+          )}
+          {amount && Number.isFinite(amountNum) && amountNum <= 0 && (
+            <p className="text-xs text-destructive mt-1">Amount must be greater than zero</p>
+          )}
+          {balanceKnown && amount && Number.isFinite(amountNum) && amountNum > 0 && amountNum > effectiveBalance && (
+            <p className="text-xs text-destructive mt-1">Insufficient balance</p>
           )}
           {(amountUsd != null || balanceUsd != null) && (
             <p className="text-[10px] text-muted-foreground/70 mt-0.5">{USD_REFERENCE_NOTE}</p>

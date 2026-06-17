@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 import {
   ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, CheckCircle2, XCircle,
   ExternalLink, Loader2, AlertTriangle, Lock, ShieldCheck, History, Info,
@@ -61,7 +61,7 @@ function TxRow({ tx }) {
           {isSelf ? "" : isSend ? "-" : "+"}{tx.amount} {tx.assetSymbol}
         </p>
         <p className="text-[10px] text-muted-foreground">
-          {tx.timestamp ? moment(tx.timestamp).fromNow() : "awaiting confirmation"}
+          {tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : "awaiting confirmation"}
         </p>
       </div>
       {tx.explorerUrl && (

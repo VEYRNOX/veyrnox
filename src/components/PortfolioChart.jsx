@@ -3,13 +3,13 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid
 } from "@/lib/recharts";
-import moment from "moment";
+import { format, subWeeks, subDays, addDays, startOfWeek } from "date-fns";
 import { USD_RATES } from "@/lib/cryptos";
 
 const PERIODS = [
-  { key: "7d",  label: "7D",  days: 7,   unit: "days",  fmt: "MMM D",    tickCount: 7  },
-  { key: "1m",  label: "1M",  days: 30,  unit: "days",  fmt: "MMM D",    tickCount: 6  },
-  { key: "1y",  label: "1Y",  days: 365, unit: "weeks", fmt: "MMM 'YY",  tickCount: 12 },
+  { key: "7d",  label: "7D",  days: 7,   unit: "days",  fmt: "MMM d",   tickCount: 7  },
+  { key: "1m",  label: "1M",  days: 30,  unit: "days",  fmt: "MMM d",   tickCount: 6  },
+  { key: "1y",  label: "1Y",  days: 365, unit: "weeks", fmt: "MMM yy",  tickCount: 12 },
 ];
 
 function CustomTooltip({ active = undefined, payload = undefined, label = undefined }) {
@@ -29,7 +29,7 @@ function buildDayMap(transactions) {
   const map = {};
   const sorted = [...transactions].sort((a, b) => (/** @type {any} */ (new Date(a.created_date))) - (/** @type {any} */ (new Date(b.created_date))));
   sorted.forEach(tx => {
-    const day = moment(tx.created_date).format("YYYY-MM-DD");
+    const day = format(new Date(tx.created_date), "yyyy-MM-dd");
     const usdDelta = tx.amount * (USD_RATES[tx.currency] || 1);
     if (!map[day]) map[day] = 0;
     if (tx.type === "receive") map[day] += usdDelta;
@@ -43,7 +43,7 @@ function buildPoints(days, dayMap, currentBalance, formatStr) {
   let bal = currentBalance;
   const reversed = [...days].reverse();
   const result = reversed.map(d => {
-    const point = { date: moment(d).format(formatStr), value: Math.max(0, bal), _raw: d };
+    const point = { date: format(new Date(d), formatStr), value: Math.max(0, bal), _raw: d };
     bal -= (dayMap[d] || 0);
     return point;
   });
@@ -54,7 +54,7 @@ function buildYearPoints(dayMap, currentBalance) {
   // 52 weekly snapshots
   const weeks = [];
   for (let i = 51; i >= 0; i--) {
-    weeks.push(moment().subtract(i, "weeks").startOf("isoWeek").format("YYYY-MM-DD"));
+    weeks.push(format(startOfWeek(subWeeks(new Date(), i), { weekStartsOn: 1 }), "yyyy-MM-dd"));
   }
   let bal = currentBalance;
   const reversed = [...weeks].reverse();
@@ -62,10 +62,10 @@ function buildYearPoints(dayMap, currentBalance) {
     // sum deltas for 7 days in that week
     let weekDelta = 0;
     for (let d = 0; d < 7; d++) {
-      const day = moment(weekStart).add(d, "days").format("YYYY-MM-DD");
+      const day = format(addDays(new Date(weekStart), d), "yyyy-MM-dd");
       weekDelta += dayMap[day] || 0;
     }
-    const point = { date: moment(weekStart).format("MMM 'YY"), value: Math.max(0, bal) };
+    const point = { date: format(new Date(weekStart), "MMM yy"), value: Math.max(0, bal) };
     bal -= weekDelta;
     return point;
   });
@@ -83,7 +83,7 @@ export default function PortfolioChart({ transactions, currentBalance }) {
     if (activePeriod === "1y") {
       if (!transactions.length) {
         return Array.from({ length: 52 }, (_, i) => ({
-          date: moment().subtract(51 - i, "weeks").format("MMM 'YY"),
+          date: format(subWeeks(new Date(), 51 - i), "MMM yy"),
           value: currentBalance,
         }));
       }
@@ -92,11 +92,11 @@ export default function PortfolioChart({ transactions, currentBalance }) {
 
     const days = [];
     for (let i = period.days - 1; i >= 0; i--) {
-      days.push(moment().subtract(i, "days").format("YYYY-MM-DD"));
+      days.push(format(subDays(new Date(), i), "yyyy-MM-dd"));
     }
 
     if (!transactions.length) {
-      return days.map(d => ({ date: moment(d).format(period.fmt), value: currentBalance }));
+      return days.map(d => ({ date: format(new Date(d), period.fmt), value: currentBalance }));
     }
     return buildPoints(days, dayMap, currentBalance, period.fmt);
   }, [activePeriod, dayMap, currentBalance, transactions.length]);
