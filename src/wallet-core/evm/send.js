@@ -12,28 +12,7 @@ import { getProvider } from './provider.js';
 import { getNetwork } from './networks.js';
 import { evmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
-
-/**
- * Estimate the total cost (value + gas) before the user confirms.
- * Returns strings in ETH for display.
- */
-export async function estimateSend({ networkKey, from, to, amountEth }) {
-  if (!isAddress(to)) throw new Error('Invalid recipient address');
-  const provider = getProvider(networkKey);
-  const value = parseEther(String(amountEth));
-  const [feeData, gasLimit] = await Promise.all([
-    provider.getFeeData(),
-    provider.estimateGas({ from, to, value }),
-  ]);
-  const maxFeePerGas = feeData.maxFeePerGas ?? feeData.gasPrice ?? 0n;
-  const gasCostWei = gasLimit * maxFeePerGas;
-  return {
-    gasLimit: gasLimit.toString(),
-    maxFeePerGasWei: maxFeePerGas.toString(),
-    estGasCostWei: gasCostWei.toString(),
-    totalWei: (value + BigInt(gasCostWei)).toString(),
-  };
-}
+import { assertDecimalAmount } from '../amount.js';
 
 /**
  * Sign locally and broadcast. `privateKey` is supplied transiently by the
@@ -60,6 +39,7 @@ export async function signAndBroadcast({ networkKey, privateKey, to, amountEth, 
   // ethers fills nonce, signs LOCALLY, and broadcasts. The user-selected fee
   // overrides (if any) are the EXACT EIP-1559 fields that get signed; with no
   // override ethers auto-fills them.
+  assertDecimalAmount(amountEth, 18); // family-consistent strict validation (ETH = 18 dp)
   const value = parseEther(String(amountEth));
   const overrides = evmFeeOverrides(fee);
   // Estimate the gas LIMIT per chain (+20% headroom) — a tier's hinted 21000 is an

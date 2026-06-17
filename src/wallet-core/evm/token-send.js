@@ -22,6 +22,7 @@ import { getNetwork } from './networks.js';
 import { getToken, ERC20_ABI } from './tokens.js';
 import { evmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
+import { assertDecimalAmount } from '../amount.js';
 
 const erc20Interface = new Interface(ERC20_ABI);
 
@@ -63,6 +64,7 @@ export async function getTokenBalance({ networkKey, symbol, owner }) {
 export function buildTokenTransfer({ networkKey, symbol, to, amount }) {
   if (!isAddress(to)) throw new Error('Invalid recipient address');
   const t = getToken(networkKey, symbol);
+  assertDecimalAmount(amount, t.decimals); // family-consistent strict validation
   const value = parseUnits(String(amount), t.decimals); // correct-decimals scaling
   const data = erc20Interface.encodeFunctionData('transfer', [to, value]);
   return { data, contract: t.address, value, token: t };
@@ -89,6 +91,7 @@ export async function sendToken({ networkKey, privateKey, symbol, to, amount, fe
 
   const c = new Contract(t.address, ERC20_ABI, wallet);
   await assertDecimals(c, t); // never scale by an unverified power of ten
+  assertDecimalAmount(amount, t.decimals); // family-consistent strict validation
   const value = parseUnits(String(amount), t.decimals); // exact base units, no float
   // Estimate the gas LIMIT for the ERC-20 transfer (+20% headroom). A token
   // transfer needs ~45-65k gas — far above a fee tier's hinted 21000, which would
