@@ -323,8 +323,8 @@ export const CLASSIFICATION = {
     note: 'Honest current-state RASP surface. Renders only global build-state facts (policy built, detection pending, unwired, unaudited) read from featureCatalogue (resolveStatus), plus the DESIGNED allow/warn/block ladder as static copy. It imports no degrade()/detect() runtime and makes no network call — pure presentation. The honesty-lock (§5) means it cannot show "active" unless the catalogue resolves RASP to verified, which it cannot until the detector legs land and verify.',
   },
   '/smart-alerts': {
-    verdict: 'disabled', reason: 'server', dataSource: 'base44-entities',
-    note: 'Alert configuration is stored in base44.entities.SmartAlert (local), but no trigger evaluation is wired in this component — no price or portfolio data is fetched. notify_email and notify_push flags are stored but no delivery mechanism exists client-side; email and push dispatch require a server. The feature stores settings honestly but cannot fire alerts in the local build.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'CRUD (create/toggle/delete/list) works fully on-device via base44.entities.SmartAlert. Condition evaluation (auto-firing) is not wired — a banner in the UI directs users to Price Alerts for live triggers. notify_email/notify_push flags are stored for when a delivery backend is added.',
   },
   '/alerts': {
     verdict: 'live', dataSource: 'external',

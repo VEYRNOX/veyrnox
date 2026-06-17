@@ -66,6 +66,10 @@ export default function SmartAlerts() {
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> New Alert</Button>
       </div>
 
+      <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+        Alert rules are saved on-device. Condition evaluation (auto-firing based on portfolio events) is not yet wired — use <span className="font-medium text-foreground">Price Alerts</span> for live price triggers.
+      </div>
+
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
         {[

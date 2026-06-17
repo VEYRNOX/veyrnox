@@ -92,7 +92,8 @@ describe('registryEntriesFromClassification', () => {
         '/nft', '/onchain', '/erc20-discovery',
         '/wallet-seed-qr', '/hardware-wallet',
         // '/alerts' reclassified disabled→live (I2 opt-in gate added), so it drops out here.
-        '/anomaly-detection', '/messenger-alerts', '/fraud', '/smart-alerts',
+        // '/smart-alerts' reclassified disabled→live (CRUD works on-device; evaluation not wired but honestly noted in UI), so it drops out here.
+        '/anomaly-detection', '/messenger-alerts', '/fraud',
         '/watch-wallets', '/solana', '/price-charts', '/web3', '/products',
       ].sort(),
     );

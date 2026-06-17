@@ -251,6 +251,11 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
   banner directs the user to Settings → Live Prices (I4). Budget limits themselves (`limit_usd`) are
   user-entered constants — unaffected. Records persist via `base44.entities.BudgetLimit` and
   `base44.entities.Transaction` (on-device). Live-data render UNAUDITED-PROVISIONAL.
+- Smart Alerts (`/smart-alerts`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted `server`-disabled → live. CRUD
+  (create/toggle/delete/list) works fully on-device via `base44.entities.SmartAlert` — no fake data, no server
+  dependency for the configuration flow. Condition evaluation (auto-firing based on portfolio events) is not
+  wired; a persistent banner in the UI directs users to Price Alerts for live price triggers (honest scope, I4).
+  `notify_email` and `notify_push` flags are stored for when a delivery backend is added. Verified in-browser.
 
 ## 11. Platform / app shell
 - Desktop web app — ✅
