@@ -4,18 +4,19 @@ import { base44 } from "@/api/base44Client";
 import { Plus, Star, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TOP_CRYPTOS } from "@/lib/cryptos";
+import { useLivePrices, isLivePricesEnabled } from "@/lib/priceFeed";
+import { useBasketPrices } from "@/hooks/useBasketPrices";
 import CoinLogo from "@/components/CoinLogo";
-
-// Reference prices for the top 10 by market cap, from the canonical source.
-const MOCK_PRICES = Object.fromEntries(
-  TOP_CRYPTOS.map(c => [c.symbol, { price: c.usd, change: c.change24h }])
-);
 
 export default function WatchlistWidget() {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [symbol, setSymbol] = useState("");
+
+  // Real, opt-in, holdings-blind. Off (default) ⇒ no fetch, no figures (I2).
+  const liveOn = isLivePricesEnabled();
+  const { prices } = useLivePrices();
+  const { changeFor } = useBasketPrices({ enabled: liveOn });
 
   const { data: items = [] } = useQuery({
     queryKey: ["watchlist"],
@@ -62,9 +63,13 @@ export default function WatchlistWidget() {
         <p className="text-xs text-muted-foreground text-center py-4">No assets — add some to watch</p>
       ) : (
         <div className="space-y-2">
+          {!liveOn && (
+            <p className="text-[10px] text-muted-foreground">Live prices off — enable in Settings</p>
+          )}
           {items.map(item => {
-            const data = MOCK_PRICES[item.symbol] || { price: 0, change: 0 };
-            const up = data.change >= 0;
+            const price = liveOn ? (prices?.[item.symbol] ?? null) : null;
+            const change = changeFor(item.symbol);
+            const up = change != null && change >= 0;
             return (
               <div key={item.id} className="flex items-center gap-2 group">
                 <CoinLogo symbol={item.symbol} size={28} />
@@ -73,11 +78,13 @@ export default function WatchlistWidget() {
                   {item.note && <p className="text-[10px] text-muted-foreground truncate">{item.note}</p>}
                 </div>
                 <div className="text-right mr-1">
-                  <p className="text-sm font-semibold">${data.price.toLocaleString()}</p>
-                  <p className={`text-[10px] flex items-center gap-0.5 justify-end ${up ? "text-green-500" : "text-red-500"}`}>
-                    {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
-                    {up ? "+" : ""}{data.change}%
-                  </p>
+                  <p className="text-sm font-semibold">{price != null ? `$${price.toLocaleString()}` : "—"}</p>
+                  {change != null && (
+                    <p className={`text-[10px] flex items-center gap-0.5 justify-end ${up ? "text-green-500" : "text-red-500"}`}>
+                      {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                      {up ? "+" : ""}{change.toFixed(2)}%
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={() => remove.mutate(item.id)}
