@@ -13,15 +13,18 @@
 // is protected by the per-seal AES-GCM, which the dedicated vault tests cover.
 // This file only guards the container behaviour the PR changed.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { downloadBackupFile, parseBackupFile } from '../vaultBackup.js';
+import { downloadBackupFile, parseBackupFile, createBackupEnvelope } from '../vaultBackup.js';
+import { decryptVault } from '../vault.js';
 
 // A structurally-valid envelope (isValidBackup): app/backup_v + two blob seals.
-const blob = (ct) => ({ v: 1, ct, iv: 'aXY', salt: 'c2FsdA' });
+// Canonical (padding-exact) base64 so binary encode→decode re-emits identical
+// strings — matches how real vault blobs (b64() in vault.js) are produced.
+const blob = (ct) => ({ v: 1, ct, iv: 'ZGVm', salt: 'YWJj' });
 const ENVELOPE = {
   app: 'veyrnox',
   backup_v: 1,
   created_at: 1700000000000,
-  seals: { password: blob('cGFzcw'), pin: blob('cGlu') },
+  seals: { password: blob('Z2hp'), pin: blob('amts') },
 };
 
 // Capture the text downloadBackupFile would write, by stubbing the DOM/URL bits.
@@ -33,32 +36,53 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); });
 
-async function capturedText() {
+async function capturedBytes() {
   expect(captured, 'downloadBackupFile did not create a blob').toBeTruthy();
-  return await captured.text();
+  return new Uint8Array(await captured.arrayBuffer());
 }
 
-describe('backup file is an opaque container (guards PR #239)', () => {
-  it('downloadBackupFile output is NOT readable plain JSON', async () => {
+describe('backup file is a BINARY encrypted-vault container (guards PR #239/#245)', () => {
+  it('downloadBackupFile writes opaque binary, not text/JSON', async () => {
     downloadBackupFile(ENVELOPE);
-    const text = await capturedText();
-    expect(() => JSON.parse(text)).toThrow();          // opaque, not JSON
-    expect(/argon2|aes-?256|aes-gcm/i.test(text)).toBe(false); // no scheme labels in the clear
+    const bytes = await capturedBytes();
+    // Binary magic "VYRNXENC", not a text format.
+    expect([...bytes.slice(0, 8)]).toEqual([0x56, 0x59, 0x52, 0x4e, 0x58, 0x45, 0x4e, 0x43]);
+    const asText = new TextDecoder().decode(bytes);
+    expect(() => JSON.parse(asText)).toThrow();              // not JSON
+    expect(/argon2|aes-?256|aes-gcm/i.test(asText)).toBe(false); // no scheme labels
+    // Contains non-printable bytes (genuinely binary, not a base64/text blob).
+    expect(bytes.some((b) => b < 0x09 || (b > 0x0d && b < 0x20))).toBe(true);
   });
 
-  it('parseBackupFile round-trips the opaque container back to the envelope', async () => {
+  it('parseBackupFile round-trips the binary container back to the envelope', async () => {
     downloadBackupFile(ENVELOPE);
-    const text = await capturedText();
-    expect(parseBackupFile(text)).toEqual(ENVELOPE);
+    const bytes = await capturedBytes();
+    expect(parseBackupFile(bytes)).toEqual(ENVELOPE);
+    // Also accepts the raw ArrayBuffer (what FileReader.readAsArrayBuffer yields).
+    expect(parseBackupFile(bytes.buffer)).toEqual(ENVELOPE);
   });
 
-  it('still accepts a legacy plain-JSON backup (backward compatible)', () => {
+  it('still accepts a legacy plain-JSON backup, as string or bytes (backward compatible)', () => {
     const legacy = JSON.stringify(ENVELOPE);
     expect(parseBackupFile(legacy)).toEqual(ENVELOPE);
+    expect(parseBackupFile(new TextEncoder().encode(legacy))).toEqual(ENVELOPE);
   });
 
   it('rejects garbage / non-Veyrnox content', () => {
     expect(() => parseBackupFile('not a backup at all')).toThrow();
     expect(() => parseBackupFile(JSON.stringify({ app: 'other', backup_v: 1 }))).toThrow();
+    expect(() => parseBackupFile(new Uint8Array([1, 2, 3, 4, 5]))).toThrow();
   });
+
+  // The integrity test that actually matters: real AES-GCM seals must survive the
+  // binary file round-trip and still decrypt. A broken format = unrecoverable
+  // backups, so this exercises real crypto end-to-end (slow Argon2id — expected).
+  it('REAL crypto: binary file round-trips and both seals still decrypt', async () => {
+    const container = JSON.stringify({ wallets: [{ id: 'w1', mnemonic: 'alpha bravo charlie delta echo' }] });
+    const env = await createBackupEnvelope(container, 'backup-pass-123', '2468');
+    downloadBackupFile(env);
+    const parsed = parseBackupFile(await capturedBytes());
+    expect(await decryptVault(parsed.seals.password, 'backup-pass-123')).toBe(container);
+    expect(await decryptVault(parsed.seals.pin, '2468')).toBe(container);
+  }, 60000);
 });

@@ -176,7 +176,9 @@ function RestoreTab({ lock }) {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const parsed = parseBackupFile(/** @type {string} */ (ev.target.result));
+        // Read as bytes: the current format is a binary container; parseBackupFile
+        // also accepts the legacy text formats decoded from those bytes.
+        const parsed = parseBackupFile(/** @type {ArrayBuffer} */ (ev.target.result));
         setEnvelope(parsed);
         setPhase("unlock");
       } catch (err) {
@@ -185,7 +187,7 @@ function RestoreTab({ lock }) {
         setFileName("");
       }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
     // Reset the input so the same file can be re-selected if needed
     e.target.value = "";
   };

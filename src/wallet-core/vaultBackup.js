@@ -35,28 +35,133 @@ import { getKeyStore } from './keystore/index.js';
 export const BACKUP_APP = 'veyrnox';
 export const BACKUP_VERSION = 1;
 
-// Opaque on-disk container marker. The backup envelope is base64-wrapped behind
-// this magic so the saved file reads as one undifferentiated blob — not labelled
-// JSON that advertises the format/params in a text editor. IMPORTANT (honest):
-// this is an ENCODING for opacity, NOT a second encryption layer. The real
-// protection is the per-seal AES-GCM ciphertext + the user's credential, which
-// is unchanged; base64 is trivially reversible and adds no cryptographic
-// strength. It exists only so the file behaves like an opaque vault artifact and
-// does not surface the scheme to a casual viewer.
-const CONTAINER_MAGIC = 'VYRNXVLT1:';
+// ── On-disk format: a BINARY encrypted-vault container ──────────────────────────
+//
+// The .enc file is written as raw bytes, NOT text. Opened in a text editor it is
+// undifferentiated binary garbage — the bulk of the file is the per-seal AES-GCM
+// CIPHERTEXT (high-entropy, already encrypted), framed by a tiny binary header.
+// There is no readable JSON, no labels, no base64. This is what makes it behave
+// like an encrypted vault file rather than a document.
+//
+// HONEST scope note (unchanged): the protection of your SEED is the per-seal
+// AES-256-GCM encryption under your chosen backup credential — that is the real
+// security boundary. The binary framing (salts/IVs/lengths) is non-secret by
+// design; it is not a second cipher. What changed here is purely the on-disk
+// ENCODING: binary instead of text, so the file is opaque to a text editor.
+//
+// Layout (big-endian):
+//   magic   "VYRNXENC" (8 bytes)
+//   version 1 byte (= 1)
+//   created 8 bytes  Float64 epoch-ms
+//   nSeals  1 byte
+//   per seal: id(1: 0=password,1=pin) saltLen(1) salt ivLen(1) iv ctLen(4) ct
+const BIN_MAGIC = new Uint8Array([0x56, 0x59, 0x52, 0x4e, 0x58, 0x45, 0x4e, 0x43]); // "VYRNXENC"
+const BIN_VERSION = 1;
+const SEAL_IDS = { password: 0, pin: 1 };
+const SEAL_NAMES = { 0: 'password', 1: 'pin' };
 
-// UTF-8-safe base64 (btoa/atob are latin1-only, so round-trip through bytes).
-function encodeOpaque(str) {
-  const bytes = new TextEncoder().encode(str);
-  let bin = '';
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return CONTAINER_MAGIC + btoa(bin);
+// Legacy text container (pre-binary). Kept so an older .enc still restores.
+const LEGACY_TEXT_MAGIC = 'VYRNXVLT1:';
+function decodeLegacyText(text) {
+  const bin = atob(text.slice(LEGACY_TEXT_MAGIC.length));
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
-function decodeOpaque(text) {
-  const b64 = text.slice(CONTAINER_MAGIC.length);
-  const bin = atob(b64);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+
+const b64ToBytes = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+function bytesToB64(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+}
+
+// Serialize a backup envelope to the binary container (Uint8Array).
+function encodeBinary(envelope) {
+  const parts = [];
+  parts.push(BIN_MAGIC);
+  parts.push(Uint8Array.of(BIN_VERSION));
+  const created = new Uint8Array(8);
+  new DataView(created.buffer).setFloat64(0, Number(envelope.created_at) || 0, false);
+  parts.push(created);
+  const seals = ['password', 'pin'];
+  parts.push(Uint8Array.of(seals.length));
+  for (const name of seals) {
+    const blob = envelope.seals[name];
+    const salt = b64ToBytes(blob.salt), iv = b64ToBytes(blob.iv), ct = b64ToBytes(blob.ct);
+    // KDF params (numeric only — the algorithm name is NOT written to the file;
+    // it is reconstructed on read). These are REQUIRED to derive the right key:
+    // dropping them makes decrypt fall back to legacy params and fail.
+    const k = blob.kdf;
+    parts.push(Uint8Array.of(SEAL_IDS[name], k ? 1 : 0));
+    if (k) {
+      const kp = new Uint8Array(16);
+      const kdv = new DataView(kp.buffer);
+      kdv.setUint32(0, k.parallelism >>> 0, false);
+      kdv.setUint32(4, k.iterations >>> 0, false);
+      kdv.setUint32(8, k.memorySize >>> 0, false);
+      kdv.setUint32(12, k.hashLength >>> 0, false);
+      parts.push(kp);
+    }
+    parts.push(Uint8Array.of(salt.length));
+    parts.push(salt);
+    parts.push(Uint8Array.of(iv.length));
+    parts.push(iv);
+    const ctLen = new Uint8Array(4);
+    new DataView(ctLen.buffer).setUint32(0, ct.length, false);
+    parts.push(ctLen);
+    parts.push(ct);
+  }
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(total);
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+function startsWithBinMagic(bytes) {
+  if (bytes.length < BIN_MAGIC.length) return false;
+  for (let i = 0; i < BIN_MAGIC.length; i++) if (bytes[i] !== BIN_MAGIC[i]) return false;
+  return true;
+}
+
+// Parse the binary container back to an envelope (re-base64s salt/iv/ct so the
+// existing decryptVault/restore path is unchanged). Throws on malformed input.
+function decodeBinary(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let o = BIN_MAGIC.length;
+  const need = (n) => { if (o + n > bytes.length) throw new Error('Not a valid Veyrnox backup file'); };
+  need(1); const version = bytes[o]; o += 1;
+  if (version !== BIN_VERSION) throw new Error('Unsupported backup version');
+  need(8); const created_at = dv.getFloat64(o, false); o += 8;
+  need(1); const nSeals = bytes[o]; o += 1;
+  const seals = {};
+  for (let s = 0; s < nSeals; s++) {
+    need(2); const id = bytes[o]; o += 1; const hasKdf = bytes[o]; o += 1;
+    let kdf = null;
+    if (hasKdf) {
+      need(16);
+      kdf = {
+        name: 'argon2id', // reconstructed; never written to the file
+        parallelism: dv.getUint32(o, false),
+        iterations: dv.getUint32(o + 4, false),
+        memorySize: dv.getUint32(o + 8, false),
+        hashLength: dv.getUint32(o + 12, false),
+      };
+      o += 16;
+    }
+    need(1); const saltLen = bytes[o]; o += 1;
+    need(saltLen); const salt = bytes.slice(o, o + saltLen); o += saltLen;
+    need(1); const ivLen = bytes[o]; o += 1;
+    need(ivLen); const iv = bytes.slice(o, o + ivLen); o += ivLen;
+    need(4); const ctLen = dv.getUint32(o, false); o += 4;
+    need(ctLen); const ct = bytes.slice(o, o + ctLen); o += ctLen;
+    const name = SEAL_NAMES[id];
+    if (name) {
+      const blob = { v: 1, salt: bytesToB64(salt), iv: bytesToB64(iv), ct: bytesToB64(ct) };
+      if (kdf) blob.kdf = kdf;
+      seals[name] = blob;
+    }
+  }
+  return { app: BACKUP_APP, backup_v: BACKUP_VERSION, created_at, seals };
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -124,9 +229,8 @@ export async function createBackupEnvelope(containerJson, password, pin) {
  * @param {object} envelope  result of createBackupEnvelope()
  */
 export function downloadBackupFile(envelope) {
-  const json = JSON.stringify(envelope);
-  // Wrap as an opaque container so the file is not human-readable JSON.
-  const blob = new Blob([encodeOpaque(json)], { type: 'application/octet-stream' });
+  // Write the binary encrypted-vault container — opaque bytes, not text.
+  const blob = new Blob([encodeBinary(envelope)], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -141,22 +245,35 @@ export function downloadBackupFile(envelope) {
 // ── Restore ────────────────────────────────────────────────────────────────────
 
 /**
- * Parse and validate a backup file's text content.
- * @param {string} text  raw file text from FileReader
- * @returns {object}     the parsed envelope
+ * Parse and validate a backup file. Accepts the binary container (preferred —
+ * pass the file's bytes as ArrayBuffer/Uint8Array) and, for backward
+ * compatibility, the legacy text formats (opaque-base64 container or plain JSON)
+ * whether handed in as a string or as bytes.
+ * @param {ArrayBuffer|Uint8Array|string} data  raw file contents from FileReader
+ * @returns {object}  the parsed envelope
  * @throws if the content is not a valid Veyrnox backup
  */
-export function parseBackupFile(text) {
-  // New files are opaque-wrapped (CONTAINER_MAGIC + base64). Legacy plain-JSON
-  // backups (pre-opacity) are still accepted so an early export can be restored.
-  let jsonText = text;
-  const trimmed = text.trim();
-  if (trimmed.startsWith(CONTAINER_MAGIC)) {
-    try { jsonText = decodeOpaque(trimmed); } catch {
+export function parseBackupFile(data) {
+  let parsed;
+  if (typeof data !== 'string') {
+    const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+    if (startsWithBinMagic(bytes)) {
+      parsed = decodeBinary(bytes);
+      if (!isValidBackup(parsed)) throw new Error('Not a valid Veyrnox backup file');
+      return parsed;
+    }
+    // Not binary → it may be a legacy TEXT backup saved as bytes. Decode and
+    // fall through to the text path.
+    data = new TextDecoder().decode(bytes);
+  }
+  // Legacy text: opaque-base64 container or plain JSON.
+  let jsonText = data;
+  const trimmed = data.trim();
+  if (trimmed.startsWith(LEGACY_TEXT_MAGIC)) {
+    try { jsonText = decodeLegacyText(trimmed); } catch {
       throw new Error('Not a valid Veyrnox backup file');
     }
   }
-  let parsed;
   try { parsed = JSON.parse(jsonText); } catch {
     throw new Error('Not a valid Veyrnox backup file');
   }
