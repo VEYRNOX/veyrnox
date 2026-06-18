@@ -4,10 +4,8 @@ import {
   serializeActionPasswordRecord,
   deserializeActionPasswordRecord,
   hasActionPasswordRecord,
-  makeChaffActionPasswordRecord,
 } from '../actionPassword.js';
 import { createCredentialVerifier, verifyCredential } from '../credentialVerifier.js';
-import { KDF_PARAMS } from '../vault.js';
 
 // Cheap Argon2id params so the round-trip integration test is fast (the PRODUCTION
 // verifier uses the full vault KDF_PARAMS — see createCredentialVerifier).
@@ -86,41 +84,5 @@ describe('actionPassword record — persistable second-factor verifier', () => {
     // Deserialised, the same record verifies the right password and rejects a wrong one (the fix).
     expect(await verifyCredential(deserializeActionPasswordRecord(serialized), password)).toBe(true);
     expect(await verifyCredential(deserializeActionPasswordRecord(serialized), 'nope')).toBe(false);
-  });
-});
-
-// H2 (decoy/hidden 2FA parity): a deniability-safe DUMMY Action-Password record.
-// To make a set that has NO Action Password byte-indistinguishable from one that
-// does, every container carries a record — a real verifier OR this chaff. The chaff
-// must (1) be shaped identically to a real record (same salt/hash byte-lengths, same
-// live KDF params), (2) be unopenable (random hash → no password ever verifies), and
-// (3) cost no Argon2id to make (pure RNG), so provisioning it leaks no timing.
-describe('makeChaffActionPasswordRecord — deniability chaff record (H2)', () => {
-  it('is shaped identically to a real record (same field lengths + live KDF params)', () => {
-    const chaff = makeChaffActionPasswordRecord(KDF_PARAMS);
-    expect(hasActionPasswordRecord(chaff)).toBe(true);          // round-trips like a real record
-    const d = deserializeActionPasswordRecord(chaff);
-    expect(d.salt.length).toBe(16);                             // == createCredentialVerifier's randomSalt()
-    expect(d.hash.length).toBe(KDF_PARAMS.hashLength);          // == a real verifier's hash length
-    expect(d.params).toEqual(KDF_PARAMS);                       // live params — no chaff-vs-real drift
-  });
-
-  it('requires well-formed params, so it can never silently drift from the live KDF', () => {
-    expect(() => makeChaffActionPasswordRecord(undefined)).toThrow();
-    expect(() => makeChaffActionPasswordRecord({ iterations: 0, parallelism: 1, memorySize: 64, hashLength: 32 })).toThrow();
-  });
-
-  it('is UNOPENABLE: no password verifies against it (random hash → always false)', async () => {
-    // cheap params so verifyCredential's Argon2id derivations stay fast
-    const chaff = deserializeActionPasswordRecord(makeChaffActionPasswordRecord(CHEAP));
-    expect(await verifyCredential(chaff, 'not the password')).toBe(false);
-    expect(await verifyCredential(chaff, 'any guess a coercer might try')).toBe(false);
-  });
-
-  it('is non-deterministic — distinct salt + hash each call (real randomness)', () => {
-    const a = makeChaffActionPasswordRecord(KDF_PARAMS);
-    const b = makeChaffActionPasswordRecord(KDF_PARAMS);
-    expect(a.salt).not.toBe(b.salt);
-    expect(a.hash).not.toBe(b.hash);
   });
 });

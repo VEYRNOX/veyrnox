@@ -99,38 +99,9 @@ export function hasActionPasswordRecord(record) {
   return deserializeActionPasswordRecord(record) !== null;
 }
 
-/**
- * H2 (decoy/hidden 2FA parity) — a deniability-safe CHAFF record.
- *
- * To make a set with NO Action Password byte-indistinguishable from one that has
- * it, every container carries a record: a real verifier OR this chaff. The chaff is
- * shaped identically to a real serialized verifier (16-byte salt + `params.hashLength`
- * hash, same live KDF params as createCredentialVerifier), so `serializeContainer`'s
- * length is Action-Password-presence-independent across all sets.
- *
- * It is UNOPENABLE: the hash is random bytes, so no entered secret can ever reproduce
- * it (verifyCredential always returns false). And it costs NO Argon2id — pure RNG —
- * so provisioning chaff leaks no timing (mirrors stealth.js makeChaff / chaffBlob).
- *
- * `params` MUST be passed (the caller injects the live KDF_PARAMS) so the chaff can
- * never silently drift from the real records' params and become a tell.
- *
- * @param {{parallelism:number, iterations:number, memorySize:number, hashLength:number}} params
- * @returns {{ v:number, salt:string, hash:string, params:object }}
- */
-export function makeChaffActionPasswordRecord(params) {
-  if (!wellFormedParams(params)) {
-    throw new Error('makeChaffActionPasswordRecord: well-formed KDF params are required');
-  }
-  const { parallelism, iterations, memorySize, hashLength } = params;
-  const salt = new Uint8Array(16);
-  crypto.getRandomValues(salt);
-  const hash = new Uint8Array(hashLength);
-  crypto.getRandomValues(hash);
-  return {
-    v: RECORD_VERSION,
-    salt: b64(salt),
-    hash: b64(hash),
-    params: { parallelism, iterations, memorySize, hashLength },
-  };
-}
+// NOTE (H2 design correction, 2026-06-18): an earlier plan added a
+// makeChaffActionPasswordRecord() so every container carried a record (real OR
+// chaff) to hide AP presence. That was SUPERSEDED by FIXED-LENGTH container padding
+// (see multiVault.js serializeContainer / FIXED_LEN): padding equalises ciphertext
+// length without a chaff record, so "record present == AP configured" still holds
+// after unlock. The chaff primitive is therefore intentionally removed.
