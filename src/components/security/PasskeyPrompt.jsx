@@ -55,7 +55,7 @@ export default function PasskeyPrompt({ label = 'Passkey', onResult }) {
           {verifying ? 'Verifying your passkey…' : 'Verified'}
         </p>
         <p className="mt-3 text-xs text-muted-foreground">
-          Unlock your Veyrnox wallet
+          Unlock your <strong>VEYRNOX</strong> wallet
         </p>
 
         <button

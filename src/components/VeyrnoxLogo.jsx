@@ -78,7 +78,7 @@ export function VeyrnoxWordmark({ className = "" }) {
     <span
       className={`font-sans font-bold uppercase tracking-[0.14em] bg-gradient-to-b from-foreground to-muted-foreground bg-clip-text text-transparent ${className}`}
     >
-      Veyrnox
+      VEYRNOX
     </span>
   );
 }

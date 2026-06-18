@@ -119,7 +119,7 @@ async function authenticateOrThrow() {
     );
   }
 
-  const reason = 'Unlock your Veyrnox wallet';
+  const reason = 'Unlock your VEYRNOX wallet';
   if (info.isAvailable) {
     // Primary: strong biometrics, no silent passcode fallback — require an
     // explicit biometric match (per-use auth is the strongest policy).
@@ -127,7 +127,7 @@ async function authenticateOrThrow() {
       await BiometricAuth.authenticate({
         reason,
         cancelTitle: 'Cancel',
-        androidTitle: 'Veyrnox',
+        androidTitle: 'VEYRNOX',
         androidSubtitle: 'Unlock your wallet',
         allowDeviceCredential: false,
       });

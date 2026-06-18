@@ -184,7 +184,7 @@ export default function InvoiceGenerator() {
                   <p className="text-gray-500">{preview.invoice_number}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold">Veyrnox</p>
+                  <p className="font-semibold">VEYRNOX</p>
                   <p className="text-gray-500 text-xs">Crypto Payments</p>
                 </div>
               </div>

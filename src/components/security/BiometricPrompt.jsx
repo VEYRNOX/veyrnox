@@ -57,7 +57,7 @@ export default function BiometricPrompt({ label = 'Face ID', onResult }) {
           {scanning ? 'Scanning your face…' : 'Authenticated'}
         </p>
         <p className="mt-3 text-xs text-muted-foreground">
-          Unlock your Veyrnox wallet
+          Unlock your <strong>VEYRNOX</strong> wallet
         </p>
 
         <button

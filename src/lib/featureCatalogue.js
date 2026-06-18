@@ -46,7 +46,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Multi-Account HD Wallet',
         status: 'built',
         summary: 'BIP-39 seed with multi-account derivation',
-        explanation: 'Generate a non-custodial hierarchical-deterministic wallet from a BIP-39 seed phrase, with multiple accounts derived from a single seed. Keys are created and held locally — Veyrnox never custodies them.',
+        explanation: 'Generate a non-custodial hierarchical-deterministic wallet from a BIP-39 seed phrase, with multiple accounts derived from a single seed. Keys are created and held locally — VEYRNOX never custodies them.',
       },
       {
         name: 'Import Wallet',
@@ -258,7 +258,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Crypto Will / Inheritance',
         status: 'roadmap',
         summary: 'Self-custody inheritance (no custodial backstop)',
-        explanation: 'Inheritance built on secret-sharing plus a dead-man’s-switch — Veyrnox never custodies keys or adjudicates death. Specced, not yet built; needs audit and legal input.',
+        explanation: 'Inheritance built on secret-sharing plus a dead-man’s-switch — VEYRNOX never custodies keys or adjudicates death. Specced, not yet built; needs audit and legal input.',
       },
       {
         name: 'Encrypted Cloud Backup',
@@ -374,7 +374,7 @@ export const FEATURE_CATEGORIES = [
         name: 'NFT Gallery (Display-Only)',
         status: 'built',
         summary: 'View owned NFTs',
-        explanation: 'Built (/nft). Display-only NFT portfolio using on-device records. Viewing only — Veyrnox does not mint, fractionalise, or run an NFT marketplace. Add/remove NFT records stored locally via base44 entities.',
+        explanation: 'Built (/nft). Display-only NFT portfolio using on-device records. Viewing only — VEYRNOX does not mint, fractionalise, or run an NFT marketplace. Add/remove NFT records stored locally via base44 entities.',
       },
       {
         name: 'Multi-Chain NFT Viewing',

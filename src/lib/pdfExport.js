@@ -55,7 +55,7 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(26);
   doc.setFont("helvetica", "bold");
-  doc.text("Veyrnox", pageWidth / 2, 22, { align: "center" });
+  doc.text("VEYRNOX", pageWidth / 2, 22, { align: "center" });
   doc.setFontSize(14);
   doc.setFont("helvetica", "normal");
   doc.text(title, pageWidth / 2, 32, { align: "center" });
@@ -134,7 +134,7 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: "right" });
-    doc.text("Veyrnox · generated on-device", margin, pageHeight - 10);
+    doc.text("VEYRNOX · generated on-device", margin, pageHeight - 10);
   }
 
   const name = fileName || `Veyrnox_${title.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`;

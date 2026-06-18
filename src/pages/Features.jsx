@@ -55,7 +55,7 @@ export default function Features() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Veyrnox Features</h1>
+          <h1 className="text-3xl font-bold">VEYRNOX Features</h1>
           <p className="text-muted-foreground mt-1">
             {totalFeatures} in-scope features across {featureCategories.length} categories — a focused,
             non-custodial, security-first self-custody wallet.
