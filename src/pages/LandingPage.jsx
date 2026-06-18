@@ -137,7 +137,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">Security at the Core</h2>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              On-device AES-256-GCM encryption and layered, provisional protections — testnet beta, not yet independently audited
+              Strong on-device encryption and layered, provisional protections — testnet beta, not yet independently audited
             </p>
           </div>
 
@@ -204,7 +204,7 @@ export default function LandingPage() {
 
               <div className="space-y-4">
                 {[
-                  "256-bit AES-GCM encryption",
+                  "Strong on-device encryption",
                   "WebAuthn/FIDO2 biometrics",
                   "Encrypted on-device key vault",
                   "Local pre-sign transaction screening",
@@ -223,12 +223,12 @@ export default function LandingPage() {
               <Shield className="w-12 h-12 text-primary mb-6" />
               <h3 className="text-2xl font-bold mb-4">Self-custody, on your device</h3>
               <p className="text-slate-400 mb-6">
-                Your private keys are generated on your device and stored only there, in an AES-256-GCM vault. We never have access to your funds. <span className="text-slate-300">Known limit:</span> a 6-digit PIN is offline-brute-forceable on a seized device — hardware-backed key binding is a planned fast-follow, not yet active.
+                Your private keys are generated on your device and stored only there, in a strongly encrypted on-device vault. We never have access to your funds. <span className="text-slate-300">Known limit:</span> a 6-digit PIN is offline-brute-forceable on a seized device — hardware-backed key binding is a planned fast-follow, not yet active.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-slate-900/50">
                   <p className="text-sm text-slate-400">Encryption</p>
-                  <p className="font-bold text-lg">256-bit AES</p>
+                  <p className="font-bold text-lg">On-device</p>
                 </div>
                 <div className="p-4 rounded-lg bg-slate-900/50">
                   <p className="text-sm text-slate-400">Authentication</p>
