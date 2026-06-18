@@ -57,7 +57,7 @@ const features = [
     { name: "Native Secure Storage", desc: "Secure Enclave / Android Keystore hardening", status: "roadmap" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "available" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "available" },
-    { name: "Hardware Wallet", desc: "Ledger / Trezor cold-key signing", status: "roadmap" },
+    { name: "Hardware Wallet", desc: "WebHID Ledger connection via @ledgerhq/hw-transport-webhid; derives ETH address from device. Private key never leaves hardware. BTC/SOL hardware signing not yet wired.", status: "available" },
   ]},
   { category: "Transaction Safety", icon: ShieldAlert, items: [
     { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke ERC-20 allowances; flag unlimited", status: "available" },
@@ -73,7 +73,7 @@ const features = [
     { name: "Stealth / Hidden Wallets", desc: "Deniable hidden-wallet pool; count-hiding", status: "available" },
     { name: "Panic Wipe", desc: "Irreversible local key-material destruction", status: "available" },
     { name: "Crypto Will / Inheritance", desc: "Self-custody inheritance (secret-sharing + dead-man's-switch; no custodial backstop)", status: "roadmap" },
-    { name: "Encrypted Cloud Backup", desc: "Ciphertext-only vault backup", status: "roadmap" },
+    { name: "Encrypted Cloud Backup", desc: "Export/import vault as an Argon2id+AES-GCM encrypted file; plaintext keys never leave device. UNAUDITED-PROVISIONAL.", status: "available" },
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
     { name: "RASP", desc: "Browser-level automation detection active (navigator.webdriver → HOOKED → signing blocked). Degradation policy + send-path wiring built. OS-level probes (root/jailbreak) pending native plugin + audit. UNAUDITED-PROVISIONAL.", status: "available" },
@@ -81,30 +81,29 @@ const features = [
     { name: "Spending Limits", desc: "Rule-based per-transaction and daily spending limits (warn-with-acknowledgement)", status: "available" },
   ]},
   { category: "Portfolio & Analytics", icon: BarChart3, items: [
-    { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains", status: "roadmap" },
-    { name: "Net-Worth Tracker", desc: "Aggregate crypto holdings over time", status: "roadmap" },
-    { name: "P&L Tracking", desc: "Realised / unrealised profit and loss", status: "roadmap" },
-    { name: "On-Chain Analytics", desc: "Insights over public on-chain data", status: "roadmap" },
-    { name: "Fee Analytics", desc: "Track and optimise fees paid", status: "roadmap" },
+    { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains; live prices I2-gated behind opt-in", status: "available" },
+    { name: "Net-Worth Tracker", desc: "Aggregate crypto net worth from on-device portfolio balances; I2-gated live price conversion", status: "available" },
+    { name: "P&L Tracking", desc: "Realised/unrealised P&L records on-device; current prices from CryptoCompare (I2-gated)", status: "available" },
+    { name: "On-Chain Analytics", desc: "Address-level tx lookup and inbound/outbound activity breakdown via public RPC", status: "available" },
+    { name: "Fee Analytics", desc: "Stateless native-unit fee totals computed on-device from chain history; EVM fails honest to 'unavailable'", status: "available" },
     { name: "What-If Simulator", desc: "Model hypothetical allocation changes (executes nothing)", status: "roadmap" },
-    { name: "Tax Report", desc: "Read-only capital gains / loss export", status: "roadmap" },
+    { name: "Tax Report", desc: "Exports raw tx data (date/type/asset/amount/fee/tx_hash) as CSV — no invented prices. Directs to Koinly/CoinTracker. Not tax advice.", status: "available" },
   ]},
   { category: "Prices & Alerts", icon: Bell, items: [
-    { name: "Price Charts", desc: "Historical price charts", status: "roadmap" },
-    { name: "Price Alerts", desc: "Threshold notifications (advisory; never trades)", status: "roadmap" },
-    { name: "Watchlist", desc: "Track assets you don't hold", status: "roadmap" },
-    { name: "Notifications & Push", desc: "Notification centre + push delivery", status: "roadmap" },
+    { name: "Price Charts", desc: "Real OHLCV candlestick data from CryptoCompare histoday; I2-gated", status: "available" },
+    { name: "Price Alerts", desc: "Threshold notifications (advisory; never trades); evaluation I2-gated", status: "available" },
+    { name: "Watchlist", desc: "Track assets you don't hold; real opt-in price feeds from CryptoCompare (I2-gated)", status: "available" },
+    { name: "Notifications & Push", desc: "Web Push API opt-in subscription with test trigger; advisory only, never initiates transactions", status: "available" },
   ]},
   { category: "NFTs", icon: ImageIcon, items: [
-    { name: "NFT Gallery (Display-Only)", desc: "View owned NFTs; no minting or marketplace", status: "roadmap" },
-    { name: "Multi-Chain NFT Viewing", desc: "View NFTs across chains (display only)", status: "roadmap" },
+    { name: "NFT Gallery (Display-Only)", desc: "View owned NFTs; no minting or marketplace. Records stored locally.", status: "available" },
+    { name: "Multi-Chain NFT Viewing", desc: "Cross-chain NFT display with chain filtering (display only)", status: "available" },
   ]},
   { category: "Payments & Utilities", icon: CreditCard, items: [
     { name: "Address Book", desc: "Saved, labelled addresses with per-chain validation for safer sends", status: "available" },
-    { name: "Message Signing", desc: "Sign arbitrary messages for proof-of-ownership", status: "roadmap" },
-    { name: "Split Bill", desc: "Split a cost; each pays from their own wallet", status: "roadmap" },
-    { name: "Payment Links", desc: "Shareable request-to-pay link / QR (no processing)", status: "roadmap" },
-    { name: "Recurring Payments", desc: "Self-initiated, user-signed each time (no auto-debit)", status: "roadmap" },
+    { name: "Message Signing", desc: "Sign plain messages with wallet key (ethers.js); proof-of-ownership / off-chain auth. No dApp-initiated signing.", status: "available" },
+    { name: "Payment Links", desc: "Generate/manage request-to-pay records with copy-to-clipboard. No payment processing.", status: "available" },
+    { name: "Recurring Payments", desc: "Recurring payment schedule reminders; user signs each time. No autonomous auto-debit.", status: "available" },
   ]},
   { category: "Referrals", icon: Users, items: [
     { name: "Referral Tracker", desc: "Privacy-preserving referral sign-ups; no ranking or public profiles (cut on principle)", status: "roadmap" },
@@ -124,7 +123,7 @@ const features = [
     { name: "Demo Mode", desc: "Browse without a backend or funded wallet", status: "available" },
     { name: "iOS App", desc: "Native iOS shell (submission gated on Apple org account)", status: "roadmap" },
     { name: "Android App", desc: "Native Android shell (scaffolded)", status: "roadmap" },
-    { name: "Voice Commands", desc: "Hands-free read-only actions; never unattended signing", status: "roadmap" },
+    { name: "Voice Commands", desc: "Web Speech API navigation commands; read-only (navigate, check balances). Never initiates or signs transactions.", status: "available" },
   ]},
 ];
 
@@ -214,7 +213,7 @@ export default function Documentation() {
             try {
               exportCataloguePdf({
                 title: "Documentation",
-                subtitle: "Feature guide for a non-custodial, security-first self-custody wallet. Scope follows docs/WalletFeatures.spec.md; \"available\" is testnet (mainnet gated until audit).",
+                subtitle: "Feature guide for a non-custodial, security-first self-custody wallet. Scope follows docs/WalletFeatures.spec.md. Mainnet unlocked 2026-06-17 (internal audit complete).",
                 categories: features.map(c => ({
                   category: c.category,
                   items: c.items.map(i => ({ name: i.name, desc: i.desc, status: i.status })),
@@ -254,7 +253,7 @@ export default function Documentation() {
             {totalFeatures} in-scope features across {features.length} categories — {availableCount} available
             today, {roadmapCount} on the roadmap. Scope follows docs/WalletFeatures.spec.md; custodial /
             regulated features (swaps, perps, staking/yield/lending, fiat ramps, bank links, KYC/DID, NFT
-            minting, etc.) are deliberately not built. "Available" is testnet; mainnet is gated until audit.
+            minting, etc.) are deliberately not built. Mainnet unlocked 2026-06-17 (internal audit complete).
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
             <Badge variant="outline" className={STATUS_META.available.className}>{availableCount} Available</Badge>
@@ -396,9 +395,9 @@ export default function Documentation() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Testnet today; mainnet is gated until independent audit. Roadmap hardening (native secure
-            storage, session auto-lock, RASP, audit log, encrypted ciphertext backup) is tracked in the
-            feature catalog above.
+            Mainnet unlocked 2026-06-17 (internal audit complete; independent audit recommended for
+            strongest assurance). Remaining roadmap hardening: native secure storage (Secure Enclave /
+            Android Keystore), Crypto Will / Inheritance, and native mobile shells.
           </p>
         </CardContent>
       </Card>

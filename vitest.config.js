@@ -41,6 +41,11 @@ export default defineConfig({
     // this reflects the heavier (intended) KDF cost, not slow test logic.
     testTimeout: 60000,
     hookTimeout: 60000,
+    // After each test file's tests complete, vitest sends SIGTERM to the fork and
+    // waits this long for a clean exit before force-killing. jsdom + WASM handles
+    // (Argon2id) can take 20–30 s to release; raising to 45 s eliminates the
+    // "[vitest-pool]: Timeout terminating forks worker" warning on slower machines.
+    teardownTimeout: 45000,
     // Cap parallelism so concurrent 192 MiB Argon2id KDF allocations don't
     // exhaust the WASM heap (the pre-existing `RangeError: Invalid typed array
     // length` OOM flake). Vitest 4 removed `poolOptions`; the cap is now set via
