@@ -80,7 +80,14 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       toast.success("Backup downloaded — store it somewhere safe.");
       setPassword(""); setPin(""); setPinConfirm("");
     } catch (err) {
-      toast.error(err.message || "Backup failed.");
+      // keyStore.unlock() rejects a mismatched credential with the generic vault
+      // "wrong password or corrupted" message. In the BACKUP context that just
+      // means the entered credential isn't the one this wallet unlocks with —
+      // surface that plainly instead of the scary raw decrypt error.
+      const msg = /wrong password or corrupted/i.test(err?.message || "")
+        ? "That didn't match. Enter the same PIN or password you use to unlock the app."
+        : (err?.message || "Backup failed.");
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -106,11 +113,11 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 
       <div className="space-y-3">
         <Field
-          label="Current wallet password (to verify & seal)"
+          label="Your unlock PIN or password (to verify & seal)"
           type="password"
           value={password}
           onChange={setPassword}
-          placeholder="Your wallet password"
+          placeholder="The same PIN/password you unlock the app with"
         />
         <PinField label="Backup PIN (4–12 digits)" value={pin} onChange={setPin} />
         <PinField label="Confirm PIN" value={pinConfirm} onChange={setPinConfirm} />
