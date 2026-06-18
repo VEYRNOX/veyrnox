@@ -39,6 +39,14 @@
 // in the caller (panic > duress > hidden), so success and failure cost the same.
 //
 // RESIDUAL TIMING VARIANCE WE DO NOT (AND CANNOT FULLY) ELIMINATE — for audit:
+// VULN-17 ACCEPTED RESIDUAL: the primary success path is ~1 KDF faster than any
+// other outcome (wrong / duress / hidden / panic). This is intentional: equalizing
+// would 4× every real unlock with no security gain (the timing only reveals "the
+// primary password was correct" — inferable only by someone who already holds it).
+// The residual does NOT leak deniability-feature count; every NON-primary outcome
+// costs a constant 4 KDFs. A ~300 ms equalizer sleep on the primary-success path
+// would close this gap at the cost of UX. Decision: accepted for v1, flagged as
+// an explicit audit line-item. See docs/Security.roadmap.md.
 //   - A CORRECT PRIMARY unlock returns after 1 KDF (it never enters this path),
 //     so it is faster than any other outcome. This does NOT leak deniability-
 //     feature presence/count — every NON-primary outcome (wrong / duress / hidden
@@ -112,17 +120,18 @@ async function dummyKdf(password) {
   }
 }
 
-// PANIC branch — always exactly 1 KDF. Real attempt when configured, else a dummy.
-async function constantPanic(password) {
-  if (await hasPanicVault()) return tryPanicUnlock(password); // 1 KDF (real)
-  await dummyKdf(password);                                   // 1 KDF (pad)
+// PANIC branch — always exactly 1 KDF. Accepts pre-fetched `configured` boolean
+// so the caller can batch the DB reads before the KDF phase (VULN-13).
+async function constantPanic(password, configured) {
+  if (configured) return tryPanicUnlock(password); // 1 KDF (real)
+  await dummyKdf(password);                        // 1 KDF (pad)
   return false;
 }
 
-// DURESS branch — always exactly 1 KDF. Real attempt when configured, else a dummy.
-async function constantDuress(password) {
-  if (await hasDuressVault()) return tryDuressUnlock(password); // 1 KDF (real)
-  await dummyKdf(password);                                     // 1 KDF (pad)
+// DURESS branch — always exactly 1 KDF. Same pre-fetched `configured` pattern.
+async function constantDuress(password, configured) {
+  if (configured) return tryDuressUnlock(password); // 1 KDF (real)
+  await dummyKdf(password);                         // 1 KDF (pad)
   return null;
 }
 
@@ -141,12 +150,23 @@ async function constantDuress(password) {
  */
 export async function resolveDeniabilityUnlock(password, opts = {}) {
   // Guarantee the stealth slot holds a blob so the reveal attempt is always one
-  // KDF (idempotent, non-destructive, NO KDF of its own).
+  // KDF (idempotent, non-destructive, NO KDF of its own). Kept sequential to avoid
+  // IndexedDB write-lock contention with the parallel reads below.
   await ensureStealthPool();
 
+  // VULN-13: batch the two cheap IndexedDB existence checks in parallel BEFORE the
+  // KDF phase starts. Each `has*` call is a quick IndexedDB GET (microseconds);
+  // running them sequentially opened two separate DB connections one after the other.
+  // Batching them into a single Promise.all eliminates one round-trip: the first
+  // observable expensive operation on every code path is now the first Argon2id KDF.
+  const [hasPanic, hasDuress] = await Promise.all([
+    hasPanicVault().catch(() => false),
+    hasDuressVault().catch(() => false),
+  ]);
+
   // Slots 1-3: exactly three KDFs, evaluated unconditionally — no short-circuit.
-  const panic = await constantPanic(password);
-  const duressMnemonic = await constantDuress(password);
+  const panic = await constantPanic(password, hasPanic);
+  const duressMnemonic = await constantDuress(password, hasDuress);
   const hiddenMnemonic = await tryRevealHidden(password); // pool seeded => 1 KDF
 
   // Slot 4 (PIN cohort only — Option A, §7): the deterministic decoy. Runs

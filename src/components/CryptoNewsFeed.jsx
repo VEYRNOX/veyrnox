@@ -16,7 +16,7 @@ function timeAgo(unixSecs) {
 
 async function fetchCryptoNews() {
   const res = await fetch(
-    "https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest&extraParams=safecryptowallet"
+    "https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest"
   );
   if (!res.ok) throw new Error(`cryptocompare news HTTP ${res.status}`);
   const data = await res.json();
@@ -35,6 +35,10 @@ function NewsCard({ article }) {
       rel="noopener noreferrer"
       className="flex gap-3 p-3 rounded-xl hover:bg-secondary transition-colors group"
     >
+      {/* News thumbnails come from many CDN domains (CryptoCompare partners). The
+          CSP `img-src *` directive in index.html explicitly allows this — a
+          decision documented here so it is not removed without review. These are
+          display-only images; no user data is sent with the request (I2). */}
       {article.imageurl && (
         <img
           src={article.imageurl}

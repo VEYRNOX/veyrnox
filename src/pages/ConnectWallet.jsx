@@ -52,18 +52,12 @@ async function connectMetaMask() {
 async function connectPhantom() {
   const resp = await window.solana.connect();
   const address = resp.publicKey.toString();
-  // Request balance via Solana JSON-RPC
-  let balance = 0;
-  try {
-    const res = await fetch("https://api.mainnet-beta.solana.com", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [address] }),
-    });
-    const data = await res.json();
-    balance = (data.result?.value || 0) / 1e9;
-  } catch {}
-  return [{ currency: "SOL", address, balance }];
+  // I2 fix (VULN-5): do NOT hardcode api.mainnet-beta.solana.com here — that
+  // discloses the user's SOL address + IP to the public RPC operator the instant
+  // they click Connect. Skip the post-connect balance fetch; the portfolio view
+  // reads the balance through the configurable sol/networks.js RPC stack once the
+  // address is imported. Show 0 here; the real balance appears in the dashboard.
+  return [{ currency: "SOL", address, balance: 0 }];
 }
 
 async function connectCoinbase() {

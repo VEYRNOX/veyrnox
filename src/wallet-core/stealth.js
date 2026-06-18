@@ -121,6 +121,9 @@
 
 import { encryptVault, decryptVault, KDF_PARAMS } from './vault.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
+import { hkdf } from '@noble/hashes/hkdf';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
 import { deriveEvmAccount } from './derivation.js';
 // A hidden wallet is a real BIP-39 wallet, so it has the SAME multi-chain
 // identity any wallet does. We reuse the EXISTING public-address-only derivation
@@ -220,16 +223,47 @@ function b64(u8) {
   return btoa(s);
 }
 
-// Which slot a secret owns. SHA-256 of the secret, first 4 bytes mod POOL_SIZE.
-// This hash is computed transiently and stored NOWHERE; it only selects a slot.
-// The encryption itself uses vault.js's own random Argon2id salt — this is not
-// key material. An attacker cannot compute a slot without the secret, and the
-// slot index alone reveals nothing.
-export async function slotForSecret(secret) {
-  const digest = new Uint8Array(
-    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret))
-  );
-  const n = ((digest[0] << 24) | (digest[1] << 16) | (digest[2] << 8) | digest[3]) >>> 0;
+// Per-device HKDF salt for the slot-mapping function. Stored in localStorage (not
+// secret per RFC 5869, but device-specific) so an attacker with only an offline
+// image of the IndexedDB pool cannot precompute which slot belongs to a dictionary
+// word without also knowing this device's salt. Without it, unkeyed SHA-256 lets an
+// attacker map all dictionary candidates to slots instantly (offline dictionary
+// attack on the mapping is cheap; Argon2id on the contents is the only cost).
+// NOTE: rotating or clearing this salt orphans any existing hidden-wallet slots —
+// their `slotForSecret()` will compute a DIFFERENT slot and not find the blob.
+// Never regenerate it after first use. This is PROVISIONAL; a native KEK layer is
+// the planned stronger binding (see docs/Security.roadmap.md).
+const STEALTH_SLOT_SALT_KEY = 'veyrnox-stealth-slot-salt';
+
+function getOrCreateStealthSalt() {
+  try {
+    const stored = localStorage.getItem(STEALTH_SLOT_SALT_KEY);
+    if (stored && /^[0-9a-f]{32}$/i.test(stored)) return utf8ToBytes(stored);
+  } catch { /* fall through */ }
+  const salt = new Uint8Array(16);
+  crypto.getRandomValues(salt);
+  const hex = bytesToHex(salt);
+  try { localStorage.setItem(STEALTH_SLOT_SALT_KEY, hex); } catch { /* best-effort */ }
+  // Return utf8ToBytes(hex) so that subsequent calls (which read hex from storage
+  // and call utf8ToBytes) return byte-identical salt material — same as auditLog.js.
+  return utf8ToBytes(hex);
+}
+
+// Which slot a secret owns. HKDF-SHA256 keyed by a per-device salt maps the secret
+// to one of POOL_SIZE slots. Without the device salt an offline attacker cannot
+// precompute the slot mapping for dictionary candidates — they would need to try
+// Argon2id on every slot for every candidate (POOL_SIZE × dict cost) rather than
+// computing SHA-256 cheaply and targeting just the matching slot.
+// MIGRATION NOTE: this replaced an unkeyed SHA-256 mapping (VULN-7). Existing
+// hidden-wallet blobs provisioned before this change now sit in different slots
+// (unreachable by the new mapping). All slot blobs are chaff-indistinguishable,
+// so orphaned blobs cause no information leak; the feature is PROVISIONAL and no
+// migration path is provided for testnet data.
+export function slotForSecret(secret) {
+  const salt = getOrCreateStealthSalt();
+  const ikm = utf8ToBytes(typeof secret === 'string' ? secret : String(secret));
+  const derived = hkdf(sha256, ikm, salt, 'veyrnox-stealth-slot-v1', 4);
+  const n = ((derived[0] << 24) | (derived[1] << 16) | (derived[2] << 8) | derived[3]) >>> 0;
   return SLOT_KEYS[n % POOL_SIZE];
 }
 

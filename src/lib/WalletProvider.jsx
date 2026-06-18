@@ -132,6 +132,7 @@ import {
   loadAutoLockValue,
   saveAutoLockValue,
   autoLockMsFromValue,
+  MAX_SESSION_MS,
 } from '@/lib/session';
 import BiometricPrompt from '@/components/security/BiometricPrompt';
 import PasskeyPrompt from '@/components/security/PasskeyPrompt';
@@ -241,6 +242,9 @@ export function WalletProvider({ children }) {
   // is devnet (mainnet gated in sol/networks.js). null while locked.
   const [solAccount, setSolAccount] = useState(null);
   const lockTimer = useRef(null);
+  // Absolute session ceiling (VULN-18 fix). Even with 'Never' idle timeout, the
+  // session expires after MAX_SESSION_MS (8 hours) from unlock. Cleared on lock.
+  const absoluteLockTimer = useRef(null);
 
   // Configurable idle auto-lock timeout. The picker value (e.g. '5', 'never')
   // is React state for the settings UI; a ref mirrors the resolved ms so the
@@ -404,6 +408,7 @@ export function WalletProvider({ children }) {
     setBtcAccount(null);
     setSolAccount(null);
     keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
+    if (absoluteLockTimer.current) { clearTimeout(absoluteLockTimer.current); absoluteLockTimer.current = null; }
   }, []);
 
   // (Re)arm the idle auto-lock timer for the CURRENT timeout preference. Safe to
@@ -417,6 +422,18 @@ export function WalletProvider({ children }) {
     if (ms == null) return;                  // "Never" → no idle lock
     lockTimer.current = setTimeout(lock, ms);
   }, [lock]);
+
+  // Absolute session ceiling (VULN-18 fix): arm a one-shot MAX_SESSION_MS timer
+  // on unlock and cancel it on lock. Fires regardless of idle-timer setting,
+  // capping even the 'Never' option at 8 hours of continuous in-memory key hold.
+  useEffect(() => {
+    if (isUnlocked) {
+      if (absoluteLockTimer.current) clearTimeout(absoluteLockTimer.current);
+      absoluteLockTimer.current = setTimeout(lock, MAX_SESSION_MS);
+    } else {
+      if (absoluteLockTimer.current) { clearTimeout(absoluteLockTimer.current); absoluteLockTimer.current = null; }
+    }
+  }, [isUnlocked, lock]);
 
   // touch() = "user did something, reset the idle countdown". Kept as the name
   // the wallet operations already call (create/import/unlock/withPrivateKey).
@@ -1624,7 +1641,17 @@ export function WalletProvider({ children }) {
     // PIN also fires panicWipe automatically when entered at the unlock prompt.
     // inspectKeyMaterial(): non-destructive proof of what local key material exists.
     wasWiped,
-    panicWipe,
+    // VULN-9: the context-exposed panicWipe requires the caller to pass
+    // `{ confirmed: true }` as an explicit guard, so XSS or a rogue component
+    // cannot trigger a wipe without the deliberate UI intent signal. The real
+    // misfire protection is at the UI level (confirm-word + ack checkbox in
+    // PanicWipe.jsx); this API guard is a defence-in-depth backstop.
+    panicWipe: (opts = {}) => {
+      if (opts?.confirmed !== true) {
+        return Promise.reject(new Error('panicWipe requires { confirmed: true }'));
+      }
+      return panicWipe();
+    },
     // FAIL-CLOSED ONBOARDING ROLLBACK: tear down a half-provisioned PIN wallet
     // when chaff provisioning fails mid-creation (lib/pinOnboarding.js). Setup
     // rollback, not a panic wipe (no wasWiped). Wired by WalletEntry's orchestrators.

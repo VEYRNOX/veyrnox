@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useWallet } from "@/lib/WalletProvider";
 import { Zap, RefreshCw, TrendingDown, TrendingUp, Minus } from "lucide-react";
 
 // Solana does NOT use the EVM gwei/gas-limit model, so it can't be forced into
@@ -157,11 +158,20 @@ function SolFeeRow({ baseLamports, priorityMicroLamports }) {
 }
 
 export default function GasTracker() {
+  // I3 guard (VULN-15 fix): GasTracker polls 3 external services every 30 s.
+  // In a decoy or hidden session that would produce detectable timed network
+  // bursts, violating I3 (deniable sessions make zero backend calls). Disable
+  // all fetching in those sessions — the component renders a blank / loading
+  // state, which is preferable to leaking session activity to a network observer.
+  const { isDecoy, isHidden } = useWallet();
+  const i3Active = !isDecoy && !isHidden;
+
   const { data: fees, isLoading, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["gas-fees"],
     queryFn: fetchFees,
-    refetchInterval: 30_000,
+    refetchInterval: i3Active ? 30_000 : false,
     staleTime: 20_000,
+    enabled: i3Active,
   });
 
   const ethCongestion = getCongestion(fees?.eth?.standard, { low: 20, high: 60 });

@@ -36,9 +36,18 @@ export async function verifyLiveChainId(provider, expectedChainId) {
  * an ERC-20 `transfer` needs ~45-65k — so signing a hinted 21000 gets rejected
  * ("intrinsic gas too low") or reverts out-of-gas and the send silently stalls.
  */
+// Hard ceiling on gas limit accepted from the untrusted RPC (I5). A malicious or
+// MITMed RPC returning estimateGas = block_gas_limit would otherwise produce a
+// 30M-gas signed transaction that burns the entire fee on revert. ETH native
+// transfers need 21k; ERC-20 transfers ~65k; complex DeFi interactions rarely
+// exceed 500k. 1M is generous headroom without allowing fund-draining inflation.
+const MAX_GAS_ESTIMATE = 1_000_000n;
+
 export async function applyEstimatedGasLimit(provider, txRequest, overrides) {
   try {
-    const est = await provider.estimateGas(txRequest);
+    const raw = await provider.estimateGas(txRequest);
+    // Clamp before applying headroom so a lying RPC cannot inflate the fee.
+    const est = raw > MAX_GAS_ESTIMATE ? MAX_GAS_ESTIMATE : raw;
     const withHeadroom = (est * 12n) / 10n; // +20% so a tight estimate can't strand it
     overrides.gasLimit = overrides.gasLimit && overrides.gasLimit > withHeadroom
       ? overrides.gasLimit

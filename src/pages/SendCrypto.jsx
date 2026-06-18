@@ -39,6 +39,8 @@ import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { isSelfSend } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate } from "@/lib/sendGate";
+import { resolveEnsName } from "@/lib/ens";
+import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed } from "@/notify/sources";
@@ -127,15 +129,19 @@ export default function SendCrypto() {
     setEnsResolving(true); setEnsResolved(null);
     try {
       if (name.endsWith(".eth")) {
-        const res = await fetch(`https://api.ensideas.com/ens/resolve/${encodeURIComponent(name)}`);
-        const data = await res.json();
-        if (data.address) setEnsResolved({ name, address: data.address });
+        // I2/I5: resolve on-chain via the user's own RPC — no third-party lookup
+        // service sees the name or recipient. Traffic goes only to the same RPC
+        // used for tx broadcast (audited VULN-1 fix).
+        const network = import.meta.env.VITE_ALLOW_MAINNET === 'true' ? 'mainnet' : 'sepolia';
+        const provider = getProvider(network);
+        const address = await resolveEnsName(provider, name);
+        if (address) setEnsResolved({ name, address });
         else toast.error("ENS name not found");
       } else if (name.endsWith(".sol")) {
-        const res = await fetch(`https://sns-sdk-proxy.bonfida.workers.dev/resolve/${name.replace(".sol", "")}`);
-        const data = await res.json();
-        if (data.result) setEnsResolved({ name, address: data.result });
-        else toast.error("SNS name not found");
+        // SNS honest-disable: no on-chain Bonfida resolver is wired yet.
+        // The previous path called a third-party proxy (I2/I5 violation).
+        // Paste the base58 address directly until on-chain resolution is built.
+        toast.error("Solana name resolution is not available yet — paste the address directly.");
       }
     } catch { toast.error("Name resolution failed"); } finally { setEnsResolving(false); }
     // M-3 (internal audit): do NOT auto-populate the signing target with a
@@ -874,9 +880,9 @@ export default function SendCrypto() {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>
-                    <b>{ensResolved.name}</b> resolved via a third-party service to:
+                    <b>{ensResolved.name}</b> resolved on-chain via your RPC to:
                     <br /><span className="mono-value break-all text-foreground">{ensResolved.address}</span>
-                    <br />Confirm this address is correct before sending — name resolution is not part of Veyrnox's on-device checks.
+                    <br />Confirm this address is correct before sending.
                   </span>
                 </div>
                 <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setToAddress(ensResolved.address)}>

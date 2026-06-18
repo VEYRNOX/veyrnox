@@ -94,10 +94,15 @@ export function selectCoins({
   if (!changeAddress) throw new Error('Missing change address (must be wallet-controlled)');
   if (!Number.isInteger(feeRate) || feeRate < 1) throw new Error(`Invalid fee rate: ${feeRate}`);
 
+  // 21 million BTC in satoshis — any UTXO above this is physically impossible and
+  // indicates a malicious or corrupted RPC response (I5).
+  const MAX_UTXO_SATS = 2_100_000_000_000_000n;
+
   // Normalise + guard inputs. Every UTXO value must be a positive BigInt.
   const pool = utxos.map((u) => {
     const value = BigInt(u.value);
     if (value <= 0n) throw new Error(`UTXO ${u.txid}:${u.vout} has non-positive value`);
+    if (value > MAX_UTXO_SATS) throw new Error(`UTXO ${u.txid}:${u.vout} value exceeds 21M BTC cap — possible malicious RPC`);
     return { txid: u.txid, vout: u.vout, value };
   });
   const balance = pool.reduce((s, u) => s + u.value, 0n);

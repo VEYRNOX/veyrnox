@@ -12,6 +12,40 @@
          @font-face in src/index.css) — no Google-Fonts CDN fetch at runtime,
          so first-screen text LCP gates on a local file and no font request
          leaves the device (I2). -->
+    <!-- Content Security Policy (VULN-4 fix).
+         connect-src lists every external origin the app legitimately calls:
+           - min-api.cryptocompare.com  price data (demoClient / CryptoCompare)
+           - mempool.space              BTC fee estimates + UTXO lookup
+           - api.etherscan.io / sepolia.etherscan.io  gas oracle + tx lookup
+           - *.solana.com               Solana RPC endpoints (devnet/testnet/mainnet)
+           - solscan.io                 Solana explorer links (navigation only)
+           - *.publicnode.com           EVM public RPC nodes (Ethereum/Polygon/Arb/…)
+           - *.infura.io                optional user-configured Infura RPC
+           - 'self'                     same-origin fetch (Vite HMR in dev, local APIs)
+         Note: ensideas.com and bonfida.workers.dev are intentionally ABSENT —
+         ENS now resolves on-chain (VULN-1 fix) and SNS is honest-disabled.
+         script-src 'self': production bundle uses only external module scripts —
+         no inline scripts exist in the built page, so 'unsafe-inline' is omitted.
+         Dev HMR works because Vite's dev server bypasses the meta CSP. -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self';
+      style-src 'self' 'unsafe-inline';
+      font-src 'self';
+      img-src 'self' data: https://images.unsplash.com;
+      object-src 'none';
+      base-uri 'self';
+      connect-src 'self'
+        https://min-api.cryptocompare.com
+        https://mempool.space
+        https://api.etherscan.io
+        https://sepolia.etherscan.io
+        https://api.devnet.solana.com
+        https://api.testnet.solana.com
+        https://api.mainnet-beta.solana.com
+        https://*.publicnode.com
+        https://*.infura.io;
+    ">
     <title>Veyrnox</title>
   </head>
   <body>

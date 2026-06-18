@@ -46,6 +46,14 @@ export async function signAndBroadcast({ networkKey, privateKey, to, amountEth, 
   // L1 simple-transfer assumption that L2s reject (see preflight.js).
   await applyEstimatedGasLimit(provider, { from: wallet.address, to, value }, overrides);
 
+  // VULN-19: sanity-check the pending nonce before signing. A malicious RPC could
+  // return an inflated nonce to make the tx unreplayable, or a stale one to replay
+  // an old tx. We trust the local counter only within a sane window (0–1 000 000).
+  const pendingNonce = await provider.getTransactionCount(wallet.address, 'pending');
+  if (!Number.isInteger(pendingNonce) || pendingNonce < 0 || pendingNonce > 1_000_000) {
+    throw new Error(`RPC returned implausible nonce ${pendingNonce} — refusing to sign`);
+  }
+
   const txResponse = await wallet.sendTransaction({ to, value, ...overrides });
 
   return {
