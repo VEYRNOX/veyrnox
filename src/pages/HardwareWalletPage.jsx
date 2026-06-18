@@ -1,6 +1,4 @@
 ﻿import { useState, useRef } from 'react';
-import TransportWebHID from '@ledgerhq/hw-transport-webhid';
-import Eth from '@ledgerhq/hw-app-eth';
 import { Copy, Cpu, CheckCircle, XCircle, Loader2, Usb, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -47,6 +45,20 @@ export default function HardwareWalletPage() {
     setDeviceName(null);
 
     try {
+      // Load the optional Ledger libs on demand + guarded. Static top-level imports
+      // of these broke the prod build whenever the @ledgerhq deps weren't installed
+      // (rollup hard-fails on the unresolved import); loading them here lets the app
+      // build and run without them, degrading gracefully on this page only.
+      let TransportWebHID, Eth;
+      try {
+        TransportWebHID = (await import(/* @vite-ignore */ '@ledgerhq/hw-transport-webhid')).default;
+        Eth = (await import(/* @vite-ignore */ '@ledgerhq/hw-app-eth')).default;
+      } catch {
+        setErrorMsg('Hardware-wallet support is not available in this build.');
+        setStatus(STATUS.ERROR);
+        return;
+      }
+
       const transport = await TransportWebHID.create();
       transportRef.current = transport;
 
