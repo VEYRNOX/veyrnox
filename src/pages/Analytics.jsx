@@ -8,6 +8,7 @@ import {
 import { TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2 } from "lucide-react";
 import { useWallet } from "@/lib/WalletProvider";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 
 const RANGES = [
   { label: "7D", days: 7 },
@@ -173,6 +174,7 @@ export default function Analytics() {
           <p className="text-base font-bold">{bestAsset?.name ?? "—"}</p>
         </div>
       </div>
+      <ReferenceRateNote />
 
       {/* Portfolio Growth Chart */}
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">

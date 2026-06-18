@@ -5,6 +5,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { TrendingUp, Activity, Target, AlertTriangle, BarChart3, Shield } from "lucide-react";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "@/lib/recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 
 const VOLATILITY = { BTC: 0.72, ETH: 0.85, SOL: 1.2, USDC: 0.01, USDT: 0.01 };
 const SHARPE = { BTC: 1.4, ETH: 1.1, SOL: 0.9, USDC: 0.05, USDT: 0.05 };
@@ -127,6 +128,7 @@ export default function AdvancedAnalytics() {
           </div>
         ))}
       </div>
+      <ReferenceRateNote />
 
       <Tabs defaultValue="performance">
         <TabsList className="w-full bg-secondary">

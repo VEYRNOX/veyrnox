@@ -4,6 +4,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/lib/recharts";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 
 const PERIODS = [
   { label: "30 Days Ago", key: "30d", days: 30 },
@@ -115,6 +116,7 @@ export default function PortfolioRewind() {
             {gain >= 0 ? "+" : ""}{gainPct.toFixed(1)}%
           </span>
         </div>
+        <ReferenceRateNote />
       </div>
 
       {/* Chart */}

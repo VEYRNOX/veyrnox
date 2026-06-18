@@ -4,6 +4,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { USD_RATES } from "@/lib/cryptos";
 import { TrendingUp, TrendingDown, BarChart2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "@/lib/recharts";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 
 export default function PortfolioBenchmark() {
   const { isUnlocked } = useWallet();
@@ -102,6 +103,7 @@ export default function PortfolioBenchmark() {
           <p className="text-[10px] text-muted-foreground mt-1">Portfolio total</p>
         </div>
       </div>
+      <ReferenceRateNote />
 
       <div className="p-4 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-3 mb-1">
