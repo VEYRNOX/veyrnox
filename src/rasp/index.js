@@ -40,3 +40,4 @@
 export { CONDITION, TIER } from './conditions.js';
 export { degrade } from './degrade.js';
 export { detect, classifyEnvironment } from './detect.js';
+export { browserProbeSource } from './browserProbe.js';

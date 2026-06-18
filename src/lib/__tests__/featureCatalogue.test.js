@@ -65,12 +65,13 @@ describe('understatement is corrected — built code is not shown as roadmap', (
   it('Portfolio Dashboard is built (WalletPortfolioPage + portfolioBalances)', () => {
     expect(resolveStatus(byName('Portfolio Dashboard'))).toBe(STATUS.BUILT);
   });
-  it('Audit Log is not surfaced in the catalogue (HONEST-DISABLED per deniability decision)', () => {
-    // 27ad249 removed Audit Log from every surface: an audit log is "a walletMeta
-    // write by another name" and a forensic tell that defeats deniability (I3). The
-    // primitive (wallet-core/auditLog.js) stays in code but is intentionally unlisted
-    // here — present, not advertised. See docs/audit-log-login-activity-deniability-decision.md.
-    expect(byName('Audit Log')).toBeUndefined();
+  it('Audit Log IS surfaced in the catalogue with at-least built status (UI landing 2026-06-17)', () => {
+    // UI landing authorized 2026-06-17: /audit-log is live, entries are { type, ts }
+    // ONLY (no amounts/addresses/wallet-identity), no-op in decoy/hidden sessions.
+    // The primitive (wallet-core/auditLog.js) is still imported only by WalletProvider.
+    const entry = byName('Audit Log');
+    expect(entry).toBeDefined();
+    expect(resolveStatus(entry)).not.toBe(STATUS.ROADMAP);
   });
 });
 
