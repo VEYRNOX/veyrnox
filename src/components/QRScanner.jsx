@@ -3,6 +3,33 @@ import jsQR from "jsqr";
 import { X, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Extract the address from EIP-681 / BIP-21 / bare-address QR codes.
+// Returns the plain address string, or null if the scheme is unrecognised.
+// Any amount/value parameter in the URI is intentionally discarded — the user
+// must enter the amount explicitly in the send form.
+function parseQrData(raw) {
+  const s = (raw || '').trim();
+  // EIP-681: ethereum:<address>[/@chainId][?params]
+  if (/^ethereum:/i.test(s)) {
+    const body = s.slice('ethereum:'.length).split('?')[0].split('@')[0];
+    return body || null;
+  }
+  // BIP-21: bitcoin:<address>[?params]
+  if (/^bitcoin:/i.test(s)) {
+    return s.slice('bitcoin:'.length).split('?')[0] || null;
+  }
+  // Solana URI: solana:<address>[?params]
+  if (/^solana:/i.test(s)) {
+    return s.slice('solana:'.length).split('?')[0] || null;
+  }
+  // Bare address (0x…, bc1…, base58 SOL) — pass through as-is.
+  if (/^(0x[0-9a-fA-F]{40}|bc1[a-zA-HJ-NP-Z0-9]{25,}|[1-9A-HJ-NP-Za-km-z]{32,44})$/.test(s)) {
+    return s;
+  }
+  // Unknown scheme — reject to avoid javascript:/data: injection.
+  return null;
+}
+
 export default function QRScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -51,7 +78,11 @@ export default function QRScanner({ onScan, onClose }) {
     if (code) {
       setScanning(false);
       stopCamera();
-      onScan(code.data);
+      // Parse EIP-681 (ethereum:) and BIP-21 (bitcoin:/solana:) URIs so only the
+      // address component reaches the send form (VULN-10 fix). A raw URI in the
+      // address field fails validation and silently discards any attacker-specified
+      // amount embedded in the QR. Unknown schemes are rejected outright.
+      onScan(parseQrData(code.data));
       return;
     }
     rafRef.current = requestAnimationFrame(tick);

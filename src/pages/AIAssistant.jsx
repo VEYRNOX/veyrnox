@@ -41,7 +41,12 @@ function MessageBubble({ message }) {
                   li: ({ children }) => <li className="my-0">{children}</li>,
                   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                   code: ({ children }) => <code className="px-1 py-0.5 rounded bg-background/50 text-xs font-mono">{children}</code>,
-                  a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline">{children}</a>,
+                  a: ({ children, href }) => {
+                    // Only allow https/http — block javascript: and data: URIs that
+                    // an untrusted LLM backend (I5) could inject (VULN-3 fix).
+                    const safeHref = /^https?:\/\//i.test(href ?? '') ? href : '#';
+                    return <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-primary underline">{children}</a>;
+                  },
                 }}
               >
                 {message.content}

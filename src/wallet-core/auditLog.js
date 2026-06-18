@@ -82,12 +82,36 @@ export const AUDIT_LOG_PREF_KEY = 'veyrnox-audit-log';
 // shipped enabled/surfaced), so v1 is the first and only version.
 const AUDIT_HKDF_INFO = 'veyrnox-audit-v1';
 
+// Per-device HKDF salt key — stored in localStorage alongside the audit blob so
+// a mnemonic imported onto a second device derives a DIFFERENT audit key, giving
+// per-device key diversification. 16 random bytes, hex-encoded. Generated once;
+// never regenerated (that would invalidate the existing encrypted blob).
+// Note: this is NOT secret — it is a public, non-secret salt per RFC 5869.
+const AUDIT_DEVICE_SALT_KEY = 'veyrnox-audit-device-salt';
+
+function getOrCreateDeviceSalt() {
+  try {
+    const stored = localStorage.getItem(AUDIT_DEVICE_SALT_KEY);
+    if (stored && /^[0-9a-f]{32}$/i.test(stored)) return utf8ToBytes(stored);
+  } catch { /* fall through */ }
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hex = bytesToHex(salt);
+  try { localStorage.setItem(AUDIT_DEVICE_SALT_KEY, hex); } catch { /* best-effort */ }
+  // Return utf8ToBytes(hex) so that subsequent calls (which read hex from storage
+  // and also call utf8ToBytes) return byte-identical salt material. Returning the
+  // raw 16-byte buffer here while reads return 32-byte utf8-encoded hex would make
+  // the salt differ between the first and every subsequent call in a session.
+  return utf8ToBytes(hex);
+}
+
 /**
  * Derive the audit-log encryption secret from the primary mnemonic.
  * HKDF-SHA256 gives domain separation (this key cannot collide with any other
  * use of the raw seed) and a high-entropy input; the raw mnemonic never crosses
- * the auditLog read/write API. Returns 32 bytes as a hex string, fed to
- * encryptVault/decryptVault exactly where the password used to go.
+ * the auditLog read/write API. A per-device random salt ensures two devices
+ * importing the same mnemonic derive different audit keys (VULN-6 fix).
+ * Returns 32 bytes as a hex string, fed to encryptVault/decryptVault exactly
+ * where the password used to go.
  * @param {string} primaryMnemonic the unlocked primary set's first-wallet seed
  * @returns {string} 64-char hex secret
  */
@@ -96,7 +120,8 @@ export function deriveAuditSecret(primaryMnemonic) {
     throw new Error('deriveAuditSecret requires a non-empty mnemonic');
   }
   const ikm = utf8ToBytes(primaryMnemonic);
-  return bytesToHex(hkdf(sha256, ikm, undefined /* salt */, AUDIT_HKDF_INFO, 32));
+  const salt = getOrCreateDeviceSalt();
+  return bytesToHex(hkdf(sha256, ikm, salt, AUDIT_HKDF_INFO, 32));
 }
 
 /**

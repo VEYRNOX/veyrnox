@@ -13,12 +13,20 @@
 
 export const AUTO_LOCK_PREF_KEY = 'veyrnox-autolock-timeout';
 
-// Single source of truth for the picker UI and the timer. `ms: null` = never.
+// Hard ceiling applied even when the user selects 'Never' (VULN-18 fix).
+// Without a ceiling, decrypted mnemonic + all derived secrets remain in memory
+// indefinitely while the tab stays visible, giving a physical-access attacker or
+// a long-running malicious script an unbounded window. 8 hours matches common
+// banking-app session limits and is generous for real usage patterns.
+export const MAX_SESSION_MS = 8 * 60 * 60 * 1000; // 8 hours
+
+// Single source of truth for the picker UI and the timer.
+// `ms: null` means "no idle timer" — but MAX_SESSION_MS still applies (see above).
 export const AUTO_LOCK_OPTIONS = [
   { value: '1', label: '1 min', ms: 1 * 60 * 1000 },
   { value: '5', label: '5 min', ms: 5 * 60 * 1000 },
   { value: '15', label: '15 min', ms: 15 * 60 * 1000 },
-  { value: 'never', label: 'Never', ms: null },
+  { value: 'never', label: 'Never (8 hr max)', ms: null },
 ];
 
 export const DEFAULT_AUTO_LOCK_VALUE = '5';

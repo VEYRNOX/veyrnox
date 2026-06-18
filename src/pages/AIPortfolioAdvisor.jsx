@@ -101,7 +101,16 @@ export default function AIPortfolioAdvisor() {
             )}
             <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"}`}>
               {msg.role === "assistant" ? (
-                <ReactMarkdown className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                <ReactMarkdown
+                  className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                  components={{
+                    // Block javascript:/data: URIs from untrusted LLM output (I5 / VULN-3).
+                    a: ({ children, href }) => {
+                      const safeHref = /^https?:\/\//i.test(href ?? '') ? href : '#';
+                      return <a href={safeHref} target="_blank" rel="noopener noreferrer">{children}</a>;
+                    },
+                  }}
+                >
                   {msg.content}
                 </ReactMarkdown>
               ) : msg.content}
