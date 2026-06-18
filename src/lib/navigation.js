@@ -125,6 +125,7 @@ const RAW_NAV_GROUPS = [
       { path: "/security", label: "Security Center", icon: ShieldAlert },
       { path: "/wallet-access", label: "Access & Recovery", icon: KeyRound },
       { path: "/session-manager", label: "Session Manager", icon: ShieldCheck },
+      { path: "/login-activity", label: "Login Activity", icon: Activity },
       { path: "/duress-pin", label: "Duress PIN", icon: Lock },
       { path: "/stealth-wallets", label: "Stealth Wallets", icon: Ghost },
       { path: "/panic-wipe", label: "Panic Wipe", icon: Bomb },
