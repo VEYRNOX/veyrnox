@@ -1,56 +1,128 @@
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
-import { BarChart2, TrendingUp } from "lucide-react";
+import { useMemo } from "react";
+import { useWallet } from "@/lib/WalletProvider";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { USD_RATES } from "@/lib/cryptos";
+import { TrendingUp, TrendingDown, BarChart2 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "@/lib/recharts";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 
 export default function PortfolioBenchmark() {
-  const { data: wallets = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => base44.entities.Wallet.list() });
+  const { isUnlocked } = useWallet();
+  const { portfolio, history, prices, pricesEnabled, loading } = useAnalytics();
 
-  const nativeBreakdown = wallets.reduce((acc, w) => {
-    acc[w.currency] = (acc[w.currency] || 0) + (w.balance || 0);
-    return acc;
-  }, {});
+  // Derived stats — hooks before any conditional return
+  const inflow = useMemo(() => history.reduce((s, tx) => {
+    if (tx.type !== 'receive') return s;
+    const rate = (prices?.[tx.assetSymbol] ?? USD_RATES[tx.assetSymbol]) || 0;
+    return s + parseFloat(tx.amount || '0') * rate;
+  }, 0), [history, prices]);
 
-  const assetCount = Object.keys(nativeBreakdown).filter(k => nativeBreakdown[k] > 0).length;
+  const outflow = useMemo(() => history.reduce((s, tx) => {
+    if (tx.type !== 'send') return s;
+    const rate = (prices?.[tx.assetSymbol] ?? USD_RATES[tx.assetSymbol]) || 0;
+    return s + parseFloat(tx.amount || '0') * rate;
+  }, 0), [history, prices]);
+
+  const currentValue = portfolio?.grandTotal ?? 0;
+  const netInvested = inflow - outflow;
+  const portfolioReturn = netInvested > 0 ? ((currentValue - netInvested) / netInvested) * 100 : 0;
+
+  const monthlyData = useMemo(() => {
+    const months = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setMonth(d.getMonth() - i);
+      const key = d.toLocaleString('en-GB', { month: 'short' });
+      if (!months[key]) months[key] = { month: key, inflow: 0, outflow: 0 };
+    }
+    for (const tx of history) {
+      if (!tx.timestamp) continue;
+      const key = new Date(tx.timestamp).toLocaleString('en-GB', { month: 'short' });
+      if (!months[key]) continue;
+      const rate = (prices?.[tx.assetSymbol] ?? USD_RATES[tx.assetSymbol]) || 0;
+      const usd = parseFloat(tx.amount || '0') * rate;
+      if (tx.type === 'receive') months[key].inflow += usd;
+      if (tx.type === 'send') months[key].outflow += usd;
+    }
+    return Object.values(months).map(m => ({ ...m, inflow: Math.round(m.inflow), outflow: Math.round(m.outflow) }));
+  }, [history, prices]);
+
+  // Gates — after all hooks
+  if (!isUnlocked) {
+    return (
+      <div className="max-w-2xl mx-auto pt-10 text-center space-y-2">
+        <h1 className="text-2xl font-bold tracking-tight">Portfolio Benchmark</h1>
+        <p className="text-sm text-muted-foreground">Unlock your wallet to see benchmarks.</p>
+      </div>
+    );
+  }
+
+  if (!pricesEnabled) {
+    return (
+      <div className="max-w-2xl mx-auto pt-10 text-center space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight">Portfolio Benchmark</h1>
+        <p className="text-sm text-muted-foreground">Live prices are required to calculate portfolio returns.</p>
+        <p className="text-xs text-muted-foreground">Enable live prices in Settings to unlock this page.</p>
+      </div>
+    );
+  }
+
+  const returnUp = portfolioReturn >= 0;
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold">Portfolio Benchmarking</h1>
-        <p className="text-sm text-muted-foreground">Compare your returns against top benchmarks</p>
+        <p className="text-sm text-muted-foreground">Your real returns based on transaction history</p>
       </div>
 
-      <div className="p-5 rounded-xl border border-yellow-500/30 bg-yellow-500/5 space-y-3">
-        <div className="flex items-center gap-2">
-          <BarChart2 className="h-4 w-4 text-yellow-400" />
-          <p className="text-sm font-semibold text-yellow-400">Benchmark data not available</p>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-xs text-muted-foreground mb-1">Portfolio Return</p>
+          <div className="flex items-center gap-2">
+            {returnUp ? <TrendingUp className="h-4 w-4 text-green-500" /> : <TrendingDown className="h-4 w-4 text-destructive" />}
+            <p className={`text-xl font-bold ${returnUp ? "text-green-500" : "text-destructive"}`}>
+              {returnUp ? "+" : ""}{portfolioReturn.toFixed(1)}%
+            </p>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">All-time return</p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Comparing your portfolio return against BTC, ETH, and the S&P 500 requires a
-          historical price feed. The previous version generated this data synthetically
-          using a Math.sin seeded random walk — the "Your Portfolio" line and all benchmark
-          lines were invented numbers, not derived from your transaction history or any
-          real price source.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          A real implementation will integrate a historical price API and derive your
-          portfolio return from actual transaction cost-basis. This is audited before release.
-        </p>
-      </div>
 
-      <div className="p-4 rounded-xl border border-border bg-card space-y-2">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">Current Holdings ({assetCount} asset{assetCount !== 1 ? "s" : ""})</p>
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-xs text-muted-foreground mb-1">Net Invested</p>
+          <p className="text-xl font-bold">
+            ${Math.abs(netInvested).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-1">Received minus sent</p>
         </div>
-        {Object.keys(nativeBreakdown).length === 0
-          ? <p className="text-sm text-muted-foreground">No wallets yet</p>
-          : Object.entries(nativeBreakdown).map(([cur, bal]) => (
-            <div key={cur} className="flex justify-between text-sm">
-              <span className="font-mono text-muted-foreground">{cur}</span>
-              <span className="font-semibold">{bal.toFixed(6)}</span>
-            </div>
-          ))}
-        <p className="text-[10px] text-muted-foreground pt-1">Native balances — no stale USD conversion</p>
+
+        <div className="p-4 rounded-xl border border-border bg-card">
+          <p className="text-xs text-muted-foreground mb-1">Current Value</p>
+          <p className="text-xl font-bold">
+            ${currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-1">Portfolio total</p>
+        </div>
+      </div>
+      <ReferenceRateNote />
+
+      <div className="p-4 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-1">
+          <BarChart2 className="h-5 w-5 text-primary" />
+          <p className="text-sm font-semibold">Monthly Cash Flow (USD)</p>
+        </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={monthlyData}>
+            <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="inflow" name="Received" fill="#22c55e" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="outflow" name="Sent" fill="#ef4444" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+        <p className="text-xs text-muted-foreground mt-2">
+          Benchmark comparison requires historical market data — not available in local-only mode.
+        </p>
       </div>
     </div>
   );

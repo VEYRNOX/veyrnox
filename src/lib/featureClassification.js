@@ -63,12 +63,12 @@ export const CLASSIFICATION = {
     note: 'Aggregates PriceAlert, FraudAlert, RASPEvent, SmartAlert from local IndexedDB (localBase44); all records are user-generated on-device — no external source or fabrication.',
   },
   '/analytics': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'USD_RATES removed. Portfolio Value chart replaced with Transaction Activity count chart. Allocation pie uses native balances per currency. Monthly bars show sent/received tx counts. Summary tiles show wallet count, total txs, top asset by native balance — no stale fiat.',
+    verdict: 'live', dataSource: 'local-first',
+    note: 'Migrated (2026-06-17): base44 removed. Portfolio allocation from usePortfolio; monthly activity and PnL from tx history via useAnalytics; USD views gated on pricesEnabled (live prices opt-in). No fabrication.',
   },
   '/advanced-analytics': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'USD_RATES and MONTHLY_PERFORMANCE removed. Performance tab replaced with real monthly sent/received tx counts (same source as /analytics). Risk/diversification metrics now weight by wallet count per currency (unit-agnostic proxy). VOLATILITY/SHARPE remain as reference calibration constants (same as /risk-score, which is live) — labeled clearly as non-live in UI.',
+    verdict: 'live', dataSource: 'local-first',
+    note: 'Migrated (2026-06-17): MONTHLY_PERFORMANCE removed. Monthly inflow/outflow derived from real tx history + live prices. VOLATILITY/SHARPE/CORRELATION retained as disclosed reference tables. USD views gated on pricesEnabled.',
   },
   '/advisor': {
     verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
@@ -79,8 +79,8 @@ export const CLASSIFICATION = {
     note: 'Requires base44.agents.* backend (createConversation / addMessage / subscribeToConversation — not implemented in local build). Financial-advice liability in open chat. Cut: agents API not built + legal blocker.',
   },
   '/benchmark': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'genBenchmark synthetic random walk removed. Page now shows honest "benchmark data not available" notice explaining what was removed and why, plus current native holdings without USD conversion. Links to Portfolio Snapshots for real time-series comparison.',
+    verdict: 'live', dataSource: 'local-first',
+    note: 'Migrated (2026-06-17): genBenchmark/fake BTC/SP500 lines removed. Portfolio return derived from real tx history + live prices. Gated on pricesEnabled; honest disclosure that benchmark comparison requires historical market data not available in local-only mode.',
   },
   '/what-if': {
     verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
@@ -155,8 +155,8 @@ export const CLASSIFICATION = {
 
   // ── Invest group (audit batch 3) ──────────────────────────────────────────
   '/portfolio-rewind': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'PRICE_HISTORY multipliers and USD_RATES removed. Page now shows honest "historical price data not available" notice explaining what was fabricated and why. Displays current native holdings. Links to Portfolio Snapshots for real time-series comparison. No invented past USD values remain.',
+    verdict: 'live', dataSource: 'local-first',
+    note: 'Migrated (2026-06-17): PRICE_HISTORY multipliers removed. Rewind derived by walking real tx history backwards from current balance using live prices. Gated on pricesEnabled.',
   },
   '/index-builder': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -215,8 +215,8 @@ export const CLASSIFICATION = {
     note: 'Reports only real on-device transaction data: per-asset NATIVE amounts and transaction counts/timing (lib/spendingPatterns). The fabricated stale-USD aggregates were removed — no cross-asset fiat conversion is shown, so there is no silently-stale value. Honest activity view.',
   },
   '/snapshots': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Saves native balance breakdown per currency — no stale USD conversion. total_usd field set to 0 on new saves (not used). USD chart removed; snapshots displayed as native asset amounts. Honest manual tracking.',
+    verdict: 'live', dataSource: 'local-first',
+    note: 'Migrated (2026-06-17): base44 CRUD replaced with snapshotStore (localStorage, keyed by wallet-address fingerprint for deniability). USD values captured only when pricesEnabled; indeterminate flag preserved on snapshot records. No stale USD_RATES fabrication.',
   },
   '/onchain': {
     verdict: 'live', dataSource: 'base44-entities',
