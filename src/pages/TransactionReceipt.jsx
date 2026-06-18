@@ -45,7 +45,6 @@ export default function TransactionReceipt() {
       ["Type", (selected.type || "Transfer").toUpperCase()],
       ["Asset", selected.currency ?? ""],
       ["Amount", `${selected.amount ?? ""} ${selected.currency ?? ""}`],
-      ["USD Value", `$${usdValue.toFixed(2)}`],
       ["Network Fee", fee > 0 ? `${fee} ${selected.currency}` : "—"],
       ["Status", (selected.status || "completed").toUpperCase()],
       ["To", selected.recipient_address ? selected.recipient_address.slice(0, 20) + "..." : "—"],
