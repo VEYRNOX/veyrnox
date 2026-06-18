@@ -26,7 +26,7 @@ export const ALL_ROUTE_PATHS = [
   '/correlation', '/split-bill', '/session-manager', '/receipt', '/tx-history',
   '/address-checker', '/fee-analytics', '/correlation-timeline',
   '/dashboard-widgets', '/shared-portfolio', '/referrals', '/wallet-seed-qr',
-  '/hardware-wallet', '/cloud-backup', '/rasp-security', '/audit-log', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
+  '/hardware-wallet', '/cloud-backup', '/rasp-security', '/audit-log', '/login-activity', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
   '/index-builder', '/messenger-alerts', '/voice-commands', '/leaderboard',
   '/public-profiles', '/ai-rebalancer', '/token-approvals', '/network-manager',
   '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
@@ -329,6 +329,10 @@ export const CLASSIFICATION = {
   '/audit-log': {
     verdict: 'live', dataSource: 'local-vault',
     note: 'Opt-in encrypted audit log viewer. Reads the AES-GCM ring-buffer blob from the primary vault (quaternary key) via WalletProvider.readAuditLogEntries(). auditLog.js is never imported by the page directly (enforced by audit-log-honest-disabled.test.js). Off by default; primary-session only; returns [] in decoy/hidden sessions. Displays at most 100 entries ({ type, ts } ONLY). Toggle + clear via WalletProvider context.',
+  },
+  '/login-activity': {
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Read-only view of existing UserSession device records (base44.entities.UserSession, already recorded by SecurityCenter) and the vault-stored lastUnlockAt timestamp (one value from the active container, not a per-unlock history). No new metadata introduced. Per-unlock event log is explicitly out of scope — I3 deniability constraint (docs/audit-log-login-activity-deniability-decision.md). UNAUDITED-PROVISIONAL.',
   },
   '/smart-alerts': {
     verdict: 'cut', reason: 'off-wedge', dataSource: 'base44-entities',
