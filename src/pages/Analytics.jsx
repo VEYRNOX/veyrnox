@@ -55,7 +55,7 @@ const LiveGate = () => (
 
 export default function Analytics() {
   const { isUnlocked } = useWallet();
-  const { portfolio, history, prices, pricesEnabled, loading, error } = useAnalytics();
+  const { portfolio, history, prices, pricesEnabled } = useAnalytics();
   const [range, setRange] = useState(30);
 
   const totalUSD = portfolio?.grandTotal ?? 0;

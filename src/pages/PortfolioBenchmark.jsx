@@ -8,7 +8,7 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 
 export default function PortfolioBenchmark() {
   const { isUnlocked } = useWallet();
-  const { portfolio, history, prices, pricesEnabled, loading } = useAnalytics();
+  const { portfolio, history, prices, pricesEnabled } = useAnalytics();
 
   // Derived stats — hooks before any conditional return
   const inflow = useMemo(() => history.reduce((s, tx) => {
