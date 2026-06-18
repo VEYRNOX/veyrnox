@@ -1,8 +1,7 @@
-import { USD_RATES } from "@/lib/cryptos";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { Zap } from "lucide-react";
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from "@/lib/recharts";
 
 const VOLATILITY = { BTC: 0.65, ETH: 0.75, SOL: 0.85, USDC: 0.01, USDT: 0.01 };
 
@@ -14,52 +13,53 @@ function getRiskLabel(score) {
 }
 
 export default function PortfolioRiskScore() {
-  const { data: wallets = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => base44.entities.Wallet.list() });
-  const { data: staking = [] } = useQuery({ queryKey: ["staking"], queryFn: () => base44.entities.StakingPosition.filter({ status: "active" }) });
-  const { data: loans = [] } = useQuery({ queryKey: ["loans"], queryFn: () => base44.entities.CryptoLoan.filter({ status: "active" }) });
+  const { isUnlocked } = useWallet();
+  const { portfolio } = useAnalytics();
 
-  const totalUSD = wallets.reduce((s, w) => s + (w.balance || 0) * (USD_RATES[w.currency] || 1), 0);
-  const assetValues = wallets.reduce((acc, w) => { const v = (w.balance || 0) * (USD_RATES[w.currency] || 1); acc[w.currency] = (acc[w.currency] || 0) + v; return acc; }, {});
+  const assetTotals = portfolio?.assetTotals ?? {};
+  const totalUSD = portfolio?.grandTotal ?? 0;
+  const assetValues = Object.fromEntries(
+    Object.entries(assetTotals).map(([sym, v]) => [sym, v?.usd ?? 0])
+  );
 
-  // Concentration risk (Herfindahl index)
+  // Concentration (Herfindahl index)
   const shares = Object.values(assetValues).map(v => totalUSD > 0 ? v / totalUSD : 0);
   const hhi = shares.reduce((s, p) => s + p * p, 0);
-  const concentrationScore = Math.min(10, hhi * 10);
+  const concentrationScore = parseFloat(Math.min(10, hhi * 10).toFixed(1));
 
-  // Volatility risk
-  const weightedVol = Object.entries(assetValues).reduce((s, [cur, val]) => s + (val / (totalUSD || 1)) * (VOLATILITY[cur] || 0.5), 0);
-  const volatilityScore = Math.min(10, weightedVol * 10);
+  // Volatility (weighted avg using reference table)
+  const weightedVol = Object.entries(assetValues).reduce(
+    (s, [cur, val]) => s + (val / (totalUSD || 1)) * (VOLATILITY[cur] || 0.5), 0
+  );
+  const volatilityScore = parseFloat(Math.min(10, weightedVol * 10).toFixed(1));
 
-  // Leverage risk
-  const loanExposure = loans.reduce((s, l) => s + (l.borrow_amount || 0), 0);
-  const leverageScore = Math.min(10, (loanExposure / (totalUSD || 1)) * 20);
+  // Diversification (inverse of asset count)
+  const numAssets = Object.keys(assetValues).filter(k => (assetValues[k] ?? 0) > 0).length;
+  const diversificationScore = parseFloat(Math.max(0, 10 - numAssets * 2).toFixed(1));
 
-  // Staking lock risk
-  const stakedUSD = staking.reduce((s, p) => s + (p.amount || 0) * (USD_RATES[p.asset] || 1), 0);
-  const liquidityScore = Math.min(10, (stakedUSD / (totalUSD || 1)) * 10);
-
-  // Diversification score (inverse)
-  const numAssets = Object.keys(assetValues).length;
-  const diversificationScore = Math.max(0, 10 - numAssets * 2);
-
-  const overallScore = parseFloat(((concentrationScore + volatilityScore + leverageScore + liquidityScore + diversificationScore) / 5).toFixed(1));
+  const overallScore = parseFloat(((concentrationScore + volatilityScore + diversificationScore) / 3).toFixed(1));
   const risk = getRiskLabel(overallScore);
 
   const radarData = [
     { subject: "Concentration", score: concentrationScore },
     { subject: "Volatility", score: volatilityScore },
-    { subject: "Leverage", score: leverageScore },
-    { subject: "Liquidity", score: liquidityScore },
     { subject: "Diversification", score: diversificationScore },
   ];
 
   const recs = [];
   if (concentrationScore > 6) recs.push("Diversify — a single asset dominates your portfolio.");
   if (volatilityScore > 7) recs.push("Consider adding stablecoins to reduce volatility exposure.");
-  if (leverageScore > 4) recs.push("High loan-to-portfolio ratio. Consider repaying loans.");
-  if (liquidityScore > 5) recs.push("Large portion of assets are locked in staking — ensure you have liquid funds.");
   if (diversificationScore > 5) recs.push("Hold more than 3 different assets to spread risk.");
   if (recs.length === 0) recs.push("Your portfolio risk profile looks healthy. Keep it up!");
+
+  if (!isUnlocked) {
+    return (
+      <div className="max-w-2xl mx-auto pt-10 text-center space-y-2">
+        <h1 className="text-2xl font-bold tracking-tight">Portfolio Risk Score</h1>
+        <p className="text-sm text-muted-foreground">Unlock your wallet to see your risk score.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
