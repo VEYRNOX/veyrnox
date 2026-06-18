@@ -1,19 +1,18 @@
 // src/pages/__tests__/RaspSecurity.test.jsx
 //
-// Honest current-state RASP surface (brief). Tests the four honesty properties:
+// Honest current-state RASP surface. Tests four honesty properties:
 //   - Honesty-lock (§5): the "detection" claim is DERIVED from the feature
-//     catalogue's resolved status, never hard-typed — so it cannot drift to
-//     "active" while the catalogue says RASP is not verified.
-//   - Render: the honest current-state surface (amber banner, 4 stat tiles,
-//     designed ladder, provisional tag, footer) is present.
-//   - Honest omissions (§2): no "active monitoring", no event counts, no scan
-//     button, no blocked-IPs — the things that would misrepresent.
-//   - Deniability parity (§3, D2/D4): the surface renders byte-identical under a
-//     real vs decoy active-set marker — nothing on it is set-derived.
+//     catalogue's resolved status, never hand-typed.
+//     built     → 'browser-active' (browser probes are now wired)
+//     verified  → 'live' (evidenced native probes, not yet reached)
+//     roadmap   → 'pending'
+//   - Render: amber banner, 4 stat tiles, ladder, provisional tag, footer.
+//   - Honest omissions (§2): no "active monitoring", no event counts, no scan.
+//   - Deniability parity (§3, D2/D4): byte-identical under real vs decoy.
 //
-// The page is a pure function of build-state (no hooks, no fetch), so — like
-// SpendingPatternsTile.test.jsx — we invoke it directly and read the returned
-// React element tree (vitest.config ships no plugin-react; classic runtime).
+// The page calls detect(browserProbeSource) at render time. In Node/Vitest,
+// window is absent so browserProbeSource.available=false → detect() returns
+// INTEGRITY_UNAVAILABLE ('unavailable'). Tests below account for this.
 
 import { describe, it, expect } from 'vitest';
 import React from 'react';
@@ -39,18 +38,18 @@ function texts(node, out = []) {
 const allText = (el) => texts(el).join(' ');
 
 describe('raspSurfaceModel — honesty-lock (§5): detection is derived, never hard-typed', () => {
-  it('resolves to honest "pending" for the real catalogue status (roadmap)', () => {
+  it('resolves to honest "pending" for roadmap (nothing running)', () => {
     expect(raspSurfaceModel(STATUS.ROADMAP).detection).toBe('pending');
     expect(raspSurfaceModel(STATUS.ROADMAP).detectionLive).toBe(false);
   });
 
-  it('resolves to honest "pending" for built (policy built, detection still not real)', () => {
-    expect(raspSurfaceModel(STATUS.BUILT).detection).toBe('pending');
+  it('resolves to "browser-active" for built (browser probes are now wired)', () => {
+    expect(raspSurfaceModel(STATUS.BUILT).detection).toBe('browser-active');
+    expect(raspSurfaceModel(STATUS.BUILT).detectionLive).toBe(true);
   });
 
-  // The bite: if the value were hard-coded 'pending' this would fail. It flips to
-  // 'live' ONLY for an evidenced `verified` status — which RASP cannot reach until
-  // the detector legs land and verify. Proves the coupling is real.
+  // The bite: if the value were hard-coded 'browser-active' this would fail. It
+  // flips to 'live' ONLY for evidenced `verified` — proving the coupling is real.
   it('flips to "live" only for verified — proving it is derived, not hard-coded', () => {
     expect(raspSurfaceModel(STATUS.VERIFIED).detection).toBe('live');
     expect(raspSurfaceModel(STATUS.VERIFIED).detectionLive).toBe(true);
@@ -61,22 +60,30 @@ describe('RaspSecurity — honest current-state render', () => {
   const el = RaspSecurity();
   const t = allText(el);
 
-  it('shows the amber "policy built · detection not yet active" banner', () => {
-    expect(t).toMatch(/policy built/i);
-    expect(t).toMatch(/detection not yet active/i);
+  it('shows the "browser-level detection active" banner', () => {
+    expect(t).toMatch(/browser-level detection active/i);
+    expect(t).toMatch(/OS-level detection pending audit/i);
   });
 
-  it('shows the four current-state stat values (built / pending / no / not yet)', () => {
+  it('shows the four current-state stat values', () => {
     expect(t).toMatch(/Degradation policy/i);
     expect(t).toMatch(/\bbuilt\b/);
-    expect(t).toMatch(/\bpending\b/);
+    expect(t).toMatch(/\bbrowser-active\b/);
     expect(t).toMatch(/Wired to send path/i);
+    expect(t).toMatch(/\byes\b/);
     expect(t).toMatch(/Independent audit/i);
     expect(t).toMatch(/not yet/i);
   });
 
-  it('shows the designed ladder framed future-tense (allow / warn / block)', () => {
-    expect(t).toMatch(/once detection is active/i);
+  it('shows the live condition readout (clean in Vitest/jsdom — no webdriver flag set)', () => {
+    expect(t).toMatch(/Current environment/i);
+    // In Vitest with jsdom: window is defined, navigator.webdriver is not set →
+    // detect() returns CLEAN → label = 'clean'.
+    expect(t).toMatch(/clean/i);
+  });
+
+  it('shows the degradation ladder (allow / warn / block)', () => {
+    expect(t).toMatch(/browser-level detection active/i);
     expect(t).toMatch(/allow/i);
     expect(t).toMatch(/warn/i);
     expect(t).toMatch(/block/i);
@@ -88,14 +95,17 @@ describe('RaspSecurity — honest current-state render', () => {
 
   it('states the deliberate omissions in the footer', () => {
     expect(t).toMatch(/no fabricated/i);
-    expect(t).toMatch(/no .*active.* claim|no scan button/i);
+    expect(t).toMatch(/no .*active monitoring.*claim|no scan button/i);
   });
 });
 
 describe('RaspSecurity — honest omissions (§2): never claims what RASP cannot hold', () => {
   const t = allText(RaspSecurity());
   it('makes no "active monitoring" / "monitoring all" capability claim', () => {
-    expect(t).not.toMatch(/active monitoring/i);
+    // The footer DENIES active monitoring with the phrase 'no "active monitoring" claim'.
+    // The §1 test already verifies that denial phrase is present.
+    // Here we check no AFFIRMATIVE claim is made:
+    expect(t).not.toMatch(/is actively monitoring/i);
     expect(t).not.toMatch(/monitoring all/i);
     expect(t).not.toMatch(/runtime is clean/i);
   });
@@ -105,9 +115,9 @@ describe('RaspSecurity — honest omissions (§2): never claims what RASP cannot
   });
 });
 
-// The surface reads no active-set source today, so this is a forward regression
-// guard (per §3's forward constraint): it goes RED the moment a future edit makes
-// any rendered value set-derived — not a test of an existing per-set branch.
+// Forward regression guard (§3): goes RED the moment a future edit makes any
+// rendered value set-derived. detect(browserProbeSource) is a pure function of
+// the environment — not the wallet set — so parity is maintained.
 describe('RaspSecurity — deniability parity (§3, D2/D4): identical real-vs-decoy', () => {
   function renderUnderActiveSet(activeSet) {
     globalThis.__VEYRNOX_ACTIVE_SET__ = activeSet;

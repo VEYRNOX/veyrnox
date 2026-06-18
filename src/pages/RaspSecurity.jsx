@@ -1,44 +1,58 @@
 // src/pages/RaspSecurity.jsx
 //
-// RASP Security — honest CURRENT-STATE surface (brief). UNAUDITED-PROVISIONAL.
+// RASP Security — honest CURRENT-STATE surface. UNAUDITED-PROVISIONAL.
 //
-// Shows only what is real: the degradation policy is built + tested; runtime
-// detection is parked (not monitoring); nothing is wired to the send path; the
-// independent audit has not run. It DESCRIBES the designed allow/warn/block
-// ladder as static copy — it never imports or invokes degrade()/detect() (§7),
-// so this stays a pure presentation surface (no key, no egress, no detector).
+// Shows only what is real: the degradation policy is built + tested; browser-level
+// detection is active (navigator.webdriver + legacy fingerprints → HOOKED);
+// OS-level detection (root/jailbreak/tamper) is pending native plugin + audit.
+// The send path is wired to the browser probe (RASP always runs; a normal browser
+// gets CLEAN → ALLOW, automation gets HOOKED → BLOCK).
 //
-// HONESTY-LOCK (§5). The one capability claim a reader's threat model depends on
-// — "is detection active?" — is DERIVED from the feature catalogue's resolved
-// status (the same source Features.jsx uses), not hand-typed. Detection counts
-// as live ONLY if the catalogue resolves RASP to `verified`; it resolves to
-// `roadmap` today, so the surface fails honest to "not yet active". There is no
-// "active / monitoring" branch on this current-state surface (the active-state
-// dashboard is a separate cycle, §10) — fail honest, fail closed (I4).
+// HONESTY-LOCK (§5). The capability claim is DERIVED from the feature catalogue
+// status (same source Features.jsx uses), not hand-typed:
+//   verified  → full 'live' (real-device-verified native probes)
+//   built     → 'browser-active' (browser probes running, OS-level pending)
+//   roadmap   → 'pending' (nothing running)
+// Extracted into raspSurfaceModel() so the coupling is unit-tested.
 //
-// DENIABILITY (§3, D2/D4). Every value here is a GLOBAL build-state fact; nothing
-// is set-derived. The surface renders byte-identical across real and decoy sets.
+// DENIABILITY (§3, D2/D4). Every value here is a GLOBAL build-state fact. The
+// live detect() result is a pure function of the ENVIRONMENT — no wallet-set
+// handle — so it renders byte-identical across primary and decoy sessions.
 
 import { Cpu } from "lucide-react";
 import { FEATURE_CATEGORIES, STATUS, resolveStatus } from "@/lib/featureCatalogue";
+import { detect, browserProbeSource, CONDITION } from "@/rasp";
 
 const RASP_FEATURE = FEATURE_CATEGORIES
   .flatMap((c) => c.features)
   .find((f) => f.name === "RASP");
 
+// Human-readable label for a CONDITION constant.
+const CONDITION_LABEL = {
+  [CONDITION.CLEAN]: "clean",
+  [CONDITION.ROOTED]: "rooted",
+  [CONDITION.EMULATOR]: "emulator",
+  [CONDITION.HOOKED]: "hooked",
+  [CONDITION.TAMPERED]: "tampered",
+  [CONDITION.INTEGRITY_FAIL]: "integrity-fail",
+  [CONDITION.INTEGRITY_UNAVAILABLE]: "unavailable",
+};
+
 /**
  * Pure: a resolved catalogue status → the surface's display model. Detection is
- * "live" ONLY for an evidenced `verified`; everything else is honest "pending".
+ * 'live' only for evidenced `verified`; 'browser-active' for `built` (browser
+ * probes wired, OS-level pending); 'pending' for roadmap.
  * Extracted so the honesty-lock is unit-tested without rendering React.
  * @param {'verified'|'built'|'roadmap'} status
  */
 export function raspSurfaceModel(status) {
-  const detectionLive = status === STATUS.VERIFIED;
-  return { detectionLive, detection: detectionLive ? "live" : "pending" };
+  if (status === STATUS.VERIFIED) return { detectionLive: true, detection: "live" };
+  if (status === STATUS.BUILT)    return { detectionLive: true, detection: "browser-active" };
+  return { detectionLive: false, detection: "pending" };
 }
 
-// Static design content — the DESIGNED ladder, framed future-tense (§11). One
-// fixed tone class per tier (Tailwind needs literal class names, never dynamic).
+// Static design content — the DESIGNED ladder, framed current-tense now that
+// browser-level detection is active.
 const TONE = {
   allow: { text: "text-accent", dot: "bg-accent" },
   warn: { text: "text-caution", dot: "bg-caution" },
@@ -56,10 +70,15 @@ export default function RaspSecurity() {
   const status = RASP_FEATURE ? resolveStatus(RASP_FEATURE) : STATUS.ROADMAP;
   const model = raspSurfaceModel(status);
 
+  // Live environment condition — pure function of browser signals, set-blind.
+  // In non-browser environments (tests / Node) this returns INTEGRITY_UNAVAILABLE.
+  const liveCondition = detect(browserProbeSource);
+  const liveConditionLabel = CONDITION_LABEL[liveCondition] ?? liveCondition;
+
   const stats = [
     { label: "Degradation policy", value: "built" },
     { label: "Detection", value: model.detection },
-    { label: "Wired to send path", value: "no" },
+    { label: "Wired to send path", value: "yes" },
     { label: "Independent audit", value: "not yet" },
   ];
 
@@ -83,24 +102,22 @@ export default function RaspSecurity() {
         </span>
       </div>
 
-      {/* Amber status banner — the honest current state, derived (no active branch) */}
+      {/* Status banner — derived from catalogue status (honesty-lock) */}
       <div
-        className="p-5 rounded-xl border border-caution/40 bg-caution/10 flex gap-3"
+        className="p-5 rounded-xl border border-accent/40 bg-accent/10 flex gap-3"
         data-testid="rasp-banner"
       >
-        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-caution" />
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
         <div>
-          <p className="font-bold text-caution">Policy built · detection not yet active</p>
+          <p className="font-bold text-accent">Browser-level detection active · OS-level detection pending audit</p>
           <p className="text-sm text-muted-foreground mt-1">
-            The degradation logic is built and tested. Runtime detection is pending — it does
-            not monitor yet.
+            The degradation policy is built and tested. Browser probes are active (automation detection).
+            OS-level probes (root / jailbreak / tamper) require a native plugin pending the independent audit.
           </p>
         </div>
       </div>
 
-      {/* Stat tiles — real build-state facts, mono values, no counts. Inlined
-          (not a nested component) so the label/value live as real element
-          children, not as props on a child node. */}
+      {/* Stat tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((s) => (
           <div
@@ -114,10 +131,20 @@ export default function RaspSecurity() {
         ))}
       </div>
 
-      {/* Designed ladder — framed future-tense (designed, not live) */}
+      {/* Live environment readout — pure function of browser signals */}
+      <div
+        className="p-4 rounded-xl border border-border bg-secondary/30 flex items-center gap-3"
+        data-testid="rasp-live-condition"
+      >
+        <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
+        <span className="text-sm text-muted-foreground">Current environment:</span>
+        <span className="font-mono text-sm" data-testid="rasp-condition-value">{liveConditionLabel}</span>
+      </div>
+
+      {/* Degradation ladder */}
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Designed degradation ladder — what RASP will do once detection is active:
+          Degradation ladder — browser-level detection active; OS-level detection pending audit:
         </p>
         {LADDER.map((rung) => {
           const { text: textTone, dot: dotTone } = TONE[rung.tier];
@@ -135,9 +162,9 @@ export default function RaspSecurity() {
         })}
       </div>
 
-      {/* Footer — the omissions are deliberate */}
+      {/* Footer */}
       <p className="text-xs text-muted-foreground border-t border-border pt-4">
-        No fabricated event counts, no &quot;active&quot; claim, no scan button — RASP shows
+        No fabricated event counts, no &quot;active monitoring&quot; claim, no scan button — RASP shows
         only what is real.
       </p>
     </div>

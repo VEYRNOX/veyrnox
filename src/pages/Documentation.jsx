@@ -76,7 +76,8 @@ const features = [
     { name: "Encrypted Cloud Backup", desc: "Ciphertext-only vault backup", status: "roadmap" },
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
-    { name: "RASP", desc: "Jailbreak / root / tamper detection", status: "roadmap" },
+    { name: "RASP", desc: "Browser-level automation detection active (navigator.webdriver → HOOKED → signing blocked). Degradation policy + send-path wiring built. OS-level probes (root/jailbreak) pending native plugin + audit. UNAUDITED-PROVISIONAL.", status: "available" },
+    { name: "Audit Log", desc: "Opt-in local activity log. At most 100 { type, ts } entries encrypted as AES-GCM vault blob — no amounts, addresses, or wallet identity. Off by default; no-op in decoy/hidden sessions.", status: "available" },
     { name: "Spending Limits", desc: "Rule-based per-transaction and daily spending limits (warn-with-acknowledgement)", status: "available" },
   ]},
   { category: "Portfolio & Analytics", icon: BarChart3, items: [
