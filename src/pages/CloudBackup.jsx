@@ -10,6 +10,7 @@ import {
 } from "@/wallet-core/vaultBackup";
 import { toast } from "sonner";
 import BackButton from "@/components/BackButton";
+import { useActionGuard } from "@/components/security/useActionGuard";
 import {
   CloudUpload, Download, Upload, Lock, KeyRound,
   AlertTriangle, Shield, CheckCircle2, Loader2,
@@ -57,6 +58,9 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  // Re-authorize the export with the credential the user ACTUALLY unlocks with
+  // (verifyActiveCredential + optional Action Password), not the raw vault key.
+  const { requireTwoFactor, gateModal } = useActionGuard();
 
   if (isDecoy || isHidden) {
     return (
@@ -69,10 +73,11 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
     );
   }
 
-  const canExport = password.length > 0 && pin.length >= 4 && pin === pinConfirm;
+  // The backup password is a NEW credential the user chooses to protect the
+  // file — min 8, matching the vault-password floor.
+  const canExport = password.length >= 8 && pin.length >= 4 && pin === pinConfirm;
 
-  const handleExport = async () => {
-    if (!canExport) return;
+  const runExport = async () => {
     setBusy(true);
     try {
       const envelope = await createBackup(password, pin);
@@ -80,17 +85,17 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       toast.success("Backup downloaded — store it somewhere safe.");
       setPassword(""); setPin(""); setPinConfirm("");
     } catch (err) {
-      // keyStore.unlock() rejects a mismatched credential with the generic vault
-      // "wrong password or corrupted" message. In the BACKUP context that just
-      // means the entered credential isn't the one this wallet unlocks with —
-      // surface that plainly instead of the scary raw decrypt error.
-      const msg = /wrong password or corrupted/i.test(err?.message || "")
-        ? "That didn't match. Enter the same PIN or password you use to unlock the app."
-        : (err?.message || "Backup failed.");
-      toast.error(msg);
+      toast.error(err?.message || "Backup failed.");
     } finally {
       setBusy(false);
     }
+  };
+
+  // Gate the export behind 2FA (no-op if no second factor is configured), then
+  // seal the already-unlocked wallet under the chosen backup password + PIN.
+  const handleExport = () => {
+    if (!canExport) return;
+    requireTwoFactor(() => { runExport(); }, { title: 'Create encrypted backup' });
   };
 
   return (
@@ -99,28 +104,32 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         <p className="font-medium text-foreground text-sm">What the backup file contains</p>
         <ul className="list-disc list-inside space-y-0.5 mt-1">
           <li>Your encrypted wallet container — no seed is ever stored in plaintext.</li>
-          <li>Two sealed copies: one openable by your password, one by your PIN.</li>
+          <li>Two sealed copies: open it later with the backup password OR the backup PIN you choose below.</li>
           <li>No wallet addresses, no transaction history, no personal data.</li>
         </ul>
         <p className="mt-2 text-yellow-600 dark:text-yellow-400 font-medium">
-          Your password and PIN are not in the file. If you forget both, there is no recovery — this is self-custody.
+          Choose a backup password and PIN now — they are not your app unlock PIN, and they are not stored in the file.
+          If you forget both, there is no recovery — this is self-custody.
         </p>
         <p className="mt-1">
-          The PIN-sealed copy uses a deliberately slow, memory-hard key derivation — strong, but a 6-digit PIN has limited entropy.
-          Use your password for the highest security recovery path.
+          The PIN-sealed copy uses a deliberately slow, memory-hard key derivation — strong, but a short PIN has limited entropy.
+          Use the backup password for the highest-security recovery path.
         </p>
       </div>
 
       <div className="space-y-3">
         <Field
-          label="Your unlock PIN or password (to verify & seal)"
+          label="Choose a backup password"
           type="password"
           value={password}
           onChange={setPassword}
-          placeholder="The same PIN/password you unlock the app with"
+          placeholder="A new password to protect this backup (min 8)"
         />
-        <PinField label="Backup PIN (4–12 digits)" value={pin} onChange={setPin} />
-        <PinField label="Confirm PIN" value={pinConfirm} onChange={setPinConfirm} />
+        {password.length > 0 && password.length < 8 && (
+          <p className="text-xs text-destructive">Use at least 8 characters.</p>
+        )}
+        <PinField label="Choose a backup PIN (4–12 digits)" value={pin} onChange={setPin} />
+        <PinField label="Confirm backup PIN" value={pinConfirm} onChange={setPinConfirm} />
         {pin.length >= 4 && pinConfirm.length >= 4 && pin !== pinConfirm && (
           <p className="text-xs text-destructive">PINs do not match.</p>
         )}
@@ -137,8 +146,10 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 
       <p className="text-xs text-muted-foreground text-center">
         Save the downloaded <span className="font-mono">veyrnox.enc</span> file to iCloud, Google Drive, a USB drive, or anywhere you control.
-        Only the <strong>VEYRNOX</strong> app can open it — and only with your password or PIN.
+        Only the <strong>VEYRNOX</strong> app can open it — and only with the backup password or PIN you chose.
       </p>
+
+      {gateModal}
     </div>
   );
 }

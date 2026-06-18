@@ -1539,13 +1539,24 @@ export function WalletProvider({ children }) {
 
   // VAULT BACKUP (S4 — self-custodial, two sealed copies).
   // Primary-session only: exporting in a decoy/hidden session would export that
-  // session's container and implicitly reveal the session exists. Verifies the
-  // password by calling keyStore.unlock (throws on wrong password) before
-  // sealing so we never create a backup the user cannot open.
-  const createBackup = useCallback(async (password, pin) => {
+  // session's container and implicitly reveal the session exists.
+  //
+  // Seals the ALREADY-UNLOCKED in-memory container — it does NOT re-derive the
+  // vault from a re-typed credential. The earlier design called
+  // keyStore.unlock(typedValue), which rejected anyone whose unlock path isn't a
+  // raw-credential vault decrypt (biometric-cached password, a PIN that maps to a
+  // password via recovery, or a vault re-encrypted by a past restore/change-
+  // password) with "Decryption failed / that didn't match" even though they were
+  // correctly unlocked. The session is already authenticated as primary, and the
+  // UI gates this action behind the 2FA/Action-Password guard; the backup is
+  // sealed under the user-CHOSEN backup password + PIN (independent of however
+  // the wallet is unlocked), so restore always works with what the user picked.
+  const createBackup = useCallback(async (backupPassword, backupPin) => {
     if (isDecoy || isHidden) throw new Error('Backup is only available in the primary session');
-    const containerJson = await keyStore.unlock(password);
-    return createBackupEnvelope(containerJson, password, pin);
+    const container = containerRef.current;
+    if (!container) throw new Error('Unlock your wallet to create a backup.');
+    const containerJson = mv.serializeContainer(container);
+    return createBackupEnvelope(containerJson, backupPassword, backupPin);
   }, [isDecoy, isHidden]);
 
   // Audit log opt-in state (React-tracked; localStorage is the persistent source).
