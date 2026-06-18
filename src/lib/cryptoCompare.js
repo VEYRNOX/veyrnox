@@ -19,7 +19,12 @@ import { ASSETS } from '@/wallet-core/assets.js';
 import { TOP_SYMBOLS } from '@/lib/cryptos.js';
 
 const BASE = 'https://min-api.cryptocompare.com/data';
-const EXTRA = 'extraParams=safecryptowallet';
+// VULN-14 fix: omit the named app identifier. The previous extraParams=safecryptowallet
+// tagged every request with a named Veyrnox identifier, allowing CryptoCompare (or any
+// party with access to their logs) to correlate timestamps, IPs, and symbol queries to
+// this app. Omitting it means requests are indistinguishable from any other CryptoCompare
+// client. Rate-limit allowances are unaffected — the free tier does not require it.
+const EXTRA = '';
 
 // Holdable assets (deduped) — the FULL registry, never narrowed to held assets.
 export const PORTFOLIO_SYMBOLS = Object.freeze([...new Set(ASSETS.map((a) => a.symbol))]);
@@ -44,25 +49,25 @@ function toUsdMap(raw, symbols) {
 
 /** USD prices for the PORTFOLIO universe → { [sym]: number }. */
 export async function fetchPortfolioPricesUsd() {
-  const raw = await getJson(`${BASE}/pricemulti?fsyms=${PORTFOLIO_SYMBOLS.join(',')}&tsyms=USD&${EXTRA}`);
+  const raw = await getJson(`${BASE}/pricemulti?fsyms=${PORTFOLIO_SYMBOLS.join(',')}&tsyms=USD`);
   return toUsdMap(raw, PORTFOLIO_SYMBOLS);
 }
 
 /** USD prices for the MARKET universe → { [sym]: number }. */
 export async function fetchMarketPricesUsd() {
-  const raw = await getJson(`${BASE}/pricemulti?fsyms=${MARKET_SYMBOLS.join(',')}&tsyms=USD&${EXTRA}`);
+  const raw = await getJson(`${BASE}/pricemulti?fsyms=${MARKET_SYMBOLS.join(',')}&tsyms=USD`);
   return toUsdMap(raw, MARKET_SYMBOLS);
 }
 
 /** Multi-fiat matrix for the MARKET universe → raw pricemulti shape { [sym]: { [fiat]: number } }. */
 export async function fetchMarketPricesFiat(fiats) {
   const tsyms = (Array.isArray(fiats) ? fiats : [fiats]).join(',');
-  return getJson(`${BASE}/pricemulti?fsyms=${MARKET_SYMBOLS.join(',')}&tsyms=${tsyms}&${EXTRA}`);
+  return getJson(`${BASE}/pricemulti?fsyms=${MARKET_SYMBOLS.join(',')}&tsyms=${tsyms}`);
 }
 
 /** 24h % change for the MARKET universe (pricemultifull) → { [sym]: { change24h: number|null } }. */
 export async function fetchMarketChanges24h() {
-  const raw = await getJson(`${BASE}/pricemultifull?fsyms=${MARKET_SYMBOLS.join(',')}&tsyms=USD&${EXTRA}`);
+  const raw = await getJson(`${BASE}/pricemultifull?fsyms=${MARKET_SYMBOLS.join(',')}&tsyms=USD`);
   const RAW = raw?.RAW;
   if (!RAW) throw new Error('cryptocompare: no RAW payload');
   const out = {};

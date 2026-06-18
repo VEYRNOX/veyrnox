@@ -432,17 +432,51 @@ export default function WalletEntry() {
     } finally { setBusy(false); }
   };
 
+  // VULN-8: PIN attempt rate-limiting. Tracks consecutive failed attempts in
+  // localStorage so the counter survives a page reload (which an attacker could
+  // use to reset an in-memory counter). Back-off: 5 s after attempt 3, 30 s after
+  // attempt 5, 5 min after attempt 7+. The counter resets on a successful unlock.
+  // With Option A a wrong PIN opens a decoy rather than erroring — so "error" here
+  // means an infrastructure failure, not a wrong PIN. For the PIN cohort the real
+  // rate-limiter is Argon2id cost; this counter adds a software gate on top.
+  const PIN_ATTEMPTS_KEY = 'veyrnox-pin-attempts';
+  const PIN_BACKOFF_KEY = 'veyrnox-pin-backoff-until';
+  function pinBackoffMs(attempts) {
+    if (attempts >= 7) return 5 * 60 * 1000;
+    if (attempts >= 5) return 30 * 1000;
+    if (attempts >= 3) return 5 * 1000;
+    return 0;
+  }
+
   // Returning PIN user: submit the 6-digit PIN. pinModel:true enables Option A
   // (a non-enrolled PIN opens a deterministic empty decoy — never an error).
   const runPinUnlock = async (pin) => {
+    // Check back-off before attempting.
+    try {
+      const until = parseInt(localStorage.getItem(PIN_BACKOFF_KEY) || '0', 10);
+      if (Date.now() < until) {
+        const secs = Math.ceil((until - Date.now()) / 1000);
+        setError(`Too many attempts. Try again in ${secs} second${secs !== 1 ? 's' : ''}.`);
+        return;
+      }
+    } catch { /* localStorage unavailable — skip back-off check */ }
+
     setError(""); setBusy(true);
     try {
       await unlock(pin, { pinModel: true });
       setUnlockPin("");
+      // Success — clear the attempt counter.
+      try { localStorage.removeItem(PIN_ATTEMPTS_KEY); localStorage.removeItem(PIN_BACKOFF_KEY); } catch { /* best-effort */ }
     } catch (e) {
       // With Option A a valid 6-digit PIN never throws for "wrong PIN"; a throw
       // here is an infra/gate failure. Clear the pad and show a neutral message.
       setUnlockPin("");
+      try {
+        const attempts = (parseInt(localStorage.getItem(PIN_ATTEMPTS_KEY) || '0', 10)) + 1;
+        localStorage.setItem(PIN_ATTEMPTS_KEY, String(attempts));
+        const delay = pinBackoffMs(attempts);
+        if (delay > 0) localStorage.setItem(PIN_BACKOFF_KEY, String(Date.now() + delay));
+      } catch { /* best-effort */ }
       setError(e?.message || "Couldn't unlock. Try again.");
     } finally { setBusy(false); }
   };

@@ -1,5 +1,5 @@
 import { USD_RATES } from "@/lib/cryptos";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Search, Printer, CheckCircle2, XCircle, Clock } from "lucide-react";
@@ -11,7 +11,6 @@ const STATUS_ICON = { completed: <CheckCircle2 className="h-4 w-4 text-green-500
 export default function TransactionReceipt() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
-  const receiptRef = useRef(null);
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions"],
@@ -25,16 +24,62 @@ export default function TransactionReceipt() {
   );
 
   const handlePrint = () => {
-    const content = receiptRef.current?.innerHTML;
+    if (!selected) return;
     const win = window.open("", "_blank");
-    win.document.write(`<html><head><title>Transaction Receipt</title><style>
+    // Build the print window from DOM nodes using textContent only — never
+    // innerHTML or document.write with user-derived strings (VULN-3 fix: a
+    // crafted token name or recipient label could inject script via the old path).
+    const doc = win.document;
+    doc.open();
+    doc.write(`<html><head><title>Transaction Receipt</title><style>
       body { font-family: monospace; padding: 32px; max-width: 400px; margin: auto; }
       .divider { border-top: 1px dashed #ccc; margin: 12px 0; }
       .row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 13px; }
       .label { color: #666; } .value { font-weight: 600; }
       h2 { text-align: center; margin-bottom: 20px; }
-    </style></head><body>${content}</body></html>`);
-    win.document.close();
+    </style></head><body></body></html>`);
+    doc.close();
+
+    const rows = [
+      ["Receipt ID", (selected.id?.slice(0, 12) ?? "") + "..."],
+      ["Date", new Date(selected.created_date).toLocaleString("en-GB")],
+      ["Type", (selected.type || "Transfer").toUpperCase()],
+      ["Asset", selected.currency ?? ""],
+      ["Amount", `${selected.amount ?? ""} ${selected.currency ?? ""}`],
+      ["USD Value", `$${usdValue.toFixed(2)}`],
+      ["Network Fee", fee > 0 ? `${fee} ${selected.currency}` : "—"],
+      ["Status", (selected.status || "completed").toUpperCase()],
+      ["To", selected.recipient_address ? selected.recipient_address.slice(0, 20) + "..." : "—"],
+    ];
+
+    const h2 = doc.createElement("h2");
+    h2.textContent = "Veyrnox";
+    doc.body.appendChild(h2);
+
+    const sub = doc.createElement("p");
+    sub.style.cssText = "text-align:center;color:#666;margin-bottom:16px;";
+    sub.textContent = "TRANSACTION RECEIPT";
+    doc.body.appendChild(sub);
+
+    const div1 = doc.createElement("div"); div1.className = "divider"; doc.body.appendChild(div1);
+
+    rows.forEach(([label, value]) => {
+      const row = doc.createElement("div"); row.className = "row";
+      const l = doc.createElement("span"); l.className = "label"; l.textContent = label;
+      const v = doc.createElement("span"); v.className = "value"; v.textContent = value;
+      row.appendChild(l); row.appendChild(v);
+      doc.body.appendChild(row);
+    });
+
+    const div2 = doc.createElement("div"); div2.className = "divider"; doc.body.appendChild(div2);
+
+    ["Thank you for using Veyrnox", "This is a digital transaction record"].forEach(t => {
+      const p = doc.createElement("p");
+      p.style.cssText = "text-align:center;color:#666;font-size:10px;";
+      p.textContent = t;
+      doc.body.appendChild(p);
+    });
+
     win.print();
   };
 
@@ -85,7 +130,7 @@ export default function TransactionReceipt() {
                 <Printer className="h-3.5 w-3.5" /> Print
               </Button>
             </div>
-            <div ref={receiptRef} className="p-5 font-mono text-xs space-y-1">
+            <div className="p-5 font-mono text-xs space-y-1">
               <h2 className="text-center font-bold text-base mb-4 not-italic" style={{ fontFamily: "sans-serif" }}>Veyrnox</h2>
               <div className="text-center text-muted-foreground mb-4">TRANSACTION RECEIPT</div>
               <div className="border-t border-dashed border-border my-3" />

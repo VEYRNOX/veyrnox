@@ -98,6 +98,11 @@ const MIN_PANIC_LEN = 6;
 const LOCAL_RESIDUE_KEYS = Object.freeze([
   'veyrnox-decoy-demo-balances',
   'veyrnox-hidden-demo-balances',
+  // VULN-5 fix: biometricUnlock.js previously persisted the plaintext vault
+  // password here in demo mode. The demoStore path now uses an in-memory variable
+  // instead, so this key will normally be absent — but include it in the wipe
+  // list so any residue from older app versions is cleared on panic.
+  'veyrnox-bio-unlock-secret',
 ]);
 
 // DENIABILITY TELLS in localStorage that a wipe MUST also destroy (internal audit

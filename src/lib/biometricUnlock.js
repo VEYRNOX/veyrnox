@@ -61,17 +61,21 @@
 import { Capacitor } from '@capacitor/core';
 import { DEMO } from '@/api/demoClient';
 
-// DEMO cache lives in localStorage (clearly not real security — gated only by
-// the simulated prompt). NATIVE cache lives in the hardware-backed secure store.
-const DEMO_KEY = 'veyrnox-bio-unlock-secret';
+// DEMO cache lives in an in-memory module variable — session-scoped, cleared on
+// page unload, never written to localStorage or any persistent store. This is a
+// UI simulation; the real native path uses the hardware-backed secure store.
+// (VULN-2 fix: the previous localStorage path left the plaintext vault password
+// readable by same-origin scripts and browser extensions for the session lifetime.)
 const NATIVE_KEY = 'bio_unlock_secret';
 // Mirror keystore/native.js's prefix/accessibility so the cached item gets the
 // same ThisDeviceOnly, passcode-gated, never-synced protection as the vault blob.
 const NATIVE_PREFIX = 'veyrnox_';
 
-function demoStore(pw) { try { localStorage.setItem(DEMO_KEY, pw); } catch { /* best-effort */ } }
-function demoGet() { try { return localStorage.getItem(DEMO_KEY); } catch { return null; } }
-function demoClear() { try { localStorage.removeItem(DEMO_KEY); } catch { /* best-effort */ } }
+let _demoCache = null; // in-memory only; cleared when the module unloads
+
+function demoStore(pw) { _demoCache = pw; }
+function demoGet() { return _demoCache; }
+function demoClear() { _demoCache = null; }
 
 // Native secure-storage helpers. Loaded lazily so the Capacitor plugin never
 // reaches the web/test bundle (exactly like keystore/index.js does for native).

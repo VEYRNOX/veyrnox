@@ -148,7 +148,7 @@ export default function PanicWipe() {
     if (confirmText !== CONFIRM_WORD || !ack) return;
     setWiping(true);
     try {
-      const report = await panicWipe();
+      const report = await panicWipe({ confirmed: true });
       setWipeReport(report);
       setConfirmText(""); setAck(false);
       await refresh();
