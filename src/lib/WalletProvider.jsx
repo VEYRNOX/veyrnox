@@ -27,7 +27,7 @@ import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
 import { captureVerifierSafe, verifyCredential, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
-import { serializeActionPasswordRecord } from '@/wallet-core/actionPassword';
+import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore } from '@/wallet-core/keystore';
 // MULTI-SEED VAULT (feat/multi-wallet-portfolio). ⚠️ AUDIT-CRITICAL container
@@ -843,9 +843,15 @@ export function WalletProvider({ children }) {
   /** True iff the ACTIVE set has an Action Password configured. */
   const hasActionPassword = useCallback(() => mv.getActionPasswordRecord(containerRef.current) != null, []);
 
-  /** Verify an entered Action Password against the ACTIVE set's record. Fails closed. */
+  /** Verify an entered Action Password against the ACTIVE set's record. Fails closed.
+   * getActionPasswordRecord returns the SERIALISED record (base64 salt/hash strings);
+   * verifyCredential needs the deserialised verifier (Uint8Array salt/hash), so we
+   * MUST deserialise first. Passing the serialised record straight in always failed
+   * the length/shape compare -> verify returned false for the correct password too,
+   * locking a configured user out of every critical action. deserialize() returns null
+   * for an absent/malformed record, which verifyCredential treats as fail-closed. */
   const verifyActionPassword = useCallback(
-    (entered) => verifyCredential(mv.getActionPasswordRecord(containerRef.current), entered),
+    (entered) => verifyCredential(deserializeActionPasswordRecord(mv.getActionPasswordRecord(containerRef.current)), entered),
     [],
   );
 
