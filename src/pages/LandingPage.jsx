@@ -30,7 +30,7 @@ export default function LandingPage() {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <Shield className="h-4 w-4 text-white" />
             </div>
-            <span className="text-xl font-bold">Veyrnox</span>
+            <span className="text-xl font-bold">VEYRNOX</span>
           </div>
 
           {/* Desktop Nav */}
@@ -269,7 +269,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <p className="font-bold text-lg mb-4">Veyrnox</p>
+              <p className="font-bold text-lg mb-4">VEYRNOX</p>
               <p className="text-sm text-slate-400">A self-custody, coercion-resistant wallet — testnet beta</p>
             </div>
             <div>
@@ -294,7 +294,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-slate-700/50 pt-8 text-center text-sm text-slate-400">
-            <p>&copy; 2026 Veyrnox. All rights reserved.</p>
+            <p>&copy; 2026 <strong>VEYRNOX</strong>. All rights reserved.</p>
           </div>
         </div>
       </footer>

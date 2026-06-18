@@ -203,7 +203,7 @@ export default function HardwareWalletPage() {
         <ShieldCheck className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Your private key never leaves the device.</span>{' '}
-          Veyrnox reads your public address only. No seed phrase or private key is transmitted.
+          <strong>VEYRNOX</strong> reads your public address only. No seed phrase or private key is transmitted.
         </p>
       </div>
 
@@ -220,7 +220,7 @@ export default function HardwareWalletPage() {
         </div>
         <p className="text-sm text-muted-foreground">
           When you send ETH, the unsigned transaction will be routed to your connected Ledger for
-          on-device signing. Your key stays on the device — Veyrnox only broadcasts the signed
+          on-device signing. Your key stays on the device — <strong>VEYRNOX</strong> only broadcasts the signed
           transaction.
         </p>
         <p className="text-xs text-muted-foreground italic">
