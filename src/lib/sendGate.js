@@ -16,6 +16,10 @@
 //                    only, build-eliminated ungate relaxes it (never changes status)
 //   5   unlocked     the on-device vault must be unlocked
 //   6   re-auth      step-up recent-auth must not be pending (demo has no vault)
+//   6b  two-factor   the Action-Password / passkey second factor, WHEN configured,
+//                    must be verified THIS action — enforced here at the chokepoint
+//                    so a still-open recent-auth window can't broadcast on PIN
+//                    recency alone (audit H1). Demo has no vault/credential → exempt.
 //   7   spend limit  per-transaction / daily caps, unless explicitly acknowledged
 //   8a  risk score   the pre-sign risk score must compute (fail closed if it throws)
 //   8b  risk verdict composite RASP-env x tx-risk: BLOCK is a hard stop (no
@@ -33,6 +37,7 @@ export const SEND_GATE = Object.freeze({
   NOT_SENDABLE: 'NOT_SENDABLE',
   LOCKED: 'LOCKED',
   REAUTH: 'REAUTH',
+  TWO_FACTOR: 'TWO_FACTOR',
   LIMIT: 'LIMIT',
   RISK_SCORE_FAILED: 'RISK_SCORE_FAILED',
   RISK_BLOCK: 'RISK_BLOCK',
@@ -52,6 +57,10 @@ const block = (code, message) => ({ allowed: false, code, message });
  * @param {boolean} [i.isUnlocked]      the vault is unlocked
  * @param {boolean} [i.demo]            demo mode (no vault → re-auth exempt)
  * @param {boolean} [i.reauthRequired]  step-up re-auth is pending
+ * @param {boolean} [i.twoFactorRequired] a second factor (Action Password / passkey-2FA)
+ *                                      is configured for this action and must be satisfied
+ * @param {boolean} [i.twoFactorVerified] the second factor was verified THIS action
+ *                                      (a one-shot token the signer consumes per send)
  * @param {{blocked:boolean, reasons?:Array<{kind:string, limitUSD:number}>}|null} [i.limit]
  *                                      result of evaluateSendAgainstLimits()
  * @param {boolean} [i.limitAck]        the user acknowledged the limit breach
@@ -69,6 +78,8 @@ export function evaluateSendGate({
   isUnlocked = false,
   demo = false,
   reauthRequired = false,
+  twoFactorRequired = false,
+  twoFactorVerified = false,
   limit = null,
   limitAck = false,
   riskScoreFailed = false,
@@ -90,6 +101,15 @@ export function evaluateSendGate({
   // 6 — step-up re-auth. Demo has no vault, so it is exempt.
   if (!demo && reauthRequired) {
     return block(SEND_GATE.REAUTH, 'Re-enter your PIN or password to authorise this send.');
+  }
+
+  // 6b — second factor (Action Password / passkey-2FA). When configured for this
+  // action it must be verified THIS action. Enforced at the chokepoint (audit H1)
+  // so a recently-authed session with the re-auth window still open cannot reach
+  // the signer on PIN recency alone — the second factor is no longer UI-only.
+  // Demo has no vault/credential, so it is exempt, exactly like re-auth.
+  if (!demo && twoFactorRequired && !twoFactorVerified) {
+    return block(SEND_GATE.TWO_FACTOR, 'Enter your Action Password to authorise this send.');
   }
 
   // 7 — spend limits (per-tx OR daily), unless the breach was acknowledged.
