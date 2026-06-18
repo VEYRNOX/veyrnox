@@ -567,6 +567,11 @@ export default function SendCrypto() {
   const btcRiskPending = isBtc && btcSim.isFetching && !btcSim.data;
   const blockedByBtcRisk = btcRiskPending || (btcRiskHigh && !btcRiskAck);
 
+  // One-shot 2FA token (audit H1): TwoFactorGate.onSuccess sets this true; the signer
+  // (mutationFn) consumes it per attempt and passes it to evaluateSendGate, so the
+  // second factor is enforced at the chokepoint — not only by which JSX branch renders.
+  const twoFactorVerifiedRef = useRef(false);
+
   const sendTx = useMutation({
     mutationFn: async () => {
       // DEFENSE-IN-DEPTH: re-assert EVERY UI gate at signing time, as one ordered
@@ -602,6 +607,10 @@ export default function SendCrypto() {
       // The single ordered verdict (capability → unlock → re-auth → limits → risk →
       // approval). canSend() stays the production truth, relaxed only by the dev,
       // testnet-only, build-eliminated ungate. Mainnet stays gated in networks.js.
+      // One-shot: consume the 2FA token for THIS attempt (a retry must re-verify).
+      const twoFactorVerified = twoFactorVerifiedRef.current;
+      twoFactorVerifiedRef.current = false;
+
       const gate = evaluateSendGate({
         canSend: canSend(selectedAsset),
         devUngated,
@@ -609,6 +618,11 @@ export default function SendCrypto() {
         isUnlocked,
         demo: DEMO,                                    // demo has no vault → re-auth exempt
         reauthRequired: DEMO ? false : isSendReauthRequired(),
+        // Second factor (audit H1): when an Action Password is configured it must be
+        // verified THIS send — enforced here so a recently-authed session can't reach
+        // the signer on PIN recency alone. evaluateSendGate exempts demo internally.
+        twoFactorRequired: !DEMO && actionPasswordConfigured,
+        twoFactorVerified,
         limit: limitGate,
         limitAck,
         riskScoreFailed,
@@ -1014,6 +1028,21 @@ export default function SendCrypto() {
           </div>
         )}
 
+        {/* Insufficient balance — explains the disabled Send button. The same
+            `amount > effectiveBalance` condition already gates the button below;
+            without this the button just greys out with no reason (audit: the
+            over-balance case had no user feedback). */}
+        {balanceKnown && parseFloat(amount) > 0 && parseFloat(amount) > effectiveBalance && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
+            <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-xs text-destructive min-w-0">
+              <span className="font-semibold">Insufficient balance.</span>{" "}
+              You have {effectiveBalance} {selectedWallet?.currency} available to send (after the
+              network fee). Reduce the amount to continue.
+            </p>
+          </div>
+        )}
+
         {step === "form" && (
           <Button
             className="w-full"
@@ -1160,7 +1189,7 @@ export default function SendCrypto() {
                     title="Authorise this send with your PIN + Action Password"
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
-                    onSuccess={() => sendTx.mutate()}
+                    onSuccess={() => { twoFactorVerifiedRef.current = true; sendTx.mutate(); }}
                     verify={async ({ pin, password }) => {
                       const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
                       const passwordOk = await verifyActionPassword(password);

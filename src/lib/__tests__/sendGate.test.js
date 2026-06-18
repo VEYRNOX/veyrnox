@@ -78,6 +78,45 @@ describe('gate 6 — step-up re-auth', () => {
   });
 });
 
+describe('gate 6b — second factor (Action Password / passkey-2FA)', () => {
+  it('blocks when a second factor is required but not verified this action', () => {
+    const r = evaluateSendGate({ ...PASS, twoFactorRequired: true, twoFactorVerified: false });
+    expect(r.allowed).toBe(false);
+    expect(r.code).toBe(SEND_GATE.TWO_FACTOR);
+    expect(r.message).toBe('Enter your Action Password to authorise this send.');
+  });
+
+  it('allows once the second factor is verified this action', () => {
+    expect(
+      evaluateSendGate({ ...PASS, twoFactorRequired: true, twoFactorVerified: true }).allowed,
+    ).toBe(true);
+  });
+
+  it('is a no-op when no second factor is configured', () => {
+    expect(evaluateSendGate({ ...PASS, twoFactorRequired: false }).allowed).toBe(true);
+  });
+
+  it('is exempt in demo mode (no vault/credential)', () => {
+    expect(
+      evaluateSendGate({ ...PASS, demo: true, twoFactorRequired: true, twoFactorVerified: false })
+        .allowed,
+    ).toBe(true);
+  });
+
+  it('bites even when the re-auth window is open — the H1 bypass regression', () => {
+    // The exact gap the audit found: recent-auth satisfied (reauthRequired false),
+    // but a configured second factor must STILL be enforced at the chokepoint,
+    // not merely in the render tree.
+    const r = evaluateSendGate({
+      ...PASS,
+      reauthRequired: false,
+      twoFactorRequired: true,
+      twoFactorVerified: false,
+    });
+    expect(r.code).toBe(SEND_GATE.TWO_FACTOR);
+  });
+});
+
 describe('gate 7 — spend limits', () => {
   it('blocks a per-transaction breach with the per-tx message', () => {
     const r = evaluateSendGate({
@@ -224,6 +263,29 @@ describe('ordering — the first tripped gate wins', () => {
       blockedByApproval: true,
     });
     expect(r.code).toBe(SEND_GATE.REAUTH);
+  });
+
+  it('re-auth (6) outranks the second factor (6b)', () => {
+    const r = evaluateSendGate({
+      ...PASS,
+      reauthRequired: true,
+      twoFactorRequired: true,
+      twoFactorVerified: false,
+    });
+    expect(r.code).toBe(SEND_GATE.REAUTH);
+  });
+
+  it('the second factor (6b) outranks limits, risk and approval', () => {
+    const r = evaluateSendGate({
+      ...PASS,
+      twoFactorRequired: true,
+      twoFactorVerified: false,
+      limit: { blocked: true, reasons: [{ kind: 'per_tx', limitUSD: 1 }] },
+      riskScoreFailed: true,
+      presign: { proceedAllowed: false, signerReachable: false },
+      blockedByApproval: true,
+    });
+    expect(r.code).toBe(SEND_GATE.TWO_FACTOR);
   });
 
   it('limits (7) outrank risk and approval', () => {
