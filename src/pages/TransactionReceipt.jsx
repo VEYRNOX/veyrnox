@@ -51,7 +51,7 @@ export default function TransactionReceipt() {
     ];
 
     const h2 = doc.createElement("h2");
-    h2.textContent = "Veyrnox";
+    h2.textContent = "VEYRNOX";
     doc.body.appendChild(h2);
 
     const sub = doc.createElement("p");
@@ -71,7 +71,7 @@ export default function TransactionReceipt() {
 
     const div2 = doc.createElement("div"); div2.className = "divider"; doc.body.appendChild(div2);
 
-    ["Thank you for using Veyrnox", "This is a digital transaction record"].forEach(t => {
+    ["Thank you for using VEYRNOX", "This is a digital transaction record"].forEach(t => {
       const p = doc.createElement("p");
       p.style.cssText = "text-align:center;color:#666;font-size:10px;";
       p.textContent = t;
@@ -128,7 +128,7 @@ export default function TransactionReceipt() {
               </Button>
             </div>
             <div className="p-5 font-mono text-xs space-y-1">
-              <h2 className="text-center font-bold text-base mb-4 not-italic" style={{ fontFamily: "sans-serif" }}>Veyrnox</h2>
+              <h2 className="text-center font-bold text-base mb-4 not-italic" style={{ fontFamily: "sans-serif" }}>VEYRNOX</h2>
               <div className="text-center text-muted-foreground mb-4">TRANSACTION RECEIPT</div>
               <div className="border-t border-dashed border-border my-3" />
               {[
@@ -147,7 +147,7 @@ export default function TransactionReceipt() {
                 </div>
               ))}
               <div className="border-t border-dashed border-border my-3" />
-              <p className="text-center text-muted-foreground text-[10px]">Thank you for using Veyrnox</p>
+              <p className="text-center text-muted-foreground text-[10px]">Thank you for using <strong>VEYRNOX</strong></p>
               <p className="text-center text-muted-foreground text-[10px]">This is a digital transaction record</p>
             </div>
           </div>

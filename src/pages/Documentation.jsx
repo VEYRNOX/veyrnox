@@ -201,7 +201,7 @@ export default function Documentation() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Veyrnox Documentation</h1>
+          <h1 className="text-3xl font-bold">VEYRNOX Documentation</h1>
           <p className="text-muted-foreground mt-1">Feature guide and user workflows for a non-custodial, security-first self-custody wallet</p>
         </div>
         <div className="flex items-center gap-2">

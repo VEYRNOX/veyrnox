@@ -86,7 +86,7 @@ export default function TermsLegal() {
         {/* §A — Terms of use (placeholder, owner/counsel-supplied) */}
         <PlaceholderSection icon={FileText} title="Terms of use">
           <p>
-            The full terms of use for Veyrnox are <b>to be supplied</b> by the project before
+            The full terms of use for <strong>VEYRNOX</strong> are <b>to be supplied</b> by the project before
             any non-testnet release. This is a placeholder — <b>not the terms of use</b>, and
             not a contract.
           </p>
@@ -104,7 +104,7 @@ export default function TermsLegal() {
         {/* §C — Provisional / unaudited status (reuse existing honest language) */}
         <Section icon={ShieldAlert} title="Provisional, unaudited status">
           <p>
-            Veyrnox is a self-custody, coercion-resistant crypto wallet in <b>testnet beta</b> —{" "}
+            <strong>VEYRNOX</strong> is a self-custody, coercion-resistant crypto wallet in <b>testnet beta</b> —{" "}
             <b>testnet funds only</b>. Its security features are <b>provisional and unaudited</b>,
             pending an independent review. Your private keys never leave your device, and the
             app holds none of them server-side.

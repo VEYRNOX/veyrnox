@@ -137,7 +137,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 
       <p className="text-xs text-muted-foreground text-center">
         Save the downloaded <span className="font-mono">veyrnox.enc</span> file to iCloud, Google Drive, a USB drive, or anywhere you control.
-        Only the Veyrnox app can open it — and only with your password or PIN.
+        Only the <strong>VEYRNOX</strong> app can open it — and only with your password or PIN.
       </p>
     </div>
   );
@@ -397,7 +397,7 @@ export default function CloudBackup() {
 
       {/* Footer note */}
       <p className="text-[10px] text-muted-foreground text-center pb-4">
-        Strongly encrypted on your device · never transmitted · only Veyrnox can open it
+        Strongly encrypted on your device · never transmitted · only <strong>VEYRNOX</strong> can open it
       </p>
     </div>
   );

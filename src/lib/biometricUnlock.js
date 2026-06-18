@@ -130,13 +130,13 @@ async function nativeAuthenticateOrThrow() {
     );
   }
 
-  const reason = 'Unlock your Veyrnox wallet';
+  const reason = 'Unlock your VEYRNOX wallet';
   if (info.isAvailable) {
     try {
       await BiometricAuth.authenticate({
         reason,
         cancelTitle: 'Cancel',
-        androidTitle: 'Veyrnox',
+        androidTitle: 'VEYRNOX',
         androidSubtitle: 'Unlock your wallet',
         allowDeviceCredential: false,
       });

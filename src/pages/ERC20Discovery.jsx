@@ -27,7 +27,7 @@ export default function ERC20Discovery() {
         <p className="text-sm text-muted-foreground">
           Discovering every token held by an address means scanning its ERC-20
           Transfer-event history — which requires a third-party indexer this build
-          does not run, and would reveal the address to that indexer. Veyrnox does
+          does not run, and would reveal the address to that indexer. <strong>VEYRNOX</strong> does
           not do this today, and nothing on this page queries a real blockchain.
         </p>
       </div>
