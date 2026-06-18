@@ -1,6 +1,6 @@
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import { toast } from "sonner";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
+import { useNavigate } from "react-router-dom";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
@@ -29,7 +30,7 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
-import { degrade, detect, TIER } from "@/rasp";
+import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
@@ -82,7 +83,18 @@ function PoisonWarning({ screen }) {
 
 export default function SendCrypto() {
   const queryClient = useQueryClient();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden } = useWallet();
+  const navigate = useNavigate();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
+
+  // Cold-load / deep-link guard: if the vault is confirmed absent (new install),
+  // redirect home rather than hanging on an empty form.
+  const redirected = useRef(false);
+  useEffect(() => {
+    if (!redirected.current && !vaultChecking && vaultExists === false) {
+      redirected.current = true;
+      navigate('/', { replace: true });
+    }
+  }, [vaultChecking, vaultExists, navigate]);
   const [walletId, setWalletId] = useState("");
   const [assetSymbol, setAssetSymbol] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -533,20 +545,14 @@ export default function SendCrypto() {
   // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
   const riskPending = riskApplicable && !riskReady;
 
-  // RASP §7 — pre-sign ENVIRONMENT gate (roadmap Phase 3). BEHIND A FLAG, OFF BY
-  // DEFAULT: flag-off → raspTier = ALLOW, so the composite below reduces to the
-  // tx-risk gate (current behaviour, zero RASP friction in production). Flag-on
-  // (dev/tests) → the REAL detector runs; on a build with no native probe it
-  // fail-closes to INTEGRITY_UNAVAILABLE → WARN (degrade), NEVER a fake CLEAN.
-  // detect()/degrade() are pure functions of the ENVIRONMENT only — no walletSet
-  // handle (I3). import.meta.env is build-time, so the branch is dead-code-
-  // eliminated from production when the flag is unset. I4: a RASP crash fails
-  // closed to the strongest BLOCK, never silent-allow.
-  const RASP_PRESIGN_GATE = import.meta.env.VITE_RASP_PRESIGN_GATE === '1';
+  // RASP §7 — pre-sign ENVIRONMENT gate (Phase 3, browser-level detection active).
+  // detect(browserProbeSource) runs on every render; a normal browser returns
+  // CLEAN → ALLOW (no added friction). Automation/WebDriver → HOOKED → BLOCK.
+  // OS-level probes (root/jailbreak) are not yet available (need native plugin).
+  // I3: detect()/degrade() are pure functions of the ENVIRONMENT only — no
+  // walletSet handle. I4: a RASP crash fails closed to the strongest BLOCK.
   let raspArtifact = null;
-  if (RASP_PRESIGN_GATE) {
-    try { raspArtifact = degrade(detect()); } catch { raspArtifact = degrade(undefined); }
-  }
+  try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
   const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
 
   // The COMPOSITE pre-sign decision (RASP env plane ⊕ tx-risk plane), set-blind by
@@ -951,8 +957,14 @@ export default function SendCrypto() {
                 : flowSendEnabled
                   ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
                   : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
-              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span> left</>}
+              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
             </p>
+          )}
+          {amount && Number.isFinite(amountNum) && amountNum <= 0 && (
+            <p className="text-xs text-destructive mt-1">Amount must be greater than zero</p>
+          )}
+          {balanceKnown && amount && Number.isFinite(amountNum) && amountNum > 0 && amountNum > effectiveBalance && (
+            <p className="text-xs text-destructive mt-1">Insufficient balance</p>
           )}
           {(amountUsd != null || balanceUsd != null) && (
             <p className="text-[10px] text-muted-foreground/70 mt-0.5">{USD_REFERENCE_NOTE}</p>

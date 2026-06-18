@@ -26,7 +26,7 @@ export const ALL_ROUTE_PATHS = [
   '/correlation', '/split-bill', '/session-manager', '/receipt', '/tx-history',
   '/address-checker', '/fee-analytics', '/correlation-timeline',
   '/dashboard-widgets', '/shared-portfolio', '/referrals', '/wallet-seed-qr',
-  '/hardware-wallet', '/rasp-security', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
+  '/hardware-wallet', '/cloud-backup', '/rasp-security', '/audit-log', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
   '/index-builder', '/messenger-alerts', '/voice-commands', '/leaderboard',
   '/public-profiles', '/ai-rebalancer', '/token-approvals', '/network-manager',
   '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
@@ -49,8 +49,8 @@ export const CLASSIFICATION = {
     note: 'Social portfolio sharing exposes holdings. A deliberate, encrypted signed export will replace it.',
   },
   '/referrals': {
-    verdict: 'disabled', reason: 'server', dataSource: 'external',
-    note: 'Referrals return once they can work without a server that links referrer and referee.',
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
+    note: 'Requires a server to link referrer and referee — no on-device path exists. Cut for this release.',
   },
 
   // ── Overview group (audit batch 1) ─────────────────────────────────────────
@@ -63,24 +63,24 @@ export const CLASSIFICATION = {
     note: 'Aggregates PriceAlert, FraudAlert, RASPEvent, SmartAlert from local IndexedDB (localBase44); all records are user-generated on-device — no external source or fabrication.',
   },
   '/analytics': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Wallet/Transaction data is real local data but all USD values are derived from hardcoded stale USD_RATES constants; the "Net PnL" chart conflates sent/received amounts with profit/loss and the portfolio value shown will silently drift from reality as markets move.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'USD_RATES removed. Portfolio Value chart replaced with Transaction Activity count chart. Allocation pie uses native balances per currency. Monthly bars show sent/received tx counts. Summary tiles show wallet count, total txs, top asset by native balance — no stale fiat.',
   },
   '/advanced-analytics': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'MONTHLY_PERFORMANCE is a hardcoded array of specific monthly return percentages (Nov–Apr) presented under the label "Your Portfolio" — these numbers are not derived from the user\'s transaction history. Volatility and Sharpe values are also static constants, not computed from real price data.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'USD_RATES and MONTHLY_PERFORMANCE removed. Performance tab replaced with real monthly sent/received tx counts (same source as /analytics). Risk/diversification metrics now weight by wallet count per currency (unit-agnostic proxy). VOLATILITY/SHARPE remain as reference calibration constants (same as /risk-score, which is live) — labeled clearly as non-live in UI.',
   },
   '/advisor': {
-    verdict: 'disabled', reason: 'server', dataSource: 'external',
-    note: 'Calls base44.integrations.Core.InvokeLLM which requires a backend LLM endpoint. Correctly guards with LLM_AVAILABLE and displays LocalBuildNotice when unavailable in the local build.',
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
+    note: 'Requires LLM backend endpoint (InvokeLLM). Also carries regulated financial-advice liability (FCA/SEC) that cannot be resolved without legal review and geographic gating. Cut: server + legal blocker with no on-device path.',
   },
   '/ai-assistant': {
-    verdict: 'disabled', reason: 'server', dataSource: 'external',
-    note: 'Calls base44.agents.createConversation / addMessage / subscribeToConversation — all require the LLM agent backend. Correctly guards with LLM_AVAILABLE and shows LocalBuildNotice.',
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
+    note: 'Requires base44.agents.* backend (createConversation / addMessage / subscribeToConversation — not implemented in local build). Financial-advice liability in open chat. Cut: agents API not built + legal blocker.',
   },
   '/benchmark': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'portfolioData is generated via genBenchmark(1.5, 0.025) — a Math.sin-based synthetic random walk — then labeled "Your Portfolio" in a returns chart alongside BTC, ETH, S&P 500. The user\'s actual transaction history is not consulted; these are fabricated performance numbers.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'genBenchmark synthetic random walk removed. Page now shows honest "benchmark data not available" notice explaining what was removed and why, plus current native holdings without USD conversion. Links to Portfolio Snapshots for real time-series comparison.',
   },
   '/what-if': {
     verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
@@ -91,20 +91,20 @@ export const CLASSIFICATION = {
     note: 'Derives risk score from real local wallet balances, staking positions, and loan records via IndexedDB. Applies static per-asset volatility constants (reasonable calibration, not claimed to be live market data). No fabrication — formula is transparent and entirely driven by the user\'s actual holdings.',
   },
   '/correlation': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Presents a hardcoded CORRELATIONS matrix of specific coefficients (e.g. BTC↔ETH = 0.82) as if they reflect current market reality, with no disclaimer that these are fixed reference values. Uses wallet list only to filter which rows/columns to show — the coefficients themselves are static.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Hardcoded CORRELATIONS matrix retained as reference/illustrative values — disclaimer added prominently in yellow before the table. Wallet list used to filter shown assets (real data). No live price feed used — per-asset coefficients are static reference constants, clearly labeled as such.',
   },
   '/correlation-timeline': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Entire PRICE_SERIES (30-day indexed arrays for BTC/ETH/SOL) and EVENTS list (Fed Rate Cut, SEC Approval, Exchange Hack, etc.) are hardcoded constants presented as a live 30-day price-and-events chart. No real price history or news data is used; the chart is wholly fabricated.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'PRICE_SERIES and EVENTS hardcoded constants removed. Page now shows honest "historical price data not available" notice. Existing NewsSentiment records from the database are still displayed if present. No fabricated data remains.',
   },
   '/dashboard-widgets': {
     verdict: 'live', dataSource: 'on-device',
     note: 'A pure settings/preference UI: reads and writes widget visibility and order to localStorage only. No data fabrication, no external calls. Cleanly on-device.',
   },
   '/news-sentiment': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'MOCK_NEWS is a hardcoded array of specific headlines attributed to real outlets (Bloomberg, Reuters, CoinDesk) presented prominently as current market news. LocalBuildNotice does disclose these are "illustrative sample data" but the fabricated articles still dominate the visible UI. AI refresh correctly disabled via LLM_AVAILABLE guard.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'MOCK_NEWS array removed. allNews now only contains records from base44.entities.NewsSentiment (user-saved or AI-refreshed). Added honest "no live feed connected" notice. AI refresh correctly disabled via LLM_AVAILABLE guard. No fabricated Bloomberg/Reuters/CoinDesk articles shown.',
   },
 
   // ── Wallet group (audit batch 2) ───────────────────────────────────────────
@@ -129,8 +129,8 @@ export const CLASSIFICATION = {
     note: 'Bill-splitting tool: divides a user-entered USD total among named wallet addresses using hardcoded stale USD_RATES. No signing, no actual on-chain tx. Does not serve the coercion-resistant vault job.',
   },
   '/receipt': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Reads real local Transaction records but the "USD Value" line on every receipt is computed from hardcoded stale USD_RATES constants — presenting a silently stale dollar figure as fact on a document intended to be a financial record.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Reads real local Transaction records. USD Value row removed — receipt now shows native amount and fee only, with no stale fiat conversion on a financial document.',
   },
   '/fee-analytics': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -145,30 +145,30 @@ export const CLASSIFICATION = {
     note: 'Entirely local: ethers.Wallet.createRandom() for key gen, ethers.HDNodeWallet.fromPhrase() for derivation, wallet.signMessage()/signTransaction() for signing — all client-side ethers.js v6, no external call. Standard cryptographic signing utility.',
   },
   '/recurring': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Explicitly stubbed: page warns "schedules & reminders only" and the execute path redirects to /send for manual signing (promptSignInSend). Feature cannot actually execute recurring transfers — presents as "Automate regular crypto transfers" but does not deliver that capability.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Schedules stored in base44.entities.RecurringPayment (local IndexedDB). Page uses browser Notification API (same pattern as /push) to fire a reminder when a payment is due. Monthly estimate now shown per-currency — cross-currency totals removed. Self-custody contract maintained: no autonomous value transfer; due payments hand off to /send for user signing. Monthly-estimate mixed-currency bug fixed.',
   },
   '/calculator': {
-    verdict: 'disabled', reason: 'leaks', dataSource: 'external',
-    note: 'Calls fetch("https://min-api.cryptocompare.com/data/pricemulti?...") — a third-party price-feed API. Sends the list of crypto symbols to CryptoCompare on every load and every 30-second refresh interval.',
+    verdict: 'live', dataSource: 'external',
+    note: 'CryptoCompare egress gated behind isLivePricesEnabled() (same opt-in as priceFeed.js). When off: no network call, shows "Live prices off" banner with Enable button. When on: sends fixed MARKET_SYMBOLS list (not user holdings). Auto-refetch removed; fetch only fires on load (staleTime: 20s). Symbol list is holdings-agnostic per cryptoCompare.js design.',
   },
 
   // ── Invest group (audit batch 3) ──────────────────────────────────────────
   '/portfolio-rewind': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Reads real local wallet balances via base44.entities.Wallet but applies hardcoded PRICE_HISTORY multipliers (e.g. BTC 30d = 0.85×, 2y = 0.31×) to fabricate past USD values. The chart is a synthetic linear interpolation between invented past and stale-rate present — no real price history is consulted.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'PRICE_HISTORY multipliers and USD_RATES removed. Page now shows honest "historical price data not available" notice explaining what was fabricated and why. Displays current native holdings. Links to Portfolio Snapshots for real time-series comparison. No invented past USD values remain.',
   },
   '/index-builder': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Index definitions are real local records (base44.entities.CustomIndex), but the displayed performance figure is computed from a hardcoded PERF object (e.g. BTC: 8.2, ETH: 12.4, SOL: 23.1) presented as the index\'s return — these percentages are not derived from any real price history.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'PERF hardcoded performance percentages removed. Index CRUD (create/list/delete) is real base44 entity storage. Index cards now show composition pie chart and weight breakdown only — no fabricated return percentage. What remains is fully user-driven: name, description, components, rebalance frequency.',
   },
   '/ai-rebalancer': {
-    verdict: 'disabled', reason: 'server', dataSource: 'external',
-    note: 'Calls base44.integrations.Core.InvokeLLM for portfolio analysis. Correctly guarded with LLM_AVAILABLE; shows LocalBuildNotice when the LLM endpoint is unavailable in the local build.',
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
+    note: 'Requires LLM backend (InvokeLLM). Also imports stale USD_RATES for portfolio % calculations. Automated rebalancing recommendations carry regulated financial-advice liability. Cut: server + stale prices + legal blocker.',
   },
   '/pl': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Trade records are real user-entered data (base44.entities.PLRecord), but unrealised P&L on open positions and the "Close" action both use hardcoded stale CURRENT_PRICES (BTC: 68000, ETH: 3200, …) as the current market price — figures will be silently wrong as markets move.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'CURRENT_PRICES removed. Unrealised P&L shows "enter exit price" for open trades. Close action now collects user-supplied exit price inline before writing P&L — no stale market price used. Realised P&L on closed trades uses the user-entered entry/exit prices only.',
   },
   '/risk': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -181,8 +181,8 @@ export const CLASSIFICATION = {
     note: 'Pure local CRUD on base44.entities.SavingsGoal. Users enter USD target and current amounts directly; progress bars are computed from those user-entered values. No currency conversion, no fabricated data, no external call.',
   },
   '/budget': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Reads real local Transaction records (base44.entities.Transaction) and BudgetLimit records, but all crypto-to-USD conversion for "Total Spent This Month" and per-budget spend uses hardcoded stale USD_RATES — displayed spend figures will silently drift from reality as markets move.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Rewritten to track native amounts per currency — no USD conversion. Limit field relabelled "native amount". Spend shown as "X {currency} sent of Y {currency} limit". Stale USD_RATES removed entirely.',
   },
   '/net-worth': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -193,18 +193,18 @@ export const CLASSIFICATION = {
     note: 'Pure CRUD on base44.entities.Invoice. Invoices are denominated in user-chosen crypto amounts — no USD conversion, no stale price usage, no fabricated data. Invoice number derived from Date.now() as a non-financial identifier only.',
   },
   '/tax': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Reads real local Transaction, StakingPosition, and Wallet records, but the historicalRate() function produces pseudo-random prices from (timestamp % 10000) — fabricated cost basis figures. The page discloses "simulated historical prices" in an inline warning, but the FIFO gain/loss and staking income numbers are still invented and exported to CSV/PDF as if real.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Replaced with an honest "Tax Export" stub. historicalRate() FIFO engine and all fabricated cost-basis/gain figures removed. Exports raw transactions (date/type/asset/amount/fee/tx_hash) as CSV with no invented prices. Directs users to Koinly/CoinTracker/etc. for real tax computation. Explicit disclaimer that this is not tax advice.',
   },
 
   // ── Assets group (audit batch 4) ─────────────────────────────────────────
   '/watchlist': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'PersonalWatchlist records are real user-entered data, but the displayed prices (MOCK_PRICES), 24h change percentages, and computed high/low range all come from hardcoded stale constants in src/lib/cryptos.js. Buy/sell target alerts fire against these stale prices — a user comparing their target_buy against a silently outdated price could act on false signals.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'MOCK_PRICES and 24h change display removed. Price shown as "unavailable — connect a live feed". Target buy/sell values are stored but not evaluated against stale prices — no false signals. Pure CRUD on local PersonalWatchlist records.',
   },
   '/nft': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'NFTAsset records are real user-entered data (purchase_price, current_floor in ETH), but the "Portfolio Value" USD sub-label converts ETH to USD using ETH_PRICE = 3200, a hardcoded stale constant. The dollar figure shown to users will silently drift from reality as ETH price moves.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'NFTAsset CRUD backed by local IndexedDB. Portfolio Value shown in ETH only — stale ETH_PRICE=3200 USD sub-label removed. P&L in ETH only. No USD conversion, no stale rate injection.',
   },
   '/nft-multichain': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -215,16 +215,16 @@ export const CLASSIFICATION = {
     note: 'Reports only real on-device transaction data: per-asset NATIVE amounts and transaction counts/timing (lib/spendingPatterns). The fabricated stale-USD aggregates were removed — no cross-asset fiat conversion is shown, so there is no silently-stale value. Honest activity view.',
   },
   '/snapshots': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'PortfolioSnapshot saves a total_usd computed from real local Wallet balances multiplied by hardcoded stale USD_RATES (BTC: 68000, ETH: 3200, …). Snapshot values are stored and charted as if they represent real market USD values, but they were computed from rates that may be months out of date at the time of capture.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Saves native balance breakdown per currency — no stale USD conversion. total_usd field set to 0 on new saves (not used). USD chart removed; snapshots displayed as native asset amounts. Honest manual tracking.',
   },
   '/onchain': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Aggregates base44.entities.Transaction (internal app records) and labels the result "On-Chain Analytics" — mislabeling a local transaction log as on-chain data. The address lookup searches only the local wallet/tx store; no actual blockchain query is made, yet the feature presents as a blockchain explorer.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Relabelled "Transaction History" with explicit disclaimer "no blockchain query is made". Aggregates real local Transaction records; address lookup searches local wallet/tx store only. No fabrication, no external call.',
   },
   '/erc20-discovery': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'Token discovery across an address needs an ERC-20 Transfer-event scan via a third-party indexer this build does not run (and which would reveal the address). Not built. The earlier version fabricated the scan (Math.random balances over a random subset of well-known tokens, random spam scores) and presented it as real holdings; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'invented',
+    note: 'Token discovery requires a third-party ERC-20 indexer (which would reveal the address). Earlier version fabricated results via Math.random — removed. Cut for this release.',
   },
 
   // ── Security group (audit batch A) ───────────────────────────────────────
@@ -269,12 +269,16 @@ export const CLASSIFICATION = {
     note: 'Runs isLocallyFlagged + screenRecipient from wallet-core/evm/poison.js over user-pasted address and local AddressBook contacts (base44.entities.AddressBook). Fully on-device: no network, no third-party reputation feed. Explicitly says "not flagged" is not a safety guarantee and that a live threat-intel feed is on the roadmap, not built.',
   },
   '/wallet-seed-qr': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'Seed is user-typed (not read from the real vault) and the wallet selector queries base44.entities.Wallet (demo/local records, not the live HDWalletManager). An inline comment in the file explicitly flags this: "seed is sourced from the demo data layer (base44 mock), not the real vault. Rewire to WalletProvider before this is a real backup path." The page is not wired to the real vault and therefore cannot provide a genuine backup.',
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Rewired to WalletProvider. revealWalletMnemonic(walletId) reads from the in-memory container (unlocked session). Manual seed textarea removed. Wallet list from useWallet().wallets. Reveal gated behind useActionGuard (2FA if configured, immediate if not). Mnemonic stored in local state only; cleared on wallet-change and unmount. confirmWalletBackup() called on print. Print uses escapeHtml to prevent self-injection of wallet name/seed into document.write.',
   },
   '/hardware-wallet': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'static',
-    note: 'Honest placeholder: the page itself explicitly says "Planned — not yet available" and "nothing here connects to a real device". No Ledger/Trezor integration exists. Disabled so it does not appear as a live feature.',
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'WebHID Ledger connection via @ledgerhq/hw-transport-webhid. Derives ETH address (m/44\'/60\'/0\'/0/0) from connected device via @ledgerhq/hw-app-eth. Private key never leaves device. Transaction signing bridge to /send is clearly labeled coming soon. BTC/SOL hardware signing not yet wired.',
+  },
+  '/cloud-backup': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Self-custodial encrypted backup (Option A — two sealed copies). Export: serialized vault container encrypted under password AND PIN via Argon2id+AES-GCM (wallet-core/vaultBackup.js). Neither plaintext nor credential is transmitted — the .enc file is downloaded locally, stored wherever the user chooses (device, iCloud, Google Drive, USB). Restore: password path saves the blob directly to IndexedDB; PIN path decrypts and re-encrypts under a new password. Primary-session only export (decoy/hidden gate in WalletProvider.createBackup). Honest PIN-entropy disclaimer shown in UI.',
   },
   '/dapp-alerts': {
     verdict: 'live', dataSource: 'on-device',
@@ -291,12 +295,12 @@ export const CLASSIFICATION = {
     note: 'Config stored in localStorage; passkey registration calls the real WebAuthn navigator.credentials.create() with a live challenge (window.PublicKeyCredential guard). The "Test Biometric Now" button is a UX confirmation stub (setTimeout) — it does not claim to perform a real auth challenge. Core vault-protection feature.',
   },
   '/anomaly-detection': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (base44.entities.Transaction), but the "Run AI Scan" button is a 2.2 s setTimeout with no analysis logic — the scan result is identical with or without clicking it. The page labels itself "AI Pattern Scanner" / "Machine learning analysis" for what is a simple statistical heuristic; the fake scan delay reinforces a false impression of active ML computation.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (base44.entities.Transaction). Scan button now synchronously runs the detection and stores results in state — no fake delay. Labels updated to "Transaction Anomaly Detection" / "Statistical analysis"; "AI Pattern Scanner" / "machine learning" removed. Three explicit heuristic checks shown to the user: large-transfer z-score (>2.5σ), velocity burst (3+ tx/hr), off-hours (02:00–05:00). All runs on-device.',
   },
   '/messenger-alerts': {
-    verdict: 'disabled', reason: 'server', dataSource: 'static',
-    note: 'Config UI only (localStorage). "Send Test Message" for Telegram is a 1.5 s setTimeout — no HTTP call to Telegram is made. WhatsApp section explicitly states delivery requires Twilio or WhatsApp Business API. No actual alert delivery is implemented; a server relay (Telegram Bot API / Twilio) is required for any message to be sent.',
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
+    note: 'Config UI with fake Telegram test (setTimeout, no HTTP call) and WhatsApp stub (requires Twilio). No alert delivery is implemented; server relay required for any message. Cut: server dependency with no on-device path and misleading test UX.',
   },
   '/voice-commands': {
     verdict: 'live', dataSource: 'on-device',
@@ -315,20 +319,24 @@ export const CLASSIFICATION = {
     note: 'Imports classifyToken from @/wallet-core/evm/spam. Runs the real on-device heuristic classifier over user-supplied or preset token metadata. Extensive in-file honesty contract: never claims on-chain analysis, never asserts safety, explicitly labels results as local-heuristic only. No external call.',
   },
   '/fraud': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'base44-entities',
-    note: 'No automated/AI fraud analysis or rule engine runs in this build. The earlier version labelled itself "AI Fraud Detection" / "Real-time monitoring" but ran no analysis — its scan was a 2 s timeout that always reported "no new threats detected", and its Detection Rules tab rendered a hardcoded list presented as actively enforced. That theatre has been removed; the page is now an honest placeholder behind this gate. Real pre-sign risk lives in the Pre-Sign Scanner, Address Screening, Trust Score and Security Dashboard.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'Real on-device security scan: (1) transaction anomaly detection — large-transfer z-score >2.5σ, velocity burst 3+ tx/hr, off-hours 02:00–05:00; (2) address screening via isLocallyFlagged from wallet-core/evm/poison over AddressBook + tx history; (3) FraudAlert records from IndexedDB. No AI claim, no fake delay, no external call. Scope panel lists all three checks with per-check counts after scan.',
   },
   '/rasp-security': {
     verdict: 'live', dataSource: 'static',
-    note: 'Honest current-state RASP surface. Renders only global build-state facts (policy built, detection pending, unwired, unaudited) read from featureCatalogue (resolveStatus), plus the DESIGNED allow/warn/block ladder as static copy. It imports no degrade()/detect() runtime and makes no network call — pure presentation. The honesty-lock (§5) means it cannot show "active" unless the catalogue resolves RASP to verified, which it cannot until the detector legs land and verify.',
+    note: 'RASP surface — browser-level detection now active. Calls detect(browserProbeSource) at render time (set-blind, pure environment function); shows live condition value. raspSurfaceModel derives "browser-active" from BUILT catalogue status. Stat tiles updated: detection=browser-active, wired-to-send=yes. OS-level probes (root/jailbreak) still audit-gated. UNAUDITED-PROVISIONAL.',
+  },
+  '/audit-log': {
+    verdict: 'live', dataSource: 'local-vault',
+    note: 'Opt-in encrypted audit log viewer. Reads the AES-GCM ring-buffer blob from the primary vault (quaternary key) via WalletProvider.readAuditLogEntries(). auditLog.js is never imported by the page directly (enforced by audit-log-honest-disabled.test.js). Off by default; primary-session only; returns [] in decoy/hidden sessions. Displays at most 100 entries ({ type, ts } ONLY). Toggle + clear via WalletProvider context.',
   },
   '/smart-alerts': {
-    verdict: 'disabled', reason: 'server', dataSource: 'base44-entities',
-    note: 'Alert configuration is stored in base44.entities.SmartAlert (local), but no trigger evaluation is wired in this component — no price or portfolio data is fetched. notify_email and notify_push flags are stored but no delivery mechanism exists client-side; email and push dispatch require a server. The feature stores settings honestly but cannot fire alerts in the local build.',
+    verdict: 'cut', reason: 'off-wedge', dataSource: 'base44-entities',
+    note: 'Alert config stored locally but no trigger evaluation is wired — no price or portfolio data fetched. notify_email/notify_push flags stored but no delivery mechanism exists; email and push dispatch require a server. Cut: stores settings but cannot fire a single alert in the local build.',
   },
   '/alerts': {
-    verdict: 'disabled', reason: 'leaks', dataSource: 'external',
-    note: 'fetchLivePrices() calls fetch("https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH,...") — a third-party CryptoCompare API endpoint. The full coin symbol list is sent to CryptoCompare on every load and every 60-second refetchInterval. Price trigger evaluation itself is correct on-device logic, but the external price call is a mandatory dependency.',
+    verdict: 'live', dataSource: 'external',
+    note: 'CryptoCompare egress gated behind isLivePricesEnabled(). Live prices useQuery has enabled: isLivePricesEnabled() and refetchInterval removed — no auto-poll. Ticker hidden when off (shows "enable in Settings" note). checkNow remains user-triggered (calls fetchMarketPricesUsd on demand — intentional opt-in action). Alert CRUD on base44.entities.PriceAlert is real. On-device trigger evaluation unchanged.',
   },
 
   // ── Connect group (audit batch 5) ─────────────────────────────────────────
@@ -337,8 +345,8 @@ export const CLASSIFICATION = {
     note: 'Pure CRUD on base44.entities.AddressBook (local IndexedDB). Address entry is validated on save via isValidAddressForCurrency/addressKindLabel from lib/addressValidation — the same validators used by the Send flow. No external call, no fabricated data, no USD conversion.',
   },
   '/watch-wallets': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'MOCK is a hardcoded array (Vitalik.eth 1580.42 ETH, Whale #1 12.5 BTC) used as the fallback whenever the real entity list is empty. The displayed USD values are computed from hardcoded stale USD_RATES (ETH: 3200, BTC: 68000). No live balance fetch is performed for any watched address — the balance field is whatever was last entered by the user or zero.',
+    verdict: 'live', dataSource: 'base44-entities',
+    note: 'MOCK array and USD_RATES removed. Empty state shows honest empty UI (no fake Vitalik.eth / Whale #1 entries). USD value computation removed — cards now show native balance only (or "—" when balance is zero). Watch-only wallet CRUD and copy/explorer links remain fully functional.',
   },
   '/live-balances': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -349,12 +357,12 @@ export const CLASSIFICATION = {
     note: 'CRUD on base44.entities.NetworkConfig (local IndexedDB). The component itself makes no live RPC calls — it manages the user-controlled RPC endpoint list. The "Connected" badge is cosmetic (not a live ping). Custom RPC entry is user-controlled plumbing. Honestly displays chain IDs and RPC URLs.',
   },
   '/solana': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'A live Solana view needs real balance/token reads from a Solana RPC wired through wallet-core, plus Solana send dispatch — not built (the seed can derive a Solana account, but it is not yet wired into send). The earlier version hardcoded a fake Solana wallet (fixed address, balance, SPL list and prices, Math.random 24h changes) with a Send dialog that built no real transaction; that fabrication has been removed and the page is now an honest placeholder behind this gate.',
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Address derived on-device via ed25519 SLIP-0010 (m/44\'/501\'/0\'/0\', same as Phantom) from useWallet().solAccount. Balance fetched live from Solana devnet RPC via getBalanceSol("devnet", address) from wallet-core/sol/provider — no hardcoded constants. Receive address shown with copy + devnet explorer link. Send not yet wired (labeled "Coming soon"); devnet-only until Solana send signing is audited.',
   },
   '/price-charts': {
-    verdict: 'disabled', reason: 'unverified', dataSource: 'invented',
-    note: 'generateOHLCV() builds OHLCV data with Math.random() seeded from the static reference price in lib/cryptos.js. The resulting candlestick chart is re-generated on every asset/period selection and presented as a price chart with no disclaimer. No real price history feed is consulted — all candles, volume, and displayed percentage changes are invented at render time.',
+    verdict: 'live', dataSource: 'external',
+    note: 'generateOHLCV() Math.random fabrication removed. Real OHLCV fetched from CryptoCompare fetchOHLCV() (histominute/histohour/histoday per period). Gated behind isLivePricesEnabled() — no fetch when off, shows Enable banner. Symbol is user-selected from fixed TOP_CRYPTOS list (not derived from holdings). staleTime: 60s.',
   },
   '/gas-fees': {
     verdict: 'live', dataSource: 'wallet-core',

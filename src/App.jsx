@@ -36,6 +36,7 @@ const Web3Browser = lazy(() => import('./pages/Web3Browser'));
 const MultiChainNFT = lazy(() => import('./pages/MultiChainNFT'));
 const FraudDetection = lazy(() => import('./pages/FraudDetection'));
 const RaspSecurity = lazy(() => import('./pages/RaspSecurity'));
+const AuditLog = lazy(() => import('./pages/AuditLog'));
 const PaymentLinks = lazy(() => import('./pages/PaymentLinks'));
 const RiskScoring = lazy(() => import('./pages/RiskScoring'));
 const NewsSentimentPage = lazy(() => import('./pages/NewsSentimentPage'));
@@ -80,6 +81,7 @@ const TokenApprovals = lazy(() => import('./pages/TokenApprovals'));
 const NetworkManager = lazy(() => import('./pages/NetworkManager'));
 const WatchWallets = lazy(() => import('./pages/WatchWallets'));
 const PriceCharts = lazy(() => import('./pages/PriceCharts'));
+const CloudBackup = lazy(() => import('./pages/CloudBackup'));
 const GasFeeControl = lazy(() => import('./pages/GasFeeControl'));
 const SpamTokenFilter = lazy(() => import('./pages/SpamTokenFilter'));
 const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
@@ -157,6 +159,7 @@ const AuthenticatedApp = () => {
           <Route path="/nft-multichain" element={<MultiChainNFT />} />
           <Route path="/fraud" element={<FraudDetection />} />
           <Route path="/rasp-security" element={<RaspSecurity />} />
+          <Route path="/audit-log" element={<AuditLog />} />
           <Route path="/payment-links" element={<PaymentLinks />} />
           <Route path="/risk" element={<RiskScoring />} />
           <Route path="/news-sentiment" element={<NewsSentimentPage />} />
@@ -188,6 +191,7 @@ const AuthenticatedApp = () => {
           <Route path="/referrals" element={<ReferralTracker />} />
           <Route path="/wallet-seed-qr" element={<WalletSeedQR />} />
           <Route path="/hardware-wallet" element={<HardwareWalletPage />} />
+          <Route path="/cloud-backup" element={<CloudBackup />} />
           <Route path="/biometric-auth" element={<BiometricAuth />} />
           <Route path="/anomaly-detection" element={<AnomalyDetection />} />
           <Route path="/portfolio-rewind" element={<PortfolioRewind />} />

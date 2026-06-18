@@ -15,13 +15,21 @@ describe('navigation respects the feature registry', () => {
     cutPaths().forEach((p) => expect(searchPaths).not.toContain(p));
   });
 
-  it('keeps disabled features visible (referrals still in nav)', () => {
-    expect(allNavPaths).toContain('/referrals');
+  it('drops cut features (referrals cut for this release, not in nav)', () => {
+    expect(allNavPaths).not.toContain('/referrals');
   });
 
   it('leaves live features untouched', () => {
     expect(allNavPaths).toContain('/send');
     expect(allNavPaths).toContain('/duress-pin');
+  });
+
+  it('includes Cloud Backup in the Security group', () => {
+    expect(allNavPaths).toContain('/cloud-backup');
+    const entry = navGroups.flatMap((g) => g.items).find((i) => i.path === '/cloud-backup');
+    expect(entry?.label).toBe('Cloud Backup');
+    const secGroup = navGroups.find((g) => g.items.some((i) => i.path === '/cloud-backup'));
+    expect(secGroup?.label).toBe('Security');
   });
 
   it('includes the RASP Security tile in the nav (Security group)', () => {

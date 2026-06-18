@@ -10,10 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "@/lib/recharts";
 import { toast } from "sonner";
-import moment from "moment";
+import { format } from "date-fns";
 
 const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
-const CURRENT_PRICES = { BTC: 68000, ETH: 3200, USDT: 1, BNB: 590, SOL: 165, USDC: 1, XRP: 0.52, DOGE: 0.16, ADA: 0.45, TRX: 0.13 };
 
 const EMPTY = { asset: "BTC", entry_price: "", exit_price: "", quantity: "", entry_date: "", exit_date: "", status: "open", note: "" };
 
@@ -29,11 +28,11 @@ export default function PLTracking() {
 
   const addRecord = useMutation({
     mutationFn: () => {
-      const exitP = form.status === "closed" && form.exit_price ? parseFloat(form.exit_price) : CURRENT_PRICES[form.asset];
       const qty = parseFloat(form.quantity);
       const entryP = parseFloat(form.entry_price);
-      const pnl_usd = (exitP - entryP) * qty;
-      const pnl_pct = ((exitP - entryP) / entryP) * 100;
+      const exitP = form.status === "closed" && form.exit_price ? parseFloat(form.exit_price) : null;
+      const pnl_usd = exitP != null ? (exitP - entryP) * qty : null;
+      const pnl_pct = exitP != null ? ((exitP - entryP) / entryP) * 100 : null;
       return base44.entities.PLRecord.create({ ...form, entry_price: entryP, exit_price: exitP, quantity: qty, pnl_usd, pnl_pct });
     },
     onSuccess: () => {
@@ -43,15 +42,19 @@ export default function PLTracking() {
     },
   });
 
+  const [closingId, setClosingId] = useState(null);
+  const [closePrice, setClosePrice] = useState("");
+
   const closeRecord = useMutation({
     mutationFn: (/** @type {any} */ vars) => {
-      const { id, asset, entry_price, quantity } = vars;
-      const exitP = CURRENT_PRICES[asset];
+      const { id, entry_price, quantity } = vars;
+      const exitP = parseFloat(closePrice);
+      if (!exitP || exitP <= 0) throw new Error("Enter a valid exit price");
       const pnl_usd = (exitP - entry_price) * quantity;
       const pnl_pct = ((exitP - entry_price) / entry_price) * 100;
       return base44.entities.PLRecord.update(id, { status: "closed", exit_price: exitP, exit_date: new Date().toISOString(), pnl_usd, pnl_pct });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pl-records"] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["pl-records"] }); setClosingId(null); setClosePrice(""); },
   });
 
   const deleteRecord = useMutation({
@@ -62,42 +65,58 @@ export default function PLTracking() {
   const closed = records.filter(r => r.status === "closed");
   const open = records.filter(r => r.status === "open");
   const totalRealised = closed.reduce((s, r) => s + (r.pnl_usd || 0), 0);
-  const totalUnrealised = open.reduce((s, r) => {
-    const cur = CURRENT_PRICES[r.asset] || r.entry_price;
-    return s + (cur - r.entry_price) * r.quantity;
-  }, 0);
+  const totalUnrealised = null; // requires live price feed — not available
   const winRate = closed.length ? Math.round((closed.filter(r => r.pnl_usd > 0).length / closed.length) * 100) : 0;
 
-  const chartData = closed.slice(0, 10).reverse().map(r => ({ label: `${r.asset} ${moment(r.exit_date || r.created_date).format("MMM D")}`, pnl: parseFloat(r.pnl_usd?.toFixed(2) || 0) }));
+  const chartData = closed.slice(0, 10).reverse().map(r => ({ label: `${r.asset} ${format(new Date(r.exit_date || r.created_date), "MMM d")}`, pnl: parseFloat(r.pnl_usd?.toFixed(2) || 0) }));
 
   const RecordRow = ({ r }) => {
-    const unrealisedPnl = r.status === "open" ? ((CURRENT_PRICES[r.asset] || r.entry_price) - r.entry_price) * r.quantity : null;
-    const displayPnl = r.status === "closed" ? r.pnl_usd : unrealisedPnl;
-    const displayPct = r.status === "closed" ? r.pnl_pct : r.entry_price ? (((CURRENT_PRICES[r.asset] || r.entry_price) - r.entry_price) / r.entry_price) * 100 : 0;
+    const isClosing = closingId === r.id;
     return (
-      <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm">{r.asset}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${r.status === "open" ? "bg-blue-500/10 text-blue-400" : "bg-secondary text-muted-foreground"}`}>{r.status}</span>
+      <div className="rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 p-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm">{r.asset}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${r.status === "open" ? "bg-blue-500/10 text-blue-400" : "bg-secondary text-muted-foreground"}`}>{r.status}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{r.quantity} units · Entry ${r.entry_price?.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">{format(new Date(r.entry_date), "dd MMM yy")}{r.exit_date ? ` → ${format(new Date(r.exit_date), "dd MMM yy")}` : ""}</p>
           </div>
-          <p className="text-xs text-muted-foreground">{r.quantity} units · Entry ${r.entry_price?.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">{moment(r.entry_date).format("DD MMM YY")}{r.exit_date ? ` → ${moment(r.exit_date).format("DD MMM YY")}` : ""}</p>
+          <div className="text-right shrink-0">
+            {r.status === "closed" && r.pnl_usd != null ? (
+              <>
+                <p className={`text-sm font-bold ${r.pnl_usd >= 0 ? "text-green-400" : "text-destructive"}`}>
+                  {r.pnl_usd >= 0 ? "+" : ""}${r.pnl_usd?.toFixed(2)}
+                </p>
+                <p className={`text-xs ${r.pnl_pct >= 0 ? "text-green-400" : "text-destructive"}`}>{r.pnl_pct >= 0 ? "+" : ""}{r.pnl_pct?.toFixed(1)}%</p>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">P&L: enter exit price</p>
+            )}
+          </div>
+          <div className="flex gap-1">
+            {r.status === "open" && (
+              <Button variant="outline" size="sm" onClick={() => { setClosingId(isClosing ? null : r.id); setClosePrice(""); }}>
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Close
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => deleteRecord.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+          </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className={`text-sm font-bold ${displayPnl >= 0 ? "text-green-400" : "text-destructive"}`}>
-            {displayPnl >= 0 ? "+" : ""}${displayPnl?.toFixed(2)}
-          </p>
-          <p className={`text-xs ${displayPct >= 0 ? "text-green-400" : "text-destructive"}`}>{displayPct >= 0 ? "+" : ""}{displayPct?.toFixed(1)}%</p>
-        </div>
-        <div className="flex gap-1">
-          {r.status === "open" && (
-            <Button variant="outline" size="sm" onClick={() => closeRecord.mutate({ id: r.id, asset: r.asset, entry_price: r.entry_price, quantity: r.quantity })}>
-              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Close
+        {isClosing && (
+          <div className="px-4 pb-4 pt-0 flex gap-2 items-end border-t border-border mt-0 pt-3">
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground mb-1">Exit price (USD)</p>
+              <Input type="number" placeholder="e.g. 72000" value={closePrice} onChange={e => setClosePrice(e.target.value)} className="h-8 text-xs" autoFocus />
+            </div>
+            <Button size="sm" className="h-8" disabled={!closePrice || closeRecord.isPending}
+              onClick={() => closeRecord.mutate({ id: r.id, entry_price: r.entry_price, quantity: r.quantity })}>
+              Confirm
             </Button>
-          )}
-          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => deleteRecord.mutate(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-        </div>
+            <Button size="sm" variant="ghost" className="h-8" onClick={() => setClosingId(null)}>Cancel</Button>
+          </div>
+        )}
       </div>
     );
   };
@@ -115,7 +134,7 @@ export default function PLTracking() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Realised P&L", value: `${totalRealised >= 0 ? "+" : ""}$${totalRealised.toFixed(2)}`, color: totalRealised >= 0 ? "text-green-400" : "text-destructive" },
-          { label: "Unrealised P&L", value: `${totalUnrealised >= 0 ? "+" : ""}$${totalUnrealised.toFixed(2)}`, color: totalUnrealised >= 0 ? "text-green-400" : "text-destructive" },
+          { label: "Unrealised P&L", value: "Enter exit price", color: "text-muted-foreground" },
           { label: "Win Rate", value: `${winRate}%`, color: winRate >= 50 ? "text-green-400" : "text-destructive" },
           { label: "Total Trades", value: records.length },
         ].map(s => (

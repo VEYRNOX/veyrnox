@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Trash2, Repeat, ShieldAlert, PenLine } from "lucide-react";
+import { Plus, Trash2, Repeat, ShieldAlert, PenLine, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CoinLogo from "@/components/CoinLogo";
 import { Input } from "@/components/ui/input";
@@ -11,18 +11,31 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import moment from "moment";
+import { addDays, isBefore, formatDistanceToNow } from "date-fns";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
 
 const EMPTY = { label: "", wallet_id: "", currency: "USDT", to_address: "", amount: "", frequency: "monthly", note: "" };
 
+function useNotificationPermission() {
+  const [permission, setPermission] = useState(() =>
+    "Notification" in window ? Notification.permission : "unsupported"
+  );
+  const request = async () => {
+    if (!("Notification" in window)) return;
+    const result = await Notification.requestPermission();
+    setPermission(result);
+  };
+  return { permission, request };
+}
+
 export default function RecurringPayments() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const { permission: notifPerm, request: requestNotif } = useNotificationPermission();
 
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["recurring-payments"],
@@ -36,7 +49,7 @@ export default function RecurringPayments() {
 
   const addPayment = useMutation({
     mutationFn: () => {
-      const nextRun = moment().add(FREQ_DAYS[form.frequency], "days").toISOString();
+      const nextRun = addDays(new Date(), FREQ_DAYS[form.frequency]).toISOString();
       const wallet = wallets.find(w => w.id === form.wallet_id);
       return base44.entities.RecurringPayment.create({ ...form, amount: parseFloat(form.amount), currency: wallet?.currency || form.currency, next_run_at: nextRun, status: "active" });
     },
@@ -65,10 +78,30 @@ export default function RecurringPayments() {
     navigate("/send");
   };
 
-  const totalMonthly = payments.filter(p => p.status === "active").reduce((s, p) => {
-    const mult = { daily: 30, weekly: 4.3, biweekly: 2.15, monthly: 1 }[p.frequency] || 1;
-    return s + p.amount * mult;
-  }, 0);
+  // Fire a browser notification for each due active payment (once per session).
+  useEffect(() => {
+    if (notifPerm !== "granted" || payments.length === 0) return;
+    const due = payments.filter(p => p.status === "active" && p.next_run_at && isBefore(new Date(p.next_run_at), new Date()));
+    for (const p of due) {
+      new Notification(`Recurring payment due: ${p.label}`, {
+        body: `${p.amount} ${p.currency} to ${p.to_address.slice(0, 10)}… — open Veyrnox to sign`,
+        tag: `recurring-${p.id}`, // deduplicate per payment
+        icon: "/icon-192.png",
+      });
+    }
+  // Only re-fire when the payments list or permission changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifPerm, payments.length]);
+
+  // Monthly estimate grouped per currency — cross-currency totals are meaningless.
+  const monthlyByCurrency = payments
+    .filter(p => p.status === "active")
+    .reduce((acc, p) => {
+      const mult = { daily: 30, weekly: 4.3, biweekly: 2.15, monthly: 1 }[p.frequency] || 1;
+      acc[p.currency] = (acc[p.currency] || 0) + p.amount * mult;
+      return acc;
+    }, {});
+  const monthlyEntries = Object.entries(monthlyByCurrency);
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -92,18 +125,48 @@ export default function RecurringPayments() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Active", value: payments.filter(p => p.status === "active").length },
-          { label: "Paused", value: payments.filter(p => p.status === "paused").length },
-          { label: "Monthly Est.", value: `${totalMonthly.toFixed(2)}` },
-        ].map(s => (
-          <div key={s.label} className="p-3 rounded-xl border border-border bg-card text-center">
-            <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-            <p className="text-lg font-bold">{s.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="p-3 rounded-xl border border-border bg-card text-center">
+          <p className="text-xs text-muted-foreground mb-1">Active</p>
+          <p className="text-lg font-bold">{payments.filter(p => p.status === "active").length}</p>
+        </div>
+        <div className="p-3 rounded-xl border border-border bg-card text-center">
+          <p className="text-xs text-muted-foreground mb-1">Paused</p>
+          <p className="text-lg font-bold">{payments.filter(p => p.status === "paused").length}</p>
+        </div>
       </div>
+
+      {/* Monthly estimate per currency */}
+      {monthlyEntries.length > 0 && (
+        <div className="p-3 rounded-xl border border-border bg-card space-y-1">
+          <p className="text-xs text-muted-foreground">Monthly Estimate (active only)</p>
+          {monthlyEntries.map(([cur, amt]) => (
+            <div key={cur} className="flex justify-between text-sm">
+              <span className="font-mono text-muted-foreground">{cur}</span>
+              <span className="font-semibold">{amt.toFixed(4)}</span>
+            </div>
+          ))}
+          <p className="text-[10px] text-muted-foreground pt-0.5">Shown per asset — cross-currency totals would be meaningless without live prices</p>
+        </div>
+      )}
+
+      {/* Notification opt-in */}
+      {notifPerm !== "unsupported" && (
+        <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
+          <div className="flex items-center gap-2">
+            {notifPerm === "granted" ? <Bell className="h-4 w-4 text-green-400" /> : <BellOff className="h-4 w-4 text-muted-foreground" />}
+            <div>
+              <p className="text-sm font-medium">Due payment reminders</p>
+              <p className="text-xs text-muted-foreground">
+                {notifPerm === "granted" ? "Browser notifications enabled — you'll be alerted when a payment is due" : notifPerm === "denied" ? "Notifications blocked — allow them in browser settings" : "Enable to receive an alert when a payment falls due"}
+              </p>
+            </div>
+          </div>
+          {notifPerm === "default" && (
+            <Button variant="outline" size="sm" className="shrink-0" onClick={requestNotif}>Enable</Button>
+          )}
+        </div>
+      )}
 
       {isLoading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
         : payments.length === 0 ? (
@@ -115,7 +178,7 @@ export default function RecurringPayments() {
           <div className="space-y-3">
             {payments.map(p => {
               const wallet = wallets.find(w => w.id === p.wallet_id);
-              const isDue = p.next_run_at && moment(p.next_run_at).isBefore(moment());
+              const isDue = p.next_run_at && isBefore(new Date(p.next_run_at), new Date());
               return (
                 <div key={p.id} className={`p-4 rounded-xl border bg-card ${p.status === "active" ? "border-border" : "border-border/40 opacity-60"}`}>
                   <div className="flex items-start gap-3">
@@ -131,7 +194,7 @@ export default function RecurringPayments() {
                       <p className="text-xs font-mono text-muted-foreground truncate">{p.to_address}</p>
                       {wallet && <p className="text-xs text-muted-foreground">From: {wallet.name}</p>}
                       <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
-                        {p.next_run_at && <span>Next: {moment(p.next_run_at).fromNow()}</span>}
+                        {p.next_run_at && <span>Next: {formatDistanceToNow(new Date(p.next_run_at), { addSuffix: true })}</span>}
                         {p.run_count > 0 && <span>· {p.run_count} runs · {p.total_sent?.toFixed(4)} sent</span>}
                       </div>
                     </div>

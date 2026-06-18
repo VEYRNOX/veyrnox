@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/lib/recharts";
 import { toast } from "sonner";
-import moment from "moment";
+import { format } from "date-fns";
 
 // Derive on-chain stats from internal transaction history
 export default function OnChainAnalytics() {
@@ -37,7 +37,7 @@ export default function OnChainAnalytics() {
   // Daily volume chart
   const volumeByDay = {};
   transactions.forEach(t => {
-    const day = moment(t.created_date).format("DD MMM");
+    const day = format(new Date(t.created_date), "dd MMM");
     volumeByDay[day] = (volumeByDay[day] || 0) + (t.amount || 0);
   });
   const volumeChart = Object.entries(volumeByDay).slice(-14).map(([date, volume]) => ({ date, volume: parseFloat(volume.toFixed(4)) }));
@@ -69,8 +69,8 @@ export default function OnChainAnalytics() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">On-Chain Analytics</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Transaction activity and wallet insights</p>
+        <h1 className="text-2xl font-bold tracking-tight">Transaction History</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Activity from your local transaction records · no blockchain query is made</p>
       </div>
 
       {/* Summary Stats */}
@@ -150,7 +150,7 @@ export default function OnChainAnalytics() {
                 {tx.type === "send" ? <ArrowUpRight className="h-3 w-3 text-destructive" /> : <ArrowDownLeft className="h-3 w-3 text-green-400" />}
                 <span className="capitalize">{tx.type}</span>
                 <span className="font-medium text-foreground">{tx.amount} {tx.currency}</span>
-                <span>{moment(tx.created_date).format("DD MMM")}</span>
+                <span>{format(new Date(tx.created_date), "dd MMM")}</span>
               </div>
             ))}
           </div>
@@ -168,7 +168,7 @@ export default function OnChainAnalytics() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-mono truncate text-muted-foreground">{tx.tx_hash || "—"}</p>
-              <p className="text-[10px] text-muted-foreground">{moment(tx.created_date).format("DD MMM YYYY HH:mm")}</p>
+              <p className="text-[10px] text-muted-foreground">{format(new Date(tx.created_date), "dd MMM yyyy HH:mm")}</p>
             </div>
             <div className="text-right shrink-0">
               <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-green-400"}`}>{tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}</p>

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import moment from "moment";
+import { format } from "date-fns";
 
 const STATUS_COLORS = { draft: "secondary", sent: "default", paid: "outline", overdue: "destructive" };
 
@@ -81,7 +81,7 @@ export default function InvoiceGenerator() {
                     <p className="font-semibold">{inv.client_name}</p>
                     <Badge variant={STATUS_COLORS[inv.status] || "secondary"}>{inv.status}</Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">{inv.invoice_number} · Due {inv.due_date ? moment(inv.due_date).format("MMM D, YYYY") : "No deadline"}</p>
+                  <p className="text-xs text-muted-foreground">{inv.invoice_number} · Due {inv.due_date ? format(new Date(inv.due_date), "MMM d, yyyy") : "No deadline"}</p>
                 </div>
                 <p className="text-lg font-bold">{inv.total_amount} {inv.currency}</p>
               </div>

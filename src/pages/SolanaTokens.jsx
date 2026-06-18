@@ -1,46 +1,136 @@
-import { Clock, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useWallet } from "@/lib/WalletProvider";
+import { getBalanceSol } from "@/wallet-core/sol/provider";
+import { Copy, RefreshCw, ExternalLink, ShieldCheck, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
-// Honest placeholder. This route is classified `disabled` in
-// src/lib/featureClassification.js ('/solana') and is intercepted by FeatureGate
-// before this component ever mounts — so in normal operation users see
-// HonestDisabledPage, not this. It is kept as a fail-closed fallback: the earlier
-// version hardcoded a fake Solana wallet (fixed address, balance, SPL token list
-// and prices, with Math.random() 24h changes) and presented it as the user's
-// real Solana portfolio, with a Send dialog that built no real transaction. That
-// fabrication has been removed so the lie no longer exists in source.
+const DEVNET_EXPLORER = (addr) =>
+  `https://explorer.solana.com/address/${addr}?cluster=devnet`;
+const DEVNET_FAUCET = "https://faucet.solana.com";
+
 export default function SolanaTokens() {
+  const { solAccount, deriveSol, isLocked } = useWallet();
+  const [balance, setBalance] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Derive the SOL account as soon as the wallet is unlocked.
+  useEffect(() => {
+    if (!isLocked && !solAccount) deriveSol("devnet");
+  }, [isLocked, solAccount, deriveSol]);
+
+  const fetchBalance = async () => {
+    if (!solAccount?.address) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const sol = await getBalanceSol("devnet", solAccount.address);
+      setBalance(sol);
+    } catch (e) {
+      setError("RPC unavailable — try again");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-fetch balance when address becomes available.
+  useEffect(() => {
+    if (solAccount?.address) fetchBalance();
+  }, [solAccount?.address]);
+
+  const copy = () => {
+    navigator.clipboard.writeText(solAccount.address);
+    toast.success("Address copied");
+  };
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-lg mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-lg font-bold">◎</div>
+        <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center text-lg font-bold text-purple-400">◎</div>
         <div>
           <h1 className="text-xl font-bold">Solana Wallet</h1>
-          <p className="text-sm text-muted-foreground">SOL and SPL tokens</p>
+          <p className="text-sm text-muted-foreground">Devnet · ed25519 / SLIP-0010</p>
         </div>
       </div>
 
-      <div className="p-5 rounded-xl border border-border bg-secondary/30">
-        <div className="flex items-center gap-2 mb-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <p className="font-semibold">Not available yet</p>
+      {isLocked ? (
+        <div className="p-5 rounded-xl border border-border bg-secondary/30 text-sm text-muted-foreground">
+          Unlock your wallet to view your Solana address and balance.
         </div>
-        <p className="text-sm text-muted-foreground">
-          A live Solana view needs real balance and token reads from a Solana RPC,
-          wired through wallet-core. That is not built yet. Nothing on this page
-          shows real holdings, and there is no working Solana send here.
-        </p>
-      </div>
+      ) : !solAccount ? (
+        <div className="p-5 rounded-xl border border-border bg-secondary/30 text-sm text-muted-foreground">
+          Deriving Solana account…
+        </div>
+      ) : (
+        <>
+          {/* Balance */}
+          <div className="p-5 rounded-xl border border-border bg-card space-y-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest">SOL Balance (devnet)</p>
+            <div className="flex items-end gap-3">
+              {balance !== null
+                ? <p className="text-3xl font-bold">{balance.toFixed(6)} <span className="text-lg text-muted-foreground">SOL</span></p>
+                : error
+                ? <p className="text-sm text-destructive">{error}</p>
+                : <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "—"}</p>
+              }
+              <Button variant="ghost" size="icon" className="mb-1 h-7 w-7" onClick={fetchBalance} disabled={loading}>
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+          </div>
 
-      <div className="p-5 rounded-xl border border-border bg-card space-y-2">
+          {/* Address */}
+          <div className="p-4 rounded-xl border border-border bg-card space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-widest">Receive Address</p>
+            <div className="flex items-center gap-2">
+              <p className="font-mono text-xs break-all flex-1">{solAccount.address}</p>
+              <button onClick={copy} className="shrink-0 p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Derivation path: {solAccount.path}</p>
+            <div className="flex gap-2 pt-1">
+              <a href={DEVNET_EXPLORER(solAccount.address)} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
+                  <ExternalLink className="h-3 w-3" /> Explorer
+                </Button>
+              </a>
+              <a href={DEVNET_FAUCET} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
+                  Devnet Faucet
+                </Button>
+              </a>
+            </div>
+          </div>
+
+          {/* Send — not yet wired */}
+          <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
+            <div className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm font-semibold text-muted-foreground">Send SOL</p>
+              <span className="text-[10px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded-full">Coming soon</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              SOL send is not yet wired into the signing path. The Send page currently handles EVM only.
+              Solana send dispatch (sign with ed25519 key → broadcast via devnet RPC) will be added in a future release.
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Status */}
+      <div className="p-4 rounded-xl border border-border bg-card space-y-1.5">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          <p className="font-semibold">Where Solana stands</p>
+          <p className="text-sm font-semibold">What's real here</p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Veyrnox can derive a Solana account from your seed (ed25519 / SLIP-0010),
-          but Solana is not yet wired into the send dispatch. When it is, balances
-          and transactions here will come from a real RPC, not constants.
-        </p>
+        <ul className="text-xs text-muted-foreground space-y-1">
+          <li>✓ Address derived on-device from your seed (ed25519 SLIP-0010, same as Phantom)</li>
+          <li>✓ Balance fetched live from Solana devnet RPC — no constants</li>
+          <li>✓ Derivation pinned against published SLIP-0010 test vectors</li>
+          <li>○ Send not yet built — devnet only until audit + send verified</li>
+        </ul>
       </div>
     </div>
   );

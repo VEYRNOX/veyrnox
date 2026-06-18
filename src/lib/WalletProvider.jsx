@@ -85,8 +85,16 @@ import {
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
 import { getOrCreateDeviceSalt, clearDeviceSalt } from '@/wallet-core/decoyFallback';
+import { createBackupEnvelope } from '@/wallet-core/vaultBackup';
 import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
-import { recordAuditEvent, auditSecretForSession } from '@/wallet-core/auditLog';
+import {
+  recordAuditEvent,
+  auditSecretForSession,
+  isAuditLogEnabled,
+  setAuditLogEnabled as setAuditLogPref,
+  readAuditLog,
+  clearAuditLog as clearAuditLogData,
+} from '@/wallet-core/auditLog';
 import { getAuthModel, setAuthModel, shouldCacheUnlockSecret, clearAuthModel } from '@/lib/authModel';
 import { provisionPinWallet } from '@/lib/pinOnboarding';
 import { provisionPinRecovery } from '@/lib/pinRecovery';
@@ -1494,6 +1502,47 @@ export function WalletProvider({ children }) {
     }
   }, [isDecoy, isHidden]);
 
+  // VAULT BACKUP (S4 — self-custodial, two sealed copies).
+  // Primary-session only: exporting in a decoy/hidden session would export that
+  // session's container and implicitly reveal the session exists. Verifies the
+  // password by calling keyStore.unlock (throws on wrong password) before
+  // sealing so we never create a backup the user cannot open.
+  const createBackup = useCallback(async (password, pin) => {
+    if (isDecoy || isHidden) throw new Error('Backup is only available in the primary session');
+    const containerJson = await keyStore.unlock(password);
+    return createBackupEnvelope(containerJson, password, pin);
+  }, [isDecoy, isHidden]);
+
+  // Audit log opt-in state (React-tracked; localStorage is the persistent source).
+  const [auditLogEnabled, setAuditLogEnabledState] = useState(() => {
+    try { return isAuditLogEnabled(); } catch { return false; }
+  });
+  const getAuditLogEnabled = useCallback(() => isAuditLogEnabled(), []);
+  const toggleAuditLog = useCallback(async (on) => {
+    setAuditLogPref(on);
+    setAuditLogEnabledState(on);
+    if (!on) await clearAuditLogData().catch(() => {});
+  }, []);
+
+  // Read the encrypted audit log — returns [] in decoy/hidden/locked/empty.
+  const readAuditLogEntries = useCallback(async () => {
+    const secret = auditSecretForSession({
+      isDecoy,
+      isHidden,
+      primaryMnemonic: containerRef.current?.wallets?.[0]?.mnemonic,
+    });
+    if (!secret) return [];
+    try { return await readAuditLog(secret); } catch { return []; }
+  }, [isDecoy, isHidden]);
+  // Alias used by Settings.
+  const fetchAuditEntries = readAuditLogEntries;
+
+  // Delete the audit blob without touching any other vault key.
+  const clearAuditLogEntries = useCallback(async () => {
+    try { await clearAuditLogData(); } catch { /* non-critical */ }
+  }, []);
+
+
   const value = {
     isUnlocked,
     // ── MULTI-WALLET (feat/multi-wallet-portfolio) ──
@@ -1640,10 +1689,16 @@ export function WalletProvider({ children }) {
     // timeout preference and changes it; lock status is `isUnlocked` above.
     autoLockValue,
     setAutoLockTimeout,
-    // AUDIT LOG (opt-in, unsurfaced). recordAudit(type) logs an allowlisted
-    // benign event in the PRIMARY session only; no-op in decoy/hidden or when the
-    // user hasn't opted in. See wallet-core/auditLog.js.
+    // VAULT BACKUP (S4, self-custodial).
+    createBackup,
+    // AUDIT LOG (opt-in, S4). All access to auditLog.js is routed through here.
     recordAudit,
+    auditLogEnabled,
+    getAuditLogEnabled,
+    toggleAuditLog,
+    fetchAuditEntries,
+    readAuditLogEntries,
+    clearAuditLogEntries,
     // Last successful unlock (previous primary unlock; null in decoy/hidden/first
     // open). Shown read-only on the Security Dashboard as a tamper signal.
     lastUnlockAt,

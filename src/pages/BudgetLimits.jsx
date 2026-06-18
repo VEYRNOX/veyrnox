@@ -1,4 +1,3 @@
-import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -43,12 +42,8 @@ export default function BudgetLimits() {
 
     return transactions
       .filter(tx => tx.type === "send" && tx.currency === budget.currency && new Date(tx.created_date) >= periodStart)
-      .reduce((s, tx) => s + (tx.amount || 0) * (USD_RATES[tx.currency] || 1), 0);
+      .reduce((s, tx) => s + (tx.amount || 0), 0);
   };
-
-  const totalSpend = transactions
-    .filter(tx => tx.type === "send" && new Date(tx.created_date) >= new Date(new Date().setDate(1)))
-    .reduce((s, tx) => s + (tx.amount || 0) * (USD_RATES[tx.currency] || 1), 0);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -61,8 +56,7 @@ export default function BudgetLimits() {
       </div>
 
       <div className="p-4 rounded-xl border border-border bg-card">
-        <p className="text-xs text-muted-foreground">Total Spent This Month</p>
-        <p className="text-2xl font-bold mt-1">${totalSpend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+        <p className="text-xs text-muted-foreground">Limits track native amounts sent per currency — no USD conversion</p>
       </div>
 
       {budgets.length === 0 ? (
@@ -99,8 +93,8 @@ export default function BudgetLimits() {
                 </div>
                 <Progress value={pct} className="h-2 mb-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>${spent.toLocaleString(undefined, { maximumFractionDigits: 0 })} spent</span>
-                  <span className={isOver ? "text-destructive font-semibold" : ""}>${b.limit_usd.toLocaleString()} limit · {pct.toFixed(0)}%</span>
+                  <span>{spent.toLocaleString(undefined, { maximumFractionDigits: 6 })} {b.currency} sent</span>
+                  <span className={isOver ? "text-destructive font-semibold" : ""}>{b.limit_usd.toLocaleString()} {b.currency} limit · {pct.toFixed(0)}%</span>
                 </div>
               </div>
             );
@@ -126,7 +120,7 @@ export default function BudgetLimits() {
                 </Select>
               </div>
             </div>
-            <div><Label>Limit (USD)</Label><Input className="mt-1.5" type="number" placeholder="500" value={form.limit_usd} onChange={e => setForm(f => ({ ...f, limit_usd: e.target.value }))} /></div>
+            <div><Label>Limit (native amount)</Label><Input className="mt-1.5" type="number" placeholder="e.g. 0.5 for ETH" value={form.limit_usd} onChange={e => setForm(f => ({ ...f, limit_usd: e.target.value }))} /></div>
             <div><Label>Alert at (%)</Label><Input className="mt-1.5" type="number" placeholder="80" value={form.alert_at_percent} onChange={e => setForm(f => ({ ...f, alert_at_percent: parseInt(e.target.value) }))} /></div>
             <Button className="w-full" disabled={!form.limit_usd || create.isPending} onClick={() => create.mutate(form)}>
               {create.isPending ? "Saving..." : "Save Limit"}

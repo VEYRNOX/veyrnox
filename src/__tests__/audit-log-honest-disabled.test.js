@@ -1,25 +1,23 @@
-// Guard: the Audit Log primitive stays HONEST-DISABLED and TIGHTLY-WIRED.
+// Guard: the Audit Log primitive stays TIGHTLY-WIRED.
 //
-// OWNER OVERRIDE (2026-06-16) — documented in
-// docs/audit-log-login-activity-deniability-decision.md §"Owner override":
-// the audit gate that kept wallet-core/auditLog.js imported by ZERO runtime
-// modules has been DELIBERATELY lifted to allow the PRIMARY-SESSION wiring path,
-// pre-audit. The override is intentionally NARROW: auditLog.js may now be imported
-// by exactly ONE approved wiring point (lib/WalletProvider.jsx, which owns the
-// gated recordAudit(type) entry); call sites reach it only through that provider,
-// never by importing auditLog.js directly. Everything else the gate protected
-// still holds: still NOT reachable as a page/route, still NOT surfaced in the
-// feature catalogue (guarded by featureCatalogue.test.js), and the D1–D7 multi-set
-// storage shape the auditor was to review is NOT built — logging is primary-session
-// only and hard-off in decoy/hidden, so the real-vs-decoy distinguisher hazard is
-// never introduced. This test still locks the posture so it can't drift wider:
-// any importer other than the approved wirer, any route/page, fails here.
+// OWNER OVERRIDE (2026-06-16, updated 2026-06-17) — documented in
+// docs/audit-log-login-activity-deniability-decision.md:
 //
-// It also pins the removal of the orphaned, base44-mock AuditLogPage.jsx (a dead,
-// unrouted page that read base44.entities.AuditLog and claimed a "Full history of
-// all account actions" — a fabrication tell carrying the one name the deniability
-// decision forbids surfacing). Same source-text/fs posture as
-// security-framing.test.js — there is no DOM renderer in this project.
+// Original gate (pre-2026-06-16): auditLog.js was imported by ZERO runtime
+// modules. Override: allowed exactly one approved wiring point (WalletProvider.jsx).
+//
+// UI landing (2026-06-17): /audit-log is now live. WalletProvider exposes four
+// context methods (readAuditLogEntries, clearAuditLogEntries, auditLogEnabled,
+// toggleAuditLog). The page (AuditLog.jsx) reaches the log ONLY through those
+// context methods — it never imports auditLog.js directly. Everything else the
+// gate protected still holds: auditLog.js is still imported ONLY by
+// WalletProvider.jsx; no other runtime module may do so.
+//
+// Deniability properties preserved:
+//   • readAuditLogEntries() returns [] in decoy/hidden sessions (hard gate).
+//   • Entries are { type, ts } ONLY — no amounts, addresses, wallet identity.
+//   • D1–D7 multi-set storage shape NOT built; primary-session only.
+//   • Hard denylist of 7 sensitive terms in auditLog.js is unchanged.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -46,13 +44,13 @@ function runtimeFiles(dir) {
 // not match — only a real module wiring does.
 const IMPORTS_AUDITLOG = /(?:from|import\s*\(|require\s*\()\s*['"][^'"]*auditLog[^'"]*['"]/;
 
-describe('Audit Log stays HONEST-DISABLED + TIGHTLY-WIRED (deniability decision + 2026-06-16 owner override)', () => {
+describe('Audit Log stays TIGHTLY-WIRED — only WalletProvider may import auditLog.js', () => {
   const primitive = resolve(srcDir, 'wallet-core/auditLog.js');
 
-  // The ONLY runtime module permitted to import auditLog.js. The gated
-  // recordAudit(type) entry point lives here; everything else must reach the log
-  // through the provider, never by importing the primitive directly. Widening this
-  // set is a deliberate security decision, not a routine edit.
+  // The ONLY runtime module permitted to import auditLog.js. Pages reach the
+  // audit log only through WalletProvider context (readAuditLogEntries, etc.),
+  // never by importing the primitive directly. Widening this set is a deliberate
+  // security decision, not a routine edit.
   const APPROVED_WIRERS = new Set(['lib/WalletProvider.jsx']);
 
   it('the deniability-safe primitive is imported ONLY by the approved wiring point', () => {
@@ -67,9 +65,10 @@ describe('Audit Log stays HONEST-DISABLED + TIGHTLY-WIRED (deniability decision 
     ).toEqual([]);
   });
 
-  it('no /audit-log route is registered and no AuditLogPage is referenced', () => {
+  it('/audit-log route IS registered in App.jsx and uses AuditLog component (not AuditLogPage)', () => {
     const app = read('App.jsx');
-    expect(app).not.toContain('/audit-log');
+    expect(app).toContain('/audit-log');
+    expect(app).toContain('AuditLog');
     expect(app).not.toContain('AuditLogPage');
   });
 

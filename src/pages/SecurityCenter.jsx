@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 import { sumSentTodayUSD } from "@/lib/txLimits";
 
 
@@ -162,7 +162,7 @@ export default function SecurityCenter() {
                         <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">This device</span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">Last active {moment(s.last_active).fromNow()}</p>
+                    <p className="text-xs text-muted-foreground">Last active {formatDistanceToNow(new Date(s.last_active), { addSuffix: true })}</p>
                   </div>
                   {isCurrent ? (
                     // Signing out THIS device is now meaningful: the guard locks

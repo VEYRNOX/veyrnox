@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { fetchMarketPricesUsd, MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
+import { isLivePricesEnabled } from "@/lib/priceFeed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Bell, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import moment from "moment";
+import { formatDistanceToNow } from "date-fns";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -40,8 +41,8 @@ export default function PriceAlerts() {
   const { data: prices = {} } = useQuery({
     queryKey: ["live-prices"],
     queryFn: fetchMarketPricesUsd,
-    refetchInterval: 60_000,
     staleTime: 30_000,
+    enabled: isLivePricesEnabled(),
   });
 
   const createAlert = useMutation({
@@ -102,6 +103,8 @@ export default function PriceAlerts() {
     }
   };
 
+  const livePricesOn = isLivePricesEnabled();
+
   const activeAlerts = alerts.filter(a => a.status === "active");
   const triggeredAlerts = alerts.filter(a => a.status === "triggered");
   const dismissedAlerts = alerts.filter(a => a.status === "dismissed");
@@ -142,15 +145,21 @@ export default function PriceAlerts() {
       </div>
 
       {/* Live prices ticker */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {MARKET_SYMBOLS.map(c => (
-          <div key={c} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border">
-            <div className="h-2 w-2 rounded-full" style={{ background: CURRENCY_COLORS[c] }} />
-            <span className="text-xs font-mono font-semibold">{c}</span>
-            <span className="text-xs text-muted-foreground">${prices[c]?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? "—"}</span>
-          </div>
-        ))}
-      </div>
+      {livePricesOn ? (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {MARKET_SYMBOLS.map(c => (
+            <div key={c} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border">
+              <div className="h-2 w-2 rounded-full" style={{ background: CURRENCY_COLORS[c] }} />
+              <span className="text-xs font-mono font-semibold">{c}</span>
+              <span className="text-xs text-muted-foreground">${prices[c]?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? "—"}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-xs text-muted-foreground p-2">
+          Live prices off — enable in Settings to see current prices in the ticker.
+        </div>
+      )}
 
       {/* Honest scope: this is an on-device check, not a server push. */}
       <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -169,7 +178,7 @@ export default function PriceAlerts() {
                   {alert.currency} hit ${alert.triggered_price?.toLocaleString()} ({alert.direction} ${alert.target_price?.toLocaleString()})
                 </p>
                 {alert.note && <p className="text-xs text-muted-foreground">{alert.note}</p>}
-                <p className="text-[10px] text-muted-foreground">{moment(alert.triggered_at).fromNow()}</p>
+                <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(alert.triggered_at), { addSuffix: true })}</p>
               </div>
               <Button variant="ghost" size="sm" className="text-xs shrink-0" onClick={() => dismissAlert.mutate(alert.id)}>
                 Dismiss

@@ -13,8 +13,6 @@ import { TOP_CRYPTOS, TOP_SYMBOLS } from "@/lib/cryptos";
 // Top 10 by market cap, from the canonical source. COLORS is index-aligned to ASSETS.
 const ASSETS = TOP_SYMBOLS;
 const COLORS = TOP_CRYPTOS.map(c => c.color);
-const PERF = { BTC: 8.2, ETH: 12.4, USDT: 0, BNB: 9.6, SOL: 23.1, USDC: 0, XRP: -3.4, DOGE: 15.2, ADA: -1.7, TRX: 5.1 };
-
 export default function CustomIndexBuilder() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -57,7 +55,6 @@ export default function CustomIndexBuilder() {
       ) : (
         <div className="space-y-4">
           {indexes.map(idx => {
-            const perf = (idx.components || []).reduce((s, c) => s + (PERF[c.asset] || 0) * ((c.weight || 0) / 100), 0);
             const chartData = (idx.components || []).map(c => ({ name: c.asset, value: parseFloat(c.weight) || 0 }));
             return (
               <div key={idx.id} className="p-4 rounded-xl border border-border bg-card">
@@ -68,7 +65,6 @@ export default function CustomIndexBuilder() {
                     <p className="text-xs text-muted-foreground mt-0.5">Rebalances {idx.rebalance_frequency}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold ${perf >= 0 ? "text-green-500" : "text-destructive"}`}>{perf >= 0 ? "+" : ""}{perf.toFixed(1)}%</span>
                     <button onClick={() => remove.mutate(idx.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>

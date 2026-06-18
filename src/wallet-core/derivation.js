@@ -28,7 +28,6 @@ export const COIN_TYPES = {
   bitcoin: 0,
   solana: 501,
   cosmos: 118,
-  tron: 195,
 };
 
 /**
@@ -83,12 +82,12 @@ export { deriveBtcAccount as deriveBitcoinAccount } from './btc/derivation.js';
 // sol/networks.js).
 export { deriveSolAccount as deriveSolanaAccount } from './sol/derivation.js';
 
-export function deriveCosmosAccount() {
-  // TODO: secp256k1 -> bech32 with chain prefix (cosmos/osmo/etc.).
-  throw new Error('NOT IMPLEMENTED: Cosmos bech32 encoding. Implement with @cosmjs + test vectors.');
-}
+// Cosmos is now IMPLEMENTED in the parallel cosmos/ stack (BIP-44 coin type 118,
+// secp256k1 compressed pubkey → SHA-256 → RIPEMD-160 → bech32). Supports any
+// Cosmos SDK chain via the `hrp` option ('cosmos', 'osmo', 'juno', …). Uses only
+// libraries already in the project (@scure/bip32, @noble/hashes, @scure/base).
+// Pinned against the Cosmos SDK / Keplr published test vectors.
+export { deriveCosmosAccount, deriveCosmosAddress } from './cosmos/derivation.js';
 
-export function deriveTronAccount() {
-  // TODO: secp256k1 -> Keccak -> base58check with 0x41 prefix.
-  throw new Error('NOT IMPLEMENTED: Tron address encoding. Implement with TronWeb + test vectors.');
-}
+// Tron: removed. If needed, implement secp256k1 → Keccak256 → base58check(0x41)
+// with TronWeb or tronweb-utils, and pin against published test vectors before use.
