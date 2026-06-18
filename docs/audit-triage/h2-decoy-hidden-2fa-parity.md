@@ -38,6 +38,27 @@ wiring lives in the keystore layer (phase 2b)."* H2 is that phase-2b wiring.
    a record, "configured" must mean *a real verify can succeed for the active set*, not
    "field is non-null".
 
+## Design correction (2026-06-18) — prefer fixed-length padding over an always-present chaff record
+The original "every container always carries a record (real OR chaff)" plan has a flaw:
+once a no-AP set carries a chaff record, **record presence no longer means "configured,"**
+so after unlock the gate cannot tell whether the active set actually has an Action Password.
+Forcing 2FA on a chaff-only set blocks all its critical actions (a NEW tell); not forcing it
+needs a real-vs-chaff marker, which is its own leak risk.
+
+Key realisation: the AP record lives **inside the AES-GCM ciphertext**, so its presence is
+invisible without that set's password. A coercer who forces the *decoy* password decrypts
+only the decoy and sees the decoy's own config — there is **no cross-set presence leak**. The
+ONLY cross-set observable is **ciphertext length** (+ timing). Therefore:
+
+- **Keep the AP record present ⟺ configured** (presence keeps meaning "configured" — no marker).
+- **Pad the container plaintext to a fixed length** (independent of AP-presence AND wallet
+  count), and size the stealth/duress chaff to that same fixed length.
+
+This is simpler and strictly safer than an always-present chaff record. Under it the
+`makeChaffActionPasswordRecord` primitive (PR #230) is replaced by a **fixed-length padding
+helper** on the container. The integration points below are unchanged except: instead of
+"attach a chaff record when absent," the change is "pad serialized container to FIXED_LEN".
+
 ## Tell-hazards (and mitigations) — the reason this is review-gated
 | Hazard | Mitigation |
 |---|---|
