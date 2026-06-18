@@ -24,12 +24,18 @@
            - 'self'                     same-origin fetch (Vite HMR in dev, local APIs)
          Note: ensideas.com and bonfida.workers.dev are intentionally ABSENT —
          ENS now resolves on-chain (VULN-1 fix) and SNS is honest-disabled.
-         script-src 'self': production bundle uses only external module scripts —
-         no inline scripts exist in the built page, so 'unsafe-inline' is omitted.
-         Dev HMR works because Vite's dev server bypasses the meta CSP. -->
+         script-src 'self' 'wasm-unsafe-eval': production bundle uses only external
+         module scripts — no inline scripts exist in the built page, so 'unsafe-inline'
+         is omitted. 'wasm-unsafe-eval' is REQUIRED (not optional): the vault KDF is
+         Argon2id from hash-wasm (a WebAssembly module — see wallet-core/vault.js,
+         credentialVerifier.js, decoyFallback.js, vaultBackup.js). Without it,
+         WebAssembly.compile() is blocked under CSP and every wallet create / import /
+         unlock fails ("violates … script-src 'self'"). 'wasm-unsafe-eval' permits ONLY
+         WebAssembly instantiation — it does NOT permit JavaScript eval()/new Function()
+         the way 'unsafe-eval' would, so the script policy is not meaningfully weakened. -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self';
+      script-src 'self' 'wasm-unsafe-eval';
       style-src 'self' 'unsafe-inline';
       font-src 'self';
       img-src 'self' data: https://images.unsplash.com;
