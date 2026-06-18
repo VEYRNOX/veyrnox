@@ -74,6 +74,7 @@ const PortfolioRiskScore = lazy(() => import('./pages/PortfolioRiskScore'));
 const CorrelationMatrix = lazy(() => import('./pages/CorrelationMatrix'));
 const SplitBill = lazy(() => import('./pages/SplitBill'));
 const SessionManager = lazy(() => import('./pages/SessionManager'));
+const LoginActivity = lazy(() => import('./pages/LoginActivity'));
 const TransactionReceipt = lazy(() => import('./pages/TransactionReceipt'));
 const TransactionHistory = lazy(() => import('./pages/TransactionHistory'));
 const SuspiciousAddressChecker = lazy(() => import('./pages/SuspiciousAddressChecker'));
@@ -181,6 +182,7 @@ const AuthenticatedApp = () => {
           <Route path="/correlation" element={<CorrelationMatrix />} />
           <Route path="/split-bill" element={<SplitBill />} />
           <Route path="/session-manager" element={<SessionManager />} />
+          <Route path="/login-activity" element={<LoginActivity />} />
           <Route path="/receipt" element={<TransactionReceipt />} />
           <Route path="/tx-history" element={<TransactionHistory />} />
           <Route path="/address-checker" element={<SuspiciousAddressChecker />} />

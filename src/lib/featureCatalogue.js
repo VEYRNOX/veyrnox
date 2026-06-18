@@ -168,9 +168,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Session Manager & Auto-Lock',
-        status: 'roadmap',
-        summary: 'Idle / background auto-lock + session view',
-        explanation: 'Automatic locking on idle or backgrounding, plus a view of active sessions. Specced, not yet built.',
+        status: 'built',
+        summary: 'Auto-lock + device session management',
+        explanation: 'Built (/session-manager): lists UserSession device records, revoke individual or all sessions (self-enforcing: locks this device immediately, locks others at next open). Auto-lock idle/background timer in Settings. Login Activity (/login-activity) shows the previous-session unlock timestamp and device records in a read-only history view; per-unlock event log is intentionally absent (I3 deniability constraint).',
       },
       {
         name: 'Account Access & Recovery',
