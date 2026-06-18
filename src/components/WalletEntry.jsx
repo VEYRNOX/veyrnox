@@ -973,7 +973,7 @@ export default function WalletEntry() {
             <div>
               <Label>Vault Password</Label>
               <Input type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
-              <p className="text-xs text-muted-foreground mt-1">Encrypts the vault (Argon2id + AES-256-GCM). Minimum 8 characters. This is your real key — required, never skipped.</p>
+              <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. Minimum 8 characters. This is your real key — required, never skipped.</p>
             </div>
             <Button className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
               {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Set Password & Generate Seed
@@ -1042,7 +1042,7 @@ export default function WalletEntry() {
         <div>
           <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>
           <Input type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
-          <p className="text-xs text-muted-foreground mt-1">Encrypts the vault (Argon2id + AES-256-GCM). Minimum 8 characters.</p>
+          <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. Minimum 8 characters.</p>
         </div>
 
         {/* Optional Face ID offer folded onto the SAME screen (skippable). */}

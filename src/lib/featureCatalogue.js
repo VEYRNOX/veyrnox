@@ -57,8 +57,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Encrypted Vault',
         status: 'built',
-        summary: 'Argon2id + AES-256-GCM at rest',
-        explanation: 'Private keys are sealed in a local vault using an Argon2id key-derivation function and AES-256-GCM authenticated encryption. Plaintext keys are never written to disk and never leave the device.',
+        summary: 'Strong on-device encryption at rest',
+        explanation: 'Private keys are sealed in a local vault using strong on-device encryption (a memory-hard key-derivation step plus authenticated encryption). Plaintext keys are never written to disk and never leave the device.',
       },
       {
         name: 'Backup & Reveal Seed',
@@ -264,7 +264,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Encrypted Cloud Backup',
         status: 'built',
         summary: 'Ciphertext-only vault backup',
-        explanation: 'Built (/cloud-backup, UNAUDITED-PROVISIONAL). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password (PBKDF2 + AES-GCM), and written to a file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device.',
+        explanation: 'Built (/cloud-backup, UNAUDITED-PROVISIONAL). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device.',
       },
     ],
   },
@@ -281,7 +281,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Audit Log',
         status: 'built',
         summary: 'Optional encrypted local activity record',
-        explanation: 'Built (/audit-log). Opt-in, off by default. Stores at most 100 entries ({ type, ts } ONLY — no amounts, addresses, or wallet identity) as an AES-GCM encrypted blob in the primary vault store (quaternary key). Hard allowlist of 3 event types; hard denylist of 7 sensitive terms. No-op in decoy/hidden sessions; panic wipe destroys it. UNAUDITED-PROVISIONAL.',
+        explanation: 'Built (/audit-log). Opt-in, off by default. Stores at most 100 entries ({ type, ts } ONLY — no amounts, addresses, or wallet identity) as an encrypted blob in the primary vault store (quaternary key). Hard allowlist of 3 event types; hard denylist of 7 sensitive terms. No-op in decoy/hidden sessions; panic wipe destroys it. UNAUDITED-PROVISIONAL.',
       },
       {
         name: 'Risk Limits / Risk Scoring',

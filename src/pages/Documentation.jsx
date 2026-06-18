@@ -34,7 +34,7 @@ const features = [
   { category: "Core Wallet", icon: Wallet, items: [
     { name: "Multi-Account HD Wallet", desc: "BIP-39 seed with multi-account derivation; keys held locally", status: "available" },
     { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "available" },
-    { name: "Encrypted Vault", desc: "Argon2id + AES-256-GCM at rest; plaintext keys never leave device", status: "available" },
+    { name: "Encrypted Vault", desc: "Strong on-device encryption at rest; plaintext keys never leave device", status: "available" },
     { name: "Backup & Reveal Seed", desc: "Seed phrase + encrypted QR backup behind explicit warnings", status: "available" },
     { name: "Send Crypto", desc: "Locally-signed native transfers; ETH/Sepolia is live, other assets are receive-only pending per-asset send verification", status: "available" },
     { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "available" },
@@ -73,11 +73,11 @@ const features = [
     { name: "Stealth / Hidden Wallets", desc: "Deniable hidden-wallet pool; count-hiding", status: "available" },
     { name: "Panic Wipe", desc: "Irreversible local key-material destruction", status: "available" },
     { name: "Crypto Will / Inheritance", desc: "Self-custody inheritance (secret-sharing + dead-man's-switch; no custodial backstop)", status: "roadmap" },
-    { name: "Encrypted Cloud Backup", desc: "Export/import vault as an Argon2id+AES-GCM encrypted file; plaintext keys never leave device. UNAUDITED-PROVISIONAL.", status: "available" },
+    { name: "Encrypted Cloud Backup", desc: "Export/import vault as a strongly encrypted file; plaintext keys never leave device. UNAUDITED-PROVISIONAL.", status: "available" },
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
     { name: "RASP", desc: "Browser-level automation detection active (navigator.webdriver → HOOKED → signing blocked). Degradation policy + send-path wiring built. OS-level probes (root/jailbreak) pending native plugin + audit. UNAUDITED-PROVISIONAL.", status: "available" },
-    { name: "Audit Log", desc: "Opt-in local activity log. At most 100 { type, ts } entries encrypted as AES-GCM vault blob — no amounts, addresses, or wallet identity. Off by default; no-op in decoy/hidden sessions.", status: "available" },
+    { name: "Audit Log", desc: "Opt-in local activity log. At most 100 { type, ts } entries encrypted in the vault — no amounts, addresses, or wallet identity. Off by default; no-op in decoy/hidden sessions.", status: "available" },
     { name: "Spending Limits", desc: "Rule-based per-transaction and daily spending limits (warn-with-acknowledgement)", status: "available" },
   ]},
   { category: "Portfolio & Analytics", icon: BarChart3, items: [
@@ -363,7 +363,7 @@ export default function Documentation() {
                 Keys & Vault
               </h3>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Argon2id + AES-256-GCM vault</li>
+                <li>• Strong on-device encrypted vault</li>
                 <li>• Keys generated &amp; held locally</li>
                 <li>• Plaintext keys never leave device</li>
                 <li>• Non-custodial — no key escrow</li>

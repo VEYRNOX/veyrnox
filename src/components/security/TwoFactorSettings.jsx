@@ -141,7 +141,7 @@ export default function TwoFactorSettings() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">PIN + Action Password {actionPasswordConfigured && <span className="text-primary">· ON</span>}</p>
-            <p className="text-[11px] text-muted-foreground">A second password you know. Verified at full vault strength (Argon2id), stored only inside your encrypted vault — per wallet-set. Two things you know on one device: strong, but <strong>not</strong> hardware 2FA.</p>
+            <p className="text-[11px] text-muted-foreground">A second password you know. Verified at full vault strength, stored only inside your encrypted vault — per wallet-set. Two things you know on one device: strong, but <strong>not</strong> hardware 2FA.</p>
           </div>
         </div>
 

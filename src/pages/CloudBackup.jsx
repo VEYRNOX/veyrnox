@@ -99,7 +99,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
           Your password and PIN are not in the file. If you forget both, there is no recovery — this is self-custody.
         </p>
         <p className="mt-1">
-          The PIN-sealed copy uses 192 MiB Argon2id — strong, but a 6-digit PIN has limited entropy.
+          The PIN-sealed copy uses a deliberately slow, memory-hard key derivation — strong, but a 6-digit PIN has limited entropy.
           Use your password for the highest security recovery path.
         </p>
       </div>
@@ -390,7 +390,7 @@ export default function CloudBackup() {
 
       {/* Footer note */}
       <p className="text-[10px] text-muted-foreground text-center pb-4">
-        Encrypted with Argon2id + AES-256-GCM · never transmitted · only Veyrnox can open it
+        Strongly encrypted on your device · never transmitted · only Veyrnox can open it
       </p>
     </div>
   );
