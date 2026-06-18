@@ -1,5 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { Toaster } from "@/components/ui/toaster"
+// App-wide toast host. MUST be the sonner Toaster: every toast call in the app
+// (31 files) imports `toast` from "sonner", so the Radix `ui/toaster` that used
+// to be mounted here rendered nothing — its useToast() store had zero writers,
+// so every success/error toast (backup downloaded, copy, errors, …) was silently
+// invisible. Mounting the sonner host makes those toasts actually appear.
+import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from 'next-themes'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
