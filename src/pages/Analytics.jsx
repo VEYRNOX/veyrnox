@@ -57,15 +57,6 @@ export default function Analytics() {
   const { portfolio, history, prices, pricesEnabled, loading, error } = useAnalytics();
   const [range, setRange] = useState(30);
 
-  if (!isUnlocked) {
-    return (
-      <div className="max-w-lg mx-auto pt-10 text-center space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-        <p className="text-sm text-muted-foreground">Unlock your wallet to see analytics.</p>
-      </div>
-    );
-  }
-
   const totalUSD = portfolio?.grandTotal ?? 0;
 
   const allocationData = useMemo(() => {
@@ -131,6 +122,15 @@ export default function Analytics() {
   const totalLosses = pnlData.reduce((s, m) => s + m.losses, 0);
   const netPnL = totalGains - totalLosses;
   const bestAsset = allocationData[0];
+
+  if (!isUnlocked) {
+    return (
+      <div className="max-w-lg mx-auto pt-10 text-center space-y-2">
+        <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+        <p className="text-sm text-muted-foreground">Unlock your wallet to see analytics.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
