@@ -35,6 +35,30 @@ import { getKeyStore } from './keystore/index.js';
 export const BACKUP_APP = 'veyrnox';
 export const BACKUP_VERSION = 1;
 
+// Opaque on-disk container marker. The backup envelope is base64-wrapped behind
+// this magic so the saved file reads as one undifferentiated blob — not labelled
+// JSON that advertises the format/params in a text editor. IMPORTANT (honest):
+// this is an ENCODING for opacity, NOT a second encryption layer. The real
+// protection is the per-seal AES-GCM ciphertext + the user's credential, which
+// is unchanged; base64 is trivially reversible and adds no cryptographic
+// strength. It exists only so the file behaves like an opaque vault artifact and
+// does not surface the scheme to a casual viewer.
+const CONTAINER_MAGIC = 'VYRNXVLT1:';
+
+// UTF-8-safe base64 (btoa/atob are latin1-only, so round-trip through bytes).
+function encodeOpaque(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return CONTAINER_MAGIC + btoa(bin);
+}
+function decodeOpaque(text) {
+  const b64 = text.slice(CONTAINER_MAGIC.length);
+  const bin = atob(b64);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 // ── Validation ────────────────────────────────────────────────────────────────
 
 function isValidBlob(b) {
@@ -101,7 +125,8 @@ export async function createBackupEnvelope(containerJson, password, pin) {
  */
 export function downloadBackupFile(envelope) {
   const json = JSON.stringify(envelope);
-  const blob = new Blob([json], { type: 'application/octet-stream' });
+  // Wrap as an opaque container so the file is not human-readable JSON.
+  const blob = new Blob([encodeOpaque(json)], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -122,9 +147,18 @@ export function downloadBackupFile(envelope) {
  * @throws if the content is not a valid Veyrnox backup
  */
 export function parseBackupFile(text) {
+  // New files are opaque-wrapped (CONTAINER_MAGIC + base64). Legacy plain-JSON
+  // backups (pre-opacity) are still accepted so an early export can be restored.
+  let jsonText = text;
+  const trimmed = text.trim();
+  if (trimmed.startsWith(CONTAINER_MAGIC)) {
+    try { jsonText = decodeOpaque(trimmed); } catch {
+      throw new Error('Not a valid Veyrnox backup file');
+    }
+  }
   let parsed;
-  try { parsed = JSON.parse(text); } catch {
-    throw new Error('File is not valid JSON');
+  try { parsed = JSON.parse(jsonText); } catch {
+    throw new Error('Not a valid Veyrnox backup file');
   }
   if (!isValidBackup(parsed))
     throw new Error('Not a valid Veyrnox backup file');
