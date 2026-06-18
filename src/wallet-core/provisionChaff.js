@@ -44,9 +44,11 @@ function throwawayPassword() {
  * H2: the duress chaff goes through setDuressVault, which now wraps the mnemonic in
  * a FIXED-LENGTH multi-seed container (padded to FIXED_LEN). A personalized duress
  * blob is wrapped the SAME way, so chaff and real duress blobs remain ciphertext-
- * length-identical — the load-bearing deniability property. The panic chaff stays a
- * bare-mnemonic marker because a real panic marker (setPanicVault) is also a bare
- * mnemonic; chaff matches its own slot's real shape in each case.
+ * length-identical — the load-bearing deniability property. The panic chaff goes
+ * through setPanicVault, which now pads the throwaway marker to the SAME FIXED_LEN
+ * plaintext (H2 part B) — so chaff panic and real panic are ciphertext-length-
+ * identical, AND the panic ('tertiary') blob is length-identical to the duress
+ * ('secondary') blob. Chaff matches its own slot's real shape via the identical path.
  * @returns {Promise<void>}
  */
 export async function provisionDeniabilityChaff() {
