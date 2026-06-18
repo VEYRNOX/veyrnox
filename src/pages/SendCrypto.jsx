@@ -1016,6 +1016,21 @@ export default function SendCrypto() {
           </div>
         )}
 
+        {/* Insufficient balance — explains the disabled Send button. The same
+            `amount > effectiveBalance` condition already gates the button below;
+            without this the button just greys out with no reason (audit: the
+            over-balance case had no user feedback). */}
+        {balanceKnown && parseFloat(amount) > 0 && parseFloat(amount) > effectiveBalance && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
+            <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-xs text-destructive min-w-0">
+              <span className="font-semibold">Insufficient balance.</span>{" "}
+              You have {effectiveBalance} {selectedWallet?.currency} available to send (after the
+              network fee). Reduce the amount to continue.
+            </p>
+          </div>
+        )}
+
         {step === "form" && (
           <Button
             className="w-full"
