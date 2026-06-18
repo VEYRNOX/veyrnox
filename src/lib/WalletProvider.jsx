@@ -144,6 +144,16 @@ const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'focus'];
 // Throttle re-arming the timer so a burst of activity doesn't thrash setTimeout.
 const ACTIVITY_THROTTLE_MS = 1000;
 
+// Grace period before the WEB background-lock fallback fires, used ONLY when the
+// user picked auto-lock = 'Never'. visibilitychange→hidden fires on any brief
+// tab-switch/minimise, so an instant lock made 'Never' feel broken ("I set Never
+// and it still locks the moment I switch tabs"). With 'Never' the user has opted
+// out of idle locking, so we give a short re-entry window: lock only if the app
+// stays hidden past this grace. A real walk-away still locks; the 8 h absolute
+// ceiling (MAX_SESSION_MS) is unaffected. For every other timeout (1/5/15 min)
+// the secure instant background-lock is kept.
+const BACKGROUND_LOCK_GRACE_MS = 45 * 1000;
+
 // Platform-resolved storage seam. Web today; native (M2b) swaps in behind the
 // same interface. Stable singleton, so it lives at module scope.
 const keyStore = getKeyStore();
@@ -245,6 +255,9 @@ export function WalletProvider({ children }) {
   // Absolute session ceiling (VULN-18 fix). Even with 'Never' idle timeout, the
   // session expires after MAX_SESSION_MS (8 hours) from unlock. Cleared on lock.
   const absoluteLockTimer = useRef(null);
+  // Web background-lock grace timer (only armed when auto-lock = 'Never'; see
+  // BACKGROUND_LOCK_GRACE_MS). Cleared if the app becomes visible in time.
+  const bgLockTimer = useRef(null);
 
   // Configurable idle auto-lock timeout. The picker value (e.g. '5', 'never')
   // is React state for the settings UI; a ref mirrors the resolved ms so the
@@ -409,6 +422,7 @@ export function WalletProvider({ children }) {
     setSolAccount(null);
     keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
     if (absoluteLockTimer.current) { clearTimeout(absoluteLockTimer.current); absoluteLockTimer.current = null; }
+    if (bgLockTimer.current) { clearTimeout(bgLockTimer.current); bgLockTimer.current = null; }
   }, []);
 
   // (Re)arm the idle auto-lock timer for the CURRENT timeout preference. Safe to
@@ -481,9 +495,30 @@ export function WalletProvider({ children }) {
   // Native (M2b): keyStore.setLockHook wires @capacitor/app's pause/appStateChange
   // to lock(); web has no such hook so visibilitychange is the fallback.
   useEffect(() => {
-    const onHide = () => { if (document.hidden) lock(); };
+    const clearBgTimer = () => {
+      if (bgLockTimer.current) { clearTimeout(bgLockTimer.current); bgLockTimer.current = null; }
+    };
+    const onHide = () => {
+      if (document.hidden) {
+        // 'Never' (autoLockMsRef.current == null): the user opted out of idle
+        // locking, so don't nuke the session on a transient tab-switch — lock
+        // only if still hidden after the grace window. Any other setting keeps
+        // the secure instant background-lock.
+        if (autoLockMsRef.current == null) {
+          clearBgTimer();
+          bgLockTimer.current = setTimeout(() => {
+            if (document.hidden) lock();
+          }, BACKGROUND_LOCK_GRACE_MS);
+        } else {
+          lock();
+        }
+      } else {
+        // Came back in time — cancel any pending grace lock.
+        clearBgTimer();
+      }
+    };
     document.addEventListener('visibilitychange', onHide);
-    return () => document.removeEventListener('visibilitychange', onHide);
+    return () => { document.removeEventListener('visibilitychange', onHide); clearBgTimer(); };
   }, [lock]);
 
   // Reset the idle timer on real user activity while unlocked. Throttled so a
