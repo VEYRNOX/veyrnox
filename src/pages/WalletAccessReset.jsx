@@ -292,7 +292,7 @@ export default function WalletAccessReset() {
               Change password
             </Button>
             <p className="text-[11px] text-muted-foreground">
-              Re-encrypts with Argon2id + AES-256-GCM — the same crypto as the
+              Re-encrypts with the same strong on-device encryption as the
               original vault. Note: this changes only your <b>primary</b> wallet's
               password; any duress PIN or hidden-wallet secrets are independent and
               unchanged.

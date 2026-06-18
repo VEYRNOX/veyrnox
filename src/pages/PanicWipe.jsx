@@ -255,7 +255,7 @@ export default function PanicWipe() {
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
           <li><b>A seed backup you hold elsewhere</b> (paper, password manager, another device) — the wallet is still recoverable from it. Wipe protects the device, not the seed.</li>
           <li><b>On-chain state</b> — {explorerNote}</li>
-          <li><b>Flash-media forensics</b> — we delete logical records, not sanitise the medium; the mitigation is that only ciphertext (Argon2id + AES-GCM) was ever stored.</li>
+          <li><b>Flash-media forensics</b> — we delete logical records, not sanitise the medium; the mitigation is that only encrypted ciphertext was ever stored.</li>
         </ul>
       </div>
 

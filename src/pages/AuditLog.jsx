@@ -161,7 +161,7 @@ export default function AuditLog() {
       {/* Scope note */}
       <div className="text-xs text-muted-foreground space-y-1 border-t border-border pt-4">
         <p>Entries contain only {'{type, ts}'} — no amounts, recipients, addresses, or wallet identity.</p>
-        <p>Storage: AES-GCM encrypted blob in the primary vault store. Panic wipe destroys it.</p>
+        <p>Storage: encrypted blob in the primary vault store. Panic wipe destroys it.</p>
         <p>Loggable events: settings_changed · approval_revoked · send_completed.</p>
       </div>
     </div>
