@@ -63,7 +63,7 @@ export function mnemonicToSeed(mnemonic, passphrase = '') {
   if (!validateMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic: failed BIP-39 checksum/wordlist check');
   }
-  return mnemonicToSeedSync(normalize(mnemonic), passphrase);
+  return mnemonicToSeedSync(normalize(mnemonic), normalize(passphrase));
 }
 
 /**

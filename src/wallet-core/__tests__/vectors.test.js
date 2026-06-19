@@ -102,3 +102,16 @@ describe('Vault round-trip', () => {
     await expect(decryptVault(tampered, 'pw')).rejects.toThrow();
   });
 });
+
+describe('mnemonicToSeed — BIP-39 §5 passphrase NFKD normalisation', () => {
+  it('produces the same seed for composed and decomposed Unicode passphrase', () => {
+    // é as a single precomposed code point (U+00E9)
+    const composed   = 'café';
+    // é as base e + combining acute (U+0065 U+0301) — visually identical, different bytes
+    const decomposed = String.fromCharCode(99, 97, 102, 101) + '́'; // c-a-f-e + combining acute
+    expect(composed).not.toBe(decomposed); // guard: they must be byte-different to test anything
+    const seedComposed   = mnemonicToSeed(TEST_MNEMONIC, composed);
+    const seedDecomposed = mnemonicToSeed(TEST_MNEMONIC, decomposed);
+    expect(bytesToHex(seedComposed)).toBe(bytesToHex(seedDecomposed));
+  });
+});
