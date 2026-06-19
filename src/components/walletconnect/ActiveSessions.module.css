@@ -1,0 +1,28 @@
+.empty { color: #8b949e; font-size: 0.9rem; text-align: center; padding: 24px 0; margin: 0; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0d1117;
+  border: 1px solid #1D222B;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.info { display: flex; align-items: center; gap: 10px; }
+.icon { border-radius: 6px; flex-shrink: 0; }
+.name { font-size: 0.9rem; font-weight: 600; color: #f0f2f5; margin: 0; }
+.url { font-size: 0.78rem; color: #8b949e; margin: 0; font-family: 'IBM Plex Mono', monospace; }
+.expiry { font-size: 0.75rem; color: #6e7681; margin: 0; }
+.revokeBtn {
+  background: transparent;
+  border: 1px solid rgba(248, 81, 73, 0.35);
+  color: #f85149;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.revokeBtn:hover:not(:disabled) { background: rgba(248, 81, 73, 0.1); }
+.revokeBtn:disabled { opacity: 0.4; cursor: not-allowed; }
