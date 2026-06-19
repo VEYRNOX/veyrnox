@@ -134,8 +134,8 @@ describe('Harness A · G1 — demo-active predicate (and the persisted-flag trap
 // ─────────────────────────────────────────────────────────────────────────────
 // G2 — canSend().  false for every receive_only asset; true ONLY for the live set.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Harness A · G2 — canSend() is true only for the live set (ETH, USDC, USDT, MATIC, ARB, OP, BNB, BTC, SOL)', () => {
-  it('the live (sendable) set is exactly [ETH, USDC, USDT, MATIC, ARB, OP, BNB, BTC, SOL]', () => {
+describe('Harness A · G2 — canSend() is true only for the live set (ETH, USDC, USDT, MATIC, ARB, OP, AVAX, BNB, BTC, SOL)', () => {
+  it('the live (sendable) set is exactly [ETH, USDC, USDT, MATIC, ARB, OP, AVAX, BNB, BTC, SOL]', () => {
     //   MATIC 0x6a4dede58e578f10dfa2039e2af3230c0d0e7b18596c0832f0a84348cea954a7 (Polygon Amoy, block 40274236)
     // Each earned `live` via a real explorer-confirmed UI-path send (NOT a script):
     //   ETH  0x3ebb8fd7c844cdb88455408a8a17a4cd242b61ea2c475444fa334ef8a0a2b5c3 (Sepolia)
@@ -143,19 +143,23 @@ describe('Harness A · G2 — canSend() is true only for the live set (ETH, USDC
     //   USDT 0x3168e46f467483ee20c176575d4ac11ff4528c90c951fc68de657b86866c447d (Sepolia, block 11075008)
     //   ARB  0x797928efdccfe85e858c4050c979b6b69b324c42b11eb642b8c5607109bdca39 (Arbitrum Sepolia)
     //   OP   0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47 (OP Sepolia)
+    //   AVAX 0x675e75c936eeec860f4da4db4e37e7a80f6e7c37396325e76ab6039e73c1d590 (Avalanche Fuji, block 56411588)
     //   BTC  2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27 (testnet, block 4990901)
     //   SOL  5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv (devnet, finalized)
     const sendable = ASSETS.filter(canSend).map((a) => a.symbol);
-    expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BNB', 'BTC', 'SOL']);
+    expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']);
   });
 
-  it('canSend() is FALSE for every receive_only asset', () => {
+  it('canSend() is FALSE for a receive_only asset (gate semantics; the registry now has none)', () => {
+    // Every shipped asset has earned `live` via a real UI-path send, so the registry's
+    // receive_only set is now EMPTY. The capability gate must still DENY a receive_only
+    // asset, so we assert the semantics against a synthetic one (the same technique the
+    // coming_soon test below uses) rather than depending on a real asset sitting there.
     const receiveOnly = ASSETS.filter((a) => a.status === ASSET_STATUS.RECEIVE_ONLY);
-    expect(receiveOnly.length).toBeGreaterThan(0); // sanity: the set is non-empty
-    for (const a of receiveOnly) {
-      expect(canSend(a)).toBe(false);
-      expect(canReceive(a)).toBe(true); // receivable, just not sendable
-    }
+    expect(receiveOnly.length).toBe(0); // all assets verified-live; none left gated
+    const synthetic = { symbol: 'RO', status: ASSET_STATUS.RECEIVE_ONLY };
+    expect(canSend(synthetic)).toBe(false); // never sendable
+    expect(canReceive(synthetic)).toBe(true); // receivable, just not sendable
   });
 
   it('a coming_soon asset is blocked from BOTH send and receive', () => {
@@ -190,21 +194,18 @@ describe('Harness A · G3 — the dev ungate relaxes the FLOW, never the status'
     expect(isDevSendUngated(null)).toBe(false);
   });
 
-  it('with the ungate ACTIVE, every receive_only asset KEEPS its status + stays unsendable', () => {
+  it('with the ungate ACTIVE, a receive_only asset KEEPS its status + stays unsendable', () => {
     // The keystone negative: the ungate is a pure boolean of the env; it has no
     // handle on the asset registry, so an active ungate cannot mutate status or
-    // re-classify canSend(). We assert the registry is identical to the gate-off
-    // reading even while the ungate evaluates true.
+    // re-classify canSend(). The registry's receive_only set is now empty (every
+    // asset verified-live), so we assert the invariant against a synthetic
+    // receive_only asset: even with the ungate evaluating true, canSend stays false.
     expect(isDevSendUngated(UNGATE_ON)).toBe(true); // ungate is "on" for this block
-    for (const a of ASSETS) {
-      if (a.status === ASSET_STATUS.RECEIVE_ONLY) {
-        const fresh = getAsset(a.symbol);
-        expect(fresh.status).toBe(ASSET_STATUS.RECEIVE_ONLY); // status untouched
-        expect(canSend(fresh)).toBe(false); // live-classification untouched
-      }
-    }
+    const synthetic = { symbol: 'RO', status: ASSET_STATUS.RECEIVE_ONLY };
+    expect(synthetic.status).toBe(ASSET_STATUS.RECEIVE_ONLY); // status untouched
+    expect(canSend(synthetic)).toBe(false); // live-classification untouched by the flag
     // And the live set is STILL exactly the verified set — the ungate didn't widen it.
-    expect(ASSETS.filter(canSend).map((a) => a.symbol)).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BNB', 'BTC', 'SOL']);
+    expect(ASSETS.filter(canSend).map((a) => a.symbol)).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']);
   });
 
   it('SOURCE CONTRACT: ungate relaxes the UI flow + the sign-time gate, nothing else', () => {
@@ -284,16 +285,23 @@ describe('Harness A · G4 — mainnet unlocked + assets migrated 2026-06-17; ung
 // status=live) can. BTC and SOL each carried a real MODULE/script txid for a long
 // time and CORRECTLY stayed receive_only on that basis alone; they became `live`
 // only once a real UI-path send was verified on-chain (see the G2 live-set txids).
-// The negative guard below uses a still-receive_only asset to pin that a bare txid
-// is not enough — the same class of bug as the Audit-Log "Built" vs HONEST-DISABLED
-// contradiction.
+// Every shipped asset has now cleared that bar, so the negative guard below uses a
+// SYNTHETIC receive_only asset to pin that a bare txid is not enough — the same class
+// of bug as the Audit-Log "Built" vs HONEST-DISABLED contradiction.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Harness A · drift-guard — a txid in history does NOT, by itself, make an asset sendable', () => {
-  it('a still-receive_only asset (AVAX) with a txid in history stays unsendable', () => {
-    const history = [{ currency: 'AVAX', address: FIXTURE.evm, txid: `0x${'a'.repeat(64)}`, source: 'scripts/probe.mjs' }];
+  it('a (synthetic) receive_only asset with a txid in history stays unsendable', () => {
+    // No real asset is receive_only any longer; the principle is what matters. A txid
+    // in history is evidence of a past transfer, not of `live` status — canSend() reads
+    // status, never history, so a receive_only asset stays unsendable however many
+    // txids reference it.
+    const synthetic = { symbol: 'RO', status: ASSET_STATUS.RECEIVE_ONLY };
+    const history = [{ currency: 'RO', address: FIXTURE.evm, txid: `0x${'a'.repeat(64)}`, source: 'scripts/probe.mjs' }];
     expect(history[0].txid).toMatch(/^0x[0-9a-f]{64}$/i); // a txid genuinely exists…
-    expect(canSend(getAsset('AVAX'))).toBe(false); // …and changes nothing
-    expect(getAsset('AVAX').status).toBe(ASSET_STATUS.RECEIVE_ONLY);
+    expect(canSend(synthetic)).toBe(false); // …and changes nothing
+    expect(synthetic.status).toBe(ASSET_STATUS.RECEIVE_ONLY);
+    // And the real registry confirms: nothing is sitting in receive_only anymore.
+    expect(ASSETS.filter((a) => a.status === ASSET_STATUS.RECEIVE_ONLY)).toHaveLength(0);
   });
 
   it('BTC/SOL: their MODULE/script txid alone was never what flipped them — the UI-path send was', () => {
@@ -305,13 +313,13 @@ describe('Harness A · drift-guard — a txid in history does NOT, by itself, ma
     expect(getAsset('SOL').status).toBe(ASSET_STATUS.LIVE);
   });
 
-  it('the live set (ETH, USDC, USDT, MATIC, ARB, OP, BNB, BTC, SOL) each passed the bar; a verified UI txid is the reference', () => {
+  it('the live set (ETH, USDC, USDT, MATIC, ARB, OP, AVAX, BNB, BTC, SOL) each passed the bar; a verified UI txid is the reference', () => {
     // A real explorer-confirmed UI-path txid is what "live" actually looks like
     // (brief §2). It is the reference, not the cause: canSend() is true because the
-    // status is `live`. All nine cleared that bar via a UI-path send; the remaining
-    // receive_only asset (AVAX) has not.
+    // status is `live`. All ten shipped assets cleared that bar via a UI-path send —
+    // AVAX was the last, verified on Fuji (tx 0x675e75c9…, block 56411588).
     expect(TXID.ethSepoliaVerified).toMatch(/^0x[0-9a-f]{64}$/i);
-    for (const sym of ['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BNB', 'BTC', 'SOL']) {
+    for (const sym of ['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']) {
       expect(canSend(getAsset(sym))).toBe(true);
       expect(getAsset(sym).status).toBe(ASSET_STATUS.LIVE);
     }

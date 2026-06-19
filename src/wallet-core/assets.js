@@ -77,7 +77,18 @@ export const ASSETS = Object.freeze([
   //   https://sepolia-optimism.etherscan.io/tx/0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
   // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
   { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.LIVE },
-  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.RECEIVE_ONLY },
+  // AVAX: VERIFIED LIVE. A funded test account (2.58 tAVAX) cleared the blocker.
+  // Real native transfer through the full in-app UI send path (asset picker →
+  // recipient → amount → Standard fee → local sign → broadcast), confirmed on-chain:
+  //   tx 0x675e75c936eeec860f4da4db4e37e7a80f6e7c37396325e76ab6039e73c1d590
+  //   (Avalanche Fuji, chainId 43113, status SUCCESS, block 56411588, 0.01 AVAX,
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 21000, type-2 EIP-1559)
+  //   https://testnet.snowtrace.io/tx/0x675e75c936eeec860f4da4db4e37e7a80f6e7c37396325e76ab6039e73c1d590
+  // NOTE: Fuji's default RPC (api.avax-test.network) is absent from one of the two
+  // shipped CSP metas, so the browser's CSP intersection blocked it (balance never
+  // read, send never broadcast). networks.js now points Fuji at publicnode (allowed
+  // by both metas), mirroring the live chains. Mainnet stays gated.
+  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.LIVE },
   // BNB: VERIFIED LIVE. A funded test account became available (0.3 tBNB), clearing
   // the prior "no faucet" blocker. Real native transfer through the full in-app UI
   // send path (asset picker → recipient → amount → Standard fee → step-up PIN re-auth
