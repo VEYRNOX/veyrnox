@@ -22,7 +22,14 @@
       content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.publicnode.com https://eth.llamarpc.com https://rpc-amoy.polygon.technology https://sepolia-rollup.arbitrum.io https://sepolia.optimism.io https://api.avax-test.network https://*.solana.com https://mempool.space https://min-api.cryptocompare.com https://api.etherscan.io https://api.ensideas.com https://sns-sdk-proxy.bonfida.workers.dev; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     />
     <link rel="icon" type="image/svg+xml" href="/veyrnox-icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- viewport-fit=cover so safe-area-inset-* are non-zero (notch / home indicator).
+         maximum-scale=1 + user-scalable=no lock the WKWebView scale: this is a native
+         Capacitor app shell, not a scrollable web page, and an accidental pinch /
+         double-tap otherwise zooms the content and pushes the right edge off-screen —
+         on iOS that clipped the rightmost bottom-nav item ("More") and right-side UI.
+         Native chrome doesn't pinch-zoom; the desktop preview never gets touch gestures,
+         which is why the bug showed only on device. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#050608" />
     <link rel="apple-touch-icon" href="/veyrnox-icon.svg" />
     <!-- Brand type: Schibsted Grotesk for prose/labels, IBM Plex Mono for every
