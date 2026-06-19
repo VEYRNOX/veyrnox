@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- LIVE CSP injection probe (XSS-risk verification, part 2 of 2).
+         This page carries the single Content-Security-Policy meta EXACTLY as it
+         appears in index.html after the dedupe fix. Loading it in the iOS
+         Capacitor WKWebView (capacitor://) reproduces the real enforced policy
+         and the script below fires concrete attack/feature vectors, then renders
+         + console.logs a verdict. For an even more faithful run, inject
+         csp-injection-probe.js into the app's own index.html (the probe self-
+         bootstraps its UI) so it runs against the genuine shipped policy.
+         To run: load this file in the app's WKWebView (or Simulator Safari) and
+         read the on-screen table or the JSON line logged to the console. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.publicnode.com https://eth.llamarpc.com https://rpc-amoy.polygon.technology https://sepolia-rollup.arbitrum.io https://sepolia.optimism.io https://api.avax-test.network https://*.solana.com https://mempool.space https://min-api.cryptocompare.com https://api.etherscan.io; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+    />
+    <title>CSP injection probe</title>
+    <style>
+      body { font: 14px -apple-system, monospace; padding: 16px; background: #050608; color: #e6e6e6; }
+      h1 { font-size: 16px; }
+      table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+      td, th { border: 1px solid #333; padding: 6px 8px; text-align: left; vertical-align: top; }
+      .PASS { color: #34d399; font-weight: 700; }
+      .FAIL { color: #f87171; font-weight: 700; }
+      .expect { color: #888; }
+    </style>
+  </head>
+  <body>
+    <h1>CSP injection probe — capacitor:// WKWebView</h1>
+    <div id="origin"></div>
+    <table id="results">
+      <thead><tr><th>#</th><th>Vector</th><th>Expected</th><th>Result</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- VECTOR 1: inline-script execution. Under a CSP with no 'unsafe-inline'
+         in script-src, this <script> must NOT run. If __inlineRan is true, the
+         CSP is NOT enforced in this WebView → XSS wide open. -->
+    <script>window.__inlineRan = true;</script>
+
+    <script src="csp-injection-probe.js"></script>
+  </body>
+</html>
