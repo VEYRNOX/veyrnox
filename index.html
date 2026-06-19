@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <!-- Content-Security-Policy (defense-in-depth vs XSS for a key-handling app).
          connect-src is the anti-exfiltration allowlist: ONLY the audited RPC /
-         price / name-resolution hosts may be reached, so injected code cannot
-         POST a seed or address to an arbitrary endpoint.
+         price hosts may be reached, so injected code cannot POST a seed or
+         address to an arbitrary endpoint. (ENS resolves on-chain via the RPC
+         nodes and SNS is honest-disabled, so no third-party name-service host
+         is allowlisted — least privilege.)
          Notes for reviewers:
            • 'wasm-unsafe-eval' is REQUIRED — the vault KDF (Argon2id via hash-wasm)
              compiles WebAssembly; without it the wallet cannot encrypt/unlock.
@@ -14,12 +16,13 @@
            • style-src 'unsafe-inline' is needed by the UI libs' injected styles.
            • connect-src wildcards cover every chain RPC (*.publicnode.com,
              *.solana.com) plus the explicit testnet/mainnet endpoints.
-         NEEDS TESTING BEFORE MERGE: native Capacitor WebView (capacitor://),
-         vault create/unlock (Argon2 under CSP), user-added custom RPCs, and the
-         Web3Browser dapp frames (frame-src is currently 'self'). -->
+         Verified on the iOS Simulator (capacitor:// WKWebView): policy is
+         enforced (inline-script / eval / off-allowlist exfil all blocked) and
+         the Argon2id WASM KDF compiles, so vault create/unlock works under it
+         (see scripts/csp-injection-probe.* and the csp-policy.test.js suite). -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.publicnode.com https://eth.llamarpc.com https://rpc-amoy.polygon.technology https://sepolia-rollup.arbitrum.io https://sepolia.optimism.io https://api.avax-test.network https://*.solana.com https://mempool.space https://min-api.cryptocompare.com https://api.etherscan.io https://api.ensideas.com https://sns-sdk-proxy.bonfida.workers.dev; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.publicnode.com https://eth.llamarpc.com https://rpc-amoy.polygon.technology https://sepolia-rollup.arbitrum.io https://sepolia.optimism.io https://api.avax-test.network https://*.solana.com https://mempool.space https://min-api.cryptocompare.com https://api.etherscan.io; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     />
     <link rel="icon" type="image/svg+xml" href="/veyrnox-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -31,46 +34,6 @@
          @font-face in src/index.css) — no Google-Fonts CDN fetch at runtime,
          so first-screen text LCP gates on a local file and no font request
          leaves the device (I2). -->
-    <!-- Content Security Policy (VULN-4 fix).
-         connect-src lists every external origin the app legitimately calls:
-           - min-api.cryptocompare.com  price data (demoClient / CryptoCompare)
-           - mempool.space              BTC fee estimates + UTXO lookup
-           - api.etherscan.io / sepolia.etherscan.io  gas oracle + tx lookup
-           - *.solana.com               Solana RPC endpoints (devnet/testnet/mainnet)
-           - solscan.io                 Solana explorer links (navigation only)
-           - *.publicnode.com           EVM public RPC nodes (Ethereum/Polygon/Arb/…)
-           - *.infura.io                optional user-configured Infura RPC
-           - 'self'                     same-origin fetch (Vite HMR in dev, local APIs)
-         Note: ensideas.com and bonfida.workers.dev are intentionally ABSENT —
-         ENS now resolves on-chain (VULN-1 fix) and SNS is honest-disabled.
-         script-src 'self' 'wasm-unsafe-eval': production bundle uses only external
-         module scripts — no inline scripts exist in the built page, so 'unsafe-inline'
-         is omitted. 'wasm-unsafe-eval' is REQUIRED (not optional): the vault KDF is
-         Argon2id from hash-wasm (a WebAssembly module — see wallet-core/vault.js,
-         credentialVerifier.js, decoyFallback.js, vaultBackup.js). Without it,
-         WebAssembly.compile() is blocked under CSP and every wallet create / import /
-         unlock fails ("violates … script-src 'self'"). 'wasm-unsafe-eval' permits ONLY
-         WebAssembly instantiation — it does NOT permit JavaScript eval()/new Function()
-         the way 'unsafe-eval' would, so the script policy is not meaningfully weakened. -->
-    <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      script-src 'self' 'wasm-unsafe-eval';
-      style-src 'self' 'unsafe-inline';
-      font-src 'self';
-      img-src 'self' data: https://images.unsplash.com;
-      object-src 'none';
-      base-uri 'self';
-      connect-src 'self'
-        https://min-api.cryptocompare.com
-        https://mempool.space
-        https://api.etherscan.io
-        https://sepolia.etherscan.io
-        https://api.devnet.solana.com
-        https://api.testnet.solana.com
-        https://api.mainnet-beta.solana.com
-        https://*.publicnode.com
-        https://*.infura.io;
-    ">
     <title>Veyrnox</title>
   </head>
   <body>
