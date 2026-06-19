@@ -62,6 +62,41 @@ function getBlob(key) {
   });
 }
 
+// Open the SEPARATE app-data DB (veyrnox-appdata) exactly as src/api/localClient.js
+// does, so the test exercises the real store shape a thorough wipe must remove.
+function appDataPut(name, rows) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('veyrnox-appdata', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('entities')) db.createObjectStore('entities');
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const r = db.transaction('entities', 'readwrite').objectStore('entities').put(rows, name);
+      r.onsuccess = () => { db.close(); resolve(); };
+      r.onerror = () => { db.close(); reject(r.error); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+function appDataGet(name) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('veyrnox-appdata', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('entities')) db.createObjectStore('entities');
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const r = db.transaction('entities', 'readonly').objectStore('entities').get(name);
+      r.onsuccess = () => { db.close(); resolve(r.result ?? null); };
+      r.onerror = () => { db.close(); reject(r.error); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function dumpVaultStore() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('veyrnox-vault', 1);
@@ -183,10 +218,13 @@ describe('panic wipe', () => {
     // proves the coercion-resistance stack was in use (and the decoy salt + a
     // coerced PIN reproduces the deterministic decoy). Internal audit C-1, extended
     // per AI-review F-02/F-03/F-05 (stealth-slot salt, audit-device salt, passkey
-    // config). This pins the FULL membership of DENIABILITY_RESIDUE_KEYS, so a key
-    // dropped from the wipe list — leaving a tell behind while clean still reports
-    // true — fails here (also guards F-04).
+    // config) and F-06 (biometric pref, PIN-lockout counters, multi-wallet/portfolio
+    // metadata, spam overrides). This pins the FULL membership of the residue lists
+    // (DENIABILITY_RESIDUE_KEYS + METADATA_RESIDUE_KEYS), so a key dropped from the
+    // wipe list — leaving a tell behind while clean still reports true — fails here
+    // (also guards F-04).
     const TELLS = [
+      // coercion-stack / auth-factor tells (DENIABILITY_RESIDUE_KEYS)
       'veyrnox-pin-decoy-salt',
       'veyrnox-auth-model',
       'veyrnox-audit-log',
@@ -195,6 +233,15 @@ describe('panic wipe', () => {
       'veyrnox-passkey-unlock',
       'veyrnox-passkey-cred',
       'veyrnox-2fa-passkey',
+      'veyrnox-biometric-unlock',
+      'veyrnox-pin-attempts',
+      'veyrnox-pin-backoff-until',
+      // non-secret wallet/token metadata residue (METADATA_RESIDUE_KEYS) — F-06
+      'veyrnox-wallet-meta',
+      'veyrnox-active-wallet',
+      'veyrnox-portfolios',
+      'veyrnox-active-portfolio',
+      'veyrnox-spam-overrides',
     ];
     await populateDevice();
     for (const k of TELLS) localStorage.setItem(k, 'x');
@@ -211,6 +258,27 @@ describe('panic wipe', () => {
     expect(report.localStorageResidue).toEqual([]);
     expect(report.clean).toBe(true);
     expect((await inspectKeyMaterial()).clean).toBe(true);
+  });
+
+  it('panicWipeLocal also deletes the separate app-data DB (forensic residue) — F-06', async () => {
+    // veyrnox-appdata (src/api/localClient.js) holds entity rows that NAME addresses,
+    // tx hashes, wallet labels, and alerts — NO key material, but forensic residue
+    // tying the device to the destroyed wallet set. A thorough wipe must remove it
+    // too. This deletion is additive and best-effort (mirrors deleteVaultDatabase),
+    // so it is observed directly here rather than through inspectKeyMaterial().
+    await populateDevice();
+    await appDataPut('Wallet', [{ id: 'w1', address: '0xdeadbeef', name: 'My ETH' }]);
+    await appDataPut('Transaction', [{ id: 't1', hash: '0xabc', to: '0xvictim' }]);
+    // sanity: the named residue is present before the wipe.
+    expect(await appDataGet('Wallet')).not.toBeNull();
+    expect(await appDataGet('Transaction')).not.toBeNull();
+
+    await panicWipeLocal();
+
+    // After the wipe the database was deleted; reopening yields a fresh EMPTY store,
+    // so every named row is gone.
+    expect(await appDataGet('Wallet')).toBeNull();
+    expect(await appDataGet('Transaction')).toBeNull();
   });
 
   // ── H2 part B: deniability uniformity — FIXED_LEN padding of the panic marker ──
