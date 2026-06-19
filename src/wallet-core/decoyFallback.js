@@ -78,5 +78,6 @@ export async function deriveDeterministicDecoyMnemonic(pin, deviceSalt) {
     outputType: 'binary',
   });
   const entropy = raw.slice(0, 16); // 128-bit => 12-word mnemonic
+  raw.fill(0); // best-effort zeroize full KDF output before GC (matches vault.js pattern)
   return mnemonicFromEntropy(entropy);
 }

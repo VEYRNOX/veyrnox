@@ -49,11 +49,18 @@ export async function applyEstimatedGasLimit(provider, txRequest, overrides) {
     // Clamp before applying headroom so a lying RPC cannot inflate the fee.
     const est = raw > MAX_GAS_ESTIMATE ? MAX_GAS_ESTIMATE : raw;
     const withHeadroom = (est * 12n) / 10n; // +20% so a tight estimate can't strand it
-    overrides.gasLimit = overrides.gasLimit && overrides.gasLimit > withHeadroom
-      ? overrides.gasLimit
-      : withHeadroom;
-  } catch {
-    /* keep the hinted gasLimit, or ethers auto-fill if none was provided */
+    // Also clamp a user-supplied override: the I5 ceiling applies to untrusted RPC
+    // estimates, but a user accidentally entering a huge custom limit should also be
+    // bounded — defense-in-depth (F-07).
+    const userLimit = overrides.gasLimit
+      ? (overrides.gasLimit > MAX_GAS_ESTIMATE ? MAX_GAS_ESTIMATE : overrides.gasLimit)
+      : null;
+    overrides.gasLimit = userLimit && userLimit > withHeadroom ? userLimit : withHeadroom;
+  } catch (e) {
+    // Estimation failed; keep the hinted gasLimit or let ethers auto-fill.
+    // ethers re-estimates at sendTransaction and throws if that also fails, so
+    // there is no silent stall — but surface the reason in dev so it's not invisible.
+    if (e?.message) console.warn('[preflight] estimateGas failed:', e.message);
   }
   return overrides;
 }
