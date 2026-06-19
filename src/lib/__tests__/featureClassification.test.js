@@ -12,8 +12,13 @@ describe('classification completeness', () => {
     expect(missing).toEqual([]);
   });
 
-  it('classifies no path that is not a real route', () => {
-    const extra = Object.keys(CLASSIFICATION).filter((p) => !ALL_ROUTE_PATHS.includes(p));
+  it('classifies no path that is not a real route (cut-only entries allowed)', () => {
+    // Cut paths are kept in CLASSIFICATION so the registry gate and cutPaths()
+    // remain accurate even though their page files and App.jsx routes were removed.
+    // Every other CLASSIFICATION entry must correspond to a real route in ALL_ROUTE_PATHS.
+    const extra = Object.keys(CLASSIFICATION).filter(
+      (p) => !ALL_ROUTE_PATHS.includes(p) && CLASSIFICATION[p].verdict !== 'cut',
+    );
     expect(extra).toEqual([]);
   });
 

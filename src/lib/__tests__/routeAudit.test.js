@@ -27,7 +27,11 @@ const LAYOUT_MARKER = 'element={<Layout />}>';
 const start = appSrc.indexOf(LAYOUT_MARKER);
 const end = appSrc.indexOf('</Route>', start);
 const layoutBlock = start === -1 ? '' : appSrc.slice(start + LAYOUT_MARKER.length, end);
-const gatedRoutePaths = [...layoutBlock.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
+// Include only routes that render a real page component (not <Navigate> redirects).
+// Redirect aliases (/transaction-history → /tx-history etc.) are navigation
+// shortcuts with no page of their own; classifying them would confuse the USD
+// disclosure test which expects every live classified path to have a page file.
+const gatedRoutePaths = [...layoutBlock.matchAll(/<Route\s+path="([^"]+)"\s+element=\{<(?!Navigate\b)\w/g)].map((m) => m[1]);
 
 describe('route audit covers exactly the gated routes in App.jsx', () => {
   // Sentinel: if App.jsx is restructured so the Layout block can't be parsed,
