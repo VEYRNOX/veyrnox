@@ -19,6 +19,8 @@ import {
 } from '@/wallet-core/evm/walletconnect/session.js';
 import { classifyRequest, isBlocked, REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wallet-core/evm/typed-data.js';
+import { getProvider } from '@/wallet-core/evm/provider.js';
+import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 
 const WalletConnectCtx = createContext(null);
@@ -111,6 +113,49 @@ export function WalletConnectProvider({ children }) {
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
   }, [withPrivateKey]);
 
+  // Sign and broadcast an eth_sendTransaction request.
+  // caip2ChainId: "eip155:11155111" format from the WC session namespace.
+  // Gas cap of 1M enforced regardless of dApp suggestion (I5 — backend untrusted).
+  const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
+    const txParams = params[0];
+    const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
+    const net = getNetworkByChainId(chainId);
+
+    const hash = await withPrivateKey(0, async (pk) => {
+      const provider = getProvider(net.key);
+      // VULN-19 guard: verify the RPC endpoint is actually on the expected chain.
+      const onChain = parseInt(await provider.send('eth_chainId', []), 16);
+      if (onChain !== chainId) throw new Error(`Chain ID mismatch: expected ${chainId}, got ${onChain}`);
+
+      const wallet = new ethers.Wallet(pk, provider);
+      const tx = {
+        to: txParams.to,
+        value: txParams.value ? BigInt(txParams.value) : 0n,
+        data: txParams.data ?? '0x',
+      };
+
+      if (txParams.maxFeePerGas) {
+        tx.maxFeePerGas = BigInt(txParams.maxFeePerGas);
+        tx.maxPriorityFeePerGas = BigInt(txParams.maxPriorityFeePerGas ?? 0);
+        tx.type = 2;
+      } else if (txParams.gasPrice) {
+        tx.gasPrice = BigInt(txParams.gasPrice);
+        tx.type = 0;
+      }
+
+      const GAS_CAP = 1_000_000n;
+      if (txParams.gas) {
+        tx.gasLimit = BigInt(txParams.gas) < GAS_CAP ? BigInt(txParams.gas) : GAS_CAP;
+      }
+
+      const sent = await wallet.sendTransaction(tx);
+      return sent.hash;
+    });
+
+    await respondToRequest(topic, id, hash);
+    setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+  }, [withPrivateKey]);
+
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
@@ -152,6 +197,7 @@ export function WalletConnectProvider({ children }) {
       rejectSession: handleRejectSession,
       signPersonal: handlePersonalSign,
       signTypedData: handleSignTypedData,
+      sendTransaction: handleSendTransaction,
       rejectRequest: handleRejectRequest,
       disconnect: handleDisconnect,
       refreshSessions,

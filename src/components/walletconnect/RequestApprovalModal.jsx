@@ -5,10 +5,11 @@ import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 
 export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
-  const { signPersonal, signTypedData, rejectRequest, isSendReauthRequired } = useWalletConnect();
+  const { signPersonal, signTypedData, sendTransaction, rejectRequest, isSendReauthRequired } = useWalletConnect();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [permitAcknowledged, setPermitAcknowledged] = useState(false);
+  const [txAcknowledged, setTxAcknowledged] = useState(false);
 
   const { topic, id, params, type, blocked, typedDataMeta } = request;
   const { request: { method, params: reqParams } } = params;
@@ -48,7 +49,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   const approveBlocked =
     needsReauth ||
     (isAssetAuth && !permitAcknowledged) ||
-    type === REQUEST_TYPES.SEND_TRANSACTION ||
+    (type === REQUEST_TYPES.SEND_TRANSACTION && !txAcknowledged) ||
     type === REQUEST_TYPES.UNKNOWN;
 
   const sessionMeta = request.params?.proposer?.metadata ?? {};
@@ -63,6 +64,8 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
         await signPersonal(topic, id, reqParams);
       } else if (type === REQUEST_TYPES.SIGN_TYPED_DATA) {
         await signTypedData(topic, id, reqParams);
+      } else if (type === REQUEST_TYPES.SEND_TRANSACTION) {
+        await sendTransaction(topic, id, reqParams, params.chainId);
       } else {
         throw new Error(`Signing for ${type} via WalletConnect is not yet implemented.`);
       }
@@ -129,7 +132,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
           </>
         )}
 
-        {/* SEND TRANSACTION — display only, signing not wired in D3 */}
+        {/* SEND TRANSACTION */}
         {type === REQUEST_TYPES.SEND_TRANSACTION && (
           <>
             <p className={styles.label}>Transaction</p>
@@ -153,10 +156,21 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                 </div>
               )}
             </div>
-            <p className={styles.hint}>
-              Transaction signing via WalletConnect (D3) is not yet available — reject and use the dApp&apos;s
-              own send flow, or send directly from the Veyrnox Send screen.
-            </p>
+            <div className={styles.permitWarning}>
+              <p className={styles.permitTitle}>⚠ This will broadcast a transaction</p>
+              <p className={styles.permitBody}>
+                Approving sends a real on-chain transaction and costs gas. Only approve
+                requests from dApps you trust. This action cannot be undone.
+              </p>
+              <label className={styles.permitCheck}>
+                <input
+                  type="checkbox"
+                  checked={txAcknowledged}
+                  onChange={(e) => setTxAcknowledged(e.target.checked)}
+                />
+                I understand this will send a real transaction
+              </label>
+            </div>
           </>
         )}
 
@@ -179,13 +193,15 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
           <button className={styles.rejectBtn} onClick={handleReject} disabled={busy}>
             Reject
           </button>
-          {type !== REQUEST_TYPES.UNKNOWN && type !== REQUEST_TYPES.SEND_TRANSACTION && (
+          {type !== REQUEST_TYPES.UNKNOWN && (
             <button
               className={styles.approveBtn}
               onClick={needsReauth ? () => onReauthNeeded?.() : handleApprove}
               disabled={busy || (approveBlocked && !needsReauth)}
             >
-              {busy ? 'Signing…' : needsReauth ? 'Re-authenticate' : 'Approve'}
+              {busy
+                ? type === REQUEST_TYPES.SEND_TRANSACTION ? 'Sending…' : 'Signing…'
+                : needsReauth ? 'Re-authenticate' : 'Approve'}
             </button>
           )}
         </div>
