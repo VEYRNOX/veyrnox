@@ -166,3 +166,51 @@ describe('coinselect + signing pipeline (offline)', () => {
       .toThrow(/VALUE NOT CONSERVED|mismatch/);
   });
 });
+
+// Import vitest utilities and estimateBtcSend for the next test block
+import { vi, afterEach } from 'vitest';
+import { estimateBtcSend } from '../btc/send.js';
+
+vi.mock('../btc/provider.js', () => ({
+  getUtxos: vi.fn(),
+  getFeeRate: vi.fn().mockResolvedValue(5),
+  broadcastTx: vi.fn(),
+}));
+
+import { getUtxos } from '../btc/provider.js';
+
+describe('estimateBtcSend — confirmed UTXO filter (C-3)', () => {
+  const ADDR = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'; // valid testnet bech32
+
+  afterEach(() => { vi.clearAllMocks(); });
+
+  it('throws when all UTXOs are unconfirmed', async () => {
+    getUtxos.mockResolvedValue([
+      { txid: 'aaaa', vout: 0, value: 100_000n, confirmed: false },
+      { txid: 'bbbb', vout: 0, value: 200_000n, confirmed: false },
+    ]);
+    await expect(
+      estimateBtcSend({
+        networkKey: 'testnet',
+        fromAddress: ADDR,
+        toAddress: ADDR,
+        amountSats: 50_000n,
+      }),
+    ).rejects.toThrow('No confirmed UTXOs available');
+  });
+
+  it('uses only confirmed UTXOs when mixed pool is returned', async () => {
+    getUtxos.mockResolvedValue([
+      { txid: 'cccc', vout: 0, value: 500_000n, confirmed: true },
+      { txid: 'dddd', vout: 0, value: 200_000n, confirmed: false },
+    ]);
+    const { plan } = await estimateBtcSend({
+      networkKey: 'testnet',
+      fromAddress: ADDR,
+      toAddress: ADDR,
+      amountSats: 100_000n,
+    });
+    expect(plan.inputs.every(i => i.confirmed !== false)).toBe(true);
+    expect(plan.inputs.some(i => i.txid === 'dddd')).toBe(false);
+  });
+});
