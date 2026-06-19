@@ -79,6 +79,17 @@ import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 
+// Constant-time PIN equality for setup/recovery confirm (F-11).
+// Both operands are local strings with no remote attacker; this is a codebase
+// consistency fix. XOR-accumulate over encoded bytes, same pattern as credentialVerifier.
+const _enc = new TextEncoder();
+function pinsEqual(a, b) {
+  const ab = _enc.encode(a), bb = _enc.encode(b);
+  if (ab.length !== bb.length) return false;
+  let d = 0; for (let i = 0; i < ab.length; i++) d |= ab[i] ^ bb[i];
+  return d === 0;
+}
+
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
 // dropping focus from the password/seed inputs.
@@ -894,7 +905,7 @@ export default function WalletEntry() {
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Confirm your PIN</p>
               <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
-                if (p !== realPin) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
+                if (!pinsEqual(p, realPin)) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
                 finishPinSetup();
               }} />
             </div>
@@ -950,7 +961,7 @@ export default function WalletEntry() {
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Confirm your new PIN</p>
               <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
-                if (p !== realPin) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
+                if (!pinsEqual(p, realPin)) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
                 setError(""); finishPinRecover();
               }} />
             </div>

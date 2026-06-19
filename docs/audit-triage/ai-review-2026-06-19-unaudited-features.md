@@ -65,10 +65,28 @@ branch, `git checkout fix/csp-dedupe-meta` first.
 |---|---|---|
 | Critical | 0 | — |
 | High | 0 | — |
-| Medium | 3 | F-02, F-03, F-04 (panic-wipe residue cluster) |
-| Low | 8 | F-01, F-05, F-06, F-07, F-08, F-09, F-10, F-11 |
+| Medium | 3 | F-02, F-03, F-04 (panic-wipe residue cluster) — **FIXED** d269e54 + 32e7954 |
+| Low | 8 | F-01, F-05, F-06, F-07, F-08, F-09, F-10, F-11 — see remediation table below |
 | Info | 4 | F-12, F-13, F-14, F-15 |
 | Known/accepted (already flagged by project) | 2 | F-16 (PIN offline), F-09 overlaps |
+
+### Remediation status (2026-06-19)
+
+| ID | Status | Notes |
+|---|---|---|
+| F-02 | ✅ FIXED | `panic.js` — `d269e54` adds `veyrnox-stealth-slot-salt` to `DENIABILITY_RESIDUE_KEYS` |
+| F-03 | ✅ FIXED | `panic.js` — `d269e54` adds `veyrnox-audit-device-salt` to `DENIABILITY_RESIDUE_KEYS` |
+| F-04 | ✅ FIXED | Structural consequence of F-02/F-03 — resolved automatically |
+| F-05 | ✅ FIXED | `panic.js` — `d269e54` adds all three `veyrnox-passkey-*` keys |
+| F-01 | ✅ FIXED | `stealth.js` + `auditLog.js` — switch `utf8ToBytes(hex)` → `hexToBytes(hex)` for HKDF salt encoding. **Migration note:** existing device salts will resolve to different bytes, orphaning any existing stealth slots on first open after the update. This is testnet/provisional; no migration path provided. |
+| F-06 | ✅ FIXED | `preflight.js` — add `console.warn` on estimation failure so errors surface in dev |
+| F-07 | ✅ FIXED | `preflight.js` — user-supplied gasLimit now also clamped to `MAX_GAS_ESTIMATE` before comparison |
+| F-08 | ✅ FIXED | `decoyFallback.js` — `raw.fill(0)` added after `raw.slice(0,16)` to match `vault.js` zeroize pattern |
+| F-09 | ✅ ACCEPTED | Already-documented SAST M1 residual; no new action |
+| F-10 | ✅ CLOSED (H2) | Chaff now uses `FIXED_LEN` (multiVault.js fixed-length container) — word-count distribution no longer applies; real and chaff slots are byte-identical length |
+| F-11 | ✅ FIXED | `WalletEntry.jsx` — PIN confirm uses `pinsEqual()` (XOR-accumulate, same pattern as `credentialVerifier.js`) instead of `!==` |
+| F-12–F-15 | ✅ INFO | No action required |
+| F-16 | ✅ ACCEPTED | Known #1 audit item; hardware KEK is the planned mitigation |
 
 ---
 
