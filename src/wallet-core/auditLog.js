@@ -57,7 +57,7 @@
 import { encryptVault, decryptVault } from './vault.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
 
 // Same database + store as the primary vault (evm/vaultStore.js), the duress
 // decoy ('secondary'), the stealth pool ('vault:N'), and the panic marker
@@ -92,16 +92,12 @@ const AUDIT_DEVICE_SALT_KEY = 'veyrnox-audit-device-salt';
 function getOrCreateDeviceSalt() {
   try {
     const stored = localStorage.getItem(AUDIT_DEVICE_SALT_KEY);
-    if (stored && /^[0-9a-f]{32}$/i.test(stored)) return utf8ToBytes(stored);
+    if (stored && /^[0-9a-f]{32}$/i.test(stored)) return hexToBytes(stored);
   } catch { /* fall through */ }
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hex = bytesToHex(salt);
   try { localStorage.setItem(AUDIT_DEVICE_SALT_KEY, hex); } catch { /* best-effort */ }
-  // Return utf8ToBytes(hex) so that subsequent calls (which read hex from storage
-  // and also call utf8ToBytes) return byte-identical salt material. Returning the
-  // raw 16-byte buffer here while reads return 32-byte utf8-encoded hex would make
-  // the salt differ between the first and every subsequent call in a session.
-  return utf8ToBytes(hex);
+  return hexToBytes(hex); // same 16 decoded bytes as the read path will return
 }
 
 /**

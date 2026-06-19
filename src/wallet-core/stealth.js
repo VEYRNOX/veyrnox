@@ -123,7 +123,7 @@ import { encryptVault, decryptVault, KDF_PARAMS } from './vault.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
 import { deriveEvmAccount } from './derivation.js';
 import { makeContainer, serializeContainer, parseVault, newWalletId, FIXED_LEN } from './multiVault.js';
 // A hidden wallet is a real BIP-39 wallet, so it has the SAME multi-chain
@@ -245,7 +245,7 @@ const STEALTH_SLOT_SALT_KEY = 'veyrnox-stealth-slot-salt';
 function readStealthSalt() {
   try {
     const stored = localStorage.getItem(STEALTH_SLOT_SALT_KEY);
-    if (stored && /^[0-9a-f]{32}$/i.test(stored)) return utf8ToBytes(stored);
+    if (stored && /^[0-9a-f]{32}$/i.test(stored)) return hexToBytes(stored);
   } catch { /* fall through */ }
   return null;
 }
@@ -264,9 +264,7 @@ function getOrCreateStealthSalt() {
   crypto.getRandomValues(salt);
   const hex = bytesToHex(salt);
   try { localStorage.setItem(STEALTH_SLOT_SALT_KEY, hex); } catch { /* best-effort */ }
-  // Return utf8ToBytes(hex) so that subsequent calls (which read hex from storage
-  // and call utf8ToBytes) return byte-identical salt material — same as auditLog.js.
-  return utf8ToBytes(hex);
+  return hexToBytes(hex); // same 16 decoded bytes as readStealthSalt will return
 }
 
 // Map a secret to its slot key under a given salt. HKDF-SHA256 keyed by the
