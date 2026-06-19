@@ -1,6 +1,7 @@
-﻿import { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import TransportWebHID from '@ledgerhq/hw-transport-webhid';
 import Eth from '@ledgerhq/hw-app-eth';
+import TrezorConnect from '@trezor/connect-web';
 import { Copy, Cpu, CheckCircle, XCircle, Loader2, Usb, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -11,7 +12,25 @@ const STATUS = {
   ERROR: 'error',
 };
 
-function classifyError(err) {
+const DEVICE = {
+  LEDGER: 'ledger',
+  TREZOR: 'trezor',
+};
+
+let trezorInitialised = false;
+function ensureTrezorInit() {
+  if (trezorInitialised) return;
+  TrezorConnect.init({
+    manifest: {
+      email: 'al.jobson@21stclick.co.uk',
+      appUrl: typeof window !== 'undefined' ? window.location.origin : 'https://veyrnox.app',
+    },
+    lazyLoad: true,
+  });
+  trezorInitialised = true;
+}
+
+function classifyLedgerError(err) {
   const msg = err?.message ?? '';
   if (
     msg.includes('No device selected') ||
@@ -31,16 +50,39 @@ function classifyError(err) {
   return err?.message || 'An unexpected error occurred.';
 }
 
+function classifyTrezorError(response) {
+  const payload = response?.payload;
+  if (!payload) return 'No response from Trezor Connect.';
+  const msg = payload.error ?? '';
+  if (msg.toLowerCase().includes('cancel') || msg.toLowerCase().includes('popup closed')) {
+    return 'Connection cancelled.';
+  }
+  if (msg.toLowerCase().includes('permissions') || msg.toLowerCase().includes('denied')) {
+    return 'Device permission denied.';
+  }
+  return msg || 'An unexpected error occurred.';
+}
+
 export default function HardwareWalletPage() {
+  const [deviceType, setDeviceType] = useState(DEVICE.TREZOR);
   const [status, setStatus] = useState(STATUS.IDLE);
   const [ethAddress, setEthAddress] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [deviceName, setDeviceName] = useState(null);
-  const transportRef = useRef(null);
+  const ledgerTransportRef = useRef(null);
 
   const webHidSupported = typeof navigator !== 'undefined' && 'hid' in navigator;
 
-  async function connect() {
+  function selectDevice(type) {
+    if (status === STATUS.CONNECTED || status === STATUS.CONNECTING) return;
+    setDeviceType(type);
+    setStatus(STATUS.IDLE);
+    setEthAddress(null);
+    setErrorMsg(null);
+    setDeviceName(null);
+  }
+
+  async function connectLedger() {
     setStatus(STATUS.CONNECTING);
     setErrorMsg(null);
     setEthAddress(null);
@@ -48,12 +90,10 @@ export default function HardwareWalletPage() {
 
     try {
       const transport = await TransportWebHID.create();
-      transportRef.current = transport;
+      ledgerTransportRef.current = transport;
 
       const rawDevice = /** @type {any} */ (transport).device;
-      if (rawDevice?.productName) {
-        setDeviceName(rawDevice.productName);
-      }
+      if (rawDevice?.productName) setDeviceName(rawDevice.productName);
 
       const eth = new Eth(transport);
       const result = await eth.getAddress("44'/60'/0'/0/0");
@@ -61,19 +101,55 @@ export default function HardwareWalletPage() {
       setEthAddress(result.address);
       setStatus(STATUS.CONNECTED);
     } catch (err) {
-      setErrorMsg(classifyError(err));
+      setErrorMsg(classifyLedgerError(err));
       setStatus(STATUS.ERROR);
-      if (transportRef.current) {
-        try { await transportRef.current.close(); } catch (_) {}
-        transportRef.current = null;
+      if (ledgerTransportRef.current) {
+        try { await ledgerTransportRef.current.close(); } catch (_) {}
+        ledgerTransportRef.current = null;
       }
     }
   }
 
+  async function connectTrezor() {
+    setStatus(STATUS.CONNECTING);
+    setErrorMsg(null);
+    setEthAddress(null);
+    setDeviceName(null);
+
+    try {
+      ensureTrezorInit();
+      const response = await TrezorConnect.ethereumGetAddress({
+        path: "m/44'/60'/0'/0/0",
+        showOnTrezor: true,
+      });
+
+      if (!response.success) {
+        setErrorMsg(classifyTrezorError(response));
+        setStatus(STATUS.ERROR);
+        return;
+      }
+
+      setEthAddress(response.payload.address);
+      setDeviceName('Trezor');
+      setStatus(STATUS.CONNECTED);
+    } catch (err) {
+      setErrorMsg(err?.message || 'An unexpected error occurred.');
+      setStatus(STATUS.ERROR);
+    }
+  }
+
+  async function connect() {
+    if (deviceType === DEVICE.LEDGER) {
+      await connectLedger();
+    } else {
+      await connectTrezor();
+    }
+  }
+
   async function disconnect() {
-    if (transportRef.current) {
-      try { await transportRef.current.close(); } catch (_) {}
-      transportRef.current = null;
+    if (ledgerTransportRef.current) {
+      try { await ledgerTransportRef.current.close(); } catch (_) {}
+      ledgerTransportRef.current = null;
     }
     setStatus(STATUS.IDLE);
     setEthAddress(null);
@@ -88,6 +164,13 @@ export default function HardwareWalletPage() {
     });
   }
 
+  const isLedger = deviceType === DEVICE.LEDGER;
+  const connectDisabled = isLedger && !webHidSupported;
+  const connectLabel = isLedger ? 'Connect Ledger' : 'Connect Trezor';
+  const connectHint = isLedger
+    ? 'Connect your Ledger, unlock it, and open the Ethereum app before clicking below.'
+    : 'Click below — a Trezor Connect popup will open. Approve on your device when prompted.';
+
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-5">
       {/* Header */}
@@ -97,12 +180,41 @@ export default function HardwareWalletPage() {
         </div>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Hardware Wallet</h1>
-          <p className="text-sm text-muted-foreground">Ledger device integration — ETH address derivation</p>
+          <p className="text-sm text-muted-foreground">Ledger & Trezor — ETH address derivation</p>
         </div>
       </div>
 
-      {/* Browser support warning */}
-      {!webHidSupported && (
+      {/* Device picker */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <p className="text-sm font-medium">Select device</p>
+        <div className="flex gap-3">
+          {[DEVICE.TREZOR, DEVICE.LEDGER].map((type) => {
+            const active = deviceType === type;
+            const label = type === DEVICE.TREZOR ? 'Trezor' : 'Ledger';
+            const disabled = status === STATUS.CONNECTING ||
+              (status === STATUS.CONNECTED && deviceType !== type);
+            return (
+              <button
+                key={type}
+                onClick={() => selectDevice(type)}
+                disabled={disabled}
+                className={[
+                  'flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors',
+                  active
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-background text-muted-foreground hover:bg-accent',
+                  disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+                ].join(' ')}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Browser support warning — Ledger only */}
+      {isLedger && !webHidSupported && (
         <div className="rounded-xl border border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 px-4 py-3 flex items-start gap-3">
           <XCircle className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
           <p className="text-sm text-yellow-800 dark:text-yellow-300">
@@ -116,23 +228,20 @@ export default function HardwareWalletPage() {
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Usb className="h-5 w-5 text-muted-foreground" />
-          <h2 className="font-medium">Ledger Connection</h2>
+          <h2 className="font-medium">{isLedger ? 'Ledger' : 'Trezor'} Connection</h2>
         </div>
 
         {/* IDLE */}
         {status === STATUS.IDLE && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Connect your Ledger, unlock it, and open the{' '}
-              <span className="font-medium">Ethereum</span> app before clicking below.
-            </p>
+            <p className="text-sm text-muted-foreground">{connectHint}</p>
             <button
               onClick={connect}
-              disabled={!webHidSupported}
+              disabled={connectDisabled}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <Usb className="h-4 w-4" />
-              Connect Ledger
+              {connectLabel}
             </button>
           </div>
         )}
@@ -141,7 +250,11 @@ export default function HardwareWalletPage() {
         {status === STATUS.CONNECTING && (
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span>Connecting… approve the HID request in your browser if prompted.</span>
+            <span>
+              {isLedger
+                ? 'Connecting… approve the HID request in your browser if prompted.'
+                : 'Waiting for Trezor Connect popup… approve on your device.'}
+            </span>
           </div>
         )}
 
@@ -203,7 +316,7 @@ export default function HardwareWalletPage() {
         <ShieldCheck className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Your private key never leaves the device.</span>{' '}
-          Veyrnox reads your public address only. No seed phrase or private key is transmitted.
+          VEYRNOX reads your public address only. No seed phrase or private key is transmitted.
         </p>
       </div>
 
@@ -219,12 +332,9 @@ export default function HardwareWalletPage() {
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
-          When you send ETH, the unsigned transaction will be routed to your connected Ledger for
-          on-device signing. Your key stays on the device — Veyrnox only broadcasts the signed
-          transaction.
-        </p>
-        <p className="text-xs text-muted-foreground italic">
-          Trezor support is also planned for a future release.
+          When you send ETH, the unsigned transaction will be routed to your connected hardware
+          wallet for on-device signing. Your key stays on the device — VEYRNOX only broadcasts the
+          signed transaction.
         </p>
       </div>
 
@@ -233,7 +343,7 @@ export default function HardwareWalletPage() {
         <p className="text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Current limits:</span>{' '}
           BTC and SOL hardware wallet signing are not yet wired. This release supports ETH address
-          derivation only.
+          derivation only (Ledger and Trezor).
         </p>
       </div>
     </div>
