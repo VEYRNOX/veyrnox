@@ -20,6 +20,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   MULTI_VAULT_TAG,
+  FIXED_LEN,
+  makeContainer,
   newWalletId,
   isMultiContainer,
   parseVault,
@@ -230,6 +232,57 @@ describe('multiVault — guards', () => {
   it('validateContainer rejects duplicate ids', () => {
     const bad = { vlt: MULTI_VAULT_TAG, v: 1, wallets: [{ id: 'x', mnemonic: SEED_A }, { id: 'x', mnemonic: SEED_B }] };
     expect(() => validateContainer(bad)).toThrow(/duplicate/i);
+  });
+});
+
+describe('multiVault — H2 fixed-length container padding (deniability footprint)', () => {
+  const REC = serializeActionPasswordRecord({
+    salt: new Uint8Array([1, 2, 3, 4]),
+    hash: new Uint8Array(Array.from({ length: 32 }, (_, i) => i)),
+    params: { parallelism: 1, iterations: 3, memorySize: 196608, hashLength: 32 },
+  });
+
+  it('serializeContainer produces EXACTLY FIXED_LEN bytes for 1, 2 and many wallets, WITH and WITHOUT an AP record', () => {
+    // 1 wallet.
+    let one = migrateLegacyMnemonic(SEED_A).container;
+    // 2 wallets.
+    let two = addWallet(one, SEED_B).container;
+    // Many wallets (build a fresh pile of valid generated seeds).
+    let many = two;
+    for (let i = 0; i < 20; i++) many = addWallet(many, generateMnemonic(256)).container;
+
+    for (const c of [one, two, many]) {
+      // WITHOUT an AP record.
+      expect(serializeContainer(c).length).toBe(FIXED_LEN);
+      // WITH an AP record — length is IDENTICAL (AP-presence is invisible by length).
+      const withAp = withActionPasswordRecord(c, REC);
+      expect(serializeContainer(withAp).length).toBe(FIXED_LEN);
+    }
+  });
+
+  it('padding round-trips: parseVault(serializeContainer(c)) reproduces c (pad stripped, wallets + AP intact)', () => {
+    const c = withActionPasswordRecord(addWallet(migrateLegacyMnemonic(SEED_A).container, SEED_B).container, REC);
+    const { container, migrated } = parseVault(serializeContainer(c));
+    expect(migrated).toBe(false);
+    expect(container).not.toHaveProperty('pad');          // pad never leaks into the parsed container
+    expect(container.wallets.map((w) => w.mnemonic)).toEqual([SEED_A, SEED_B]);
+    expect(container.actionPassword).toEqual(REC);
+  });
+
+  it('over-capacity: serializeContainer THROWS when the real content exceeds FIXED_LEN', () => {
+    // Pack enough 24-word seeds that the JSON content alone blows past FIXED_LEN.
+    let huge = migrateLegacyMnemonic(generateMnemonic(256)).container;
+    // Each 24-word mnemonic entry is ~180+ bytes; ~60 entries comfortably exceeds 8192.
+    for (let i = 0; i < 60; i++) huge = addWallet(huge, generateMnemonic(256)).container;
+    expect(() => serializeContainer(huge)).toThrow(/exceeds FIXED_LEN/i);
+  });
+
+  it('makeContainer drops the pad field if present (defensive normalisation)', () => {
+    const c = makeContainer([{ id: newWalletId(), mnemonic: SEED_A }]);
+    // Even a hand-built object carrying a stray pad is normalised away on serialise+parse.
+    const tampered = { ...c, pad: 'XXXX' };
+    const { container } = parseVault(serializeContainer(tampered));
+    expect(container).not.toHaveProperty('pad');
   });
 });
 

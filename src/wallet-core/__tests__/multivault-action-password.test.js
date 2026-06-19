@@ -87,4 +87,21 @@ describe('multiVault — per-set Action Password record', () => {
     expect(migrated).toBe(true);
     expect(getActionPasswordRecord(container)).toBeNull();
   });
+
+  // H2 GATE PARITY: decoy/hidden sets are now ALSO single-wallet containers, so a
+  // decoy/hidden container that carries a record reports "configured" exactly like a
+  // primary set. This is the value WalletProvider feeds into actionPasswordConfigured,
+  // so the 2FA gate fires identically across primary/decoy/hidden.
+  it('a single-wallet (decoy/hidden-shaped) container carrying a record reports configured after round-trip', () => {
+    const decoyLike = withActionPasswordRecord(baseContainer(), REC); // baseContainer is 1 wallet
+    const { container } = parseVault(serializeContainer(decoyLike));
+    expect(getActionPasswordRecord(container)).toEqual(REC);          // present == configured
+    expect(getActionPasswordRecord(container) != null).toBe(true);    // the gate input is true
+  });
+
+  it('a single-wallet container with NO record reports NOT configured (presence still means configured)', () => {
+    const { container } = parseVault(serializeContainer(baseContainer()));
+    expect(getActionPasswordRecord(container)).toBeNull();
+    expect(getActionPasswordRecord(container) != null).toBe(false);
+  });
 });

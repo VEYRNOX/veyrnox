@@ -17,42 +17,24 @@ export const ALL_ROUTE_PATHS = [
   '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
   '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects',
   '/terms-legal', '/nft',
-  '/snapshots', '/pl', '/onchain', '/spending', '/advisor', '/smart-alerts',
-  '/recurring', '/push', '/advanced-analytics', '/web3', '/nft-multichain',
+  '/snapshots', '/pl', '/onchain', '/spending',
+  '/recurring', '/push', '/advanced-analytics', '/nft-multichain',
   '/fraud', '/payment-links', '/risk', '/news-sentiment', '/notifications',
-  '/savings', '/invoices', '/watchlist', '/ai-assistant', '/address-book',
-  '/net-worth', '/benchmark', '/what-if', '/budget', '/duress-pin',
+  '/savings', '/invoices', '/watchlist', '/address-book',
+  '/net-worth', '/benchmark', '/budget', '/duress-pin',
   '/wallet-access', '/stealth-wallets', '/panic-wipe', '/risk-score',
-  '/correlation', '/split-bill', '/session-manager', '/receipt', '/tx-history',
+  '/correlation', '/session-manager', '/receipt', '/tx-history',
   '/address-checker', '/fee-analytics', '/correlation-timeline',
-  '/dashboard-widgets', '/shared-portfolio', '/referrals', '/wallet-seed-qr',
+  '/dashboard-widgets', '/wallet-seed-qr',
   '/hardware-wallet', '/cloud-backup', '/rasp-security', '/audit-log', '/login-activity', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
-  '/index-builder', '/messenger-alerts', '/voice-commands', '/leaderboard',
-  '/public-profiles', '/ai-rebalancer', '/token-approvals', '/network-manager',
+  '/index-builder', '/voice-commands', '/token-approvals', '/network-manager',
   '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
-  '/security-scanner', '/erc20-discovery', '/products', '/docs', '/features',
+  '/security-scanner', '/docs', '/features',
   '/plans',
 ];
 
 export const CLASSIFICATION = {
-  '/leaderboard': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
-    note: 'A public ranking of who holds what is a targeting list aimed at our users. Removed on principle.',
-  },
-  '/public-profiles': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
-    note: 'Public identity and holdings exposure is the threat model we defend against, not a feature.',
-  },
-  '/shared-portfolio': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
-    note: 'Social portfolio sharing exposes holdings. A deliberate, encrypted signed export will replace it.',
-  },
-  '/referrals': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
-    note: 'Requires a server to link referrer and referee — no on-device path exists. Cut for this release.',
-  },
-
   // ── Overview group (audit batch 1) ─────────────────────────────────────────
   '/': {
     verdict: 'live', dataSource: 'on-device',
@@ -70,21 +52,9 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'local-first',
     note: 'Migrated (2026-06-17): MONTHLY_PERFORMANCE removed. Monthly inflow/outflow derived from real tx history + live prices. VOLATILITY/SHARPE/CORRELATION retained as disclosed reference tables. USD views gated on pricesEnabled.',
   },
-  '/advisor': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
-    note: 'Requires LLM backend endpoint (InvokeLLM). Also carries regulated financial-advice liability (FCA/SEC) that cannot be resolved without legal review and geographic gating. Cut: server + legal blocker with no on-device path.',
-  },
-  '/ai-assistant': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
-    note: 'Requires base44.agents.* backend (createConversation / addMessage / subscribeToConversation — not implemented in local build). Financial-advice liability in open chat. Cut: agents API not built + legal blocker.',
-  },
   '/benchmark': {
     verdict: 'live', dataSource: 'local-first',
     note: 'Migrated (2026-06-17): genBenchmark/fake BTC/SP500 lines removed. Portfolio return derived from real tx history + live prices. Gated on pricesEnabled; honest disclosure that benchmark comparison requires historical market data not available in local-only mode.',
-  },
-  '/what-if': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
-    note: 'A hypothetical historical-investment calculator using static reference prices (no user data). Educational tool that does not serve the coercion-resistant vault job.',
   },
   '/risk-score': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -124,10 +94,6 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'Fully user-driven: stores PaymentLink records in local IndexedDB via base44.entities.PaymentLink. Link URL is constructed from user-entered wallet address + amount — no external call, no fabricated data. link_id uses Math.random() as a non-financial identifier only.',
   },
-  '/split-bill': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'base44-entities',
-    note: 'Bill-splitting tool: divides a user-entered USD total among named wallet addresses using hardcoded stale USD_RATES. No signing, no actual on-chain tx. Does not serve the coercion-resistant vault job.',
-  },
   '/receipt': {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'Reads real local Transaction records. USD Value row removed — receipt now shows native amount and fee only, with no stale fiat conversion on a financial document.',
@@ -161,10 +127,6 @@ export const CLASSIFICATION = {
   '/index-builder': {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'PERF hardcoded performance percentages removed. Index CRUD (create/list/delete) is real base44 entity storage. Index cards now show composition pie chart and weight breakdown only — no fabricated return percentage. What remains is fully user-driven: name, description, components, rebalance frequency.',
-  },
-  '/ai-rebalancer': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'external',
-    note: 'Requires LLM backend (InvokeLLM). Also imports stale USD_RATES for portfolio % calculations. Automated rebalancing recommendations carry regulated financial-advice liability. Cut: server + stale prices + legal blocker.',
   },
   '/pl': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -222,11 +184,6 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'Relabelled "Transaction History" with explicit disclaimer "no blockchain query is made". Aggregates real local Transaction records; address lookup searches local wallet/tx store only. No fabrication, no external call.',
   },
-  '/erc20-discovery': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'invented',
-    note: 'Token discovery requires a third-party ERC-20 indexer (which would reveal the address). Earlier version fabricated results via Math.random — removed. Cut for this release.',
-  },
-
   // ── Security group (audit batch A) ───────────────────────────────────────
   '/security-dashboard': {
     verdict: 'live', dataSource: 'on-device',
@@ -298,10 +255,6 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (base44.entities.Transaction). Scan button now synchronously runs the detection and stores results in state — no fake delay. Labels updated to "Transaction Anomaly Detection" / "Statistical analysis"; "AI Pattern Scanner" / "machine learning" removed. Three explicit heuristic checks shown to the user: large-transfer z-score (>2.5σ), velocity burst (3+ tx/hr), off-hours (02:00–05:00). All runs on-device.',
   },
-  '/messenger-alerts': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
-    note: 'Config UI with fake Telegram test (setTimeout, no HTTP call) and WhatsApp stub (requires Twilio). No alert delivery is implemented; server relay required for any message. Cut: server dependency with no on-device path and misleading test UX.',
-  },
   '/voice-commands': {
     verdict: 'live', dataSource: 'on-device',
     note: 'Uses browser-native window.SpeechRecognition / window.webkitSpeechRecognition for transcription. Command matching and routing are local (phrase map + React Router navigate). No audio leaves the device; page explicitly discloses "No audio is sent to external servers." Degrades gracefully when the browser API is absent.',
@@ -333,10 +286,6 @@ export const CLASSIFICATION = {
   '/login-activity': {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'Read-only view of existing UserSession device records (base44.entities.UserSession, already recorded by SecurityCenter) and the vault-stored lastUnlockAt timestamp (one value from the active container, not a per-unlock history). No new metadata introduced. Per-unlock event log is explicitly out of scope — I3 deniability constraint (docs/audit-log-login-activity-deniability-decision.md). UNAUDITED-PROVISIONAL.',
-  },
-  '/smart-alerts': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'base44-entities',
-    note: 'Alert config stored locally but no trigger evaluation is wired — no price or portfolio data fetched. notify_email/notify_push flags stored but no delivery mechanism exists; email and push dispatch require a server. Cut: stores settings but cannot fire a single alert in the local build.',
   },
   '/alerts': {
     verdict: 'live', dataSource: 'external',
@@ -376,10 +325,6 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'on-device',
     note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom). Balance reads go through the injected provider API (eth_getBalance) or a public Solana JSON-RPC call (user-initiated, single request on connect, not a background feed). Imports to base44.entities.Wallet as a read-only snapshot with an honest disclosure. No private key access.',
   },
-  '/web3': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'static',
-    note: 'A dApp directory/launcher with a static DAPPS list; "browsing" opens the external browser — no in-app iframe, no WalletConnect, no signing path wired. Features.jsx and Documentation.jsx both list Web3 Browser as "roadmap, post-audit only". Exposing dApp interaction is off-wedge for the coercion-resistant self-custody vault job.',
-  },
   '/push': {
     verdict: 'live', dataSource: 'on-device',
     note: 'Uses browser-native Notification API (Notification.requestPermission / new Notification()). Preferences stored in localStorage only. No push service, server relay, or third-party SDK is involved. The page explicitly states "No personal data is shared with third-party notification services". Test notification is a real browser Notification(), not a stub.',
@@ -398,14 +343,29 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'static',
     note: 'Purely static feature catalogue with honest available/roadmap two-status model. The file\'s own comment explicitly states status is "cross-checked against actual implementation (wallet-core modules + real routes), not aspiration." No unbuilt feature is presented as working. Custodial/regulated features are listed as explicitly excluded, not as roadmap. Consistent with Documentation.jsx.',
   },
-  '/products': {
-    verdict: 'cut', reason: 'off-wedge', dataSource: 'base44-entities',
-    note: 'A generic product/SKU catalog CRUD tool (product name, SKU, description, price_usd, category, stock). Stores records in base44.entities.Product. This is an e-commerce inventory tool with no connection to the self-custody vault job.',
-  },
   '/plans': {
     verdict: 'live', dataSource: 'static',
     note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") and PRO_FEATURES from lib/tier. The upgrade button is permanently disabled with an honest disclosure: "no payment system is active" and "no payment can be made on this screen." Preview disclosure banner explicitly warns pricing is not final. No fabricated capabilities listed as currently available.',
   },
+
+  // ── Cut paths (spec §4 — off-wedge) ──────────────────────────────────────
+  // Page files, routes, and imports removed. Entries kept so cutPaths() and
+  // the featureRegistry gate remain accurate. Any direct navigation returns
+  // PageNotFound via the router catch-all.
+  '/leaderboard':       { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Social leaderboard cut: no social graph, targeting vector, off-wedge for self-custody.' },
+  '/public-profiles':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Public profiles cut: social identity exposure conflicts with deniability model.' },
+  '/shared-portfolio':  { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Shared portfolio cut: requires social graph, off-wedge.' },
+  '/referrals':         { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Referral tracker cut: growth mechanic, off-wedge for self-custody product.' },
+  '/advisor':           { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI portfolio advisor cut: fabricated AI advice, off-wedge.' },
+  '/ai-assistant':      { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI assistant cut: LLM dependency, off-wedge.' },
+  '/what-if':           { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'What-if simulator cut: fabricated price projections, off-wedge.' },
+  '/smart-alerts':      { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Smart alerts cut: AI/ML dependency, off-wedge.' },
+  '/web3':              { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Web3 browser cut: embedded browser scope, off-wedge.' },
+  '/messenger-alerts':  { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Messenger alerts cut: third-party messaging dependency, off-wedge.' },
+  '/split-bill':        { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Split bill cut: social payments, off-wedge.' },
+  '/ai-rebalancer':     { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI rebalancer cut: autonomous value movement, off-wedge.' },
+  '/erc20-discovery':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'ERC-20 discovery cut: third-party token indexer dependency, off-wedge.' },
+  '/products':          { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Products page cut: marketing page, off-wedge.' },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts

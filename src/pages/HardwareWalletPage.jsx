@@ -51,8 +51,13 @@ export default function HardwareWalletPage() {
       // build and run without them, degrading gracefully on this page only.
       let TransportWebHID, Eth;
       try {
-        TransportWebHID = (await import(/* @vite-ignore */ '@ledgerhq/hw-transport-webhid')).default;
-        Eth = (await import(/* @vite-ignore */ '@ledgerhq/hw-app-eth')).default;
+        // String concat prevents vite:import-analysis from statically resolving
+        // these when the optional @ledgerhq packages aren't installed; the
+        // try/catch below handles the runtime rejection gracefully.
+        const _t = '@ledgerhq' + '/hw-transport-webhid';
+        const _e = '@ledgerhq' + '/hw-app-eth';
+        TransportWebHID = (await import(/* @vite-ignore */ _t)).default;
+        Eth = (await import(/* @vite-ignore */ _e)).default;
       } catch {
         setErrorMsg('Hardware-wallet support is not available in this build.');
         setStatus(STATUS.ERROR);

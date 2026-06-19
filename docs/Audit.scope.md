@@ -220,6 +220,17 @@ conflate "audited + in the store" with "mainnet on."
 - [ ] Repo access (read-only) + build/run instructions ready.
 - [ ] Internal self-review pass done first (cheap bugs found before paid hours) —
       see docs/SECURITY_REVIEW_CHECKLIST.md.
+- [ ] Hand the firm the triage materials in `docs/audit-triage/`: the internal
+      audit (`internal-audit-2026-06-17.md`) and the AI-assisted code review
+      (`ai-review-2026-06-19-unaudited-features.md`) of the unaudited high-risk
+      surface (vault crypto, keystore, second-factor, EVM/BTC/SOL signing, the
+      deniability stack, PIN auth). The AI review is a triage aid, NOT an audit —
+      its severities are a hand-regrade to be independently re-checked (the
+      automated pass over-graded; the headline "critical" was really low). Its
+      panic-wipe deniability finding (F-02..F-05 — extend the wipe + inspection to
+      ALL localStorage tells: stealth-slot/audit-device salts, passkey config) was
+      remediated on `fix/csp-dedupe-meta`; the remaining low/info items are leads,
+      not confirmed bugs.
 - [ ] Automated pre-audit self-review green — `npm run audit:eth`
       (`scripts/audit/eth-wallet-audit.mjs`): gate-integrity assertions
       (ALLOW_MAINNET + BTC/SOL switches stay closed), secret/key-egress scan,

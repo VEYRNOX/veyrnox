@@ -1,3 +1,6 @@
+/* global window, document, location */
+// This probe runs in a browser/WebView, but lives under scripts/** which the
+// eslint flat config scopes to Node globals — declare the browser globals it uses.
 // LIVE CSP injection probe logic (external 'self' script — inline is blocked by
 // the policy, which is the point). Runs concrete vectors against the enforced
 // (intersected) CSP and reports PASS/FAIL both on-screen and to the console.

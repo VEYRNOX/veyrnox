@@ -40,6 +40,28 @@ async function populateDevice() {
   await setPanicVault(PANIC_PW);
 }
 
+function unb64(str) {
+  const s = atob(str); const u8 = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+  return u8;
+}
+function getBlob(key) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('veyrnox-vault', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('vault')) db.createObjectStore('vault');
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const r = db.transaction('vault', 'readonly').objectStore('vault').get(key);
+      r.onsuccess = () => { db.close(); resolve(r.result ?? null); };
+      r.onerror = () => { db.close(); reject(r.error); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function dumpVaultStore() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('veyrnox-vault', 1);
@@ -139,20 +161,21 @@ describe('panic wipe', () => {
     expect(report.indexedDbKeys).toEqual([]);
     expect(report.localStorageResidue).toEqual([]);
 
-    // A re-inspection confirms the same. NOTE: this MUST run before the probe
-    // calls below — tryRevealHidden() calls getOrCreateStealthSalt(), which
-    // regenerates 'veyrnox-stealth-slot-salt' in localStorage as a side-effect.
-    // Since that key is now a tracked residue key, probing after the wipe would
-    // re-create a tell the inspector honestly reports — so we confirm cleanliness
-    // first, then probe the (still-wiped) key-material paths.
-    const after = await inspectKeyMaterial();
-    expect(after.clean).toBe(true);
-
     // And every path that previously opened key material now misses.
     expect(await webKeyStore.hasVault()).toBe(false);
     expect(await hasDuressVault()).toBe(false);
     expect(await tryRevealHidden(HIDDEN_SECRET)).toBeNull();
     expect(await hasPanicVault()).toBe(false);
+
+    // A re-inspection AFTER those probes confirms the same — crucially, the post-wipe
+    // tryRevealHidden() probe above must NOT re-create any residue. Reveal now uses a
+    // READ-ONLY salt accessor (readSlotForSecret), so a missing 'veyrnox-stealth-slot-
+    // salt' (a tracked deniability tell) is never re-provisioned by a reveal. Before
+    // the read/write salt split, tryRevealHidden -> getOrCreateStealthSalt re-wrote
+    // that key, silently re-introducing the very tell the wipe had just removed; this
+    // ordering (probe, THEN inspect) is the regression guard for that fix.
+    const after = await inspectKeyMaterial();
+    expect(after.clean).toBe(true);
   });
 
   it('wipes the deniability tells in localStorage and reports them honestly (C-1)', async () => {
@@ -188,6 +211,45 @@ describe('panic wipe', () => {
     expect(report.localStorageResidue).toEqual([]);
     expect(report.clean).toBe(true);
     expect((await inspectKeyMaterial()).clean).toBe(true);
+  });
+
+  // ── H2 part B: deniability uniformity — FIXED_LEN padding of the panic marker ──
+
+  it('H2: panic is still correctly detected after padding (pad+strip round-trip)', async () => {
+    // The marker is now padded to FIXED_LEN on encrypt and stripped on decrypt;
+    // detection (an exact-match decrypt) must still fire for the right PIN and only
+    // the right PIN — padding is inert to the trigger.
+    await setPanicVault(PANIC_PW);
+    expect(await tryPanicUnlock(PANIC_PW)).toBe(true);   // recognised after pad+strip
+    expect(await tryPanicUnlock('wrong-guess-123')).toBe(false);
+    // And the wipe still actually fires end-to-end from a padded marker.
+    await populateDevice();                              // re-seed (PANIC_PW reused)
+    expect(await tryPanicUnlock(PANIC_PW)).toBe(true);
+    const report = await panicWipeLocal();
+    expect(report.clean).toBe(true);
+  });
+
+  it('H2: a REAL panic blob and a CHAFF panic blob have BYTE-IDENTICAL ct length', async () => {
+    // Chaff (provisionDeniabilityChaff -> setPanicVault with a throwaway pw) and a
+    // personalized panic (setPanicVault with a user PIN) both pad to FIXED_LEN, so
+    // their ciphertext lengths are identical — a coercer cannot tell a configured
+    // panic from a chaff one by blob length.
+    const { provisionDeniabilityChaff } = await import('../provisionChaff.js');
+    await provisionDeniabilityChaff();           // chaff into 'tertiary'
+    const chaffPanic = await getBlob('tertiary');
+    await setPanicVault(PANIC_PW);                // overwrite with a real PIN
+    const realPanic = await getBlob('tertiary');
+    expect(unb64(chaffPanic.ct).length).toBe(unb64(realPanic.ct).length);
+  });
+
+  it("H2: the panic ('tertiary') and duress ('secondary') blobs are ct-length-identical", async () => {
+    // Both deniability slots now pad their plaintext to the SAME FIXED_LEN, so the
+    // two slots are length-indistinguishable regardless of mnemonic word count.
+    await setDuressVault(generateMnemonic(256), DURESS_PW); // 24-word decoy
+    await setPanicVault(PANIC_PW);
+    const secondary = await getBlob('secondary');
+    const tertiary = await getBlob('tertiary');
+    expect(unb64(tertiary.ct).length).toBe(unb64(secondary.ct).length);
   });
 
   it('removing the panic PIN wipes nothing else', async () => {

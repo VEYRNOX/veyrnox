@@ -21,6 +21,7 @@
 import { hex } from '@scure/base';
 import { Transaction, p2wpkh } from '@scure/btc-signer';
 import { getBtcNetwork } from './networks.js';
+import { assertValidBtcAddress } from './validate.js';
 import { getUtxos, getFeeRate, broadcastTx } from './provider.js';
 import { selectCoins, assertPlanConserves } from './coinselect.js';
 
@@ -66,6 +67,9 @@ export function buildAndSignTx({ plan, privateKey, publicKey, params }) {
  */
 export async function estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats, sendMax = false, feeRate = undefined, changeAddress = undefined }) {
   const net = getBtcNetwork(networkKey); // gate-aware
+  // Reject a wrong-network / malformed recipient EARLY (before any UTXO/fee fetch)
+  // with a legible error — network-correct via the same library used at sign time.
+  assertValidBtcAddress(toAddress, net.params);
   const [utxos, rate] = await Promise.all([
     getUtxos(networkKey, fromAddress),
     feeRate != null ? Promise.resolve(feeRate) : getFeeRate(networkKey),
@@ -108,6 +112,8 @@ export async function signAndBroadcastBtc({
   changeAddress,
 }) {
   const net = getBtcNetwork(networkKey); // throws if mainnet gated / disabled
+  // Reject a wrong-network / malformed recipient EARLY, before any UTXO/fee fetch.
+  assertValidBtcAddress(toAddress, net.params);
 
   // The single owned address' P2WPKH script — the prevout script of every UTXO.
   const owner = p2wpkh(publicKey, net.params);

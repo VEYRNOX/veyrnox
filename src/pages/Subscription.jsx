@@ -30,13 +30,13 @@ export default function Subscription() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Plans</h1>
-        <p className="text-muted-foreground mt-1">
+        <div className="text-muted-foreground mt-1 text-sm">
           You are on the{" "}
           <Badge variant="outline" className={STATUS_META.available.className}>
             Free plan
           </Badge>{" "}
           — the complete self-custody wallet, no account required.
-        </p>
+        </div>
       </div>
 
       {/* Preview / not-final disclosure */}

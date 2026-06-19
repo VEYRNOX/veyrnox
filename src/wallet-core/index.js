@@ -24,6 +24,7 @@ export { getBtcNetwork, getBtcNetworkInfo, listEnabledBtcNetworks, ALLOW_BTC_MAI
 export { getUtxos, getBalanceSats, getFeeRate, broadcastTx, setEsploraUrl } from './btc/provider.js';
 export { selectCoins, estimateFeeSats, estimateVsize, assertPlanConserves } from './btc/coinselect.js';
 export { estimateBtcSend, signAndBroadcastBtc } from './btc/send.js';
+export { isValidBtcAddress, assertValidBtcAddress } from './btc/validate.js';
 export { estimateBtcFeeTiers, buildBtcTiers, clampMonotonic, BTC_TIERS } from './btc/fees.js';
 
 // --- Solana (Phase SOL) — separate ed25519 / SLIP-0010 / account stack,
