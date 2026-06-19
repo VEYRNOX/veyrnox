@@ -71,4 +71,18 @@ describe('actionPassword record — persistable second-factor verifier', () => {
     expect(await verifyCredential(reloaded, password)).toBe(true);        // right secret verifies
     expect(await verifyCredential(reloaded, 'wrong password')).toBe(false); // wrong secret rejected
   });
+
+  // REGRESSION: callers MUST deserialize before verifying. WalletProvider.verifyActionPassword
+  // passed the SERIALISED record (base64 salt/hash strings) straight to verifyCredential, whose
+  // length/shape compare then failed for the CORRECT password too — silently locking any user
+  // who set an Action Password out of every critical action. This pins the contract.
+  it('a SERIALISED record must be deserialised before verifyCredential (else it fails closed)', async () => {
+    const password = 'correct horse battery staple';
+    const serialized = serializeActionPasswordRecord(await createCredentialVerifier(password, { params: CHEAP }));
+    // The raw serialized record never verifies — not even with the right password (the bug).
+    expect(await verifyCredential(serialized, password)).toBe(false);
+    // Deserialised, the same record verifies the right password and rejects a wrong one (the fix).
+    expect(await verifyCredential(deserializeActionPasswordRecord(serialized), password)).toBe(true);
+    expect(await verifyCredential(deserializeActionPasswordRecord(serialized), 'nope')).toBe(false);
+  });
 });
