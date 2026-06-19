@@ -464,7 +464,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'WalletConnect / dApp Connector',
-        status: 'provisional',
+        status: 'built',
         summary: 'Connect to dApps via WalletConnect v2',
         explanation:
           'WalletConnect v2 transport + message signing (D1+D2). ' +
