@@ -797,7 +797,9 @@ export function WalletProvider({ children }) {
   // Decrypt the CURRENT primary vault, returning the authoritative container.
   // Doubles as password verification for the mutations below. Primary-only.
   const decryptPrimaryContainer = useCallback(async (password) => {
-    const plaintext = await keyStore.unlock(password); // generic throw on wrong pw / no vault
+    // Re-auth/decrypt for a vault mutation. Same biometric policy as unlock: gate
+    // only when biometric unlock is enabled, else PIN/password-only.
+    const plaintext = await keyStore.unlock(password, { requireBiometric: isBiometricUnlockEnabled() }); // generic throw on wrong pw / no vault
     return mv.parseVault(plaintext).container;
   }, []);
 
@@ -1189,7 +1191,13 @@ export function WalletProvider({ children }) {
     let decoy = false;
     let hidden = false;
     try {
-      mnemonic = await keyStore.unlock(password);
+      // Require the native biometric gate ONLY when biometric unlock is actually
+      // enabled (and not bypassed via the escape hatch). When it's off, unlock is
+      // PIN/password-only — no Face ID on the Exit→unlock step — and a biometric
+      // failure can no longer be misread below as a wrong password (→ empty decoy).
+      mnemonic = await keyStore.unlock(password, {
+        requireBiometric: isBiometricUnlockEnabled() && !opts.skipBiometric,
+      });
     } catch (primaryErr) {
       // The primary unlock failed. BEFORE surfacing that failure, consult the
       // deniability/emergency paths. resolveDeniabilityUnlock (SAST M2) runs a
