@@ -1,29 +1,38 @@
 // lib/__tests__/addressValidation.test.js
 //
-// The recipient-address guard must accept TESTNET Bitcoin addresses, not just
-// mainnet — otherwise the testnet send-verification flow can't enter a real
-// `tb1…` recipient (the wallet's OWN BIP-84 testnet address included), and the
-// Continue button stays disabled with "Invalid BTC address format". This pins
-// that the BTC guard accepts mainnet (1/3/bc1) AND testnet/regtest (tb1/bcrt1)
-// bech32 while still rejecting malformed input. The authoritative checksum +
-// network match stay enforced by @scure/btc-signer at sign time; this is only a
-// shallow UI guard, so format breadth here is safe.
+// The recipient-address guard validates a BTC address with a REAL checksum + HRP
+// check via @scure/btc-signer (the same library + network params enforced at sign
+// time), against the currently ENABLED networks. This replaced an earlier shallow
+// format regex that did no checksum and accepted any network's prefix. It pins:
+//   - valid addresses for an enabled network pass (mainnet is enabled on main, so
+//     bc1/1/3 pass; testnet tb1… passes — incl. the wallet's own BIP-84 address),
+//   - a CHECKSUM-INVALID address is rejected (the old regex would have passed it),
+//   - an address for a NON-enabled network (regtest bcrt1…) is rejected,
+//   - malformed / wrong-chain input is rejected.
 
 import { describe, it, expect } from 'vitest';
 import { isValidAddressForCurrency } from '../addressValidation.js';
 
-describe('isValidAddressForCurrency — BTC accepts testnet, not just mainnet', () => {
-  it('accepts mainnet BTC formats (regression)', () => {
+describe('isValidAddressForCurrency — BTC real checksum/network validation', () => {
+  it('accepts valid addresses for enabled networks (mainnet bc1/1/3 + testnet tb1…)', () => {
+    // Mainnet is enabled on main (owner sign-off), so these are valid recipients.
     expect(isValidAddressForCurrency('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4', 'BTC')).toBe(true);
     expect(isValidAddressForCurrency('1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2', 'BTC')).toBe(true);
     expect(isValidAddressForCurrency('3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy', 'BTC')).toBe(true);
-  });
-
-  it('accepts TESTNET / regtest bech32 (the fix — tb1… / bcrt1…)', () => {
     // A real BIP-84 testnet address from wallet-core/__tests__/btc-derivation.test.js.
     expect(isValidAddressForCurrency('tb1q6rz28mcfaxtmd6v789l9rrlrusdprr9pqcpvkl', 'BTC')).toBe(true);
     expect(isValidAddressForCurrency('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx', 'BTC')).toBe(true);
-    expect(isValidAddressForCurrency('bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7k', 'BTC')).toBe(true);
+  });
+
+  it('rejects a checksum-invalid bech32 (the real fix — the old shallow regex passed these)', () => {
+    // Same as the valid tb1 above with the final char flipped — fails bech32 checksum.
+    expect(isValidAddressForCurrency('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsy', 'BTC')).toBe(false);
+    // Valid format/length but corrupted mainnet checksum.
+    expect(isValidAddressForCurrency('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5', 'BTC')).toBe(false);
+  });
+
+  it('rejects an address for a NON-enabled network (regtest bcrt1…)', () => {
+    expect(isValidAddressForCurrency('bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7k', 'BTC')).toBe(false);
   });
 
   it('still rejects malformed BTC input', () => {

@@ -77,6 +77,7 @@
 
 import { encryptVault, decryptVault } from './vault.js';
 import { generateMnemonic } from './mnemonic.js';
+import { padToFixedLen, stripPad } from './multiVault.js';
 
 // Same database + store as the primary vault (see evm/vaultStore.js), the duress
 // decoy ('secondary'), and the stealth pool ('vault:N'). The panic marker sits in
@@ -196,7 +197,15 @@ export async function setPanicVault(panicPassword) {
     throw new Error(`Panic/wipe PIN must be at least ${MIN_PANIC_LEN} characters`);
   }
   const marker = generateMnemonic(128); // throwaway; only its decryptability matters
-  const blob = await encryptVault(marker, panicPassword);
+  // H2 (deniability uniformity): pad the marker plaintext to EXACTLY FIXED_LEN so the
+  // panic blob's ciphertext length matches the duress ('secondary') blob and a real
+  // panic matches a chaff panic (both go through this same path). AES-GCM is
+  // length-preserving, so equalising the plaintext equalises the ciphertext. Detection
+  // (tryPanicUnlock) only tests decryptability, so the padding is inert to it — but we
+  // still strip on decrypt for cleanliness/forward-safety. The marker is not a
+  // container, so it uses the string-level padToFixedLen helper (NOT the JSON `pad`
+  // field); the container FORMAT is unchanged.
+  const blob = await encryptVault(padToFixedLen(marker), panicPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -253,7 +262,12 @@ export async function tryPanicUnlock(password) {
   }
   if (!blob) return false;
   try {
-    await decryptVault(blob, password); // throws on wrong PIN
+    const plaintext = await decryptVault(blob, password); // throws on wrong PIN
+    // H2: strip the FIXED_LEN padding before any detection logic. Detection here is
+    // purely "did GCM auth succeed" (an exact-match decrypt), so the marker is
+    // recognisable after pad+strip; stripPad tolerates legacy unpadded markers
+    // (returns them unchanged), so panic still fires for blobs written before H2.
+    stripPad(plaintext);
     return true;
   } catch {
     return false;
