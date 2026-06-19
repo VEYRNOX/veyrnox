@@ -78,7 +78,17 @@ export const ASSETS = Object.freeze([
   // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
   { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.LIVE },
   { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.RECEIVE_ONLY },
-  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.RECEIVE_ONLY },
+  // BNB: VERIFIED LIVE. A funded test account became available (0.3 tBNB), clearing
+  // the prior "no faucet" blocker. Real native transfer through the full in-app UI
+  // send path (asset picker → recipient → amount → Standard fee → step-up PIN re-auth
+  // → local sign → broadcast), confirmed on-chain:
+  //   tx 0xaeb3f72dee7488414ba9838d73490a31a67c76715bb2e71e47ef0fbb4b92f562
+  //   (BNB Smart Chain Testnet, chainId 97, status SUCCESS, block 114315313, 0.01 BNB,
+  //    from 0x90f9f1F9…E68a729 → 0x3B5f5407…1A508A, gasUsed 21000, gasPrice 1 Gwei)
+  //   https://testnet.bscscan.com/tx/0xaeb3f72dee7488414ba9838d73490a31a67c76715bb2e71e47ef0fbb4b92f562
+  // NOTE: BNB testnet enforces a minimum gas price; the Standard tier (1 Gwei) clears
+  // it — the Slow tier can underprice and get rejected. Mainnet stays gated.
+  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.LIVE },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
   // the mainnet gate (btc/networks.js). Address derivation + live balance reads
   // are wired now (receive_only). The SEND path (construct/sign/broadcast) is

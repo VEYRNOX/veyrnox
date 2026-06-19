@@ -134,8 +134,8 @@ describe('Harness A · G1 — demo-active predicate (and the persisted-flag trap
 // ─────────────────────────────────────────────────────────────────────────────
 // G2 — canSend().  false for every receive_only asset; true ONLY for the live set.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Harness A · G2 — canSend() is true only for the live set (ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL)', () => {
-  it('the live (sendable) set is exactly [ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL]', () => {
+describe('Harness A · G2 — canSend() is true only for the live set (ETH, USDC, USDT, MATIC, ARB, OP, BNB, BTC, SOL)', () => {
+  it('the live (sendable) set is exactly [ETH, USDC, USDT, MATIC, ARB, OP, BNB, BTC, SOL]', () => {
     //   MATIC 0x6a4dede58e578f10dfa2039e2af3230c0d0e7b18596c0832f0a84348cea954a7 (Polygon Amoy, block 40274236)
     // Each earned `live` via a real explorer-confirmed UI-path send (NOT a script):
     //   ETH  0x3ebb8fd7c844cdb88455408a8a17a4cd242b61ea2c475444fa334ef8a0a2b5c3 (Sepolia)
@@ -146,7 +146,7 @@ describe('Harness A · G2 — canSend() is true only for the live set (ETH, USDC
     //   BTC  2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27 (testnet, block 4990901)
     //   SOL  5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv (devnet, finalized)
     const sendable = ASSETS.filter(canSend).map((a) => a.symbol);
-    expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BTC', 'SOL']);
+    expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BNB', 'BTC', 'SOL']);
   });
 
   it('canSend() is FALSE for every receive_only asset', () => {
@@ -204,7 +204,7 @@ describe('Harness A · G3 — the dev ungate relaxes the FLOW, never the status'
       }
     }
     // And the live set is STILL exactly the verified set — the ungate didn't widen it.
-    expect(ASSETS.filter(canSend).map((a) => a.symbol)).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BTC', 'SOL']);
+    expect(ASSETS.filter(canSend).map((a) => a.symbol)).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BNB', 'BTC', 'SOL']);
   });
 
   it('SOURCE CONTRACT: ungate relaxes the UI flow + the sign-time gate, nothing else', () => {
@@ -305,13 +305,13 @@ describe('Harness A · drift-guard — a txid in history does NOT, by itself, ma
     expect(getAsset('SOL').status).toBe(ASSET_STATUS.LIVE);
   });
 
-  it('the live set (ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL) each passed the bar; a verified UI txid is the reference', () => {
+  it('the live set (ETH, USDC, USDT, MATIC, ARB, OP, BNB, BTC, SOL) each passed the bar; a verified UI txid is the reference', () => {
     // A real explorer-confirmed UI-path txid is what "live" actually looks like
     // (brief §2). It is the reference, not the cause: canSend() is true because the
-    // status is `live`. All seven cleared that bar via a UI-path send; the remaining
-    // receive_only assets (MATIC/AVAX/BNB) have not.
+    // status is `live`. All nine cleared that bar via a UI-path send; the remaining
+    // receive_only asset (AVAX) has not.
     expect(TXID.ethSepoliaVerified).toMatch(/^0x[0-9a-f]{64}$/i);
-    for (const sym of ['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BTC', 'SOL']) {
+    for (const sym of ['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'BNB', 'BTC', 'SOL']) {
       expect(canSend(getAsset(sym))).toBe(true);
       expect(getAsset(sym).status).toBe(ASSET_STATUS.LIVE);
     }
