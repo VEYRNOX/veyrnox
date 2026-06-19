@@ -37,9 +37,9 @@ export async function initWalletConnect() {
     _pendingProposals.set(proposal.id, proposal);
     _emit('session_proposal', proposal);
   });
-  for (const event of ['session_request', 'session_delete', 'session_expire']) {
-    _client.on(event, (data) => _emit(event, data));
-  }
+  _client.on('session_request', (data) => _emit('session_request', data));
+  _client.on('session_delete', (data) => _emit('session_delete', data));
+  _client.on('session_request_expire', (data) => _emit('session_request_expire', data));
   return _client;
 }
 
