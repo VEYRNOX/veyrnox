@@ -167,7 +167,13 @@ describe('panic wipe', () => {
     expect(await tryRevealHidden(HIDDEN_SECRET)).toBeNull();
     expect(await hasPanicVault()).toBe(false);
 
-    // A re-inspection confirms the same.
+    // A re-inspection AFTER those probes confirms the same — crucially, the post-wipe
+    // tryRevealHidden() probe above must NOT re-create any residue. Reveal now uses a
+    // READ-ONLY salt accessor (readSlotForSecret), so a missing 'veyrnox-stealth-slot-
+    // salt' (a tracked deniability tell) is never re-provisioned by a reveal. Before
+    // the read/write salt split, tryRevealHidden -> getOrCreateStealthSalt re-wrote
+    // that key, silently re-introducing the very tell the wipe had just removed; this
+    // ordering (probe, THEN inspect) is the regression guard for that fix.
     const after = await inspectKeyMaterial();
     expect(after.clean).toBe(true);
   });
@@ -175,8 +181,21 @@ describe('panic wipe', () => {
   it('wipes the deniability tells in localStorage and reports them honestly (C-1)', async () => {
     // The forensic artifacts a panic wipe must also destroy — leaving any of these
     // proves the coercion-resistance stack was in use (and the decoy salt + a
-    // coerced PIN reproduces the deterministic decoy). Internal audit C-1.
-    const TELLS = ['veyrnox-pin-decoy-salt', 'veyrnox-auth-model', 'veyrnox-audit-log'];
+    // coerced PIN reproduces the deterministic decoy). Internal audit C-1, extended
+    // per AI-review F-02/F-03/F-05 (stealth-slot salt, audit-device salt, passkey
+    // config). This pins the FULL membership of DENIABILITY_RESIDUE_KEYS, so a key
+    // dropped from the wipe list — leaving a tell behind while clean still reports
+    // true — fails here (also guards F-04).
+    const TELLS = [
+      'veyrnox-pin-decoy-salt',
+      'veyrnox-auth-model',
+      'veyrnox-audit-log',
+      'veyrnox-stealth-slot-salt',
+      'veyrnox-audit-device-salt',
+      'veyrnox-passkey-unlock',
+      'veyrnox-passkey-cred',
+      'veyrnox-2fa-passkey',
+    ];
     await populateDevice();
     for (const k of TELLS) localStorage.setItem(k, 'x');
 
