@@ -763,9 +763,8 @@ export function WalletProvider({ children }) {
       // Tag the recoverable input reject so the UI catch can KEEP the pending PIN
       // (see isRecoverableSeedInputError); a bad phrase is user-fixable, not a
       // provisioning failure. Nothing below has run, so nothing to roll back.
-      const e = new Error('Invalid recovery phrase');
-      e.code = 'INVALID_MNEMONIC';
-      throw e;
+      // Object.assign (not `e.code = …`) so the tag is part of the value's type.
+      throw Object.assign(new Error('Invalid recovery phrase'), { code: 'INVALID_MNEMONIC' });
     }
     const { container, walletId } = mv.migrateLegacyMnemonic(mnemonic);
     await keyStore.createVault(mv.serializeContainer(container), password);
