@@ -32,6 +32,8 @@ export const ALL_ROUTE_PATHS = [
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
   '/security-scanner', '/docs', '/features',
   '/plans',
+  // Redirect aliases — live routes that resolve to canonical paths.
+  '/transaction-history', '/history', '/hardware-wallets', '/security-center', '/address-screening',
 ];
 
 export const CLASSIFICATION = {
@@ -347,6 +349,32 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'static',
     note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") and PRO_FEATURES from lib/tier. The upgrade button is permanently disabled with an honest disclosure: "no payment system is active" and "no payment can be made on this screen." Preview disclosure banner explicitly warns pricing is not final. No fabricated capabilities listed as currently available.',
   },
+
+  // ── Redirect aliases ──────────────────────────────────────────────────────
+  '/transaction-history': { verdict: 'live', dataSource: 'static', note: 'Redirect alias → /tx-history.' },
+  '/history':             { verdict: 'live', dataSource: 'static', note: 'Redirect alias → /tx-history.' },
+  '/hardware-wallets':    { verdict: 'live', dataSource: 'static', note: 'Redirect alias → /hardware-wallet.' },
+  '/security-center':     { verdict: 'live', dataSource: 'static', note: 'Redirect alias → /security.' },
+  '/address-screening':   { verdict: 'live', dataSource: 'static', note: 'Redirect alias → /address-checker.' },
+
+  // ── Cut paths (spec §4 — off-wedge) ──────────────────────────────────────
+  // Page files, routes, and imports removed. Entries kept so cutPaths() and
+  // the featureRegistry gate remain accurate. Any direct navigation returns
+  // PageNotFound via the router catch-all.
+  '/leaderboard':       { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Social leaderboard cut: no social graph, targeting vector, off-wedge for self-custody.' },
+  '/public-profiles':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Public profiles cut: social identity exposure conflicts with deniability model.' },
+  '/shared-portfolio':  { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Shared portfolio cut: requires social graph, off-wedge.' },
+  '/referrals':         { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Referral tracker cut: growth mechanic, off-wedge for self-custody product.' },
+  '/advisor':           { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI portfolio advisor cut: fabricated AI advice, off-wedge.' },
+  '/ai-assistant':      { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI assistant cut: LLM dependency, off-wedge.' },
+  '/what-if':           { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'What-if simulator cut: fabricated price projections, off-wedge.' },
+  '/smart-alerts':      { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Smart alerts cut: AI/ML dependency, off-wedge.' },
+  '/web3':              { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Web3 browser cut: embedded browser scope, off-wedge.' },
+  '/messenger-alerts':  { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Messenger alerts cut: third-party messaging dependency, off-wedge.' },
+  '/split-bill':        { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Split bill cut: social payments, off-wedge.' },
+  '/ai-rebalancer':     { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI rebalancer cut: autonomous value movement, off-wedge.' },
+  '/erc20-discovery':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'ERC-20 discovery cut: third-party token indexer dependency, off-wedge.' },
+  '/products':          { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Products page cut: marketing page, off-wedge.' },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts

@@ -48,7 +48,14 @@ describe('route audit covers exactly the gated routes in App.jsx', () => {
     });
   });
 
-  it('CLASSIFICATION keys match ALL_ROUTE_PATHS', () => {
-    expect(new Set(Object.keys(CLASSIFICATION))).toEqual(new Set(ALL_ROUTE_PATHS));
+  it('CLASSIFICATION keys match ALL_ROUTE_PATHS (cut-only entries allowed)', () => {
+    // Cut paths exist in CLASSIFICATION so the registry gate and cutPaths()
+    // work, but they have no active App.jsx route (pages were removed; the
+    // router catch-all renders PageNotFound). Exclude them from the strict
+    // equality check — everything else must be accounted for exactly.
+    const nonCutKeys = Object.keys(CLASSIFICATION).filter(
+      (p) => CLASSIFICATION[p].verdict !== 'cut',
+    );
+    expect(new Set(nonCutKeys)).toEqual(new Set(ALL_ROUTE_PATHS));
   });
 });
