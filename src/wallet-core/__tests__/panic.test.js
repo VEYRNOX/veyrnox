@@ -40,6 +40,28 @@ async function populateDevice() {
   await setPanicVault(PANIC_PW);
 }
 
+function unb64(str) {
+  const s = atob(str); const u8 = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+  return u8;
+}
+function getBlob(key) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('veyrnox-vault', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('vault')) db.createObjectStore('vault');
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const r = db.transaction('vault', 'readonly').objectStore('vault').get(key);
+      r.onsuccess = () => { db.close(); resolve(r.result ?? null); };
+      r.onerror = () => { db.close(); reject(r.error); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function dumpVaultStore() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('veyrnox-vault', 1);
@@ -170,6 +192,45 @@ describe('panic wipe', () => {
     expect(report.localStorageResidue).toEqual([]);
     expect(report.clean).toBe(true);
     expect((await inspectKeyMaterial()).clean).toBe(true);
+  });
+
+  // ── H2 part B: deniability uniformity — FIXED_LEN padding of the panic marker ──
+
+  it('H2: panic is still correctly detected after padding (pad+strip round-trip)', async () => {
+    // The marker is now padded to FIXED_LEN on encrypt and stripped on decrypt;
+    // detection (an exact-match decrypt) must still fire for the right PIN and only
+    // the right PIN — padding is inert to the trigger.
+    await setPanicVault(PANIC_PW);
+    expect(await tryPanicUnlock(PANIC_PW)).toBe(true);   // recognised after pad+strip
+    expect(await tryPanicUnlock('wrong-guess-123')).toBe(false);
+    // And the wipe still actually fires end-to-end from a padded marker.
+    await populateDevice();                              // re-seed (PANIC_PW reused)
+    expect(await tryPanicUnlock(PANIC_PW)).toBe(true);
+    const report = await panicWipeLocal();
+    expect(report.clean).toBe(true);
+  });
+
+  it('H2: a REAL panic blob and a CHAFF panic blob have BYTE-IDENTICAL ct length', async () => {
+    // Chaff (provisionDeniabilityChaff -> setPanicVault with a throwaway pw) and a
+    // personalized panic (setPanicVault with a user PIN) both pad to FIXED_LEN, so
+    // their ciphertext lengths are identical — a coercer cannot tell a configured
+    // panic from a chaff one by blob length.
+    const { provisionDeniabilityChaff } = await import('../provisionChaff.js');
+    await provisionDeniabilityChaff();           // chaff into 'tertiary'
+    const chaffPanic = await getBlob('tertiary');
+    await setPanicVault(PANIC_PW);                // overwrite with a real PIN
+    const realPanic = await getBlob('tertiary');
+    expect(unb64(chaffPanic.ct).length).toBe(unb64(realPanic.ct).length);
+  });
+
+  it("H2: the panic ('tertiary') and duress ('secondary') blobs are ct-length-identical", async () => {
+    // Both deniability slots now pad their plaintext to the SAME FIXED_LEN, so the
+    // two slots are length-indistinguishable regardless of mnemonic word count.
+    await setDuressVault(generateMnemonic(256), DURESS_PW); // 24-word decoy
+    await setPanicVault(PANIC_PW);
+    const secondary = await getBlob('secondary');
+    const tertiary = await getBlob('tertiary');
+    expect(unb64(tertiary.ct).length).toBe(unb64(secondary.ct).length);
   });
 
   it('removing the panic PIN wipes nothing else', async () => {

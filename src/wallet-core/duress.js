@@ -59,6 +59,7 @@
 // funds and adds no mainnet surface.
 
 import { encryptVault, decryptVault } from './vault.js';
+import { makeContainer, serializeContainer, newWalletId } from './multiVault.js';
 
 // Same database + store as the primary vault (see vaultStore.js). The decoy
 // occupies a separate KEY within that store. Re-opening by name is storage
@@ -111,11 +112,24 @@ export async function hasDuressVault() {
  * Create/replace the decoy vault. Encrypts the decoy mnemonic with the duress
  * password using the SAME crypto as the primary vault and persists the
  * resulting ciphertext blob. Never persists plaintext.
+ * H2 (decoy/hidden 2FA parity): the decoy is now wrapped in a FIXED-LENGTH
+ * multi-seed container (one wallet) instead of a bare mnemonic, so it can carry its
+ * OWN per-set Action-Password record and so its ciphertext length matches the
+ * primary set's (deniability — no length tell). `actionPasswordRecord` is the
+ * decoy set's serialized verifier, or null when the decoy has no Action Password.
+ * The container is padded to FIXED_LEN by serializeContainer, so the persisted
+ * blob's length is identical whether or not a record is present.
+ *
  * @param {string} decoyMnemonic - a real BIP-39 mnemonic for the decoy wallet
  * @param {string} duressPassword
+ * @param {object|null} [actionPasswordRecord] - the decoy set's AP verifier record, if any
  */
-export async function setDuressVault(decoyMnemonic, duressPassword) {
-  const blob = await encryptVault(decoyMnemonic, duressPassword);
+export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswordRecord = null) {
+  const container = makeContainer(
+    [{ id: newWalletId(), mnemonic: decoyMnemonic }],
+    actionPasswordRecord ?? undefined,
+  );
+  const blob = await encryptVault(serializeContainer(container), duressPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -134,7 +148,9 @@ export async function setDuressVault(decoyMnemonic, duressPassword) {
 
 /**
  * Attempt to open the decoy vault with the given password.
- * Returns the decoy mnemonic on success, or null if there is no decoy vault or
+ * Returns the decrypted PAYLOAD STRING on success (a multi-seed container JSON
+ * after the H2 change, or a legacy bare mnemonic for decoys written before it —
+ * parseVault in the caller handles both), or null if there is no decoy vault or
  * the password does not match it. NEVER throws for a wrong password — the caller
  * (WalletProvider.unlock) surfaces the primary error instead, so a miss here is
  * indistinguishable from "no duress vault configured".

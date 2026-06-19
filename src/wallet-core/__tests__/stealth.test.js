@@ -19,6 +19,16 @@ import { deriveEvmAccount } from '../derivation.js';
 import { generateMnemonic } from '../mnemonic.js';
 import { deriveBtcAddress } from '../btc/derivation.js';
 import { deriveSolAddress } from '../sol/derivation.js';
+import { parseVault, FIXED_LEN } from '../multiVault.js';
+
+// H2: tryRevealHidden now returns the decrypted PAYLOAD string — a FIXED-LENGTH
+// multi-seed container JSON (or a legacy bare mnemonic). These tests reason about
+// the underlying SEED, so unwrap the payload to the bare mnemonic via the shared
+// parser (which handles both formats). null payload (a miss) stays null.
+function revealedMnemonic(payload) {
+  if (payload == null) return null;
+  return parseVault(payload).container.wallets[0].mnemonic;
+}
 
 // M1: pool raised 12 -> 256 to cut slot-collision (silent fund-loss) probability.
 const POOL_SIZE = 256;
@@ -80,14 +90,34 @@ describe('stealth / hidden wallets', () => {
     expect([...shapes][0]).toBe('ct,iv,kdf,salt,v');
   });
 
+  it('H2: a real hidden slot and a chaff slot have BYTE-IDENTICAL ct length (deniability)', async () => {
+    function unb64(str) {
+      const s = atob(str); const u8 = new Uint8Array(s.length);
+      for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+      return u8;
+    }
+    await ensureStealthPool();          // all chaff
+    const created = await createHiddenWallet('length-parity-secret');
+    const store = await dumpVaultStore();
+    const realSlot = created.slot;
+    // Pick any slot that is NOT the real one — it is chaff.
+    const chaffKey = Object.keys(store).find((k) => k.startsWith('vault:') && k !== realSlot);
+    const realCtLen = unb64(store[realSlot].ct).length;
+    const chaffCtLen = unb64(store[chaffKey].ct).length;
+    // Both encrypt a FIXED_LEN container plaintext, so both ct lengths are
+    // FIXED_LEN + 16-byte GCM tag — a raw dump cannot pick the real wallet by length.
+    expect(realCtLen).toBe(chaffCtLen);
+    expect(realCtLen).toBe(FIXED_LEN + 16);
+  });
+
   it('reveals only the wallet whose secret is given, with the right address', async () => {
     const a = await createHiddenWallet('alpha-secret-1');
     const b = await createHiddenWallet('beta-secret-2');
 
     expect(a.address).not.toBe(b.address);
 
-    const revealedA = await tryRevealHidden('alpha-secret-1');
-    const revealedB = await tryRevealHidden('beta-secret-2');
+    const revealedA = revealedMnemonic(await tryRevealHidden('alpha-secret-1'));
+    const revealedB = revealedMnemonic(await tryRevealHidden('beta-secret-2'));
     expect(revealedA).not.toBeNull();
     expect(revealedB).not.toBeNull();
     expect(deriveEvmAccount(revealedA, 0).address).toBe(a.address);
@@ -111,7 +141,7 @@ describe('stealth / hidden wallets', () => {
     expect(again.slot).toBe(first.slot);
 
     // The wallet behind the secret is unchanged.
-    const revealed = await tryRevealHidden('keep-me-please');
+    const revealed = revealedMnemonic(await tryRevealHidden('keep-me-please'));
     expect(deriveEvmAccount(revealed, 0).address).toBe(first.address);
   });
 
@@ -134,7 +164,7 @@ describe('stealth / hidden wallets', () => {
     const created = await createHiddenWallet('multichain-secret-1');
     // Reveal the mnemonic and re-derive via the canonical public helpers — the
     // hidden wallet's addresses must match them EXACTLY (no reimplemented paths).
-    const m = await tryRevealHidden('multichain-secret-1');
+    const m = revealedMnemonic(await tryRevealHidden('multichain-secret-1'));
     expect(created.evm.address).toBe(deriveEvmAccount(m, 0).address);
     expect(created.btc.address).toBe(deriveBtcAddress(m, { networkKey: 'testnet' }).address);
     expect(created.sol.address).toBe(deriveSolAddress(m).address);
@@ -196,8 +226,8 @@ describe('stealth / hidden wallets', () => {
     const wa = await createHiddenWallet(a);
     const wb = await createHiddenWallet(b);
     expect(wa.address).not.toBe(wb.address);
-    expect(await tryRevealHidden(a)).toBe(wa.mnemonic);
-    expect(await tryRevealHidden(b)).toBe(wb.mnemonic);
+    expect(revealedMnemonic(await tryRevealHidden(a))).toBe(wa.mnemonic);
+    expect(revealedMnemonic(await tryRevealHidden(b))).toBe(wb.mnemonic);
   });
 
   it('self-verifies a freshly created hidden wallet is immediately revealable', async () => {
@@ -206,7 +236,7 @@ describe('stealth / hidden wallets', () => {
     // "succeeding" with nothing stored).
     const created = await createHiddenWallet('verify-after-write-1');
     expect(created.existing).toBe(false);
-    expect(await tryRevealHidden('verify-after-write-1')).toBe(created.mnemonic);
+    expect(revealedMnemonic(await tryRevealHidden('verify-after-write-1'))).toBe(created.mnemonic);
   });
 
   // ---- moveWalletToHidden: hide an EXISTING (provided) wallet ----
@@ -219,7 +249,7 @@ describe('stealth / hidden wallets', () => {
     expect(address).toBe(expectedAddr);
 
     // It is now revealable by its secret and yields the SAME wallet (not a fresh one).
-    const revealed = await tryRevealHidden('move-secret-aaaa');
+    const revealed = revealedMnemonic(await tryRevealHidden('move-secret-aaaa'));
     expect(revealed).toBe(mnemonic);
     expect(deriveEvmAccount(revealed, 0).address).toBe(expectedAddr);
   });
@@ -255,7 +285,7 @@ describe('stealth / hidden wallets', () => {
     await expect(moveWalletToHidden(second, 'shared-secret-cccc'))
       .rejects.toThrow(/already in use/i);
     // The first wallet is intact.
-    expect(await tryRevealHidden('shared-secret-cccc')).toBe(first);
+    expect(revealedMnemonic(await tryRevealHidden('shared-secret-cccc'))).toBe(first);
   });
 
   it('re-moving the SAME wallet under the same secret is idempotent', async () => {

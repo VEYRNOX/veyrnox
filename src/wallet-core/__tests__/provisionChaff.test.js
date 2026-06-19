@@ -69,12 +69,22 @@ describe('provisionDeniabilityChaff', () => {
       expect(unb64(chaff.iv).length).toBe(unb64(real.iv).length);
       expect(unb64(chaff.salt).length).toBe(16);
       expect(unb64(chaff.iv).length).toBe(12);
-      // ct is a real AES-GCM ciphertext of a 12-word mnemonic (tag + plaintext).
-      // Byte-exact ct length legitimately varies by mnemonic CONTENT for BOTH
-      // chaff and personalized blobs, so that variance is itself non-distinguishing;
-      // we assert it is a non-empty ciphertext, not an exact length.
+      // ct is a real AES-GCM ciphertext (tag + plaintext).
       expect(unb64(chaff.ct).length).toBeGreaterThan(16);
     }
+  });
+
+  it('H2: duress chaff and personalized duress blobs have BYTE-IDENTICAL ct length', async () => {
+    // Both setDuressVault paths now wrap the mnemonic in a FIXED-LENGTH container,
+    // so the duress slot's ct length is the same whether it is chaff or a real
+    // credential — the load-bearing deniability property (no length tell).
+    await provisionDeniabilityChaff();              // chaff into 'secondary'
+    const chaffDuress = await getBlob('secondary');
+    await setDuressVault(generateMnemonic(256), 'real-duress-2468'); // overwrite with real (24-word)
+    const realDuress = await getBlob('secondary');
+    // Even with a DIFFERENT word count (24 vs 12), the padded container makes the
+    // ciphertext lengths identical.
+    expect(unb64(chaffDuress.ct).length).toBe(unb64(realDuress.ct).length);
   });
 
   it('is idempotent and NEVER overwrites a personalized blob', async () => {
