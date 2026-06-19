@@ -3,19 +3,14 @@
 // app already relies on rather than inventing new ones:
 //   - EVM  : `isAddress` from ethers (the exact gate `evm/send.js` uses before signing)
 //   - SOL  : `isValidSolAddress` from wallet-core (base58 → 32-byte ed25519 key)
-//   - BTC  : the Send flow's shallow format regex (authoritative checksum is enforced
-//            by @scure/btc-signer at send time; this is a UI guard, not a crypto check)
+//   - BTC  : `isValidBtcAddress` from wallet-core — a real checksum + network-HRP
+//            check via @scure/btc-signer (the SAME library + params enforced at sign
+//            time), so the UI guard agrees with the crypto backstop and rejects
+//            mainnet addresses while the app is testnet-only.
 //
 // No wallet-core crypto is touched here — only existing exports are reused.
 import { isAddress } from "ethers";
-import { isValidSolAddress } from "@/wallet-core";
-
-// Shallow Bitcoin format check. Mainnet (legacy 1…, P2SH 3…, bech32 bc1…) AND
-// testnet/regtest bech32 (tb1…, bcrt1…) — the app is testnet-only, so a recipient
-// is a tb1… address (the wallet's own BIP-84 address included); without these the
-// send flow rejects every valid testnet recipient. Format-only — the authoritative
-// checksum + network match are enforced by @scure/btc-signer at sign time.
-const BTC_ADDRESS = /^(1|3|bc1|tb1|bcrt1)[a-zA-Z0-9]{25,62}$/;
+import { isValidSolAddress, isValidBtcAddress } from "@/wallet-core";
 
 // Currencies whose on-chain address is a standard 20-byte EVM 0x-address.
 const EVM_CURRENCIES = new Set(["ETH", "USDC", "USDT", "BNB", "MATIC", "ARB", "OP", "AVAX"]);
@@ -54,7 +49,7 @@ export function isValidAddressForCurrency(address, currency, network) {
     case "sol":
       return isValidSolAddress(address);
     case "btc":
-      return BTC_ADDRESS.test(address);
+      return isValidBtcAddress(address);
     default:
       return true;
   }

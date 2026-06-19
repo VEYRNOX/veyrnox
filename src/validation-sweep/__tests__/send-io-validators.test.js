@@ -64,12 +64,13 @@ describe('Recipient field — isValidAddressForCurrency I/O', () => {
     expect(isValidAddressForCurrency(EVM_CHECKSUMMED, 'SOL')).toBe(false);
   });
 
-  // FLAG S1 (characterization, by-design with UX caveat) — BTC validation is a
-  // SHALLOW REGEX. A correctly-shaped tb1… string with a BOGUS checksum passes the
-  // UI gate; the real checksum is only enforced by @scure/btc-signer at sign time.
-  // The user can advance to the verify step with an unspendable address.
-  it('CONFIRMED: a checksum-invalid but well-shaped tb1… address passes the UI gate', () => {
-    expect(isValidAddressForCurrency(BTC_TESTNET_SHAPED, 'BTC')).toBe(true);
+  // FLAG S1 (FIXED) — BTC validation now does a REAL checksum + network check via
+  // @scure/btc-signer's Address() (the same library + params enforced at sign time),
+  // so a correctly-shaped tb1… string with a BOGUS checksum is rejected at the UI
+  // gate — the user can no longer advance to the verify step with an unspendable
+  // address. (Previously a shallow regex passed it; see fix/btc-address-validation.)
+  it('FIXED: a checksum-invalid but well-shaped tb1… address is now rejected by the UI gate', () => {
+    expect(isValidAddressForCurrency(BTC_TESTNET_SHAPED, 'BTC')).toBe(false);
   });
 
   // FLAG S2 (fail-open at the validator) — empty and unknown-currency inputs return
