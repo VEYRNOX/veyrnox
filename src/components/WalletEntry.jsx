@@ -841,7 +841,7 @@ export default function WalletEntry() {
                 </div>
                 <div>
                   <Label>12 or 24-word BIP-39 Seed Phrase</Label>
-                  <textarea value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                  <textarea value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
                 </div>
                 <Button className="w-full gap-2" disabled={!importPhrasePin.trim() || busy} onClick={doImportWallet}>
                   {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Restore / Import
@@ -926,7 +926,7 @@ export default function WalletEntry() {
               </div>
               <div>
                 <Label>12 or 24-word recovery phrase</Label>
-                <textarea value={recoverySeed} onChange={e => setRecoverySeed(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                <textarea value={recoverySeed} onChange={e => setRecoverySeed(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
               </div>
               <Button className="w-full gap-2" disabled={!recoverySeed.trim() || busy} onClick={() => {
                 const phrase = recoverySeed.trim().replace(/\s+/g, " ");
@@ -1037,7 +1037,7 @@ export default function WalletEntry() {
         </div>
         <div>
           <Label>12 or 24-word BIP-39 Seed Phrase</Label>
-          <textarea value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+          <textarea value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
         </div>
         <div>
           <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>

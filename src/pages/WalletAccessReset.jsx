@@ -330,6 +330,10 @@ export default function WalletAccessReset() {
             value={recPhrase}
             onChange={(e) => setRecPhrase(e.target.value)}
             rows={3}
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
             placeholder="word1 word2 word3 … word12"
             className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring"
           />
