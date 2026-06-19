@@ -355,7 +355,6 @@ export const CLASSIFICATION = {
   '/leaderboard':       { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Social leaderboard cut: no social graph, targeting vector, off-wedge for self-custody.' },
   '/public-profiles':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Public profiles cut: social identity exposure conflicts with deniability model.' },
   '/shared-portfolio':  { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Shared portfolio cut: requires social graph, off-wedge.' },
-  '/referrals':         { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Referral tracker cut: growth mechanic, off-wedge for self-custody product.' },
   '/advisor':           { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI portfolio advisor cut: fabricated AI advice, off-wedge.' },
   '/ai-assistant':      { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI assistant cut: LLM dependency, off-wedge.' },
   '/what-if':           { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'What-if simulator cut: fabricated price projections, off-wedge.' },
