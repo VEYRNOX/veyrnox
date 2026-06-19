@@ -11,7 +11,6 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
-import { WalletConnectProvider } from '@/lib/WalletConnectProvider.jsx';
 import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { NotificationsProvider } from '@/notify/useNotifications';
@@ -131,7 +130,7 @@ const AuthenticatedApp = () => {
           <Route path="/receive" element={<ReceiveCrypto />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/connect" element={<ConnectWallet />} />
-          <Route path="/walletconnect" element={<WalletConnectProvider><WalletConnect /></WalletConnectProvider>} />
+          <Route path="/walletconnect" element={<WalletConnect />} />
           <Route path="/alerts" element={<PriceAlerts />} />
           <Route path="/calculator" element={<Calculator />} />
           <Route path="/analytics" element={<Analytics />} />

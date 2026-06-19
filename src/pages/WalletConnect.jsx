@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import styles from './WalletConnect.module.css';
-import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
+import { WalletConnectProvider, useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { SessionProposalModal } from '@/components/walletconnect/SessionProposalModal.jsx';
 import { RequestApprovalModal } from '@/components/walletconnect/RequestApprovalModal.jsx';
 import { ActiveSessions } from '@/components/walletconnect/ActiveSessions.jsx';
@@ -8,7 +8,7 @@ import { useWallet } from '@/lib/WalletProvider.jsx';
 
 const CONFIGURED = Boolean(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID);
 
-export default function WalletConnect() {
+function WalletConnectInner() {
   const { initialized, error, pendingProposals, pendingRequests, pair } = useWalletConnect();
   const { isUnlocked } = useWallet();
 
@@ -149,4 +149,8 @@ export default function WalletConnect() {
       )}
     </div>
   );
+}
+
+export default function WalletConnect() {
+  return <WalletConnectProvider><WalletConnectInner /></WalletConnectProvider>;
 }
