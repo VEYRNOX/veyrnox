@@ -162,7 +162,7 @@ export default function AddressBook() {
               <Switch checked={form.is_trusted} onCheckedChange={v => setForm(f => ({ ...f, is_trusted: v }))} />
               <Label>Mark as Trusted</Label>
             </div>
-            <Button className="w-full" disabled={!canSave} onClick={() => { if (!canSave) return; create.mutate({ ...form, address: trimmedAddress }); }}>
+            <Button className="w-full" disabled={!canSave} onClick={() => { if (!canSave) return; setOpen(false); setForm({ name: "", address: "", currency: "ETH", network: "Ethereum", emoji: "👤", note: "", is_trusted: false }); create.mutate({ ...form, address: trimmedAddress }); }}>
               {create.isPending ? "Saving..." : "Save Contact"}
             </Button>
           </div>

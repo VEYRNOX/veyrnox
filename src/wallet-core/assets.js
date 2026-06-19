@@ -77,7 +77,16 @@ export const ASSETS = Object.freeze([
   //   https://sepolia-optimism.etherscan.io/tx/0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
   // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
   { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.LIVE },
+  // AVAX: receive_only — send path is built (same EVM stack as ETH/MATIC/ARB/OP)
+  // but NO legitimate Avalanche Fuji faucet exists to fund the test wallet for
+  // a verifiable on-chain send. Stays receive_only until a funded test account
+  // is available and a real Fuji transfer is confirmed on-chain.
   { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.RECEIVE_ONLY },
+  // BNB: receive_only — send path is built (same EVM stack). No legitimate BNB
+  // testnet faucet available to fund the test wallet. Stays receive_only until
+  // a funded test account is available and a real tBNB transfer is confirmed.
+  // NOTE: BNB testnet enforces a minimum gas price; use Standard+ fee tier when
+  // sending (Slow can underprice and get rejected).
   { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.RECEIVE_ONLY },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
   // the mainnet gate (btc/networks.js). Address derivation + live balance reads
