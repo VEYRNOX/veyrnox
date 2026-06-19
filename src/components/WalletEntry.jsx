@@ -78,6 +78,7 @@ import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
+import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
 // Both operands are local strings with no remote attacker; this is a codebase
@@ -526,8 +527,18 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try { await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
     catch (e) {
-      clearPendingPin(); setProvisioning(false);
-      const msg = e?.message || "Couldn't import that seed phrase. Please set your PIN and try again.";
+      setProvisioning(false);
+      if (isRecoverableSeedInputError(e)) {
+        // Recoverable user input (bad BIP-39 checksum/wordlist). consumePendingPin
+        // left the pending PIN intact — KEEP it so the user can fix the phrase and
+        // retry, instead of being stranded on the misleading "No PIN set" loop.
+        setError("That doesn't look like a valid recovery phrase. Check the words and try again.");
+        return;
+      }
+      // Genuine provisioning/teardown failure: fail closed. Clear the pending PIN;
+      // the message must reflect that the user has to set their PIN again.
+      clearPendingPin();
+      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
       toast.error(msg);
     } finally { setBusy(false); }
