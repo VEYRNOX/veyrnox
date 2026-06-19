@@ -7,6 +7,7 @@ import {
   decryptPinSeal,
   finalisePinRestore,
   downloadBackupFile,
+  verifyBackupEnvelope,
 } from "@/wallet-core/vaultBackup";
 import { toast } from "sonner";
 import BackButton from "@/components/BackButton";
@@ -81,8 +82,12 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
     setBusy(true);
     try {
       const envelope = await createBackup(password, pin);
+      // Prove the backup is actually restorable with these exact credentials
+      // BEFORE downloading / claiming success — never hand the user a file they
+      // can't reopen.
+      await verifyBackupEnvelope(envelope, password, pin);
       downloadBackupFile(envelope);
-      toast.success("Backup downloaded — store it somewhere safe.");
+      toast.success("Backup verified ✓ and downloaded — it opens with this password or PIN.");
       setPassword(""); setPin(""); setPinConfirm("");
     } catch (err) {
       toast.error(err?.message || "Backup failed.");
@@ -141,7 +146,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 transition-opacity"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        {busy ? "Creating backup…" : "Download backup file"}
+        {busy ? "Creating & verifying…" : "Download backup file"}
       </button>
 
       <p className="text-xs text-muted-foreground text-center">
@@ -293,6 +298,11 @@ function RestoreTab({ lock }) {
           <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
           <span>Loaded: <span className="font-mono">{fileName}</span></span>
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          Enter the <b>backup password</b> or <b>backup PIN you chose when you created this file</b> —
+          not your app unlock PIN.
+        </p>
 
         {/* Method toggle */}
         <div className="flex gap-2">

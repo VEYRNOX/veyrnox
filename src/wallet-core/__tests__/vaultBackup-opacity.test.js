@@ -13,7 +13,7 @@
 // is protected by the per-seal AES-GCM, which the dedicated vault tests cover.
 // This file only guards the container behaviour the PR changed.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { downloadBackupFile, parseBackupFile, createBackupEnvelope } from '../vaultBackup.js';
+import { downloadBackupFile, parseBackupFile, createBackupEnvelope, verifyBackupEnvelope } from '../vaultBackup.js';
 import { decryptVault } from '../vault.js';
 
 // A structurally-valid envelope (isValidBackup): app/backup_v + two blob seals.
@@ -84,5 +84,15 @@ describe('backup file is a BINARY encrypted-vault container (guards PR #239/#245
     const parsed = parseBackupFile(await capturedBytes());
     expect(await decryptVault(parsed.seals.password, 'backup-pass-123')).toBe(container);
     expect(await decryptVault(parsed.seals.pin, '2468')).toBe(container);
+  }, 60000);
+
+  // verify-after-export: a freshly-made backup is proven restorable before the
+  // user is told it succeeded.
+  it('verifyBackupEnvelope passes for the chosen creds and throws otherwise', async () => {
+    const container = JSON.stringify({ wallets: [{ id: 'w1', mnemonic: 'foxtrot golf hotel india' }] });
+    const env = await createBackupEnvelope(container, 'GoodBackupPw1', '9876');
+    await expect(verifyBackupEnvelope(env, 'GoodBackupPw1', '9876')).resolves.toBe(true);
+    await expect(verifyBackupEnvelope(env, 'WrongPw', '9876')).rejects.toThrow(/verification failed/i);
+    await expect(verifyBackupEnvelope(env, 'GoodBackupPw1', '0000')).rejects.toThrow(/verification failed/i);
   }, 60000);
 });
