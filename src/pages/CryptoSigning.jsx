@@ -197,7 +197,7 @@ export default function CryptoSigning() {
       {tab === "import" && (
         <div className="space-y-4">
           <div><Label>BIP-39 Mnemonic Phrase (12 or 24 words)</Label>
-            <textarea value={importMnemonic} onChange={e => setImportMnemonic(e.target.value)} rows={3} placeholder="word1 word2 word3 ..." className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+            <textarea value={importMnemonic} onChange={e => setImportMnemonic(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ..." className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
           </div>
           <Button className="w-full" onClick={importWallet} disabled={!importMnemonic.trim()}>Import and Derive Wallets</Button>
           {wallet && mnemonic && (
