@@ -224,6 +224,40 @@ export async function createBackupEnvelope(containerJson, password, pin) {
 }
 
 /**
+ * Prove a freshly-created backup is actually restorable BEFORE the user is told
+ * it succeeded. Round-trips the envelope through the real on-disk binary
+ * encoding (catching any format/serialization defect) and then decrypts BOTH
+ * seals with the credentials the user chose (catching a credential or KDF-param
+ * mismatch). A backup you cannot open is worse than none — so export calls this
+ * and only claims success if it passes.
+ *
+ * @param {object} envelope   result of createBackupEnvelope()
+ * @param {string} password   the chosen backup password
+ * @param {string} pin        the chosen backup PIN
+ * @throws if the encoded file does not parse, or either seal fails to decrypt to
+ *         the same plaintext under the given credentials
+ */
+export async function verifyBackupEnvelope(envelope, password, pin) {
+  let parsed;
+  try {
+    parsed = parseBackupFile(encodeBinary(envelope));
+  } catch {
+    throw new Error('Backup verification failed — the file did not encode correctly. Not saved.');
+  }
+  let fromPassword, fromPin;
+  try {
+    fromPassword = await decryptVault(parsed.seals.password, password);
+    fromPin = await decryptVault(parsed.seals.pin, pin);
+  } catch {
+    throw new Error('Backup verification failed — it could not be reopened with these credentials. Not saved.');
+  }
+  if (fromPassword !== fromPin || typeof fromPassword !== 'string' || fromPassword.length === 0) {
+    throw new Error('Backup verification failed — seal mismatch. Not saved.');
+  }
+  return true;
+}
+
+/**
  * Trigger a browser file download of the backup envelope.
  * Uses a neutral filename (.enc) — not a tell that the file is a seed backup.
  * @param {object} envelope  result of createBackupEnvelope()
