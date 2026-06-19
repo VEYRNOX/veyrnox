@@ -1199,6 +1199,16 @@ export function WalletProvider({ children }) {
         requireBiometric: isBiometricUnlockEnabled() && !opts.skipBiometric,
       });
     } catch (primaryErr) {
+      // BIOMETRIC FAILURE (native, biometric-unlock enabled): the OS prompt was
+      // cancelled/failed/locked-out BEFORE any password check (tagged in
+      // keyStore.unlock). Fail CLOSED with a biometric error — the UI surfaces the
+      // password-only escape hatch (opts.skipBiometric) — and do NOT consult the
+      // deniability path, which would otherwise open the empty decoy on a mere Face
+      // ID cancel even when the PIN/password is correct. Short-circuiting here leaks
+      // nothing: the biometric prompt itself was already user-visible.
+      if (primaryErr && primaryErr.veyrnoxBiometricGate) {
+        throw new BiometricGateError('cancelled', primaryErr);
+      }
       // The primary unlock failed. BEFORE surfacing that failure, consult the
       // deniability/emergency paths. resolveDeniabilityUnlock (SAST M2) runs a
       // CONSTANT number of Argon2id KDFs (exactly 3) regardless of which features
