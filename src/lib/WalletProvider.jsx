@@ -759,7 +759,14 @@ export function WalletProvider({ children }) {
   // wallet #1 of a fresh container. Marked backedUp:true — the user supplied the
   // seed, so by definition they hold the backup (no nag for an imported wallet).
   const importWallet = useCallback(async (mnemonic, password) => {
-    if (!validateMnemonic(mnemonic)) throw new Error('Invalid recovery phrase');
+    if (!validateMnemonic(mnemonic)) {
+      // Tag the recoverable input reject so the UI catch can KEEP the pending PIN
+      // (see isRecoverableSeedInputError); a bad phrase is user-fixable, not a
+      // provisioning failure. Nothing below has run, so nothing to roll back.
+      const e = new Error('Invalid recovery phrase');
+      e.code = 'INVALID_MNEMONIC';
+      throw e;
+    }
     const { container, walletId } = mv.migrateLegacyMnemonic(mnemonic);
     await keyStore.createVault(mv.serializeContainer(container), password);
     containerRef.current = container;
