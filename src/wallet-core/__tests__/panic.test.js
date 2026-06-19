@@ -139,22 +139,40 @@ describe('panic wipe', () => {
     expect(report.indexedDbKeys).toEqual([]);
     expect(report.localStorageResidue).toEqual([]);
 
+    // A re-inspection confirms the same. NOTE: this MUST run before the probe
+    // calls below — tryRevealHidden() calls getOrCreateStealthSalt(), which
+    // regenerates 'veyrnox-stealth-slot-salt' in localStorage as a side-effect.
+    // Since that key is now a tracked residue key, probing after the wipe would
+    // re-create a tell the inspector honestly reports — so we confirm cleanliness
+    // first, then probe the (still-wiped) key-material paths.
+    const after = await inspectKeyMaterial();
+    expect(after.clean).toBe(true);
+
     // And every path that previously opened key material now misses.
     expect(await webKeyStore.hasVault()).toBe(false);
     expect(await hasDuressVault()).toBe(false);
     expect(await tryRevealHidden(HIDDEN_SECRET)).toBeNull();
     expect(await hasPanicVault()).toBe(false);
-
-    // A re-inspection confirms the same.
-    const after = await inspectKeyMaterial();
-    expect(after.clean).toBe(true);
   });
 
   it('wipes the deniability tells in localStorage and reports them honestly (C-1)', async () => {
     // The forensic artifacts a panic wipe must also destroy — leaving any of these
     // proves the coercion-resistance stack was in use (and the decoy salt + a
-    // coerced PIN reproduces the deterministic decoy). Internal audit C-1.
-    const TELLS = ['veyrnox-pin-decoy-salt', 'veyrnox-auth-model', 'veyrnox-audit-log'];
+    // coerced PIN reproduces the deterministic decoy). Internal audit C-1, extended
+    // per AI-review F-02/F-03/F-05 (stealth-slot salt, audit-device salt, passkey
+    // config). This pins the FULL membership of DENIABILITY_RESIDUE_KEYS, so a key
+    // dropped from the wipe list — leaving a tell behind while clean still reports
+    // true — fails here (also guards F-04).
+    const TELLS = [
+      'veyrnox-pin-decoy-salt',
+      'veyrnox-auth-model',
+      'veyrnox-audit-log',
+      'veyrnox-stealth-slot-salt',
+      'veyrnox-audit-device-salt',
+      'veyrnox-passkey-unlock',
+      'veyrnox-passkey-cred',
+      'veyrnox-2fa-passkey',
+    ];
     await populateDevice();
     for (const k of TELLS) localStorage.setItem(k, 'x');
 

@@ -106,20 +106,37 @@ const LOCAL_RESIDUE_KEYS = Object.freeze([
 ]);
 
 // DENIABILITY TELLS in localStorage that a wipe MUST also destroy (internal audit
-// C-1). These are not key material, but each is a forensic artifact that betrays
-// the coercion-resistance stack was in use — exactly what a panic wipe exists to
-// erase. Leaving them means a "successful" wipe still proves the stack was here
-// (and the decoy salt + a coerced PIN reproduces the deterministic decoy). Kept as
-// plain strings, mirroring the demo-residue pattern; source modules in comments:
-//   veyrnox-pin-decoy-salt — decoyFallback.js (seed of the deterministic decoy)
-//   veyrnox-auth-model      — lib/authModel.js (PIN-cohort marker)
-//   veyrnox-audit-log       — auditLog.js AUDIT_LOG_PREF_KEY (audit-log enabled tell)
+// C-1; extended per AI-review F-02/F-03/F-05, 2026-06-19). These are not key
+// material, but each is a forensic artifact that betrays the coercion-resistance
+// stack was in use — exactly what a panic wipe exists to erase. Leaving them means
+// a "successful" wipe still proves the stack was here (and the decoy salt + a
+// coerced PIN reproduces the deterministic decoy). Kept as plain strings, mirroring
+// the demo-residue pattern (deliberately NOT importing the source modules — panic.js
+// stays decoupled from the deniability stack it erases); source modules in comments:
+//   veyrnox-pin-decoy-salt    — decoyFallback.js (seed of the deterministic decoy)
+//   veyrnox-auth-model        — lib/authModel.js (PIN-cohort marker)
+//   veyrnox-audit-log         — auditLog.js AUDIT_LOG_PREF_KEY (audit-log enabled tell)
+//   veyrnox-stealth-slot-salt — stealth.js (proves the hidden-wallet pool was
+//                               provisioned — the strongest tell in this set; F-02)
+//   veyrnox-audit-device-salt — auditLog.js (per-device audit-log key-derivation
+//                               salt; tell the audit feature was configured; F-03)
+//   veyrnox-passkey-unlock    — lib/passkey.js PASSKEY_PREF_KEY (F-05)
+//   veyrnox-passkey-cred      — lib/passkey.js PASSKEY_CRED_KEY (F-05)
+//   veyrnox-2fa-passkey       — lib/passkey.js TWOFACTOR_PASSKEY_KEY (F-05)
 // The audit-log DATA blob ('quaternary') already dies with clearVaultStore(); this
-// removes the surviving enabled-pref. A test pins these so a key rename is caught.
+// removes the surviving enabled-pref and the per-device salt. A test pins these so a
+// key rename is caught. ALL_RESIDUE_KEYS is the single list driving BOTH the erase
+// (clearLocalAddressResidue) AND the inspection (readLocalAddressResidue →
+// inspectKeyMaterial().clean), so adding a key here fixes both at once (closes F-04).
 const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   'veyrnox-pin-decoy-salt',
   'veyrnox-auth-model',
   'veyrnox-audit-log',
+  'veyrnox-stealth-slot-salt',
+  'veyrnox-audit-device-salt',
+  'veyrnox-passkey-unlock',
+  'veyrnox-passkey-cred',
+  'veyrnox-2fa-passkey',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
