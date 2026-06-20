@@ -78,13 +78,27 @@ describe('notify/sources.js — send call-site adapter (PR-2 §3)', () => {
     ).not.toThrow();
   });
 
-  // §8/§9: PR-2 wires ONLY the send source. Receive + risk stay HONEST-DISABLED
-  // (no clean active-set poll / no live score() call site) — assert the adapter
-  // surface does not grow a receive/risk source without a real trigger behind it.
-  it('exposes ONLY a send source — no receive/risk adapter (HONEST-DISABLED)', () => {
+  // All three sources are now wired (RECEIVE + RISK enabled post-PR-2):
+  // notifyReceiveDetected — portfolio poll delta (WalletPortfolioPage, canManage gate, I3)
+  // notifyTxRiskAlert    — scoreCurrentSend() verdict at sign time (SendCrypto, I4)
+  // notifyRaspAlert / notifyFraudAlert — RASP/fraud scan (WARN/BLOCK + critical/high only)
+  it('exposes send, receive, and risk adapters — all real sources now wired', () => {
     const exported = Object.keys(sources);
     expect(exported).toContain('notifySendConfirmed');
-    expect(exported.find((k) => /receive/i.test(k))).toBeUndefined();
-    expect(exported.find((k) => /risk/i.test(k))).toBeUndefined();
+    expect(exported).toContain('notifyReceiveDetected');
+    expect(exported).toContain('notifyTxRiskAlert');
+    expect(exported).toContain('notifyRaspAlert');
+    expect(exported).toContain('notifyFraudAlert');
+  });
+
+  it('notifyReceiveDetected is fire-and-forget (I4: returns bool, never throws)', () => {
+    expect(() => sources.notifyReceiveDetected({ amount: '+$1.50', ts: 1 })).not.toThrow();
+    expect(sources.notifyReceiveDetected({ amount: '', ts: 1 })).toBe(false);
+  });
+
+  it('notifyTxRiskAlert is fire-and-forget (I4: returns bool, never throws)', () => {
+    expect(() => sources.notifyTxRiskAlert({ level: 'CAUTION', sentence: 'New address', signalId: null, ts: 1 })).not.toThrow();
+    expect(sources.notifyTxRiskAlert({ level: 'OK', sentence: null, signalId: null, ts: 1 })).toBe(false);
+    expect(sources.notifyTxRiskAlert({ level: 'INFO', sentence: null, signalId: null, ts: 1 })).toBe(false);
   });
 });

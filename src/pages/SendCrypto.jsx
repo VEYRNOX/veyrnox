@@ -43,7 +43,7 @@ import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
-import { notifySendConfirmed, notifyRaspAlert } from "@/notify/sources";
+import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
@@ -611,7 +611,10 @@ export default function SendCrypto() {
       let riskScoreFailed = false;
       let presignAtSign = null;
       try {
-        presignAtSign = presignGate(raspTier, scoreCurrentSend().level, riskAck);
+        const freshScore = scoreCurrentSend();
+        presignAtSign = presignGate(raspTier, freshScore.level, riskAck);
+        // Fire-and-forget (I4) — notification failure must never block or unwind the send.
+        notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
       } catch {
         riskScoreFailed = true;
       }
