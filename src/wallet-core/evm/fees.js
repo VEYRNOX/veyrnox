@@ -35,18 +35,26 @@ export const MIN_TIP_WEI = 100_000_000n; // 0.1 gwei
 /**
  * PURE: build the three preset tiers from a live base fee, the network-suggested
  * tip, and a gas limit. All wei/gas values are BigInt. For each tier:
- *   maxPriorityFeePerGas = suggestedTip × tierMultiplier (floored at MIN_TIP_WEI)
+ *   maxPriorityFeePerGas = suggestedTip × tierMultiplier (floored at MIN_TIP_WEI
+ *                          and optionally a per-network minGasPriceWei)
  *   maxFeePerGas         = baseFee×2 + tip            (one-doubling headroom)
  *   estFee               = gasLimit × (baseFee + tip) (EXPECTED cost)
  *   maxFee               = gasLimit × maxFeePerGas    (ceiling the user could pay)
+ *
+ * minGasPriceWei: optional per-network minimum (e.g. BSC enforces ≥1 gwei). On
+ * chains where baseFee≈0 (BSC EIP-1559), effective price≈tip, so this floor
+ * prevents Slow-tier txs being silently rejected by the network.
  */
-export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit }) {
+export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit, minGasPriceWei }) {
   const base = BigInt(baseFeePerGasWei);
   const suggested = BigInt(suggestedTipWei);
   const limit = BigInt(gasLimit);
+  const tipFloor = minGasPriceWei != null && BigInt(minGasPriceWei) > MIN_TIP_WEI
+    ? BigInt(minGasPriceWei)
+    : MIN_TIP_WEI;
   return EVM_TIERS.map((t) => {
     let tip = (suggested * t.tipNum) / t.tipDen;
-    if (tip < MIN_TIP_WEI) tip = MIN_TIP_WEI;
+    if (tip < tipFloor) tip = tipFloor;
     const maxFeePerGas = base * 2n + tip;
     return {
       id: t.id,
@@ -132,6 +140,6 @@ export async function estimateEvmFeeTiers({ networkKey, from, to, value, data, g
     baseFeePerGasWei: baseFeePerGasWei.toString(),
     suggestedTipWei: suggestedTipWei.toString(),
     gasLimit: est.toString(),
-    tiers: buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit: est }),
+    tiers: buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit: est, minGasPriceWei: info?.minGasPriceWei }),
   };
 }

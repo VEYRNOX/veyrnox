@@ -49,6 +49,31 @@ describe('buildEvmTiers — EIP-1559 preset tiers', () => {
     const t0 = buildEvmTiers({ baseFeePerGasWei: GWEI(5), suggestedTipWei: 0n, gasLimit: 21000n });
     for (const t of t0) expect(BigInt(t.maxPriorityFeePerGasWei)).toBe(MIN_TIP_WEI);
   });
+
+  it('floors all tiers at minGasPriceWei on chains with a network minimum (BSC)', () => {
+    // BSC testnet: baseFee≈0, suggestedTip=1 gwei (network minimum), minGasPrice=1 gwei.
+    // Slow = 1 gwei × ½ = 0.5 gwei — below the 1 gwei floor → must be clamped.
+    const tiers = buildEvmTiers({
+      baseFeePerGasWei: 0n,
+      suggestedTipWei: GWEI(1),
+      gasLimit: 21000n,
+      minGasPriceWei: GWEI(1),
+    });
+    const [slow, std, fast] = tiers.map((t) => BigInt(t.maxPriorityFeePerGasWei));
+    expect(slow).toBe(GWEI(1));  // clamped: 0.5 gwei < 1 gwei floor
+    expect(std).toBe(GWEI(1));   // exact at floor
+    expect(fast).toBe(GWEI(2));  // 2× — comfortably above floor
+    // All three clear the network minimum.
+    for (const t of tiers) {
+      expect(BigInt(t.maxPriorityFeePerGasWei) >= GWEI(1)).toBe(true);
+    }
+  });
+
+  it('minGasPriceWei below MIN_TIP_WEI is ignored (MIN_TIP_WEI still applies)', () => {
+    const tiny = MIN_TIP_WEI / 2n; // 0.05 gwei — below the absolute floor
+    const tiers = buildEvmTiers({ baseFeePerGasWei: 0n, suggestedTipWei: 0n, gasLimit: 21000n, minGasPriceWei: tiny });
+    for (const t of tiers) expect(BigInt(t.maxPriorityFeePerGasWei)).toBe(MIN_TIP_WEI);
+  });
 });
 
 describe('buildEvmCustomFee — advanced (max base + tip) model', () => {

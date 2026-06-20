@@ -54,7 +54,10 @@ const byKey = (key) =>
  * treatment when/if it is verified and flipped.
  */
 const _usd = byKey("usd");
-export const USD_RATES = Object.freeze({ ..._usd, ARB: _usd.ETH, OP: _usd.ETH, MATIC: 0.4 });
+// AVAX is not in the top-10 display list but needs a rate for spend-cap USD
+// conversion once it flips to live (same treatment as MATIC). BNB is already
+// priced via _usd.BNB from TOP_CRYPTOS.
+export const USD_RATES = Object.freeze({ ..._usd, ARB: _usd.ETH, OP: _usd.ETH, MATIC: 0.4, AVAX: 25 });
 /**
  * Canonical human-facing disclosure for ANY figure derived from USD_RATES. These
  * are STATIC reference prices, not a live feed, so anything converted through them

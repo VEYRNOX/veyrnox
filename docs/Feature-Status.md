@@ -21,7 +21,7 @@
   BTC (Bitcoin testnet), and SOL (Solana devnet)** are `live` — each send verified
   end-to-end through the full in-app UI path on-chain (covering every send family:
   EVM L1 native, ERC-20 contract-call, three EVM L2/sidechains, BTC UTXO, SOL
-  ed25519). **The other two assets (AVAX, BNB) are `receive_only`** — see the table below.
+  ed25519, AVAX Fuji, and BNB testnet). All 10 wallet assets are now `live`.
   Receiving and balance reads work for all 10 assets; the send *code path* exists
   and is unit-tested for EVM/ERC-20/BTC/SOL, but is HARD-gated off until a real
   on-chain send is done by hand and reviewed.
@@ -48,8 +48,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | MATIC | evm | Polygon Amoy | ✅ | ✅ verified on-chain (full UI path, `0x6a4ded…`, block 40274236, 2026-06-16) | ✅ **live** |
 | ARB | evm | Arbitrum Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x797928…`, 2026-06-14) | ✅ **live** |
 | OP | evm | Optimism Sepolia | ✅ | ✅ verified on-chain (full UI path, `0xc3fd1e…`, 2026-06-14) | ✅ **live** |
-| AVAX | evm | Avalanche Fuji | ✅ | gated, unverified | 🟡 receive_only |
-| BNB | evm | BNB testnet | ✅ | gated, unverified | 🟡 receive_only |
+| AVAX | evm | Avalanche Fuji | ✅ | ✅ verified on-chain (`0xb27b9a…`, 2026-06-19) | ✅ **live** |
+| BNB | evm | BNB testnet | ✅ | ✅ verified on-chain (`0x2ff202…`, 2026-06-19) | ✅ **live** |
 | BTC | btc | Bitcoin testnet (BIP-84) | ✅ | ✅ verified on-chain (full UI path, `2da87a27…`, block 4990901) | ✅ **live** |
 | SOL | solana | Solana devnet (ed25519) | ✅ | ✅ verified on-chain (full UI path, `5KGXAGTJ…`, finalized) | ✅ **live** |
 
@@ -83,7 +83,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Arbitrum (Arbitrum Sepolia) — ✅ live send — **full UI path verified on-chain** (txid `0x797928…`, 2026-06-14; uncovered + fixed two real send bugs en route: ethers RPC batching → silent broadcast hang, and a hardcoded 21000 gasLimit rejected on L2 as "intrinsic gas too low")
 - Optimism (OP Sepolia) — ✅ live send — **full UI path verified on-chain** (txid `0xc3fd1e…`, 2026-06-14; funded by bridging Sepolia ETH through the OptimismPortal)
 - Polygon (Polygon Amoy) — ✅ live send — **full UI path verified on-chain** (native POL gas; txid `0x6a4ded…`, chainId 80002, block 40274236, 2026-06-16, 0.01 POL `0x90f9f1…E68a729` → `0xd8dA6BF2…aA96045`, status SUCCESS, gasUsed 21000). Mainnet stays gated.
-- Avalanche / BNB (testnets) — 🟡 receive_only (address + balance ✅, send gated). PARKED: blocked solely on testnet faucet access (Fuji/BNB faucets gate on a coupon or a mainnet balance), NOT on code — the native-EVM send path is already verified live via MATIC/ARB/OP, so these add no new code-path coverage. The dev send-ungate already makes them sendable for verification the moment they're funded; flip to `live` only after a real on-chain UI-path txid per the verify-don't-assert rule.
+- Avalanche (Fuji) — ✅ live send — **on-chain verified 2026-06-19** (native AVAX transfer; txid `0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0`, block 56417576, `0x90f9f1…E68a729` → `0x82D0Fa…455BAB`, 0.01 AVAX, EIP-1559 Standard tier). Explorer: testnet.snowtrace.io.
+- BNB (BNB testnet, chainId 97) — ✅ live send — **on-chain verified 2026-06-19** (native tBNB transfer; txid `0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91`, block 114367510, `0x90f9f1…E68a729` → `0x82D0Fa…455BAB`, 0.01 tBNB, 1 gwei tip floors BSC min-gas requirement). Explorer: testnet.bscscan.com.
 - ERC-20 (USDC, USDT — Sepolia) — ✅ live send — **full UI path verified on-chain** (ERC-20 `transfer`, `sendToken`; USDC txid `0x687d8c…` block 11074999, USDT txid `0x3168e4…` block 11075008, both 2026-06-16, 1 token each from `0x90f9f1…E68a729` → `0xd8dA6BF2…aA96045`, status SUCCESS, decimals 6 re-checked on-chain). Mainnet stays gated.
 - Bitcoin (BIP-84 testnet) — ✅ live send — **full UI path verified on-chain** (BIP-84 P2WPKH, `signAndBroadcastBtc`; txid `2da87a27…`, block 4990901, 2026-06-14, user-driven UI send). Mainnet stays gated.
 - Solana (ed25519 devnet) — ✅ live send — **full UI path verified on-chain** (ed25519/SLIP-0010, `signAndBroadcastSol`; sig `5KGXAGTJ…`, FINALIZED, 2026-06-14, user-driven UI send). Mainnet stays gated.
