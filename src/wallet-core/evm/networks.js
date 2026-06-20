@@ -134,7 +134,10 @@ export const NETWORKS = {
     chainId: 43113,
     symbol: 'AVAX',
     decimals: 18,
-    defaultRpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
+    // publicnode (allowed by BOTH shipped CSP metas; api.avax-test.network is only
+    // in one, so the CSP intersection blocked it in the browser — balance never read,
+    // send never broadcast). Mirrors the publicnode endpoints the live chains use.
+    defaultRpcUrl: 'https://avalanche-fuji-c-chain-rpc.publicnode.com',
     explorer: 'https://testnet.snowtrace.io',
     isTestnet: true,
     enabled: true,
