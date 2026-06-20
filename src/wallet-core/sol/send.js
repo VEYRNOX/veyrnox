@@ -308,7 +308,16 @@ export async function signAndBroadcastSol({
       // before the deadline, NOT that the tx was excluded. A rebuild uses a FRESH
       // signature, so resending after a silent inclusion would move funds twice.
       // Re-check the just-broadcast signature before rebuilding.
-      const landing = await getSignatureLanding(networkKey, signature);
+      let landing;
+      try {
+        landing = await getSignatureLanding(networkKey, signature);
+      } catch {
+        throw new Error(
+          'Could not confirm whether the transaction landed before its blockhash ' +
+          'expired — check the explorer for this signature before resending. ' +
+          `Original error: ${msg.trim()}`,
+        );
+      }
       if (landing.landed === true) {
         if (landing.err) {
           throw new Error(`Transaction failed on-chain: ${JSON.stringify(landing.err)}`);

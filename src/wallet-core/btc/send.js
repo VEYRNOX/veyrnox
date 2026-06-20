@@ -70,10 +70,14 @@ export async function estimateBtcSend({ networkKey, fromAddress, toAddress, amou
   // Reject a wrong-network / malformed recipient EARLY (before any UTXO/fee fetch)
   // with a legible error — network-correct via the same library used at sign time.
   assertValidBtcAddress(toAddress, net.params);
-  const [utxos, rate] = await Promise.all([
+  const [allUtxos, rate] = await Promise.all([
     getUtxos(networkKey, fromAddress),
     feeRate != null ? Promise.resolve(feeRate) : getFeeRate(networkKey),
   ]);
+  const utxos = allUtxos.filter(u => u.confirmed);
+  if (utxos.length === 0) {
+    throw new Error('No confirmed UTXOs available. Unconfirmed balance is pending.');
+  }
   const plan = selectCoins({
     utxos,
     toAddress,
@@ -123,10 +127,14 @@ export async function signAndBroadcastBtc({
     throw new Error('Provided key does not control the from address');
   }
 
-  const [utxos, rate] = await Promise.all([
+  const [allUtxos, rate] = await Promise.all([
     getUtxos(networkKey, fromAddress),
     feeRate != null ? Promise.resolve(feeRate) : getFeeRate(networkKey),
   ]);
+  const utxos = allUtxos.filter(u => u.confirmed);
+  if (utxos.length === 0) {
+    throw new Error('No confirmed UTXOs available. Unconfirmed balance is pending.');
+  }
 
   const plan = selectCoins({
     utxos,

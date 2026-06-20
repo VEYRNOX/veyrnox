@@ -125,3 +125,15 @@ describe('ERC-20 construction + signing — signed bytes are a transfer to the r
     expect(capture.raw).toBeUndefined();
   });
 });
+
+describe('token-send.js — H-7: ERC-20 selector assertion (structural)', () => {
+  it('source asserts the 0xa9059cbb selector after encodeFunctionData', async () => {
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const { dirname, join } = await import('path');
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(dir, '../evm/token-send.js'), 'utf8');
+    expect(src).toContain('0xa9059cbb');
+    expect(src).toContain('startsWith(TRANSFER_SELECTOR)');
+  });
+});

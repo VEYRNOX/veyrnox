@@ -115,6 +115,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
           maxBaseFeeGwei: custom.maxBaseFeeGwei || "0",
           priorityGwei: custom.priorityGwei || "0",
           gasLimit: custom.gasLimit || gasLimitHint || 21000,
+          networkKey,
         });
         const nativeFloat = Number(formatUnits(BigInt(fee.estFeeWei), decimals));
         onChange({
@@ -144,6 +145,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
         maxBaseFeeGwei: custom.maxBaseFeeGwei || "0",
         priorityGwei: custom.priorityGwei || "0",
         gasLimit: custom.gasLimit || gasLimitHint || 21000,
+        networkKey,
       });
       const nativeFloat = Number(formatUnits(BigInt(fee.estFeeWei), decimals));
       return { nativeText: `${fmtNative(fee.estFeeWei, decimals)} ${symbol}`, fiatText: fmtFiat(nativeFloat, usdRate) };

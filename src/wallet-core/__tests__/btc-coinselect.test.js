@@ -9,7 +9,7 @@
 // The fee model is deterministic (vsize × feeRate), so expected change/fee
 // values are computed by hand in the comments and pinned.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   selectCoins,
   estimateVsize,
@@ -18,8 +18,16 @@ import {
   DEFAULT_DUST_SATS,
 } from '../btc/coinselect.js';
 import { deriveBtcAccount } from '../btc/derivation.js';
-import { buildAndSignTx } from '../btc/send.js';
+import { buildAndSignTx, estimateBtcSend } from '../btc/send.js';
 import { getBtcNetworkInfo } from '../btc/networks.js';
+
+vi.mock('../btc/provider.js', () => ({
+  getUtxos: vi.fn(),
+  getFeeRate: vi.fn().mockResolvedValue(5),
+  broadcastTx: vi.fn(),
+}));
+
+import { getUtxos } from '../btc/provider.js';
 
 const TO = 'tb1qrecipient00000000000000000000000000000';   // opaque label; not validated by selectCoins
 const CHANGE = 'tb1qchange0000000000000000000000000000000'; // wallet-controlled change addr
@@ -164,5 +172,40 @@ describe('coinselect + signing pipeline (offline)', () => {
     const tampered = { ...plan, outputs: plan.outputs.map(o => o.isChange ? { ...o, value: o.value + 10000n } : o) };
     expect(() => buildAndSignTx({ plan: tampered, privateKey: acct.privateKey, publicKey: acct.publicKey, params }))
       .toThrow(/VALUE NOT CONSERVED|mismatch/);
+  });
+});
+
+describe('estimateBtcSend — confirmed UTXO filter (C-3)', () => {
+  const ADDR = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'; // valid testnet bech32
+
+  afterEach(() => { vi.clearAllMocks(); });
+
+  it('throws when all UTXOs are unconfirmed', async () => {
+    getUtxos.mockResolvedValue([
+      { txid: 'aaaa', vout: 0, value: 100_000n, confirmed: false },
+      { txid: 'bbbb', vout: 0, value: 200_000n, confirmed: false },
+    ]);
+    await expect(
+      estimateBtcSend({
+        networkKey: 'testnet',
+        fromAddress: ADDR,
+        toAddress: ADDR,
+        amountSats: 50_000n,
+      }),
+    ).rejects.toThrow('No confirmed UTXOs available');
+  });
+
+  it('uses only confirmed UTXOs when mixed pool is returned', async () => {
+    getUtxos.mockResolvedValue([
+      { txid: 'cccc', vout: 0, value: 500_000n, confirmed: true },
+      { txid: 'dddd', vout: 0, value: 200_000n, confirmed: false },
+    ]);
+    const { plan } = await estimateBtcSend({
+      networkKey: 'testnet',
+      fromAddress: ADDR,
+      toAddress: ADDR,
+      amountSats: 100_000n,
+    });
+    expect(plan.inputs.some(i => i.txid === 'dddd')).toBe(false);
   });
 });

@@ -98,3 +98,15 @@ describe('buildAndSignSol — serialized bytes are pinned (CONSOLE-1 #179 regres
     expect(hex).toBe(PINNED_TX_HEX);
   });
 });
+
+describe('sol/send.js — H-3: getSignatureLanding exception guard (structural)', () => {
+  it('source contains try/catch around getSignatureLanding in the retry loop', async () => {
+    const { readFileSync } = await import('fs');
+    const { fileURLToPath } = await import('url');
+    const { dirname, join } = await import('path');
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(dir, '../sol/send.js'), 'utf8');
+    // After the fix, a try block must appear immediately before getSignatureLanding.
+    expect(/try\s*\{[^}]*getSignatureLanding/s.test(src)).toBe(true);
+  });
+});
