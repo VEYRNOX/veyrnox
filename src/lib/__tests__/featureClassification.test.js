@@ -63,8 +63,8 @@ describe('registryEntriesFromClassification', () => {
     // A seeded cut entry maps verdict -> status with reason + note
     expect(out['/leaderboard']).toMatchObject({ status: 'cut', reason: 'off-wedge' });
     expect(typeof out['/leaderboard'].note).toBe('string');
-    // /referrals is now cut for this release
-    expect(out['/referrals']).toMatchObject({ status: 'cut', reason: 'off-wedge' });
+    // /referrals is now live (ungated)
+    expect(out['/referrals']).toBeUndefined();
     // Non-live entries: 4 original seeds + 9 Overview-group pages classified in batch 1
     // + 5 Wallet-group pages classified in batch 2
     // + 7 Invest/Finance pages classified in batch 3
@@ -91,7 +91,7 @@ describe('registryEntriesFromClassification', () => {
         //   /hardware-wallet (M-complexity build), /anomaly-detection,
         //   /fraud (M-complexity build), /alerts, /watch-wallets, /solana,
         //   /price-charts (M-complexity build).
-        '/leaderboard', '/public-profiles', '/referrals', '/shared-portfolio',
+        '/leaderboard', '/public-profiles', '/shared-portfolio',
         '/advisor', '/ai-assistant', '/ai-rebalancer',
         '/what-if', '/split-bill',
         '/erc20-discovery',

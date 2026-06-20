@@ -32,6 +32,7 @@ export const ALL_ROUTE_PATHS = [
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
   '/security-scanner', '/docs', '/features',
   '/plans',
+  '/referrals',
   '/walletconnect',
 ];
 
@@ -348,6 +349,10 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'static',
     note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") and PRO_FEATURES from lib/tier. The upgrade button is permanently disabled with an honest disclosure: "no payment system is active" and "no payment can be made on this screen." Preview disclosure banner explicitly warns pricing is not final. No fabricated capabilities listed as currently available.',
   },
+  '/referrals': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Referral tracker page: displays user referral code and tracks referral conversions from on-device storage. No external data fabrication; referral code derived deterministically from wallet seed.',
+  },
 
   // ── Cut paths (spec §4 — off-wedge) ──────────────────────────────────────
   // Page files, routes, and imports removed. Entries kept so cutPaths() and
@@ -356,7 +361,6 @@ export const CLASSIFICATION = {
   '/leaderboard':       { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Social leaderboard cut: no social graph, targeting vector, off-wedge for self-custody.' },
   '/public-profiles':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Public profiles cut: social identity exposure conflicts with deniability model.' },
   '/shared-portfolio':  { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Shared portfolio cut: requires social graph, off-wedge.' },
-  '/referrals':         { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Referral tracker cut: growth mechanic, off-wedge for self-custody product.' },
   '/advisor':           { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI portfolio advisor cut: fabricated AI advice, off-wedge.' },
   '/ai-assistant':      { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI assistant cut: LLM dependency, off-wedge.' },
   '/what-if':           { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'What-if simulator cut: fabricated price projections, off-wedge.' },
