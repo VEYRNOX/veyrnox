@@ -52,8 +52,8 @@ function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, devic
       let res;
       if (chain === 'eth') {
         res = isLedger
-          ? await signAndBroadcastEvmLedger({ transport: transport.current, networkKey, fromAddress: address, to, amountEth: amount })
-          : await signAndBroadcastEvmTrezor({ networkKey, fromAddress: address, to, amountEth: amount });
+          ? await signAndBroadcastEvmLedger({ transport: transport.current, networkKey, fromAddress: address, to, amountEth: amount, fee: null })
+          : await signAndBroadcastEvmTrezor({ networkKey, fromAddress: address, to, amountEth: amount, fee: null });
         setResult({ id: res.hash, url: res.explorerUrl });
       } else if (chain === 'btc') {
         res = isLedger
@@ -309,6 +309,7 @@ export default function HardwareWalletPage() {
             title="Ethereum (ETH)"
             addressLabel="ETH Address (m/44'/60'/0'/0/0)"
             address={ethAddress}
+            publicKeyHex={null}
             chain="eth"
             networkKey="sepolia"
             transport={transport}
@@ -328,6 +329,7 @@ export default function HardwareWalletPage() {
             title="Solana (SOL)"
             addressLabel="SOL Address (m/44'/501'/0'/0')"
             address={solAddress}
+            publicKeyHex={null}
             chain="sol"
             networkKey="devnet"
             transport={transport}

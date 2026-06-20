@@ -93,7 +93,7 @@ async function sendSolHw({ networkKey, fromAddress, toAddress, amountLamports, s
 
     const tx = buildUnsignedSolTx({
       fromPubkey, toPubkey,
-      amountLamports: plan.sendLamports,
+      amountLamports: plan.amountLamports,
       blockhash, priorityMicroLamports, computeUnitLimit,
     });
 
@@ -184,7 +184,7 @@ export async function signAndBroadcastSolTrezor({
         path: `m/${SOL_PATH}`,
         serializedTx: Buffer.from(msgBytes).toString('hex'),
       });
-      if (!result.success) throw new Error(result.payload?.error ?? 'Trezor SOL signing failed');
+      if (!result.success) throw new Error((result.payload && 'error' in result.payload ? result.payload.error : null) ?? 'Trezor SOL signing failed');
       return Buffer.from(result.payload.signature, 'hex'); // 64-byte sig
     },
   });

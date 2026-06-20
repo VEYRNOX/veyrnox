@@ -27,7 +27,7 @@ const EVM_PATH = "44'/60'/0'/0/0";
  * Build a fully-populated unsigned EIP-1559 tx (type 2), including nonce,
  * chainId, and gas overrides. All preflight checks from evm/send.js apply.
  */
-async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee }) {
+async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee = null }) {
   if (!isAddress(to)) throw new Error('Invalid recipient address');
   const net = getNetwork(networkKey);
   const provider = getProvider(networkKey);
@@ -43,7 +43,7 @@ async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee 
     throw new Error(`RPC returned implausible nonce ${pendingNonce} — refusing to sign`);
   }
 
-  return {
+  return /** @type {{ to: string, value: bigint, chainId: number, nonce: number, type: number, data: string, gasLimit: bigint, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint }} */ ({
     to,
     value,
     chainId: net.chainId,
@@ -51,7 +51,7 @@ async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee 
     type: 2,
     data: '0x',
     ...overrides,  // gasLimit, maxFeePerGas, maxPriorityFeePerGas
-  };
+  });
 }
 
 /**
@@ -60,7 +60,7 @@ async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee 
  *
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */
-export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAddress, to, amountEth, fee }) {
+export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAddress, to, amountEth, fee = null }) {
   const net = getNetwork(networkKey);
   const provider = getProvider(networkKey);
   const txFields = await buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee });
@@ -92,7 +92,7 @@ export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAdd
  *
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */
-export async function signAndBroadcastEvmTrezor({ networkKey, fromAddress, to, amountEth, fee }) {
+export async function signAndBroadcastEvmTrezor({ networkKey, fromAddress, to, amountEth, fee = null }) {
   const net = getNetwork(networkKey);
   const provider = getProvider(networkKey);
   const txFields = await buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee });
@@ -112,7 +112,7 @@ export async function signAndBroadcastEvmTrezor({ networkKey, fromAddress, to, a
       data:                 '0x',
     },
   });
-  if (!result.success) throw new Error(result.payload?.error ?? 'Trezor signing failed');
+  if (!result.success) throw new Error((result.payload && 'error' in result.payload ? result.payload.error : null) ?? 'Trezor signing failed');
 
   const { v, r, s } = result.payload;
   const signed = Transaction.from({

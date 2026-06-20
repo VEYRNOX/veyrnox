@@ -33,6 +33,7 @@ function ensureTrezorInit() {
   if (trezorInitialised) return;
   TrezorConnect.init({
     manifest: {
+      appName: 'Veyrnox',
       email: 'al.jobson@21stclick.co.uk',
       appUrl: typeof window !== 'undefined' ? window.location.origin : 'https://veyrnox.app',
     },
@@ -113,9 +114,9 @@ export function HardwareWalletProvider({ children }) {
       TrezorConnect.solanaGetAddress({ path: `m/${SOL_PATH}`, showOnTrezor: true }),
     ]);
 
-    if (!ethRes.success) throw new Error(ethRes.payload?.error ?? 'ETH address failed');
-    if (!btcRes.success) throw new Error(btcRes.payload?.error ?? 'BTC address failed');
-    if (!solRes.success) throw new Error(solRes.payload?.error ?? 'SOL address failed');
+    if (!ethRes.success) throw new Error((ethRes.payload && 'error' in ethRes.payload ? ethRes.payload.error : null) ?? 'ETH address failed');
+    if (!btcRes.success) throw new Error((btcRes.payload && 'error' in btcRes.payload ? btcRes.payload.error : null) ?? 'BTC address failed');
+    if (!solRes.success) throw new Error((solRes.payload && 'error' in solRes.payload ? solRes.payload.error : null) ?? 'SOL address failed');
 
     setDeviceName('Trezor');
     setEthAddress(ethRes.payload.address);

@@ -135,7 +135,7 @@ function buildOutputScriptHex(outputs) {
  * Each input's raw transaction is fetched from Esplora so the device can
  * verify the input amounts (required for segwit signing security).
  *
- * @param {{ transport, networkKey, fromAddress, btcPublicKeyHex, toAddress, amountSats?, sendMax?, feeRate? }} params
+ * @param {{ transport, networkKey, fromAddress, btcPublicKeyHex, toAddress, amountSats?, sendMax?, feeRate?, changeAddress? }} params
  * @returns {Promise<{ txid: string, explorerUrl: string, plan: object }>}
  */
 export async function signAndBroadcastBtcLedger({
@@ -146,8 +146,8 @@ export async function signAndBroadcastBtcLedger({
   toAddress,
   amountSats,
   sendMax = false,
-  feeRate,
-  changeAddress,
+  feeRate = null,
+  changeAddress = null,
 }) {
   const net    = getBtcNetwork(networkKey);
   const isTest = net.key !== 'mainnet';
@@ -167,23 +167,23 @@ export async function signAndBroadcastBtcLedger({
   const rawTxHexes = await Promise.all(plan.inputs.map(u => getRawTxHex(networkKey, u.txid)));
 
   // Split each input tx into Ledger's internal format
-  const inputs = plan.inputs.map((utxo, i) => [
+  const inputs = /** @type {[any, number, string | undefined, number | undefined][]} */ (plan.inputs.map((utxo, i) => [
     btcApp.splitTransaction(rawTxHexes[i], true /* isSegwit */),
     utxo.vout,
     undefined, // redeemScript — not needed for native segwit P2WPKH
     undefined, // sequence
-  ]);
+  ]));
 
   const outputScriptHex = buildOutputScriptHex(plan.outputs);
 
-  const signedHex = await btcApp.createPaymentTransaction({
+  const signedHex = await btcApp.createPaymentTransaction(/** @type {any} */ ({
     inputs,
     associatedKeysets:  plan.inputs.map(() => path),
     outputScriptHex,
     segwit:             true,
     sigHashType:        0x01, // SIGHASH_ALL
     transactionVersion: 2,
-  });
+  }));
 
   const txid = await broadcastTx(networkKey, signedHex);
   const tx   = Transaction.fromRaw(hex.decode(signedHex), { allowUnknownOutputs: true });
@@ -209,8 +209,8 @@ export async function signAndBroadcastBtcTrezor({
   toAddress,
   amountSats,
   sendMax = false,
-  feeRate,
-  changeAddress,
+  feeRate = null,
+  changeAddress = null,
 }) {
   const net    = getBtcNetwork(networkKey);
   const isTest = net.key !== 'mainnet';
@@ -232,7 +232,7 @@ export async function signAndBroadcastBtcTrezor({
     prev_hash:   utxo.txid,
     prev_index:  utxo.vout,
     amount:      String(utxo.value),
-    script_type: 'SPENDWITNESS',
+    script_type: /** @type {'SPENDWITNESS'} */ ('SPENDWITNESS'),
   }));
 
   const outputs = plan.outputs.map(out => {
@@ -241,13 +241,13 @@ export async function signAndBroadcastBtcTrezor({
       return {
         address_n:   changePath,
         amount:      String(out.value),
-        script_type: 'PAYTOWITNESS',
+        script_type: /** @type {'PAYTOWITNESS'} */ ('PAYTOWITNESS'),
       };
     }
     return {
       address:     out.address,
       amount:      String(out.value),
-      script_type: 'PAYTOADDRESS',
+      script_type: /** @type {'PAYTOADDRESS'} */ ('PAYTOADDRESS'),
     };
   });
 
@@ -257,7 +257,7 @@ export async function signAndBroadcastBtcTrezor({
     coin:  isTest ? 'test' : 'btc',
     push:  false,
   });
-  if (!result.success) throw new Error(result.payload?.error ?? 'Trezor BTC signing failed');
+  if (!result.success) throw new Error((result.payload && 'error' in result.payload ? result.payload.error : null) ?? 'Trezor BTC signing failed');
 
   const { serializedTx } = result.payload;
   const txid = await broadcastTx(networkKey, serializedTx);
