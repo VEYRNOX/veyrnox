@@ -41,7 +41,7 @@ describe('resolveReceive — per-chain address correctness', () => {
     expect(r.address).toBe(EVM);
     expect(r.isErc20).toBe(true);
     expect(r.receivable).toBe(true);
-    expect(r.network.name).toMatch(/Sepolia/i);
+    expect(r.network.name).toMatch(/Ethereum Mainnet/i);
   });
 
   it('BTC → bech32 address, NOT the EVM address', () => {
@@ -66,7 +66,7 @@ describe('resolveReceive — per-chain address correctness', () => {
     expect(r.address).toBe(EVM); // shares the one secp256k1 EVM account
     expect(r.isErc20).toBe(true);
     expect(r.receivable).toBe(true);
-    expect(r.network.name).toMatch(/Sepolia/i);
+    expect(r.network.name).toMatch(/Ethereum Mainnet/i);
   });
 
   it('locked wallet (no derived accounts) yields null address but keeps the label', () => {
