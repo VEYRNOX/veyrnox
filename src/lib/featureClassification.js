@@ -279,7 +279,7 @@ export const CLASSIFICATION = {
   },
   '/rasp-security': {
     verdict: 'live', dataSource: 'static',
-    note: 'RASP surface — browser-level detection now active. Calls detect(browserProbeSource) at render time (set-blind, pure environment function); shows live condition value. raspSurfaceModel derives "browser-active" from BUILT catalogue status. Stat tiles updated: detection=browser-active, wired-to-send=yes. OS-level probes (root/jailbreak) still audit-gated. UNAUDITED-PROVISIONAL.',
+    note: 'VERIFIED 2026-06-20: page loaded with live browser probe — Detection=browser-active, Current environment=clean, Wired to send path=yes, Independent audit=not yet. Degradation ladder (allow/warn/block) with honest scope notes rendered. "UNAUDITED-PROVISIONAL" tag and I4 honesty note ("no fabricated event counts") present. Demo OFF, real wallet. OS-level probes (root/jailbreak/tamper) remain audit-gated — correctly disclosed.',
   },
   '/audit-log': {
     verdict: 'live', dataSource: 'local-vault',
