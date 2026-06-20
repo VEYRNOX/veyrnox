@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -19,6 +20,7 @@ const __dir = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = path.resolve(__dir, '../../..');
 
 export default defineConfig({
+  plugins: [react()],
   server: {
     fs: {
       allow: [__dir, repoRoot],
