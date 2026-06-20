@@ -1,13 +1,20 @@
-# Phase BTC — Bitcoin Support (DESIGN DOC)
+# Phase BTC — Bitcoin Support (RECORD DOC)
+
+> **Status as of 2026-06-20: COMPLETE. BTC send is LIVE — verified end-to-end
+> on Bitcoin testnet (txid `2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27`,
+> block 4990901, BIP-84 P2WPKH). Mainnet gate: `ALLOW_BTC_MAINNET=true` since
+> 2026-06-17 (internal audit sign-off); mainnet network entry is enabled in
+> `networks.js` but not yet wired in `assets.js` — no real BTC flows until that
+> wiring is explicitly made.**
 
 > A SEPARATE cryptographic stack from the EVM family — shares NOTHING with the
 > secp256k1/account-based EVM core beyond the seed phrase. UTXO model, different
 > derivation, different signing, different libraries, own testnet, own audit
-> scope. Treat with the same discipline as Phase A: audited libs, hands-on
+> scope. Built with the same discipline as Phase A: audited libs, hands-on
 > verification, mainnet gated, its own branch/PR/review.
 >
-> Built AFTER the EVM work; SOL follows after BTC is verified. This expands the
-> audit scope — update docs/Audit.scope.md when it lands.
+> Built AFTER the EVM work; SOL follows after BTC is verified. Expands the
+> audit scope — see docs/Audit.scope.md.
 
 ---
 
@@ -86,40 +93,34 @@ Keys remain on device; signing local; the same self-custody invariants as Phase 
 ---
 
 ## Verification gates (hands-on, like ETH — none skipped)
-- [ ] Derived BIP-84 address from the standard test seed matches an INDEPENDENT
-      reference wallet (interop = recoverable). Pick a known test vector.
-- [ ] Address format correct: `tb1q...` on testnet, `bc1q...` mainnet.
-- [ ] UTXO fetch works against the testnet indexer for a funded address.
-- [ ] **Change output correctness** — a send returns correct change to a wallet
-      address; no funds burned to fee. Test with explicit assertions.
-- [ ] Fee computed from vSize × sat/vByte; sane on testnet.
-- [ ] **Real testnet send proven end-to-end BY HAND** — derive → fund from a
-      BTC testnet/signet faucet → build+sign PSBT → broadcast → confirm on a
-      testnet explorer. Same bar ETH cleared.
-- [ ] Mainnet gated (no real BTC until audit). BTC stays receive_only until the
-      verified send, then live.
-- [ ] check:rng still green (no Math.random in BTC crypto paths); RNG guard
-      extended to cover btc/.
-- [ ] Existing EVM tests untouched and green.
-- [ ] BTC stack added to docs/Audit.scope.md.
+- [x] Derived BIP-84 address from the standard test seed matches an INDEPENDENT
+      reference wallet (interop = recoverable). BIP-84 spec vectors asserted in
+      `btc-derivation.test.js`.
+- [x] Address format correct: `tb1q...` on testnet, `bc1q...` mainnet.
+- [x] UTXO fetch works against the testnet indexer for a funded address.
+- [x] **Change output correctness** — a send returns correct change to a wallet
+      address; no funds burned to fee. Asserted in `btc-coinselect.test.js`.
+- [x] Fee computed from vSize × sat/vByte; sane on testnet.
+- [x] **Real testnet send proven end-to-end BY HAND** — txid
+      `2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27`,
+      block 4990901, Bitcoin testnet, BIP-84 P2WPKH. Confirmed on mempool.space.
+- [x] BTC is `live` in `src/wallet-core/assets.js` (flipped after verified send).
+      Mainnet network entry enabled; not yet wired to an asset chain key in assets.js.
+- [x] check:rng green (no Math.random in BTC crypto paths); RNG guard covers btc/.
+- [x] Existing EVM tests untouched and green.
+- [x] BTC stack added to docs/Audit.scope.md.
 
 ---
 
-## Out of scope for Phase BTC
-- Lightning, multisig, Taproot/BIP-86 (unless you later decide), coinjoin/privacy
-  features. Keep v1 to single-sig BIP-84 send/receive/store.
-- SOL (next phase, separate).
-- No mainnet.
+## Out of scope for Phase BTC (v1)
+- Lightning, multisig, Taproot/BIP-86, coinjoin/privacy features. v1 is
+  single-sig BIP-84 send/receive/store.
+- SOL (separate phase — now also complete; see PhaseSOL.md).
+- Mainnet wiring (gate open as of 2026-06-17; wiring is a deliberate separate step).
 
-## Honest cost note
-This is a full new crypto stack — comparable in effort/risk to Phase A, and it
-expands the independent audit (UTXO/PSBT handling is new attack surface). Worth
-re-confirming the audit scope/quote after BTC + SOL land. The disciplined payoff:
-real, verified BTC — not a fake "supported" badge.
-
-## Briefing note for Claude Code (when ready)
-"Execute Phase BTC per docs/PhaseBTC.md. BIP-84 (bech32), @scure/btc-signer,
-testnet first, mainnet gated. Build btc/ parallel to evm/ — do NOT change EVM
-code or crypto. Implement coin selection with CORRECT change outputs (explicit
-tests). Extend check:rng to btc/. Keep BTC receive_only (no live until a verified
-testnet send). Run check:rng + tests (must stay green). Open a PR, do not merge."
+## Mainnet status (as of 2026-06-20)
+`ALLOW_BTC_MAINNET=true` since internal audit sign-off 2026-06-17. The mainnet
+network entry is present and enabled in `networks.js`. It is NOT yet wired to a
+BTC asset chain key in `assets.js` — this is deliberate; real BTC flows require
+an explicit wiring step and owner sign-off. An independent audit remains
+RECOMMENDED before routing real funds.

@@ -13,36 +13,20 @@
 // PURE wrt I/O: no storage, no network, no signer, no seed — only an in-memory
 // dispatch. Covered by zeroWrite.test.js (it scans this whole directory).
 //
-// ── SCOPE OF THIS PR (honest) ────────────────────────────────────────────────
-// Only the SEND source is wired, because only it has a clean, already-existing
-// trigger: the post-broadcast 1-conf receipt in SendCrypto. The other two live
-// sources the PR-2 brief names are deliberately NOT wired here, and the reasons
-// are recorded so the next change starts from the truth, not the brief's
-// assumption:
+// ── SOURCES WIRED ────────────────────────────────────────────────────────────
+// All three live sources from the PR-2 brief are now wired:
 //
-//   RECEIVE  (emitReceiveDetected) — HONEST-DISABLED in PR-2.
-//     The brief assumes a single "active-set balance poll" to take a positive
-//     delta on. There isn't one. The only background balance poll is
-//     usePortfolio (lib/portfolioBalances.js), which aggregates ALL vault
-//     wallets, not just the active set — so a delta there is an I3 (deniability)
-//     scoping decision, not a one-line wiring edit. Detecting a receive also
-//     needs prior-balance memory across polls. That is a separate scoped change
-//     (still delta-on-existing-poll per §4 — no new read), not smuggled in here.
-//
-//   RISK     (emitRiskFired) — HONEST-DISABLED in PR-2.
-//     The brief assumes "the existing pre-sign evaluation point" where the risk
-//     composite resolves >= CAUTION. That point does not exist: src/risk/score.js
-//     is not called anywhere in live code (only its own tests + the read-only
-//     verify-risk scripts). The Send screen's pre-sign preview uses
-//     simulateEvmTransaction + screenRecipient, NOT score(). Making this emit
-//     fire for real first requires wiring score() into the signing path — an
-//     audit-critical capability change, explicitly out of scope for a wiring PR
-//     (brief §10; CLAUDE.md: no fake security, one moving part at a time).
-//
-// notify.js still carries the pure receive/risk mappings for the day a real
-// source exists; we do not fabricate a source to make the emit look live.
+//   SEND    (notifySendConfirmed)   — post-broadcast receipt in SendCrypto.
+//   RECEIVE (notifyReceiveDetected) — usePortfolio poll delta in WalletPortfolioPage.
+//                                     Guards: isUnlocked && !isDecoy (I3, no-fake-security).
+//                                     Skips indeterminate reads. First poll = baseline only.
+//   RISK    (notifyTxRiskAlert)     — scoreCurrentSend() verdict at sign time in SendCrypto.
+//                                     Only fires for CAUTION/RISK level (emitRiskFired guards too).
+//           (notifyRaspAlert)       — RASP environment tier at sign time (WARN/BLOCK only).
+//           (notifyFraudAlert)      — fraud scan findings (critical/high severity only).
 
-import { emitSendConfirmed } from './events.js';
+import { emitSendConfirmed, emitReceiveDetected, emitRiskFired } from './events.js';
+import { LEVEL, PRIORITY } from '../risk/levels.js';
 
 /**
  * Fire the "send confirmed" notification from the send flow's post-broadcast
@@ -62,5 +46,72 @@ export function notifySendConfirmed({ amount, to, ts }) {
     return true;
   } catch {
     return false; // I4: a notification failure never unwinds the send path.
+  }
+}
+
+/**
+ * Fire a "receive detected" notification from the portfolio balance poll delta.
+ * Guard: call only when isUnlocked && !isDecoy — fake balances in demo/decoy
+ * sessions must never trigger a real notification (I3, no-fake-security).
+ *
+ * @param {{ amount: string, ts: number }} p  display string + caller ts
+ */
+export function notifyReceiveDetected({ amount, ts }) {
+  if (!amount) return false;
+  try {
+    emitReceiveDetected({ ts, amount });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fire a risk notification from the tx-risk composite score at signing time.
+ * Only fires for CAUTION or RISK — OK/INFO stay silent (emitRiskFired guards too).
+ *
+ * @param {{ level: string, sentence: string|null, signalId: string|null, ts: number }} p
+ */
+export function notifyTxRiskAlert({ level, sentence, signalId, ts }) {
+  if (!level || (PRIORITY[level] ?? 0) < PRIORITY[LEVEL.CAUTION]) return false;
+  try {
+    emitRiskFired({ ts, score: { level, sentence: sentence ?? signalId ?? 'Risk signal detected' } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fire a security alert from the RASP environment gate when tier is WARN or BLOCK.
+ * ALLOW → no-op. Call once per send attempt, not on every render.
+ *
+ * @param {{ tier: string, sentence: string|null, ts: number }} p
+ */
+export function notifyRaspAlert({ tier, sentence, ts }) {
+  if (tier === 'allow' || !sentence) return false;
+  try {
+    const level = tier === 'warn-before-sign' ? LEVEL.CAUTION : LEVEL.RISK;
+    emitRiskFired({ ts, score: { level, sentence } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fire a risk alert from an on-device fraud/anomaly scan finding.
+ * Only fires for critical or high severity (medium/low stay in the scan UI only).
+ *
+ * @param {{ sentence: string, severity: string, ts: number }} p
+ */
+export function notifyFraudAlert({ sentence, severity, ts }) {
+  if (!sentence || (severity !== 'critical' && severity !== 'high')) return false;
+  try {
+    const level = severity === 'critical' ? LEVEL.RISK : LEVEL.CAUTION;
+    emitRiskFired({ ts, score: { level, sentence } });
+    return true;
+  } catch {
+    return false;
   }
 }

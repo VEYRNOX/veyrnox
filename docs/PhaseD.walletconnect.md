@@ -2,8 +2,12 @@
 
 > This is a DESIGN + THREAT-MODEL document, not a wire-it-up task. It is the
 > highest-risk phase in the roadmap and the foundation that DEX swaps and DeFi
-> deposits will sign through. Do NOT implement it before Phase A/B are audited,
-> and treat its own audit as a separate, larger scope.
+> deposits will sign through.
+>
+> **Gate status as of 2026-06-20:** The internal audit is complete (2026-06-17,
+> 0 crit/high/med). WalletConnect remains deferred pending the independent audit,
+> which is the remaining gate for this phase. Do NOT implement Phase D before the
+> independent audit clears, and treat its own audit as a separate, larger scope.
 >
 > Status gate: nothing here goes to mainnet. Build on testnet, behind the same
 > ALLOW_MAINNET gate, and add an additional WALLETCONNECT_ENABLED flag so dApp

@@ -1,33 +1,26 @@
 // src/notify/__tests__/sources.test.js
 //
-// Build brief PR-2 §3 (the send live edit) + §7 (fail-closed is THE load-bearing
-// test of this PR: the emit at the call site must be provably a side-effect — a
-// throw there can never propagate into or unwind the send path) + §8/§9 (receive
-// and risk remain HONEST-DISABLED in PR-2 — no source wired).
-//
-// sources.js is the call-site adapter the send flow (SendCrypto, post-broadcast
-// 1-conf receipt) calls. These tests pin: (1) the correct event fires with the
-// right payload on the real trigger, (2) no hostile/broken subscriber can make
-// the call site throw, and (3) the module wires ONLY send — receive/risk are not
-// smuggled in without a real source.
+// Build brief PR-2 §3 (send adapter) + §7 (fail-closed) + PR-275 (tx-risk +
+// RASP/fraud adapters). sources.js is the call-site adapter layer: each function
+// wraps an events.js push-point in try/catch so the emit is a provable side-effect
+// that can never unwind its originating flow (I4). Tests pin: (1) correct event +
+// payload fires, (2) no hostile subscriber can make the call site throw, (3) every
+// adapter filters its no-op condition before emitting.
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as events from '../events.js';
 import * as sources from './../sources.js';
 import { buildNotification, EVENT, NOTIFY_LEVEL } from '../notify.js';
+import { LEVEL } from '../../risk/levels.js';
 
 let unsubs = [];
-const track = (u) => {
-  unsubs.push(u);
-  return u;
-};
-beforeEach(() => {
-  unsubs.forEach((u) => u());
-  unsubs = [];
-});
+const track = (u) => { unsubs.push(u); return u; };
+beforeEach(() => { unsubs.forEach((u) => u()); unsubs = []; });
 
-describe('notify/sources.js — send call-site adapter (PR-2 §3)', () => {
-  it('notifySendConfirmed fires SEND_CONFIRMED with the caller payload + ts', () => {
+// ── notifySendConfirmed ───────────────────────────────────────────────────────
+
+describe('notifySendConfirmed', () => {
+  it('fires SEND_CONFIRMED with the caller payload + ts', () => {
     const got = [];
     track(events.subscribe((e) => got.push(e)));
 
@@ -35,15 +28,10 @@ describe('notify/sources.js — send call-site adapter (PR-2 §3)', () => {
 
     expect(ok).toBe(true);
     expect(got).toHaveLength(1);
-    expect(got[0]).toMatchObject({
-      type: EVENT.SEND_CONFIRMED,
-      amount: '0.5 ETH',
-      to: '0xabc123',
-      ts: 42,
-    });
+    expect(got[0]).toMatchObject({ type: EVENT.SEND_CONFIRMED, amount: '0.5 ETH', to: '0xabc123', ts: 42 });
   });
 
-  it('the emitted event maps to the expected notification (info, "Send confirmed")', () => {
+  it('emitted event maps to info / "Send confirmed" notification', () => {
     const got = [];
     track(events.subscribe((e) => got.push(e)));
     sources.notifySendConfirmed({ amount: '1.25 ETH', to: '0xdeadbeef', ts: 7 });
@@ -55,36 +43,190 @@ describe('notify/sources.js — send call-site adapter (PR-2 §3)', () => {
     expect(n.ts).toBe(7);
   });
 
-  // §7: the highest-value test in PR-2 — the emit must be provably a side-effect.
-  it('a throwing subscriber NEVER makes the call site throw (I4 fail-closed)', () => {
-    track(events.subscribe(() => { throw new Error('subscriber blew up'); }));
-    // A second subscriber that maps a (valid) event still receives — delivery to
-    // others is not broken by the hostile one.
+  it('a throwing subscriber NEVER makes the call site throw (I4)', () => {
+    track(events.subscribe(() => { throw new Error('hostile'); }));
     const got = [];
     track(events.subscribe((e) => got.push(e)));
-
-    expect(() =>
-      sources.notifySendConfirmed({ amount: '0.5 ETH', to: '0xabc', ts: 1 })
-    ).not.toThrow();
+    expect(() => sources.notifySendConfirmed({ amount: '0.5 ETH', to: '0xabc', ts: 1 })).not.toThrow();
     expect(got).toHaveLength(1);
   });
 
-  it('even an all-hostile subscriber set cannot unwind the send (returns, no throw)', () => {
+  it('all-hostile subscriber set cannot unwind the send', () => {
     track(events.subscribe(() => { throw new Error('nope'); }));
     track(events.subscribe(() => { throw new Error('also nope'); }));
-    // The send path calls and moves on regardless of the return value.
-    expect(() =>
-      sources.notifySendConfirmed({ amount: '2 ETH', to: '0xfeed', ts: 9 })
-    ).not.toThrow();
+    expect(() => sources.notifySendConfirmed({ amount: '2 ETH', to: '0xfeed', ts: 9 })).not.toThrow();
+  });
+});
+
+// ── notifyRaspAlert ───────────────────────────────────────────────────────────
+
+describe('notifyRaspAlert', () => {
+  it('tier=allow → no-op (returns false, no event)', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyRaspAlert({ tier: 'allow', sentence: 'RASP clean', ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
   });
 
-  // §8/§9: PR-2 wires ONLY the send source. Receive + risk stay HONEST-DISABLED
-  // (no clean active-set poll / no live score() call site) — assert the adapter
-  // surface does not grow a receive/risk source without a real trigger behind it.
-  it('exposes ONLY a send source — no receive/risk adapter (HONEST-DISABLED)', () => {
-    const exported = Object.keys(sources);
-    expect(exported).toContain('notifySendConfirmed');
-    expect(exported.find((k) => /receive/i.test(k))).toBeUndefined();
-    expect(exported.find((k) => /risk/i.test(k))).toBeUndefined();
+  it('null sentence → no-op', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyRaspAlert({ tier: 'block', sentence: null, ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
+  });
+
+  it('warn-before-sign fires RISK_FIRED at CAUTION level', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    sources.notifyRaspAlert({ tier: 'warn-before-sign', sentence: 'Emulator detected.', ts: 5 });
+    expect(got).toHaveLength(1);
+    expect(got[0].type).toBe(EVENT.RISK_FIRED);
+    expect(got[0].score.level).toBe(LEVEL.CAUTION);
+  });
+
+  it('block tier fires RISK_FIRED at RISK level', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    sources.notifyRaspAlert({ tier: 'block', sentence: 'Root detected.', ts: 5 });
+    expect(got[0].score.level).toBe(LEVEL.RISK);
+  });
+
+  it('I4: a throwing subscriber cannot unwind notifyRaspAlert', () => {
+    track(events.subscribe(() => { throw new Error('hostile'); }));
+    expect(() => sources.notifyRaspAlert({ tier: 'block', sentence: 'Root.', ts: 1 })).not.toThrow();
+  });
+});
+
+// ── notifyFraudAlert ──────────────────────────────────────────────────────────
+
+describe('notifyFraudAlert', () => {
+  it('medium severity → no-op (below threshold)', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyFraudAlert({ sentence: 'Something odd.', severity: 'medium', ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
+  });
+
+  it('low severity → no-op', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyFraudAlert({ sentence: 'Minor.', severity: 'low', ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
+  });
+
+  it('critical severity fires RISK_FIRED at RISK level', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    sources.notifyFraudAlert({ sentence: 'Keylogger found.', severity: 'critical', ts: 10 });
+    expect(got).toHaveLength(1);
+    expect(got[0].type).toBe(EVENT.RISK_FIRED);
+    expect(got[0].score.level).toBe(LEVEL.RISK);
+  });
+
+  it('high severity fires RISK_FIRED at CAUTION level', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    sources.notifyFraudAlert({ sentence: 'Screen capture active.', severity: 'high', ts: 10 });
+    expect(got[0].score.level).toBe(LEVEL.CAUTION);
+  });
+
+  it('empty sentence → no-op regardless of severity', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyFraudAlert({ sentence: '', severity: 'critical', ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
+  });
+});
+
+// ── notifyReceiveDetected (PR-275) ───────────────────────────────────────────
+
+describe('notifyReceiveDetected', () => {
+  it('fires RECEIVE_DETECTED with the caller payload', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    const ok = sources.notifyReceiveDetected({ amount: '+0.5 ETH', ts: 42 });
+    expect(ok).toBe(true);
+    expect(got).toHaveLength(1);
+    expect(got[0].type).toBe(EVENT.RECEIVE_DETECTED);
+  });
+
+  it('empty amount → no-op', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyReceiveDetected({ amount: '', ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
+  });
+
+  it('I4: a throwing subscriber cannot unwind notifyReceiveDetected', () => {
+    track(events.subscribe(() => { throw new Error('hostile'); }));
+    expect(() => sources.notifyReceiveDetected({ amount: '+1 ETH', ts: 1 })).not.toThrow();
+  });
+});
+
+// ── notifyTxRiskAlert (PR-275) ────────────────────────────────────────────────
+
+describe('notifyTxRiskAlert', () => {
+  it('OK level → no-op (returns false, no event)', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyTxRiskAlert({ level: LEVEL.OK, sentence: 'All clear.', signalId: null, ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
+  });
+
+  it('INFO level → no-op (below notification threshold)', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyTxRiskAlert({ level: LEVEL.INFO, sentence: 'Minor note.', signalId: null, ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
+  });
+
+  it('CAUTION fires RISK_FIRED with level + sentence preserved', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+
+    const ok = sources.notifyTxRiskAlert({ level: LEVEL.CAUTION, sentence: 'First time sending to this recipient.', signalId: null, ts: 99 });
+
+    expect(ok).toBe(true);
+    expect(got).toHaveLength(1);
+    expect(got[0]).toMatchObject({
+      type: EVENT.RISK_FIRED,
+      ts: 99,
+      score: { level: LEVEL.CAUTION, sentence: 'First time sending to this recipient.' },
+    });
+  });
+
+  it('RISK fires RISK_FIRED at RISK level', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    sources.notifyTxRiskAlert({ level: LEVEL.RISK, sentence: 'Unlimited approval to fresh spender.', signalId: null, ts: 1 });
+    expect(got[0].score.level).toBe(LEVEL.RISK);
+  });
+
+  it('null sentence with signalId → still fires (signalId is fallback label)', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    sources.notifyTxRiskAlert({ level: LEVEL.CAUTION, sentence: null, signalId: 'S3', ts: 1 });
+    expect(got).toHaveLength(1);
+    expect(got[0].score.sentence).toBe('S3');
+  });
+
+  it('CAUTION event maps to the expected notification shape', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    sources.notifyTxRiskAlert({ level: LEVEL.CAUTION, sentence: 'First time sending to this recipient.', signalId: null, ts: 50 });
+
+    const n = buildNotification(got[0]);
+    expect(n.level).toBe(NOTIFY_LEVEL.CAUTION);
+    expect(n.ts).toBe(50);
+  });
+
+  it('I4: a throwing subscriber NEVER makes notifyTxRiskAlert throw', () => {
+    track(events.subscribe(() => { throw new Error('hostile'); }));
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(() =>
+      sources.notifyTxRiskAlert({ level: LEVEL.CAUTION, sentence: 'Fresh recipient.', signalId: null, ts: 1 })
+    ).not.toThrow();
+    expect(got).toHaveLength(1);
   });
 });

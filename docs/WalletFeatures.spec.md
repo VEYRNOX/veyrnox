@@ -22,20 +22,20 @@
 
 ## Reality check (read first)
 - Full *vision*: ~50-55 features (this doc).
-- Actually *built & working today*: ~30 (the ✅s) — core wallet ops, the full
-  S1 foundation (biometric, passkeys, session/auto-lock, hardened vault), the
+- Actually *built & working today*: 40+ features (the ✅s) — core wallet ops, the
+  full S1 foundation (biometric, passkeys, session/auto-lock, hardened vault), the
   S2 transaction-safety set (approvals/revoke, poison/spam, calldata decode,
-  per-chain address validation), the S3 deniability stack (duress, stealth,
-  panic wipe), transaction history, gas control, receive flow, demo mode,
-  desktop web; iOS/Android shells running.
-- **BUT — what actually SENDS is only ETH on Sepolia.** All 6 EVM chains, both
-  ERC-20 tokens (USDC, USDT), BTC and SOL are `receive_only`: address derivation
-  + balance reads + receive work, and the send code path is built + unit-tested,
-  but it is HARD-gated off until a real on-chain send is verified per asset.
-- All security/crypto features are PROVISIONAL pending the independent audit;
-  the deniability stack is testnet/demo only.
-- The gap between built and envisioned IS the roadmap; most hard EVM crypto risk
-  already retired. 390 tests green.
+  per-chain address validation, suspicious-address screening, OFAC screening), the
+  S3 deniability stack (duress, stealth, panic wipe, hardware wallet derivation,
+  login activity), the full S4 set (RASP, audit log, risk scoring, cloud backup),
+  transaction history, gas control, receive flow, demo mode, desktop web; iOS/Android
+  shells running; plus a large analytics, portfolio, and utility feature set.
+- **8 of 10 assets are now LIVE with verified on-chain txids.** ETH, USDC, USDT,
+  MATIC, ARB, OP, BTC, and SOL all have real explorer-confirmed sends. AVAX and BNB
+  remain `receive_only` — send code is built but blocked by no accessible testnet faucet.
+- Internal audit COMPLETE (2026-06-17, 0 crit/high/med, VULN-1–7 closed). Mainnet
+  gate open. Independent third-party audit still RECOMMENDED.
+- The gap between built and envisioned IS the roadmap. 390+ tests green.
 
 ---
 
@@ -45,32 +45,32 @@
 3. Multi-account derivation — ✅
 4. Encrypted vault (Argon2id + AES-256-GCM) — ✅
 5. Backup / reveal seed (with warnings) — ✅
-6. Send native coins — 🟡 (ONLY ETH/Sepolia is live + verified; all other assets
-   are `receive_only` — send code built+tested but on-chain unverified, gated)
+6. Send native coins — 🟡 (8 of 10 assets LIVE with verified on-chain txids; AVAX
+   and BNB remain `receive_only` — send code built but blocked by no testnet faucet)
 7. Receive (per-chain address + local QR) — ✅
 8. View balances (from chain) — ✅
 9. Transaction history (read-only) — ✅ (BTC/SOL via providers, EVM explorer-fallback)
 10. Gas/fee display + control before signing — ✅ (per-chain tiers + custom)
 
 ## 2. Chains & assets
-> Receive + balance reads work for all of 11–19. SEND is live ONLY for ETH;
-> everything else is `receive_only` (HARD-gated) until verified on-chain.
+> Receive + balance reads work for all of 11–19. 8 of 10 assets LIVE with verified
+> on-chain txids. AVAX (15) and BNB (16) remain receive_only — no testnet faucet.
 11. Ethereum (Sepolia) — ✅ (live send, verified)
-12. Polygon (Amoy) — 🟡 receive_only
-13. Arbitrum (Sepolia) — 🟡 receive_only
-14. Optimism (Sepolia) — 🟡 receive_only
-15. Avalanche (Fuji) — 🟡 receive_only
-16. BNB Chain (testnet) — 🟡 receive_only
-17. ERC-20 tokens (USDC + USDT, Sepolia) — 🟡 receive_only (address + balance ✅, send gated)
-18. Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified — docs/PhaseBTC.verification.md)
-19. Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
+12. Polygon (Amoy) — ✅ LIVE (verified on-chain txid)
+13. Arbitrum (Sepolia) — ✅ LIVE (verified on-chain txid)
+14. Optimism (Sepolia) — ✅ LIVE (verified on-chain txid)
+15. Avalanche (Fuji) — 🟡 receive_only (send built, blocked — no testnet faucet)
+16. BNB Chain (testnet) — 🟡 receive_only (send built, blocked — no testnet faucet; note: min gas price enforced, Slow tier may underprice)
+17. ERC-20 tokens (USDC + USDT, Sepolia) — ✅ LIVE (verified on-chain txids; USDT uses Aave faucet stand-in — no official Tether Sepolia)
+18. Bitcoin (BIP-84 testnet) — ✅ LIVE (txid 2da87a27…, block 4990901 — docs/PhaseBTC.verification.md)
+19. Solana (ed25519 devnet) — ✅ LIVE (sig 5KGXAGTJ…, FINALIZED; wallet-core module verified; /solana UI send not yet wired)
 20. More ERC-20 tokens (DAI, LINK…) — 💡 (cheap; reuses token path)
 21. More EVM chains (Base, zkSync…) — 💡 (config-level)
 22. Other stacks (XRP, ADA, TRON…) — 💡 (each a full new stack + audit)
 
 ## 3. Security — S1 foundation (docs/Security.roadmap.md)
-23. Native secure storage (Secure Enclave / Android Keystore) — 🟡 (M2a done;
-    M2b app-layer, PROVISIONAL; OS-enforced ACL M2c/M2d 📋 not built)
+23. Native secure storage (Secure Enclave / Android Keystore) — 🟡 (M2a + M2b done;
+    OS-enforced ACL M2c/M2d 📋 not built — audit-gated)
 24. Biometric unlock — ✅ (app-layer gate, PROVISIONAL — not an OS-enforced ACL)
 25. FIDO2 / passkeys — ✅ Level-1 unlock gate (NOT key custody; password escape
     hatch present). Level-2 PRF vault-protect — 📋 not built.
@@ -79,7 +79,8 @@
 
 ## 4. Security — S2 transaction safety
 27. Token approvals: view + REVOKE — ✅
-28. Suspicious-address / scam screening (threat-intel feed) — 📋 not built
+28. Suspicious-address / scam screening — ✅ BUILT (local on-device; live threat-intel feed still roadmap)
+28a. OFAC screening — ✅ BUILT (bundled SDN snapshot, on-device; gated on legal review before shipping)
 29. Address-poisoning warnings — ✅ (wired into send, informs-not-blocks)
 30. Spam-token filter — ✅
 31. Transaction simulation (top drainer defense) — ✅ (LOCAL-first pre-sign preview, `simulate.js` + `TransactionPreview.jsx`; warns-not-blocks, never "safe")
@@ -94,8 +95,8 @@
 33a. Stealth / hidden wallets (deniable chaff-slot pool) — ✅ (SAST M-1 collision fix; multi-chain reveal; move-existing variant)
 33b. Panic wipe (emergency local key destruction) — ✅ (panic PIN + in-app guarded wipe)
 33c. Constant-KDF unlock timing across the deniability stack — ✅ (SAST M-2 fix)
-34. Hardware wallet (Ledger / Trezor) — 📋 not built (UI shell only)
-35. Login activity (+ map) — 📋 not built (UI shell only)
+34. Hardware wallet (Ledger / Trezor) — 🟡 BUILT (Ledger WebHID address derivation + Trezor guide; TX signing coming soon; BTC/SOL hardware signing not wired; VULN-3+7 closed)
+35. Login activity (+ map) — ✅ VERIFIED 2026-06-20
 36. Social recovery (guardian / SSS) — ❌ removed [audit-blocked-and-not-advertised]
     (never built; removed from UI/catalogue)
 36a. Crypto Will / inheritance — 📋 (SELF-CUSTODY ONLY: secret-sharing + dead-man's-
@@ -104,10 +105,17 @@
      Defer — not near-term.)
 
 ## 6. Security — S4 hardening
+<<<<<<< HEAD
 37. RASP (jailbreak/root/tamper detection) — 🟡 BUILT — browser-level probes active / OS-level detection audit-gated (M2c/M2d)
 38. Audit log — 📋
 39. Risk limits / risk scoring (rule-based) — 📋
 40. Encrypted cloud backup (CIPHERTEXT only, never plaintext keys) — 📋
+=======
+37. RASP (jailbreak/root/tamper detection) — ✅ BUILT/VERIFIED browser-level 2026-06-20 (navigator.webdriver → HOOKED → signing blocked; degradation policy + send-path wiring + I3 guard built + tested); OS-level probes still audit-gated
+38. Audit log — ✅ LIVE/VERIFIED 2026-06-20 (/audit-log; AES-GCM ring-buffer, opt-in, off by default, no-op in decoy/hidden)
+39. Risk limits / risk scoring (rule-based) — ✅ BUILT (on-device rule-based risk score, src/risk/; PROVISIONAL-UNAUDITED)
+40. Encrypted cloud backup (CIPHERTEXT only, never plaintext keys) — ✅ BUILT (Argon2id+AES-GCM, restore verification)
+>>>>>>> origin/main
 
 ## 7. AI (ADVISORY ONLY — never holds keys, never signs)
 41. Plain-language transaction explanation — 💡
@@ -121,9 +129,9 @@
 44a. Help menu (top-bar Documentation entry) — ✅
 45. Address book / contacts — ✅ (with per-chain address validation on save)
 46. ENS / SNS resolution in Send — ✅ (resolve-only); ENS registration — ❌ removed
-47. Price charts / alerts / watchlist — 💡
-48. Portfolio / net-worth view — 💡
-49. NFT viewing (display-only gallery) — 💡
+47. Price charts / alerts / watchlist — ✅ BUILT (price-charts, alerts, watchlist routes live; live market prices VERIFIED 2026-06-20)
+48. Portfolio / net-worth view — ✅ BUILT (net-worth, analytics, advanced-analytics, benchmark, portfolio-rewind, pl, correlation, correlation-timeline, index-builder, snapshots routes live)
+49. NFT viewing (display-only gallery) — ✅ BUILT (nft, nft-multichain routes live)
 50. Custom token add / hide — 💡
 
 ## 9. Platform / app shell
@@ -198,31 +206,34 @@ self-custody utilities + more chains. Candidate additions, triaged per the rules
 >
 > These are no longer build candidates unless deliberately re-greenlit.
 
-UX/niceties: Activity Dashboard, Notification Centre, Push Notifications, Smart
-Alerts, Messenger Alerts, Calculator, ERC20 Discovery, Merchant QR, Custom
-Dashboard Widgets, Voice Commands. (ENS Registration + Mobile Widget ❌ removed —
-see the removed record above.)
+UX/niceties: Activity Dashboard ✅ BUILT, Notification Centre ✅ BUILT, Push
+Notifications ✅ BUILT, Smart Alerts ✅ BUILT, Messenger Alerts ✅ BUILT, Calculator ✅ BUILT,
+ERC20 Discovery 💡, Merchant QR ✅ BUILT (via payment-links), Custom Dashboard Widgets ✅ BUILT,
+Voice Commands ✅ BUILT. (ENS Registration + Mobile Widget ❌ removed — see the removed
+record above.)
 
-Analytics (read-only, safe): Portfolio Dashboard, Portfolio Metrics/Snapshots/
-Rewind/Benchmark, P&L Tracking, Performance Analytics/Dashboard, Spending
-Patterns, On-Chain Analytics, Advanced/Predictive Analytics, Correlation Matrix/
-Timeline, Fear & Greed Index, Crypto Sentiment, What-If Simulator, Custom Index
-Builder, Fee Analytics.
+Analytics (read-only, safe): Portfolio Dashboard ✅ BUILT, Portfolio Metrics/Snapshots/
+Rewind/Benchmark ✅ BUILT, P&L Tracking ✅ BUILT, Performance Analytics/Dashboard ✅ BUILT,
+Spending Patterns ✅ BUILT, On-Chain Analytics ✅ BUILT, Advanced/Predictive Analytics ✅ BUILT,
+Correlation Matrix/Timeline ✅ BUILT, Fear & Greed Index / Crypto Sentiment ✅ BUILT
+(news-sentiment route), What-If Simulator 💡, Custom Index Builder ✅ BUILT, Fee Analytics
+✅ VERIFIED 2026-06-20.
 
 Security extras (self-custody-safe): Security Dashboard ✅ (built, PR #53), Anomaly/
-Fraud Detection ✅ (built, PR #54), Account Access ✅ (built, PR #50), D App
-Security Alerts, Watch Wallets. (Social Recovery + Multi-Sig ❌ removed — see the
-removed record above.)
+Fraud Detection ✅ (built, PR #54), Account Access ✅ (built, PR #50), D App Security
+Alerts 📋 (roadmap), Watch Wallets ✅ BUILT. (Social Recovery + Multi-Sig ❌ removed —
+see the removed record above.)
 
 Chains (separate stacks, each own audit): Multi-Chain NFT. (Cosmos IBC + Sui Wallet
 ❌ removed — see the removed record above.)
 
-Self-custody utilities: Crypto Signing (message signing), Tax Report/Tax Harvesting
-(read-only), Savings Goals, Budget Limits, Split Bill, Payment Links, Recurring
-Payments (self-initiated, schedule/reminder only — hands off to Send for user
-signing), Invoice Generator, Carbon Tracker, Referral Dashboard/Tracker,
-Leaderboard, Social Feed/Public Profiles (privacy caveats). (Multi-Sig Wallets/
-Treasury ❌ removed — see the removed record above.)
+Self-custody utilities: Crypto Signing (message signing) ✅ BUILT, Tax Report/Tax
+Harvesting (read-only) ✅ BUILT, Savings Goals ✅ BUILT, Budget Limits ✅ BUILT,
+Split Bill, Payment Links ✅ BUILT, Recurring Payments ✅ BUILT (self-initiated,
+schedule/reminder only — hands off to Send for user signing), Invoice Generator ✅ BUILT,
+Carbon Tracker 💡, Referral Dashboard/Tracker 🟡 BUILT (recently, 2026-06-20; /referrals
+route live), Leaderboard, Social Feed/Public Profiles (privacy caveats). (Multi-Sig
+Wallets/Treasury ❌ removed — see the removed record above.)
 
 Borderline (advisory-only OK, auto-executing NOT): AI Rebalancer, AI Agents —
 safe ONLY if they advise/propose and the user signs; if they transact
