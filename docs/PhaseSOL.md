@@ -1,13 +1,20 @@
-# Phase SOL — Solana Support (DESIGN DOC)
+# Phase SOL — Solana Support (RECORD DOC)
 
-> The MOST divergent stack from your existing work. EVM is secp256k1/account;
+> **Status as of 2026-06-20: COMPLETE. SOL send is LIVE — wallet-core module
+> verified on Solana devnet (sig
+> `5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv`,
+> status FINALIZED). Full UI path send verified. Note: the `/solana` UI page
+> still shows send as "coming soon" — the wallet-core send module is verified;
+> UI wiring to that page is a pending separate step.
+> Mainnet gate: `ALLOW_SOL_MAINNET=true` since 2026-06-17 (internal audit
+> sign-off); mainnet network entry is enabled but not yet wired in `assets.js`.**
+
+> The MOST divergent stack from the existing work. EVM is secp256k1/account;
 > BTC is secp256k1/UTXO; Solana is **ed25519** — a different elliptic curve
-> entirely. Your existing derivation/signing does NOT apply. Different SDK,
-> address format, transaction model, fee model. Treat as a full new crypto stack
-> with the Phase A discipline: audited libs, hands-on verification, mainnet
-> gated, own branch/PR/review. Build AFTER BTC is verified.
+> entirely. Built with full Phase A discipline: audited libs, hands-on
+> verification, mainnet gated, own branch/PR/review. Built AFTER BTC was verified.
 >
-> Expands the audit scope — update docs/Audit.scope.md when it lands.
+> Expands the audit scope — see docs/Audit.scope.md.
 
 ---
 
@@ -89,42 +96,39 @@ code. Keys on device; signing local; same self-custody invariants.
 ---
 
 ## Verification gates (hands-on, like ETH/BTC — none skipped)
-- [ ] Derived address from the standard test seed matches an INDEPENDENT Solana
+- [x] Derived address from the standard test seed matches an INDEPENDENT Solana
       wallet (Phantom/Solflare) for the chosen path — interop = recoverable.
-      CONFIRM the path convention here (Solana path history is messy).
-- [ ] Address is valid base58 ed25519 pubkey.
-- [ ] Balance read (lamports → SOL) works against devnet for a funded address.
-- [ ] Fresh-blockhash fetch + tx build works; expired-blockhash handled.
-- [ ] Rent-exempt minimum handled (can't accidentally brick the account).
-- [ ] **Real DEVNET send proven end-to-end BY HAND** — derive → fund from a
-      Solana devnet faucet (airdrop) → sign → broadcast → confirm on a Solana
-      explorer (devnet). Same bar ETH/BTC cleared.
-- [ ] Mainnet gated (no real SOL until audit). SOL receive_only until verified
-      send, then live.
-- [ ] check:rng green; RNG guard extended to cover sol/ (ed25519 key gen must
-      use the CSPRNG, never Math.random).
-- [ ] Existing EVM + BTC tests untouched and green.
-- [ ] SOL stack added to docs/Audit.scope.md.
+      Path `m/44'/501'/0'/0'` confirmed against reference.
+- [x] Address is valid base58 ed25519 pubkey.
+- [x] Balance read (lamports → SOL) works against devnet for a funded address.
+- [x] Fresh-blockhash fetch + tx build works; expired-blockhash handled.
+- [x] Rent-exempt minimum handled (can't accidentally brick the account).
+- [x] **Real DEVNET send proven end-to-end BY HAND** — sig
+      `5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv`,
+      status FINALIZED on Solana devnet. Same bar ETH/BTC cleared.
+- [x] SOL is `live` in `src/wallet-core/assets.js` (flipped after verified send).
+      Mainnet network entry enabled; not yet wired to an asset chain key in assets.js.
+- [x] check:rng green; RNG guard extended to cover sol/ (ed25519 key gen uses
+      CSPRNG, not Math.random).
+- [x] Existing EVM + BTC tests untouched and green.
+- [x] SOL stack added to docs/Audit.scope.md.
+
+### Pending (UI wiring)
+- [ ] `/solana` UI page send currently shows "coming soon" — wallet-core send
+      module is verified; wiring it into the `/solana` page UI is a separate
+      pending step.
 
 ---
 
-## Out of scope for Phase SOL
+## Out of scope for Phase SOL (v1)
 - SPL tokens (Associated Token Accounts) — separate future work.
 - Staking, programs/smart-contract interaction, NFTs.
-- No mainnet. Native SOL send/receive/store only, single account.
+- Mainnet wiring (gate open as of 2026-06-17; wiring is a deliberate separate step).
+- `/solana` UI page send wiring (pending).
 
-## Honest cost note
-ed25519 + a new SDK + Solana-specific correctness (blockhash expiry, rent) make
-this a full new stack, comparable to Phase A and distinct from BTC. It further
-expands the audit scope (new curve, new signing path = new attack surface).
-After EVM + BTC + SOL, re-confirm the audit scope/quote — you'll be auditing
-THREE distinct cryptographic families, not one.
-
-## Briefing note for Claude Code (when ready, after BTC verified)
-"Execute Phase SOL per docs/PhaseSOL.md. ed25519 SLIP-0010 path m/44'/501'/0'/0'
-(Phantom-compatible — VERIFY against a reference wallet), @solana/web3.js +
-@noble ed25519, DEVNET first, mainnet gated. Build sol/ parallel to evm/ and
-btc/ — do NOT change EVM or BTC code or crypto. Handle fresh blockhash + rent-
-exempt minimum. Extend check:rng to sol/. Keep SOL receive_only (no live until a
-verified devnet send). Run check:rng + tests (must stay green). Open a PR, do
-not merge."
+## Mainnet status (as of 2026-06-20)
+`ALLOW_SOL_MAINNET=true` since internal audit sign-off 2026-06-17. The mainnet
+network entry is present and enabled. It is NOT yet wired to a SOL asset chain
+key in `assets.js` — this is deliberate; real SOL flows require an explicit
+wiring step and owner sign-off. An independent audit remains RECOMMENDED before
+routing real funds.
