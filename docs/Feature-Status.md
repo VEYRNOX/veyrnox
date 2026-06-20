@@ -10,12 +10,12 @@
 >
 > Standing rules (unchanged, still true): **testnet/devnet only; mainnet gated**
 > until an independent audit clears; every security/crypto feature is
-> **PROVISIONAL pending that audit**. Status last verified: 2026-06-14.
+> **PROVISIONAL pending that audit**. Status last verified: 2026-06-20.
 
 ---
 
 ## Reality check (read first)
-- **Test suite:** 390 tests across 39 files, all green (`npm test`); `check:rng` green.
+- **Test suite:** 1195 tests across 137 files, all green (`npm test`); `check:rng` green.
 - **What actually SENDS on-chain today:** **ETH (Sepolia), USDC (Sepolia),
   USDT (Sepolia), MATIC (Polygon Amoy), ARB (Arbitrum Sepolia), OP (OP Sepolia),
   BTC (Bitcoin testnet), and SOL (Solana devnet)** are `live` — each send verified
@@ -71,7 +71,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - HD wallet generate (BIP-39), import (seed / private key), multi-account derivation — ✅
 - Encrypted vault (Argon2id + AES-256-GCM) — ✅ (KDF work factor raised to 192 MiB, with param migration — SAST M3)
 - Backup / reveal seed — ✅
-- Send native coin — ✅ for ETH (Sepolia), ARB (Arbitrum Sepolia), OP (OP Sepolia) — each full UI path verified on-chain (ETH `0x2d4d5d…` 2026-06-11; ARB `0x797928…`, OP `0xc3fd1e…` 2026-06-14); other natives 🟡 receive_only
+- Send native coin — ✅ for ETH (Sepolia), ARB (Arbitrum Sepolia), OP (OP Sepolia) — each full UI path verified on-chain (ETH `0x2d4d5d…` 2026-06-11; ARB `0x797928…`, OP `0xc3fd1e…` 2026-06-14); other natives ✅ live (AVAX Fuji + BNB testnet verified 2026-06-20)
 - Receive (per-chain address + local QR) — ✅ (`receiveAddress.js`, `ReceiveCrypto.jsx`, `QRCodeDisplay.jsx`)
 - View balances (from chain) — ✅
 - Transaction history (read-only) — ✅ (`txHistory.js`: BTC/SOL via providers, EVM explorer-fallback, no indexer)
@@ -136,7 +136,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Constant-KDF unlock timing across the deniability stack — ✅ (`deniabilityUnlock.js`; SAST M-2 fix)
 - Action Password 2FA parity in decoy/hidden sessions — 🎯 TARGET / audit-gated (§24). The Action Password second factor (§5) enforces on the **primary set only**. Decoy (`duress.js`) and hidden (`stealth.js`) slots encrypt a **bare mnemonic** as plaintext (not the multi-vault container), so they have no field to carry a per-set Action Password record. **Design constraint (why this is not a mechanical wire):** the stealth chaff pool sizes every fake blob to a *bare-mnemonic* ciphertext length (`makeChaff` → `ptLen = encode(mnemonic).length + 16`) so real hidden slots and chaff share one length distribution. Switching decoy/hidden plaintext to a container to fit a record would inflate real slots past the chaff length → a **real-vs-chaff size distinguisher**, i.e. the exact deniability tell the chaff pool exists to prevent (variable-length-if-present is worse). **Threat-model question (open):** a decoy is meant to be *frictionlessly operable under coercion* — forcing a second factor inside it may be undesirable, not just hard. Safe paths (all audit-gated): (a) constant-size padded container for **all** slots incl. chaff; or (b) a deliberate, documented "decoy/hidden carry no second factor by design" decision. Do **not** build blind. **Note — the Passkey method (§5, Method 2) is different:** it is device-global (stored outside any container), so it *does* prompt in decoy/hidden sessions — but that is the consistent-everywhere model, not the per-set model, and carries its own threat-model trade-off (a coerced decoy will demand the passkey too). It sidesteps the chaff-length constraint at the cost of not being per-set. Full design note + both deniability models in `docs/vault-auth-architecture-brief.md` §6b.
 - v1 KEK-less PIN auth UX (6-digit PinPad, PIN onboarding + returning-PIN unlock, Face-ID-to-decoy, Option A deterministic decoy fallback) — ✅ VERIFIED 2026-06-20 (returning-PIN unlock path). PinPad rendered on every protected-route navigate during this session; PIN 111111 accepted and vault decrypted correctly on each unlock. Autolock re-triggered and re-unlocked correctly multiple times. Real vault with real seed (bamboo… testnet seed) decrypted and real balances loaded. UX flow confirmed end-to-end. HONEST SCOPE: hardware-KEK is still missing (6-digit PIN remains offline-exhaustible — documented, audit-gated); Face-ID-to-decoy path not exercised (mobile only); decoy fallback not exercised (web only). These scopes stay PLANNED/TARGET per the audit gate. Testnet (`security/PinPad.jsx`, `pinOnboarding.js`, `pinRecovery.js`, `authModel.js`, `decoyFallback.js`, `deniabilityUnlock.js`, `mnemonic.js`; cohort marker `veyrnox-auth-model` with fail-fast on unknown model; 4th unconditional KDF slot + four-slot constant-work execution assertion `deniability-timing.test.js`). **Headline audit item:** a 6-digit PIN over Argon2id is exhaustible offline on a seized device in hours–days — the hardware-KEK fast-follow is what closes it; see `docs/superpowers/specs/2026-06-08-v1-pin-auth-ux-design.md` §6. Landed incrementally via the #138/#154/#156/#161 line, not a single PR.
-- Hardware wallet (Ledger / Trezor) — 📋 UI shell only (`HardwareWalletPage.jsx`, simulated connect; no HID/WebUSB)
+- Hardware wallet (Ledger / Trezor) — 🟡 BUILT / UNVERIFIED (`HardwareWalletPage.jsx` + `evm/hw-send.js` + `btc/hw-send.js` + `sol/hw-send.js`; `@trezor/connect-web` + `@ledgerhq/hw-app-eth/btc/solana`). ETH/BTC/SOL address derivation and EIP-1559/PSBT/SOL signing for Ledger (WebHID/U2F) and Trezor (Connect popup). BUILT but not on-device verified — flip to ✅ live only after testnet txid on each device type. I1 preserved; no private key path. (PR #246, merged 2026-06-20)
 - Login activity (+ map) — ❌ original (backend/map) out of scope (needs a backend removed with base44; a location/access-history log conflicts with the deniability stack). **Best-of-breed successor (`/login-activity`) — ✅ VERIFIED 2026-06-20**: "Previous session — this device: Jun 20, 2026, 8:50 AM" loaded from real vault-stored `lastUnlockAt`; I3 deniability note present; Session Manager link rendered. "last successful unlock" timestamp — formerly 🟡 BUILT / UNAUDITED-PROVISIONAL.** Stored in-vault on the primary container (`lastUnlockAt` in `multiVault.js`, written at unlock via a best-effort re-encrypt), **primary-session only** (decoy/hidden never read or write it → no credential/hidden-set tell), destroyed by panic wipe for free, shown read-only on the Security Dashboard as a tamper signal (`formatUnlockTime`). No new blob, no new crypto. See `docs/superpowers/specs/2026-06-16-last-unlock-timestamp-design.md` and the S3 decision note below.
 - Social recovery (guardian / SSS) — ❌ removed [audit-blocked-and-not-advertised] (never built; removed from UI/catalogue)
 - Crypto Will / inheritance — 📋 not built, audit + legal gated (not a near-term build). See inheritance decision note.
@@ -180,7 +180,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - SAST M-2 (deniability unlock timing oracle) — ✅ fixed (PR #34/#35/#36)
 - SAST M-3 (at-rest KDF work factor) + passkey lockout escape hatch — ✅ fixed (PR #35/#40)
 - Validation / fund-correctness / render-safety sweep — ✅ doc + per-chain address-validation fix (PR #41/#42)
-- SAST S1/passkey findings — documented (review-only), see `docs/SAST_S1_FINDINGS.md`
+- SAST S1/passkey findings — ✅ fixed (PRs #38/#40): M-1 (QuickLock fail-open → fail-closed with deliberate recovery), M-2 (runPasskeyGate silent skip → UNAVAILABLE surfaced to UI), M-3 (no escape hatch → PasskeyGateError + skip-passkey path). See `docs/SAST_S1_FINDINGS.md`.
+- ECC audit Track 1 hardening — ✅ fixed (PR #264, 2026-06-20): C-1 (BIP-39 passphrase NFKD), C-3 (confirmed-only UTXO), C-4 (per-chain maxFeePerGas ceiling), H-3 (SOL retry guard), H-7 (ERC-20 transfer selector assertion).
 - Test-suite determinism (Argon2id WASM-heap OOM under parallel vitest) — ✅ fixed (PR #73); suite pinned to a single worker so the 192 MiB KDF can't exhaust the heap. Deterministic but slower; a test-only low-memory KDF override is the noted future fix.
 
 ## 9. AI (advisory only) — 💡 none built
