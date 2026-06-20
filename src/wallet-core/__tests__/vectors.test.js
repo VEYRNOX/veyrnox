@@ -114,4 +114,10 @@ describe('mnemonicToSeed — BIP-39 §5 passphrase NFKD normalisation', () => {
     const seedDecomposed = mnemonicToSeed(TEST_MNEMONIC, decomposed);
     expect(bytesToHex(seedComposed)).toBe(bytesToHex(seedDecomposed));
   });
+
+  it('produces DIFFERENT seeds for different-case passphrases (case is significant)', () => {
+    const s1 = mnemonicToSeed(TEST_MNEMONIC, 'MyPassphrase');
+    const s2 = mnemonicToSeed(TEST_MNEMONIC, 'mypassphrase');
+    expect(bytesToHex(s1)).not.toBe(bytesToHex(s2));
+  });
 });
