@@ -150,7 +150,7 @@ export const CLASSIFICATION = {
   },
   '/net-worth': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Crypto Net Worth (crypto-only): real on-chain balances via usePortfolio (grandTotal + assetTotals), USD shown live (opt-in price feed) or clearly-labeled approximate (reference rates) when off/unavailable. The fake base44-Wallet × stale-USD_RATES math and the global-table manual real-world assets (a decoy-session leak) were removed.',
+    note: 'VERIFIED 2026-06-20: real on-chain balances loaded in the UI via the throwaway testnet wallet (bamboo… seed) — ETH ≈$1,248, BTC ≈$177, ARB ≈$160, USDT ≈$98, OP ≈$96, SOL ≈$82, USDC ≈$38, MATIC/AVAX/BNB ≈$0 (small testnet residuals). "Reference rate, not live market data" disclosure present (I2). "does not include external assets" scope note present (crypto-only). Allocation donut + per-asset rows all rendered. Demo OFF (veyrnox-demo=null), no round seeded fixtures.',
   },
   '/invoices': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -283,7 +283,7 @@ export const CLASSIFICATION = {
   },
   '/audit-log': {
     verdict: 'live', dataSource: 'local-vault',
-    note: 'Opt-in encrypted audit log viewer. Reads the AES-GCM ring-buffer blob from the primary vault (quaternary key) via WalletProvider.readAuditLogEntries(). auditLog.js is never imported by the page directly (enforced by audit-log-honest-disabled.test.js). Off by default; primary-session only; returns [] in decoy/hidden sessions. Displays at most 100 entries ({ type, ts } ONLY). Toggle + clear via WalletProvider context.',
+    note: 'VERIFIED 2026-06-20: enabled toggle via /audit-log page, navigated away (triggering settings_changed), returned to confirm 1 entry appeared — "Settings changed | 6/20/2026, 8:38:58 AM". Write→read cycle confirmed. {type, ts} only (no amounts/addresses). "Encrypted blob in primary vault store. Panic wipe destroys it." and "No-op in decoy/hidden sessions" disclosures present. Clear button rendered. Demo OFF, real wallet (bamboo… seed). Opt-in encrypted audit log viewer — primary-session only; returns [] in decoy/hidden sessions. At most 100 entries.',
   },
   '/login-activity': {
     verdict: 'live', dataSource: 'base44-entities',

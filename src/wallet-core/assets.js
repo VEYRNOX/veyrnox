@@ -77,15 +77,25 @@ export const ASSETS = Object.freeze([
   //   https://sepolia-optimism.etherscan.io/tx/0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
   // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
   { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.LIVE },
-  // AVAX: verified 2026-06-19 — testnet send confirmed on Fuji C-Chain.
-  // txid: 0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0
-  // explorer: https://testnet.snowtrace.io/tx/0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0
-  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalanche',       status: ASSET_STATUS.LIVE },
-  // BNB: verified 2026-06-19 — testnet send confirmed on BSC testnet (chainId 97).
-  // txid: 0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91
-  // explorer: https://testnet.bscscan.com/tx/0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91
-  // NOTE: BSC enforces ≥1 gwei min gas price; fees.js minGasPriceWei floors all tiers.
-  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnb',             status: ASSET_STATUS.LIVE },
+  // AVAX: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path
+  // (asset picker → recipient → amount → Standard fee → step-up PIN re-auth →
+  // broadcast), confirmed on-chain:
+  //   tx 0x3697e0dfed498cbcafabe73ec881c2e193e06434c61122f9fb0efda546c61996
+  //   (Avalanche Fuji, status SUCCESS, block 56425855, 0.001 AVAX,
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…A96045, fee 0.0000021 AVAX)
+  //   https://testnet.snowtrace.io/tx/0x3697e0dfed498cbcafabe73ec881c2e193e06434c61122f9fb0efda546c61996
+  // Mainnet stays gated in networks.js.
+  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.LIVE },
+  // BNB: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path
+  // (asset picker → recipient → amount → Standard fee → step-up PIN re-auth →
+  // broadcast), confirmed on-chain:
+  //   tx 0x1a6ee75ee51ad9cf15e9e6fda4b8a26230378c90a449cd881f96c37def957f75
+  //   (BSC Testnet, status SUCCESS, block 114427048, 0.001 tBNB,
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…A96045, fee 0.000021 tBNB, 1 Gwei)
+  //   https://testnet.bscscan.com/tx/0x1a6ee75ee51ad9cf15e9e6fda4b8a26230378c90a449cd881f96c37def957f75
+  // Standard+ fee tier used (BNB testnet enforces ≥1 Gwei minimum gas price).
+  // Mainnet stays gated in networks.js.
+  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.LIVE },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
   // the mainnet gate (btc/networks.js). Address derivation + live balance reads
   // are wired now (receive_only). The SEND path (construct/sign/broadcast) is
