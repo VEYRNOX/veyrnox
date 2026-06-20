@@ -13,25 +13,20 @@
 // PURE wrt I/O: no storage, no network, no signer, no seed — only an in-memory
 // dispatch. Covered by zeroWrite.test.js (it scans this whole directory).
 //
-// ── WIRED SOURCES (as of PR-275) ─────────────────────────────────────────────
-// All three PR-2 sources are now live:
+// ── SOURCES WIRED ────────────────────────────────────────────────────────────
+// All three live sources from the PR-2 brief are now wired:
 //
-//   SEND     notifySendConfirmed  — post-broadcast receipt in SendCrypto (PR-2).
-//   RISK     notifyTxRisk         — pre-sign score() verdict >= CAUTION at sign
-//                                   time in SendCrypto (PR-275). score() is now
-//                                   called in the live signing path; the verdict
-//                                   is captured once and shared with presignGate.
-//            notifyRaspAlert      — RASP environment tier WARN/BLOCK (PR-2).
-//            notifyFraudAlert     — on-device fraud scan critical/high (PR-2).
-//   RECEIVE  useReceiveDetector   — 60s active-set balance poll; positive delta
-//                                   → emitReceiveDetected (PR-275). Lives in
-//                                   notify/useReceiveDetector.js; mounted in
-//                                   Layout. I3-scoped (active wallet only, no
-//                                   polling in deniability mode). I4 fail-closed
-//                                   (null/indeterminate reads never emit).
+//   SEND    (notifySendConfirmed)   — post-broadcast receipt in SendCrypto.
+//   RECEIVE (notifyReceiveDetected) — usePortfolio poll delta in WalletPortfolioPage.
+//                                     Guards: isUnlocked && !isDecoy (I3, no-fake-security).
+//                                     Skips indeterminate reads. First poll = baseline only.
+//   RISK    (notifyTxRiskAlert)     — scoreCurrentSend() verdict at sign time in SendCrypto.
+//                                     Only fires for CAUTION/RISK level (emitRiskFired guards too).
+//           (notifyRaspAlert)       — RASP environment tier at sign time (WARN/BLOCK only).
+//           (notifyFraudAlert)      — fraud scan findings (critical/high severity only).
 
-import { emitSendConfirmed, emitRiskFired } from './events.js';
-import { LEVEL } from '../risk/levels.js';
+import { emitSendConfirmed, emitReceiveDetected, emitRiskFired } from './events.js';
+import { LEVEL, PRIORITY } from '../risk/levels.js';
 
 /**
  * Fire the "send confirmed" notification from the send flow's post-broadcast
@@ -55,6 +50,39 @@ export function notifySendConfirmed({ amount, to, ts }) {
 }
 
 /**
+ * Fire a "receive detected" notification from the portfolio balance poll delta.
+ * Guard: call only when isUnlocked && !isDecoy — fake balances in demo/decoy
+ * sessions must never trigger a real notification (I3, no-fake-security).
+ *
+ * @param {{ amount: string, ts: number }} p  display string + caller ts
+ */
+export function notifyReceiveDetected({ amount, ts }) {
+  if (!amount) return false;
+  try {
+    emitReceiveDetected({ ts, amount });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fire a risk notification from the tx-risk composite score at signing time.
+ * Only fires for CAUTION or RISK — OK/INFO stay silent (emitRiskFired guards too).
+ *
+ * @param {{ level: string, sentence: string|null, signalId: string|null, ts: number }} p
+ */
+export function notifyTxRiskAlert({ level, sentence, signalId, ts }) {
+  if (!level || (PRIORITY[level] ?? 0) < PRIORITY[LEVEL.CAUTION]) return false;
+  try {
+    emitRiskFired({ ts, score: { level, sentence: sentence ?? signalId ?? 'Risk signal detected' } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fire a security alert from the RASP environment gate when tier is WARN or BLOCK.
  * ALLOW → no-op. Call once per send attempt, not on every render.
  *
@@ -64,23 +92,6 @@ export function notifyRaspAlert({ tier, sentence, ts }) {
   if (tier === 'allow' || !sentence) return false;
   try {
     const level = tier === 'warn-before-sign' ? LEVEL.CAUTION : LEVEL.RISK;
-    emitRiskFired({ ts, score: { level, sentence } });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Fire a tx-risk notification from the pre-sign score() verdict.
- * Called at sign time when the verdict is CAUTION or RISK. OK/INFO → no-op.
- * Fire-and-forget (I4): a notification failure must never block or unwind the send.
- *
- * @param {{ level: string, sentence: string, ts: number }} p
- */
-export function notifyTxRisk({ level, sentence, ts }) {
-  if (!sentence || level === LEVEL.OK || level === LEVEL.INFO) return false;
-  try {
     emitRiskFired({ ts, score: { level, sentence } });
     return true;
   } catch {

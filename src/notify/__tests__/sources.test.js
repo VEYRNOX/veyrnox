@@ -138,34 +138,45 @@ describe('notifyFraudAlert', () => {
   });
 });
 
-// ── notifyTxRisk (PR-275) ─────────────────────────────────────────────────────
+// ── notifyReceiveDetected (PR-275) ───────────────────────────────────────────
 
-describe('notifyTxRisk', () => {
+describe('notifyReceiveDetected', () => {
+  it('fires RECEIVE_DETECTED with the caller payload', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    const ok = sources.notifyReceiveDetected({ amount: '+0.5 ETH', ts: 42 });
+    expect(ok).toBe(true);
+    expect(got).toHaveLength(1);
+    expect(got[0].type).toBe(EVENT.RECEIVE_DETECTED);
+  });
+
+  it('empty amount → no-op', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    expect(sources.notifyReceiveDetected({ amount: '', ts: 1 })).toBe(false);
+    expect(got).toHaveLength(0);
+  });
+
+  it('I4: a throwing subscriber cannot unwind notifyReceiveDetected', () => {
+    track(events.subscribe(() => { throw new Error('hostile'); }));
+    expect(() => sources.notifyReceiveDetected({ amount: '+1 ETH', ts: 1 })).not.toThrow();
+  });
+});
+
+// ── notifyTxRiskAlert (PR-275) ────────────────────────────────────────────────
+
+describe('notifyTxRiskAlert', () => {
   it('OK level → no-op (returns false, no event)', () => {
     const got = [];
     track(events.subscribe((e) => got.push(e)));
-    expect(sources.notifyTxRisk({ level: LEVEL.OK, sentence: 'All clear.', ts: 1 })).toBe(false);
+    expect(sources.notifyTxRiskAlert({ level: LEVEL.OK, sentence: 'All clear.', signalId: null, ts: 1 })).toBe(false);
     expect(got).toHaveLength(0);
   });
 
   it('INFO level → no-op (below notification threshold)', () => {
     const got = [];
     track(events.subscribe((e) => got.push(e)));
-    expect(sources.notifyTxRisk({ level: LEVEL.INFO, sentence: 'Minor note.', ts: 1 })).toBe(false);
-    expect(got).toHaveLength(0);
-  });
-
-  it('null sentence → no-op regardless of level', () => {
-    const got = [];
-    track(events.subscribe((e) => got.push(e)));
-    expect(sources.notifyTxRisk({ level: LEVEL.CAUTION, sentence: null, ts: 1 })).toBe(false);
-    expect(got).toHaveLength(0);
-  });
-
-  it('empty sentence → no-op', () => {
-    const got = [];
-    track(events.subscribe((e) => got.push(e)));
-    expect(sources.notifyTxRisk({ level: LEVEL.RISK, sentence: '', ts: 1 })).toBe(false);
+    expect(sources.notifyTxRiskAlert({ level: LEVEL.INFO, sentence: 'Minor note.', signalId: null, ts: 1 })).toBe(false);
     expect(got).toHaveLength(0);
   });
 
@@ -173,7 +184,7 @@ describe('notifyTxRisk', () => {
     const got = [];
     track(events.subscribe((e) => got.push(e)));
 
-    const ok = sources.notifyTxRisk({ level: LEVEL.CAUTION, sentence: 'First time sending to this recipient.', ts: 99 });
+    const ok = sources.notifyTxRiskAlert({ level: LEVEL.CAUTION, sentence: 'First time sending to this recipient.', signalId: null, ts: 99 });
 
     expect(ok).toBe(true);
     expect(got).toHaveLength(1);
@@ -187,26 +198,34 @@ describe('notifyTxRisk', () => {
   it('RISK fires RISK_FIRED at RISK level', () => {
     const got = [];
     track(events.subscribe((e) => got.push(e)));
-    sources.notifyTxRisk({ level: LEVEL.RISK, sentence: 'Unlimited approval to fresh spender.', ts: 1 });
+    sources.notifyTxRiskAlert({ level: LEVEL.RISK, sentence: 'Unlimited approval to fresh spender.', signalId: null, ts: 1 });
     expect(got[0].score.level).toBe(LEVEL.RISK);
+  });
+
+  it('null sentence with signalId → still fires (signalId is fallback label)', () => {
+    const got = [];
+    track(events.subscribe((e) => got.push(e)));
+    sources.notifyTxRiskAlert({ level: LEVEL.CAUTION, sentence: null, signalId: 'S3', ts: 1 });
+    expect(got).toHaveLength(1);
+    expect(got[0].score.sentence).toBe('S3');
   });
 
   it('CAUTION event maps to the expected notification shape', () => {
     const got = [];
     track(events.subscribe((e) => got.push(e)));
-    sources.notifyTxRisk({ level: LEVEL.CAUTION, sentence: 'First time sending to this recipient.', ts: 50 });
+    sources.notifyTxRiskAlert({ level: LEVEL.CAUTION, sentence: 'First time sending to this recipient.', signalId: null, ts: 50 });
 
     const n = buildNotification(got[0]);
     expect(n.level).toBe(NOTIFY_LEVEL.CAUTION);
     expect(n.ts).toBe(50);
   });
 
-  it('I4: a throwing subscriber NEVER makes notifyTxRisk throw', () => {
+  it('I4: a throwing subscriber NEVER makes notifyTxRiskAlert throw', () => {
     track(events.subscribe(() => { throw new Error('hostile'); }));
     const got = [];
     track(events.subscribe((e) => got.push(e)));
     expect(() =>
-      sources.notifyTxRisk({ level: LEVEL.CAUTION, sentence: 'Fresh recipient.', ts: 1 })
+      sources.notifyTxRiskAlert({ level: LEVEL.CAUTION, sentence: 'Fresh recipient.', signalId: null, ts: 1 })
     ).not.toThrow();
     expect(got).toHaveLength(1);
   });

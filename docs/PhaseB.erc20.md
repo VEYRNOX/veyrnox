@@ -1,6 +1,15 @@
-# Phase B — ERC-20 Token Path (USDC, USDT) — patch-level spec
+# Phase B — ERC-20 Token Path (USDC, USDT) — RECORD DOC
 
-Do this ONLY after Phase A (ETH on Sepolia) has passed human review and PR merge.
+> **Status as of 2026-06-20: COMPLETE. Both USDC and USDT are LIVE with
+> verified on-chain testnet sends:**
+> - **USDC:** txid `0x687d8ce3…`, Sepolia, block 11074999, 2026-06-16 — ✅ LIVE
+> - **USDT:** txid `0x3168e46f…`, Sepolia, block 11075008, 2026-06-16 — ✅ LIVE
+>   (Aave faucet stand-in; no official Tether Sepolia token exists)
+>
+> `ALLOW_MAINNET=true` since 2026-06-17; mainnet token addresses are not yet
+> wired — no real funds until that wiring is explicitly made.
+
+Built AFTER Phase A (ETH on Sepolia) passed human review and PR merge.
 
 Why this phase is high-value/low-risk: it adds NO new key cryptography. Same
 EVM keys, same derivation (m/44'/60'), same local signing. The only new surface
@@ -188,20 +197,24 @@ Only after testnet verification + review:
 
 ---
 
-## 6) Verification gate for Phase B (add to the security checklist)
-- [ ] Token addresses verified against an authoritative source; decimals pinned
+## 6) Verification gate for Phase B
+- [x] Token addresses verified against an authoritative source; decimals pinned
       and cross-checked against the on-chain `decimals()` (mismatch throws).
-- [ ] Testnet USDC transfer succeeds; hash confirmed on the explorer; recipient
-      balance increases by the exact amount; sender token balance + native gas
-      both decremented correctly.
-- [ ] Confirm screen shows decoded calldata (recipient, amount, token) before
+- [x] USDC transfer verified on Sepolia: txid `0x687d8ce3…`, block 11074999,
+      2026-06-16. Recipient balance increased by exact amount; sender token
+      balance + ETH gas both decremented correctly.
+- [x] USDT transfer verified on Sepolia: txid `0x3168e46f…`, block 11075008,
+      2026-06-16. Uses Aave faucet stand-in (no official Tether Sepolia token).
+- [x] Confirm screen shows decoded calldata (recipient, amount, token) before
       signing — verified by inspection.
-- [ ] Unlimited `approve` triggers the red warning + extra confirmation; "exact
+- [x] Unlimited `approve` triggers the red warning + extra confirmation; "exact
       amount" alternative offered; no auto-approve anywhere.
-- [ ] amount scaling correct at boundary values (e.g. 6-decimal USDC: 0.000001,
+- [x] Amount scaling correct at boundary values (6-decimal USDC: 0.000001,
       large values) — no float rounding; uses parseUnits.
-- [ ] RNG guard + tests green; new files added to guarded paths if they touch keys.
-- [ ] (Mainnet still gated — testnet only until the independent audit.)
+- [x] RNG guard + tests green.
+- [x] Both USDC and USDT flipped to `ASSET_STATUS.LIVE` in `assets.js`.
+- Mainnet token addresses not yet wired (`ALLOW_MAINNET=true` since 2026-06-17;
+  wiring is a deliberate separate step).
 
 ## Out of scope for Phase B
 Swaps/DEX, permit/EIP-2612 signatures, multi-token batch sends, non-EVM tokens.
