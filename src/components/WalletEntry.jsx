@@ -80,6 +80,7 @@ import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import { setPendingReferral } from "@/lib/referral";
+import { copySecret } from "@/lib/copySecret";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
 // Both operands are local strings with no remote attacker; this is a codebase
@@ -382,8 +383,8 @@ export default function WalletEntry() {
     return () => { active = false; };
   }, [hasVault, isUnlocked]);
 
-  const copySeed = () => {
-    navigator.clipboard.writeText(generatedSeed);
+  const copySeed = async () => {
+    await copySecret(generatedSeed);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
