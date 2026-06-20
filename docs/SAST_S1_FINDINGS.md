@@ -158,3 +158,21 @@
 - npm audit: not run — no dependency changes in PR #38 (`git diff --stat 353b365 0d534a7 -- package.json package-lock.json` is empty).
 </content>
 </invoke>
+
+---
+
+## Remediation status (2026-06-20)
+
+All three Medium findings fixed. L-1 and L-2 accepted as documented design decisions.
+
+| Finding | Sev | Status | Note |
+|---|---|---|---|
+| M-1 `QuickLock` fail-open | MEDIUM | ✅ FIXED (PR #40) | Fails closed on all errors once `isWebAuthnSupported()` is true. On `cancelled` (NotAllowedError): shows "denied/cancelled" error. On any other error: shows "passkey couldn't be used" + `recoverable = true` — sets the deliberate "Continue without passkey" escape hatch, not an auto-pass. |
+| M-2 `runPasskeyGate` silently skips | MEDIUM | ✅ FIXED (PR #40) | Returns `{ status: PASSKEY_GATE.UNAVAILABLE }` when no authenticator is available. Caller (`WalletProvider`) surfaces this as a UI signal — no longer a silent pass-through. |
+| M-3 Lost credential, no escape hatch | MEDIUM | ✅ FIXED (PR #40) | `PasskeyGateError(reason, cause)` wraps assertion failures; `classifyPasskeyError` distinguishes `'cancelled'` (NotAllowedError) from `'error'` (broken/gone credential). `QuickLock` exposes the `recoverable` path; `runPasskeyGate` throws the typed error so callers can signal a signposted password-only bypass. Password still gates the vault — I1 preserved. |
+| L-1 Assertion not inspected (presence-only) | LOW | ✅ ACCEPTED — documented design decision | Gate is browser-enforced ceremony + presence, not app-verified assertion signature. Documented in `passkey.js` escape-hatch threat model. Auditor brief updated. No wrapping key derived (PRF explicitly unused). |
+| L-2 Anti-replay challenge decorative | LOW | ✅ ACCEPTED — consequence of L-1 | Challenge freshness is correct hygiene; replay protection at app layer cannot exist without signature verification. Accepted alongside L-1. |
+| Info-1 Demo auto-success | INFO | ✅ BY DESIGN | Demo-only; dead-code-eliminated from production. No change needed. |
+| Info-2 `getRegisteredPasskey` rpId not validated | INFO | ✅ ACCEPTED — browser enforces | Malformed rpId fails the browser's rpId↔origin check → throws → fails closed. Low exploitability accepted. |
+
+**Net status as of 2026-06-20:** 0 open findings. The passkey gate meets the I4 (fail honest, fail closed) invariant for a convenience-second-factor design. The load-bearing vault control remains the password (keyStore.unlock); passkey is an additional ceremony factor only. The two design-decision LOWs (L-1/L-2) are documented in `passkey.js` and will be re-evaluated in the independent third-party audit.
