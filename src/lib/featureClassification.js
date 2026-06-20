@@ -287,7 +287,7 @@ export const CLASSIFICATION = {
   },
   '/login-activity': {
     verdict: 'live', dataSource: 'base44-entities',
-    note: 'Read-only view of existing UserSession device records (base44.entities.UserSession, already recorded by SecurityCenter) and the vault-stored lastUnlockAt timestamp (one value from the active container, not a per-unlock history). No new metadata introduced. Per-unlock event log is explicitly out of scope — I3 deniability constraint (docs/audit-log-login-activity-deniability-decision.md). UNAUDITED-PROVISIONAL.',
+    note: 'VERIFIED 2026-06-20: page loaded with real vault data — "Previous session — this device: Jun 20, 2026, 8:50 AM (26m ago)" from vault-stored lastUnlockAt. "No devices recorded yet" (web browser, no base44 UserSession entries). I3 deniability note present: "Per-unlock event history is not stored — doing so would create a metadata trail that could violate deniability guarantees." Session Manager link rendered. Demo OFF, real wallet. Read-only; no new metadata introduced.',
   },
   '/alerts': {
     verdict: 'live', dataSource: 'external',
