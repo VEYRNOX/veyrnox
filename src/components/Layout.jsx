@@ -23,6 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications } from "@/notify/useNotifications";
 import NotificationToast from "./NotificationToast";
 import NotificationBell from "./NotificationBell";
+import { useReceiveDetector } from "@/notify/useReceiveDetector";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
 const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
@@ -122,6 +123,7 @@ export default function Layout() {
     }
   }, [mobileTab, location.pathname, navigate]);
   usePriceAlertNotifier();
+  useReceiveDetector(); // PR-275: fires emitReceiveDetected on positive active-set balance delta (I3/I4).
   // In-app Notifications v1 (brief PR-2 §3). ONE hook instance for the whole
   // authenticated shell: the toast (latest) and the bell badge (unseenCount) read
   // the same session-scoped queue. Mounted inside WalletGate, so it unmounts and
