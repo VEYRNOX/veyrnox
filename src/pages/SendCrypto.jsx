@@ -43,7 +43,7 @@ import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
-import { notifySendConfirmed } from "@/notify/sources";
+import { notifySendConfirmed, notifyRaspAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
@@ -602,6 +602,12 @@ export default function SendCrypto() {
       // mark it failed and the gate refuses to sign. Otherwise compose the tx verdict
       // with the RASP environment tier (Phase 3; raspTier is ALLOW when the flag is
       // off → reduces to the tx-risk gate).
+      // Emit a security notification if RASP found a non-clean environment at sign time.
+      // Fire-and-forget (I4) — the notification path must never block or unwind the send.
+      if (raspTier !== 'allow') {
+        notifyRaspAlert({ tier: raspTier, sentence: raspArtifact?.sentence ?? null, ts: Date.now() });
+      }
+
       let riskScoreFailed = false;
       let presignAtSign = null;
       try {
@@ -721,6 +727,8 @@ export default function SendCrypto() {
         }).catch(() => {/* surface a "still pending / failed" state in UI */});
       } else {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        // BTC/SOL: no 1-conf callback, so notify immediately on broadcast (fire-and-forget, I4).
+        notifySendConfirmed({ amount: `${amount} ${selectedWallet.currency}`, to: toAddress, ts: Date.now() });
       }
 
       return { hash, explorerUrl };

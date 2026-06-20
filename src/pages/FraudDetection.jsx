@@ -14,6 +14,7 @@ import {
   History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { notifyFraudAlert } from "@/notify/sources";
 
 // ---------------------------------------------------------------------------
 // Anomaly detection — same 3-check logic as AnomalyDetection.jsx.
@@ -208,6 +209,12 @@ export default function FraudDetection() {
       addressCount: addressBook.length,
     });
     setDismissed([]);
+
+    // Fire a Security-tab notification for each critical/high finding (I4: fire-and-forget).
+    const ts = Date.now();
+    [...anomalies, ...addressFindings].forEach((f) => {
+      notifyFraudAlert({ sentence: f.detail, severity: f.severity, ts });
+    });
   };
 
   // Merge live scan findings
