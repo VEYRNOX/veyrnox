@@ -67,6 +67,13 @@ export function buildTokenTransfer({ networkKey, symbol, to, amount }) {
   assertDecimalAmount(amount, t.decimals); // family-consistent strict validation
   const value = parseUnits(String(amount), t.decimals); // correct-decimals scaling
   const data = erc20Interface.encodeFunctionData('transfer', [to, value]);
+  const TRANSFER_SELECTOR = '0xa9059cbb';
+  if (!data.startsWith(TRANSFER_SELECTOR)) {
+    throw new Error(
+      `Token transfer calldata has unexpected selector ${data.slice(0, 10)} — ` +
+      `expected ${TRANSFER_SELECTOR}. Refusing to sign.`,
+    );
+  }
   return { data, contract: t.address, value, token: t };
 }
 
@@ -97,6 +104,13 @@ export async function sendToken({ networkKey, privateKey, symbol, to, amount, fe
   // transfer needs ~45-65k gas — far above a fee tier's hinted 21000, which would
   // otherwise be signed and revert/stall (same class as the native L2 fix).
   const data = erc20Interface.encodeFunctionData('transfer', [to, value]);
+  const TRANSFER_SELECTOR = '0xa9059cbb';
+  if (!data.startsWith(TRANSFER_SELECTOR)) {
+    throw new Error(
+      `Token transfer calldata has unexpected selector ${data.slice(0, 10)} — ` +
+      `expected ${TRANSFER_SELECTOR}. Refusing to sign.`,
+    );
+  }
   const overrides = await applyEstimatedGasLimit(
     provider, { from: wallet.address, to: t.address, data }, evmFeeOverrides(fee),
   );
