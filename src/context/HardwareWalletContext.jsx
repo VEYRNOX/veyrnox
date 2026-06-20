@@ -10,13 +10,31 @@
 //   I3 — Trezor makes no backend calls from this context (Connect popup is user-gated).
 
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
-import TransportWebHID from '@ledgerhq/hw-transport-webhid';
-import Eth from '@ledgerhq/hw-app-eth';
-import AppBtc from '@ledgerhq/hw-app-btc';
-import AppSolana from '@ledgerhq/hw-app-solana';
-import TrezorConnect from '@trezor/connect-web';
+// Ledger/Trezor packages use Node.js streams and must not be loaded at startup
+// (they crash the browser on module init). Dynamic imports defer loading until
+// a user actually connects a hardware wallet.
 import { PublicKey } from '@solana/web3.js';
 import { hex } from '@scure/base';
+
+let _TransportWebHID, _Eth, _AppBtc, _AppSolana, _TrezorConnect;
+async function loadLedger() {
+  if (_TransportWebHID) return;
+  const [t, e, b, s] = await Promise.all([
+    import('@ledgerhq/hw-transport-webhid'),
+    import('@ledgerhq/hw-app-eth'),
+    import('@ledgerhq/hw-app-btc'),
+    import('@ledgerhq/hw-app-solana'),
+  ]);
+  _TransportWebHID = t.default;
+  _Eth = e.default;
+  _AppBtc = b.default;
+  _AppSolana = s.default;
+}
+async function loadTrezor() {
+  if (_TrezorConnect) return;
+  const m = await import('@trezor/connect-web');
+  _TrezorConnect = m.default;
+}
 
 export const DEVICE = { LEDGER: 'ledger', TREZOR: 'trezor' };
 
@@ -29,9 +47,10 @@ const SOL_PATH  = "44'/501'/0'/0'";
 const TPUB_VERSION = 0x043587CF;
 
 let trezorInitialised = false;
-function ensureTrezorInit() {
+async function ensureTrezorInit() {
+  await loadTrezor();
   if (trezorInitialised) return;
-  TrezorConnect.init({
+  _TrezorConnect.init({
     manifest: {
       appName: 'Veyrnox',
       email: 'al.jobson@21stclick.co.uk',
@@ -77,25 +96,26 @@ export function HardwareWalletProvider({ children }) {
   // ── Ledger ────────────────────────────────────────────────────────────────
 
   async function connectLedger() {
-    const transport = await TransportWebHID.create();
+    await loadLedger();
+    const transport = await _TransportWebHID.create();
     transportRef.current = transport;
 
     const rawDevice = /** @type {any} */ (transport).device;
     if (rawDevice?.productName) setDeviceName(rawDevice.productName);
 
     // ETH
-    const eth = new Eth(transport);
+    const eth = new _Eth(transport);
     const ethResult = await eth.getAddress(EVM_PATH);
     setEthAddress(ethResult.address);
 
     // BTC
-    const btc = new AppBtc({ transport, currency: 'bitcoin_testnet' });
+    const btc = new _AppBtc({ transport, currency: 'bitcoin_testnet' });
     const btcResult = await btc.getWalletPublicKey(BTC_PATH, { format: 'bech32' });
     setBtcAddress(btcResult.bitcoinAddress);
     setBtcPublicKeyHex(btcResult.publicKey);
 
     // SOL
-    const sol = new AppSolana(transport);
+    const sol = new _AppSolana(transport);
     const solResult = await sol.getAddress(SOL_PATH);
     const solPubkey = new PublicKey(solResult.address); // address is raw 32-byte Buffer
     setSolAddress(solPubkey.toBase58());
@@ -105,13 +125,13 @@ export function HardwareWalletProvider({ children }) {
   // ── Trezor ────────────────────────────────────────────────────────────────
 
   async function connectTrezor() {
-    ensureTrezorInit();
+    await ensureTrezorInit();
 
     // Request all three addresses in parallel — each opens the Trezor popup once
     const [ethRes, btcRes, solRes] = await Promise.all([
-      TrezorConnect.ethereumGetAddress({ path: `m/${EVM_PATH}`, showOnTrezor: true }),
-      TrezorConnect.getAddress({ path: `m/${BTC_PATH}`, coin: 'test', showOnTrezor: true }),
-      TrezorConnect.solanaGetAddress({ path: `m/${SOL_PATH}`, showOnTrezor: true }),
+      _TrezorConnect.ethereumGetAddress({ path: `m/${EVM_PATH}`, showOnTrezor: true }),
+      _TrezorConnect.getAddress({ path: `m/${BTC_PATH}`, coin: 'test', showOnTrezor: true }),
+      _TrezorConnect.solanaGetAddress({ path: `m/${SOL_PATH}`, showOnTrezor: true }),
     ]);
 
     if (!ethRes.success) throw new Error((ethRes.payload && 'error' in ethRes.payload ? ethRes.payload.error : null) ?? 'ETH address failed');
@@ -124,7 +144,7 @@ export function HardwareWalletProvider({ children }) {
     setSolAddress(solRes.payload.address);
 
     // Trezor: fetch public keys for signing
-    const btcPkRes = await TrezorConnect.getPublicKey({ path: `m/${BTC_PATH}`, coin: 'test' });
+    const btcPkRes = await _TrezorConnect.getPublicKey({ path: `m/${BTC_PATH}`, coin: 'test' });
     if (btcPkRes.success) setBtcPublicKeyHex(btcPkRes.payload.publicKey);
 
     // SOL pubkey == address bytes (ed25519 public key in base58)
