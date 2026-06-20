@@ -24,10 +24,10 @@ describe('getFeatureStatus', () => {
     expect(isCut('/leaderboard')).toBe(true);
   });
 
-  it('classifies referrals as cut for this release (spec §4)', () => {
+  it('classifies referrals as live (ungated)', () => {
     const entry = getFeatureStatus('/referrals');
-    expect(entry.status).toBe('cut');
-    expect(isCut('/referrals')).toBe(true);
+    expect(entry.status).toBe('live');
+    expect(isLive('/referrals')).toBe(true);
   });
 
   it('every cut/disabled entry carries a user-facing note', () => {
@@ -48,7 +48,7 @@ describe('getFeatureStatus', () => {
 
   it('normalises a trailing slash so it cannot bypass the gate', () => {
     expect(getFeatureStatus('/leaderboard/').status).toBe('cut');
-    expect(getFeatureStatus('/referrals/').status).toBe('cut');
+    expect(getFeatureStatus('/referrals/').status).toBe('live'); // referrals is now live
     expect(featureRouteOutcome('/leaderboard/')).toBe('notFound');
     expect(getFeatureStatus('/').status).toBe('live'); // root is untouched
   });
@@ -59,14 +59,15 @@ describe('cutPaths / disabledPaths', () => {
     for (const p of ['/leaderboard', '/public-profiles', '/shared-portfolio']) {
       expect(cutPaths()).toContain(p);
     }
-    expect(cutPaths()).toContain('/referrals');
+    // /referrals is now live (ungated in Task 3)
+    expect(cutPaths()).not.toContain('/referrals');
   });
 });
 
 describe('featureRouteOutcome', () => {
   it('maps status to a render outcome', () => {
     expect(featureRouteOutcome('/send')).toBe('render');
-    expect(featureRouteOutcome('/referrals')).toBe('notFound');
+    expect(featureRouteOutcome('/referrals')).toBe('render'); // referrals is now live
     expect(featureRouteOutcome('/leaderboard')).toBe('notFound');
   });
 });

@@ -98,6 +98,7 @@ const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
 const WhatThisProtects = lazy(() => import('./pages/WhatThisProtects'));
 const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const Subscription = lazy(() => import('./pages/Subscription'));
+const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 
 const AuthenticatedApp = () => {
   // Render the main app
@@ -206,6 +207,7 @@ const AuthenticatedApp = () => {
           <Route path="/docs" element={<Documentation />} />
           <Route path="/features" element={<Features />} />
           <Route path="/plans" element={<Subscription />} />
+          <Route path="/referrals" element={<ReferralTracker />} />
         </Route>
         </Route>
         {/* Onboarding created a hosted-style wallet *entity* with a fabricated
