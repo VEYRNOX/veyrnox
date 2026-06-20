@@ -83,6 +83,7 @@ const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
 const CryptoSigning = lazy(() => import('./pages/CryptoSigning'));
 const LiveBalances = lazy(() => import('./pages/LiveBalances'));
+const WalletConnect = lazy(() => import('@/pages/WalletConnect.jsx'));
 // LandingGuard owns the public /landing route: it renders LandingPage ONLY on a
 // confirmed no-vault device and otherwise redirects through WalletGate to the PIN
 // pad (closes the reload-to-/landing lock bypass). It imports LandingPage itself,
@@ -130,6 +131,7 @@ const AuthenticatedApp = () => {
           <Route path="/receive" element={<ReceiveCrypto />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/connect" element={<ConnectWallet />} />
+          <Route path="/walletconnect" element={<WalletConnect />} />
           <Route path="/alerts" element={<PriceAlerts />} />
           <Route path="/calculator" element={<Calculator />} />
           <Route path="/analytics" element={<Analytics />} />

@@ -33,6 +33,7 @@ export const ALL_ROUTE_PATHS = [
   '/security-scanner', '/docs', '/features',
   '/plans',
   '/referrals',
+  '/walletconnect',
 ];
 
 export const CLASSIFICATION = {
@@ -370,6 +371,7 @@ export const CLASSIFICATION = {
   '/ai-rebalancer':     { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI rebalancer cut: autonomous value movement, off-wedge.' },
   '/erc20-discovery':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'ERC-20 discovery cut: third-party token indexer dependency, off-wedge.' },
   '/products':          { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Products page cut: marketing page, off-wedge.' },
+  '/walletconnect':     { verdict: 'live', dataSource: 'on-device', note: 'WalletConnect v2 transport + signing (D1+D2). Pairing + session management via WC relay; signing via on-device key derivation (withPrivateKey). eth_sendTransaction display-only pending D3 testnet verification.' },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
