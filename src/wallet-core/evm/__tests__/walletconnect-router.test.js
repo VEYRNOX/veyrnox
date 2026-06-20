@@ -1,0 +1,60 @@
+import { describe, it, expect } from 'vitest';
+import { classifyRequest, isBlocked, REQUEST_TYPES, SUPPORTED_CHAIN_IDS } from '../walletconnect/router.js';
+
+describe('classifyRequest', () => {
+  it('classifies eth_sendTransaction', () => {
+    expect(classifyRequest('eth_sendTransaction')).toBe(REQUEST_TYPES.SEND_TRANSACTION);
+  });
+  it('classifies personal_sign', () => {
+    expect(classifyRequest('personal_sign')).toBe(REQUEST_TYPES.PERSONAL_SIGN);
+  });
+  it('classifies eth_signTypedData_v4', () => {
+    expect(classifyRequest('eth_signTypedData_v4')).toBe(REQUEST_TYPES.SIGN_TYPED_DATA);
+  });
+  it('classifies eth_signTypedData (no version suffix)', () => {
+    expect(classifyRequest('eth_signTypedData')).toBe(REQUEST_TYPES.SIGN_TYPED_DATA);
+  });
+  it('classifies eth_signTypedData_v3', () => {
+    expect(classifyRequest('eth_signTypedData_v3')).toBe(REQUEST_TYPES.SIGN_TYPED_DATA);
+  });
+  it('classifies eth_sign as ETH_SIGN (blocked variant)', () => {
+    expect(classifyRequest('eth_sign')).toBe(REQUEST_TYPES.ETH_SIGN);
+  });
+  it('classifies wallet_switchEthereumChain', () => {
+    expect(classifyRequest('wallet_switchEthereumChain')).toBe(REQUEST_TYPES.SWITCH_CHAIN);
+  });
+  it('classifies wallet_addEthereumChain', () => {
+    expect(classifyRequest('wallet_addEthereumChain')).toBe(REQUEST_TYPES.ADD_CHAIN);
+  });
+  it('returns UNKNOWN for unrecognised methods', () => {
+    expect(classifyRequest('eth_getBalance')).toBe(REQUEST_TYPES.UNKNOWN);
+    expect(classifyRequest('wallet_getSnaps')).toBe(REQUEST_TYPES.UNKNOWN);
+  });
+});
+
+describe('isBlocked', () => {
+  it('blocks eth_sign (raw bytes — too dangerous)', () => {
+    expect(isBlocked('eth_sign')).toBe(true);
+  });
+  it('blocks wallet_addEthereumChain (arbitrary RPC injection)', () => {
+    expect(isBlocked('wallet_addEthereumChain')).toBe(true);
+  });
+  it('does not block personal_sign', () => {
+    expect(isBlocked('personal_sign')).toBe(false);
+  });
+  it('does not block eth_sendTransaction', () => {
+    expect(isBlocked('eth_sendTransaction')).toBe(false);
+  });
+});
+
+describe('SUPPORTED_CHAIN_IDS', () => {
+  it('includes Sepolia testnet', () => {
+    expect(SUPPORTED_CHAIN_IDS.has(11155111)).toBe(true);
+  });
+  it('includes Ethereum mainnet', () => {
+    expect(SUPPORTED_CHAIN_IDS.has(1)).toBe(true);
+  });
+  it('does not include random chain IDs', () => {
+    expect(SUPPORTED_CHAIN_IDS.has(99999)).toBe(false);
+  });
+});

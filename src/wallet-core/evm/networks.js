@@ -215,3 +215,11 @@ export function getNetwork(key) {
 export function listEnabledNetworks() {
   return Object.values(NETWORKS).filter(n => n.enabled && (n.isTestnet || ALLOW_MAINNET));
 }
+
+export function getNetworkByChainId(chainId) {
+  const net = Object.values(NETWORKS).find(n => n.chainId === chainId);
+  if (!net) throw new Error(`Unsupported chain ID: ${chainId}`);
+  if (!net.isTestnet && !ALLOW_MAINNET) throw new Error('Mainnet is gated.');
+  if (!net.enabled) throw new Error(`Network "${net.key}" is not enabled.`);
+  return net;
+}

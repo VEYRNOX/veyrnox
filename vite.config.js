@@ -76,6 +76,9 @@ export default defineConfig(({ command }) => {
     // The '@/...' -> src alias used to be supplied by the @base44/vite-plugin.
     // That plugin was removed (base44 removal, Phase 4), so declare it here
     // explicitly. Mirrors jsconfig.json and vitest.config.js.
+    define: {
+      'process.env': '{}',
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -97,7 +100,7 @@ export default defineConfig(({ command }) => {
     // blank page on first load). hash-wasm inlines its WASM as base64, so no WASM
     // plugin is needed.
     optimizeDeps: {
-      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer'],
+      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer', '@walletconnect/web3wallet', '@walletconnect/utils', '@walletconnect/core'],
     },
     build: {
       rollupOptions: {
