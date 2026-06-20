@@ -32,6 +32,7 @@ export const ALL_ROUTE_PATHS = [
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
   '/security-scanner', '/docs', '/features',
   '/plans',
+  '/referrals',
 ];
 
 export const CLASSIFICATION = {
@@ -346,6 +347,10 @@ export const CLASSIFICATION = {
   '/plans': {
     verdict: 'live', dataSource: 'static',
     note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") and PRO_FEATURES from lib/tier. The upgrade button is permanently disabled with an honest disclosure: "no payment system is active" and "no payment can be made on this screen." Preview disclosure banner explicitly warns pricing is not final. No fabricated capabilities listed as currently available.',
+  },
+  '/referrals': {
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Referral tracker page: displays user referral code and tracks referral conversions from on-device storage. No external data fabrication; referral code derived deterministically from wallet seed.',
   },
 
   // ── Cut paths (spec §4 — off-wedge) ──────────────────────────────────────
