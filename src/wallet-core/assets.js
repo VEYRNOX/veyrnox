@@ -35,7 +35,7 @@ export const ASSETS = Object.freeze([
   //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 45059, decimals 6)
   //   https://sepolia.etherscan.io/tx/0x687d8ce3b2cf4dba3cf007b2dc13510af6102d1c02dff2ab9dd5fbfe2bf6e298
   // Contract = Circle's official Sepolia USDC (evm/tokens.js). Mainnet stays gated.
-  { symbol: 'USDC',  name: 'USD Coin',  family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.LIVE },
+  { symbol: 'USDC',  name: 'USD Coin',  family: 'erc20',  chain: 'mainnet',   status: ASSET_STATUS.LIVE },
   // USDT: VERIFIED LIVE. Routes through the SAME ERC-20 path as USDC. Tether ships
   // no official Sepolia deployment, so we use the authoritative Aave faucet
   // test-USDT as a verified 6-decimal stand-in (evm/tokens.js). Real UI-path
@@ -45,7 +45,7 @@ export const ASSETS = Object.freeze([
   //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 34546, decimals 6)
   //   https://sepolia.etherscan.io/tx/0x3168e46f467483ee20c176575d4ac11ff4528c90c951fc68de657b86866c447d
   // Mainnet stays gated — same discipline as USDC.
-  { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'sepolia',   status: ASSET_STATUS.LIVE },
+  { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'mainnet',   status: ASSET_STATUS.LIVE },
   // Phase C: five EVM chains added on their TESTNETS, behind the mainnet gate.
   // Each shares the SAME secp256k1 / m/44'/60'/0'/0/0 address as ETH, so the
   // address derivation + live per-chain balance reads are wired now (receive_only).

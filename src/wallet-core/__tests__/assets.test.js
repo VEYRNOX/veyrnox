@@ -14,14 +14,16 @@ describe('asset registry', () => {
     expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']);
   });
 
-  it('USDT is LIVE ERC-20 on Sepolia — UI-path send verified on-chain', () => {
-    // USDT routes through the same ERC-20 path as USDC (Aave faucet test-USDT
-    // stand-in, 6 decimals — see evm/tokens.js). Flipped to live after a real
-    // UI-path testnet transfer confirmed on-chain (tx 0x3168e4…, block 11075008).
+  it('USDT is LIVE ERC-20 on mainnet — chain key flipped after Sepolia testnet verification', () => {
+    // USDT routes through the same ERC-20 path as USDC. Sepolia testnet send was
+    // verified on-chain (tx 0x3168e4…, block 11075008). Chain key flipped to
+    // 'mainnet' once ALLOW_MAINNET=true and the mainnet contract was confirmed in
+    // evm/tokens.js. Mainnet send verification (build:release, etherscan.io txid)
+    // is the outstanding step before status moves to "LIVE on mainnet".
     const usdt = getAsset('USDT');
     expect(usdt.status).toBe(ASSET_STATUS.LIVE);
     expect(usdt.family).toBe('erc20');
-    expect(usdt.chain).toBe('sepolia');
+    expect(usdt.chain).toBe('mainnet');
     expect(canReceive(usdt)).toBe(true);
     expect(canSend(usdt)).toBe(true);
   });
