@@ -283,7 +283,7 @@ export const CLASSIFICATION = {
   },
   '/audit-log': {
     verdict: 'live', dataSource: 'local-vault',
-    note: 'Opt-in encrypted audit log viewer. Reads the AES-GCM ring-buffer blob from the primary vault (quaternary key) via WalletProvider.readAuditLogEntries(). auditLog.js is never imported by the page directly (enforced by audit-log-honest-disabled.test.js). Off by default; primary-session only; returns [] in decoy/hidden sessions. Displays at most 100 entries ({ type, ts } ONLY). Toggle + clear via WalletProvider context.',
+    note: 'VERIFIED 2026-06-20: enabled toggle via /audit-log page, navigated away (triggering settings_changed), returned to confirm 1 entry appeared — "Settings changed | 6/20/2026, 8:38:58 AM". Write→read cycle confirmed. {type, ts} only (no amounts/addresses). "Encrypted blob in primary vault store. Panic wipe destroys it." and "No-op in decoy/hidden sessions" disclosures present. Clear button rendered. Demo OFF, real wallet (bamboo… seed). Opt-in encrypted audit log viewer — primary-session only; returns [] in decoy/hidden sessions. At most 100 entries.',
   },
   '/login-activity': {
     verdict: 'live', dataSource: 'base44-entities',
