@@ -123,8 +123,9 @@ import { encryptVault, decryptVault, KDF_PARAMS } from './vault.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
 import { deriveEvmAccount } from './derivation.js';
+import { makeContainer, serializeContainer, parseVault, newWalletId, FIXED_LEN } from './multiVault.js';
 // A hidden wallet is a real BIP-39 wallet, so it has the SAME multi-chain
 // identity any wallet does. We reuse the EXISTING public-address-only derivation
 // helpers — the same ones WalletProvider.deriveBtc/deriveSol use for the primary
@@ -235,36 +236,71 @@ function b64(u8) {
 // the planned stronger binding (see docs/Security.roadmap.md).
 const STEALTH_SLOT_SALT_KEY = 'veyrnox-stealth-slot-salt';
 
-function getOrCreateStealthSalt() {
+// READ-ONLY salt accessor: returns the persisted per-device salt bytes, or null if
+// none exists (or it is malformed). NEVER writes. This is what the read/reveal
+// paths use so a reveal can NEVER provision a salt — see the WRITE-vs-READ split
+// note on slotForSecret/readSlotForSecret below and panic.js (a post-wipe reveal
+// probe must not re-create the 'veyrnox-stealth-slot-salt' deniability tell the
+// wipe just erased; it is in panic.js DENIABILITY_RESIDUE_KEYS, F-02).
+function readStealthSalt() {
   try {
     const stored = localStorage.getItem(STEALTH_SLOT_SALT_KEY);
-    if (stored && /^[0-9a-f]{32}$/i.test(stored)) return utf8ToBytes(stored);
+    if (stored && /^[0-9a-f]{32}$/i.test(stored)) return hexToBytes(stored);
   } catch { /* fall through */ }
+  return null;
+}
+
+// CREATE-ON-WRITE salt accessor: read the salt, or generate + persist one if
+// absent. ONLY the WRITE paths that ESTABLISH a hidden wallet (createHiddenWallet,
+// moveWalletToHidden, via slotForSecret) may call this — so a salt is provisioned
+// EXACTLY when the first real hidden wallet is, never merely by seeding the chaff
+// pool or by a failed unlock attempt. (Before the read/write split, any reveal
+// attempt provisioned the salt, which both leaked a "stack present" tell on
+// hidden-wallet-free devices AND silently re-created the tell after a panic wipe.)
+function getOrCreateStealthSalt() {
+  const existing = readStealthSalt();
+  if (existing) return existing;
   const salt = new Uint8Array(16);
   crypto.getRandomValues(salt);
   const hex = bytesToHex(salt);
   try { localStorage.setItem(STEALTH_SLOT_SALT_KEY, hex); } catch { /* best-effort */ }
-  // Return utf8ToBytes(hex) so that subsequent calls (which read hex from storage
-  // and call utf8ToBytes) return byte-identical salt material — same as auditLog.js.
-  return utf8ToBytes(hex);
+  return hexToBytes(hex); // same 16 decoded bytes as readStealthSalt will return
 }
 
-// Which slot a secret owns. HKDF-SHA256 keyed by a per-device salt maps the secret
-// to one of POOL_SIZE slots. Without the device salt an offline attacker cannot
-// precompute the slot mapping for dictionary candidates — they would need to try
-// Argon2id on every slot for every candidate (POOL_SIZE × dict cost) rather than
-// computing SHA-256 cheaply and targeting just the matching slot.
+// Map a secret to its slot key under a given salt. HKDF-SHA256 keyed by the
+// per-device salt maps the secret to one of POOL_SIZE slots. Without the device
+// salt an offline attacker cannot precompute the slot mapping for dictionary
+// candidates — they would need to try Argon2id on every slot for every candidate
+// (POOL_SIZE × dict cost) rather than computing SHA-256 cheaply and targeting just
+// the matching slot.
+function computeSlot(secret, salt) {
+  const ikm = utf8ToBytes(typeof secret === 'string' ? secret : String(secret));
+  const derived = hkdf(sha256, ikm, salt, 'veyrnox-stealth-slot-v1', 4);
+  const n = ((derived[0] << 24) | (derived[1] << 16) | (derived[2] << 8) | derived[3]) >>> 0;
+  return SLOT_KEYS[n % POOL_SIZE];
+}
+
+// WRITE-PATH slot mapping. PROVISIONS the device salt if absent — used by the paths
+// that ESTABLISH a hidden wallet (createHiddenWallet, moveWalletToHidden) and
+// exposed for tests. A reveal must NOT use this (use readSlotForSecret): a read
+// that provisioned a salt would re-introduce the deniability tell a panic wipe
+// removed, and would leak feature presence on a hidden-wallet-free device.
 // MIGRATION NOTE: this replaced an unkeyed SHA-256 mapping (VULN-7). Existing
 // hidden-wallet blobs provisioned before this change now sit in different slots
 // (unreachable by the new mapping). All slot blobs are chaff-indistinguishable,
 // so orphaned blobs cause no information leak; the feature is PROVISIONAL and no
 // migration path is provided for testnet data.
 export function slotForSecret(secret) {
-  const salt = getOrCreateStealthSalt();
-  const ikm = utf8ToBytes(typeof secret === 'string' ? secret : String(secret));
-  const derived = hkdf(sha256, ikm, salt, 'veyrnox-stealth-slot-v1', 4);
-  const n = ((derived[0] << 24) | (derived[1] << 16) | (derived[2] << 8) | derived[3]) >>> 0;
-  return SLOT_KEYS[n % POOL_SIZE];
+  return computeSlot(secret, getOrCreateStealthSalt());
+}
+
+// READ-PATH slot mapping. NEVER provisions a salt: returns null when no device
+// salt exists — in which case no real hidden wallet can exist either, because the
+// write paths persist the salt BEFORE writing any slot. Used by tryRevealHidden so
+// a reveal (including the post-wipe reveal probe) can never re-create the salt tell.
+function readSlotForSecret(secret) {
+  const salt = readStealthSalt();
+  return salt ? computeSlot(secret, salt) : null;
 }
 
 // A CHAFF blob: shaped and sized exactly like encryptVault() output, but with
@@ -275,10 +311,13 @@ export function slotForSecret(secret) {
 // which is indistinguishable from genuine AES-GCM output to anyone without the
 // secret. Mirrors the { v, kdf, salt, iv, ct } shape of vault.js exactly.
 function makeChaff() {
-  // Match the user's plausible word-count choice (12 or 24) for length realism.
-  const strength = randomBytes(1)[0] < 128 ? 128 : 256;
-  const sample = generateMnemonic(strength);
-  const ptLen = new TextEncoder().encode(sample).length;
+  // H2: a real hidden-wallet slot now encrypts a FIXED-LENGTH multi-seed container
+  // (always exactly FIXED_LEN plaintext bytes — independent of mnemonic word-count
+  // and of whether the set carries an Action-Password record). So chaff must size
+  // its fake ciphertext to that SAME fixed plaintext length + the 16-byte GCM tag,
+  // making every slot's ct length byte-identical (real or chaff). Previously chaff
+  // matched a bare-mnemonic length; that would now be a real-vs-chaff length tell.
+  const ptLen = FIXED_LEN;
   const GCM_TAG = 16;
   return {
     v: 1,
@@ -358,14 +397,20 @@ export async function createHiddenWallet(secret, strength = 128) {
 
   // If this secret already opens a real wallet in its slot, return it as-is —
   // never clobber a hidden wallet just because the user re-typed its secret.
-  const existingMnemonic = await tryRevealHidden(secret);
+  const existingMnemonic = await revealHiddenMnemonic(secret);
   if (existingMnemonic != null) {
     const id = deriveHiddenIdentity(existingMnemonic);
     return { mnemonic: existingMnemonic, address: id.evm.address, ...id, slot, existing: true };
   }
 
   const mnemonic = generateMnemonic(strength);
-  const blob = await encryptVault(mnemonic, secret);
+  // H2: wrap the hidden wallet's mnemonic in a FIXED-LENGTH multi-seed container so
+  // it can carry its OWN per-set Action-Password record and so its ciphertext length
+  // matches the primary set's and every chaff slot's (deniability — no length tell).
+  // A hidden wallet has no Action Password today (the UI does not yet collect one),
+  // so the record is absent; presence still means "configured" inside the container.
+  const container = makeContainer([{ id: newWalletId(), mnemonic }]);
+  const blob = await encryptVault(serializeContainer(container), secret);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -382,7 +427,7 @@ export async function createHiddenWallet(secret, strength = 128) {
   // It does NOT — and cannot — detect a collision that overwrote a DIFFERENT
   // wallet under a colliding secret (that prior wallet is indistinguishable from
   // chaff to us); see the header for why that residual is unavoidable here.
-  const verify = await tryRevealHidden(secret);
+  const verify = await revealHiddenMnemonic(secret);
   if (verify !== mnemonic) {
     throw new Error('Hidden wallet failed to verify after write; not created.');
   }
@@ -428,12 +473,15 @@ export async function moveWalletToHidden(mnemonic, secret) {
   const slot = await slotForSecret(secret);
 
   // Refuse to clobber a DIFFERENT hidden wallet already living under this secret.
-  const existing = await tryRevealHidden(secret);
+  const existing = await revealHiddenMnemonic(secret);
   if (existing != null && existing !== mnemonic) {
     throw new Error('That reveal secret is already in use by a hidden wallet. Choose a different secret.');
   }
 
-  const blob = await encryptVault(mnemonic, secret);
+  // H2: same FIXED-LENGTH container wrapping as createHiddenWallet, so a moved
+  // wallet is byte-shaped identically to a fresh hidden wallet and to chaff.
+  const container = makeContainer([{ id: newWalletId(), mnemonic }]);
+  const blob = await encryptVault(serializeContainer(container), secret);
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }
@@ -446,7 +494,7 @@ export async function moveWalletToHidden(mnemonic, secret) {
 
   // Self-verify: the moved wallet MUST now be revealable by its secret before the
   // caller removes the visible record. If this fails, nothing visible is purged.
-  const check = await tryRevealHidden(secret);
+  const check = await revealHiddenMnemonic(secret);
   if (check !== mnemonic) {
     throw new Error('Move failed to verify; the wallet was NOT hidden and nothing was removed.');
   }
@@ -457,20 +505,38 @@ export async function moveWalletToHidden(mnemonic, secret) {
 
 /**
  * Attempt to reveal a hidden wallet with `secret`. Computes the secret's slot and
- * runs exactly ONE decryptVault on whatever blob lives there. Returns the hidden
- * wallet's mnemonic on a match, or null otherwise (chaff, wrong secret, or an
+ * runs exactly ONE decryptVault on whatever blob lives there. Returns the decrypted
+ * PAYLOAD STRING on a match — a multi-seed container JSON after the H2 change, or a
+ * legacy bare mnemonic for hidden wallets written before it (parseVault in the
+ * caller handles both) — or null otherwise (chaff, wrong secret, or an
  * un-seeded pool). NEVER throws for a wrong secret — the caller (WalletProvider
  * .unlock) surfaces the primary error instead, so a miss here is indistinguishable
  * from "no hidden wallet" at the prompt. Constant work: one KDF regardless of
- * whether any hidden wallet exists (the slot always holds chaff at minimum once
- * the pool is seeded).
+ * whether any hidden wallet exists. When the device salt is present the slot always
+ * holds chaff at minimum once the pool is seeded (one KDF on it); when NO device
+ * salt exists (no hidden wallet was ever created) we still spend one KDF on a
+ * throwaway chaff blob — never provisioning a salt — so the cost is identical and
+ * a reveal can never re-create the deniability tell a panic wipe removed.
  *
  * @param {string} secret
  * @returns {Promise<string|null>}
  */
 export async function tryRevealHidden(secret) {
   if (typeof secret !== 'string' || secret.length === 0) return null;
-  const slot = await slotForSecret(secret);
+  const slot = readSlotForSecret(secret); // READ-ONLY: never provisions a salt
+  if (slot == null) {
+    // No device salt => no real hidden wallet can exist (the write paths persist
+    // the salt BEFORE writing any slot). So this MISSES. But we still spend exactly
+    // ONE KDF on a throwaway chaff blob so the reveal cost stays invariant — the
+    // constant-KDF unlock path (deniabilityUnlock.js) counts on the stealth slot
+    // being exactly one KDF, and short-circuiting here would leak salt-presence
+    // (i.e. "a hidden wallet was created") via a 2-vs-3-KDF timing difference.
+    // decryptVault on random ct always fails — this call exists purely for its KDF
+    // cost — and crucially provisions NO salt, so a reveal can never re-create the
+    // deniability tell a panic wipe removed (panic.js F-02).
+    try { await decryptVault(makeChaff(), secret); } catch { /* KDF-cost only */ }
+    return null;
+  }
   const db = await openDb();
   let blob;
   try {
@@ -483,6 +549,69 @@ export async function tryRevealHidden(secret) {
     return await decryptVault(blob, secret); // throws on wrong secret / chaff
   } catch {
     return null;
+  }
+}
+
+// INTERNAL: reveal a hidden wallet's first (and only) MNEMONIC, or null. Used by
+// create/move (idempotency, clobber-guard, self-verify) which reason about the
+// underlying seed, not the container envelope. tryRevealHidden returns the raw
+// payload string (container JSON or a legacy bare mnemonic); this parses it back to
+// the bare mnemonic via the shared multiVault parser, so both old and new formats
+// resolve identically. Returns null on any miss or unparseable payload (fail-safe).
+async function revealHiddenMnemonic(secret) {
+  const payload = await tryRevealHidden(secret);
+  if (payload == null) return null;
+  try {
+    const { container } = parseVault(payload);
+    const w = container.wallets[0];
+    return w ? w.mnemonic : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * H2 (decoy/hidden 2FA parity): set/replace the per-set Action-Password record on a
+ * HIDDEN wallet, re-writing its stealth slot in place. The caller supplies the reveal
+ * `secret` and the wallet's current `mnemonic` (the unlocked hidden session holds it).
+ * We CONFIRM the secret currently reveals this exact wallet, then re-encrypt the slot
+ * with the SAME mnemonic wrapped in a FIXED-LENGTH container carrying `record` (or no
+ * record when `record` is null — disabling the second factor). The ciphertext length
+ * is unchanged (padding), so this is invisible to a storage observer. Self-verifies
+ * the re-write is revealable before returning. Fails closed if the secret does not
+ * open this wallet.
+ *
+ * @param {string} secret
+ * @param {string} mnemonic
+ * @param {object|null} record - serialized AP verifier, or null to clear
+ * @returns {Promise<void>}
+ */
+export async function setHiddenActionPasswordRecord(secret, mnemonic, record) {
+  if (typeof secret !== 'string' || secret.length < 4) {
+    throw new Error('Reveal secret must be at least 4 characters');
+  }
+  if (!validateMnemonic(mnemonic)) {
+    throw new Error('Invalid recovery phrase');
+  }
+  const current = await revealHiddenMnemonic(secret);
+  if (current !== mnemonic) {
+    throw new Error('Decryption failed: wrong password or corrupted vault');
+  }
+  const slot = await slotForSecret(secret);
+  const container = makeContainer([{ id: newWalletId(), mnemonic }], record ?? undefined);
+  const blob = await encryptVault(serializeContainer(container), secret);
+  if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
+    throw new Error('Refusing to store: not a valid encrypted vault blob');
+  }
+  const db = await openDb();
+  try {
+    await putKey(db, slot, blob);
+  } finally {
+    db.close();
+  }
+  const check = await revealHiddenMnemonic(secret);
+  if (check !== mnemonic) {
+    throw new Error('Hidden wallet failed to verify after write; Action Password not changed.');
   }
 }
 

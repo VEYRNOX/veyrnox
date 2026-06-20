@@ -64,11 +64,13 @@ import {
   setDuressVault,
   clearDuressVault,
   hasDuressVault,
+  tryDuressUnlock,
 } from '@/wallet-core/duress';
 import {
   tryRevealHidden,
   createHiddenWallet,
   moveWalletToHidden,
+  setHiddenActionPasswordRecord,
   ensureStealthPool,
   hasStealthPool,
   wipeStealthPool,
@@ -757,7 +759,13 @@ export function WalletProvider({ children }) {
   // wallet #1 of a fresh container. Marked backedUp:true — the user supplied the
   // seed, so by definition they hold the backup (no nag for an imported wallet).
   const importWallet = useCallback(async (mnemonic, password) => {
-    if (!validateMnemonic(mnemonic)) throw new Error('Invalid recovery phrase');
+    if (!validateMnemonic(mnemonic)) {
+      // Tag the recoverable input reject so the UI catch can KEEP the pending PIN
+      // (see isRecoverableSeedInputError); a bad phrase is user-fixable, not a
+      // provisioning failure. Nothing below has run, so nothing to roll back.
+      // Object.assign (not `e.code = …`) so the tag is part of the value's type.
+      throw Object.assign(new Error('Invalid recovery phrase'), { code: 'INVALID_MNEMONIC' });
+    }
     const { container, walletId } = mv.migrateLegacyMnemonic(mnemonic);
     await keyStore.createVault(mv.serializeContainer(container), password);
     containerRef.current = container;
@@ -795,7 +803,9 @@ export function WalletProvider({ children }) {
   // Decrypt the CURRENT primary vault, returning the authoritative container.
   // Doubles as password verification for the mutations below. Primary-only.
   const decryptPrimaryContainer = useCallback(async (password) => {
-    const plaintext = await keyStore.unlock(password); // generic throw on wrong pw / no vault
+    // Re-auth/decrypt for a vault mutation. Same biometric policy as unlock: gate
+    // only when biometric unlock is enabled, else PIN/password-only.
+    const plaintext = await keyStore.unlock(password, { requireBiometric: isBiometricUnlockEnabled() }); // generic throw on wrong pw / no vault
     return mv.parseVault(plaintext).container;
   }, []);
 
@@ -871,9 +881,15 @@ export function WalletProvider({ children }) {
   // container (multiVault.js). Verified at the FULL vault Argon2id cost via the proven
   // credentialVerifier — so it is no weaker than the vault itself, and verify can never
   // trigger panic/decoy (credentialVerifier is unlock-/deniability-free).
-  // SCOPE: decoy/hidden sessions are bare-mnemonic (no container), so they cannot
-  // carry/persist a record this phase — full gate parity in those sessions is a flagged
-  // follow-up that must change the duress/stealth storage under deniability review.
+  // H2 (decoy/hidden 2FA parity): decoy AND hidden sets are now wrapped in a
+  // FIXED-LENGTH multi-seed container too (duress.js / stealth.js), so they CAN carry
+  // their own per-set Action-Password record. actionPasswordConfigured therefore
+  // reflects the ACTIVE set's container record in EVERY session type (primary, decoy,
+  // hidden) — the gate fires identically across sets and the decoy no longer betrays
+  // itself by skipping the 2FA prompt. setActionPassword/clearActionPassword below
+  // re-encrypt the active set's OWN blob (primary vault, duress blob, or stealth slot)
+  // using the supplied set credential — no set is special-cased out of managing its
+  // second factor.
 
   /** True iff the ACTIVE set has an Action Password configured. */
   const hasActionPassword = useCallback(() => mv.getActionPasswordRecord(containerRef.current) != null, []);
@@ -895,28 +911,59 @@ export function WalletProvider({ children }) {
    * password, capture a verifier at full vault KDF cost, and re-encrypt the container
    * (mirrors addWallet). Unavailable in a decoy/hidden session.
    */
+  // Persist a container as the ACTIVE set's blob, re-authenticating with `credential`
+  // (the set's own secret). H2: this is set-aware — the primary set re-encrypts the
+  // 'primary' vault, a decoy set re-encrypts its duress blob, and a hidden set
+  // re-writes its stealth slot. Each path wraps the container in the SAME FIXED-LENGTH
+  // shape, so re-encrypting to add/remove a record never changes the blob's ciphertext
+  // length (deniability preserved). The `credential` re-auths the set before any write.
+  const persistActiveSetContainer = useCallback(async (credential, container) => {
+    if (isDecoy) {
+      // Decoy set: a single-wallet duress blob. Re-encrypt it under the duress
+      // credential, carrying the (possibly null) AP record. setDuressVault verifies
+      // nothing itself, so confirm the credential actually opens the decoy first —
+      // fail closed on a wrong credential rather than overwriting the decoy blindly.
+      const opened = await tryDuressUnlock(credential);
+      if (opened == null) throw new Error('Decryption failed: wrong password or corrupted vault');
+      const mnemonic = container.wallets[0].mnemonic;
+      await setDuressVault(mnemonic, credential, mv.getActionPasswordRecord(container));
+      return;
+    }
+    if (isHidden) {
+      // Hidden set: a single-wallet stealth slot keyed by the reveal secret. Confirm
+      // the secret reveals this wallet, then re-write the slot's container with the
+      // (possibly null) AP record via the dedicated stealth path.
+      const mnemonic = container.wallets[0].mnemonic;
+      await setHiddenActionPasswordRecord(credential, mnemonic, mv.getActionPasswordRecord(container));
+      return;
+    }
+    // Primary set: the multi-seed 'primary' vault.
+    await keyStore.createVault(mv.serializeContainer(container), credential);
+  }, [isDecoy, isHidden]);
+
   const setActionPassword = useCallback(async (password, actionPassword) => {
-    if (isDecoy || isHidden) throw new Error('Setting an Action Password is unavailable in this session.');
     if (!actionPassword) throw new Error('Action Password cannot be empty.');
-    const current = await decryptPrimaryContainer(password); // verifies the vault password
+    // H2: removed the isDecoy/isHidden guards — every set manages its OWN second
+    // factor. `password` is the ACTIVE set's credential (vault password / duress
+    // password / reveal secret), used both to re-auth and to re-encrypt below.
+    const current = isDecoy || isHidden ? containerRef.current : await decryptPrimaryContainer(password);
     const verifier = await createCredentialVerifier(actionPassword); // full vault Argon2id cost
     const container = mv.withActionPasswordRecord(current, serializeActionPasswordRecord(verifier));
-    await keyStore.createVault(mv.serializeContainer(container), password);
+    await persistActiveSetContainer(password, container);
     containerRef.current = container;
     setActionPasswordConfigured(true);
     touch();
-  }, [isDecoy, isHidden, decryptPrimaryContainer, touch]);
+  }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
 
-  /** Remove the Action Password from the PRIMARY set (disables the second factor). */
+  /** Remove the Action Password from the ACTIVE set (disables its second factor). */
   const clearActionPassword = useCallback(async (password) => {
-    if (isDecoy || isHidden) throw new Error('Changing the Action Password is unavailable in this session.');
-    const current = await decryptPrimaryContainer(password);
+    const current = isDecoy || isHidden ? containerRef.current : await decryptPrimaryContainer(password);
     const container = mv.clearActionPasswordRecord(current);
-    await keyStore.createVault(mv.serializeContainer(container), password);
+    await persistActiveSetContainer(password, container);
     containerRef.current = container;
     setActionPasswordConfigured(false);
     touch();
-  }, [isDecoy, isHidden, decryptPrimaryContainer, touch]);
+  }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
 
   // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container (the
   // session already holds every seed while unlocked, so this needs no password —
@@ -1150,8 +1197,24 @@ export function WalletProvider({ children }) {
     let decoy = false;
     let hidden = false;
     try {
-      mnemonic = await keyStore.unlock(password);
+      // Require the native biometric gate ONLY when biometric unlock is actually
+      // enabled (and not bypassed via the escape hatch). When it's off, unlock is
+      // PIN/password-only — no Face ID on the Exit→unlock step — and a biometric
+      // failure can no longer be misread below as a wrong password (→ empty decoy).
+      mnemonic = await keyStore.unlock(password, {
+        requireBiometric: isBiometricUnlockEnabled() && !opts.skipBiometric,
+      });
     } catch (primaryErr) {
+      // BIOMETRIC FAILURE (native, biometric-unlock enabled): the OS prompt was
+      // cancelled/failed/locked-out BEFORE any password check (tagged in
+      // keyStore.unlock). Fail CLOSED with a biometric error — the UI surfaces the
+      // password-only escape hatch (opts.skipBiometric) — and do NOT consult the
+      // deniability path, which would otherwise open the empty decoy on a mere Face
+      // ID cancel even when the PIN/password is correct. Short-circuiting here leaks
+      // nothing: the biometric prompt itself was already user-visible.
+      if (primaryErr && primaryErr.veyrnoxBiometricGate) {
+        throw new BiometricGateError('cancelled', primaryErr);
+      }
       // The primary unlock failed. BEFORE surfacing that failure, consult the
       // deniability/emergency paths. resolveDeniabilityUnlock (SAST M2) runs a
       // CONSTANT number of Argon2id KDFs (exactly 3) regardless of which features
@@ -1220,9 +1283,23 @@ export function WalletProvider({ children }) {
     // normalises both into a container (the decoy/hidden one in-memory only).
     const { container, migrated } = mv.parseVault(mnemonic);
     containerRef.current = container;
-    // ACTION PASSWORD: reflect whatever the ACTIVE set carries. Primary sets persist
-    // a per-set record; a decoy/hidden session is a bare mnemonic (no container
-    // record), so this is false there — the gate stays honest about the active set.
+    // H2 FORMAT MIGRATION (unpadded -> FIXED-LENGTH padded). A primary container
+    // written before H2 deserialises fine (parseVault ignores the new `pad` field and
+    // tolerates its absence) but its on-disk plaintext is NOT FIXED_LEN, so its
+    // ciphertext length would still be a wallet-count/AP tell until rewritten. A
+    // freshly-migrated legacy bare mnemonic is likewise unpadded on disk. Detect both
+    // by the raw payload length and re-encrypt ONCE in the padded shape below (the
+    // primary branch already persists the stamped container every unlock, which now
+    // emits FIXED_LEN — so this is naturally idempotent: once rewritten, the payload
+    // is exactly FIXED_LEN and needs.no further migration). `mnemonic` here is the raw
+    // decrypted payload string.
+    const primaryNeedsPadMigration = !decoy && !hidden
+      && (migrated || mnemonic.length !== mv.FIXED_LEN);
+    // ACTION PASSWORD: reflect whatever the ACTIVE set carries. H2 — decoy/hidden
+    // sets are now ALSO multi-seed containers, so each carries its OWN per-set record
+    // (present == configured, inside the encrypted+padded plaintext). This is true for
+    // a decoy/hidden set that has an Action Password, so the 2FA gate fires identically
+    // across primary/decoy/hidden — the decoy no longer betrays itself by skipping it.
     setActionPasswordConfigured(mv.getActionPasswordRecord(container) != null);
     const isPrimary = !decoy && !hidden;
 
@@ -1247,6 +1324,14 @@ export function WalletProvider({ children }) {
         // creation, so backedUp:true (no spurious nag for existing users), and it
         // keeps ALL assets visible so nothing the user saw disappears.
         ensureWalletMeta(firstId, { name: 'Wallet 1', backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] });
+        try { await keyStore.createVault(mv.serializeContainer(stamped), password); }
+        catch { /* best-effort; retried next unlock */ }
+      } else if (primaryNeedsPadMigration) {
+        // H2: the on-disk payload was an OLD UNPADDED container. Re-encrypt ONCE in
+        // the FIXED-LENGTH padded shape (awaited, best-effort) so its ciphertext stops
+        // being a length tell. Idempotent: the rewritten payload is exactly FIXED_LEN,
+        // so subsequent unlocks take the plain async-stamp branch below. A failed write
+        // never blocks unlock — migration simply retries next unlock.
         try { await keyStore.createVault(mv.serializeContainer(stamped), password); }
         catch { /* best-effort; retried next unlock */ }
       } else {
@@ -1454,7 +1539,13 @@ export function WalletProvider({ children }) {
   // would never open. These never touch networks/signing: testnet-safe.
   const setDuressPin = useCallback(async (duressPassword, strength = 128) => {
     const decoyMnemonic = generateMnemonic(/** @type {128|256} */ (strength));
-    await setDuressVault(decoyMnemonic, duressPassword);
+    // H2: the decoy is wrapped in a FIXED-LENGTH container that CAN carry its own
+    // Action-Password record. We provision it WITHOUT one (null) — the decoy's second
+    // factor is a distinct credential the user opts into LATER, in the decoy session,
+    // via setActionPassword (now per-set). The padded container makes adding it later
+    // length-invisible. TODO(H2-followup): when the duress-setup UI collects a separate
+    // decoy Action Password up front, capture its verifier here and pass the record.
+    await setDuressVault(decoyMnemonic, duressPassword, null);
     // Also return the decoy's PUBLIC EVM address so the UI can show where to
     // FUND the decoy (a decoy is only plausible once it holds a small, real,
     // block-explorer-verifiable amount). Derived here from the in-memory decoy

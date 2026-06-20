@@ -77,29 +77,15 @@ export const ASSETS = Object.freeze([
   //   https://sepolia-optimism.etherscan.io/tx/0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
   // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
   { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.LIVE },
-  // AVAX: VERIFIED LIVE. A funded test account (2.58 tAVAX) cleared the blocker.
-  // Real native transfer through the full in-app UI send path (asset picker →
-  // recipient → amount → Standard fee → local sign → broadcast), confirmed on-chain:
-  //   tx 0x675e75c936eeec860f4da4db4e37e7a80f6e7c37396325e76ab6039e73c1d590
-  //   (Avalanche Fuji, chainId 43113, status SUCCESS, block 56411588, 0.01 AVAX,
-  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 21000, type-2 EIP-1559)
-  //   https://testnet.snowtrace.io/tx/0x675e75c936eeec860f4da4db4e37e7a80f6e7c37396325e76ab6039e73c1d590
-  // NOTE: Fuji's default RPC (api.avax-test.network) is absent from one of the two
-  // shipped CSP metas, so the browser's CSP intersection blocked it (balance never
-  // read, send never broadcast). networks.js now points Fuji at publicnode (allowed
-  // by both metas), mirroring the live chains. Mainnet stays gated.
-  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.LIVE },
-  // BNB: VERIFIED LIVE. A funded test account became available (0.3 tBNB), clearing
-  // the prior "no faucet" blocker. Real native transfer through the full in-app UI
-  // send path (asset picker → recipient → amount → Standard fee → step-up PIN re-auth
-  // → local sign → broadcast), confirmed on-chain:
-  //   tx 0xaeb3f72dee7488414ba9838d73490a31a67c76715bb2e71e47ef0fbb4b92f562
-  //   (BNB Smart Chain Testnet, chainId 97, status SUCCESS, block 114315313, 0.01 BNB,
-  //    from 0x90f9f1F9…E68a729 → 0x3B5f5407…1A508A, gasUsed 21000, gasPrice 1 Gwei)
-  //   https://testnet.bscscan.com/tx/0xaeb3f72dee7488414ba9838d73490a31a67c76715bb2e71e47ef0fbb4b92f562
-  // NOTE: BNB testnet enforces a minimum gas price; the Standard tier (1 Gwei) clears
-  // it — the Slow tier can underprice and get rejected. Mainnet stays gated.
-  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.LIVE },
+  // AVAX: verified 2026-06-19 — testnet send confirmed on Fuji C-Chain.
+  // txid: 0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0
+  // explorer: https://testnet.snowtrace.io/tx/0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0
+  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalanche',       status: ASSET_STATUS.LIVE },
+  // BNB: verified 2026-06-19 — testnet send confirmed on BSC testnet (chainId 97).
+  // txid: 0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91
+  // explorer: https://testnet.bscscan.com/tx/0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91
+  // NOTE: BSC enforces ≥1 gwei min gas price; fees.js minGasPriceWei floors all tiers.
+  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnb',             status: ASSET_STATUS.LIVE },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
   // the mainnet gate (btc/networks.js). Address derivation + live balance reads
   // are wired now (receive_only). The SEND path (construct/sign/broadcast) is

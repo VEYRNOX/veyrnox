@@ -78,6 +78,18 @@ import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
+import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
+
+// Constant-time PIN equality for setup/recovery confirm (F-11).
+// Both operands are local strings with no remote attacker; this is a codebase
+// consistency fix. XOR-accumulate over encoded bytes, same pattern as credentialVerifier.
+const _enc = new TextEncoder();
+function pinsEqual(a, b) {
+  const ab = _enc.encode(a), bb = _enc.encode(b);
+  if (ab.length !== bb.length) return false;
+  let d = 0; for (let i = 0; i < ab.length; i++) d |= ab[i] ^ bb[i];
+  return d === 0;
+}
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
@@ -515,8 +527,18 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try { await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
     catch (e) {
-      clearPendingPin(); setProvisioning(false);
-      const msg = e?.message || "Couldn't import that seed phrase. Please set your PIN and try again.";
+      setProvisioning(false);
+      if (isRecoverableSeedInputError(e)) {
+        // Recoverable user input (bad BIP-39 checksum/wordlist). consumePendingPin
+        // left the pending PIN intact — KEEP it so the user can fix the phrase and
+        // retry, instead of being stranded on the misleading "No PIN set" loop.
+        setError("That doesn't look like a valid recovery phrase. Check the words and try again.");
+        return;
+      }
+      // Genuine provisioning/teardown failure: fail closed. Clear the pending PIN;
+      // the message must reflect that the user has to set their PIN again.
+      clearPendingPin();
+      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
       toast.error(msg);
     } finally { setBusy(false); }
@@ -841,7 +863,7 @@ export default function WalletEntry() {
                 </div>
                 <div>
                   <Label>12 or 24-word BIP-39 Seed Phrase</Label>
-                  <textarea value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                  <textarea value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
                 </div>
                 <Button className="w-full gap-2" disabled={!importPhrasePin.trim() || busy} onClick={doImportWallet}>
                   {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Restore / Import
@@ -894,7 +916,7 @@ export default function WalletEntry() {
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Confirm your PIN</p>
               <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
-                if (p !== realPin) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
+                if (!pinsEqual(p, realPin)) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
                 finishPinSetup();
               }} />
             </div>
@@ -926,7 +948,7 @@ export default function WalletEntry() {
               </div>
               <div>
                 <Label>12 or 24-word recovery phrase</Label>
-                <textarea value={recoverySeed} onChange={e => setRecoverySeed(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                <textarea value={recoverySeed} onChange={e => setRecoverySeed(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
               </div>
               <Button className="w-full gap-2" disabled={!recoverySeed.trim() || busy} onClick={() => {
                 const phrase = recoverySeed.trim().replace(/\s+/g, " ");
@@ -950,7 +972,7 @@ export default function WalletEntry() {
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Confirm your new PIN</p>
               <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
-                if (p !== realPin) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
+                if (!pinsEqual(p, realPin)) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
                 setError(""); finishPinRecover();
               }} />
             </div>
@@ -1037,7 +1059,7 @@ export default function WalletEntry() {
         </div>
         <div>
           <Label>12 or 24-word BIP-39 Seed Phrase</Label>
-          <textarea value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+          <textarea value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
         </div>
         <div>
           <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>

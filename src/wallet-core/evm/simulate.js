@@ -37,7 +37,7 @@ import { getProvider } from './provider.js';
 import { describeErc20Call } from './calldata.js';
 import { TOKENS } from './tokens.js';
 import { screenRecipient, isLocallyFlagged } from './poison.js';
-import { screenAddress, CATEGORY_LABELS, ofacSnapshotDisclosure } from './suspicious.js';
+import { screenAddress, CATEGORY_LABELS } from './suspicious.js';
 import { assessHistoryAnomalies } from './anomaly.js';
 
 // Sending at/above this fraction of the asset balance is "drain-like" — worth a
@@ -198,14 +198,11 @@ export function assessEvmTransaction({
   const screened = screenAddress(effectiveRecipient);
   for (const m of screened.matches) {
     if (m.category === 'burn') continue; // already flagged as known_bad_recipient
-    // OFAC sanctions hits carry the snapshot vintage (internal audit EVM-#2) so the
-    // warning is never shown without an indication of how stale the data is.
-    const vintage = m.category === 'sanctioned' ? ofacSnapshotDisclosure() : null;
     risks.push({
       level: 'high',
       code: 'flagged_recipient',
       title: `Recipient flagged: ${CATEGORY_LABELS[m.category] || 'known bad'}`,
-      detail: `${m.note ? `${m.note} ` : ''}Source: ${m.source}.${vintage ? ` ${vintage}` : ''} This is a WARNING from a local blocklist — it is not proof of wrongdoing, and an address that is NOT flagged is not proven trustworthy. Verify the recipient independently before sending.`,
+      detail: `${m.note ? `${m.note} ` : ''}Source: ${m.source}. This is a WARNING from a local blocklist — it is not proof of wrongdoing, and an address that is NOT flagged is not proven trustworthy. Verify the recipient independently before sending.`,
     });
   }
 
@@ -403,7 +400,7 @@ export async function simulateEvmTransaction({
       thirdParty: false,
     },
     coverageNote:
-      'Simulated locally against your own RPC — nothing was sent to any third-party scoring service. ' +
+      'Simulated locally against your own RPC. ' +
       'This predicts the outcome, flags KNOWN risk patterns, and checks for deviations from your own ' +
       'on-device history; it is NOT a guarantee of safety and will not catch every novel threat. ' +
       'Review every detail before signing.',

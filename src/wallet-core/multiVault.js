@@ -54,6 +54,82 @@ import { hasActionPasswordRecord } from './actionPassword.js';
 export const MULTI_VAULT_TAG = 'veyrnox-multi-vault';
 export const CONTAINER_VERSION = 1;
 
+// H2 (decoy/hidden 2FA parity) — FIXED-LENGTH CONTAINER PADDING.
+//
+// Deniability requires that the encrypted vault's ciphertext LENGTH be identical
+// across ALL sets (primary, decoy/duress, hidden) regardless of how many wallets a
+// set holds OR whether it carries an Action-Password record. Because AES-GCM is
+// length-preserving (ct length == plaintext length + 16-byte tag), the only way to
+// equalise ct length is to equalise the PLAINTEXT length. So serializeContainer
+// pads every serialized container to EXACTLY FIXED_LEN bytes by appending a `pad`
+// field of non-escaping ASCII filler. The record stays present-ONLY-when-configured
+// inside the (now fixed-length) plaintext, so "presence == configured" still holds
+// after unlock — padding never leaks AP presence, and length never leaks wallet
+// count.
+//
+// FIXED_LEN is the container CAPACITY and is a tunable: it MUST exceed the largest
+// real serialized container (many wallets + an AP record + lastUnlockAt). 8192 bytes
+// comfortably holds dozens of 24-word mnemonics plus the AP verifier record; a
+// container that would exceed it makes serializeContainer THROW (fail-closed) rather
+// than silently emit a length tell. Raising FIXED_LEN later is a format change that
+// must be migrated the same way the unpadded->padded migration is (see WalletProvider).
+export const FIXED_LEN = 8192;
+
+// The `pad` field uses a single repeated ASCII char that JSON.stringify never
+// escapes (so byte length == char count), letting us compute the exact filler size.
+const PAD_CHAR = 'A';
+
+// Delimiter separating an arbitrary plaintext from its fixed-length filler in
+// padToFixedLen/stripPad. A single NUL byte: it never appears in a BIP-39 mnemonic
+// (ASCII words + single spaces) nor in a JSON container, so the FIRST occurrence
+// unambiguously marks the start of padding. PAD_CHAR (ASCII 'A') is likewise absent
+// from neither — but we only ever split on the delimiter, so the filler char choice
+// is free as long as it is non-escaping/byte-stable.
+const PAD_DELIM = '\u0000';
+
+/**
+ * Pad an ARBITRARY plaintext string to EXACTLY FIXED_LEN bytes by appending a NUL
+ * delimiter followed by PAD_CHAR filler. This is the string-level counterpart to the
+ * JSON `pad` field serializeContainer uses for containers — used for opaque,
+ * non-container plaintexts (e.g. the panic marker, panic.js) that must still reach
+ * the same ciphertext length so deniability slots are length-identical. Fail-closed:
+ * a plaintext that already meets/exceeds capacity THROWS rather than emit a short
+ * (length-tell) blob — the delimiter itself costs one byte, so the input must be
+ * strictly shorter than FIXED_LEN.
+ * @param {string} str
+ * @returns {string} exactly FIXED_LEN chars
+ */
+export function padToFixedLen(str) {
+  if (typeof str !== 'string') throw new Error('padToFixedLen: expected a string');
+  if (str.includes(PAD_DELIM)) throw new Error('padToFixedLen: plaintext contains the pad delimiter');
+  const overhead = str.length + PAD_DELIM.length; // content + the one delimiter byte
+  if (overhead > FIXED_LEN) {
+    throw new Error(
+      `padToFixedLen: content (${str.length} bytes) + delimiter exceeds FIXED_LEN capacity (${FIXED_LEN}); raise FIXED_LEN`,
+    );
+  }
+  const fillerLen = FIXED_LEN - overhead;
+  const result = str + PAD_DELIM + PAD_CHAR.repeat(fillerLen);
+  if (result.length !== FIXED_LEN) {
+    throw new Error(`padToFixedLen: produced ${result.length} bytes, expected ${FIXED_LEN}`);
+  }
+  return result;
+}
+
+/**
+ * Inverse of padToFixedLen: return the original plaintext by stripping the NUL
+ * delimiter and everything after it. A string with no delimiter (e.g. a legacy
+ * pre-padding marker) is returned unchanged, so this is safe to apply
+ * unconditionally on decrypt.
+ * @param {string} str
+ * @returns {string}
+ */
+export function stripPad(str) {
+  if (typeof str !== 'string') throw new Error('stripPad: expected a string');
+  const i = str.indexOf(PAD_DELIM);
+  return i === -1 ? str : str.slice(0, i);
+}
+
 /**
  * Generate a wallet id: 16 bytes of CSPRNG entropy, hex-encoded. This is an
  * opaque local handle (used to key non-secret UI metadata in localStorage). It
@@ -80,7 +156,7 @@ export function isMultiContainer(obj) {
  * Build a fresh container from a list of wallet entries (each already shaped
  * { id, mnemonic }). Defensive copy so callers can't alias our internal array.
  */
-function makeContainer(wallets, actionPassword, lastUnlockAt) {
+export function makeContainer(wallets, actionPassword, lastUnlockAt) {
   const c = {
     vlt: MULTI_VAULT_TAG,
     v: CONTAINER_VERSION,
@@ -202,7 +278,32 @@ export function serializeContainer(container) {
   // to the pre-feature shape).
   if (container.actionPassword != null) out.actionPassword = container.actionPassword;
   if (container.lastUnlockAt != null) out.lastUnlockAt = container.lastUnlockAt;
-  return JSON.stringify(out);
+
+  // FIXED-LENGTH PADDING (H2). Serialise the real content first, then append a
+  // `pad` field whose length is computed so the FINAL JSON is EXACTLY FIXED_LEN
+  // bytes. The pad uses a single non-escaping ASCII char so its serialized byte
+  // length equals its character count (no surprise growth from JSON escaping).
+  //
+  // We compute the overhead of the `pad` field's wrapper (the comma, the key, the
+  // quotes, the colon, and the value's surrounding quotes) by serialising once with
+  // an empty pad, then size the filler to make up the remainder. A container whose
+  // real content already exceeds the capacity THROWS — emitting a short blob would
+  // be a length tell, which fail-closed forbids.
+  const withEmptyPad = JSON.stringify({ ...out, pad: '' });
+  const overhead = withEmptyPad.length; // bytes used with a zero-length pad value
+  if (overhead > FIXED_LEN) {
+    throw new Error(
+      `serializeContainer: container content (${overhead} bytes) exceeds FIXED_LEN capacity (${FIXED_LEN}); raise FIXED_LEN`,
+    );
+  }
+  const fillerLen = FIXED_LEN - overhead;
+  const result = JSON.stringify({ ...out, pad: PAD_CHAR.repeat(fillerLen) });
+  // Invariant: PAD_CHAR is ASCII and never escaped, so adding `fillerLen` chars adds
+  // exactly `fillerLen` bytes. Assert it so any future PAD_CHAR change fails loudly.
+  if (result.length !== FIXED_LEN) {
+    throw new Error(`serializeContainer: padding produced ${result.length} bytes, expected ${FIXED_LEN}`);
+  }
+  return result;
 }
 
 /** Public wallet ids in container order. */

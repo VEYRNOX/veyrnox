@@ -1,5 +1,18 @@
 #!/usr/bin/env node
-// scripts/refresh-ofac-blocklist.mjs
+// scripts/refresh-ofac-blocklist.mjs — RETIRED
+//
+// This script was used to rebuild a LOCAL bundled OFAC SDN snapshot. It has
+// been retired because automated bulk pulls from treasury.gov have commercial
+// ToS constraints, and a stale bundled snapshot cannot provide the
+// delisting-current coverage that reliable sanctions screening requires.
+//
+// For production OFAC compliance, integrate an enterprise-licensed API
+// (Chainalysis, TRM Labs, Elliptic, etc.) as a runtime provider via the
+// providers opt-in in screenAddress() in src/wallet-core/evm/suspicious.js.
+//
+// The file below is preserved for reference only. Do not run it.
+// ---------------------------------------------------------------------------
+// ORIGINAL SCRIPT (reference):
 //
 // Rebuild the LOCAL OFAC sanctioned digital-currency-address snapshot from the
 // CURRENT official OFAC SDN advanced XML. Run it to refresh the bundled file:

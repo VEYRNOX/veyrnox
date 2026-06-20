@@ -1,0 +1,116 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 6, 8, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: #12171f;
+  border: 1px solid #1D222B;
+  border-radius: 16px;
+  padding: 24px;
+  width: min(480px, 94vw);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.header { display: flex; align-items: center; justify-content: space-between; }
+.appName { font-size: 1rem; font-weight: 600; color: #f0f2f5; }
+.title { font-size: 1rem; font-weight: 600; color: #f0f2f5; margin: 0; }
+.methodBadge {
+  background: #1D222B;
+  color: #8b949e;
+  font-size: 0.75rem;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.label { font-size: 0.75rem; color: #8b949e; margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+.messageBox {
+  background: #0d1117;
+  border: 1px solid #1D222B;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.82rem;
+  color: #f0f2f5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.fieldList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.field {
+  display: flex;
+  justify-content: space-between;
+  background: #0d1117;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+}
+.fieldName { color: #8b949e; }
+.fieldValue { color: #f0f2f5; font-family: 'IBM Plex Mono', monospace; word-break: break-all; text-align: right; max-width: 60%; }
+.permitWarning {
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.4);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.permitTitle { font-weight: 700; color: #f85149; margin: 0; font-size: 0.95rem; }
+.permitBody { color: #f0f2f5; margin: 0; font-size: 0.85rem; line-height: 1.5; }
+.permitCheck { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; color: #f0f2f5; cursor: pointer; }
+.txBox {
+  background: #0d1117;
+  border: 1px solid #1D222B;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.txRow { display: flex; justify-content: space-between; font-size: 0.85rem; }
+.txRow span:first-child { color: #8b949e; }
+.mono { font-family: 'IBM Plex Mono', monospace; color: #f0f2f5; word-break: break-all; max-width: 72%; text-align: right; }
+.simBtn {
+  background: #1D222B;
+  border: 1px solid #2d3748;
+  border-radius: 8px;
+  color: #4ADAC2;
+  padding: 9px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  width: 100%;
+}
+.simBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.simResult { background: rgba(74, 218, 194, 0.08); border: 1px solid rgba(74, 218, 194, 0.25); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.simOk { color: #4ADAC2; font-size: 0.85rem; margin: 0; }
+.simRisk { color: #d29922; font-size: 0.82rem; margin: 0; }
+.simError { background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3); border-radius: 8px; padding: 10px; color: #f85149; font-size: 0.85rem; }
+.hint { font-size: 0.8rem; color: #8b949e; margin: 0; }
+.body { color: #f0f2f5; margin: 0; }
+.reauthNotice { background: rgba(210, 153, 34, 0.12); border: 1px solid rgba(210, 153, 34, 0.3); border-radius: 8px; padding: 10px; color: #d29922; font-size: 0.85rem; margin: 0; }
+.error { color: #f85149; font-size: 0.85rem; margin: 0; }
+.actions { display: flex; gap: 12px; }
+.rejectBtn {
+  flex: 1; padding: 11px; border-radius: 10px;
+  border: 1px solid #1D222B; background: transparent;
+  color: #f0f2f5; font-size: 0.95rem; cursor: pointer;
+}
+.rejectBtn:hover:not(:disabled) { background: #1D222B; }
+.rejectBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.approveBtn {
+  flex: 1; padding: 11px; border-radius: 10px;
+  border: none; background: #4ADAC2;
+  color: #050608; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+}
+.approveBtn:hover:not(:disabled) { background: #5de8d0; }
+.approveBtn:disabled { opacity: 0.5; cursor: not-allowed; }

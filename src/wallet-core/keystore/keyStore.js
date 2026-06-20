@@ -31,10 +31,13 @@
  *   Encrypt `secret` under `password` and persist CIPHERTEXT ONLY. The live
  *   secret is never written to storage. (Web: encryptVault + saveVault.)
  *
- * @property {(password: string) => Promise<string>} unlock
+ * @property {(password: string, opts?: { requireBiometric?: boolean }) => Promise<string>} unlock
  *   Return the live secret for transient in-memory use by the caller. Web:
  *   loadVault + decryptVault (throws on wrong password or missing vault).
- *   Native (M2b): triggers biometric + hardware unwrap before decrypting.
+ *   Native (M2b): hardware unwrap + decrypt; presents the OS biometric prompt
+ *   ONLY when opts.requireBiometric is set (the caller passes
+ *   isBiometricUnlockEnabled()), so a wallet without biometric unlock is
+ *   PIN/password-only. `opts` is ignored on web.
  *
  * @property {(currentPassword: string, newPassword: string) => Promise<void>} changePassword
  *   Re-encrypt the EXISTING vault under a new password WITHOUT changing the
