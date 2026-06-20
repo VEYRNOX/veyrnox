@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import {
   generateCode,
   getLocalState,
-  getTier,
   applyRedemption,
   markRedeemed,
   hasRedeemed,
