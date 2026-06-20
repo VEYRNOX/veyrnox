@@ -63,7 +63,7 @@ export function mnemonicToSeed(mnemonic, passphrase = '') {
   if (!validateMnemonic(mnemonic)) {
     throw new Error('Invalid mnemonic: failed BIP-39 checksum/wordlist check');
   }
-  return mnemonicToSeedSync(normalize(mnemonic), passphrase);
+  return mnemonicToSeedSync(normalize(mnemonic), normalizePassphrase(passphrase));
 }
 
 /**
@@ -86,4 +86,9 @@ function normalize(mnemonic) {
     .trim()
     .replace(/\s+/g, ' ')
     .toLowerCase();
+}
+
+// BIP-39 §5 passphrase normalization: NFKD only (case is significant per spec).
+function normalizePassphrase(passphrase) {
+  return passphrase.normalize('NFKD');
 }

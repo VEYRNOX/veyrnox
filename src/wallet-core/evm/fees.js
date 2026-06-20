@@ -16,9 +16,24 @@
 //   - maxFeePerGas must clear baseFee + tip or the tx can't be included; we buffer
 //     it at baseFee*2 + tip so a brief base-fee rise can't strand the tx.
 
-import { parseUnits } from 'ethers';
+import { parseUnits, formatUnits } from 'ethers';
 import { getProvider } from './provider.js';
 import { getNetworkInfo } from './networks.js';
+
+const MAX_BASE_FEE_GWEI = {
+  mainnet:         1_000n,
+  polygon:           200n,
+  arbitrum:          200n,
+  optimism:          200n,
+  avalanche:         200n,
+  bnb:               200n,
+  sepolia:         5_000n,
+  polygonAmoy:     5_000n,
+  arbitrumSepolia: 5_000n,
+  optimismSepolia: 5_000n,
+  avalancheFuji:   5_000n,
+  bnbTestnet:      5_000n,
+};
 
 // Preset tiers scale the network-suggested tip. ETA labels are indicative (EVM
 // block time ~12s; a larger tip wins earlier inclusion under contention).
@@ -45,8 +60,19 @@ export const MIN_TIP_WEI = 100_000_000n; // 0.1 gwei
  * chains where baseFee≈0 (BSC EIP-1559), effective price≈tip, so this floor
  * prevents Slow-tier txs being silently rejected by the network.
  */
-export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit, minGasPriceWei }) {
+export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit, minGasPriceWei, networkKey }) {
   const base = BigInt(baseFeePerGasWei);
+  const capGwei = MAX_BASE_FEE_GWEI[networkKey];
+  if (capGwei !== undefined) {
+    const capWei = parseUnits(capGwei.toString(), 'gwei');
+    if (base > capWei) {
+      throw new Error(
+        `RPC returned implausible base fee (${formatUnits(base, 'gwei')} gwei). ` +
+        `Maximum accepted for ${networkKey} is ${capGwei} gwei. ` +
+        `Check your RPC provider.`,
+      );
+    }
+  }
   const suggested = BigInt(suggestedTipWei);
   const limit = BigInt(gasLimit);
   const tipFloor = minGasPriceWei != null && BigInt(minGasPriceWei) > MIN_TIP_WEI
@@ -76,7 +102,14 @@ export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit, min
  *   maxFeePerGas = maxBaseFee + tip ,  maxPriorityFeePerGas = tip
  * Throws on a non-positive max fee (a stuck-tx guard).
  */
-export function buildEvmCustomFee({ maxBaseFeeGwei, priorityGwei, gasLimit }) {
+export function buildEvmCustomFee({ maxBaseFeeGwei, priorityGwei, gasLimit, networkKey }) {
+  const capGwei = MAX_BASE_FEE_GWEI[networkKey];
+  if (capGwei !== undefined) {
+    const inputGwei = BigInt(Math.round(Number(maxBaseFeeGwei) || 0));
+    if (inputGwei > capGwei) {
+      throw new Error(`Custom max base fee (${inputGwei} gwei) exceeds the ${networkKey} ceiling of ${capGwei} gwei.`);
+    }
+  }
   const tip = parseUnits(String(priorityGwei || 0), 'gwei');
   const maxBase = parseUnits(String(maxBaseFeeGwei || 0), 'gwei');
   const limit = BigInt(Math.max(21000, Math.floor(Number(gasLimit) || 21000)));
@@ -140,6 +173,6 @@ export async function estimateEvmFeeTiers({ networkKey, from, to, value, data, g
     baseFeePerGasWei: baseFeePerGasWei.toString(),
     suggestedTipWei: suggestedTipWei.toString(),
     gasLimit: est.toString(),
-    tiers: buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit: est, minGasPriceWei: info?.minGasPriceWei }),
+    tiers: buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit: est, minGasPriceWei: info?.minGasPriceWei, networkKey }),
   };
 }
