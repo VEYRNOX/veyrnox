@@ -1,0 +1,177 @@
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.heading {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f0f2f5;
+  margin: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  background: #4ADAC2;
+  color: #050608;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 7px;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #8b949e;
+  margin: 0;
+}
+
+.pairRow {
+  display: flex;
+  gap: 10px;
+}
+
+.uriInput {
+  flex: 1;
+  background: #0d1117;
+  border: 1px solid #1D222B;
+  border-radius: 10px;
+  padding: 11px 13px;
+  color: #f0f2f5;
+  font-size: 0.9rem;
+  font-family: 'IBM Plex Mono', monospace;
+  outline: none;
+}
+
+.uriInput:focus {
+  border-color: #4ADAC2;
+}
+
+.uriInput::placeholder {
+  color: #6e7681;
+}
+
+.pairBtn {
+  background: #4ADAC2;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 20px;
+  color: #050608;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pairBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pairBtn:hover:not(:disabled) {
+  background: #5de8d0;
+}
+
+.error {
+  color: #f85149;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.locked {
+  color: #8b949e;
+  font-size: 0.95rem;
+}
+
+.requestList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.requestItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0d1117;
+  border: 1px solid #1D222B;
+  border-radius: 8px;
+  padding: 11px 14px;
+  cursor: pointer;
+}
+
+.requestItem:hover {
+  border-color: #4ADAC2;
+}
+
+.requestMethod {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+  color: #f0f2f5;
+}
+
+.requestChevron {
+  color: #8b949e;
+  font-size: 1.1rem;
+}
+
+.setupCard {
+  background: #12171f;
+  border: 1px solid #1D222B;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setupTitle {
+  font-weight: 600;
+  color: #f0f2f5;
+  margin: 0;
+}
+
+.setupBody {
+  font-size: 0.88rem;
+  color: #8b949e;
+  margin: 0;
+}
+
+.setupCode {
+  background: #0d1117;
+  border: 1px solid #1D222B;
+  border-radius: 6px;
+  padding: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+  color: #4ADAC2;
+  margin: 0;
+}
+
+.link {
+  color: #4ADAC2;
+}

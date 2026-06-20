@@ -211,7 +211,7 @@ describe('stealth / hidden wallets', () => {
     for (let i = 0; i < 5000 && !a; i++) {
       const secret = `collide-probe-${i}`;
       const oldSlot = await slotIndexAtModulus(secret, 12);
-      const newSlot = await slotIndexAtModulus(secret, POOL_SIZE);
+      const newSlot = slotForSecret(secret); // use the real HKDF+salt mapping
       const prior = byOldSlot.get(oldSlot);
       if (prior && prior.newSlot !== newSlot) { a = prior.secret; b = secret; break; }
       if (!prior) byOldSlot.set(oldSlot, { secret, newSlot });

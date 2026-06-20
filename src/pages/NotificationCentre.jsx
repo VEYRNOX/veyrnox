@@ -65,7 +65,7 @@ export default function NotificationCentre() {
 
   const allNotifications = [
     ...inAppNotes.map(n => ({
-      id: n.id, type: "inapp", category: "Alerts",
+      id: n.id, type: "inapp", category: (n.level === "caution" || n.level === "risk") ? "Security" : "Alerts",
       title: n.message,
       body: describeInApp(n.evidence),
       severity: INAPP_SEVERITY[n.level] || "low",
@@ -100,7 +100,7 @@ export default function NotificationCentre() {
       severity: "low", time: a.created_date,
       onDismiss: null,
     })),
-  ].sort((a, b) => /** @type {any} */ (new Date(b.time)) - /** @type {any} */ (new Date(a.time)));
+  ].sort((a, b) => (b.time ? new Date(b.time).getTime() : 0) - (a.time ? new Date(a.time).getTime() : 0));
 
   const filtered = tab === "All" ? allNotifications : allNotifications.filter(n => n.category === tab);
 
@@ -168,7 +168,7 @@ export default function NotificationCentre() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{n.body}</p>
-                <p className="text-[10px] text-muted-foreground/60 mt-1">{formatDistanceToNow(new Date(n.time), { addSuffix: true })}</p>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">{n.time && !isNaN(new Date(n.time).getTime()) ? formatDistanceToNow(new Date(n.time), { addSuffix: true }) : '—'}</p>
               </div>
               {n.onDismiss && (
                 <button onClick={n.onDismiss} className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0">

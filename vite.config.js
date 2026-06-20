@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
+import inject from '@rollup/plugin-inject'
 
 // logLevel 'error' suppresses Vite's startup banner too, so the
 // "Local: http://localhost:5173/" line never prints. This tiny plugin restores
@@ -76,6 +77,10 @@ export default defineConfig(({ command }) => {
     // The '@/...' -> src alias used to be supplied by the @base44/vite-plugin.
     // That plugin was removed (base44 removal, Phase 4), so declare it here
     // explicitly. Mirrors jsconfig.json and vitest.config.js.
+    define: {
+      'process.env': '{}',
+      global: 'globalThis',
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -91,13 +96,14 @@ export default defineConfig(({ command }) => {
     plugins: [
       react(),
       printUrls(),
+      inject({ Buffer: ['buffer', 'Buffer'], include: ['src/**'] }),
     ],
     // Pre-bundle the wallet-core's crypto deps so Vite doesn't discover them
     // mid-session and trigger an optimize + forced full-reload (which can flash a
     // blank page on first load). hash-wasm inlines its WASM as base64, so no WASM
     // plugin is needed.
     optimizeDeps: {
-      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer'],
+      include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer', '@walletconnect/web3wallet', '@walletconnect/utils', '@walletconnect/core'],
     },
     build: {
       rollupOptions: {

@@ -218,3 +218,50 @@ single dedicated native-device session — see the entry-point runbook
 mapped to the existing kek/M2c-d/PRF specs). The only non-native remainder still open is
 the **dev-tooling** supply-chain bumps (not shipped; defer as hygiene — the fix path
 breaks SOL). (M-2 BTC hard-gate is now DONE — see round 7.)
+
+---
+
+## Final verdict — gate opened 2026-06-17
+
+> This section supersedes the opening "GATE STAYS CLOSED" verdict. It records
+> the outcome after all JS/web-fixable remediation rounds (1–7) completed and
+> the owner reviewed and sign-off.
+
+All items that were fixable in the JS/web environment are **FIXED** as of
+2026-06-17. The gate was reviewed and opened; `ALLOW_MAINNET = true`,
+`ALLOW_BTC_MAINNET = true`, `ALLOW_SOL_MAINNET = true` from that date.
+Sign-off recorded in `docs/audit-triage/internal-audit-2026-06-17.md`.
+
+**What cleared the gate:**
+
+| Finding | Final status |
+|---|---|
+| C-1 panic-wipe residue | ✅ FIXED (rounds 1–7) |
+| H-1 BTC uncapped fee + no preview | ✅ FIXED (r1 + r4 + r7) |
+| H-3 ENS/SNS egress from deniable session | ✅ FIXED (r1) |
+| M-1 SOL double-send on retry | ✅ FIXED (r1) |
+| M-2 BTC preview/risk gate not wired | ✅ FIXED (r4 + r7) |
+| M-3 untrusted ENS resolver → signing target | ✅ FIXED (r3) |
+| M-4 verifier-KDF timing distinguisher | ✅ FIXED (r2) |
+| M-5 password-cohort storage footprint | ✅ FIXED (r2) |
+| M-6 stealth slot-collision residual | ✅ FIXED (r3) |
+| EVM-#1 ungated signing.js export | ✅ FIXED (r1) |
+| OFAC snapshot age not surfaced | ✅ FIXED (r5) |
+| Supply-chain runtime `ws` highs | 🟡 PARTIAL (r6) — runtime highs patched; dev-tooling highs deferred as hygiene |
+
+**Still open — native/real-device work only (do not build blind):**
+
+| Finding | Status | Unblock path |
+|---|---|---|
+| H-2 6-digit PIN sole at-rest factor (web) | ⛔ OPEN | Hardware-bound KEK — requires native iOS/Android plugin + real-device audit. See `docs/kek-architecture-spec.md` and `docs/native-session-handoff.md`. |
+| §3 Native secure storage OS-enforced ACL | ⛔ OPEN | Real iOS/Android devices — M2c/d adversarial tests. |
+
+**Owner gate policy (recorded 2026-06-17):** The internal audit is the hard
+gate. An independent third-party audit is strongly RECOMMENDED for depth — it
+is not a gate blocker under the owner's gate policy. "Internal" is never to
+be presented as "independent" (I4 honesty). H-2 and §3 must be resolved before
+any mobile-native mainnet scope opens.
+
+**Additional fixes since gate opened (2026-06-20):**
+- SAST S1 passkey (M-1/M-2/M-3 per `SAST_S1_FINDINGS.md`) — ✅ fixed, PRs #38/#40
+- ECC audit Track 1 (C-1/C-3/C-4/H-3/H-7 per `docs/ECC-Track1-spec.md`) — ✅ fixed, PR #264

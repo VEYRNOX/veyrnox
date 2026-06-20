@@ -14,6 +14,7 @@
 import { Outlet } from "react-router-dom";
 import { WALLET_GATE } from "@/api/base44Client";
 import WalletEntry from "@/components/WalletEntry";
+import WalletEntryErrorBoundary from "@/components/WalletEntryErrorBoundary";
 
 export default function WalletGate() {
   // Gate-less ONLY for the web demo tour. Every native build — including a
@@ -25,5 +26,9 @@ export default function WalletGate() {
   // unlocked transition (it renders <Outlet/> once unlocked) so it can hold the
   // user on the one-time seed-backup step right after wallet creation — at which
   // point the vault is already technically unlocked but the app must not show yet.
-  return <WalletEntry />;
+  return (
+    <WalletEntryErrorBoundary>
+      <WalletEntry />
+    </WalletEntryErrorBoundary>
+  );
 }

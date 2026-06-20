@@ -11,6 +11,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
+import { HardwareWalletProvider } from '@/context/HardwareWalletContext';
 import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { NotificationsProvider } from '@/notify/useNotifications';
@@ -83,6 +84,7 @@ const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
 const CryptoSigning = lazy(() => import('./pages/CryptoSigning'));
 const LiveBalances = lazy(() => import('./pages/LiveBalances'));
+const WalletConnect = lazy(() => import('@/pages/WalletConnect.jsx'));
 // LandingGuard owns the public /landing route: it renders LandingPage ONLY on a
 // confirmed no-vault device and otherwise redirects through WalletGate to the PIN
 // pad (closes the reload-to-/landing lock bypass). It imports LandingPage itself,
@@ -96,6 +98,7 @@ const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
 const WhatThisProtects = lazy(() => import('./pages/WhatThisProtects'));
 const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const Subscription = lazy(() => import('./pages/Subscription'));
+const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 
 const AuthenticatedApp = () => {
   // Render the main app
@@ -129,6 +132,7 @@ const AuthenticatedApp = () => {
           <Route path="/receive" element={<ReceiveCrypto />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/connect" element={<ConnectWallet />} />
+          <Route path="/walletconnect" element={<WalletConnect />} />
           <Route path="/alerts" element={<PriceAlerts />} />
           <Route path="/calculator" element={<Calculator />} />
           <Route path="/analytics" element={<Analytics />} />
@@ -203,6 +207,7 @@ const AuthenticatedApp = () => {
           <Route path="/docs" element={<Documentation />} />
           <Route path="/features" element={<Features />} />
           <Route path="/plans" element={<Subscription />} />
+          <Route path="/referrals" element={<ReferralTracker />} />
         </Route>
         </Route>
         {/* Onboarding created a hosted-style wallet *entity* with a fabricated
@@ -222,6 +227,7 @@ function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
       <WalletProvider>
+        <HardwareWalletProvider>
         <TierProvider>
           <QueryClientProvider client={queryClientInstance}>
             <Router>
@@ -231,6 +237,7 @@ function App() {
             <Toaster />
           </QueryClientProvider>
         </TierProvider>
+        </HardwareWalletProvider>
       </WalletProvider>
     </ThemeProvider>
   )

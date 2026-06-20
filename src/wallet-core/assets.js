@@ -77,17 +77,25 @@ export const ASSETS = Object.freeze([
   //   https://sepolia-optimism.etherscan.io/tx/0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
   // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
   { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimismSepolia', status: ASSET_STATUS.LIVE },
-  // AVAX: receive_only — send path is built (same EVM stack as ETH/MATIC/ARB/OP)
-  // but NO legitimate Avalanche Fuji faucet exists to fund the test wallet for
-  // a verifiable on-chain send. Stays receive_only until a funded test account
-  // is available and a real Fuji transfer is confirmed on-chain.
-  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.RECEIVE_ONLY },
-  // BNB: receive_only — send path is built (same EVM stack). No legitimate BNB
-  // testnet faucet available to fund the test wallet. Stays receive_only until
-  // a funded test account is available and a real tBNB transfer is confirmed.
-  // NOTE: BNB testnet enforces a minimum gas price; use Standard+ fee tier when
-  // sending (Slow can underprice and get rejected).
-  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.RECEIVE_ONLY },
+  // AVAX: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path
+  // (asset picker → recipient → amount → Standard fee → step-up PIN re-auth →
+  // broadcast), confirmed on-chain:
+  //   tx 0x3697e0dfed498cbcafabe73ec881c2e193e06434c61122f9fb0efda546c61996
+  //   (Avalanche Fuji, status SUCCESS, block 56425855, 0.001 AVAX,
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…A96045, fee 0.0000021 AVAX)
+  //   https://testnet.snowtrace.io/tx/0x3697e0dfed498cbcafabe73ec881c2e193e06434c61122f9fb0efda546c61996
+  // Mainnet stays gated in networks.js.
+  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.LIVE },
+  // BNB: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path
+  // (asset picker → recipient → amount → Standard fee → step-up PIN re-auth →
+  // broadcast), confirmed on-chain:
+  //   tx 0x1a6ee75ee51ad9cf15e9e6fda4b8a26230378c90a449cd881f96c37def957f75
+  //   (BSC Testnet, status SUCCESS, block 114427048, 0.001 tBNB,
+  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…A96045, fee 0.000021 tBNB, 1 Gwei)
+  //   https://testnet.bscscan.com/tx/0x1a6ee75ee51ad9cf15e9e6fda4b8a26230378c90a449cd881f96c37def957f75
+  // Standard+ fee tier used (BNB testnet enforces ≥1 Gwei minimum gas price).
+  // Mainnet stays gated in networks.js.
+  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.LIVE },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
   // the mainnet gate (btc/networks.js). Address derivation + live balance reads
   // are wired now (receive_only). The SEND path (construct/sign/broadcast) is

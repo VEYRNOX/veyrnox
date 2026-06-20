@@ -464,9 +464,14 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'WalletConnect / dApp Connector',
-        status: 'roadmap',
-        summary: 'Connect to dApps via WalletConnect',
-        explanation: 'Connect to decentralised apps via WalletConnect. High-risk and post-audit only; specced, not yet built. (It is a gateway to swap/DeFi, which themselves stay out of scope.)',
+        status: 'built',
+        summary: 'Connect to dApps via WalletConnect v2',
+        explanation:
+          'WalletConnect v2 transport + message signing (D1+D2). ' +
+          'Pair with dApps, approve/reject session proposals, sign personal_sign and eth_signTypedData_v4 ' +
+          'requests with Permit/Permit2 hard warnings. ' +
+          'eth_sendTransaction (D3) is display-only pending real-device testnet verification. ' +
+          'Requires VITE_WALLETCONNECT_PROJECT_ID in .env.local.',
       },
       {
         name: 'Web3 Browser',

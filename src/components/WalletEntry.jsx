@@ -79,6 +79,7 @@ import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
+import { setPendingReferral } from "@/lib/referral";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
 // Both operands are local strings with no remote attacker; this is a codebase
@@ -329,6 +330,7 @@ export default function WalletEntry() {
   // block. The PIN is the credential here — there is NO vault-password field.
   const [importPhrasePin, setImportPhrasePin] = useState("");
   const [choosePinImport, setChoosePinImport] = useState(false);
+  const [referralInput, setReferralInput] = useState("");
   // True while a PIN wallet is being ATOMICALLY provisioned (create + both chaff
   // slots + cohort + salt). Holds the dashboard back until everything is committed;
   // on failure the vault is torn down (fail closed) and we show an honest error.
@@ -843,12 +845,24 @@ export default function WalletEntry() {
                   <p className="text-xs text-muted-foreground">Your PIN is set. Create a fresh self-custody wallet, or import an existing seed phrase — it'll be encrypted under your PIN on this device. Keys never leave it.</p>
                 </div>
                 <div className="space-y-2">
-                  <Button className="w-full gap-2" disabled={busy} onClick={doCreateWallet}>
+                  <Button className="w-full gap-2" disabled={busy} onClick={() => { if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase()); doCreateWallet(); }}>
                     <Shield className="h-4 w-4" /> Create Wallet
                   </Button>
                   <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(true); }}>
                     <Download className="h-4 w-4" /> Import an existing seed
                   </Button>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Got an invite code? (optional)</Label>
+                  <Input
+                    value={referralInput}
+                    onChange={e => setReferralInput(e.target.value.toUpperCase())}
+                    placeholder="VYX-XXXX"
+                    maxLength={8}
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    className="mono-value tracking-widest text-sm"
+                  />
                 </div>
                 <button type="button" onClick={() => { setError(""); enterExplore(); }} className="block w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
                   ← Keep exploring (view only)
@@ -865,7 +879,7 @@ export default function WalletEntry() {
                   <Label>12 or 24-word BIP-39 Seed Phrase</Label>
                   <textarea value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
                 </div>
-                <Button className="w-full gap-2" disabled={!importPhrasePin.trim() || busy} onClick={doImportWallet}>
+                <Button className="w-full gap-2" disabled={!importPhrasePin.trim() || busy} onClick={() => { if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase()); doImportWallet(); }}>
                   {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Restore / Import
                 </Button>
               </>

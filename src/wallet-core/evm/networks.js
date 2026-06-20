@@ -134,7 +134,10 @@ export const NETWORKS = {
     chainId: 43113,
     symbol: 'AVAX',
     decimals: 18,
-    defaultRpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
+    // publicnode (allowed by BOTH shipped CSP metas; api.avax-test.network is only
+    // in one, so the CSP intersection blocked it in the browser — balance never read,
+    // send never broadcast). Mirrors the publicnode endpoints the live chains use.
+    defaultRpcUrl: 'https://avalanche-fuji-c-chain-rpc.publicnode.com',
     explorer: 'https://testnet.snowtrace.io',
     isTestnet: true,
     enabled: true,
@@ -162,6 +165,10 @@ export const NETWORKS = {
     explorer: 'https://testnet.bscscan.com',
     isTestnet: true,
     enabled: true,
+    // BSC enforces a network-level minimum gas price (~1 gwei). On EIP-1559 where
+    // baseFee≈0, effective price≈tip, so the Slow tier (tip×½) can underprice and
+    // be silently rejected by BSC nodes. buildEvmTiers floors all tiers against this.
+    minGasPriceWei: '1000000000', // 1 gwei
   },
   bnb: {
     key: 'bnb',
@@ -173,6 +180,7 @@ export const NETWORKS = {
     explorer: 'https://bscscan.com',
     isTestnet: false,
     enabled: true, // unlocked 2026-06-17 owner sign-off
+    minGasPriceWei: '1000000000', // 1 gwei — same enforcement on BSC mainnet
   },
 };
 
@@ -209,4 +217,12 @@ export function getNetwork(key) {
 
 export function listEnabledNetworks() {
   return Object.values(NETWORKS).filter(n => n.enabled && (n.isTestnet || ALLOW_MAINNET));
+}
+
+export function getNetworkByChainId(chainId) {
+  const net = Object.values(NETWORKS).find(n => n.chainId === chainId);
+  if (!net) throw new Error(`Unsupported chain ID: ${chainId}`);
+  if (!net.isTestnet && !ALLOW_MAINNET) throw new Error('Mainnet is gated.');
+  if (!net.enabled) throw new Error(`Network "${net.key}" is not enabled.`);
+  return net;
 }
