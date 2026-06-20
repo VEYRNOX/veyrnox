@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Veyrnox UAT Report — Android Pixel 5 (Release Build)</title>
+<style>
+  body  { background:#050608; color:#e2e8f0; font-family:'Segoe UI',sans-serif; margin:0; padding:24px }
+  h1   { color:#4ADAC2; font-size:1.5rem; margin-bottom:4px }
+  .meta { color:#94a3b8; font-size:.85rem; margin-bottom:24px }
+  .summary { display:flex; gap:24px; margin-bottom:24px }
+  .badge   { padding:8px 20px; border-radius:8px; font-size:1.1rem; font-weight:bold }
+  .pass  { background:#1a3a2a; color:#4ADAC2 }
+  .fail  { background:#3a1a1a; color:#f87171 }
+  table  { width:100%; border-collapse:collapse }
+  th     { text-align:left; padding:8px 12px; color:#4ADAC2; border-bottom:1px solid #1D222B }
+  td     { border-bottom:1px solid #1D222B; vertical-align:middle }
+</style>
+</head>
+<body>
+<h1>Veyrnox UAT — Android Pixel 5 (Release Build)</h1>
+<div class="meta">
+  Generated: 2026-06-19 09:56:18 | Duration: 184.0s | Build: UAT (VITE_RELEASE=1) |
+  Device: Pixel 5 (393x851, touch) | Wallet: test throwaway seed
+</div>
+<div class="summary">
+  <div class="badge pass">PASS: 46</div>
+  <div class="badge fail">FAIL: 0</div>
+  <div class="badge" style="background:#1D222B;color:#94a3b8">Total: 46</div>
+</div>
+<table>
+<thead><tr><th>Status</th><th>Test</th><th>Screenshot</th></tr></thead>
+<tbody>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T00 App loads on fresh device (no vault)</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T00_01_fresh_start.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T00 Get Started leads to PIN pad</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T00_02_pin_create.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T00 PIN digits entered (6/6)</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T00_03_pin_entered.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T00 PIN confirmed</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T00_05_post_pin.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T00 Import existing seed button clicked</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T00_06_import_choose.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T00 Seed phrase entered</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T00_07_seed_entered.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T00 Wallet imported — app unlocked</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T00_08_post_import.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T02 Home tab visible</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T02_bottom_nav.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T02 Send tab visible</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T02_bottom_nav.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T02 Receive tab visible</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T02_bottom_nav.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T02 Send tab tappable</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T02_send_tap.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T02 Receive tab tappable</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T02_receive_tap.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T03 More drawer opens feature grid</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T03_more_drawer.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T04 Dashboard renders wallet content</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T04_dashboard.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T04 Dashboard has nav</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T04_dashboard.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T05 Send screen renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T05_send_screen.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T05 Send: address entry works</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T05_send_address_entered.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T06 Receive: QR code rendered</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T06_receive_screen.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T06 Receive: address or Copy button present</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T06_receive_screen.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">tx history page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T07_tx_history.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">security dashboard page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T08_security_dashboard.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">duress pin page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T09_duress_pin.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">stealth wallets page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T10_stealth_wallets.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T11 Panic Wipe renders guard UI</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T11_panic_wipe.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T11 Panic Wipe does NOT auto-trigger</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T11_panic_wipe.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">analytics page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T12_analytics.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">address book page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T13_address_book.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">settings page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T14_settings.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">watchlist page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T15_watchlist.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">network manager page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T16_network_manager.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">gas fees page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T17_gas_fees.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">price charts page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T18_price_charts.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">tax report page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T19_tax_report.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">savings goals page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T20_savings_goals.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">notifications page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T21_notifications.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T22 Dashboard mobile scroll works</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T22_scroll_mid.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T23 No uncaught JS errors on Dashboard</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T23_no_errors.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">security center page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T24_security_center.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">token approvals page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T25_token_approvals.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">hd wallet page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T26_hd_wallet.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T27 Seed QR page renders (guarded)</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T27_seed_qr.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">what this protects page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T28_what_this_protects.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">terms legal page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T29_terms_legal.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">features page renders</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T30_features.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T31 Quick lock shows PIN pad</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T31_locked.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr>
+        <tr style="background:#1a2e1a">
+          <td style="padding:8px 12px"><span style="color:#4ADAC2">PASS</span></td>
+          <td style="padding:8px 12px;font-family:monospace">T31 PIN unlock returns to app</td>
+          <td style="padding:8px 4px"><img src="screenshots\uat\T31_unlocked.png" style="max-width:160px;border-radius:4px;cursor:pointer" onclick="window.open(this.src)" /></td>
+        </tr></tbody>
+</table>
+</body>
+</html>

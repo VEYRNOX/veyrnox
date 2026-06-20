@@ -79,6 +79,8 @@ export function saveSnapshot(walletAddresses, portfolio, label, note) {
     }
 
     const snap = {
+      // audit: Math.random() here is intentional — this ID is a UI dedup/display
+      // key only, not a secret or entropy source for any cryptographic operation.
       id: `snap-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       created_date: new Date().toISOString(),
       label: label || defaultLabel(),
