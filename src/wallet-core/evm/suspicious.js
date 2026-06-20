@@ -32,12 +32,6 @@
 
 import { isAddress } from 'ethers';
 import { LOCAL_FLAGGED } from './poison.js';
-// Bundled, dated OFAC SDN snapshot (LOCAL — never fetched at runtime). Rebuilt
-// only when a maintainer runs scripts/refresh-ofac-blocklist.mjs. See
-// ofacSanctionsProvider below. Vite/Vitest resolve this JSON import to the parsed
-// object; the file is data-only, so the RNG tripwire (which scans code, not JSON)
-// is unaffected.
-import ofacSnapshot from '../data/ofac-sanctioned.json';
 
 // Normalise to a lowercase 0x address, or null if it is not a valid EVM address.
 // A null return marks the input as non-EVM (so `valid` stays false); screenAddress
@@ -137,112 +131,17 @@ export function makeBlocklistProvider(blocklist = DEFAULT_BLOCKLIST, name = 'loc
 // The local, on-device seed blocklist above. Calls nothing.
 export const localBlocklistProvider = makeBlocklistProvider();
 
-// ---------------------------------------------------------------------------
-// OFAC SANCTIONS PROVIDER
-//
-// A second LOCAL provider backed by the bundled OFAC SDN snapshot
-// (data/ofac-sanctioned.json). Like every provider here it makes NO network call
-// at runtime — the snapshot is a dated file, rebuilt out-of-band by
-// scripts/refresh-ofac-blocklist.mjs. It conforms to the EXACT provider contract
-// makeBlocklistProvider produces — { name, screen(normAddr) } returning an array
-// of { address, category:'sanctioned', source, note } — so it composes through
-// screenAddress unchanged.
-//
-// TWO ADDRESS FAMILIES, TWO MATCH RULES (declared via `families: ['evm','btc']`):
-//   - EVM (ETH/USDC/USDT/ARB/BSC): keyed by the lowercase 0x form (norm()). For an
-//     EVM recipient screenAddress hands screen() the ALREADY normalised address, so
-//     an EVM lookup is a direct Map hit.
-//   - BTC (XBT): base58/bech32 strings have no checksum-lowercasing — norm() returns
-//     null for them. screenAddress now routes such a raw string here BY FAMILY (this
-//     provider declares it handles 'btc'), passing the recipient VERBATIM. They are
-//     matched case-sensitively: a single changed character is a miss — these are
-//     exact-string sanctions hits, not fuzzy matches. (Because norm() fails on BTC,
-//     the recipient's `valid` stays false, but it can still be flagged here.)
-// ---------------------------------------------------------------------------
+// NOTE: The OFAC SDN snapshot provider (previously ofacSanctionsProvider) has
+// been removed. Automated bulk pulls from treasury.gov have commercial ToS
+// constraints, and a stale bundled snapshot cannot provide the delisting-current
+// coverage that reliable sanctions screening requires. For production compliance
+// screening, wire in an enterprise-licensed API (Chainalysis, TRM Labs, Elliptic,
+// etc.) as an additional provider via the providers opt-in in screenAddress().
+// The local seed list above retains individual well-documented entries (Ronin/
+// Lazarus) that do not depend on the automated feed.
 
-// Re-exported provenance for UI disclosure / tests: source, attribution (MIT /
-// 0xB10C), license, snapshotDate, counts, and the honesty notes.
-export const OFAC_SNAPSHOT_META = ofacSnapshot?._meta || null;
-
-/**
- * PURE: age in whole days of the bundled OFAC SDN snapshot, or null if no dated
- * snapshot. The snapshot is DATED and only shrinks (delistings) — so staleness
- * can't cause false sanctions HITS, but it can cause false NEGATIVES (a newly
- * sanctioned address won't be flagged). Internal audit (EVM-#2): surface this so a
- * sanctions warning is never shown without an indication of how old the data is.
- * `now` is injected for testability.
- * @param {number} [now]
- * @returns {number|null}
- */
-export function ofacSnapshotAgeDays(now = Date.now()) {
-  const d = OFAC_SNAPSHOT_META?.snapshotDate;
-  if (!d) return null;
-  const t = Date.parse(d);
-  if (Number.isNaN(t)) return null;
-  return Math.max(0, Math.floor((now - t) / 86_400_000));
-}
-
-/**
- * PURE: one-line human disclosure of the OFAC snapshot vintage for the screening
- * UI, or null if undated. Shown alongside a sanctions warning so the user can
- * weight it. Never claims completeness.
- * @param {number} [now]
- * @returns {string|null}
- */
-export function ofacSnapshotDisclosure(now = Date.now()) {
-  const d = OFAC_SNAPSHOT_META?.snapshotDate;
-  if (!d) return null;
-  const age = ofacSnapshotAgeDays(now);
-  const ageText = age == null ? '' : ` — ${age} day${age === 1 ? '' : 's'} old`;
-  return `Based on bundled OFAC SDN data as of ${d}${ageText}; a more recent sanctioning may not be reflected.`;
-}
-
-// Build the EVM (normalised) and BTC (raw) lookup maps from the snapshot once.
-function buildOfacIndex(snapshot) {
-  const evm = new Map(); // lowercase 0x -> entry
-  const btc = new Map(); // raw case-sensitive base58/bech32 -> entry
-  for (const e of snapshot?.entries || []) {
-    const entry = {
-      category: e?.category || 'sanctioned',
-      source: e?.source || OFAC_SNAPSHOT_META?.sourceName || 'OFAC SDN',
-      note: e?.note || 'OFAC SDN-listed digital-currency address',
-    };
-    if (e?.kind === 'evm') {
-      const a = norm(e.address);
-      if (a) evm.set(a, { ...entry, address: a });
-    } else if (e?.kind === 'btc') {
-      if (typeof e.address === 'string' && e.address) {
-        btc.set(e.address, { ...entry, address: e.address });
-      }
-    }
-  }
-  return { evm, btc };
-}
-
-const OFAC_INDEX = buildOfacIndex(ofacSnapshot);
-
-export const ofacSanctionsProvider = {
-  name: 'ofac-sdn-snapshot',
-  families: ['evm', 'btc'], // handles both EVM (normalised) and BTC (raw) lookups
-  screen(addr) {
-    if (typeof addr !== 'string') return [];
-    // EVM: screenAddress hands us an already-lowercased 0x address — direct hit.
-    const evmHit = OFAC_INDEX.evm.get(addr);
-    if (evmHit) return [evmHit];
-    // BTC: exact, case-sensitive raw-string match (see note above).
-    const btcHit = OFAC_INDEX.btc.get(addr);
-    if (btcHit) return [btcHit];
-    return [];
-  },
-};
-
-// The DEFAULT provider set, stated EXPLICITLY (not silently extended): the local
-// seed blocklist PLUS the bundled OFAC SDN snapshot. localBlocklistProvider is
-// kept FIRST so that for an address present in both (e.g. the Ronin/Lazarus entry
-// the seed list also carries), its richer cited source is the one reported —
-// screenAddress de-dupes the OFAC hit for the same address+category. Both are
-// purely local; this default still makes no network call.
-export const DEFAULT_PROVIDERS = [localBlocklistProvider, ofacSanctionsProvider];
+// The DEFAULT provider set — local seed blocklist only (EVM). No network call.
+export const DEFAULT_PROVIDERS = [localBlocklistProvider];
 
 // Turn a normalised match into a human-readable reason string.
 function reasonFor(m) {
