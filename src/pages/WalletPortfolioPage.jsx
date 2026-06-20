@@ -385,14 +385,15 @@ export default function WalletPortfolioPage() {
   const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
 
+  const canManage = isUnlocked && !isDecoy && !isHidden;
+
   // Receive detection: on each poll, compare per-wallet USD total against the previous
   // value. A positive delta of >$0.001 (rounding noise floor) fires a notification.
-  // Guards: isUnlocked + !isDecoy — fake balances in demo/decoy must never emit (I3,
-  // no-fake-security). Skip indeterminate reads (failed chain read could cause a
-  // false positive if a prior failed read resolves). First poll sets the baseline only.
+  // Guard: canManage — fake/decoy balances must never emit (I3, no-fake-security).
+  // Skip indeterminate reads. First poll sets the baseline only.
   const prevTotalsRef = useRef(/** @type {Record<string, number>} */ ({}));
   useEffect(() => {
-    if (!isUnlocked || isDecoy) return;
+    if (!canManage) return;
     if (!portfolio?.byWallet) return;
     const ts = Date.now();
     for (const [walletId, walletData] of Object.entries(portfolio.byWallet)) {
@@ -405,9 +406,7 @@ export default function WalletPortfolioPage() {
       }
       prevTotalsRef.current[walletId] = curr;
     }
-  }, [portfolio, isUnlocked, isDecoy]);
-
-  const canManage = isUnlocked && !isDecoy && !isHidden;
+  }, [portfolio, canManage]);
   const unbacked = canManage ? wallets.filter((w) => !w.backedUp) : [];
 
   // ── Explore / no-wallet empty state ──
