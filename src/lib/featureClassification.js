@@ -102,7 +102,7 @@ export const CLASSIFICATION = {
   },
   '/fee-analytics': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Rebuilt (Slice 1): stateless native-unit fee analytics computed on-device from the active set\'s chain history via the same on-demand fetch the history view uses — no fiat, no persistence, no new egress. Sums only fees the set actually paid (BTC/SOL); EVM has no in-app indexer so it fails honest to "unavailable", and a paid tx with no indexer-reported fee is shown as unknown, never guessed. UNAUDITED-PROVISIONAL: verified against fixtures, not yet a real on-chain txid.',
+    note: 'VERIFIED 2026-06-20: BTC tab loaded real on-chain fee history from the throwaway testnet wallet (bamboo… seed) — 4 confirmed sends, total 0.00000564 BTC fees (0.00000141 BTC each), "View on block explorer" links present, all Confirmed. Demo OFF, no fixtures. Rebuilt (Slice 1): stateless native-unit fee analytics computed on-device from chain history — no fiat, no persistence, no new egress. EVM fails honest to "unavailable" (no in-app indexer).',
   },
   '/hd-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
