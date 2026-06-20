@@ -21,7 +21,7 @@
   AVAX (Fuji), BNB (testnet), BTC (Bitcoin testnet), and SOL (Solana devnet)** are `live` — each send verified
   end-to-end through the full in-app UI path on-chain (covering every send family:
   EVM L1 native, ERC-20 contract-call, four EVM L2/sidechains, BTC UTXO, and SOL
-  ed25519). All 10 wallet assets are now `live`.
+  ed25519). AVAX and BNB remain `receive_only` — send is built but unverified (no accessible testnet faucet).
   Receiving and balance reads work for all 10 assets; the send *code path* exists
   and is unit-tested for EVM/ERC-20/BTC/SOL, but is HARD-gated off until a real
   on-chain send is done by hand and reviewed.
