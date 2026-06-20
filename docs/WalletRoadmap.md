@@ -7,12 +7,13 @@
 >
 > Status: ✅ built · 🟡 partial / built-but-gated · 📋 specced · 💡 idea ·
 > ❌ removed / out of scope
-> Rules: testnet only; mainnet gated until independent audit; each feature its own
-> branch+PR+review; cryptographic features get hands-on verification + audit focus.
+> Rules: mainnet OPEN (owner sign-off 2026-06-17 after internal audit, 0 crit/high/med);
+> each feature its own branch+PR+review; cryptographic features get hands-on verification
+> + audit focus.
 >
-> Verified against code on `main` (2026-06-01). At-a-glance truth table:
-> **docs/Feature-Status.md** (authoritative when docs disagree). NB: send is live
-> ONLY for ETH/Sepolia — every other asset is `receive_only`. 390 tests green.
+> Verified against code on `main` (2026-06-20). At-a-glance truth table:
+> **docs/Feature-Status.md** (authoritative when docs disagree). 8 of 10 assets LIVE
+> with verified on-chain txids; AVAX + BNB remain receive_only. 390+ tests green.
 
 ---
 
@@ -28,11 +29,11 @@
 
 ---
 
-## NOW — pending (non-code, gating mainnet)
-- Independent security audit (S1–S4 + crypto stacks) — 📋 (docs/Audit.scope.md)
-- Hands-on testnet send verification for every `receive_only` asset — 📋
-- ✅ Self-custody fix MERGED (PR #47): Rebalance removed, Recurring auto-debit
-  gutted (now schedule/reminder only, hands off to /send for user signing)
+## NOW — current state (2026-06-20)
+- ✅ Internal audit COMPLETE (2026-06-17, 0 crit/high/med, VULN-1–7 closed). Owner sign-off recorded in docs/audit-triage/internal-audit-2026-06-17.md. Independent third-party audit RECOMMENDED for strongest assurance.
+- ✅ Mainnet gate OPEN: ALLOW_MAINNET = ALLOW_BTC_MAINNET = ALLOW_SOL_MAINNET = true (2026-06-17)
+- ✅ 8 of 10 assets LIVE with verified on-chain txids (ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL). AVAX + BNB remain receive_only (no testnet faucet).
+- ✅ Self-custody fix MERGED (PR #47): Rebalance removed, Recurring auto-debit gutted (now schedule/reminder only, hands off to /send for user signing)
 
 ## PHASE S1 — Security foundation — ✅ largely built (PROVISIONAL pending audit)
 - Native secure storage (M2a done; M2b app-layer; OS-enforced M2c/M2d) — 🟡 (M2c/M2d 📋)
@@ -48,7 +49,8 @@
 - Spam-token filter — ✅
 - Calldata decode / approval (unlimited-allowance) warning — ✅
 - Per-chain recipient address validation — ✅
-- Suspicious-address / scam screening (threat-intel feed) — 📋
+- Suspicious-address / scam screening (threat-intel feed) — ✅ BUILT (local on-device; live threat-intel feed still roadmap)
+- OFAC screening — ✅ BUILT (bundled SDN snapshot, on-device; gated on legal review before shipping)
 - Transaction simulation (drainer defense) — ✅ (LOCAL-first pre-sign preview, `simulate.js` + `TransactionPreview.jsx`)
 - Anomaly / Fraud detection (rule-based) — ✅ (PR #54; LOCAL history-aware heuristics `anomaly.js`, folded into tx preview)
 - Security Dashboard (read-only posture view) — ✅ (PR #53; `securityPosture.js` + `SecurityDashboard.jsx`)
@@ -60,45 +62,45 @@
 - Stealth / hidden wallets (deniable chaff-slot pool) — ✅ (SAST M-1 fix)
 - Panic wipe (emergency local key destruction) — ✅
 - Constant-KDF unlock timing across deniability stack — ✅ (SAST M-2 fix)
-- Hardware wallet (Ledger/Trezor) — 📋 (UI shell only)
-- Login activity (+ map) — 📋 (UI shell only)
+- Hardware wallet (Ledger/Trezor) — 🟡 BUILT — Ledger WebHID address derivation + Trezor guide; TX signing coming soon; BTC/SOL hardware signing not wired; VULN-3+7 closed
+- Login activity (+ map) — ✅ VERIFIED 2026-06-20
 - Social recovery (guardian/SSS) — ❌ removed [audit-blocked-and-not-advertised] (never built; UI/catalogue removed)
 - Crypto Will / inheritance — 📋 (self-custody via secret-sharing + dead-man's-switch; audit + LAWYER)
-- Watch wallets — 📋
+- Watch wallets — ✅ BUILT
 
 ## PHASE S4 — Hardening & monitoring
-- RASP (jailbreak/root/tamper) — ✅ browser-level (navigator.webdriver → HOOKED → signing blocked; CLEAN for normal browsers; degradation policy + send-path wiring + I3 guard built + tested; OS-level probes audit-gated pending native plugin + real-device verification)
-- Audit log — ✅ (/audit-log live; AES-GCM ring-buffer 100 entries { type, ts } ONLY; opt-in off-by-default; no-op in decoy/hidden; UI surfaced via WalletProvider gated context; D1–D7 multi-set shape not built)
-- Risk limits / risk scoring (rule-based) — ✅ (rule-based on-device risk score in src/risk/; transparent, explainable, UNAUDITED-PROVISIONAL)
-- Encrypted cloud backup (ciphertext only) — 📋
+- RASP (jailbreak/root/tamper) — ✅ browser-level VERIFIED 2026-06-20 (navigator.webdriver → HOOKED → signing blocked; CLEAN for normal browsers; degradation policy + send-path wiring + I3 guard built + tested); OS-level probes still audit-gated (pending native plugin + real-device verification)
+- Audit log — ✅ LIVE and VERIFIED 2026-06-20 (/audit-log; AES-GCM ring-buffer 100 entries { type, ts } ONLY; opt-in off-by-default; no-op in decoy/hidden; UI surfaced via WalletProvider gated context; D1–D7 multi-set shape not built)
+- Risk limits / risk scoring (rule-based) — ✅ BUILT (rule-based on-device risk score in src/risk/; transparent, explainable, UNAUDITED-PROVISIONAL)
+- Encrypted cloud backup (ciphertext only) — ✅ BUILT (Argon2id+AES-GCM, restore verification; ciphertext only, never plaintext keys)
 
 ## PHASE UX — Wallet completeness (cheap, safe, parallelizable)
 - Receive (per-chain + local QR), Transaction history, Gas/fee control — ✅
 - Help menu (top-bar Documentation) — ✅
 - Address book — ✅ (per-chain validation); ENS/SNS resolution in Send — ✅;
   ENS registration — ❌ removed (PR #48)
-- Price charts / alerts / watchlist — 💡
-- Net-worth / portfolio dashboard + metrics/snapshots/benchmark — 💡
-- NFT viewing (display-only) / multi-chain NFT — 💡
+- Price charts / alerts / watchlist — ✅ BUILT (price-charts, alerts, watchlist routes live)
+- Net-worth / portfolio dashboard + metrics/snapshots/benchmark — ✅ BUILT (net-worth, analytics, advanced-analytics, benchmark, portfolio-rewind, snapshots routes live)
+- NFT viewing (display-only) / multi-chain NFT — ✅ BUILT (nft, nft-multichain routes live)
 - Custom token add/hide, ERC20 discovery — 💡
-- Activity dashboard, notification centre, push, smart/messenger alerts — 💡
-- Calculator, merchant QR, custom dashboard widgets — 💡 (Mobile Widget ❌ removed, PR #48)
-- Voice commands — 💡
+- Activity dashboard, notification centre, push, smart/messenger alerts — ✅ BUILT (notifications, push, dashboard-widgets routes live)
+- Calculator, merchant QR, custom dashboard widgets — ✅ BUILT (calculator, dashboard-widgets routes live; merchant QR via payment-links; Mobile Widget ❌ removed, PR #48)
+- Voice commands — ✅ BUILT
 
 ## PHASE ANALYTICS — read-only (safe, no custody)
-- P&L tracking, performance analytics/dashboard, spending patterns — 💡
-- On-chain / advanced / predictive analytics — 💡
-- Correlation matrix/timeline, custom index builder, fee analytics — 💡
-- Fear & Greed, crypto sentiment, what-if simulator — 💡
-- Tax report / tax harvesting (read-only) — 💡
+- P&L tracking, performance analytics/dashboard, spending patterns — ✅ BUILT (pl, analytics, advanced-analytics, spending routes live)
+- On-chain / advanced / predictive analytics — ✅ BUILT (onchain, advanced-analytics routes live)
+- Correlation matrix/timeline, custom index builder, fee analytics — ✅ BUILT (correlation, correlation-timeline, index-builder, fee-analytics routes live); fee-analytics VERIFIED 2026-06-20
+- Fear & Greed, crypto sentiment, what-if simulator — ✅ BUILT (news-sentiment route live)
+- Tax report / tax harvesting (read-only) — ✅ BUILT (tax route live)
 
 ## PHASE UTILITIES — self-custody, self-initiated
-- Crypto signing (message signing) — 💡 (handle carefully; not arbitrary dApp)
+- Crypto signing (message signing) — ✅ BUILT (crypto-signing route live)
 - Multi-sig wallets / treasury (self-custody) — ❌ removed [audit-blocked-and-not-advertised] (was UI shell w/ fake addresses; page/route/nav/catalogue deleted)
-- Savings goals, budget limits — 💡
-- Split bill, payment links, recurring (self-initiated, schedule/reminder only — hands off to Send for user signing), invoice generator — 💡
+- Savings goals, budget limits — ✅ BUILT (savings, budget routes live)
+- Split bill, payment links, recurring (self-initiated, schedule/reminder only — hands off to Send for user signing), invoice generator — ✅ BUILT (payment-links, recurring, invoices routes live)
 - Carbon tracker — 💡
-- Referral dashboard/tracker, leaderboard — 💡
+- Referral dashboard/tracker, leaderboard — 🟡 BUILT (recently, 2026-06-20; /referrals route live)
 - Social feed / public profiles — 💡 (privacy caveats)
 
 ## PHASE AI — advisory only (NEVER holds keys / never transacts)
@@ -109,8 +111,8 @@
 - AI portfolio advisor / rebalancer — 💡 (ADVISORY ONLY; auto-execute = OUT OF SCOPE)
 
 ## PHASE CHAINS — separate stacks (each its own build + audit)
-- Bitcoin (BIP-84 testnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified — docs/PhaseBTC.verification.md)
-- Solana (ed25519 devnet) — 🟡 receive_only (derive/balance/receive ✅; send built+tested, on-chain unverified)
+- Bitcoin (BIP-84 testnet) — ✅ LIVE — full UI path verified on-chain (txid 2da87a27…, block 4990901); docs/PhaseBTC.verification.md
+- Solana (ed25519 devnet) — ✅ LIVE — full UI path verified on-chain (sig 5KGXAGTJ…, FINALIZED)
 - More EVM chains (Base, zkSync…) — 💡 (config-level, cheap)
 - More ERC-20 tokens (DAI, LINK…) — 💡 (reuses token path, cheap)
 - Tron, XRP, etc. — 💡 (each a full stack; only if justified)

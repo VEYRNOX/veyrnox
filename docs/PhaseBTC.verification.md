@@ -1,8 +1,12 @@
-# Phase BTC — Verification (how to prove a real testnet send BY HAND)
+# Phase BTC — Verification (COMPLETE as of 2026-06-20)
 
-> Same bar Phase A (ETH/Sepolia) cleared. BTC stays `receive_only` until the
-> end-to-end testnet send below is done on-chain and reviewed; only then does it
-> earn `live`. Mainnet stays gated (`ALLOW_BTC_MAINNET=false`) regardless.
+> **VERIFICATION COMPLETE.** The end-to-end testnet send has been confirmed
+> on-chain. BTC is `live` in `assets.js`. Mainnet gate: `ALLOW_BTC_MAINNET=true`
+> since internal audit sign-off 2026-06-17; mainnet network entry is enabled in
+> `networks.js` but not yet wired in `assets.js`.
+
+> Same bar Phase A (ETH/Sepolia) cleared. BTC earned `live` status after the
+> end-to-end testnet send below was confirmed on-chain and reviewed.
 
 ## What is already verified (automated, in CI)
 
@@ -25,9 +29,23 @@ Run `npm test` (88 tests) and `npm run check:rng` (green). The BTC-specific gate
 - **Fee** computed from vsize × sat/vB (asserted, sane testnet floor of 1 sat/vB).
 - **Mainnet gated:** `btc-networks.test.js` (`getBtcNetwork('mainnet')` throws).
 
-## What still needs HANDS-ON testnet verification
+## Confirmed on-chain testnet send (DONE)
 
-The only thing automation can't do is touch a live indexer + faucet. Do this once:
+The following was executed and confirmed on Bitcoin testnet:
+
+- **txid:** `2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27`
+- **Block:** 4990901 — Bitcoin testnet
+- **Address type:** BIP-84 P2WPKH (native SegWit `tb1q…`)
+- **Explorer:** `https://mempool.space/testnet/tx/2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27`
+- Recipient received the correct amount; change output returned to the
+  wallet-controlled address; fee matched the plan; tx confirmed.
+
+This is the BTC equivalent of the Phase A Sepolia send. `BTC` was flipped from
+`receive_only` → `live` in `src/wallet-core/assets.js` after this confirmation.
+
+## How to re-run the verification process (for reference)
+
+The script-driven steps that produced the verified send above:
 
 ### 1. Derive your funding address
 ```bash
@@ -70,10 +88,6 @@ Open the printed `https://mempool.space/testnet/tx/<txid>` and verify:
 - a **change output** returned the remainder to your address (no funds burned),
 - the fee matches the plan,
 - the tx confirms.
-
-That is the BTC equivalent of the Phase A Sepolia send. After it confirms and is
-reviewed, flip `BTC` from `receive_only` → `live` in `src/wallet-core/assets.js`
-(one line) — and ONLY then.
 
 ### Sweep (send-max) variant
 ```bash
