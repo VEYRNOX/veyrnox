@@ -24,6 +24,30 @@ import { emitReceiveDetected } from './events.js';
 const POLL_MS = 60_000;
 const MIN_DELTA = 1e-9; // noise / rounding floor
 
+/**
+ * Pure helper: given a prior balance snapshot and a current snapshot, return the
+ * list of {symbol, delta, amount} entries where a positive receive was detected.
+ * I4: a null in either snapshot for a given symbol is skipped (indeterminate read
+ * must never produce a spurious notification). Exported for unit testing only.
+ *
+ * @param {Record<string,number|null>} prior
+ * @param {Record<string,number|null>} current
+ * @param {string[]} symbols
+ * @returns {{symbol:string, delta:number, amount:string}[]}
+ */
+export function detectDeltas(prior, current, symbols) {
+  if (prior === null) return [];
+  const results = [];
+  for (const symbol of symbols) {
+    const prev = prior[symbol];
+    const curr = current[symbol];
+    if (prev == null || curr == null) continue; // I4: skip indeterminate
+    const delta = curr - prev;
+    if (delta > MIN_DELTA) results.push({ symbol, delta, amount: `${delta.toFixed(6)} ${symbol}` });
+  }
+  return results;
+}
+
 export function useReceiveDetector() {
   const {
     isUnlocked,
@@ -66,20 +90,10 @@ export function useReceiveDetector() {
         }),
       );
 
-      const prior = priorRef.current;
-      if (prior !== null) {
-        for (const symbol of enabledAssets) {
-          const prev = prior[symbol];
-          const curr = current[symbol];
-          // I4: skip any pair where either value is indeterminate (null).
-          if (prev == null || curr == null) continue;
-          const delta = curr - prev;
-          if (delta > MIN_DELTA) {
-            try {
-              emitReceiveDetected({ ts: Date.now(), amount: `${delta.toFixed(6)} ${symbol}` });
-            } catch { /* I4: a notification failure is never propagated */ }
-          }
-        }
+      for (const { amount } of detectDeltas(priorRef.current, current, enabledAssets)) {
+        try {
+          emitReceiveDetected({ ts: Date.now(), amount });
+        } catch { /* I4: a notification failure is never propagated */ }
       }
 
       priorRef.current = current;
