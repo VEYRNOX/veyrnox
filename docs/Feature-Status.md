@@ -16,12 +16,12 @@
 
 ## Reality check (read first)
 - **Test suite:** 1195 tests across 137 files, all green (`npm test`); `check:rng` green.
-- **What actually SENDS on-chain today:** **ETH (Sepolia), USDC (Sepolia),
-  USDT (Sepolia), MATIC (Polygon Amoy), ARB (Arbitrum Sepolia), OP (OP Sepolia),
+- **What actually SENDS on-chain today:** **ETH (Sepolia), USDC (Ethereum mainnet ✓ MAINNET),
+  USDT (Ethereum mainnet ✓ MAINNET), MATIC (Polygon Amoy), ARB (Arbitrum Sepolia), OP (OP Sepolia),
   AVAX (Fuji), BNB (testnet), BTC (Bitcoin testnet), and SOL (Solana devnet)** are `live` — each send verified
   end-to-end through the full in-app UI path on-chain (covering every send family:
   EVM L1 native, ERC-20 contract-call, four EVM L2/sidechains, BTC UTXO, and SOL
-  ed25519). AVAX and BNB remain `receive_only` — send is built but unverified (no accessible testnet faucet).
+  ed25519). USDC and USDT are now LIVE on Ethereum mainnet (build:release sends confirmed on etherscan.io, 2026-06-20). AVAX and BNB remain `receive_only` — send is built but unverified (no accessible testnet faucet).
   Receiving and balance reads work for all 10 assets; the send *code path* exists
   and is unit-tested for EVM/ERC-20/BTC/SOL, but is HARD-gated off until a real
   on-chain send is done by hand and reviewed.
@@ -43,8 +43,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 | Asset | Family | Network | Receive + balance | Send | Status |
 |---|---|---|---|---|---|
 | ETH | evm | Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x2d4d5d…`) | ✅ **live** |
-| USDC | erc20 | Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x687d8c…`, block 11074999, 2026-06-16) | ✅ **live** |
-| USDT | erc20 | Sepolia (Aave faucet stand-in) | ✅ | ✅ verified on-chain (full UI path, `0x3168e4…`, block 11075008, 2026-06-16) | ✅ **live** |
+| USDC | erc20 | **Ethereum Mainnet** | ✅ | ✅ verified on-chain (full UI path, build:release, `0xc37314…`, 2026-06-20) — **✓ MAINNET** | ✅ **live** |
+| USDT | erc20 | **Ethereum Mainnet** | ✅ | ✅ verified on-chain (full UI path, build:release, `0x3f2fe1…`, 2026-06-20) — **✓ MAINNET** | ✅ **live** |
 | MATIC | evm | Polygon Amoy | ✅ | ✅ verified on-chain (full UI path, `0x6a4ded…`, block 40274236, 2026-06-16) | ✅ **live** |
 | ARB | evm | Arbitrum Sepolia | ✅ | ✅ verified on-chain (full UI path, `0x797928…`, 2026-06-14) | ✅ **live** |
 | OP | evm | Optimism Sepolia | ✅ | ✅ verified on-chain (full UI path, `0xc3fd1e…`, 2026-06-14) | ✅ **live** |
@@ -85,7 +85,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Polygon (Polygon Amoy) — ✅ live send — **full UI path verified on-chain** (native POL gas; txid `0x6a4ded…`, chainId 80002, block 40274236, 2026-06-16, 0.01 POL `0x90f9f1…E68a729` → `0xd8dA6BF2…aA96045`, status SUCCESS, gasUsed 21000). Mainnet stays gated.
 - Avalanche (Fuji) — ✅ live send — **on-chain verified 2026-06-19** (native AVAX transfer; txid `0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0`, block 56417576, `0x90f9f1…E68a729` → `0x82D0Fa…455BAB`, 0.01 AVAX, EIP-1559 Standard tier). Explorer: testnet.snowtrace.io.
 - BNB (BNB testnet, chainId 97) — ✅ live send — **on-chain verified 2026-06-19** (native tBNB transfer; txid `0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91`, block 114367510, `0x90f9f1…E68a729` → `0x82D0Fa…455BAB`, 0.01 tBNB, 1 gwei tip floors BSC min-gas requirement). Explorer: testnet.bscscan.com.
-- ERC-20 (USDC, USDT — Sepolia) — ✅ live send — **full UI path verified on-chain** (ERC-20 `transfer`, `sendToken`; USDC txid `0x687d8c…` block 11074999, USDT txid `0x3168e4…` block 11075008, both 2026-06-16, 1 token each from `0x90f9f1…E68a729` → `0xd8dA6BF2…aA96045`, status SUCCESS, decimals 6 re-checked on-chain). Mainnet stays gated.
+- ERC-20 (USDC, USDT — Sepolia) — ✅ live send — **full UI path verified on-chain** (ERC-20 `transfer`, `sendToken`; USDC txid `0x687d8c…` block 11074999, USDT txid `0x3168e4…` block 11075008, both 2026-06-16, 1 token each, status SUCCESS, decimals 6 re-checked on-chain).
+- ERC-20 (USDC, USDT — **Ethereum Mainnet**) — ✅ **✓ MAINNET LIVE** — **full UI path verified on-chain via build:release** (2026-06-20): USDC txid `0xc3731477…` ([etherscan.io](https://etherscan.io/tx/0xc3731477db771bcf413198b5deb97d5ac2a13180ad0fd48353f0341867bfa0a2)) contract `0xA0b8…eB48`; USDT txid `0x3f2fe19a…` ([etherscan.io](https://etherscan.io/tx/0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986)) contract `0xdAC1…1ec7`. Both from `0x90f9f1…E68a729` → `0x82D0Fa…55BAB`, status SUCCESS, 6 decimals, no dev flags.
 - Bitcoin (BIP-84 testnet) — ✅ live send — **full UI path verified on-chain** (BIP-84 P2WPKH, `signAndBroadcastBtc`; txid `2da87a27…`, block 4990901, 2026-06-14, user-driven UI send). Mainnet stays gated.
 - Solana (ed25519 devnet) — ✅ live send — **full UI path verified on-chain** (ed25519/SLIP-0010, `signAndBroadcastSol`; sig `5KGXAGTJ…`, FINALIZED, 2026-06-14, user-driven UI send). Mainnet stays gated.
 - More EVM chains / more ERC-20 tokens — 💡
