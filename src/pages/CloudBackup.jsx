@@ -45,7 +45,7 @@ function PinField({ label, value, onChange }) {
         pattern="\d*"
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 12))}
-        placeholder="4–12 digits"
+        placeholder="6–12 digits"
         className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
     </div>
@@ -76,7 +76,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 
   // The backup password is a NEW credential the user chooses to protect the
   // file — min 8, matching the vault-password floor.
-  const canExport = password.length >= 8 && pin.length >= 4 && pin === pinConfirm;
+  const canExport = password.length >= 8 && pin.length >= 6 && pin === pinConfirm;
 
   const runExport = async () => {
     setBusy(true);
@@ -133,10 +133,17 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         {password.length > 0 && password.length < 8 && (
           <p className="text-xs text-destructive">Use at least 8 characters.</p>
         )}
-        <PinField label="Choose a backup PIN (4–12 digits)" value={pin} onChange={setPin} />
+        <PinField label="Choose a backup PIN (6–12 digits)" value={pin} onChange={setPin} />
         <PinField label="Confirm backup PIN" value={pinConfirm} onChange={setPinConfirm} />
         {pin.length >= 4 && pinConfirm.length >= 4 && pin !== pinConfirm && (
           <p className="text-xs text-destructive">PINs do not match.</p>
+        )}
+        {pin.length >= 6 && pin.length < 8 && (
+          <p className="text-xs text-yellow-600 dark:text-yellow-400">
+            A PIN shorter than 8 digits can be brute-forced offline if someone
+            gets this file. Use 8+ digits or rely on the backup password for
+            strongest protection.
+          </p>
         )}
       </div>
 
