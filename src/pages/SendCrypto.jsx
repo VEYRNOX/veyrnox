@@ -43,7 +43,7 @@ import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
-import { notifySendConfirmed, notifyRaspAlert } from "@/notify/sources";
+import { notifySendConfirmed, notifyRaspAlert, notifyTxRisk } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
@@ -611,7 +611,10 @@ export default function SendCrypto() {
       let riskScoreFailed = false;
       let presignAtSign = null;
       try {
-        presignAtSign = presignGate(raspTier, scoreCurrentSend().level, riskAck);
+        const s = scoreCurrentSend();
+        // Emit tx-risk notification at sign time if verdict is actionable (I4: fire-and-forget).
+        if (s.sentence) notifyTxRisk({ level: s.level, sentence: s.sentence, ts: Date.now() });
+        presignAtSign = presignGate(raspTier, s.level, riskAck);
       } catch {
         riskScoreFailed = true;
       }

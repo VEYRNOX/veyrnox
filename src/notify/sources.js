@@ -84,6 +84,23 @@ export function notifyRaspAlert({ tier, sentence, ts }) {
 }
 
 /**
+ * Fire a tx-risk notification from the pre-sign score() verdict.
+ * Called at sign time when the verdict is CAUTION or RISK. OK/INFO → no-op.
+ * Fire-and-forget (I4): a notification failure must never block or unwind the send.
+ *
+ * @param {{ level: string, sentence: string, ts: number }} p
+ */
+export function notifyTxRisk({ level, sentence, ts }) {
+  if (!sentence || level === LEVEL.OK || level === LEVEL.INFO) return false;
+  try {
+    emitRiskFired({ ts, score: { level, sentence } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fire a risk alert from an on-device fraud/anomaly scan finding.
  * Only fires for critical or high severity (medium/low stay in the scan UI only).
  *
