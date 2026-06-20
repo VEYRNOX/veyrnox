@@ -125,3 +125,46 @@ describe('evmFeeOverrides — selection maps to the EXACT tx fields that get sig
     expect(ratios).toEqual([0.5, 1, 2]);
   });
 });
+
+describe('buildEvmTiers — per-chain base-fee ceiling (C-4)', () => {
+  const tip = GWEI(2);
+  const gasLimit = 21000n;
+
+  it('throws when mainnet base fee exceeds 1000 gwei', () => {
+    expect(() =>
+      buildEvmTiers({ baseFeePerGasWei: GWEI(1001), suggestedTipWei: tip, gasLimit, networkKey: 'mainnet' }),
+    ).toThrow(/implausible base fee/i);
+  });
+
+  it('accepts mainnet base fee at or below 1000 gwei', () => {
+    expect(() =>
+      buildEvmTiers({ baseFeePerGasWei: GWEI(999), suggestedTipWei: tip, gasLimit, networkKey: 'mainnet' }),
+    ).not.toThrow();
+  });
+
+  it('accepts sepolia base fee up to 5000 gwei (testnet cap)', () => {
+    expect(() =>
+      buildEvmTiers({ baseFeePerGasWei: GWEI(3000), suggestedTipWei: tip, gasLimit, networkKey: 'sepolia' }),
+    ).not.toThrow();
+  });
+
+  it('applies no cap when networkKey is unknown', () => {
+    expect(() =>
+      buildEvmTiers({ baseFeePerGasWei: GWEI(99999), suggestedTipWei: tip, gasLimit, networkKey: 'unknownchain' }),
+    ).not.toThrow();
+  });
+});
+
+describe('buildEvmCustomFee — per-chain ceiling (C-4)', () => {
+  it('throws when custom maxBaseFeeGwei exceeds the mainnet ceiling', () => {
+    expect(() =>
+      buildEvmCustomFee({ maxBaseFeeGwei: 1001, priorityGwei: 1, gasLimit: 21000, networkKey: 'mainnet' }),
+    ).toThrow(/ceiling/i);
+  });
+
+  it('accepts custom maxBaseFeeGwei at or below the mainnet ceiling', () => {
+    expect(() =>
+      buildEvmCustomFee({ maxBaseFeeGwei: 999, priorityGwei: 1, gasLimit: 21000, networkKey: 'mainnet' }),
+    ).not.toThrow();
+  });
+});
