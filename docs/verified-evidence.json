@@ -18,6 +18,26 @@
       "chain": "bitcoin-testnet",
       "txid": "d9cc113f2c9c94d7175e546e29b16920aeadd9d34baca7596a0394ab2362a62e",
       "date": "2026-06-12"
+    },
+    "USDC mainnet send (full UI path, build:release, Ethereum mainnet)": {
+      "chain": "mainnet",
+      "txid": "0xc3731477db771bcf413198b5deb97d5ac2a13180ad0fd48353f0341867bfa0a2",
+      "explorer": "https://etherscan.io/tx/0xc3731477db771bcf413198b5deb97d5ac2a13180ad0fd48353f0341867bfa0a2",
+      "token_contract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+      "to": "0x82D0Fa9d0692dbaDA375fe58Be8368C2a7455BAB",
+      "build": "build:release",
+      "date": "2026-06-20"
+    },
+    "USDT mainnet send (full UI path, build:release, Ethereum mainnet)": {
+      "chain": "mainnet",
+      "txid": "0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986",
+      "explorer": "https://etherscan.io/tx/0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986",
+      "token_contract": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+      "to": "0x82D0Fa9d0692dbaDA375fe58Be8368C2a7455BAB",
+      "build": "build:release",
+      "date": "2026-06-20"
     }
   }
 }
