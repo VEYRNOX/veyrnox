@@ -3,14 +3,15 @@
 Lower-risk, high-coverage phase: it REUSES the audited Phase A signing core and
 the Phase B token path. No new key cryptography. The work is mostly network
 configuration + per-chain verification — but "mostly" is not "entirely" (see
-the gotchas). Five of your ten assets become reachable through this one phase.
+the gotchas). Five of the ten assets become reachable through this one phase.
 
-> Prerequisite: Phase A + B merged (done). Do Phase C on its own branch, its own
-> PR, its own review — same flow as before.
+> Prerequisite: Phase A + B merged (done).
 >
-> Status gate unchanged: every chain is added on TESTNET first and behind the
-> mainnet gate. A chain only flips to `live` after a verified testnet transfer on
-> THAT chain. The independent audit before real funds still stands.
+> **Status as of 2026-06-20:** MATIC, ARB, and OP are LIVE with verified
+> on-chain testnet sends. AVAX and BNB remain receive_only (send is built but
+> blocked by no accessible testnet faucet). All mainnet network entries are
+> enabled (`ALLOW_MAINNET=true` since 2026-06-17); none are wired in `assets.js`
+> yet — no real funds until that wiring is explicitly made.
 
 ---
 
@@ -19,13 +20,13 @@ the gotchas). Five of your ten assets become reachable through this one phase.
 Add native-coin support for these EVM chains (each shares secp256k1 +
 m/44'/60'/0'/0/0 derivation — the SAME address works across all of them):
 
-| Asset | Chain        | Native gas token | Notes |
-|-------|--------------|------------------|-------|
-| MATIC | Polygon      | POL/MATIC        | gas paid in POL, not ETH |
-| ARB   | Arbitrum     | ETH              | L2; gas in ETH |
-| OP    | Optimism     | ETH              | L2; gas in ETH |
-| AVAX  | Avalanche C  | AVAX             | gas in AVAX |
-| BNB   | BNB Chain    | BNB              | gas in BNB |
+| Asset | Chain        | Native gas token | Status | Verified txid |
+|-------|--------------|------------------|--------|---------------|
+| MATIC | Polygon      | POL/MATIC        | ✅ LIVE | `0x6a4ded…` Polygon Amoy, block 40274236, 2026-06-16 |
+| ARB   | Arbitrum     | ETH              | ✅ LIVE | `0x797928…` Arbitrum Sepolia, 2026-06-14 |
+| OP    | Optimism     | ETH              | ✅ LIVE | `0xc3fd1e…` OP Sepolia, 2026-06-14 |
+| AVAX  | Avalanche C  | AVAX             | receive_only | send built; no Fuji faucet accessible |
+| BNB   | BNB Chain    | BNB              | receive_only | send built; no tBNB faucet accessible; use Standard+ fee tier (gas price minimum enforced on BNB testnet — Slow tier can be rejected) |
 
 The ERC-20 token path from Phase B also immediately extends to any of these
 chains once configured (e.g. USDC exists on several) — but keep tokens on new
@@ -115,13 +116,17 @@ catches those bugs before they multiply.
 ---
 
 ## Verification gates (in addition to the standard checklist)
-- [ ] Every chainId verified against an authoritative source (not guessed).
-- [ ] chainId-verify guard rejects cross-chain/mismatched sends per chain.
-- [ ] Fees + balances display the CORRECT native symbol per chain (no hardcoded ETH).
-- [ ] A real testnet transfer verified on EACH chain before it flips to `live`.
-- [ ] RPCs are reliable + overridable; never trusted for signing.
-- [ ] Mainnets present but gated; ALLOW_MAINNET unchanged.
-- [ ] check:rng + tests green; new chain tests added.
+- [x] Every chainId verified against an authoritative source (not guessed).
+- [x] chainId-verify guard rejects cross-chain/mismatched sends per chain.
+- [x] Fees + balances display the CORRECT native symbol per chain (no hardcoded ETH).
+- [x] MATIC: real testnet transfer verified on Polygon Amoy (`0x6a4ded…`, block 40274236, 2026-06-16) — LIVE.
+- [x] ARB: real testnet transfer verified on Arbitrum Sepolia (`0x797928…`, 2026-06-14) — LIVE.
+- [x] OP: real testnet transfer verified on OP Sepolia (`0xc3fd1e…`, 2026-06-14) — LIVE.
+- [ ] AVAX: send built; blocked by no accessible Fuji faucet — remains receive_only.
+- [ ] BNB: send built; blocked by no accessible tBNB faucet — remains receive_only. (Note: BNB testnet enforces a minimum gas price; Slow fee tier can be rejected — use Standard+ when testing.)
+- [x] RPCs are reliable + overridable; never trusted for signing.
+- [x] All mainnet network entries enabled (`ALLOW_MAINNET=true` 2026-06-17); none wired in `assets.js` yet.
+- [x] check:rng + tests green; new chain tests added.
 
 ## Out of scope for Phase C
 ERC-20 tokens on the new chains beyond what has verified-address registry

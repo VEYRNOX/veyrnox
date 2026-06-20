@@ -80,7 +80,12 @@ didn't display the derived address — fixed so the address shows (commit fcfe86
 ## Status & invariants carried forward
 - Non-custodial: keys generated/stored/used on device; backend (if any) sees
   only ciphertext or already-signed txs.
-- Testnet only; mainnet gated behind ALLOW_MAINNET until the independent audit.
+- ETH is LIVE: verified on-chain send txid `0x2d4d5df0…`, Sepolia, 2026-06-11.
+- **Internal audit complete 2026-06-17 — 0 critical / high / medium findings.**
+  `ALLOW_MAINNET=true` since owner sign-off 2026-06-17. Mainnet EVM network
+  entries are enabled in `networks.js`; mainnet wiring in `assets.js` is a
+  deliberate separate step. An independent audit is RECOMMENDED for the strongest
+  assurance but was not required under the owner's gate policy.
 - Audited libs only; RNG guard in CI.
 - This core is REUSED unchanged by Phase B (tokens), Phase C (more EVM chains),
   and the mobile phases — which is why later phases add little/no new crypto.
