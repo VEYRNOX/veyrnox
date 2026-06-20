@@ -42,7 +42,8 @@
 // notify.js still carries the pure receive/risk mappings for the day a real
 // source exists; we do not fabricate a source to make the emit look live.
 
-import { emitSendConfirmed } from './events.js';
+import { emitSendConfirmed, emitRiskFired } from './events.js';
+import { LEVEL } from '../risk/levels.js';
 
 /**
  * Fire the "send confirmed" notification from the send flow's post-broadcast
@@ -62,5 +63,39 @@ export function notifySendConfirmed({ amount, to, ts }) {
     return true;
   } catch {
     return false; // I4: a notification failure never unwinds the send path.
+  }
+}
+
+/**
+ * Fire a security alert from the RASP environment gate when tier is WARN or BLOCK.
+ * ALLOW → no-op. Call once per send attempt, not on every render.
+ *
+ * @param {{ tier: string, sentence: string|null, ts: number }} p
+ */
+export function notifyRaspAlert({ tier, sentence, ts }) {
+  if (tier === 'allow' || !sentence) return false;
+  try {
+    const level = tier === 'warn-before-sign' ? LEVEL.CAUTION : LEVEL.RISK;
+    emitRiskFired({ ts, score: { level, sentence } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fire a risk alert from an on-device fraud/anomaly scan finding.
+ * Only fires for critical or high severity (medium/low stay in the scan UI only).
+ *
+ * @param {{ sentence: string, severity: string, ts: number }} p
+ */
+export function notifyFraudAlert({ sentence, severity, ts }) {
+  if (!sentence || (severity !== 'critical' && severity !== 'high')) return false;
+  try {
+    const level = severity === 'critical' ? LEVEL.RISK : LEVEL.CAUTION;
+    emitRiskFired({ ts, score: { level, sentence } });
+    return true;
+  } catch {
+    return false;
   }
 }

@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
+import inject from '@rollup/plugin-inject'
 
 // logLevel 'error' suppresses Vite's startup banner too, so the
 // "Local: http://localhost:5173/" line never prints. This tiny plugin restores
@@ -78,6 +79,7 @@ export default defineConfig(({ command }) => {
     // explicitly. Mirrors jsconfig.json and vitest.config.js.
     define: {
       'process.env': '{}',
+      global: 'globalThis',
     },
     resolve: {
       alias: {
@@ -94,6 +96,7 @@ export default defineConfig(({ command }) => {
     plugins: [
       react(),
       printUrls(),
+      inject({ Buffer: ['buffer', 'Buffer'], include: ['src/**'] }),
     ],
     // Pre-bundle the wallet-core's crypto deps so Vite doesn't discover them
     // mid-session and trigger an optimize + forced full-reload (which can flash a
