@@ -40,6 +40,63 @@ async function populateDevice() {
   await setPanicVault(PANIC_PW);
 }
 
+function unb64(str) {
+  const s = atob(str); const u8 = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+  return u8;
+}
+function getBlob(key) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('veyrnox-vault', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('vault')) db.createObjectStore('vault');
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const r = db.transaction('vault', 'readonly').objectStore('vault').get(key);
+      r.onsuccess = () => { db.close(); resolve(r.result ?? null); };
+      r.onerror = () => { db.close(); reject(r.error); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Open the SEPARATE app-data DB (veyrnox-appdata) exactly as src/api/localClient.js
+// does, so the test exercises the real store shape a thorough wipe must remove.
+function appDataPut(name, rows) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('veyrnox-appdata', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('entities')) db.createObjectStore('entities');
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const r = db.transaction('entities', 'readwrite').objectStore('entities').put(rows, name);
+      r.onsuccess = () => { db.close(); resolve(); };
+      r.onerror = () => { db.close(); reject(r.error); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+function appDataGet(name) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('veyrnox-appdata', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('entities')) db.createObjectStore('entities');
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      const r = db.transaction('entities', 'readonly').objectStore('entities').get(name);
+      r.onsuccess = () => { db.close(); resolve(r.result ?? null); };
+      r.onerror = () => { db.close(); reject(r.error); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function dumpVaultStore() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('veyrnox-vault', 1);
@@ -145,7 +202,13 @@ describe('panic wipe', () => {
     expect(await tryRevealHidden(HIDDEN_SECRET)).toBeNull();
     expect(await hasPanicVault()).toBe(false);
 
-    // A re-inspection confirms the same.
+    // A re-inspection AFTER those probes confirms the same — crucially, the post-wipe
+    // tryRevealHidden() probe above must NOT re-create any residue. Reveal now uses a
+    // READ-ONLY salt accessor (readSlotForSecret), so a missing 'veyrnox-stealth-slot-
+    // salt' (a tracked deniability tell) is never re-provisioned by a reveal. Before
+    // the read/write salt split, tryRevealHidden -> getOrCreateStealthSalt re-wrote
+    // that key, silently re-introducing the very tell the wipe had just removed; this
+    // ordering (probe, THEN inspect) is the regression guard for that fix.
     const after = await inspectKeyMaterial();
     expect(after.clean).toBe(true);
   });
@@ -153,8 +216,33 @@ describe('panic wipe', () => {
   it('wipes the deniability tells in localStorage and reports them honestly (C-1)', async () => {
     // The forensic artifacts a panic wipe must also destroy — leaving any of these
     // proves the coercion-resistance stack was in use (and the decoy salt + a
-    // coerced PIN reproduces the deterministic decoy). Internal audit C-1.
-    const TELLS = ['veyrnox-pin-decoy-salt', 'veyrnox-auth-model', 'veyrnox-audit-log'];
+    // coerced PIN reproduces the deterministic decoy). Internal audit C-1, extended
+    // per AI-review F-02/F-03/F-05 (stealth-slot salt, audit-device salt, passkey
+    // config) and F-06 (biometric pref, PIN-lockout counters, multi-wallet/portfolio
+    // metadata, spam overrides). This pins the FULL membership of the residue lists
+    // (DENIABILITY_RESIDUE_KEYS + METADATA_RESIDUE_KEYS), so a key dropped from the
+    // wipe list — leaving a tell behind while clean still reports true — fails here
+    // (also guards F-04).
+    const TELLS = [
+      // coercion-stack / auth-factor tells (DENIABILITY_RESIDUE_KEYS)
+      'veyrnox-pin-decoy-salt',
+      'veyrnox-auth-model',
+      'veyrnox-audit-log',
+      'veyrnox-stealth-slot-salt',
+      'veyrnox-audit-device-salt',
+      'veyrnox-passkey-unlock',
+      'veyrnox-passkey-cred',
+      'veyrnox-2fa-passkey',
+      'veyrnox-biometric-unlock',
+      'veyrnox-pin-attempts',
+      'veyrnox-pin-backoff-until',
+      // non-secret wallet/token metadata residue (METADATA_RESIDUE_KEYS) — F-06
+      'veyrnox-wallet-meta',
+      'veyrnox-active-wallet',
+      'veyrnox-portfolios',
+      'veyrnox-active-portfolio',
+      'veyrnox-spam-overrides',
+    ];
     await populateDevice();
     for (const k of TELLS) localStorage.setItem(k, 'x');
 
@@ -170,6 +258,66 @@ describe('panic wipe', () => {
     expect(report.localStorageResidue).toEqual([]);
     expect(report.clean).toBe(true);
     expect((await inspectKeyMaterial()).clean).toBe(true);
+  });
+
+  it('panicWipeLocal also deletes the separate app-data DB (forensic residue) — F-06', async () => {
+    // veyrnox-appdata (src/api/localClient.js) holds entity rows that NAME addresses,
+    // tx hashes, wallet labels, and alerts — NO key material, but forensic residue
+    // tying the device to the destroyed wallet set. A thorough wipe must remove it
+    // too. This deletion is additive and best-effort (mirrors deleteVaultDatabase),
+    // so it is observed directly here rather than through inspectKeyMaterial().
+    await populateDevice();
+    await appDataPut('Wallet', [{ id: 'w1', address: '0xdeadbeef', name: 'My ETH' }]);
+    await appDataPut('Transaction', [{ id: 't1', hash: '0xabc', to: '0xvictim' }]);
+    // sanity: the named residue is present before the wipe.
+    expect(await appDataGet('Wallet')).not.toBeNull();
+    expect(await appDataGet('Transaction')).not.toBeNull();
+
+    await panicWipeLocal();
+
+    // After the wipe the database was deleted; reopening yields a fresh EMPTY store,
+    // so every named row is gone.
+    expect(await appDataGet('Wallet')).toBeNull();
+    expect(await appDataGet('Transaction')).toBeNull();
+  });
+
+  // ── H2 part B: deniability uniformity — FIXED_LEN padding of the panic marker ──
+
+  it('H2: panic is still correctly detected after padding (pad+strip round-trip)', async () => {
+    // The marker is now padded to FIXED_LEN on encrypt and stripped on decrypt;
+    // detection (an exact-match decrypt) must still fire for the right PIN and only
+    // the right PIN — padding is inert to the trigger.
+    await setPanicVault(PANIC_PW);
+    expect(await tryPanicUnlock(PANIC_PW)).toBe(true);   // recognised after pad+strip
+    expect(await tryPanicUnlock('wrong-guess-123')).toBe(false);
+    // And the wipe still actually fires end-to-end from a padded marker.
+    await populateDevice();                              // re-seed (PANIC_PW reused)
+    expect(await tryPanicUnlock(PANIC_PW)).toBe(true);
+    const report = await panicWipeLocal();
+    expect(report.clean).toBe(true);
+  });
+
+  it('H2: a REAL panic blob and a CHAFF panic blob have BYTE-IDENTICAL ct length', async () => {
+    // Chaff (provisionDeniabilityChaff -> setPanicVault with a throwaway pw) and a
+    // personalized panic (setPanicVault with a user PIN) both pad to FIXED_LEN, so
+    // their ciphertext lengths are identical — a coercer cannot tell a configured
+    // panic from a chaff one by blob length.
+    const { provisionDeniabilityChaff } = await import('../provisionChaff.js');
+    await provisionDeniabilityChaff();           // chaff into 'tertiary'
+    const chaffPanic = await getBlob('tertiary');
+    await setPanicVault(PANIC_PW);                // overwrite with a real PIN
+    const realPanic = await getBlob('tertiary');
+    expect(unb64(chaffPanic.ct).length).toBe(unb64(realPanic.ct).length);
+  });
+
+  it("H2: the panic ('tertiary') and duress ('secondary') blobs are ct-length-identical", async () => {
+    // Both deniability slots now pad their plaintext to the SAME FIXED_LEN, so the
+    // two slots are length-indistinguishable regardless of mnemonic word count.
+    await setDuressVault(generateMnemonic(256), DURESS_PW); // 24-word decoy
+    await setPanicVault(PANIC_PW);
+    const secondary = await getBlob('secondary');
+    const tertiary = await getBlob('tertiary');
+    expect(unb64(tertiary.ct).length).toBe(unb64(secondary.ct).length);
   });
 
   it('removing the panic PIN wipes nothing else', async () => {

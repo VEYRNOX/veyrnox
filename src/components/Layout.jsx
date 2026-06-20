@@ -295,7 +295,19 @@ export default function Layout() {
             </>
           ) : (
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => {
+                // A page reached by tapping a tile in the mobile "More" drawer
+                // carries { fromMore: true } in its route state. Back from such a
+                // page returns to the underlying tab AND reopens the More drawer,
+                // so the user lands back on the menu they launched from instead of
+                // being dropped onto Home. Any other page does a plain history back.
+                if (location.state?.fromMore) {
+                  navigate(-1);
+                  setMoreOpen(true);
+                } else {
+                  navigate(-1);
+                }
+              }}
               className="flex items-center gap-1 -ml-1 pr-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -470,7 +482,7 @@ export default function Layout() {
                   {group.items.map(item => {
                     const active = location.pathname === item.path;
                     return (
-                      <Link key={item.path} to={item.path} onClick={() => setMoreOpen(false)}
+                      <Link key={item.path} to={item.path} state={{ fromMore: true }} onClick={() => setMoreOpen(false)}
                         aria-current={active ? "page" : undefined}
                         data-active={active ? "" : undefined}
                         className="more-tile flex flex-col items-center justify-center gap-1 p-2 min-h-[60px] rounded-xl border cursor-pointer select-none transition-[transform,background-color,border-color,box-shadow] duration-150 text-foreground/90 hover:text-foreground"

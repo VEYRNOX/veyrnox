@@ -98,3 +98,10 @@ export function deserializeActionPasswordRecord(record) {
 export function hasActionPasswordRecord(record) {
   return deserializeActionPasswordRecord(record) !== null;
 }
+
+// NOTE (H2 design correction, 2026-06-18): an earlier plan added a
+// makeChaffActionPasswordRecord() so every container carried a record (real OR
+// chaff) to hide AP presence. That was SUPERSEDED by FIXED-LENGTH container padding
+// (see multiVault.js serializeContainer / FIXED_LEN): padding equalises ciphertext
+// length without a chaff record, so "record present == AP configured" still holds
+// after unlock. The chaff primitive is therefore intentionally removed.

@@ -78,6 +78,8 @@
     "@solana/web3.js": "^1.98.4",
     "@tanstack/react-query": "^5.84.1",
     "@trezor/connect-web": "^9.7.3",
+    "@walletconnect/utils": "^2.23.9",
+    "@walletconnect/web3wallet": "^1.16.1",
     "buffer": "^6.0.3",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",

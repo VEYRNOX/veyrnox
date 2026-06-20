@@ -52,8 +52,10 @@ production builds. The DEV UNGATE banner shows only on a receive_only asset, nev
 One HD seed derives per-chain accounts (Model B): a "wallet" is a seed; the Send screen's
 asset selector chooses which asset/chain to send. EVM assets (ETH, MATIC, ARB, OP, AVAX,
 BNB) share one secp256k1 m/44'/60' address; ERC-20s (USDC/USDT) are contract calls on it;
-BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their own addresses and are NOT yet
-wired into send dispatch.
+BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their own addresses and are fully
+wired — both are LIVE with verified testnet txids (see `src/wallet-core/assets.js`).
+AVAX and BNB share the EVM address but remain RECEIVE_ONLY: send is built but unverified
+due to no accessible testnet faucet.
 
 ## Per-chain gotchas
 

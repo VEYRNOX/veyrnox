@@ -22,7 +22,10 @@
 //   - and any other entry in that store — we clear() the WHOLE store, so a
 //     future-added key cannot silently survive a wipe.
 // It then best-effort DELETES the database entirely (so even the empty store
-// structure is gone), and clears the DEMO-only address-residue maps in
+// structure is gone), best-effort DELETES the SEPARATE 'veyrnox-appdata' database
+// (app entity rows — wallets list, tx history, watchlists, approvals, address book,
+// alerts; NOT key material, but each row NAMES addresses/tx/labels, so a thorough
+// wipe removes it too — F-06), and clears the DEMO-only address-residue maps in
 // localStorage (decoy/hidden demo balances — not key material, but they name
 // addresses, so a thorough wipe removes them too).
 //
@@ -77,12 +80,21 @@
 
 import { encryptVault, decryptVault } from './vault.js';
 import { generateMnemonic } from './mnemonic.js';
+import { padToFixedLen, stripPad } from './multiVault.js';
 
 // Same database + store as the primary vault (see evm/vaultStore.js), the duress
 // decoy ('secondary'), and the stealth pool ('vault:N'). The panic marker sits in
 // the SAME store under a neutral key so the artifact does not announce itself.
 const DB_NAME = 'veyrnox-vault';
 const STORE = 'vault';
+// The SEPARATE app-data database (src/api/localClient.js DB_NAME). It holds NO key
+// material — only entity rows (wallets list, tx history, watchlists, approvals,
+// address book, price alerts) — but every row NAMES addresses / tx hashes / wallet
+// labels, so it is forensic residue tying the device to the destroyed wallet set,
+// exactly what a panic wipe exists to erase. We delete it best-effort below, as an
+// ADDITIVE deletion of an unrelated DB (F-06 residue sweep); we do NOT touch its
+// contents structurally or import localClient — panic.js stays decoupled.
+const APPDATA_DB_NAME = 'veyrnox-appdata';
 // Neutral, non-incriminating key (follows 'primary'/'secondary'); a forensic dump
 // sees one more vault-shaped blob, not a key literally named "panic". The marker
 // is byte-shaped like every other vault blob, so it does not stand out.
@@ -106,24 +118,85 @@ const LOCAL_RESIDUE_KEYS = Object.freeze([
 ]);
 
 // DENIABILITY TELLS in localStorage that a wipe MUST also destroy (internal audit
-// C-1). These are not key material, but each is a forensic artifact that betrays
-// the coercion-resistance stack was in use — exactly what a panic wipe exists to
-// erase. Leaving them means a "successful" wipe still proves the stack was here
-// (and the decoy salt + a coerced PIN reproduces the deterministic decoy). Kept as
-// plain strings, mirroring the demo-residue pattern; source modules in comments:
-//   veyrnox-pin-decoy-salt — decoyFallback.js (seed of the deterministic decoy)
-//   veyrnox-auth-model      — lib/authModel.js (PIN-cohort marker)
-//   veyrnox-audit-log       — auditLog.js AUDIT_LOG_PREF_KEY (audit-log enabled tell)
+// C-1; extended per AI-review F-02/F-03/F-05, 2026-06-19). These are not key
+// material, but each is a forensic artifact that betrays the coercion-resistance
+// stack was in use — exactly what a panic wipe exists to erase. Leaving them means
+// a "successful" wipe still proves the stack was here (and the decoy salt + a
+// coerced PIN reproduces the deterministic decoy). Kept as plain strings, mirroring
+// the demo-residue pattern (deliberately NOT importing the source modules — panic.js
+// stays decoupled from the deniability stack it erases); source modules in comments:
+//   veyrnox-pin-decoy-salt    — decoyFallback.js (seed of the deterministic decoy)
+//   veyrnox-auth-model        — lib/authModel.js (PIN-cohort marker)
+//   veyrnox-audit-log         — auditLog.js AUDIT_LOG_PREF_KEY (audit-log enabled tell)
+//   veyrnox-stealth-slot-salt — stealth.js (proves the hidden-wallet pool was
+//                               provisioned — the strongest tell in this set; F-02)
+//   veyrnox-audit-device-salt — auditLog.js (per-device audit-log key-derivation
+//                               salt; tell the audit feature was configured; F-03)
+//   veyrnox-passkey-unlock    — lib/passkey.js PASSKEY_PREF_KEY (F-05)
+//   veyrnox-passkey-cred      — lib/passkey.js PASSKEY_CRED_KEY (F-05)
+//   veyrnox-2fa-passkey       — lib/passkey.js TWOFACTOR_PASSKEY_KEY (F-05)
+//   veyrnox-biometric-unlock  — lib/biometric.js BIOMETRIC_PREF_KEY (biometric-
+//                               unlock-configured tell; the direct sibling of the
+//                               passkey prefs above — F-06)
+//   veyrnox-pin-attempts      — components/WalletEntry.jsx (PIN-unlock failed-attempt
+//                               counter — the runtime tell of the same PIN auth model
+//                               'veyrnox-auth-model' marks; F-06)
+//   veyrnox-pin-backoff-until — components/WalletEntry.jsx (PIN-unlock lockout
+//                               deadline; survives reload, paired with -pin-attempts; F-06)
 // The audit-log DATA blob ('quaternary') already dies with clearVaultStore(); this
-// removes the surviving enabled-pref. A test pins these so a key rename is caught.
+// removes the surviving enabled-pref and the per-device salt. A test pins these so a
+// key rename is caught. ALL_RESIDUE_KEYS is the single list driving BOTH the erase
+// (clearLocalAddressResidue) AND the inspection (readLocalAddressResidue →
+// inspectKeyMaterial().clean), so adding a key here fixes both at once (closes F-04).
 const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   'veyrnox-pin-decoy-salt',
   'veyrnox-auth-model',
   'veyrnox-audit-log',
+  'veyrnox-stealth-slot-salt',
+  'veyrnox-audit-device-salt',
+  'veyrnox-passkey-unlock',
+  'veyrnox-passkey-cred',
+  'veyrnox-2fa-passkey',
+  'veyrnox-biometric-unlock',
+  'veyrnox-pin-attempts',
+  'veyrnox-pin-backoff-until',
+]);
+
+// NON-SECRET wallet/token METADATA residue (F-06). Unlike the keys above, these do
+// NOT betray the coercion-resistance stack — by their own modules' design they are
+// independent of duress/stealth and only describe the PRIMARY vault (whose existence
+// is already observable). But each NAMES wallets or tokens (so it is forensic residue
+// tying the device to the destroyed wallet set), and WalletProvider.panicWipe ALREADY
+// clears them via clearAllWalletMeta()/clearAllPortfolios() — one step AFTER
+// panicWipeLocal() returns its report, so without these here inspectKeyMaterial().clean
+// could read true while they still exist at report time. Listing them makes the panic
+// PRIMITIVE erase + account for them itself (so the standalone report is honest, and
+// the onboarding-rollback path discardIncompleteWallet clears them too). This is
+// wipe-completeness ONLY: it touches no multi-wallet crypto or behaviour, so it does
+// not cross the multi-wallet/portfolios audit gate. Kept as plain strings (no import of
+// the UI/lib modules — wallet-core stays decoupled); source modules in comments:
+//   veyrnox-wallet-meta       — lib/walletMeta.js META_KEY (wallet names/backup-flags/
+//                               asset prefs → primary-vault wallet count + names)
+//   veyrnox-active-wallet     — lib/walletMeta.js ACTIVE_KEY (active wallet id)
+//   veyrnox-portfolios        — lib/portfolios.js PORTFOLIOS_KEY (portfolio names +
+//                               wallet→portfolio map)
+//   veyrnox-active-portfolio  — lib/portfolios.js ACTIVE_KEY (active portfolio id)
+//   veyrnox-spam-overrides    — pages/SpamTokenFilter.jsx OVERRIDES_KEY (names the
+//                               tokens the user un-hid from the spam filter)
+const METADATA_RESIDUE_KEYS = Object.freeze([
+  'veyrnox-wallet-meta',
+  'veyrnox-active-wallet',
+  'veyrnox-portfolios',
+  'veyrnox-active-portfolio',
+  'veyrnox-spam-overrides',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
-const ALL_RESIDUE_KEYS = Object.freeze([...LOCAL_RESIDUE_KEYS, ...DENIABILITY_RESIDUE_KEYS]);
+const ALL_RESIDUE_KEYS = Object.freeze([
+  ...LOCAL_RESIDUE_KEYS,
+  ...DENIABILITY_RESIDUE_KEYS,
+  ...METADATA_RESIDUE_KEYS,
+]);
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -179,7 +252,15 @@ export async function setPanicVault(panicPassword) {
     throw new Error(`Panic/wipe PIN must be at least ${MIN_PANIC_LEN} characters`);
   }
   const marker = generateMnemonic(128); // throwaway; only its decryptability matters
-  const blob = await encryptVault(marker, panicPassword);
+  // H2 (deniability uniformity): pad the marker plaintext to EXACTLY FIXED_LEN so the
+  // panic blob's ciphertext length matches the duress ('secondary') blob and a real
+  // panic matches a chaff panic (both go through this same path). AES-GCM is
+  // length-preserving, so equalising the plaintext equalises the ciphertext. Detection
+  // (tryPanicUnlock) only tests decryptability, so the padding is inert to it — but we
+  // still strip on decrypt for cleanliness/forward-safety. The marker is not a
+  // container, so it uses the string-level padToFixedLen helper (NOT the JSON `pad`
+  // field); the container FORMAT is unchanged.
+  const blob = await encryptVault(padToFixedLen(marker), panicPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -236,7 +317,12 @@ export async function tryPanicUnlock(password) {
   }
   if (!blob) return false;
   try {
-    await decryptVault(blob, password); // throws on wrong PIN
+    const plaintext = await decryptVault(blob, password); // throws on wrong PIN
+    // H2: strip the FIXED_LEN padding before any detection logic. Detection here is
+    // purely "did GCM auth succeed" (an exact-match decrypt), so the marker is
+    // recognisable after pad+strip; stripPad tolerates legacy unpadded markers
+    // (returns them unchanged), so panic still fires for blobs written before H2.
+    stripPad(plaintext);
     return true;
   } catch {
     return false;
@@ -300,6 +386,34 @@ function deleteVaultDatabase() {
   });
 }
 
+// Best-effort: delete the SEPARATE app-data database ('veyrnox-appdata', see
+// src/api/localClient.js). It holds NO key material — only entity rows (wallets
+// list, tx history, watchlists, approvals, address book, price alerts) — but each
+// row NAMES addresses / tx hashes / wallet labels, so it is forensic residue tying
+// the device to the destroyed wallet set (the IndexedDB analogue of the metadata
+// tells in ALL_RESIDUE_KEYS). This is an ADDITIVE deletion of an unrelated DB: it
+// touches no vault store, no vault crypto, and no key-custody primitive. Guarded
+// best-effort exactly like deleteVaultDatabase() — resolves on success, error, OR
+// blocked, so a lingering localClient connection (its module-level db handle) can
+// pend the delete without hanging the wipe (it completes once that handle closes,
+// e.g. on the post-wipe reload). F-06 residue sweep.
+function deleteAppDataDatabase() {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    let req;
+    try {
+      req = indexedDB.deleteDatabase(APPDATA_DB_NAME);
+    } catch {
+      finish();
+      return;
+    }
+    req.onsuccess = finish;
+    req.onerror = finish;   // no key material here; deletion is residue hygiene
+    req.onblocked = finish; // do not hang on a lingering connection
+  });
+}
+
 /**
  * NON-DESTRUCTIVE inspection of what local key material currently exists. Used
  * BEFORE a wipe (to show what is there) and AFTER (to prove nothing recoverable
@@ -334,9 +448,11 @@ export async function inspectKeyMaterial() {
  * THE DESTRUCTION PRIMITIVE. Irreversibly destroy all LOCAL key material:
  *   1. clear() the entire vault store (primary + duress + stealth pool + panic
  *      marker + anything else);
- *   2. best-effort delete the database;
- *   3. clear the DEMO-only address-residue maps;
- *   4. return a post-wipe inspection report proving nothing recoverable remains.
+ *   2. best-effort delete the vault database;
+ *   3. best-effort delete the SEPARATE app-data database (veyrnox-appdata) — no key
+ *      material, but forensic residue (addresses, tx history, names, alerts);
+ *   4. clear the DEMO-only address-residue maps + the deniability/metadata tells;
+ *   5. return a post-wipe inspection report proving nothing recoverable remains.
  *
  * On NATIVE (M2b) the primary vault is hardware-backed and lives outside this
  * IndexedDB; WalletProvider.panicWipe ALSO calls keyStore.clearVault() to destroy
@@ -348,6 +464,7 @@ export async function inspectKeyMaterial() {
 export async function panicWipeLocal() {
   await clearVaultStore();
   await deleteVaultDatabase();
+  await deleteAppDataDatabase();
   clearLocalAddressResidue();
   return inspectKeyMaterial();
 }

@@ -83,7 +83,7 @@ export default function TaxReport() {
       {/* Tax tools */}
       <div className="p-4 rounded-xl border border-border bg-card space-y-3">
         <p className="text-sm font-semibold">Step 2 — Import into a tax tool</p>
-        <p className="text-xs text-muted-foreground">These tools fetch real historical prices and apply your jurisdiction's rules. No affiliation with Veyrnox.</p>
+        <p className="text-xs text-muted-foreground">These tools fetch real historical prices and apply your jurisdiction's rules. No affiliation with <strong>VEYRNOX</strong>.</p>
         <div className="space-y-2">
           {TAX_TOOLS.map(t => (
             <a key={t.name} href={t.url} target="_blank" rel="noopener noreferrer"

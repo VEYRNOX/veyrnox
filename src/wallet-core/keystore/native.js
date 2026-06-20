@@ -119,7 +119,7 @@ async function authenticateOrThrow() {
     );
   }
 
-  const reason = 'Unlock your Veyrnox wallet';
+  const reason = 'Unlock your VEYRNOX wallet';
   if (info.isAvailable) {
     // Primary: strong biometrics, no silent passcode fallback — require an
     // explicit biometric match (per-use auth is the strongest policy).
@@ -127,7 +127,7 @@ async function authenticateOrThrow() {
       await BiometricAuth.authenticate({
         reason,
         cancelTitle: 'Cancel',
-        androidTitle: 'Veyrnox',
+        androidTitle: 'VEYRNOX',
         androidSubtitle: 'Unlock your wallet',
         allowDeviceCredential: false,
       });
@@ -184,11 +184,32 @@ export const nativeKeyStore = {
     await SecureStorage.set(VAULT_KEY, JSON.stringify(blob));
   },
 
-  // Biometric-gated unlock: authenticate FIRST, then read + decrypt. The secret
-  // is returned transiently to the caller; nothing secret is cached here.
-  async unlock(password) {
+  // Unlock: read + decrypt. The password/PIN is THE secret; the vault is hardware-
+  // protected AT REST (passcode-gated Keychain). Biometric is a CONVENIENCE gate the
+  // user OPTS INTO — so it is only required when the caller (WalletProvider) asks for
+  // it via opts.requireBiometric, set from isBiometricUnlockEnabled(). This keeps the
+  // native path consistent with the documented model ("the password always works as
+  // the fallback") instead of forcing a biometric on EVERY unlock, and prevents a
+  // biometric cancel/failure (e.g. an unenrolled simulator falling back to the device
+  // passcode, then cancel) from being misread by the caller's deniability path as a
+  // wrong password and silently opening the empty decoy. The secret is returned
+  // transiently to the caller; nothing secret is cached here.
+  async unlock(password, opts = {}) {
     await init();
-    await authenticateOrThrow(); // throws on cancel/failure/lockout
+    if (opts.requireBiometric) {
+      try {
+        await authenticateOrThrow(); // throws on cancel/failure/lockout
+      } catch (err) {
+        // TAG the biometric failure so the caller FAILS CLOSED (clear biometric
+        // error + password escape hatch) rather than treating it like a wrong
+        // password and consulting the deniability path (which would otherwise open
+        // the empty decoy on a mere cancelled/failed Face ID). The biometric prompt
+        // is already user-visible, so short-circuiting here leaks nothing new about
+        // which deniability features exist.
+        if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
+        throw err;
+      }
+    }
 
     const raw = await SecureStorage.get(VAULT_KEY, false);
     if (raw === null || raw === undefined) {

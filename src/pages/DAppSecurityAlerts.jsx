@@ -65,7 +65,7 @@ export default function DAppSecurityAlerts() {
       <div className="p-3 rounded-xl bg-secondary/50 border border-border flex items-start gap-2">
         <Info className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
         <p className="text-xs text-muted-foreground">
-          Veyrnox does not audit, rate, or verify dApps. This only checks a small, local known-bad list — it can
+          <strong>VEYRNOX</strong> does not audit, rate, or verify dApps. This only checks a small, local known-bad list — it can
           tell you a domain is <span className="font-medium">known bad</span>, but it can never tell you a domain is
           safe to connect. Absence from the list is not a safety check.
         </p>
@@ -101,7 +101,7 @@ export default function DAppSecurityAlerts() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Not on the local known-bad list. This is <span className="font-medium">not</span> a safety verdict — the list is
-                  small and local, Veyrnox does not verify dApps, and absence here does not mean the site is safe to connect.
+                  small and local, <strong>VEYRNOX</strong> does not verify dApps, and absence here does not mean the site is safe to connect.
                   Verify the URL yourself and review every connection request and approval.
                 </p>
               </div>

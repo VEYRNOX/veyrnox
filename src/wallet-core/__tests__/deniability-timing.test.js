@@ -32,6 +32,15 @@ import { resolveDeniabilityUnlock } from '../deniabilityUnlock.js';
 import { KDF_PARAMS } from '../vault.js';
 import { getOrCreateDeviceSalt } from '../decoyFallback.js';
 import { validateMnemonic } from '../mnemonic.js';
+import { parseVault } from '../multiVault.js';
+
+// H2: duress/hidden unlock now returns the decrypted PAYLOAD string — a FIXED-LENGTH
+// multi-seed container JSON (or a legacy bare mnemonic). Unwrap to the bare mnemonic
+// for the equality assertions below (parseVault handles both formats).
+function payloadMnemonic(payload) {
+  if (payload == null) return null;
+  return parseVault(payload).container.wallets[0].mnemonic;
+}
 import { setDuressVault, clearDuressVault, tryDuressUnlock } from '../duress.js';
 import { setPanicVault, clearPanicVault } from '../panic.js';
 import {
@@ -115,7 +124,7 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
     const r = await resolveDeniabilityUnlock('the-duress-pw');
     // Same constant cost as a miss — the stealth attempt is NOT short-circuited.
     expect(kdf.count).toBe(EXPECTED_KDFS);
-    expect(r.duressMnemonic).toBe(decoy);
+    expect(payloadMnemonic(r.duressMnemonic)).toBe(decoy);
     expect(r.panic).toBe(false);
   });
 
@@ -125,7 +134,7 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
     kdf.count = 0;
     const r = await resolveDeniabilityUnlock('reveal-me-secret');
     expect(kdf.count).toBe(EXPECTED_KDFS);
-    expect(r.hiddenMnemonic).toBe(created.mnemonic);
+    expect(payloadMnemonic(r.hiddenMnemonic)).toBe(created.mnemonic);
     expect(r.duressMnemonic).toBeNull();
     expect(r.panic).toBe(false);
   });
@@ -145,7 +154,7 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
     // Duress decrypt also works through the wrapped KDF.
     const decoy = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
     await setDuressVault(decoy, 'rt-duress');
-    expect(await tryDuressUnlock('rt-duress')).toBe(decoy);
+    expect(payloadMnemonic(await tryDuressUnlock('rt-duress'))).toBe(decoy);
   });
 });
 

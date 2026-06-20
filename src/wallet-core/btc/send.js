@@ -21,6 +21,7 @@
 import { hex } from '@scure/base';
 import { Transaction, p2wpkh } from '@scure/btc-signer';
 import { getBtcNetwork } from './networks.js';
+import { assertValidBtcAddress } from './validate.js';
 import { getUtxos, getFeeRate, broadcastTx } from './provider.js';
 import { selectCoins, assertPlanConserves } from './coinselect.js';
 
@@ -66,10 +67,17 @@ export function buildAndSignTx({ plan, privateKey, publicKey, params }) {
  */
 export async function estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats, sendMax = false, feeRate = undefined, changeAddress = undefined }) {
   const net = getBtcNetwork(networkKey); // gate-aware
-  const [utxos, rate] = await Promise.all([
+  // Reject a wrong-network / malformed recipient EARLY (before any UTXO/fee fetch)
+  // with a legible error — network-correct via the same library used at sign time.
+  assertValidBtcAddress(toAddress, net.params);
+  const [allUtxos, rate] = await Promise.all([
     getUtxos(networkKey, fromAddress),
     feeRate != null ? Promise.resolve(feeRate) : getFeeRate(networkKey),
   ]);
+  const utxos = allUtxos.filter(u => u.confirmed);
+  if (utxos.length === 0) {
+    throw new Error('No confirmed UTXOs available. Unconfirmed balance is pending.');
+  }
   const plan = selectCoins({
     utxos,
     toAddress,
@@ -108,6 +116,8 @@ export async function signAndBroadcastBtc({
   changeAddress,
 }) {
   const net = getBtcNetwork(networkKey); // throws if mainnet gated / disabled
+  // Reject a wrong-network / malformed recipient EARLY, before any UTXO/fee fetch.
+  assertValidBtcAddress(toAddress, net.params);
 
   // The single owned address' P2WPKH script — the prevout script of every UTXO.
   const owner = p2wpkh(publicKey, net.params);
@@ -117,10 +127,14 @@ export async function signAndBroadcastBtc({
     throw new Error('Provided key does not control the from address');
   }
 
-  const [utxos, rate] = await Promise.all([
+  const [allUtxos, rate] = await Promise.all([
     getUtxos(networkKey, fromAddress),
     feeRate != null ? Promise.resolve(feeRate) : getFeeRate(networkKey),
   ]);
+  const utxos = allUtxos.filter(u => u.confirmed);
+  if (utxos.length === 0) {
+    throw new Error('No confirmed UTXOs available. Unconfirmed balance is pending.');
+  }
 
   const plan = selectCoins({
     utxos,

@@ -202,7 +202,7 @@ export default function WalletAccessReset() {
         <div className="flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            <b>We cannot reset your password or recover your wallet for you.</b> Veyrnox
+            <b>We cannot reset your password or recover your wallet for you.</b> <strong>VEYRNOX</strong>
             is non-custodial — we never hold your keys, so there is nothing on a
             server to restore. Your <b>seed phrase is the only recovery path</b>.
             If you lose <b>both</b> your password <b>and</b> your seed phrase, your
@@ -330,6 +330,10 @@ export default function WalletAccessReset() {
             value={recPhrase}
             onChange={(e) => setRecPhrase(e.target.value)}
             rows={3}
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
             placeholder="word1 word2 word3 … word12"
             className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring"
           />
@@ -368,7 +372,7 @@ export default function WalletAccessReset() {
       <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
         <div className="flex items-center gap-2">
           <ShieldOff className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold">What Veyrnox cannot do</p>
+          <p className="text-sm font-semibold">What VEYRNOX cannot do</p>
         </div>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
           <li>We cannot reset or recover your vault password — we never see it.</li>

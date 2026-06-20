@@ -57,6 +57,9 @@ const ChartStyle = ({
   }
 
   return (
+    // audit: dangerouslySetInnerHTML emits only hardcoded CSS custom-property names
+    // and hex/hsl color values from a static THEMES config object — no user input
+    // reaches __html, so there is no XSS surface here.
     (<style
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)

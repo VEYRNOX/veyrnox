@@ -20,3 +20,26 @@ export async function consumePendingPin(getPin, clearPin, provision) {
   await provision(pin);   // throws on failure → pin NOT cleared below, error propagates
   clearPin();             // consumed-and-cleared ONLY on success
 }
+
+// A failed pending-PIN import/create is one of two kinds, and they want OPPOSITE
+// pending-PIN handling in the UI catch:
+//   (a) a RECOVERABLE user-input reject — a malformed / bad-checksum seed phrase.
+//       consumePendingPin never reached `provision`'s side effects (the BIP-39
+//       check throws first) so the in-memory pending PIN is intact. We MUST keep
+//       it, so the user can correct the phrase and retry without re-entering the
+//       PIN. Clearing it here is the bug that stranded the user on the misleading
+//       "No PIN set" loop.
+//   (b) a GENUINE provisioning/teardown failure (keystore write, chaff rollback).
+//       Here we fail closed: clear the pending PIN and tell the user nothing was
+//       saved.
+// Recoverable rejects are tagged `code: 'INVALID_MNEMONIC'` at the throw site; we
+// also fall back to the known messages so a re-worded/older throw still classifies
+// correctly (string match is the fallback, not the primary signal).
+//
+// @param {unknown} error  the rejection caught by the UI import/create handler
+// @returns {boolean}      true → preserve the pending PIN (recoverable input)
+export function isRecoverableSeedInputError(error) {
+  if (!error) return false;
+  if (error.code === 'INVALID_MNEMONIC') return true;
+  return /invalid recovery phrase|invalid mnemonic/i.test(String(error.message || ''));
+}
