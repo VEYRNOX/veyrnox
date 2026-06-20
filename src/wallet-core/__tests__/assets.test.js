@@ -69,8 +69,8 @@ describe('Phase C — all five EVM chains live after verified on-chain sends', (
     { symbol: 'MATIC', chain: 'polygonAmoy' },
     { symbol: 'ARB',   chain: 'arbitrumSepolia' },
     { symbol: 'OP',    chain: 'optimismSepolia' },
-    { symbol: 'AVAX',  chain: 'avalanche' },
-    { symbol: 'BNB',   chain: 'bnb' },
+    { symbol: 'AVAX',  chain: 'avalancheFuji' },
+    { symbol: 'BNB',   chain: 'bnbTestnet' },
   ];
 
   it('all five Phase-C EVM chain assets are live after verified UI-path sends (EVM-family)', () => {
