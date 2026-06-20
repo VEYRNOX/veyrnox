@@ -52,6 +52,7 @@ export default function ReferralTracker() {
   const [inviteCount, setInviteCount] = useState(() => getLocalState().inviteCount || 0);
   const [tier, setTier] = useState(() => getLocalState().tier || 'none');
   const [externalEligible, setExternalEligible] = useState(() => !!getLocalState().externalEligible);
+  const [alreadyRedeemed, setAlreadyRedeemed] = useState(() => hasRedeemed());
   const [copied, setCopied] = useState(false);
   const [redeemInput, setRedeemInput] = useState('');
   const [redeemError, setRedeemError] = useState('');
@@ -77,7 +78,14 @@ export default function ReferralTracker() {
       clearPendingReferral();
       if (!hasRedeemed() && pending !== code) {
         redeemCode(pending)
-          .then(({ newCount }) => { markRedeemed(pending); applyRedemption(newCount); })
+          .then(({ newCount }) => {
+            markRedeemed(pending);
+            const result = applyRedemption(newCount);
+            setInviteCount(newCount);
+            setTier(result.tier);
+            setExternalEligible(result.externalEligible);
+            setAlreadyRedeemed(true);
+          })
           .catch(() => {});
       }
     }
@@ -85,8 +93,11 @@ export default function ReferralTracker() {
     syncCount();
   }, [code, syncCount]);
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(code);
+  const copyCode = async () => {
+    await navigator.clipboard.writeText(code).catch(() => {
+      toast.error('Copy failed — select the code manually.');
+      return;
+    });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast.success('Code copied!');
@@ -106,6 +117,7 @@ export default function ReferralTracker() {
       setInviteCount(newCount);
       setTier(result.tier);
       setExternalEligible(result.externalEligible);
+      setAlreadyRedeemed(true);
       setRedeemInput('');
       toast.success('Referral code applied!');
     } catch (err) {
@@ -194,7 +206,7 @@ export default function ReferralTracker() {
       </div>
 
       {/* Enter a code */}
-      {!hasRedeemed() && (
+      {!alreadyRedeemed && (
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Got a referral code?</p>
           <div className="flex gap-2">
