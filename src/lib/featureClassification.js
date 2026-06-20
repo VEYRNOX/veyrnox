@@ -150,7 +150,7 @@ export const CLASSIFICATION = {
   },
   '/net-worth': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Crypto Net Worth (crypto-only): real on-chain balances via usePortfolio (grandTotal + assetTotals), USD shown live (opt-in price feed) or clearly-labeled approximate (reference rates) when off/unavailable. The fake base44-Wallet × stale-USD_RATES math and the global-table manual real-world assets (a decoy-session leak) were removed.',
+    note: 'VERIFIED 2026-06-20: real on-chain balances loaded in the UI via the throwaway testnet wallet (bamboo… seed) — ETH ≈$1,248, BTC ≈$177, ARB ≈$160, USDT ≈$98, OP ≈$96, SOL ≈$82, USDC ≈$38, MATIC/AVAX/BNB ≈$0 (small testnet residuals). "Reference rate, not live market data" disclosure present (I2). "does not include external assets" scope note present (crypto-only). Allocation donut + per-asset rows all rendered. Demo OFF (veyrnox-demo=null), no round seeded fixtures.',
   },
   '/invoices': {
     verdict: 'live', dataSource: 'base44-entities',

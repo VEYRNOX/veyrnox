@@ -192,7 +192,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Address book — ✅ (with per-chain validation on save)
 - ENS / SNS **resolution** in Send — ✅ (resolve-only); ENS **registration** — ❌ removed (PR #48)
 - Price charts / watchlist / portfolio / analytics / tax / signing / savings — 💡 (UI present in places, not core-wired)
-- Crypto Net Worth (`/net-worth`) — 🟡 BUILT / UNAUDITED-PROVISIONAL. Promoted honest-disabled → live
+- Crypto Net Worth (`/net-worth`) — ✅ VERIFIED 2026-06-20. Promoted honest-disabled → live
   (verdict flip in `featureClassification.js`, the `/fee-analytics` precedent): real on-chain holdings via
   `usePortfolio` (total + allocation donut + per-asset rows), USD shown live (opt-in feed) or
   disclosed-approximate. **CRYPTO-ONLY** — the manual real-world assets were dropped (they lived in a global,
