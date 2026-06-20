@@ -35,7 +35,7 @@
 - All security/crypto features are PROVISIONAL pending the independent audit;
   the deniability stack is testnet/demo only.
 - The gap between built and envisioned IS the roadmap; most hard EVM crypto risk
-  already retired. 233 tests green.
+  already retired. 390 tests green.
 
 ---
 
@@ -104,7 +104,7 @@
      Defer — not near-term.)
 
 ## 6. Security — S4 hardening
-37. RASP (jailbreak/root/tamper detection) — 📋
+37. RASP (jailbreak/root/tamper detection) — 🟡 BUILT — browser-level probes active / OS-level detection audit-gated (M2c/M2d)
 38. Audit log — 📋
 39. Risk limits / risk scoring (rule-based) — 📋
 40. Encrypted cloud backup (CIPHERTEXT only, never plaintext keys) — 📋
