@@ -38,13 +38,20 @@ async function loadTrezor() {
 
 export const DEVICE = { LEDGER: 'ledger', TREZOR: 'trezor' };
 
-// BIP-44/84 paths (testnet coin-type 1 for BTC; SOL uses 501)
-const EVM_PATH  = "44'/60'/0'/0/0";
-const BTC_PATH  = "84'/1'/0'/0/0";      // P2WPKH testnet; mainnet = 84'/0'/0'/0/0
-const SOL_PATH  = "44'/501'/0'/0'";
+// BIP-44/84 paths (SOL uses 501)
+const EVM_PATH = "44'/60'/0'/0/0";
+const SOL_PATH = "44'/501'/0'/0'";
 
-// BIP32 xpub version bytes for testnet (tpub)
-const TPUB_VERSION = 0x043587CF;
+// BTC path, currency, and coin-type are network-dependent.
+const _btcMainnet = import.meta.env.VITE_ALLOW_BTC_MAINNET === 'true';
+export const BTC_PATH           = _btcMainnet ? "84'/0'/0'/0/0" : "84'/1'/0'/0/0";
+export const BTC_CURRENCY_LEDGER = _btcMainnet ? 'bitcoin'        : 'bitcoin_testnet';
+export const BTC_COIN_TREZOR    = _btcMainnet ? 'btc'            : 'test';
+
+// BIP32 xpub version bytes — mainnet (xpub) or testnet (tpub)
+const TPUB_VERSION = _btcMainnet ? 0x0488B21E : 0x043587CF;
+
+export const TREZOR_MANIFEST_EMAIL = 'security@veyrnox.app';
 
 let trezorInitialised = false;
 async function ensureTrezorInit() {
@@ -53,7 +60,7 @@ async function ensureTrezorInit() {
   _TrezorConnect.init({
     manifest: {
       appName: 'Veyrnox',
-      email: 'al.jobson@21stclick.co.uk',
+      email: TREZOR_MANIFEST_EMAIL,
       appUrl: typeof window !== 'undefined' ? window.location.origin : 'https://veyrnox.app',
     },
     lazyLoad: true,
@@ -109,7 +116,7 @@ export function HardwareWalletProvider({ children }) {
     setEthAddress(ethResult.address);
 
     // BTC
-    const btc = new _AppBtc({ transport, currency: 'bitcoin_testnet' });
+    const btc = new _AppBtc({ transport, currency: BTC_CURRENCY_LEDGER });
     const btcResult = await btc.getWalletPublicKey(BTC_PATH, { format: 'bech32' });
     setBtcAddress(btcResult.bitcoinAddress);
     setBtcPublicKeyHex(btcResult.publicKey);
@@ -130,7 +137,7 @@ export function HardwareWalletProvider({ children }) {
     // Request all three addresses in parallel — each opens the Trezor popup once
     const [ethRes, btcRes, solRes] = await Promise.all([
       _TrezorConnect.ethereumGetAddress({ path: `m/${EVM_PATH}`, showOnTrezor: true }),
-      _TrezorConnect.getAddress({ path: `m/${BTC_PATH}`, coin: 'test', showOnTrezor: true }),
+      _TrezorConnect.getAddress({ path: `m/${BTC_PATH}`, coin: BTC_COIN_TREZOR, showOnTrezor: true }),
       _TrezorConnect.solanaGetAddress({ path: `m/${SOL_PATH}`, showOnTrezor: true }),
     ]);
 
@@ -144,7 +151,7 @@ export function HardwareWalletProvider({ children }) {
     setSolAddress(solRes.payload.address);
 
     // Trezor: fetch public keys for signing
-    const btcPkRes = await _TrezorConnect.getPublicKey({ path: `m/${BTC_PATH}`, coin: 'test' });
+    const btcPkRes = await _TrezorConnect.getPublicKey({ path: `m/${BTC_PATH}`, coin: BTC_COIN_TREZOR });
     if (btcPkRes.success) setBtcPublicKeyHex(btcPkRes.payload.publicKey);
 
     // SOL pubkey == address bytes (ed25519 public key in base58)

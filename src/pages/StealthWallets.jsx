@@ -539,6 +539,23 @@ export default function StealthWallets() {
         </p>
       </div>
 
+      {/* VULN-4 storage isolation disclosure */}
+      <div
+        data-testid="stealth-storage-disclosure"
+        className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2"
+      >
+        <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold text-caution">Storage note.</span>{' '}
+          Hidden wallets are stored in <strong>web IndexedDB</strong>. On native
+          devices the primary vault is hardware-backed (iOS Keychain / Android
+          Keystore); hidden-wallet hardware backing is planned for a future release
+          (M2c/M2d). Until then, a full device-data extraction can expose the
+          hidden-wallet container without hardware-key access, even if the contents
+          remain encrypted under your hidden-wallet secret.
+        </p>
+      </div>
+
       <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>

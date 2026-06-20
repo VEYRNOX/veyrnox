@@ -35,6 +35,7 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 import CoinLogo from "@/components/CoinLogo";
 import QuickAccessGrid from "@/components/QuickAccessGrid";
 import SpendingPatternsCard from "@/components/SpendingPatternsCard";
+import { copySecret } from "@/lib/copySecret";
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -58,7 +59,7 @@ function SeedGrid({ mnemonic }) {
           <button onClick={() => setShow((s) => !s)} className="p-1.5 text-muted-foreground hover:text-foreground">
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
-          <button onClick={() => { navigator.clipboard?.writeText(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="p-1.5 text-muted-foreground hover:text-foreground">
+          <button onClick={async () => { await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="p-1.5 text-muted-foreground hover:text-foreground">
             {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>

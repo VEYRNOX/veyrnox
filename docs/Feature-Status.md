@@ -18,10 +18,10 @@
 - **Test suite:** 1195 tests across 137 files, all green (`npm test`); `check:rng` green.
 - **What actually SENDS on-chain today:** **ETH (Sepolia), USDC (Sepolia),
   USDT (Sepolia), MATIC (Polygon Amoy), ARB (Arbitrum Sepolia), OP (OP Sepolia),
-  BTC (Bitcoin testnet), and SOL (Solana devnet)** are `live` — each send verified
+  AVAX (Fuji), BNB (testnet), BTC (Bitcoin testnet), and SOL (Solana devnet)** are `live` — each send verified
   end-to-end through the full in-app UI path on-chain (covering every send family:
-  EVM L1 native, ERC-20 contract-call, three EVM L2/sidechains, BTC UTXO, SOL
-  ed25519, AVAX Fuji, and BNB testnet). All 10 wallet assets are now `live`.
+  EVM L1 native, ERC-20 contract-call, four EVM L2/sidechains, BTC UTXO, and SOL
+  ed25519). AVAX and BNB remain `receive_only` — send is built but unverified (no accessible testnet faucet).
   Receiving and balance reads work for all 10 assets; the send *code path* exists
   and is unit-tested for EVM/ERC-20/BTC/SOL, but is HARD-gated off until a real
   on-chain send is done by hand and reviewed.

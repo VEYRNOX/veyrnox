@@ -105,10 +105,17 @@
      Defer — not near-term.)
 
 ## 6. Security — S4 hardening
+<<<<<<< HEAD
+37. RASP (jailbreak/root/tamper detection) — 🟡 BUILT — browser-level probes active / OS-level detection audit-gated (M2c/M2d)
+38. Audit log — 📋
+39. Risk limits / risk scoring (rule-based) — 📋
+40. Encrypted cloud backup (CIPHERTEXT only, never plaintext keys) — 📋
+=======
 37. RASP (jailbreak/root/tamper detection) — ✅ BUILT/VERIFIED browser-level 2026-06-20 (navigator.webdriver → HOOKED → signing blocked; degradation policy + send-path wiring + I3 guard built + tested); OS-level probes still audit-gated
 38. Audit log — ✅ LIVE/VERIFIED 2026-06-20 (/audit-log; AES-GCM ring-buffer, opt-in, off by default, no-op in decoy/hidden)
 39. Risk limits / risk scoring (rule-based) — ✅ BUILT (on-device rule-based risk score, src/risk/; PROVISIONAL-UNAUDITED)
 40. Encrypted cloud backup (CIPHERTEXT only, never plaintext keys) — ✅ BUILT (Argon2id+AES-GCM, restore verification)
+>>>>>>> origin/main
 
 ## 7. AI (ADVISORY ONLY — never holds keys, never signs)
 41. Plain-language transaction explanation — 💡

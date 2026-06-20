@@ -73,14 +73,28 @@ export default function BiometricUnlockSettings() {
         <h2 className="font-semibold">Biometric Unlock</h2>
       </div>
 
-      {/* PROVISIONAL banner — honest about what this is. */}
-      <div className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2">
+      {/* VULN-1 / VULN-2 disclosure — explicit about the security trade-off. */}
+      <div
+        data-testid="kdf-bypass-disclosure"
+        className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2"
+      >
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-caution">Provisional.</span>{' '}
-          App-layer biometric gate pending security audit and likely OS-enforced
-          rework. Not a guarantee of hardware-bound security.
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-caution">Security trade-off.</span>{' '}
+            Enabling one-tap unlock stores your <strong>vault password</strong> in
+            the device Keychain / Keystore. It is protected by the device passcode
+            and biometrics, but an offline attacker who extracts the Keychain item
+            (e.g. via an encrypted backup) can decrypt your wallet without running
+            the Argon2id memory-hard key derivation. Disable this feature to keep
+            full Argon2id offline-attack resistance.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-caution">Provisional.</span>{' '}
+            The biometric check runs in app code, not as an OS-enforced Keychain
+            ACL — OS-bound biometric binding is pending M2c/M2d native plugin work.
+          </p>
+        </div>
       </div>
 
       {/* The toggle. On a real device it is forced on (and disabled): native
