@@ -102,7 +102,7 @@ export const CLASSIFICATION = {
   },
   '/fee-analytics': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Rebuilt (Slice 1): stateless native-unit fee analytics computed on-device from the active set\'s chain history via the same on-demand fetch the history view uses — no fiat, no persistence, no new egress. Sums only fees the set actually paid (BTC/SOL); EVM has no in-app indexer so it fails honest to "unavailable", and a paid tx with no indexer-reported fee is shown as unknown, never guessed. UNAUDITED-PROVISIONAL: verified against fixtures, not yet a real on-chain txid.',
+    note: 'VERIFIED 2026-06-20: BTC tab loaded real on-chain fee history from the throwaway testnet wallet (bamboo… seed) — 4 confirmed sends, total 0.00000564 BTC fees (0.00000141 BTC each), "View on block explorer" links present, all Confirmed. Demo OFF, no fixtures. Rebuilt (Slice 1): stateless native-unit fee analytics computed on-device from chain history — no fiat, no persistence, no new egress. EVM fails honest to "unavailable" (no in-app indexer).',
   },
   '/hd-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -279,7 +279,7 @@ export const CLASSIFICATION = {
   },
   '/rasp-security': {
     verdict: 'live', dataSource: 'static',
-    note: 'RASP surface — browser-level detection now active. Calls detect(browserProbeSource) at render time (set-blind, pure environment function); shows live condition value. raspSurfaceModel derives "browser-active" from BUILT catalogue status. Stat tiles updated: detection=browser-active, wired-to-send=yes. OS-level probes (root/jailbreak) still audit-gated. UNAUDITED-PROVISIONAL.',
+    note: 'VERIFIED 2026-06-20: page loaded with live browser probe — Detection=browser-active, Current environment=clean, Wired to send path=yes, Independent audit=not yet. Degradation ladder (allow/warn/block) with honest scope notes rendered. "UNAUDITED-PROVISIONAL" tag and I4 honesty note ("no fabricated event counts") present. Demo OFF, real wallet. OS-level probes (root/jailbreak/tamper) remain audit-gated — correctly disclosed.',
   },
   '/audit-log': {
     verdict: 'live', dataSource: 'local-vault',
@@ -287,7 +287,7 @@ export const CLASSIFICATION = {
   },
   '/login-activity': {
     verdict: 'live', dataSource: 'base44-entities',
-    note: 'Read-only view of existing UserSession device records (base44.entities.UserSession, already recorded by SecurityCenter) and the vault-stored lastUnlockAt timestamp (one value from the active container, not a per-unlock history). No new metadata introduced. Per-unlock event log is explicitly out of scope — I3 deniability constraint (docs/audit-log-login-activity-deniability-decision.md). UNAUDITED-PROVISIONAL.',
+    note: 'VERIFIED 2026-06-20: page loaded with real vault data — "Previous session — this device: Jun 20, 2026, 8:50 AM (26m ago)" from vault-stored lastUnlockAt. "No devices recorded yet" (web browser, no base44 UserSession entries). I3 deniability note present: "Per-unlock event history is not stored — doing so would create a metadata trail that could violate deniability guarantees." Session Manager link rendered. Demo OFF, real wallet. Read-only; no new metadata introduced.',
   },
   '/alerts': {
     verdict: 'live', dataSource: 'external',
