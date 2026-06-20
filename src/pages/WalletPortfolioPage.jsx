@@ -9,7 +9,7 @@
 // $0 view-only + create/import CTA). Per-wallet backup tracking warns prominently
 // about any seed not yet confirmed backed up (multi-seed fund-loss risk).
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -26,6 +26,7 @@ import {
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
+import { notifyReceiveDetected } from "@/notify/sources";
 import { ASSETS, getAsset } from "@/wallet-core/assets.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
@@ -383,6 +384,28 @@ export default function WalletPortfolioPage() {
   // provider never decrypted another set, and usePortfolio cannot reach one.
   const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
+
+  // Receive detection: on each poll, compare per-wallet USD total against the previous
+  // value. A positive delta of >$0.001 (rounding noise floor) fires a notification.
+  // Guards: isUnlocked + !isDecoy — fake balances in demo/decoy must never emit (I3,
+  // no-fake-security). Skip indeterminate reads (failed chain read could cause a
+  // false positive if a prior failed read resolves). First poll sets the baseline only.
+  const prevTotalsRef = useRef(/** @type {Record<string, number>} */ ({}));
+  useEffect(() => {
+    if (!isUnlocked || isDecoy) return;
+    if (!portfolio?.byWallet) return;
+    const ts = Date.now();
+    for (const [walletId, walletData] of Object.entries(portfolio.byWallet)) {
+      const curr = walletData?.total;
+      if (typeof curr !== 'number' || walletData?.indeterminate) continue;
+      const prev = prevTotalsRef.current[walletId];
+      if (typeof prev === 'number' && curr > prev + 0.001) {
+        const deltaUsd = (curr - prev).toFixed(2);
+        notifyReceiveDetected({ amount: `+$${deltaUsd}`, ts });
+      }
+      prevTotalsRef.current[walletId] = curr;
+    }
+  }, [portfolio, isUnlocked, isDecoy]);
 
   const canManage = isUnlocked && !isDecoy && !isHidden;
   const unbacked = canManage ? wallets.filter((w) => !w.backedUp) : [];
