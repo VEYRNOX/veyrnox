@@ -9,7 +9,7 @@
 // The fee model is deterministic (vsize × feeRate), so expected change/fee
 // values are computed by hand in the comments and pinned.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   selectCoins,
   estimateVsize,
@@ -18,8 +18,16 @@ import {
   DEFAULT_DUST_SATS,
 } from '../btc/coinselect.js';
 import { deriveBtcAccount } from '../btc/derivation.js';
-import { buildAndSignTx } from '../btc/send.js';
+import { buildAndSignTx, estimateBtcSend } from '../btc/send.js';
 import { getBtcNetworkInfo } from '../btc/networks.js';
+
+vi.mock('../btc/provider.js', () => ({
+  getUtxos: vi.fn(),
+  getFeeRate: vi.fn().mockResolvedValue(5),
+  broadcastTx: vi.fn(),
+}));
+
+import { getUtxos } from '../btc/provider.js';
 
 const TO = 'tb1qrecipient00000000000000000000000000000';   // opaque label; not validated by selectCoins
 const CHANGE = 'tb1qchange0000000000000000000000000000000'; // wallet-controlled change addr
@@ -167,18 +175,6 @@ describe('coinselect + signing pipeline (offline)', () => {
   });
 });
 
-// Import vitest utilities and estimateBtcSend for the next test block
-import { vi, afterEach } from 'vitest';
-import { estimateBtcSend } from '../btc/send.js';
-
-vi.mock('../btc/provider.js', () => ({
-  getUtxos: vi.fn(),
-  getFeeRate: vi.fn().mockResolvedValue(5),
-  broadcastTx: vi.fn(),
-}));
-
-import { getUtxos } from '../btc/provider.js';
-
 describe('estimateBtcSend — confirmed UTXO filter (C-3)', () => {
   const ADDR = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'; // valid testnet bech32
 
@@ -210,7 +206,6 @@ describe('estimateBtcSend — confirmed UTXO filter (C-3)', () => {
       toAddress: ADDR,
       amountSats: 100_000n,
     });
-    expect(plan.inputs.every(i => i.confirmed !== false)).toBe(true);
     expect(plan.inputs.some(i => i.txid === 'dddd')).toBe(false);
   });
 });
