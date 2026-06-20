@@ -80,12 +80,12 @@ export const ASSETS = Object.freeze([
   // AVAX: verified 2026-06-19 — testnet send confirmed on Fuji C-Chain.
   // txid: 0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0
   // explorer: https://testnet.snowtrace.io/tx/0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0
-  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalancheFuji',   status: ASSET_STATUS.LIVE },
+  { symbol: 'AVAX',  name: 'Avalanche', family: 'evm',    chain: 'avalanche',       status: ASSET_STATUS.LIVE },
   // BNB: verified 2026-06-19 — testnet send confirmed on BSC testnet (chainId 97).
   // txid: 0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91
   // explorer: https://testnet.bscscan.com/tx/0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91
   // NOTE: BSC enforces ≥1 gwei min gas price; fees.js minGasPriceWei floors all tiers.
-  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.LIVE },
+  { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnb',             status: ASSET_STATUS.LIVE },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
   // the mainnet gate (btc/networks.js). Address derivation + live balance reads
   // are wired now (receive_only). The SEND path (construct/sign/broadcast) is
