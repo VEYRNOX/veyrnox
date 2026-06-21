@@ -75,7 +75,9 @@ const AUDIT_KEY = 'quaternary';
 // localStorage enable pref. Mirrors lib/biometric.js (BIOMETRIC_PREF_KEY) and
 // lib/session.js conventions: stored as "1" (on) / ABSENT (off). Absence = OFF is
 // deliberate — a fresh device, and any user who never opts in, leaves no trace.
-export const AUDIT_LOG_PREF_KEY = 'veyrnox-audit-log';
+// Opaque key (metadata hygiene — old readable name revealed security posture).
+const _AUDIT_LOG_PREF_KEY_OLD = 'veyrnox-audit-log';
+export const AUDIT_LOG_PREF_KEY = 'vx-a1b2c3d4e5f60718';
 
 // HKDF domain-separation label for the audit-log key. Bumping this rotates the
 // key (and orphans any prior blob) — there is none in the wild (feature never
@@ -87,10 +89,18 @@ const AUDIT_HKDF_INFO = 'veyrnox-audit-v1';
 // per-device key diversification. 16 random bytes, hex-encoded. Generated once;
 // never regenerated (that would invalidate the existing encrypted blob).
 // Note: this is NOT secret — it is a public, non-secret salt per RFC 5869.
-const AUDIT_DEVICE_SALT_KEY = 'veyrnox-audit-device-salt';
+// Opaque key (metadata hygiene — old readable name revealed security posture).
+const AUDIT_DEVICE_SALT_KEY_OLD = 'veyrnox-audit-device-salt';
+const AUDIT_DEVICE_SALT_KEY = 'vx-9f8e7d6c5b4a3021';
 
 function getOrCreateDeviceSalt() {
   try {
+    // Migration: move old readable key to opaque key on first access
+    const legacy = localStorage.getItem(AUDIT_DEVICE_SALT_KEY_OLD);
+    if (legacy) {
+      localStorage.setItem(AUDIT_DEVICE_SALT_KEY, legacy);
+      localStorage.removeItem(AUDIT_DEVICE_SALT_KEY_OLD);
+    }
     const stored = localStorage.getItem(AUDIT_DEVICE_SALT_KEY);
     if (stored && /^[0-9a-f]{32}$/i.test(stored)) return hexToBytes(stored);
   } catch { /* fall through */ }
@@ -214,6 +224,12 @@ function putKey(db, key, value) {
 /** @returns {boolean} whether the user has opted into the local audit log. */
 export function isAuditLogEnabled() {
   try {
+    // Migration: move old readable pref key to opaque key on first access
+    const legacyPref = localStorage.getItem(_AUDIT_LOG_PREF_KEY_OLD);
+    if (legacyPref !== null) {
+      localStorage.setItem(AUDIT_LOG_PREF_KEY, legacyPref);
+      localStorage.removeItem(_AUDIT_LOG_PREF_KEY_OLD);
+    }
     return localStorage.getItem(AUDIT_LOG_PREF_KEY) === '1';
   } catch {
     // storage unavailable — treat as OFF (fail closed: no log).

@@ -125,13 +125,16 @@ const LOCAL_RESIDUE_KEYS = Object.freeze([
 // coerced PIN reproduces the deterministic decoy). Kept as plain strings, mirroring
 // the demo-residue pattern (deliberately NOT importing the source modules — panic.js
 // stays decoupled from the deniability stack it erases); source modules in comments:
-//   veyrnox-pin-decoy-salt    — decoyFallback.js (seed of the deterministic decoy)
-//   veyrnox-auth-model        — lib/authModel.js (PIN-cohort marker)
-//   veyrnox-audit-log         — auditLog.js AUDIT_LOG_PREF_KEY (audit-log enabled tell)
+//   vx-2c3d4e5f6a7b8091    — decoyFallback.js SALT_KEY (opaque; seed of the
+//                             deterministic decoy; was 'veyrnox-pin-decoy-salt')
+//   veyrnox-auth-model     — lib/authModel.js (PIN-cohort marker)
+//   vx-a1b2c3d4e5f60718   — auditLog.js AUDIT_LOG_PREF_KEY (opaque; audit-log
+//                            enabled tell; was 'veyrnox-audit-log')
 //   veyrnox-stealth-slot-salt — stealth.js (proves the hidden-wallet pool was
 //                               provisioned — the strongest tell in this set; F-02)
-//   veyrnox-audit-device-salt — auditLog.js (per-device audit-log key-derivation
-//                               salt; tell the audit feature was configured; F-03)
+//   vx-9f8e7d6c5b4a3021   — auditLog.js AUDIT_DEVICE_SALT_KEY (opaque; per-device
+//                            audit-log key-derivation salt; was
+//                            'veyrnox-audit-device-salt'; F-03)
 //   veyrnox-passkey-unlock    — lib/passkey.js PASSKEY_PREF_KEY (F-05)
 //   veyrnox-passkey-cred      — lib/passkey.js PASSKEY_CRED_KEY (F-05)
 //   veyrnox-2fa-passkey       — lib/passkey.js TWOFACTOR_PASSKEY_KEY (F-05)
@@ -148,12 +151,18 @@ const LOCAL_RESIDUE_KEYS = Object.freeze([
 // key rename is caught. ALL_RESIDUE_KEYS is the single list driving BOTH the erase
 // (clearLocalAddressResidue) AND the inspection (readLocalAddressResidue →
 // inspectKeyMaterial().clean), so adding a key here fixes both at once (closes F-04).
+// Legacy pre-rename keys are also wiped so a panic on a device that has not yet
+// triggered the migration path (first auditLog/decoyFallback access post-upgrade)
+// leaves no old-name residue behind.
 const DENIABILITY_RESIDUE_KEYS = Object.freeze([
-  'veyrnox-pin-decoy-salt',
+  'vx-2c3d4e5f6a7b8091',       // decoyFallback.js SALT_KEY (opaque)
+  'veyrnox-pin-decoy-salt',     // legacy pre-rename; wipe both in case migration not yet run
   'veyrnox-auth-model',
-  'veyrnox-audit-log',
+  'vx-a1b2c3d4e5f60718',        // auditLog.js AUDIT_LOG_PREF_KEY (opaque)
+  'veyrnox-audit-log',          // legacy pre-rename
   'veyrnox-stealth-slot-salt',
-  'veyrnox-audit-device-salt',
+  'vx-9f8e7d6c5b4a3021',        // auditLog.js AUDIT_DEVICE_SALT_KEY (opaque)
+  'veyrnox-audit-device-salt',  // legacy pre-rename
   'veyrnox-passkey-unlock',
   'veyrnox-passkey-cred',
   'veyrnox-2fa-passkey',

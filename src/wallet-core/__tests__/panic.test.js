@@ -225,11 +225,16 @@ describe('panic wipe', () => {
     // (also guards F-04).
     const TELLS = [
       // coercion-stack / auth-factor tells (DENIABILITY_RESIDUE_KEYS)
+      // opaque keys (current names post-rename)
+      'vx-2c3d4e5f6a7b8091',       // decoyFallback.js SALT_KEY
+      'vx-a1b2c3d4e5f60718',        // auditLog.js AUDIT_LOG_PREF_KEY
+      'vx-9f8e7d6c5b4a3021',        // auditLog.js AUDIT_DEVICE_SALT_KEY
+      // legacy pre-rename keys (also wiped so devices not yet migrated are clean)
       'veyrnox-pin-decoy-salt',
-      'veyrnox-auth-model',
       'veyrnox-audit-log',
-      'veyrnox-stealth-slot-salt',
       'veyrnox-audit-device-salt',
+      'veyrnox-auth-model',
+      'veyrnox-stealth-slot-salt',
       'veyrnox-passkey-unlock',
       'veyrnox-passkey-cred',
       'veyrnox-2fa-passkey',
