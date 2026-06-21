@@ -29,7 +29,8 @@
 //      vault blobs, PANIC WIPE destroys it for free (clear() of the whole store).
 //
 //   2. OFF BY DEFAULT, ABSENCE = OFF. The enable switch is a single localStorage
-//      pref ('veyrnox-audit-log') mirroring lib/biometric.js / lib/session.js:
+//      pref ('vx-a1b2c3d4e5f60718', formerly 'veyrnox-audit-log') mirroring
+//      lib/biometric.js / lib/session.js:
 //      stored as "1" (on) / absent (off). When OFF, record() is a strict no-op
 //      that writes NOTHING — a non-user has no 'quaternary' blob at all.
 //
