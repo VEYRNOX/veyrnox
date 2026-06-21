@@ -1,0 +1,18 @@
+# Dependabot version updates. Surfaces outdated deps as grouped weekly PRs.
+# Security advisories (when Dependabot alerts are enabled) open their own PRs.
+# Reachability triage of existing advisories remains manual — see docs/SAST_FINDINGS.md.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
