@@ -74,7 +74,7 @@ export default function WatchWallets() {
                         {copied === w.id ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
                       {explorer && (
-                        <a href={`${explorer}${w.address}`} target="_blank" rel="noreferrer" className="shrink-0 text-muted-foreground hover:text-primary">
+                        <a href={`${explorer}${encodeURIComponent(w.address)}`} target="_blank" rel="noreferrer" className="shrink-0 text-muted-foreground hover:text-primary">
                           <ExternalLink className="h-3.5 w-3.5" />
                         </a>
                       )}
