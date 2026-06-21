@@ -147,6 +147,8 @@
     "vitest": "^4.1.7"
   },
   "overrides": {
+    "elliptic": ">=6.6.1",
+    "protobufjs": ">=7.2.5",
     "ethers": {
       "ws": "^8.21.0"
     },
