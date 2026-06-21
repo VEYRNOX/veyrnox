@@ -83,8 +83,13 @@ export default function CustomDashboardWidgets() {
             <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
               {widgets.map((widget, index) => (
                 <Draggable key={widget.id} draggableId={widget.id} index={index}>
-                  {(p, snapshot) => (
-                    <div ref={p.innerRef} {...p.draggableProps}
+                  {(p, snapshot) => {
+                    // @hello-pangea/dnd's DraggableStyle is intentionally broader than React's
+                    // CSSProperties (the @types/react bump added a `--radix-${string}` index
+                    // signature); cast the library-provided props to keep the spread type-safe.
+                    const draggableProps = /** @type {any} */ (p.draggableProps);
+                    return (
+                    <div ref={p.innerRef} {...draggableProps}
                       className={`flex items-center gap-3 p-3.5 rounded-xl border bg-card select-none transition-shadow ${snapshot.isDragging ? "shadow-xl border-primary" : "border-border"} ${!widget.enabled ? "opacity-50" : ""}`}>
                       <div {...p.dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors">
                         <GripVertical className="h-4 w-4" />
@@ -99,7 +104,8 @@ export default function CustomDashboardWidgets() {
                         <Switch checked={widget.enabled} onCheckedChange={() => toggleWidget(widget.id)} />
                       </div>
                     </div>
-                  )}
+                    );
+                  }}
                 </Draggable>
               ))}
               {provided.placeholder}

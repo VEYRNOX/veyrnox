@@ -25,9 +25,10 @@ export async function initWalletConnect() {
     return null;
   }
   const core = new Core({ projectId: PROJECT_ID });
-  // @ts-ignore — pino version mismatch between @walletconnect/core and @walletconnect/web3wallet causes
-  // a spurious ICore type error; runtime is correct, both packages resolve the same Core instance.
   _client = await Web3Wallet.init({
+    // pino version mismatch between @walletconnect/core and @walletconnect/web3wallet causes a
+    // spurious ICore type error; runtime is correct, both packages resolve the same Core instance.
+    // @ts-ignore
     core,
     metadata: {
       name: 'Veyrnox',
