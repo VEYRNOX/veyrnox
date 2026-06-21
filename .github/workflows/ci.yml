@@ -26,6 +26,10 @@ jobs:
       # it (optional native dep resolution). Pin npm 11 to match the toolchain.
       - run: npm install -g npm@11
       - run: npm ci
+      # Supply-chain gate: fail CI on any NEW critical advisory. Known/deferred
+      # criticals are allowlisted with a reason in scripts/audit-gate.mjs;
+      # highs/moderates are triaged for reachability in docs/SAST_FINDINGS.md.
+      - run: node scripts/audit-gate.mjs
       - run: npm run lint
       # Whole-tree type gate. `pretest` only runs typecheck:core (the fast,
       # security-critical wallet-core slice); CI additionally holds the ENTIRE
