@@ -1,0 +1,23 @@
+# Defines the environment GitHub Copilot's coding agent uses before it starts
+# work, so it can install deps and run the same gates as CI. The job MUST be
+# named exactly `copilot-setup-steps` for Copilot to pick it up. It also runs on
+# workflow_dispatch so you can test it from the Actions tab.
+name: "Copilot Setup Steps"
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Lockfile is authored with npm 11; Node 22 ships npm 10. Match CI.
+      - run: npm install -g npm@11
+      - run: npm ci
