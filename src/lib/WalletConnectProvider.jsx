@@ -4,6 +4,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { ethers } from 'ethers';
+import { toast } from 'sonner';
 import {
   initWalletConnect,
   onWalletConnectEvent,
@@ -51,7 +52,17 @@ export function WalletConnectProvider({ children }) {
       if (event === 'session_proposal') {
         setPendingProposals((prev) => [...prev.filter((p) => p.id !== data.id), data]);
       } else if (event === 'session_request') {
-        setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
+        const method = data.params?.request?.method;
+        if (isBlocked(method)) {
+          const { topic, id } = data;
+          rejectRequest(topic, id).catch(() => {});
+          const reason = method === 'eth_sign'
+            ? 'eth_sign rejected: this method signs arbitrary bytes and is disabled for your safety.'
+            : `"${method}" is not permitted by Veyrnox.`;
+          toast.error(reason);
+        } else {
+          setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
+        }
       } else if (event === 'session_delete' || event === 'session_expire') {
         refreshSessions();
         setPendingRequests((prev) => prev.filter((r) => r.topic !== data.topic));

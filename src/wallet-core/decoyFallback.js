@@ -30,7 +30,9 @@ import { mnemonicFromEntropy } from './mnemonic.js';
 
 // Non-secret, per-device salt for the deterministic decoy. Stored once in
 // localStorage so the same wrong PIN maps to the same empty wallet across attempts.
-const SALT_KEY = 'veyrnox-pin-decoy-salt';
+// Opaque key (metadata hygiene — old readable name revealed security posture).
+const SALT_KEY_OLD = 'veyrnox-pin-decoy-salt';
+const SALT_KEY = 'vx-2c3d4e5f6a7b8091';
 const enc = new TextEncoder();
 
 function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }
@@ -44,6 +46,12 @@ function unb64(str) { const s = atob(str); const u8 = new Uint8Array(s.length); 
  */
 export function getOrCreateDeviceSalt() {
   try {
+    // Migration: move old readable key to opaque key on first access
+    const legacy = localStorage.getItem(SALT_KEY_OLD);
+    if (legacy) {
+      localStorage.setItem(SALT_KEY, legacy);
+      localStorage.removeItem(SALT_KEY_OLD);
+    }
     const existing = localStorage.getItem(SALT_KEY);
     if (existing) return unb64(existing);
   } catch { /* storage unavailable; fall through to a fresh salt */ }
@@ -56,6 +64,7 @@ export function getOrCreateDeviceSalt() {
 /** Clear the device decoy salt (used by fail-closed onboarding teardown). */
 export function clearDeviceSalt() {
   try { localStorage.removeItem(SALT_KEY); } catch { /* best-effort */ }
+  try { localStorage.removeItem(SALT_KEY_OLD); } catch { /* best-effort */ }
 }
 
 /**

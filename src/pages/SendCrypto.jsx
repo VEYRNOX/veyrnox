@@ -650,6 +650,17 @@ export default function SendCrypto() {
       });
       if (!gate.allowed) throw new Error(gate.message);
 
+      // CODE-LEVEL SEND GUARD (Task 7 — audit remediation). Defense-in-depth:
+      // even if the gate above was somehow bypassed or a stale UI state persisted,
+      // this hard assertion ensures no unverified asset can sign. Only assets with
+      // status === LIVE may send — period. This is a wallet-core–layer invariant.
+      if (!canSend(selectedAsset)) {
+        throw new Error(
+          `[Security] Send blocked: ${selectedAsset.symbol} status is "${selectedAsset.status}". ` +
+          `Only verified LIVE assets may send. This is a code-level safety assertion.`
+        );
+      }
+
       // NOTE: the HD-account lookup that main did here is intentionally NOT hoisted —
       // it is EVM-only (matches selectedWallet.address against an EVM account) and now
       // lives inside the EVM branch of the family dispatch below. Hoisting it would

@@ -160,6 +160,12 @@ const BACKGROUND_LOCK_GRACE_MS = 45 * 1000;
 // same interface. Stable singleton, so it lives at module scope.
 const keyStore = getKeyStore();
 
+// VULN-17 equalizer: primary success is ~1 KDF faster than any other outcome.
+// This sleep closes the gap so correct-primary and wrong-password cost the same
+// wall-clock time to the user/attacker. 300 ms matches one Argon2id KDF at
+// KDF_PARAMS (64 MiB / t=3). See deniabilityUnlock.js for full rationale.
+const PRIMARY_UNLOCK_EQUALIZER_MS = 300;
+
 export function WalletProvider({ children }) {
   // MULTI-SEED CONTAINER (LIVE SECRETS while unlocked). Holds the parsed vault
   // container { wallets: [{ id, mnemonic }, ...] } — ALL seeds the vault unlocked.
@@ -1204,6 +1210,10 @@ export function WalletProvider({ children }) {
       mnemonic = await keyStore.unlock(password, {
         requireBiometric: isBiometricUnlockEnabled() && !opts.skipBiometric,
       });
+      // VULN-17 fix: equalize timing between primary success (1 KDF) and all
+      // failure paths (4 KDFs via resolveDeniabilityUnlock). A correct password
+      // returns ~300 ms faster without this sleep, creating a timing oracle.
+      await new Promise(resolve => setTimeout(resolve, PRIMARY_UNLOCK_EQUALIZER_MS));
     } catch (primaryErr) {
       // BIOMETRIC FAILURE (native, biometric-unlock enabled): the OS prompt was
       // cancelled/failed/locked-out BEFORE any password check (tagged in
