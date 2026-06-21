@@ -179,7 +179,9 @@ export default function PriceCharts() {
               <YAxis domain={[yMin, yMax]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `$${v >= 1000 ? (v / 1000).toFixed(1) + "k" : v.toFixed(0)}`} axisLine={false} tickLine={false} width={52} />
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }} />
               {firstPrice && <ReferenceLine y={firstPrice} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeOpacity={0.4} />}
-              <Bar dataKey="close" shape={(props) => <CandlestickBar {...props} open={props.open} close={props.close} high={props.high} low={props.low} chartHeight={chartH} yMin={yMin} yRange={yRange} />} />
+              {/* recharts' BarShapeProps doesn't type the custom candlestick data fields
+                  (open/close/high/low) carried on the shape props; cast to read them. */}
+              <Bar dataKey="close" shape={(props) => { const p = /** @type {any} */ (props); return <CandlestickBar {...p} open={p.open} close={p.close} high={p.high} low={p.low} chartHeight={chartH} yMin={yMin} yRange={yRange} />; }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
