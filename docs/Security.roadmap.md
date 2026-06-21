@@ -86,6 +86,7 @@ so it is allowed, not a violation.)
 - **M2 native secure storage + biometrics** — Secure Enclave/Keychain (iOS) +
   Android Keystore/StrongBox; biometric unlock. (Full spec: docs/M2.secure-
   storage.md. Covers the site's "Biometric Auth" + "Samsung Keystore" pages.)
+  - [ ] Native keystore biometric gating — independent audit on real iOS + Android devices (deferred; pending Android build milestone)
 - **Session Manager** — list/revoke active sessions; auto-lock on idle / app-
   background; clear in-memory secret on lock. (Tightens the JS key-lifetime
   limitation from SECURITY_SELFREVIEW_FINDINGS.md.)
