@@ -148,7 +148,7 @@
   },
   "overrides": {
     "axios": "^1.18.0",
-    "protobufjs": ">=7.2.5",
+    "protobufjs": "^7.6.4",
     "ethers": {
       "ws": "^8.21.0"
     },
