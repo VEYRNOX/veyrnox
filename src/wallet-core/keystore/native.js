@@ -4,9 +4,13 @@
 // │ PROVISIONAL — NOT AUDITED-SECURE.                                          │
 // │ This module is the native (iOS/Android) branch of the keyStore contract.  │
 // │ It changes WHERE the vault lives and HOW unlock is gated — it does NOT     │
-// │ touch the audited crypto. It is pending independent security audit and    │
-// │ on-device verification (see docs/M2.secure-storage.md, "Verification      │
-// │ gates"). Do not treat as secure on the strength of this code alone.        │
+// │ touch the audited crypto. The vault format is identical to the audited    │
+// │ web path (Argon2id + AES-256-GCM), but the biometric gating layer         │
+// │ (iOS Keychain / Android Keystore) has NOT been independently verified    │
+// │ on real devices. This must be tested and audited before enabling         │
+// │ biometric unlock in production mobile builds.                             │
+// │ DEFERRED: pending Android build milestone (return to this after Android   │
+// │ testing). See docs/M2.secure-storage.md, "Verification gates".           │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
 // DESIGN B — implemented as HARDWARE-GATED UNLOCK + HARDWARE-BACKED AT-REST

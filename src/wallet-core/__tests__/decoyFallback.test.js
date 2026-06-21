@@ -19,7 +19,7 @@ import { deriveDeterministicDecoyMnemonic, getOrCreateDeviceSalt, clearDeviceSal
 import { KDF_PARAMS } from '../vault.js';
 import { validateMnemonic } from '../mnemonic.js';
 
-const SALT_KEY = 'veyrnox-pin-decoy-salt';
+const SALT_KEY = 'vx-2c3d4e5f6a7b8091'; // opaque key used by decoyFallback.js post-rename
 
 describe('decoyFallback — deterministic, memory-hard decoy derivation', () => {
   beforeEach(() => {
