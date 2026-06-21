@@ -140,7 +140,7 @@ export default function LiveBalances() {
                 <p className="text-xs text-muted-foreground mt-1 font-mono break-all">{data.address}</p>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <a href={`${net?.explorer}${data.address}`} target="_blank" rel="noreferrer" className="p-2 rounded-lg border border-border bg-card text-muted-foreground hover:text-primary">
+                <a href={`${net?.explorer}${encodeURIComponent(data.address)}`} target="_blank" rel="noreferrer" className="p-2 rounded-lg border border-border bg-card text-muted-foreground hover:text-primary">
                   <ExternalLink className="h-4 w-4" />
                 </a>
                 <div className="flex items-center gap-1 text-[10px] text-green-500 font-semibold"><CheckCircle className="h-3 w-3" /> Live</div>
