@@ -19,12 +19,11 @@ import { execSync } from 'node:child_process';
 
 /** GHSA id -> reason. Only CRITICAL advisories matching these ids are exempted. */
 const ALLOWLIST = {
-  // protobufjs <=7.6.2 — bundle incl. arbitrary code execution
-  // (GHSA-xq3m-2v4x-88gg). DEFERRED: npm's only resolvable fix is a breaking
-  // downgrade of @trezor/connect-web (isSemVerMajor); a forced protobufjs@8
-  // override is unvalidated against the Ledger/Trezor/Solana stacks. Pending a
-  // deliberate, tested upgrade + reachability proof. See docs/SAST_FINDINGS.md.
-  'GHSA-xq3m-2v4x-88gg': 'protobufjs ACE — no safe override; tested fix + reachability review pending',
+  // (empty) — no critical advisories are currently deferred.
+  // The protobufjs ACE (GHSA-xq3m-2v4x-88gg) was resolved by pinning
+  // protobufjs to ^7.6.4 via overrides (still 7.x, Trezor-compatible).
+  // Add an entry only after a reachability review, with a written reason:
+  //   'GHSA-xxxx-xxxx-xxxx': "why it can't be fixed now + reachability note",
 };
 
 function runAudit() {
