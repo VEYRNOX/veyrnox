@@ -14,8 +14,9 @@
            • img-src allows https: + data: because NFT/avatar art loads from
              arbitrary gateways; coin logos are local ('self').
            • style-src 'unsafe-inline' is needed by the UI libs' injected styles.
-           • connect-src wildcards cover every chain RPC (*.publicnode.com,
-             *.solana.com) plus the explicit testnet/mainnet endpoints.
+           • connect-src is pinned to explicit hostnames (no wildcards); see
+             the full list in the meta tag below — 8 publicnode.com + 3 solana.com
+             origins plus the other audited testnet/mainnet endpoints.
          Verified on the iOS Simulator (capacitor:// WKWebView): policy is
          enforced (inline-script / eval / off-allowlist exfil all blocked) and
          the Argon2id WASM KDF compiles, so vault create/unlock works under it
