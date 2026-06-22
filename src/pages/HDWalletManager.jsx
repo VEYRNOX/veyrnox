@@ -528,9 +528,9 @@ export default function HDWalletManager() {
           <div className="space-y-3 pt-2">
             <p className="text-xs text-muted-foreground">Derive additional accounts from your unlocked seed along the standard Ethereum path. Only public addresses are stored.</p>
             <div>
-              <Label>Number of accounts</Label>
+              <Label id="hd-derive-count-label">Number of accounts</Label>
               <Select value={String(deriveCount)} onValueChange={v => setDeriveCount(parseInt(v))}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="hd-derive-count-label"><SelectValue /></SelectTrigger>
                 <SelectContent>{[1, 3, 5, 10].map(n => <SelectItem key={n} value={String(n)}>{n} account{n > 1 ? "s" : ""}</SelectItem>)}</SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1 font-mono">{shortPath(0)} … {shortPath(deriveCount - 1)}</p>

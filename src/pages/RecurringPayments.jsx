@@ -222,9 +222,9 @@ export default function RecurringPayments() {
           <div className="space-y-3 pt-2">
             <div><Label>Label</Label><Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="e.g. Rent" className="mt-1.5" /></div>
             <div>
-              <Label>From Wallet</Label>
+              <Label id="recurring-wallet-label">From Wallet</Label>
               <Select value={form.wallet_id} onValueChange={v => { const w = wallets.find(x => x.id === v); setForm(p => ({ ...p, wallet_id: v, currency: w?.currency || p.currency })); }}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select wallet" /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="recurring-wallet-label"><SelectValue placeholder="Select wallet" /></SelectTrigger>
                 <SelectContent>{wallets.map(w => <SelectItem key={w.id} value={w.id}><span className="flex items-center gap-2"><CoinLogo symbol={w.currency} size={18} />{w.name} — {w.balance} {w.currency}</span></SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -232,9 +232,9 @@ export default function RecurringPayments() {
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
               <div>
-                <Label>Frequency</Label>
+                <Label id="recurring-frequency-label">Frequency</Label>
                 <Select value={form.frequency} onValueChange={v => setForm(p => ({ ...p, frequency: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5" aria-labelledby="recurring-frequency-label"><SelectValue /></SelectTrigger>
                   <SelectContent>{Object.entries(FREQ_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                 </Select>
               </div>

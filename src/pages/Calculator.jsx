@@ -127,10 +127,10 @@ export default function Calculator() {
 
         {/* Crypto side */}
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Crypto</label>
+          <label id="calc-crypto-label" className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Crypto</label>
           <div className="flex gap-2">
             <Select value={fromCrypto} onValueChange={setFromCrypto}>
-              <SelectTrigger className="w-32 shrink-0">
+              <SelectTrigger aria-labelledby="calc-crypto-label" className="w-32 shrink-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -178,10 +178,10 @@ export default function Calculator() {
 
         {/* Fiat side */}
         <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Fiat</label>
+          <label id="calc-fiat-label" className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Fiat</label>
           <div className="flex gap-2">
             <Select value={toFiat} onValueChange={setToFiat}>
-              <SelectTrigger className="w-32 shrink-0">
+              <SelectTrigger aria-labelledby="calc-fiat-label" className="w-32 shrink-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

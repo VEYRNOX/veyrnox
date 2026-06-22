@@ -101,15 +101,15 @@ export default function WatchWallets() {
             <div><Label>Label / Name</Label><Input className="mt-1.5" placeholder="Vitalik.eth or My Cold Wallet" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div><Label>Wallet Address</Label><Input className="mt-1.5 font-mono text-xs" placeholder="0x... or bc1q..." value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Network</Label>
+              <div><Label id="watch-network-label">Network</Label>
                 <Select value={form.network} onValueChange={v => setForm(f => ({ ...f, network: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5" aria-labelledby="watch-network-label"><SelectValue /></SelectTrigger>
                   <SelectContent>{["Ethereum","Bitcoin","Solana","Polygon","BSC"].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Asset</Label>
+              <div><Label id="watch-asset-label">Asset</Label>
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5" aria-labelledby="watch-asset-label"><SelectValue /></SelectTrigger>
                   <SelectContent>{["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                 </Select>
               </div>

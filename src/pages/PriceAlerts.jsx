@@ -252,9 +252,9 @@ export default function PriceAlerts() {
           <DialogHeader><DialogTitle>New Price Alert</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-1">
             <div>
-              <Label>Currency</Label>
+              <Label id="pa-currency-label">Currency</Label>
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="pa-currency-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {MARKET_SYMBOLS.map(c => (
                     <SelectItem key={c} value={c}>
@@ -268,9 +268,9 @@ export default function PriceAlerts() {
               </Select>
             </div>
             <div>
-              <Label>Alert when price goes</Label>
+              <Label id="pa-direction-label">Alert when price goes</Label>
               <Select value={direction} onValueChange={setDirection}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="pa-direction-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="above">📈 Above target</SelectItem>
                   <SelectItem value="below">📉 Below target</SelectItem>
@@ -278,9 +278,9 @@ export default function PriceAlerts() {
               </Select>
             </div>
             <div>
-              <Label>Alert Type</Label>
+              <Label id="pa-alerttype-label">Alert Type</Label>
               <Select value={alertType} onValueChange={setAlertType}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="pa-alerttype-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="price">🎯 Target Price</SelectItem>
                   <SelectItem value="volatility">⚡ Volatility Swing</SelectItem>

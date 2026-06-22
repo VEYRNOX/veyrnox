@@ -102,9 +102,9 @@ export default function CustomIndexBuilder() {
           <div className="space-y-4 pt-2 max-h-[70vh] overflow-y-auto pr-1">
             <div><Label htmlFor="index-name">Index Name</Label><Input id="index-name" className="mt-1.5" placeholder="My DeFi Index" value={name} onChange={e => setName(e.target.value)} /></div>
             <div><Label htmlFor="index-desc">Description (optional)</Label><Input id="index-desc" className="mt-1.5" value={desc} onChange={e => setDesc(e.target.value)} /></div>
-            <div><Label>Rebalance Frequency</Label>
+            <div><Label id="index-rebalance-label">Rebalance Frequency</Label>
               <Select value={freq} onValueChange={setFreq}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-labelledby="index-rebalance-label" className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>{["weekly","monthly","quarterly","manually"].map(f => <SelectItem key={f} value={f} className="capitalize">{f}</SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -117,7 +117,7 @@ export default function CustomIndexBuilder() {
                 {components.map((c, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Select value={c.asset} onValueChange={v => updateComponent(i, "asset", v)}>
-                      <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label="Asset" className="w-28"><SelectValue /></SelectTrigger>
                       <SelectContent>{ASSETS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                     </Select>
                     <Input type="number" min="0" max="100" value={c.weight} onChange={e => updateComponent(i, "weight", parseFloat(e.target.value) || 0)} className="w-20" />

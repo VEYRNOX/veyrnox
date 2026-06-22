@@ -17,7 +17,7 @@ export function formatFiat(usdAmount, fiatCurrency) {
 export default function FiatCurrencySelector({ value, onChange }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-20 h-7 text-xs border-0 bg-secondary">
+      <SelectTrigger aria-label="Currency" className="w-20 h-7 text-xs border-0 bg-secondary">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
