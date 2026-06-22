@@ -80,6 +80,26 @@ describe('degrade — §4 degradation ladder (condition → tier)', () => {
   });
 });
 
+describe('degrade — honest copy (I4): copy must not promise unenforced behavior', () => {
+  // permitsTestnet and requiresBiometric are TARGET fields not consumed by the
+  // live gate (compose.js maps BLOCK→signerReachable:false for ALL sends incl.
+  // testnet, and WARN→proceed with NO biometric step). The user-facing copy must
+  // therefore NOT promise a testnet carve-out or an enforced biometric re-confirm.
+
+  it('EMULATOR copy does NOT promise testnet (the carve-out is unwired)', () => {
+    const a = degrade(CONDITION.EMULATOR);
+    expect(a.sentence.toLowerCase()).not.toContain('testnet');
+  });
+
+  it('WARN copy does NOT promise an enforced biometric re-confirm', () => {
+    for (const condition of [CONDITION.ROOTED, CONDITION.INTEGRITY_UNAVAILABLE]) {
+      const a = degrade(condition);
+      expect(a.tier).toBe(TIER.WARN);
+      expect(a.sentence.toLowerCase()).not.toContain('biometric');
+    }
+  });
+});
+
 describe('degrade — uniform artifact shape', () => {
   it('returns the same fixed key set for every condition', () => {
     for (const condition of Object.values(CONDITION)) {
