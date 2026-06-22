@@ -400,7 +400,7 @@ export async function simulateEvmTransaction({
       thirdParty: false,
     },
     coverageNote:
-      'Predicts the outcome and flags known risk patterns and deviations from your own history — ' +
+      'This check predicts the outcome and flags known risk patterns and deviations from your own history — ' +
       "not a guarantee of safety, and won't catch every novel threat.",
   };
 }
