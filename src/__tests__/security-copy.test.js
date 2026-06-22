@@ -26,7 +26,7 @@ describe('Part D — PIN-create copy reduction', () => {
 
   it('renders the single tightened line on the PIN-create screen', () => {
     expect(src).toContain(
-      'An 8-digit PIN is strong against a quick grab, but not against someone who keeps your device to try PINs offline — so guard the device itself.'
+      "This PIN unlocks your wallet. It won't stop someone who keeps your device to try PINs offline — so guard your device."
     );
   });
 
