@@ -727,7 +727,7 @@ export default function WalletEntry() {
           <div className="flex items-center justify-center gap-2 text-sm font-medium">
             <Lock className="h-4 w-4 text-muted-foreground" /> Enter your PIN
           </div>
-          <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} />
+          <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} submitLabel="Unlock" />
         </div>
 
         {/* HONEST recovery: no custodial reset. A forgotten PIN is recovered ONLY by
