@@ -1265,6 +1265,7 @@ export default function SendCrypto() {
                       onChange={setReauthValue}
                       onComplete={submitReauth}
                       disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByBtcRisk}
+                      submitLabel="Authorise"
                     />
                   ) : (
                     <>

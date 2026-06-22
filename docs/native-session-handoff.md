@@ -34,6 +34,19 @@
 0. **PRF WebView spike** — `docs/prf-webview-spike-brief.md`. Probe whether WebAuthn
    PRF works in the Capacitor WebView; **gates** the KEK build (kek-spec §8). If PRF
    is unavailable, fall back to the native-plugin KEK path. Throwaway investigation.
+   - **Harness: BUILT** (web side, unit-tested, DEV-gated) — `src/dev/prfSpike.js`
+     (probe + pure `classifyOutcome` classifier; 14/14 unit tests pass) and the
+     DEV-only screen `src/pages/dev/PrfSpike.jsx`, route `/dev/prf-spike` behind
+     `import.meta.env.DEV` (dead-code-eliminated from any `vite build`). On branch
+     `claude/fervent-banzai-6be759`. Run steps + result blanks: kek-spec **§8.1**.
+   - **Verdict: UNRESOLVED — §8 stays "open."** The probe is a hardware test: it
+     needs an AVD Pixel_7 + ≥1 physical Android device with an enrolled biometric, a
+     human to approve the biometric prompt, and a run → kill → re-run for cross-restart
+     stability. **It cannot run in this environment** (host had no Android toolchain at
+     all — no SDK/`adb`/emulator/AVD/JDK — and no physical device). Do NOT fill §8.1's
+     result blanks or flip §8 to "resolved" without a real on-device run (verify, don't
+     assert). Next session needs: Android Studio + AVD (API 34+, fingerprint enrolled),
+     a JDK, and a physical Android device.
 1. **§3 — native ACL plugin (M2c/M2d)** — `docs/M2cd.native-acl-plan.md`. Thin Swift
    (SE/Keychain) + Kotlin (Keystore/StrongBox) plugin exposing per-item biometric
    ACL binding; `isSecureHardwareAvailable()` must report truthfully per-device and

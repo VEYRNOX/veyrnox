@@ -1,6 +1,6 @@
 // lib/authModel.js
 //
-// NON-SECRET per-device auth cohort marker. 'pin' selects the v1 6-digit PIN
+// NON-SECRET per-device auth cohort marker. 'pin' selects the v1 8-digit PIN
 // entry surface + Option A deterministic-decoy resolution; 'password' is the
 // legacy free-text vault-password surface (unchanged). Written once at PIN-wallet
 // creation. This is NOT a secret and NOT a deniability tell: within the PIN cohort
