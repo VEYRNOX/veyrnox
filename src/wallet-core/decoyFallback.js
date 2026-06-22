@@ -3,7 +3,7 @@
 // OPTION A (kek-architecture-spec.md §7) — DETERMINISTIC DECOY-FROM-ANY-PIN.
 // PROVISIONAL. ⚠️ FLAGGED FOR INDEPENDENT AUDIT VALIDATION. ⚠️
 //
-// In the PIN cohort, NO 6-digit PIN may produce an error state — a "wrong PIN"
+// In the PIN cohort, NO 8-digit PIN may produce an error state — a "wrong PIN"
 // error is an oracle that reveals the entered PIN was not one of the enrolled set
 // (so a real set exists elsewhere). Any PIN that does not resolve to the primary /
 // duress / hidden / panic credential instead deterministically derives a fresh,

@@ -26,7 +26,7 @@ describe('Part D — PIN-create copy reduction', () => {
 
   it('renders the single tightened line on the PIN-create screen', () => {
     expect(src).toContain(
-      'A 6-digit PIN is strong against a quick grab, but not against someone who keeps your device to try PINs offline — so guard the device itself.'
+      'An 8-digit PIN is strong against a quick grab, but not against someone who keeps your device to try PINs offline — so guard the device itself.'
     );
   });
 

@@ -1,8 +1,8 @@
 // lib/pinPadReducer.js
 //
-// PURE reducer for the v1 6-digit PIN pad (src/components/security/PinPad.jsx).
+// PURE reducer for the v1 8-digit PIN pad (src/components/security/PinPad.jsx).
 //
-// The pad's input boundaries — numeric-only, the 6-digit cap, and auto-submit
+// The pad's input boundaries — numeric-only, the 8-digit cap, and auto-submit
 // exactly at length — are the same whether a press comes from an on-screen
 // button or a physical key. Extracting them here (report T-INFRA-3) makes those
 // boundaries unit-testable without a browser, the codebase's pure-helper pattern,
@@ -33,10 +33,10 @@
  *
  * @param {string} value   Current controlled value (digits only).
  * @param {string} action  'back' | 'clear' | a single digit character.
- * @param {number} [length=6]  Target PIN length.
+ * @param {number} [length=8]  Target PIN length.
  * @returns {PinPadResult}
  */
-export function pinPadReduce(value, action, length = 6) {
+export function pinPadReduce(value, action, length = 8) {
   const noop = { value, changed: false, complete: false };
 
   if (action === 'back') {

@@ -6,7 +6,7 @@
 // the committed vitest.config.js has no @vitejs/plugin-react, so JSX would compile
 // with the classic runtime and need a globalThis.React shim (see landing-guard.test.jsx).
 //
-// The dynamic boundaries (6-digit cap, auto-submit exactly at length, numeric-only,
+// The dynamic boundaries (8-digit cap, auto-submit exactly at length, numeric-only,
 // backspace, clear) have been EXTRACTED into the pure reducer src/lib/pinPadReducer.js
 // (report T-INFRA-3) and are unit-tested there without a browser — see
 // src/lib/__tests__/pinPadReducer.test.js. This file asserts the rendered contract
@@ -47,7 +47,7 @@ describe('PIN pad — rendered keypad composition (numeric-only, no paste surfac
   it('exposes ARIA on the entry surface (status dots, clear, delete)', () => {
     const out = html({ value: '12' });
     expect(out).toContain('role="status"');
-    expect(out).toContain('aria-label="2 of 6 digits entered"'); // live, value-derived
+    expect(out).toContain('aria-label="2 of 8 digits entered"'); // live, value-derived
     expect(out).toContain('aria-label="Clear — re-enter PIN"');
     expect(out).toContain('aria-label="Delete last digit"');
   });
@@ -55,10 +55,10 @@ describe('PIN pad — rendered keypad composition (numeric-only, no paste surfac
   it('the status dots reflect the controlled value length (no value echoed)', () => {
     // 0, partial, and full states — the dot fill count tracks value.length and the
     // digits themselves are never rendered into the DOM (shoulder-surf resistant).
-    expect(html({ value: '' })).toContain('aria-label="0 of 6 digits entered"');
-    expect(html({ value: '123' })).toContain('aria-label="3 of 6 digits entered"');
-    expect(html({ value: '123456' })).toContain('aria-label="6 of 6 digits entered"');
-    expect(html({ value: '123456' })).not.toContain('123456');
+    expect(html({ value: '' })).toContain('aria-label="0 of 8 digits entered"');
+    expect(html({ value: '123' })).toContain('aria-label="3 of 8 digits entered"');
+    expect(html({ value: '12345678' })).toContain('aria-label="8 of 8 digits entered"');
+    expect(html({ value: '12345678' })).not.toContain('12345678');
   });
 
   it('disabled prop disables every key (clear/delete also disabled when value empty)', () => {
@@ -75,12 +75,12 @@ describe('PIN pad — boundary logic (cap + auto-submit + numeric-only) via the 
   // The boundaries now live in src/lib/pinPadReducer.js (report T-INFRA-3), so the
   // gate can drive them directly instead of asserting on source strings.
   it('blocks input at length', () => {
-    expect(pinPadReduce('123456', '7')).toEqual({ value: '123456', changed: false, complete: false });
+    expect(pinPadReduce('12345678', '9')).toEqual({ value: '12345678', changed: false, complete: false });
   });
 
   it('fires complete exactly at length, not before', () => {
-    expect(pinPadReduce('12345', '6').complete).toBe(true);
-    expect(pinPadReduce('1234', '5').complete).toBe(false);
+    expect(pinPadReduce('1234567', '8').complete).toBe(true);
+    expect(pinPadReduce('123456', '7').complete).toBe(false);
   });
 
   it('is numeric-only (non-digit and multi-char actions are inert)', () => {

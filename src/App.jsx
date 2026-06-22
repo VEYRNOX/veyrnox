@@ -82,6 +82,12 @@ const SpamTokenFilter = lazy(() => import('./pages/SpamTokenFilter'));
 const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
 const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
+
+// DEV-ONLY: throwaway PRF-in-WebView spike that gates the KEK build (see
+// src/dev/prfSpike.js). import.meta.env.DEV is statically false in any production
+// `vite build`, so this lazy import AND its /dev/prf-spike route are dead-code-
+// eliminated and NEVER ship — the same lock as the dev send-ungate.
+const PrfSpike = import.meta.env.DEV ? lazy(() => import('./pages/dev/PrfSpike')) : null;
 const CryptoSigning = lazy(() => import('./pages/CryptoSigning'));
 const LiveBalances = lazy(() => import('./pages/LiveBalances'));
 const WalletConnect = lazy(() => import('@/pages/WalletConnect.jsx'));
@@ -215,6 +221,9 @@ const AuthenticatedApp = () => {
             create/import flow (WalletGate -> WalletEntry), so redirect there. */}
         <Route path="/onboarding" element={<Navigate to="/" replace />} />
       </Route>
+      {import.meta.env.DEV && PrfSpike && (
+        <Route path="/dev/prf-spike" element={<PrfSpike />} />
+      )}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
     </Suspense>

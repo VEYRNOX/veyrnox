@@ -229,6 +229,44 @@ document.
 **This must be answered by a cheap spike BEFORE the keying is implemented.** Building
 the combine against an unverified PRF assumption risks building against a fiction.
 
+### 8.1 Spike run checklist (Mac + Android session)
+
+The harness is BUILT (in a worktree, web side only): `src/dev/prfSpike.js` (the
+probe + pure outcome classifier, unit-tested) and the DEV-only screen
+`src/pages/dev/PrfSpike.jsx`, wired as the route `/dev/prf-spike` in `App.jsx`
+behind `import.meta.env.DEV` (statically false in any `vite build` → dead-code-
+eliminated, never ships). It creates a passkey carrying the `prf` extension, then
+evaluates `prf` against a FIXED salt twice (intra-session stability) and against a
+stored prior-run value (cross-restart stability). It cannot be run on Windows (no
+platform authenticator); run it as below and record the verdict at the end of this
+section.
+
+**Prerequisites**
+- [ ] Android Studio with an **AVD Pixel_7** (API 34+), screen lock + fingerprint enrolled (Settings → Security) so a platform authenticator exists. Note its SwiftShader software-graphics constraint and whether it affects the credential APIs at all.
+- [ ] **≥1 physical Android device** with screen lock + biometric enrolled — the emulator is NOT authoritative for secure-element behaviour (brief §3); the physical device is the real result.
+- [ ] Repo checked out, `npm install` done.
+
+**Run it (live-reload — the DEV route only exists under the Vite dev server)**
+- [ ] `/dev/prf-spike` exists ONLY when `import.meta.env.DEV` is true, so the WebView must load from the Vite **dev server**, never a release bundle (a `vite build` strips the route by design). Start it: `npm run dev -- --host` and note the LAN URL.
+- [ ] Run Capacitor against it in live-reload: `npx cap run android --livereload --external` (or set `server.url` to the LAN dev URL in `capacitor.config`, then `npx cap run android`).
+- [ ] In the WebView, navigate to `/dev/prf-spike`.
+
+**Probe — emulator first, then the physical device (authoritative)**
+- [ ] Tap **Run probe** → approve the biometric prompt (creates the credential, runs `get()` #1 and #2). Record: `prf.enabled`? bytes returned? #1 == #2 (intra-stable)? note the hex.
+- [ ] **Fully kill** the app (swipe from recents) and relaunch → `/dev/prf-spike` → **Run probe** again (it re-evaluates the STORED credential). Record: does it match the stored prior value? match = stable across restart.
+- [ ] Repeat the full sequence on the physical device; note model + Android version + authenticator.
+
+**Read the verdict (the screen prints it)**
+- **A** — stable intra + across restart → proceed to the KEK build (spec §3 stands).
+- **A_PENDING** — stable this session, no prior value yet → relaunch and re-run to confirm A.
+- **WEBVIEW_FAIL** — `prf` unreachable/unsupported in the WebView. NOT a final no: the next step is the **native-bridge probe** (a small Capacitor FIDO2 / CTAP2 `hmac-secret` plugin) to decide outcome **B vs C** (brief §3 step 4). Establish viability only — do NOT build the full KEK bridge.
+- **C** — `prf` reachable but UNSTABLE (per-call or per-restart) → stop; redesign the hardware factor (StrongBox/Keystore-wrapped key), spec §3 changes materially.
+
+**Record the result here (turns §8 from "open" → "resolved")**
+- [ ] Emulator: outcome ____, prf.enabled ____, intra-stable ____, cross-restart ____, hex ____
+- [ ] Physical device (____ / Android ____): outcome ____, intra-stable ____, cross-restart ____, hex ____
+- [ ] **Resolved outcome (physical device wins): ____** — then update the §8 header line above from "open" to "resolved: outcome X (date, device)" and proceed per brief §4.
+
 ---
 
 ## 9. Audit line-items (consolidated)

@@ -7,13 +7,13 @@
 import { describe, it, expect } from 'vitest';
 import { pinPadReduce, keyToPinAction } from '@/lib/pinPadReducer';
 
-describe('pinPadReduce — digit append + 6-digit cap', () => {
+describe('pinPadReduce — digit append + 8-digit cap', () => {
   it('appends a digit and reports the change', () => {
     expect(pinPadReduce('12', '3')).toEqual({ value: '123', changed: true, complete: false });
   });
 
   it('blocks input at the cap (no-op, not a throw)', () => {
-    expect(pinPadReduce('123456', '7')).toEqual({ value: '123456', changed: false, complete: false });
+    expect(pinPadReduce('12345678', '9')).toEqual({ value: '12345678', changed: false, complete: false });
   });
 
   it('honours a custom length', () => {
@@ -24,12 +24,12 @@ describe('pinPadReduce — digit append + 6-digit cap', () => {
 
 describe('pinPadReduce — auto-submit exactly at length', () => {
   it('marks complete only on the digit that fills the pad', () => {
-    expect(pinPadReduce('12345', '6').complete).toBe(true);   // 6th digit
-    expect(pinPadReduce('1234', '5').complete).toBe(false);   // 5th digit
+    expect(pinPadReduce('1234567', '8').complete).toBe(true);   // 8th digit
+    expect(pinPadReduce('123456', '7').complete).toBe(false);   // 7th digit
   });
 
   it('does not re-complete once full (cap fires first)', () => {
-    expect(pinPadReduce('123456', '1').complete).toBe(false);
+    expect(pinPadReduce('12345678', '1').complete).toBe(false);
   });
 });
 
