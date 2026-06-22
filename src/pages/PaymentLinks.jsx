@@ -102,7 +102,7 @@ export default function PaymentLinks() {
                     <CheckCircle2 className="h-3 w-3 mr-1" /> Paid
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => remove.mutate(link.id)}>
+                <Button size="sm" variant="ghost" aria-label="Delete payment link" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => remove.mutate(link.id)}>
                   <X className="h-3 w-3" />
                 </Button>
               </div>

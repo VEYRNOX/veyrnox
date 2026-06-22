@@ -100,10 +100,10 @@ export default function NetworkManager() {
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => activate.mutate(n.id)}>Switch</Button>
               )}
               {n.explorer_url && (
-                <a href={n.explorer_url} target="_blank" rel="noreferrer" className="p-1.5 text-muted-foreground hover:text-foreground"><Globe className="h-3.5 w-3.5" /></a>
+                <a href={n.explorer_url} target="_blank" rel="noreferrer" aria-label="Open block explorer" className="p-1.5 text-muted-foreground hover:text-foreground"><Globe className="h-3.5 w-3.5" /></a>
               )}
               {dbNetworks.length > 0 && (
-                <button onClick={() => remove.mutate(n.id)} className="p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                <button onClick={() => remove.mutate(n.id)} aria-label="Remove network" className="p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
               )}
             </div>
           </div>

@@ -13,7 +13,7 @@ function CopyButton({ value }) {
     navigator.clipboard.writeText(value).then(() => toast.success('Copied'));
   }
   return (
-    <button onClick={copy} className="shrink-0 p-1.5 rounded-md hover:bg-accent transition-colors" title="Copy">
+    <button onClick={copy} className="shrink-0 p-1.5 rounded-md hover:bg-accent transition-colors" title="Copy" aria-label="Copy">
       <Copy className="h-4 w-4 text-muted-foreground" />
     </button>
   );

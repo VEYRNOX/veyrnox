@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,13 +11,18 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  const handleScroll = () => {
-    setScrolled(window.scrollY > 50);
-  };
-
-  if (typeof window !== "undefined") {
+  // Scroll listener registered once via useEffect with a matching
+  // removeEventListener cleanup so it isn't re-added on every render and is torn
+  // down on unmount (the previous render-time addEventListener leaked a new
+  // handler each render with no removal).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
     window.addEventListener("scroll", handleScroll, { passive: true });
-  }
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white overflow-x-hidden">

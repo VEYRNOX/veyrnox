@@ -56,10 +56,10 @@ function SeedGrid({ mnemonic }) {
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold">Recovery Phrase</p>
         <div className="flex gap-2">
-          <button onClick={() => setShow((s) => !s)} className="p-1.5 text-muted-foreground hover:text-foreground">
+          <button onClick={() => setShow((s) => !s)} aria-label={show ? "Hide recovery phrase" : "Show recovery phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
-          <button onClick={async () => { await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="p-1.5 text-muted-foreground hover:text-foreground">
+          <button onClick={async () => { await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">
             {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
@@ -332,12 +332,12 @@ function ManagePortfoliosDialog({ portfolios, onClose }) {
                 <span className="text-sm flex-1">{p.name}{p.id === MAIN_PORTFOLIO_ID && <span className="text-[10px] text-muted-foreground ml-1">(default)</span>}</span>
               )}
               {editId === p.id ? (
-                <button className="p-1 text-primary" onClick={() => { if (editName.trim()) renamePortfolio(p.id, editName.trim()); setEditId(null); }}><Check className="h-4 w-4" /></button>
+                <button className="p-1 text-primary" aria-label="Save portfolio name" onClick={() => { if (editName.trim()) renamePortfolio(p.id, editName.trim()); setEditId(null); }}><Check className="h-4 w-4" /></button>
               ) : (
-                <button className="p-1 text-muted-foreground hover:text-foreground" onClick={() => { setEditId(p.id); setEditName(p.name); }}><Pencil className="h-3.5 w-3.5" /></button>
+                <button className="p-1 text-muted-foreground hover:text-foreground" aria-label={`Rename ${p.name}`} onClick={() => { setEditId(p.id); setEditName(p.name); }}><Pencil className="h-3.5 w-3.5" /></button>
               )}
               {p.id !== MAIN_PORTFOLIO_ID && (
-                <button className="p-1 text-destructive" onClick={() => deletePortfolio(p.id)}><Trash2 className="h-3.5 w-3.5" /></button>
+                <button className="p-1 text-destructive" aria-label={`Delete ${p.name}`} onClick={() => deletePortfolio(p.id)}><Trash2 className="h-3.5 w-3.5" /></button>
               )}
             </div>
           ))}

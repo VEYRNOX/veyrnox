@@ -17,7 +17,7 @@ export default function NFTPortfolio() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: "", collection: "", token_id: "", contract_address: "", chain: "ethereum", image_url: "", purchase_price: "", current_floor: "", status: "holding", note: "" });
 
-  const { data: nfts = [], isLoading } = useQuery({
+  const { data: nfts = [], isLoading, isError } = useQuery({
     queryKey: ["nft-assets"],
     queryFn: () => base44.entities.NFTAsset.list("-created_date"),
   });
@@ -72,6 +72,11 @@ export default function NFTPortfolio() {
       {/* NFT Grid */}
       {isLoading ? (
         <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+      ) : isError ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm text-destructive">Couldn't load your NFTs. Please try again.</p>
+        </div>
       ) : nfts.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -104,7 +109,7 @@ export default function NFTPortfolio() {
                       {pnl >= 0 ? "+" : ""}{pnl.toFixed(3)} ETH
                     </div>
                   )}
-                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-6 w-6 mt-1" onClick={() => deleteNFT.mutate(nft.id)}>
+                  <Button variant="ghost" size="icon" aria-label="Delete NFT" className="text-destructive hover:bg-destructive/10 h-6 w-6 mt-1" onClick={() => deleteNFT.mutate(nft.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>

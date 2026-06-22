@@ -42,7 +42,7 @@ const TAX_TOOLS = [
 export default function TaxReport() {
   const [exported, setExported] = useState(false);
 
-  const { data: transactions = [], isLoading } = useQuery({
+  const { data: transactions = [], isLoading, isError } = useQuery({
     queryKey: ["transactions-tax"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 1000),
   });
@@ -73,10 +73,11 @@ export default function TaxReport() {
         <p className="text-xs text-muted-foreground">
           Downloads a CSV with {isLoading ? "…" : transactions.length} transactions: date, type, asset, amount, fee, tx hash. No invented prices or cost basis — exactly what your on-device records contain.
         </p>
-        <Button onClick={handleExport} disabled={isLoading} className="w-full gap-2">
+        <Button onClick={handleExport} disabled={isLoading || isError} className="w-full gap-2">
           <Table2 className="h-4 w-4" />
           {isLoading ? "Loading…" : `Export ${transactions.length} transactions (CSV)`}
         </Button>
+        {isError && <p className="text-xs text-destructive">Couldn't load your transactions to export. Please try again.</p>}
         {exported && <p className="text-xs text-green-400">✓ Downloaded — import this file into your tax tool below</p>}
       </div>
 

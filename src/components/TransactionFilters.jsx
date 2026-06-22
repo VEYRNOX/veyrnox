@@ -57,13 +57,13 @@ export default function TransactionFilters({ filters, onChange }) {
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-xs">From date</Label>
-          <Input type="date" className="h-9 text-sm" value={filters.dateFrom}
+          <Label htmlFor="tx-filter-date-from-m" className="text-xs">From date</Label>
+          <Input id="tx-filter-date-from-m" type="date" className="h-9 text-sm" value={filters.dateFrom}
             onChange={e => onChange({ ...filters, dateFrom: e.target.value })} />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">To date</Label>
-          <Input type="date" className="h-9 text-sm" value={filters.dateTo}
+          <Label htmlFor="tx-filter-date-to-m" className="text-xs">To date</Label>
+          <Input id="tx-filter-date-to-m" type="date" className="h-9 text-sm" value={filters.dateTo}
             onChange={e => onChange({ ...filters, dateTo: e.target.value })} />
         </div>
       </div>
@@ -146,13 +146,13 @@ export default function TransactionFilters({ filters, onChange }) {
 
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
-            <Label className="text-xs">From date</Label>
-            <Input type="date" className="h-8 text-xs" value={filters.dateFrom}
+            <Label htmlFor="tx-filter-date-from-d" className="text-xs">From date</Label>
+            <Input id="tx-filter-date-from-d" type="date" className="h-8 text-xs" value={filters.dateFrom}
               onChange={e => onChange({ ...filters, dateFrom: e.target.value })} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">To date</Label>
-            <Input type="date" className="h-8 text-xs" value={filters.dateTo}
+            <Label htmlFor="tx-filter-date-to-d" className="text-xs">To date</Label>
+            <Input id="tx-filter-date-to-d" type="date" className="h-8 text-xs" value={filters.dateTo}
               onChange={e => onChange({ ...filters, dateTo: e.target.value })} />
           </div>
         </div>

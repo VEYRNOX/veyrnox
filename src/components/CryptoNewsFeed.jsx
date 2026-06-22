@@ -98,6 +98,7 @@ export default function CryptoNewsFeed() {
           className="h-7 w-7"
           onClick={() => refetch()}
           disabled={isFetching}
+          aria-label="Refresh market news"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
         </Button>

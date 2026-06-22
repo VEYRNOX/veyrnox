@@ -394,8 +394,8 @@ function DemoDashboard() {
           <DialogHeader><DialogTitle>Add Wallet</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label>Wallet Name</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My ETH Wallet" className="mt-1.5" />
+              <Label htmlFor="add-wallet-name">Wallet Name</Label>
+              <Input id="add-wallet-name" value={name} onChange={e => setName(e.target.value)} placeholder="My ETH Wallet" className="mt-1.5" />
             </div>
             <div>
               <Label>Currency</Label>
@@ -425,8 +425,9 @@ function DemoDashboard() {
           <DialogHeader><DialogTitle>Rename Wallet</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label>Wallet Name</Label>
+              <Label htmlFor="rename-wallet-name">Wallet Name</Label>
               <Input
+                id="rename-wallet-name"
                 value={renameName}
                 onChange={e => setRenameName(e.target.value)}
                 placeholder="My ETH Wallet"

@@ -16,7 +16,7 @@ export default function WatchWallets() {
   const [copied, setCopied] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", network: "Ethereum", currency: "ETH", note: "", is_watch_only: true });
 
-  const { data: wallets = [] } = useQuery({ queryKey: ["watch-wallets"], queryFn: () => base44.entities.Wallet.filter({ is_watch_only: true }) });
+  const { data: wallets = [], isError } = useQuery({ queryKey: ["watch-wallets"], queryFn: () => base44.entities.Wallet.filter({ is_watch_only: true }) });
   const displayed = wallets;
 
   const create = useMutation({
@@ -47,7 +47,9 @@ export default function WatchWallets() {
         Watch-only mode lets you monitor any wallet balance and transactions without importing private keys or seed phrases. Your keys are never required.
       </div>
 
-      {displayed.length === 0 ? (
+      {isError ? (
+        <div className="text-center py-14 text-sm text-destructive">Couldn't load your watched wallets. Please try again.</div>
+      ) : displayed.length === 0 ? (
         <div className="text-center py-14 text-muted-foreground">
           <Eye className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No watched wallets</p>
@@ -70,11 +72,11 @@ export default function WatchWallets() {
                     </div>
                     <div className="flex items-center gap-2 mt-2">
                       <p className="text-xs font-mono text-muted-foreground truncate flex-1">{w.address}</p>
-                      <button onClick={() => copyAddr(w.address, w.id)} className="shrink-0 text-muted-foreground hover:text-foreground">
+                      <button onClick={() => copyAddr(w.address, w.id)} aria-label={`Copy ${w.name} address`} className="shrink-0 text-muted-foreground hover:text-foreground">
                         {copied === w.id ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
                       {explorer && (
-                        <a href={`${explorer}${encodeURIComponent(w.address)}`} target="_blank" rel="noreferrer" className="shrink-0 text-muted-foreground hover:text-primary">
+                        <a href={`${explorer}${encodeURIComponent(w.address)}`} target="_blank" rel="noreferrer" aria-label={`View ${w.name} on block explorer`} className="shrink-0 text-muted-foreground hover:text-primary">
                           <ExternalLink className="h-3.5 w-3.5" />
                         </a>
                       )}
@@ -83,7 +85,7 @@ export default function WatchWallets() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-bold">{w.balance > 0 ? w.balance.toFixed(4) : "—"} {w.currency}</p>
-                    <button onClick={() => remove.mutate(w.id)} className="mt-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => remove.mutate(w.id)} aria-label={`Remove ${w.name} from watch list`} className="mt-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
               </div>

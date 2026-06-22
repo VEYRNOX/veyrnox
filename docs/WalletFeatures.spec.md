@@ -30,9 +30,9 @@
   login activity), the full S4 set (RASP, audit log, risk scoring, cloud backup),
   transaction history, gas control, receive flow, demo mode, desktop web; iOS/Android
   shells running; plus a large analytics, portfolio, and utility feature set.
-- **8 of 10 assets are now LIVE with verified on-chain txids.** ETH, USDC, USDT,
-  MATIC, ARB, OP, BTC, and SOL all have real explorer-confirmed sends. AVAX and BNB
-  remain `receive_only` — send code is built but blocked by no accessible testnet faucet.
+- **All 10 assets are now LIVE with verified on-chain txids.** ETH, USDC, USDT,
+  MATIC, ARB, OP, BTC, SOL, AVAX, and BNB all have real explorer-confirmed sends
+  (AVAX Fuji `0x3697e0d…`, independently re-confirmed 2026-06-22; BNB testnet `0x1a6ee75…`).
 - Internal audit COMPLETE (2026-06-17, 0 crit/high/med, VULN-1–7 closed). Mainnet
   gate open. Independent third-party audit still RECOMMENDED.
 - The gap between built and envisioned IS the roadmap. 390+ tests green.
@@ -105,17 +105,10 @@
      Defer — not near-term.)
 
 ## 6. Security — S4 hardening
-<<<<<<< HEAD
-37. RASP (jailbreak/root/tamper detection) — 🟡 BUILT — browser-level probes active / OS-level detection audit-gated (M2c/M2d)
-38. Audit log — 📋
-39. Risk limits / risk scoring (rule-based) — 📋
-40. Encrypted cloud backup (CIPHERTEXT only, never plaintext keys) — 📋
-=======
 37. RASP (jailbreak/root/tamper detection) — ✅ BUILT/VERIFIED browser-level 2026-06-20 (navigator.webdriver → HOOKED → signing blocked; degradation policy + send-path wiring + I3 guard built + tested); OS-level probes still audit-gated
 38. Audit log — ✅ LIVE/VERIFIED 2026-06-20 (/audit-log; AES-GCM ring-buffer, opt-in, off by default, no-op in decoy/hidden)
 39. Risk limits / risk scoring (rule-based) — ✅ BUILT (on-device rule-based risk score, src/risk/; PROVISIONAL-UNAUDITED)
 40. Encrypted cloud backup (CIPHERTEXT only, never plaintext keys) — ✅ BUILT (Argon2id+AES-GCM, restore verification)
->>>>>>> origin/main
 
 ## 7. AI (ADVISORY ONLY — never holds keys, never signs)
 41. Plain-language transaction explanation — 💡

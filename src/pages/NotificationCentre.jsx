@@ -171,7 +171,7 @@ export default function NotificationCentre() {
                 <p className="text-[10px] text-muted-foreground/60 mt-1">{n.time && !isNaN(new Date(n.time).getTime()) ? formatDistanceToNow(new Date(n.time), { addSuffix: true }) : '—'}</p>
               </div>
               {n.onDismiss && (
-                <button onClick={n.onDismiss} className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                <button onClick={n.onDismiss} aria-label="Dismiss notification" className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}

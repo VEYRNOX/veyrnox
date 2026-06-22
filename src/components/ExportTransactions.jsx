@@ -96,7 +96,7 @@ async function downloadPDF(rows) {
   // Footer
   doc.setFontSize(7);
   doc.setTextColor(160, 160, 160);
-  doc.text("SafeCrypto Wallet — Confidential", 14, doc.internal.pageSize.height - 6);
+  doc.text("Veyrnox — Confidential", 14, doc.internal.pageSize.height - 6);
 
   doc.save(`transactions_${format(new Date(), "yyyy-MM-dd")}.pdf`);
 }

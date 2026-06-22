@@ -17,7 +17,7 @@ export default function WatchlistPage() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ symbol: "", name: "", note: "", target_buy: "", target_sell: "" });
 
-  const { data: items = [], isLoading } = useQuery({
+  const { data: items = [], isLoading, isError } = useQuery({
     queryKey: ["watchlist"],
     queryFn: () => base44.entities.PersonalWatchlist.list(),
   });
@@ -71,6 +71,8 @@ export default function WatchlistPage() {
       {/* Watchlist Table */}
       {isLoading ? (
         <div className="text-center py-12 text-sm text-muted-foreground">Loading...</div>
+      ) : isError ? (
+        <div className="text-center py-12 text-sm text-destructive">Couldn't load your watchlist. Please try again.</div>
       ) : items.length === 0 ? (
         <div className="text-center py-16">
           <Star className="h-10 w-10 text-yellow-400/30 mx-auto mb-3" />
@@ -102,10 +104,12 @@ export default function WatchlistPage() {
                   </div>
                   <div className="flex gap-1">
                     <button onClick={() => { setEditId(item.id); setForm({ symbol: item.symbol, name: item.name || "", note: item.note || "", target_buy: item.target_buy || "", target_sell: item.target_sell || "" }); }}
+                      aria-label={`Edit ${item.symbol}`}
                       className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground transition-colors">
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={() => remove.mutate(item.id)}
+                      aria-label={`Remove ${item.symbol} from watchlist`}
                       className="p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

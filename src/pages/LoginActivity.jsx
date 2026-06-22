@@ -76,7 +76,7 @@ function relativeTime(ts) {
 export default function LoginActivity() {
   const { lastUnlockAt, isDecoy, isHidden } = useWallet();
 
-  const { data: sessions = [], isLoading } = useQuery({
+  const { data: sessions = [], isLoading, isError } = useQuery({
     queryKey: ["user-sessions-activity"],
     queryFn: () => base44.entities.UserSession.list("-last_active", 20),
   });
@@ -152,7 +152,15 @@ export default function LoginActivity() {
           </div>
         )}
 
-        {!isLoading && sessions.length === 0 && (
+        {!isLoading && isError && (
+          <div className="text-center py-12 text-muted-foreground">
+            <Monitor className="h-9 w-9 mx-auto mb-3 opacity-30" />
+            <p className="text-sm font-medium">Couldn't load device records</p>
+            <p className="text-xs mt-1">Please try again.</p>
+          </div>
+        )}
+
+        {!isLoading && !isError && sessions.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Monitor className="h-9 w-9 mx-auto mb-3 opacity-30" />
             <p className="text-sm font-medium">No devices recorded yet</p>

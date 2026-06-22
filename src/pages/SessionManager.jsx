@@ -22,7 +22,7 @@ function parseUA(ua) {
 export default function SessionManager() {
   const queryClient = useQueryClient();
 
-  const { data: sessions = [], isLoading } = useQuery({
+  const { data: sessions = [], isLoading, isError } = useQuery({
     queryKey: ["user-sessions"],
     queryFn: () => base44.entities.UserSession.list("-created_date", 20),
   });
@@ -44,6 +44,8 @@ export default function SessionManager() {
   const revokedSessions = sessions.filter(s => s.status === "revoked");
 
   if (isLoading) return <div className="flex justify-center py-20"><div className="h-8 w-8 rounded-full border-4 border-border border-t-primary animate-spin" /></div>;
+
+  if (isError) return <div className="max-w-2xl mx-auto py-20 text-center text-sm text-destructive">Couldn't load sessions. Please try again.</div>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -104,7 +106,7 @@ export default function SessionManager() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <button onClick={() => revoke.mutate(s.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                <button onClick={() => revoke.mutate(s.id)} aria-label={`Revoke session on ${parseUA(s.user_agent)}`} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                   <ShieldX className="h-4 w-4" />
                 </button>
               </div>

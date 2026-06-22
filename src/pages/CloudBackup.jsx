@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import {
@@ -20,10 +20,12 @@ import {
 // ── Local helpers ────────────────────────────────────────────────────────────
 
 function Field({ label, type = "text", value, onChange, placeholder, maxLength = undefined }) {
+  const fieldId = useId();
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      <label htmlFor={fieldId} className="text-xs font-medium text-muted-foreground">{label}</label>
       <input
+        id={fieldId}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -36,10 +38,12 @@ function Field({ label, type = "text", value, onChange, placeholder, maxLength =
 }
 
 function PinField({ label, value, onChange }) {
+  const fieldId = useId();
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      <label htmlFor={fieldId} className="text-xs font-medium text-muted-foreground">{label}</label>
       <input
+        id={fieldId}
         type="tel"
         inputMode="numeric"
         pattern="\d*"

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Trash2, LayoutGrid } from "lucide-react";
+import { Plus, Trash2, LayoutGrid, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,7 @@ export default function CustomIndexBuilder() {
   const [freq, setFreq] = useState("monthly");
   const [components, setComponents] = useState([{ asset: "BTC", weight: 50 }, { asset: "ETH", weight: 50 }]);
 
-  const { data: indexes = [] } = useQuery({ queryKey: ["custom-indexes"], queryFn: () => base44.entities.CustomIndex.list() });
+  const { data: indexes = [], isError } = useQuery({ queryKey: ["custom-indexes"], queryFn: () => base44.entities.CustomIndex.list() });
 
   const totalWeight = components.reduce((s, c) => s + (parseFloat(/** @type {any} */ (c.weight)) || 0), 0);
 
@@ -46,6 +46,13 @@ export default function CustomIndexBuilder() {
         <Button onClick={() => setOpen(true)} className="gap-2"><Plus className="h-4 w-4" /> New Index</Button>
       </div>
 
+      {isError && (
+        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>Couldn’t load your saved indexes — they may not all be shown.</span>
+        </div>
+      )}
+
       {indexes.length === 0 ? (
         <div className="text-center py-14 text-muted-foreground">
           <LayoutGrid className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -65,7 +72,7 @@ export default function CustomIndexBuilder() {
                     <p className="text-xs text-muted-foreground mt-0.5">Rebalances {idx.rebalance_frequency}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => remove.mutate(idx.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => remove.mutate(idx.id)} aria-label="Delete index" className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -93,8 +100,8 @@ export default function CustomIndexBuilder() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Create Custom Index</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2 max-h-[70vh] overflow-y-auto pr-1">
-            <div><Label>Index Name</Label><Input className="mt-1.5" placeholder="My DeFi Index" value={name} onChange={e => setName(e.target.value)} /></div>
-            <div><Label>Description (optional)</Label><Input className="mt-1.5" value={desc} onChange={e => setDesc(e.target.value)} /></div>
+            <div><Label htmlFor="index-name">Index Name</Label><Input id="index-name" className="mt-1.5" placeholder="My DeFi Index" value={name} onChange={e => setName(e.target.value)} /></div>
+            <div><Label htmlFor="index-desc">Description (optional)</Label><Input id="index-desc" className="mt-1.5" value={desc} onChange={e => setDesc(e.target.value)} /></div>
             <div><Label>Rebalance Frequency</Label>
               <Select value={freq} onValueChange={setFreq}>
                 <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
@@ -115,7 +122,7 @@ export default function CustomIndexBuilder() {
                     </Select>
                     <Input type="number" min="0" max="100" value={c.weight} onChange={e => updateComponent(i, "weight", parseFloat(e.target.value) || 0)} className="w-20" />
                     <span className="text-xs text-muted-foreground">%</span>
-                    <button onClick={() => removeComponent(i)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => removeComponent(i)} aria-label="Remove asset" className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 ))}
               </div>

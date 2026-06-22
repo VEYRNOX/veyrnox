@@ -277,9 +277,10 @@ export default function DuressPin() {
 
         <div className="space-y-4">
           <div>
-            <Label>New Duress PIN</Label>
+            <Label htmlFor="duress-new-pin">New Duress PIN</Label>
             <div className="relative mt-1.5">
               <Input
+                id="duress-new-pin"
                 type={showPin ? "text" : "password"}
                 maxLength={64}
                 placeholder="At least 4 characters — different from your real PIN"
@@ -291,14 +292,16 @@ export default function DuressPin() {
                 type="button"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 onClick={() => setShowPin((s) => !s)}
+                aria-label={showPin ? "Hide PIN" : "Show PIN"}
               >
                 {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
           <div>
-            <Label>Confirm Duress PIN</Label>
+            <Label htmlFor="duress-confirm-pin">Confirm Duress PIN</Label>
             <Input
+              id="duress-confirm-pin"
               type={showPin ? "text" : "password"}
               maxLength={64}
               placeholder="Re-enter PIN"
@@ -326,7 +329,7 @@ export default function DuressPin() {
                 </p>
                 <div className="flex items-center gap-2 p-2 rounded bg-background">
                   <code className="flex-1 break-all text-foreground">{savedAddr}</code>
-                  <button onClick={() => copy(savedAddr, "decoy-addr")} title="Copy decoy address" className="shrink-0">
+                  <button onClick={() => copy(savedAddr, "decoy-addr")} title="Copy decoy address" aria-label="Copy decoy address" className="shrink-0">
                     {copied === "decoy-addr" ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
                   </button>
                 </div>
@@ -400,8 +403,9 @@ export default function DuressPin() {
           {/* Free-form unlock to prove a wrong PIN fails identically */}
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <Label className="text-xs">Or type any password</Label>
+              <Label htmlFor="duress-try-pw" className="text-xs">Or type any password</Label>
               <Input
+                id="duress-try-pw"
                 className="mt-1"
                 value={tryPw}
                 onChange={(e) => setTryPw(e.target.value)}

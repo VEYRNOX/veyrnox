@@ -218,7 +218,7 @@ export default function ReferralTracker() {
               autoCorrect="off"
               className="mono-value tracking-widest"
             />
-            <Button onClick={handleRedeem} disabled={!redeemInput.trim() || redeemBusy} variant="outline">
+            <Button onClick={handleRedeem} disabled={!redeemInput.trim() || redeemBusy} variant="outline" aria-label="Apply referral code">
               {redeemBusy ? '…' : <ChevronRight className="h-4 w-4" />}
             </Button>
           </div>

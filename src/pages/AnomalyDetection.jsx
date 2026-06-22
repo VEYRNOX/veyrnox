@@ -62,7 +62,7 @@ export default function AnomalyDetection() {
   const [scanResult, setScanResult] = useState(null);
   const [dismissed, setDismissed] = useState([]);
 
-  const { data: transactions = [], isLoading } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 200) });
+  const { data: transactions = [], isLoading, isError } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 200) });
   const { data: fraudAlerts = [] } = useQuery({ queryKey: ["fraud-alerts"], queryFn: () => base44.entities.FraudAlert.list("-created_date", 20) });
 
   const scan = () => {
@@ -91,9 +91,9 @@ export default function AnomalyDetection() {
           <ScanLine className="h-6 w-6 text-primary shrink-0" />
           <div>
             <p className="font-semibold text-sm">Pattern Scanner</p>
-            <p className="text-xs text-muted-foreground">{isLoading ? "Loading transactions…" : `${transactions.length} transactions loaded · 3 heuristic checks`}</p>
+            <p className={`text-xs ${isError ? "text-destructive" : "text-muted-foreground"}`}>{isLoading ? "Loading transactions…" : isError ? "Couldn’t load transactions — scan may be incomplete." : `${transactions.length} transactions loaded · 3 heuristic checks`}</p>
           </div>
-          <Button onClick={scan} disabled={scanning || isLoading} className="gap-2 ml-auto">
+          <Button onClick={scan} disabled={scanning || isLoading || isError} className="gap-2 ml-auto">
             <RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
             {scanning ? "Scanning…" : scanResult ? "Re-scan" : "Run Scan"}
           </Button>

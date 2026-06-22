@@ -218,7 +218,7 @@ export default function PriceAlerts() {
                   {alert.note && <span className="text-xs text-muted-foreground">· {alert.note}</span>}
                 </div>
               </div>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
+              <Button size="icon" variant="ghost" aria-label="Delete alert" className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
                 onClick={() => deleteAlert.mutate(alert.id)}>
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

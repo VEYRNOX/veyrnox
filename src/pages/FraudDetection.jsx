@@ -181,22 +181,23 @@ export default function FraudDetection() {
   const [scanResult, setScanResult] = useState(null);
   const [dismissed, setDismissed] = useState([]);
 
-  const { data: transactions = [], isLoading: txLoading } = useQuery({
+  const { data: transactions = [], isLoading: txLoading, isError: txError } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 200),
   });
 
-  const { data: addressBook = [], isLoading: abLoading } = useQuery({
+  const { data: addressBook = [], isLoading: abLoading, isError: abError } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list(),
   });
 
-  const { data: fraudAlerts = [], isLoading: faLoading } = useQuery({
+  const { data: fraudAlerts = [], isLoading: faLoading, isError: faError } = useQuery({
     queryKey: ["fraud-alerts"],
     queryFn: () => base44.entities.FraudAlert.list("-created_date", 50),
   });
 
   const isLoading = txLoading || abLoading || faLoading;
+  const isError = txError || abError || faError;
 
   const runScan = () => {
     const anomalies = detectAnomalies(transactions);
@@ -258,15 +259,17 @@ export default function FraudDetection() {
           <ScanLine className="h-6 w-6 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm">Scanner</p>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-xs ${isError ? "text-destructive" : "text-muted-foreground"}`}>
               {isLoading
                 ? "Loading data…"
+                : isError
+                ? "Couldn't load local data. Please try again."
                 : `${transactions.length} transactions · ${addressBook.length} address book entries · 3 checks`}
             </p>
           </div>
           <Button
             onClick={runScan}
-            disabled={isLoading}
+            disabled={isLoading || isError}
             className="gap-2 shrink-0"
           >
             <RefreshCw className="h-4 w-4" />

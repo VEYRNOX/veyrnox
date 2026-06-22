@@ -142,10 +142,18 @@ export default function Layout() {
     ]);
   };
 
-  // Global ⌘K / Ctrl+K shortcut
-  typeof window !== "undefined" && (window.onkeydown = (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setCmdOpen(true); }
-  });
+  // Global ⌘K / Ctrl+K shortcut. Registered once via useEffect with a matching
+  // removeEventListener cleanup so the handler isn't re-added on every render and
+  // is torn down on unmount (the previous render-time window.onkeydown assignment
+  // leaked across renders).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setCmdOpen(true); }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <AccessibilityWrapper>

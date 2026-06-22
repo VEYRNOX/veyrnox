@@ -81,6 +81,7 @@ export default function WatchlistWidget() {
                 </div>
                 <button
                   onClick={() => remove.mutate(item.id)}
+                  aria-label={`Remove ${item.symbol} from watchlist`}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
                 >
                   <Trash2 className="h-3 w-3" />

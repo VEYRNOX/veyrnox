@@ -133,7 +133,7 @@ export default function OnChainAnalytics() {
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Address Lookup</p>
         <div className="flex gap-2">
           <Input value={searchAddress} onChange={e => setSearchAddress(e.target.value)} placeholder="0x... or bc1q..." className="font-mono text-sm" onKeyDown={e => e.key === "Enter" && lookupAddress()} />
-          <Button onClick={lookupAddress} disabled={searching} variant="outline">
+          <Button onClick={lookupAddress} disabled={searching} variant="outline" aria-label="Look up address">
             {searching ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
           </Button>
         </div>
