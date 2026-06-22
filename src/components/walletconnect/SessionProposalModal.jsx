@@ -1,6 +1,7 @@
 import styles from './SessionProposalModal.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { useState } from 'react';
+import { checkDappDomain } from '@/risk/knownBadDapps.js';
 
 export function SessionProposalModal({ proposal, onClose }) {
   const { approveSession, rejectSession, evmAddress } = useWalletConnect();
@@ -11,6 +12,9 @@ export function SessionProposalModal({ proposal, onClose }) {
   const requiredNs = proposal.params?.requiredNamespaces ?? {};
   const methods = requiredNs.eip155?.methods ?? [];
   const chains = requiredNs.eip155?.chains ?? [];
+
+  const [ackKnownBad, setAckKnownBad] = useState(false);
+  const dapp = checkDappDomain(meta.url);
 
   async function handleApprove() {
     setBusy(true);
@@ -39,6 +43,22 @@ export function SessionProposalModal({ proposal, onClose }) {
     <div className={styles.overlay}>
       <div className={styles.modal}>
         <h2 className={styles.title}>Connect to dApp?</h2>
+
+        {dapp.flagged && (
+          <div className={styles.riskAlert}>
+            <p className={styles.riskTitle}>⚠ Known scam / phishing site</p>
+            <p className={styles.riskBody}>{dapp.reason}</p>
+            <p className={styles.riskDomain}>{dapp.domain}</p>
+            <label className={styles.riskCheck}>
+              <input
+                type="checkbox"
+                checked={ackKnownBad}
+                onChange={(e) => setAckKnownBad(e.target.checked)}
+              />
+              I understand this site is flagged as a phishing risk and want to connect anyway.
+            </label>
+          </div>
+        )}
 
         <div className={styles.dappInfo}>
           {meta.icons?.[0] && (
@@ -81,7 +101,7 @@ export function SessionProposalModal({ proposal, onClose }) {
           <button className={styles.rejectBtn} onClick={handleReject} disabled={busy}>
             Reject
           </button>
-          <button className={styles.approveBtn} onClick={handleApprove} disabled={busy}>
+          <button className={styles.approveBtn} onClick={handleApprove} disabled={busy || (dapp.flagged && !ackKnownBad)}>
             {busy ? 'Connecting…' : 'Connect'}
           </button>
         </div>
