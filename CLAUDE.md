@@ -54,8 +54,10 @@ asset selector chooses which asset/chain to send. EVM assets (ETH, MATIC, ARB, O
 BNB) share one secp256k1 m/44'/60' address; ERC-20s (USDC/USDT) are contract calls on it;
 BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their own addresses and are fully
 wired — both are LIVE with verified testnet txids (see `src/wallet-core/assets.js`).
-AVAX and BNB share the EVM address but remain RECEIVE_ONLY: send is built but unverified
-due to no accessible testnet faucet.
+AVAX and BNB share the EVM address and are now LIVE as well — both sent via the full
+in-app UI path on testnet (AVAX Fuji `0x3697e0d…`, re-confirmed on-chain 2026-06-22;
+BNB BSC-testnet `0x1a6ee75…`, per session record + owner confirmation, not yet
+independently re-confirmed on-chain). All 10 assets are LIVE — see `src/wallet-core/assets.js`.
 
 ## Per-chain gotchas
 

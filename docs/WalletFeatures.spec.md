@@ -30,9 +30,9 @@
   login activity), the full S4 set (RASP, audit log, risk scoring, cloud backup),
   transaction history, gas control, receive flow, demo mode, desktop web; iOS/Android
   shells running; plus a large analytics, portfolio, and utility feature set.
-- **8 of 10 assets are now LIVE with verified on-chain txids.** ETH, USDC, USDT,
-  MATIC, ARB, OP, BTC, and SOL all have real explorer-confirmed sends. AVAX and BNB
-  remain `receive_only` — send code is built but blocked by no accessible testnet faucet.
+- **All 10 assets are now LIVE with verified on-chain txids.** ETH, USDC, USDT,
+  MATIC, ARB, OP, BTC, SOL, AVAX, and BNB all have real explorer-confirmed sends
+  (AVAX Fuji `0x3697e0d…`, independently re-confirmed 2026-06-22; BNB testnet `0x1a6ee75…`).
 - Internal audit COMPLETE (2026-06-17, 0 crit/high/med, VULN-1–7 closed). Mainnet
   gate open. Independent third-party audit still RECOMMENDED.
 - The gap between built and envisioned IS the roadmap. 390+ tests green.
