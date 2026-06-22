@@ -68,8 +68,11 @@ export default function NetworkManager() {
               <span className="font-mono truncate max-w-[200px]">{active.rpc_url}</span>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-1.5 text-xs text-success font-semibold">
-            <Wifi className="h-3.5 w-3.5" /> Connected
+          <div className="ml-auto flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-1.5 text-xs text-success font-semibold">
+              <Wifi className="h-3.5 w-3.5" /> Selected
+            </div>
+            <p className="text-[10px] text-muted-foreground">selected network — not a live connection test</p>
           </div>
         </div>
       )}

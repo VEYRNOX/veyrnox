@@ -128,6 +128,10 @@ export default function AdvancedAnalytics() {
           </div>
         ))}
       </div>
+      <div className="flex items-start gap-2 px-1">
+        <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
+        <p className="text-[11px] text-muted-foreground">Portfolio Risk and Sharpe Ratio are illustrative reference figures, not live risk data. Diversification and Stable Ratio are calculated from your wallet.</p>
+      </div>
       <ReferenceRateNote />
 
       <Tabs defaultValue="performance">
@@ -178,6 +182,10 @@ export default function AdvancedAnalytics() {
         </TabsContent>
 
         <TabsContent value="risk" className="mt-3 space-y-4">
+          <div className="flex items-start gap-2 px-1">
+            <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground">Volatility and Sharpe values are illustrative reference figures, not live risk data.</p>
+          </div>
           <div className="p-4 rounded-xl border border-border bg-card">
             <p className="text-sm font-semibold mb-3">Risk / Return Profile</p>
             <ResponsiveContainer width="100%" height={220}>
@@ -219,6 +227,10 @@ export default function AdvancedAnalytics() {
         </TabsContent>
 
         <TabsContent value="correlation" className="mt-3 space-y-4">
+          <div className="flex items-start gap-2 px-1">
+            <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground">Correlation values are illustrative reference figures, not live risk data.</p>
+          </div>
           <div className="p-4 rounded-xl border border-border bg-card">
             <p className="text-sm font-semibold mb-1">Asset Correlation Matrix</p>
             <p className="text-xs text-muted-foreground mb-3">How your assets move together (1 = perfect correlation)</p>

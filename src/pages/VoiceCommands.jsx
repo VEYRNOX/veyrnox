@@ -117,7 +117,7 @@ export default function VoiceCommands() {
 
       <div className="p-3 rounded-xl bg-secondary/30 border border-border text-xs text-muted-foreground">
         <Volume2 className="h-3.5 w-3.5 inline mr-1.5" />
-        Voice commands use your browser's built-in Web Speech API. No audio is sent to external servers.
+        Voice commands use your browser&apos;s built-in Web Speech API. Audio is processed by your browser&apos;s speech engine — some browsers (e.g. Chrome) send it to the vendor&apos;s cloud to transcribe; nothing is sent to Veyrnox.
       </div>
     </div>
   );

@@ -161,6 +161,18 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Use device biometrics as an app-layer unlock gate where the platform supports it, falling back to passkey or password. Biometrics gate access; they do not custody keys.',
       },
       {
+        name: 'PIN Unlock',
+        status: 'built',
+        summary: 'Numeric-PIN unlock over Argon2id (no hardware KEK yet)',
+        explanation: 'Built (UNAUDITED-PROVISIONAL). Numeric-PIN onboarding and returning-PIN unlock over the SAME Argon2id vault as the password path, with Face-ID-to-decoy and a deterministic decoy fallback. HONEST LIMITATION: there is no hardware-bound key (Secure Enclave / StrongBox KEK) yet, so a numeric PIN over Argon2id is offline-exhaustible on a seized device — the hardware-KEK fast-follow (native + audit, real-device verified) is what closes it. Until then this is a convenience unlock gate, not a hardware guarantee.',
+      },
+      {
+        name: 'Two-Factor at Critical Actions',
+        status: 'built',
+        summary: 'PIN + Action Password, or PIN + Passkey, on sensitive actions',
+        explanation: 'Built (Security Settings → "Two-factor at critical actions", UNAUDITED-PROVISIONAL). Opt-in second factor required before sensitive actions — send, reveal recovery phrase, set duress PIN, create/hide a wallet. Method 1: PIN + Action Password — a second KNOWLEDGE factor, per wallet-set, stored inside the encrypted container (two Argon2id checks run sequentially). Method 2: PIN + Passkey / FIDO2 — a POSSESSION factor that fails closed on any cancel/timeout/error (device-global). 5 wrong attempts locks the app. Enforces on the PRIMARY set today; decoy/hidden parity is audit-gated (the fixed-length-container storage groundwork has landed, but enforcement + collection UI are pending). Not on-chain or audit-verified.',
+      },
+      {
         name: 'Native Secure Storage',
         status: 'roadmap',
         summary: 'Secure Enclave / Android Keystore hardening',
@@ -287,7 +299,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Risk Limits / Risk Scoring',
         status: 'built',
         summary: 'Rule-based, transparent transaction risk scoring',
-        explanation: 'A transparent, rule-based risk score over a pending transaction from on-device signals (fresh recipient, unlimited approval, fresh-spender approval, address poisoning, ENS mismatch, dust input, calldata mismatch, value anomaly) combined into a level. Built (unaudited-provisional) in src/risk/; rule-based and explainable, never an opaque custodial trust score.',
+        explanation: 'A transparent, rule-based risk score over a pending transaction from on-device signals (fresh recipient, unlimited approval, fresh-spender approval, address poisoning, ENS mismatch, dust input, calldata mismatch, value anomaly) combined into a single pre-sign verdict. This verdict is the authoritative pre-sign gate wired into Send → verify: a high-RISK verdict requires an explicit "Sign anyway" acknowledgement before the send can proceed, an INFO verdict shows a non-blocking chip, and an INDETERMINATE verdict escalates to caution (fail-closed). Built (unaudited-provisional) in src/risk/; local-only, rule-based and explainable, warns rather than silently blocks, and never claims a transaction is "safe" — never an opaque custodial trust score.',
       },
     ],
   },

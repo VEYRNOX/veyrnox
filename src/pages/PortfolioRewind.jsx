@@ -2,7 +2,7 @@ import { USD_RATES } from "@/lib/cryptos";
 import { useState, useMemo } from "react";
 import { useWallet } from "@/lib/WalletProvider";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/lib/recharts";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 
@@ -16,7 +16,7 @@ const PERIODS = [
 
 export default function PortfolioRewind() {
   const { isUnlocked } = useWallet();
-  const { portfolio, history, prices, pricesEnabled } = useAnalytics();
+  const { portfolio, history, historyPartial, prices, pricesEnabled } = useAnalytics();
   const [selectedPeriod, setSelectedPeriod] = useState("90d");
 
   const period = PERIODS.find(p => p.key === selectedPeriod);
@@ -104,6 +104,13 @@ export default function PortfolioRewind() {
           </button>
         ))}
       </div>
+
+      {historyPartial && (
+        <div className="p-4 rounded-xl border border-caution/30 bg-caution/10 flex items-start gap-2 text-sm text-caution">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>History incomplete — some chains couldn't be read; this replay may be understated.</span>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="p-5 rounded-xl border border-border bg-card text-center space-y-1">

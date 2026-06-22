@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { Copy, Cpu, CheckCircle, XCircle, Loader2, Usb, ShieldCheck, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHardwareWallet, DEVICE } from '@/context/HardwareWalletContext';
-import { signAndBroadcastEvmLedger, signAndBroadcastEvmTrezor } from '@/wallet-core/evm/hw-send';
-import { signAndBroadcastBtcLedger, signAndBroadcastBtcTrezor } from '@/wallet-core/btc/hw-send';
-import { signAndBroadcastSolLedger, signAndBroadcastSolTrezor } from '@/wallet-core/sol/hw-send';
+
+// hw-send modules are NOT imported statically. They carry top-level
+// `import Eth from '@ledgerhq/hw-app-eth'` (and sibling Ledger packages)
+// which fail to resolve in Capacitor WKWebView (no WebHID / no Node stream
+// shims). All three modules are loaded lazily, inside the send handler,
+// only after confirming the user is on a platform where they can work.
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,7 +37,7 @@ function AddressRow({ label, address }) {
 
 // ── Inline send form ──────────────────────────────────────────────────────────
 
-function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, deviceType }) {
+function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, deviceType, webHidSupported }) {
   const [to, setTo]         = useState('');
   const [amount, setAmount] = useState('');
   const [sending, setSending] = useState(false);
@@ -43,24 +46,38 @@ function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, devic
 
   const isLedger = deviceType === DEVICE.LEDGER;
 
+  // Guard: hw-send modules import @ledgerhq/* at top-level, which crashes on
+  // iOS/WKWebView. Never attempt a dynamic import if WebHID is absent.
+  const canSend = webHidSupported;
+
   async function send(e) {
     e.preventDefault();
+    if (!canSend) return;
+
     setSending(true);
     setErr(null);
     setResult(null);
     try {
       let res;
       if (chain === 'eth') {
+        // Lazy import — kept in try/catch so a resolution failure surfaces as
+        // an inline error rather than an uncaught throw.
+        const { signAndBroadcastEvmLedger, signAndBroadcastEvmTrezor } =
+          await import('@/wallet-core/evm/hw-send');
         res = isLedger
           ? await signAndBroadcastEvmLedger({ transport: transport.current, networkKey, fromAddress: address, to, amountEth: amount, fee: null })
           : await signAndBroadcastEvmTrezor({ networkKey, fromAddress: address, to, amountEth: amount, fee: null });
         setResult({ id: res.hash, url: res.explorerUrl });
       } else if (chain === 'btc') {
+        const { signAndBroadcastBtcLedger, signAndBroadcastBtcTrezor } =
+          await import('@/wallet-core/btc/hw-send');
         res = isLedger
           ? await signAndBroadcastBtcLedger({ transport: transport.current, networkKey, fromAddress: address, btcPublicKeyHex: publicKeyHex, toAddress: to, amountSats: Math.round(parseFloat(amount) * 1e8) })
           : await signAndBroadcastBtcTrezor({ networkKey, fromAddress: address, btcPublicKeyHex: publicKeyHex, toAddress: to, amountSats: Math.round(parseFloat(amount) * 1e8) });
         setResult({ id: res.txid, url: res.explorerUrl });
       } else {
+        const { signAndBroadcastSolLedger, signAndBroadcastSolTrezor } =
+          await import('@/wallet-core/sol/hw-send');
         res = isLedger
           ? await signAndBroadcastSolLedger({ transport: transport.current, networkKey, fromAddress: address, toAddress: to, amountLamports: Math.round(parseFloat(amount) * 1e9) })
           : await signAndBroadcastSolTrezor({ networkKey, fromAddress: address, toAddress: to, amountLamports: Math.round(parseFloat(amount) * 1e9) });
@@ -80,16 +97,28 @@ function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, devic
   return (
     <form onSubmit={send} className="space-y-3 pt-3 border-t border-border">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Send</p>
+
+      {!canSend && (
+        <div className="flex items-start gap-2 text-sm text-caution">
+          <XCircle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
+          <span>
+            Hardware signing requires WebHID (Chrome or Edge on desktop).
+            This browser or app does not support it.
+          </span>
+        </div>
+      )}
+
       <div className="space-y-2">
         <input
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-40"
           placeholder="Recipient address"
           value={to}
           onChange={e => setTo(e.target.value)}
           required
+          disabled={!canSend}
         />
         <input
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-40"
           placeholder={`${labels[chain]} (e.g. ${placeholders[chain]})`}
           value={amount}
           onChange={e => setAmount(e.target.value)}
@@ -97,11 +126,12 @@ function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, devic
           type="number"
           step="any"
           min="0"
+          disabled={!canSend}
         />
       </div>
       <button
         type="submit"
-        disabled={sending}
+        disabled={sending || !canSend}
         className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -138,7 +168,7 @@ function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, devic
 
 // ── Chain card ────────────────────────────────────────────────────────────────
 
-function ChainCard({ title, addressLabel, address, publicKeyHex, chain, networkKey, transport, deviceType }) {
+function ChainCard({ title, addressLabel, address, publicKeyHex, chain, networkKey, transport, deviceType, webHidSupported }) {
   if (!address) return null;
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -151,6 +181,7 @@ function ChainCard({ title, addressLabel, address, publicKeyHex, chain, networkK
         publicKeyHex={publicKeyHex}
         transport={transport}
         deviceType={deviceType}
+        webHidSupported={webHidSupported}
       />
     </div>
   );
@@ -171,6 +202,51 @@ export default function HardwareWalletPage() {
 
   const isLedger  = deviceType === DEVICE.LEDGER;
   const connected = status === 'connected';
+
+  // When WebHID is absent we are almost certainly on iOS / WKWebView.
+  // Show a clear, standalone unavailability card so the user never sees a raw
+  // TypeError from a failed module resolution.
+  if (!webHidSupported) {
+    return (
+      <div className="max-w-2xl mx-auto p-6 space-y-5">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-muted">
+            <Cpu className="h-6 w-6 text-foreground" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Hardware Wallet</h1>
+            <p className="text-sm text-muted-foreground">Ledger & Trezor — ETH · BTC · SOL</p>
+          </div>
+        </div>
+
+        {/* Unavailability card */}
+        <div className="rounded-xl border border-caution/40 bg-caution/10 px-5 py-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-5 w-5 text-caution shrink-0" aria-hidden="true" />
+            <p className="text-sm font-medium text-caution">
+              Hardware wallet not available in this app
+            </p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Ledger and Trezor signing require WebHID, which is not supported in
+            this browser or in-app browser (WKWebView). To use a hardware wallet,
+            open Veyrnox in Chrome or Edge on a desktop computer.
+          </p>
+        </div>
+
+        {/* Honest limits */}
+        <div className="rounded-xl border border-border bg-muted/40 px-5 py-3">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Status:</span>{' '}
+            Address derivation and transaction signing are BUILT for ETH, BTC, and SOL on both
+            Ledger and Trezor. Unverified — no on-device testnet txid confirmed yet. ERC-20
+            hardware signing and multi-account paths are not yet wired.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-5">
@@ -212,17 +288,6 @@ export default function HardwareWalletPage() {
           })}
         </div>
       </div>
-
-      {/* WebHID warning — Ledger only */}
-      {isLedger && !webHidSupported && (
-        <div className="rounded-xl border border-caution/40 bg-caution/10 px-4 py-3 flex items-start gap-3">
-          <XCircle className="h-5 w-5 text-caution mt-0.5 shrink-0" />
-          <p className="text-sm text-caution">
-            <span className="font-medium">WebHID not supported in this browser.</span>{' '}
-            Chrome or Edge is required for Ledger.
-          </p>
-        </div>
-      )}
 
       {/* Connection card */}
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -314,6 +379,7 @@ export default function HardwareWalletPage() {
             networkKey="sepolia"
             transport={transport}
             deviceType={deviceType}
+            webHidSupported={webHidSupported}
           />
           <ChainCard
             title="Bitcoin (BTC)"
@@ -324,6 +390,7 @@ export default function HardwareWalletPage() {
             networkKey="testnet"
             transport={transport}
             deviceType={deviceType}
+            webHidSupported={webHidSupported}
           />
           <ChainCard
             title="Solana (SOL)"
@@ -334,6 +401,7 @@ export default function HardwareWalletPage() {
             networkKey="devnet"
             transport={transport}
             deviceType={deviceType}
+            webHidSupported={webHidSupported}
           />
         </>
       )}

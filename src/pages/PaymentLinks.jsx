@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { isValidAddressForCurrency } from "@/lib/addressValidation";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const STATUS_STYLES = {
@@ -43,6 +44,13 @@ export default function PaymentLinks() {
     mutationFn: (/** @type {any} */ id) => base44.entities.PaymentLink.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payment-links"] }),
   });
+
+  // Validate the payment destination against the selected currency before the link
+  // can be generated — a typo or wrong-network address baked into a shareable URL
+  // is hard to correct after the fact.
+  const trimmedAddr = form.wallet_address.trim();
+  const addrValid = isValidAddressForCurrency(trimmedAddr, form.currency);
+  const showAddrError = trimmedAddr.length > 0 && !addrValid;
 
   const copyLink = (link) => {
     const url = `${window.location.origin}/pay/${link.link_id}?to=${link.wallet_address}&amount=${link.amount}&currency=${link.currency}`;
@@ -126,9 +134,22 @@ export default function PaymentLinks() {
               </div>
               <div><Label>Amount (optional)</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
             </div>
-            <div><Label>Your Wallet Address</Label><Input value={form.wallet_address} onChange={e => setForm(f => ({ ...f, wallet_address: e.target.value }))} placeholder="0x..." className="mt-1.5 font-mono text-xs" /></div>
+            <div>
+              <Label htmlFor="pl-wallet-address">Your Wallet Address</Label>
+              <Input
+                id="pl-wallet-address"
+                value={form.wallet_address}
+                onChange={e => setForm(f => ({ ...f, wallet_address: e.target.value }))}
+                placeholder="0x..."
+                className={`mt-1.5 font-mono text-xs${showAddrError ? " border-destructive focus-visible:ring-destructive" : ""}`}
+                aria-invalid={showAddrError}
+              />
+              {showAddrError && (
+                <p className="text-xs text-destructive mt-1.5">Invalid {form.currency} address format</p>
+              )}
+            </div>
             <div><Label>Note / Memo (optional)</Label><Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="What is this payment for?" className="mt-1.5" /></div>
-            <Button className="w-full" onClick={() => create.mutate()} disabled={!form.title || !form.wallet_address || create.isPending}>Generate Link</Button>
+            <Button className="w-full" onClick={() => create.mutate()} disabled={!form.title || !form.wallet_address || showAddrError || create.isPending}>Generate Link</Button>
           </div>
         </DialogContent>
       </Dialog>
