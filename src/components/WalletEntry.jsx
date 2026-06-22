@@ -77,6 +77,8 @@ import { hasStoredUnlockSecret } from "@/lib/biometricUnlock";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
+import { checkPinStrength } from "@/lib/pinStrength";
+import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import { setPendingReferral } from "@/lib/referral";
@@ -578,7 +580,8 @@ export default function WalletEntry() {
   // ---- Create: generate the wallet (vault password mandatory) ----
   const handleGenerate = async () => {
     setError("");
-    if (genPassword.length < 8) { setError("Choose a vault password of at least 8 characters."); return; }
+    const pw = checkVaultPasswordStrength(genPassword);
+    if (!pw.ok) { setError(pw.reason); return; }
     setBusy(true);
     try {
       // Stash the password so we can cache it for Face ID if the user opts in on
@@ -617,7 +620,8 @@ export default function WalletEntry() {
   // ---- Import an existing seed (vault password mandatory) ----
   const handleImport = async () => {
     setError("");
-    if (importPassword.length < 8) { setError("Choose a vault password of at least 8 characters."); return; }
+    const pw = checkVaultPasswordStrength(importPassword);
+    if (!pw.ok) { setError(pw.reason); return; }
     setBusy(true);
     try {
       await importWallet(importPhrase.trim(), importPassword); // validates BIP-39 + unlocks
@@ -923,7 +927,11 @@ export default function WalletEntry() {
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Choose a 6-digit PIN</p>
               <p className="text-xs text-muted-foreground">This unlocks your wallet. A 6-digit PIN is strong against a quick grab, but not against someone who keeps your device to try PINs offline — so guard the device itself.</p>
-              <PinPad value={realPin} onChange={setRealPin} onComplete={() => { setError(""); setRealPinConfirm(""); setPinStep("real-confirm"); }} />
+              <PinPad value={realPin} onChange={setRealPin} onComplete={(p) => {
+                const s = checkPinStrength(p);
+                if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
+                setError(""); setRealPinConfirm(""); setPinStep("real-confirm");
+              }} />
             </div>
           )}
 
@@ -979,7 +987,11 @@ export default function WalletEntry() {
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Choose a new 6-digit PIN</p>
               <p className="text-xs text-muted-foreground">This unlocks your restored wallet. Your seed stays encrypted on this device.</p>
-              <PinPad value={realPin} onChange={setRealPin} onComplete={() => { setError(""); setRealPinConfirm(""); setPinStep("real-confirm"); }} />
+              <PinPad value={realPin} onChange={setRealPin} onComplete={(p) => {
+                const s = checkPinStrength(p);
+                if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
+                setError(""); setRealPinConfirm(""); setPinStep("real-confirm");
+              }} />
             </div>
           )}
 
@@ -1010,7 +1022,7 @@ export default function WalletEntry() {
             <div>
               <Label>Vault Password</Label>
               <Input type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
-              <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. Minimum 8 characters. This is your real key — required, never skipped.</p>
+              <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. Minimum 12 characters. This is your real key — required, never skipped.</p>
             </div>
             <Button className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
               {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Set Password & Generate Seed
@@ -1079,7 +1091,7 @@ export default function WalletEntry() {
         <div>
           <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>
           <Input type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
-          <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. Minimum 8 characters.</p>
+          <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. Minimum 12 characters.</p>
         </div>
 
         {/* Optional Face ID offer folded onto the SAME screen (skippable). */}
