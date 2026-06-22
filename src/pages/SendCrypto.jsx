@@ -738,7 +738,14 @@ export default function SendCrypto() {
           queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet.address] });
           queryClient.invalidateQueries({ queryKey: ["transactions"] });
           notifySendConfirmed({ amount: `${amount} ${selectedWallet.currency}`, to: toAddress, ts: Date.now() });
-        }).catch(() => {/* surface a "still pending / failed" state in UI */});
+        }).catch(() => {
+          // The 1-conf receipt failed (RPC error/timeout, or the tx was dropped/
+          // replaced). The tx row stays 'pending' (honest); surface it so the user
+          // checks the explorer rather than assuming it confirmed. Fire-and-forget
+          // (I4) — a notification failure must never unwind the send path.
+          queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          toast("Couldn't confirm this transaction on-chain yet — it may still be pending. Check the explorer.");
+        });
       } else {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
         // BTC/SOL: no 1-conf callback, so notify immediately on broadcast (fire-and-forget, I4).
