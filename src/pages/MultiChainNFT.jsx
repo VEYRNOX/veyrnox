@@ -149,7 +149,7 @@ export default function MultiChainNFT() {
       {/* Controls */}
       <div className="flex items-center gap-2">
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="h-8 text-xs w-32"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-32" aria-label="Filter by status"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             {["holding","listed","sold"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
@@ -185,17 +185,17 @@ export default function MultiChainNFT() {
               <div><Label>NFT Name</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Bored Ape #1234" className="mt-1.5" /></div>
               <div><Label>Collection</Label><Input value={form.collection} onChange={e => setForm(f => ({ ...f, collection: e.target.value }))} placeholder="BAYC" className="mt-1.5" /></div>
             </div>
-            <div><Label>Chain</Label>
+            <div><Label id="nft-chain-label">Chain</Label>
               <Select value={form.chain} onValueChange={v => setForm(f => ({ ...f, chain: v }))}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="nft-chain-label"><SelectValue /></SelectTrigger>
                 <SelectContent>{CHAINS.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Token ID</Label><Input value={form.token_id} onChange={e => setForm(f => ({ ...f, token_id: e.target.value }))} className="mt-1.5" /></div>
-              <div><Label>Status</Label>
+              <div><Label id="nft-status-label">Status</Label>
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5" aria-labelledby="nft-status-label"><SelectValue /></SelectTrigger>
                   <SelectContent>{["holding","listed","sold"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>

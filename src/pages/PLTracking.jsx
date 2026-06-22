@@ -183,16 +183,16 @@ export default function PLTracking() {
           <div className="space-y-3 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Asset</Label>
+                <Label id="plt-asset-label">Asset</Label>
                 <Select value={form.asset} onValueChange={v => setForm(p => ({ ...p, asset: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1" aria-labelledby="plt-asset-label"><SelectValue /></SelectTrigger>
                   <SelectContent>{ASSETS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Status</Label>
+                <Label id="plt-status-label">Status</Label>
                 <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1" aria-labelledby="plt-status-label"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="open">Open</SelectItem><SelectItem value="closed">Closed</SelectItem></SelectContent>
                 </Select>
               </div>

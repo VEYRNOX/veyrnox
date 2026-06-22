@@ -265,9 +265,9 @@ export default function SecurityCenter() {
           <DialogHeader><DialogTitle>Add Transaction Limit</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label>Currency</Label>
+              <Label id="limit-currency-label">Currency</Label>
               <Select value={limitCurrency} onValueChange={setLimitCurrency}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="limit-currency-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["ALL", "BTC", "ETH", "SOL", "USDC", "USDT"].map(c => (
                     <SelectItem key={c} value={c}>{c === "ALL" ? "All currencies" : c}</SelectItem>

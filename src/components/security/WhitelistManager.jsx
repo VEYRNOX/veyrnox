@@ -134,9 +134,9 @@ export default function WhitelistManager() {
               <Input id="whitelist-label" value={label} onChange={e => { setLabel(e.target.value); setValidationError(""); }} placeholder="My Hardware Wallet" className="mt-1.5" />
             </div>
             <div>
-              <Label>Currency</Label>
+              <Label id="whitelist-currency-label">Currency</Label>
               <Select value={currency} onValueChange={v => { setCurrency(v); setValidationError(""); }}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-labelledby="whitelist-currency-label" className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
