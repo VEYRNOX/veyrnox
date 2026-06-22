@@ -82,3 +82,24 @@ default (never show wallet count/list), plain-language risk before signing.
 - Reconnaissance before changes; report root cause before fixing.
 - Pure helpers + unit tests where logic can be extracted (the codebase pattern).
 - One moving part at a time. Don't mark anything verified without the user's on-chain txid.
+
+## Multi-agent working pattern (the "team")
+
+Treat substantial work as a team of specialists, dispatched in parallel where the work is
+independent. The team is committed to the repo, so every session has it:
+
+- **Subagents** (`.claude/agents/`): `veyrnox-recon` (read-only mapping + root cause),
+  `veyrnox-ui` (design-system UI/a11y, preview-verified), `veyrnox-security-tdd` (wallet-core
+  fixes via strict TDD, never fake security), and `veyrnox-honest-reviewer` (correctness +
+  the honesty bar). Dispatch via the Agent tool; fan several out in ONE message to run them
+  concurrently. Give each agent only its own files — never let two parallel agents edit the
+  same file.
+- **Command** (`.claude/commands/parallel-fix.md`): `/parallel-fix <area>` — recon → fan out
+  one implementer per independent item → honest review → integrate & verify.
+- **Workflow** (`.claude/workflows/branch-review.js`): run the `branch-review` workflow to
+  review the current branch vs main across correctness / security-honesty / design-system /
+  a11y, with each finding adversarially verified before it is reported.
+
+Rules that still bind every agent: reconnaissance before changes; one moving part at a time;
+security-sensitive files (seed/keys/signing/auth) are off-limits to cosmetic work; and nothing
+is "verified" without the user's real on-chain txid.
