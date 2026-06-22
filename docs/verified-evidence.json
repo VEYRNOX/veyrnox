@@ -3,6 +3,9 @@
   "_example": {
     "Send Crypto": { "chain": "sepolia", "txid": "0x…", "date": "2026-01-01" }
   },
+  "_corrected": {
+    "USDT mainnet send (full UI path, build:release, Ethereum mainnet)": "Txid corrected 2026-06-22. PR #280 originally recorded 0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986 — that hash is a real mainnet tx but targets the USDC contract, not USDT, so it did not substantiate the USDT claim. The actual USDT mainnet send is 0xf06a0ba731d1b8bf4d3f859a5904830b2f064725ba837c8c7332e5264f0b5b08 (verified on-chain via eth_getTransactionByHash/Receipt 2026-06-22: to=Tether USDT contract 0xdAC17F95…831ec7, transfer 1 USDT to 0x82D0…5BAB, chainId 1, status SUCCESS, block 25360159). Entry below now carries the correct txid."
+  },
   "evidence": {
     "Solana send (wallet-core module, devnet script)": {
       "chain": "solana-devnet",
@@ -31,13 +34,17 @@
     },
     "USDT mainnet send (full UI path, build:release, Ethereum mainnet)": {
       "chain": "mainnet",
-      "txid": "0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986",
-      "explorer": "https://etherscan.io/tx/0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986",
+      "txid": "0xf06a0ba731d1b8bf4d3f859a5904830b2f064725ba837c8c7332e5264f0b5b08",
+      "explorer": "https://etherscan.io/tx/0xf06a0ba731d1b8bf4d3f859a5904830b2f064725ba837c8c7332e5264f0b5b08",
       "token_contract": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
       "to": "0x82D0Fa9d0692dbaDA375fe58Be8368C2a7455BAB",
+      "amount": "1 USDT (1000000, 6 decimals)",
+      "block": 25360159,
+      "verified_onchain": "eth_getTransactionByHash + eth_getTransactionReceipt, chainId 1, status SUCCESS, 2026-06-22",
       "build": "build:release",
-      "date": "2026-06-20"
+      "date": "2026-06-20",
+      "note": "Corrects the wrong txid (0x3f2fe19a…, a USDC tx) recorded in PR #280 — see _corrected."
     }
   }
 }
