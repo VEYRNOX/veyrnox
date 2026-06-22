@@ -91,9 +91,10 @@ audit surface; review independently of the EVM slice.
   (key supplied transiently via `WalletProvider.withBtcPrivateKey`), broadcast.
 - **Library**: `@scure/btc-signer` (paulmillr/@scure family, consistent with the
   existing audited bip39/bip32/noble stack). Added to the supply-chain review.
-- Status: BTC is **receive_only** until a real testnet send is verified on-chain
-  and reviewed (see `docs/PhaseBTC.verification.md`), then → live; mainnet stays
-  gated until the internal audit clears (this independent review adds depth).
+- Status: BTC is now **live** — a real testnet send was verified on-chain and
+  reviewed (see `docs/PhaseBTC.verification.md`). Mainnet was unlocked 2026-06-17
+  when the internal audit cleared (this independent review adds depth);
+  no BTC mainnet send is verified yet.
 
 ### 2c. Solana operations (Phase SOL, NEW CURVE — biggest divergence) — `src/wallet-core/sol/`
 A THIRD, distinct cryptographic family. Unlike EVM/BTC (both secp256k1), Solana
@@ -130,9 +131,10 @@ key/signing attack surface (the audit now covers TWO curves, not one).
   `@solana/web3.js` v1 references the Node `Buffer` global; it is confined to
   `provider.js`/`send.js` (the browser receive_only path uses only
   `derivation.js`), and the hands-on verification runs in Node.
-- Status: SOL is **receive_only** until a real devnet send is verified on-chain
-  and reviewed (harness: `scripts/sol-devnet-send.mjs`), then → live; mainnet
-  stays gated until the internal audit clears (this independent review adds depth).
+- Status: SOL is now **live** — a real devnet send was verified on-chain and
+  reviewed (harness: `scripts/sol-devnet-send.mjs`). Mainnet was unlocked
+  2026-06-17 when the internal audit cleared (this independent review adds depth);
+  no SOL mainnet send is verified yet.
 
 ### 2d. Address screening (S2, NEW surface) — `src/wallet-core/evm/suspicious.js` + `src/wallet-core/data/`
 LOCAL-only recipient screening wired into the send risk assessment; warns-not-blocks, never asserts "safe". Pluggable-provider design; `screenAddress` routes by family so EVM and BTC addresses are both screened at runtime.
