@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ export default function BudgetLimits() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ currency: "ETH", period: "monthly", limit_usd: "", alert_at_percent: 80, enabled: true });
 
-  const { data: budgets = [] } = useQuery({ queryKey: ["budgets"], queryFn: () => base44.entities.BudgetLimit.list() });
+  const { data: budgets = [], isError } = useQuery({ queryKey: ["budgets"], queryFn: () => base44.entities.BudgetLimit.list() });
   const { data: transactions = [] } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500) });
 
   const create = useMutation({
@@ -59,6 +59,13 @@ export default function BudgetLimits() {
         <p className="text-xs text-muted-foreground">Limits track native amounts sent per currency — no USD conversion</p>
       </div>
 
+      {isError && (
+        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>Couldn’t load your budget limits — they may not all be shown.</span>
+        </div>
+      )}
+
       {budgets.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <p className="text-4xl mb-3">💰</p>
@@ -86,7 +93,7 @@ export default function BudgetLimits() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch checked={b.enabled} onCheckedChange={v => toggle.mutate({ id: b.id, enabled: v })} />
-                    <button onClick={() => remove.mutate(b.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                    <button onClick={() => remove.mutate(b.id)} aria-label="Delete budget limit" className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -120,8 +127,8 @@ export default function BudgetLimits() {
                 </Select>
               </div>
             </div>
-            <div><Label>Limit (native amount)</Label><Input className="mt-1.5" type="number" placeholder="e.g. 0.5 for ETH" value={form.limit_usd} onChange={e => setForm(f => ({ ...f, limit_usd: e.target.value }))} /></div>
-            <div><Label>Alert at (%)</Label><Input className="mt-1.5" type="number" placeholder="80" value={form.alert_at_percent} onChange={e => setForm(f => ({ ...f, alert_at_percent: parseInt(e.target.value) }))} /></div>
+            <div><Label htmlFor="budget-limit">Limit (native amount)</Label><Input id="budget-limit" className="mt-1.5" type="number" placeholder="e.g. 0.5 for ETH" value={form.limit_usd} onChange={e => setForm(f => ({ ...f, limit_usd: e.target.value }))} /></div>
+            <div><Label htmlFor="budget-alert">Alert at (%)</Label><Input id="budget-alert" className="mt-1.5" type="number" placeholder="80" value={form.alert_at_percent} onChange={e => setForm(f => ({ ...f, alert_at_percent: parseInt(e.target.value) }))} /></div>
             <Button className="w-full" disabled={!form.limit_usd || create.isPending} onClick={() => create.mutate(form)}>
               {create.isPending ? "Saving..." : "Save Limit"}
             </Button>

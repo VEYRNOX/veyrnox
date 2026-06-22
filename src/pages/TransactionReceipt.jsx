@@ -11,7 +11,7 @@ export default function TransactionReceipt() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
 
-  const { data: transactions = [], isLoading } = useQuery({
+  const { data: transactions = [], isLoading, isError } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
   });
@@ -98,7 +98,9 @@ export default function TransactionReceipt() {
       <div className="grid md:grid-cols-2 gap-3">
         {/* TX List */}
         <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-          {isLoading ? <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div> : filtered.length === 0 ? (
+          {isLoading ? <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div> : isError ? (
+            <div className="text-center py-8 text-destructive text-sm">Couldn't load transactions. Please try again.</div>
+          ) : filtered.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">No transactions found</div>
           ) : filtered.map(tx => (
             <div key={tx.id} onClick={() => setSelected(tx)}

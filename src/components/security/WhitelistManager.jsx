@@ -110,6 +110,7 @@ export default function WhitelistManager() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={`Remove ${item.label} from whitelist`}
                     className="shrink-0 ml-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => removeAddress.mutate(item.id)}
                   >
@@ -129,8 +130,8 @@ export default function WhitelistManager() {
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div>
-              <Label>Label</Label>
-              <Input value={label} onChange={e => { setLabel(e.target.value); setValidationError(""); }} placeholder="My Hardware Wallet" className="mt-1.5" />
+              <Label htmlFor="whitelist-label">Label</Label>
+              <Input id="whitelist-label" value={label} onChange={e => { setLabel(e.target.value); setValidationError(""); }} placeholder="My Hardware Wallet" className="mt-1.5" />
             </div>
             <div>
               <Label>Currency</Label>
@@ -142,12 +143,12 @@ export default function WhitelistManager() {
               </Select>
             </div>
             <div>
-              <Label>Address</Label>
-              <Input value={address} onChange={e => { setAddress(e.target.value); setValidationError(""); }} placeholder="0x..." className="mt-1.5 font-mono text-sm" />
+              <Label htmlFor="whitelist-address">Address</Label>
+              <Input id="whitelist-address" value={address} onChange={e => { setAddress(e.target.value); setValidationError(""); }} placeholder="0x..." className="mt-1.5 font-mono text-sm" />
             </div>
             <div>
-              <Label>Note (optional)</Label>
-              <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cold storage" className="mt-1.5" />
+              <Label htmlFor="whitelist-note">Note (optional)</Label>
+              <Input id="whitelist-note" value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Cold storage" className="mt-1.5" />
             </div>
             {validationError && (
               <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">

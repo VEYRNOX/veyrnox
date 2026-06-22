@@ -145,8 +145,8 @@ describe('Harness A · G2 — canSend() is true only for the live set (all 10 as
     //   OP   0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47 (OP Sepolia)
     //   BTC  2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27 (testnet, block 4990901)
     //   SOL  5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv (devnet, finalized)
-    //   AVAX 0xb27b9ad8bda2a9eb9f04424090cf8946e0f9f545de635bc8cf457b1521b179d0 (Fuji, block 56417576, 2026-06-19)
-    //   BNB  0x2ff2021cc4973fa928fc92a6ac23f83ec0aa2b02c9b7fcae278167005bc6fb91 (BSC testnet, block 114367510, 2026-06-19)
+    //   AVAX 0x3697e0dfed498cbcafabe73ec881c2e193e06434c61122f9fb0efda546c61996 (Fuji, block 56425855, 2026-06-20; re-confirmed on-chain 2026-06-22)
+    //   BNB  0x1a6ee75ee51ad9cf15e9e6fda4b8a26230378c90a449cd881f96c37def957f75 (BSC testnet, block 114427048, 2026-06-20)
     const sendable = ASSETS.filter(canSend).map((a) => a.symbol);
     expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']);
   });

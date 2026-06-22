@@ -7,11 +7,12 @@ the gotchas). Five of the ten assets become reachable through this one phase.
 
 > Prerequisite: Phase A + B merged (done).
 >
-> **Status as of 2026-06-20:** MATIC, ARB, and OP are LIVE with verified
-> on-chain testnet sends. AVAX and BNB remain receive_only (send is built but
-> blocked by no accessible testnet faucet). All mainnet network entries are
-> enabled (`ALLOW_MAINNET=true` since 2026-06-17); none are wired in `assets.js`
-> yet — no real funds until that wiring is explicitly made.
+> **Status as of 2026-06-22:** All five Phase C chains — MATIC, ARB, OP, AVAX,
+> and BNB — are LIVE with verified on-chain testnet sends (AVAX Fuji `0x3697e0d…`,
+> independently re-confirmed via Routescan 2026-06-22; BNB testnet `0x1a6ee75…`,
+> per session record + owner confirmation). The `assets.js` chain keys remain the
+> TESTNETS; all mainnet network entries are enabled (`ALLOW_MAINNET=true` since
+> 2026-06-17) but unwired — no real funds until mainnet wiring is explicitly made.
 
 ---
 

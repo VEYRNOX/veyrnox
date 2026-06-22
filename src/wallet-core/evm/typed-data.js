@@ -46,6 +46,26 @@ export function detectAssetAuthorising(parsed) {
   return { isAssetAuthorising: false, reason: null };
 }
 
+// Render an EIP-712 message value for the human signing prompt. EIP-712 values
+// can be bigints, nested structs (objects), or arrays of structs (Permit2
+// `details`, Seaport `offer`/`consideration`). Plain String() turns those into
+// "[object Object]", hiding exactly what the user is authorising — so recurse
+// into containers, stringify bigints, and depth-guard against pathologically
+// nested untrusted input.
+function formatTypedValue(value, depth = 0) {
+  if (value === null) return 'null';
+  if (value === undefined) return '';
+  if (typeof value === 'bigint') return value.toString();
+  if (typeof value !== 'object') return String(value);
+  if (depth >= 6) return '…';
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => formatTypedValue(v, depth + 1)).join(', ')}]`;
+  }
+  return `{ ${Object.entries(value)
+    .map(([k, v]) => `${k}: ${formatTypedValue(v, depth + 1)}`)
+    .join(', ')} }`;
+}
+
 export function describeTypedData(parsed) {
   if (!parsed.valid) return { summary: 'Invalid typed data', fields: [] };
   const { domain, primaryType, message } = parsed;
@@ -57,7 +77,7 @@ export function describeTypedData(parsed) {
     primaryType,
     fields: Object.entries(message ?? {}).map(([name, value]) => ({
       name,
-      value: String(value),
+      value: formatTypedValue(value),
     })),
   };
 }

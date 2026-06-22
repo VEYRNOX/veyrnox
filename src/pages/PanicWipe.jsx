@@ -280,6 +280,7 @@ export default function PanicWipe() {
               />
               <button
                 type="button"
+                aria-label={showPin ? "Hide PIN" : "Show PIN"}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 onClick={() => setShowPin((s) => !s)}
               >

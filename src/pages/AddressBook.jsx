@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Search, Star, Trash2, Copy, Check, Shield } from "lucide-react";
+import { Plus, Search, Star, Trash2, Copy, Check, Shield, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,7 @@ export default function AddressBook() {
   const [copied, setCopied] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", currency: "ETH", network: "Ethereum", emoji: "👤", note: "", is_trusted: false });
 
-  const { data: contacts = [] } = useQuery({
+  const { data: contacts = [], isError } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list("-created_date"),
   });
@@ -75,6 +75,13 @@ export default function AddressBook() {
         <Input placeholder="Search contacts..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
+      {isError && (
+        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>Couldn’t load contacts — they may not all be shown.</span>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <p className="text-4xl mb-3">📭</p>
@@ -96,14 +103,15 @@ export default function AddressBook() {
                 {c.note && <p className="text-xs text-muted-foreground mt-0.5">{c.note}</p>}
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => copy(c.address, c.id)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={() => copy(c.address, c.id)} aria-label="Copy address" className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
                   {copied === c.id ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                 </button>
                 <button onClick={() => toggleTrust.mutate({ id: c.id, is_trusted: !c.is_trusted })}
+                  aria-label={c.is_trusted ? "Remove trusted mark" : "Mark as trusted"}
                   className={`p-2 rounded-lg transition-colors ${c.is_trusted ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}`}>
                   <Star className="h-4 w-4" fill={c.is_trusted ? "currentColor" : "none"} />
                 </button>
-                <button onClick={() => remove.mutate(c.id)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                <button onClick={() => remove.mutate(c.id)} aria-label="Delete contact" className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -127,10 +135,11 @@ export default function AddressBook() {
                 </div>
               </div>
             </div>
-            <div><Label>Name</Label><Input className="mt-1.5" placeholder="Alice's ETH Wallet" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div><Label htmlFor="contact-name">Name</Label><Input id="contact-name" className="mt-1.5" placeholder="Alice's ETH Wallet" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div>
-              <Label>Wallet Address</Label>
+              <Label htmlFor="contact-address">Wallet Address</Label>
               <Input
+                id="contact-address"
                 className={`mt-1.5 font-mono text-xs ${showAddressError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 placeholder="0x..."
                 value={form.address}
@@ -157,7 +166,7 @@ export default function AddressBook() {
                 </Select>
               </div>
             </div>
-            <div><Label>Note (optional)</Label><Input className="mt-1.5" placeholder="e.g. Business partner" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} /></div>
+            <div><Label htmlFor="contact-note">Note (optional)</Label><Input id="contact-note" className="mt-1.5" placeholder="e.g. Business partner" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} /></div>
             <div className="flex items-center gap-3">
               <Switch checked={form.is_trusted} onCheckedChange={v => setForm(f => ({ ...f, is_trusted: v }))} />
               <Label>Mark as Trusted</Label>

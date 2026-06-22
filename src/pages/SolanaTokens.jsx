@@ -74,7 +74,7 @@ export default function SolanaTokens() {
                 ? <p className="text-sm text-destructive">{error}</p>
                 : <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "—"}</p>
               }
-              <Button variant="ghost" size="icon" className="mb-1 h-7 w-7" onClick={fetchBalance} disabled={loading}>
+              <Button variant="ghost" size="icon" className="mb-1 h-7 w-7" aria-label="Refresh balance" onClick={fetchBalance} disabled={loading}>
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               </Button>
             </div>
@@ -85,7 +85,7 @@ export default function SolanaTokens() {
             <p className="text-xs text-muted-foreground uppercase tracking-widest">Receive Address</p>
             <div className="flex items-center gap-2">
               <p className="font-mono text-xs break-all flex-1">{solAccount.address}</p>
-              <button onClick={copy} className="shrink-0 p-1.5 rounded-lg hover:bg-secondary transition-colors">
+              <button onClick={copy} aria-label="Copy Solana address" className="shrink-0 p-1.5 rounded-lg hover:bg-secondary transition-colors">
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
             </div>

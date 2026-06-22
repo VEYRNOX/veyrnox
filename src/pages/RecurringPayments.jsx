@@ -205,7 +205,7 @@ export default function RecurringPayments() {
                           <PenLine className="h-3 w-3" /> Sign
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => deletePayment.mutate(p.id)}>
+                      <Button variant="ghost" size="icon" aria-label="Delete recurring payment" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => deletePayment.mutate(p.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>

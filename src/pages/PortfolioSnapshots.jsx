@@ -139,7 +139,7 @@ export default function PortfolioSnapshots() {
                     </p>
                   )}
                 </div>
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDelete(s.id)}>
+                <Button variant="ghost" size="icon" aria-label="Delete snapshot" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDelete(s.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
