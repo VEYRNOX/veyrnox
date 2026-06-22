@@ -1,0 +1,14 @@
+# CODEOWNERS — auto-requests review from the owner on sensitive paths.
+# Advisory by default (auto-requests @aljobson as reviewer). To make it a hard
+# merge gate, add a "Require review from Code Owners" rule to branch protection —
+# but note that on a solo repo that can block your own PRs, so it's left advisory.
+
+# Wallet security core: seed / key / derivation / signing. Never let an automated
+# agent land changes here without owner review.
+/src/wallet-core/                 @aljobson
+
+# CSPRNG guard — must not be weakened without owner review.
+/scripts/check-crypto-rng.mjs     @aljobson
+
+# CI, workflows, and Copilot bot instructions (supply-chain sensitive).
+/.github/                         @aljobson
