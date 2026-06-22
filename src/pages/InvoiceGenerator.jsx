@@ -149,9 +149,9 @@ export default function InvoiceGenerator() {
                 <Input id="inv-amount" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder="500" type="number" className="mt-1.5" />
               </div>
               <div>
-                <Label>Currency</Label>
+                <Label id="inv-currency-label">Currency</Label>
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5" aria-labelledby="inv-currency-label"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>

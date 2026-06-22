@@ -398,9 +398,9 @@ function DemoDashboard() {
               <Input id="add-wallet-name" value={name} onChange={e => setName(e.target.value)} placeholder="My ETH Wallet" className="mt-1.5" />
             </div>
             <div>
-              <Label>Currency</Label>
+              <Label id="add-wallet-currency-label">Currency</Label>
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-labelledby="add-wallet-currency-label" className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"].map(c => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>

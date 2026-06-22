@@ -121,9 +121,9 @@ export default function WalletSeedQR() {
 
       {/* Wallet selector */}
       <div>
-        <Label>Select Wallet</Label>
+        <Label id="seed-wallet-label">Select Wallet</Label>
         <Select value={selectedWalletId} onValueChange={setSelectedWalletId}>
-          <SelectTrigger className="mt-1.5">
+          <SelectTrigger className="mt-1.5" aria-labelledby="seed-wallet-label">
             <SelectValue placeholder="Choose wallet..." />
           </SelectTrigger>
           <SelectContent>

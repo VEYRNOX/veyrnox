@@ -153,15 +153,15 @@ export default function AddressBook() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Currency</Label>
+              <div><Label id="contact-currency-label">Currency</Label>
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-labelledby="contact-currency-label" className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Network</Label>
+              <div><Label id="contact-network-label">Network</Label>
                 <Select value={form.network} onValueChange={v => setForm(f => ({ ...f, network: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-labelledby="contact-network-label" className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>{["Ethereum", "Bitcoin", "Solana", "Polygon", "BSC"].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                 </Select>
               </div>

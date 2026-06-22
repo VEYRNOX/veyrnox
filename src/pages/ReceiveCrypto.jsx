@@ -80,9 +80,9 @@ export default function ReceiveCrypto() {
 
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
         <div>
-          <Label>Asset</Label>
+          <Label id="receive-asset-label">Asset</Label>
           <Select value={symbol} onValueChange={(v) => { setSymbol(v); setCopied(false); }}>
-            <SelectTrigger className="mt-1.5"><SelectValue placeholder="Choose asset" /></SelectTrigger>
+            <SelectTrigger className="mt-1.5" aria-labelledby="receive-asset-label"><SelectValue placeholder="Choose asset" /></SelectTrigger>
             <SelectContent>
               {ASSETS.map((a) => (
                 <SelectItem key={a.symbol} value={a.symbol}>

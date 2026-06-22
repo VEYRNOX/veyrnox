@@ -118,9 +118,9 @@ export default function PaymentLinks() {
           <div className="space-y-3 pt-2">
             <div><Label>Title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Invoice #42" className="mt-1.5" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Currency</Label>
+              <div><Label id="pl-currency-label">Currency</Label>
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5" aria-labelledby="pl-currency-label"><SelectValue /></SelectTrigger>
                   <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>

@@ -838,9 +838,9 @@ export default function SendCrypto() {
 
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
         <div>
-          <Label>From Wallet</Label>
+          <Label id="send-wallet-label">From Wallet</Label>
           <Select value={walletId} onValueChange={setWalletId}>
-            <SelectTrigger className="mt-1.5">
+            <SelectTrigger className="mt-1.5" aria-labelledby="send-wallet-label">
               <SelectValue placeholder="Select wallet">
                 {selectedWalletName ? (
                   <span className="flex items-center gap-2">
@@ -863,9 +863,9 @@ export default function SendCrypto() {
           </Select>
         </div>
         <div>
-          <Label>Asset</Label>
+          <Label id="send-asset-label">Asset</Label>
           <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
-            <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select asset" /></SelectTrigger>
+            <SelectTrigger className="mt-1.5" aria-labelledby="send-asset-label"><SelectValue placeholder="Select asset" /></SelectTrigger>
             <SelectContent>
               {enabledAssets.map(sym => {
                 const a = getAsset(sym);

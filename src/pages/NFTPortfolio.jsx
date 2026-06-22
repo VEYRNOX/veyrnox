@@ -138,18 +138,18 @@ export default function NFTPortfolio() {
               </div>
             ))}
             <div>
-              <Label>Chain</Label>
+              <Label id="nftp-chain-label">Chain</Label>
               <Select value={form.chain} onValueChange={v => setForm(p => ({ ...p, chain: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1" aria-labelledby="nftp-chain-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["ethereum", "solana", "polygon", "base"].map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Status</Label>
+              <Label id="nftp-status-label">Status</Label>
               <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1" aria-labelledby="nftp-status-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["holding", "listed", "sold"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
                 </SelectContent>

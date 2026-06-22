@@ -34,9 +34,9 @@ export default function TransactionFilters({ filters, onChange }) {
       </div>
 
       <div className="space-y-1">
-        <Label className="text-xs">Asset</Label>
+        <Label id="tx-filter-asset-label-m" className="text-xs">Asset</Label>
         <Select value={filters.asset} onValueChange={v => onChange({ ...filters, asset: v === "all" ? "" : v })}>
-          <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All assets" /></SelectTrigger>
+          <SelectTrigger aria-labelledby="tx-filter-asset-label-m" className="h-9 text-sm"><SelectValue placeholder="All assets" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All assets</SelectItem>
             {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -45,9 +45,9 @@ export default function TransactionFilters({ filters, onChange }) {
       </div>
 
       <div className="space-y-1">
-        <Label className="text-xs">Type</Label>
+        <Label id="tx-filter-type-label-m" className="text-xs">Type</Label>
         <Select value={filters.type} onValueChange={v => onChange({ ...filters, type: v === "all" ? "" : v })}>
-          <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
+          <SelectTrigger aria-labelledby="tx-filter-type-label-m" className="h-9 text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All types</SelectItem>
             {TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
@@ -123,9 +123,9 @@ export default function TransactionFilters({ filters, onChange }) {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs">Asset</Label>
+          <Label id="tx-filter-asset-label-d" className="text-xs">Asset</Label>
           <Select value={filters.asset} onValueChange={v => onChange({ ...filters, asset: v === "all" ? "" : v })}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All assets" /></SelectTrigger>
+            <SelectTrigger aria-labelledby="tx-filter-asset-label-d" className="h-8 text-xs"><SelectValue placeholder="All assets" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All assets</SelectItem>
               {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -134,9 +134,9 @@ export default function TransactionFilters({ filters, onChange }) {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs">Type</Label>
+          <Label id="tx-filter-type-label-d" className="text-xs">Type</Label>
           <Select value={filters.type} onValueChange={v => onChange({ ...filters, type: v === "all" ? "" : v })}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
+            <SelectTrigger aria-labelledby="tx-filter-type-label-d" className="h-8 text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All types</SelectItem>
               {TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}

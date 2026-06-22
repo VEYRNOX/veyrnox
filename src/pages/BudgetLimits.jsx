@@ -114,15 +114,15 @@ export default function BudgetLimits() {
           <DialogHeader><DialogTitle>Set Budget Limit</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Currency</Label>
+              <div><Label id="budget-currency-label">Currency</Label>
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-labelledby="budget-currency-label" className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Period</Label>
+              <div><Label id="budget-period-label">Period</Label>
                 <Select value={form.period} onValueChange={v => setForm(f => ({ ...f, period: v }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-labelledby="budget-period-label" className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>{["daily", "weekly", "monthly"].map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
