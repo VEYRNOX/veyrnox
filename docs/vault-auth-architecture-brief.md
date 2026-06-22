@@ -279,22 +279,26 @@ deniability models, and this is intentional:
   so it sidesteps the chaff-length constraint entirely — but at the cost of not being
   per-set. UNAUDITED-PROVISIONAL.
 
-**Decoy/hidden parity (Method 1) — TARGET, audit-gated (the design constraint).**
-Enforcement of the **Action Password** is **active-set (primary) only.** Decoy (`duress.js: encryptVault(decoyMnemonic, …)`) and
-hidden (`stealth.js: encryptVault(mnemonic, secret)`) slots encrypt a **bare mnemonic
-string**, not a container, so there is no field to carry a per-set Action Password record.
-The naive fix — wrap their plaintext in a container — **breaks deniability**: the stealth
-chaff pool (`stealth.js: makeChaff`) sizes every fake blob to a *bare-mnemonic* ciphertext
-length (`ptLen = encode(mnemonic).length + 16` GCM tag) so real hidden slots and chaff
-share one length distribution. A longer container plaintext would push real slots past the
-chaff length → a **real-vs-chaff size distinguisher**, exactly the tell the chaff pool
-exists to defeat (and "record only when set" makes it variable-length, worse). There is
-also an **open threat-model question**: a decoy is meant to be *frictionlessly operable
-under coercion*, so a second factor inside it may be undesirable rather than merely hard.
-Safe paths, both audit-gated §24: **(a)** a constant-size **padded container for all slots
-including chaff** (fixed length regardless of record presence), or **(b)** a deliberate,
-documented "decoy/hidden carry no second factor by design" decision keeping enforcement
-primary-only. **Do not build blind** — this alters the deniability storage core.
+**Decoy/hidden parity (Method 1) — PARTIAL, audit-gated (storage landed, enforcement + UI pending).**
+Enforcement of the **Action Password** is **active-set (primary) only** today. **The storage
+groundwork (H2) has landed in code:** decoy (`duress.js: setDuressVault`) and hidden
+(`stealth.js: createHiddenWallet`) slots no longer encrypt a bare mnemonic — they wrap it in a
+**FIXED-LENGTH multi-seed container** (`makeContainer`/`serializeContainer`) that *can* carry a
+per-set Action Password record. `setDuressVault` accepts an `actionPasswordRecord`;
+`stealth.setHiddenActionPasswordRecord` writes one into a hidden slot.
+This effectively takes **path (a)** below: the chaff pool (`stealth.js: makeChaff`) now sizes
+every fake blob to `FIXED_LEN` (not a bare-mnemonic length), so real slots — record present or
+not — and chaff all share one byte-identical ct length. The **real-vs-chaff size distinguisher**
+that previously blocked this is resolved (constant-size container, padded by `serializeContainer`,
+so presence of a record does not change length). **What remains, and why this is still not done:**
+no UI collects an Action Password for a decoy/hidden set, and the enforce-at-action path is
+primary-only (`twoFactorGate.js` still defaults `actionPasswordConfigured = true`, so a
+decoy/hidden enforce path must source the record from the unlocked container before it is safe to
+wire). There is also still an **open threat-model question**: a decoy is meant to be *frictionlessly
+operable under coercion*, so a second factor inside it may be undesirable rather than merely hard —
+the remaining decision is between enforcing it (now mechanically possible) and **(b)** a deliberate,
+documented "decoy/hidden carry no second factor by design" choice keeping enforcement primary-only.
+**Do not wire enforcement blind** — it touches the deniability storage core and is unaudited.
 
 ---
 
@@ -310,11 +314,13 @@ testnet/demo, audit-gated §24:** duress PIN → decoy vault; stealth / hidden w
 Argon2id work-factor raise (SAST M3, params pending audit); biometric/passkey app-layer
 unlock gate; **two-factor at critical points — PIN + Action Password (per-set, primary) OR
 PIN + Passkey/FIDO2 (device-global, fail-closed); configured in Security Settings; §6b.**
+Decoy/hidden Action-Password parity: the storage groundwork (fixed-length container that can
+carry a per-set record; chaff sized to match) has **landed in code**, but enforcement + the
+collection UI are **pending** and the threat-model decision is open (§6b) — PARTIAL, not built.
 
 **TARGET / not built:** hardware-KEK release via passkey (secure-element / OS-enforced
 ACL binding, M2c/M2d); the audited "indistinguishable from free space" deniability
-guarantee; duress entry point in the send flow; **Action Password 2FA parity in
-decoy/hidden sessions (§6b — blocked on the chaff-length-tell constraint)**; encrypted
+guarantee; duress entry point in the send flow; encrypted
 cloud recovery; inheritance.
 
 > **Pitch discipline (corrected).** The coercion-resistance layer — the product's

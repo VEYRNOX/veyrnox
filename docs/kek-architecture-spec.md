@@ -67,7 +67,7 @@ The PIN is the **spine**: it is both the entry point and the set-selector. The
 hardware factor binds in as a *set-agnostic side input*.
 
 ```
-        Typed 6-digit PIN                Face ID
+        Typed 8-digit PIN                Face ID
         (entry point;                    (authorizes the PRF
          selects WHICH set)               operation only)
               │                                │
@@ -277,7 +277,8 @@ hand-rolled. Same posture as the R2 capability-proof and the audit-log storage s
 1. **The combine construction** — `KDF(H ‖ C)`, salt handling, domain separation,
    AEAD choice for wrap/unwrap. The exact KDF and the ordering/encoding of `H` and
    `C`.
-2. **KDF cost for a 6-digit input** — the PIN space is 10^6. Argon2id (192 MiB /
+2. **KDF cost for an 8-digit input** — the PIN space is 10^8 (PIN was widened
+   6→8; see §9-item-5 implementation note). Argon2id (192 MiB /
    t=3) is the *only* thing between a captured vault and exhaustive offline search.
    Is the per-guess cost sufficient? This is load-bearing and explicitly in scope.
 3. **Non-enrolled PIN handling (§7)** — does any resolution path leak set existence
