@@ -9,13 +9,14 @@
 
 import { JsonRpcProvider, formatEther } from 'ethers';
 import { getNetwork } from './networks.js';
+import { assertSafeRpcUrl } from '../netUrl.js';
 
 const _overrides = {}; // networkKey -> rpcUrl
 const _cache = {};      // networkKey -> JsonRpcProvider
 
 /** User override for a network's RPC URL. Pass null to clear. */
 export function setRpcUrl(networkKey, url) {
-  if (url) _overrides[networkKey] = url;
+  if (url) _overrides[networkKey] = assertSafeRpcUrl(url);
   else delete _overrides[networkKey];
   delete _cache[networkKey]; // force rebuild
 }

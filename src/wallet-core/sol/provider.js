@@ -19,6 +19,7 @@
 
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getSolNetwork, getSolNetworkInfo } from './networks.js';
+import { assertSafeRpcUrl } from '../netUrl.js';
 
 export { LAMPORTS_PER_SOL };
 
@@ -27,7 +28,7 @@ const _connections = {}; // networkKey -> Connection (memoized per resolved URL)
 
 /** Operator override for a network's RPC URL. Pass null to clear. */
 export function setSolRpcUrl(networkKey, url) {
-  if (url) _overrides[networkKey] = url.replace(/\/$/, '');
+  if (url) _overrides[networkKey] = assertSafeRpcUrl(url).replace(/\/$/, '');
   else delete _overrides[networkKey];
   delete _connections[networkKey]; // force a rebuild against the new URL
 }

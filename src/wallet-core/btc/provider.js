@@ -25,12 +25,13 @@
 //   GET  {base}/tx/:txid             -> tx detail (used to confirm)
 
 import { getBtcNetwork, getBtcNetworkInfo } from './networks.js';
+import { assertSafeRpcUrl } from '../netUrl.js';
 
 const _overrides = {}; // networkKey -> esploraUrl
 
 /** Operator override for a network's indexer URL. Pass null to clear. */
 export function setEsploraUrl(networkKey, url) {
-  if (url) _overrides[networkKey] = url.replace(/\/$/, '');
+  if (url) _overrides[networkKey] = assertSafeRpcUrl(url).replace(/\/$/, '');
   else delete _overrides[networkKey];
 }
 
