@@ -7,7 +7,6 @@ const STORAGE_KEY = "biometric-auth-config";
 const DEFAULT_CONFIG = {
   enabled: false,
   require_on_send: true,
-  require_on_swap: true,
   require_on_settings: false,
   require_on_large_transfers: true,
   large_transfer_threshold_usd: 1000,
@@ -68,7 +67,6 @@ export default function BiometricAuth() {
 
   const SETTINGS = [
     { key: "require_on_send", label: "Sending Crypto", description: "Require biometric before every send" },
-    { key: "require_on_swap", label: "Swapping Assets", description: "Require biometric on swaps" },
     { key: "require_on_settings", label: "Accessing Settings", description: "Lock settings behind biometric" },
     { key: "require_on_large_transfers", label: "Large Transfers", description: `Transfers above $${config.large_transfer_threshold_usd.toLocaleString()}` },
   ];

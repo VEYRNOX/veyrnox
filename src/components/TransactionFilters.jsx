@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
-const TYPES = ["send", "receive", "swap", "stake"];
+const TYPES = ["send", "receive"];
 
 export default function TransactionFilters({ filters, onChange }) {
   const [open, setOpen] = useState(false);

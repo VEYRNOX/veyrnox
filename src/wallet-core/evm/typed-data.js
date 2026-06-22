@@ -29,9 +29,8 @@ export function detectAssetAuthorising(parsed) {
       isAssetAuthorising: true,
       kind: 'permit',
       reason:
-        `This is a Permit signature (${pt}). Signing this off-chain message authorises a spender ` +
-        `to move your tokens WITHOUT a separate on-chain approval transaction. ` +
-        `Malicious dApps use Permit signatures to drain wallets silently.`,
+        `Permit signature (${pt}): signing lets a spender move your tokens with no on-chain ` +
+        `approval — a common silent wallet-drain. Only sign if you trust this app.`,
     };
   }
   if (SEAPORT_PRIMARY_TYPES.has(pt)) {
@@ -39,8 +38,8 @@ export function detectAssetAuthorising(parsed) {
       isAssetAuthorising: true,
       kind: 'marketplace_order',
       reason:
-        `This is a marketplace order (${pt}). Signing commits you to a trade — ` +
-        `you may give away tokens or NFTs. Only sign orders you have verified on a trusted marketplace.`,
+        `Marketplace order (${pt}): signing can give away your tokens or NFTs. ` +
+        `Only sign on a marketplace you trust.`,
     };
   }
   return { isAssetAuthorising: false, reason: null };
