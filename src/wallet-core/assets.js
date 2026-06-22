@@ -27,24 +27,34 @@ export const ASSET_STATUS = Object.freeze({
 //   solana - Solana (separate: ed25519, base58)
 export const ASSETS = Object.freeze([
   { symbol: 'ETH',   name: 'Ethereum',  family: 'evm',    chain: 'sepolia',   status: ASSET_STATUS.LIVE },
-  // USDC: VERIFIED LIVE. Real ERC-20 transfer constructed, signed, and broadcast
-  // through the full in-app UI send path (asset picker → recipient → amount →
-  // Standard fee → step-up PIN re-auth → broadcast) and confirmed on-chain:
-  //   tx 0x687d8ce3b2cf4dba3cf007b2dc13510af6102d1c02dff2ab9dd5fbfe2bf6e298
-  //   (Sepolia, status SUCCESS, block 11074999, transfer 1 USDC
-  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 45059, decimals 6)
+  // USDC: VERIFIED LIVE on testnet AND Ethereum mainnet.
+  // Testnet: real ERC-20 transfer through the full in-app UI send path (asset
+  // picker → recipient → amount → Standard fee → step-up PIN re-auth → broadcast),
+  // confirmed on-chain:
+  //   tx 0x687d8ce3…6e298 (Sepolia, SUCCESS, block 11074999, 1 USDC, decimals 6)
   //   https://sepolia.etherscan.io/tx/0x687d8ce3b2cf4dba3cf007b2dc13510af6102d1c02dff2ab9dd5fbfe2bf6e298
-  // Contract = Circle's official Sepolia USDC (evm/tokens.js). Mainnet stays gated.
+  // Mainnet: real send (build:release) to Circle's official USDC contract
+  //   (0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48), re-confirmed on-chain via RPC
+  //   2026-06-22 (eth_getTransactionReceipt: chainId 1, status SUCCESS):
+  //   tx 0xc3731477…fa0a2 (Ethereum mainnet, transfer 1 USDC)
+  //   https://etherscan.io/tx/0xc3731477db771bcf413198b5deb97d5ac2a13180ad0fd48353f0341867bfa0a2
+  // Evidence: docs/verified-evidence.json. Contract list in evm/tokens.js.
   { symbol: 'USDC',  name: 'USD Coin',  family: 'erc20',  chain: 'mainnet',   status: ASSET_STATUS.LIVE },
-  // USDT: VERIFIED LIVE. Routes through the SAME ERC-20 path as USDC. Tether ships
-  // no official Sepolia deployment, so we use the authoritative Aave faucet
-  // test-USDT as a verified 6-decimal stand-in (evm/tokens.js). Real UI-path
-  // transfer confirmed on-chain:
-  //   tx 0x3168e46f467483ee20c176575d4ac11ff4528c90c951fc68de657b86866c447d
-  //   (Sepolia, status SUCCESS, block 11075008, transfer 1 USDT
-  //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 34546, decimals 6)
+  // USDT: VERIFIED LIVE on testnet AND Ethereum mainnet. Routes through the SAME
+  // ERC-20 path as USDC.
+  // Testnet: Tether ships no official Sepolia deployment, so we use the
+  // authoritative Aave faucet test-USDT as a verified 6-decimal stand-in
+  // (evm/tokens.js). Real UI-path transfer confirmed on-chain:
+  //   tx 0x3168e46f…c447d (Sepolia, SUCCESS, block 11075008, 1 USDT, decimals 6)
   //   https://sepolia.etherscan.io/tx/0x3168e46f467483ee20c176575d4ac11ff4528c90c951fc68de657b86866c447d
-  // Mainnet stays gated — same discipline as USDC.
+  // Mainnet: real send (build:release) to Tether's official USDT contract
+  //   (0xdAC17F958D2ee523a2206206994597C13D831ec7), re-confirmed on-chain via RPC
+  //   2026-06-22 (eth_getTransactionByHash/Receipt: to=USDT, transfer 1 USDT,
+  //   chainId 1, status SUCCESS, block 25360159):
+  //   tx 0xf06a0ba7…5b08 (Ethereum mainnet)
+  //   https://etherscan.io/tx/0xf06a0ba731d1b8bf4d3f859a5904830b2f064725ba837c8c7332e5264f0b5b08
+  // NOTE: PR #280 first recorded a WRONG txid here (0x3f2fe19a…, which is a USDC
+  // transfer); corrected to the real USDT-contract send above on 2026-06-22.
   { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'mainnet',   status: ASSET_STATUS.LIVE },
   // Phase C: five EVM chains added on their TESTNETS, behind the mainnet gate.
   // Each shares the SAME secp256k1 / m/44'/60'/0'/0/0 address as ETH, so the
