@@ -150,7 +150,7 @@ export const CLASSIFICATION = {
   },
   '/net-worth': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'VERIFIED 2026-06-20: real on-chain balances loaded in the UI via the throwaway testnet wallet (bamboo… seed) — ETH ≈$1,248, BTC ≈$177, ARB ≈$160, USDT ≈$98, OP ≈$96, SOL ≈$82, USDC ≈$38, MATIC/AVAX/BNB ≈$0 (small testnet residuals). "Reference rate, not live market data" disclosure present (I2). "does not include external assets" scope note present (crypto-only). Allocation donut + per-asset rows all rendered. Demo OFF (veyrnox-demo=null), no round seeded fixtures.',
+    note: 'VERIFIED 2026-06-20 (recharts v2): real on-chain balances loaded in the UI via the throwaway testnet wallet (bamboo… seed) — ETH ≈$1,248, BTC ≈$177, ARB ≈$160, USDT ≈$98, OP ≈$96, SOL ≈$82, USDC ≈$38, MATIC/AVAX/BNB ≈$0 (small testnet residuals). "Reference rate, not live market data" disclosure present (I2). "does not include external assets" scope note present (crypto-only). Allocation donut + per-asset rows all rendered. Demo OFF (veyrnox-demo=null), no round seeded fixtures. RE-VERIFIED under recharts v3 (3.8.1) 2026-06-22 after #281 bumped recharts 2→3 (see issue #285): same throwaway testnet wallet, demo OFF, total ≈$1,991 — allocation donut re-rendered with 8 populated arc sectors (ETH/BTC/BNB/ARB/OP/SOL/AVAX/MATIC) + per-asset rows; "Reference rate"/"does not include external assets" disclosures still present; zero console errors. (USDC/USDT RPC balances did not load this run — shown as "—"; the "partial — some balances couldn’t be read" notice surfaced honestly.) Render-only re-confirmation; no on-chain txid involved.',
   },
   '/invoices': {
     verdict: 'live', dataSource: 'base44-entities',
