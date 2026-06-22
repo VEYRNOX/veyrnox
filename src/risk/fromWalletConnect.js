@@ -25,7 +25,7 @@
 function toWeiOrUndefined(v) {
   if (v == null || v === '') return undefined;
   try {
-    return BigInt(v);
+    return BigInt(/** @type {string | number | bigint | boolean} */ (v));
   } catch {
     return undefined;
   }
