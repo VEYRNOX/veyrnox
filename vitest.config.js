@@ -33,7 +33,6 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    globals: true,
     setupFiles: ['fake-indexeddb/auto', './vitest.setup.js'],
     include: ['src/**/*.test.{js,jsx}'],
     // The at-rest Argon2id KDF was raised to 192 MiB / t=3 (SAST M3). The pure-JS
