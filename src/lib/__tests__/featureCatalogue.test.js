@@ -51,10 +51,18 @@ describe('verified is gated on txid evidence — never assertable by inspection'
     expect(resolveStatus(f, new Set())).toBe(STATUS.BUILT);
   });
 
-  it('no feature resolves to verified today (evidence ships empty)', () => {
+  it('verified resolves ONLY for features backed by a real txid evidence entry', () => {
     const names = verifiedFeatureNames();
     const verified = allFeatures.filter((f) => resolveStatus(f, names) === STATUS.VERIFIED);
-    expect(verified.map((f) => f.name)).toEqual([]);
+    // Each verified-resolved feature must point at a real evidence key — never
+    // verified by inspection. (verifiedBy links the rich evidence key; falls back
+    // to the feature name.)
+    for (const f of verified) {
+      expect(names.has(f.verifiedBy ?? f.name)).toBe(true);
+    }
+    // The lock still holds: with NO evidence available, nothing can be verified.
+    const withoutEvidence = allFeatures.filter((f) => resolveStatus(f, new Set()) === STATUS.VERIFIED);
+    expect(withoutEvidence).toEqual([]);
   });
 });
 

@@ -28,7 +28,7 @@ import {
 //
 // Status is HONEST, cross-checked against actual implementation (wallet-core + real
 // routes):
-//   "available" — built and working today (testnet; mainnet gated until audited)
+//   "available" — built and working today (testnet/devnet-verified; mainnet unlocked 2026-06-17 per internal audit)
 //   "roadmap"   — in scope and specced, NOT yet built ("coming soon")
 const features = [
   { category: "Core Wallet", icon: Wallet, items: [
@@ -36,7 +36,7 @@ const features = [
     { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "available" },
     { name: "Encrypted Vault", desc: "Strong on-device encryption at rest; plaintext keys never leave device", status: "available" },
     { name: "Backup & Reveal Seed", desc: "Seed phrase + encrypted QR backup behind explicit warnings", status: "available" },
-    { name: "Send Crypto", desc: "Locally-signed native transfers; ETH/Sepolia is live, other assets are receive-only pending per-asset send verification", status: "available" },
+    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) — each confirmed on testnet/devnet with an on-chain txid", status: "available" },
     { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "available" },
     { name: "Live Balances", desc: "Read live from chain RPC / explorer providers", status: "available" },
     { name: "Transaction History", desc: "Per-chain read-only history with privacy disclosures", status: "available" },
@@ -45,8 +45,8 @@ const features = [
   ]},
   { category: "Networks & Assets", icon: Coins, items: [
     { name: "EVM Networks", desc: "Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain", status: "available" },
-    { name: "Bitcoin", desc: "BIP-84 native-segwit stack (testnet; mainnet gated)", status: "available" },
-    { name: "Solana", desc: "ed25519 / SLIP-0010 stack (devnet; mainnet gated)", status: "available" },
+    { name: "Bitcoin", desc: "BIP-84 native-segwit stack; testnet-verified (mainnet unlocked, not yet mainnet-verified)", status: "available" },
+    { name: "Solana", desc: "ed25519 / SLIP-0010 stack; devnet-verified (mainnet unlocked, not yet mainnet-verified)", status: "available" },
     { name: "ERC-20 Tokens", desc: "USDC and USDT via the shared token path", status: "available" },
     { name: "Additional Tokens", desc: "More ERC-20 tokens (DAI, LINK …) reuse the token path", status: "roadmap" },
     { name: "Additional Networks", desc: "More EVM chains (Base, zkSync …), config-level", status: "roadmap" },
@@ -66,7 +66,7 @@ const features = [
     { name: "Address-Poisoning Warnings", desc: "Look-alike recipient detection on send", status: "available" },
     { name: "Spam Token Filter", desc: "Auto-hide airdropped scam tokens with override", status: "available" },
     { name: "Calldata Decode & Approval Guard", desc: "Human-readable calldata before signing", status: "available" },
-    { name: "Suspicious-Address Screening", desc: "Local suspicious-address + OFAC sanctions screening; warns, never blocks", status: "available" },
+    { name: "Suspicious-Address Screening", desc: "Local blocklist screening of burn / known-bad addresses (includes one known OFAC-sanctioned address); warns, never blocks. No live sanctions feed.", status: "available" },
     { name: "Transaction Simulation", desc: "Local-first pre-sign preview of balance / approval changes with risk flags", status: "available" },
     { name: "Anomaly / Fraud Detection", desc: "Local rule-based flags for deviations from your own history (unusual amount, new-recipient-large, approve-then-transfer)", status: "available" },
     { name: "Pre-Sign Risk Verdict", desc: "On-device signals (fresh recipient, unlimited/fresh-spender approval, poisoning, ENS mismatch, dust, calldata mismatch, value anomaly) combine into one pre-sign verdict; a high-RISK verdict requires an explicit 'Sign anyway' acknowledgement, indeterminate fails closed to caution. Local-only, warns-not-blocks, never claims 'safe'. UNAUDITED-PROVISIONAL.", status: "available" },
@@ -109,7 +109,7 @@ const features = [
     { name: "Recurring Payments", desc: "Recurring payment schedule reminders; user signs each time. No autonomous auto-debit.", status: "available" },
   ]},
   { category: "Referrals", icon: Users, items: [
-    { name: "Referral Tracker", desc: "Privacy-preserving referral sign-ups; no ranking or public profiles (cut on principle)", status: "roadmap" },
+    { name: "Referral Tracker", desc: "Local referral-code tracking (random code, not seed-derived); no ranking or public profiles. Local-only by default — if a referral backend is configured at build time, the referral code (not balances or seed) is sent to it on register/redeem/status.", status: "available" },
   ]},
   { category: "AI Assistant (Advisory-Only)", icon: Zap, items: [
     { name: "Transaction Explanation", desc: "Plain-language description of a transaction", status: "roadmap" },
@@ -118,7 +118,7 @@ const features = [
     { name: "Portfolio Q&A", desc: "Questions over public on-chain data (never trades)", status: "roadmap" },
   ]},
   { category: "dApp Connectivity (Post-Audit)", icon: Globe, items: [
-    { name: "WalletConnect / dApp Connector", desc: "Connect to dApps; high-risk, post-audit only", status: "roadmap" },
+    { name: "WalletConnect / dApp Connector", desc: "WalletConnect v2 connector is built (local signing, real broadcast with chain-ID guard + 1M gas cap); kept disabled until the post-audit review and requires configuration. High-risk surface.", status: "roadmap" },
     { name: "Web3 Browser", desc: "In-app dApp browser; post-audit only", status: "roadmap" },
   ]},
   { category: "Platform", icon: Smartphone, items: [
