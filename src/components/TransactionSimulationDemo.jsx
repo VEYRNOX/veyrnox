@@ -46,9 +46,8 @@ function evmResult({ decoded, txTo, valueWei = 0n, nativeBalanceWei = null, toke
     decoded: decoded || { kind: "native" }, ...a, risks,
     source: { mode: "local-rpc", queries: ["eth_getCode", "eth_getBalance", "eth_call"], thirdParty: false },
     coverageNote:
-      "Simulated locally against your own RPC — nothing was sent to any third-party scoring service. " +
-      "This predicts the outcome, flags KNOWN risk patterns, and checks for deviations from your own " +
-      "on-device history; it is NOT a guarantee of safety and will not catch every novel threat.",
+      "Predicts the outcome and flags known risk patterns and deviations from your own history — " +
+      "not a guarantee of safety, and won't catch every novel threat.",
   };
 }
 

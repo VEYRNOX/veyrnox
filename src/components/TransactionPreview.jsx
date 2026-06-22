@@ -171,7 +171,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
           <ServerCog className="h-3 w-3 shrink-0 mt-0.5" />
           <span>
             {result.source.mode === "local-rpc" ? "Checked locally via your RPC" : "Decoded locally via your RPC/indexer"}
-            {result.source.queries?.length ? ` (${result.source.queries.join(", ")})` : ""}. Nothing was sent to any third-party scoring service.
+            {result.source.queries?.length ? ` (${result.source.queries.join(", ")})` : ""} — no third-party scoring service.
             {result.coverageNote ? ` ${result.coverageNote}` : ""}
           </span>
         </div>
