@@ -22,22 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-// A SMALL, LOCAL known-bad / phishing dApp domain list. Local = checking it leaks
-// nothing off-device. Illustrative and non-exhaustive — intended to be hydrated
-// from a real threat feed later. It never asserts a domain is "safe", only flags
-// the ones it knows are bad.
-const LOCAL_KNOWN_BAD = [
-  { domain: "fakeswap-rewards.xyz", reason: "Known phishing / wallet-drainer domain" },
-  { domain: "airdrop-claim2024.io", reason: "Known approval-drainer / fake airdrop" },
-  { domain: "uniswap-app.org", reason: "Look-alike of uniswap.org (typosquat)" },
-  { domain: "metamask-wallet.app", reason: "Look-alike of metamask.io (credential phish)" },
-];
-const BAD_SET = new Map(LOCAL_KNOWN_BAD.map((b) => [b.domain.toLowerCase(), b]));
-
-function normalizeDomain(input) {
-  return input.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
-}
+import { LOCAL_KNOWN_BAD, checkDappDomain } from "@/risk/knownBadDapps.js";
 
 export default function DAppSecurityAlerts() {
   const [url, setUrl] = useState("");
@@ -45,9 +30,8 @@ export default function DAppSecurityAlerts() {
 
   const handleCheck = () => {
     if (!url.trim()) return;
-    const domain = normalizeDomain(url);
-    const hit = BAD_SET.get(domain);
-    setResult(hit ? { domain, flagged: true, reason: hit.reason } : { domain, flagged: false });
+    const { domain, flagged, reason } = checkDappDomain(url);
+    setResult(flagged ? { domain, flagged: true, reason } : { domain, flagged: false });
   };
 
   return (
