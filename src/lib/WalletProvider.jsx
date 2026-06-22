@@ -1246,17 +1246,15 @@ export function WalletProvider({ children }) {
       //      opens a low-value decoy surrendered under coercion.
       //   2. STEALTH / HIDDEN WALLETS (wallet-core/stealth.js): a dedicated secret
       //      that reveals one of the user's HIDDEN wallets, via the SAME prompt.
-      // opts.pinModel: set by the PIN-cohort entry point (WalletEntry's PIN pad).
-      // It enables Option A — a non-enrolled PIN opens a deterministic decoy below
-      // instead of throwing. The password cohort never sets it (unchanged behaviour).
-      const pinModel = opts.pinModel === true;
-      const { panic, duressMnemonic, hiddenMnemonic, fallbackDecoyMnemonic } =
-        await resolveDeniabilityUnlock(
-          password,
-          pinModel
-            ? { deterministicFallback: true, deviceSalt: getOrCreateDeviceSalt() }
-            : {},
-        );
+      // THREAT-MODEL CHANGE (owner-approved): the former Option-A deterministic
+      // decoy is REMOVED. A PIN-cohort total miss (a wrong PIN matching no enrolled
+      // path) now falls through to the SAME throw path as the password cohort — it
+      // errors ("Incorrect PIN") instead of silently opening an empty decoy. Both
+      // cohorts are now identical on a miss: spend the equalizer KDF, then throw.
+      // resolveDeniabilityUnlock spends a constant 3 KDFs regardless of cohort, so
+      // the error is the only new signal, never an additional timing oracle.
+      const { panic, duressMnemonic, hiddenMnemonic } =
+        await resolveDeniabilityUnlock(password);
       if (panic) {
         await panicWipe();
         throw primaryErr; // keys destroyed; surface a plain wrong-password failure
@@ -1267,24 +1265,16 @@ export function WalletProvider({ children }) {
       } else if (hiddenMnemonic != null) {
         mnemonic = hiddenMnemonic;
         hidden = true;
-      } else if (fallbackDecoyMnemonic != null) {
-        // OPTION A (§7): a non-enrolled PIN opens a fresh, empty, deterministic
-        // decoy as an ephemeral session — NO error state, NO oracle. PIN cohort
-        // only (fallback is null for the password cohort, which throws below).
-        mnemonic = fallbackDecoyMnemonic;
-        decoy = true;
       } else {
         // M-4 (deniability timing, internal audit): a successful unlock — primary
         // OR a duress/hidden hit — runs ONE verifier-capture Argon2id below
-        // (captureVerifierSafe). The password-cohort total miss throws here and
+        // (captureVerifierSafe). A total miss (BOTH cohorts now) throws here and
         // would SKIP it, costing one KDF less than a hit and letting an observer at
         // the prompt distinguish "a real secret was entered" from garbage. Spend an
         // equivalent throwaway verifier KDF first so a miss and a hit cost the same
-        // number of KDFs. The result is discarded (we throw regardless). The PIN
-        // cohort never reaches this branch (its deterministic decoy always resolves),
-        // so this is password-cohort-only and changes no PIN-cohort behaviour.
+        // number of KDFs. The result is discarded (we throw regardless).
         await captureVerifierSafe(password);
-        throw primaryErr; // password cohort total miss: unchanged behaviour, equalized cost
+        throw primaryErr; // total miss (PIN or password): equalized cost, then error
       }
     }
     // `mnemonic` here is the DECRYPTED payload: on the primary path it is a
@@ -1435,6 +1425,35 @@ export function WalletProvider({ children }) {
     setBiometricUnlockEnabled(false);
     try { await clearUnlockSecret(); } catch { /* best-effort */ }
   }, []);
+
+  // FACE-ID-OPENS-THE-DECOY (S3, target item 3 — PIN cohort only).
+  //
+  // Let the user opt in (while setting the duress PIN) to "Use Face ID to open the
+  // decoy." This caches the DURESS pin — never the real one — behind the SAME
+  // biometric gate as enableBiometricUnlock, so a one-tap Face-ID unlock retrieves
+  // the duress secret and unlock()'s deniability branch routes it to the DECOY
+  // wallet. The REAL wallet is then reachable ONLY by typing the real PIN at the
+  // password/PIN escape hatch — Face ID is decoy-by-design.
+  //
+  // This is deliberately the inverse of the convenience cache: the cached secret is
+  // the LOW-VALUE decoy credential, so a coerced "just use Face ID" never exposes
+  // real funds (I1/I4). It is HONEST-DISABLED outside the PIN cohort (returns false,
+  // caches nothing): the deterministic PIN-cohort surface is what makes "typed real
+  // PIN = real wallet, Face ID = decoy" unambiguous, and re-using the same cache for
+  // a free-text password would collide with the convenience meaning of that cache.
+  // It is also a no-op (false) when biometrics are unavailable — enableBiometricUnlock
+  // already fails closed there, so nothing is enabled on web/no-sensor devices.
+  //
+  // NOTE on shouldCacheUnlockSecret: that guard blocks changePassword from
+  // re-caching the REAL pin in the PIN cohort (which WOULD make Face ID open the
+  // real set). This method is the SANCTIONED writer of the PIN-cohort cache — it
+  // stores the DURESS pin on purpose — so it does not (and must not) consult that
+  // guard. The two are complementary: the guard forbids caching the real secret;
+  // this caches only the decoy secret.
+  const enableDecoyBiometricUnlock = useCallback(async (duressPin) => {
+    if (getAuthModel() !== 'pin') return false; // PIN-cohort feature; honest-disabled elsewhere
+    return enableBiometricUnlock(duressPin);     // caches the DURESS pin + flips the preference
+  }, [enableBiometricUnlock]);
 
   // unlockWithBiometric(): the one-tap returning-user path. Satisfy the biometric
   // gate, retrieve the cached vault password, then unlock with it.
@@ -1832,6 +1851,10 @@ export function WalletProvider({ children }) {
     // user one-tap path. See lib/biometricUnlock.js.
     enableBiometricUnlock,
     disableBiometricUnlock,
+    // FACE-ID-OPENS-THE-DECOY (S3, PIN cohort): cache the DURESS pin (never the
+    // real one) behind the biometric gate so Face ID opens the decoy. The real
+    // wallet still needs the typed real PIN. Honest-disabled outside the PIN cohort.
+    enableDecoyBiometricUnlock,
     unlockWithBiometric,
     // PASSKEY (S1): preview/test the passkey gate from settings. Registration,
     // removal, status and the unlock preference are read/written directly from

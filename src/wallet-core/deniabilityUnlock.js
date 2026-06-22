@@ -3,6 +3,32 @@
 // CONSTANT-KDF DENIABILITY RESOLUTION  (S3 — Direction-C).  PROVISIONAL.
 // ⚠️ DENIABILITY-SECURITY CHANGE — FLAGGED FOR INDEPENDENT AUDIT VALIDATION. ⚠️
 //
+// CURRENT DENIABILITY MODEL (v2 — owner-approved 2026-06-22).
+// This replaces the old Option-A no-oracle design. Key properties:
+//
+//   - Real 8-digit PIN    → REAL wallet (hidden; no UI tell it exists).
+//   - Duress PIN          → DECOY wallet (the surrendered wallet).
+//   - Face ID (if opted in, bound to duress PIN) → DECOY wallet, never the real one.
+//   - Any OTHER wrong PIN → "Incorrect PIN" error (explicit, not a silent decoy).
+//   - 10 consecutive wrong PINs → irreversible local panic wipe (pinAttemptGuard.js).
+//   - Dedicated panic PIN → immediate wipe.
+//
+// The no-oracle property (a wrong guess was formerly indistinguishable from a duress
+// hit because Option-A opened an empty deterministic decoy) was DELIBERATELY REMOVED
+// in this owner-approved change. A wrong PIN now produces a real error. This IS an
+// oracle in the classical sense — an attacker who can try PINs interactively can
+// distinguish wrong from duress. The 10-attempt wipe (pinAttemptGuard.js) makes the
+// wrong-PIN oracle non-fatal: the device self-destructs before an exhaustive search
+// of the 8-digit PIN space completes. Deniability now rests on HIDING the real wallet
+// behind the secret real PIN + the duress/Face-ID decoy path, NOT on the removed
+// no-oracle trick.
+//
+// OFFLINE-SEIZURE GAP (not closed): an 8-digit PIN over Argon2id is offline-
+// exhaustible on a seized device without a hardware key-encryption key (KEK). The
+// 10-attempt counter lives in software and is bypassed by imaging the storage before
+// the first attempt. Hardware KEK (Secure Enclave / StrongBox) is the planned fast-
+// follow. This gap is OPEN, UNVERIFIED, and requires a real-device audit.
+//
 // WHY THIS MODULE EXISTS (SAST finding M2). Each deniability module (panic.js,
 // duress.js, stealth.js) analyzed its OWN unlock timing in isolation and each
 // was locally correct. But the COMBINED failed-unlock path in WalletProvider ran
@@ -37,6 +63,10 @@
 // the single primary-unlock KDF, a wrong password (and a duress/hidden hit) costs
 // a constant FOUR KDFs. We evaluate all three, THEN branch on the boolean results
 // in the caller (panic > duress > hidden), so success and failure cost the same.
+// NOTE: the wrong-PIN ERROR returned to the caller is a new signal in v2 (the
+// no-oracle property was removed — see above). The constant KDF cost means timing
+// adds NO additional signal on top of the explicit error; but the error itself IS
+// the oracle now, mitigated by the 10-attempt wipe rather than by silence.
 //
 // RESIDUAL TIMING VARIANCE WE DO NOT (AND CANNOT FULLY) ELIMINATE — for audit:
 // VULN-17 ACCEPTED RESIDUAL: the primary success path is ~1 KDF faster than any
@@ -75,7 +105,6 @@ import { decryptVault, KDF_PARAMS } from './vault.js';
 import { hasPanicVault, tryPanicUnlock } from './panic.js';
 import { hasDuressVault, tryDuressUnlock } from './duress.js';
 import { ensureStealthPool, tryRevealHidden } from './stealth.js';
-import { deriveDeterministicDecoyMnemonic } from './decoyFallback.js';
 
 function randomBytes(n) {
   const b = new Uint8Array(n);
@@ -142,13 +171,22 @@ async function constantDuress(password, configured) {
  * the caller (WalletProvider.unlock) applies the priority order panic > duress >
  * hidden and re-throws the original primary error on a total miss.
  *
- * Never throws for a wrong password (each branch swallows its own miss), so a
- * total miss is indistinguishable from "no features configured" at the prompt.
+ * Never throws for a wrong password (each branch swallows its own miss). A total
+ * miss now resolves to NOTHING (panic:false, both mnemonics null) — BOTH the PIN
+ * and password cohorts fall through to the caller's throw path. The PIN cohort's
+ * former Option-A deterministic-decoy slot (slot 4) was REMOVED in an owner-
+ * approved threat-model change: a wrong PIN now ERRORS ("Incorrect PIN") instead
+ * of silently opening an empty deterministic decoy. This INTENTIONALLY surrenders
+ * the no-oracle deniability property at the prompt — but the constant-KDF cost is
+ * preserved, so the error is the ONLY new signal, never an extra timing oracle.
+ *
+ * The legacy `opts` (deterministicFallback / deviceSalt) are ignored; the param is
+ * retained so existing callers don't break and to keep the call shape stable.
  *
  * @param {string} password
- * @returns {Promise<{ panic: boolean, duressMnemonic: string|null, hiddenMnemonic: string|null, fallbackDecoyMnemonic: string|null }>}
+ * @returns {Promise<{ panic: boolean, duressMnemonic: string|null, hiddenMnemonic: string|null }>}
  */
-export async function resolveDeniabilityUnlock(password, opts = {}) {
+export async function resolveDeniabilityUnlock(password) {
   // Guarantee the stealth slot holds a blob so the reveal attempt is always one
   // KDF (idempotent, non-destructive, NO KDF of its own). Kept sequential to avoid
   // IndexedDB write-lock contention with the parallel reads below.
@@ -165,22 +203,14 @@ export async function resolveDeniabilityUnlock(password, opts = {}) {
   ]);
 
   // Slots 1-3: exactly three KDFs, evaluated unconditionally — no short-circuit.
+  // This is the WHOLE resolution for BOTH cohorts now. A total miss returns all
+  // empties and the caller throws (after one equalizer verifier-capture KDF), so a
+  // wrong PIN errors with the SAME work-per-attempt as any enrolled hit — the
+  // Option-A 4th deterministic-decoy slot was removed (owner-approved threat-model
+  // change). No early return: panic/duress/hidden presence stays timing-opaque.
   const panic = await constantPanic(password, hasPanic);
   const duressMnemonic = await constantDuress(password, hasDuress);
   const hiddenMnemonic = await tryRevealHidden(password); // pool seeded => 1 KDF
 
-  // Slot 4 (PIN cohort only — Option A, §7): the deterministic decoy. Runs
-  // UNCONDITIONALLY (even when an enrolled path above already won) so total-miss
-  // costs the SAME four KDFs as any hit and is timing-indistinguishable. The
-  // caller only USES it on a total miss (priority panic > duress > hidden >
-  // fallback), but it is always EXECUTED. MUST be memory-hard Argon2id at the
-  // shared params (decoyFallback.js), never a cheap hash, or the miss path leaks.
-  // The password cohort passes no opts, so this slot does not run (3 KDFs + the
-  // caller throws on a total miss, unchanged).
-  let fallbackDecoyMnemonic = null;
-  if (opts.deterministicFallback) {
-    fallbackDecoyMnemonic = await deriveDeterministicDecoyMnemonic(password, opts.deviceSalt);
-  }
-
-  return { panic, duressMnemonic, hiddenMnemonic, fallbackDecoyMnemonic };
+  return { panic, duressMnemonic, hiddenMnemonic };
 }

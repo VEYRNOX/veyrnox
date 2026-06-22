@@ -20,9 +20,16 @@
 //                                            this throws, TEAR THE VAULT DOWN
 //                                            (discardIncompleteWallet) and rethrow — never
 //                                            leave a primary vault with missing chaff slots.
-//   3. setAuthModel('pin')                 — select the PIN entry surface + Option A
-//   4. getOrCreateDeviceSalt()             — seed the deterministic-decoy salt so a
-//                                            non-enrolled PIN opens an empty decoy, never errors
+//   3. setAuthModel('pin')                 — select the PIN entry surface
+//   4. getOrCreateDeviceSalt()             — seeds the device salt for structural
+//                                            parity with fresh onboarding. NOTE (v2
+//                                            model change 2026-06-22): the Option-A
+//                                            deterministic-decoy fallback was REMOVED
+//                                            (deniabilityUnlock.js) — a non-enrolled
+//                                            PIN now ERRORS ("Incorrect PIN"), it does
+//                                            NOT open an empty decoy. This salt is now
+//                                            VESTIGIAL for the decoy purpose; retained
+//                                            for footprint parity, pending a TDD cleanup.
 //
 // FAIL CLOSED (success-only ordering). Everything after the import runs ONLY once
 // importWallet resolves. If the import throws (e.g. an invalid BIP-39 phrase), the
@@ -37,9 +44,10 @@
 // A recovered device is, by construction, indistinguishable from an onboarded one.
 //
 // HONEST NOTE (brief §4): the seed is the ROOT secret — whoever holds the real seed
-// holds the real wallet, full stop. The chaff/decoy model protects the day-to-day
-// UNLOCK (a non-real PIN opens an empty decoy under coercion), NOT the seed backup. A coercer who
-// extracts the real seed bypasses the PIN model entirely. Recovery does not change
+// holds the real wallet, full stop. The duress/decoy model protects the day-to-day
+// UNLOCK (v2: a configured duress PIN — or Face ID, if opted in — opens the decoy;
+// any other wrong PIN errors; 10 wrong attempts wipe), NOT the seed backup. A coercer
+// who extracts the real seed bypasses the PIN model entirely. Recovery does not change
 // this; we do not imply the duress model protects the seed.
 //
 // Pure orchestration over injected collaborators (no React/IndexedDB) so the §4
@@ -82,6 +90,9 @@ export async function provisionPinRecovery(deps, params) {
   // 3. Select the PIN cohort — the whole point of §4. Never 'password'.
   setAuthModel('pin');
 
-  // 4. Seed the deterministic-decoy salt so Option A is live (no error oracle).
+  // 4. Seed the device salt for structural parity with fresh onboarding. (v2: the
+  //    Option-A deterministic-decoy fallback was removed; a non-enrolled PIN now
+  //    errors rather than opening an empty decoy. This salt is vestigial for the
+  //    decoy purpose — kept for footprint parity, pending a TDD cleanup.)
   getOrCreateDeviceSalt();
 }

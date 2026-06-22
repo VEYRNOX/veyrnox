@@ -44,7 +44,10 @@ export async function provisionPinWallet(deps, { pin }) {
     throw e;
   }
 
-  // 3. Only once BOTH slots exist: mark the PIN cohort + seed the deterministic-decoy salt.
+  // 3. Only once BOTH slots exist: mark the PIN cohort + seed the device salt.
+  //    (v2 2026-06-22: the Option-A deterministic-decoy fallback was removed — a
+  //    non-enrolled PIN now errors, not opens an empty decoy. The salt is vestigial
+  //    for the decoy purpose; kept for footprint parity, pending a TDD cleanup.)
   setAuthModel('pin');
   getOrCreateDeviceSalt();
 }
