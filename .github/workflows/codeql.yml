@@ -1,0 +1,45 @@
+# Advanced CodeQL setup (Route B for code quality).
+#
+# IMPORTANT — do NOT merge this until you have switched CodeQL OFF default setup:
+#   Settings -> Code security -> Code scanning -> CodeQL -> Advanced (disable default).
+# Default setup and an advanced workflow cannot both be active; if both are on,
+# this workflow errors with "default setup is enabled".
+#
+# Difference from default setup: this runs the `security-and-quality` query suite,
+# which adds maintainability / code-quality queries on top of security — the
+# findings the `code_quality` ruleset rule needs. We verify it produces results
+# on a test PR before re-adding that rule.
+name: "CodeQL"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["javascript-typescript", "actions"]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
