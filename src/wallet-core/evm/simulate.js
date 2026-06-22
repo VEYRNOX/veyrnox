@@ -400,9 +400,7 @@ export async function simulateEvmTransaction({
       thirdParty: false,
     },
     coverageNote:
-      'Simulated locally against your own RPC. ' +
-      'This predicts the outcome, flags KNOWN risk patterns, and checks for deviations from your own ' +
-      'on-device history; it is NOT a guarantee of safety and will not catch every novel threat. ' +
-      'Review every detail before signing.',
+      'This check predicts the outcome and flags known risk patterns and deviations from your own history — ' +
+      "not a guarantee of safety, and won't catch every novel threat.",
   };
 }
