@@ -48,22 +48,36 @@ INFLATED by repeated legitimate `+1` calls. The fix makes the counter
 **tamper-resistant** (no arbitrary set/zero), **not abuse-proof**. Rate-limiting a
 non-sensitive vanity counter (per-IP / PoW / auth) is out of scope.
 
-## Status — NOT yet applied to the hosted project
+## Status — applied & verified live (2026-06-22)
 
-- Code-complete in `supabase/referrals.sql` (idempotent migration). This is BUILT,
-  not "verified": no project credentials or Supabase CLI link exist in this repo,
-  and the anon key cannot run DDL, so the policy change has NOT been executed
-  against the live database from here.
-- **Owner action to apply:** Supabase → SQL Editor → run the file's contents.
-- **Verification query (run post-apply):**
+Applied by the repo owner via the Supabase SQL editor, then confirmed live with a
+functional test of the **anonymous** REST path. That is the faithful test: it
+exercises exactly the role the policy governs. (A SQL-editor / service-role query
+bypasses RLS and would give a false pass, so it must NOT be used to "verify" this.)
+This is server-side RLS behavior confirmed by direct observation; it is distinct
+from the on-chain asset-verification gate in `CLAUDE.md` — no txid applies to a
+database policy.
 
-  ```sql
-  -- Expect ONLY insert + select rows, no UPDATE:
-  select policyname, cmd from pg_policies where tablename = 'referrals' order by cmd;
+Evidence — anonymous client (public anon key) against the live project:
 
-  -- The legit path still increments:
-  select increment_referral('YOURCODE');   -- returns new count
-  ```
+| Step (as anon) | Result | Meaning |
+|---|---|---|
+| Insert a fresh test code | `201`, row at count 0 | insert allowed (expected) |
+| **PATCH count = 9999** | `200` → `[]`, count still `0` | **direct write blocked by RLS** |
+| `increment_referral(code)` RPC | `200` → `1` | SECURITY DEFINER path works |
+| Delete attempt | `200` → `[]` | delete also blocked (no policy) |
+
+The decisive pair is the tamper step: the row demonstrably exists, yet an anon
+write affected 0 rows and the value did not change (RLS rejected it), while the
+intended RPC increment still succeeds.
+
+**Re-verify any time** — no secrets needed beyond the public anon key + project URL
+for the functional test, or in the SQL editor confirm the policy set directly:
+
+```sql
+-- Expect ONLY insert + select rows, no UPDATE:
+select policyname, cmd from pg_policies where tablename = 'referrals' order by cmd;
+```
 
 Re-triage trigger: if the referral table ever stores anything beyond `{ code,
 count }`, re-assess `select`/`insert` being public and revisit rate-limiting.
