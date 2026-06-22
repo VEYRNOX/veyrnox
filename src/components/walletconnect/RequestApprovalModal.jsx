@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import styles from './RequestApprovalModal.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
+import { checkDappDomain } from '@/risk/knownBadDapps.js';
 
 export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   const { signPersonal, signTypedData, sendTransaction, rejectRequest, isSendReauthRequired } = useWalletConnect();
@@ -53,6 +54,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
     type === REQUEST_TYPES.UNKNOWN;
 
   const sessionMeta = request.params?.proposer?.metadata ?? {};
+  const dapp = checkDappDomain(sessionMeta.url);
 
   async function handleApprove() {
     if (needsReauth) { onReauthNeeded?.(); return; }
@@ -89,6 +91,16 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
           <span className={styles.appName}>{sessionMeta.name ?? 'dApp'}</span>
           <span className={styles.methodBadge}>{method}</span>
         </div>
+
+        {dapp.flagged && (
+          <div className={styles.permitWarning}>
+            <p className={styles.permitTitle}>⚠ Known scam / phishing dApp</p>
+            <p className={styles.permitBody}>
+              {sessionMeta.name ?? 'This dApp'} ({dapp.domain}) is on Veyrnox's local known-bad
+              list: {dapp.reason}. Do not approve unless you are absolutely certain.
+            </p>
+          </div>
+        )}
 
         {/* PERSONAL SIGN */}
         {type === REQUEST_TYPES.PERSONAL_SIGN && (
