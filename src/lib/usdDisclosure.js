@@ -16,10 +16,7 @@ export const USD_DISCLOSURE = {
   '/advanced-analytics':{ discloses: true },   // Best/Worst Month + monthly activity $ figures
   '/benchmark':         { discloses: true },   // Net Invested / Current Value / monthly cash flow $
   '/portfolio-rewind':  { discloses: true },   // past/current portfolio value + asset breakdown $
-  '/anomaly-detection': {
-    exempt: 'internal-math',
-    note: 'USD_RATES used for z-score thresholds (large-transfer outlier detection) only; no $ figure is rendered.',
-  },
+  '/anomaly-detection': { discloses: true },   // large-transfer anomaly detail renders "$<n> — <σ>σ above average" from USD_RATES → carries ReferenceRateNote
   '/fraud': {
     exempt: 'internal-math',
     note: 'USD_RATES used for normalising tx amounts into a comparable unit for outlier scoring only; no $ figure is rendered.',
