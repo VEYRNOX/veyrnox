@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const RISK_CFG = {
-  low: { cls: "bg-green-500/10 text-green-500", label: "Low Risk" },
-  medium: { cls: "bg-yellow-500/10 text-yellow-500", label: "Medium Risk" },
+  low: { cls: "bg-success/10 text-success", label: "Low Risk" },
+  medium: { cls: "bg-caution/10 text-caution", label: "Medium Risk" },
   high: { cls: "bg-destructive/10 text-destructive", label: "High Risk" },
 };
 
@@ -206,7 +206,7 @@ export default function TokenApprovals() {
                       Revoke
                     </Button>
                   ) : (
-                    <ShieldCheck className="h-5 w-5 text-green-500" />
+                    <ShieldCheck className="h-5 w-5 text-success" />
                   )}
                 </div>
               </div>
@@ -220,7 +220,7 @@ export default function TokenApprovals() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-success" />
               {result?.simulated ? "Revoke simulated" : "Revoke broadcast"}
             </DialogTitle>
           </DialogHeader>

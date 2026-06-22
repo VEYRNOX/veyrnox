@@ -31,7 +31,7 @@ import { computeFeeAnalytics } from "@/analytics/feeAnalytics";
 const FEE_ASSETS = ASSETS.filter((a) => canReceive(a));
 
 const statusMeta = {
-  pending: { icon: Clock, cls: "text-yellow-500", label: "Pending" },
+  pending: { icon: Clock, cls: "text-caution", label: "Pending" },
   confirmed: { icon: CheckCircle2, cls: "text-primary", label: "Confirmed" },
   failed: { icon: XCircle, cls: "text-destructive", label: "Failed" },
 };
@@ -234,7 +234,7 @@ export default function FeeAnalytics() {
               {/* I4 honesty: paid txs whose fee the indexer didn't report. */}
               {analytics.unknownFeeCount > 0 && (
                 <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">
-                  <Info className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+                  <Info className="h-4 w-4 text-caution shrink-0 mt-0.5" />
                   <p>
                     {analytics.unknownFeeCount} paid transaction{analytics.unknownFeeCount !== 1 ? "s" : ""} had no
                     fee reported by the indexer and {analytics.unknownFeeCount !== 1 ? "are" : "is"} excluded from the

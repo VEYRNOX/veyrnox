@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 
 const CHAIN_COLORS = { ethereum: "bg-blue-500/10 text-blue-400", solana: "bg-purple-500/10 text-purple-400", polygon: "bg-violet-500/10 text-violet-400", base: "bg-sky-500/10 text-sky-400" };
-const STATUS_COLORS = { holding: "bg-green-500/10 text-green-400", listed: "bg-yellow-500/10 text-yellow-400", sold: "bg-muted text-muted-foreground" };
+const STATUS_COLORS = { holding: "bg-success/10 text-success", listed: "bg-caution/10 text-caution", sold: "bg-muted text-muted-foreground" };
 
 export default function NFTPortfolio() {
   const queryClient = useQueryClient();
@@ -63,7 +63,7 @@ export default function NFTPortfolio() {
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
             <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-            <p className={`text-base font-bold ${s.positive === false ? "text-destructive" : s.positive ? "text-green-400" : ""}`}>{s.value}</p>
+            <p className={`text-base font-bold ${s.positive === false ? "text-destructive" : s.positive ? "text-success" : ""}`}>{s.value}</p>
             {s.sub && <p className="text-xs text-muted-foreground">{s.sub}</p>}
           </div>
         ))}
@@ -104,7 +104,7 @@ export default function NFTPortfolio() {
                     <p className="text-xs font-medium pt-1">{nft.current_floor} ETH floor</p>
                   )}
                   {nft.purchase_price && nft.current_floor && (
-                    <div className={`flex items-center gap-1 text-xs ${pnl >= 0 ? "text-green-400" : "text-destructive"}`}>
+                    <div className={`flex items-center gap-1 text-xs ${pnl >= 0 ? "text-success" : "text-destructive"}`}>
                       {pnl >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                       {pnl >= 0 ? "+" : ""}{pnl.toFixed(3)} ETH
                     </div>

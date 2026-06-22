@@ -111,8 +111,8 @@ export default function ReceiveCrypto() {
             locked, so there is no address to reveal. */}
         {r && r.receivable && !r.address && (
           <div className="space-y-3 text-center py-2">
-            <div className="mx-auto w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
-              <Lock className="h-5 w-5 text-yellow-400" />
+            <div className="mx-auto w-12 h-12 rounded-full bg-caution/10 flex items-center justify-center">
+              <Lock className="h-5 w-5 text-caution" />
             </div>
             <div>
               <p className="text-sm font-medium">Wallet locked</p>
@@ -138,7 +138,7 @@ export default function ReceiveCrypto() {
               <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1">
                 <span className="text-xs font-medium">{r.network?.name || r.asset.chain}</span>
                 {r.network?.isTestnet && (
-                  <span className="text-[10px] uppercase tracking-wide font-semibold text-yellow-400">Testnet</span>
+                  <span className="text-[10px] uppercase tracking-wide font-semibold text-caution">Testnet</span>
                 )}
               </div>
             </div>
@@ -156,9 +156,9 @@ export default function ReceiveCrypto() {
             </div>
 
             {sendOnNote && (
-              <div className={`flex items-start gap-2 p-3 rounded-lg border ${r.isErc20 ? "bg-yellow-500/10 border-yellow-500/40" : "bg-secondary/60 border-border"}`}>
-                <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${r.isErc20 ? "text-yellow-400" : "text-muted-foreground"}`} />
-                <p className={`text-xs ${r.isErc20 ? "text-yellow-200" : "text-muted-foreground"}`}>{sendOnNote}</p>
+              <div className={`flex items-start gap-2 p-3 rounded-lg border ${r.isErc20 ? "bg-caution/10 border-caution/40" : "bg-secondary/60 border-border"}`}>
+                <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${r.isErc20 ? "text-caution" : "text-muted-foreground"}`} />
+                <p className={`text-xs ${r.isErc20 ? "text-caution" : "text-muted-foreground"}`}>{sendOnNote}</p>
               </div>
             )}
           </div>

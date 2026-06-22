@@ -96,7 +96,7 @@ export default function AddressBook() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium">{c.name}</p>
-                  {c.is_trusted && <Shield className="h-3.5 w-3.5 text-green-500" />}
+                  {c.is_trusted && <Shield className="h-3.5 w-3.5 text-success" />}
                   <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-semibold">{c.currency}</span>
                 </div>
                 <p className="text-xs text-muted-foreground font-mono truncate">{c.address}</p>
@@ -104,7 +104,7 @@ export default function AddressBook() {
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button onClick={() => copy(c.address, c.id)} aria-label="Copy address" className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
-                  {copied === c.id ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  {copied === c.id ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
                 </button>
                 <button onClick={() => toggleTrust.mutate({ id: c.id, is_trusted: !c.is_trusted })}
                   aria-label={c.is_trusted ? "Remove trusted mark" : "Mark as trusted"}

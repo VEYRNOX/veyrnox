@@ -166,8 +166,8 @@ export default function ExportTransactions({ transactions: propTransactions }) {
                             <td className="px-2 py-1.5 font-mono">${r.usd_value}</td>
                             <td className="px-2 py-1.5">
                               <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                                r.status === "confirmed" ? "bg-green-500/15 text-green-400"
-                                : r.status === "pending" ? "bg-yellow-500/15 text-yellow-400"
+                                r.status === "confirmed" ? "bg-success/15 text-success"
+                                : r.status === "pending" ? "bg-caution/15 text-caution"
                                 : "bg-destructive/15 text-destructive"
                               }`}>{r.status}</span>
                             </td>

@@ -68,8 +68,8 @@ export default function VoiceCommands() {
       <div><h1 className="text-xl font-bold">Voice Commands</h1><p className="text-sm text-muted-foreground">Navigate and control your wallet by voice</p></div>
 
       {!supported ? (
-        <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0" />
+        <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-caution shrink-0" />
           <p className="text-sm">Voice recognition is not supported in this browser. Try Chrome or Edge on desktop.</p>
         </div>
       ) : (
@@ -89,8 +89,8 @@ export default function VoiceCommands() {
 
           {/* Result */}
           {lastCommand && (
-            <div className={`p-4 rounded-xl border flex items-start gap-3 ${lastCommand.unrecognized ? "border-yellow-500/30 bg-yellow-500/5" : "border-green-500/30 bg-green-500/5"}`}>
-              {lastCommand.unrecognized ? <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0" /> : <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />}
+            <div className={`p-4 rounded-xl border flex items-start gap-3 ${lastCommand.unrecognized ? "border-caution/30 bg-caution/5" : "border-success/30 bg-success/5"}`}>
+              {lastCommand.unrecognized ? <AlertCircle className="h-5 w-5 text-caution shrink-0" /> : <CheckCircle className="h-5 w-5 text-success shrink-0" />}
               <div>
                 <p className="text-sm font-medium">{lastCommand.unrecognized ? "Command not recognized" : `✓ ${lastCommand.description}`}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Heard: "{lastCommand.text}"</p>

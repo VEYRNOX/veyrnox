@@ -60,7 +60,7 @@ function SeedGrid({ mnemonic }) {
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
           <button onClick={async () => { await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">
-            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
       </div>
@@ -465,12 +465,12 @@ export default function WalletPortfolioPage() {
               <p className="text-sm font-semibold truncate">{w.name}</p>
               {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary">Active</span>}
               {w.backedUp
-                ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-500">Backed up</span>
-                : <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500">Back up</span>}
+                ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/15 text-success">Backed up</span>
+                : <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">Back up</span>}
             </div>
             <p className="text-xs text-muted-foreground">
               {formatFiat(data.total, "USD")}
-              {data.indeterminate && <span className="text-amber-600 dark:text-amber-400"> · partial</span>}
+              {data.indeterminate && <span className="text-caution"> · partial</span>}
             </p>
           </div>
           {canManage && (
@@ -539,7 +539,7 @@ export default function WalletPortfolioPage() {
             say so rather than presenting a silently-understated figure as fact.
             Same copy in decoy and real sessions (no isDecoy branch). */}
         {pfIncomplete && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+          <p className="text-xs text-caution mt-1">
             Some balances couldn’t be loaded — this total may be incomplete.
           </p>
         )}
@@ -571,17 +571,17 @@ export default function WalletPortfolioPage() {
 
       {/* Global unbacked-wallet warning (fund-loss risk spans all portfolios) */}
       {unbacked.length > 0 && (
-        <div className="p-3 rounded-xl border border-yellow-500/40 bg-yellow-500/10 space-y-2">
+        <div className="p-3 rounded-xl border border-caution/40 bg-caution/10 space-y-2">
           <div className="flex items-start gap-2">
-            <ShieldAlert className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-yellow-600 dark:text-yellow-400">
+            <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
+            <p className="text-xs text-caution">
               <b>{unbacked.length} wallet{unbacked.length === 1 ? "" : "s"} not backed up.</b> Each wallet has its own recovery phrase — without it, that wallet’s funds are unrecoverable. Back up now.
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {unbacked.map((w) => (
               <button key={w.id} onClick={() => requireTwoFactor(() => setBackupTarget({ id: w.id, name: w.name, mnemonic: revealWalletMnemonic(w.id) }), { title: "Reveal your recovery phrase" })}
-                className="text-[11px] px-2 py-1 rounded-md bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/30">
+                className="text-[11px] px-2 py-1 rounded-md bg-caution/20 text-caution hover:bg-caution/30">
                 Back up “{w.name}”
               </button>
             ))}

@@ -16,10 +16,10 @@ export default function AssetCorrelationTimeline() {
         <p className="text-sm text-muted-foreground">Price correlation across market events</p>
       </div>
 
-      <div className="p-5 rounded-xl border border-yellow-500/30 bg-yellow-500/5 space-y-3">
+      <div className="p-5 rounded-xl border border-caution/30 bg-caution/5 space-y-3">
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-yellow-400" />
-          <p className="text-sm font-semibold text-yellow-400">Historical price data not available</p>
+          <Clock className="h-4 w-4 text-caution" />
+          <p className="text-sm font-semibold text-caution">Historical price data not available</p>
         </div>
         <p className="text-xs text-muted-foreground">
           This view requires actual 30-day indexed price series for BTC, ETH, and SOL.
@@ -48,7 +48,7 @@ export default function AssetCorrelationTimeline() {
           <p className="text-xs text-muted-foreground">Records saved from the AI Refresh feature</p>
           {newsSentiments.slice(0, 5).map(n => (
             <div key={n.id} className="flex items-start gap-2 text-xs py-1 border-b border-border/50 last:border-0">
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${n.sentiment?.includes("bullish") ? "bg-green-500/10 text-green-500" : n.sentiment?.includes("bearish") ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground"}`}>{n.asset}</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${n.sentiment?.includes("bullish") ? "bg-success/10 text-success" : n.sentiment?.includes("bearish") ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground"}`}>{n.asset}</span>
               <div className="flex-1">
                 <p className="text-muted-foreground">{n.headline}</p>
                 <p className="text-[10px] text-muted-foreground/60">{formatDistanceToNow(new Date(n.published_at), { addSuffix: true })}</p>

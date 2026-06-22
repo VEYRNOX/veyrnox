@@ -89,9 +89,9 @@ export default function AdvancedAnalytics() {
   }));
 
   const riskLevel = portfolioVolatility < 0.3
-    ? { label: "Low", color: "text-green-400", bg: "bg-green-500/10" }
+    ? { label: "Low", color: "text-success", bg: "bg-success/10" }
     : portfolioVolatility < 0.6
-    ? { label: "Medium", color: "text-yellow-400", bg: "bg-yellow-500/10" }
+    ? { label: "Medium", color: "text-caution", bg: "bg-caution/10" }
     : { label: "High", color: "text-destructive", bg: "bg-destructive/10" };
 
   const metrics = [
@@ -151,13 +151,13 @@ export default function AdvancedAnalytics() {
                 <Tooltip formatter={(v) => `$${v}`} contentStyle={chartStyle} />
                 <Legend />
                 <Bar dataKey="inflow" name="Received" fill="hsl(var(--primary))" radius={[4,4,0,0]} />
-                <Bar dataKey="outflow" name="Sent" fill="#EF4444" radius={[4,4,0,0]} />
+                <Bar dataKey="outflow" name="Sent" fill="hsl(var(--destructive))" radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 rounded-xl border border-border bg-card text-center">
-              <p className="text-lg font-bold text-green-400">
+              <p className="text-lg font-bold text-success">
                 {bestMonth != null ? (bestMonth >= 0 ? '+' : '') + '$' + Math.abs(bestMonth).toLocaleString() : '—'}
               </p>
               <p className="text-xs text-muted-foreground">Best Month</p>
@@ -185,7 +185,7 @@ export default function AdvancedAnalytics() {
                 <PolarGrid stroke="hsl(var(--border))" />
                 <PolarAngleAxis dataKey="asset" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <Radar name="Allocation" dataKey="allocation" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
-                <Radar name="Volatility" dataKey="volatility" stroke="#EF4444" fill="#EF4444" fillOpacity={0.1} />
+                <Radar name="Volatility" dataKey="volatility" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.1} />
                 <Tooltip contentStyle={chartStyle} />
                 <Legend />
               </RadarChart>
@@ -203,7 +203,7 @@ export default function AdvancedAnalytics() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground w-14">Sharpe</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-green-500" style={{ width: `${Math.min((SHARPE[c] || DEFAULT_SHARPE) * 70, 100)}%` }} /></div>
+                    <div className="flex-1 h-1.5 rounded-full bg-secondary"><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((SHARPE[c] || DEFAULT_SHARPE) * 70, 100)}%` }} /></div>
                     <span className="text-[10px] text-muted-foreground w-8">{SHARPE[c] || DEFAULT_SHARPE}</span>
                   </div>
                 </div>
@@ -211,8 +211,8 @@ export default function AdvancedAnalytics() {
             ))}
           </div>
           {portfolioVolatility > 0.5 && (
-            <div className="flex gap-3 p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
-              <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+            <div className="flex gap-3 p-3 rounded-xl border border-caution/20 bg-caution/5">
+              <AlertTriangle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
               <p className="text-xs text-muted-foreground">High portfolio volatility detected. Consider increasing stablecoin allocation to reduce risk.</p>
             </div>
           )}

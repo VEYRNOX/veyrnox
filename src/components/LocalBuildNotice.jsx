@@ -9,8 +9,8 @@ import { CloudOff } from "lucide-react";
 // EMAIL_AVAILABLE) for where the gate is decided.
 export default function LocalBuildNotice({ feature, detail }) {
   return (
-    <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex items-start gap-3">
-      <CloudOff className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+    <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3">
+      <CloudOff className="h-5 w-5 text-caution shrink-0 mt-0.5" />
       <div className="text-sm min-w-0">
         <p className="font-semibold text-foreground">{feature} isn't available in this local build</p>
         <p className="text-muted-foreground mt-0.5">{detail}</p>

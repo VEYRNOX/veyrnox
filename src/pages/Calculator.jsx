@@ -82,9 +82,9 @@ export default function Calculator() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       {!livePricesOn && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5">
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-caution/30 bg-caution/5">
           <div className="flex-1 space-y-1">
-            <p className="text-sm font-semibold text-yellow-400">Live prices off</p>
+            <p className="text-sm font-semibold text-caution">Live prices off</p>
             <p className="text-xs text-muted-foreground">
               The converter requires a live price feed (CryptoCompare). Enable live prices in Settings to use it.
               When on, a fixed public symbol list is sent to CryptoCompare — not your holdings.

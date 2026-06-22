@@ -79,8 +79,8 @@ export default function PortfolioBenchmark() {
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground mb-1">Portfolio Return</p>
           <div className="flex items-center gap-2">
-            {returnUp ? <TrendingUp className="h-4 w-4 text-green-500" /> : <TrendingDown className="h-4 w-4 text-destructive" />}
-            <p className={`text-xl font-bold ${returnUp ? "text-green-500" : "text-destructive"}`}>
+            {returnUp ? <TrendingUp className="h-4 w-4 text-success" /> : <TrendingDown className="h-4 w-4 text-destructive" />}
+            <p className={`text-xl font-bold ${returnUp ? "text-success" : "text-destructive"}`}>
               {returnUp ? "+" : ""}{portfolioReturn.toFixed(1)}%
             </p>
           </div>
