@@ -94,7 +94,7 @@ export default function PanicWipe() {
   const {
     isUnlocked, wasWiped,
     hasVault, setDuressPin,
-    setPanicPin, removePanicPin, hasPanicPin, panicWipe, inspectKeyMaterial,
+    setPanicPin, panicWipe, inspectKeyMaterial,
     addHiddenWallet, createWallet, unlock, lock,
   } = useWallet();
 
@@ -105,8 +105,6 @@ export default function PanicWipe() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [panicSet, setPanicSet] = useState(false);
-  const [removing, setRemoving] = useState(false);
 
   // ----- in-app guarded wipe state -----
   const [confirmText, setConfirmText] = useState("");
@@ -123,8 +121,7 @@ export default function PanicWipe() {
 
   const refresh = useCallback(async () => {
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
-    try { setPanicSet(!!(await hasPanicPin?.())); } catch { /* noop */ }
-  }, [hasVault, hasPanicPin]);
+  }, [hasVault]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -143,21 +140,6 @@ export default function PanicWipe() {
       setError(e?.message || "Could not save panic/wipe PIN");
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Remove just the panic-PIN marker (wipes nothing else). Lets a user who set a
-  // panic/wipe PIN turn it off without destroying their wallet.
-  const handleRemove = async () => {
-    setError(""); setSaved(false);
-    setRemoving(true);
-    try {
-      await removePanicPin();
-      await refresh();
-    } catch (e) {
-      setError(e?.message || "Could not remove panic/wipe PIN");
-    } finally {
-      setRemoving(false);
     }
   };
 
@@ -327,22 +309,15 @@ export default function PanicWipe() {
           {error && <p className="text-xs text-destructive">{error}</p>}
           {saved && <p className="text-xs text-success">✓ Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}
           <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
-            {saving ? "Saving…" : panicSet ? "Change panic/wipe PIN" : "Set panic/wipe PIN"}
+            {saving ? "Saving…" : "Set / Change panic/wipe PIN"}
           </Button>
-          {panicSet && (
-            <div className="pt-1 space-y-1.5">
-              <p className="text-[11px] text-success">✓ A panic/wipe PIN is currently set on this device.</p>
-              <Button
-                variant="outline"
-                className="w-full border-destructive/40 text-destructive hover:bg-destructive/5"
-                disabled={removing}
-                onClick={handleRemove}
-              >
-                {removing ? "Removing…" : "Remove panic/wipe PIN"}
-              </Button>
-              <p className="text-[11px] text-muted-foreground">Removing only clears the panic trigger — it wipes nothing.</p>
-            </div>
-          )}
+          {/* No "is a panic PIN set?" indicator and no remove button BY DESIGN:
+              every PIN device seeds CHAFF into the panic ('tertiary') slot
+              (provisionChaff.js), so hasPanicVault() is always true and cannot
+              distinguish a real panic PIN from chaff. Surfacing a "set" state would
+              be a false positive, and a "remove" action would clear the chaff and
+              leave an EMPTY slot — a structural deniability tell. Setting/changing
+              overwrites whatever is there; that is the only safe operation. */}
         </div>
       </div>
 
