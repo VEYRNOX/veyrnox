@@ -19,6 +19,7 @@
 
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getSolNetwork, getSolNetworkInfo } from './networks.js';
+import { assertSafeRpcUrl } from '../netUrl.js';
 
 export { LAMPORTS_PER_SOL };
 
@@ -27,7 +28,7 @@ const _connections = {}; // networkKey -> Connection (memoized per resolved URL)
 
 /** Operator override for a network's RPC URL. Pass null to clear. */
 export function setSolRpcUrl(networkKey, url) {
-  if (url) _overrides[networkKey] = url.replace(/\/$/, '');
+  if (url) _overrides[networkKey] = assertSafeRpcUrl(url).replace(/\/$/, '');
   else delete _overrides[networkKey];
   delete _connections[networkKey]; // force a rebuild against the new URL
 }
@@ -92,22 +93,19 @@ export async function getRentExemptMinimum(networkKey, space = 0) {
 }
 
 /**
- * Per-signature base fee (lamports, BigInt) for the network. A simple native
- * transfer has one signature. Read from the RPC's fee governor; falls back to
- * the well-known 5000 lamports/signature default if the RPC omits it.
+ * Per-signature base fee (lamports, BigInt). A simple native transfer has one
+ * signature. Solana's base fee has been a fixed 5000 lamports/signature since
+ * genesis; the on-chain fee governor that could change it has never been activated.
+ * The old getFeeCalculatorForBlockhash RPC is deprecated and returns a null value
+ * on modern validators, so the previous code silently fell back to this same
+ * constant after a dead round-trip. We return the protocol constant directly; a
+ * live reading would use getFeeForMessage against a compiled Message (see
+ * simulate.js) if/when the governor is ever activated. `_networkKey` is accepted
+ * (callers pass it) but unused — the base fee is network-independent.
  * @returns {Promise<bigint>}
  */
-export async function getLamportsPerSignature(networkKey) {
-  const conn = getConnection(networkKey);
-  try {
-    const { blockhash } = await conn.getLatestBlockhash('confirmed');
-    const info = await conn.getFeeCalculatorForBlockhash(blockhash, 'confirmed');
-    const lps = info?.value?.lamportsPerSignature;
-    if (lps != null && Number.isFinite(Number(lps))) return BigInt(lps);
-  } catch {
-    /* fall through to the default */
-  }
-  return 5000n; // documented Solana default base fee per signature
+export async function getLamportsPerSignature(_networkKey) {
+  return 5000n;
 }
 
 /**

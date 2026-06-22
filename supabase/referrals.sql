@@ -9,16 +9,33 @@ create table if not exists referrals (
   created_at  timestamptz not null default now()
 );
 
--- 2. RLS: enable row-level security, then grant public read/write.
---    This table holds no sensitive data — code + counter only.
+-- 2. RLS: enable row-level security. The table holds no sensitive data (code +
+--    counter only, no identity/addresses), so anon may READ and may INSERT a new
+--    code. It may NOT update rows directly — see the authz note below.
 alter table referrals enable row level security;
 
+-- Idempotent: drop any policy from a previous version of this migration, including
+-- the old broad "public update" policy that this migration intentionally REMOVES.
 drop policy if exists "public insert"  on referrals;
 drop policy if exists "public update"  on referrals;
 drop policy if exists "public select"  on referrals;
 
+-- AUTHZ MODEL (server-side, not browser-trusted):
+--   - SELECT: public — anon clients read a code's count (fetchStatus).
+--   - INSERT: public — registerCode upserts with ignoreDuplicates, i.e.
+--             INSERT ... ON CONFLICT DO NOTHING, which needs only INSERT. A new
+--             code starts at count 0; an existing code is left untouched.
+--   - UPDATE: NO policy. With RLS on and no UPDATE policy, anon clients CANNOT
+--             write the counter directly. The ONLY way `count` changes is the
+--             increment_referral() function below, which is SECURITY DEFINER and
+--             therefore bypasses RLS to perform exactly a +1.
+--   This closes the prior gap where "public update using (true)" let any client
+--   set any code's count to any value (or zero it). RESIDUAL (honest scope): the
+--   RPC is still callable repeatedly, so a counter can be INFLATED by repeated
+--   legitimate +1 calls — it is tamper-resistant, not abuse-proof. Hardening that
+--   (per-IP rate limit / proof-of-work / auth) is out of scope for a vanity
+--   counter that exposes no sensitive data.
 create policy "public insert" on referrals for insert with check (true);
-create policy "public update" on referrals for update using (true);
 create policy "public select" on referrals for select using (true);
 
 -- 3. Atomic increment function: increments the count for a known code

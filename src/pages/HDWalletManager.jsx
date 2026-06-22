@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
+import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import { isBiometricGateError } from "@/lib/biometric";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -139,7 +140,8 @@ export default function HDWalletManager() {
 
   const handleGenerate = async () => {
     setError("");
-    if (genPassword.length < 8) { setError("Choose a vault password of at least 8 characters."); return; }
+    const pw = checkVaultPasswordStrength(genPassword);
+    if (!pw.ok) { setError(pw.reason); return; }
     setBusy(true);
     try {
       const seed = await createWallet(genPassword); // returns the mnemonic ONCE for backup
@@ -152,7 +154,8 @@ export default function HDWalletManager() {
 
   const handleImport = async () => {
     setError("");
-    if (importPassword.length < 8) { setError("Choose a vault password of at least 8 characters."); return; }
+    const pw = checkVaultPasswordStrength(importPassword);
+    if (!pw.ok) { setError(pw.reason); return; }
     setBusy(true);
     try {
       await importWallet(importPhrase.trim(), importPassword); // validates BIP-39 checksum
@@ -458,7 +461,7 @@ export default function HDWalletManager() {
           <div>
             <Label htmlFor="hd-import-password">Vault Password</Label>
             <Input id="hd-import-password" type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
-            <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 8 characters.</p>
+            <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 12 characters.</p>
           </div>
           <Button className="w-full gap-2" disabled={!importPhrase.trim() || !importPassword || busy} onClick={handleImport}>
             {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Validate &amp; Import
@@ -476,7 +479,7 @@ export default function HDWalletManager() {
               <div>
                 <Label htmlFor="hd-gen-password">Vault Password</Label>
                 <Input id="hd-gen-password" type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" />
-                <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 8 characters.</p>
+                <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 12 characters.</p>
               </div>
               <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
                 {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Generate New 12-Word Phrase
