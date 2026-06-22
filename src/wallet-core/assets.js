@@ -94,6 +94,9 @@ export const ASSETS = Object.freeze([
   //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…A96045, fee 0.000021 tBNB, 1 Gwei)
   //   https://testnet.bscscan.com/tx/0x1a6ee75ee51ad9cf15e9e6fda4b8a26230378c90a449cd881f96c37def957f75
   // Standard+ fee tier used (BNB testnet enforces ≥1 Gwei minimum gas price).
+  // On-chain receipt (status/sender/recipient/value/block) independently re-confirmed
+  // via public BSC-testnet RPC (bsc-testnet-rpc.publicnode.com) 2026-06-22; full
+  // UI-path provenance per session record + owner confirmation.
   // Mainnet stays gated in networks.js.
   { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnbTestnet',      status: ASSET_STATUS.LIVE },
   // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
