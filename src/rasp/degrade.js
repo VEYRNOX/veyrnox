@@ -30,7 +30,9 @@
 // NO DESTRUCTIVE OVERRIDE on environment risk (§4). Unlike a tx-level "sign
 // anyway", a hostile runtime is not something the user can confirm past: the
 // confirmation itself can be hooked. So BLOCK artifacts carry no biometric/
-// override affordance; only WARN offers biometric re-confirm.
+// override affordance. A WARN biometric re-confirm is a TARGET (the
+// `requiresBiometric` field), NOT currently enforced — compose.js treats WARN
+// as proceed-allowed with no biometric step. Copy must not imply it is live.
 
 import { CONDITION, TIER } from './conditions.js';
 
@@ -49,27 +51,34 @@ const SPECS = Object.freeze({
     requiresBiometric: false,
   },
   [CONDITION.ROOTED]: {
+    // `requiresBiometric: true` is a TARGET signal NOT currently wired to gate
+    // enforcement: compose.js treats WARN as proceed-allowed with no biometric
+    // step (the WARN biometric re-confirm is unbuilt). So the copy warns and
+    // advises caution WITHOUT claiming an enforced biometric re-confirm.
     tier: TIER.WARN,
     sentence:
-      'This device looks modified (rooted or jailbroken), which can weaken its protections — confirm with biometrics to continue.',
+      'This device looks modified (rooted or jailbroken), which can weaken its protections — continue only if you trust it.',
     blockedActions: [],
     permitsTestnet: true,
     requiresBiometric: true,
   },
   [CONDITION.INTEGRITY_UNAVAILABLE]: {
+    // requiresBiometric is TARGET only (see ROOTED note): no enforced biometric
+    // re-confirm exists, so the copy must not promise one.
     tier: TIER.WARN,
     sentence:
-      "We couldn't confirm this device's integrity just now, so we're asking you to confirm with biometrics before continuing.",
+      "We couldn't confirm this device's integrity just now — continue with extra caution.",
     blockedActions: [],
     permitsTestnet: true,
     requiresBiometric: true,
   },
   [CONDITION.EMULATOR]: {
-    // Production sign blocked; testnet stays available as a dev/QA affordance
-    // (§4, §10). The carve-out is the condition's, not a wallet-set's.
+    // Production sign blocked. `permitsTestnet: true` is a TARGET carve-out that
+    // is NOT currently consumed by the live gate: compose.js maps BLOCK →
+    // signerReachable:false for EVERY send, including testnet. So emulator
+    // currently blocks all sends, and the copy must not promise testnet.
     tier: TIER.BLOCK,
-    sentence:
-      'Signing is turned off in emulated environments. Testnet actions stay available for testing.',
+    sentence: 'Signing is turned off in emulated environments.',
     blockedActions: ['sign'],
     permitsTestnet: true,
     requiresBiometric: false,
@@ -121,8 +130,8 @@ const FAIL_CLOSED = Object.freeze({
  *   tier: string,                 // TIER.ALLOW | TIER.WARN | TIER.BLOCK
  *   sentence: string|null,        // the one plain-language sentence (null when ALLOW)
  *   blockedActions: string[],     // actions refused at this tier (fresh array)
- *   permitsTestnet: boolean,      // testnet carve-out (true only where the condition allows it)
- *   requiresBiometric: boolean,   // WARN biometric re-confirm; never an override past BLOCK
+ *   permitsTestnet: boolean,      // TARGET testnet carve-out — NOT consumed by the live gate yet
+ *   requiresBiometric: boolean,   // TARGET WARN biometric re-confirm — NOT consumed by the live gate yet
  * }}
  */
 export function degrade(condition) {
