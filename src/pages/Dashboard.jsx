@@ -324,7 +324,7 @@ function DemoDashboard() {
                     <p className="text-sm font-medium capitalize">{tx.type}</p>
                     {STATUS_ICONS[tx.status]}
                   </div>
-                  <p className="text-xs text-muted-foreground font-mono truncate">
+                  <p className="text-xs text-muted-foreground mono-value truncate">
                     {tx.type === "send" ? tx.to_address : tx.from_address}
                   </p>
                 </div>
@@ -357,14 +357,14 @@ function DemoDashboard() {
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Quick Access</p>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: "Receive", icon: ArrowDownLeft, path: "/receive", color: "text-blue-400", bg: "bg-blue-500/10" },
-              { label: "Security", icon: ShieldAlert, path: "/security", color: "text-yellow-400", bg: "bg-yellow-500/10" },
-              { label: "Approvals", icon: Lock, path: "/token-approvals", color: "text-green-400", bg: "bg-green-500/10" },
-              { label: "Address Check", icon: Search, path: "/address-checker", color: "text-purple-400", bg: "bg-purple-500/10" },
-              { label: "AI Advisor", icon: Bot, path: "/advisor", color: "text-primary", bg: "bg-primary/10" },
-              { label: "Analytics", icon: BarChart2, path: "/analytics", color: "text-indigo-400", bg: "bg-indigo-500/10" },
-              { label: "Sentiment", icon: Newspaper, path: "/news-sentiment", color: "text-cyan-400", bg: "bg-cyan-500/10" },
-              { label: "Risk Score", icon: ShieldCheck, path: "/risk", color: "text-orange-400", bg: "bg-orange-500/10" },
+              { label: "Receive",       icon: ArrowDownLeft, path: "/receive",         color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
+              { label: "Security",      icon: ShieldAlert,   path: "/security",        color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
+              { label: "Approvals",     icon: Lock,          path: "/token-approvals", color: "text-[hsl(var(--chart-1))]", bg: "bg-[hsl(var(--chart-1))]/10" },
+              { label: "Address Check", icon: Search,        path: "/address-checker", color: "text-[hsl(var(--chart-5))]", bg: "bg-[hsl(var(--chart-5))]/10" },
+              { label: "AI Advisor",    icon: Bot,           path: "/advisor",         color: "text-primary",               bg: "bg-primary/10" },
+              { label: "Analytics",     icon: BarChart2,     path: "/analytics",       color: "text-[hsl(var(--chart-4))]", bg: "bg-[hsl(var(--chart-4))]/10" },
+              { label: "Sentiment",     icon: Newspaper,     path: "/news-sentiment",  color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
+              { label: "Risk Score",    icon: ShieldCheck,   path: "/risk",            color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
             ].map(item => (
               <button key={item.path} onClick={() => navigate(item.path)}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-center">

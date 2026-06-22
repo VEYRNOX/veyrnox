@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { addDays, isBefore, formatDistanceToNow } from "date-fns";
+import { isValidAddressForCurrency } from "@/lib/addressValidation";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
@@ -102,6 +103,13 @@ export default function RecurringPayments() {
       return acc;
     }, {});
   const monthlyEntries = Object.entries(monthlyByCurrency);
+
+  // Validate recipient address against the selected currency before saving.
+  // The effective currency follows the selected wallet (same logic as addPayment mutationFn).
+  const effectiveCurrency = wallets.find(w => w.id === form.wallet_id)?.currency || form.currency;
+  const trimmedToAddr = form.to_address.trim();
+  const toAddrValid = isValidAddressForCurrency(trimmedToAddr, effectiveCurrency);
+  const showToAddrError = trimmedToAddr.length > 0 && !toAddrValid;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -228,7 +236,20 @@ export default function RecurringPayments() {
                 <SelectContent>{wallets.map(w => <SelectItem key={w.id} value={w.id}><span className="flex items-center gap-2"><CoinLogo symbol={w.currency} size={18} />{w.name} — {w.balance} {w.currency}</span></SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Recipient Address</Label><Input value={form.to_address} onChange={e => setForm(p => ({ ...p, to_address: e.target.value }))} placeholder="0x..." className="mt-1.5 font-mono text-sm" /></div>
+            <div>
+              <Label htmlFor="rp-to-address">Recipient Address</Label>
+              <Input
+                id="rp-to-address"
+                value={form.to_address}
+                onChange={e => setForm(p => ({ ...p, to_address: e.target.value }))}
+                placeholder="0x..."
+                className={`mt-1.5 font-mono text-sm${showToAddrError ? " border-destructive focus-visible:ring-destructive" : ""}`}
+                aria-invalid={showToAddrError}
+              />
+              {showToAddrError && (
+                <p className="text-xs text-destructive mt-1.5">Invalid {effectiveCurrency} address format</p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
               <div>
@@ -240,7 +261,7 @@ export default function RecurringPayments() {
               </div>
             </div>
             <div><Label>Note (optional)</Label><Input value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} className="mt-1.5" /></div>
-            <Button className="w-full" onClick={() => addPayment.mutate()} disabled={!form.label || !form.wallet_id || !form.to_address || !form.amount || addPayment.isPending}>Create Payment</Button>
+            <Button className="w-full" onClick={() => addPayment.mutate()} disabled={!form.label || !form.wallet_id || !form.to_address || !form.amount || showToAddrError || addPayment.isPending}>Create Payment</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -70,10 +70,10 @@ export default function Features() {
             Scope follows docs/WalletFeatures.spec.md. Only self-custody-safe features are listed.
             Custodial / regulated features (swaps, perps, staking/yield/lending, fiat ramps, bank links,
             KYC/DID, NFT minting, etc.) are deliberately not built. Status is three honest states:{" "}
-            <b>verified</b> means exercised against a real on-chain testnet txid; <b>built</b> means
+            <b>verified</b> means exercised against a real on-chain txid (testnet, or mainnet for shipped assets); <b>built</b> means
             code-complete in the testnet/provisional build but not yet proven on-chain
-            (code-ready ≠ verified); <b>roadmap</b> means specced, not built. Mainnet stays gated
-            until the independent audit.
+            (code-ready ≠ verified); <b>roadmap</b> means specced, not built. Mainnet was unlocked
+            2026-06-17 (internal audit complete); an independent audit is recommended for strongest assurance.
           </p>
         </div>
         <div className="flex gap-2">
@@ -85,7 +85,7 @@ export default function Features() {
             try {
               exportCataloguePdf({
                 title: "Feature Catalogue",
-                subtitle: "Scope follows docs/WalletFeatures.spec.md — only self-custody-safe features are listed. Status is verified (real on-chain testnet txid) / built (code-complete, unproven on-chain) / roadmap (specced). Mainnet is gated until independent audit.",
+                subtitle: "Scope follows docs/WalletFeatures.spec.md — only self-custody-safe features are listed. Status is verified (real on-chain testnet txid) / built (code-complete, unproven on-chain) / roadmap (specced). Mainnet unlocked 2026-06-17 (internal audit complete); independent audit recommended for strongest assurance.",
                 categories: featureCategories.map(c => ({
                   category: c.category,
                   items: c.features.map(f => ({ name: f.name, desc: f.summary, status: statusOf(f) })),

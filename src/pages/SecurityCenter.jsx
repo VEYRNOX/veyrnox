@@ -39,12 +39,12 @@ export default function SecurityCenter() {
   // Two-factor (Action Password / passkey) now lives in Security Settings →
   // "Two-factor at critical actions". The Security Center is alerts/sessions/limits.
 
-  const { data: sessions = [] } = useQuery({
+  const { data: sessions = [], isError: errorSessions } = useQuery({
     queryKey: ["sessions"],
     queryFn: () => base44.entities.UserSession.filter({ status: "active" }),
   });
 
-  const { data: limits = [] } = useQuery({
+  const { data: limits = [], isError: errorLimits } = useQuery({
     queryKey: ["tx-limits"],
     queryFn: () => base44.entities.TransactionLimit.list(),
   });
@@ -53,7 +53,7 @@ export default function SecurityCenter() {
   // daily cap. Read client-side; nothing is sent anywhere. Used here only to
   // SHOW each daily limit's "spent today" so the cap is visible, not just
   // enforced silently in Send. See lib/txLimits.js for the computation.
-  const { data: history = [] } = useQuery({
+  const { data: history = [], isError: errorHistory } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
   });
@@ -145,6 +145,9 @@ export default function SecurityCenter() {
               time they're opened — there's no server that can force-close them instantly.
             </p>
           </div>
+          {errorSessions && (
+            <p className="text-xs text-caution">Couldn't load sessions — this signal may be incomplete.</p>
+          )}
           {sessions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No active sessions found</p>
           ) : (
@@ -206,6 +209,12 @@ export default function SecurityCenter() {
               <Plus className="h-3.5 w-3.5 mr-1" /> Add Limit
             </Button>
           </div>
+          {errorLimits && (
+            <p className="text-xs text-caution">Couldn't load transaction limits — this signal may be incomplete.</p>
+          )}
+          {errorHistory && (
+            <p className="text-xs text-caution">Couldn't load transaction history — "sent today" totals may be incomplete.</p>
+          )}
           {limits.length === 0 ? (
             <div className="text-center py-8 space-y-2">
               <DollarSign className="h-8 w-8 text-muted-foreground mx-auto" />

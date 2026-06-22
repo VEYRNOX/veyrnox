@@ -18,7 +18,7 @@ export default function BudgetLimits() {
   const [form, setForm] = useState({ currency: "ETH", period: "monthly", limit_usd: "", alert_at_percent: 80, enabled: true });
 
   const { data: budgets = [], isError } = useQuery({ queryKey: ["budgets"], queryFn: () => base44.entities.BudgetLimit.list() });
-  const { data: transactions = [] } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500) });
+  const { data: transactions = [], isError: txError } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500) });
 
   const create = useMutation({
     mutationFn: (/** @type {any} */ d) => base44.entities.BudgetLimit.create({ ...d, limit_usd: parseFloat(d.limit_usd) }),
@@ -63,6 +63,13 @@ export default function BudgetLimits() {
         <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
           <span>Couldn’t load your budget limits — they may not all be shown.</span>
+        </div>
+      )}
+
+      {txError && (
+        <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-2 text-sm text-caution">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>Couldn’t load transaction history — spend amounts can’t be calculated and will show as 0.</span>
         </div>
       )}
 

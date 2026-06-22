@@ -253,7 +253,7 @@ function ExploreShell({ onCreate, children }) {
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium flex items-center gap-1.5"><Eye className="h-3.5 w-3.5 text-primary" /> Exploring — view only</p>
-            <p className="text-[11px] text-muted-foreground truncate">No wallet yet. Create or import one to send, receive, and hold funds.</p>
+            <p className="text-[11px] text-muted-foreground">No wallet yet. Create or import one to send, receive, and hold funds.</p>
           </div>
           <Button size="sm" className="gap-1.5 shrink-0" onClick={onCreate}>
             <Wallet className="h-3.5 w-3.5" /> Create or import
@@ -926,8 +926,8 @@ export default function WalletEntry() {
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Choose an 8-digit PIN</p>
-              <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN. Always guard your device.</p>
-              <PinPad value={realPin} onChange={setRealPin} onComplete={(p) => {
+              <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN won't stop someone with your device from trying PINs offline — so guard your device.</p>
+              <PinPad value={realPin} onChange={(v) => { setRealPin(v); if (error) setError(""); }} onComplete={(p) => {
                 const s = checkPinStrength(p);
                 if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
                 setError(""); setRealPinConfirm(""); setPinStep("real-confirm");
@@ -938,7 +938,7 @@ export default function WalletEntry() {
           {pinStep === "real-confirm" && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Confirm your PIN</p>
-              <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
+              <PinPad value={realPinConfirm} onChange={(v) => { setRealPinConfirm(v); if (error) setError(""); }} onComplete={(p) => {
                 if (!pinsEqual(p, realPin)) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
                 finishPinSetup();
               }} />
@@ -987,7 +987,7 @@ export default function WalletEntry() {
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Choose a new 8-digit PIN</p>
               <p className="text-xs text-muted-foreground">This unlocks your restored wallet. Your seed stays encrypted on this device.</p>
-              <PinPad value={realPin} onChange={setRealPin} onComplete={(p) => {
+              <PinPad value={realPin} onChange={(v) => { setRealPin(v); if (error) setError(""); }} onComplete={(p) => {
                 const s = checkPinStrength(p);
                 if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
                 setError(""); setRealPinConfirm(""); setPinStep("real-confirm");
@@ -998,7 +998,7 @@ export default function WalletEntry() {
           {pinStep === "real-confirm" && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Confirm your new PIN</p>
-              <PinPad value={realPinConfirm} onChange={setRealPinConfirm} onComplete={(p) => {
+              <PinPad value={realPinConfirm} onChange={(v) => { setRealPinConfirm(v); if (error) setError(""); }} onComplete={(p) => {
                 if (!pinsEqual(p, realPin)) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
                 setError(""); finishPinRecover();
               }} />

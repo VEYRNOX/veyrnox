@@ -36,7 +36,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
             <CoinLogo symbol={w.currency} size={32} />
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{w.name}</p>
-              <p className="text-xs text-muted-foreground">{shortAddress(w.address)}</p>
+              <p className="mono-value text-xs text-muted-foreground">{shortAddress(w.address)}</p>
             </div>
           </button>
           {w.passkey_registered && <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
@@ -99,7 +99,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
                     <CoinLogo symbol={w.currency} size={32} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{w.name}</p>
-                      <p className="text-xs text-muted-foreground">{shortAddress(w.address)}</p>
+                      <p className="mono-value text-xs text-muted-foreground">{shortAddress(w.address)}</p>
                     </div>
                   </button>
                   {w.passkey_registered && <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />}
@@ -130,7 +130,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
         </div>
         <button onClick={copyAddress} className="flex items-center gap-1.5 mx-auto text-xs text-muted-foreground hover:text-foreground transition-colors">
           {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-          <span className="font-mono">{shortAddress(wallet.address)}</span>
+          <span className="mono-value">{shortAddress(wallet.address)}</span>
         </button>
         {wallet.passkey_registered && (
           <div className="flex items-center justify-center gap-1 text-[10px] text-primary">
