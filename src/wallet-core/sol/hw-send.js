@@ -25,7 +25,7 @@ import {
   getConnection, broadcastRawTx, confirmTx,
 } from './provider.js';
 import { planSolTransfer, solComputeBudgetIxns } from './send.js';
-import { isValidSolAddress } from './derivation.js';
+import { assertSolRecipient } from './poison.js';
 import { solPriorityLamports } from './fees.js';
 
 const SOL_PATH = "44'/501'/0'/0'";
@@ -61,7 +61,7 @@ function buildUnsignedSolTx({ fromPubkey, toPubkey, amountLamports, blockhash, p
  */
 async function sendSolHw({ networkKey, fromAddress, toAddress, amountLamports, sendMax, priorityMicroLamports, computeUnitLimit, signFn }) {
   getSolNetwork(networkKey);
-  if (!isValidSolAddress(toAddress)) throw new Error('Invalid Solana recipient address.');
+  assertSolRecipient(toAddress);
 
   const [balance, rentMin, baseFee, destBalance] = await Promise.all([
     getBalanceLamports(networkKey, fromAddress),
