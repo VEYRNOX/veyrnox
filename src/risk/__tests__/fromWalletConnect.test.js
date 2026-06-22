@@ -65,6 +65,8 @@ describe('buildRiskInputsFromWcRequest — totality', () => {
     expect(r.unsignedTx).toBeTruthy();
     expect(r.activeSetLocalState).toBeTruthy();
     expect(r.chainData).toBeTruthy();
+    expect(r.chainData.recipientCode).toBeUndefined();
+    expect(r.unsignedTx.data).toBe('0x');
   });
 });
 
