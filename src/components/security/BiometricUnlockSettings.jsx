@@ -29,7 +29,13 @@ export default function BiometricUnlockSettings() {
 
   useEffect(() => {
     let active = true;
-    getBiometricStatus().then(s => { if (active) setStatus(s); }).catch(() => {});
+    getBiometricStatus()
+      .then(s => { if (active) setStatus(s); })
+      .catch(() => {
+        // Probe failed — fail honest: render the unavailable state instead of
+        // hanging on "Checking availability…" forever (mirrors PasskeyUnlockSettings).
+        if (active) setStatus({ available: false, detail: 'Could not check biometric availability on this device.' });
+      });
     return () => { active = false; };
   }, []);
 
