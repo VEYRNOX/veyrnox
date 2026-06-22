@@ -39,7 +39,7 @@
 import { Transaction, SystemProgram, ComputeBudgetProgram, Keypair, PublicKey } from '@solana/web3.js';
 import { base58 } from '@scure/base';
 import { getSolNetwork, solExplorerUrl } from './networks.js';
-import { isValidSolAddress } from './derivation.js';
+import { assertSolRecipient } from './poison.js';
 import { solPriorityLamports } from './fees.js';
 import {
   getBalanceLamports,
@@ -184,7 +184,7 @@ function base58FromSignature(tx) {
  */
 export async function estimateSolSend({ networkKey, fromAddress, toAddress, amountLamports, sendMax = false, priorityMicroLamports = 0, computeUnitLimit = 0 }) {
   const net = getSolNetwork(networkKey); // gate-aware
-  if (!isValidSolAddress(toAddress)) throw new Error('Invalid Solana recipient address.');
+  assertSolRecipient(toAddress);
 
   const [balance, rentMin, baseFee, destBalance] = await Promise.all([
     getBalanceLamports(networkKey, fromAddress),
@@ -236,7 +236,7 @@ export async function signAndBroadcastSol({
   computeUnitLimit = 0,
 }) {
   getSolNetwork(networkKey); // throws if mainnet gated / disabled
-  if (!isValidSolAddress(toAddress)) throw new Error('Invalid Solana recipient address.');
+  assertSolRecipient(toAddress);
 
   // Reconstruct the signer from the transient seed scalar. fromSeed expects the
   // 32-byte ed25519 seed (our SLIP-0010 private scalar).

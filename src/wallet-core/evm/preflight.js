@@ -56,11 +56,12 @@ export async function applyEstimatedGasLimit(provider, txRequest, overrides) {
       ? (overrides.gasLimit > MAX_GAS_ESTIMATE ? MAX_GAS_ESTIMATE : overrides.gasLimit)
       : null;
     overrides.gasLimit = userLimit && userLimit > withHeadroom ? userLimit : withHeadroom;
-  } catch (e) {
+  } catch {
     // Estimation failed; keep the hinted gasLimit or let ethers auto-fill.
     // ethers re-estimates at sendTransaction and throws if that also fails, so
-    // there is no silent stall — but surface the reason in dev so it's not invisible.
-    if (e?.message) console.warn('[preflight] estimateGas failed:', e.message);
+    // there is no silent stall. No logging here by design: wallet-core must not
+    // write to the console (project rule) — a console line can leak an address or
+    // amount and is captured by native crash reporters.
   }
   return overrides;
 }

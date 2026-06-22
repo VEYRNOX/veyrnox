@@ -150,12 +150,16 @@ export async function signAndBroadcastBtc({
     plan, privateKey, publicKey, params: net.params,
   });
 
-  const txid = await broadcastTx(networkKey, rawHex);
+  // broadcastTx now THROWS on a rejected/empty broadcast, so reaching here means
+  // the network accepted the tx. The canonical txid is the one we computed locally
+  // from the signed bytes (deterministic) — we don't depend on trusting the
+  // untrusted indexer's echoed value.
+  await broadcastTx(networkKey, rawHex);
 
   return {
-    txid: txid || localTxid,
+    txid: localTxid,
     hex: rawHex,
-    explorerUrl: `${net.explorer}/tx/${txid || localTxid}`,
+    explorerUrl: `${net.explorer}/tx/${localTxid}`,
     plan,
   };
 }

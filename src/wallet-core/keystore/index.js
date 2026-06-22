@@ -50,8 +50,8 @@ function makeNativeFacade() {
     async createVault(secret, password) {
       return (await load()).nativeKeyStore.createVault(secret, password);
     },
-    async unlock(password) {
-      return (await load()).nativeKeyStore.unlock(password);
+    async unlock(password, opts) {
+      return (await load()).nativeKeyStore.unlock(password, opts);
     },
     async changePassword(currentPassword, newPassword) {
       return (await load()).nativeKeyStore.changePassword(currentPassword, newPassword);
