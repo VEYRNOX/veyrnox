@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Veyrnox — Build &amp; Mainnet Status</title>
+<style>
+  :root{
+    --bg:#050608; --surface:#0c0f14; --surface-2:#12161d; --line:#1d222b;
+    --ink:#e8ecf1; --muted:#8b94a3; --faint:#5b6473;
+    --teal:#4adac2; --amber:#e6b450; --slate:#6b7686; --rose:#e0738a;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'Schibsted Grotesk',system-ui,-apple-system,Segoe UI,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 700px at 70% -10%,#0e1219,#050608 60%);
+       color:var(--ink);font-family:var(--sans);line-height:1.45;padding:28px 22px 60px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 2px;letter-spacing:.2px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 22px}
+  .sub b{color:var(--ink);font-weight:600}
+  .mono{font-family:var(--mono)}
+  /* KPI row */
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:0 0 26px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .kpi .n{font-family:var(--mono);font-size:26px;font-weight:600;line-height:1}
+  .kpi .l{color:var(--muted);font-size:11px;margin-top:7px;text-transform:uppercase;letter-spacing:.6px}
+  .kpi.teal .n{color:var(--teal)} .kpi.amber .n{color:var(--amber)}
+  .kpi.slate .n{color:var(--slate)} .kpi.rose .n{color:var(--rose)}
+  /* sections */
+  section{margin:0 0 30px}
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);
+     margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  /* badges */
+  .b{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10.5px;
+     font-weight:600;padding:2px 8px;border-radius:999px;letter-spacing:.4px;white-space:nowrap}
+  .b::before{content:"";width:6px;height:6px;border-radius:50%}
+  .b.live{color:var(--teal);background:rgba(74,218,194,.1);border:1px solid rgba(74,218,194,.3)}
+  .b.live::before{background:var(--teal)}
+  .b.built{color:#9fd0ff;background:rgba(120,180,255,.08);border:1px solid rgba(120,180,255,.25)}
+  .b.built::before{background:#9fd0ff}
+  .b.prov{color:var(--amber);background:rgba(230,180,80,.1);border:1px solid rgba(230,180,80,.3)}
+  .b.prov::before{background:var(--amber)}
+  .b.road{color:var(--slate);background:rgba(107,118,134,.1);border:1px solid rgba(107,118,134,.3)}
+  .b.road::before{background:var(--slate)}
+  .b.gate{color:var(--rose);background:rgba(224,115,138,.1);border:1px solid rgba(224,115,138,.3)}
+  .b.gate::before{background:var(--rose)}
+  /* asset table */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:var(--faint);font-weight:500;font-size:10.5px;text-transform:uppercase;
+     letter-spacing:.6px;padding:0 10px 8px}
+  td{padding:9px 10px;border-top:1px solid var(--line);vertical-align:middle}
+  tr:hover td{background:var(--surface)}
+  .sym{font-family:var(--mono);font-weight:600}
+  .txid{font-family:var(--mono);color:var(--teal);font-size:11.5px}
+  .chain{color:var(--muted);font-size:12px}
+  /* feature grid */
+  .cats{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .cat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 15px}
+  .cat h3{margin:0 0 10px;font-size:12.5px;letter-spacing:.4px;color:var(--ink)}
+  .feat{display:flex;justify-content:space-between;align-items:center;gap:10px;
+        padding:5px 0;border-top:1px dashed rgba(29,34,43,.7)}
+  .feat:first-of-type{border-top:none}
+  .feat .nm{font-size:12.5px;color:var(--ink)}
+  /* gate panel */
+  .gates{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .gatecard{background:var(--surface);border:1px solid rgba(74,218,194,.25);border-radius:12px;padding:13px 14px}
+  .gatecard .flag{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .gatecard .val{font-family:var(--mono);font-size:16px;color:var(--teal);font-weight:600;margin-top:4px}
+  .note{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--amber);
+        border-radius:8px;padding:11px 14px;color:var(--muted);font-size:12.5px;margin-top:10px}
+  .note b{color:var(--ink)}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+  .foot{color:var(--faint);font-size:11px;margin-top:26px;font-family:var(--mono)}
+  @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}.cats{grid-template-columns:1fr}.gates{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Veyrnox — Build &amp; Mainnet Status</h1>
+  <p class="sub">Self-custody coercion-resistant wallet · snapshot <b>2026-06-22</b> · mainnet unlocked <b>2026-06-17</b> (internal audit) · independent third-party audit still <b>RECOMMENDED</b></p>
+
+  <div class="kpis">
+    <div class="kpi teal"><div class="n">10</div><div class="l">Assets LIVE</div></div>
+    <div class="kpi teal"><div class="n">2</div><div class="l">Mainnet-verified (USDC · USDT)</div></div>
+    <div class="kpi teal"><div class="n">47</div><div class="l">Features BUILT</div></div>
+    <div class="kpi amber"><div class="n">5</div><div class="l">Provisional</div></div>
+    <div class="kpi slate"><div class="n">12</div><div class="l">Roadmap</div></div>
+    <div class="kpi teal"><div class="n">3 / 3</div><div class="l">Mainnet gates open</div></div>
+  </div>
+
+  <!-- ASSETS -->
+  <section>
+    <h2>Assets — all 10 LIVE · USDC + USDT verified on Ethereum mainnet, rest on testnet</h2>
+    <table>
+      <thead><tr><th>Asset</th><th>Family</th><th>Network</th><th>Status</th><th>Verified txid (on-chain)</th></tr></thead>
+      <tbody>
+        <tr><td class="sym">ETH</td><td class="chain">EVM</td><td class="chain">Sepolia</td><td><span class="b live">LIVE</span></td><td class="txid">via evidence.json</td></tr>
+        <tr><td class="sym">USDC</td><td class="chain">ERC-20</td><td class="chain">Ethereum <b style="color:var(--teal)">MAINNET</b></td><td><span class="b live">LIVE · MAINNET</span></td><td class="txid">0xc373…a0a2 · SUCCESS · 1 USDC (on-chain verified 2026-06-22)</td></tr>
+        <tr><td class="sym">USDT</td><td class="chain">ERC-20</td><td class="chain">Ethereum <b style="color:var(--teal)">MAINNET</b></td><td><span class="b live">LIVE · MAINNET</span></td><td class="txid">0xf06a0b…5b08 · SUCCESS · 1 USDT (on-chain verified 2026-06-22)</td></tr>
+        <tr><td class="sym">MATIC</td><td class="chain">EVM</td><td class="chain">Polygon Amoy</td><td><span class="b live">LIVE</span></td><td class="txid">0x6a4dede5… · blk 40274236</td></tr>
+        <tr><td class="sym">ARB</td><td class="chain">EVM</td><td class="chain">Arbitrum Sepolia</td><td><span class="b live">LIVE</span></td><td class="txid">0x797928ef…</td></tr>
+        <tr><td class="sym">OP</td><td class="chain">EVM</td><td class="chain">OP Sepolia</td><td><span class="b live">LIVE</span></td><td class="txid">0xc3fd1e14…</td></tr>
+        <tr><td class="sym">AVAX</td><td class="chain">EVM</td><td class="chain">Fuji</td><td><span class="b live">LIVE</span></td><td class="txid">0x3697e0df… · blk 56425855</td></tr>
+        <tr><td class="sym">BNB</td><td class="chain">EVM</td><td class="chain">BSC testnet</td><td><span class="b live">LIVE</span></td><td class="txid">0x1a6ee75e… · blk 114427048</td></tr>
+        <tr><td class="sym">BTC</td><td class="chain">UTXO</td><td class="chain">Bitcoin testnet</td><td><span class="b live">LIVE</span></td><td class="txid">2da87a27… · blk 4990901</td></tr>
+        <tr><td class="sym">SOL</td><td class="chain">ed25519</td><td class="chain">Solana devnet</td><td><span class="b live">LIVE</span></td><td class="txid">5KGXAGTJTd… · FINALIZED</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>Honesty note — mainnet status:</b> <b>USDC and USDT are both verified on Ethereum mainnet</b> — USDC txid 0xc373…a0a2 (official Circle contract) and USDT txid 0xf06a0b…5b08 (official Tether contract), both SUCCESS, chainId 1, re-confirmed on-chain via RPC 2026-06-22. The other 8 assets are verified on <b>testnet</b>. Correction trail: PR #280 first recorded the WRONG USDT txid (0x3f2f…b986, which is actually a USDC-contract transfer); the real USDT send (0xf06a0b…) was located and verified on-chain 2026-06-22.</div>
+  </section>
+
+  <!-- MAINNET GATES -->
+  <section>
+    <h2>Mainnet gates — open since 2026-06-17 (internal audit sign-off)</h2>
+    <div class="gates">
+      <div class="gatecard"><div class="flag">ALLOW_MAINNET</div><div class="val">true</div><div class="chain mono" style="font-size:10.5px;margin-top:4px">evm/networks.js:191</div></div>
+      <div class="gatecard"><div class="flag">ALLOW_BTC_MAINNET</div><div class="val">true</div><div class="chain mono" style="font-size:10.5px;margin-top:4px">btc/networks.js:82</div></div>
+      <div class="gatecard"><div class="flag">ALLOW_SOL_MAINNET</div><div class="val">true</div><div class="chain mono" style="font-size:10.5px;margin-top:4px">sol/networks.js:69</div></div>
+    </div>
+    <div class="note"><b>Audit gate:</b> Track 1 — <b>internal</b> audit (Claude Sonnet 4.6, owner sign-off 2026-06-17): 0 critical/high/medium, 1 low remediated. This is the hard gate and it is <b>COMPLETE</b> → mainnet flags flipped. Track 2 — <b>independent third-party</b> audit gates App Store submission and is <b>NOT YET DONE</b>. "Internal" is never presented as "independent" (I4).</div>
+  </section>
+
+  <!-- FEATURES BUILT -->
+  <section>
+    <h2>Features — BUILT (code-complete, testnet/provisional)</h2>
+    <div class="cats">
+      <div class="cat"><h3>Core Wallet</h3>
+        <div class="feat"><span class="nm">Multi-Account HD Wallet</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Import Wallet</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Encrypted Vault</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Backup &amp; Reveal Seed</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Send Crypto</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Receive Crypto</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Live Balances</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Transaction History</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Gas / Fee Control</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">ENS / SNS Resolution</span><span class="b built">BUILT</span></div>
+      </div>
+      <div class="cat"><h3>Access &amp; Authentication</h3>
+        <div class="feat"><span class="nm">Passkey Unlock</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Biometric Unlock</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Session Manager &amp; Auto-Lock</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Account Access &amp; Recovery</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Hardware Wallet</span><span class="b built">BUILT</span></div>
+      </div>
+      <div class="cat"><h3>Transaction Safety</h3>
+        <div class="feat"><span class="nm">Token Approvals (View + Revoke)</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Address-Poisoning Warnings</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Spam Token Filter</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Calldata Decode &amp; Approval Guard</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Transaction Simulation</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Anomaly / Fraud Detection</span><span class="b built">BUILT</span></div>
+      </div>
+      <div class="cat"><h3>Recovery &amp; Duress</h3>
+        <div class="feat"><span class="nm">Duress PIN</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Stealth / Hidden Wallets</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Panic Wipe</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Encrypted Cloud Backup</span><span class="b prov">PROVISIONAL</span></div>
+      </div>
+      <div class="cat"><h3>Monitoring &amp; Risk</h3>
+        <div class="feat"><span class="nm">RASP (browser-level)</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Audit Log</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Risk Limits / Risk Scoring</span><span class="b prov">PROVISIONAL</span></div>
+      </div>
+      <div class="cat"><h3>Portfolio &amp; Analytics</h3>
+        <div class="feat"><span class="nm">Portfolio Dashboard</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Net-Worth Tracker</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">P&amp;L Tracking</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">On-Chain Analytics</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Fee Analytics</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Tax Report</span><span class="b built">BUILT</span></div>
+      </div>
+      <div class="cat"><h3>Prices &amp; Alerts · NFTs</h3>
+        <div class="feat"><span class="nm">Price Charts</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Price Alerts</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Watchlist</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Notifications &amp; Push</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">NFT Gallery (Display-Only)</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Multi-Chain NFT Viewing</span><span class="b built">BUILT</span></div>
+      </div>
+      <div class="cat"><h3>Payments · dApp · Platform</h3>
+        <div class="feat"><span class="nm">Address Book</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Message Signing</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Payment Links</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Recurring Payments</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">WalletConnect / dApp Connector</span><span class="b prov">DISPLAY-ONLY</span></div>
+        <div class="feat"><span class="nm">Desktop Web App</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Demo Mode</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Voice Commands</span><span class="b built">BUILT</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROADMAP + GATED -->
+  <section>
+    <h2>Not built — ROADMAP &amp; audit-gated</h2>
+    <div class="cats">
+      <div class="cat"><h3>Roadmap (specced, not built)</h3>
+        <div class="feat"><span class="nm">Additional Tokens</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Additional Networks</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Suspicious-Address Screening</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Crypto Will / Inheritance</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">What-If Simulator</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Split Bill</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Referral Tracker</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Web3 Browser</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">AI Assistant (4 features)</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">iOS App</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Android App</span><span class="b road">ROADMAP</span></div>
+      </div>
+      <div class="cat"><h3>Audit-gated (do not build blind)</h3>
+        <div class="feat"><span class="nm">Native Secure Storage (Enclave/Keystore)</span><span class="b gate">AUDIT-GATE</span></div>
+        <div class="feat"><span class="nm">RASP OS-level probes (root/jailbreak)</span><span class="b gate">AUDIT-GATE</span></div>
+        <div class="feat"><span class="nm">Hardware KEK</span><span class="b gate">AUDIT-GATE</span></div>
+        <div class="feat"><span class="nm">Device attestation</span><span class="b gate">AUDIT-GATE</span></div>
+        <div class="feat"><span class="nm">Network hardening</span><span class="b gate">AUDIT-GATE</span></div>
+        <div class="feat"><span class="nm">Cloud recovery (custodial)</span><span class="b gate">AUDIT-GATE</span></div>
+        <div class="feat"><span class="nm">Cold-key tx signing</span><span class="b gate">AUDIT-GATE</span></div>
+        <div class="feat"><span class="nm">OFAC sanctions screening</span><span class="b gate">LEGAL-GATE</span></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="b live">LIVE — on-chain verified</span>
+      <span class="b built">BUILT — code-complete</span>
+      <span class="b prov">PROVISIONAL — unaudited</span>
+      <span class="b road">ROADMAP — not built</span>
+      <span class="b gate">AUDIT/LEGAL-GATE — blocked</span>
+    </div>
+  </section>
+
+  <p class="foot">Source of truth: src/wallet-core/assets.js · src/lib/featureCatalogue.js · evm|btc|sol/networks.js · docs/Audit.scope.md · docs/audit-triage/internal-audit-2026-06-17.md</p>
+</div>
+</body>
+</html>
