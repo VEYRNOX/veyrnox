@@ -22,6 +22,8 @@ export default function TransactionReceipt() {
     tx.currency?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const fee = selected ? (selected.fee || 0) : 0;
+
   const handlePrint = () => {
     if (!selected) return;
     const win = window.open("", "_blank");
@@ -80,8 +82,6 @@ export default function TransactionReceipt() {
 
     win.print();
   };
-
-  const fee = selected ? (selected.fee || 0) : 0;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

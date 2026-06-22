@@ -54,6 +54,8 @@ const features = [
   { category: "Access & Authentication", icon: KeyRound, items: [
     { name: "Passkey Unlock", desc: "FIDO2 / WebAuthn unlock gate; never holds keys", status: "available" },
     { name: "Biometric Unlock", desc: "Face ID / Touch ID unlock gate with fallback", status: "available" },
+    { name: "PIN Unlock", desc: "Numeric-PIN onboarding + returning-PIN unlock over the same Argon2id vault, with Face-ID-to-decoy. No hardware-bound KEK yet — a numeric PIN is offline-exhaustible on a seized device; hardware-KEK is the audit-gated fast-follow. UNAUDITED-PROVISIONAL.", status: "available" },
+    { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password (per-set knowledge factor) or PIN + Passkey/FIDO2 (possession, fails closed). Primary-set today; decoy/hidden parity audit-gated. UNAUDITED-PROVISIONAL.", status: "available" },
     { name: "Native Secure Storage", desc: "Secure Enclave / Android Keystore hardening", status: "roadmap" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "available" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "available" },
@@ -67,6 +69,7 @@ const features = [
     { name: "Suspicious-Address Screening", desc: "Local suspicious-address + OFAC sanctions screening; warns, never blocks", status: "available" },
     { name: "Transaction Simulation", desc: "Local-first pre-sign preview of balance / approval changes with risk flags", status: "available" },
     { name: "Anomaly / Fraud Detection", desc: "Local rule-based flags for deviations from your own history (unusual amount, new-recipient-large, approve-then-transfer)", status: "available" },
+    { name: "Pre-Sign Risk Verdict", desc: "On-device signals (fresh recipient, unlimited/fresh-spender approval, poisoning, ENS mismatch, dust, calldata mismatch, value anomaly) combine into one pre-sign verdict; a high-RISK verdict requires an explicit 'Sign anyway' acknowledgement, indeterminate fails closed to caution. Local-only, warns-not-blocks, never claims 'safe'. UNAUDITED-PROVISIONAL.", status: "available" },
   ]},
   { category: "Recovery & Duress", icon: LifeBuoy, items: [
     { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "available" },

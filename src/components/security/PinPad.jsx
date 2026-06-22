@@ -56,9 +56,16 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
       className="space-y-5 outline-none"
       role="group"
       aria-label="PIN entry"
+      aria-describedby="pin-hint"
       tabIndex={disabled ? -1 : 0}
       onKeyDown={onKeyDown}
     >
+      {/* Visually-hidden keyboard hint for screen-reader / keyboard-only users.
+          The pad is intentionally focused as a container (tabIndex={0}) and the
+          digit buttons intentionally have tabIndex={-1} so physical keyboard
+          input flows to the single onKeyDown handler — this hint tells AT users
+          how to interact without exposing that design detail visually. */}
+      <p id="pin-hint" className="sr-only">Use your keyboard to type your PIN, then press Enter or Submit.</p>
       {/* Six position dots — no value echoed, identical in every configuration. */}
       <div className="flex justify-center gap-3" role="status" aria-label={`${value.length} of ${length} digits entered`}>
         {Array.from({ length }, (_, i) => (

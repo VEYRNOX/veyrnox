@@ -148,8 +148,8 @@ export default function ReceiveCrypto() {
             <div>
               <p className="text-[11px] text-muted-foreground text-center mb-1">{r.asset.symbol} receive address</p>
               <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2.5">
-                <code className="text-xs flex-1 break-all">{r.address}</code>
-                <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={copyAddress} aria-label="Copy address">
+                <code className="mono-value text-xs flex-1 break-all">{r.address}</code>
+                <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0" onClick={copyAddress} aria-label="Copy address">
                   {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
                 </Button>
               </div>

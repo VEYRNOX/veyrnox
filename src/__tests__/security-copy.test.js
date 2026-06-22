@@ -5,8 +5,10 @@
 // this project and these are static copy invariants):
 //
 //   Part D — the PIN-create screen drops the encryption-spec jargon (Argon2id /
-//   AES-256-GCM) but KEEPS the committed offline-brute-force honesty disclosure
-//   (PR #154). Asserting both: jargon gone, honesty line present.
+//   AES-256-GCM) but KEEPS the offline-brute-force threat-model disclosure at the
+//   point of action ("...An 8-digit PIN won't stop someone with your device from
+//   trying PINs offline — so guard your device."). Asserting: jargon gone,
+//   offline-guessing disclosure present at PIN-create (not only app-wide).
 //
 //   Part F — the three coercion-feature pages are condensed (fewer words) but
 //   every honest limitation survives. Each bullet below pins one honesty point
@@ -24,9 +26,9 @@ const read = (rel) => readFileSync(resolve(here, '..', rel), 'utf8');
 describe('Part D — PIN-create copy reduction', () => {
   const src = read('components/WalletEntry.jsx');
 
-  it('renders the single tightened line on the PIN-create screen', () => {
+  it('keeps the offline-brute-force disclosure at the PIN-create screen', () => {
     expect(src).toContain(
-      "This PIN unlocks your wallet. It won't stop someone who keeps your device to try PINs offline — so guard your device."
+      "An 8-digit PIN won't stop someone with your device from trying PINs offline"
     );
   });
 
@@ -36,10 +38,6 @@ describe('Part D — PIN-create copy reduction', () => {
     // unaffected — the brief only trims the PIN-create + PIN-recover screens.)
     expect(src).not.toContain('Your PIN encrypts the wallet on this device (Argon2id + AES-256-GCM)');
     expect(src).not.toContain('It is 6 digits — strong against a quick grab');
-  });
-
-  it('keeps the committed offline-brute-force disclosure (PR #154)', () => {
-    expect(src).toContain('try PINs offline');
   });
 });
 

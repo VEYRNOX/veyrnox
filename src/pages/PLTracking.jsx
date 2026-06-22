@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Trash2, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,7 @@ export default function PLTracking() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY);
 
-  const { data: records = [], isLoading } = useQuery({
+  const { data: records = [], isLoading, isError } = useQuery({
     queryKey: ["pl-records"],
     queryFn: () => base44.entities.PLRecord.list("-created_date"),
   });
@@ -145,6 +145,13 @@ export default function PLTracking() {
         ))}
       </div>
 
+      {isError && (
+        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>Couldn't load trades — figures above may be incomplete. Please try again.</span>
+        </div>
+      )}
+
       {chartData.length > 1 && (
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-4">Recent Closed Trades P&amp;L</p>
@@ -168,6 +175,7 @@ export default function PLTracking() {
         </TabsList>
         <TabsContent value="open" className="mt-3 space-y-2">
           {isLoading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            : isError ? <p className="text-center py-10 text-sm text-destructive">Couldn't load trades. Please try again.</p>
             : open.length === 0 ? <p className="text-center py-10 text-sm text-muted-foreground">No open trades</p>
             : open.map(r => <RecordRow key={r.id} r={r} />)}
         </TabsContent>

@@ -19,13 +19,6 @@ const CHAINS = [
 
 const STATUS_STYLES = { holding: "bg-secondary text-muted-foreground", listed: "bg-caution/10 text-caution", sold: "bg-success/10 text-success" };
 
-const PLACEHOLDER_IMAGES = [
-  "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80",
-  "https://images.unsplash.com/photo-1634973357973-f2ed2657db3c?w=400&q=80",
-  "https://images.unsplash.com/photo-1639762681057-408e52192e55?w=400&q=80",
-  "https://images.unsplash.com/photo-1644143379190-08a5f055de1d?w=400&q=80",
-];
-
 export default function MultiChainNFT() {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
@@ -47,8 +40,7 @@ export default function MultiChainNFT() {
 
   const add = useMutation({
     mutationFn: () => {
-      const img = form.image_url || PLACEHOLDER_IMAGES[Math.floor(Math.random() * PLACEHOLDER_IMAGES.length)];
-      return base44.entities.NFTAsset.create({ ...form, image_url: img, purchase_price: parseFloat(form.purchase_price) || 0, current_floor: parseFloat(form.current_floor) || 0 });
+      return base44.entities.NFTAsset.create({ ...form, purchase_price: parseFloat(form.purchase_price) || 0, current_floor: parseFloat(form.current_floor) || 0 });
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["nfts"] }); setShowAdd(false); setForm({ name: "", collection: "", token_id: "", contract_address: "", chain: "ethereum", image_url: "", purchase_price: "", current_floor: "", status: "holding", note: "" }); toast.success("NFT added"); },
   });
@@ -70,8 +62,12 @@ export default function MultiChainNFT() {
     const pnlPct = n.purchase_price ? (pnl / n.purchase_price * 100).toFixed(1) : 0;
     return (
       <div className="rounded-xl border border-border bg-card overflow-hidden group">
-        <div className="relative aspect-square bg-secondary overflow-hidden">
-          <img src={n.image_url} alt={n.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => { (/** @type {any} */ (e.target)).src = PLACEHOLDER_IMAGES[0]; }} />
+        <div className="relative aspect-square bg-secondary overflow-hidden flex items-center justify-center">
+          {n.image_url ? (
+            <img src={n.image_url} alt={n.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          ) : (
+            <Image className="h-10 w-10 text-muted-foreground opacity-40" aria-hidden="true" />
+          )}
           <div className="absolute top-2 left-2"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${chain(n.chain)?.color || "bg-secondary text-muted-foreground"}`}>{chain(n.chain)?.icon} {chain(n.chain)?.label}</span></div>
           <div className="absolute top-2 right-2"><span className={`text-[10px] px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[n.status]}`}>{n.status}</span></div>
         </div>
@@ -96,7 +92,13 @@ export default function MultiChainNFT() {
     const pnl = (n.current_floor || 0) - (n.purchase_price || 0);
     return (
       <div className="p-3 rounded-xl border border-border bg-card flex items-center gap-3">
-        <img src={n.image_url} alt={n.name} className="h-12 w-12 rounded-lg object-cover" onError={e => { (/** @type {any} */ (e.target)).src = PLACEHOLDER_IMAGES[0]; }} />
+        <div className="h-12 w-12 rounded-lg bg-secondary flex items-center justify-center shrink-0 overflow-hidden">
+          {n.image_url ? (
+            <img src={n.image_url} alt={n.name} className="h-full w-full object-cover" />
+          ) : (
+            <Image className="h-5 w-5 text-muted-foreground opacity-40" aria-hidden="true" />
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{n.name}</p>
           <div className="flex items-center gap-2">
