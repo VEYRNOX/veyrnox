@@ -16,9 +16,9 @@ import { FlaskConical, Play, RotateCcw, ShieldQuestion } from 'lucide-react';
 import { runPrfProbe, resetSpike, readSpikeRecord } from '@/dev/prfSpike';
 
 const OUTCOME_STYLE = {
-  A:            { ring: 'border-green-500/40 bg-green-500/10',  text: 'text-green-600' },
+  A:            { ring: 'border-success/40 bg-success/10',      text: 'text-success' },
   A_PENDING:    { ring: 'border-primary/40 bg-primary/10',      text: 'text-primary' },
-  WEBVIEW_FAIL: { ring: 'border-yellow-500/40 bg-yellow-500/10', text: 'text-yellow-600' },
+  WEBVIEW_FAIL: { ring: 'border-caution/40 bg-caution/10',      text: 'text-caution' },
   C:            { ring: 'border-destructive/40 bg-destructive/10', text: 'text-destructive' },
   INCONCLUSIVE: { ring: 'border-border bg-secondary/30',         text: 'text-muted-foreground' },
 };
@@ -61,7 +61,7 @@ export default function PrfSpike() {
         </div>
       </div>
 
-      <div className="p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/10 text-yellow-600 text-xs flex items-start gap-2">
+      <div className="p-4 rounded-xl border border-caution/20 bg-caution/10 text-caution text-xs flex items-start gap-2">
         <ShieldQuestion className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
           <b>Throwaway investigation, not a feature.</b> This screen ships nowhere
@@ -83,14 +83,14 @@ export default function PrfSpike() {
           <button
             onClick={run}
             disabled={running}
-            className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+            className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Play className="h-4 w-4" /> {running ? 'Running…' : (hasPrior ? 'Run probe (re-test stored credential)' : 'Run probe')}
           </button>
           <button
             onClick={reset}
             disabled={running}
-            className="inline-flex items-center gap-2 py-2 px-4 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-2 py-2 px-4 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <RotateCcw className="h-4 w-4" /> Reset (forget credential)
           </button>

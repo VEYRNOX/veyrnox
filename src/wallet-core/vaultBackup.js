@@ -9,18 +9,18 @@
 // credential under full Argon2id+AES-GCM:
 //
 //   seals.password — encrypted with the user's full wallet password
-//   seals.pin      — encrypted with the user's 6-digit PIN
+//   seals.pin      — encrypted with the user's 8-digit PIN
 //
 // Either seal decrypts the same plaintext (the serialized container JSON).
 // The file carries no unencrypted seed material, no wallet addresses, and no
 // credential hints. It is safe to store anywhere the user chooses — iCloud,
 // Google Drive, a USB drive, a local folder.
 //
-// HONESTY NOTE on PIN seal: a 6-digit PIN has ~20 bits of entropy. At 192 MiB
-// Argon2id per attempt, offline brute-force (10^6 guesses) requires days on a
-// single machine but is feasible for a well-resourced attacker who obtains the
-// file. The password seal is the stronger recovery path. If both are forgotten,
-// there is no recovery — this is non-custodial.
+// HONESTY NOTE on PIN seal: an 8-digit PIN has ~27 bits of entropy. At 192 MiB
+// Argon2id per attempt, offline brute-force (10^8 guesses) is far costlier than
+// the old 6-digit (10^6) seal but is still feasible for a well-resourced attacker
+// who obtains the file. The password seal is the stronger recovery path. If both
+// are forgotten, there is no recovery — this is non-custodial.
 //
 // RESTORE
 //   Password restore: the password seal IS a valid vault blob → saved directly
@@ -195,7 +195,7 @@ export function isValidBackup(parsed) {
  *
  * @param {string} containerJson  mv.serializeContainer output (LIVE SECRET)
  * @param {string} password       the vault password
- * @param {string} pin            6-digit PIN string
+ * @param {string} pin            8-digit PIN string
  * @returns {Promise<object>}     the backup envelope (safe to JSON.stringify)
  */
 export async function createBackupEnvelope(containerJson, password, pin) {
