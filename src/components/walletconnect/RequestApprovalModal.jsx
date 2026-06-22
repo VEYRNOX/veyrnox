@@ -1,20 +1,86 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import styles from './RequestApprovalModal.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
+import { checkDappDomain } from '@/risk/knownBadDapps.js';
+import { score } from '@/risk/score.js';
+import { buildRiskInputsFromWcRequest } from '@/risk/fromWalletConnect.js';
+import RiskVerdictBanner from '@/components/RiskVerdictBanner.jsx';
+import { simulateEvmTransaction } from '@/wallet-core/evm/simulate.js';
+import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+
+// "eip155:11155111" -> 11155111. Returns NaN for anything unparseable.
+function parseWcChainId(caip2) {
+  if (typeof caip2 !== 'string') return NaN;
+  return parseInt(caip2.replace(/^eip155:/, ''), 10);
+}
 
 export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
-  const { signPersonal, signTypedData, sendTransaction, rejectRequest, isSendReauthRequired } = useWalletConnect();
+  const { signPersonal, signTypedData, sendTransaction, rejectRequest, isSendReauthRequired, evmAddress } = useWalletConnect();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [permitAcknowledged, setPermitAcknowledged] = useState(false);
   const [txAcknowledged, setTxAcknowledged] = useState(false);
+  const [riskVerdict, setRiskVerdict] = useState(null);
+  const [codePending, setCodePending] = useState(false);
+  const [riskAck, setRiskAck] = useState(false);
 
   const { topic, id, params, type, blocked, typedDataMeta } = request;
   const { request: { method, params: reqParams } } = params;
 
   const needsReauth = isSendReauthRequired();
+
+  // eth_sendTransaction risk scoring. Fetch recipientCode via the SAME simulation
+  // the Send flow runs, feed score(), and render the verdict. Fail closed: any
+  // simulation error -> recipientCode undefined -> S7 CAUTION; a throwing score()
+  // -> a blocking RISK verdict. Corpus is empty in this build (S2/S7 need none).
+  useEffect(() => {
+    if (type !== REQUEST_TYPES.SEND_TRANSACTION) return undefined;
+    const txParam = reqParams?.[0] || {};
+    const chainId = parseWcChainId(params.chainId);
+    let cancelled = false;
+    setCodePending(true);
+    setRiskVerdict(null);
+    (async () => {
+      let recipientCode;
+      try {
+        const net = getNetworkByChainId(chainId);
+        if (net?.key && txParam.to) {
+          const sim = await simulateEvmTransaction({
+            networkKey: net.key,
+            from: evmAddress,
+            to: txParam.to,
+            valueWei: txParam.value ? BigInt(txParam.value) : 0n,
+            data: txParam.data ?? '0x',
+          });
+          recipientCode = sim?.recipientCode ?? undefined;
+        }
+      } catch {
+        recipientCode = undefined; // fail closed -> S7 CAUTION
+      }
+      if (cancelled) return;
+      const inputs = buildRiskInputsFromWcRequest({ txParam, chainId, recipientCode });
+      let verdict;
+      try {
+        verdict = score(inputs.unsignedTx, inputs.activeSetLocalState, inputs.chainData);
+      } catch {
+        // score() should never throw (it catches its signals), but if it does we
+        // must not read "safe" — synthesize a blocking RISK verdict.
+        verdict = {
+          level: 'RISK',
+          sentence: 'A risk check could not complete. Treat this request as unsafe.',
+          evidence: null,
+          signalId: null,
+          requiresConfirmation: true,
+          signals: [],
+        };
+      }
+      setRiskVerdict(verdict);
+      setCodePending(false);
+    })();
+    return () => { cancelled = true; };
+  }, [type, reqParams, params.chainId, evmAddress]);
 
   // --- Blocked methods: auto-reject UI, never show approve ---
   if (blocked) {
@@ -46,13 +112,20 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   }
 
   const isAssetAuth = typedDataMeta?.assetAuthorising?.isAssetAuthorising;
+
+  const riskBlocks =
+    type === REQUEST_TYPES.SEND_TRANSACTION &&
+    (codePending || (riskVerdict?.requiresConfirmation && !riskAck));
+
   const approveBlocked =
     needsReauth ||
     (isAssetAuth && !permitAcknowledged) ||
     (type === REQUEST_TYPES.SEND_TRANSACTION && !txAcknowledged) ||
-    type === REQUEST_TYPES.UNKNOWN;
+    type === REQUEST_TYPES.UNKNOWN ||
+    riskBlocks;
 
   const sessionMeta = request.params?.proposer?.metadata ?? {};
+  const dapp = checkDappDomain(sessionMeta.url);
 
   async function handleApprove() {
     if (needsReauth) { onReauthNeeded?.(); return; }
@@ -89,6 +162,16 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
           <span className={styles.appName}>{sessionMeta.name ?? 'dApp'}</span>
           <span className={styles.methodBadge}>{method}</span>
         </div>
+
+        {dapp.flagged && (
+          <div className={styles.permitWarning}>
+            <p className={styles.permitTitle}>⚠ Known scam / phishing dApp</p>
+            <p className={styles.permitBody}>
+              {sessionMeta.name ?? 'This dApp'} ({dapp.domain}) is on Veyrnox's local known-bad
+              list: {dapp.reason}. Do not approve unless you are absolutely certain.
+            </p>
+          </div>
+        )}
 
         {/* PERSONAL SIGN */}
         {type === REQUEST_TYPES.PERSONAL_SIGN && (
@@ -171,6 +254,12 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                 I understand this will send a real transaction
               </label>
             </div>
+            <RiskVerdictBanner
+              verdict={riskVerdict}
+              pending={codePending}
+              acknowledged={riskAck}
+              onAcknowledge={setRiskAck}
+            />
           </>
         )}
 
