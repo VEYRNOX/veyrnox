@@ -12,8 +12,8 @@ import { formatDistanceToNow } from "date-fns";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const STATUS_STYLES = {
-  active: "bg-green-500/10 text-green-400 border-green-500/20",
-  paid: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  active: "bg-success/10 text-success border-success/20",
+  paid: "bg-info/10 text-info border-info/20",
   expired: "bg-secondary text-muted-foreground border-border",
 };
 
@@ -94,7 +94,7 @@ export default function PaymentLinks() {
               </div>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => copyLink(link)}>
-                  {copied === link.id ? <CheckCircle2 className="h-3 w-3 mr-1 text-green-400" /> : <Copy className="h-3 w-3 mr-1" />}
+                  {copied === link.id ? <CheckCircle2 className="h-3 w-3 mr-1 text-success" /> : <Copy className="h-3 w-3 mr-1" />}
                   {copied === link.id ? "Copied!" : "Copy Link"}
                 </Button>
                 {link.status === "active" && (

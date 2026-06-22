@@ -105,17 +105,17 @@ export default function NotificationCentre() {
   const filtered = tab === "All" ? allNotifications : allNotifications.filter(n => n.category === tab);
 
   const severityStyle = {
-    critical: "text-red-500 bg-red-500/10",
-    high: "text-orange-500 bg-orange-500/10",
-    medium: "text-yellow-500 bg-yellow-500/10",
-    low: "text-blue-500 bg-blue-500/10",
+    critical: "text-destructive bg-destructive/10",
+    high: "text-caution bg-caution/10",
+    medium: "text-caution bg-caution/10",
+    low: "text-info bg-info/10",
   };
 
   const typeIcon = (type) => {
-    if (type === "alert") return <TrendingUp className="h-4 w-4 text-yellow-400" />;
-    if (type === "fraud") return <AlertTriangle className="h-4 w-4 text-orange-400" />;
-    if (type === "rasp") return <ShieldAlert className="h-4 w-4 text-red-400" />;
-    return <Bell className="h-4 w-4 text-blue-400" />;
+    if (type === "alert") return <TrendingUp className="h-4 w-4 text-caution" />;
+    if (type === "fraud") return <AlertTriangle className="h-4 w-4 text-caution" />;
+    if (type === "rasp") return <ShieldAlert className="h-4 w-4 text-destructive" />;
+    return <Bell className="h-4 w-4 text-info" />;
   };
 
   return (
@@ -150,7 +150,7 @@ export default function NotificationCentre() {
       {/* Notifications */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
-          <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-3" />
+          <CheckCircle2 className="h-10 w-10 text-success mx-auto mb-3" />
           <p className="text-muted-foreground text-sm">All clear — no notifications</p>
         </div>
       ) : (

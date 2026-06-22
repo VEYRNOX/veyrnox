@@ -56,8 +56,8 @@ export default function SpendingPatterns() {
             <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
             <Tooltip formatter={(v, n) => [v, n === "sent" ? "Sent" : "Received"]} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="sent" name="Sent" fill="#ef4444" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="received" name="Received" fill="#4ade80" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="sent" name="Sent" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="received" name="Received" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

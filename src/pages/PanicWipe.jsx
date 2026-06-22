@@ -60,20 +60,20 @@ function KeyMaterialReport({ report, title }) {
   if (!report) return null;
   const clean = report.clean;
   return (
-    <div className={`rounded-lg border p-3 text-xs space-y-2 ${clean ? "border-green-500/30 bg-green-500/5" : "border-yellow-500/30 bg-yellow-500/5"}`}>
+    <div className={`rounded-lg border p-3 text-xs space-y-2 ${clean ? "border-success/30 bg-success/5" : "border-caution/30 bg-caution/5"}`}>
       <div className="flex items-center gap-2 font-semibold">
         {clean
-          ? <CheckCircle2 className="h-4 w-4 text-green-500" />
-          : <Database className="h-4 w-4 text-yellow-500" />}
+          ? <CheckCircle2 className="h-4 w-4 text-success" />
+          : <Database className="h-4 w-4 text-caution" />}
         <span>{title}</span>
-        <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold ${clean ? "bg-green-500/20 text-green-600" : "bg-yellow-500/20 text-yellow-600"}`}>
+        <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold ${clean ? "bg-success/20 text-success" : "bg-caution/20 text-caution"}`}>
           {clean ? "NO KEY MATERIAL" : `${report.vaultBlobCount} VAULT BLOB${report.vaultBlobCount === 1 ? "" : "S"}`}
         </span>
       </div>
       <div>
         <p className="text-muted-foreground">IndexedDB <code>veyrnox-vault / vault</code> keys:</p>
         {report.indexedDbKeys.length === 0 ? (
-          <p className="font-mono text-green-600">— empty —</p>
+          <p className="font-mono text-success">— empty —</p>
         ) : (
           <p className="font-mono break-all">{report.indexedDbKeys.join(", ")}</p>
         )}
@@ -81,7 +81,7 @@ function KeyMaterialReport({ report, title }) {
       <div>
         <p className="text-muted-foreground">localStorage address residue:</p>
         {report.localStorageResidue.length === 0 ? (
-          <p className="font-mono text-green-600">— none —</p>
+          <p className="font-mono text-success">— none —</p>
         ) : (
           <p className="font-mono break-all">{report.localStorageResidue.join(", ")}</p>
         )}
@@ -307,7 +307,7 @@ export default function PanicWipe() {
             <b> destroy your keys</b>.
           </p>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          {saved && <p className="text-xs text-green-600">✓ Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}
+          {saved && <p className="text-xs text-success">✓ Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}
           <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
             {saving ? "Saving…" : "Set / Change panic/wipe PIN"}
           </Button>
@@ -353,7 +353,7 @@ export default function PanicWipe() {
 
         {wipeReport && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-green-600 flex items-center gap-1.5">
+            <p className="text-xs font-semibold text-success flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4" /> Wipe complete. Local key material destroyed.
             </p>
             <KeyMaterialReport report={wipeReport} title="Local storage after wipe" />
@@ -403,7 +403,7 @@ export default function PanicWipe() {
             )}
             <KeyMaterialReport report={after} title="AFTER — nothing recoverable" />
             {after?.clean && (
-              <p className="text-xs text-green-600 flex items-center gap-1.5">
+              <p className="text-xs text-success flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4" /> Verified: the vault store is empty and no address residue remains.
               </p>
             )}

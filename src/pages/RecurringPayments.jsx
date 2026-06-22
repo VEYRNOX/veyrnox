@@ -113,10 +113,10 @@ export default function RecurringPayments() {
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> New</Button>
       </div>
 
-      <div className="flex items-start gap-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 p-3">
-        <ShieldAlert className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 rounded-2xl bg-caution/10 border border-caution/30 p-3">
+        <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <div className="flex-1">
-          <p className="text-sm font-medium text-yellow-400">Non-custodial — schedules &amp; reminders only</p>
+          <p className="text-sm font-medium text-caution">Non-custodial — schedules &amp; reminders only</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             This wallet never moves your funds on its own. Recurring payments are stored as
             schedules; when one is due you sign it manually in Send. Autonomous execution must
@@ -154,7 +154,7 @@ export default function RecurringPayments() {
       {notifPerm !== "unsupported" && (
         <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
           <div className="flex items-center gap-2">
-            {notifPerm === "granted" ? <Bell className="h-4 w-4 text-green-400" /> : <BellOff className="h-4 w-4 text-muted-foreground" />}
+            {notifPerm === "granted" ? <Bell className="h-4 w-4 text-success" /> : <BellOff className="h-4 w-4 text-muted-foreground" />}
             <div>
               <p className="text-sm font-medium">Due payment reminders</p>
               <p className="text-xs text-muted-foreground">
@@ -188,7 +188,7 @@ export default function RecurringPayments() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold">{p.label}</p>
-                        {isDue && p.status === "active" && <span className="text-[10px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded-full">Due</span>}
+                        {isDue && p.status === "active" && <span className="text-[10px] bg-caution/10 text-caution px-1.5 py-0.5 rounded-full">Due</span>}
                       </div>
                       <p className="text-xs text-muted-foreground">{p.amount} {p.currency} · {FREQ_LABELS[p.frequency]}</p>
                       <p className="text-xs font-mono text-muted-foreground truncate">{p.to_address}</p>

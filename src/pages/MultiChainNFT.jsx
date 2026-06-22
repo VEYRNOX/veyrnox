@@ -17,7 +17,7 @@ const CHAINS = [
   { id: "arbitrum", label: "Arbitrum", icon: "🔷", color: "bg-blue-600/10 text-blue-500", marketplace: "https://opensea.io/assets/arbitrum" },
 ];
 
-const STATUS_STYLES = { holding: "bg-secondary text-muted-foreground", listed: "bg-yellow-500/10 text-yellow-400", sold: "bg-green-500/10 text-green-400" };
+const STATUS_STYLES = { holding: "bg-secondary text-muted-foreground", listed: "bg-caution/10 text-caution", sold: "bg-success/10 text-success" };
 
 const PLACEHOLDER_IMAGES = [
   "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80",
@@ -80,7 +80,7 @@ export default function MultiChainNFT() {
           <p className="text-sm font-semibold truncate">{n.name}</p>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Floor: {n.current_floor || 0} ETH</span>
-            <span className={pnl >= 0 ? "text-green-400" : "text-destructive"}>{pnl >= 0 ? "+" : ""}{pnlPct}%</span>
+            <span className={pnl >= 0 ? "text-success" : "text-destructive"}>{pnl >= 0 ? "+" : ""}{pnlPct}%</span>
           </div>
           <div className="flex gap-1 pt-1">
             <Button variant="ghost" size="sm" className="flex-1 h-6 text-[10px]" onClick={() => updateStatus.mutate({ id: n.id, status: n.status === "holding" ? "listed" : "holding" })}>{n.status === "listed" ? "Delist" : "List"}</Button>
@@ -106,7 +106,7 @@ export default function MultiChainNFT() {
         </div>
         <div className="text-right shrink-0">
           <p className="text-sm font-semibold">{n.current_floor || 0} ETH</p>
-          <p className={`text-xs ${pnl >= 0 ? "text-green-400" : "text-destructive"}`}>{pnl >= 0 ? "+" : ""}{pnl.toFixed(4)} ETH</p>
+          <p className={`text-xs ${pnl >= 0 ? "text-success" : "text-destructive"}`}>{pnl >= 0 ? "+" : ""}{pnl.toFixed(4)} ETH</p>
         </div>
         <span className={`text-[10px] px-2 py-0.5 rounded-full capitalize shrink-0 ${STATUS_STYLES[n.status]}`}>{n.status}</span>
       </div>
@@ -127,7 +127,7 @@ export default function MultiChainNFT() {
       <div className="grid grid-cols-3 gap-3">
         {[{ label: "Portfolio Value", value: `${totalValue.toFixed(3)} ETH`, icon: Image, color: "text-primary" },
           { label: "Total Cost", value: `${totalCost.toFixed(3)} ETH`, icon: TrendingDown, color: "text-muted-foreground" },
-          { label: "Unrealised P&L", value: `${unrealizedPnL >= 0 ? "+" : ""}${unrealizedPnL.toFixed(3)} ETH`, icon: unrealizedPnL >= 0 ? TrendingUp : TrendingDown, color: unrealizedPnL >= 0 ? "text-green-400" : "text-destructive" }].map(s => (
+          { label: "Unrealised P&L", value: `${unrealizedPnL >= 0 ? "+" : ""}${unrealizedPnL.toFixed(3)} ETH`, icon: unrealizedPnL >= 0 ? TrendingUp : TrendingDown, color: unrealizedPnL >= 0 ? "text-success" : "text-destructive" }].map(s => (
           <div key={s.label} className="p-3 rounded-xl border border-border bg-card text-center">
             <s.icon className={`h-4 w-4 mx-auto mb-1 ${s.color}`} />
             <p className={`text-sm font-bold ${s.color}`}>{s.value}</p>

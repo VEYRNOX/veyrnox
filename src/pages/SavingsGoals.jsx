@@ -88,7 +88,7 @@ export default function SavingsGoals() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold truncate">{goal.title}</p>
-                      {done && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                      {done && <CheckCircle2 className="h-4 w-4 text-success shrink-0" />}
                     </div>
                     <p className="text-xs text-muted-foreground">{goal.currency} · {daysLeft !== null ? `${daysLeft}d left` : "No deadline"}</p>
                   </div>

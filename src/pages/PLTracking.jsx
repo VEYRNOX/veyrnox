@@ -78,7 +78,7 @@ export default function PLTracking() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm">{r.asset}</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${r.status === "open" ? "bg-blue-500/10 text-blue-400" : "bg-secondary text-muted-foreground"}`}>{r.status}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${r.status === "open" ? "bg-info/10 text-info" : "bg-secondary text-muted-foreground"}`}>{r.status}</span>
             </div>
             <p className="text-xs text-muted-foreground">{r.quantity} units · Entry ${r.entry_price?.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">{format(new Date(r.entry_date), "dd MMM yy")}{r.exit_date ? ` → ${format(new Date(r.exit_date), "dd MMM yy")}` : ""}</p>
@@ -86,10 +86,10 @@ export default function PLTracking() {
           <div className="text-right shrink-0">
             {r.status === "closed" && r.pnl_usd != null ? (
               <>
-                <p className={`text-sm font-bold ${r.pnl_usd >= 0 ? "text-green-400" : "text-destructive"}`}>
+                <p className={`text-sm font-bold ${r.pnl_usd >= 0 ? "text-success" : "text-destructive"}`}>
                   {r.pnl_usd >= 0 ? "+" : ""}${r.pnl_usd?.toFixed(2)}
                 </p>
-                <p className={`text-xs ${r.pnl_pct >= 0 ? "text-green-400" : "text-destructive"}`}>{r.pnl_pct >= 0 ? "+" : ""}{r.pnl_pct?.toFixed(1)}%</p>
+                <p className={`text-xs ${r.pnl_pct >= 0 ? "text-success" : "text-destructive"}`}>{r.pnl_pct >= 0 ? "+" : ""}{r.pnl_pct?.toFixed(1)}%</p>
               </>
             ) : (
               <p className="text-xs text-muted-foreground">P&L: enter exit price</p>
@@ -133,9 +133,9 @@ export default function PLTracking() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Realised P&L", value: `${totalRealised >= 0 ? "+" : ""}$${totalRealised.toFixed(2)}`, color: totalRealised >= 0 ? "text-green-400" : "text-destructive" },
+          { label: "Realised P&L", value: `${totalRealised >= 0 ? "+" : ""}$${totalRealised.toFixed(2)}`, color: totalRealised >= 0 ? "text-success" : "text-destructive" },
           { label: "Unrealised P&L", value: "Enter exit price", color: "text-muted-foreground" },
-          { label: "Win Rate", value: `${winRate}%`, color: winRate >= 50 ? "text-green-400" : "text-destructive" },
+          { label: "Win Rate", value: `${winRate}%`, color: winRate >= 50 ? "text-success" : "text-destructive" },
           { label: "Total Trades", value: records.length },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">

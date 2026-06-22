@@ -120,7 +120,7 @@ export default function OnChainAnalytics() {
               <span className="text-xs font-mono bg-secondary px-2 py-0.5 rounded w-14 text-center">{cur}</span>
               <div className="flex-1 grid grid-cols-3 gap-2 text-xs">
                 <div><span className="text-muted-foreground">Sent </span><span className="font-medium text-destructive">{d.sent.toFixed(4)}</span></div>
-                <div><span className="text-muted-foreground">Recv </span><span className="font-medium text-green-400">{d.received.toFixed(4)}</span></div>
+                <div><span className="text-muted-foreground">Recv </span><span className="font-medium text-success">{d.received.toFixed(4)}</span></div>
                 <div><span className="text-muted-foreground">Txs </span><span className="font-medium">{d.count}</span></div>
               </div>
             </div>
@@ -147,7 +147,7 @@ export default function OnChainAnalytics() {
             <p className="text-xs">Found in <span className="font-medium">{addressData.txCount}</span> transactions</p>
             {addressData.txs.map(tx => (
               <div key={tx.id} className="flex items-center gap-2 text-xs text-muted-foreground">
-                {tx.type === "send" ? <ArrowUpRight className="h-3 w-3 text-destructive" /> : <ArrowDownLeft className="h-3 w-3 text-green-400" />}
+                {tx.type === "send" ? <ArrowUpRight className="h-3 w-3 text-destructive" /> : <ArrowDownLeft className="h-3 w-3 text-success" />}
                 <span className="capitalize">{tx.type}</span>
                 <span className="font-medium text-foreground">{tx.amount} {tx.currency}</span>
                 <span>{format(new Date(tx.created_date), "dd MMM")}</span>
@@ -163,16 +163,16 @@ export default function OnChainAnalytics() {
         {isLoading ? <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
           : transactions.slice(0, 15).map(tx => (
           <div key={tx.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${tx.type === "send" ? "bg-destructive/10" : "bg-green-500/10"}`}>
-              {tx.type === "send" ? <ArrowUpRight className="h-4 w-4 text-destructive" /> : <ArrowDownLeft className="h-4 w-4 text-green-400" />}
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${tx.type === "send" ? "bg-destructive/10" : "bg-success/10"}`}>
+              {tx.type === "send" ? <ArrowUpRight className="h-4 w-4 text-destructive" /> : <ArrowDownLeft className="h-4 w-4 text-success" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-mono truncate text-muted-foreground">{tx.tx_hash || "—"}</p>
               <p className="text-[10px] text-muted-foreground">{format(new Date(tx.created_date), "dd MMM yyyy HH:mm")}</p>
             </div>
             <div className="text-right shrink-0">
-              <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-green-400"}`}>{tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}</p>
-              <span className={`text-[10px] ${tx.status === "confirmed" ? "text-green-400" : tx.status === "failed" ? "text-destructive" : "text-yellow-400"}`}>{tx.status}</span>
+              <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-success"}`}>{tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}</p>
+              <span className={`text-[10px] ${tx.status === "confirmed" ? "text-success" : tx.status === "failed" ? "text-destructive" : "text-caution"}`}>{tx.status}</span>
             </div>
           </div>
         ))}

@@ -68,7 +68,7 @@ export default function SessionManager() {
 
       <div className="grid grid-cols-3 gap-3">
         <div className="p-4 rounded-xl border border-border bg-card text-center">
-          <p className="text-2xl font-bold text-green-500">{activeSessions.length}</p>
+          <p className="text-2xl font-bold text-success">{activeSessions.length}</p>
           <p className="text-xs text-muted-foreground">Active Sessions</p>
         </div>
         <div className="p-4 rounded-xl border border-border bg-card text-center">
@@ -92,8 +92,8 @@ export default function SessionManager() {
           <p className="text-sm font-semibold">Active Sessions</p>
           {activeSessions.length === 0 && <p className="text-sm text-muted-foreground p-3">No active sessions</p>}
           {activeSessions.map(s => (
-            <div key={s.id} className="flex items-center gap-3 p-4 rounded-xl border border-green-500/20 bg-card">
-              <div className="h-9 w-9 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center shrink-0">
+            <div key={s.id} className="flex items-center gap-3 p-4 rounded-xl border border-success/20 bg-card">
+              <div className="h-9 w-9 rounded-full bg-success/10 text-success flex items-center justify-center shrink-0">
                 {getDeviceIcon(s.user_agent)}
               </div>
               <div className="flex-1 min-w-0">
@@ -105,7 +105,7 @@ export default function SessionManager() {
                 <p className="text-[10px] text-muted-foreground">{new Date(s.created_date).toLocaleString("en-GB")}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
                 <button onClick={() => revoke.mutate(s.id)} aria-label={`Revoke session on ${parseUA(s.user_agent)}`} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                   <ShieldX className="h-4 w-4" />
                 </button>

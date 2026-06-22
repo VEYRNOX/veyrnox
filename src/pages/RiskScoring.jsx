@@ -7,10 +7,10 @@ import { RadialBarChart, RadialBar, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 
 const RISK_LEVELS = [
-  { min: 0, max: 30, label: "Low Risk", color: "#22c55e", desc: "Well-diversified, stable portfolio" },
-  { min: 30, max: 60, label: "Medium Risk", color: "#f59e0b", desc: "Some concentration, moderate volatility" },
-  { min: 60, max: 80, label: "High Risk", color: "#f97316", desc: "Significant concentration or volatile assets" },
-  { min: 80, max: 101, label: "Critical Risk", color: "#ef4444", desc: "Highly concentrated, extreme volatility" },
+  { min: 0, max: 30, label: "Low Risk", color: "hsl(var(--success))", desc: "Well-diversified, stable portfolio" },
+  { min: 30, max: 60, label: "Medium Risk", color: "hsl(var(--caution))", desc: "Some concentration, moderate volatility" },
+  { min: 60, max: 80, label: "High Risk", color: "hsl(var(--caution))", desc: "Significant concentration or volatile assets" },
+  { min: 80, max: 101, label: "Critical Risk", color: "hsl(var(--destructive))", desc: "Highly concentrated, extreme volatility" },
 ];
 
 const HEDGING = [
@@ -49,14 +49,14 @@ export default function RiskScoring() {
   const riskLevel = score !== null ? getRiskLevel(score) : null;
 
   const METRICS = [
-    { label: "Concentration Risk", value: score !== null ? Math.min(100, score + 5) : "—", unit: "/100", color: "text-orange-400" },
-    { label: "Leverage Risk", value: score !== null ? positions.filter(p => p.type === "borrow").length * 15 : "—", unit: "%", color: "text-yellow-400" },
+    { label: "Concentration Risk", value: score !== null ? Math.min(100, score + 5) : "—", unit: "/100", color: "text-caution" },
+    { label: "Leverage Risk", value: score !== null ? positions.filter(p => p.type === "borrow").length * 15 : "—", unit: "%", color: "text-caution" },
     { label: "Volatility Index", value: score !== null ? Math.round(score * 0.8) : "—", unit: "/100", color: "text-destructive" },
     // Deniability (CLAUDE.md "never show wallet count/list"): this tile must not
     // publish wallets.length. Diversification is now a score-derived /100 reading
     // (higher = better spread, inverse of the concentration-weighted risk score),
     // gated on an analysis run like the other metrics — no wallet cardinality.
-    { label: "Diversification", value: score !== null ? Math.max(0, 100 - score) : "—", unit: "/100", color: "text-green-400" },
+    { label: "Diversification", value: score !== null ? Math.max(0, 100 - score) : "—", unit: "/100", color: "text-success" },
   ];
 
   return (
@@ -115,7 +115,7 @@ export default function RiskScoring() {
                 <p className="text-sm font-semibold">{h.title}</p>
                 <p className="text-xs text-muted-foreground">{h.desc}</p>
               </div>
-              <span className="text-[10px] bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full shrink-0">{h.impact}</span>
+              <span className="text-[10px] bg-success/10 text-success px-2 py-0.5 rounded-full shrink-0">{h.impact}</span>
             </div>
           ))}
         </div>

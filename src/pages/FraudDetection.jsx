@@ -137,11 +137,11 @@ const SEVERITY_CONFIG = {
     label: "High",
   },
   medium: {
-    cls: "bg-yellow-500/10 text-yellow-500 border-yellow-500/30",
+    cls: "bg-caution/10 text-caution border-caution/30",
     label: "Medium",
   },
   low: {
-    cls: "bg-blue-500/10 text-blue-500 border-blue-500/30",
+    cls: "bg-info/10 text-info border-info/30",
     label: "Low",
   },
 };
@@ -302,7 +302,7 @@ export default function FraudDetection() {
                   {count !== null && (
                     <p
                       className={`text-[10px] font-semibold mt-1 ${
-                        count > 0 ? "text-destructive" : "text-green-500"
+                        count > 0 ? "text-destructive" : "text-success"
                       }`}
                     >
                       {count} found
@@ -346,7 +346,7 @@ export default function FraudDetection() {
               count: [...liveFindings, ...dbAlerts].filter((a) =>
                 ["medium", "low"].includes(a.severity)
               ).length,
-              color: "text-yellow-500",
+              color: "text-caution",
             },
           ].map((s) => (
             <div
@@ -374,7 +374,7 @@ export default function FraudDetection() {
       {/* Post-scan all-clear */}
       {hasScanned && totalFindings === 0 && (
         <div className="text-center py-14 text-muted-foreground">
-          <CheckCircle className="h-10 w-10 mx-auto mb-3 text-green-500 opacity-60" />
+          <CheckCircle className="h-10 w-10 mx-auto mb-3 text-success opacity-60" />
           <p className="font-medium text-foreground">Nothing found</p>
           <p className="text-sm mt-1">
             No anomalies, no flagged addresses, no stored alerts

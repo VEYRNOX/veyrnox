@@ -134,7 +134,7 @@ export default function SecurityScanner() {
       </Card>
 
       {inputError && (
-        <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-start gap-2 text-xs text-yellow-300">
+        <div className="p-3 rounded-lg bg-caution/10 border border-caution/30 flex items-start gap-2 text-xs text-caution">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>{inputError}</span>
         </div>

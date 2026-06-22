@@ -68,7 +68,7 @@ export default function NetworkManager() {
               <span className="font-mono truncate max-w-[200px]">{active.rpc_url}</span>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-1.5 text-xs text-green-500 font-semibold">
+          <div className="ml-auto flex items-center gap-1.5 text-xs text-success font-semibold">
             <Wifi className="h-3.5 w-3.5" /> Connected
           </div>
         </div>
@@ -90,8 +90,8 @@ export default function NetworkManager() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium">{n.name}</p>
-                {n.is_testnet && <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500 font-semibold">Testnet</span>}
-                {n.is_active && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+                {n.is_testnet && <span className="text-[9px] px-1.5 py-0.5 rounded bg-caution/10 text-caution font-semibold">Testnet</span>}
+                {n.is_active && <CheckCircle className="h-3.5 w-3.5 text-success" />}
               </div>
               <p className="text-xs text-muted-foreground">Chain {n.chain_id} · {n.symbol}</p>
             </div>

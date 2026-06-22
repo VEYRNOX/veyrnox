@@ -59,9 +59,9 @@ export default function TaxReport() {
         <p className="text-sm text-muted-foreground mt-0.5">Export your raw transaction history for use with a dedicated tax tool</p>
       </div>
 
-      <div className="flex items-start gap-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-4">
-        <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
-        <div className="text-xs text-yellow-200 space-y-1">
+      <div className="flex items-start gap-2.5 rounded-xl bg-caution/10 border border-caution/30 p-4">
+        <AlertTriangle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
+        <div className="text-xs text-caution space-y-1">
           <p className="font-semibold">This app does not calculate taxes</p>
           <p>Computing accurate cost basis, capital gains, and staking income requires live historical prices that this app does not have. Fabricated figures could lead to incorrect filings — export your raw data and use a specialist tool instead.</p>
         </div>
@@ -78,7 +78,7 @@ export default function TaxReport() {
           {isLoading ? "Loading…" : `Export ${transactions.length} transactions (CSV)`}
         </Button>
         {isError && <p className="text-xs text-destructive">Couldn't load your transactions to export. Please try again.</p>}
-        {exported && <p className="text-xs text-green-400">✓ Downloaded — import this file into your tax tool below</p>}
+        {exported && <p className="text-xs text-success">✓ Downloaded — import this file into your tax tool below</p>}
       </div>
 
       {/* Tax tools */}

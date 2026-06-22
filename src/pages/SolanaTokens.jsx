@@ -109,7 +109,7 @@ export default function SolanaTokens() {
             <div className="flex items-center gap-2">
               <Send className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm font-semibold text-muted-foreground">Send SOL</p>
-              <span className="text-[10px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded-full">Coming soon</span>
+              <span className="text-[10px] bg-caution/10 text-caution px-1.5 py-0.5 rounded-full">Coming soon</span>
             </div>
             <p className="text-xs text-muted-foreground">
               SOL send is not yet wired into the signing path. The Send page currently handles EVM only.

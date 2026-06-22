@@ -141,7 +141,7 @@ export default function SuspiciousAddressChecker() {
           <div className="flex items-center gap-2 text-xs">
             <span className="font-mono text-muted-foreground truncate">{address}</span>
             <button onClick={copyAddr} aria-label="Copy address" className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
-              {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
           </div>
         )}

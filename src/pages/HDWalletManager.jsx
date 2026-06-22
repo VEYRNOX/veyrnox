@@ -55,8 +55,8 @@ const ASSET_COLORS = {
 };
 
 const STATUS_BADGE = {
-  [ASSET_STATUS.LIVE]: { label: "Live", className: "bg-green-500/15 text-green-400 border-green-500/30" },
-  [ASSET_STATUS.RECEIVE_ONLY]: { label: "Receive only", className: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+  [ASSET_STATUS.LIVE]: { label: "Live", className: "bg-success/15 text-success border-success/30" },
+  [ASSET_STATUS.RECEIVE_ONLY]: { label: "Receive only", className: "bg-info/15 text-info border-info/30" },
   [ASSET_STATUS.COMING_SOON]: { label: "Coming soon", className: "bg-secondary text-muted-foreground border-border" },
 };
 
@@ -242,7 +242,7 @@ export default function HDWalletManager() {
       </div>
 
       {/* Lock-state banner */}
-      <div className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs ${isUnlocked ? "bg-green-500/10 border-green-500/20 text-green-300" : "bg-secondary/40 border-border text-muted-foreground"}`}>
+      <div className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs ${isUnlocked ? "bg-success/10 border-success/20 text-success" : "bg-secondary/40 border-border text-muted-foreground"}`}>
         {isUnlocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
         {isUnlocked
           ? "Vault unlocked. Keys live in memory only and auto-lock after inactivity."
@@ -359,7 +359,7 @@ export default function HDWalletManager() {
                     <p className="text-[11px] text-muted-foreground font-mono">{shortPath(accounts[0]?.index)}</p>
                   </div>
                 </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded border bg-green-500/15 text-green-400 border-green-500/30 shrink-0">Active</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded border bg-success/15 text-success border-success/30 shrink-0">Active</span>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground mb-1">Account address (public)</p>
@@ -371,7 +371,7 @@ export default function HDWalletManager() {
                     title="Copy account address"
                     aria-label="Copy account address"
                   >
-                    {copied === "evm-account" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                    {copied === "evm-account" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
                   </button>
                 </div>
               </div>
@@ -419,7 +419,7 @@ export default function HDWalletManager() {
                             <p className="text-muted-foreground mb-0.5">Address (public)</p>
                             <div className="flex items-center gap-2">
                               <p className="font-mono break-all">{address}</p>
-                              <button onClick={() => copy(address, asset.symbol)} className="shrink-0" aria-label={`Copy ${asset.symbol} address`}>{copied === asset.symbol ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}</button>
+                              <button onClick={() => copy(address, asset.symbol)} className="shrink-0" aria-label={`Copy ${asset.symbol} address`}>{copied === asset.symbol ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}</button>
                             </div>
                           </div>
                         </>
@@ -451,7 +451,7 @@ export default function HDWalletManager() {
 
       {tab === "import" && (
         <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-500">
+          <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 text-xs text-caution">
             Never share your seed phrase. It is validated and encrypted locally with your password — it is never sent to a server. Keys never leave this device.
           </div>
           <div>
@@ -492,7 +492,7 @@ export default function HDWalletManager() {
                   <p className="text-xs font-semibold">Your Seed Phrase (shown once)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label={showSeed ? "Hide seed phrase" : "Show seed phrase"}>{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(generatedSeed, "seed")} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy seed phrase">{copied === "seed" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => copy(generatedSeed, "seed")} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy seed phrase">{copied === "seed" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showSeed ? (

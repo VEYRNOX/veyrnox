@@ -143,7 +143,7 @@ export default function AnomalyDetection() {
 
       {scanResult && allAlerts.length === 0 && (
         <div className="text-center py-14 text-muted-foreground">
-          <CheckCircle className="h-10 w-10 mx-auto mb-3 text-green-500 opacity-60" />
+          <CheckCircle className="h-10 w-10 mx-auto mb-3 text-success opacity-60" />
           <p className="font-medium text-foreground">All Clear</p>
           <p className="text-sm mt-1">No anomalies detected in your transaction history</p>
         </div>

@@ -28,8 +28,8 @@ import WalletPortfolioPage from "./WalletPortfolioPage";
 import { USD_RATES } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 const STATUS_ICONS = {
-  pending: <Clock className="h-3.5 w-3.5 text-yellow-500" />,
-  confirmed: <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />,
+  pending: <Clock className="h-3.5 w-3.5 text-caution" />,
+  confirmed: <CheckCircle2 className="h-3.5 w-3.5 text-success" />,
   failed: <XCircle className="h-3.5 w-3.5 text-destructive" />,
 };
 
@@ -186,7 +186,7 @@ function DemoDashboard() {
 
       {/* Price Alert Banner */}
       {triggeredAlerts.length > 0 && (
-        <Link to="/alerts" className="flex items-center gap-3 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 hover:border-yellow-500/60 transition-colors">
+        <Link to="/alerts" className="flex items-center gap-3 p-3 rounded-xl bg-caution/10 border border-caution/30 hover:border-caution/60 transition-colors">
           <span className="text-lg shrink-0">🔔</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">{triggeredAlerts.length} Price Alert{triggeredAlerts.length > 1 ? 's' : ''} Triggered!</p>
@@ -194,7 +194,7 @@ function DemoDashboard() {
               {triggeredAlerts.map(a => `${a.currency} hit $${a.triggered_price?.toLocaleString()}`).join(' · ')}
             </p>
           </div>
-          <ArrowUpRight className="h-4 w-4 text-yellow-500 shrink-0" />
+          <ArrowUpRight className="h-4 w-4 text-caution shrink-0" />
         </Link>
       )}
 
@@ -213,7 +213,7 @@ function DemoDashboard() {
         <ReferenceRateNote />
         {!isLocked && wallets.length > 0 && (
           <div className="flex items-center justify-center gap-3 mt-1">
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 px-2 py-0.5 rounded-full">
               ▲ {changePercent}% (24h)
             </span>
             <span className="text-[10px] text-muted-foreground">Synced {syncLabel}</span>
@@ -312,11 +312,11 @@ function DemoDashboard() {
             filteredTx.map(tx => (
               <div key={tx.id} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-secondary transition-colors">
                 <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${
-                  tx.type === "send" ? "bg-destructive/10" : "bg-green-500/10"
+                  tx.type === "send" ? "bg-destructive/10" : "bg-success/10"
                 }`}>
                   {tx.type === "send"
                     ? <ArrowUpRight className="h-4 w-4 text-destructive" />
-                    : <ArrowDownLeft className="h-4 w-4 text-green-500" />
+                    : <ArrowDownLeft className="h-4 w-4 text-success" />
                   }
                 </div>
                 <div className="flex-1 min-w-0">
@@ -329,7 +329,7 @@ function DemoDashboard() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-green-500"}`}>
+                  <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-success"}`}>
                     {tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}
                   </p>
                   <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(tx.created_date), { addSuffix: true })}</p>

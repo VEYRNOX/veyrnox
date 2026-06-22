@@ -16,7 +16,7 @@ import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 const HISTORY_ASSETS = ASSETS.filter((a) => canReceive(a));
 
 const statusMeta = {
-  pending: { icon: Clock, cls: "text-yellow-500", label: "Pending" },
+  pending: { icon: Clock, cls: "text-caution", label: "Pending" },
   confirmed: { icon: CheckCircle2, cls: "text-primary", label: "Confirmed" },
   failed: { icon: XCircle, cls: "text-destructive", label: "Failed" },
 };

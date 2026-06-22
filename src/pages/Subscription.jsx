@@ -17,7 +17,7 @@ import { PRO_FEATURES } from "@/lib/tier";
 
 // Mirrors the honest available/roadmap badge styling used in pages/Features.jsx.
 const STATUS_META = {
-  available: { label: "Available", className: "bg-green-500/10 text-green-600 border-green-500/20" },
+  available: { label: "Available", className: "bg-success/10 text-success border-success/20" },
 };
 
 export default function Subscription() {
@@ -40,8 +40,8 @@ export default function Subscription() {
       </div>
 
       {/* Preview / not-final disclosure */}
-      <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-        <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 rounded-xl border border-caution/20 bg-caution/5 p-4">
+        <Info className="h-5 w-5 text-caution shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
           Pricing is a working model, not final. This is a preview screen; no
           payment system is active.
@@ -72,7 +72,7 @@ export default function Subscription() {
                   <ul className="space-y-2">
                     {PRO_FEATURES.map((f) => (
                       <li key={f.name} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                        <Check className="h-4 w-4 text-success shrink-0 mt-0.5" />
                         <span>
                           <span className="font-medium">{f.name}</span>
                           <span className="block text-xs text-muted-foreground">{f.summary}</span>

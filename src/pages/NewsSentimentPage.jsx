@@ -10,10 +10,10 @@ import { formatDistanceToNow } from "date-fns";
 const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
 const SENTIMENT_CONFIG = {
-  very_bullish: { icon: TrendingUp, color: "text-green-500", bg: "bg-green-500/10 border-green-500/20", label: "Very Bullish", bar: 100 },
-  bullish: { icon: TrendingUp, color: "text-green-400", bg: "bg-green-400/10 border-green-400/20", label: "Bullish", bar: 70 },
+  very_bullish: { icon: TrendingUp, color: "text-success", bg: "bg-success/10 border-success/20", label: "Very Bullish", bar: 100 },
+  bullish: { icon: TrendingUp, color: "text-success", bg: "bg-success/10 border-success/20", label: "Bullish", bar: 70 },
   neutral: { icon: Minus, color: "text-muted-foreground", bg: "bg-secondary border-border", label: "Neutral", bar: 50 },
-  bearish: { icon: TrendingDown, color: "text-orange-400", bg: "bg-orange-400/10 border-orange-400/20", label: "Bearish", bar: 30 },
+  bearish: { icon: TrendingDown, color: "text-caution", bg: "bg-caution/10 border-caution/20", label: "Bearish", bar: 30 },
   very_bearish: { icon: TrendingDown, color: "text-destructive", bg: "bg-destructive/10 border-destructive/20", label: "Very Bearish", bar: 0 },
 };
 
@@ -23,7 +23,7 @@ function AssetSentimentBar({ asset, news }) {
   if (!assetNews.length) return null;
   const avgScore = assetNews.reduce((a, n) => a + n.score, 0) / assetNews.length;
   const pct = ((avgScore + 1) / 2) * 100;
-  const color = avgScore > 0.3 ? "#22c55e" : avgScore > -0.3 ? "#94a3b8" : "#ef4444";
+  const color = avgScore > 0.3 ? "hsl(var(--success))" : avgScore > -0.3 ? "hsl(var(--muted-foreground))" : "hsl(var(--destructive))";
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs font-mono w-10 shrink-0">{asset}</span>

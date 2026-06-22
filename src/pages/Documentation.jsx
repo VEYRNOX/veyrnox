@@ -174,8 +174,8 @@ const workflows = [
 ];
 
 const STATUS_META = {
-  available: { label: "Available", className: "bg-green-500/10 text-green-600 border-green-500/20" },
-  roadmap: { label: "Roadmap", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+  available: { label: "Available", className: "bg-success/10 text-success border-success/20" },
+  roadmap: { label: "Roadmap", className: "bg-caution/10 text-caution border-caution/20" },
 };
 
 export default function Documentation() {

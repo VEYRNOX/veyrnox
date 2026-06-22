@@ -5,7 +5,7 @@ function ScoreRing({ score }) {
   const r = 28;
   const circ = 2 * Math.PI * r;
   const progress = (score / 100) * circ;
-  const color = score >= 75 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
+  const color = score >= 75 ? "hsl(var(--success))" : score >= 50 ? "hsl(var(--caution))" : "hsl(var(--destructive))";
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -59,7 +59,7 @@ export default function PortfolioHealthScore({ wallets = [] }) {
 
   const total = factors.reduce((s, f) => s + f.score, 0);
   const label = total >= 75 ? "Excellent" : total >= 50 ? "Good" : total >= 25 ? "Fair" : "Needs Attention";
-  const labelColor = total >= 75 ? "text-green-500" : total >= 50 ? "text-yellow-500" : "text-red-500";
+  const labelColor = total >= 75 ? "text-success" : total >= 50 ? "text-caution" : "text-destructive";
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
@@ -89,7 +89,7 @@ export default function PortfolioHealthScore({ wallets = [] }) {
                     className="h-full rounded-full transition-all duration-700"
                     style={{
                       width: `${pct}%`,
-                      background: pct === 100 ? "#22c55e" : pct > 0 ? "#f59e0b" : "#ef444440"
+                      background: pct === 100 ? "hsl(var(--success))" : pct > 0 ? "hsl(var(--caution))" : "hsl(var(--destructive) / 0.25)"
                     }}
                   />
                 </div>

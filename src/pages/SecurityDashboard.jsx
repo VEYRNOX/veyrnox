@@ -38,7 +38,7 @@ import {
 
 const SEV = {
   high: { cls: "text-destructive", dot: "bg-destructive", badge: "bg-destructive/10 text-destructive" },
-  medium: { cls: "text-yellow-500", dot: "bg-yellow-500", badge: "bg-yellow-500/10 text-yellow-500" },
+  medium: { cls: "text-caution", dot: "bg-caution", badge: "bg-caution/10 text-caution" },
 };
 
 // One protection's display config. `on` is resolved from the existing settings
@@ -51,14 +51,14 @@ function FeatureRow({ icon: Icon, label, on, detail, path, gapWhenOff = true }) 
       to={path}
       className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-secondary/40 transition-colors"
     >
-      <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${enabled ? "bg-green-500/10" : "bg-secondary"}`}>
-        <Icon className={`h-4 w-4 ${enabled ? "text-green-500" : "text-muted-foreground"}`} />
+      <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${enabled ? "bg-success/10" : "bg-secondary"}`}>
+        <Icon className={`h-4 w-4 ${enabled ? "text-success" : "text-muted-foreground"}`} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{label}</span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-            enabled ? "bg-green-500/10 text-green-500" : isGap ? "bg-yellow-500/10 text-yellow-500" : "bg-secondary text-muted-foreground"
+            enabled ? "bg-success/10 text-success" : isGap ? "bg-caution/10 text-caution" : "bg-secondary text-muted-foreground"
           }`}>
             {enabled ? "ON" : isGap ? "OFF" : "Not set"}
           </span>
@@ -71,14 +71,14 @@ function FeatureRow({ icon: Icon, label, on, detail, path, gapWhenOff = true }) 
 }
 
 function StatCard({ icon: Icon, label, value, sub, tone, path }) {
-  const toneCls = tone === "high" ? "border-destructive/30" : tone === "medium" ? "border-yellow-500/30" : "border-border";
+  const toneCls = tone === "high" ? "border-destructive/30" : tone === "medium" ? "border-caution/30" : "border-border";
   return (
     <Link to={path} className={`p-4 rounded-xl border bg-card hover:bg-secondary/40 transition-colors block ${toneCls}`}>
       <div className="flex items-center gap-2 text-muted-foreground mb-2">
         <Icon className="h-4 w-4" />
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <p className={`text-2xl font-bold ${tone === "high" ? "text-destructive" : tone === "medium" ? "text-yellow-500" : ""}`}>{value}</p>
+      <p className={`text-2xl font-bold ${tone === "high" ? "text-destructive" : tone === "medium" ? "text-caution" : ""}`}>{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
     </Link>
   );
@@ -154,12 +154,12 @@ export default function SecurityDashboard() {
       </div>
 
       {/* Posture summary — honest headline, never "safe". */}
-      <div className={`p-4 rounded-xl border ${highCount > 0 ? "border-destructive/30 bg-destructive/5" : review.length > 0 ? "border-yellow-500/30 bg-yellow-500/5" : "border-border bg-card/50"}`}>
+      <div className={`p-4 rounded-xl border ${highCount > 0 ? "border-destructive/30 bg-destructive/5" : review.length > 0 ? "border-caution/30 bg-caution/5" : "border-border bg-card/50"}`}>
         <div className="flex items-start gap-3">
           {highCount > 0
             ? <ShieldAlert className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
             : review.length > 0
-              ? <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+              ? <AlertTriangle className="h-5 w-5 text-caution shrink-0 mt-0.5" />
               : <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />}
           <div className="flex-1 min-w-0">
             {loading ? (

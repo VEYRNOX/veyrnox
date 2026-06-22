@@ -64,15 +64,15 @@ function formatFee(val) {
 }
 
 function congestionColor(level) {
-  if (level === "low") return "text-green-400";
+  if (level === "low") return "text-success";
   if (level === "high") return "text-destructive";
-  return "text-yellow-400";
+  return "text-caution";
 }
 
 function congestionIcon(level) {
-  if (level === "low") return <TrendingDown className="h-3 w-3 text-green-400" />;
+  if (level === "low") return <TrendingDown className="h-3 w-3 text-success" />;
   if (level === "high") return <TrendingUp className="h-3 w-3 text-destructive" />;
-  return <Minus className="h-3 w-3 text-yellow-400" />;
+  return <Minus className="h-3 w-3 text-caution" />;
 }
 
 function getCongestion(standard, thresholds) {

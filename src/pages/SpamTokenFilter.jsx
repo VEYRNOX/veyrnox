@@ -31,7 +31,7 @@ function TokenRow({ t, onToggle }) {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-sm font-semibold truncate">{t.symbol}</span>
-              {t.verified && <BadgeCheck className="h-3.5 w-3.5 text-green-500 shrink-0" />}
+              {t.verified && <BadgeCheck className="h-3.5 w-3.5 text-success shrink-0" />}
               <span className="text-xs text-muted-foreground font-normal truncate">{t.name}</span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -108,8 +108,8 @@ export default function SpamTokenFilter() {
       </div>
 
       {hidden.length > 0 && (
-        <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 flex items-start gap-3">
-          <ShieldAlert className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3">
+          <ShieldAlert className="h-5 w-5 text-caution shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-semibold">
               {hidden.length} token{hidden.length > 1 ? "s" : ""} hidden as likely spam

@@ -6,9 +6,9 @@ import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tool
 const VOLATILITY = { BTC: 0.65, ETH: 0.75, SOL: 0.85, USDC: 0.01, USDT: 0.01 };
 
 function getRiskLabel(score) {
-  if (score <= 3) return { label: "Low Risk", color: "text-green-500", bg: "bg-green-500" };
-  if (score <= 6) return { label: "Medium Risk", color: "text-yellow-500", bg: "bg-yellow-500" };
-  if (score <= 8) return { label: "High Risk", color: "text-orange-500", bg: "bg-orange-500" };
+  if (score <= 3) return { label: "Low Risk", color: "text-success", bg: "bg-success" };
+  if (score <= 6) return { label: "Medium Risk", color: "text-caution", bg: "bg-caution" };
+  if (score <= 8) return { label: "High Risk", color: "text-caution", bg: "bg-caution" };
   return { label: "Very High Risk", color: "text-destructive", bg: "bg-destructive" };
 }
 

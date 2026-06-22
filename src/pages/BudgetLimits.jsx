@@ -80,7 +80,7 @@ export default function BudgetLimits() {
             const isAlert = pct >= b.alert_at_percent;
             const isOver = pct >= 100;
             return (
-              <div key={b.id} className={`p-4 rounded-xl border bg-card transition-colors ${isOver ? "border-destructive/40" : isAlert ? "border-yellow-500/40" : "border-border"}`}>
+              <div key={b.id} className={`p-4 rounded-xl border bg-card transition-colors ${isOver ? "border-destructive/40" : isAlert ? "border-caution/40" : "border-border"}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{b.currency}</span>
@@ -88,8 +88,8 @@ export default function BudgetLimits() {
                     {isOver
                       ? <AlertTriangle className="h-4 w-4 text-destructive" />
                       : isAlert
-                      ? <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                      : <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                      ? <AlertTriangle className="h-4 w-4 text-caution" />
+                      : <CheckCircle2 className="h-4 w-4 text-success" />}
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch checked={b.enabled} onCheckedChange={v => toggle.mutate({ id: b.id, enabled: v })} />

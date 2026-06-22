@@ -69,8 +69,8 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 
   if (isDecoy || isHidden) {
     return (
-      <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 flex items-start gap-3">
-        <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+      <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3">
+        <AlertTriangle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
           Backup is only available in the primary session. Switch to your primary wallet to create a backup.
         </p>
@@ -116,7 +116,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
           <li>Two sealed copies: open it later with the backup password OR the backup PIN you choose below.</li>
           <li>No wallet addresses, no transaction history, no personal data.</li>
         </ul>
-        <p className="mt-2 text-yellow-600 dark:text-yellow-400 font-medium">
+        <p className="mt-2 text-caution font-medium">
           Choose a backup password and PIN now — they are not your app unlock PIN, and they are not stored in the file.
           If you forget both, there is no recovery — this is self-custody.
         </p>
@@ -143,7 +143,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
           <p className="text-xs text-destructive">PINs do not match.</p>
         )}
         {pin.length >= 6 && pin.length < 8 && (
-          <p className="text-xs text-yellow-600 dark:text-yellow-400">
+          <p className="text-xs text-caution">
             A PIN shorter than 8 digits can be brute-forced offline if someone
             gets this file. Use 8+ digits or rely on the backup password for
             strongest protection.
@@ -244,8 +244,8 @@ function RestoreTab({ lock }) {
   if (phase === "done") {
     return (
       <div className="space-y-4">
-        <div className="p-5 rounded-xl border border-green-500/30 bg-green-500/5 flex items-start gap-3">
-          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+        <div className="p-5 rounded-xl border border-success/30 bg-success/5 flex items-start gap-3">
+          <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold">Wallet restored successfully</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -306,7 +306,7 @@ function RestoreTab({ lock }) {
     return (
       <div className="space-y-4">
         <div className="p-3 rounded-lg border border-border bg-card/50 flex items-center gap-2 text-xs text-muted-foreground">
-          <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
           <span>Loaded: <span className="font-mono">{fileName}</span></span>
         </div>
 

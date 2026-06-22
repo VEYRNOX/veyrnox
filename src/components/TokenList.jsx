@@ -12,7 +12,7 @@ function ChangeChip({ change }) {
   return (
     <span
       className={`mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-mono ${
-        up ? "text-[#4ADAC2]" : "text-[#F06A5A]"
+        up ? "text-success" : "text-destructive"
       }`}
     >
       {up ? "▲" : "▼"} {Math.abs(change).toFixed(2)}%

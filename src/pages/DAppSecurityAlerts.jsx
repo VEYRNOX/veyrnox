@@ -53,8 +53,8 @@ export default function DAppSecurityAlerts() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-          <ShieldAlert className="h-5 w-5 text-orange-500" />
+        <div className="h-10 w-10 rounded-xl bg-caution/10 flex items-center justify-center">
+          <ShieldAlert className="h-5 w-5 text-caution" />
         </div>
         <div>
           <h1 className="text-xl font-bold">dApp Domain Check</h1>
@@ -113,7 +113,7 @@ export default function DAppSecurityAlerts() {
       {/* The local known-bad list itself — shown honestly as a local, non-exhaustive seed. */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-orange-500" />Local known-bad list</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-caution" />Local known-bad list</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-xs text-muted-foreground mb-1">Illustrative local entries — not a live feed and not exhaustive. A real threat feed is on the roadmap.</p>

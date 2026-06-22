@@ -102,7 +102,7 @@ export default function InvoiceGenerator() {
                   </Button>
                 )}
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => copyPaymentLink(inv)}>
-                  {copied === inv.id ? <><CheckCircle2 className="h-3 w-3 mr-1 text-green-500" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy Payment Link</>}
+                  {copied === inv.id ? <><CheckCircle2 className="h-3 w-3 mr-1 text-success" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy Payment Link</>}
                 </Button>
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPreview(inv)}>
                   <FileText className="h-3 w-3 mr-1" /> Preview

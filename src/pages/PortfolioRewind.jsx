@@ -111,7 +111,7 @@ export default function PortfolioRewind() {
         <p className="text-3xl font-bold">${pastValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
         <div className="flex items-center justify-center gap-2">
           <p className="text-sm text-muted-foreground">Now: ${currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-          <span className={`flex items-center gap-0.5 text-sm font-semibold ${gain >= 0 ? "text-green-500" : "text-destructive"}`}>
+          <span className={`flex items-center gap-0.5 text-sm font-semibold ${gain >= 0 ? "text-success" : "text-destructive"}`}>
             {gain >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
             {gain >= 0 ? "+" : ""}{gainPct.toFixed(1)}%
           </span>
@@ -140,7 +140,7 @@ export default function PortfolioRewind() {
             <div><p className="text-sm font-medium">{a.sym}</p></div>
             <div className="text-right">
               <p className="text-sm font-semibold">${a.pastVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-              <p className={`text-xs ${a.change >= 0 ? "text-green-500" : "text-destructive"}`}>
+              <p className={`text-xs ${a.change >= 0 ? "text-success" : "text-destructive"}`}>
                 {a.change >= 0 ? "+" : ""}{a.changePct.toFixed(1)}% since then
               </p>
             </div>

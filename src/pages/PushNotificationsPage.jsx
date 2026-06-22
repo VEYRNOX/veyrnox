@@ -63,8 +63,8 @@ export default function PushNotificationsPage() {
       </div>
 
       {/* Status banner */}
-      <div className={`p-4 rounded-xl border flex items-start gap-3 ${isGranted ? "border-green-500/30 bg-green-500/5" : isDenied ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
-        {isGranted ? <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0 mt-0.5" />
+      <div className={`p-4 rounded-xl border flex items-start gap-3 ${isGranted ? "border-success/30 bg-success/5" : isDenied ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
+        {isGranted ? <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
           : isDenied ? <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
           : <Bell className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
         <div className="flex-1">
@@ -122,7 +122,7 @@ export default function PushNotificationsPage() {
             "No personal data is shared with third-party notification services",
           ].map((item, i) => (
             <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0 mt-0.5" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
               {item}
             </li>
           ))}
