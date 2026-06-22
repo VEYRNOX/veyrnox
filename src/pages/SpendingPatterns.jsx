@@ -9,7 +9,7 @@ const fmtAmount = (n) =>
   Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 8 });
 
 export default function SpendingPatterns() {
-  const { data: transactions = [], isLoading } = useQuery({
+  const { data: transactions = [], isLoading, isError } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 500),
   });
@@ -18,6 +18,8 @@ export default function SpendingPatterns() {
   const dowData = byDow.map((d) => ({ day: d.day, count: d.sent + d.received }));
 
   if (isLoading) return <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+
+  if (isError) return <div className="max-w-2xl mx-auto py-16 text-center text-sm text-destructive">Couldn't load transaction activity. Please try again.</div>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

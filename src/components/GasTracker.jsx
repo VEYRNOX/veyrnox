@@ -192,6 +192,7 @@ export default function GasTracker() {
           onClick={() => refetch()}
           className="text-muted-foreground hover:text-foreground transition-colors"
           title="Refresh"
+          aria-label="Refresh gas fees"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
         </button>

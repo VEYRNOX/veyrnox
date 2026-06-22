@@ -115,7 +115,7 @@ export default function SpendingPatternsCard() {
               </button>
             ))}
           </div>
-          <button onClick={() => setExpanded(false)} className="p-1 text-muted-foreground hover:text-foreground" title="Collapse">
+          <button onClick={() => setExpanded(false)} aria-label="Collapse spending patterns" className="p-1 text-muted-foreground hover:text-foreground" title="Collapse">
             <ChevronUp className="h-4 w-4" />
           </button>
         </div>

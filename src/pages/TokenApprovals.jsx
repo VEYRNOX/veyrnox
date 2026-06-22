@@ -138,7 +138,7 @@ export default function TokenApprovals() {
         <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 flex items-center gap-2 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-destructive/70 hover:text-destructive"><X className="h-4 w-4" /></button>
+          <button onClick={() => setError(null)} aria-label="Dismiss error" className="text-destructive/70 hover:text-destructive"><X className="h-4 w-4" /></button>
         </div>
       )}
 

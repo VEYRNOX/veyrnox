@@ -48,7 +48,7 @@ export default function DashboardWidgetSettings({ widgets, onChange }) {
     return (
       <Drawer>
         <DrawerTrigger asChild>
-          <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+          <button aria-label="Customize dashboard" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
             <Settings2 className="h-4 w-4" />
           </button>
         </DrawerTrigger>
@@ -68,7 +68,7 @@ export default function DashboardWidgetSettings({ widgets, onChange }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+        <button aria-label="Customize dashboard" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
           <Settings2 className="h-4 w-4" />
         </button>
       </PopoverTrigger>

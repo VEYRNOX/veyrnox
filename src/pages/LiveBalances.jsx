@@ -114,7 +114,7 @@ export default function LiveBalances() {
           <SelectTrigger className="w-40 shrink-0"><SelectValue /></SelectTrigger>
           <SelectContent>{NETWORKS.map(n => <SelectItem key={n.id} value={n.id}>{n.label}</SelectItem>)}</SelectContent>
         </Select>
-        <Button onClick={fetchAll} disabled={loading} className="shrink-0 gap-1">
+        <Button onClick={fetchAll} disabled={loading} className="shrink-0 gap-1" aria-label="Look up balances">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
         </Button>
       </div>

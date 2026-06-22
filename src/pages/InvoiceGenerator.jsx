@@ -23,7 +23,7 @@ export default function InvoiceGenerator() {
     invoice_number: `INV-${Date.now().toString().slice(-6)}`,
   });
 
-  const { data: invoices = [], isLoading } = useQuery({
+  const { data: invoices = [], isLoading, isError } = useQuery({
     queryKey: ["invoices"],
     queryFn: () => base44.entities.Invoice.list("-created_date"),
   });
@@ -65,6 +65,8 @@ export default function InvoiceGenerator() {
       {/* Invoice List */}
       {isLoading ? (
         <div className="text-center py-12 text-sm text-muted-foreground">Loading...</div>
+      ) : isError ? (
+        <div className="text-center py-12 text-sm text-destructive">Couldn't load invoices. Please try again.</div>
       ) : invoices.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-4xl mb-3">📄</p>
@@ -105,7 +107,7 @@ export default function InvoiceGenerator() {
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPreview(inv)}>
                   <FileText className="h-3 w-3 mr-1" /> Preview
                 </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => remove.mutate(inv.id)}>
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => remove.mutate(inv.id)} aria-label="Delete invoice">
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -121,30 +123,30 @@ export default function InvoiceGenerator() {
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Invoice Number</Label>
-                <Input value={form.invoice_number} onChange={e => setForm(f => ({ ...f, invoice_number: e.target.value }))} className="mt-1.5" />
+                <Label htmlFor="inv-number">Invoice Number</Label>
+                <Input id="inv-number" value={form.invoice_number} onChange={e => setForm(f => ({ ...f, invoice_number: e.target.value }))} className="mt-1.5" />
               </div>
               <div>
-                <Label>Due Date</Label>
-                <Input value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} type="date" className="mt-1.5" />
+                <Label htmlFor="inv-due-date">Due Date</Label>
+                <Input id="inv-due-date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} type="date" className="mt-1.5" />
               </div>
             </div>
             <div>
-              <Label>Client Name</Label>
-              <Input value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} placeholder="Acme Corp" className="mt-1.5" />
+              <Label htmlFor="inv-client-name">Client Name</Label>
+              <Input id="inv-client-name" value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} placeholder="Acme Corp" className="mt-1.5" />
             </div>
             <div>
-              <Label>Client Email</Label>
-              <Input value={form.client_email} onChange={e => setForm(f => ({ ...f, client_email: e.target.value }))} placeholder="client@example.com" type="email" className="mt-1.5" />
+              <Label htmlFor="inv-client-email">Client Email</Label>
+              <Input id="inv-client-email" value={form.client_email} onChange={e => setForm(f => ({ ...f, client_email: e.target.value }))} placeholder="client@example.com" type="email" className="mt-1.5" />
             </div>
             <div>
-              <Label>Description / Services</Label>
-              <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Web development services..." className="mt-1.5" />
+              <Label htmlFor="inv-description">Description / Services</Label>
+              <Input id="inv-description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Web development services..." className="mt-1.5" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Amount</Label>
-                <Input value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder="500" type="number" className="mt-1.5" />
+                <Label htmlFor="inv-amount">Amount</Label>
+                <Input id="inv-amount" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder="500" type="number" className="mt-1.5" />
               </div>
               <div>
                 <Label>Currency</Label>
@@ -157,12 +159,12 @@ export default function InvoiceGenerator() {
               </div>
             </div>
             <div>
-              <Label>Your Wallet Address</Label>
-              <Input value={form.wallet_address} onChange={e => setForm(f => ({ ...f, wallet_address: e.target.value }))} placeholder="0x..." className="mt-1.5 font-mono text-xs" />
+              <Label htmlFor="inv-wallet-address">Your Wallet Address</Label>
+              <Input id="inv-wallet-address" value={form.wallet_address} onChange={e => setForm(f => ({ ...f, wallet_address: e.target.value }))} placeholder="0x..." className="mt-1.5 font-mono text-xs" />
             </div>
             <div>
-              <Label>Notes (optional)</Label>
-              <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Payment terms, late fees..." className="mt-1.5" />
+              <Label htmlFor="inv-note">Notes (optional)</Label>
+              <Input id="inv-note" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Payment terms, late fees..." className="mt-1.5" />
             </div>
             <Button className="w-full" disabled={!form.client_name || !form.total_amount || !form.wallet_address || create.isPending}
               onClick={() => create.mutate(form)}>

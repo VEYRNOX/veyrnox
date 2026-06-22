@@ -263,8 +263,8 @@ export default function HDWalletManager() {
           {/* Locked + vault present -> unlock form */}
           {!isUnlocked && vaultExists && (
             <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-              <Label>Vault Password</Label>
-              <Input type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
+              <Label htmlFor="hd-unlock-password">Vault Password</Label>
+              <Input id="hd-unlock-password" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
               <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={handleUnlock}>
                 {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
               </Button>
@@ -416,7 +416,7 @@ export default function HDWalletManager() {
                             <p className="text-muted-foreground mb-0.5">Address (public)</p>
                             <div className="flex items-center gap-2">
                               <p className="font-mono break-all">{address}</p>
-                              <button onClick={() => copy(address, asset.symbol)} className="shrink-0">{copied === asset.symbol ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}</button>
+                              <button onClick={() => copy(address, asset.symbol)} className="shrink-0" aria-label={`Copy ${asset.symbol} address`}>{copied === asset.symbol ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}</button>
                             </div>
                           </div>
                         </>
@@ -452,12 +452,12 @@ export default function HDWalletManager() {
             Never share your seed phrase. It is validated and encrypted locally with your password — it is never sent to a server. Keys never leave this device.
           </div>
           <div>
-            <Label>12 or 24-word BIP-39 Mnemonic Phrase</Label>
-            <textarea value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+            <Label htmlFor="hd-import-phrase">12 or 24-word BIP-39 Mnemonic Phrase</Label>
+            <textarea id="hd-import-phrase" value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
           </div>
           <div>
-            <Label>Vault Password</Label>
-            <Input type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
+            <Label htmlFor="hd-import-password">Vault Password</Label>
+            <Input id="hd-import-password" type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
             <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 8 characters.</p>
           </div>
           <Button className="w-full gap-2" disabled={!importPhrase.trim() || !importPassword || busy} onClick={handleImport}>
@@ -474,8 +474,8 @@ export default function HDWalletManager() {
           {!generatedSeed ? (
             <div className="space-y-3">
               <div>
-                <Label>Vault Password</Label>
-                <Input type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" />
+                <Label htmlFor="hd-gen-password">Vault Password</Label>
+                <Input id="hd-gen-password" type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" />
                 <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 8 characters.</p>
               </div>
               <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
@@ -488,8 +488,8 @@ export default function HDWalletManager() {
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold">Your Seed Phrase (shown once)</p>
                   <div className="flex gap-2">
-                    <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground">{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(generatedSeed, "seed")} className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "seed" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label={showSeed ? "Hide seed phrase" : "Show seed phrase"}>{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+                    <button onClick={() => copy(generatedSeed, "seed")} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy seed phrase">{copied === "seed" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showSeed ? (

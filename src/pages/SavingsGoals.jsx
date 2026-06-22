@@ -19,7 +19,7 @@ export default function SavingsGoals() {
   const [depositAmount, setDepositAmount] = useState("");
   const [form, setForm] = useState({ title: "", target_amount_usd: "", currency: "USDC", target_date: "", emoji: "🎯", note: "" });
 
-  const { data: goals = [], isLoading } = useQuery({
+  const { data: goals = [], isLoading, isError } = useQuery({
     queryKey: ["savings-goals"],
     queryFn: () => base44.entities.SavingsGoal.list(),
   });
@@ -66,6 +66,8 @@ export default function SavingsGoals() {
       {/* Goals */}
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Loading...</div>
+      ) : isError ? (
+        <div className="text-center py-12 text-destructive text-sm">Couldn't load savings goals. Please try again.</div>
       ) : goals.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-4xl mb-3">🎯</p>
@@ -104,7 +106,7 @@ export default function SavingsGoals() {
                         <Plus className="h-3 w-3 mr-1" /> Deposit
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => remove.mutate(goal.id)}>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" aria-label={`Delete goal ${goal.title}`} onClick={() => remove.mutate(goal.id)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>

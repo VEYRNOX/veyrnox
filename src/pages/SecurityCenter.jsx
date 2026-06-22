@@ -186,6 +186,7 @@ export default function SecurityCenter() {
                       size="icon"
                       className="text-destructive hover:bg-destructive/10 shrink-0"
                       title="Revoke this session"
+                      aria-label="Revoke this session"
                       onClick={() => revokeSession.mutate(s.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -246,7 +247,7 @@ export default function SecurityCenter() {
                   checked={l.enabled}
                   onCheckedChange={(v) => toggleLimit.mutate({ id: l.id, enabled: v })}
                 />
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => deleteLimit.mutate(l.id)}>
+                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" aria-label={`Delete ${l.currency} limit`} onClick={() => deleteLimit.mutate(l.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

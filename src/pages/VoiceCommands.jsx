@@ -77,6 +77,7 @@ export default function VoiceCommands() {
           {/* Mic button */}
           <div className="flex flex-col items-center py-8 space-y-4">
             <button onClick={listening ? stopListening : startListening}
+              aria-label={listening ? "Stop listening" : "Start listening"}
               className={`h-24 w-24 rounded-full flex items-center justify-center transition-all shadow-lg ${listening ? "bg-destructive animate-pulse scale-110" : "bg-primary hover:scale-105"}`}>
               {listening ? <MicOff className="h-10 w-10 text-white" /> : <Mic className="h-10 w-10 text-white" />}
             </button>

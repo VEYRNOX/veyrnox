@@ -34,7 +34,7 @@ export default function MultiChainNFT() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [form, setForm] = useState({ name: "", collection: "", token_id: "", contract_address: "", chain: "ethereum", image_url: "", purchase_price: "", current_floor: "", status: "holding", note: "" });
 
-  const { data: nfts = [] } = useQuery({ queryKey: ["nfts"], queryFn: () => base44.entities.NFTAsset.list("-created_date") });
+  const { data: nfts = [], isError } = useQuery({ queryKey: ["nfts"], queryFn: () => base44.entities.NFTAsset.list("-created_date") });
 
   const filtered = nfts
     .filter(n => filterChain === "all" || n.chain === filterChain)
@@ -84,8 +84,8 @@ export default function MultiChainNFT() {
           </div>
           <div className="flex gap-1 pt-1">
             <Button variant="ghost" size="sm" className="flex-1 h-6 text-[10px]" onClick={() => updateStatus.mutate({ id: n.id, status: n.status === "holding" ? "listed" : "holding" })}>{n.status === "listed" ? "Delist" : "List"}</Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => remove.mutate(n.id)}><Trash2 className="h-3 w-3" /></Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground" onClick={() => window.open(`${chain(n.chain)?.marketplace}/${n.contract_address}/${n.token_id}`, "_blank")}><ExternalLink className="h-3 w-3" /></Button>
+            <Button variant="ghost" size="sm" aria-label="Remove NFT" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => remove.mutate(n.id)}><Trash2 className="h-3 w-3" /></Button>
+            <Button variant="ghost" size="sm" aria-label="View on marketplace" className="h-6 w-6 p-0 text-muted-foreground" onClick={() => window.open(`${chain(n.chain)?.marketplace}/${n.contract_address}/${n.token_id}`, "_blank")}><ExternalLink className="h-3 w-3" /></Button>
           </div>
         </div>
       </div>
@@ -156,12 +156,17 @@ export default function MultiChainNFT() {
           </SelectContent>
         </Select>
         <div className="flex gap-1 ml-auto">
-          <Button variant={viewMode === "grid" ? "default" : "outline"} size="icon" className="h-8 w-8" onClick={() => setViewMode("grid")}><Grid3X3 className="h-3.5 w-3.5" /></Button>
-          <Button variant={viewMode === "list" ? "default" : "outline"} size="icon" className="h-8 w-8" onClick={() => setViewMode("list")}><List className="h-3.5 w-3.5" /></Button>
+          <Button variant={viewMode === "grid" ? "default" : "outline"} size="icon" aria-label="Grid view" className="h-8 w-8" onClick={() => setViewMode("grid")}><Grid3X3 className="h-3.5 w-3.5" /></Button>
+          <Button variant={viewMode === "list" ? "default" : "outline"} size="icon" aria-label="List view" className="h-8 w-8" onClick={() => setViewMode("list")}><List className="h-3.5 w-3.5" /></Button>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {isError ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm text-destructive">Couldn't load your NFTs. Please try again.</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No NFTs yet. Add your first NFT to get started.</p>

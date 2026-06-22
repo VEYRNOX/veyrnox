@@ -113,11 +113,11 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
             </div>
             <div className="flex items-center gap-2">
               <code className="flex-1 break-all text-[11px] text-foreground">{address}</code>
-              <button onClick={() => copy(address, `${idPrefix}-${c.key}`)} title={`Copy ${c.label} address`} className="shrink-0">
+              <button onClick={() => copy(address, `${idPrefix}-${c.key}`)} title={`Copy ${c.label} address`} aria-label={`Copy ${c.label} address`} className="shrink-0">
                 {copied === `${idPrefix}-${c.key}` ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
               {c.explorer(address) && (
-                <a href={c.explorer(address)} target="_blank" rel="noreferrer" title="View on explorer" className="shrink-0">
+                <a href={c.explorer(address)} target="_blank" rel="noreferrer" title="View on explorer" aria-label={`View ${c.label} address on explorer`} className="shrink-0">
                   <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                 </a>
               )}

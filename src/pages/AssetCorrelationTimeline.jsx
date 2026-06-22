@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Newspaper, Clock } from "lucide-react";
+import { Newspaper, Clock, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function AssetCorrelationTimeline() {
-  const { data: newsSentiments = [] } = useQuery({
+  const { data: newsSentiments = [], isError } = useQuery({
     queryKey: ["news-sentiments"],
     queryFn: () => base44.entities.NewsSentiment.list("-created_date", 20),
   });
@@ -32,6 +32,13 @@ export default function AssetCorrelationTimeline() {
           from a verified source. That integration is audited before release.
         </p>
       </div>
+
+      {isError && (
+        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>Couldn’t load sentiment records — they may not all be shown.</span>
+        </div>
+      )}
 
       {newsSentiments.length > 0 && (
         <div className="p-4 rounded-xl border border-border bg-card space-y-2">
