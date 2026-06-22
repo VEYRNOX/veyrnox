@@ -12,12 +12,14 @@
 // The three states replace the old two-state badge (`available`/`roadmap`),
 // whose single green "available" merged two very different realities:
 //
-//   verified — exercised against a REAL on-chain testnet txid. This is the ONLY
+//   verified — exercised against a REAL, explorer-confirmed on-chain txid
+//              (testnet, or mainnet for a shipped asset). This is the ONLY
 //              state that can never be asserted by inspection: it requires a txid
-//              entry in docs/verified-evidence.json. Code-complete, passing tests,
-//              and clean review are NOT verification (CLAUDE.md: "Verify, don't
-//              assert"). resolveStatus() downgrades any hand-typed `verified` with
-//              no evidence entry back to `built`.
+//              entry in docs/verified-evidence.json, linked from the feature via
+//              its `verifiedBy` key (falling back to the feature name). Code-
+//              complete, passing tests, and clean review are NOT verification
+//              (CLAUDE.md: "Verify, don't assert"). resolveStatus() downgrades any
+//              hand-typed `verified` with no matching evidence entry back to `built`.
 //   built    — code-complete and working in the testnet/provisional build, but
 //              not yet exercised on-chain. "Code-ready ≠ verified."
 //   roadmap  — specced, not built.
@@ -68,9 +70,10 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Send Crypto',
-        status: 'built',
-        summary: 'Native coin transfers (testnet)',
-        explanation: 'Build, sign, and broadcast native-coin transactions across supported chains. Every transfer is locally signed and requires the user’s authentication; address-poisoning screening runs before confirmation. Code-complete; an on-chain testnet txid would move this to verified.',
+        status: 'verified',
+        verifiedBy: 'Send Crypto — ETH (full UI path, Sepolia, step-up gate)',
+        summary: 'Native + token transfers, on-chain verified',
+        explanation: 'Build, sign, and broadcast transactions across supported chains. Every transfer is locally signed and requires the user’s authentication; address-poisoning screening runs before confirmation. Verified on-chain via the full in-app UI: ETH on Sepolia (step-up gate), plus USDC and USDT on Ethereum mainnet (see docs/verified-evidence.json).',
       },
       {
         name: 'Receive Crypto',
@@ -111,25 +114,28 @@ export const FEATURE_CATEGORIES = [
         name: 'EVM Networks',
         status: 'built',
         summary: 'Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain',
-        explanation: 'Six EVM networks share one secp256k1 derivation and signing stack: Ethereum, Polygon, Arbitrum, Optimism, Avalanche, and BNB Chain. Testnet today; mainnet is gated until independent audit.',
+        explanation: 'Six EVM networks share one secp256k1 derivation and signing stack: Ethereum, Polygon, Arbitrum, Optimism, Avalanche, and BNB Chain. All verified on testnet; mainnet was unlocked 2026-06-17 (internal audit), with USDC/USDT mainnet sends confirmed on Ethereum (see Send Crypto).',
       },
       {
         name: 'Bitcoin',
-        status: 'built',
-        summary: 'BIP-84 native-segwit stack (testnet)',
-        explanation: 'A separate Bitcoin stack with BIP-84 derivation, UTXO coin-selection and change handling, and fee estimation against an Esplora provider. Testnet only; mainnet gated pending its own audit.',
+        status: 'verified',
+        verifiedBy: 'Bitcoin send (wallet-core module, testnet script)',
+        summary: 'BIP-84 native-segwit stack, testnet-verified',
+        explanation: 'A separate Bitcoin stack with BIP-84 derivation, UTXO coin-selection and change handling, and fee estimation against an Esplora provider. A real testnet send is confirmed on-chain (docs/verified-evidence.json); mainnet is unlocked but not yet mainnet-verified.',
       },
       {
         name: 'Solana',
-        status: 'built',
-        summary: 'ed25519 / SLIP-0010 stack (devnet)',
-        explanation: 'A separate Solana stack with ed25519 / SLIP-0010 derivation, balance reads, and lamport transfers including blockhash-expiry and rent handling. Devnet-first; mainnet gated pending its own audit.',
+        status: 'verified',
+        verifiedBy: 'Solana send (wallet-core module, devnet script)',
+        summary: 'ed25519 / SLIP-0010 stack, devnet-verified',
+        explanation: 'A separate Solana stack with ed25519 / SLIP-0010 derivation, balance reads, and lamport transfers including blockhash-expiry and rent handling. A real devnet send is confirmed on-chain (docs/verified-evidence.json); mainnet is unlocked but not yet mainnet-verified.',
       },
       {
         name: 'ERC-20 Tokens',
-        status: 'built',
-        summary: 'USDC and USDT via the shared token path',
-        explanation: 'ERC-20 tokens (USDC, USDT) ride the audited token path with contract-read decimals and balance reads. Token sends reuse the native EVM signing flow.',
+        status: 'verified',
+        verifiedBy: 'USDC mainnet send (full UI path, build:release, Ethereum mainnet)',
+        summary: 'USDC and USDT via the shared token path, mainnet-verified',
+        explanation: 'ERC-20 tokens (USDC, USDT) ride the audited token path with contract-read decimals and balance reads, reusing the native EVM signing flow. Both USDC and USDT have a real Ethereum-mainnet send confirmed on-chain (docs/verified-evidence.json).',
       },
       {
         name: 'Additional Tokens',
@@ -227,9 +233,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Suspicious-Address Screening',
-        status: 'roadmap',
-        summary: 'Threat-intel reputation checks',
-        explanation: 'Screen counterparties against a threat-intel / scam-reputation feed. On the roadmap; today’s checker uses only local heuristics, not a live feed.',
+        status: 'built',
+        summary: 'Local blocklist + sanctioned-address screening',
+        explanation: 'Built — recipients are screened on-device against a local blocklist of burn / known-bad addresses, including one known OFAC-sanctioned address (Ronin / Lazarus). Warns, never blocks; nothing leaves the device. A live, regularly-updated threat-intel / sanctions feed (Chainalysis / TRM / Elliptic class) is the roadmap upgrade — a bundled snapshot cannot stay delisting-current.',
       },
       {
         name: 'Transaction Simulation',
@@ -436,9 +442,9 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Referral Tracker',
-        status: 'roadmap',
-        summary: 'Privacy-preserving referrals (if buildable serverlessly)',
-        explanation: 'Public ranking and public-profile features were cut on principle — a wallet must not publish who holds what. Referrals are kept only as a future option, and only if they can work without a server that links referrer and referee.',
+        status: 'built',
+        summary: 'Local referral-code tracking (conditional backend egress)',
+        explanation: 'Built (/referrals). Generates a random referral code (crypto.getRandomValues — NOT seed-derived) and tracks code / tier / redeemed state in localStorage. Local-only by default: with no referral backend configured the network calls no-op. If VITE_SUPABASE_URL / ANON_KEY are set at build time, register/redeem/status send the referral code (not balances or seed) to that external backend — an opt-in egress, disclosed here per I2. Public ranking and public profiles remain cut on principle.',
       },
     ],
   },
@@ -479,11 +485,13 @@ export const FEATURE_CATEGORIES = [
         status: 'built',
         summary: 'Connect to dApps via WalletConnect v2',
         explanation:
-          'WalletConnect v2 transport + message signing (D1+D2). ' +
-          'Pair with dApps, approve/reject session proposals, sign personal_sign and eth_signTypedData_v4 ' +
-          'requests with Permit/Permit2 hard warnings. ' +
-          'eth_sendTransaction (D3) is display-only pending real-device testnet verification. ' +
-          'Requires VITE_WALLETCONNECT_PROJECT_ID in .env.local.',
+          'WalletConnect v2 transport + request handling (D1+D2+D3). ' +
+          'Pair with dApps, approve/reject session proposals, and sign personal_sign / eth_signTypedData_v4 ' +
+          'requests with Permit/Permit2 hard warnings. eth_sendTransaction is wired end-to-end — it signs ' +
+          'locally and broadcasts a real transaction, with a chain-ID-mismatch guard and a 1M-gas cap (I5); ' +
+          'eth_sign and wallet_addEthereumChain are blocked. Sessions are currently approved on Sepolia ' +
+          'testnet only, and no dApp-initiated send has an on-chain txid yet, so this stays built (not verified). ' +
+          'Requires VITE_WALLETCONNECT_PROJECT_ID in .env.local; absent it, the page honest-disables.',
       },
       {
         name: 'Web3 Browser',
@@ -537,16 +545,17 @@ export function verifiedFeatureNames() {
 
 /**
  * Resolve a feature's RENDERED status. `verified` is honoured ONLY when the
- * feature has a txid entry in the evidence file — a hand-typed `verified` with no
+ * feature points at a txid entry in the evidence file via its `verifiedBy` key
+ * (falling back to the feature name) — a hand-typed `verified` with no matching
  * evidence falls back to `built`, so verified is impossible to assert by
  * inspection. `built`/`roadmap` pass through as catalogued.
- * @param {{name:string, status:string}} feature
+ * @param {{name:string, status:string, verifiedBy?:string}} feature
  * @param {Set<string>} [verifiedNames] - injectable for tests; defaults to the file
  * @returns {'verified'|'built'|'roadmap'}
  */
 export function resolveStatus(feature, verifiedNames = verifiedFeatureNames()) {
   if (feature.status === STATUS.VERIFIED) {
-    return verifiedNames.has(feature.name) ? STATUS.VERIFIED : STATUS.BUILT;
+    return verifiedNames.has(feature.verifiedBy ?? feature.name) ? STATUS.VERIFIED : STATUS.BUILT;
   }
   return /** @type {'verified'|'built'|'roadmap'} */ (feature.status);
 }
