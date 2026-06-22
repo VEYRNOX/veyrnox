@@ -213,7 +213,7 @@ export const CLASSIFICATION = {
   },
   '/duress-pin': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Backed by wallet-core/duress.js: setDuressPin creates a real separately-encrypted decoy vault; the duress unlock path routes through the existing WalletProvider.unlock flow. Decoy balance read via lib/decoyBalance.js — live eth_getBalance on-chain in real/native builds, clearly labelled demo simulation in demo. Imports wallet-core/evm/networks. Explicitly discloses runtime-only deniability limitation (forensic inspection can detect a second vault).',
+    note: 'BUILT, UNAUDITED-PROVISIONAL. Backed by wallet-core/duress.js: setDuressPin creates a real separately-encrypted decoy vault; the duress unlock path routes through the existing WalletProvider.unlock flow. Deniability model v2 (owner-approved 2026-06-22): real PIN → hidden real wallet (no UI tell); duress PIN → decoy; Face ID (opt-in) → decoy only; wrong PIN → explicit "Incorrect PIN" error. The old no-oracle / deterministic-decoy fallback (Option-A) was deliberately removed — a wrong guess is now distinguishable. 10 consecutive wrong PINs trigger an irreversible wipe via pinAttemptGuard.js, making the error-oracle non-fatal before brute-force completes. Decoy balance read via lib/decoyBalance.js — live eth_getBalance in real/native builds, clearly labelled demo simulation in demo. Explicitly discloses: runtime-only deniability (forensic inspection can detect a second vault); does not resist offline seizure without hardware KEK (planned fast-follow, not yet built).',
   },
   '/stealth-wallets': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -221,7 +221,7 @@ export const CLASSIFICATION = {
   },
   '/panic-wipe': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Backed by wallet-core/panic.js: setPanicPin/removePanicPin/panicWipe destroy the primary vault, duress decoy, entire stealth pool, and panic marker via WalletProvider; wipe is triggered via the real unlock path (no confirmation dialog under coercion). Honestly discloses: wipe destroys local copy only, seed backup elsewhere still recovers, on-chain history stays public, flash-media forensics out of scope.',
+    note: 'BUILT, UNAUDITED-PROVISIONAL. Backed by wallet-core/panic.js: setPanicPin/removePanicPin/panicWipe destroy the primary vault, duress decoy, entire stealth pool, and panic marker via WalletProvider; wipe is triggered via the real unlock path (no confirmation dialog under coercion). v2 model adds a second wipe path: 10 consecutive wrong PINs trigger the same irreversible wipe automatically via src/lib/pinAttemptGuard.js — this is the designed mitigation for the now-explicit wrong-PIN error. The 10-attempt counter is a SOFTWARE counter: bypassed by imaging device storage before the first attempt (offline-seizure gap, hardware KEK not yet built). Honestly discloses: wipe destroys local copy only, seed backup elsewhere still recovers, on-chain history stays public, flash-media forensics out of scope.',
   },
   '/address-checker': {
     verdict: 'live', dataSource: 'wallet-core',

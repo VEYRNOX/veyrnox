@@ -14,16 +14,15 @@
 
 import {
   LayoutDashboard, Send, Download, Settings, ShieldCheck, Plug, Bell, Calculator, BarChart2, Zap,
-  Receipt, Repeat, ShieldAlert, Globe, Image,
-  BarChart3, Camera, TrendingUp, Network, PieChart, Sparkles, BellRing, Link2, BellDot, Users,
-  Activity, Bot, Layers, Fingerprint, Cpu,
-  MessageSquare, Leaf, ScrollText, Newspaper,
-  Target, FileText, Eye, BookOpen, Package,
-  MapPin, QrCode, History, Scissors, ShieldQuestion, Lock, Grid2X2,
-  Share2, Gift, Key, LayoutGrid, Fuel,
-  TrendingDown, RotateCcw, Mic, Trophy, Users2,
+  Receipt, Repeat, ShieldAlert, Image,
+  BarChart3, Camera, TrendingUp, Network, PieChart, BellRing, Link2, BellDot, Users,
+  Activity, Layers, Fingerprint, Cpu,
+  Leaf, ScrollText, Newspaper,
+  Target, Eye, BookOpen,
+  MapPin, QrCode, History, ShieldQuestion, Lock, Grid2X2,
+  Gift, Key, LayoutGrid, Fuel,
+  RotateCcw, Mic,
   ShieldOff, Gauge, FilterX, KeyRound, ScanLine, Frame, Wifi, Pen,
-  Coins,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
@@ -125,13 +124,11 @@ const RAW_NAV_GROUPS = [
       { path: "/biometric-auth", label: "Biometric Auth", icon: Fingerprint },
       { path: "/anomaly-detection", label: "Anomaly Detection", icon: ShieldAlert },
       { path: "/rasp-security", label: "RASP Security", icon: Cpu },
-      { path: "/messenger-alerts", label: "Messenger Alerts", icon: MessageSquare },
       { path: "/voice-commands", label: "Voice Commands", icon: Mic },
       { path: "/token-approvals", label: "Token Approvals", icon: ShieldOff },
       { path: "/spam-filter", label: "Spam Filter", icon: FilterX },
       { path: "/trust-score", label: "Token Spam Screening", icon: ScanLine },
       { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
-      { path: "/smart-alerts", label: "Smart Alerts", icon: BellRing },
       { path: "/alerts", label: "Price Alerts", icon: Bell },
     ],
   },
@@ -147,7 +144,6 @@ const RAW_NAV_GROUPS = [
       { path: "/gas-fees", label: "Gas Fees", icon: Gauge },
       { path: "/walletconnect", label: "WalletConnect", icon: Link2 },
       { path: "/connect", label: "Connect Wallet", icon: Plug },
-      { path: "/web3", label: "Web3 Browser", icon: Globe },
       { path: "/push", label: "Notifications", icon: BellDot },
     ],
   },
@@ -169,7 +165,6 @@ const EXTRA_ROUTES = [
   { path: "/settings", label: "Settings", icon: Settings, group: "Preferences" },
   { path: "/docs", label: "Documentation", icon: BookOpen, group: "Preferences" },
   { path: "/features", label: "Features", icon: LayoutGrid, group: "Preferences" },
-  { path: "/products", label: "Products", icon: Package, group: "Preferences" },
 ];
 
 // Flattened { path, label, group, icon } list for the command palette / search.
