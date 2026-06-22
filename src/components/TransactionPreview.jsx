@@ -58,7 +58,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
     return (
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/30 flex items-start gap-2 text-xs text-caution">
         <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        <span>Couldn't simulate this transaction (your RPC was unreachable). This is not a green light — review the recipient, amount and contract yourself before signing.</span>
+        <span>Couldn't simulate (your RPC was unreachable). Not a green light — check the recipient, amount and contract yourself.</span>
       </div>
     );
   }
@@ -84,7 +84,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
           <div className="space-y-0.5 min-w-0">
             <p className="font-semibold">Transaction predicted to FAIL</p>
             <p className="opacity-90 break-words">
-              Simulated against your RPC, this reverts{result.revertReason ? `: ${result.revertReason}` : ""}. Signing would spend gas for nothing.
+              This reverts{result.revertReason ? `: ${result.revertReason}` : ""} — signing would just waste gas.
             </p>
           </div>
         </div>
@@ -157,7 +157,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
       {noKnownRisks && (
         <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border text-xs text-muted-foreground">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>No <span className="font-medium">known</span> risk patterns detected. This is <span className="font-medium">not</span> a guarantee of safety — absence of a detected issue does not mean the transaction is safe.</span>
+          <span>No <span className="font-medium">known</span> risk patterns detected — <span className="font-medium">not</span> a guarantee it's safe.</span>
         </div>
       )}
 

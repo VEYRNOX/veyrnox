@@ -112,11 +112,10 @@ export function assessHistoryAnomalies({
       code: 'approval_then_transfer',
       title: 'Approval enables a later transfer',
       detail:
-        'Approving a spender is the first step of a two-step pattern — a later ' +
-        'transferFrom can move up to the approved amount WITHOUT another signature ' +
-        'from you. ' +
-        (spenderNew ? "You have never transacted with this spender before. " : '') +
-        'If you did not just initiate a swap/bridge with a contract you trust, do not approve.',
+        'This lets the spender move up to the approved amount later, with no further ' +
+        'signature from you. ' +
+        (spenderNew ? "You've never approved this spender before. " : '') +
+        'Only approve a contract you trust.',
     });
     return risks; // approve moves no funds NOW — the amount rules below don't apply
   }
@@ -138,9 +137,8 @@ export function assessHistoryAnomalies({
       code: 'amount_vs_history',
       title: `Much larger than your usual ${sym} send`,
       detail:
-        `This is ~${Math.round(amt / baseline)}× your typical ${sym} transfer ` +
-        `(~${fmt(baseline)} ${sym}, from your own history). A sudden jump in size is a ` +
-        `common sign of a mistaken amount or a drain — confirm the amount is intended.`,
+        `~${Math.round(amt / baseline)}× your typical ${sym} send (~${fmt(baseline)} ${sym}). ` +
+        `A sudden jump can mean a wrong amount or a drain — confirm it's intended.`,
     });
   }
 
@@ -153,10 +151,9 @@ export function assessHistoryAnomalies({
       code: 'new_recipient_large',
       title: 'Large amount to a first-time recipient',
       detail:
-        `You have never sent to this address before, and this is a large amount` +
+        `First time sending here, and it's a large amount` +
         (largeVsBalance ? ` (~${Math.round((amt / balanceNum) * 100)}% of your ${sym} balance)` : '') +
-        `. New payee + high value is a frequent scam/mistake shape — double-check the ` +
-        `full address and amount before signing.`,
+        `. New payee + high value is a common scam or mistake — double-check the full address and amount.`,
     });
   } else if (isNewRecipient && known.size >= minHistory) {
     // Quietly note a brand-new payee once the user has an established set of
@@ -166,8 +163,8 @@ export function assessHistoryAnomalies({
       code: 'new_recipient',
       title: 'First-time recipient',
       detail:
-        "You haven't sent to this address before. That's common and usually fine — " +
-        'just confirm you copied the full address from a trusted source.',
+        "First time sending here. Usually fine — just confirm the full address " +
+        'came from a trusted source.',
     });
   }
 
