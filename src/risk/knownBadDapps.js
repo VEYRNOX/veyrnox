@@ -34,7 +34,7 @@ export function normalizeDomain(input) {
     .trim()
     .replace(/^https?:\/\//, '')
     .replace(/^www\./, '')
-    .split('/')[0];
+    .split(/[/?#]/)[0];
 }
 
 /**

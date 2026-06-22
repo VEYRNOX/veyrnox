@@ -16,6 +16,10 @@ describe('normalizeDomain', () => {
     expect(normalizeDomain(42)).toBe('');
     expect(normalizeDomain('   ')).toBe('');
   });
+  it('strips query string and fragment on a bare domain', () => {
+    expect(normalizeDomain('fakeswap-rewards.xyz?claim=1')).toBe('fakeswap-rewards.xyz');
+    expect(normalizeDomain('app.uniswap.org#section')).toBe('app.uniswap.org');
+  });
 });
 
 describe('checkDappDomain', () => {
@@ -24,6 +28,7 @@ describe('checkDappDomain', () => {
     expect(r.flagged).toBe(true);
     expect(r.domain).toBe('fakeswap-rewards.xyz');
     expect(typeof r.reason).toBe('string');
+    expect(checkDappDomain('fakeswap-rewards.xyz?ref=abc').flagged).toBe(true);
   });
   it('does NOT flag a domain absent from the local list, and returns no reason', () => {
     const r = checkDappDomain('https://app.uniswap.org');
