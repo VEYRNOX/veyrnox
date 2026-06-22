@@ -114,7 +114,7 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
             <div className="flex items-center gap-2">
               <code className="flex-1 break-all text-[11px] text-foreground">{address}</code>
               <button onClick={() => copy(address, `${idPrefix}-${c.key}`)} title={`Copy ${c.label} address`} aria-label={`Copy ${c.label} address`} className="shrink-0">
-                {copied === `${idPrefix}-${c.key}` ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                {copied === `${idPrefix}-${c.key}` ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
               {c.explorer(address) && (
                 <a href={c.explorer(address)} target="_blank" rel="noreferrer" title="View on explorer" aria-label={`View ${c.label} address on explorer`} className="shrink-0">
@@ -368,8 +368,8 @@ function MoveExistingWallet() {
       )}
 
       {done && (
-        <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs space-y-2">
-          <p className="font-medium text-green-600 flex items-center gap-1.5">
+        <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-xs space-y-2">
+          <p className="font-medium text-success flex items-center gap-1.5">
             <CheckCircle2 className="h-4 w-4" /> “{done.name}” is now hidden and removed from your visible wallets.
           </p>
           <p className="text-muted-foreground flex items-start gap-1.5">
@@ -388,7 +388,7 @@ function MoveExistingWallet() {
             </div>
             {peek && !peek.loading && (
               peek.address
-                ? <p className="text-[11px] text-green-600 mt-1">✓ Revealed wallet address: <span className="font-mono">{short(peek.address)}</span>{peek.address.toLowerCase() === (done.address || "").toLowerCase() ? " — matches the wallet you hid" : ""}</p>
+                ? <p className="text-[11px] text-success mt-1">✓ Revealed wallet address: <span className="font-mono">{short(peek.address)}</span>{peek.address.toLowerCase() === (done.address || "").toLowerCase() ? " — matches the wallet you hid" : ""}</p>
                 : <p className="text-[11px] text-muted-foreground mt-1">No wallet revealed for that secret (a wrong secret looks exactly like “nothing here”).</p>
             )}
           </div>
@@ -556,7 +556,7 @@ export default function StealthWallets() {
         </p>
       </div>
 
-      <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 text-xs flex items-start gap-2">
+      <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
           <b>Provisional (testnet), pending independent audit.</b> Runtime + count
@@ -640,7 +640,7 @@ export default function StealthWallets() {
               className="mt-1.5 tracking-widest text-lg"
             />
           </div>
-          <div className="p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-600 flex items-start gap-2">
+          <div className="p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-[11px] text-caution flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
               The secret must be <b>different</b> from your main password and any
@@ -656,8 +656,8 @@ export default function StealthWallets() {
         </div>
 
         {savedPhrase && (
-          <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs space-y-3">
-            <p className="font-medium text-green-600 flex items-center gap-1.5">
+          <div className="mt-4 p-3 rounded-lg bg-success/10 border border-success/20 text-xs space-y-3">
+            <p className="font-medium text-success flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4" /> Hidden wallet created. It is invisible until you unlock with its secret.
             </p>
 

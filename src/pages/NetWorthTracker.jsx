@@ -53,7 +53,7 @@ export default function NetWorthTracker() {
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Total holdings</p>
         <p className="text-4xl font-bold mt-1">{isLoading ? "…" : fmtUsd(total)}</p>
         <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
-          {incomplete && <span className="text-amber-600 dark:text-amber-400">partial — some balances couldn't be read</span>}
+          {incomplete && <span className="text-caution">partial — some balances couldn't be read</span>}
           {live ? (
             <button
               type="button"

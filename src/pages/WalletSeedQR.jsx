@@ -151,7 +151,7 @@ export default function WalletSeedQR() {
         <div className="p-5 rounded-xl border border-border bg-card space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-green-500" />
+              <Shield className="h-4 w-4 text-success" />
               <p className="text-sm font-semibold">{selectedWallet?.name || "Wallet"} — Seed Phrase</p>
             </div>
             <button
@@ -206,7 +206,7 @@ export default function WalletSeedQR() {
           <Button onClick={handlePrint} className="gap-2 w-full" variant="outline">
             <Printer className="h-4 w-4" /> Print Secure Backup
           </Button>
-          {printed && <p className="text-xs text-green-500">✓ Printed — backup confirmed.</p>}
+          {printed && <p className="text-xs text-success">✓ Printed — backup confirmed.</p>}
 
           <Button
             size="sm"

@@ -101,8 +101,8 @@ export default function LiveBalances() {
       {/* Status indicators — honest about what this actually queries. */}
       <div className="flex gap-2 flex-wrap">
         {["Public RPC (read-only)", "Testnet only", "Verified tokens only"].map(s => (
-          <span key={s} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border border-green-500/30 bg-green-500/5 text-green-500 font-semibold">
-            <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /> {s}
+          <span key={s} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border border-success/30 bg-success/5 text-success font-semibold">
+            <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> {s}
           </span>
         ))}
       </div>
@@ -143,13 +143,13 @@ export default function LiveBalances() {
                 <a href={`${net?.explorer}${encodeURIComponent(data.address)}`} target="_blank" rel="noreferrer" className="p-2 rounded-lg border border-border bg-card text-muted-foreground hover:text-primary">
                   <ExternalLink className="h-4 w-4" />
                 </a>
-                <div className="flex items-center gap-1 text-[10px] text-green-500 font-semibold"><CheckCircle className="h-3 w-3" /> Live</div>
+                <div className="flex items-center gap-1 text-[10px] text-success font-semibold"><CheckCircle className="h-3 w-3" /> Live</div>
               </div>
             </div>
             <div className="flex items-center gap-4 pt-2 border-t border-border text-xs text-muted-foreground">
               <span>Gas Price: <span className="font-semibold text-foreground">{gasGwei != null ? `${gasGwei.toFixed(2)} Gwei` : "—"}</span></span>
               <span className="h-3 w-px bg-border" />
-              <span>Network: <span className="font-semibold text-green-500">{net?.label} · Live</span></span>
+              <span>Network: <span className="font-semibold text-success">{net?.label} · Live</span></span>
             </div>
           </div>
 

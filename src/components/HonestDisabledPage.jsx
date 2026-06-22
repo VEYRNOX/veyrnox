@@ -18,8 +18,8 @@ export default function HonestDisabledPage({ path }) {
   const entry = getFeatureStatus(path);
   const heading = HEADINGS[entry.reason] || 'Not available yet';
   return (
-    <div className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-amber-500/30 bg-amber-500/5 flex items-start gap-3">
-      <CloudOff className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
+    <div className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-caution/30 bg-caution/5 flex items-start gap-3">
+      <CloudOff className="h-6 w-6 text-caution shrink-0 mt-0.5" />
       <div className="text-sm min-w-0">
         <p className="font-semibold text-foreground">{heading}</p>
         <p className="text-muted-foreground mt-1">

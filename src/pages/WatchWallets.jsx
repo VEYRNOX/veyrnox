@@ -73,7 +73,7 @@ export default function WatchWallets() {
                     <div className="flex items-center gap-2 mt-2">
                       <p className="text-xs font-mono text-muted-foreground truncate flex-1">{w.address}</p>
                       <button onClick={() => copyAddr(w.address, w.id)} aria-label={`Copy ${w.name} address`} className="shrink-0 text-muted-foreground hover:text-foreground">
-                        {copied === w.id ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied === w.id ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
                       {explorer && (
                         <a href={`${explorer}${encodeURIComponent(w.address)}`} target="_blank" rel="noreferrer" aria-label={`View ${w.name} on block explorer`} className="shrink-0 text-muted-foreground hover:text-primary">

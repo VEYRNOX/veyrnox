@@ -50,7 +50,7 @@ const CustomTooltip = ({ active = undefined, payload = undefined }) => {
       <p className="text-muted-foreground mb-1">{d.time}</p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
         {[["O", d.open], ["H", d.high], ["L", d.low], ["C", d.close]].map(([l, v]) => (
-          <p key={l}><span className="text-muted-foreground">{l} </span><span className={`font-semibold ${l === "C" ? (isUp ? "text-green-500" : "text-destructive") : ""}`}>${v?.toFixed(2)}</span></p>
+          <p key={l}><span className="text-muted-foreground">{l} </span><span className={`font-semibold ${l === "C" ? (isUp ? "text-success" : "text-destructive") : ""}`}>${v?.toFixed(2)}</span></p>
         ))}
       </div>
       <p className="mt-1"><span className="text-muted-foreground">Vol </span><span className="font-semibold">{(d.volume / 1000).toFixed(0)}K</span></p>
@@ -104,11 +104,11 @@ export default function PriceCharts() {
 
       {/* Live prices off banner */}
       {!livePricesOn && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-caution/30 bg-caution/10 px-4 py-3 text-sm">
           <span className="text-muted-foreground">Live prices are disabled. Enable them to view real chart data.</span>
           <button
             onClick={() => { setLivePricesEnabled(true); window.location.reload(); }}
-            className="shrink-0 rounded-lg bg-yellow-500/20 px-3 py-1.5 text-xs font-semibold text-yellow-600 hover:bg-yellow-500/30 transition-colors"
+            className="shrink-0 rounded-lg bg-caution/20 px-3 py-1.5 text-xs font-semibold text-caution hover:bg-caution/30 transition-colors"
           >
             Enable
           </button>
@@ -123,7 +123,7 @@ export default function PriceCharts() {
             className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold shrink-0 transition-colors ${selected === a.symbol ? "border-transparent text-white" : "border-border bg-card text-muted-foreground hover:text-foreground"} ${!livePricesOn ? "opacity-40 cursor-not-allowed" : ""}`}
             style={selected === a.symbol ? { backgroundColor: a.color } : {}}>
             {a.symbol}
-            <span className={`text-[10px] ${a.change24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+            <span className={`text-[10px] ${a.change24h >= 0 ? "text-success" : "text-destructive"}`}>
               {a.change24h >= 0 ? "+" : ""}{a.change24h}%
             </span>
           </button>
@@ -134,7 +134,7 @@ export default function PriceCharts() {
       <div className="flex items-end justify-between">
         <div>
           <p className="text-3xl font-bold">${lastPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? "—"}</p>
-          <div className={`flex items-center gap-1 mt-0.5 text-sm font-medium ${isUp ? "text-green-500" : "text-destructive"}`}>
+          <div className={`flex items-center gap-1 mt-0.5 text-sm font-medium ${isUp ? "text-success" : "text-destructive"}`}>
             {isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
             {isUp ? "+" : ""}{change}% · {period}
           </div>

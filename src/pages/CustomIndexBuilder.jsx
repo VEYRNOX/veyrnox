@@ -111,7 +111,7 @@ export default function CustomIndexBuilder() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label>Components</Label>
-                <span className={`text-xs font-semibold ${Math.abs(totalWeight - 100) < 1 ? "text-green-500" : "text-yellow-500"}`}>Total: {totalWeight}%</span>
+                <span className={`text-xs font-semibold ${Math.abs(totalWeight - 100) < 1 ? "text-success" : "text-caution"}`}>Total: {totalWeight}%</span>
               </div>
               <div className="space-y-2">
                 {components.map((c, i) => (

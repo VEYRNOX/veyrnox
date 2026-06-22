@@ -905,7 +905,7 @@ export default function SendCrypto() {
             ) : (
               // M-3: resolved via an untrusted third-party service — require an
               // explicit confirmation before it becomes the signing target.
-              <div className="mt-1.5 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-[11px] text-yellow-600 space-y-2">
+              <div className="mt-1.5 p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-[11px] text-caution space-y-2">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>
@@ -1021,9 +1021,9 @@ export default function SendCrypto() {
           </div>
         )}
         {selectedWallet && !sendEnabled && devUngated && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-orange-500/10 border border-orange-500/40">
-            <AlertTriangle className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-orange-300">
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/40">
+            <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
+            <p className="text-xs text-caution">
               <strong>DEV UNGATE ACTIVE</strong> — the send gate is bypassed for {selectedWallet.currency} via VITE_DEV_UNGATE_SEND (dev build only). This asset's status is unchanged (still <strong>not</strong> live); mainnet remains gated. Testnet verification only — never ship this build.
             </p>
           </div>

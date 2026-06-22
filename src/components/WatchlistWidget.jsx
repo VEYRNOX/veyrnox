@@ -36,7 +36,7 @@ export default function WatchlistWidget() {
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+          <Star className="h-4 w-4 text-caution fill-caution" />
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Watchlist</p>
         </div>
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setAdding(v => !v)}>
@@ -74,7 +74,7 @@ export default function WatchlistWidget() {
                 </div>
                 <div className="text-right mr-1">
                   <p className="text-sm font-semibold">${data.price.toLocaleString()}</p>
-                  <p className={`text-[10px] flex items-center gap-0.5 justify-end ${up ? "text-green-500" : "text-red-500"}`}>
+                  <p className={`text-[10px] flex items-center gap-0.5 justify-end ${up ? "text-success" : "text-destructive"}`}>
                     {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                     {up ? "+" : ""}{data.change}%
                   </p>

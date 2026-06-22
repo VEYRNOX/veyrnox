@@ -178,7 +178,9 @@ export default function PriceAlerts() {
                   {alert.currency} hit ${alert.triggered_price?.toLocaleString()} ({alert.direction} ${alert.target_price?.toLocaleString()})
                 </p>
                 {alert.note && <p className="text-xs text-muted-foreground">{alert.note}</p>}
-                <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(alert.triggered_at), { addSuffix: true })}</p>
+                {alert.triggered_at && !Number.isNaN(new Date(alert.triggered_at).getTime()) && (
+                  <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(alert.triggered_at), { addSuffix: true })}</p>
+                )}
               </div>
               <Button variant="ghost" size="sm" className="text-xs shrink-0" onClick={() => dismissAlert.mutate(alert.id)}>
                 Dismiss

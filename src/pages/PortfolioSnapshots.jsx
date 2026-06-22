@@ -83,7 +83,7 @@ export default function PortfolioSnapshots() {
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground mb-1">Since Last Snapshot</p>
           {change != null ? (
-            <div className={`flex items-center gap-1 text-lg font-bold ${change >= 0 ? "text-green-400" : "text-destructive"}`}>
+            <div className={`flex items-center gap-1 text-lg font-bold ${change >= 0 ? "text-success" : "text-destructive"}`}>
               {change >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
               {change >= 0 ? "+" : ""}${Math.abs(change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
               <span className="text-sm">({changePct?.toFixed(1)}%)</span>
@@ -134,7 +134,7 @@ export default function PortfolioSnapshots() {
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold">${s.total_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                   {diff != null && (
-                    <p className={`text-xs ${diff >= 0 ? "text-green-400" : "text-destructive"}`}>
+                    <p className={`text-xs ${diff >= 0 ? "text-success" : "text-destructive"}`}>
                       {diff >= 0 ? "+" : ""}${diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </p>
                   )}

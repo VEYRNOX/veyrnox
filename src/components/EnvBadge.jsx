@@ -10,7 +10,7 @@ export default function EnvBadge() {
       textAlign: "center", padding: "2px 0",
       fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
       fontSize: "11px", letterSpacing: "0.08em",
-      color: "#050608", background: "#E7B14C", zIndex: 9999,
+      color: "hsl(var(--caution-foreground))", background: "hsl(var(--caution))", zIndex: 9999,
       pointerEvents: "none",
     }}>
       {String(label).toUpperCase()}

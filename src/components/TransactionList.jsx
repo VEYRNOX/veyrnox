@@ -2,7 +2,7 @@ import { ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle } from "lucid
 import { formatDistanceToNow } from "date-fns";
 
 const statusIcons = {
-  pending: <Clock className="h-3.5 w-3.5 text-yellow-500" />,
+  pending: <Clock className="h-3.5 w-3.5 text-caution" />,
   confirmed: <CheckCircle2 className="h-3.5 w-3.5 text-primary" />,
   failed: <XCircle className="h-3.5 w-3.5 text-destructive" />,
 };

@@ -198,7 +198,7 @@ export default function WalletAccessReset() {
       </div>
 
       {/* HONESTY BANNER — the non-custodial truth, stated up front. */}
-      <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-600 space-y-2">
+      <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 text-xs text-caution space-y-2">
         <div className="flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
@@ -278,7 +278,7 @@ export default function WalletAccessReset() {
             </div>
             {cpErr && <p className="text-xs text-destructive">{cpErr}</p>}
             {cpDone && (
-              <p className="text-xs text-green-600 flex items-center gap-1.5">
+              <p className="text-xs text-success flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Password changed. Use your new
                 password next time you unlock.
               </p>
@@ -315,7 +315,7 @@ export default function WalletAccessReset() {
           </div>
         </div>
 
-        <div className="flex items-start gap-2 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-600">
+        <div className="flex items-start gap-2 p-3 rounded-lg border border-caution/30 bg-caution/5 text-xs text-caution">
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>
             Never type your seed phrase anywhere you don't trust. It is validated and
@@ -418,7 +418,7 @@ export default function WalletAccessReset() {
             <div className="rounded-lg border border-border bg-card p-4 text-xs space-y-1.5">
               <div className="flex items-center gap-2 mb-1">
                 {isUnlocked
-                  ? <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-600 text-[11px] font-semibold inline-flex items-center gap-1"><Unlock className="h-3 w-3" /> UNLOCKED</span>
+                  ? <span className="px-2 py-0.5 rounded bg-success/20 text-success text-[11px] font-semibold inline-flex items-center gap-1"><Unlock className="h-3 w-3" /> UNLOCKED</span>
                   : <span className="px-2 py-0.5 rounded bg-secondary text-muted-foreground text-[11px] font-semibold inline-flex items-center gap-1"><Lock className="h-3 w-3" /> LOCKED</span>}
                 {isUnlocked && newAddr && <span className="font-mono text-muted-foreground">{short(newAddr)}</span>}
               </div>

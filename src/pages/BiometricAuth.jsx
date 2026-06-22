@@ -79,17 +79,17 @@ export default function BiometricAuth() {
       </div>
 
       {!supported && (
-        <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-caution shrink-0 mt-0.5" />
           <div><p className="text-sm font-medium">Device Not Supported</p><p className="text-xs text-muted-foreground mt-0.5">Your browser or device doesn't support WebAuthn biometric authentication.</p></div>
         </div>
       )}
 
       {/* Master toggle */}
-      <div className={`p-4 rounded-xl border ${config.enabled ? "border-green-500/30 bg-green-500/5" : "border-border bg-card"}`}>
+      <div className={`p-4 rounded-xl border ${config.enabled ? "border-success/30 bg-success/5" : "border-border bg-card"}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {config.enabled ? <ShieldCheck className="h-6 w-6 text-green-500" /> : <ShieldOff className="h-6 w-6 text-muted-foreground" />}
+            {config.enabled ? <ShieldCheck className="h-6 w-6 text-success" /> : <ShieldOff className="h-6 w-6 text-muted-foreground" />}
             <div>
               <p className="font-semibold">{config.enabled ? "Biometric Auth Enabled" : "Biometric Auth Disabled"}</p>
               <p className="text-xs text-muted-foreground">{config.passkey_registered ? "Passkey registered ✓" : "No passkey registered"}</p>
@@ -104,8 +104,8 @@ export default function BiometricAuth() {
         )}
         {config.passkey_registered && (
           <div className="mt-3 flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span className="text-xs text-green-600 font-medium">Passkey registered</span>
+            <CheckCircle className="h-4 w-4 text-success" />
+            <span className="text-xs text-success font-medium">Passkey registered</span>
             <Button size="sm" variant="ghost" className="ml-auto text-xs text-muted-foreground" onClick={registerPasskey}>Re-register</Button>
           </div>
         )}
@@ -131,7 +131,7 @@ export default function BiometricAuth() {
         <Button variant="outline" className="w-full" onClick={testAuth} disabled={testing || !config.enabled}>
           {testing ? "Authenticating..." : "Test Biometric Now"}
         </Button>
-        {testResult === "success" && <p className="text-xs text-green-500 mt-2 flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5" /> Authentication successful</p>}
+        {testResult === "success" && <p className="text-xs text-success mt-2 flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5" /> Authentication successful</p>}
         {testResult === "failed" && <p className="text-xs text-destructive mt-2 flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> Authentication failed</p>}
       </div>
     </div>

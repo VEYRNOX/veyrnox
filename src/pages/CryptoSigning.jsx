@@ -129,7 +129,7 @@ export default function CryptoSigning() {
 
       {tab === "generate" && (
         <div className="space-y-4">
-          <div className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-xs text-yellow-500">
+          <div className="p-3 rounded-xl bg-caution/5 border border-caution/20 text-xs text-caution">
             All keys are generated client-side using ethers.js. Nothing is ever sent to a server. Clear this page to discard keys.
           </div>
           <Button className="w-full gap-2" onClick={generateWallet}><RefreshCw className="h-4 w-4" /> Generate New Random Wallet</Button>
@@ -142,7 +142,7 @@ export default function CryptoSigning() {
                   <p className="text-xs font-semibold">BIP-39 Mnemonic (12 words)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowPhrase(s => !s)} aria-label={showPhrase ? "Hide recovery phrase" : "Reveal recovery phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showPhrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(mnemonic, "mnemonic")} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => copy(mnemonic, "mnemonic")} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showPhrase ? (
@@ -162,12 +162,12 @@ export default function CryptoSigning() {
                 <p className="text-xs font-semibold">Primary Address (m/44'/60'/0'/0/0)</p>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-mono break-all flex-1">{wallet.address}</p>
-                  <button onClick={() => copy(wallet.address, "addr")} aria-label="Copy address">{copied === "addr" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
+                  <button onClick={() => copy(wallet.address, "addr")} aria-label="Copy address">{copied === "addr" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-mono text-muted-foreground flex-1">{showKey ? wallet.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
                   <button onClick={() => setShowKey(s => !s)} aria-label={showKey ? "Hide private key" : "Reveal private key"} className="text-muted-foreground">{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                  {showKey && <button onClick={() => copy(wallet.privateKey, "pk")} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
+                  {showKey && <button onClick={() => copy(wallet.privateKey, "pk")} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
                 </div>
               </div>
 
@@ -183,7 +183,7 @@ export default function CryptoSigning() {
                     </button>
                     {expandedPath === i && (
                       <div className="border-t border-border p-3 bg-secondary/20 text-xs space-y-1">
-                        <div className="flex items-center gap-2"><span className="text-muted-foreground w-12">Address</span><span className="font-mono break-all flex-1">{dw.address}</span><button onClick={() => copy(dw.address, `addr${i}`)} aria-label="Copy address">{copied === `addr${i}` ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}</button></div>
+                        <div className="flex items-center gap-2"><span className="text-muted-foreground w-12">Address</span><span className="font-mono break-all flex-1">{dw.address}</span><button onClick={() => copy(dw.address, `addr${i}`)} aria-label="Copy address">{copied === `addr${i}` ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3 text-muted-foreground" />}</button></div>
                       </div>
                     )}
                   </div>
@@ -201,8 +201,8 @@ export default function CryptoSigning() {
           </div>
           <Button className="w-full" onClick={importWallet} disabled={!importMnemonic.trim()}>Import and Derive Wallets</Button>
           {wallet && mnemonic && (
-            <div className="p-4 rounded-xl border border-green-500/30 bg-green-500/5 space-y-2">
-              <p className="text-xs font-semibold text-green-500 flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /> Valid BIP-39 Mnemonic Imported</p>
+            <div className="p-4 rounded-xl border border-success/30 bg-success/5 space-y-2">
+              <p className="text-xs font-semibold text-success flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /> Valid BIP-39 Mnemonic Imported</p>
               <p className="text-xs text-muted-foreground">Primary address derived:</p>
               <p className="text-sm font-mono break-all">{wallet.address}</p>
               <p className="text-xs text-muted-foreground">{derivedWallets.length} HD accounts derived successfully.</p>
@@ -228,12 +228,12 @@ export default function CryptoSigning() {
                 <div className="p-4 rounded-xl border border-border bg-card space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold">Signature (65 bytes / 130 hex chars)</p>
-                    <button onClick={() => copy(signature, "sig")} aria-label="Copy signature">{copied === "sig" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
+                    <button onClick={() => copy(signature, "sig")} aria-label="Copy signature">{copied === "sig" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
                   </div>
                   <p className="text-[10px] font-mono break-all text-muted-foreground">{signature}</p>
                   <Button size="sm" variant="outline" className="w-full mt-2 text-xs" onClick={verifySignature}>Verify Signature</Button>
                   {verifyAddress && (
-                    <div className={`p-2 rounded-lg text-xs ${verifyResult ? "bg-green-500/10 text-green-500" : "bg-destructive/10 text-destructive"}`}>
+                    <div className={`p-2 rounded-lg text-xs ${verifyResult ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                       {verifyResult ? "✓ Signature valid — recovered address matches" : "✗ Address mismatch"}
                       <p className="font-mono mt-0.5">Recovered: {verifyAddress}</p>
                     </div>
@@ -250,7 +250,7 @@ export default function CryptoSigning() {
           {!wallet && <div className="p-4 rounded-xl bg-secondary/30 text-sm text-muted-foreground text-center">Generate or import a wallet first.</div>}
           {wallet && (
             <>
-              <div className="p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-xs text-yellow-500">
+              <div className="p-3 rounded-xl border border-caution/20 bg-caution/5 text-xs text-caution">
                 This builds a signed raw transaction. You can broadcast it via any Ethereum node. Nonce is set to 0 for demo.
               </div>
               <div><Label htmlFor="tx-recipient">Recipient Address</Label><Input id="tx-recipient" className="mt-1.5 font-mono text-xs" placeholder="0x..." value={txTo} onChange={e => setTxTo(e.target.value)} /></div>
@@ -260,7 +260,7 @@ export default function CryptoSigning() {
                 <div className="p-4 rounded-xl border border-border bg-card space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold">Signed Raw Transaction</p>
-                    <button onClick={() => copy(signedTx, "tx")} aria-label="Copy signed transaction">{copied === "tx" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
+                    <button onClick={() => copy(signedTx, "tx")} aria-label="Copy signed transaction">{copied === "tx" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
                   </div>
                   <p className="text-[10px] font-mono break-all text-muted-foreground">{signedTx}</p>
                   <p className="text-[10px] text-muted-foreground">Broadcast via: <span className="font-mono">eth_sendRawTransaction</span> on any Ethereum RPC</p>

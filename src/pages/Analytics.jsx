@@ -149,17 +149,17 @@ export default function Analytics() {
           </div>
           <p className="text-base font-bold">{pricesEnabled ? fmt(totalUSD) : "—"}</p>
         </div>
-        <div className={`rounded-xl border bg-card p-3 space-y-1 ${pricesEnabled && netPnL >= 0 ? "border-green-500/30" : pricesEnabled ? "border-destructive/30" : "border-border"}`}>
+        <div className={`rounded-xl border bg-card p-3 space-y-1 ${pricesEnabled && netPnL >= 0 ? "border-success/30" : pricesEnabled ? "border-destructive/30" : "border-border"}`}>
           <div className="flex items-center gap-1 text-muted-foreground">
             {pricesEnabled
               ? netPnL >= 0
-                ? <TrendingUp className="h-3.5 w-3.5 text-green-400" />
+                ? <TrendingUp className="h-3.5 w-3.5 text-success" />
                 : <TrendingDown className="h-3.5 w-3.5 text-destructive" />
               : <TrendingUp className="h-3.5 w-3.5" />}
             <span className="text-[10px] uppercase tracking-wide">Net PnL</span>
           </div>
           {pricesEnabled ? (
-            <p className={`text-base font-bold ${netPnL >= 0 ? "text-green-400" : "text-destructive"}`}>
+            <p className={`text-base font-bold ${netPnL >= 0 ? "text-success" : "text-destructive"}`}>
               {netPnL >= 0 ? "+" : "-"}{fmtSmall(netPnL)}
             </p>
           ) : (
@@ -278,8 +278,8 @@ export default function Analytics() {
               <YAxis tick={{ fontSize: 9, fill: "hsl(240,5%,55%)" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
-              <Bar dataKey="gains" name="Received" fill="#22c55e" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="losses" name="Sent" fill="#ef4444" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="gains" name="Received" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="losses" name="Sent" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}

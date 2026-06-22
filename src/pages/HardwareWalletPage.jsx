@@ -25,7 +25,7 @@ function AddressRow({ label, address }) {
     <div className="rounded-lg bg-muted px-4 py-3 space-y-1">
       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
       <div className="flex items-center gap-2">
-        <code className="text-sm font-mono break-all flex-1 text-[#4ADAC2]">{address}</code>
+        <code className="text-sm font-mono break-all flex-1 text-success">{address}</code>
         <CopyButton value={address} />
       </div>
     </div>
@@ -116,7 +116,7 @@ function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, devic
       {result && (
         <div className="rounded-lg bg-muted px-4 py-3 space-y-1">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1">
-            <CheckCircle className="h-3.5 w-3.5 text-[#4ADAC2]" /> Broadcast
+            <CheckCircle className="h-3.5 w-3.5 text-success" /> Broadcast
           </p>
           <div className="flex items-center gap-2">
             <code className="text-xs font-mono break-all flex-1">{result.id}</code>
@@ -126,7 +126,7 @@ function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, devic
             href={result.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-[#4ADAC2] underline underline-offset-2 hover:text-[#4ADAC2]/80"
+            className="text-xs text-success underline underline-offset-2 hover:text-success/80"
           >
             View on explorer
           </a>
@@ -215,9 +215,9 @@ export default function HardwareWalletPage() {
 
       {/* WebHID warning — Ledger only */}
       {isLedger && !webHidSupported && (
-        <div className="rounded-xl border border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 px-4 py-3 flex items-start gap-3">
-          <XCircle className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-yellow-800 dark:text-yellow-300">
+        <div className="rounded-xl border border-caution/40 bg-caution/10 px-4 py-3 flex items-start gap-3">
+          <XCircle className="h-5 w-5 text-caution mt-0.5 shrink-0" />
+          <p className="text-sm text-caution">
             <span className="font-medium">WebHID not supported in this browser.</span>{' '}
             Chrome or Edge is required for Ledger.
           </p>
@@ -262,7 +262,7 @@ export default function HardwareWalletPage() {
 
         {connected && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-[#4ADAC2] font-medium">
+            <div className="flex items-center gap-2 text-sm text-success font-medium">
               <CheckCircle className="h-4 w-4" />
               <span>Connected{deviceName ? ` — ${deviceName}` : ''}</span>
             </div>
@@ -294,7 +294,7 @@ export default function HardwareWalletPage() {
 
       {/* Security note */}
       <div className="rounded-xl border border-border bg-card px-5 py-4 flex items-start gap-3">
-        <ShieldCheck className="h-5 w-5 text-[#4ADAC2] shrink-0 mt-0.5" />
+        <ShieldCheck className="h-5 w-5 text-success shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Your private key never leaves the device.</span>{' '}
           VEYRNOX reads your public addresses only and routes unsigned transactions to the device
