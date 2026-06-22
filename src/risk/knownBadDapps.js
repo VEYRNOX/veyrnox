@@ -11,12 +11,12 @@
 
 // Moved verbatim out of pages/DAppSecurityAlerts.jsx so the page and the
 // WalletConnect connect/request flow share one list.
-export const LOCAL_KNOWN_BAD = [
-  { domain: 'fakeswap-rewards.xyz', reason: 'Known phishing / wallet-drainer domain' },
-  { domain: 'airdrop-claim2024.io', reason: 'Known approval-drainer / fake airdrop' },
-  { domain: 'uniswap-app.org', reason: 'Look-alike of uniswap.org (typosquat)' },
-  { domain: 'metamask-wallet.app', reason: 'Look-alike of metamask.io (credential phish)' },
-];
+export const LOCAL_KNOWN_BAD = Object.freeze([
+  Object.freeze({ domain: 'fakeswap-rewards.xyz', reason: 'Known phishing / wallet-drainer domain' }),
+  Object.freeze({ domain: 'airdrop-claim2024.io', reason: 'Known approval-drainer / fake airdrop' }),
+  Object.freeze({ domain: 'uniswap-app.org', reason: 'Look-alike of uniswap.org (typosquat)' }),
+  Object.freeze({ domain: 'metamask-wallet.app', reason: 'Look-alike of metamask.io (credential phish)' }),
+]);
 
 const BAD_SET = new Map(LOCAL_KNOWN_BAD.map((b) => [b.domain.toLowerCase(), b]));
 
