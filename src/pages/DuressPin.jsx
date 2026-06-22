@@ -1,10 +1,18 @@
 // pages/DuressPin.jsx
 //
 // DURESS PIN / DECOY WALLET  (S3 — individual security).  PROVISIONAL.
+// BUILT, UNAUDITED-PROVISIONAL — not verified; needs independent audit + real-device proof.
 //
-// Lets the user configure a SECONDARY "duress" password. Entered at the normal
-// unlock prompt, it opens a DECOY wallet (a real, separate vault) instead of the
-// real one — plausible deniability under coercion.
+// DENIABILITY MODEL (v2 — owner-approved 2026-06-22):
+//   - Real PIN        → hidden real wallet (no UI tell it exists).
+//   - Duress PIN      → decoy wallet (the surrendered wallet under coercion).
+//   - Face ID (opt-in)→ decoy wallet, NEVER the real one.
+//   - Wrong PIN       → explicit "Incorrect PIN" error (no silent decoy; the old
+//                       no-oracle property was deliberately removed).
+//   - 10 wrong PINs   → irreversible local wipe (src/lib/pinAttemptGuard.js).
+// Deniability rests on HIDING the real wallet behind the secret real PIN and the
+// duress/Face-ID decoy path, NOT on a no-oracle trick. Does not resist offline
+// seizure without a hardware KEK (planned fast-follow, not yet built).
 //
 // This page routes through the EXISTING unlock flow (useWallet().unlock) and the
 // existing keystore/crypto. The decoy is a real, separately-encrypted vault; see
@@ -32,10 +40,11 @@ import { DEMO } from "@/api/demoClient";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
+import { getBiometricStatus } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
   Shield, Eye, EyeOff, AlertTriangle, Lock, Unlock, FlaskConical,
-  Copy, Check, RefreshCw, Coins, ExternalLink,
+  Copy, Check, RefreshCw, Coins, ExternalLink, Fingerprint,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,7 +97,7 @@ export default function DuressPin() {
   const wallet = useWallet();
   const {
     isUnlocked, isDecoy, accounts,
-    hasVault, setDuressPin, removeDuressPin,
+    hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
     createWallet, unlock, lock, clearVault,
   } = wallet;
   const { requireTwoFactor, gateModal } = useActionGuard();
@@ -103,6 +112,21 @@ export default function DuressPin() {
   const [savedAddr, setSavedAddr] = useState("");       // decoy address (to fund)
   const [copied, setCopied] = useState("");
   const [balRefresh, setBalRefresh] = useState(0);      // bump to re-read balances
+
+  // ----- Face-ID-opens-the-decoy opt-in -----
+  // bioStatus: the device's biometric availability (probed once). The opt-in is
+  // shown ONLY when a biometric sensor is available — otherwise there is nothing
+  // to bind the decoy to, so we honest-hide it rather than show a dead toggle.
+  const [bioStatus, setBioStatus] = useState(/** @type {any} */ (null));
+  const [useBioForDecoy, setUseBioForDecoy] = useState(false);
+  const bioLabel = bioStatus?.label || "Face ID";
+  useEffect(() => {
+    let active = true;
+    getBiometricStatus()
+      .then((s) => { if (active) setBioStatus(s); })
+      .catch(() => { if (active) setBioStatus({ available: false }); });
+    return () => { active = false; };
+  }, []);
 
   // ----- live demo state -----
   const [vaultExists, setVaultExists] = useState(false);
@@ -136,6 +160,14 @@ export default function DuressPin() {
         // setDuressPin now returns { mnemonic, address } so the user can FUND the
         // decoy. The decoy is a real wallet that can actually receive testnet funds.
         const { mnemonic, address } = await setDuressPin(pin);
+        // OPT-IN: cache the DURESS pin behind the biometric gate so Face ID opens
+        // the DECOY (never the real wallet). enableDecoyBiometricUnlock stores the
+        // duress secret — not the real one — and is a no-op outside the PIN cohort
+        // or when biometrics are unavailable, so this is safe to call guarded only
+        // by the user's checkbox. The real wallet still needs the typed real PIN.
+        if (useBioForDecoy && enableDecoyBiometricUnlock) {
+          await enableDecoyBiometricUnlock(pin);
+        }
         setSavedPhrase(mnemonic);
         setSavedAddr(address);
         setPin(""); setConfirmPin("");
@@ -185,7 +217,9 @@ export default function DuressPin() {
       await unlock(pw);
       setBalRefresh((n) => n + 1);
     } catch (e) {
-      // SAME generic error whether or not a duress vault exists — no tell.
+      // A wrong PIN returns "Incorrect PIN" (v2 model: wrong guess is an explicit
+      // error, not a silent decoy). The duress PIN opens the decoy silently.
+      // The error text itself does NOT reveal whether a duress vault is configured.
       setTryErr(e?.message || "Unlock failed");
     } finally {
       setBusy("");
@@ -227,10 +261,15 @@ export default function DuressPin() {
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet), pending independent audit.</b> This is runtime
-          deniability only (identical UI, errors, and timing at unlock) — not
-          hidden-volume storage: a forensic inspection of device storage can reveal
-          a second vault exists.
+          <b>Provisional (testnet), pending independent audit.</b> Deniability model
+          v2: your real PIN opens the real wallet (hidden, no UI tell); your duress PIN
+          opens the decoy; any other wrong PIN produces an explicit "Incorrect PIN"
+          error — a wrong guess is now distinguishable (no-oracle property removed by
+          design). 10 consecutive wrong PINs trigger an irreversible local wipe, making
+          the wrong-PIN oracle non-fatal before brute-force succeeds. Not
+          hidden-volume storage: a forensic inspection of device storage can reveal a
+          second vault exists. Does not resist offline seizure without a hardware key
+          (planned fast-follow, not yet built).
         </span>
       </div>
 
@@ -241,10 +280,16 @@ export default function DuressPin() {
           <div>
             <p className="text-sm font-semibold">How it works</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Set a <b>duress PIN</b> different from your real one. Entered at the
-              normal unlock screen, it opens a separate <b>decoy wallet</b> with its
-              own address; your real wallet stays encrypted and is never referenced
-              in the decoy session — to an observer there's no sign it exists.
+              Set a <b>duress PIN</b> different from your real one. Your{" "}
+              <b>real PIN</b> opens your real wallet (hidden — there is no UI
+              tell it exists). Your <b>duress PIN</b> opens a separate{" "}
+              <b>decoy wallet</b> with its own address; your real wallet stays
+              encrypted and is never referenced in the decoy session. Any{" "}
+              <b>other wrong PIN</b> returns an explicit "Incorrect PIN" error —
+              a wrong guess is now distinguishable from the duress path (the old
+              no-oracle property was removed by design). 10 consecutive wrong PINs
+              trigger an irreversible local wipe. If you opt in,{" "}
+              <b>Face ID opens the decoy</b> — never the real wallet.
             </p>
           </div>
         </div>
@@ -310,6 +355,36 @@ export default function DuressPin() {
               className="mt-1.5 tracking-widest text-lg"
             />
           </div>
+          {/* Face-ID-opens-the-decoy opt-in. Shown ONLY when a biometric sensor
+              is available on this device. OFF by default. Honest copy: Face ID
+              opens the DECOY; the real wallet always needs the typed real PIN. */}
+          {bioStatus?.available && (
+            <div className="rounded-lg border border-border bg-secondary/30 p-3">
+              <label htmlFor="decoy-biometric-optin" className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  id="decoy-biometric-optin"
+                  data-testid="decoy-biometric-optin"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                  checked={useBioForDecoy}
+                  onChange={(e) => setUseBioForDecoy(e.target.checked)}
+                />
+                <span className="text-xs">
+                  <span className="font-medium inline-flex items-center gap-1.5">
+                    <Fingerprint className="h-3.5 w-3.5 text-primary" />
+                    Use {bioLabel} to open the decoy
+                  </span>
+                  <span className="block text-muted-foreground mt-1">
+                    When on, {bioLabel} at the unlock screen opens the <b>decoy</b>{" "}
+                    wallet — never your real one. Your <b>real wallet</b> stays
+                    reachable only by typing your <b>real PIN</b>. This is by design:
+                    if you're forced to unlock with {bioLabel}, only the decoy is
+                    exposed.
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
             {saving ? "Saving…" : "Set / Change duress PIN"}
@@ -400,7 +475,7 @@ export default function DuressPin() {
             )}
           </div>
 
-          {/* Free-form unlock to prove a wrong PIN fails identically */}
+          {/* Free-form unlock: wrong PIN errors; duress PIN silently opens the decoy */}
           <div className="flex gap-2 items-end">
             <div className="flex-1">
               <Label htmlFor="duress-try-pw" className="text-xs">Or type any password</Label>
@@ -420,7 +495,7 @@ export default function DuressPin() {
           {busy && <p className="text-xs text-muted-foreground">{busy}</p>}
           {tryErr && (
             <p className="text-xs text-destructive">
-              {tryErr} <span className="text-muted-foreground">(same error for any non-matching password — no tell)</span>
+              {tryErr} <span className="text-muted-foreground">(wrong PIN errors explicitly — v2 model; duress PIN opens the decoy)</span>
             </p>
           )}
 

@@ -170,7 +170,7 @@ export const FEATURE_CATEGORIES = [
         name: 'PIN Unlock',
         status: 'built',
         summary: 'Numeric-PIN unlock over Argon2id (no hardware KEK yet)',
-        explanation: 'Built (UNAUDITED-PROVISIONAL). Numeric-PIN onboarding and returning-PIN unlock over the SAME Argon2id vault as the password path, with Face-ID-to-decoy and a deterministic decoy fallback. HONEST LIMITATION: there is no hardware-bound key (Secure Enclave / StrongBox KEK) yet, so a numeric PIN over Argon2id is offline-exhaustible on a seized device — the hardware-KEK fast-follow (native + audit, real-device verified) is what closes it. Until then this is a convenience unlock gate, not a hardware guarantee.',
+        explanation: 'Built (UNAUDITED-PROVISIONAL). Numeric-PIN onboarding and returning-PIN unlock over the SAME Argon2id vault as the password path. Deniability model v2: real PIN opens the hidden real wallet; duress PIN opens the decoy; Face ID (opt-in) opens the decoy, never the real wallet; any other wrong PIN returns an explicit "Incorrect PIN" error (the old deterministic-decoy / no-oracle fallback was removed by design). 10 consecutive wrong PINs trigger an irreversible local wipe (pinAttemptGuard.js). HONEST LIMITATION: there is no hardware-bound key (Secure Enclave / StrongBox KEK) yet — a numeric PIN over Argon2id is offline-exhaustible on a seized device (the 10-attempt counter is a software counter, bypassable by imaging the storage). The hardware-KEK fast-follow (native + audit, real-device verified) is what closes it. Until then this is a convenience unlock gate with a wipe-on-brute-force mitigation, not a hardware guarantee.',
       },
       {
         name: 'Two-Factor at Critical Actions',
@@ -257,8 +257,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Duress PIN',
         status: 'built',
-        summary: 'Decoy wallet under coercion',
-        explanation: 'A separate duress PIN unlocks a plausible decoy wallet instead of the real one, providing deniability if a user is coerced into unlocking. The decoy is a genuine, separately-encrypted vault.',
+        summary: 'Decoy wallet under coercion — deniability model v2',
+        explanation: 'BUILT, UNAUDITED-PROVISIONAL. A separate duress PIN opens a plausible decoy wallet; the real PIN opens the hidden real wallet (no UI tell it exists). Face ID (opt-in) is bound to the decoy, never the real wallet. A wrong PIN that matches neither returns an explicit "Incorrect PIN" error — the old no-oracle property was deliberately removed in the v2 model: deniability now rests on hiding the real wallet behind the secret real PIN, not on suppressing the error. 10 consecutive wrong PINs trigger an irreversible local wipe (pinAttemptGuard.js), making the wrong-PIN oracle non-fatal before brute-force succeeds. Does not resist offline seizure without a hardware key-encryption key (planned fast-follow, not yet built). The decoy is a genuine, separately-encrypted vault; a forensic inspection of device storage can reveal a second vault exists.',
       },
       {
         name: 'Stealth / Hidden Wallets',
@@ -269,8 +269,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Panic Wipe',
         status: 'built',
-        summary: 'Irreversible local key-material destruction',
-        explanation: 'An emergency wipe irreversibly destroys local key material — available both as a panic/wipe PIN at unlock and as a guarded in-app action. Destroys local data only; on-chain funds are unaffected.',
+        summary: 'Irreversible local key-material destruction + 10-attempt auto-wipe',
+        explanation: 'BUILT, UNAUDITED-PROVISIONAL. Two wipe paths: (1) a dedicated panic PIN at the unlock screen triggers an immediate irreversible local wipe; (2) 10 consecutive wrong PINs trigger the same wipe automatically (pinAttemptGuard.js — this is the v2 model\'s mitigation for the now-explicit wrong-PIN error). The 10-attempt counter lives in software and can be bypassed by imaging the storage before the first attempt on a seized device; hardware KEK is the planned fast-follow. Wipe destroys local key material only; on-chain funds are unaffected and the seed phrase elsewhere still recovers the wallet.',
       },
       {
         name: 'Crypto Will / Inheritance',

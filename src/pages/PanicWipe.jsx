@@ -311,6 +311,13 @@ export default function PanicWipe() {
           <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
             {saving ? "Saving…" : "Set / Change panic/wipe PIN"}
           </Button>
+          {/* No "is a panic PIN set?" indicator and no remove button BY DESIGN:
+              every PIN device seeds CHAFF into the panic ('tertiary') slot
+              (provisionChaff.js), so hasPanicVault() is always true and cannot
+              distinguish a real panic PIN from chaff. Surfacing a "set" state would
+              be a false positive, and a "remove" action would clear the chaff and
+              leave an EMPTY slot — a structural deniability tell. Setting/changing
+              overwrites whatever is there; that is the only safe operation. */}
         </div>
       </div>
 

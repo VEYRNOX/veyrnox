@@ -31,7 +31,6 @@ vi.mock('hash-wasm', async (importOriginal) => {
 import { resolveDeniabilityUnlock } from '../deniabilityUnlock.js';
 import { KDF_PARAMS } from '../vault.js';
 import { getOrCreateDeviceSalt } from '../decoyFallback.js';
-import { validateMnemonic } from '../mnemonic.js';
 import { parseVault } from '../multiVault.js';
 
 // H2: duress/hidden unlock now returns the decrypted PAYLOAD string — a FIXED-LENGTH
@@ -44,7 +43,7 @@ function payloadMnemonic(payload) {
 import { setDuressVault, clearDuressVault, tryDuressUnlock } from '../duress.js';
 import { setPanicVault, clearPanicVault } from '../panic.js';
 import {
-  createHiddenWallet, wipeStealthPool, ensureStealthPool, tryRevealHidden, slotForSecret,
+  createHiddenWallet, wipeStealthPool, ensureStealthPool, tryRevealHidden,
 } from '../stealth.js';
 
 // resolveDeniabilityUnlock spends exactly: panic(1) + duress(1) + stealth(1).
@@ -158,12 +157,18 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
   });
 });
 
-describe('PIN cohort (Option A) — 4th constant slot EXECUTES unconditionally', () => {
-  // The deterministic-fallback slot must run on EVERY post-miss outcome — even when
-  // an enrolled path (panic/duress/hidden) wins — or total-miss becomes timeable.
-  // We assert per-slot EXECUTION (the fallback's deviceSalt appears among the KDF
-  // salts) on each outcome, not merely that argon2id was called four times.
-  const EXPECTED_PIN_KDFS = 4;
+describe('PIN cohort (Option A REMOVED) — wrong PIN no longer opens a decoy', () => {
+  // THREAT-MODEL CHANGE (owner-approved): the deterministic-fallback "Option A" slot
+  // is removed. A WRONG PIN that matches NO enrolled path (real/duress/panic/hidden)
+  // must now MISS — resolveDeniabilityUnlock returns NO fallback decoy, so the caller
+  // throws "Incorrect PIN" instead of silently opening an empty deterministic decoy.
+  //
+  // The constant-KDF timing equalization is PRESERVED: the PIN cohort now spends the
+  // SAME 3 KDFs as the password cohort on every post-primary-miss outcome, with no
+  // 4th deterministic-decoy KDF and no early-return short-circuit. So a wrong-PIN miss
+  // costs exactly what a duress/panic/hidden hit costs — the error path is the only
+  // new signal, never an additional timing oracle on top of it.
+  const EXPECTED_PIN_KDFS = 3; // was 4 under Option A; the 4th (fallback) slot is gone
   let deviceSalt;
 
   beforeEach(async () => {
@@ -173,11 +178,13 @@ describe('PIN cohort (Option A) — 4th constant slot EXECUTES unconditionally',
   });
 
   function fallbackRan() {
-    // The fallback slot is the ONLY KDF keyed by the fixed deviceSalt.
+    // The (now-removed) fallback slot was the ONLY KDF keyed by the fixed deviceSalt.
     return kdf.salts.some((s) => s && s.length === deviceSalt.length
       && s.every((b, i) => b === deviceSalt[i]));
   }
 
+  // The opts a PIN-cohort caller USED to pass. After the change these are inert: the
+  // resolver ignores them. We still pass them to prove they no longer trigger a slot.
   async function resolvePin(pw) {
     await ensureStealthPool();
     kdf.count = 0; kdf.memorySizes = []; kdf.salts = [];
@@ -204,94 +211,47 @@ describe('PIN cohort (Option A) — 4th constant slot EXECUTES unconditionally',
   ];
 
   for (const o of outcomes) {
-    it(`spends ${EXPECTED_PIN_KDFS} KDFs AND the fallback slot executes — ${o.name}`, async () => {
+    it(`spends ${EXPECTED_PIN_KDFS} KDFs and the fallback slot NEVER runs — ${o.name}`, async () => {
       await o.setup();
-      const r = await resolvePin(o.pw);
-      // Exactly four KDFs, all at the shared params.
+      await resolvePin(o.pw);
+      // Exactly THREE KDFs (same as the password cohort), all at the shared params.
       expect(kdf.count).toBe(EXPECTED_PIN_KDFS);
       for (const m of kdf.memorySizes) expect(m).toBe(KDF_PARAMS.memorySize);
-      // The 4th slot EXECUTED — even when an enrolled path won (no short-circuit).
-      expect(fallbackRan()).toBe(true);
+      // The deterministic-decoy slot is GONE — no KDF keyed by the deviceSalt.
+      expect(fallbackRan()).toBe(false);
     });
   }
 
-  // Read the salt bytes of the vault-shaped blob stored under `key` in the shared
-  // 'veyrnox-vault'/'vault' store, so we can positively identify WHICH slot's KDF
-  // ran by matching its (stable, per-blob) salt against the captured kdf.salts.
-  function readBlobSaltBytes(key) {
-    return new Promise((resolve) => {
-      const req = indexedDB.open('veyrnox-vault', 1);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains('vault')) db.createObjectStore('vault');
-      };
-      req.onsuccess = () => {
-        const db = req.result;
-        const r = db.transaction('vault', 'readonly').objectStore('vault').get(key);
-        r.onsuccess = () => {
-          const blob = r.result; db.close();
-          if (!blob || !blob.salt) { resolve(null); return; }
-          const s = atob(blob.salt);
-          resolve(Array.from({ length: s.length }, (_, i) => s.charCodeAt(i)));
-        };
-        r.onerror = () => { db.close(); resolve(null); };
-      };
-      req.onerror = () => resolve(null);
-    });
-  }
-
-  function saltPresent(saltBytes) {
-    return saltBytes != null && kdf.salts.some((s) => s && s.length === saltBytes.length
-      && s.every((b, i) => b === saltBytes[i]));
-  }
-
-  it('all four slots execute, each identified by its KDF salt (self-contained) — total miss with panic+duress+hidden configured', async () => {
-    // Configure panic + duress + a hidden wallet so each of those slots hashes a
-    // REAL, salt-identifiable blob (not a random dummy). A WRONG pin makes every
-    // slot run its KDF and miss — the total-miss case, fully instrumented so the
-    // four-slot property is proven in ONE test, not composed across other tests.
-    await setPanicVault('panic-allfour');
-    await setDuressVault('legal winner thank year wave sausage worth useful legal winner thank yellow', 'duress-allfour');
-    await createHiddenWallet('hidden-allfour');
-    await ensureStealthPool();
-
-    // The exact salt each slot WILL hash on WRONG_PW:
-    const panicSalt = await readBlobSaltBytes('tertiary');
-    const duressSalt = await readBlobSaltBytes('secondary');
-    const hiddenSlotSalt = await readBlobSaltBytes(await slotForSecret(WRONG_PW));
-
-    kdf.count = 0; kdf.memorySizes = []; kdf.salts = [];
-    const r = await resolveDeniabilityUnlock(WRONG_PW, { deterministicFallback: true, deviceSalt });
-
-    expect(kdf.count).toBe(4);
-    expect(saltPresent(panicSalt)).toBe(true);      // panic slot executed
-    expect(saltPresent(duressSalt)).toBe(true);     // duress slot executed
-    expect(saltPresent(hiddenSlotSalt)).toBe(true); // hidden slot executed
-    expect(fallbackRan()).toBe(true);               // fallback slot executed
-    // Total miss => the fallback decoy is what resolves (no enrolled path won).
-    expect(r.panic).toBe(false);
-    expect(r.duressMnemonic).toBeNull();
-    expect(r.hiddenMnemonic).toBeNull();
-    expect(r.fallbackDecoyMnemonic).toBeTruthy();
-  });
-
-  it('total miss returns a valid deterministic fallback decoy (no throw, no error state)', async () => {
+  it('total miss returns NO fallback decoy (caller will throw "Incorrect PIN")', async () => {
     const r = await resolvePin(WRONG_PW);
     expect(r.panic).toBe(false);
     expect(r.duressMnemonic).toBeNull();
     expect(r.hiddenMnemonic).toBeNull();
-    expect(r.fallbackDecoyMnemonic).toBeTruthy();
-    expect(validateMnemonic(r.fallbackDecoyMnemonic)).toBe(true);
-    // Deterministic: same PIN+salt resolves to the same empty wallet.
-    const again = await resolvePin(WRONG_PW);
-    expect(again.fallbackDecoyMnemonic).toBe(r.fallbackDecoyMnemonic);
+    // The decoy is no longer derived — the contract field must be null/absent.
+    expect(r.fallbackDecoyMnemonic ?? null).toBeNull();
   });
 
-  it('password cohort is unchanged: no fallback slot, 3 KDFs, null fallback', async () => {
+  it('a wrong PIN miss costs the SAME KDF count as a duress hit (no timing oracle on the error path)', async () => {
+    await setDuressVault('legal winner thank year wave sausage worth useful legal winner thank yellow', 'the-duress-pin');
+    // Hit
+    const hit = await resolvePin('the-duress-pin');
+    const hitKdfs = kdf.count;
+    expect(payloadMnemonic(hit.duressMnemonic)).toBeTruthy();
+    // Miss (fresh device with same single feature configured)
+    const miss = await resolvePin(WRONG_PW);
+    expect(kdf.count).toBe(hitKdfs); // identical cost — error is the ONLY signal
+    expect(miss.duressMnemonic).toBeNull();
+    expect(miss.fallbackDecoyMnemonic ?? null).toBeNull();
+  });
+
+  it('the PIN cohort now matches the password cohort exactly: 3 KDFs, null fallback', async () => {
     await ensureStealthPool();
     kdf.count = 0; kdf.salts = [];
-    const r = await resolveDeniabilityUnlock(WRONG_PW); // no opts => password cohort
-    expect(kdf.count).toBe(3);
-    expect(r.fallbackDecoyMnemonic ?? null).toBeNull();
+    const pw = await resolveDeniabilityUnlock(WRONG_PW);            // password cohort
+    const pwKdfs = kdf.count;
+    expect(pw.fallbackDecoyMnemonic ?? null).toBeNull();
+    const pin = await resolvePin(WRONG_PW);                        // PIN cohort
+    expect(kdf.count).toBe(pwKdfs);
+    expect(pin.fallbackDecoyMnemonic ?? null).toBeNull();
   });
 });

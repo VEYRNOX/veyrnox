@@ -37,22 +37,32 @@
 // panic credentials are personalized later in-app (Security); stealth/hidden likewise
 // remains an in-app, post-onboarding feature.
 //
-// ── v1 PIN AUTH (UNAUDITED-PROVISIONAL) ──────────────────────────────────────
-// THREAT MODEL: v1 is SOFTWARE key derivation. It resists OBSERVED coercion — a
-// non-enrolled PIN falls through to the Option-A deterministic decoy (see
-// deniabilityUnlock.js / decoyFallback.js) rather than erroring, and once duress/
-// panic are personalized in-app the duress credential yields the surrendered decoy
-// while the panic credential wipes; no 8-digit PIN produces an error-state oracle
-// (Option A) or a timing oracle (the 4th constant KDF slot, deniabilityUnlock.js).
-// It does NOT fully
-// resist OFFLINE analysis of a SEIZED device: an 8-digit PIN (10^8) over Argon2id
-// is exhaustible offline in hours-days, and the PIN path cannot raise Argon2id
-// without diverging from the shared stealth-chaff params (a deniability tell) —
-// flagged as the #1 audit line-item, not patched here. Hardware binding (the KEK
-// layer) is the planned fast-follow that closes the offline gap. KNOWN LIMIT:
-// under repeated LIVE probing the configured lived-in decoy stands out from empty
-// Option-A fallbacks — accepted for v1 (see docs/superpowers/specs/2026-06-08-
-// v1-pin-auth-ux-design.md §7).
+// ── v2 PIN AUTH (UNAUDITED-PROVISIONAL) ──────────────────────────────────────
+// THREAT MODEL (owner-directed model change 2026-06-22 — supersedes the v1
+// "Option-A no-oracle" design; pending internal-audit review):
+//   - Real 8-digit PIN  -> the REAL wallet. The real wallet is HIDDEN: nothing in
+//     the UI advertises that it exists.
+//   - Configured duress PIN  -> the surrendered DECOY wallet.
+//   - Face ID (opt-in, set alongside the duress PIN)  -> the DECOY wallet, never
+//     the real one. The real wallet is reachable ONLY by typing the real PIN.
+//   - Any OTHER wrong PIN  -> a real "Incorrect PIN" error. (This DELIBERATELY
+//     REMOVES the old Option-A no-oracle property: a wrong guess is now
+//     distinguishable. resolveDeniabilityUnlock still spends a CONSTANT KDF count
+//     so no *timing* oracle is layered on top — but the error itself IS an oracle.)
+//   - 10 consecutive wrong PINs  -> irreversible local PANIC WIPE (pinAttemptGuard.js).
+//   - A dedicated panic PIN  -> immediate wipe.
+// Deniability now rests on HIDING the real wallet behind the secret PIN + the
+// duress/Face-ID decoy (a coercer given the duress PIN/Face-ID gets a working
+// decoy and never learns a real wallet exists), NOT on the removed no-oracle
+// trick. The 10-attempt wipe is what makes the now-present wrong-PIN oracle
+// non-fatal: an attacker cannot brute-force the real PIN — 10 tries and the
+// device self-destructs.
+// STILL DOES NOT fully resist OFFLINE analysis of a SEIZED device: an 8-digit PIN
+// (10^8) over Argon2id is exhaustible offline in hours-days, the software attempt
+// counter (localStorage) is not hardware-sealed, and the PIN path cannot raise
+// Argon2id without diverging from the shared stealth-chaff params. Hardware
+// binding (the KEK layer) is the planned fast-follow that closes the offline gap.
+// NONE of this is "verified" — it needs the internal audit + real-device proof.
 
 import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
@@ -81,6 +91,10 @@ import { checkPinStrength } from "@/lib/pinStrength";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
+import {
+  registerFailedPinAttempt,
+  pinAttemptWarning,
+} from "@/lib/pinAttemptGuard";
 import { setPendingReferral } from "@/lib/referral";
 import { copySecret } from "@/lib/copySecret";
 
@@ -270,7 +284,7 @@ export default function WalletEntry() {
     enableBiometricUnlock, unlockWithBiometric,
     exploreMode, enterExplore, leaveExplore, confirmWalletBackup,
     setupPin, createWalletFromPendingPin, importWalletForPendingPin,
-    clearPendingPin, hasPendingPin,
+    clearPendingPin, hasPendingPin, panicWipe,
   } = useWallet();
 
   // null until we know whether a vault exists; drives unlock vs first-run.
@@ -449,52 +463,80 @@ export default function WalletEntry() {
     } finally { setBusy(false); }
   };
 
-  // VULN-8: PIN attempt rate-limiting. Tracks consecutive failed attempts in
-  // localStorage so the counter survives a page reload (which an attacker could
-  // use to reset an in-memory counter). Back-off: 5 s after attempt 3, 30 s after
-  // attempt 5, 5 min after attempt 7+. The counter resets on a successful unlock.
-  // With Option A a wrong PIN opens a decoy rather than erroring — so "error" here
-  // means an infrastructure failure, not a wrong PIN. For the PIN cohort the real
-  // rate-limiter is Argon2id cost; this counter adds a software gate on top.
+  // PIN attempt counting → AUTO-WIPE (target item 5a). Consecutive WRONG-PIN misses
+  // are tracked in localStorage so the counter survives a page reload (an attacker
+  // could otherwise reset an in-memory counter). After PIN_WIPE_AFTER (10) consecutive
+  // misses, the device fires the REAL irreversible local panic wipe (no confirmation
+  // dialog — under the threat model a dialog is a liability). The decision is the pure
+  // lib/pinAttemptGuard helper; here we only persist the count and act on it.
+  //
+  // THREAT-MODEL CHANGE (owner-approved, Part 1): the former Option-A "wrong PIN opens
+  // a decoy" behaviour is REMOVED — a wrong PIN ERRORS ("Incorrect PIN"). So a throw
+  // here means a wrong PIN, UNLESS it is classified as a genuine infra/gate failure
+  // (passkey/biometric), which does NOT count toward the wipe. A SUCCESSFUL unlock —
+  // real PIN, a duress PIN (→ decoy), or a panic PIN (→ its own wipe) — does NOT throw,
+  // so it resets the counter to 0.
+  //
+  // HONEST LIMIT (audit line-item): the counter is software state in localStorage, not
+  // a hardware-sealed attempt count — a determined attacker with the seized device could
+  // clear it out-of-band to dodge the wipe. This raises the cost of online/over-the-
+  // shoulder guessing and gives a lost/stolen-device auto-destruct; it does NOT replace
+  // the Argon2id offline cost or planned hardware binding. Accepted software limit.
   const PIN_ATTEMPTS_KEY = 'veyrnox-pin-attempts';
   const PIN_BACKOFF_KEY = 'veyrnox-pin-backoff-until';
-  function pinBackoffMs(attempts) {
-    if (attempts >= 7) return 5 * 60 * 1000;
-    if (attempts >= 5) return 30 * 1000;
-    if (attempts >= 3) return 5 * 1000;
-    return 0;
-  }
+  const readPinAttempts = () => {
+    try { return parseInt(localStorage.getItem(PIN_ATTEMPTS_KEY) || '0', 10) || 0; }
+    catch { return 0; }
+  };
+  const clearPinAttempts = () => {
+    try { localStorage.removeItem(PIN_ATTEMPTS_KEY); localStorage.removeItem(PIN_BACKOFF_KEY); }
+    catch { /* best-effort */ }
+  };
 
-  // Returning PIN user: submit the 8-digit PIN. pinModel:true enables Option A
-  // (a non-enrolled PIN opens a deterministic empty decoy — never an error).
+  // Returning PIN user: submit the 8-digit PIN. A PIN matching no enrolled path
+  // (real / duress / panic / hidden) now FAILS with "Incorrect PIN" — the former
+  // Option-A deterministic-decoy fallback was removed (owner-approved threat-model
+  // change). pinModel:true is kept on the unlock() call as the cohort marker.
   const runPinUnlock = async (pin) => {
-    // Check back-off before attempting.
-    try {
-      const until = parseInt(localStorage.getItem(PIN_BACKOFF_KEY) || '0', 10);
-      if (Date.now() < until) {
-        const secs = Math.ceil((until - Date.now()) / 1000);
-        setError(`Too many attempts. Try again in ${secs} second${secs !== 1 ? 's' : ''}.`);
-        return;
-      }
-    } catch { /* localStorage unavailable — skip back-off check */ }
-
     setError(""); setBusy(true);
     try {
       await unlock(pin, { pinModel: true });
       setUnlockPin("");
-      // Success — clear the attempt counter.
-      try { localStorage.removeItem(PIN_ATTEMPTS_KEY); localStorage.removeItem(PIN_BACKOFF_KEY); } catch { /* best-effort */ }
+      // Success (real / duress / panic all return without throwing) — reset the streak.
+      clearPinAttempts();
     } catch (e) {
-      // With Option A a valid 8-digit PIN never throws for "wrong PIN"; a throw
-      // here is an infra/gate failure. Clear the pad and show a neutral message.
       setUnlockPin("");
-      try {
-        const attempts = (parseInt(localStorage.getItem(PIN_ATTEMPTS_KEY) || '0', 10)) + 1;
-        localStorage.setItem(PIN_ATTEMPTS_KEY, String(attempts));
-        const delay = pinBackoffMs(attempts);
-        if (delay > 0) localStorage.setItem(PIN_BACKOFF_KEY, String(Date.now() + delay));
-      } catch { /* best-effort */ }
-      setError(e?.message || "Couldn't unlock. Try again.");
+      // A passkey/biometric GATE failure is genuine infra, NOT a wrong PIN: keep its own
+      // message and do NOT count it toward the wipe (so a flaky gate can't destroy funds).
+      const isInfra = isPasskeyGateError(e) || isBiometricGateError(e);
+      if (isInfra) {
+        setError(e?.message || "Couldn't unlock. Try again.");
+        return;
+      }
+      // A real wrong-PIN miss. Register it and persist the new count; the pure guard
+      // decides whether this miss is the wipe trigger and what to warn.
+      const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
+      try { localStorage.setItem(PIN_ATTEMPTS_KEY, String(attempts)); } catch { /* best-effort */ }
+
+      if (shouldWipe) {
+        // HARD STOP: PIN_WIPE_AFTER consecutive misses. Fire the REAL irreversible local
+        // wipe (wallet-core/panic.js via the provider). No confirmation dialog by design.
+        // Fail closed: even if the wipe call rejects, we do NOT fall back to a softer
+        // state — we surface the wipe-failure honestly rather than hiding it.
+        try {
+          await panicWipe({ confirmed: true });
+          // The vault is gone. Clear the now-meaningless counter and let the provider's
+          // post-wipe state (wasWiped / no vault) re-render this gate to first-run.
+          clearPinAttempts();
+        } catch (we) {
+          setError(we?.message || "This device reached the wipe limit, but the wipe could not be completed.");
+        }
+        return;
+      }
+
+      // Not yet at the limit: honest "Incorrect PIN", upgraded to the iOS-style
+      // remaining-count warning once within a few attempts of the wipe.
+      setError(pinAttemptWarning(attempts) || "Incorrect PIN. Try again.");
     } finally { setBusy(false); }
   };
 
