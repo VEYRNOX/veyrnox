@@ -286,6 +286,18 @@ hand-rolled. Same posture as the R2 capability-proof and the audit-log storage s
    second-mode hint anywhere in the decoy session.
 5. **Entry-surface indistinguishability** — byte-for-byte identical in one-set and
    two-set cases: no size tell, no extra latency, no missing/extra element.
+   - *Implementation note (BUILT, UNAUDITED-PROVISIONAL — needs this review):* the
+     PIN pad now submits on an explicit action at ANY length (commit "explicit-submit
+     PIN pad"), with `length` controlling only the dot-display count. This was done to
+     unbrick legacy 6-digit vaults after the 6→8 widening WITHOUT storing a PIN length
+     (a stored length would itself leak set-existence, §7). It also removes the prior
+     auto-submit-at-8 "expected length is 8" tell. Two items for the auditor here:
+     (a) confirm the always-present, never-length-gated submit control introduces no
+     new tell; and (b) a **pre-existing** surface inside this line-item — the position
+     dots fill to `value.length` and the pad's `aria-label` reads "N of M digits
+     entered", a per-keystroke readout of the *current user's* own PIN length
+     (shoulder-surf / screen-reader). Not a device-comparison leak, but it lives in
+     this surface and predates the change — assess whether it should be masked.
 6. **PRF bridge boundary (§8, if applicable)** — what crosses the native↔JS boundary
    and whether `H` is ever in the clear outside the SE.
 
