@@ -63,16 +63,22 @@ export default function PushNotificationsPage() {
       </div>
 
       {/* Status banner */}
-      <div className={`p-4 rounded-xl border flex items-start gap-3 ${isGranted ? "border-success/30 bg-success/5" : isDenied ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
-        {isGranted ? <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
+      <div className={`p-4 rounded-xl border flex items-start gap-3 ${!isSupported ? "border-border bg-card" : isGranted ? "border-success/30 bg-success/5" : isDenied ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
+        {!isSupported ? <AlertTriangle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+          : isGranted ? <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
           : isDenied ? <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
           : <Bell className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
         <div className="flex-1">
           <p className="text-sm font-semibold">
-            {isGranted ? "Notifications Enabled" : isDenied ? "Notifications Blocked" : "Notifications Not Enabled"}
+            {!isSupported ? "Notifications Not Available"
+              : isGranted ? "Notifications Enabled"
+              : isDenied ? "Notifications Blocked"
+              : "Notifications Not Enabled"}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {isGranted ? "You'll receive push notifications for your selected events."
+            {!isSupported
+              ? "Push notifications aren't supported in this app or browser on this device."
+              : isGranted ? "You'll receive push notifications for your selected events."
               : isDenied ? "Notifications are blocked by your browser. Go to site settings and allow notifications to re-enable."
               : "Enable push notifications to stay informed about your wallet activity."}
           </p>

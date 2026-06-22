@@ -88,15 +88,15 @@ export default function SecurityDashboard() {
   const wallet = useWallet();
 
   // ── Existing local reads (base44 entities — demo seeds, or real local reads). ──
-  const { data: approvalRows = [], isLoading: loadingApprovals } = useQuery({
+  const { data: approvalRows = [], isLoading: loadingApprovals, isError: errorApprovals } = useQuery({
     queryKey: ["token-approvals"],
     queryFn: () => base44.entities.TokenApproval.list(),
   });
-  const { data: tokenRows = [], isLoading: loadingTokens } = useQuery({
+  const { data: tokenRows = [], isLoading: loadingTokens, isError: errorTokens } = useQuery({
     queryKey: ["wallet-tokens"],
     queryFn: () => base44.entities.WalletToken.list(),
   });
-  const { data: txRows = [], isLoading: loadingTxs } = useQuery({
+  const { data: txRows = [], isLoading: loadingTxs, isError: errorTxs } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list(),
   });
@@ -112,7 +112,7 @@ export default function SecurityDashboard() {
   const biometricOn = isBiometricUnlockEnabled();
   const passkeyOn = isPasskeyUnlockEnabled() && isPasskeyRegistered();
 
-  const { data: s3 = /** @type {any} */ ({}) } = useQuery({
+  const { data: s3 = /** @type {any} */ ({}), isError: errorS3 } = useQuery({
     queryKey: ["security-posture-s3"],
     queryFn: async () => {
       // hasStealthPool is a non-destructive store read (no key material, no
@@ -224,6 +224,15 @@ export default function SecurityDashboard() {
             path="/address-checker"
           />
         </div>
+        {errorApprovals && (
+          <p className="mt-2 text-xs text-caution">Couldn't load token approvals — this signal may be incomplete.</p>
+        )}
+        {errorTokens && (
+          <p className="mt-2 text-xs text-caution">Couldn't load wallet tokens — this signal may be incomplete.</p>
+        )}
+        {errorTxs && (
+          <p className="mt-2 text-xs text-caution">Couldn't load transaction history — address screening may be incomplete.</p>
+        )}
       </div>
 
       {/* Pre-sign simulation — honest about being on-demand, not stored. */}
@@ -249,6 +258,9 @@ export default function SecurityDashboard() {
               wrong and a coercion oracle (deniability invariant). They remain
               reachable via Settings. */}
           <FeatureRow icon={Ghost} label="Stealth wallets" on={s3.stealth} detail={s3.stealth ? "Hidden-wallet pool seeded" : "Pool not seeded"} path="/stealth-wallets" gapWhenOff={false} />
+          {errorS3 && (
+            <p className="text-xs text-caution">Couldn't load stealth-pool status — this signal may be incomplete.</p>
+          )}
         </div>
       </div>
 

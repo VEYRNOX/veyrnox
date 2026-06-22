@@ -58,10 +58,28 @@ export default function BiometricAuth() {
   };
 
   const testAuth = async () => {
+    if (!window.PublicKeyCredential) {
+      setTestResult("failed");
+      return;
+    }
     setTesting(true);
     setTestResult(null);
-    await new Promise(r => setTimeout(r, 1500));
-    setTestResult("success");
+    try {
+      const challenge = new Uint8Array(32);
+      crypto.getRandomValues(challenge);
+      await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          rpId: window.location.hostname,
+          allowCredentials: [],
+          userVerification: "required",
+          timeout: 30000,
+        },
+      });
+      setTestResult("success");
+    } catch {
+      setTestResult("failed");
+    }
     setTesting(false);
   };
 

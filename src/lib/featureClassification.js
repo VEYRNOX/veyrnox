@@ -233,7 +233,7 @@ export const CLASSIFICATION = {
   },
   '/hardware-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'WebHID Ledger connection via @ledgerhq/hw-transport-webhid. Derives ETH address (m/44\'/60\'/0\'/0/0) from connected device via @ledgerhq/hw-app-eth. Private key never leaves device. Transaction signing bridge to /send is clearly labeled coming soon. BTC/SOL hardware signing not yet wired.',
+    note: 'WebHID Ledger connection via @ledgerhq/hw-transport-webhid. Derives ETH address (m/44\'/60\'/0\'/0/0) from connected device via @ledgerhq/hw-app-eth. Private key never leaves device. The in-page send form is BUILT but UNVERIFIED (no on-device testnet txid confirmed); BTC/SOL hardware signing not yet wired. PLATFORM NOTE: WebHID is unavailable in the Capacitor iOS WKWebView — the page must fail soft to a "WebHID unavailable" card (guarded dynamic import); a bare top-level @ledgerhq import throws a module-resolution TypeError on iOS (fixed). Ledger flow works only on desktop Chrome/Edge.',
   },
   '/cloud-backup': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -351,7 +351,7 @@ export const CLASSIFICATION = {
   },
   '/referrals': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'Referral tracker page: displays user referral code and tracks referral conversions from on-device storage. No external data fabrication; referral code derived deterministically from wallet seed.',
+    note: 'Referral tracker page. CORRECTION (factual): the referral code is NOT seed-derived — randomCode() in lib/referral.js uses crypto.getRandomValues (random, unrelated to the wallet seed). Conversion tracking is NOT purely on-device: registerCode/redeemCode/fetchStatus in api/referralApi.js call an EXTERNAL Supabase backend (lib/supabaseClient.js) when VITE_SUPABASE_URL/ANON_KEY are configured — i.e. network egress of the referral code on register/redeem/status. With no Supabase env set the client is null and those calls no-op locally. Local code/tier/redeemed state lives in localStorage; the egress is the referral code, not balances/seed. STATUS DRIFT: featureCatalogue.js marks this feature roadmap while the /referrals route is live — recommend reconciling the catalogue (not edited here; owned elsewhere).',
   },
 
   // ── Cut paths (spec §4 — off-wedge) ──────────────────────────────────────
@@ -371,7 +371,7 @@ export const CLASSIFICATION = {
   '/ai-rebalancer':     { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI rebalancer cut: autonomous value movement, off-wedge.' },
   '/erc20-discovery':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'ERC-20 discovery cut: third-party token indexer dependency, off-wedge.' },
   '/products':          { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Products page cut: marketing page, off-wedge.' },
-  '/walletconnect':     { verdict: 'live', dataSource: 'on-device', note: 'WalletConnect v2 transport + signing (D1+D2). Pairing + session management via WC relay; signing via on-device key derivation (withPrivateKey). eth_sendTransaction display-only pending D3 testnet verification.' },
+  '/walletconnect':     { verdict: 'live', dataSource: 'on-device', note: 'WalletConnect v2 transport + signing (D1+D2). Pairing + session management via WC relay; signing via on-device key derivation (withPrivateKey). CORRECTION (factual): eth_sendTransaction is NOT display-only — WalletConnectProvider.handleSendTransaction builds new ethers.Wallet(pk, provider) and calls wallet.sendTransaction(tx), a REAL on-chain sign + broadcast (the UI warns "Approving sends a real on-chain transaction"). It is mainnet-capable: the target chain comes from the WC session namespace (getNetworkByChainId on the CAIP-2 chainId), not restricted to testnet. STATUS: BUILT, UNVERIFIED — no on-chain testnet txid has been supplied/confirmed on an explorer, so this is not "verified". Guards present: gas capped at 1M and an eth_chainId match check (VULN-19) before broadcast.' },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts

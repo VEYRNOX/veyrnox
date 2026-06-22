@@ -882,14 +882,15 @@ export default function SendCrypto() {
           </Select>
         </div>
         <div>
-          <Label>Recipient Address or ENS/SNS Name</Label>
+          <Label htmlFor="send-recipient">Recipient Address or ENS/SNS Name</Label>
           <div className="flex gap-2 mt-1.5">
             <Input
+              id="send-recipient"
               value={ensName || toAddress}
               onChange={e => { const v = e.target.value; if (v.endsWith(".eth") || v.endsWith(".sol")) { setEnsName(v); setToAddress(""); setEnsResolved(null); } else { setEnsName(""); setToAddress(v); setEnsResolved(null); } }}
               onBlur={e => resolveENS(e.target.value)}
               placeholder="0x... or vitalik.eth or wallet.sol"
-              className={`font-mono text-sm ${!addressFormatValid ? 'border-destructive' : ''}`}
+              className={`mono-value text-sm ${!addressFormatValid ? 'border-destructive' : ''}`}
             />
             {ensResolving && <Loader2 className="h-4 w-4 animate-spin self-center shrink-0 text-muted-foreground" />}
             <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label="Scan QR code" title="Scan QR code" onClick={() => setShowScanner(true)}>
@@ -988,8 +989,8 @@ export default function SendCrypto() {
           />
         )}
         <div>
-          <Label>Amount</Label>
-          <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
+          <Label htmlFor="send-amount">Amount</Label>
+          <Input id="send-amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
           {amountUsd != null && (
             <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> being sent</p>
           )}
@@ -1035,8 +1036,8 @@ export default function SendCrypto() {
           </div>
         )}
         <div>
-          <Label>Note (optional)</Label>
-          <Input value={note} onChange={e => setNote(e.target.value)} placeholder="What's this for?" className="mt-1.5" />
+          <Label htmlFor="send-note">Note (optional)</Label>
+          <Input id="send-note" value={note} onChange={e => setNote(e.target.value)} placeholder="What's this for?" className="mt-1.5" />
         </div>
 
         {/* Spend-limit breach — explicit, specific message. Per-transaction AND

@@ -1,4 +1,5 @@
 import { USD_RATES } from "@/lib/cryptos";
+import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -92,6 +93,7 @@ export default function AnomalyDetection() {
           <div>
             <p className="font-semibold text-sm">Pattern Scanner</p>
             <p className={`text-xs ${isError ? "text-destructive" : "text-muted-foreground"}`}>{isLoading ? "Loading transactions…" : isError ? "Couldn’t load transactions — scan may be incomplete." : `${transactions.length} transactions loaded · 3 heuristic checks`}</p>
+            <ReferenceRateNote />
           </div>
           <Button onClick={scan} disabled={scanning || isLoading || isError} className="gap-2 ml-auto">
             <RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
@@ -175,6 +177,7 @@ export default function AnomalyDetection() {
               </div>
             );
           })}
+          <ReferenceRateNote className="mt-1" />
         </div>
       )}
     </div>

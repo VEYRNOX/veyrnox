@@ -56,10 +56,10 @@ function SeedGrid({ mnemonic }) {
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold">Recovery Phrase</p>
         <div className="flex gap-2">
-          <button onClick={() => setShow((s) => !s)} aria-label={show ? "Hide recovery phrase" : "Show recovery phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">
+          <button onClick={() => setShow((s) => !s)} aria-label={show ? "Hide recovery phrase" : "Show recovery phrase"} className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
-          <button onClick={async () => { await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">
+          <button onClick={async () => { await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
             {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
@@ -69,7 +69,7 @@ function SeedGrid({ mnemonic }) {
           {words.map((w, i) => (
             <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary text-xs">
               <span className="text-muted-foreground w-4 text-right">{i + 1}.</span>
-              <span className="font-mono font-semibold">{w}</span>
+              <span className="mono-value font-semibold">{w}</span>
             </div>
           ))}
         </div>
@@ -183,7 +183,7 @@ function AddWalletDialog({ onClose }) {
                 <div>
                   <Label>Recovery phrase</Label>
                   <textarea value={phrase} onChange={(e) => setPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 ... word12"
-                    className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                    className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
                 </div>
               )}
               <div>
@@ -474,8 +474,15 @@ export default function WalletPortfolioPage() {
             </p>
           </div>
           {canManage && (
-            <span className="relative" onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === w.id ? null : w.id); }}>
-              <MoreVertical className="h-4 w-4 text-muted-foreground" />
+            <button
+              type="button"
+              aria-label={`Options for ${w.name}`}
+              aria-haspopup="menu"
+              aria-expanded={menuFor === w.id}
+              onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === w.id ? null : w.id); }}
+              className="relative flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground"
+            >
+              <MoreVertical className="h-4 w-4" />
               {menuFor === w.id && (
                 <div className="absolute right-0 top-6 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> Manage assets</button>
@@ -485,7 +492,7 @@ export default function WalletPortfolioPage() {
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> Remove</button>
                 </div>
               )}
-            </span>
+            </button>
           )}
         </button>
         <div className="divide-y divide-border">
@@ -502,7 +509,7 @@ export default function WalletPortfolioPage() {
                   <p className="text-xs text-muted-foreground truncate">{a?.name}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-mono">{fmtAmount(row.amount)}</p>
+                  <p className="text-sm mono-value">{fmtAmount(row.amount)}</p>
                   {/* indeterminate read → "—", not a misleading $0.00 */}
                   <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : formatFiat(row.usd, "USD")}</p>
                 </div>
@@ -575,7 +582,7 @@ export default function WalletPortfolioPage() {
           <div className="flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">
-              <b>{unbacked.length} wallet{unbacked.length === 1 ? "" : "s"} not backed up.</b> Each wallet has its own recovery phrase — without it, that wallet’s funds are unrecoverable. Back up now.
+              <b>Some wallets aren’t backed up.</b> Each wallet has its own recovery phrase — without it, that wallet’s funds are unrecoverable. Back up now.
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">

@@ -22,16 +22,21 @@ const STORAGE_KEY = "dashboard-widget-config";
 
 export default function CustomDashboardWidgets() {
   const [widgets, setWidgets] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const savedParsed = JSON.parse(saved);
-      // Merge with defaults to pick up new widgets
-      const merged = DEFAULT_WIDGETS.map(dw => {
-        const found = savedParsed.find(sw => sw.id === dw.id);
-        return found ? { ...dw, enabled: found.enabled } : dw;
-      });
-      const savedOrder = savedParsed.map(sw => sw.id);
-      return merged.sort((a, b) => { const ai = savedOrder.indexOf(a.id); const bi = savedOrder.indexOf(b.id); return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi); });
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const savedParsed = JSON.parse(saved);
+        // Merge with defaults to pick up new widgets
+        const merged = DEFAULT_WIDGETS.map(dw => {
+          const found = savedParsed.find(sw => sw.id === dw.id);
+          return found ? { ...dw, enabled: found.enabled } : dw;
+        });
+        const savedOrder = savedParsed.map(sw => sw.id);
+        return merged.sort((a, b) => { const ai = savedOrder.indexOf(a.id); const bi = savedOrder.indexOf(b.id); return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi); });
+      }
+    } catch {
+      // Corrupted JSON or storage unavailable (iOS private mode / disabled storage).
+      // Fall through to defaults — the page must never throw during render.
     }
     return DEFAULT_WIDGETS;
   });
@@ -49,12 +54,26 @@ export default function CustomDashboardWidgets() {
   const toggleWidget = (id) => setWidgets(ws => ws.map(w => w.id === id ? { ...w, enabled: !w.enabled } : w));
 
   const save = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets.map(w => ({ id: w.id, enabled: w.enabled }))));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets.map(w => ({ id: w.id, enabled: w.enabled }))));
+    } catch {
+      // Storage unavailable (iOS private mode / quota exceeded) — no-op; UI state is
+      // already updated in memory, the save just won't persist across sessions.
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const reset = () => { setWidgets(DEFAULT_WIDGETS); localStorage.removeItem(STORAGE_KEY); };
+  const reset = () => {
+    setWidgets(DEFAULT_WIDGETS);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Storage unavailable (iOS private mode) — in-memory state is already
+      // reset above; the stale persisted entry will be ignored on next load
+      // because the lazy-init read falls through to defaults on any error.
+    }
+  };
 
   const enabledCount = widgets.filter(w => w.enabled).length;
 

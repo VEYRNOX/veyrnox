@@ -61,11 +61,25 @@ export default function PortfolioRiskScore() {
     );
   }
 
+  if (totalUSD === 0) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-xl font-bold">Portfolio Risk Score</h1>
+          <p className="text-sm text-muted-foreground">Heuristic risk score from your current holdings and fixed per-asset volatility coefficients — not a real-time market model.</p>
+        </div>
+        <div className="p-6 rounded-xl border border-border bg-card text-center">
+          <p className="text-sm text-muted-foreground">No holdings to score yet — add assets to see a risk estimate.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold">Portfolio Risk Score</h1>
-        <p className="text-sm text-muted-foreground">Real-time risk assessment based on your holdings</p>
+        <p className="text-sm text-muted-foreground">Heuristic risk score from your current holdings and fixed per-asset volatility coefficients — not a real-time market model.</p>
       </div>
 
       {/* Score card */}
