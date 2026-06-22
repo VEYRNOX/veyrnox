@@ -26,6 +26,11 @@ export default function BiometricUnlockSettings() {
   const [status, setStatus] = useState(null); // null while loading
   const [testResult, setTestResult] = useState(null); // null | 'ok' | 'cancel'
   const [testing, setTesting] = useState(false);
+  // NF-2: pending-enable state. When the user flips the toggle ON we do NOT
+  // persist immediately — we enter this state and show a confirmation panel.
+  // Only after explicit acknowledgement do we call setBiometricUnlockEnabled.
+  // The DISABLE path is always immediate (fail-safe direction, no confirm needed).
+  const [pendingEnable, setPendingEnable] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -40,16 +45,34 @@ export default function BiometricUnlockSettings() {
   }, []);
 
   const onToggle = (v) => {
-    setEnabled(v);
     if (v) {
-      setBiometricUnlockEnabled(true); // persist immediately
+      // NF-2: enabling is a two-step deliberate action. Enter pending state;
+      // do NOT persist yet and do NOT record audit. The confirm panel handles
+      // the final persist + audit call.
+      setPendingEnable(true);
+      setTestResult(null);
     } else {
-      // Turning it OFF also wipes the cached one-tap password so it never
-      // lingers at rest while the feature is disabled.
+      // Turning it OFF is always immediate — fail-safe direction, no confirm.
+      // Also wipes the cached one-tap password so it never lingers at rest.
+      setEnabled(false);
+      setPendingEnable(false);
       disableBiometricUnlock();
+      setTestResult(null);
+      recordAudit('settings_changed');
     }
-    setTestResult(null);
+  };
+
+  const confirmEnable = () => {
+    // User explicitly acknowledged the trade-off — now persist.
+    setBiometricUnlockEnabled(true);
+    setEnabled(true);
+    setPendingEnable(false);
     recordAudit('settings_changed');
+  };
+
+  const cancelEnable = () => {
+    // User backed out — return toggle to OFF with no side effects.
+    setPendingEnable(false);
   };
 
   const runTest = async () => {
@@ -105,7 +128,9 @@ export default function BiometricUnlockSettings() {
 
       {/* The toggle. On a real device it is forced on (and disabled): native
           unlock always requires biometric/passcode. In demo/web it controls the
-          (simulated) prompt. */}
+          (simulated) prompt.
+          While pendingEnable is true the toggle stays visually off — enabling is
+          not yet committed; the confirm panel below is the deliberate action. */}
       <div className="flex items-center justify-between">
         <div className="pr-4">
           <p className="text-sm font-medium">
@@ -124,6 +149,45 @@ export default function BiometricUnlockSettings() {
           aria-label="Require biometric unlock"
         />
       </div>
+
+      {/* NF-2 confirm panel — only shown when the user has flipped ON but not
+          yet acknowledged the trade-off. Reuses the caution palette of the
+          disclosure box above. The confirm panel is IN ADDITION to the
+          disclosure, not a replacement. */}
+      {pendingEnable && (
+        <div
+          data-testid="biometric-enable-confirm"
+          className="flex flex-col gap-3 rounded-lg bg-caution/10 border border-caution/30 px-3 py-3"
+        >
+          <div className="flex items-start gap-2">
+            <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">
+              <span className="font-semibold text-caution">Confirm trade-off.</span>{' '}
+              Offline Keychain extraction bypasses Argon2id — only enable if you accept that risk.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 border-caution/40 text-caution hover:bg-caution/10"
+              onClick={confirmEnable}
+              data-testid="biometric-confirm-enable-btn"
+            >
+              Enable one-tap unlock
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1"
+              onClick={cancelEnable}
+              data-testid="biometric-cancel-enable-btn"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Recovery caveat on device (see FINDINGS → F-4). */}
       {forcedOnDevice && (
