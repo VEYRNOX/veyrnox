@@ -3,9 +3,9 @@ import { Lock, KeyRound, Smartphone, Cpu, Shield } from "lucide-react";
 // ─────────────────────────────────────────────────────────────────────────────
 // "What your PIN protects — and what it doesn't" (Phase 2 — seized-device PIN
 // disclosure, C-screen). A purpose-built, plain-language explainer of the
-// 6-digit-PIN offline-brute-force limit, linked from the Security Dashboard.
+// 8-digit-PIN offline-brute-force limit, linked from the Security Dashboard.
 //
-// HONESTY: states the real limit (a seized device can be analysed offline; 6
+// HONESTY: states the real limit (a seized device can be analysed offline; 8
 // digits is a small space) without inducing false despair — paired with the
 // genuine mitigations. Hardware key-binding is framed as NOT in this version
 // (TARGET, audit-gated — never asserted as shipped).
@@ -47,16 +47,16 @@ export default function WhatThisProtects() {
 
       <div className="space-y-3">
         <Section icon={Lock} title="What your PIN does">
-          Your wallet is encrypted on this device with your 6-digit PIN. Nothing leaves the
+          Your wallet is encrypted on this device with your 8-digit PIN. Nothing leaves the
           device; even we can't read it. For everyday risks — a glance over your shoulder, a
           phone grabbed for a moment — the PIN is the lock.
         </Section>
 
         <Section icon={KeyRound} title="What it can't do (yet)">
-          A 6-digit PIN is a small number of combinations. If someone keeps your device and
+          An 8-digit PIN is a small number of combinations. If someone keeps your device and
           has the time and tools to copy its storage, they can try PINs offline until one
-          works. Each guess is deliberately slow, which buys time — but it does not make a
-          6-digit PIN unbreakable.
+          works. Each guess is deliberately slow, which buys time — but it does not make an
+          8-digit PIN unbreakable.
         </Section>
 
         <Section icon={Smartphone} title="What helps now">

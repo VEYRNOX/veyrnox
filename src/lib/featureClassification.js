@@ -197,7 +197,7 @@ export const CLASSIFICATION = {
   },
   '/what-this-protects': {
     verdict: 'live', dataSource: 'static',
-    note: 'Phase 2 seized-device PIN disclosure (C-screen). Purely static plain-language copy explaining the 6-digit-PIN offline-brute-force limit (what it does / can\'t do / what helps / what\'s coming — hardware key-binding framed as not-yet-shipped). No external call, no fabrication, no per-session/config reads. Deniability: reads identically in real and decoy sessions, names no set\'s existence, never touches coercion/decoy/hidden; guarded by security-framing.test.js.',
+    note: 'Phase 2 seized-device PIN disclosure (C-screen). Purely static plain-language copy explaining the 8-digit-PIN offline-brute-force limit (what it does / can\'t do / what helps / what\'s coming — hardware key-binding framed as not-yet-shipped). No external call, no fabrication, no per-session/config reads. Deniability: reads identically in real and decoy sessions, names no set\'s existence, never touches coercion/decoy/hidden; guarded by security-framing.test.js.',
   },
   '/terms-legal': {
     verdict: 'live', dataSource: 'static',

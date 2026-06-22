@@ -277,7 +277,7 @@ export default function SecurityDashboard() {
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium">What your PIN protects — and what it doesn't</span>
-          <p className="text-xs text-muted-foreground">Plain-language: what a 6-digit PIN defends against, and what it can't.</p>
+          <p className="text-xs text-muted-foreground">Plain-language: what an 8-digit PIN defends against, and what it can't.</p>
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
       </Link>

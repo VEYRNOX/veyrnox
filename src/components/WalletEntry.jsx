@@ -42,10 +42,10 @@
 // non-enrolled PIN falls through to the Option-A deterministic decoy (see
 // deniabilityUnlock.js / decoyFallback.js) rather than erroring, and once duress/
 // panic are personalized in-app the duress credential yields the surrendered decoy
-// while the panic credential wipes; no 6-digit PIN produces an error-state oracle
+// while the panic credential wipes; no 8-digit PIN produces an error-state oracle
 // (Option A) or a timing oracle (the 4th constant KDF slot, deniabilityUnlock.js).
 // It does NOT fully
-// resist OFFLINE analysis of a SEIZED device: a 6-digit PIN (10^6) over Argon2id
+// resist OFFLINE analysis of a SEIZED device: an 8-digit PIN (10^8) over Argon2id
 // is exhaustible offline in hours-days, and the PIN path cannot raise Argon2id
 // without diverging from the shared stealth-chaff params (a deniability tell) —
 // flagged as the #1 audit line-item, not patched here. Hardware binding (the KEK
@@ -119,7 +119,7 @@ function EntryShell({ error, children }) {
 }
 
 // FIRST-RUN WELCOME — the branded VEYRNOX hero a fresh device lands on BEFORE the
-// 6-digit PIN (lib/onboardingEntry.js: no-vault → 'welcome'). PURE PRESENTATION: it
+// 8-digit PIN (lib/onboardingEntry.js: no-vault → 'welcome'). PURE PRESENTATION: it
 // holds no wallet and no balances; its single "Get Started" action advances to
 // PIN-create (Phase 1), so the PIN-first security order is intact. Copy is honest —
 // self-custody, testnet, provisional framing (CLAUDE.md); deliberately NO "Mainnet",
@@ -465,7 +465,7 @@ export default function WalletEntry() {
     return 0;
   }
 
-  // Returning PIN user: submit the 6-digit PIN. pinModel:true enables Option A
+  // Returning PIN user: submit the 8-digit PIN. pinModel:true enables Option A
   // (a non-enrolled PIN opens a deterministic empty decoy — never an error).
   const runPinUnlock = async (pin) => {
     // Check back-off before attempting.
@@ -485,7 +485,7 @@ export default function WalletEntry() {
       // Success — clear the attempt counter.
       try { localStorage.removeItem(PIN_ATTEMPTS_KEY); localStorage.removeItem(PIN_BACKOFF_KEY); } catch { /* best-effort */ }
     } catch (e) {
-      // With Option A a valid 6-digit PIN never throws for "wrong PIN"; a throw
+      // With Option A a valid 8-digit PIN never throws for "wrong PIN"; a throw
       // here is an infra/gate failure. Clear the pad and show a neutral message.
       setUnlockPin("");
       try {
@@ -727,7 +727,7 @@ export default function WalletEntry() {
           <div className="flex items-center justify-center gap-2 text-sm font-medium">
             <Lock className="h-4 w-4 text-muted-foreground" /> Enter your PIN
           </div>
-          <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} />
+          <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} submitLabel="Unlock" />
         </div>
 
         {/* HONEST recovery: no custodial reset. A forgotten PIN is recovered ONLY by
@@ -902,7 +902,7 @@ export default function WalletEntry() {
         <div className="p-6 rounded-xl border border-dashed border-border bg-card text-center space-y-4">
           <Wallet className="h-8 w-8 text-primary mx-auto" />
           <p className="text-sm font-medium">Set up your wallet</p>
-          <p className="text-sm text-muted-foreground">No wallet on this device yet. Set a 6-digit PIN, then create a new self-custody wallet or import an existing seed phrase. Your PIN encrypts it locally — keys never leave this device.</p>
+          <p className="text-sm text-muted-foreground">No wallet on this device yet. Set an 8-digit PIN, then create a new self-custody wallet or import an existing seed phrase. Your PIN encrypts it locally — keys never leave this device.</p>
           <div className="space-y-2">
             <Button className="w-full gap-2" onClick={() => { setError(""); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("pin-create"); }}>
               <Shield className="h-4 w-4" /> Set a PIN to continue
@@ -925,8 +925,8 @@ export default function WalletEntry() {
 
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Choose a 6-digit PIN</p>
-              <p className="text-xs text-muted-foreground">This unlocks your wallet. A 6-digit PIN is strong against a quick grab, but not against someone who keeps your device to try PINs offline — so guard the device itself.</p>
+              <p className="text-sm font-medium">Choose an 8-digit PIN</p>
+              <p className="text-xs text-muted-foreground">This PIN unlocks your wallet. It won't stop someone who keeps your device to try PINs offline — so guard your device.</p>
               <PinPad value={realPin} onChange={setRealPin} onComplete={(p) => {
                 const s = checkPinStrength(p);
                 if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
@@ -985,7 +985,7 @@ export default function WalletEntry() {
 
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Choose a new 6-digit PIN</p>
+              <p className="text-sm font-medium">Choose a new 8-digit PIN</p>
               <p className="text-xs text-muted-foreground">This unlocks your restored wallet. Your seed stays encrypted on this device.</p>
               <PinPad value={realPin} onChange={setRealPin} onComplete={(p) => {
                 const s = checkPinStrength(p);

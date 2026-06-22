@@ -6,7 +6,7 @@
 // "weak password" check for a numeric PIN: it blocks the handful of PINs so
 // common/predictable that a thief who gets the device would try them first.
 //
-// IT IS A MINIMUM BAR, NOT A GUARANTEE. A 6-digit PIN is only ~20 bits; the real
+// IT IS A MINIMUM BAR, NOT A GUARANTEE. An 8-digit PIN is only ~27 bits; the real
 // defense is guarding the device itself + the offline back-off (WalletEntry
 // VULN-8). The PIN-create UI keeps the "guard the device" caveat — this helper
 // does not over-claim strength, it only removes the worst offenders.
@@ -16,23 +16,21 @@
 // must differ from the real PIN) and is deliberately NOT gated here — its decoy
 // nature is by design (I4 deniability).
 
-export const MIN_PIN_LENGTH = 6;
+export const MIN_PIN_LENGTH = 8;
 
-// The most-guessed numeric PINs from public breach analyses, plus obvious
-// repeating patterns. A short, literal "block the worst offenders" list — not an
-// exhaustive dictionary. All-same-digit and pure sequences are caught
-// structurally below, so this set only needs the non-structural offenders.
+// The most-guessed numeric patterns, plus obvious repeats. A short, literal
+// "block the worst offenders" list — not an exhaustive dictionary. All-same-digit
+// and pure sequences are caught structurally below, so this set only needs the
+// non-structural offenders. Entries are 8 digits to match MIN_PIN_LENGTH; a PIN of
+// a different length can never match (length is gated separately above).
 const COMMON_PINS = new Set([
-  // repeats / mirrors / zig-zag patterns
-  '121212', '123123', '112233', '123321', '321321', '369369', '520520',
-  '212121', '585858', '420420', '007007', '998877', '778899', '143143',
-  // keypad shapes / diagonals
-  '789456', '159753', '147258', '258456', '357951', '159357', '951357',
-  '456123', '789123', '321654', '258147', '147369', '654987', '369258',
-  '369852', '852369',
-  // famous numbers / classic picks
-  '696969', '314159', '271828', '112358', '101010', '102030', '142536',
-  '135790', '011235',
+  // repeated pairs / quads / mirrors (not caught by all-same or sequential)
+  '12121212', '13131313', '10101010', '14141414', '12341234', '43214321',
+  '11223344', '44332211', '12344321', '13371337', '69696969', '42424242',
+  '11112222', '12123434', '78907890', '90909090',
+  // keypad shapes / diagonals / famous picks
+  '13572468', '24681357', '11235813', '31415926', '27182818', '14142135',
+  '12348765', '14725836', '15935725',
 ]);
 
 /** True when every character is the same digit (e.g. "000000"). */
