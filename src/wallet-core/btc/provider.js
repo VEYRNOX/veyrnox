@@ -146,10 +146,22 @@ export async function getFeeRate(networkKey, targetBlocks = 6) {
 }
 
 /**
+ * PURE: a broadcast acknowledgement must be a 64-hex transaction id. A 200 with an
+ * empty or garbage body (observed on some Esplora forks) previously fell through as
+ * a silent "success", so the caller surfaced an unbroadcast tx as confirmed and the
+ * user could double-send. Extracted for unit-testing without network (cf. clampFeeRate).
+ * @param {unknown} text - trimmed response body
+ * @returns {boolean}
+ */
+export function isBroadcastTxid(text) {
+  return typeof text === 'string' && /^[0-9a-f]{64}$/i.test(text);
+}
+
+/**
  * Broadcast a fully-signed raw transaction (hex). RE-ENFORCES the mainnet gate
  * here via getBtcNetwork() — broadcasting is the irreversible action, so even if
  * a read path resolved a mainnet URL, no mainnet tx can be pushed while gated.
- * @returns {Promise<string>} the broadcast txid
+ * @returns {Promise<string>} the broadcast txid (validated 64-hex)
  */
 export async function broadcastTx(networkKey, rawHex) {
   getBtcNetwork(networkKey); // throws if mainnet gated / disabled
@@ -157,5 +169,11 @@ export async function broadcastTx(networkKey, rawHex) {
   const res = await fetch(url, { method: 'POST', body: rawHex });
   const text = (await res.text()).trim();
   if (!res.ok) throw new Error(`Broadcast failed (${res.status}): ${text}`);
+  // A 200 with an empty/garbage body (seen on some Esplora forks) used to fall
+  // through as a silent success; the caller then surfaced an UNBROADCAST tx as
+  // confirmed. Require a real 64-hex txid.
+  if (!isBroadcastTxid(text)) {
+    throw new Error(`Broadcast returned no/invalid txid (got "${text.slice(0, 80)}")`);
+  }
   return text; // txid
 }
