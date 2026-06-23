@@ -100,6 +100,22 @@ independent. The team is committed to the repo, so every session has it:
   review the current branch vs main across correctness / security-honesty / design-system /
   a11y, with each finding adversarially verified before it is reported.
 
+### Orchestration pattern — pick one automatically, every session
+
+Before starting any substantial task, choose the orchestration pattern that fits. Do not ask
+the user which to use — read the request, apply the table, proceed.
+
+| Signal in the request | Pattern | How to apply |
+|---|---|---|
+| Fixed known targets, independent work (e.g. "fix X and Y", "review these 3 files") | **Parallel Execution** | Fan agents out in ONE message so they run concurrently. Merge results before replying. |
+| Open-ended discovery ("find all X", "audit everything", unknown count of targets) | **Dynamic Spawner** | Dispatch `dynamic-spawner` agent. It discovers scope at runtime, plans spawns, then synthesizes. |
+| Request spans multiple domains OR involves a destructive/irreversible action (push, delete, send, deploy, wipe) | **Router + Human Gate** | Dispatch `router-human-loop` agent first. It classifies, routes, and presents a per-action confirm gate before anything destructive runs. |
+
+**Tie-break rules:**
+- Any destructive action present → Router + Human Gate wins, regardless of other signals.
+- Scope unknown → Dynamic Spawner, even if the work also looks parallel.
+- Scope known + no destructive actions → Parallel Execution.
+
 Rules that still bind every agent: reconnaissance before changes; one moving part at a time;
 security-sensitive files (seed/keys/signing/auth) are off-limits to cosmetic work; and nothing
 is "verified" without the user's real on-chain txid.
