@@ -6,6 +6,20 @@
   "_corrected": {
     "USDT mainnet send (full UI path, build:release, Ethereum mainnet)": "Txid corrected 2026-06-22. PR #280 originally recorded 0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986 — that hash is a real mainnet tx but targets the USDC contract, not USDT, so it did not substantiate the USDT claim. The actual USDT mainnet send is 0xf06a0ba731d1b8bf4d3f859a5904830b2f064725ba837c8c7332e5264f0b5b08 (verified on-chain via eth_getTransactionByHash/Receipt 2026-06-22: to=Tether USDT contract 0xdAC17F95…831ec7, transfer 1 USDT to 0x82D0…5BAB, chainId 1, status SUCCESS, block 25360159). Entry below now carries the correct txid."
   },
+  "_h1_passkey_2fa_fix_confirmation": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — so it does NOT promote any catalogue feature to 'verified'. The Two-Factor feature stays BUILT. This records that the ECC audit H-1 fix (passkey-2FA was silently bypassed on Send) was exercised end-to-end on-chain, while being honest that the authenticator was SOFTWARE, not a Secure Enclave.",
+    "finding": "ECC audit H-1 — SendCrypto keyed the 2FA gate on actionPasswordConfigured alone, silently bypassing a passkey-only second factor. Fixed in PR #340 (resolveSend2faMethod).",
+    "what_was_verified": "Fully-automated web e2e (Playwright + Chrome CDP virtual authenticator). Imported the real throwaway testnet seed (NOT demo), registered a passkey, enabled PIN+Passkey 2FA, and drove a real Sepolia ETH send through the full UI. The send screen rendered the TwoFactorGate ('Authorise this send with your PIN + passkey') — i.e. the passkey factor was ENFORCED, not bypassed — and broadcast ONLY after a genuine WebAuthn assertion (CDP credentialAsserted event; authenticator signCount 1->2).",
+    "chain": "sepolia",
+    "txid": "0x12f5ef00462fcf6134cc0e73ced3b4127adc0c0739207be05e0dff9287bd32ea",
+    "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+    "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "amount": "0.0001 ETH",
+    "block": 11123038,
+    "verified_onchain": "eth_getTransactionByHash + eth_getTransactionReceipt, chainId 11155111, status SUCCESS, gasUsed 21000, 2026-06-23",
+    "caveats": "(1) The authenticator is a CDP virtual (software) authenticator, NOT a Secure Enclave — this confirms the H-1 WIRING (no silent bypass; the assertion genuinely gates the send), which is what H-1 is, but NOT the hardware-possession strength of the factor. A physical-device (iPhone Face ID / security key) passkey send is still the bar to flip Two-Factor from BUILT to 'verified'. (2) navigator.webdriver was masked to false so RASP did not block the test harness — touches RASP's automation probe only, never the 2FA path. Incidentally, with webdriver=true RASP DID block the send (blockedByRisk suppressed the gate), confirming RASP is wired into SendCrypto.",
+    "date": "2026-06-23"
+  },
   "evidence": {
     "Solana send (wallet-core module, devnet script)": {
       "chain": "solana-devnet",
