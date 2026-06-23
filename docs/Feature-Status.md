@@ -8,6 +8,16 @@
 > Markers: ✅ built & merged · 🟡 built-but-gated / partial · 📋 specced, not built
 > · 💡 parking-lot idea · ❌ removed / out of scope
 >
+> **What a dated `✅ VERIFIED 2026-06-20` on a line means:** that line's status was
+> *re-checked on that date* — a manual UAT / UI-render walk-through, or (where txids
+> are cited, e.g. send / fee-analytics lines) a real on-chain send. It is **NOT** the
+> strict on-chain "verified" bar. Per the standing rule, a feature is "verified" in
+> the strict sense — and earns a catalogue `verified` status — ONLY with a real
+> explorer-confirmed txid; `resolveStatus()` keeps the machine-readable status at
+> `built` for anything not in `docs/verified-evidence.json`. So read a **non-txid**
+> `✅ VERIFIED` line as **BUILT / UAT-confirmed, not audited** (several such lines
+> already say so inline: "BUILT, not 'verified'").
+>
 > Standing rules (unchanged, still true): **testnet/devnet only; mainnet gated**
 > until an independent audit clears; every security/crypto feature is
 > **PROVISIONAL pending that audit**. Status last verified: 2026-06-20.
