@@ -140,9 +140,9 @@ export default function SecurityCenter() {
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
             <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Revoking a session signs that device out: it locks the wallet (clears the in-memory key) and
-              requires the password again. This device applies it immediately; other devices apply it the next
-              time they're opened — there's no server that can force-close them instantly.
+              Revoking a session signs that device out — it locks the wallet (clears the in-memory key) and
+              asks for the password again. This device applies it now; others apply it next time they're
+              opened, since no server can force-close them instantly.
             </p>
           </div>
           {errorSessions && (

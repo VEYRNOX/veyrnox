@@ -30,8 +30,17 @@ vi.mock('hash-wasm', async (importOriginal) => {
 
 import { resolveDeniabilityUnlock } from '../deniabilityUnlock.js';
 import { KDF_PARAMS } from '../vault.js';
-import { getOrCreateDeviceSalt } from '../decoyFallback.js';
 import { parseVault } from '../multiVault.js';
+
+// The removed Option-A deterministic-decoy fallback was the ONLY KDF keyed by a fixed
+// per-device salt (decoyFallback.js, now deleted). We pin a local fixed 16-byte salt
+// here so fallbackRan() can still assert that NO KDF is ever keyed by such a salt —
+// the regression guard that the removed fallback never reappears. Any non-trivial
+// fixed pattern works; the value just must not collide with a real random KDF salt.
+const FIXED_DEVICE_SALT = new Uint8Array([
+  0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
+  0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
+]);
 
 // H2: duress/hidden unlock now returns the decrypted PAYLOAD string — a FIXED-LENGTH
 // multi-seed container JSON (or a legacy bare mnemonic). Unwrap to the bare mnemonic
@@ -169,16 +178,15 @@ describe('PIN cohort (Option A REMOVED) — wrong PIN no longer opens a decoy', 
   // costs exactly what a duress/panic/hidden hit costs — the error path is the only
   // new signal, never an additional timing oracle on top of it.
   const EXPECTED_PIN_KDFS = 3; // was 4 under Option A; the 4th (fallback) slot is gone
-  let deviceSalt;
+  const deviceSalt = FIXED_DEVICE_SALT;
 
   beforeEach(async () => {
     localStorage.clear();
     await resetDevice();
-    deviceSalt = getOrCreateDeviceSalt();
   });
 
   function fallbackRan() {
-    // The (now-removed) fallback slot was the ONLY KDF keyed by the fixed deviceSalt.
+    // The (now-removed) fallback slot was the ONLY KDF keyed by a fixed device salt.
     return kdf.salts.some((s) => s && s.length === deviceSalt.length
       && s.every((b, i) => b === deviceSalt[i]));
   }

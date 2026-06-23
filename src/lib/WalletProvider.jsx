@@ -88,7 +88,6 @@ import {
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
-import { getOrCreateDeviceSalt, clearDeviceSalt } from '@/wallet-core/decoyFallback';
 import { createBackupEnvelope } from '@/wallet-core/vaultBackup';
 import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
 import {
@@ -720,7 +719,6 @@ export function WalletProvider({ children }) {
     clearAllWalletMeta();
     clearAllPortfolios();
     clearAuthModel();   // drop any 'pin' cohort marker (matters for the recovery rollback case)
-    clearDeviceSalt();  // drop any seeded decoy salt (recovery rollback case)
     lock();             // drop the in-memory secret + reset session flags (isUnlocked -> false)
     // Deliberately NO setWasWiped(true): this is a setup-failure rollback, not a panic wipe.
   }, [lock]);
@@ -1053,7 +1051,6 @@ export function WalletProvider({ children }) {
   // so the empty dashboard renders. Writes NO primary/secondary/tertiary, no verifier.
   const setupPin = useCallback((pin) => {
     setAuthModel('pin');
-    getOrCreateDeviceSalt();
     pendingPinRef.current = pin;
     setExploreMode(true);
   }, []);
@@ -1082,7 +1079,7 @@ export function WalletProvider({ children }) {
     () => pendingPinRef.current,
     () => { pendingPinRef.current = null; },
     (pin) => provisionPinWallet(
-      { createWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
+      { createWallet, provisionDeniabilityChaff, setAuthModel, discardIncompleteWallet },
       { pin },
     ),
   ), [createWallet, discardIncompleteWallet]);
@@ -1094,7 +1091,7 @@ export function WalletProvider({ children }) {
     () => pendingPinRef.current,
     () => { pendingPinRef.current = null; },
     (pin) => provisionPinRecovery(
-      { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet },
+      { importWallet, provisionDeniabilityChaff, setAuthModel, discardIncompleteWallet },
       { seed: mnemonic, realPin: pin },
     ),
   ), [importWallet, discardIncompleteWallet]);

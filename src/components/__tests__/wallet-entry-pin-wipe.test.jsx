@@ -44,6 +44,7 @@ function makeCtx(overrides = {}) {
     confirmWalletBackup: vi.fn(), setupPin: vi.fn(),
     createWalletFromPendingPin: vi.fn(), importWalletForPendingPin: vi.fn(),
     clearPendingPin: vi.fn(), hasPendingPin: false,
+    wasWiped: false, acknowledgeWipe: vi.fn(),
     ...overrides,
   };
 }
@@ -140,5 +141,36 @@ describe('WalletEntry — 10 wrong PINs trigger the real panic wipe', () => {
       await waitFor(() => expect(unlock).toHaveBeenCalledTimes(i));
     }
     await waitFor(() => expect(screen.getByText(/4 attempts before this device is wiped/i)).toBeTruthy());
+  });
+});
+
+describe('WalletEntry — in-session loud wipe transition after 10-attempt auto-wipe', () => {
+  // After the 10th consecutive wrong PIN fires panicWipe(), the LOUD "This device was
+  // wiped" screen must appear IN THE SAME SESSION — not only on the next app open.
+  // The gate is wasWiped && vaultExists === false; vaultExists is local state and is
+  // set to false explicitly after the wipe succeeds (in addition to the provider
+  // already setting wasWiped true).
+  it('renders WipedNotice in-session immediately after the 10th wrong PIN wipes the device', async () => {
+    const unlock = vi.fn(async () => { throw new Error('GCM decrypt failed'); });
+    // panicWipe succeeds → sets wasWiped true in-session (simulated by returning the
+    // provider with wasWiped:true after the wipe, via a controlled mock re-render).
+    const acknowledgeWipe = vi.fn();
+    const ctx = makeCtx({ unlock, wasWiped: true, acknowledgeWipe });
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<WalletEntry />);
+    await waitForPinPad();
+
+    for (let i = 1; i <= PIN_WIPE_AFTER; i++) {
+      await enterPin();
+      await waitFor(() => expect(unlock).toHaveBeenCalledTimes(i));
+    }
+
+    // After the 10th miss the wipe fired. wasWiped is already true (provider mock)
+    // AND WalletEntry must have set vaultExists false locally — so the loud screen
+    // renders without a page reload.
+    await waitFor(() => expect(screen.getByText(/this device was wiped/i)).toBeTruthy());
+    expect(screen.getByRole('button', { name: /start a new wallet/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore from recovery phrase/i })).toBeTruthy();
   });
 });

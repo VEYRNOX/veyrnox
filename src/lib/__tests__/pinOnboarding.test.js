@@ -6,24 +6,22 @@ function makeDeps() {
     createWallet: vi.fn().mockResolvedValue('seed words'),
     provisionDeniabilityChaff: vi.fn().mockResolvedValue(undefined),
     setAuthModel: vi.fn(),
-    getOrCreateDeviceSalt: vi.fn().mockReturnValue(new Uint8Array(16)),
     discardIncompleteWallet: vi.fn().mockResolvedValue(undefined),
   };
 }
 
 describe('provisionPinWallet', () => {
-  it('happy path: create -> chaff -> cohort -> salt, no teardown', async () => {
+  it('happy path: create -> chaff -> cohort, no teardown', async () => {
     const order = [];
     const deps = makeDeps();
     deps.createWallet.mockImplementation(async () => { order.push('create'); return 'seed'; });
     deps.provisionDeniabilityChaff.mockImplementation(async () => { order.push('chaff'); });
     deps.setAuthModel.mockImplementation(() => { order.push('cohort'); });
-    deps.getOrCreateDeviceSalt.mockImplementation(() => { order.push('salt'); return new Uint8Array(16); });
 
     await provisionPinWallet(deps, { pin: '123456' });
 
     expect(deps.createWallet).toHaveBeenCalledWith('123456');
-    expect(order).toEqual(['create', 'chaff', 'cohort', 'salt']);
+    expect(order).toEqual(['create', 'chaff', 'cohort']);
     expect(deps.setAuthModel).toHaveBeenCalledWith('pin');
     expect(deps.discardIncompleteWallet).not.toHaveBeenCalled();
   });
@@ -37,7 +35,6 @@ describe('provisionPinWallet', () => {
     expect(deps.createWallet).toHaveBeenCalledTimes(1);     // wallet was created...
     expect(deps.discardIncompleteWallet).toHaveBeenCalledTimes(1); // ...then torn down
     expect(deps.setAuthModel).not.toHaveBeenCalled();       // never marked PIN cohort
-    expect(deps.getOrCreateDeviceSalt).not.toHaveBeenCalled(); // never seeded salt
   });
 
   it('createWallet throws: no chaff, no teardown (nothing was created), rethrow', async () => {
