@@ -140,7 +140,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
       } else if (type === REQUEST_TYPES.SEND_TRANSACTION) {
         await sendTransaction(topic, id, reqParams, params.chainId);
       } else {
-        throw new Error(`Signing for ${type} via WalletConnect is not yet implemented.`);
+        throw new Error(`Signing for ${type} via the dApp Connector is not yet implemented.`);
       }
       onClose();
     } catch (e) {

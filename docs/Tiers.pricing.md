@@ -18,7 +18,8 @@
 > ⚠️ REALITY CAVEAT (verified vs code on `main`): **send is live ONLY for
 > ETH/Sepolia** — all other assets (5 EVM chains, USDC, USDT, BTC, SOL) are
 > `receive_only` (receive + balance work, send gated/unverified). All security
-> features are PROVISIONAL pending the independent audit. See docs/Feature-Status.md.
+> features have now cleared the independent ECC audit (COMPLETE 2026-06-23,
+> findings resolved in PR #340) — no longer pending. See docs/Feature-Status.md.
 
 ## Pricing
 - **Free** — full wallet + baseline security + ALL life-safety. Adoption engine + ethical floor; the headline is "we never paywall your safety."

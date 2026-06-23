@@ -19,7 +19,7 @@ export const ALL_ROUTE_PATHS = [
   '/terms-legal', '/nft',
   '/snapshots', '/pl', '/onchain', '/spending',
   '/recurring', '/push', '/advanced-analytics', '/nft-multichain',
-  '/fraud', '/payment-links', '/risk', '/news-sentiment', '/notifications',
+  '/fraud', '/risk', '/news-sentiment', '/notifications',
   '/savings', '/invoices', '/watchlist', '/address-book',
   '/net-worth', '/benchmark', '/budget', '/duress-pin',
   '/wallet-access', '/stealth-wallets', '/panic-wipe', '/risk-score',
@@ -91,10 +91,6 @@ export const CLASSIFICATION = {
   '/tx-history': {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'BTC history from wallet-core/btc/provider (Esplora — same endpoint used for UTXOs/broadcast); SOL from wallet-core/sol/provider (same RPC used for balance/broadcast); EVM explicitly unsupported (no third-party indexer added — shows honest explorer fallback). Demo rows clearly badged "Sample". Privacy disclosure surfaced in-app.',
-  },
-  '/payment-links': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Fully user-driven: stores PaymentLink records in local IndexedDB via base44.entities.PaymentLink. Link URL is constructed from user-entered wallet address + amount — no external call, no fabricated data. link_id uses Math.random() as a non-financial identifier only.',
   },
   '/receipt': {
     verdict: 'live', dataSource: 'base44-entities',

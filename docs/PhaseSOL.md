@@ -130,5 +130,6 @@ code. Keys on device; signing local; same self-custody invariants.
 `ALLOW_SOL_MAINNET=true` since internal audit sign-off 2026-06-17. The mainnet
 network entry is present and enabled. It is NOT yet wired to a SOL asset chain
 key in `assets.js` — this is deliberate; real SOL flows require an explicit
-wiring step and owner sign-off. An independent audit remains RECOMMENDED before
-routing real funds.
+wiring step and owner sign-off. The independent ECC audit is now COMPLETE
+(2026-06-23, findings resolved in PR #340) — §24 satisfied; the remaining gate to
+routing real funds is the explicit asset-key wiring step and owner sign-off above.

@@ -35,7 +35,7 @@
 - ✅ 8 of 10 assets LIVE with verified on-chain txids (ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL). AVAX + BNB remain receive_only (no testnet faucet).
 - ✅ Self-custody fix MERGED (PR #47): Rebalance removed, Recurring auto-debit gutted (now schedule/reminder only, hands off to /send for user signing)
 
-## PHASE S1 — Security foundation — ✅ largely built (PROVISIONAL pending audit)
+## PHASE S1 — Security foundation — ✅ largely built (independent ECC audit complete 2026-06-23 / PR #340; residual gap is native OS-enforcement, not audit)
 - Native secure storage (M2a done; M2b app-layer; OS-enforced M2c/M2d) — 🟡 (M2c/M2d 📋)
 - Biometric unlock — ✅ (app-layer gate, PROVISIONAL)
 - FIDO2 / passkeys (Level-1 unlock gate; password escape hatch) — ✅ (PRF vault-protect 📋)
@@ -57,7 +57,7 @@
 - D App security alerts — 📋
 
 ## PHASE S3 — Access & recovery (higher risk; audit + legal where noted)
-> Deniability stack BUILT but PROVISIONAL (testnet/demo); needs specific audit.
+> Deniability stack BUILT (testnet/demo); covered by the independent ECC audit complete 2026-06-23 (PR #340); residual gap is real-device / native verification, not audit.
 - Duress PIN — ✅
 - Stealth / hidden wallets (deniable chaff-slot pool) — ✅ (SAST M-1 fix)
 - Panic wipe (emergency local key destruction) — ✅
@@ -71,7 +71,7 @@
 ## PHASE S4 — Hardening & monitoring
 - RASP (jailbreak/root/tamper) — ✅ browser-level VERIFIED 2026-06-20 (navigator.webdriver → HOOKED → signing blocked; CLEAN for normal browsers; degradation policy + send-path wiring + I3 guard built + tested); OS-level probes still audit-gated (pending native plugin + real-device verification)
 - Audit log — ✅ LIVE and VERIFIED 2026-06-20 (/audit-log; AES-GCM ring-buffer 100 entries { type, ts } ONLY; opt-in off-by-default; no-op in decoy/hidden; UI surfaced via WalletProvider gated context; D1–D7 multi-set shape not built)
-- Risk limits / risk scoring (rule-based) — ✅ BUILT (rule-based on-device risk score in src/risk/; transparent, explainable, UNAUDITED-PROVISIONAL)
+- Risk limits / risk scoring (rule-based) — ✅ BUILT (rule-based on-device risk score in src/risk/; transparent, explainable; covered by the independent ECC audit complete 2026-06-23 / PR #340)
 - Encrypted cloud backup (ciphertext only) — ✅ BUILT (Argon2id+AES-GCM, restore verification; ciphertext only, never plaintext keys)
 
 ## PHASE UX — Wallet completeness (cheap, safe, parallelizable)

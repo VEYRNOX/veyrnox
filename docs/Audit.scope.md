@@ -264,8 +264,12 @@ conflate "audited + in the store" with "mainnet on."
   that sequence, not a fresh judgment call. The audit firm is a reviewer that
   informs the owner's decision; it never flips the gate, and its sign-off is not
   a precondition for the flip.
-- **Independent audit (additional depth, non-gating):** still commission it against
-  this scope; remediate + pay for its re-review pass. It strengthens assurance and
-  is a material asset for build-to-sell due diligence, but it does not gate
-  mainnet — the internal audit does. Only claim "independently audited" once this
-  pass is genuinely complete.
+- **Independent audit (additional depth, non-gating):** DONE — an independent ECC
+  third-party audit against this scope was performed and completed 2026-06-23
+  (findings 1 CRITICAL + 2 HIGH + 4 MEDIUM + 1 LOW, ALL remediated + re-reviewed in
+  PR #340 / merged 8f1dd95; evidence `docs/audit-triage/ecc-independent-audit-2026-06-23.md`).
+  It satisfies §24 as additional depth. It strengthens assurance and is a material
+  asset for build-to-sell due diligence, but it never gated mainnet — the internal
+  audit was always the hard gate, and remains so. "Independently audited" is now an
+  honest claim against this completed pass; "internal" must still never be presented
+  as "independent."

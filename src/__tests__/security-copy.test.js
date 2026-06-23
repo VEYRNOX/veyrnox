@@ -68,7 +68,7 @@ const HONESTY = {
     'no transaction history',             // freshly-funded decoy limit
     'sophisticated coercer',              // may still suspect
     'block explorer',                     // balance is real / live on-chain
-    'pending independent audit',          // provisional/unaudited
+    'independent audit complete',          // audit done (ECC 2026-06-23); wording updated
   ],
   'pages/StealthWallets.jsx': [
     'no list, no count, no indicator',    // not listed/counted/hinted
@@ -81,7 +81,7 @@ const HONESTY = {
     'public',                             // addresses public on explorer
     'unrecoverable',                      // forgotten secret = unrecoverable
     'previously-visible',                 // moving a visible wallet is weaker
-    'pending independent audit',
+    'independent audit complete',          // audit done (ECC 2026-06-23)
   ],
   'pages/PanicWipe.jsx': [
     'irreversible',                       // destructive + irreversible
@@ -93,7 +93,7 @@ const HONESTY = {
     'on-chain',                           // on-chain history stays public
     'different',                          // panic PIN must differ...
     'the wipe never fires',               // ...else that path wins
-    'pending independent audit',
+    'independent audit complete',          // audit done (ECC 2026-06-23)
   ],
 };
 
