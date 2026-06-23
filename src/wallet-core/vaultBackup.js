@@ -16,11 +16,14 @@
 // credential hints. It is safe to store anywhere the user chooses — iCloud,
 // Google Drive, a USB drive, a local folder.
 //
-// HONESTY NOTE on PIN seal: an 8-digit PIN has ~27 bits of entropy. At 192 MiB
-// Argon2id per attempt, offline brute-force (10^8 guesses) is far costlier than
-// the old 6-digit (10^6) seal but is still feasible for a well-resourced attacker
-// who obtains the file. The password seal is the stronger recovery path. If both
-// are forgotten, there is no recovery — this is non-custodial.
+// HONESTY NOTE on PIN seal: the seal is only as strong as the PIN. The export
+// function accepts 4–12 digits and the UI permits 6–12 (CloudBackup.jsx canExport
+// requires pin.length >= 6), so a real seal carries ~20 bits (6-digit, 10^6) up to
+// ~40 bits (12-digit); an 8-digit PIN is ~27 bits. At 192 MiB Argon2id per attempt,
+// offline brute-force of a 6-digit seal (10^6) is feasible for a well-resourced
+// attacker who obtains the file — materially weaker than an 8-digit assumption. The
+// password seal is the stronger recovery path. If both are forgotten, there is no
+// recovery — this is non-custodial.
 //
 // RESTORE
 //   Password restore: the password seal IS a valid vault blob → saved directly
