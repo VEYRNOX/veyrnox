@@ -30,11 +30,11 @@ function WalletConnectInner() {
   if (!CONFIGURED) {
     return (
       <div className={styles.page}>
-        <h1 className={styles.heading}>WalletConnect</h1>
+        <h1 className={styles.heading}>dApp Connector</h1>
         <div className={styles.setupCard}>
           <p className={styles.setupTitle}>Project ID required</p>
           <p className={styles.setupBody}>
-            To use WalletConnect, add your WalletConnect Cloud project ID to{' '}
+            To use the dApp Connector, add your WalletConnect Cloud project ID to{' '}
             <code>.env.local</code>:
           </p>
           <pre className={styles.setupCode}>VITE_WALLETCONNECT_PROJECT_ID=your_project_id</pre>
@@ -50,7 +50,7 @@ function WalletConnectInner() {
   if (!isUnlocked) {
     return (
       <div className={styles.page}>
-        <h1 className={styles.heading}>WalletConnect</h1>
+        <h1 className={styles.heading}>dApp Connector</h1>
         <p className={styles.locked}>Unlock your wallet to connect to dApps.</p>
       </div>
     );
@@ -72,9 +72,9 @@ function WalletConnectInner() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.heading}>WalletConnect</h1>
+      <h1 className={styles.heading}>dApp Connector</h1>
 
-      {error && <p className={styles.error}>WalletConnect error: {error}</p>}
+      {error && <p className={styles.error}>dApp Connector error: {error}</p>}
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Pair with dApp</h2>

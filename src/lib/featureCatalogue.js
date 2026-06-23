@@ -481,9 +481,9 @@ export const FEATURE_CATEGORIES = [
     category: 'dApp Connectivity (Post-Audit)',
     features: [
       {
-        name: 'WalletConnect / dApp Connector',
+        name: 'dApp Connector',
         status: 'built',
-        summary: 'Connect to dApps via WalletConnect v2',
+        summary: 'Connect to dApps via the dApp Connector (WalletConnect v2 transport)',
         explanation:
           'WalletConnect v2 transport + request handling (D1+D2+D3). ' +
           'Pair with dApps, approve/reject session proposals, and sign personal_sign / eth_signTypedData_v4 ' +

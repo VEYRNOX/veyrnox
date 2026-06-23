@@ -79,7 +79,7 @@ const features = [
     { name: "Encrypted Personal Backup", desc: "Export/import vault as a strongly encrypted file; plaintext keys never leave device. UNAUDITED-PROVISIONAL.", status: "available" },
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
-    { name: "RASP", desc: "Browser-level automation detection active (navigator.webdriver → HOOKED → signing blocked). Degradation policy + send-path wiring built. OS-level probes (root/jailbreak) pending native plugin + audit. UNAUDITED-PROVISIONAL.", status: "available" },
+    { name: "RASP", desc: "Browser-level automation detection active (navigator.webdriver → HOOKED → signing blocked). Degradation policy + send-path wiring built. OS-level probes (root/jailbreak) pending native plugin (independent audit complete 2026-06-23; real-device verification still needed). UNAUDITED-PROVISIONAL.", status: "available" },
     { name: "Audit Log", desc: "Opt-in local activity log. At most 100 { type, ts } entries encrypted in the vault — no amounts, addresses, or wallet identity. Off by default; no-op in decoy/hidden sessions.", status: "available" },
     { name: "Spending Limits", desc: "Rule-based per-transaction and daily spending limits (warn-with-acknowledgement)", status: "available" },
   ]},
@@ -118,7 +118,7 @@ const features = [
     { name: "Portfolio Q&A", desc: "Questions over public on-chain data (never trades)", status: "roadmap" },
   ]},
   { category: "dApp Connectivity (Post-Audit)", icon: Globe, items: [
-    { name: "WalletConnect / dApp Connector", desc: "WalletConnect v2 connector is built (local signing, real broadcast with chain-ID guard + 1M gas cap); kept disabled until the post-audit review and requires configuration. High-risk surface.", status: "roadmap" },
+    { name: "dApp Connector", desc: "WalletConnect v2 transport is built (local signing, real broadcast with chain-ID guard + 1M gas cap); kept disabled until the post-audit review and requires configuration. High-risk surface.", status: "roadmap" },
     { name: "Web3 Browser", desc: "In-app dApp browser; post-audit only", status: "roadmap" },
   ]},
   { category: "Platform", icon: Smartphone, items: [
@@ -398,8 +398,8 @@ export default function Documentation() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Mainnet unlocked 2026-06-17 (internal audit complete; independent audit recommended for
-            strongest assurance). Remaining roadmap hardening: native secure storage (Secure Enclave /
+            Mainnet unlocked 2026-06-17 (internal audit complete). Independent ECC audit complete
+            2026-06-23. Remaining roadmap hardening: native secure storage (Secure Enclave /
             Android Keystore), Crypto Will / Inheritance, and native mobile shells.
           </p>
         </CardContent>
