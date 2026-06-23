@@ -6,31 +6,28 @@ function makeDeps() {
     importWallet: vi.fn().mockResolvedValue(undefined),
     provisionDeniabilityChaff: vi.fn().mockResolvedValue(undefined),
     setAuthModel: vi.fn(),
-    getOrCreateDeviceSalt: vi.fn().mockReturnValue(new Uint8Array(16)),
     discardIncompleteWallet: vi.fn().mockResolvedValue(undefined),
   };
 }
 const PARAMS = { seed: 'test test test test test test test test test test test junk', realPin: '123456' };
 
 describe('provisionPinRecovery', () => {
-  it('imports under the new PIN, provisions chaff, selects the PIN cohort, seeds salt', async () => {
+  it('imports under the new PIN, provisions chaff, selects the PIN cohort', async () => {
     const deps = makeDeps();
     await provisionPinRecovery(deps, PARAMS);
     expect(deps.importWallet).toHaveBeenCalledWith(PARAMS.seed, PARAMS.realPin);
     expect(deps.provisionDeniabilityChaff).toHaveBeenCalledTimes(1);
     expect(deps.setAuthModel).toHaveBeenCalledWith('pin'); // never 'password'
-    expect(deps.getOrCreateDeviceSalt).toHaveBeenCalledTimes(1);
     expect(deps.discardIncompleteWallet).not.toHaveBeenCalled();
   });
 
-  it('FAIL CLOSED: chaff throws after import -> tear down, no cohort/salt, rethrow', async () => {
+  it('FAIL CLOSED: chaff throws after import -> tear down, no cohort, rethrow', async () => {
     const deps = makeDeps();
     deps.provisionDeniabilityChaff.mockRejectedValue(new Error('chaff-fail'));
     await expect(provisionPinRecovery(deps, PARAMS)).rejects.toThrow('chaff-fail');
     expect(deps.importWallet).toHaveBeenCalledTimes(1);
     expect(deps.discardIncompleteWallet).toHaveBeenCalledTimes(1);
     expect(deps.setAuthModel).not.toHaveBeenCalled();
-    expect(deps.getOrCreateDeviceSalt).not.toHaveBeenCalled();
   });
 
   it('fails closed: a bad import aborts BEFORE any cohort/slot change', async () => {
@@ -39,7 +36,6 @@ describe('provisionPinRecovery', () => {
     await expect(provisionPinRecovery(deps, PARAMS)).rejects.toThrow('invalid phrase');
     expect(deps.provisionDeniabilityChaff).not.toHaveBeenCalled();
     expect(deps.setAuthModel).not.toHaveBeenCalled();
-    expect(deps.getOrCreateDeviceSalt).not.toHaveBeenCalled();
   });
 
   it('selects the PIN cohort AFTER provisioning (ordering)', async () => {

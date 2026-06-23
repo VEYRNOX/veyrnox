@@ -10,8 +10,8 @@
 // So provisioning is PART OF creation, not a step after it: create the real wallet,
 // then provision BOTH chaff slots; if chaff fails, TEAR THE VAULT DOWN and rethrow,
 // so the caller surfaces an honest failure and no defenseless wallet ever reaches
-// the dashboard. The cohort marker + decoy salt are written ONLY after both slots
-// exist — never on the failure path.
+// the dashboard. The cohort marker is written ONLY after both slots exist — never
+// on the failure path.
 //
 // Pure orchestration over injected collaborators (no React/IndexedDB) so the
 // fail-closed contract is unit-tested directly. Touches no network/provider/signing.
@@ -21,14 +21,13 @@
  *   createWallet: (pin: string) => Promise<unknown>,
  *   provisionDeniabilityChaff: () => Promise<void>,
  *   setAuthModel: (model: 'pin'|'password') => void,
- *   getOrCreateDeviceSalt: () => Uint8Array,
  *   discardIncompleteWallet: () => Promise<void>,
  * }} deps
  * @param {{ pin: string }} params
  * @returns {Promise<void>}
  */
 export async function provisionPinWallet(deps, { pin }) {
-  const { createWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet } = deps;
+  const { createWallet, provisionDeniabilityChaff, setAuthModel, discardIncompleteWallet } = deps;
 
   // 1. Create the real wallet under the real PIN (writes the primary vault, unlocks).
   //    A throw here means nothing was created — propagate; there is nothing to tear down.
@@ -44,10 +43,10 @@ export async function provisionPinWallet(deps, { pin }) {
     throw e;
   }
 
-  // 3. Only once BOTH slots exist: mark the PIN cohort + seed the device salt.
+  // 3. Only once BOTH slots exist: mark the PIN cohort.
   //    (v2 2026-06-22: the Option-A deterministic-decoy fallback was removed — a
-  //    non-enrolled PIN now errors, not opens an empty decoy. The salt is vestigial
-  //    for the decoy purpose; kept for footprint parity, pending a TDD cleanup.)
+  //    non-enrolled PIN now errors, not opens an empty decoy. The vestigial device-
+  //    salt seeding that lived here was the last reader of that removed module, so
+  //    it has been removed too as dead code — see decoyFallback.js removal.)
   setAuthModel('pin');
-  getOrCreateDeviceSalt();
 }

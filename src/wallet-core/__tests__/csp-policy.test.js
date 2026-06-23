@@ -94,7 +94,7 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
 
     // Regression guard for the vault crypto (PR #227 commit note + PR #234).
     // The at-rest Argon2id KDF (hash-wasm) and PR #230's decoy/hidden/panic
-    // paths (credentialVerifier / decoyFallback / vaultBackup) compile a
+    // paths (credentialVerifier / vaultBackup) compile a
     // WebAssembly module; under CSP that requires 'wasm-unsafe-eval' in
     // script-src. Drop it and every wallet create/import/unlock fails. The live
     // probe (scripts/csp-injection-probe.*) proves it's actually effective in

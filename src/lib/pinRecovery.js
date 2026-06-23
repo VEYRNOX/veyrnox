@@ -21,15 +21,12 @@
 //                                            (discardIncompleteWallet) and rethrow — never
 //                                            leave a primary vault with missing chaff slots.
 //   3. setAuthModel('pin')                 — select the PIN entry surface
-//   4. getOrCreateDeviceSalt()             — seeds the device salt for structural
-//                                            parity with fresh onboarding. NOTE (v2
-//                                            model change 2026-06-22): the Option-A
-//                                            deterministic-decoy fallback was REMOVED
-//                                            (deniabilityUnlock.js) — a non-enrolled
-//                                            PIN now ERRORS ("Incorrect PIN"), it does
-//                                            NOT open an empty decoy. This salt is now
-//                                            VESTIGIAL for the decoy purpose; retained
-//                                            for footprint parity, pending a TDD cleanup.
+//
+//   (v2 model change 2026-06-22: the Option-A deterministic-decoy fallback was REMOVED
+//   from deniabilityUnlock.js — a non-enrolled PIN now ERRORS ("Incorrect PIN"), it
+//   does NOT open an empty decoy. A vestigial getOrCreateDeviceSalt() step USED to run
+//   here for footprint parity; with the fallback gone nothing reads that salt, so the
+//   step — and the whole decoyFallback.js module — has been removed as dead code.)
 //
 // FAIL CLOSED (success-only ordering). Everything after the import runs ONLY once
 // importWallet resolves. If the import throws (e.g. an invalid BIP-39 phrase), the
@@ -61,14 +58,13 @@
  *   importWallet: (mnemonic: string, password: string) => Promise<unknown>,
  *   provisionDeniabilityChaff: () => Promise<void>,
  *   setAuthModel: (model: 'pin'|'password') => void,
- *   getOrCreateDeviceSalt: () => Uint8Array,
  *   discardIncompleteWallet: () => Promise<void>,
  * }} deps
  * @param {{ seed: string, realPin: string }} params
  * @returns {Promise<void>}
  */
 export async function provisionPinRecovery(deps, params) {
-  const { importWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet } = deps;
+  const { importWallet, provisionDeniabilityChaff, setAuthModel, discardIncompleteWallet } = deps;
   const { seed, realPin } = params;
 
   // 1. Import the recovered seed under the new real PIN. A throw here (invalid
@@ -88,11 +84,9 @@ export async function provisionPinRecovery(deps, params) {
   }
 
   // 3. Select the PIN cohort — the whole point of §4. Never 'password'.
+  //    (v2: a vestigial getOrCreateDeviceSalt() step used to follow for structural
+  //    parity with fresh onboarding. The Option-A deterministic-decoy fallback that
+  //    salt fed was removed; nothing reads the salt anymore, so the step — and the
+  //    decoyFallback.js module — has been removed as dead code.)
   setAuthModel('pin');
-
-  // 4. Seed the device salt for structural parity with fresh onboarding. (v2: the
-  //    Option-A deterministic-decoy fallback was removed; a non-enrolled PIN now
-  //    errors rather than opening an empty decoy. This salt is vestigial for the
-  //    decoy purpose — kept for footprint parity, pending a TDD cleanup.)
-  getOrCreateDeviceSalt();
 }
