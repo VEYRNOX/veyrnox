@@ -563,9 +563,11 @@ export default function WalletEntry() {
         // state — we surface the wipe-failure honestly rather than hiding it.
         try {
           await panicWipe({ confirmed: true });
-          // The vault is gone. Clear the now-meaningless counter and let the provider's
-          // post-wipe state (wasWiped / no vault) re-render this gate to first-run.
+          // The vault is gone. Clear the counter and mark vaultExists false so the
+          // loud WipedNotice screen renders in-session (wasWiped is already true via
+          // the provider; the gate condition is wasWiped && vaultExists === false).
           clearPinAttempts();
+          setVaultExists(false);
         } catch (we) {
           setError(we?.message || "This device reached the wipe limit, but the wipe could not be completed.");
         }
