@@ -84,8 +84,8 @@ didn't display the derived address — fixed so the address shows (commit fcfe86
 - **Internal audit complete 2026-06-17 — 0 critical / high / medium findings.**
   `ALLOW_MAINNET=true` since owner sign-off 2026-06-17. Mainnet EVM network
   entries are enabled in `networks.js`; mainnet wiring in `assets.js` is a
-  deliberate separate step. An independent audit is RECOMMENDED for the strongest
-  assurance but was not required under the owner's gate policy.
+  deliberate separate step. The independent ECC audit is now COMPLETE (2026-06-23,
+  findings resolved in PR #340) — §24 satisfied; no longer a recommended to-do.
 - Audited libs only; RNG guard in CI.
 - This core is REUSED unchanged by Phase B (tokens), Phase C (more EVM chains),
   and the mobile phases — which is why later phases add little/no new crypto.

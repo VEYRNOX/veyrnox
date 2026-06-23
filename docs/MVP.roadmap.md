@@ -63,7 +63,8 @@ truth table: docs/Feature-Status.md.
   M2c/M2d still pending), S2 (approvals/revoke, poison/spam, calldata decode,
   per-chain validation, transaction simulation, anomaly/fraud detection — PR #54,
   security dashboard — PR #53), S3 deniability (duress, stealth, panic wipe,
-  constant-KDF timing) — BUILT, PROVISIONAL pending audit. SAST M-1/M-2/M-3
+  constant-KDF timing) — BUILT; independent ECC audit COMPLETE 2026-06-23
+  (findings resolved in PR #340), no longer pending audit. SAST M-1/M-2/M-3
   fixes merged.
 - UX: transaction history, gas/fee control, receive flow, Help menu.
 - Mobile M1 — Capacitor shell (Android scaffolded; iOS added on Mac); additive.

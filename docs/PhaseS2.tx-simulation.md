@@ -1,7 +1,8 @@
 # Phase S2 — Transaction Simulation (pre-sign preview)
 
 > Status: ✅ built, wired into Send→verify. Testnet/devnet only; mainnet gated.
-> PROVISIONAL pending the independent audit, like the rest of the S2 stack.
+> Independent ECC audit COMPLETE 2026-06-23 (§24 satisfied; findings resolved in
+> PR #340, merged 8f1dd95) — no longer pending audit, like the rest of the S2 stack.
 
 ## What it is
 

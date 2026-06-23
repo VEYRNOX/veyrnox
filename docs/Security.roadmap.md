@@ -17,7 +17,9 @@
 >
 > STATUS (verified vs code on `main`, 2026-06-03): S1 ✅ largely built, S2 ✅ core
 > built, S3 deniability stack ✅ built (PROVISIONAL, testnet/demo), S4 🟡 first
-> item built (audit log). ALL security features remain PROVISIONAL pending the independent audit.
+> item built (audit log). The independent ECC audit is COMPLETE (2026-06-23, PR #340) —
+> so the remaining residual gaps are NOT audit, they are native plugin / hardware-KEK /
+> real-device verification / backend-escrow work (see per-phase notes).
 > Markers: ✅ built · 🟡 partial · 📋 specced · 💡 idea · ❌ removed. At-a-glance
 > truth: **docs/Feature-Status.md** (authoritative when docs disagree).
 
