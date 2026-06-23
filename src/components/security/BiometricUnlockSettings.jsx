@@ -117,11 +117,9 @@ export default function BiometricUnlockSettings() {
             backup) can decrypt your wallet without running the Argon2id memory-hard
             derivation. Disable this to keep full Argon2id offline-attack resistance.
           </p>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-caution">Provisional.</span>{' '}
-            The biometric check runs in app code, not as an OS-enforced Keychain
-            ACL; OS-bound binding is pending M2c/M2d native work.
-          </p>
+          {/* Provisional (audit status — not shown to users): biometric check runs in
+              app code, not as an OS-enforced Keychain ACL; OS-bound binding is
+              pending M2c/M2d native plugin work. */}
         </div>
       </div>
 
