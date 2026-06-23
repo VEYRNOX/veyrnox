@@ -1,5 +1,15 @@
 // wallet-core/decoyFallback.js
 //
+// ⚠️ SUPERSEDED — REFERENCE ONLY, NOT ON THE LIVE UNLOCK PATH. ⚠️
+// The v2 PIN duress model (commit b4871b1) REMOVED this Option-A "no 8-digit PIN may
+// produce an error" design. On the shipped path a wrong PIN now returns an explicit
+// "Incorrect PIN" error (see deniabilityUnlock.js — "the removed no-oracle property"),
+// `resolveDeniabilityUnlock` no longer invokes a 4th deterministic-decoy slot, and
+// `deriveDeterministicDecoyMnemonic` below has NO live caller (referenced only by tests).
+// The text that follows documents the ORIGINAL Option-A design and is retained for
+// historical / audit context only — do NOT read it as current behaviour.
+//
+// ── ORIGINAL Option-A design (historical) ──────────────────────────────────────────
 // OPTION A (kek-architecture-spec.md §7) — DETERMINISTIC DECOY-FROM-ANY-PIN.
 // PROVISIONAL. ⚠️ FLAGGED FOR INDEPENDENT AUDIT VALIDATION. ⚠️
 //
