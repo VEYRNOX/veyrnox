@@ -261,7 +261,7 @@ export default function DuressPin() {
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet), pending independent audit.</b> Your real PIN opens
+          <b>Provisional (testnet), independent audit complete (2026-06-23).</b> Your real PIN opens
           the hidden real wallet; your duress PIN opens the decoy; any other PIN shows
           an explicit "Incorrect PIN" error (the no-oracle property was dropped by
           design). 10 wrong PINs trigger an irreversible local wipe, so the error can't

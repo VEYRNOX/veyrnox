@@ -58,6 +58,8 @@ export function WalletConnectProvider({ children }) {
           rejectRequest(topic, id).catch(() => {});
           const reason = method === 'eth_sign'
             ? 'eth_sign rejected: this method signs arbitrary bytes and is disabled for your safety.'
+            : method === 'wallet_switchEthereumChain'
+              ? 'wallet_switchEthereumChain is not supported — chain switching is not yet implemented.'
             : `"${method}" is not permitted by Veyrnox.`;
           toast.error(reason);
         } else {
@@ -88,11 +90,20 @@ export function WalletConnectProvider({ children }) {
 
   const handleApproveSession = useCallback(async (proposalId) => {
     if (!evmAddress) throw new Error('No wallet address — unlock first');
-    const chainIds = [11155111]; // Sepolia testnet; mainnet chains available post-gate
+    const proposal = pendingProposals.find((p) => p.id === proposalId);
+    if (!proposal) throw new Error('Proposal not found');
+    // Extract requested chains (CAIP-2, e.g. "eip155:1") from required + optional
+    // namespaces and parse to integer chain IDs. session.js:approveSession filters
+    // these against SUPPORTED_CHAIN_IDS, so unsupported chains drop out there.
+    const ns = proposal.params?.requiredNamespaces?.eip155?.chains ?? [];
+    const optNs = proposal.params?.optionalNamespaces?.eip155?.chains ?? [];
+    const chainIds = [...new Set(
+      [...ns, ...optNs].map((c) => parseInt(c.replace(/^eip155:/, ''), 10)),
+    )];
     await approveSession(proposalId, evmAddress, chainIds);
     setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
     refreshSessions();
-  }, [evmAddress, refreshSessions]);
+  }, [evmAddress, pendingProposals, refreshSessions]);
 
   const handleRejectSession = useCallback(async (proposalId) => {
     await rejectSession(proposalId);
