@@ -111,17 +111,16 @@ export default function BiometricUnlockSettings() {
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-caution">Security trade-off.</span>{' '}
-            Enabling one-tap unlock stores your <strong>vault password</strong> in
-            the device Keychain / Keystore. It is protected by the device passcode
-            and biometrics, but an offline attacker who extracts the Keychain item
-            (e.g. via an encrypted backup) can decrypt your wallet without running
-            the Argon2id memory-hard key derivation. Disable this feature to keep
-            full Argon2id offline-attack resistance.
+            One-tap unlock stores your <strong>vault password</strong> in the device
+            Keychain / Keystore. The device passcode and biometrics protect it, but an
+            offline attacker who extracts the Keychain item (e.g. from an encrypted
+            backup) can decrypt your wallet without running the Argon2id memory-hard
+            derivation. Disable this to keep full Argon2id offline-attack resistance.
           </p>
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-caution">Provisional.</span>{' '}
             The biometric check runs in app code, not as an OS-enforced Keychain
-            ACL — OS-bound biometric binding is pending M2c/M2d native plugin work.
+            ACL; OS-bound binding is pending M2c/M2d native work.
           </p>
         </div>
       </div>
