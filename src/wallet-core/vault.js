@@ -66,6 +66,47 @@ const LEGACY_KDF_PARAMS = Object.freeze({
   hashLength: 32,
 });
 
+// Upper bounds on KDF params accepted from a stored/IMPORTED blob. A blob records
+// its own Argon2id params (M3 migration), and on the backup-import path those params
+// are ATTACKER-CONTROLLED (vaultBackup.decodeBinary reads them via getUint32 with no
+// ceiling). deriveKey() feeds memorySize straight into argon2id, which allocates that
+// many KiB BEFORE the AES-GCM tag is checked — so an unbounded value is a
+// pre-authentication resource-exhaustion (OOM) vector. Ceilings are generous (well
+// above CURRENT params) yet cap the worst-case allocation/work to a survivable bound.
+const MAX_KDF_PARAMS = Object.freeze({
+  parallelism: 4,
+  iterations: 12,
+  memorySize: 1048576, // KiB == 1 GiB (CURRENT is 192 MiB)
+  hashLength: 64,
+});
+
+// Floors guard against a malformed/too-weak record (and non-integers). The real
+// protection is the memorySize/iterations CEILING; the floors are defense-in-depth.
+const MIN_KDF_PARAMS = Object.freeze({
+  parallelism: 1,
+  iterations: 1,
+  memorySize: 1024, // KiB == 1 MiB
+  hashLength: 16,   // AES-128 minimum (CURRENT is 32)
+});
+
+/**
+ * Reject KDF params (read from a stored or imported blob) that are not positive
+ * integers within [MIN_KDF_PARAMS, MAX_KDF_PARAMS]. Throws a GENERIC error — a blob
+ * with out-of-range params is malformed/tampered/malicious, not a credential signal,
+ * so this leaks no oracle. Called by paramsFromVault before any argon2id derivation.
+ * @param {{parallelism:number,iterations:number,memorySize:number,hashLength:number}} p
+ * @returns {p}
+ */
+export function assertSaneKdfParams(p) {
+  for (const name of ['parallelism', 'iterations', 'memorySize', 'hashLength']) {
+    const v = p[name];
+    if (!Number.isInteger(v) || v < MIN_KDF_PARAMS[name] || v > MAX_KDF_PARAMS[name]) {
+      throw new Error('Vault KDF parameters out of range — refusing to derive key');
+    }
+  }
+  return p;
+}
+
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -75,6 +116,11 @@ function randomBytes(n) {
   return b;
 }
 
+/**
+ * @param {string} password
+ * @param {Uint8Array} salt
+ * @param {{parallelism:number,iterations:number,memorySize:number,hashLength:number}} [params]
+ */
 async function deriveKey(password, salt, params = KDF_PARAMS) {
   const { parallelism, iterations, memorySize, hashLength } = params;
   const raw = await argon2id({
@@ -106,12 +152,14 @@ async function deriveKey(password, salt, params = KDF_PARAMS) {
 // decrypt with the current params — decrypt with the blob's recorded params.
 function paramsFromVault(vault) {
   const k = (vault && vault.kdf) || {};
-  return {
+  // Clamp-or-reject before these reach deriveKey/argon2id — the import path makes
+  // these attacker-controlled (pre-auth DoS guard; security audit 2026-06-23 B-1/B-2).
+  return assertSaneKdfParams({
     parallelism: k.parallelism ?? LEGACY_KDF_PARAMS.parallelism,
     iterations: k.iterations ?? LEGACY_KDF_PARAMS.iterations,
     memorySize: k.memorySize ?? LEGACY_KDF_PARAMS.memorySize,
     hashLength: k.hashLength ?? LEGACY_KDF_PARAMS.hashLength,
-  };
+  });
 }
 
 /**
