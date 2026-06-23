@@ -105,7 +105,6 @@ const features = [
   { category: "Payments & Utilities", icon: CreditCard, items: [
     { name: "Address Book", desc: "Saved, labelled addresses with per-chain validation for safer sends", status: "available" },
     { name: "Message Signing", desc: "Sign plain messages with wallet key (ethers.js); proof-of-ownership / off-chain auth. No dApp-initiated signing.", status: "available" },
-    { name: "Payment Links", desc: "Generate/manage request-to-pay records with copy-to-clipboard. No payment processing.", status: "available" },
     { name: "Recurring Payments", desc: "Recurring payment schedule reminders; user signs each time. No autonomous auto-debit.", status: "available" },
   ]},
   { category: "Referrals", icon: Users, items: [
@@ -122,7 +121,6 @@ const features = [
     { name: "Web3 Browser", desc: "In-app dApp browser; post-audit only", status: "roadmap" },
   ]},
   { category: "Platform", icon: Smartphone, items: [
-    { name: "Desktop Web App", desc: "Runs in the browser today", status: "available" },
     { name: "Demo Mode", desc: "Browse without a backend or funded wallet", status: "available" },
     { name: "iOS App", desc: "Native iOS shell (submission gated on Apple org account)", status: "roadmap" },
     { name: "Android App", desc: "Native Android shell (scaffolded)", status: "roadmap" },
