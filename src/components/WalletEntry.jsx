@@ -1032,7 +1032,7 @@ export default function WalletEntry() {
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Choose an 8-digit PIN</p>
-              <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN won't stop someone with your device from trying PINs offline — so guard your device.</p>
+              <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN. Always guard your device.</p>
               <PinPad value={realPin} onChange={(v) => { setRealPin(v); if (error) setError(""); }} onComplete={(p) => {
                 const s = checkPinStrength(p);
                 if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
