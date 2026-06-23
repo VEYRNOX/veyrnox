@@ -22,7 +22,7 @@ import { MemoryRouter } from 'react-router-dom';
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, useNavigate: () => mockNavigate };
+  return { .../** @type {object} */(actual), useNavigate: () => mockNavigate };
 });
 
 import VoiceCommands from '@/pages/VoiceCommands';
@@ -111,7 +111,7 @@ describe('VoiceCommands — start / stop lifecycle', () => {
     window.SpeechRecognition = stub.Ctor;
     mockNavigate.mockReset();
     global.SpeechSynthesisUtterance = vi.fn();
-    global.speechSynthesis = { speak: vi.fn() };
+    global.speechSynthesis = /** @type {SpeechSynthesis} */ (/** @type {unknown} */ ({ speak: vi.fn() }));
   });
   afterEach(() => {
     cleanup();
@@ -154,7 +154,7 @@ describe('VoiceCommands — command matching', () => {
     window.SpeechRecognition = stub.Ctor;
     mockNavigate.mockReset();
     global.SpeechSynthesisUtterance = vi.fn().mockImplementation(function(text) { this.text = text; });
-    global.speechSynthesis = { speak: vi.fn() };
+    global.speechSynthesis = /** @type {SpeechSynthesis} */ (/** @type {unknown} */ ({ speak: vi.fn() }));
   });
   afterEach(() => {
     cleanup();
@@ -213,7 +213,7 @@ describe('VoiceCommands — error handling', () => {
     stub = makeSRStub();
     window.SpeechRecognition = stub.Ctor;
     global.SpeechSynthesisUtterance = vi.fn();
-    global.speechSynthesis = { speak: vi.fn() };
+    global.speechSynthesis = /** @type {SpeechSynthesis} */ (/** @type {unknown} */ ({ speak: vi.fn() }));
   });
   afterEach(() => {
     cleanup();
