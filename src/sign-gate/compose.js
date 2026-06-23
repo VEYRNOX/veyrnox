@@ -1,6 +1,6 @@
 // src/sign-gate/compose.js
 //
-// RASP §7 — chokepoint compose. UNAUDITED-PROVISIONAL. PRE-STAGE (call-site held).
+// RASP §7 — chokepoint compose. UNAUDITED-PROVISIONAL. Call-site LIVE (SendCrypto.jsx).
 //
 // The PURE compose logic of the one signer gate. The send path's two pre-sign
 // planes — RASP (environment risk → degrade().tier) and Risk Scoring (tx risk →
@@ -9,7 +9,7 @@
 // planes stay disjoint; the gate reads two finished results and lets neither feed
 // the other). It is why this file lives in its own module, not inside either plane.
 //
-// PRE-STAGE SCOPE. This is the premise-independent half of §7: it consumes only
+// SCOPE. This is the premise-independent half of §7: it consumes only
 // the two LANDED output vocabularies (rasp TIER + risk LEVEL), so it is buildable
 // and tested NOW. The LIVE call-site wiring in the send flow (and the call-site
 // extension of the deniability test) is HELD until the tx-risk gate lands on the

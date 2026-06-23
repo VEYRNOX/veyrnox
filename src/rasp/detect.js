@@ -26,9 +26,10 @@
 // exactly like degrade(). The condition is identical whichever set is active, so
 // detection adds no wallet-set oracle.
 //
-// NOT WIRED. This module is not imported by the signing path — wiring detect →
-// degrade → gate into the pre-sign chokepoint is roadmap Phase 3 (gated). Landing
-// this is the detector composition + honest capability boundary, not enforcement.
+// WIRED. Imported by SendCrypto.jsx via detect(browserProbeSource) → degrade() →
+// presignGate() — HOOKED environment produces signerReachable:false and blocks
+// the send (not just a warning). Browser-probe leg active; OS-level attestation
+// (native Capacitor plugin) remains audit-gated pending real-device verification.
 //
 // SCOPE. INTEGRITY_FAIL is an ATTESTATION outcome (the parked 2b leg); the
 // on-device probes here only produce TAMPERED / HOOKED / EMULATOR / ROOTED / CLEAN,

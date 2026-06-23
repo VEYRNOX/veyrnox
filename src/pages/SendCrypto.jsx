@@ -42,6 +42,8 @@ import { evaluateSendGate } from "@/lib/sendGate";
 import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
+import { resolveSend2faMethod, SEND_2FA } from "@/lib/send2faMethod";
+import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from "@/lib/passkey";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
@@ -85,6 +87,18 @@ export default function SendCrypto() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
+
+  // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
+  // see lib/send2faMethod.js). Audit H-1: keying the send gate off actionPasswordConfigured
+  // alone silently skipped a PASSKEY-only second factor. is2faPasskeyEnabled/isPasskeyRegistered
+  // are synchronous localStorage reads, so this is a plain computed value. 'none' means opt-in
+  // was not configured — the send proceeds via the baseline windowed PIN step-up, unchanged.
+  const send2faMethod = resolveSend2faMethod({
+    demo: DEMO,
+    passkey2faEnabled: is2faPasskeyEnabled(),
+    passkeyRegistered: isPasskeyRegistered(),
+    actionPasswordConfigured,
+  });
 
   // Cold-load / deep-link guard: if the vault is confirmed absent (new install),
   // redirect home rather than hanging on an empty form.
@@ -633,10 +647,11 @@ export default function SendCrypto() {
         isUnlocked,
         demo: DEMO,                                    // demo has no vault → re-auth exempt
         reauthRequired: DEMO ? false : isSendReauthRequired(),
-        // Second factor (audit H1): when an Action Password is configured it must be
-        // verified THIS send — enforced here so a recently-authed session can't reach
-        // the signer on PIN recency alone. evaluateSendGate exempts demo internally.
-        twoFactorRequired: !DEMO && actionPasswordConfigured,
+        // Second factor (audit H1): when a second factor is configured — Action Password
+        // OR a registered passkey (H-1 fix) — it must be verified THIS send, enforced here
+        // so a recently-authed session can't reach the signer on PIN recency alone.
+        // evaluateSendGate exempts demo internally; send2faMethod is already 'none' in demo.
+        twoFactorRequired: send2faMethod !== SEND_2FA.NONE,
         twoFactorVerified,
         limit: limitGate,
         limitAck,
@@ -1213,21 +1228,30 @@ export default function SendCrypto() {
                 The #137 risk gate (blockedByRisk) ALSO hard-disables the send action here, so
                 a high-risk verdict blocks even an authorised user — both gates must pass. */}
             {(() => {
-              // ACTION PASSWORD (2FA): once configured, EVERY send requires the PIN +
-              // the Action Password (no recent-auth window — you opted into every-time).
-              // Additive + OPT-IN: with no Action Password set this branch is skipped and
+              // SECOND FACTOR (2FA): once configured, EVERY send requires the PIN + the
+              // resolved second factor — a registered passkey (H-1) or the Action Password
+              // (no recent-auth window — you opted into every-time). Additive + OPT-IN: with
+              // no second factor set (send2faMethod === 'none') this branch is skipped and
               // the existing windowed PIN step-up below is byte-unchanged. Risk/approval
-              // gates still come first (the gate is hidden until those pass). The two
-              // 192 MiB Argon2id checks run SEQUENTIALLY (one-at-a-time — Defect-A safe).
-              if (!DEMO && actionPasswordConfigured && !blockedByApproval && !blockedByRisk && !blockedByBtcRisk) {
+              // gates still come first (the gate is hidden until those pass). The Argon2id
+              // checks run SEQUENTIALLY (one-at-a-time — Defect-A safe).
+              if (send2faMethod !== SEND_2FA.NONE && !blockedByApproval && !blockedByRisk && !blockedByBtcRisk) {
                 return (
                   <TwoFactorGate
-                    title="Authorise this send with your PIN + Action Password"
+                    mode={send2faMethod}
+                    title={send2faMethod === SEND_2FA.PASSKEY ? "Authorise this send with your PIN + passkey" : "Authorise this send with your PIN + Action Password"}
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
                     onSuccess={() => { twoFactorVerifiedRef.current = true; sendTx.mutate(); }}
                     verify={async ({ pin, password }) => {
                       const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
+                      if (send2faMethod === SEND_2FA.PASSKEY) {
+                        // Factor 2: a WebAuthn assertion bound to this device's passkey.
+                        // FAIL CLOSED (I4) — any cancel/timeout/error counts as NOT verified.
+                        let passkeyOk = false;
+                        try { passkeyOk = (await verifyPasskeyAssertion()) === true; } catch { passkeyOk = false; }
+                        return evaluateTwoFactor({ pinOk, passwordOk: passkeyOk, actionPasswordConfigured: true });
+                      }
                       const passwordOk = await verifyActionPassword(password);
                       return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
                     }}

@@ -1,6 +1,6 @@
 // src/sign-gate/presign.js
 //
-// RASP §7 live wiring — UNAUDITED-PROVISIONAL. Roadmap Phase 3.
+// RASP §7 live wiring — UNAUDITED-PROVISIONAL. Call-site live in SendCrypto.jsx.
 //
 // The PURE pre-sign decision the send chokepoint enforces. It composes the two
 // disjoint planes (RASP env tier + tx-risk level) via composeGate, then applies
