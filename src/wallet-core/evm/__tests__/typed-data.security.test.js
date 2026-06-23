@@ -239,10 +239,10 @@ describe('describeTypedData — domain separation in the user-facing summary', (
     const r = describeTypedData(parseTypedData(makePermit()));
     const value = r.fields.find((f) => f.name === 'value');
     const nonce = r.fields.find((f) => f.name === 'nonce');
-    // Big uint256 must survive as its exact decimal string (no precision loss).
-    expect(value.value).toBe(
-      '115792089237316195423570985008687907853269984665640564039457584007913129639935',
-    );
+    // Big uint256 must survive as its exact decimal string (no precision loss) —
+    // and a type-max allowance is flagged UNLIMITED so it can't hide in a long number.
+    expect(value.value).toContain('UNLIMITED');
+    expect(value.value).toContain('115792089237316195423570985008687907853269984665640564039457584007913129639935');
     // Numeric 0 must stringify to "0", not be dropped as falsy.
     expect(nonce.value).toBe('0');
     expect(typeof nonce.value).toBe('string');
@@ -344,9 +344,9 @@ describe('describeTypedData — nested struct/array fields render readably (no "
 
   it('still stringifies flat primitives unchanged (no regression)', () => {
     const r = describeTypedData(parseTypedData(makePermit()));
-    expect(r.fields.find((f) => f.name === 'value').value).toBe(
-      '115792089237316195423570985008687907853269984665640564039457584007913129639935',
-    );
+    // A type-max allowance is now flagged UNLIMITED, with the exact raw decimal preserved.
+    expect(r.fields.find((f) => f.name === 'value').value).toContain('UNLIMITED');
+    expect(r.fields.find((f) => f.name === 'value').value).toContain('115792089237316195423570985008687907853269984665640564039457584007913129639935');
     expect(r.fields.find((f) => f.name === 'nonce').value).toBe('0');
     expect(typeof r.fields.find((f) => f.name === 'nonce').value).toBe('string');
   });
