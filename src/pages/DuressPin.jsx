@@ -149,7 +149,7 @@ export default function DuressPin() {
   // ----- setup handlers -----
   const handleSave = async () => {
     setError(""); setSavedPhrase(""); setSavedAddr("");
-    if (pin.length < 4) { setError("Duress PIN must be at least 4 characters"); return; }
+    if (pin.length < 8) { setError("Duress PIN must be at least 8 characters"); return; }
     if (pin !== confirmPin) { setError("PINs do not match"); return; }
     // CRITICAL: configuring the decoy/duress system is gated behind the second
     // factor when one is set (no-op otherwise). Runs after local validation so a
