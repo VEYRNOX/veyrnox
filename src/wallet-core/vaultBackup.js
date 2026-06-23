@@ -206,8 +206,8 @@ export async function createBackupEnvelope(containerJson, password, pin) {
     throw new Error('No container to back up');
   if (typeof password !== 'string' || password.length === 0)
     throw new Error('Password required');
-  if (typeof pin !== 'string' || !/^\d{6,12}$/.test(pin))
-    throw new Error('PIN must be 6–12 digits');
+  if (typeof pin !== 'string' || !/^\d{8,12}$/.test(pin))
+    throw new Error('PIN must be 8–12 digits');
 
   // Encrypt the SAME plaintext under both credentials (full KDF strength for each).
   // Two sequential Argon2id calls — ~1–4 s each on a phone. Acceptable for an

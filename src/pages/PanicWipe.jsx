@@ -128,7 +128,7 @@ export default function PanicWipe() {
   // ----- setup handlers -----
   const handleSave = async () => {
     setError(""); setSaved(false);
-    if (pin.length < 6) { setError("Panic/wipe PIN must be at least 6 characters"); return; }
+    if (pin.length < 8) { setError("Panic/wipe PIN must be at least 8 characters"); return; }
     if (pin !== confirmPin) { setError("PINs do not match"); return; }
     setSaving(true);
     try {
