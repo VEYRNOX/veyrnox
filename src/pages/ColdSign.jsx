@@ -92,16 +92,16 @@ export default function ColdSign() {
             chainId: net.chainId,
             nonce,
             to: coldSend.toAddress,
-            valueWei,
-            maxFeePerGasWei: BigInt(fee.maxFeePerGasWei),
-            maxPriorityFeePerGasWei: BigInt(fee.maxPriorityFeePerGasWei),
+            value: valueWei,
+            maxFeePerGas: BigInt(fee.maxFeePerGasWei),
+            maxPriorityFeePerGas: BigInt(fee.maxPriorityFeePerGasWei),
             gasLimit: BigInt(fee.gasLimit),
           });
           const qr = encodeColdPayload({
             kind: COLD_KIND.EVM_UNSIGNED,
             networkKey: coldSend.networkKey,
             chainId: net.chainId,
-            unsignedSerialized: unsigned.unsignedSerialized,
+            unsignedSerialized: unsigned.unsignedHex,
           });
           if (!cancelled) { setUnsignedQr(qr); setPhase("show"); }
         } else if (coldSend.family === "btc") {
@@ -165,8 +165,10 @@ export default function ColdSign() {
         if (payload.kind !== COLD_KIND.EVM_SIGNED || !payload.signedSerialized) {
           throw new Error("Expected a signed EVM transaction QR.");
         }
-        const res = await broadcastSigned(coldSend.networkKey, payload.signedSerialized);
-        setResult({ hash: res.hash, explorerUrl: res.explorerUrl });
+        const txHash = await broadcastSigned(coldSend.networkKey, payload.signedSerialized);
+        const evmNet = getNetwork(coldSend.networkKey);
+        const explorerUrl = evmNet?.explorerUrl ? `${evmNet.explorerUrl}/tx/${txHash}` : null;
+        setResult({ hash: txHash, explorerUrl });
       } else if (coldSend.family === "btc") {
         // Accept either a finalized raw-tx hex, or a signed PSBT we finalize here.
         let rawHex = null;

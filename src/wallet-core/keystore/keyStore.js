@@ -31,15 +31,16 @@
  *   Encrypt `secret` under `password` and persist CIPHERTEXT ONLY. The live
  *   secret is never written to storage. (Web: encryptVault + saveVault.)
  *
- * @property {(password: string, opts?: { requireBiometric?: boolean }) => Promise<string>} unlock
+ * @property {(password: string, opts?: { requireBiometric?: boolean, getHardwareFactor?: () => Promise<Uint8Array> }) => Promise<string>} unlock
  *   Return the live secret for transient in-memory use by the caller. Web:
  *   loadVault + decryptVault (throws on wrong password or missing vault).
  *   Native (M2b): hardware unwrap + decrypt; presents the OS biometric prompt
  *   ONLY when opts.requireBiometric is set (the caller passes
  *   isBiometricUnlockEnabled()), so a wallet without biometric unlock is
- *   PIN/password-only. `opts` is ignored on web.
+ *   PIN/password-only. When a vault is KEK-enrolled, opts.getHardwareFactor
+ *   is required and must supply the 32-byte PRF output (fails closed without it).
  *
- * @property {(currentPassword: string, newPassword: string) => Promise<void>} changePassword
+ * @property {(currentPassword: string, newPassword: string, opts?: { getHardwareFactor?: () => Promise<Uint8Array> }) => Promise<void>} changePassword
  *   Re-encrypt the EXISTING vault under a new password WITHOUT changing the
  *   secret it protects (non-custodial "change my vault password" — see
  *   pages/WalletAccessReset.jsx). Decrypt with `currentPassword` (throws the
@@ -64,6 +65,11 @@
  *   NATIVE-ONLY (optional): register a callback fired when the OS backgrounds
  *   the app, so the live secret can be cleared on a reliable native event. Web
  *   has no equivalent, so callers invoke it optionally (`?.`) and web is a no-op.
+ *
+ * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [enrollKek]
+ *   OPTIONAL: enroll the Hardware KEK on a bare vault. After enrollment, unlock
+ *   and changePassword require the hardware factor in addition to the password.
+ *   Fails closed (I4): missing hardware factor → explicit error, never silent fallback.
  */
 
 export {};
