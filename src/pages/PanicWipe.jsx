@@ -209,8 +209,7 @@ export default function PanicWipe() {
         <span>
           <b>Provisional (testnet), pending independent audit · destructive ·
           safety-critical.</b> A panic wipe permanently destroys the local copy of
-          your keys — there is no undo, and it's flagged for specific
-          security-audit scrutiny.
+          your keys — no undo. Flagged for specific security-audit scrutiny.
         </span>
       </div>
 
@@ -222,18 +221,16 @@ export default function PanicWipe() {
             <p className="text-sm font-semibold">How it fires</p>
             <ul className="text-xs text-muted-foreground mt-1 space-y-1.5 list-disc pl-4">
               <li>
-                <b>Panic/wipe PIN at unlock</b> — set a dedicated PIN below. Entered at
-                the <i>normal unlock screen</i>, it destroys your keys instantly
-                with <b>no confirmation dialog</b>. Under genuine duress a
-                "are you sure?" prompt is a liability — a coercer could cancel it,
-                and it would signal what's happening. So the panic/wipe PIN fires
-                silently and immediately.
+                <b>Panic/wipe PIN at unlock</b> — set one below. Entered at the{" "}
+                <i>normal unlock screen</i>, it destroys your keys instantly with{" "}
+                <b>no confirmation</b>: under duress an "are you sure?" prompt is a
+                liability a coercer could cancel, so it fires silently.
               </li>
               <li>
                 <b>In-app guarded wipe</b> — for calmly retiring or selling a
                 device. Type <code>{CONFIRM_WORD}</code> and tick the
-                acknowledgement; this path <i>does</i> confirm, because there's no
-                coercion to design around.
+                acknowledgement; with no coercion to design around, this path{" "}
+                <i>does</i> confirm.
               </li>
             </ul>
           </div>
@@ -253,9 +250,9 @@ export default function PanicWipe() {
         </ul>
         <p className="text-xs font-medium text-foreground mt-2">Does NOT destroy:</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li><b>A seed backup you hold elsewhere</b> (paper, password manager, another device) — the wallet is still recoverable from it. Wipe protects the device, not the seed.</li>
+          <li><b>A seed backup you hold elsewhere</b> (paper, password manager, another device) — still recovers the wallet. Wipe protects the device, not the seed.</li>
           <li><b>On-chain state</b> — {explorerNote}</li>
-          <li><b>Flash-media forensics</b> — we delete logical records, not sanitise the medium; the mitigation is that only encrypted ciphertext was ever stored.</li>
+          <li><b>Flash-media forensics</b> — we delete logical records, not sanitise the medium; only encrypted ciphertext was ever stored.</li>
         </ul>
       </div>
 
@@ -300,11 +297,10 @@ export default function PanicWipe() {
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            ⚠️ The panic/wipe PIN must be <b>different</b> from your real password, any
-            duress PIN, and any hidden-wallet secret — otherwise that path opens at
-            unlock and the wipe never fires. We can't check this for you (we never
-            hold those in plaintext). Entering this PIN at unlock will
-            <b> destroy your keys</b>.
+            ⚠️ Make this PIN <b>different</b> from your real password, any duress PIN,
+            and any hidden-wallet secret — otherwise that path opens at unlock and the
+            wipe never fires. We can't check this for you (we never hold them in
+            plaintext). Entering this PIN at unlock will <b>destroy your keys</b>.
           </p>
           {error && <p className="text-xs text-destructive">{error}</p>}
           {saved && <p className="text-xs text-success">✓ Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}

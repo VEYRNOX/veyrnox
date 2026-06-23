@@ -106,8 +106,8 @@ export default function TwoFactorSettings() {
       <div className="p-4 rounded-xl border border-border bg-card space-y-3">
         <p className="text-sm text-muted-foreground">
           A second factor required <strong>together with your PIN</strong> before the
-          most sensitive actions. Your PIN alone — even if shoulder-surfed — no longer
-          authorises them. It does <strong>not</strong> change how you unlock the wallet.
+          most sensitive actions, so a shoulder-surfed PIN alone no longer authorises
+          them. It does <strong>not</strong> change how you unlock the wallet.
         </p>
         <div className="space-y-2">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Actions it protects</p>
@@ -141,7 +141,7 @@ export default function TwoFactorSettings() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">PIN + Action Password {actionPasswordConfigured && <span className="text-primary">· ON</span>}</p>
-            <p className="text-[11px] text-muted-foreground">A second password you know. Verified at full vault strength, stored only inside your encrypted vault — per wallet-set. Two things you know on one device: strong, but <strong>not</strong> hardware 2FA.</p>
+            <p className="text-[11px] text-muted-foreground">A second password you know, verified at full vault strength and stored only inside your encrypted vault, per wallet-set. Two things you know on one device: strong, but <strong>not</strong> hardware 2FA.</p>
           </div>
         </div>
 
@@ -185,7 +185,7 @@ export default function TwoFactorSettings() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">PIN + Passkey / FIDO2 {(passkey2fa && passkeyRegistered) && <span className="text-primary">· ON</span>}</p>
-            <p className="text-[11px] text-muted-foreground">Your PIN plus a tap of a passkey or security key — a genuine <strong>possession</strong> factor. Fails closed: if the passkey can't be used, the action is refused. Device-global (not per wallet-set); losing the passkey never costs funds — your PIN + password still unlock.</p>
+            <p className="text-[11px] text-muted-foreground">Your PIN plus a tap of a passkey or security key — a genuine <strong>possession</strong> factor. Fails closed: if the passkey can't be used, the action is refused. Device-global, not per wallet-set; losing it never costs funds, as your PIN + password still unlock.</p>
           </div>
           <Switch
             checked={passkey2fa && passkeyRegistered}

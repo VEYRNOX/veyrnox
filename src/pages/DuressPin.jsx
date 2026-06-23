@@ -261,15 +261,13 @@ export default function DuressPin() {
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet), pending independent audit.</b> Deniability model
-          v2: your real PIN opens the real wallet (hidden, no UI tell); your duress PIN
-          opens the decoy; any other wrong PIN produces an explicit "Incorrect PIN"
-          error — a wrong guess is now distinguishable (no-oracle property removed by
-          design). 10 consecutive wrong PINs trigger an irreversible local wipe, making
-          the wrong-PIN oracle non-fatal before brute-force succeeds. Not
-          hidden-volume storage: a forensic inspection of device storage can reveal a
-          second vault exists. Does not resist offline seizure without a hardware key
-          (planned fast-follow, not yet built).
+          <b>Provisional (testnet), pending independent audit.</b> Your real PIN opens
+          the hidden real wallet; your duress PIN opens the decoy; any other PIN shows
+          an explicit "Incorrect PIN" error (the no-oracle property was dropped by
+          design). 10 wrong PINs trigger an irreversible local wipe, so the error can't
+          be brute-forced. Not hidden-volume storage — forensics can reveal a second
+          vault exists, and without a hardware key (planned, not yet built) it doesn't
+          resist offline seizure.
         </span>
       </div>
 
@@ -281,15 +279,12 @@ export default function DuressPin() {
             <p className="text-sm font-semibold">How it works</p>
             <p className="text-xs text-muted-foreground mt-1">
               Set a <b>duress PIN</b> different from your real one. Your{" "}
-              <b>real PIN</b> opens your real wallet (hidden — there is no UI
-              tell it exists). Your <b>duress PIN</b> opens a separate{" "}
-              <b>decoy wallet</b> with its own address; your real wallet stays
-              encrypted and is never referenced in the decoy session. Any{" "}
-              <b>other wrong PIN</b> returns an explicit "Incorrect PIN" error —
-              a wrong guess is now distinguishable from the duress path (the old
-              no-oracle property was removed by design). 10 consecutive wrong PINs
-              trigger an irreversible local wipe. If you opt in,{" "}
-              <b>Face ID opens the decoy</b> — never the real wallet.
+              <b>real PIN</b> opens your real wallet — hidden, with no UI tell.
+              Your <b>duress PIN</b> opens a separate <b>decoy wallet</b> with
+              its own address; your real vault stays encrypted and is never
+              touched in the decoy session. Any other PIN shows an "Incorrect
+              PIN" error; 10 wrong ones trigger an irreversible local wipe. If
+              you opt in, <b>Face ID opens the decoy</b> — never the real wallet.
             </p>
           </div>
         </div>
@@ -302,13 +297,12 @@ export default function DuressPin() {
           <p className="text-sm font-semibold">Make the decoy plausible: fund it</p>
         </div>
         <p className="text-xs text-muted-foreground">
-          An <b>empty</b> decoy is suspicious. Send a small amount you're willing to
-          sacrifice to the decoy address below. Its balance is read{" "}
-          <b>live from the chain</b> — the same number a coercer sees on a block
-          explorer — so it can't be faked.
+          An <b>empty</b> decoy looks suspicious. Send a small, sacrificial amount to
+          the decoy address below. Its balance is read <b>live from the chain</b> — the
+          same number a coercer sees on a block explorer — so it can't be faked.
         </p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Honest limit: a freshly funded decoy has <b>no transaction history</b>, so it looks less "lived-in" than a wallet used over time.</li>
+          <li>A freshly funded decoy has <b>no transaction history</b>, so it looks less lived-in than a real wallet.</li>
           <li>A <b>sophisticated coercer</b> who knows this feature exists, or inspects device storage, may still suspect a hidden wallet — this is runtime deniability, not steganographic hiding.</li>
         </ul>
       </div>
@@ -375,11 +369,10 @@ export default function DuressPin() {
                     Use {bioLabel} to open the decoy
                   </span>
                   <span className="block text-muted-foreground mt-1">
-                    When on, {bioLabel} at the unlock screen opens the <b>decoy</b>{" "}
-                    wallet — never your real one. Your <b>real wallet</b> stays
-                    reachable only by typing your <b>real PIN</b>. This is by design:
-                    if you're forced to unlock with {bioLabel}, only the decoy is
-                    exposed.
+                    When on, {bioLabel} at unlock opens the <b>decoy</b> — never your
+                    real wallet, which stays reachable only by typing your{" "}
+                    <b>real PIN</b>. So if you're forced to unlock with {bioLabel},
+                    only the decoy is exposed.
                   </span>
                 </span>
               </label>
