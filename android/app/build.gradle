@@ -19,6 +19,9 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            // Explicitly non-debuggable in release (defense-in-depth alongside the
+            // MainActivity setWebContentsDebuggingEnabled(false) guard).
+            debuggable false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

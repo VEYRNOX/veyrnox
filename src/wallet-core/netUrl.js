@@ -47,3 +47,19 @@ export function assertSafeRpcUrl(url) {
     `RPC URL must use https (http allowed only for loopback); got ${parsed.protocol}`,
   );
 }
+
+/**
+ * Non-throwing variant for guarding a RENDERED external link (e.g. a user-supplied
+ * block-explorer URL). Returns the validated URL, or null if the scheme is unsafe
+ * (`javascript:`/`data:`/`file:`/remote `http:`). Use this to decide whether to
+ * render an `<a href>`, so an unsafe scheme can never reach the DOM and execute.
+ * @param {unknown} url
+ * @returns {string|null}
+ */
+export function safeExternalUrl(url) {
+  try {
+    return assertSafeRpcUrl(url);
+  } catch {
+    return null;
+  }
+}
