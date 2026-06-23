@@ -59,6 +59,20 @@
       "build": "build:release",
       "date": "2026-06-20",
       "note": "Corrects the wrong txid (0x3f2fe19a…, a USDC tx) recorded in PR #280 — see _corrected."
+    },
+    "dApp Connector — eth_sendTransaction (D3, Sepolia)": {
+      "chain": "sepolia",
+      "txid": "0x0afc6b300b4f91dfb2bad62f438200284acdb4d37608431befe45ef364ea7e93",
+      "explorer": "https://sepolia.etherscan.io/tx/0x0afc6b300b4f91dfb2bad62f438200284acdb4d37608431befe45ef364ea7e93",
+      "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+      "to": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+      "amount": "0.0001 ETH",
+      "block": 11123831,
+      "caip2_chain": "eip155:11155111",
+      "path": "D3 — handleSendTransaction code path (CAIP-2 parse → getNetworkByChainId → VULN-19 chain-ID guard → 1M gas cap → ethers.Wallet.sendTransaction → broadcast)",
+      "script": "scripts/verify-dapp-connector-send.mjs",
+      "verified_onchain": "confirmed block 11123831, status SUCCESS, 2026-06-23",
+      "date": "2026-06-23"
     }
   }
 }

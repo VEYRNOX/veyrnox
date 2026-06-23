@@ -29,6 +29,10 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   const { topic, id, params, type, blocked, typedDataMeta } = request;
   const { request: { method, params: reqParams } } = params;
 
+  const nativeSymbol = (() => {
+    try { return getNetworkByChainId(parseWcChainId(params.chainId))?.symbol ?? 'ETH'; } catch { return 'ETH'; }
+  })();
+
   const needsReauth = isSendReauthRequired();
 
   // eth_sendTransaction risk scoring. Fetch recipientCode via the SAME simulation
@@ -228,8 +232,8 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                 <span>Value</span>
                 <span className={styles.mono}>
                   {reqParams[0]?.value
-                    ? ethers.formatEther(BigInt(reqParams[0].value)) + ' ETH'
-                    : '0 ETH'}
+                    ? ethers.formatEther(BigInt(reqParams[0].value)) + ' ' + nativeSymbol
+                    : '0 ' + nativeSymbol}
                 </span>
               </div>
               {reqParams[0]?.data && reqParams[0].data !== '0x' && (

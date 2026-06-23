@@ -39,6 +39,9 @@ describe('isBlocked', () => {
   it('blocks wallet_addEthereumChain (arbitrary RPC injection)', () => {
     expect(isBlocked('wallet_addEthereumChain')).toBe(true);
   });
+  it('blocks wallet_switchEthereumChain (not yet implemented)', () => {
+    expect(isBlocked('wallet_switchEthereumChain')).toBe(true);
+  });
   it('does not block personal_sign', () => {
     expect(isBlocked('personal_sign')).toBe(false);
   });

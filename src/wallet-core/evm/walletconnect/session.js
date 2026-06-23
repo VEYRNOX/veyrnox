@@ -85,7 +85,6 @@ export async function approveSession(proposalId, evmAddress, chainIds) {
           'eth_signTypedData',
           'eth_signTypedData_v3',
           'eth_signTypedData_v4',
-          'wallet_switchEthereumChain',
         ],
         events: ['chainChanged', 'accountsChanged'],
         accounts,

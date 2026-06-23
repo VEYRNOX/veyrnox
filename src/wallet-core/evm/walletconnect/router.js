@@ -23,7 +23,7 @@ const METHOD_MAP = {
 };
 
 // Methods rejected immediately — never prompt the user
-export const BLOCKED_METHODS = new Set(['eth_sign', 'wallet_addEthereumChain']);
+export const BLOCKED_METHODS = new Set(['eth_sign', 'wallet_addEthereumChain', 'wallet_switchEthereumChain']);
 
 export function classifyRequest(method) {
   return METHOD_MAP[method] ?? REQUEST_TYPES.UNKNOWN;

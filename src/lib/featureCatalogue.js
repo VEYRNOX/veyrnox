@@ -476,15 +476,21 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'dApp Connector',
-        status: 'built',
+        status: 'verified',
+        verifiedBy: 'dApp Connector — eth_sendTransaction (D3, Sepolia)',
         summary: 'Connect to dApps via the dApp Connector (WalletConnect v2 transport)',
         explanation:
           'WalletConnect v2 transport + request handling (D1+D2+D3). ' +
           'Pair with dApps, approve/reject session proposals, and sign personal_sign / eth_signTypedData_v4 ' +
           'requests with Permit/Permit2 hard warnings. eth_sendTransaction is wired end-to-end — it signs ' +
           'locally and broadcasts a real transaction, with a chain-ID-mismatch guard and a 1M-gas cap (I5); ' +
-          'eth_sign and wallet_addEthereumChain are blocked. Sessions are currently approved on Sepolia ' +
-          'testnet only, and no dApp-initiated send has an on-chain txid yet, so this stays built (not verified). ' +
+          'the D3 send path is verified on Sepolia (tx 0x0afc6b30…, block 11123831, 2026-06-23, ' +
+          'docs/verified-evidence.json). ' +
+          'Blocked methods: eth_sign (raw bytes), wallet_addEthereumChain (RPC injection), ' +
+          'wallet_switchEthereumChain (not yet implemented — blocked and not advertised). ' +
+          'Session approval passes the dApp\'s requested chains through to the namespace (all 12 EVM chains ' +
+          'in SUPPORTED_CHAIN_IDS — testnets + mainnet); unsupported chains are filtered silently. ' +
+          'Active sessions display their approved chain set. ' +
           'Requires VITE_WALLETCONNECT_PROJECT_ID in .env.local; absent it, the page honest-disables.',
       },
       {

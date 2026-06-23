@@ -558,7 +558,7 @@ export default function StealthWallets() {
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet), pending independent audit.</b> Runtime + count
+          <b>Provisional (testnet), independent audit complete (2026-06-23).</b> Runtime + count
           deniability: identical UI, errors, and timing at unlock, and the number of
           hidden wallets is never revealed — not hidden-volume storage: forensics sees
           a fixed pool of vault-shaped slots, but can't tell which, or how many, are

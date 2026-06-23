@@ -2,6 +2,23 @@ import styles from './SessionProposalModal.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { useState } from 'react';
 import { checkDappDomain } from '@/risk/knownBadDapps.js';
+import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+import { SUPPORTED_CHAIN_IDS } from '@/wallet-core/evm/walletconnect/router.js';
+
+// Render a CAIP-2 chain string ("eip155:11155111") as a friendly network name,
+// falling back to the raw string for unsupported / unknown chains.
+function chainLabel(caip2) {
+  const chainId = parseInt(caip2.replace(/^eip155:/, ''), 10);
+  try {
+    return getNetworkByChainId(chainId).name;
+  } catch {
+    return caip2;
+  }
+}
+
+function chainId(caip2) {
+  return parseInt(caip2.replace(/^eip155:/, ''), 10);
+}
 
 export function SessionProposalModal({ proposal, onClose }) {
   const { approveSession, rejectSession, evmAddress } = useWalletConnect();
@@ -77,8 +94,13 @@ export function SessionProposalModal({ proposal, onClose }) {
           <>
             <p className={styles.label}>Requested chains</p>
             <ul className={styles.list}>
-              {chains.map((c) => <li key={c}>{c}</li>)}
+              {chains.map((c) => <li key={c}>{chainLabel(c)}</li>)}
             </ul>
+            {chains.some((c) => !SUPPORTED_CHAIN_IDS.has(chainId(c))) && (
+              <p className={styles.warning}>
+                Unsupported chains will be excluded from the approved session.
+              </p>
+            )}
           </>
         )}
 
