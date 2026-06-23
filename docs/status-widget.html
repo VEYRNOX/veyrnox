@@ -87,7 +87,7 @@
     <div class="kpi teal"><div class="n">10</div><div class="l">Assets LIVE</div></div>
     <div class="kpi teal"><div class="n">2</div><div class="l">Mainnet-verified (USDC · USDT)</div></div>
     <div class="kpi teal"><div class="n">56</div><div class="l">Features BUILT</div></div>
-    <div class="kpi amber"><div class="n">9</div><div class="l">Unaudited / provisional</div></div>
+    <div class="kpi teal"><div class="n">✓</div><div class="l">Both audits complete</div></div>
     <div class="kpi slate"><div class="n">13</div><div class="l">Roadmap</div></div>
     <div class="kpi teal"><div class="n">3 / 3</div><div class="l">Mainnet gates open</div></div>
   </div>
@@ -143,8 +143,8 @@
       <div class="cat"><h3>Access &amp; Authentication</h3>
         <div class="feat"><span class="nm">Passkey Unlock</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Biometric Unlock</span><span class="b built">BUILT</span></div>
-        <div class="feat"><span class="nm">PIN Unlock</span><span class="b prov">PROVISIONAL</span></div>
-        <div class="feat"><span class="nm">Two-Factor at Critical Actions</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">PIN Unlock</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Two-Factor at Critical Actions</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Session Manager &amp; Auto-Lock</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Account Access &amp; Recovery</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Hardware Wallet</span><span class="b built">BUILT</span></div>
@@ -158,22 +158,22 @@
         <div class="feat"><span class="nm">Anomaly / Fraud Detection</span><span class="b built">BUILT</span></div>
       </div>
       <div class="cat"><h3>Recovery &amp; Duress</h3>
-        <div class="feat"><span class="nm">Duress PIN</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Duress PIN</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Stealth / Hidden Wallets</span><span class="b built">BUILT</span></div>
-        <div class="feat"><span class="nm">Panic Wipe</span><span class="b prov">PROVISIONAL</span></div>
-        <div class="feat"><span class="nm">Encrypted Cloud Backup</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Panic Wipe</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Encrypted Cloud Backup</span><span class="b built">BUILT</span></div>
       </div>
       <div class="cat"><h3>Monitoring &amp; Risk</h3>
-        <div class="feat"><span class="nm">RASP (browser-level)</span><span class="b prov">PROVISIONAL</span></div>
-        <div class="feat"><span class="nm">Audit Log</span><span class="b prov">PROVISIONAL</span></div>
-        <div class="feat"><span class="nm">Risk Limits / Risk Scoring</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">RASP (browser-level)</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Audit Log</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Risk Limits / Risk Scoring</span><span class="b built">BUILT</span></div>
       </div>
       <div class="cat"><h3>Portfolio &amp; Analytics</h3>
         <div class="feat"><span class="nm">Portfolio Dashboard</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Net-Worth Tracker</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">P&amp;L Tracking</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">On-Chain Analytics</span><span class="b built">BUILT</span></div>
-        <div class="feat"><span class="nm">Fee Analytics</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Fee Analytics</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Tax Report</span><span class="b built">BUILT</span></div>
       </div>
       <div class="cat"><h3>Prices &amp; Alerts · NFTs</h3>
@@ -230,7 +230,7 @@
     <div class="legend">
       <span class="b live">LIVE — on-chain verified</span>
       <span class="b built">BUILT — code-complete</span>
-      <span class="b prov">PROVISIONAL — tagged UNAUDITED-PROVISIONAL in source</span>
+      <span class="b prov">DISPLAY-ONLY / partial</span>
       <span class="b road">ROADMAP — not built</span>
       <span class="b gate">AUDIT/LEGAL-GATE — blocked</span>
     </div>
@@ -239,7 +239,7 @@
   <p class="foot">Source of truth: src/wallet-core/assets.js · src/lib/featureCatalogue.js · evm|btc|sol/networks.js · docs/Audit.scope.md · docs/audit-triage/internal-audit-2026-06-17.md · docs/audit-triage/ecc-independent-audit-2026-06-23.md · docs/verified-evidence.json</p>
   <p class="foot">Mainnet sends re-verified on-chain 2026-06-22 via eth_getTransactionByHash/Receipt (USDC 0xc373…a0a2 · USDT 0xf06a0b…5b08, both chainId 1, SUCCESS). USDT txid corrects the wrong hash recorded in PR #280 (0x3f2f…, a USDC tx) — correction in PR #320.</p>
   <p class="foot">Feature counts re-derived from featureCatalogue.js 2026-06-23: 69 entries → 56 effective BUILT (incl. 4 tagged "verified" that resolve to built — their evidence-keys don't match catalogue names, a known mismatch) · 13 ROADMAP.</p>
-  <p class="foot"><b>The 9 "provisional" features</b> (PIN Unlock, Two-Factor at Critical Actions, Duress PIN, Panic Wipe, Encrypted Cloud Backup, RASP, Audit Log, Risk Limits / Risk Scoring, Fee Analytics) are still tagged <code>UNAUDITED-PROVISIONAL</code> in featureCatalogue.js (verified against origin/main 2026-06-23). NOTE: the independent ECC audit has since run (2026-06-23, findings resolved PR #340), so the original "pending independent audit" rationale no longer holds — these tags now lag the audit and/or reflect remaining native/real-device gaps (e.g., RASP OS-level probes, backend-escrow cloud backup), and deniability features (duress/stealth/panic) are testnet/demo. The catalogue tags should be reconciled in code (spawned task). Per I4, nothing here is shown as more verified than source supports.</p>
+  <p class="foot"><b>Audit reconciliation (PR #343, merged):</b> the 9 features formerly tagged <code>UNAUDITED-PROVISIONAL</code> (PIN Unlock, Two-Factor, Duress PIN, Panic Wipe, Encrypted Cloud Backup, RASP, Audit Log, Risk Limits / Risk Scoring, Fee Analytics) were each reviewed by the independent ECC audit and the tag was DROPPED — featureCatalogue.js now carries 0 UNAUDITED-PROVISIONAL tags (verified against origin/main). They are BUILT (not "verified" — strict verification still needs a real on-chain txid; "audited" ≠ "verified"). RESIDUAL gaps remain for some, but they are NOT audit gaps — they are native/hardware/backend and shown in the Audit-gated column: RASP OS-level probes (native, real-device), hardware-KEK for PIN/Duress/Panic (offline-seizure hardening), backend-escrow cloud backup (not built), and Two-Factor decoy/hidden parity + passkey-send on-device txid. Deniability features (duress/stealth/panic) remain testnet/demo. Per I4, nothing is shown as more verified than source supports.</p>
 </div>
 </body>
 </html>

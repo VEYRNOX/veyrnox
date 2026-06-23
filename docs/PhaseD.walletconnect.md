@@ -4,10 +4,12 @@
 > highest-risk phase in the roadmap and the foundation that DEX swaps and DeFi
 > deposits will sign through.
 >
-> **Gate status as of 2026-06-20:** The internal audit is complete (2026-06-17,
-> 0 crit/high/med). WalletConnect remains deferred pending the independent audit,
-> which is the remaining gate for this phase. Do NOT implement Phase D before the
-> independent audit clears, and treat its own audit as a separate, larger scope.
+> **Gate status as of 2026-06-23:** The internal audit is complete (2026-06-17,
+> 0 crit/high/med) and the independent ECC audit is now COMPLETE (2026-06-23,
+> findings resolved in PR #340) — so §24 is satisfied. WalletConnect nonetheless
+> remains deferred: this phase carries its OWN separate, larger-scope audit before
+> dApp connectivity is wired, and that has not been done. Do NOT implement Phase D
+> until that Phase-D-specific audit clears.
 >
 > Status gate: nothing here goes to mainnet. Build on testnet, behind the same
 > ALLOW_MAINNET gate, and add an additional WALLETCONNECT_ENABLED flag so dApp

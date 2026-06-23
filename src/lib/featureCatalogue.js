@@ -424,12 +424,6 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Split an expense across people, each paying from their own wallet. Self-initiated; specced, not yet built.',
       },
       {
-        name: 'Payment Links',
-        status: 'built',
-        summary: 'Shareable request-to-pay links / QR',
-        explanation: 'Built (/payment-links). Generate, store, and share request-to-pay records (amount, asset, note) with copy-to-clipboard. Self-initiated request only — no payment processing or custodial collection. Records stored locally via base44 entities.',
-      },
-      {
         name: 'Recurring Payments',
         status: 'built',
         summary: 'Self-initiated scheduled reminders',
@@ -481,9 +475,9 @@ export const FEATURE_CATEGORIES = [
     category: 'dApp Connectivity (Post-Audit)',
     features: [
       {
-        name: 'WalletConnect / dApp Connector',
+        name: 'dApp Connector',
         status: 'built',
-        summary: 'Connect to dApps via WalletConnect v2',
+        summary: 'Connect to dApps via the dApp Connector (WalletConnect v2 transport)',
         explanation:
           'WalletConnect v2 transport + request handling (D1+D2+D3). ' +
           'Pair with dApps, approve/reject session proposals, and sign personal_sign / eth_signTypedData_v4 ' +
@@ -504,12 +498,6 @@ export const FEATURE_CATEGORIES = [
   {
     category: 'Platform',
     features: [
-      {
-        name: 'Desktop Web App',
-        status: 'built',
-        summary: 'Runs in the browser',
-        explanation: 'The wallet runs as a desktop web app today.',
-      },
       {
         name: 'Demo Mode',
         status: 'built',
