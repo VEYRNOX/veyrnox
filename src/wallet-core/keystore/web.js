@@ -6,8 +6,9 @@
 // storage format are unchanged; the only behavioural addition (SAST M3) is a
 // transparent KDF-parameter MIGRATION on unlock (see unlock()).
 
-import { encryptVault, decryptVault, vaultNeedsRekey } from '../vault.js';
+import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
+import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR } from './kek.js';
 
 /** @type {import('./keyStore.js').KeyStore} */
 export const webKeyStore = {
@@ -38,18 +39,56 @@ export const webKeyStore = {
   // must NEVER block the unlock — the user still gets their (old-params) secret,
   // and the rekey simply retries next time. Old vaults are NEVER locked out: the
   // decrypt above already used the blob's own params (see decryptVault).
-  async unlock(password) {
+  async unlock(password, opts) {
     const blob = await loadVault();
     if (!blob) throw new Error('No wallet found on this device');
-    const secret = await decryptVault(blob, password); // throws on wrong password or tamper
+
+    if (blob.kekWrap) {
+      // KEK-enrolled vault: BOTH hardware factor H and PIN-derived C are required (I4).
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      const H = await getHF();
+      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const C = await deriveKekC(password, saltBytes);
+      const kek = await combineKek(H, C);
+      const dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+      // Seed CT was encrypted with the DEK (not the PIN), so PIN rotation doesn't change it.
+      return decryptVaultWithDek(blob, dek);
+    }
+
+    // Non-enrolled: existing bare-vault path (unchanged).
+    const secret = await decryptVault(blob, password);
     if (vaultNeedsRekey(blob)) {
       try {
-        await saveVault(await encryptVault(secret, password)); // re-encrypt at current params
+        await saveVault(await encryptVault(secret, password));
       } catch {
-        /* best-effort: keep the old blob; unlock still succeeds, rekey retries later */
+        /* best-effort */
       }
     }
     return secret;
+  },
+
+  // Enroll the Hardware KEK on an existing vault. After enrollment, unlock()
+  // requires BOTH the hardware factor H and the correct PIN.
+  // Fail-closed (I4): missing/wrong hardware factor → explicit throw, never a
+  // silent fallback to bare-vault unlock.
+  async enrollKek(password, opts) {
+    const getHF = opts && opts.getHardwareFactor;
+    if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    const blob = await loadVault();
+    if (!blob) throw new Error('No wallet found on this device');
+    const secret = await decryptVault(blob, password); // verify password and recover seed
+
+    const H = await getHF();
+    const saltBytes = crypto.getRandomValues(new Uint8Array(32));
+    const kekSalt = btoa(String.fromCharCode(...saltBytes));
+    const C = await deriveKekC(password, saltBytes);
+    const kek = await combineKek(H, C);
+    const dek = randomDek();
+    const kekWrap = await wrapDek(kek, dek);
+    // Re-encrypt seed under the DEK so PIN rotation doesn't require changing CT (§3).
+    const { iv, ct } = await encryptVaultWithDek(secret, dek);
+    await saveVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
   },
 
   // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
@@ -61,12 +100,32 @@ export const webKeyStore = {
   // KDF params and persisted. Because encryptVault always records the current
   // params, a legacy-params vault is also upgraded here (same effect as the
   // unlock-time M3 migration). The secret is never written anywhere in plaintext.
-  async changePassword(currentPassword, newPassword) {
+  async changePassword(currentPassword, newPassword, opts) {
     const blob = await loadVault();
     if (!blob) throw new Error('No wallet found on this device');
-    const secret = await decryptVault(blob, currentPassword); // throws on wrong password or tamper
-    // Re-wrap under the new password. Only persist after a successful re-encrypt,
-    // so a failure here leaves the old (still-valid) blob untouched.
+
+    if (blob.kekWrap) {
+      // KEK-enrolled: rotate the PIN by re-wrapping the DEK under a new KEK.
+      // The seed ciphertext (blob.ct) stays UNCHANGED — that is the §3 property.
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      // Verify current PIN first.
+      const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const H = await getHF();
+      const oldC = await deriveKekC(currentPassword, oldSaltBytes);
+      const oldKek = await combineKek(H, oldC);
+      const dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
+      // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
+      const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+      const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+      const newC = await deriveKekC(newPassword, newSaltBytes);
+      const newKek = await combineKek(H, newC);
+      const newKekWrap = await wrapDek(newKek, dek);
+      await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
+      return;
+    }
+
+    const secret = await decryptVault(blob, currentPassword);
     await saveVault(await encryptVault(secret, newPassword));
   },
 

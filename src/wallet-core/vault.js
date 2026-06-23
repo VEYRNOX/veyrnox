@@ -227,6 +227,65 @@ export async function decryptVault(vault, password) {
 }
 
 // Best-effort zeroization. Not a guarantee in JS, but reduces window of exposure.
+/**
+ * Encrypt a secret directly under a raw DEK (for KEK-enrolled vaults).
+ * The DEK replaces the Argon2id-derived key so PIN rotation doesn't require
+ * re-encrypting the seed — only the DEK wrap changes (spec §3).
+ * @param {string} secret
+ * @param {Uint8Array} dek 32-byte DEK
+ * @returns {Promise<{v:number, kdf:string, iv:string, ct:string}>}
+ */
+export async function encryptVaultWithDek(secret, dek) {
+  const iv = randomBytes(12);
+  const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['encrypt']);
+  const ptBytes = enc.encode(secret);
+  const ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, ptBytes);
+  zero(ptBytes);
+  return { v: 1, kdf: 'kek-dek', iv: b64(iv), ct: b64(new Uint8Array(ctBuf)) };
+}
+
+/**
+ * Decrypt a secret from a DEK-encrypted vault blob.
+ * @param {{iv:string, ct:string}} vault
+ * @param {Uint8Array} dek 32-byte DEK
+ * @returns {Promise<string>}
+ */
+export async function decryptVaultWithDek(vault, dek) {
+  const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['decrypt']);
+  try {
+    const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(vault.iv) }, key, unb64(vault.ct));
+    const out = dec.decode(ptBuf);
+    zero(new Uint8Array(ptBuf));
+    return out;
+  } catch {
+    throw new Error('Decryption failed: wrong DEK or corrupted vault');
+  }
+}
+
+/**
+ * Derive the raw 32-byte Argon2id output (the KEK C factor) for a given password
+ * and salt, using the current KDF_PARAMS. Used exclusively by the KEK layer
+ * (src/wallet-core/keystore/kek.js / web.js enrollKek) to compute the set factor C
+ * without duplicating the argon2id import or params. NOT for direct vault encryption.
+ * @param {string} password
+ * @param {Uint8Array} salt  32-byte random salt (kekSalt stored alongside the blob)
+ * @returns {Promise<Uint8Array>} 32-byte C factor
+ */
+export async function deriveKekC(password, salt) {
+  const { argon2id: _argon2id } = await import('hash-wasm');
+  const raw = await _argon2id({
+    password: enc.encode(password.normalize('NFKC')),
+    salt,
+    parallelism: KDF_PARAMS.parallelism,
+    iterations: KDF_PARAMS.iterations,
+    memorySize: KDF_PARAMS.memorySize,
+    hashLength: KDF_PARAMS.hashLength,
+    outputType: 'binary',
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  return new Uint8Array(raw);
+}
+
 function zero(u8) { if (u8 && u8.fill) u8.fill(0); }
 
 // base64 helpers (no Buffer dependency; browser-safe)

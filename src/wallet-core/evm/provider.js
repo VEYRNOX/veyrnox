@@ -44,6 +44,18 @@ export function getProvider(networkKey) {
   return provider;
 }
 
+/**
+ * Broadcast a signed raw transaction (from cold signing or hardware wallet).
+ * @param {string} networkKey
+ * @param {string} signedRawTx  hex-encoded signed tx
+ * @returns {Promise<string>} transaction hash
+ */
+export async function broadcastSigned(networkKey, signedRawTx) {
+  const provider = getProvider(networkKey);
+  const txResponse = await provider.broadcastTransaction(signedRawTx);
+  return txResponse.hash;
+}
+
 /** Read native balance (in ETH, as a string) from the chain — source of truth. */
 export async function getBalanceEth(networkKey, address) {
   const provider = getProvider(networkKey);
