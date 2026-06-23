@@ -18,7 +18,7 @@
 | **Target repo** | VEYRNOX-CLONE-ECC at commit `3a63822` |
 | **Confirmed in veyrnox-secure** | `6a7970c` (main) |
 | **Method** | 10 parallel `veyrnox-honest-reviewer` agents; 2 independent runs of 5 agents each; adversarial refute-first posture; no anchoring between runs |
-| **Scope** | All 8 `UNAUDITED-PROVISIONAL` features (PIN Unlock, Two-Factor at Critical Actions, Duress PIN, Panic Wipe, Encrypted Cloud Backup, RASP, Audit Log, Fee Analytics) + Notifications v1 cluster + `featureClassification`/`resolveStatus` honesty |
+| **Scope** | All 8 `UNAUDITED-PROVISIONAL` features (PIN Unlock, Two-Factor at Critical Actions, Duress PIN, Panic Wipe, Encrypted Personal Backup, RASP, Audit Log, Fee Analytics) + Notifications v1 cluster + `featureClassification`/`resolveStatus` honesty |
 | **Outcome** | 1 CRITICAL, 2 HIGH, 6 MEDIUM, 5 LOW findings. All resolved in PR #340. |
 | **§24 gate status** | **CLOSED — this IS the independent third-party audit.** |
 | **PR** | #340 (merged `8f1dd95`, 2026-06-23) |

@@ -402,7 +402,7 @@ export default function CloudBackup() {
             <Shield className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-bold leading-tight">Encrypted Backup</h1>
+            <h1 className="text-lg font-bold leading-tight">Encrypted Personal Backup</h1>
             <p className="text-xs text-muted-foreground">Self-custodial · on-device or personal cloud</p>
           </div>
         </div>
