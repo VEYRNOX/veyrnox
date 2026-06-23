@@ -271,8 +271,8 @@ export default function Settings() {
         <Link to="/cloud-backup" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <CloudUpload className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <p className="text-sm font-medium">Encrypted Backup</p>
-            <p className="text-xs text-muted-foreground">Cloud backup</p>
+            <p className="text-sm font-medium">Encrypted Personal Backup</p>
+            <p className="text-xs text-muted-foreground">Personal backup</p>
           </div>
         </Link>
         <Link to="/wallet-seed-qr" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">

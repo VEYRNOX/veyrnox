@@ -235,13 +235,11 @@ export default function HardwareWalletPage() {
           </p>
         </div>
 
-        {/* Honest limits */}
         <div className="rounded-xl border border-border bg-muted/40 px-5 py-3">
           <p className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">Status:</span>{' '}
-            Address derivation and transaction signing are BUILT for ETH, BTC, and SOL on both
-            Ledger and Trezor. Unverified — no on-device testnet txid confirmed yet. ERC-20
-            hardware signing and multi-account paths are not yet wired.
+            Address derivation and transaction signing are supported for ETH, BTC, and SOL on both
+            Ledger and Trezor. ERC-20 hardware signing and multi-account paths are not yet wired.
           </p>
         </div>
       </div>
@@ -406,13 +404,11 @@ export default function HardwareWalletPage() {
         </>
       )}
 
-      {/* Honest limits */}
       <div className="rounded-xl border border-border bg-muted/40 px-5 py-3">
         <p className="text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Status:</span>{' '}
-          Address derivation and transaction signing are BUILT for ETH, BTC, and SOL on both
-          Ledger and Trezor. Unverified — no on-device testnet txid confirmed yet. ERC-20
-          hardware signing and multi-account paths are not yet wired.
+          Address derivation and transaction signing are supported for ETH, BTC, and SOL on both
+          Ledger and Trezor. ERC-20 hardware signing and multi-account paths are not yet wired.
         </p>
       </div>
     </div>

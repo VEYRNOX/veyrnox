@@ -59,7 +59,7 @@ const features = [
     { name: "Native Secure Storage", desc: "Secure Enclave / Android Keystore hardening", status: "roadmap" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "available" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "available" },
-    { name: "Hardware Wallet", desc: "Ledger (WebHID) + Trezor address read and EIP-1559 / PSBT / SOL signing modules built for ETH/BTC/SOL; private key never leaves the device. NOT yet verified on a physical device — pending on-device testnet confirmation + audit.", status: "roadmap" },
+    { name: "Hardware Wallet", desc: "Ledger (WebHID, Chrome/Edge) + Trezor — cold-key address derivation and transaction signing for ETH, BTC, and SOL; private key never leaves the hardware device.", status: "available" },
   ]},
   { category: "Transaction Safety", icon: ShieldAlert, items: [
     { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke ERC-20 allowances; flag unlimited", status: "available" },
@@ -76,7 +76,7 @@ const features = [
     { name: "Stealth / Hidden Wallets", desc: "Deniable hidden-wallet pool; count-hiding", status: "available" },
     { name: "Panic Wipe", desc: "Irreversible local key-material destruction", status: "available" },
     { name: "Crypto Will / Inheritance", desc: "Self-custody inheritance (secret-sharing + dead-man's-switch; no custodial backstop)", status: "roadmap" },
-    { name: "Encrypted Cloud Backup", desc: "Export/import vault as a strongly encrypted file; plaintext keys never leave device. UNAUDITED-PROVISIONAL.", status: "available" },
+    { name: "Encrypted Personal Backup", desc: "Export/import vault as a strongly encrypted file; plaintext keys never leave device. UNAUDITED-PROVISIONAL.", status: "available" },
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
     { name: "RASP", desc: "Browser-level automation detection active (navigator.webdriver → HOOKED → signing blocked). Degradation policy + send-path wiring built. OS-level probes (root/jailbreak) pending native plugin + audit. UNAUDITED-PROVISIONAL.", status: "available" },

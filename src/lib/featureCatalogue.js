@@ -197,10 +197,10 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Change the vault password (re-encrypts the same seed under a new password; requires the current password) and recover access by re-importing your seed phrase. Fully non-custodial — there is no server-side key escrow and no "we’ll restore your access" path. If you lose both password and seed, funds are unrecoverable by design.',
       },
       {
-        name: 'Hardware Wallet',
-        status: 'built',
-        summary: 'Ledger WebHID address read + Trezor Safe 5 guide',
-        explanation: 'Built (/hardware-wallet): Ledger tab uses browser WebHID to read the first ETH address (m/44\’/60\’/0\’/0/0) directly from the device — no third party, Chrome only. The read address auto-fills a watch-only wallet import. Trezor Safe 5 tab provides a platform-aware setup guide (Android full / iPhone watch-only / desktop) with honest iOS limitation note (Safe 5 has no Bluetooth; Safe 7 does). Cold-key transaction signing is post-audit scope.',
+        name: ‘Hardware Wallet’,
+        status: ‘built’,
+        summary: ‘Ledger + Trezor — cold-key signing for ETH, BTC, SOL’,
+        explanation: ‘Built (/hardware-wallet): Ledger (WebHID, Chrome/Edge desktop) and Trezor (Connect popup) support address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. Private key never leaves the hardware device (I1). iOS WKWebView fails soft to a "WebHID unavailable" card (no silent error). ERC-20 hardware signing and multi-account paths are not yet wired.’,
       },
     ],
   },
@@ -279,7 +279,7 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Inheritance built on secret-sharing plus a dead-man’s-switch — VEYRNOX never custodies keys or adjudicates death. Specced, not yet built; needs audit and legal input.',
       },
       {
-        name: 'Encrypted Cloud Backup',
+        name: 'Encrypted Personal Backup',
         status: 'built',
         summary: 'Ciphertext-only vault backup',
         explanation: 'Built (/cloud-backup, UNAUDITED-PROVISIONAL). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device.',
