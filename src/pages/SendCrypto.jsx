@@ -102,6 +102,7 @@ export default function SendCrypto() {
   const [note, setNote] = useState("");
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   const [txResult, setTxResult] = useState(null); // { hash, explorerUrl } from a real broadcast
   const [selectedFee, setSelectedFee] = useState(null); // user-chosen EIP-1559 fee (FeeSelector)
 
@@ -897,6 +898,16 @@ export default function SendCrypto() {
               <ScanLine className="h-4 w-4" />
             </Button>
           </div>
+          {ensResolving && (
+            <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin shrink-0" /> Resolving name…
+            </p>
+          )}
+          {!ensResolving && ensName && !ensResolved && !toAddress && (
+            <p className="text-xs text-destructive mt-1.5 flex items-center gap-1.5">
+              <AlertTriangle className="h-3 w-3 shrink-0" /> Name not found — check the spelling or paste the address directly.
+            </p>
+          )}
           {ensResolved && (
             toAddress === ensResolved.address ? (
               // Confirmed: the user accepted the resolved address as the recipient.
@@ -923,9 +934,10 @@ export default function SendCrypto() {
           )}
         </div>
 
-        {toAddress && !addressFormatValid && (
+        {(toAddress || showErrors) && !addressFormatValid && (
           <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
-            <AlertTriangle className="h-3 w-3" /> Invalid {selectedWallet?.currency} address format
+            <AlertTriangle className="h-3 w-3" />
+            {toAddress ? `Invalid ${selectedWallet?.currency} address format` : "Recipient address is required"}
           </p>
         )}
         {toAddress && addressFormatValid && !isAddressWhitelisted && (
@@ -1004,8 +1016,10 @@ export default function SendCrypto() {
               {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
             </p>
           )}
-          {amount && Number.isFinite(amountNum) && amountNum <= 0 && (
-            <p className="text-xs text-destructive mt-1">Amount must be greater than zero</p>
+          {(amount || showErrors) && Number.isFinite(amountNum) && amountNum <= 0 && (
+            <p className="text-xs text-destructive mt-1">
+              {amount ? "Amount must be greater than zero" : "Amount is required"}
+            </p>
           )}
           {balanceKnown && amount && Number.isFinite(amountNum) && amountNum > 0 && amountNum > effectiveBalance && (
             <p className="text-xs text-destructive mt-1">Insufficient balance</p>
@@ -1081,9 +1095,16 @@ export default function SendCrypto() {
 
         {step === "form" && (
           <Button
-            className="w-full"
-            disabled={!walletId || !assetSymbol || !toAddress || !amount || parseFloat(amount) <= 0 || (balanceKnown && parseFloat(amount) > effectiveBalance) || !addressFormatValid || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive) || (limitEval.blocked && !limitAck)}
-            onClick={() => setStep("verify")}
+            className={`w-full ${(!toAddress || !amount || parseFloat(amount) <= 0 || !addressFormatValid || (balanceKnown && parseFloat(amount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
+            disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
+            onClick={() => {
+              const invalid = !toAddress || !amount || parseFloat(amount) <= 0 || !addressFormatValid
+                || (balanceKnown && parseFloat(amount) > effectiveBalance)
+                || (limitEval.blocked && !limitAck);
+              if (invalid) { setShowErrors(true); return; }
+              setShowErrors(false);
+              setStep("verify");
+            }}
           >
             <ArrowUpRight className="h-4 w-4 mr-1.5" />
             Continue

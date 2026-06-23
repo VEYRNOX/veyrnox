@@ -14,7 +14,8 @@ export default function CommandPalette({ open, onClose }) {
   const results = query.trim()
     ? ALL_ROUTES.filter(r =>
         r.label.toLowerCase().includes(query.toLowerCase()) ||
-        r.group.toLowerCase().includes(query.toLowerCase())
+        r.group.toLowerCase().includes(query.toLowerCase()) ||
+        (r.keywords && r.keywords.toLowerCase().includes(query.toLowerCase()))
       )
     : ALL_ROUTES.slice(0, 8);
 
