@@ -207,6 +207,46 @@ const ALL_RESIDUE_KEYS = Object.freeze([
   ...METADATA_RESIDUE_KEYS,
 ]);
 
+// NEXT-OPEN WIPE MARKER (loud post-wipe acknowledgment; owner-approved 2026-06-22).
+// After any local wipe we persist this presence-only marker so the NEXT app open can
+// LOUDLY tell the user the device was wiped (and the in-session UI can too). This is a
+// DELIBERATE next-open deniability tell: the panic-PIN AT-UNLOCK moment stays SILENT
+// (it still shows the generic "Incorrect PIN" — no "wiped!" tell under coercion); only
+// the next open is loud, so a user whose keys were destroyed is never left silently
+// dropped onto the generic "Get Started" onboarding with no sign their funds-bearing
+// keys are gone. The value is the literal '1' (presence == wiped) — we do NOT use
+// Date.now()/new Date() (restricted in this module). CRITICAL: this key is written
+// AFTER the residue clear and is DELIBERATELY NOT in ALL_RESIDUE_KEYS, so the wipe's
+// own residue sweep cannot remove it and it survives a relaunch with no vault.
+const WIPE_MARKER_KEY = 'veyrnox-wiped';
+
+// Set the next-open wipe marker (presence-only '1'). Internal: called only at the end
+// of panicWipeLocal, AFTER the residue sweep, so it survives the wipe.
+function setWipeMarker() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(WIPE_MARKER_KEY, '1');
+  } catch { /* storage may be unavailable; not key material */ }
+}
+
+/** True iff the next-open wipe marker is set (a prior wipe completed). */
+export function readWipeMarker() {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem(WIPE_MARKER_KEY) != null;
+  } catch {
+    return false;
+  }
+}
+
+/** Clear the next-open wipe marker (the user acknowledged the wipe / moved on). */
+export function clearWipeMarker() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(WIPE_MARKER_KEY);
+  } catch { /* storage may be unavailable; not key material */ }
+}
+
 function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
@@ -475,5 +515,10 @@ export async function panicWipeLocal() {
   await deleteVaultDatabase();
   await deleteAppDataDatabase();
   clearLocalAddressResidue();
+  // Write the next-open wipe marker AFTER the residue sweep (clearLocalAddressResidue
+  // only touches ALL_RESIDUE_KEYS, which deliberately excludes WIPE_MARKER_KEY) so it
+  // survives the wipe and the next app open can LOUDLY acknowledge the destruction.
+  // See WIPE_MARKER_KEY: the panic-PIN at-moment stays silent; only next-open is loud.
+  setWipeMarker();
   return inspectKeyMaterial();
 }
