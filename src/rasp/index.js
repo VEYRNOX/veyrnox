@@ -12,8 +12,9 @@
 //       guard, proving the response is byte-identical real-vs-decoy.
 //     • detect.js — Phase 2a, the no-egress self-attested probe composition
 //       (signals → CONDITION, FAIL CLOSED to INTEGRITY_UNAVAILABLE when no native
-//       probe capability is present). Landed pre-audit-safe per the signed-off
-//       egress decision (Option A, docs/rasp-attestation-egress-decision.md): it
+//       probe capability is present). Landed pre-audit-safe per the proposed
+//       egress decision (Option A, docs/rasp-attestation-egress-decision.md,
+//       sign-off pending): it
 //       is a pure function of the environment only — no egress, no device I/O, no
 //       key, no wallet-set handle — and is NOT yet wired into signing.
 //   These are pure: no egress, no device, no key access. Safe to land now;

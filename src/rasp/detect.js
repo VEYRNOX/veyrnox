@@ -2,8 +2,8 @@
 //
 // RASP v1 — environment detection: the self-attested probe leg (Phase 2a).
 // BUILT · pre-audit-safe · NO EGRESS, per docs/rasp-attestation-egress-decision.md
-// (Option A, signed off): on-device probes only; the remote-attestation leg (2b,
-// Play Integrity / App Attest) stays parked behind the audit.
+// (Option A proposed, sign-off pending): on-device probes only; the remote-attestation
+// leg (2b, Play Integrity / App Attest) stays parked behind the audit.
 //
 // Two pure parts:
 //   classifyEnvironment(signals) — precedence map from on-device probe signals to
