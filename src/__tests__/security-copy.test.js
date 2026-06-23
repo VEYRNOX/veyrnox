@@ -5,10 +5,12 @@
 // this project and these are static copy invariants):
 //
 //   Part D — the PIN-create screen drops the encryption-spec jargon (Argon2id /
-//   AES-256-GCM) but KEEPS the offline-brute-force threat-model disclosure at the
-//   point of action ("...An 8-digit PIN won't stop someone with your device from
-//   trying PINs offline — so guard your device."). Asserting: jargon gone,
-//   offline-guessing disclosure present at PIN-create (not only app-wide).
+//   AES-256-GCM) and carries the owner-set short line ("This unlocks your wallet.
+//   An 8-digit PIN. Always guard your device.", PR #324). Asserting: jargon gone,
+//   owner line present. The offline-brute-force limit is intentionally NOT repeated
+//   on the keypad screen — it stays disclosed app-wide on the landing page and the
+//   What-This-Protects screen, which the app-wide guard below pins so the honesty
+//   disclosure can never silently disappear.
 //
 //   Part F — the three coercion-feature pages are condensed (fewer words) but
 //   every honest limitation survives. Each bullet below pins one honesty point
@@ -26,9 +28,9 @@ const read = (rel) => readFileSync(resolve(here, '..', rel), 'utf8');
 describe('Part D — PIN-create copy reduction', () => {
   const src = read('components/WalletEntry.jsx');
 
-  it('keeps the offline-brute-force disclosure at the PIN-create screen', () => {
+  it('renders the owner-set short line on the PIN-create screen', () => {
     expect(src).toContain(
-      "An 8-digit PIN won't stop someone with your device from trying PINs offline"
+      "This unlocks your wallet. An 8-digit PIN. Always guard your device."
     );
   });
 
@@ -38,6 +40,19 @@ describe('Part D — PIN-create copy reduction', () => {
     // unaffected — the brief only trims the PIN-create + PIN-recover screens.)
     expect(src).not.toContain('Your PIN encrypts the wallet on this device (Argon2id + AES-256-GCM)');
     expect(src).not.toContain('It is 6 digits — strong against a quick grab');
+  });
+});
+
+// The PIN-create screen drops the offline-brute-force caveat (PR #324) ONLY
+// because it stays disclosed app-wide. Pin that disclosure so it can never be
+// silently removed from BOTH the keypad screen and its app-wide homes at once.
+describe('Part D — offline-brute-force limit stays disclosed app-wide', () => {
+  it('landing page discloses the seized-device offline-guessing limit', () => {
+    expect(read('pages/LandingPage.jsx')).toContain('offline-brute-forceable on a seized device');
+  });
+
+  it('What-This-Protects discloses that PINs can be tried offline', () => {
+    expect(read('pages/WhatThisProtects.jsx')).toContain('try PINs offline');
   });
 });
 
