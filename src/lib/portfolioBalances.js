@@ -72,7 +72,10 @@ export async function fetchAssetAmount(asset, addr) {
       return Number(await getBalanceSol(asset.chain, addr.sol)) || 0;
     }
     return 0;
-  } catch {
+  } catch (err) {
+    // Surface the error so it is visible in the console (not silently swallowed),
+    // while still returning null so the UI can signal indeterminate rather than 0.
+    console.warn('[portfolioBalances] fetchAssetAmount failed for', asset?.symbol, ':', err?.message ?? err);
     return null; // read FAILED → indeterminate (I4 fail-closed), never a silent 0
   }
 }
