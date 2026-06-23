@@ -55,7 +55,7 @@ export default function NetworkManager() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Network Manager</h1>
-          <p className="text-sm text-muted-foreground">Switch networks and add custom RPCs</p>
+          <p className="text-sm text-muted-foreground">Switch networks or add a custom network</p>
         </div>
         <Button onClick={() => setOpen(true)} className="gap-2"><Plus className="h-4 w-4" /> Add Network</Button>
       </div>
@@ -66,7 +66,7 @@ export default function NetworkManager() {
           <div>
             <p className="font-semibold">{active.name}</p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-              <span>Chain ID: {active.chain_id}</span>
+              <span>Network ID: {active.chain_id}</span>
               <span className="font-mono truncate max-w-[200px]">{active.rpc_url}</span>
             </div>
           </div>
@@ -83,7 +83,7 @@ export default function NetworkManager() {
         <p className="text-sm font-medium text-muted-foreground">All Networks ({visible.length})</p>
         <div className="flex items-center gap-2 text-xs">
           <TestTube className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Show testnets</span>
+          <span className="text-muted-foreground">Show test networks</span>
           <Switch checked={showTestnets} onCheckedChange={setShowTestnets} />
         </div>
       </div>
@@ -95,10 +95,10 @@ export default function NetworkManager() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium">{n.name}</p>
-                {n.is_testnet && <span className="text-[9px] px-1.5 py-0.5 rounded bg-caution/10 text-caution font-semibold">Testnet</span>}
+                {n.is_testnet && <span className="text-[9px] px-1.5 py-0.5 rounded bg-caution/10 text-caution font-semibold">Test Network</span>}
                 {n.is_active && <CheckCircle className="h-3.5 w-3.5 text-success" />}
               </div>
-              <p className="text-xs text-muted-foreground">Chain {n.chain_id} · {n.symbol}</p>
+              <p className="text-xs text-muted-foreground">Network {n.chain_id} · {n.symbol}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {!n.is_active && (
@@ -120,14 +120,14 @@ export default function NetworkManager() {
           <DialogHeader><DialogTitle>Add Custom Network</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <div><Label>Network Name</Label><Input className="mt-1.5" placeholder="My Custom Chain" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div><Label>RPC URL</Label><Input className="mt-1.5 font-mono text-xs" placeholder="https://rpc.example.com" value={form.rpc_url} onChange={e => setForm(f => ({ ...f, rpc_url: e.target.value }))} /></div>
+            <div><Label>Network URL</Label><Input className="mt-1.5 font-mono text-xs" placeholder="https://rpc.example.com" value={form.rpc_url} onChange={e => setForm(f => ({ ...f, rpc_url: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Chain ID</Label><Input type="number" className="mt-1.5" placeholder="1" value={form.chain_id} onChange={e => setForm(f => ({ ...f, chain_id: e.target.value }))} /></div>
+              <div><Label>Network ID</Label><Input type="number" className="mt-1.5" placeholder="1" value={form.chain_id} onChange={e => setForm(f => ({ ...f, chain_id: e.target.value }))} /></div>
               <div><Label>Native Symbol</Label><Input className="mt-1.5" placeholder="ETH" value={form.symbol} onChange={e => setForm(f => ({ ...f, symbol: e.target.value }))} /></div>
             </div>
             <div><Label>Block Explorer URL (optional)</Label><Input className="mt-1.5 font-mono text-xs" placeholder="https://etherscan.io" value={form.explorer_url} onChange={e => setForm(f => ({ ...f, explorer_url: e.target.value }))} /></div>
             <div className="flex items-center justify-between p-3 rounded-xl border border-border">
-              <Label>This is a testnet</Label>
+              <Label>This is a test network</Label>
               <Switch checked={form.is_testnet} onCheckedChange={v => setForm(f => ({ ...f, is_testnet: v }))} />
             </div>
             {urlError && <p className="text-xs text-destructive">{urlError}</p>}

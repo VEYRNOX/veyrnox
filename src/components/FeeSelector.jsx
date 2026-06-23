@@ -43,7 +43,7 @@ function describeTier(chain, tier, ctx) {
     return {
       nativeText: `${fmtNative(tier.estFeeWei, ctx.decimals)} ${ctx.symbol}`,
       fiatText: fmtFiat(nativeFloat, ctx.usdRate),
-      sub: `${fmtNative(tier.maxFeePerGasWei, 9, 3)} Gwei max fee`,
+      sub: `Max fee (Gwei): ${fmtNative(tier.maxFeePerGasWei, 9, 3)}`,
       eta: tier.etaLabel,
       fee: {
         maxFeePerGasWei: tier.maxFeePerGasWei,
@@ -55,9 +55,9 @@ function describeTier(chain, tier, ctx) {
   if (chain === "btc") {
     const nativeFloat = tier.estFeeSats / 1e8;
     return {
-      nativeText: `${tier.feeRate} sat/vB`,
+      nativeText: `${tier.feeRate} sats/byte`,
       fiatText: fmtFiat(nativeFloat, ctx.usdRate),
-      sub: `≈ ${tier.estFeeSats.toLocaleString()} sat (typical tx)`,
+      sub: `≈ ${tier.estFeeSats.toLocaleString()} sats · typical send`,
       eta: tier.etaLabel,
       fee: { feeRate: tier.feeRate },
     };
@@ -67,11 +67,11 @@ function describeTier(chain, tier, ctx) {
   const nativeFloat = totalLamports / 1e9;
   const priority = Number(tier.priorityMicroLamports);
   return {
-    nativeText: `${totalLamports.toLocaleString()} lamports`,
+    nativeText: `${totalLamports.toLocaleString()} Solana fee units`,
     fiatText: fmtFiat(nativeFloat, ctx.usdRate),
     sub: priority > 0
-      ? `base ${Number(tier.baseLamports).toLocaleString()} + priority ${priority.toLocaleString()} µlam/CU`
-      : `base only (${Number(tier.baseLamports).toLocaleString()} lamports/sig)`,
+      ? `Network base: ${Number(tier.baseLamports).toLocaleString()} + Solana priority fee ${priority.toLocaleString()}`
+      : `base only (${Number(tier.baseLamports).toLocaleString()} Solana fee units)`,
     eta: tier.etaLabel,
     fee: { priorityMicroLamports: priority, computeUnitLimit: tier.computeUnitLimit },
   };
@@ -162,9 +162,9 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
         </p>
         {data?.tiers && (
           <span className="text-[10px] text-muted-foreground">
-            {chain === "evm" && `base ${fmtNative((/** @type {any} */ (data)).baseFeePerGasWei, 9, 2)} Gwei`}
-            {chain === "sol" && `base ${Number((/** @type {any} */ (data)).baseLamports).toLocaleString()} lamports/sig`}
-            {chain === "btc" && "sat/vByte"}
+            {chain === "evm" && `Network base: ${fmtNative((/** @type {any} */ (data)).baseFeePerGasWei, 9, 2)} Gwei`}
+            {chain === "sol" && `base ${Number((/** @type {any} */ (data)).baseLamports).toLocaleString()} Solana fee units`}
+            {chain === "btc" && "Bitcoin fee rate"}
           </span>
         )}
       </div>
@@ -268,8 +268,8 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
           {/* SOL priority disclosure — make the native model explicit. */}
           {chain === "sol" && (
             <p className="text-[10px] text-muted-foreground">
-              Solana charges a fixed base fee per signature plus an OPTIONAL priority fee
-              (compute-unit price) that only matters under congestion — not the EVM gas-limit×price model.
+              Solana charges a fixed base fee per signature plus an optional priority fee
+              (speeds up your transaction) that only matters under congestion — not the Ethereum network fee model.
             </p>
           )}
         </>

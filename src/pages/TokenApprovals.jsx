@@ -102,7 +102,7 @@ export default function TokenApprovals() {
         <div>
           <h1 className="text-xl font-bold">Token Approvals</h1>
           <p className="text-sm text-muted-foreground">
-            Review the ERC-20 spend allowances you've granted, and revoke the risky ones.
+            Review the spending permissions you've granted to apps and contracts, and revoke the risky ones.
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
@@ -113,10 +113,8 @@ export default function TokenApprovals() {
       <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">
         <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p>
-          Unlimited approvals are the top wallet-drain vector. Revoking sets the
-          allowance back to <span className="font-mono">0</span> via an{" "}
-          <span className="font-mono">approve(spender, 0)</span> transaction signed
-          locally. {DEMO ? "In demo mode the revoke is simulated — no transaction is broadcast." : "Mainnet stays gated; revokes run on testnet only."}
+          Unlimited permissions are a common way wallets get drained. Revoking removes the app's permission to spend your tokens. The revoke is signed locally on your device.{" "}
+          {DEMO ? "In demo mode the revoke is simulated — no transaction is broadcast." : "Mainnet stays gated; revokes run on testnet only."}
         </p>
       </div>
 
@@ -184,9 +182,9 @@ export default function TokenApprovals() {
                   <p className="text-xs font-mono text-muted-foreground truncate">{a.spender_address}</p>
                   <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground flex-wrap">
                     <span>
-                      Allowance:{" "}
+                      Spending permission:{" "}
                       <span className={a.summary.unlimited ? "text-destructive font-semibold" : "text-foreground"}>
-                        {a.summary.unlimited ? "UNLIMITED" : `${a.summary.amount} ${a.token_symbol}`}
+                        {a.summary.unlimited ? "Unlimited access" : `${a.summary.amount} ${a.token_symbol}`}
                       </span>
                     </span>
                     <span>{net?.name || a.network}</span>
@@ -227,18 +225,17 @@ export default function TokenApprovals() {
           {result && (
             <div className="space-y-3 pt-2 text-sm">
               <p className="text-muted-foreground">
-                Allowance for <span className="font-medium text-foreground">{result.approval.token_symbol}</span> →{" "}
-                <span className="font-medium text-foreground">{result.approval.spender_name}</span> set to{" "}
-                <span className="font-mono">0</span>.
+                Spending permission for <span className="font-medium text-foreground">{result.approval.token_symbol}</span> →{" "}
+                <span className="font-medium text-foreground">{result.approval.spender_name}</span> has been revoked.
               </p>
               {result.simulated && (
                 <p className="text-xs text-muted-foreground">
-                  Demo mode — no transaction was broadcast. This is the calldata a native
+                  Demo mode — no transaction was broadcast. This is the transaction data a native
                   testnet build would sign locally and send:
                 </p>
               )}
               <div className="rounded-lg border border-border bg-secondary/40 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">approve(spender, 0) calldata</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Revoke transaction data</p>
                 <p className="font-mono text-[11px] break-all">{result.data}</p>
               </div>
               {!result.simulated && result.explorerUrl && (

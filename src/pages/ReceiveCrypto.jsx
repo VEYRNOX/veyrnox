@@ -61,9 +61,9 @@ export default function ReceiveCrypto() {
   let sendOnNote = null;
   if (r?.address) {
     if (r.isErc20) {
-      sendOnNote = `${r.asset.symbol} is an ERC-20 token on an EVM network. This is your EVM address — only have the sender send ${r.asset.symbol} on ${networkName}. Sending it on a different network can permanently lose the funds.`;
+      sendOnNote = `${r.asset.symbol} is a token on an Ethereum-compatible network. This is your wallet address — only have the sender send ${r.asset.symbol} on ${networkName}. Sending it on a different network can permanently lose the funds.`;
     } else if (r.family === "evm") {
-      sendOnNote = `This is your shared EVM address. Only receive ${r.asset.name} / ${networkName} (EVM) assets here, and make sure the sender uses ${networkName}.`;
+      sendOnNote = `This is your shared wallet address. Only send ${r.asset.name} on ${networkName} to this address, and make sure the sender uses ${networkName}.`;
     } else if (r.family === "btc") {
       sendOnNote = `Only send Bitcoin on ${networkName} to this address.`;
     } else if (r.family === "solana") {
