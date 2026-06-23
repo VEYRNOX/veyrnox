@@ -61,12 +61,12 @@ describe('Part D — offline-brute-force limit stays disclosed app-wide', () => 
 // them, never through them.
 const HONESTY = {
   'pages/DuressPin.jsx': [
-    'decoy wallet under coercion',        // what it is
+    'surrendered wallet under coercion',  // what it is (renamed: decoy → hidden/surrendered)
     'runtime deniability',                // deniability class
     'forensic',                           // forensic inspection can detect
-    'second vault',                       // ...a second vault
-    'no transaction history',             // freshly-funded decoy limit
-    'sophisticated coercer',              // may still suspect
+    'second wallet',                      // ...a second wallet (renamed from "second vault")
+    'no transaction history',             // freshly-funded hidden-wallet limit
+    'sophisticated attacker',             // may still suspect (renamed from "sophisticated coercer")
     'block explorer',                     // balance is real / live on-chain
     'independent audit complete',          // audit done (ECC 2026-06-23); wording updated
   ],
