@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySelector";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, CheckCircle2, Clock, XCircle, Lock, BarChart2, Bot, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
+import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -361,7 +361,6 @@ function DemoDashboard() {
               { label: "Security",      icon: ShieldAlert,   path: "/security",        color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
               { label: "Approvals",     icon: Lock,          path: "/token-approvals", color: "text-[hsl(var(--chart-1))]", bg: "bg-[hsl(var(--chart-1))]/10" },
               { label: "Address Check", icon: Search,        path: "/address-checker", color: "text-[hsl(var(--chart-5))]", bg: "bg-[hsl(var(--chart-5))]/10" },
-              { label: "AI Advisor",    icon: Bot,           path: "/advisor",         color: "text-primary",               bg: "bg-primary/10" },
               { label: "Analytics",     icon: BarChart2,     path: "/analytics",       color: "text-[hsl(var(--chart-4))]", bg: "bg-[hsl(var(--chart-4))]/10" },
               { label: "Sentiment",     icon: Newspaper,     path: "/news-sentiment",  color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
               { label: "Risk Score",    icon: ShieldCheck,   path: "/risk",            color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
