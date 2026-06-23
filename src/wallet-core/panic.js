@@ -121,12 +121,14 @@ const LOCAL_RESIDUE_KEYS = Object.freeze([
 // C-1; extended per AI-review F-02/F-03/F-05, 2026-06-19). These are not key
 // material, but each is a forensic artifact that betrays the coercion-resistance
 // stack was in use — exactly what a panic wipe exists to erase. Leaving them means
-// a "successful" wipe still proves the stack was here (and the decoy salt + a
-// coerced PIN reproduces the deterministic decoy). Kept as plain strings, mirroring
+// a "successful" wipe still proves the stack was here. Kept as plain strings, mirroring
 // the demo-residue pattern (deliberately NOT importing the source modules — panic.js
 // stays decoupled from the deniability stack it erases); source modules in comments:
-//   vx-2c3d4e5f6a7b8091    — decoyFallback.js SALT_KEY (opaque; seed of the
-//                             deterministic decoy; was 'veyrnox-pin-decoy-salt')
+//   vx-2c3d4e5f6a7b8091    — LEGACY: the per-device salt written by the now-removed
+//                             Option-A deterministic-decoy module (decoyFallback.js,
+//                             deleted 2026-06-23). Nothing seeds this anymore; the key
+//                             is retained here SOLELY to scrub the salt from devices
+//                             onboarded under the old code (was 'veyrnox-pin-decoy-salt')
 //   veyrnox-auth-model     — lib/authModel.js (PIN-cohort marker)
 //   vx-a1b2c3d4e5f60718   — auditLog.js AUDIT_LOG_PREF_KEY (opaque; audit-log
 //                            enabled tell; was 'veyrnox-audit-log')
@@ -152,11 +154,12 @@ const LOCAL_RESIDUE_KEYS = Object.freeze([
 // (clearLocalAddressResidue) AND the inspection (readLocalAddressResidue →
 // inspectKeyMaterial().clean), so adding a key here fixes both at once (closes F-04).
 // Legacy pre-rename keys are also wiped so a panic on a device that has not yet
-// triggered the migration path (first auditLog/decoyFallback access post-upgrade)
-// leaves no old-name residue behind.
+// triggered the migration path (first auditLog access post-upgrade) leaves no
+// old-name residue behind.
 const DENIABILITY_RESIDUE_KEYS = Object.freeze([
-  'vx-2c3d4e5f6a7b8091',       // decoyFallback.js SALT_KEY (opaque)
-  'veyrnox-pin-decoy-salt',     // legacy pre-rename; wipe both in case migration not yet run
+  'vx-2c3d4e5f6a7b8091',       // LEGACY: salt from the removed Option-A decoy module
+                               // (decoyFallback.js, deleted); scrub on old-onboarded devices
+  'veyrnox-pin-decoy-salt',     // LEGACY pre-rename of the same removed-module salt; wipe both
   'veyrnox-auth-model',
   'vx-a1b2c3d4e5f60718',        // auditLog.js AUDIT_LOG_PREF_KEY (opaque)
   'veyrnox-audit-log',          // legacy pre-rename

@@ -111,10 +111,10 @@ export default function PasskeyUnlockSettings() {
         <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
           A passkey (FIDO2 / WebAuthn) adds a quick biometric or security-key tap
-          before unlocking. It's an <span className="font-medium text-foreground">additional factor</span>,
-          not a replacement for your password — your recovery phrase and password
-          still unlock the wallet on their own, so losing the passkey never costs
-          funds. No keys are stored in the passkey.
+          before unlocking — an <span className="font-medium text-foreground">additional factor</span>,
+          not a replacement for your password. Your password and recovery phrase
+          still unlock on their own, so losing the passkey never costs funds. No
+          keys are stored in it.
         </p>
       </div>
 

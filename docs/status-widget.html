@@ -78,14 +78,14 @@
 <body>
 <div class="wrap">
   <h1>Veyrnox — Build &amp; Mainnet Status</h1>
-  <p class="sub">Self-custody coercion-resistant wallet · snapshot <b>2026-06-22</b> · mainnet unlocked <b>2026-06-17</b> (internal audit) · independent third-party audit still <b>RECOMMENDED</b></p>
+  <p class="sub">Self-custody coercion-resistant wallet · data re-pulled from source <b>2026-06-23</b> · mainnet unlocked <b>2026-06-17</b> (internal audit) · independent third-party audit still <b>RECOMMENDED</b></p>
 
   <div class="kpis">
     <div class="kpi teal"><div class="n">10</div><div class="l">Assets LIVE</div></div>
     <div class="kpi teal"><div class="n">2</div><div class="l">Mainnet-verified (USDC · USDT)</div></div>
-    <div class="kpi teal"><div class="n">47</div><div class="l">Features BUILT</div></div>
-    <div class="kpi amber"><div class="n">5</div><div class="l">Provisional</div></div>
-    <div class="kpi slate"><div class="n">12</div><div class="l">Roadmap</div></div>
+    <div class="kpi teal"><div class="n">56</div><div class="l">Features BUILT</div></div>
+    <div class="kpi amber"><div class="n">6</div><div class="l">Provisional</div></div>
+    <div class="kpi slate"><div class="n">13</div><div class="l">Roadmap</div></div>
     <div class="kpi teal"><div class="n">3 / 3</div><div class="l">Mainnet gates open</div></div>
   </div>
 
@@ -123,7 +123,7 @@
 
   <!-- FEATURES BUILT -->
   <section>
-    <h2>Features — BUILT (code-complete, testnet/provisional)</h2>
+    <h2>Features — BUILT (56 of 69; code-complete, testnet/provisional)</h2>
     <div class="cats">
       <div class="cat"><h3>Core Wallet</h3>
         <div class="feat"><span class="nm">Multi-Account HD Wallet</span><span class="b built">BUILT</span></div>
@@ -196,16 +196,18 @@
   <section>
     <h2>Not built — ROADMAP &amp; audit-gated</h2>
     <div class="cats">
-      <div class="cat"><h3>Roadmap (specced, not built)</h3>
+      <div class="cat"><h3>Roadmap (specced, not built) — 13</h3>
         <div class="feat"><span class="nm">Additional Tokens</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">Additional Networks</span><span class="b road">ROADMAP</span></div>
-        <div class="feat"><span class="nm">Suspicious-Address Screening</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Native Secure Storage</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">Crypto Will / Inheritance</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">What-If Simulator</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">Split Bill</span><span class="b road">ROADMAP</span></div>
-        <div class="feat"><span class="nm">Referral Tracker</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Transaction Explanation (AI)</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Scam &amp; Phishing Explanation (AI)</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Educational Assistant (AI)</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">Portfolio Q&amp;A (AI)</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">Web3 Browser</span><span class="b road">ROADMAP</span></div>
-        <div class="feat"><span class="nm">AI Assistant (4 features)</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">iOS App</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">Android App</span><span class="b road">ROADMAP</span></div>
       </div>
@@ -231,6 +233,7 @@
 
   <p class="foot">Source of truth: src/wallet-core/assets.js · src/lib/featureCatalogue.js · evm|btc|sol/networks.js · docs/Audit.scope.md · docs/audit-triage/internal-audit-2026-06-17.md · docs/verified-evidence.json</p>
   <p class="foot">Mainnet sends re-verified on-chain 2026-06-22 via eth_getTransactionByHash/Receipt (USDC 0xc373…a0a2 · USDT 0xf06a0b…5b08, both chainId 1, SUCCESS). USDT txid corrects the wrong hash recorded in PR #280 (0x3f2f…, a USDC tx) — correction in PR #320.</p>
+  <p class="foot">Feature counts re-derived from featureCatalogue.js 2026-06-23: 69 entries → 56 effective BUILT (incl. 4 tagged "verified" that resolve to built — their evidence-keys don't match catalogue names, a known mismatch) · 13 ROADMAP · 6 PROVISIONAL-flagged. Suspicious-Address Screening + Referral Tracker have moved roadmap→built since the prior snapshot.</p>
 </div>
 </body>
 </html>

@@ -111,8 +111,8 @@ export default function RaspSecurity() {
         <div>
           <p className="font-bold text-accent">Browser-level detection active · OS-level detection pending audit</p>
           <p className="text-sm text-muted-foreground mt-1">
-            The degradation policy is built and tested. Browser probes are active (automation detection).
-            OS-level probes (root / jailbreak / tamper) require a native plugin pending the independent audit.
+            The degradation policy is built and tested, and browser probes (automation detection) are active.
+            OS-level probes (root / jailbreak / tamper) need a native plugin, pending the independent audit.
           </p>
         </div>
       </div>

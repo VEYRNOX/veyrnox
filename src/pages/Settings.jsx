@@ -121,9 +121,9 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          When on, your wallet fetches current prices and 24h changes from CryptoCompare. The request sends only a fixed list
-          of supported coins — never your holdings, balances, or addresses. Off by default; no price calls are
-          made until you turn this on.
+          When on, your wallet fetches current prices and 24h changes from CryptoCompare. The request sends only a fixed
+          list of supported coins — never your holdings, balances, or addresses. No price calls are made until you turn
+          this on.
         </p>
       </div>
 
@@ -149,9 +149,9 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          When on, keeps a local encrypted record of three event types: settings changed, send completed, approval revoked.
-          No amounts, addresses, or wallet identity are stored. Encrypted with a key derived from your seed — never
-          readable without unlocking. Wiped automatically by Panic Wipe. Turning this off deletes the log immediately.
+          When on, keeps a local encrypted record of three event types — settings changed, send completed, approval
+          revoked. No amounts, addresses, or wallet identity. Encrypted with a key derived from your seed, so it's
+          unreadable until you unlock; wiped by Panic Wipe. Turning this off deletes the log immediately.
         </p>
         {auditLog && auditEntries !== null && (
           <div className="mt-3 border-t border-border pt-3">
@@ -197,9 +197,9 @@ export default function Settings() {
         <p className="text-sm text-muted-foreground">
           Passkeys add an on-device biometric or security-key tap as an extra
           authentication factor. They never hold your keys or seed — your password
-          and recovery phrase remain the independent way to unlock, so losing a
-          passkey never costs funds. Transaction verification (below) can also use
-          a per-wallet passkey.
+          and recovery phrase still unlock independently, so losing a passkey never
+          costs funds. Transaction verification (below) can also use a per-wallet
+          passkey.
         </p>
       </div>
 
