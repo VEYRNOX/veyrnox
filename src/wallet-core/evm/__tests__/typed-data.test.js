@@ -93,4 +93,41 @@ describe('describeTypedData', () => {
     expect(r.summary).toBe('Invalid typed data');
     expect(r.fields).toEqual([]);
   });
+
+  // Permit2 nests the security-critical fields under `details`; they must be
+  // visible (not "[object Object]") before the user signs.
+  it('flattens nested Permit2 struct fields (never "[object Object]")', () => {
+    const details = describeTypedData(parseTypedData(PERMIT2)).fields.find(f => f.name === 'details');
+    expect(details.value).not.toContain('[object Object]');
+    expect(details.value).toContain('token');
+    expect(details.value).toContain('0xTKN');
+    expect(details.value).toContain('amount');
+    expect(details.value).toContain('1000');
+  });
+
+  it('flags an unlimited Permit2 allowance (uint160 max) as UNLIMITED', () => {
+    const MAX160 = ((1n << 160n) - 1n).toString();
+    const p = { ...PERMIT2, message: { details: { token: '0xTKN', amount: MAX160 }, spender: '0xDEF' } };
+    const details = describeTypedData(parseTypedData(p)).fields.find(f => f.name === 'details');
+    expect(details.value).toContain('UNLIMITED');
+  });
+
+  it('flags an unlimited ERC-20 Permit value (uint256 max) as UNLIMITED', () => {
+    const MAX256 = ((1n << 256n) - 1n).toString();
+    const p = { ...PERMIT, message: { ...PERMIT.message, value: MAX256 } };
+    const value = describeTypedData(parseTypedData(p)).fields.find(f => f.name === 'value');
+    expect(value.value).toContain('UNLIMITED');
+  });
+
+  it('does NOT flag a normal allowance as unlimited', () => {
+    const value = describeTypedData(parseTypedData(PERMIT)).fields.find(f => f.name === 'value');
+    expect(value.value).not.toContain('UNLIMITED');
+    expect(value.value).toContain('1000000000000000000');
+  });
+
+  it('renders a deadline-like field as a human date (keeping the raw value)', () => {
+    const deadline = describeTypedData(parseTypedData(PERMIT)).fields.find(f => f.name === 'deadline');
+    expect(deadline.value).toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(deadline.value).toContain('9999999999');
+  });
 });
