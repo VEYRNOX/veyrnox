@@ -78,6 +78,25 @@ export const PASSKEY_CRED_KEY = 'veyrnox-passkey-cred';
 // lives in this device's authenticator), unlike the per-set Action Password.
 export const TWOFACTOR_PASSKEY_KEY = 'veyrnox-2fa-passkey';
 
+// In-document notification fired whenever the registered passkey is created or
+// cleared. The registered-passkey flag (PASSKEY_CRED_KEY) is read by more than
+// one settings surface in the SAME page mount — PasskeyUnlockSettings registers
+// it; TwoFactorSettings gates its second-factor toggle on it. localStorage writes
+// do NOT notify same-document listeners (the `storage` event fires only in OTHER
+// tabs), so a sibling component would otherwise keep a stale read until remount.
+// We publish this event so consumers can re-read isPasskeyRegistered() live.
+export const PASSKEY_REGISTRATION_EVENT = 'veyrnox-passkey-registration-changed';
+
+function notifyPasskeyRegistrationChanged() {
+  try {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new Event(PASSKEY_REGISTRATION_EVENT));
+    }
+  } catch {
+    /* best-effort signal — a missing event bus must never block registration. */
+  }
+}
+
 // Sentinel credential id used by the demo/simulated path so the rest of the app
 // can treat "a passkey is registered" uniformly without a real authenticator.
 const DEMO_CRED_ID = 'demo-passkey';
@@ -165,6 +184,7 @@ export function isPasskeyRegistered() {
 export function clearRegisteredPasskey() {
   try { ls()?.removeItem(PASSKEY_CRED_KEY); } catch { /* noop */ }
   setPasskeyUnlockEnabled(false);
+  notifyPasskeyRegistrationChanged();
 }
 
 // --- base64url helpers (credential ids are passed/stored as base64url) ---------
@@ -285,6 +305,7 @@ export async function registerPasskeyCredential(opts = {}) {
       createdAt: Date.now(),
     };
     try { ls()?.setItem(PASSKEY_CRED_KEY, JSON.stringify(rec)); } catch { /* noop */ }
+    notifyPasskeyRegistrationChanged();
     return { ok: true, simulated: true, credentialId: DEMO_CRED_ID };
   }
 
@@ -327,6 +348,7 @@ export async function registerPasskeyCredential(opts = {}) {
     createdAt: Date.now(),
   };
   try { ls()?.setItem(PASSKEY_CRED_KEY, JSON.stringify(rec)); } catch { /* noop */ }
+  notifyPasskeyRegistrationChanged();
   return { ok: true, simulated: false, credentialId };
 }
 

@@ -14,10 +14,11 @@
 // possession factor (a key in this device's authenticator), but it is device-global
 // (not per wallet-set) and is provisional/unaudited. UNAUDITED-PROVISIONAL.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet } from '@/lib/WalletProvider';
 import {
   is2faPasskeyEnabled, set2faPasskeyEnabled, isPasskeyRegistered, isWebAuthnSupported,
+  PASSKEY_REGISTRATION_EVENT,
 } from '@/lib/passkey';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,7 +79,22 @@ export default function TwoFactorSettings() {
 
   // ── Passkey (possession) toggle ──
   const webauthn = isWebAuthnSupported();
-  const passkeyRegistered = isPasskeyRegistered();
+  // Reactive: a passkey can be registered/removed by a sibling section (Unlock
+  // with Passkey) within THIS same Settings mount. Re-read on the registration
+  // event passkey.js publishes (and on cross-tab `storage` changes) so the toggle
+  // sees a freshly-registered passkey without a remount — otherwise togglePasskey2fa
+  // keeps hitting the stale "register a passkey first" guard and silently no-ops.
+  const [passkeyRegistered, setPasskeyRegistered] = useState(() => isPasskeyRegistered());
+  useEffect(() => {
+    const refresh = () => setPasskeyRegistered(isPasskeyRegistered());
+    refresh(); // catch a registration that landed between initial read and mount
+    window.addEventListener(PASSKEY_REGISTRATION_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener(PASSKEY_REGISTRATION_EVENT, refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
   const [passkey2fa, setPasskey2fa] = useState(is2faPasskeyEnabled());
   const togglePasskey2fa = (on) => {
     if (on && !passkeyRegistered) {

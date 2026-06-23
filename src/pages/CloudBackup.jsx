@@ -80,7 +80,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 
   // The backup password is a NEW credential the user chooses to protect the
   // file — min 8, matching the vault-password floor.
-  const canExport = password.length >= 8 && pin.length >= 6 && pin === pinConfirm;
+  const canExport = password.length >= 8 && pin.length >= 8 && pin === pinConfirm;
 
   const runExport = async () => {
     setBusy(true);
@@ -137,17 +137,10 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         {password.length > 0 && password.length < 8 && (
           <p className="text-xs text-destructive">Use at least 8 characters.</p>
         )}
-        <PinField label="Choose a backup PIN (6–12 digits)" value={pin} onChange={setPin} />
+        <PinField label="Choose a backup PIN (8–12 digits)" value={pin} onChange={setPin} />
         <PinField label="Confirm backup PIN" value={pinConfirm} onChange={setPinConfirm} />
-        {pin.length >= 4 && pinConfirm.length >= 4 && pin !== pinConfirm && (
+        {pin.length >= 8 && pinConfirm.length >= 8 && pin !== pinConfirm && (
           <p className="text-xs text-destructive">PINs do not match.</p>
-        )}
-        {pin.length >= 6 && pin.length < 8 && (
-          <p className="text-xs text-caution">
-            A PIN shorter than 8 digits can be brute-forced offline if someone
-            gets this file. Use 8+ digits or rely on the backup password for
-            strongest protection.
-          </p>
         )}
       </div>
 
