@@ -509,7 +509,20 @@ export default function WalletPortfolioPage() {
                   <p className="text-xs text-muted-foreground truncate">{a?.name}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm mono-value">{fmtAmount(row.amount)}</p>
+                  <p
+                    className="text-sm font-mono flex items-center justify-end gap-1"
+                    title={row.indeterminate ? "Balance couldn't be loaded" : undefined}
+                  >
+                    {fmtAmount(row.amount)}
+                    {row.indeterminate && (
+                      <span
+                        aria-label="Balance couldn't be loaded"
+                        className="text-amber-400 opacity-70 text-xs leading-none"
+                      >
+                        ⚠
+                      </span>
+                    )}
+                  </p>
                   {/* indeterminate read → "—", not a misleading $0.00 */}
                   <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : formatFiat(row.usd, "USD")}</p>
                 </div>
@@ -582,7 +595,7 @@ export default function WalletPortfolioPage() {
           <div className="flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">
-              <b>Some wallets aren’t backed up.</b> Each wallet has its own recovery phrase — without it, that wallet’s funds are unrecoverable. Back up now.
+              <b>{unbacked.length} wallet{unbacked.length === 1 ? "" : "s"} not backed up.</b> Each wallet has its own recovery phrase — without it, that wallet’s funds are unrecoverable. Back up now.
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">

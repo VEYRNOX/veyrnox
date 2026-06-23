@@ -159,7 +159,7 @@ export default function TransactionHistory() {
           <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
             <div className="flex items-start gap-2 text-sm text-destructive">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>Couldn’t load history: {error?.message || "the indexer/RPC didn’t respond"}.</span>
+              <span>Couldn’t load history: {error?.message?.toLowerCase().includes("fetch") ? "Couldn’t reach the RPC node — check your connection and try again." : (error?.message || "the indexer didn’t respond")}.</span>
             </div>
             <button
               onClick={() => refetch()}

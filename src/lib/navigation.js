@@ -65,9 +65,11 @@ const RAW_NAV_GROUPS = [
   {
     label: "Wallet",
     items: [
-      { path: "/send", label: "Send", icon: Send },
-      { path: "/receive", label: "Receive", icon: Download },
-      { path: "/tx-history", label: "Transaction History", icon: History },
+      { path: "/send", label: "Send", icon: Send, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol transfer crypto" },
+      { path: "/receive", label: "Receive", icon: Download, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol deposit crypto" },
+      { path: "/tx-history", label: "Transaction History", icon: History, keywords: "bitcoin btc ethereum eth transactions history activity" },
+      { path: "/payment-links", label: "Payment Links", icon: Link2 },
+      { path: "/split-bill", label: "Split Bill", icon: Scissors },
       { path: "/receipt", label: "TX Receipts", icon: Receipt },
       { path: "/fee-analytics", label: "Fee Analytics", icon: Fuel },
       { path: "/hd-wallet", label: "HD Wallet Manager", icon: KeyRound },
