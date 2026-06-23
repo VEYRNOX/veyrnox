@@ -10,15 +10,15 @@ import { getNetworkInfo } from "@/wallet-core/evm/networks";
 // mainnet is gated in the registries). The fee you choose here is the same model
 // the Send screen applies into the actual signing path.
 const CHAINS = [
-  { id: "evm", label: "Ethereum", chain: "evm", networkKey: "sepolia",  symbol: "ETH", decimals: 18, usdRate: 3200, badge: "Sepolia testnet" },
-  { id: "btc", label: "Bitcoin",  chain: "btc", networkKey: "testnet",  symbol: "BTC", decimals: 8,  usdRate: 68000, badge: "testnet3" },
-  { id: "sol", label: "Solana",   chain: "sol", networkKey: "devnet",   symbol: "SOL", decimals: 9,  usdRate: 165,   badge: "devnet" },
+  { id: "evm", label: "Ethereum", chain: "evm", networkKey: "sepolia",  symbol: "ETH", decimals: 18, usdRate: 3200, badge: "Ethereum test network" },
+  { id: "btc", label: "Bitcoin",  chain: "btc", networkKey: "testnet",  symbol: "BTC", decimals: 8,  usdRate: 68000, badge: "Bitcoin test network" },
+  { id: "sol", label: "Solana",   chain: "sol", networkKey: "devnet",   symbol: "SOL", decimals: 9,  usdRate: 165,   badge: "Solana test network" },
 ];
 
 const MODEL_NOTE = {
-  evm: "EIP-1559: a network base fee plus a priority tip you control. Pick a speed or set a custom max base fee, priority, and gas limit.",
-  btc: "UTXO fee rate in sat/vByte. The miner fee = transaction size × rate, so the final amount is set by coin selection at send time using the rate you pick.",
-  sol: "A fixed base fee per signature (~5,000 lamports) plus an OPTIONAL priority fee (compute-unit price) that only matters under congestion. NOT gas-limit × price.",
+  evm: "The network charges a base fee. You can add a tip to go faster. Pick a speed or set a custom max base fee, priority, and transaction limit.",
+  btc: "Bitcoin charges by transaction size, not a fixed amount. The miner fee = transaction size × rate, so the final amount is set by coin selection at send time using the rate you pick.",
+  sol: "A fixed base fee per signature (~5,000 Solana fee units) plus an optional priority fee (processing unit price) that only matters under congestion. The fee shown is the total — not an estimate.",
 };
 
 export default function GasFeeControl() {
@@ -34,7 +34,7 @@ export default function GasFeeControl() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold flex items-center gap-2"><Fuel className="h-5 w-5 text-primary" /> Gas &amp; Fee Control</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Fuel className="h-5 w-5 text-primary" /> Network Fee Control</h1>
         <p className="text-sm text-muted-foreground">See and control transaction fees per chain — each in its native model.</p>
       </div>
 

@@ -28,48 +28,48 @@ import {
 //
 // Status is HONEST, cross-checked against actual implementation (wallet-core + real
 // routes):
-//   "available" — built and working today (testnet/devnet-verified; mainnet unlocked 2026-06-17 per internal audit)
+//   "available" — built and working today (test-network/Solana-test-network-verified; live network unlocked 2026-06-17 per internal audit)
 //   "roadmap"   — in scope and specced, NOT yet built ("coming soon")
 const features = [
   { category: "Core Wallet", icon: Wallet, items: [
-    { name: "Multi-Account HD Wallet", desc: "BIP-39 seed with multi-account derivation; keys held locally", status: "available" },
+    { name: "Multi-Account HD Wallet", desc: "Recovery phrase standard (BIP-39) seed with multi-account derivation; keys held locally", status: "available" },
     { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "available" },
     { name: "Encrypted Vault", desc: "Strong on-device encryption at rest; plaintext keys never leave device", status: "available" },
     { name: "Backup & Reveal Seed", desc: "Seed phrase + encrypted QR backup behind explicit warnings", status: "available" },
-    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) — each confirmed on testnet/devnet with an on-chain txid", status: "available" },
+    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) — each confirmed on a test network or Solana test network with an on-chain txid", status: "available" },
     { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "available" },
-    { name: "Live Balances", desc: "Read live from chain RPC / explorer providers", status: "available" },
+    { name: "Live Balances", desc: "Read live from chain network connection / explorer providers", status: "available" },
     { name: "Transaction History", desc: "Per-chain read-only history with privacy disclosures", status: "available" },
-    { name: "Gas / Fee Control", desc: "Per-chain fee tiers + custom fee before signing", status: "available" },
+    { name: "Network Fee Control", desc: "Per-chain fee tiers + custom fee before signing", status: "available" },
     { name: "ENS / SNS Resolution", desc: "Resolve .eth and .sol names on send (resolution only)", status: "available" },
   ]},
   { category: "Networks & Assets", icon: Coins, items: [
-    { name: "EVM Networks", desc: "Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain", status: "available" },
-    { name: "Bitcoin", desc: "BIP-84 native-segwit stack; testnet-verified (mainnet unlocked, not yet mainnet-verified)", status: "available" },
-    { name: "Solana", desc: "ed25519 / SLIP-0010 stack; devnet-verified (mainnet unlocked, not yet mainnet-verified)", status: "available" },
-    { name: "ERC-20 Tokens", desc: "USDC and USDT via the shared token path", status: "available" },
-    { name: "Additional Tokens", desc: "More ERC-20 tokens (DAI, LINK …) reuse the token path", status: "roadmap" },
-    { name: "Additional Networks", desc: "More EVM chains (Base, zkSync …), config-level", status: "roadmap" },
+    { name: "Ethereum-compatible Networks", desc: "Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain", status: "available" },
+    { name: "Bitcoin", desc: "Bitcoin address standard (BIP-84) native-segwit stack; test-network-verified (live network unlocked, not yet live-network-verified)", status: "available" },
+    { name: "Solana", desc: "Solana signing key / key derivation standard stack; Solana test network verified (live network unlocked, not yet live-network-verified)", status: "available" },
+    { name: "Ethereum Token Standard (ERC-20) Tokens", desc: "USDC and USDT via the shared token path", status: "available" },
+    { name: "Additional Tokens", desc: "More tokens (DAI, LINK …) reuse the token path", status: "roadmap" },
+    { name: "Additional Networks", desc: "More Ethereum-compatible chains (Base, zkSync …), config-level", status: "roadmap" },
   ]},
   { category: "Access & Authentication", icon: KeyRound, items: [
-    { name: "Passkey Unlock", desc: "FIDO2 / WebAuthn unlock gate; never holds keys", status: "available" },
+    { name: "Passkey Unlock", desc: "Passkey unlock gate; never holds keys", status: "available" },
     { name: "Biometric Unlock", desc: "Face ID / Touch ID unlock gate with fallback", status: "available" },
     { name: "PIN Unlock", desc: "Numeric-PIN onboarding + returning-PIN unlock over the same Argon2id vault, with Face-ID-to-decoy. No hardware-bound KEK yet — a numeric PIN is offline-exhaustible on a seized device; hardware-KEK is the audit-gated fast-follow. UNAUDITED-PROVISIONAL.", status: "available" },
-    { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password (per-set knowledge factor) or PIN + Passkey/FIDO2 (possession, fails closed). Primary-set today; decoy/hidden parity audit-gated. UNAUDITED-PROVISIONAL.", status: "available" },
+    { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password (per-set knowledge factor) or PIN + Passkey (possession, fails closed). Primary-set today; decoy/hidden parity audit-gated. UNAUDITED-PROVISIONAL.", status: "available" },
     { name: "Native Secure Storage", desc: "Secure Enclave / Android Keystore hardening", status: "roadmap" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "available" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "available" },
     { name: "Hardware Wallet", desc: "Ledger (WebHID, Chrome/Edge) + Trezor — cold-key address derivation and transaction signing for ETH, BTC, and SOL; private key never leaves the hardware device.", status: "available" },
   ]},
   { category: "Transaction Safety", icon: ShieldAlert, items: [
-    { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke ERC-20 allowances; flag unlimited", status: "available" },
+    { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke token allowances; flag unlimited", status: "available" },
     { name: "Address-Poisoning Warnings", desc: "Look-alike recipient detection on send", status: "available" },
     { name: "Spam Token Filter", desc: "Auto-hide airdropped scam tokens with override", status: "available" },
-    { name: "Calldata Decode & Approval Guard", desc: "Human-readable calldata before signing", status: "available" },
+    { name: "Transaction Data Decode & Approval Guard", desc: "Human-readable transaction data before signing", status: "available" },
     { name: "Suspicious-Address Screening", desc: "Local blocklist screening of burn / known-bad addresses (includes one known OFAC-sanctioned address); warns, never blocks. No live sanctions feed.", status: "available" },
     { name: "Transaction Simulation", desc: "Local-first pre-sign preview of balance / approval changes with risk flags", status: "available" },
     { name: "Anomaly / Fraud Detection", desc: "Local rule-based flags for deviations from your own history (unusual amount, new-recipient-large, approve-then-transfer)", status: "available" },
-    { name: "Pre-Sign Risk Verdict", desc: "On-device signals (fresh recipient, unlimited/fresh-spender approval, poisoning, ENS mismatch, dust, calldata mismatch, value anomaly) combine into one pre-sign verdict; a high-RISK verdict requires an explicit 'Sign anyway' acknowledgement, indeterminate fails closed to caution. Local-only, warns-not-blocks, never claims 'safe'. UNAUDITED-PROVISIONAL.", status: "available" },
+    { name: "Pre-Sign Risk Verdict", desc: "On-device signals (fresh recipient, unlimited/fresh-spender approval, poisoning, ENS mismatch, dust, transaction data mismatch, value anomaly) combine into one pre-sign verdict; a high-RISK verdict requires an explicit 'Sign anyway' acknowledgement, indeterminate fails closed to caution. Local-only, warns-not-blocks, never claims 'safe'. UNAUDITED-PROVISIONAL.", status: "available" },
   ]},
   { category: "Recovery & Duress", icon: LifeBuoy, items: [
     { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "available" },
@@ -87,8 +87,8 @@ const features = [
     { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains; live prices I2-gated behind opt-in", status: "available" },
     { name: "Net-Worth Tracker", desc: "Aggregate crypto net worth from on-device portfolio balances; I2-gated live price conversion", status: "available" },
     { name: "P&L Tracking", desc: "Realised/unrealised P&L records on-device; current prices from CryptoCompare (I2-gated)", status: "available" },
-    { name: "On-Chain Analytics", desc: "Address-level tx lookup and inbound/outbound activity breakdown via public RPC", status: "available" },
-    { name: "Fee Analytics", desc: "Stateless native-unit fee totals computed on-device from chain history; EVM fails honest to 'unavailable'", status: "available" },
+    { name: "On-Chain Analytics", desc: "Address-level tx lookup and inbound/outbound activity breakdown via public network connection", status: "available" },
+    { name: "Fee Analytics", desc: "Stateless native-unit network fee totals computed on-device from chain history; Ethereum-compatible chains fail honest to 'unavailable'", status: "available" },
     { name: "What-If Simulator", desc: "Model hypothetical allocation changes (executes nothing)", status: "roadmap" },
     { name: "Tax Report", desc: "Exports raw tx data (date/type/asset/amount/fee/tx_hash) as CSV — no invented prices. Directs to Koinly/CoinTracker. Not tax advice.", status: "available" },
   ]},
@@ -113,11 +113,11 @@ const features = [
   { category: "AI Assistant (Advisory-Only)", icon: Zap, items: [
     { name: "Transaction Explanation", desc: "Plain-language description of a transaction", status: "roadmap" },
     { name: "Scam & Phishing Explanation", desc: "Explain why something looks risky", status: "roadmap" },
-    { name: "Educational Assistant", desc: "Answer gas / approval / format questions", status: "roadmap" },
+    { name: "Educational Assistant", desc: "Answer network fee / approval / format questions", status: "roadmap" },
     { name: "Portfolio Q&A", desc: "Questions over public on-chain data (never trades)", status: "roadmap" },
   ]},
   { category: "dApp Connectivity (Post-Audit)", icon: Globe, items: [
-    { name: "dApp Connector", desc: "WalletConnect v2 transport is built (local signing, real broadcast with chain-ID guard + 1M gas cap); kept disabled until the post-audit review and requires configuration. High-risk surface.", status: "roadmap" },
+    { name: "dApp Connector", desc: "WalletConnect v2 transport is built (local signing, real broadcast with network-ID guard + 1M network fee cap); kept disabled until the post-audit review and requires configuration. High-risk surface.", status: "roadmap" },
     { name: "Web3 Browser", desc: "In-app dApp browser; post-audit only", status: "roadmap" },
   ]},
   { category: "Platform", icon: Smartphone, items: [
@@ -133,7 +133,7 @@ const workflows = [
     title: "Onboarding Flow",
     icon: Users,
     steps: [
-      { step: 1, title: "Create or Import", desc: "Generate a new BIP-39 wallet or import an existing seed / private key" },
+      { step: 1, title: "Create or Import", desc: "Generate a new recovery phrase wallet or import an existing seed / private key" },
       { step: 2, title: "Set Unlock", desc: "Set a password and optionally enrol a passkey or biometric unlock gate" },
       { step: 3, title: "Backup Seed", desc: "Reveal and back up the recovery phrase (encrypted seed QR) behind warnings" },
       { step: 4, title: "Optional Safety Setup", desc: "Optionally configure a duress PIN, stealth wallet, or panic wipe" },
@@ -147,7 +147,7 @@ const workflows = [
       { step: 2, title: "Enter Recipient", desc: "Paste an address, scan a QR, or resolve an ENS (.eth) / SNS (.sol) name" },
       { step: 3, title: "Safety Screening", desc: "Address-poisoning warnings flag look-alike recipients before you proceed" },
       { step: 4, title: "Enter Amount & Fee", desc: "Input the amount and pick a fee tier (or custom fee) for the chain" },
-      { step: 5, title: "Confirm with Calldata", desc: "Review a human-readable summary of the transaction calldata" },
+      { step: 5, title: "Confirm Transaction Data", desc: "Review a human-readable summary of the transaction data" },
       { step: 6, title: "Unlock & Sign", desc: "Authenticate (password / passkey / biometric); the transaction is signed locally" },
       { step: 7, title: "Broadcast", desc: "The signed transaction is broadcast and appears in transaction history" },
     ]
@@ -166,9 +166,9 @@ const workflows = [
     title: "Token Approval Review Flow",
     icon: ShieldAlert,
     steps: [
-      { step: 1, title: "Open Token Approvals", desc: "List the ERC-20 allowances your wallet has granted" },
+      { step: 1, title: "Open Token Approvals", desc: "List the token allowances your wallet has granted" },
       { step: 2, title: "Spot Risk", desc: "Unlimited or stale approvals to unknown contracts are flagged" },
-      { step: 3, title: "Build Revoke", desc: "Choose an approval to revoke; the revoke calldata is prepared" },
+      { step: 3, title: "Build Revoke", desc: "Choose an approval to revoke; the revoke transaction data is prepared" },
       { step: 4, title: "Sign Revoke", desc: "Authenticate and sign locally to shut down the exposure" },
     ]
   },
@@ -214,7 +214,7 @@ export default function Documentation() {
             try {
               exportCataloguePdf({
                 title: "Documentation",
-                subtitle: "Feature guide for a non-custodial, security-first self-custody wallet. Scope follows docs/WalletFeatures.spec.md. Mainnet unlocked 2026-06-17 (internal audit complete).",
+                subtitle: "Feature guide for a non-custodial, security-first self-custody wallet. Scope follows docs/WalletFeatures.spec.md. Live network unlocked 2026-06-17 (internal audit complete).",
                 categories: features.map(c => ({
                   category: c.category,
                   items: c.items.map(i => ({ name: i.name, desc: i.desc, status: i.status })),
@@ -254,7 +254,7 @@ export default function Documentation() {
             {totalFeatures} in-scope features across {features.length} categories — {availableCount} available
             today, {roadmapCount} on the roadmap. Scope follows docs/WalletFeatures.spec.md; custodial /
             regulated features (swaps, perps, staking/yield/lending, fiat ramps, bank links, KYC/DID, NFT
-            minting, etc.) are deliberately not built. Mainnet unlocked 2026-06-17 (internal audit complete).
+            minting, etc.) are deliberately not built. Live network unlocked 2026-06-17 (internal audit complete).
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
             <Badge variant="outline" className={STATUS_META.available.className}>{availableCount} Available</Badge>
@@ -376,7 +376,7 @@ export default function Documentation() {
                 Transaction Safety
               </h3>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Calldata decode before signing</li>
+                <li>• Transaction data decode before signing</li>
                 <li>• Token approval view + revoke</li>
                 <li>• Address-poisoning warnings</li>
                 <li>• Spam-token filter</li>
@@ -396,7 +396,7 @@ export default function Documentation() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Mainnet unlocked 2026-06-17 (internal audit complete). Independent ECC audit complete
+            Live network unlocked 2026-06-17 (internal audit complete). Independent ECC audit complete
             2026-06-23. Remaining roadmap hardening: native secure storage (Secure Enclave /
             Android Keystore), Crypto Will / Inheritance, and native mobile shells.
           </p>

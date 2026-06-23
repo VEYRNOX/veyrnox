@@ -111,11 +111,10 @@ export default function BiometricUnlockSettings() {
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-caution">Security trade-off.</span>{' '}
-            One-tap unlock stores your <strong>vault password</strong> in the device
-            Keychain / Keystore. The device passcode and biometrics protect it, but an
-            offline attacker who extracts the Keychain item (e.g. from an encrypted
-            backup) can decrypt your wallet without running the Argon2id memory-hard
-            derivation. Disable this to keep full Argon2id offline-attack resistance.
+            One-tap unlock stores your <strong>wallet password</strong> in your device&apos;s secure storage.
+            The device passcode and biometrics protect it, but{' '}
+            if someone gets physical access to your device, your PIN is your last line of defence.
+            Disable this for the strongest offline-attack resistance.
           </p>
           {/* Provisional (audit status — not shown to users): biometric check runs in
               app code, not as an OS-enforced Keychain ACL; OS-bound binding is
@@ -160,7 +159,7 @@ export default function BiometricUnlockSettings() {
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">
               <span className="font-semibold text-caution">Confirm trade-off.</span>{' '}
-              Offline Keychain extraction bypasses Argon2id — only enable if you accept that risk.
+              If someone gets physical access to your device, they may be able to unlock without your PIN — only enable if you accept that risk.
             </p>
           </div>
           <div className="flex gap-2">
@@ -189,7 +188,7 @@ export default function BiometricUnlockSettings() {
       {/* Recovery caveat on device (see FINDINGS → F-4). */}
       {forcedOnDevice && (
         <p className="text-[11px] text-muted-foreground">
-          If you remove your device passcode, the on-device vault is erased for
+          If you remove your device passcode, the on-device wallet data is erased for
           security — restore it with your recovery phrase.
         </p>
       )}
