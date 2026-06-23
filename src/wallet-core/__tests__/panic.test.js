@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   setPanicVault, clearPanicVault, hasPanicVault, tryPanicUnlock,
   panicWipeLocal, inspectKeyMaterial,
+  readWipeMarker, clearWipeMarker,
 } from '../panic.js';
 import { webKeyStore } from '../keystore/web.js';
 import { setDuressVault, hasDuressVault } from '../duress.js';
@@ -128,6 +129,9 @@ describe('panic wipe', () => {
     // Best-effort fresh slate (a prior test may have deleted the DB entirely).
     try { await clearVault(); } catch { /* noop */ }
     try { await panicWipeLocal(); } catch { /* noop */ }
+    // panicWipeLocal now leaves the next-open wipe marker; clear it so each test
+    // starts from a no-marker baseline (the marker tests assert the false->true edge).
+    try { clearWipeMarker(); } catch { /* noop */ }
   });
 
   it('sets / detects / clears a panic PIN', async () => {
@@ -333,5 +337,40 @@ describe('panic wipe', () => {
     expect(await webKeyStore.hasVault()).toBe(true);
     expect(await hasDuressVault()).toBe(true);
     expect(await tryRevealHidden(HIDDEN_SECRET)).not.toBeNull();
+  });
+
+  // ── Next-open WIPE MARKER (loud post-wipe acknowledgment; owner-approved 2026-06-22) ──
+  // A wipe MUST leave a persisted 'veyrnox-wiped' marker so the NEXT app open can
+  // LOUDLY tell the user the device was wiped — the deniability tradeoff is deliberate:
+  // the panic-PIN AT-UNLOCK moment stays silent (no "wiped!" tell under coercion),
+  // only the next open is loud. The marker is presence-only ('1'); it must be written
+  // AFTER the residue clear and must NOT be cleared by the residue sweep.
+
+  it('panicWipeLocal leaves a persisted wipe marker (readWipeMarker -> true)', async () => {
+    expect(readWipeMarker()).toBe(false);
+    await populateDevice();
+    await panicWipeLocal();
+    expect(readWipeMarker()).toBe(true);
+    // presence-only value (not a timestamp — Date.now()/new Date() are restricted).
+    expect(localStorage.getItem('veyrnox-wiped')).toBe('1');
+  });
+
+  it('the wipe marker SURVIVES the residue sweep (not in ALL_RESIDUE_KEYS)', async () => {
+    // The residue sweep clears every tracked tell; the wipe marker must outlive it,
+    // and the post-wipe report must NOT count it as residue (report.clean === true).
+    await populateDevice();
+    const report = await panicWipeLocal();
+    expect(report.clean).toBe(true);                 // marker excluded from residue
+    expect(report.localStorageResidue).not.toContain('veyrnox-wiped');
+    expect(readWipeMarker()).toBe(true);             // but the marker itself remains
+  });
+
+  it('clearWipeMarker removes the marker (readWipeMarker -> false)', async () => {
+    await populateDevice();
+    await panicWipeLocal();
+    expect(readWipeMarker()).toBe(true);
+    clearWipeMarker();
+    expect(readWipeMarker()).toBe(false);
+    expect(localStorage.getItem('veyrnox-wiped')).toBeNull();
   });
 });

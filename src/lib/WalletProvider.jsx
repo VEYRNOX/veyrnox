@@ -81,6 +81,8 @@ import {
   hasPanicVault,
   panicWipeLocal,
   inspectKeyMaterial,
+  readWipeMarker,
+  clearWipeMarker,
 } from '@/wallet-core/panic';
 // SAST M2: the post-primary-miss deniability resolution runs a CONSTANT number
 // of KDFs regardless of which features are configured, so the presence/count of
@@ -247,7 +249,10 @@ export function WalletProvider({ children }) {
   // local key material this session, so the UI can confirm the wipe + show the
   // residual report. Reset on the next create/import/unlock (a fresh wallet).
   // This is NOT a secret; it is purely a UX/proof signal. See wallet-core/panic.js.
-  const [wasWiped, setWasWiped] = useState(false);
+  // Initialised from the persisted 'veyrnox-wiped' marker so a wipe is LOUDLY
+  // acknowledged on the NEXT app open too (not just in-session) — the marker survives
+  // the wipe + a relaunch with no vault. acknowledgeWipe() clears both below.
+  const [wasWiped, setWasWiped] = useState(() => readWipeMarker());
   const [accounts, setAccounts] = useState([]); // public only: {address, path, index}
   // Phase BTC: the wallet's BIP-84 testnet account (PUBLIC only: {address, path}).
   // Derived from the SAME in-memory mnemonic alongside the EVM accounts; kept in
@@ -690,6 +695,16 @@ export function WalletProvider({ children }) {
     setWasWiped(true);   // UX/proof signal only (not a secret)
     return residual;     // { indexedDbKeys, vaultBlobCount, localStorageResidue, clean }
   }, [lock]);
+
+  // Acknowledge the loud next-open wipe screen: clear the persisted 'veyrnox-wiped'
+  // marker AND drop the in-memory flag, so the loud "This device was wiped" screen
+  // does not reappear once the user moves on to restore/create a wallet. Called by the
+  // WalletEntry loud-screen actions BEFORE proceeding. Marker-clear only — no key
+  // material is touched (the wipe already destroyed everything).
+  const acknowledgeWipe = useCallback(() => {
+    clearWipeMarker();
+    setWasWiped(false);
+  }, []);
 
   // FAIL-CLOSED ONBOARDING ROLLBACK. Tear down a half-provisioned PIN wallet when
   // chaff provisioning fails mid-creation (see lib/pinOnboarding.js). This is the
@@ -1813,6 +1828,9 @@ export function WalletProvider({ children }) {
     // PIN also fires panicWipe automatically when entered at the unlock prompt.
     // inspectKeyMaterial(): non-destructive proof of what local key material exists.
     wasWiped,
+    // acknowledgeWipe(): clear the persisted wipe marker + in-memory flag once the
+    // user has seen the loud next-open "This device was wiped" screen and moves on.
+    acknowledgeWipe,
     // VULN-9: the context-exposed panicWipe requires the caller to pass
     // `{ confirmed: true }` as an explicit guard, so XSS or a rogue component
     // cannot trigger a wipe without the deliberate UI intent signal. The real
