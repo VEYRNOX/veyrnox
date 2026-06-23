@@ -43,8 +43,8 @@ export const CLASSIFICATION = {
     note: 'In the local build DEMO is false, so Dashboard immediately renders WalletPortfolioPage which is driven by the on-device vault; the DemoDashboard branch is never reached.',
   },
   '/notifications': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Aggregates PriceAlert, FraudAlert, RASPEvent, SmartAlert from local IndexedDB (localBase44); all records are user-generated on-device — no external source or fabrication.',
+    verdict: 'live', dataSource: 'on-device',
+    note: 'Aggregates in-app notifications from the local transient queue (send/receive/risk events). No backend entity queries; all records are on-device. PriceAlert/FraudAlert/RASPEvent/SmartAlert backend queries removed (audit M-3 — no write path exists for these entities).',
   },
   '/analytics': {
     verdict: 'live', dataSource: 'local-first',
@@ -102,7 +102,7 @@ export const CLASSIFICATION = {
   },
   '/fee-analytics': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'VERIFIED 2026-06-20: BTC tab loaded real on-chain fee history from the throwaway testnet wallet (bamboo… seed) — 4 confirmed sends, total 0.00000564 BTC fees (0.00000141 BTC each), "View on block explorer" links present, all Confirmed. Demo OFF, no fixtures. Rebuilt (Slice 1): stateless native-unit fee analytics computed on-device from chain history — no fiat, no persistence, no new egress. EVM fails honest to "unavailable" (no in-app indexer).',
+    note: 'BUILT — UI-confirmed 2026-06-20: BTC tab loaded real on-chain fee history from the throwaway testnet wallet (bamboo… seed) — 4 confirmed sends, total 0.00000564 BTC fees (0.00000141 BTC each), "View on block explorer" links present, all Confirmed. Demo OFF, no fixtures. Rebuilt (Slice 1): stateless native-unit fee analytics computed on-device from chain history — no fiat, no persistence, no new egress. EVM fails honest to "unavailable" (no in-app indexer).',
   },
   '/hd-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -150,7 +150,7 @@ export const CLASSIFICATION = {
   },
   '/net-worth': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'VERIFIED 2026-06-20 (recharts v2): real on-chain balances loaded in the UI via the throwaway testnet wallet (bamboo… seed) — ETH ≈$1,248, BTC ≈$177, ARB ≈$160, USDT ≈$98, OP ≈$96, SOL ≈$82, USDC ≈$38, MATIC/AVAX/BNB ≈$0 (small testnet residuals). "Reference rate, not live market data" disclosure present (I2). "does not include external assets" scope note present (crypto-only). Allocation donut + per-asset rows all rendered. Demo OFF (veyrnox-demo=null), no round seeded fixtures. RE-VERIFIED under recharts v3 (3.8.1) 2026-06-22 after #281 bumped recharts 2→3 (see issue #285): same throwaway testnet wallet, demo OFF, total ≈$1,991 — allocation donut re-rendered with 8 populated arc sectors (ETH/BTC/BNB/ARB/OP/SOL/AVAX/MATIC) + per-asset rows; "Reference rate"/"does not include external assets" disclosures still present; zero console errors. (USDC/USDT RPC balances did not load this run — shown as "—"; the "partial — some balances couldn’t be read" notice surfaced honestly.) Render-only re-confirmation; no on-chain txid involved.',
+    note: 'BUILT — UI-confirmed 2026-06-20 (recharts v2): real on-chain balances loaded in the UI via the throwaway testnet wallet (bamboo… seed) — ETH ≈$1,248, BTC ≈$177, ARB ≈$160, USDT ≈$98, OP ≈$96, SOL ≈$82, USDC ≈$38, MATIC/AVAX/BNB ≈$0 (small testnet residuals). "Reference rate, not live market data" disclosure present (I2). "does not include external assets" scope note present (crypto-only). Allocation donut + per-asset rows all rendered. Demo OFF (veyrnox-demo=null), no round seeded fixtures. RE-VERIFIED under recharts v3 (3.8.1) 2026-06-22 after #281 bumped recharts 2→3 (see issue #285): same throwaway testnet wallet, demo OFF, total ≈$1,991 — allocation donut re-rendered with 8 populated arc sectors (ETH/BTC/BNB/ARB/OP/SOL/AVAX/MATIC) + per-asset rows; "Reference rate"/"does not include external assets" disclosures still present; zero console errors. (USDC/USDT RPC balances did not load this run — shown as "—"; the "partial — some balances couldn’t be read" notice surfaced honestly.) Render-only re-confirmation; no on-chain txid involved.',
   },
   '/invoices': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -279,15 +279,15 @@ export const CLASSIFICATION = {
   },
   '/rasp-security': {
     verdict: 'live', dataSource: 'static',
-    note: 'VERIFIED 2026-06-20: page loaded with live browser probe — Detection=browser-active, Current environment=clean, Wired to send path=yes, Independent audit=not yet. Degradation ladder (allow/warn/block) with honest scope notes rendered. "UNAUDITED-PROVISIONAL" tag and I4 honesty note ("no fabricated event counts") present. Demo OFF, real wallet. OS-level probes (root/jailbreak/tamper) remain audit-gated — correctly disclosed.',
+    note: 'BUILT — UI-confirmed 2026-06-20: page loaded with live browser probe — Detection=browser-active, Current environment=clean, Wired to send path=yes, Independent audit=not yet. Degradation ladder (allow/warn/block) with honest scope notes rendered. "UNAUDITED-PROVISIONAL" tag and I4 honesty note ("no fabricated event counts") present. Demo OFF, real wallet. OS-level probes (root/jailbreak/tamper) remain audit-gated — correctly disclosed.',
   },
   '/audit-log': {
     verdict: 'live', dataSource: 'local-vault',
-    note: 'VERIFIED 2026-06-20: enabled toggle via /audit-log page, navigated away (triggering settings_changed), returned to confirm 1 entry appeared — "Settings changed | 6/20/2026, 8:38:58 AM". Write→read cycle confirmed. {type, ts} only (no amounts/addresses). "Encrypted blob in primary vault store. Panic wipe destroys it." and "No-op in decoy/hidden sessions" disclosures present. Clear button rendered. Demo OFF, real wallet (bamboo… seed). Opt-in encrypted audit log viewer — primary-session only; returns [] in decoy/hidden sessions. At most 100 entries.',
+    note: 'BUILT — UI-confirmed 2026-06-20: enabled toggle via /audit-log page, navigated away (triggering settings_changed), returned to confirm 1 entry appeared — "Settings changed | 6/20/2026, 8:38:58 AM". Write→read cycle confirmed. {type, ts} only (no amounts/addresses). "Encrypted blob in primary vault store. Panic wipe destroys it." and "No-op in decoy/hidden sessions" disclosures present. Clear button rendered. Demo OFF, real wallet (bamboo… seed). Opt-in encrypted audit log viewer — primary-session only; returns [] in decoy/hidden sessions. At most 100 entries.',
   },
   '/login-activity': {
     verdict: 'live', dataSource: 'base44-entities',
-    note: 'VERIFIED 2026-06-20: page loaded with real vault data — "Previous session — this device: Jun 20, 2026, 8:50 AM (26m ago)" from vault-stored lastUnlockAt. "No devices recorded yet" (web browser, no base44 UserSession entries). I3 deniability note present: "Per-unlock event history is not stored — doing so would create a metadata trail that could violate deniability guarantees." Session Manager link rendered. Demo OFF, real wallet. Read-only; no new metadata introduced.',
+    note: 'BUILT — UI-confirmed 2026-06-20: page loaded with real vault data — "Previous session — this device: Jun 20, 2026, 8:50 AM (26m ago)" from vault-stored lastUnlockAt. "No devices recorded yet" (web browser, no base44 UserSession entries). I3 deniability note present: "Per-unlock event history is not stored — doing so would create a metadata trail that could violate deniability guarantees." Session Manager link rendered. Demo OFF, real wallet. Read-only; no new metadata introduced.',
   },
   '/alerts': {
     verdict: 'live', dataSource: 'external',

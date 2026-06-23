@@ -26,7 +26,6 @@ import {
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
-import { notifyReceiveDetected } from "@/notify/sources";
 import { ASSETS, getAsset } from "@/wallet-core/assets.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
@@ -402,8 +401,9 @@ export default function WalletPortfolioPage() {
       if (typeof curr !== 'number' || walletData?.indeterminate) continue;
       const prev = prevTotalsRef.current[walletId];
       if (typeof prev === 'number' && curr > prev + 0.001) {
-        const deltaUsd = (curr - prev).toFixed(2);
-        notifyReceiveDetected({ amount: `+$${deltaUsd}`, ts });
+        // Duplicate removed: useReceiveDetector (Layout.jsx) is the canonical
+        // receive-notification source. Emitting here produced two toasts with
+        // different amount strings (USD delta vs native-unit delta) for one receive.
       }
       prevTotalsRef.current[walletId] = curr;
     }

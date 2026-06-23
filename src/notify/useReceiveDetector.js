@@ -20,6 +20,7 @@ import { useWallet } from '@/lib/WalletProvider';
 import { fetchAssetAmount } from '@/lib/portfolioBalances.js';
 import { getAsset } from '@/wallet-core/assets.js';
 import { emitReceiveDetected } from './events.js';
+import { DEMO } from '@/api/demoClient';
 
 const POLL_MS = 60_000;
 const MIN_DELTA = 1e-9; // noise / rounding floor
@@ -63,7 +64,7 @@ export function useReceiveDetector() {
   const priorRef = useRef(null); // Record<symbol, number> | null
 
   useEffect(() => {
-    if (!isUnlocked || isDecoy || isHidden) {
+    if (!isUnlocked || isDecoy || isHidden || DEMO) {
       priorRef.current = null;
       return;
     }

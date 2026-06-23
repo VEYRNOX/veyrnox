@@ -38,31 +38,15 @@ export default function NotificationCentre() {
     queryFn: () => base44.entities.PriceAlert.filter({ status: "triggered" }),
   });
 
-  const { data: fraudAlerts = [] } = useQuery({
-    queryKey: ["fraud-alerts-open"],
-    queryFn: () => base44.entities.FraudAlert.filter({ status: "open" }),
-  });
-
-  const { data: raspEvents = [] } = useQuery({
-    queryKey: ["rasp-open"],
-    queryFn: () => base44.entities.RASPEvent.filter({ status: "open" }),
-  });
-
-  const { data: smartAlerts = [] } = useQuery({
-    queryKey: ["smart-alerts"],
-    queryFn: () => base44.entities.SmartAlert.list("-created_date", 10),
-  });
-
-  const dismissFraud = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.FraudAlert.update(id, { status: "dismissed" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["fraud-alerts-open"] }),
-  });
-
   const dismissPrice = useMutation({
     mutationFn: (/** @type {any} */ id) => base44.entities.PriceAlert.update(id, { status: "dismissed" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts-triggered"] }),
   });
 
+  // Audit M-3: FraudAlert / RASPEvent / SmartAlert backend-entity queries removed.
+  // No write path exists for these entities in the local build — the renderer was
+  // dormant and the RASPEvent 'source_ip' / 'Blocked/Allowed' fields cannot be
+  // computed on-device. PriceAlert and in-app transient-queue entries remain.
   const allNotifications = [
     ...inAppNotes.map(n => ({
       id: n.id, type: "inapp", category: (n.level === "caution" || n.level === "risk") ? "Security" : "Alerts",
@@ -78,27 +62,6 @@ export default function NotificationCentre() {
       body: `Hit $${a.triggered_price?.toLocaleString() ?? a.target_price?.toLocaleString()}`,
       severity: "medium", time: a.updated_date || a.created_date,
       onDismiss: () => dismissPrice.mutate(a.id),
-    })),
-    ...fraudAlerts.map(a => ({
-      id: a.id, type: "fraud", category: "Fraud",
-      title: `Fraud: ${a.alert_type?.replace(/_/g, " ")}`,
-      body: a.description,
-      severity: a.severity, time: a.created_date,
-      onDismiss: () => dismissFraud.mutate(a.id),
-    })),
-    ...raspEvents.map(a => ({
-      id: a.id, type: "rasp", category: "Security",
-      title: `Security: ${a.event_type?.replace(/_/g, " ")}`,
-      body: `From ${a.source_ip || "unknown"} — ${a.blocked ? "Blocked" : "Allowed"}`,
-      severity: a.severity, time: a.created_date,
-      onDismiss: null,
-    })),
-    ...smartAlerts.map(a => ({
-      id: a.id, type: "smart", category: "Alerts",
-      title: a.name,
-      body: a.description || "Triggered",
-      severity: "low", time: a.created_date,
-      onDismiss: null,
     })),
   ].sort((a, b) => (b.time ? new Date(b.time).getTime() : 0) - (a.time ? new Date(a.time).getTime() : 0));
 

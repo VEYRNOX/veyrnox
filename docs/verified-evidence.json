@@ -1,5 +1,5 @@
 {
-  "_schema": "feature-name -> { chain, txid, date }. A catalogue feature is 'verified' ONLY when a real, explorer-confirmed testnet txid exists here. This file is the SOLE source of the 'verified' state; the catalogue reads it and nothing else writes it. Code inspection, passing tests, and clean review NEVER promote a feature to verified (see CLAUDE.md 'Verify, don't assert'). Empty = nothing on-chain-verified yet; every code-complete feature shows 'built' until a txid lands here.",
+  "_schema": "feature-name -> { chain, txid, date }. A catalogue feature is 'verified' ONLY when a real, explorer-confirmed testnet or mainnet txid exists here. This file is the SOLE source of the 'verified' state; the catalogue reads it and nothing else writes it. Code inspection, passing tests, and clean review NEVER promote a feature to verified (see CLAUDE.md 'Verify, don't assert'). Empty = nothing on-chain-verified yet; every code-complete feature shows 'built' until a txid lands here.",
   "_example": {
     "Send Crypto": { "chain": "sepolia", "txid": "0x…", "date": "2026-01-01" }
   },

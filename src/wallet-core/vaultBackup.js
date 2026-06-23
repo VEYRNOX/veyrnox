@@ -17,8 +17,8 @@
 // Google Drive, a USB drive, a local folder.
 //
 // HONESTY NOTE on PIN seal: the seal is only as strong as the PIN. The export
-// function accepts 4–12 digits and the UI permits 6–12 (CloudBackup.jsx canExport
-// requires pin.length >= 6), so a real seal carries ~20 bits (6-digit, 10^6) up to
+// function accepts 6–12 digits (matching the UI minimum in CloudBackup.jsx canExport),
+// so a real seal carries ~20 bits (6-digit, 10^6) up to
 // ~40 bits (12-digit); an 8-digit PIN is ~27 bits. At 192 MiB Argon2id per attempt,
 // offline brute-force of a 6-digit seal (10^6) is feasible for a well-resourced
 // attacker who obtains the file — materially weaker than an 8-digit assumption. The
@@ -206,8 +206,8 @@ export async function createBackupEnvelope(containerJson, password, pin) {
     throw new Error('No container to back up');
   if (typeof password !== 'string' || password.length === 0)
     throw new Error('Password required');
-  if (typeof pin !== 'string' || !/^\d{4,12}$/.test(pin))
-    throw new Error('PIN must be 4–12 digits');
+  if (typeof pin !== 'string' || !/^\d{6,12}$/.test(pin))
+    throw new Error('PIN must be 6–12 digits');
 
   // Encrypt the SAME plaintext under both credentials (full KDF strength for each).
   // Two sequential Argon2id calls — ~1–4 s each on a phone. Acceptable for an
