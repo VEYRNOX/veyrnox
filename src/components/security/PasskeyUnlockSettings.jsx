@@ -129,7 +129,7 @@ export default function PasskeyUnlockSettings() {
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
             Register a passkey
           </Button>
-          {!simulated && !supported && !window.Capacitor && (
+          {!simulated && !supported && !(/** @type {any} */ (window).Capacitor) && (
             <p className="text-[11px] text-muted-foreground">
               WebAuthn isn't available in this browser. Passkey unlock works in the
               mobile app and modern browsers; use your password here.
