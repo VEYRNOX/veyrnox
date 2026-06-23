@@ -103,15 +103,15 @@ describe('BiometricUnlockSettings — NF-2 enable confirm gate', () => {
     expect(panel).toBeTruthy();
   });
 
-  it('confirm panel warns about physical device access risk', async () => {
+  it('confirm panel mentions Argon2id and offline Keychain extraction', async () => {
     await renderSettled();
 
     fireEvent.click(getToggle());
 
     const panel = screen.getByTestId('biometric-enable-confirm');
     const text = panel.textContent.toLowerCase();
-    expect(text).toMatch(/physical access|device/);
-    expect(text).toMatch(/pin|unlock/);
+    expect(text).toMatch(/argon2id/);
+    expect(text).toMatch(/keychain|extraction/);
   });
 
   it('confirm panel has "Enable one-tap unlock" and "Cancel" buttons', async () => {
