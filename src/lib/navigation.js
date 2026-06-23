@@ -23,7 +23,7 @@ import {
   Gift, Key, LayoutGrid, Fuel,
   RotateCcw, Mic,
   ShieldOff, Gauge, FilterX, KeyRound, ScanLine, Frame, Wifi, Pen,
-  CloudUpload, Compass, ScanSearch, Ghost, Bomb,
+  CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
 
