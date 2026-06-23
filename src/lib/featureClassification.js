@@ -255,7 +255,7 @@ export const CLASSIFICATION = {
   },
   '/voice-commands': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'Uses browser-native window.SpeechRecognition / window.webkitSpeechRecognition for transcription. Command matching and routing are local (phrase map + React Router navigate). No audio leaves the device; page explicitly discloses "No audio is sent to external servers." Degrades gracefully when the browser API is absent.',
+    note: 'Uses browser-native window.SpeechRecognition / window.webkitSpeechRecognition for transcription. Command matching and routing are local (phrase map + React Router navigate). Audio processing is browser-engine-dependent: Chrome sends audio to Google for transcription; the page discloses this. Degrades gracefully when the browser API is absent.',
   },
   '/token-approvals': {
     verdict: 'live', dataSource: 'wallet-core',
