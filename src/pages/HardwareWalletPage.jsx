@@ -102,7 +102,7 @@ function HwSendForm({ chain, networkKey, address, publicKeyHex, transport, devic
         <div className="flex items-start gap-2 text-sm text-caution">
           <XCircle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
           <span>
-            Hardware signing requires WebHID (Chrome or Edge on desktop).
+            Hardware signing requires browser hardware support (Chrome or Edge on desktop).
             This browser or app does not support it.
           </span>
         </div>
@@ -229,9 +229,7 @@ export default function HardwareWalletPage() {
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            Ledger and Trezor signing require WebHID, which is not supported in
-            this browser or in-app browser (WKWebView). To use a hardware wallet,
-            open Veyrnox in Chrome or Edge on a desktop computer.
+            Ledger and Trezor aren't supported in this browser — try Chrome on desktop.
           </p>
         </div>
 
@@ -239,7 +237,7 @@ export default function HardwareWalletPage() {
           <p className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">Status:</span>{' '}
             Address derivation and transaction signing are supported for ETH, BTC, and SOL on both
-            Ledger and Trezor. ERC-20 hardware signing and multi-account paths are not yet wired.
+            Ledger and Trezor. Token signing with hardware wallet and multi-account paths are not yet wired.
           </p>
         </div>
       </div>
@@ -317,7 +315,7 @@ export default function HardwareWalletPage() {
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span>
               {isLedger
-                ? 'Connecting — approve the HID request, then approve each address on the device.'
+                ? 'Connecting — approve the device connection request, then approve each address on the device.'
                 : 'Waiting for Trezor Connect popup — approve each address on your device.'}
             </span>
           </div>
@@ -361,7 +359,7 @@ export default function HardwareWalletPage() {
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Your private key never leaves the device.</span>{' '}
           VEYRNOX reads your public addresses only and routes unsigned transactions to the device
-          for on-device signing. No seed phrase or private key is transmitted.
+          for on-device signing. No recovery phrase or private key is transmitted.
         </p>
       </div>
 
@@ -381,7 +379,7 @@ export default function HardwareWalletPage() {
           />
           <ChainCard
             title="Bitcoin (BTC)"
-            addressLabel="BTC Address (m/84'/1'/0'/0/0 — testnet)"
+            addressLabel="BTC Address (m/84'/1'/0'/0/0)"
             address={btcAddress}
             publicKeyHex={btcPublicKeyHex}
             chain="btc"
@@ -408,7 +406,7 @@ export default function HardwareWalletPage() {
         <p className="text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Status:</span>{' '}
           Address derivation and transaction signing are supported for ETH, BTC, and SOL on both
-          Ledger and Trezor. ERC-20 hardware signing and multi-account paths are not yet wired.
+          Ledger and Trezor. Token signing with hardware wallet and multi-account paths are not yet wired.
         </p>
       </div>
     </div>

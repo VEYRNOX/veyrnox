@@ -63,7 +63,7 @@ function PoisonWarning({ screen }) {
     <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
       <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
       <div className="text-xs text-destructive space-y-1.5 min-w-0">
-        <p className="font-semibold">Possible address-poisoning — check the FULL address</p>
+        <p className="font-semibold">This address looks suspicious — check every character carefully</p>
         <p className="text-destructive/90">
           This recipient looks like an address you've used before — same first and last
           characters, different middle. Scammers craft look-alike addresses hoping you copy
@@ -760,7 +760,7 @@ export default function SendCrypto() {
           // checks the explorer rather than assuming it confirmed. Fire-and-forget
           // (I4) — a notification failure must never unwind the send path.
           queryClient.invalidateQueries({ queryKey: ["transactions"] });
-          toast("Couldn't confirm this transaction on-chain yet — it may still be pending. Check the explorer.");
+          toast("Couldn't confirm this transaction on the network yet — it may still be pending. Check the explorer.");
         });
       } else {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -835,7 +835,7 @@ export default function SendCrypto() {
                 View on block explorer <ExternalLink className="h-3 w-3" />
               </a>
             )}
-            <p className="text-[11px] text-muted-foreground">Pending until confirmed on-chain. Balance updates from the chain, not a stored value.</p>
+            <p className="text-[11px] text-muted-foreground">Pending until confirmed on the network. Balance updates from the blockchain, not a stored value.</p>
           </div>
         )}
         <Button variant="outline" onClick={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); setReauthAttempts(0); }}>
@@ -898,14 +898,14 @@ export default function SendCrypto() {
           </Select>
         </div>
         <div>
-          <Label htmlFor="send-recipient">Recipient Address or ENS/SNS Name</Label>
+          <Label htmlFor="send-recipient">Send to (address or name)</Label>
           <div className="flex gap-2 mt-1.5">
             <Input
               id="send-recipient"
               value={ensName || toAddress}
               onChange={e => { const v = e.target.value; if (v.endsWith(".eth") || v.endsWith(".sol")) { setEnsName(v); setToAddress(""); setEnsResolved(null); } else { setEnsName(""); setToAddress(v); setEnsResolved(null); } }}
               onBlur={e => resolveENS(e.target.value)}
-              placeholder="0x... or vitalik.eth or wallet.sol"
+              placeholder="Paste an address or enter a name (e.g. vitalik.eth)"
               className={`mono-value text-sm ${!addressFormatValid ? 'border-destructive' : ''}`}
             />
             {ensResolving && <Loader2 className="h-4 w-4 animate-spin self-center shrink-0 text-muted-foreground" />}
@@ -936,7 +936,7 @@ export default function SendCrypto() {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>
-                    <b>{ensResolved.name}</b> resolved on-chain via your RPC to:
+                    <b>{ensResolved.name}</b> looked up privately on the blockchain to:
                     <br /><span className="mono-value break-all text-foreground">{ensResolved.address}</span>
                     <br />Confirm this address is correct before sending.
                   </span>
@@ -987,7 +987,7 @@ export default function SendCrypto() {
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border -mt-2">
             <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <div className="text-[11px] text-muted-foreground space-y-1.5 flex-1 min-w-0">
-              <p>Recipients are screened <span className="font-medium">locally</span> for look-alike / address-poisoning against your own history — nothing leaves your device.</p>
+              <p>Recipients are <span className="font-medium">checked on your device</span> for scam addresses against your own history — nothing leaves your device.</p>
               <label className="flex items-start gap-2 cursor-pointer">
                 <input type="checkbox" className="mt-0.5" checked={remoteScreen} onChange={e => toggleRemoteScreen(e.target.checked)} />
                 <span>Also screen against an online threat database <span className="text-destructive/80">(sends this address to a third party)</span></span>
@@ -1026,7 +1026,7 @@ export default function SendCrypto() {
               {demoActive
                 ? <>Balance: <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">(demo)</span></>
                 : flowSendEnabled
-                  ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from chain…"} <span className="text-[10px]">(on-chain)</span></>
+                  ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from network…"} <span className="text-[10px]">(live)</span></>
                   : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
               {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
             </p>
@@ -1047,7 +1047,7 @@ export default function SendCrypto() {
         {selectedWallet && !sendEnabled && !devUngated && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. Only ETH (Sepolia testnet) is live in this build; other assets are receive/roadmap only until their crypto path is verified.</p>
+            <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. Only ETH (Ethereum test network) is live in this build; other assets are receive/roadmap only until their crypto path is verified.</p>
           </div>
         )}
         {selectedWallet && !sendEnabled && devUngated && (
@@ -1061,7 +1061,7 @@ export default function SendCrypto() {
         {selectedWallet && flowSendEnabled && !isUnlocked && !demoActive && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30">
             <Lock className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
-            <p className="text-xs text-caution">Your wallet is locked. Unlock it in the HD Wallet Manager to sign and send.</p>
+            <p className="text-xs text-caution">Your wallet is locked. Unlock it in Wallet Settings to sign and send.</p>
           </div>
         )}
         <div>
@@ -1180,11 +1180,11 @@ export default function SendCrypto() {
             {isErc20 && tokenCalldata && (
               <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-2">
                 <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
-                  <FileText className="h-3 w-3" /> Decoded contract call
+                  <FileText className="h-3 w-3" /> What this transaction does
                 </p>
                 {tokenCalldata.kind === "transfer" && (
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="mono-value font-semibold">transfer</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Action</span><span className="mono-value font-semibold">Send tokens</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Amount</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
                     <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Recipient</span><span className="mono-value break-all">{tokenCalldata.to}</span></div>
@@ -1192,19 +1192,19 @@ export default function SendCrypto() {
                 )}
                 {tokenCalldata.kind === "approve" && (
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="mono-value font-semibold">approve</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Action</span><span className="mono-value font-semibold">Grant spending permission</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Allowance</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.amount}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Permission</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.unlimited ? "Unlimited (this app can spend any amount)" : tokenCalldata.amount}</span></div>
                     <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Spender</span><span className="mono-value break-all">{tokenCalldata.spender}</span></div>
                   </div>
                 )}
                 {tokenCalldata.kind === "unknown" && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Unrecognised calldata — do not sign unless you know exactly what this does.</p>
+                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Unknown transaction — only confirm if you know what you're signing.</p>
                 )}
                 {/* Gas is always paid in the chain's native coin, even for tokens —
                     and that coin is NOT always ETH (Phase C). Read it per-chain. */}
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
-                  <Fuel className="h-3 w-3 shrink-0" /> Network fee is paid in {nativeSymbol} ({networkName}) — you need {nativeSymbol} for gas even when sending {tokenCalldata.tokenSymbol || selectedWallet?.currency}.
+                  <Fuel className="h-3 w-3 shrink-0" /> Network fee is paid in {nativeSymbol} ({networkName}) — you need {nativeSymbol} to cover the network fee even when sending {tokenCalldata.tokenSymbol || selectedWallet?.currency}.
                 </p>
               </div>
             )}
@@ -1237,7 +1237,7 @@ export default function SendCrypto() {
               />
             ) : (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                <Fuel className="h-3 w-3 shrink-0" /> Network fee is set automatically for {selectedWallet?.currency} ({networkName}) on this testnet.
+                <Fuel className="h-3 w-3 shrink-0" /> Network fee is set automatically for {selectedWallet?.currency} ({networkName}) on this test network.
               </p>
             )}
             {/* The fee's fiat estimate (and the spend-cap previews) convert via

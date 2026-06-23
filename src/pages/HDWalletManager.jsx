@@ -230,8 +230,8 @@ export default function HDWalletManager() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2"><Key className="h-5 w-5 text-primary" /> HD Wallet Manager</h1>
-          <p className="text-sm text-muted-foreground">BIP-39 / BIP-44 self-custody derivation from one seed phrase</p>
+          <h1 className="text-xl font-bold flex items-center gap-2"><Key className="h-5 w-5 text-primary" /> Wallet Manager</h1>
+          <p className="text-sm text-muted-foreground">One recovery phrase generates all your wallet addresses</p>
         </div>
         <div className="flex items-center gap-2">
           {isUnlocked && (
@@ -246,11 +246,11 @@ export default function HDWalletManager() {
         {isUnlocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
         {isUnlocked
           ? "Vault unlocked. Keys live in memory only and auto-lock after inactivity."
-          : vaultExists ? "Vault locked. Unlock below to view your derived accounts." : "No wallet on this device yet. Generate or import a seed to begin."}
+          : vaultExists ? "Vault locked. Unlock below to view your derived accounts." : "No wallet on this device yet. Generate or import a recovery phrase to begin."}
       </div>
 
       <div className="flex gap-1 p-1 bg-secondary/30 rounded-xl">
-        {[["wallets","My Wallets"],["import","Import Seed"],["generate","Generate New"]].map(([t, l]) => (
+        {[["wallets","My Wallets"],["import","Import Recovery Phrase"],["generate","Generate New"]].map(([t, l]) => (
           <button key={t} onClick={() => { setTab(t); setError(""); }} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${tab === t ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{l}</button>
         ))}
       </div>
@@ -324,10 +324,10 @@ export default function HDWalletManager() {
           {!isUnlocked && !vaultExists && (
             <div className="p-6 rounded-xl border border-dashed border-border bg-card text-center space-y-3">
               <Wallet className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="text-sm text-muted-foreground">Create a new wallet or import an existing seed phrase to derive your accounts.</p>
+              <p className="text-sm text-muted-foreground">Create a new wallet or import an existing recovery phrase to derive your accounts.</p>
               <div className="flex gap-2 justify-center">
                 <Button variant="outline" onClick={() => setTab("generate")}>Generate New</Button>
-                <Button variant="outline" onClick={() => setTab("import")}>Import Seed</Button>
+                <Button variant="outline" onClick={() => setTab("import")}>Import Recovery Phrase</Button>
               </div>
             </div>
           )}
@@ -339,7 +339,7 @@ export default function HDWalletManager() {
           {isUnlocked && (
             <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
               <Key className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-              <span>One address serves <span className="font-medium text-foreground">all EVM chains</span> (Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB). Balances are read live from each chain; the gas token differs per chain (e.g. POL on Polygon, AVAX on Avalanche, ETH on Arbitrum/Optimism).</span>
+              <span>One address works across <span className="font-medium text-foreground">Ethereum, Polygon, Arbitrum, and more</span> (Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB). Balances are read live from each network; each network has its own fee currency (e.g. POL on Polygon, AVAX on Avalanche, ETH on Arbitrum/Optimism).</span>
             </div>
           )}
 
@@ -355,8 +355,10 @@ export default function HDWalletManager() {
                     <Wallet className="h-4.5 w-4.5 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">EVM Account</p>
-                    <p className="text-[11px] text-muted-foreground font-mono">{shortPath(accounts[0]?.index)}</p>
+                    <p className="text-sm font-semibold">Ethereum-compatible Account</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      <span className="not-italic" style={{fontFamily:"inherit"}}>Technical path: </span>{shortPath(accounts[0]?.index)}
+                    </p>
                   </div>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded border bg-success/15 text-success border-success/30 shrink-0">Active</span>
@@ -410,11 +412,11 @@ export default function HDWalletManager() {
                       <div><p className="text-muted-foreground">Chain</p><p className="font-semibold">{getNetworkInfo(asset.chain)?.name || asset.chain}</p></div>
                       <div><p className="text-muted-foreground">Family</p><p className="font-semibold uppercase">{asset.family}</p></div>
                       {isEvmFamily(asset) && getNetworkInfo(asset.chain) && (
-                        <div><p className="text-muted-foreground">Gas token</p><p className="font-semibold">{getNetworkInfo(asset.chain).symbol}</p></div>
+                        <div><p className="text-muted-foreground">Fee currency</p><p className="font-semibold">{getNetworkInfo(asset.chain).symbol}</p></div>
                       )}
                       {address && (
                         <>
-                          <div className="col-span-2"><p className="text-muted-foreground">Path</p><p className="font-semibold font-mono">{shortPath(accounts[0]?.index)}</p></div>
+                          <div className="col-span-2"><p className="text-muted-foreground">Technical path (for advanced users)</p><p className="font-semibold font-mono">{shortPath(accounts[0]?.index)}</p></div>
                           <div className="col-span-2">
                             <p className="text-muted-foreground mb-0.5">Address (public)</p>
                             <div className="flex items-center gap-2">
@@ -452,15 +454,15 @@ export default function HDWalletManager() {
       {tab === "import" && (
         <div className="space-y-4">
           <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 text-xs text-caution">
-            Never share your seed phrase. It is validated and encrypted locally with your password — it is never sent to a server. Keys never leave this device.
+            Never share your recovery phrase. It is validated and encrypted locally with your password — it is never sent to a server. Keys never leave this device.
           </div>
           <div>
-            <Label htmlFor="hd-import-phrase">12 or 24-word BIP-39 Mnemonic Phrase</Label>
+            <Label htmlFor="hd-import-phrase">12 or 24-word recovery phrase</Label>
             <textarea id="hd-import-phrase" value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
           </div>
           <div>
             <Label htmlFor="hd-import-password">Vault Password</Label>
-            <Input id="hd-import-password" type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
+            <Input id="hd-import-password" type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your recovery phrase on this device" />
             <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 12 characters.</p>
           </div>
           <Button className="w-full gap-2" disabled={!importPhrase.trim() || !importPassword || busy} onClick={handleImport}>
@@ -472,27 +474,27 @@ export default function HDWalletManager() {
       {tab === "generate" && (
         <div className="space-y-4">
           <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
-            Write down your seed phrase and store it offline. Anyone with this phrase has full access to your wallets. It is shown ONCE and never stored.
+            Write down your recovery phrase and store it offline. Anyone with this phrase has full access to your wallets. It is shown ONCE and never stored.
           </div>
           {!generatedSeed ? (
             <div className="space-y-3">
               <div>
                 <Label htmlFor="hd-gen-password">Vault Password</Label>
-                <Input id="hd-gen-password" type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" />
+                <Input id="hd-gen-password" type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new recovery phrase on this device" />
                 <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 12 characters.</p>
               </div>
               <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
-                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Generate New 12-Word Phrase
+                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Create a new recovery phrase
               </Button>
             </div>
           ) : (
             <>
               <div className="p-4 rounded-xl border border-border bg-card">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold">Your Seed Phrase (shown once)</p>
+                  <p className="text-xs font-semibold">Your Recovery Phrase (shown once)</p>
                   <div className="flex gap-2">
-                    <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label={showSeed ? "Hide seed phrase" : "Show seed phrase"}>{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(generatedSeed, "seed")} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy seed phrase">{copied === "seed" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label={showSeed ? "Hide recovery phrase" : "Show recovery phrase"}>{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+                    <button onClick={() => copy(generatedSeed, "seed")} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy recovery phrase">{copied === "seed" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showSeed ? (
@@ -506,13 +508,13 @@ export default function HDWalletManager() {
                   </div>
                 ) : (
                   <div className="h-20 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Tap the eye icon to reveal your seed phrase</p>
+                    <p className="text-sm text-muted-foreground">Tap the eye icon to reveal your recovery phrase</p>
                   </div>
                 )}
               </div>
               <div className="p-3 rounded-xl bg-secondary/30 text-xs text-muted-foreground flex items-start gap-2">
                 <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <span>Your wallet is unlocked and your first EVM account is derived. After backing up your phrase, open My Wallets to view your accounts.</span>
+                <span>Your wallet is unlocked and your first account is ready. After backing up your recovery phrase, open My Wallets to view your accounts.</span>
               </div>
               <Button className="w-full gap-2" onClick={() => { setGeneratedSeed(""); setShowSeed(false); setTab("wallets"); }}>
                 <Check className="h-4 w-4" /> I've backed it up — View My Wallets
@@ -524,16 +526,16 @@ export default function HDWalletManager() {
 
       <Dialog open={deriveOpen} onOpenChange={setDeriveOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Derive EVM Accounts</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Derive Accounts</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <p className="text-xs text-muted-foreground">Derive additional accounts from your unlocked seed along the standard Ethereum path. Only public addresses are stored.</p>
+            <p className="text-xs text-muted-foreground">Derive additional accounts from your unlocked recovery phrase along the standard Ethereum path. Only public addresses are stored.</p>
             <div>
               <Label id="hd-derive-count-label">Number of accounts</Label>
               <Select value={String(deriveCount)} onValueChange={v => setDeriveCount(parseInt(v))}>
                 <SelectTrigger className="mt-1.5" aria-labelledby="hd-derive-count-label"><SelectValue /></SelectTrigger>
                 <SelectContent>{[1, 3, 5, 10].map(n => <SelectItem key={n} value={String(n)}>{n} account{n > 1 ? "s" : ""}</SelectItem>)}</SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1 font-mono">{shortPath(0)} … {shortPath(deriveCount - 1)}</p>
+              <p className="text-xs text-muted-foreground mt-1"><span className="font-sans">Technical path: </span><span className="font-mono">{shortPath(0)} … {shortPath(deriveCount - 1)}</span></p>
             </div>
             <Button className="w-full" disabled={!isUnlocked || busy} onClick={handleDerive}>Derive &amp; Save Public Addresses</Button>
           </div>

@@ -66,8 +66,8 @@ async function renderSettled() {
 }
 
 function setPins(pin = '24681357') {
-  fireEvent.change(screen.getByLabelText('New Duress PIN'), { target: { value: pin } });
-  fireEvent.change(screen.getByLabelText('Confirm Duress PIN'), { target: { value: pin } });
+  fireEvent.change(screen.getByLabelText('New Emergency PIN'), { target: { value: pin } });
+  fireEvent.change(screen.getByLabelText('Confirm Emergency PIN'), { target: { value: pin } });
 }
 
 beforeEach(() => {
@@ -87,11 +87,11 @@ describe('DuressPin — Face-ID-opens-the-decoy opt-in', () => {
     expect(/** @type {HTMLInputElement} */ (optin).checked).toBe(false);
   });
 
-  it('HONEST copy: makes clear Face ID opens the DECOY and the real wallet needs the real PIN', async () => {
+  it('HONEST copy: makes clear Face ID opens the HIDDEN wallet and the real wallet needs the real PIN', async () => {
     await renderSettled();
     await screen.findByTestId('decoy-biometric-optin');
     const text = document.body.textContent.toLowerCase();
-    expect(text).toMatch(/decoy/);
+    expect(text).toMatch(/hidden wallet/);
     expect(text).toMatch(/real (pin|wallet)/);
   });
 
@@ -109,7 +109,7 @@ describe('DuressPin — Face-ID-opens-the-decoy opt-in', () => {
     const optin = await screen.findByTestId('decoy-biometric-optin');
     setPins('24681357');
     fireEvent.click(optin);
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Set \/ Change duress PIN/i })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Set \/ Change Emergency PIN/i })); });
 
     await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalledWith('24681357'));
     await waitFor(() => expect(mockEnableDecoyBiometricUnlock).toHaveBeenCalledWith('24681357'));
@@ -119,7 +119,7 @@ describe('DuressPin — Face-ID-opens-the-decoy opt-in', () => {
     await renderSettled();
     await screen.findByTestId('decoy-biometric-optin');
     setPins('24681357');
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Set \/ Change duress PIN/i })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Set \/ Change Emergency PIN/i })); });
 
     await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalledWith('24681357'));
     expect(mockEnableDecoyBiometricUnlock).not.toHaveBeenCalled();
