@@ -70,14 +70,17 @@
   .note{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--amber);
         border-radius:8px;padding:11px 14px;color:var(--muted);font-size:12.5px;margin-top:10px}
   .note b{color:var(--ink)}
+  .note.ok{border-left-color:var(--teal)}
   .legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
   .foot{color:var(--faint);font-size:11px;margin-top:26px;font-family:var(--mono)}
+  .stamp{display:inline-block;font-family:var(--mono);font-size:10.5px;color:var(--teal);
+         border:1px solid rgba(74,218,194,.3);border-radius:999px;padding:2px 9px;margin-left:6px}
   @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}.cats{grid-template-columns:1fr}.gates{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Veyrnox — Build &amp; Mainnet Status</h1>
+  <h1>Veyrnox — Build &amp; Mainnet Status <span class="stamp">refreshed 2026-06-23</span></h1>
   <p class="sub">Self-custody coercion-resistant wallet · data re-pulled from source <b>2026-06-23</b> · mainnet unlocked <b>2026-06-17</b> (internal audit) · independent ECC third-party audit <b>COMPLETE 2026-06-23</b> (§24 satisfied, findings resolved PR #340)</p>
 
   <div class="kpis">
@@ -107,7 +110,7 @@
         <tr><td class="sym">SOL</td><td class="chain">ed25519</td><td class="chain">Solana devnet</td><td><span class="b live">LIVE</span></td><td class="txid">5KGXAGTJTd… · FINALIZED</td></tr>
       </tbody>
     </table>
-    <div class="note"><b>Honesty note — mainnet status:</b> <b>USDC and USDT are both verified on Ethereum mainnet</b> — USDC txid 0xc373…a0a2 (official Circle contract) and USDT txid 0xf06a0b…5b08 (official Tether contract), both SUCCESS, chainId 1, re-confirmed on-chain via RPC 2026-06-22. The other 8 assets are verified on <b>testnet</b>. Correction trail: PR #280 first recorded the WRONG USDT txid (0x3f2f…b986, which is actually a USDC-contract transfer); the real USDT send (0xf06a0b…) was located and verified on-chain 2026-06-22.</div>
+    <div class="note"><b>Honesty note — mainnet status:</b> <b>USDC and USDT are both verified on Ethereum mainnet</b> — USDC txid 0xc373…a0a2 (official Circle contract) and USDT txid 0xf06a0b…5b08 (official Tether contract), both SUCCESS, chainId 1, re-confirmed on-chain via RPC 2026-06-22. The other 8 assets are verified on <b>testnet</b>. Correction trail: PR #280 first recorded the WRONG USDT txid (0x3f2f…b986, which is actually a USDC-contract transfer); the real USDT send (0xf06a0b…) was located and verified on-chain 2026-06-22 (fixed in PR #320).</div>
   </section>
 
   <!-- MAINNET GATES -->
@@ -118,7 +121,7 @@
       <div class="gatecard"><div class="flag">ALLOW_BTC_MAINNET</div><div class="val">true</div><div class="chain mono" style="font-size:10.5px;margin-top:4px">btc/networks.js:82</div></div>
       <div class="gatecard"><div class="flag">ALLOW_SOL_MAINNET</div><div class="val">true</div><div class="chain mono" style="font-size:10.5px;margin-top:4px">sol/networks.js:69</div></div>
     </div>
-    <div class="note"><b>Audit gate:</b> Track 1 — <b>internal</b> audit (owner sign-off 2026-06-17): the hard mainnet gate, <b>COMPLETE</b> → mainnet flags flipped. Track 2 — <b>independent third-party</b> audit (ECC, 2026-06-23; 10 reviewer agents × 2 independent runs) is now <b>COMPLETE</b>: §24 satisfied, 1 CRITICAL + 2 HIGH + 4 MEDIUM + 1 LOW all resolved in PR #340 (merged 8f1dd95), recorded in PR #341. Per the audit record, the internal audit was always the hard gate; the independent audit was RECOMMENDED for depth and is now done. "Internal" is never presented as "independent" (I4).</div>
+    <div class="note ok"><b>Audit gate:</b> Track 1 — <b>internal</b> audit (owner sign-off 2026-06-17): the hard mainnet gate, <b>COMPLETE</b> → mainnet flags flipped. Track 2 — <b>independent third-party</b> audit (ECC, 2026-06-23; 10 reviewer agents × 2 independent runs) is now <b>COMPLETE</b>: §24 satisfied, 1 CRITICAL + 2 HIGH + 4 MEDIUM + 1 LOW all resolved in PR #340 (merged 8f1dd95), recorded in PR #341. Per the audit record, the internal audit was always the hard gate; the independent audit was RECOMMENDED for depth and is now done. "Internal" is never presented as "independent" (I4).</div>
   </section>
 
   <!-- FEATURES BUILT -->
@@ -158,7 +161,7 @@
         <div class="feat"><span class="nm">Duress PIN</span><span class="b prov">PROVISIONAL</span></div>
         <div class="feat"><span class="nm">Stealth / Hidden Wallets</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Panic Wipe</span><span class="b prov">PROVISIONAL</span></div>
-        <div class="feat"><span class="nm">Encrypted Personal Backup</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Encrypted Cloud Backup</span><span class="b prov">PROVISIONAL</span></div>
       </div>
       <div class="cat"><h3>Monitoring &amp; Risk</h3>
         <div class="feat"><span class="nm">RASP (browser-level)</span><span class="b prov">PROVISIONAL</span></div>
@@ -233,10 +236,10 @@
     </div>
   </section>
 
-  <p class="foot">Source of truth: src/wallet-core/assets.js · src/lib/featureCatalogue.js · evm|btc|sol/networks.js · docs/Audit.scope.md · docs/audit-triage/internal-audit-2026-06-17.md · docs/verified-evidence.json</p>
+  <p class="foot">Source of truth: src/wallet-core/assets.js · src/lib/featureCatalogue.js · evm|btc|sol/networks.js · docs/Audit.scope.md · docs/audit-triage/internal-audit-2026-06-17.md · docs/audit-triage/ecc-independent-audit-2026-06-23.md · docs/verified-evidence.json</p>
   <p class="foot">Mainnet sends re-verified on-chain 2026-06-22 via eth_getTransactionByHash/Receipt (USDC 0xc373…a0a2 · USDT 0xf06a0b…5b08, both chainId 1, SUCCESS). USDT txid corrects the wrong hash recorded in PR #280 (0x3f2f…, a USDC tx) — correction in PR #320.</p>
   <p class="foot">Feature counts re-derived from featureCatalogue.js 2026-06-23: 69 entries → 56 effective BUILT (incl. 4 tagged "verified" that resolve to built — their evidence-keys don't match catalogue names, a known mismatch) · 13 ROADMAP.</p>
-  <p class="foot"><b>The 9 "provisional" features</b> (PIN Unlock, Two-Factor at Critical Actions, Duress PIN, Panic Wipe, Encrypted Personal Backup, RASP, Audit Log, Risk Limits / Risk Scoring, Fee Analytics) are still tagged <code>UNAUDITED-PROVISIONAL</code> in featureCatalogue.js (verified against origin/main 2026-06-23). NOTE: the independent ECC audit has since run (2026-06-23, findings resolved PR #340), so the original "pending independent audit" rationale no longer holds — these tags now lag the audit and/or reflect remaining native/real-device gaps (e.g., RASP OS-level probes, backend-escrow cloud backup), and deniability features (duress/stealth/panic) are testnet/demo. The catalogue tags should be reconciled in code. Per I4, nothing here is shown as more verified than source supports.</p>
+  <p class="foot"><b>The 9 "provisional" features</b> (PIN Unlock, Two-Factor at Critical Actions, Duress PIN, Panic Wipe, Encrypted Cloud Backup, RASP, Audit Log, Risk Limits / Risk Scoring, Fee Analytics) are still tagged <code>UNAUDITED-PROVISIONAL</code> in featureCatalogue.js (verified against origin/main 2026-06-23). NOTE: the independent ECC audit has since run (2026-06-23, findings resolved PR #340), so the original "pending independent audit" rationale no longer holds — these tags now lag the audit and/or reflect remaining native/real-device gaps (e.g., RASP OS-level probes, backend-escrow cloud backup), and deniability features (duress/stealth/panic) are testnet/demo. The catalogue tags should be reconciled in code (spawned task). Per I4, nothing here is shown as more verified than source supports.</p>
 </div>
 </body>
 </html>
