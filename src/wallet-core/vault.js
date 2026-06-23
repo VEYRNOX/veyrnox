@@ -237,7 +237,7 @@ export async function decryptVault(vault, password) {
  */
 export async function encryptVaultWithDek(secret, dek) {
   const iv = randomBytes(12);
-  const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['encrypt']);
+  const key = await crypto.subtle.importKey('raw', dek, { name: 'AES-GCM' }, false, ['encrypt']);
   const ptBytes = enc.encode(secret);
   const ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, ptBytes);
   zero(ptBytes);
@@ -251,7 +251,7 @@ export async function encryptVaultWithDek(secret, dek) {
  * @returns {Promise<string>}
  */
 export async function decryptVaultWithDek(vault, dek) {
-  const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['decrypt']);
+  const key = await crypto.subtle.importKey('raw', dek, { name: 'AES-GCM' }, false, ['decrypt']);
   try {
     const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(vault.iv) }, key, unb64(vault.ct));
     const out = dec.decode(ptBuf);

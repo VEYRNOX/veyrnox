@@ -70,12 +70,12 @@ describe('buildUnsignedEvmTx — EVM unsigned tx serialisation', () => {
       chainId: 11155111,
       nonce: 3,
       to: '0x'.padEnd(42, '1'),
-      value: 1000000000000000n,
-      maxFeePerGas: 30000000000n,
-      maxPriorityFeePerGas: 1500000000n,
+      valueWei: 1000000000000000n,
+      maxFeePerGasWei: 30000000000n,
+      maxPriorityFeePerGasWei: 1500000000n,
       gasLimit: 21000n,
     });
-    expect(unsigned.unsignedHex).toMatch(/^0x02/); // typed EIP-1559 envelope
+    expect(unsigned.unsignedSerialized).toMatch(/^0x02/); // typed EIP-1559 envelope
     expect(unsigned.chainId).toBe(11155111);
     // No signature in an unsigned tx.
     expect(unsigned.signature ?? null).toBeNull();
