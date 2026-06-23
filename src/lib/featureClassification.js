@@ -233,7 +233,7 @@ export const CLASSIFICATION = {
   },
   '/hardware-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'WebHID Ledger connection via @ledgerhq/hw-transport-webhid. Derives ETH address (m/44\'/60\'/0\'/0/0) from connected device via @ledgerhq/hw-app-eth. Private key never leaves device. The in-page send form is BUILT but UNVERIFIED (no on-device testnet txid confirmed); BTC/SOL hardware signing not yet wired. PLATFORM NOTE: WebHID is unavailable in the Capacitor iOS WKWebView — the page must fail soft to a "WebHID unavailable" card (guarded dynamic import); a bare top-level @ledgerhq import throws a module-resolution TypeError on iOS (fixed). Ledger flow works only on desktop Chrome/Edge.',
+    note: 'WebHID Ledger connection via @ledgerhq/hw-transport-webhid. Derives ETH address (m/44\'/60\'/0\'/0/0) from connected device via @ledgerhq/hw-app-eth. Private key never leaves device. Address derivation and transaction signing supported for ETH (EIP-1559), BTC (PSBT), and SOL on Ledger and Trezor; ERC-20 hardware signing and multi-account paths not yet wired. PLATFORM NOTE: WebHID is unavailable in the Capacitor iOS WKWebView — the page fails soft to a "WebHID unavailable" card (guarded dynamic import). Ledger flow works only on desktop Chrome/Edge.',
   },
   '/cloud-backup': {
     verdict: 'live', dataSource: 'wallet-core',
