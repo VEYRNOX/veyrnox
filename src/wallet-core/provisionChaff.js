@@ -10,8 +10,9 @@
 //
 // The chaff is encrypted under a high-entropy THROWAWAY password generated and
 // discarded here. Nobody holds it, so the chaff is genuinely unopenable; a
-// non-enrolled PIN never matches it and falls through to the Option-A deterministic
-// decoy exactly as it would past a real duress blob. The chaff goes through the
+// non-enrolled PIN never matches it and is rejected with an explicit "Incorrect PIN"
+// error (v2 model — the Option-A deterministic decoy was removed, commit d27e816),
+// exactly as it would past a real duress blob. The chaff goes through the
 // SAME encryptVault path (same Argon2id at KDF_PARAMS, same salt handling) as a
 // real credential — there is NO chaff-specific branch — so it is byte-shaped like
 // a personalized blob.
