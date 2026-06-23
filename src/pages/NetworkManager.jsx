@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { assertSafeRpcUrl, safeExternalUrl } from "@/wallet-core/netUrl.js";
 
 const DEFAULTS = [
   { id: "d1", name: "Ethereum Mainnet", rpc_url: "https://mainnet.infura.io/v3/", chain_id: 1, symbol: "ETH", explorer_url: "https://etherscan.io", is_testnet: false, is_active: true, logo_color: "#627EEA" },
@@ -23,6 +24,7 @@ export default function NetworkManager() {
   const [open, setOpen] = useState(false);
   const [showTestnets, setShowTestnets] = useState(false);
   const [form, setForm] = useState({ name: "", rpc_url: "", chain_id: "", symbol: "", explorer_url: "", is_testnet: false, logo_color: "#627EEA" });
+  const [urlError, setUrlError] = useState(null);
 
   const { data: dbNetworks = [] } = useQuery({ queryKey: ["networks"], queryFn: () => base44.entities.NetworkConfig.list() });
   const networks = dbNetworks.length > 0 ? dbNetworks : DEFAULTS;
@@ -102,8 +104,8 @@ export default function NetworkManager() {
               {!n.is_active && (
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => activate.mutate(n.id)}>Switch</Button>
               )}
-              {n.explorer_url && (
-                <a href={n.explorer_url} target="_blank" rel="noreferrer" aria-label="Open block explorer" className="p-1.5 text-muted-foreground hover:text-foreground"><Globe className="h-3.5 w-3.5" /></a>
+              {safeExternalUrl(n.explorer_url) && (
+                <a href={safeExternalUrl(n.explorer_url)} target="_blank" rel="noreferrer" aria-label="Open block explorer" className="p-1.5 text-muted-foreground hover:text-foreground"><Globe className="h-3.5 w-3.5" /></a>
               )}
               {dbNetworks.length > 0 && (
                 <button onClick={() => remove.mutate(n.id)} aria-label="Remove network" className="p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -128,7 +130,16 @@ export default function NetworkManager() {
               <Label>This is a testnet</Label>
               <Switch checked={form.is_testnet} onCheckedChange={v => setForm(f => ({ ...f, is_testnet: v }))} />
             </div>
-            <Button className="w-full" disabled={!form.name || !form.rpc_url || !form.chain_id || create.isPending} onClick={() => create.mutate(form)}>Add Network</Button>
+            {urlError && <p className="text-xs text-destructive">{urlError}</p>}
+            <Button className="w-full" disabled={!form.name || !form.rpc_url || !form.chain_id || create.isPending} onClick={() => {
+              try { assertSafeRpcUrl(form.rpc_url); } catch (e) { setUrlError(e.message); return; }
+              if (form.explorer_url?.trim() && !safeExternalUrl(form.explorer_url)) {
+                setUrlError("Block Explorer URL must be https:// (javascript:, data:, file: are blocked).");
+                return;
+              }
+              setUrlError(null);
+              create.mutate(form);
+            }}>Add Network</Button>
           </div>
         </DialogContent>
       </Dialog>

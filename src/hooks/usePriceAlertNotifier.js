@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { fetchMarketPricesUsd } from "@/lib/cryptoCompare.js";
+import { useWallet } from "@/lib/WalletProvider";
 
 function sendNotification(title, body, icon = "/favicon.ico") {
   if (Notification.permission !== "granted") return;
@@ -12,11 +13,17 @@ function sendNotification(title, body, icon = "/favicon.ico") {
 
 export function usePriceAlertNotifier() {
   const queryClient = useQueryClient();
+  // I3 (deniability): the local entity store is shared across wallet sets, so a
+  // decoy/duress (or locked) session must NOT subscribe/poll/notify — otherwise it
+  // would fire OS notifications about the REAL session's price alerts (incl. the
+  // user-authored note). Mirrors the gate in notify/useReceiveDetector.js.
+  const { isUnlocked, isDecoy, isHidden } = useWallet();
   const prevPricesRef = useRef({});
   const notifiedRef   = useRef(new Set()); // track already-notified alert IDs
 
   // ── 1. Real-time subscription: fire notification when alert status → "triggered" ──
   useEffect(() => {
+    if (!isUnlocked || isDecoy || isHidden) return; // I3: no real-set alerts in deniability mode / when locked
     const unsub = base44.entities.PriceAlert.subscribe((event) => {
       if (event.type === "update" && event.data?.status === "triggered") {
         const alert = event.data;
@@ -38,7 +45,7 @@ export function usePriceAlertNotifier() {
       }
     });
     return unsub;
-  }, [queryClient]);
+  }, [queryClient, isUnlocked, isDecoy, isHidden]);
 
   // ── 2. In-app polling: fire notification when a price-target is hit or a ──
   //       price swings ≥ a volatility threshold. This is the on-device
@@ -47,6 +54,7 @@ export function usePriceAlertNotifier() {
   //       endpoint). Background-while-closed firing would need a push server,
   //       which this local build doesn't ship.
   useEffect(() => {
+    if (!isUnlocked || isDecoy || isHidden) return; // I3: no polling/notifications in deniability mode / when locked
     let active = true;
 
     const triggerAlert = async (alert, price) => {
@@ -112,5 +120,5 @@ export function usePriceAlertNotifier() {
     pollAlerts();
     const interval = setInterval(() => { if (active) pollAlerts(); }, 60_000);
     return () => { active = false; clearInterval(interval); };
-  }, [queryClient]);
+  }, [queryClient, isUnlocked, isDecoy, isHidden]);
 }
