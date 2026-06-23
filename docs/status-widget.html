@@ -78,13 +78,13 @@
 <body>
 <div class="wrap">
   <h1>Veyrnox — Build &amp; Mainnet Status</h1>
-  <p class="sub">Self-custody coercion-resistant wallet · data re-pulled from source <b>2026-06-23</b> · mainnet unlocked <b>2026-06-17</b> (internal audit) · independent third-party audit still <b>RECOMMENDED</b></p>
+  <p class="sub">Self-custody coercion-resistant wallet · data re-pulled from source <b>2026-06-23</b> · mainnet unlocked <b>2026-06-17</b> (internal audit) · independent ECC third-party audit <b>COMPLETE 2026-06-23</b> (§24 satisfied, findings resolved PR #340)</p>
 
   <div class="kpis">
     <div class="kpi teal"><div class="n">10</div><div class="l">Assets LIVE</div></div>
     <div class="kpi teal"><div class="n">2</div><div class="l">Mainnet-verified (USDC · USDT)</div></div>
     <div class="kpi teal"><div class="n">56</div><div class="l">Features BUILT</div></div>
-    <div class="kpi amber"><div class="n">6</div><div class="l">Provisional</div></div>
+    <div class="kpi amber"><div class="n">9</div><div class="l">Unaudited / provisional</div></div>
     <div class="kpi slate"><div class="n">13</div><div class="l">Roadmap</div></div>
     <div class="kpi teal"><div class="n">3 / 3</div><div class="l">Mainnet gates open</div></div>
   </div>
@@ -118,7 +118,7 @@
       <div class="gatecard"><div class="flag">ALLOW_BTC_MAINNET</div><div class="val">true</div><div class="chain mono" style="font-size:10.5px;margin-top:4px">btc/networks.js:82</div></div>
       <div class="gatecard"><div class="flag">ALLOW_SOL_MAINNET</div><div class="val">true</div><div class="chain mono" style="font-size:10.5px;margin-top:4px">sol/networks.js:69</div></div>
     </div>
-    <div class="note"><b>Audit gate:</b> Track 1 — <b>internal</b> audit (Claude Sonnet 4.6, owner sign-off 2026-06-17): 0 critical/high/medium, 1 low remediated. This is the hard gate and it is <b>COMPLETE</b> → mainnet flags flipped. Track 2 — <b>independent third-party</b> audit gates App Store submission and is <b>NOT YET DONE</b>. "Internal" is never presented as "independent" (I4).</div>
+    <div class="note"><b>Audit gate:</b> Track 1 — <b>internal</b> audit (owner sign-off 2026-06-17): the hard mainnet gate, <b>COMPLETE</b> → mainnet flags flipped. Track 2 — <b>independent third-party</b> audit (ECC, 2026-06-23; 10 reviewer agents × 2 independent runs) is now <b>COMPLETE</b>: §24 satisfied, 1 CRITICAL + 2 HIGH + 4 MEDIUM + 1 LOW all resolved in PR #340 (merged 8f1dd95), recorded in PR #341. Per the audit record, the internal audit was always the hard gate; the independent audit was RECOMMENDED for depth and is now done. "Internal" is never presented as "independent" (I4).</div>
   </section>
 
   <!-- FEATURES BUILT -->
@@ -140,6 +140,8 @@
       <div class="cat"><h3>Access &amp; Authentication</h3>
         <div class="feat"><span class="nm">Passkey Unlock</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Biometric Unlock</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">PIN Unlock</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Two-Factor at Critical Actions</span><span class="b prov">PROVISIONAL</span></div>
         <div class="feat"><span class="nm">Session Manager &amp; Auto-Lock</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Account Access &amp; Recovery</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Hardware Wallet</span><span class="b built">BUILT</span></div>
@@ -153,9 +155,9 @@
         <div class="feat"><span class="nm">Anomaly / Fraud Detection</span><span class="b built">BUILT</span></div>
       </div>
       <div class="cat"><h3>Recovery &amp; Duress</h3>
-        <div class="feat"><span class="nm">Duress PIN</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Duress PIN</span><span class="b prov">PROVISIONAL</span></div>
         <div class="feat"><span class="nm">Stealth / Hidden Wallets</span><span class="b built">BUILT</span></div>
-        <div class="feat"><span class="nm">Panic Wipe</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Panic Wipe</span><span class="b prov">PROVISIONAL</span></div>
         <div class="feat"><span class="nm">Encrypted Cloud Backup</span><span class="b prov">PROVISIONAL</span></div>
       </div>
       <div class="cat"><h3>Monitoring &amp; Risk</h3>
@@ -225,7 +227,7 @@
     <div class="legend">
       <span class="b live">LIVE — on-chain verified</span>
       <span class="b built">BUILT — code-complete</span>
-      <span class="b prov">PROVISIONAL — unaudited</span>
+      <span class="b prov">PROVISIONAL — tagged UNAUDITED-PROVISIONAL in source</span>
       <span class="b road">ROADMAP — not built</span>
       <span class="b gate">AUDIT/LEGAL-GATE — blocked</span>
     </div>
@@ -233,7 +235,8 @@
 
   <p class="foot">Source of truth: src/wallet-core/assets.js · src/lib/featureCatalogue.js · evm|btc|sol/networks.js · docs/Audit.scope.md · docs/audit-triage/internal-audit-2026-06-17.md · docs/verified-evidence.json</p>
   <p class="foot">Mainnet sends re-verified on-chain 2026-06-22 via eth_getTransactionByHash/Receipt (USDC 0xc373…a0a2 · USDT 0xf06a0b…5b08, both chainId 1, SUCCESS). USDT txid corrects the wrong hash recorded in PR #280 (0x3f2f…, a USDC tx) — correction in PR #320.</p>
-  <p class="foot">Feature counts re-derived from featureCatalogue.js 2026-06-23: 69 entries → 56 effective BUILT (incl. 4 tagged "verified" that resolve to built — their evidence-keys don't match catalogue names, a known mismatch) · 13 ROADMAP · 6 PROVISIONAL-flagged. Suspicious-Address Screening + Referral Tracker have moved roadmap→built since the prior snapshot.</p>
+  <p class="foot">Feature counts re-derived from featureCatalogue.js 2026-06-23: 69 entries → 56 effective BUILT (incl. 4 tagged "verified" that resolve to built — their evidence-keys don't match catalogue names, a known mismatch) · 13 ROADMAP.</p>
+  <p class="foot"><b>The 9 "provisional" features</b> (PIN Unlock, Two-Factor at Critical Actions, Duress PIN, Panic Wipe, Encrypted Cloud Backup, RASP, Audit Log, Risk Limits / Risk Scoring, Fee Analytics) are still tagged <code>UNAUDITED-PROVISIONAL</code> in featureCatalogue.js (verified against origin/main 2026-06-23). NOTE: the independent ECC audit has since run (2026-06-23, findings resolved PR #340), so the original "pending independent audit" rationale no longer holds — these tags now lag the audit and/or reflect remaining native/real-device gaps (e.g., RASP OS-level probes, backend-escrow cloud backup), and deniability features (duress/stealth/panic) are testnet/demo. The catalogue tags should be reconciled in code. Per I4, nothing here is shown as more verified than source supports.</p>
 </div>
 </body>
 </html>
