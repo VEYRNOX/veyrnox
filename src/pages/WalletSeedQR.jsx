@@ -50,7 +50,7 @@ export default function WalletSeedQR() {
         setMnemonic(phrase);
         mnemonicRef.current = phrase;
       }
-    }, { title: 'Reveal seed phrase' });
+    }, { title: 'Reveal recovery phrase' });
   };
 
   const handlePrint = async () => {
@@ -66,9 +66,9 @@ export default function WalletSeedQR() {
     const w = window.open("", "_blank");
     const nameHtml = escapeHtml(selectedWallet?.name || "Wallet");
     const qrHtml = qrDataUrl
-      ? `<img class="qr" src="${qrDataUrl}" alt="Seed phrase QR" width="240" height="240" />`
+      ? `<img class="qr" src="${qrDataUrl}" alt="Recovery phrase QR" width="240" height="240" />`
       : "";
-    w.document.write(`<html><head><title>Seed Backup — ${nameHtml}</title><style>
+    w.document.write(`<html><head><title>Recovery Backup — ${nameHtml}</title><style>
       body { font-family: monospace; text-align: center; padding: 40px; }
       h2 { margin-bottom: 8px; }
       p { color: #666; font-size: 13px; margin: 4px 0; }
@@ -76,12 +76,12 @@ export default function WalletSeedQR() {
       .qr { margin: 12px auto; display: block; }
       .warning { color: #ef4444; font-size: 12px; margin-top: 20px; }
     </style></head><body>
-      <h2>${nameHtml} — Seed Backup</h2>
+      <h2>${nameHtml} — Recovery Backup</h2>
       <p>${escapeHtml(selectedWallet?.currency || "")} · ${escapeHtml(selectedWallet?.address?.slice(0, 16) || "")}...</p>
       <div class="seed">${escapeHtml(mnemonic)}</div>
       ${qrHtml}
       <p class="warning">⚠️ KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.</p>
-      <p class="warning">The QR encodes the same seed phrase — anyone who scans it controls this wallet.</p>
+      <p class="warning">The QR encodes the same recovery phrase — anyone who scans it controls this wallet.</p>
     </body></html>`);
     w.document.close();
     w.print();
@@ -101,7 +101,7 @@ export default function WalletSeedQR() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold">Seed Phrase Backup</h1>
+        <h1 className="text-xl font-bold">Recovery Phrase Backup</h1>
         <p className="text-sm text-muted-foreground">Display and print your recovery phrase for secure offline backup.</p>
       </div>
 
@@ -112,10 +112,10 @@ export default function WalletSeedQR() {
           <p className="text-sm font-semibold text-destructive">Critical Security Warning</p>
         </div>
         <ul className="text-xs text-muted-foreground space-y-1 ml-7">
-          <li>• Your seed phrase grants full wallet access — never share it</li>
-          <li>• Only reveal your seed phrase in a private, secure environment</li>
+          <li>• Your recovery phrase grants full wallet access — never share it</li>
+          <li>• Only reveal your recovery phrase in a private, secure environment</li>
           <li>• Store the printed phrase in a fireproof safe or safety deposit box</li>
-          <li>• This page never transmits your seed phrase — it reads from your local vault</li>
+          <li>• This page never transmits your recovery phrase — it reads from your local vault</li>
         </ul>
       </div>
 
@@ -142,7 +142,7 @@ export default function WalletSeedQR() {
       {/* Reveal button — shown when wallet selected but mnemonic not yet revealed */}
       {selectedWalletId && !mnemonic && (
         <Button onClick={handleReveal} className="gap-2 w-full">
-          <KeyRound className="h-4 w-4" /> Reveal Seed Phrase
+          <KeyRound className="h-4 w-4" /> Reveal Recovery Phrase
         </Button>
       )}
 
@@ -152,7 +152,7 @@ export default function WalletSeedQR() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-success" />
-              <p className="text-sm font-semibold">{selectedWallet?.name || "Wallet"} — Seed Phrase</p>
+              <p className="text-sm font-semibold">{selectedWallet?.name || "Wallet"} — Recovery Phrase</p>
             </div>
             <button
               onClick={() => setShowSeed(s => !s)}
@@ -187,14 +187,14 @@ export default function WalletSeedQR() {
                   <QRCodeDisplay address={mnemonic} size={200} />
                 </div>
                 <p className="text-[11px] text-destructive text-center max-w-[15rem]">
-                  This QR contains your full seed phrase. Treat it exactly like the words —
+                  This QR code contains your recovery phrase. Keep it as safe as the words themselves —
                   never photograph or screenshot it where it could sync or be seen.
                 </p>
               </div>
             </>
           ) : (
             <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-center">
-              <p className="text-sm text-muted-foreground">Tap the eye to reveal your {words.length}-word phrase</p>
+              <p className="text-sm text-muted-foreground">Tap the eye to reveal your {words.length}-word recovery phrase</p>
             </div>
           )}
 
@@ -214,7 +214,7 @@ export default function WalletSeedQR() {
             className="text-destructive text-xs w-full"
             onClick={handleClear}
           >
-            Clear seed from memory
+            Clear recovery phrase from memory
           </Button>
         </div>
       )}
