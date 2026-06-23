@@ -24,10 +24,10 @@ describe('navigation respects the feature registry', () => {
     expect(allNavPaths).toContain('/duress-pin');
   });
 
-  it('includes Cloud Backup in the Security group', () => {
+  it('includes Personal Backup in the Security group', () => {
     expect(allNavPaths).toContain('/cloud-backup');
     const entry = navGroups.flatMap((g) => g.items).find((i) => i.path === '/cloud-backup');
-    expect(entry?.label).toBe('Cloud Backup');
+    expect(entry?.label).toBe('Personal Backup');
     const secGroup = navGroups.find((g) => g.items.some((i) => i.path === '/cloud-backup'));
     expect(secGroup?.label).toBe('Security');
   });

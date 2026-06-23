@@ -158,7 +158,7 @@
         <div class="feat"><span class="nm">Duress PIN</span><span class="b prov">PROVISIONAL</span></div>
         <div class="feat"><span class="nm">Stealth / Hidden Wallets</span><span class="b built">BUILT</span></div>
         <div class="feat"><span class="nm">Panic Wipe</span><span class="b prov">PROVISIONAL</span></div>
-        <div class="feat"><span class="nm">Encrypted Cloud Backup</span><span class="b prov">PROVISIONAL</span></div>
+        <div class="feat"><span class="nm">Encrypted Personal Backup</span><span class="b prov">PROVISIONAL</span></div>
       </div>
       <div class="cat"><h3>Monitoring &amp; Risk</h3>
         <div class="feat"><span class="nm">RASP (browser-level)</span><span class="b prov">PROVISIONAL</span></div>
@@ -236,7 +236,7 @@
   <p class="foot">Source of truth: src/wallet-core/assets.js · src/lib/featureCatalogue.js · evm|btc|sol/networks.js · docs/Audit.scope.md · docs/audit-triage/internal-audit-2026-06-17.md · docs/verified-evidence.json</p>
   <p class="foot">Mainnet sends re-verified on-chain 2026-06-22 via eth_getTransactionByHash/Receipt (USDC 0xc373…a0a2 · USDT 0xf06a0b…5b08, both chainId 1, SUCCESS). USDT txid corrects the wrong hash recorded in PR #280 (0x3f2f…, a USDC tx) — correction in PR #320.</p>
   <p class="foot">Feature counts re-derived from featureCatalogue.js 2026-06-23: 69 entries → 56 effective BUILT (incl. 4 tagged "verified" that resolve to built — their evidence-keys don't match catalogue names, a known mismatch) · 13 ROADMAP.</p>
-  <p class="foot"><b>The 9 "provisional" features</b> (PIN Unlock, Two-Factor at Critical Actions, Duress PIN, Panic Wipe, Encrypted Cloud Backup, RASP, Audit Log, Risk Limits / Risk Scoring, Fee Analytics) are still tagged <code>UNAUDITED-PROVISIONAL</code> in featureCatalogue.js (verified against origin/main 2026-06-23). NOTE: the independent ECC audit has since run (2026-06-23, findings resolved PR #340), so the original "pending independent audit" rationale no longer holds — these tags now lag the audit and/or reflect remaining native/real-device gaps (e.g., RASP OS-level probes, backend-escrow cloud backup), and deniability features (duress/stealth/panic) are testnet/demo. The catalogue tags should be reconciled in code. Per I4, nothing here is shown as more verified than source supports.</p>
+  <p class="foot"><b>The 9 "provisional" features</b> (PIN Unlock, Two-Factor at Critical Actions, Duress PIN, Panic Wipe, Encrypted Personal Backup, RASP, Audit Log, Risk Limits / Risk Scoring, Fee Analytics) are still tagged <code>UNAUDITED-PROVISIONAL</code> in featureCatalogue.js (verified against origin/main 2026-06-23). NOTE: the independent ECC audit has since run (2026-06-23, findings resolved PR #340), so the original "pending independent audit" rationale no longer holds — these tags now lag the audit and/or reflect remaining native/real-device gaps (e.g., RASP OS-level probes, backend-escrow cloud backup), and deniability features (duress/stealth/panic) are testnet/demo. The catalogue tags should be reconciled in code. Per I4, nothing here is shown as more verified than source supports.</p>
 </div>
 </body>
 </html>
