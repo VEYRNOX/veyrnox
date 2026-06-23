@@ -126,3 +126,36 @@ still does not leak deniability-feature count.
 Nothing in this commit touches signing, key derivation, vault encryption, or the
 WalletProvider unlock logic — only comments, copy, and status descriptions were
 changed.
+
+---
+
+## Addendum — loud next-open wipe acknowledgment (2026-06-22)
+
+**Owner-approved 2026-06-22.** After ANY local wipe (panic PIN at unlock, the
+10-attempt auto-wipe, or the in-app guarded wipe), `panicWipeLocal()` now leaves a
+persisted `localStorage['veyrnox-wiped'] = '1'` marker (presence == wiped; written
+AFTER the residue clear and DELIBERATELY excluded from `ALL_RESIDUE_KEYS` so the wipe's
+own sweep cannot remove it, and so it survives a relaunch with no vault). On the NEXT
+app open the gate now renders a LOUD destructive "This device was wiped" screen
+(`WalletEntry.jsx` → `WipedNotice`) instead of silently dropping the user onto the
+generic "Get Started" onboarding with no sign their funds-bearing keys were destroyed.
+
+This marker is a **deliberate next-open deniability tell**: the panic-PIN
+**at-the-moment** response is UNCHANGED — it still shows the generic "Incorrect PIN.
+Try again." with no "wiped!" tell, so covert destruction under coercion is preserved.
+Only the next open is loud. The 10-attempt warning/counter logic
+(`pinAttemptGuard.js`) and the panic routing are untouched.
+
+`WalletProvider` initialises `wasWiped` from the marker on mount and exposes
+`acknowledgeWipe()` (clears the marker + flag); both loud-screen actions ("Restore from
+recovery phrase", "Start a new wallet") call it before routing on, so the screen does
+not reappear. No key material, signing, derivation, or vault crypto is touched — this is
+post-wipe UX + one presence-only marker.
+
+| File | Change |
+|---|---|
+| `src/wallet-core/panic.js` | `setWipeMarker()` (internal, post-clear), `readWipeMarker()`/`clearWipeMarker()` exports; `WIPE_MARKER_KEY = 'veyrnox-wiped'` excluded from `ALL_RESIDUE_KEYS` |
+| `src/lib/WalletProvider.jsx` | `wasWiped` seeded from `readWipeMarker()`; `acknowledgeWipe()` added + exposed |
+| `src/components/WalletEntry.jsx` | `WipedNotice` loud screen, rendered first when `wasWiped && no vault`; actions call `acknowledgeWipe()` |
+| `src/wallet-core/__tests__/panic.test.js` | marker written post-clear, excluded from residue, cleared by `clearWipeMarker` |
+| `src/components/__tests__/wallet-entry-wiped-ack.test.jsx` | loud screen renders + both actions call `acknowledgeWipe` |

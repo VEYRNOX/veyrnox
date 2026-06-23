@@ -70,7 +70,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Shield, Wallet, Lock, Unlock, KeyRound, Download, RefreshCw,
-  Eye, EyeOff, Copy, Check, AlertTriangle, ArrowLeft, Fingerprint, ScanFace, Zap,
+  Eye, EyeOff, Copy, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,6 +127,43 @@ function EntryShell({ error, children }) {
           </div>
         )}
         {children}
+      </div>
+    </div>
+  );
+}
+
+// LOUD NEXT-OPEN WIPE ACKNOWLEDGMENT (owner-approved 2026-06-22). After ANY local
+// wipe (panic PIN at unlock, the 10-attempt auto-wipe, or the in-app guarded wipe) the
+// next app open shows this destructive-styled screen FIRST — instead of silently
+// dropping to "Get Started" with no sign the keys were destroyed. DELIBERATE next-open
+// deniability tradeoff: the panic-PIN AT-UNLOCK moment stays silent (generic "Incorrect
+// PIN"); only the next open is loud. Copy is honest: keys permanently destroyed,
+// recoverable ONLY via the recovery phrase, server holds nothing. Both actions call
+// acknowledgeWipe() (clearing the persisted marker) before routing on, so this screen
+// does not reappear. PURE PRESENTATION — no wallet, no balances.
+function WipedNotice({ onRestore, onStartNew }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="p-6 rounded-xl border border-destructive/40 bg-destructive/10 text-center space-y-4">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/15">
+            <AlertOctagon className="h-8 w-8 text-destructive" />
+          </div>
+          <h1 className="text-xl font-semibold text-destructive">This device was wiped</h1>
+          <p className="text-sm text-foreground/90">
+            All wallet keys stored on this device were permanently destroyed. This cannot
+            be undone. Your funds are recoverable ONLY with your recovery phrase — Veyrnox
+            holds nothing on a server.
+          </p>
+        </div>
+        <div className="space-y-3">
+          <Button className="w-full gap-2" onClick={onRestore}>
+            <Download className="h-4 w-4" /> Restore from recovery phrase
+          </Button>
+          <Button variant="outline" className="w-full gap-2" onClick={onStartNew}>
+            <Wallet className="h-4 w-4" /> Start a new wallet
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -285,6 +322,7 @@ export default function WalletEntry() {
     exploreMode, enterExplore, leaveExplore, confirmWalletBackup,
     setupPin, createWalletFromPendingPin, importWalletForPendingPin,
     clearPendingPin, hasPendingPin, panicWipe,
+    wasWiped, acknowledgeWipe,
   } = useWallet();
 
   // null until we know whether a vault exists; drives unlock vs first-run.
@@ -725,6 +763,30 @@ export default function WalletEntry() {
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  // ---- LOUD NEXT-OPEN WIPE ACKNOWLEDGMENT ----
+  // A wipe destroyed the local key material (so there is NO vault) but the user must
+  // get an unmistakable sign their keys are gone — not the silent generic onboarding.
+  // Render BEFORE welcome/onboarding. Both actions acknowledgeWipe() (clear the marker)
+  // BEFORE routing on so the screen does not reappear once they move forward.
+  if (wasWiped && vaultExists === false) {
+    return (
+      <WipedNotice
+        onRestore={() => {
+          acknowledgeWipe();
+          setError(""); setRecovering(true);
+          setRecoverySeed(""); setRealPin(""); setRealPinConfirm("");
+          setPinStep("seed"); setView("pin-recover");
+        }}
+        onStartNew={() => {
+          acknowledgeWipe();
+          setError("");
+          setRealPin(""); setRealPinConfirm(""); setPinStep("real");
+          setView("pin-create");
+        }}
+      />
     );
   }
 
