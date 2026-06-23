@@ -9,7 +9,4 @@ transaction history, watchlists, approvals, address book, etc.) is persisted
 on-device and no entity data is sent to any hosted backend.
 
 Access in the local build is gated solely by the on-device vault unlock
-(`WalletGate` → `WalletEntry`): the seed/vault is the identity. A few features
-that genuinely need a server we no longer ship (LLM-backed AI pages, email-OTP
-delivery) show an explicit "not available in this local build" state rather than
-faking a result.
+(`WalletGate` → `WalletEntry`): the seed/vault is the identity.
