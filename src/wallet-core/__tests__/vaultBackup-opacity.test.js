@@ -79,20 +79,20 @@ describe('backup file is a BINARY encrypted-vault container (guards PR #239/#245
   // backups, so this exercises real crypto end-to-end (slow Argon2id — expected).
   it('REAL crypto: binary file round-trips and both seals still decrypt', async () => {
     const container = JSON.stringify({ wallets: [{ id: 'w1', mnemonic: 'alpha bravo charlie delta echo' }] });
-    const env = await createBackupEnvelope(container, 'backup-pass-123', '24681357');
+    const env = await createBackupEnvelope(container, 'backup-pass-123', '2468');
     downloadBackupFile(env);
     const parsed = parseBackupFile(await capturedBytes());
     expect(await decryptVault(parsed.seals.password, 'backup-pass-123')).toBe(container);
-    expect(await decryptVault(parsed.seals.pin, '24681357')).toBe(container);
+    expect(await decryptVault(parsed.seals.pin, '2468')).toBe(container);
   }, 60000);
 
   // verify-after-export: a freshly-made backup is proven restorable before the
   // user is told it succeeded.
   it('verifyBackupEnvelope passes for the chosen creds and throws otherwise', async () => {
     const container = JSON.stringify({ wallets: [{ id: 'w1', mnemonic: 'foxtrot golf hotel india' }] });
-    const env = await createBackupEnvelope(container, 'GoodBackupPw1', '98761234');
-    await expect(verifyBackupEnvelope(env, 'GoodBackupPw1', '98761234')).resolves.toBe(true);
-    await expect(verifyBackupEnvelope(env, 'WrongPw', '98761234')).rejects.toThrow(/verification failed/i);
-    await expect(verifyBackupEnvelope(env, 'GoodBackupPw1', '00000000')).rejects.toThrow(/verification failed/i);
+    const env = await createBackupEnvelope(container, 'GoodBackupPw1', '9876');
+    await expect(verifyBackupEnvelope(env, 'GoodBackupPw1', '9876')).resolves.toBe(true);
+    await expect(verifyBackupEnvelope(env, 'WrongPw', '9876')).rejects.toThrow(/verification failed/i);
+    await expect(verifyBackupEnvelope(env, 'GoodBackupPw1', '0000')).rejects.toThrow(/verification failed/i);
   }, 60000);
 });
