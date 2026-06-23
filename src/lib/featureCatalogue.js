@@ -482,9 +482,13 @@ export const FEATURE_CATEGORIES = [
           'WalletConnect v2 transport + request handling (D1+D2+D3). ' +
           'Pair with dApps, approve/reject session proposals, and sign personal_sign / eth_signTypedData_v4 ' +
           'requests with Permit/Permit2 hard warnings. eth_sendTransaction is wired end-to-end — it signs ' +
-          'locally and broadcasts a real transaction, with a chain-ID-mismatch guard and a 1M-gas cap (I5); ' +
-          'eth_sign and wallet_addEthereumChain are blocked. Sessions are currently approved on Sepolia ' +
-          'testnet only, and no dApp-initiated send has an on-chain txid yet, so this stays built (not verified). ' +
+          'locally and broadcasts a real transaction, with a chain-ID-mismatch guard and a 1M-gas cap (I5). ' +
+          'Blocked methods: eth_sign (raw bytes), wallet_addEthereumChain (RPC injection), ' +
+          'wallet_switchEthereumChain (not yet implemented — blocked and not advertised). ' +
+          'Session approval passes the dApp\'s requested chains through to the namespace (all 12 EVM chains ' +
+          'in SUPPORTED_CHAIN_IDS — testnets + mainnet); unsupported chains are filtered silently. ' +
+          'Active sessions display their approved chain set. No dApp-initiated send has an on-chain txid yet, ' +
+          'so this stays built (not verified). ' +
           'Requires VITE_WALLETCONNECT_PROJECT_ID in .env.local; absent it, the page honest-disables.',
       },
       {
