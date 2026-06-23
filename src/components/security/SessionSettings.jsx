@@ -89,8 +89,8 @@ export default function SessionSettings() {
         </div>
         <p className="text-xs text-muted-foreground">
           {autoLockValue === 'never'
-            ? 'The wallet will not auto-lock on idle. A quick app-switch is fine, but it still locks if left in the background for ~45 s, and after 8 hours unlocked.'
-            : 'Resets whenever you interact with the app. Also locks immediately when the app is backgrounded.'}
+            ? 'No auto-lock on idle, but it still locks after ~45 s in the background and after 8 hours unlocked.'
+            : 'Resets whenever you interact with the app. Also locks immediately when backgrounded.'}
         </p>
       </div>
 

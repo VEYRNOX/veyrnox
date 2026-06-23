@@ -283,10 +283,10 @@ function MoveExistingWallet() {
           <ShieldAlert className="h-4 w-4" /> Weaker than a fresh hidden wallet — read this
         </div>
         <ul className="list-disc pl-4 space-y-1 text-destructive/90">
-          <li>This wallet is <b>already visible</b>. Anyone who saw your app before can notice it is <b>gone</b> afterward and demand you restore it. A <b>fresh</b> hidden wallet the adversary never knew about is safer.</li>
-          <li>Its address and history stay <b>public on-chain</b>. Hiding it here does <b>not</b> hide it from anyone who already has the address.</li>
-          <li>A <b>before/after inspection</b> of this device can detect that a wallet was removed and that one storage slot changed.</li>
-          <li>Provisional, testnet-only — this existing-wallet-hiding path specifically needs security-audit scrutiny.</li>
+          <li>This wallet is <b>already visible</b>. Anyone who saw your app before can notice it's <b>gone</b> and demand you restore it. A <b>fresh</b> hidden wallet the adversary never knew about is safer.</li>
+          <li>Its address and history stay <b>public on-chain</b> — hiding it here doesn't hide it from anyone who already has the address.</li>
+          <li>A <b>before/after inspection</b> of this device can detect that a wallet was removed and a storage slot changed.</li>
+          <li>Provisional, testnet-only — this existing-wallet path specifically needs security-audit scrutiny.</li>
         </ul>
       </div>
 
@@ -326,9 +326,9 @@ function MoveExistingWallet() {
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <p className="text-[10px] text-muted-foreground mt-1">
-              The app holds only public data for your wallets, so you supply the
-              phrase to move the real wallet into hidden. It is encrypted with your
-              reveal secret and never stored in the clear.
+              The app holds only public data, so you supply the phrase to move the
+              real wallet into hidden. It's encrypted with your reveal secret, never
+              stored in the clear.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -547,12 +547,11 @@ export default function StealthWallets() {
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-caution">Storage note.</span>{' '}
-          Hidden wallets are stored in <strong>web IndexedDB</strong>. On native
-          devices the primary vault is hardware-backed (iOS Keychain / Android
-          Keystore); hidden-wallet hardware backing is planned for a future release
-          (M2c/M2d). Until then, a full device-data extraction can expose the
-          hidden-wallet container without hardware-key access, even if the contents
-          remain encrypted under your hidden-wallet secret.
+          Hidden wallets live in <strong>web IndexedDB</strong>. The primary vault is
+          hardware-backed on native (iOS Keychain / Android Keystore), but
+          hidden-wallet hardware backing is still planned (M2c/M2d). Until then a full
+          device-data extraction can expose the hidden-wallet container without a
+          hardware key — though its contents stay encrypted under your secret.
         </p>
       </div>
 
@@ -560,10 +559,10 @@ export default function StealthWallets() {
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
           <b>Provisional (testnet), pending independent audit.</b> Runtime + count
-          deniability (identical UI, errors, and timing at unlock; the number of
-          hidden wallets isn't revealed) — not hidden-volume storage: a forensic
-          inspection sees a fixed pool of vault-shaped slots, but can't tell which,
-          or how many, are real wallets versus random chaff.
+          deniability: identical UI, errors, and timing at unlock, and the number of
+          hidden wallets is never revealed — not hidden-volume storage: forensics sees
+          a fixed pool of vault-shaped slots, but can't tell which, or how many, are
+          real versus chaff.
         </span>
       </div>
 
@@ -575,12 +574,11 @@ export default function StealthWallets() {
             <p className="text-sm font-semibold">How it works</p>
             <p className="text-xs text-muted-foreground mt-1">
               Create a hidden wallet with its own <b>reveal secret</b> (different
-              from your main password and any duress PIN). It appears nowhere in the
-              app — <b>no list, no count, no indicator</b>. Type its secret at the
-              <b> normal unlock screen</b> and the app opens that hidden wallet, with
-              its full <b>Ethereum, Bitcoin and Solana</b> identity, instead of your
-              visible one. To anyone inspecting the unlocked app there's no sign it
-              exists.
+              from your main password and any duress PIN). It appears nowhere —{" "}
+              <b>no list, no count, no indicator</b>. Type its secret at the{" "}
+              <b>normal unlock screen</b> and the app opens that hidden wallet — full{" "}
+              <b>Ethereum, Bitcoin and Solana</b> identity — instead of your visible
+              one. Nothing in the unlocked app reveals it exists.
             </p>
           </div>
         </div>
@@ -593,11 +591,11 @@ export default function StealthWallets() {
           <p className="text-sm font-semibold">What this protects — and what it does not</p>
         </div>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Hidden wallets sit among a fixed pool of identical vault-shaped slots — some real, the rest random <b>chaff</b> — so the <b>count</b> of hidden wallets is never revealed, and a forensic examiner can't tell which slots (if any) are real.</li>
+          <li>Hidden wallets sit in a fixed pool of identical vault-shaped slots — some real, the rest random <b>chaff</b> — so their <b>count</b> is never revealed and a forensic examiner can't tell which slots, if any, are real.</li>
           <li>The pool is seeded for <b>every</b> wallet on the device, so its presence means "this device has a <strong>VEYRNOX</strong> wallet" — not "this device has hidden wallets".</li>
-          <li><b>Stealth hides a wallet in the app, not on-chain.</b> A hidden wallet's Ethereum, Bitcoin and Solana addresses are public — anyone who knows one can see its balance and history on a block explorer.</li>
-          <li>We keep <b>no list</b> of your hidden wallets, so a forgotten secret makes that wallet unrecoverable from this app. Remember each secret.</li>
-          <li><b>Back up each hidden wallet's recovery phrase separately, right after you create it.</b> Because the pool hides the count, two hidden wallets can — rarely — land in the same slot, and creating the second silently replaces the first. With the seed backed up, the wallet is still recoverable; without it, it's gone. Don't rely on this app as the only copy.</li>
+          <li><b>Stealth hides a wallet in the app, not on-chain.</b> A hidden wallet's Ethereum, Bitcoin and Solana addresses are public — anyone with one can see its balance and history on a block explorer.</li>
+          <li>We keep <b>no list</b> of hidden wallets, so a forgotten secret makes that wallet unrecoverable here. Remember each secret.</li>
+          <li><b>Back up each hidden wallet's recovery phrase right after you create it.</b> Because the pool hides the count, two hidden wallets can rarely land in the same slot, and creating the second silently replaces the first. With the seed backed up it's still recoverable; without it, it's gone.</li>
         </ul>
       </div>
 
@@ -644,9 +642,9 @@ export default function StealthWallets() {
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
               The secret must be <b>different</b> from your main password and any
-              duress PIN. If it matches one of those, that wallet opens first and
-              the hidden one never will. We can't check this for you — your main
-              password is never held in the clear.
+              duress PIN — if it matches one, that wallet opens first and the hidden
+              one never will. We can't check this for you: your main password is
+              never held in the clear.
             </span>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
