@@ -15,7 +15,7 @@ import {
 import {
   Wallet, Shield, Bell, BarChart3, Zap,
   Search, ChevronRight, Book, Layers, Users, CreditCard, KeyRound,
-  Lock, Smartphone, Globe, FileText, ShieldAlert, LifeBuoy,
+  Smartphone, Globe, FileText, ShieldAlert, LifeBuoy,
   LayoutDashboard, Send, Download, Image as ImageIcon, Coins
 } from "lucide-react";
 
