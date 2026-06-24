@@ -126,6 +126,9 @@ const features = [
     { name: "Android App", desc: "Native Android shell (scaffolded)", status: "roadmap" },
     { name: "Voice Commands", desc: "Web Speech API navigation commands; read-only (navigate, check balances). Never initiates or signs transactions.", status: "available" },
   ]},
+  { category: "Subscriptions", icon: CreditCard, items: [
+    { name: "Free & Safety Plus Plans", desc: "Optional Free & Safety Plus plans to unlock features — the only fee VEYRNOX charges", status: "available" },
+  ]},
 ];
 
 const workflows = [
@@ -344,62 +347,6 @@ export default function Documentation() {
               </Card>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Technical Architecture */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Security Architecture
-          </CardTitle>
-          <CardDescription>What is built today — non-custodial by design</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="p-4 rounded-lg bg-secondary/50">
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Keys & Vault
-              </h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Strong on-device encrypted vault</li>
-                <li>• Keys generated &amp; held locally</li>
-                <li>• Plaintext keys never leave device</li>
-                <li>• Non-custodial — no key escrow</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-lg bg-secondary/50">
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4" />
-                Transaction Safety
-              </h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Transaction data decode before signing</li>
-                <li>• Token approval view + revoke</li>
-                <li>• Address-poisoning warnings</li>
-                <li>• Spam-token filter</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-lg bg-secondary/50">
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <LifeBuoy className="h-4 w-4" />
-                Access & Recovery
-              </h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Passkey / biometric unlock</li>
-                <li>• Duress PIN (decoy wallet)</li>
-                <li>• Stealth / hidden wallets</li>
-                <li>• Panic wipe</li>
-              </ul>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Live network unlocked 2026-06-17 (internal audit complete). Independent ECC audit complete
-            2026-06-23. Remaining roadmap hardening: native secure storage (Secure Enclave /
-            Android Keystore), Crypto Will / Inheritance, and native mobile shells.
-          </p>
         </CardContent>
       </Card>
 
