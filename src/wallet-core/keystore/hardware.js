@@ -18,8 +18,8 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
 // PRF_EVAL_SALT — documented here for test/audit purposes.
-// The actual HMAC computation occurs natively in HardwareKekPlugin.kt.
-// "Veyrnox-prf-v1-kek-eval-salt!!!!" as UTF-8 bytes
+// The actual HMAC computation occurs natively in HardwareKekPlugin.kt (Android)
+// and HardwareKekPlugin.swift (iOS). "Veyrnox-prf-v1-kek-eval-salt!!!!" as UTF-8 bytes
 export const PRF_EVAL_SALT = new Uint8Array([
   0x56,0x65,0x79,0x72,0x6e,0x6f,0x78,0x2d,
   0x70,0x72,0x66,0x2d,0x76,0x31,0x2d,0x6b,
