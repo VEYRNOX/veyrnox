@@ -66,10 +66,20 @@
  *   the app, so the live secret can be cleared on a reliable native event. Web
  *   has no equivalent, so callers invoke it optionally (`?.`) and web is a no-op.
  *
+ * @property {() => Promise<Uint8Array>} [getHardwareFactor]
+ *   NATIVE-ONLY (optional): evaluate WebAuthn PRF and return the 32-byte
+ *   hardware factor H for a KEK-enrolled vault. Web has no equivalent; callers
+ *   invoke it optionally (`?.`). Never fabricates H (I4).
+ *
  * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [enrollKek]
  *   OPTIONAL: enroll the Hardware KEK on a bare vault. After enrollment, unlock
  *   and changePassword require the hardware factor in addition to the password.
  *   Fails closed (I4): missing hardware factor → explicit error, never silent fallback.
+ *
+ * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [unenrollKek]
+ *   OPTIONAL (NATIVE-ONLY): re-wrap vault to bare format then delete the hardware
+ *   key. Fail-closed: vault re-wrapped BEFORE key deletion; if re-wrap fails the
+ *   key survives and vault remains accessible.
  */
 
 export {};

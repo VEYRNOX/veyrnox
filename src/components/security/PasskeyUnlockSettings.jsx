@@ -129,10 +129,11 @@ export default function PasskeyUnlockSettings() {
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
             Register a passkey
           </Button>
-          {!simulated && !supported && !(/** @type {any} */ (window).Capacitor) && (
+          {!simulated && !supported && (
             <p className="text-[11px] text-muted-foreground">
-              WebAuthn isn't available in this browser. Passkey unlock works in the
-              mobile app and modern browsers; use your password here.
+              {(/** @type {any} */ (window).Capacitor)
+                ? 'Passkey unlock is not available in this version of the native app — use your PIN or biometric to unlock.'
+                : 'WebAuthn isn\'t available in this browser. Passkey unlock works in the mobile app and modern browsers; use your password here.'}
             </p>
           )}
         </div>

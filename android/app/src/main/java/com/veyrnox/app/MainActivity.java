@@ -5,10 +5,12 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
+import com.veyrnox.app.HardwareKekPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(HardwareKekPlugin.class);
         super.onCreate(savedInstanceState);
 
         // FLAG_SECURE — block screenshots, screen recording, and the recents /

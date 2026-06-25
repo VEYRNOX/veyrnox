@@ -59,7 +59,9 @@ import {
 } from '@aparajita/capacitor-secure-storage';
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { App } from '@capacitor/app';
-import { encryptVault, decryptVault } from '../vault.js';
+import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
+import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR } from './kek.js';
+import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 
 // Single-vault slice, mirroring evm/vaultStore.js's web layout (KEY='primary').
 const KEY_PREFIX = 'veyrnox_';
@@ -103,10 +105,30 @@ function init() {
   return _initPromise;
 }
 
+// Set to > 0 during biometric-gated operations (enrollKek, changePassword) so that
+// the OS biometric sheet — which can trigger an appStateChange pause event — does
+// not fire the lock hook mid-operation and navigate the user away. Automatically
+// returns to 0 when the operation completes (success or error).
+let _lockSuppressDepth = 0;
+
 function fireLockHook() {
   // Calls WalletProvider.lock(), which clears the live secret AND calls back
   // into nativeKeyStore.lock(). Guard against a missing hook (not yet wired).
+  // Suppressed during biometric-gated non-unlock operations (see _lockSuppressDepth).
+  if (_lockSuppressDepth > 0) return;
   if (typeof _lockHook === 'function') _lockHook();
+}
+
+// Wrap a biometric-gated non-unlock operation so the lock hook is suppressed
+// while it is in flight. Safe: the operation itself requires biometric auth,
+// so the user already proved presence at the start of the call.
+async function withLockSuppressed(fn) {
+  _lockSuppressDepth++;
+  try {
+    return await fn();
+  } finally {
+    _lockSuppressDepth--;
+  }
 }
 
 // Prompt for biometric auth (with a deliberate device-credential fallback).
@@ -151,6 +173,43 @@ async function authenticateOrThrow() {
   // Biometrics not enrolled but the device IS secured → deliberate fallback to
   // the device credential (passcode), so the vault is still reachable.
   await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+}
+
+async function _unlockInner(password, opts = {}) {
+  const raw = await SecureStorage.get(VAULT_KEY, false);
+  if (raw === null || raw === undefined) {
+    throw new Error('No wallet found on this device');
+  }
+  const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+  if (blob.kekWrap) {
+    // KEK-enrolled vault: hardware factor H (via biometric) + PIN-derived C required (I4).
+    // getHardwareFactor() already presents the biometric prompt via Android Keystore,
+    // so authenticateOrThrow() is intentionally skipped here to avoid a double prompt.
+    const getHF = opts && opts.getHardwareFactor;
+    if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    const H = await getHF(); // biometric prompt from HardwareKekPlugin (Android Keystore)
+    const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+    const C = await deriveKekC(password, saltBytes);
+    const kek = await combineKek(H, C);
+    const dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+    return decryptVaultWithDek(blob, dek);
+  }
+
+  // Non-KEK vault: apply biometric gate if requested (e.g. Biometric Unlock setting).
+  if (opts.requireBiometric) {
+    try {
+      await authenticateOrThrow(); // throws on cancel/failure/lockout
+    } catch (err) {
+      // TAG the biometric failure so the caller FAILS CLOSED (clear biometric
+      // error + password escape hatch) rather than treating it like a wrong
+      // password and consulting the deniability path.
+      if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
+      throw err;
+    }
+  }
+
+  return decryptVault(blob, password);
 }
 
 /** @type {import('./keyStore.js').KeyStore} */
@@ -200,29 +259,13 @@ export const nativeKeyStore = {
   // transiently to the caller; nothing secret is cached here.
   async unlock(password, opts = {}) {
     await init();
-    if (opts.requireBiometric) {
-      try {
-        await authenticateOrThrow(); // throws on cancel/failure/lockout
-      } catch (err) {
-        // TAG the biometric failure so the caller FAILS CLOSED (clear biometric
-        // error + password escape hatch) rather than treating it like a wrong
-        // password and consulting the deniability path (which would otherwise open
-        // the empty decoy on a mere cancelled/failed Face ID). The biometric prompt
-        // is already user-visible, so short-circuiting here leaks nothing new about
-        // which deniability features exist.
-        if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
-        throw err;
-      }
-    }
-
-    const raw = await SecureStorage.get(VAULT_KEY, false);
-    if (raw === null || raw === undefined) {
-      // Match the web path's message for parity.
-      throw new Error('No wallet found on this device');
-    }
-    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    // ../vault.js — unchanged; throws on wrong password or tampered blob.
-    return decryptVault(blob, password);
+    // Always suppress the lock hook for the duration of unlock — the OS
+    // appStateChange pause event fires when a biometric sheet opens (both the
+    // standard requireBiometric gate and the KEK getHardwareFactor prompt),
+    // which would otherwise navigate the user back to the PIN pad before unlock
+    // completes. Safe: the user initiated unlock; lock is restored immediately
+    // when this call exits (success or error).
+    return withLockSuppressed(() => _unlockInner(password, opts));
   },
 
   // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
@@ -232,7 +275,7 @@ export const nativeKeyStore = {
   // since it both reads and rewrites the at-rest secret; then decrypt with the
   // current password (throws the generic error on a mismatch, changing nothing)
   // and persist the re-encrypted blob. The secret never leaves memory.
-  async changePassword(currentPassword, newPassword) {
+  async changePassword(currentPassword, newPassword, opts = {}) {
     await init();
     await authenticateOrThrow(); // throws on cancel/failure/lockout
 
@@ -241,9 +284,91 @@ export const nativeKeyStore = {
       throw new Error('No wallet found on this device');
     }
     const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+    if (blob.kekWrap) {
+      // KEK-enrolled: rotate the PIN by re-wrapping the DEK under a new KEK.
+      // The seed ciphertext (blob.ct) stays UNCHANGED — that is the §3 property.
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const H = await getHF();
+      const oldC = await deriveKekC(currentPassword, oldSaltBytes);
+      const oldKek = await combineKek(H, oldC);
+      const dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
+      // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
+      const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+      const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+      const newC = await deriveKekC(newPassword, newSaltBytes);
+      const newKek = await combineKek(H, newC);
+      const newKekWrap = await wrapDek(newKek, dek);
+      await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt }));
+      return;
+    }
+
     const secret = await decryptVault(blob, currentPassword); // ../vault.js — unchanged
     const rewrapped = await encryptVault(secret, newPassword); // ../vault.js — unchanged
     await SecureStorage.set(VAULT_KEY, JSON.stringify(rewrapped));
+  },
+
+  // Enroll the Hardware KEK on an existing vault. After enrollment, unlock()
+  // and changePassword() require BOTH the hardware factor H (via opts.getHardwareFactor)
+  // and the correct PIN. Fail-closed (I4): missing hardware factor → explicit throw.
+  // Gates behind the biometric prompt so the operation itself is authenticated.
+  async enrollKek(password, opts) {
+    await init();
+    return withLockSuppressed(async () => {
+      await authenticateOrThrow();
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      const raw = await SecureStorage.get(VAULT_KEY, false);
+      if (raw === null || raw === undefined) throw new Error('No wallet found on this device');
+      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const secret = await decryptVault(blob, password); // verify password and recover seed
+
+      const H = await getHF();
+      const saltBytes = crypto.getRandomValues(new Uint8Array(32));
+      const kekSalt = btoa(String.fromCharCode(...saltBytes));
+      const C = await deriveKekC(password, saltBytes);
+      const kek = await combineKek(H, C);
+      const dek = randomDek();
+      const kekWrap = await wrapDek(kek, dek);
+      // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
+      const { iv, ct } = await encryptVaultWithDek(secret, dek);
+      await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt }));
+    });
+  },
+
+  // Remove the Hardware KEK from an existing vault, converting it back to bare
+  // (PIN-only) format. Requires biometric (via getHardwareFactor) + correct PIN.
+  // Fail-closed (I4): key material is re-wrapped BEFORE the Keystore key is deleted;
+  // if re-wrap fails, the original vault is untouched and the Keystore key is kept.
+  async unenrollKek(password, opts) {
+    await init();
+    return withLockSuppressed(async () => {
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      const raw = await SecureStorage.get(VAULT_KEY, false);
+      if (!raw) throw new Error('No wallet found on this device');
+      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!blob.kekWrap) return; // already bare — nothing to do
+
+      // Recover DEK: H (hardware factor, biometric) + PIN-derived C
+      const H = await getHF();
+      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const C = await deriveKekC(password, saltBytes);
+      const kek = await combineKek(H, C);
+      const dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+
+      // Decrypt the seed using the recovered DEK
+      const secret = await decryptVaultWithDek(blob, dek);
+
+      // Re-encrypt in bare (PIN-only) format — no kekWrap, no kekSalt
+      const bareBlob = await encryptVault(secret, password);
+      await SecureStorage.set(VAULT_KEY, JSON.stringify(bareBlob));
+
+      // Only delete the Keystore key AFTER the vault is safely re-written
+      await clearHardwareCredential();
+    });
   },
 
   // Drop any in-memory grant. This store caches NO plaintext key material (the
@@ -255,11 +380,18 @@ export const nativeKeyStore = {
     /* no cached secret/grant to clear in this module — see header */
   },
 
-  // Remove the stored vault from the hardware-backed store.
+  // Remove the stored vault and the hardware KEK credential (if any) from the
+  // hardware-backed store. Both must be cleared together so a re-import starts
+  // fresh and does not inherit a stale credential ID.
   async clearVault() {
     await init();
     await SecureStorage.remove(VAULT_KEY);
+    await clearHardwareCredential();
   },
+
+  // NATIVE-ONLY: deliver the hardware factor H for an enrolled vault. Exposed so
+  // WalletProvider can pass it to unlock() without importing hardware.js directly.
+  getHardwareFactor,
 
   // NATIVE-ONLY extension (not on the cross-platform KeyStore type): let the app
   // register the function to run when the OS backgrounds the app, so the live
