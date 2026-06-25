@@ -1,13 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, TrendingUp, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
-const CATEGORY_COLORS = {
-  BTC: "#F7931A", ETH: "#627EEA", SOL: "#9945FF",
-  USDC: "#2775CA", USDT: "#26A17B",
-};
 
-function timeAgo(unixSecs) {
-  const diff = Math.floor(Date.now() / 1000) - unixSecs;
+// RSS feeds proxied through rss2json.com (free, no API key, CORS-friendly).
+// Two sources merged and sorted by date for broader coverage.
+const RSS_FEEDS = [
+  { url: "https://cointelegraph.com/rss", source: "CoinTelegraph" },
+  { url: "https://decrypt.co/feed", source: "Decrypt" },
+];
+
+function timeAgo(dateStr) {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -15,33 +18,39 @@ function timeAgo(unixSecs) {
 }
 
 async function fetchCryptoNews() {
-  const res = await fetch(
-    "https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest"
+  const results = await Promise.allSettled(
+    RSS_FEEDS.map(({ url, source }) =>
+      fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`)
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(d => (d.items || []).map(item => ({ ...item, _source: source })))
+    )
   );
-  if (!res.ok) throw new Error(`cryptocompare news HTTP ${res.status}`);
-  const data = await res.json();
-  return data.Data?.slice(0, 15) || [];
+
+  const articles = results
+    .filter(r => r.status === "fulfilled")
+    .flatMap(r => r.value)
+    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+    .slice(0, 15);
+
+  if (!articles.length) throw new Error("No articles from any feed");
+  return articles;
 }
 
 function NewsCard({ article }) {
-  const tags = article.categories
-    ? article.categories.split("|").slice(0, 3).filter(Boolean)
-    : [];
+  const thumbnail = article.enclosure?.link || article.thumbnail || null;
 
   return (
     <a
-      href={article.url}
+      href={article.link}
       target="_blank"
       rel="noopener noreferrer"
       className="flex gap-3 p-3 rounded-xl hover:bg-secondary transition-colors group"
     >
-      {/* News thumbnails come from many CDN domains (CryptoCompare partners). The
-          CSP `img-src *` directive in index.html explicitly allows this — a
-          decision documented here so it is not removed without review. These are
-          display-only images; no user data is sent with the request (I2). */}
-      {article.imageurl && (
+      {/* Thumbnails are display-only images from publisher CDNs; no user data
+          is sent with the request (I2). img-src https: is already in CSP. */}
+      {thumbnail && (
         <img
-          src={article.imageurl}
+          src={thumbnail}
           alt=""
           className="h-14 w-14 rounded-lg object-cover shrink-0 bg-secondary"
           onError={e => { (/** @type {any} */ (e.target)).style.display = "none"; }}
@@ -54,22 +63,12 @@ function NewsCard({ article }) {
           </p>
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-1">{article.body}</p>
-        <div className="flex items-center gap-2 flex-wrap">
-          {tags.map(tag => (
-            <span
-              key={tag}
-              className="text-[10px] px-1.5 py-0.5 rounded font-mono"
-              style={{
-                background: `${CATEGORY_COLORS[tag] || "#888"}22`,
-                color: CATEGORY_COLORS[tag] || "hsl(240,5%,55%)",
-              }}
-            >
-              {tag}
-            </span>
-          ))}
+        {article.description && (
+          <p className="text-xs text-muted-foreground line-clamp-1">{article.description}</p>
+        )}
+        <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground ml-auto">
-            {article.source_info?.name || article.source} · {timeAgo(article.published_on)}
+            {article._source} · {timeAgo(article.pubDate)}
           </span>
         </div>
       </div>
@@ -78,11 +77,12 @@ function NewsCard({ article }) {
 }
 
 export default function CryptoNewsFeed() {
-  const { data: news = [], isLoading, refetch, isFetching } = useQuery({
+  const { data: news = [], isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["crypto-news"],
     queryFn: fetchCryptoNews,
-    staleTime: 5 * 60 * 1000, // 5 min cache
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   return (
@@ -117,6 +117,12 @@ export default function CryptoNewsFeed() {
             </div>
           ))}
         </div>
+      ) : isError ? (
+        <div className="text-center py-8 text-sm text-muted-foreground flex flex-col items-center gap-2">
+          <TrendingUp className="h-8 w-8 text-muted-foreground/40" />
+          <p>Could not load news</p>
+          <button onClick={() => refetch()} className="text-primary text-xs underline">Retry</button>
+        </div>
       ) : news.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground flex flex-col items-center gap-2">
           <TrendingUp className="h-8 w-8 text-muted-foreground/40" />
@@ -124,8 +130,8 @@ export default function CryptoNewsFeed() {
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {news.map(article => (
-            <NewsCard key={article.id} article={article} />
+          {news.map((article, i) => (
+            <NewsCard key={article.guid || article.link || i} article={article} />
           ))}
         </div>
       )}
