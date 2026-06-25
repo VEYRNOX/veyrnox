@@ -4,6 +4,7 @@ import { base44, LLM_AVAILABLE } from "@/api/base44Client";
 import { Newspaper, TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LocalBuildNotice from "@/components/LocalBuildNotice";
+import CryptoNewsFeed from "@/components/CryptoNewsFeed";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -112,7 +113,7 @@ export default function NewsSentimentPage() {
         ))}
       </div>
 
-      {/* News feed */}
+      {/* AI-scored sentiment items */}
       <div className="space-y-3">
         {filtered.map((n, i) => {
           const cfg = SENTIMENT_CONFIG[n.sentiment] || SENTIMENT_CONFIG.neutral;
@@ -135,6 +136,11 @@ export default function NewsSentimentPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Live news feed from CryptoCompare */}
+      <div className="p-4 rounded-xl border border-border bg-card">
+        <CryptoNewsFeed />
       </div>
     </div>
   );
