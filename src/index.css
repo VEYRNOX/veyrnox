@@ -277,6 +277,13 @@
     min-height: 44px;
   }
 
+  /* Mobile readability: bump :root font-size so rem-scaled text is legible */
+  @media (max-width: 639px) {
+    :root {
+      font-size: 17px;
+    }
+  }
+
   /* Restore natural height for icon-only buttons */
   button[class*="h-3"], button[class*="h-4"], button[class*="h-5"],
   button[class*="h-6"], button[class*="rounded-full"][class*="w-6"],

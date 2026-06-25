@@ -121,9 +121,7 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          When on, your wallet fetches current prices and 24h changes from CryptoCompare. The request sends only a fixed
-          list of supported coins — never your holdings, balances, or addresses. No price calls are made until you turn
-          this on.
+          Fetches prices from CryptoCompare — sends only a fixed coin list, never your holdings or addresses.
         </p>
       </div>
 
@@ -149,9 +147,7 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          When on, keeps a local encrypted record of three event types — settings changed, send completed, approval
-          revoked. No amounts, addresses, or wallet identity. Encrypted with a key derived from your seed, so it's
-          unreadable until you unlock; wiped by Panic Wipe. Turning this off deletes the log immediately.
+          Encrypted on-device log of settings changes, sends, and revocations — no amounts or addresses. Wiped by Panic Wipe; cleared when you turn this off.
         </p>
         {auditLog && auditEntries !== null && (
           <div className="mt-3 border-t border-border pt-3">
@@ -195,11 +191,7 @@ export default function Settings() {
           <h2 className="font-semibold">WebAuthn / FIDO2</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Passkeys add an on-device biometric or security-key tap as an extra
-          authentication factor. They never hold your keys or seed — your password
-          and recovery phrase still unlock independently, so losing a passkey never
-          costs funds. Transaction verification (below) can also use a per-wallet
-          passkey.
+          Passkeys add an on-device biometric tap as an extra factor. They never hold your keys — your PIN and seed always unlock independently. Transaction verification can also use a per-wallet passkey.
         </p>
       </div>
 
