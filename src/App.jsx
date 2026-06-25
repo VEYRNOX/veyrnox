@@ -48,7 +48,6 @@ const InvoiceGenerator = lazy(() => import('./pages/InvoiceGenerator'));
 const WatchlistPage = lazy(() => import('./pages/WatchlistPage'));
 const AddressBook = lazy(() => import('./pages/AddressBook'));
 const NetWorthTracker = lazy(() => import('./pages/NetWorthTracker'));
-const PortfolioBenchmark = lazy(() => import('./pages/PortfolioBenchmark'));
 const BudgetLimits = lazy(() => import('./pages/BudgetLimits'));
 const FeeAnalytics = lazy(() => import('./pages/FeeAnalytics'));
 const HardwareWalletPage = lazy(() => import('./pages/HardwareWalletPage'));
@@ -166,7 +165,6 @@ const AuthenticatedApp = () => {
           <Route path="/watchlist" element={<WatchlistPage />} />
           <Route path="/address-book" element={<AddressBook />} />
           <Route path="/net-worth" element={<NetWorthTracker />} />
-          <Route path="/benchmark" element={<PortfolioBenchmark />} />
           <Route path="/budget" element={<BudgetLimits />} />
           <Route path="/duress-pin" element={<DuressPin />} />
           <Route path="/wallet-access" element={<WalletAccessReset />} />
