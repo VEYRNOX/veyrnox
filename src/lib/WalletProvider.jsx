@@ -1268,8 +1268,15 @@ export function WalletProvider({ children }) {
       const { panic, duressMnemonic, hiddenMnemonic } =
         await resolveDeniabilityUnlock(password);
       if (panic) {
-        await panicWipe();
-        throw primaryErr; // keys destroyed; surface a plain wrong-password failure
+        // Best-effort wipe — even if panicWipeLocal() or any step throws, we
+        // still throw the sentinel so WalletEntry always shows WipedNotice.
+        // setWasWiped(true) lives inside panicWipe(); wrapping ensures it's
+        // reached on the happy path, and the sentinel carries the signal on any
+        // exceptional path so the caller never sees "Incorrect PIN" instead.
+        try { await panicWipe(); } catch { /* partial wipe — data may already be gone */ }
+        const panicErr = new Error("PANIC_WIPE_FIRED");
+        panicErr.isPanicWipe = true;
+        throw panicErr;
       }
       if (duressMnemonic != null) {
         mnemonic = duressMnemonic;
