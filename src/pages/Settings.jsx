@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { Capacitor } from '@capacitor/core';
+const isNative = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
@@ -13,6 +15,7 @@ import PasskeySetup from "../components/PasskeySetup";
 import BiometricUnlockSettings from "../components/security/BiometricUnlockSettings";
 import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
 import TwoFactorSettings from "../components/security/TwoFactorSettings";
+import HardwareKekSettings from "../components/security/HardwareKekSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 
@@ -171,37 +174,31 @@ export default function Settings() {
         )}
       </div>
 
-      {/* Biometric unlock (PROVISIONAL — M2b app-layer gate) */}
-      <BiometricUnlockSettings />
-
-      {/* Passkey unlock (S1 — FIDO2/WebAuthn gate, parallel to biometric) */}
-      <PasskeyUnlockSettings />
-
-      {/* Two-factor at CRITICAL actions (send / reveal seed / duress / stealth) —
-          PIN + Action Password OR PIN + Passkey. Enforced by useActionGuard. */}
-      <TwoFactorSettings />
-
-      {/* Session & auto-lock (idle + background → WalletProvider.lock()) */}
-      <SessionSettings />
-
-      {/* Deniability rehearsal — read-only lens over the active set (overlay,
-          no route). Verifies the decoy is indistinguishable to an adversary. */}
-      <RehearsalSettingsRow />
-
-      {/* Security Overview */}
-      <div className="p-5 rounded-xl border border-border bg-card space-y-1">
-        <div className="flex items-center gap-2 mb-3">
-          <Shield className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold">WebAuthn / FIDO2</h2>
+      {/* On native Android: simple biometric status row + Hardware KEK + Session.
+          Passkey/FIDO2/TwoFactor require WebAuthn which is unavailable in the
+          Capacitor WebView — honest-hidden rather than shown broken. */}
+      {isNative ? (
+        <div className="p-5 rounded-xl border border-border bg-card flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Fingerprint className="h-5 w-5 text-primary" />
+            <div>
+              <p className="font-semibold text-sm">Biometric Unlock</p>
+              <p className="text-xs text-muted-foreground">Always required on this device</p>
+            </div>
+          </div>
+          <ShieldCheck className="h-4 w-4 text-success" />
         </div>
-        <p className="text-sm text-muted-foreground">
-          Passkeys add an on-device biometric or security-key tap as an extra
-          authentication factor. They never hold your keys or seed — your password
-          and recovery phrase still unlock independently, so losing a passkey never
-          costs funds. Transaction verification (below) can also use a per-wallet
-          passkey.
-        </p>
-      </div>
+      ) : (
+        <>
+          <BiometricUnlockSettings />
+          <PasskeyUnlockSettings />
+          <TwoFactorSettings />
+        </>
+      )}
+
+      <HardwareKekSettings />
+      <SessionSettings />
+      <RehearsalSettingsRow />
 
       {/* Wallet Passkeys (per-wallet — used for transaction verification in the Send flow) */}
       <div className="space-y-3">

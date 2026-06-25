@@ -30,6 +30,7 @@ import { captureVerifierSafe, verifyCredential, createCredentialVerifier } from 
 import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore } from '@/wallet-core/keystore';
+import { Capacitor } from '@capacitor/core';
 // MULTI-SEED VAULT (feat/multi-wallet-portfolio). ⚠️ AUDIT-CRITICAL container
 // layer that holds N independent seeds INSIDE the one encrypted blob. It does no
 // crypto — vault.js/keystore are unchanged; we just hand them a JSON container of
@@ -529,6 +530,11 @@ export function WalletProvider({ children }) {
         clearBgTimer();
       }
     };
+    // On native, @capacitor/app's pause/appStateChange already handles background
+    // locking via the keyStore lock hook (see native.js). visibilitychange is the
+    // web-only fallback — skip it on native to avoid a second unsuppressable lock
+    // path that would fire mid-biometric-prompt and race against unlock/enrollKek.
+    if (Capacitor.isNativePlatform()) return clearBgTimer;
     document.addEventListener('visibilitychange', onHide);
     return () => { document.removeEventListener('visibilitychange', onHide); clearBgTimer(); };
   }, [lock]);
@@ -1221,6 +1227,11 @@ export function WalletProvider({ children }) {
       // failure can no longer be misread below as a wrong password (→ empty decoy).
       mnemonic = await keyStore.unlock(password, {
         requireBiometric: isBiometricUnlockEnabled() && !opts.skipBiometric,
+        // KEK-enrolled vaults (native only): pass the hardware factor so
+        // native.js can derive H and unwrap the DEK. On web keyStore, getHardwareFactor
+        // is undefined and the opt is ignored. If not enrolled (no kekWrap in blob),
+        // getHardwareFactor is never called inside native.js unlock.
+        getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
       });
       // VULN-17 fix: equalize timing between primary success (1 KDF) and all
       // failure paths (4 KDFs via resolveDeniabilityUnlock). A correct password

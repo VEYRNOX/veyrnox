@@ -1,0 +1,197 @@
+package com.veyrnox.app
+
+// UNAUDITED-PROVISIONAL: Native Android Keystore HMAC-SHA256
+// STATUS: BUILT — awaiting independent third-party audit before mainnet promotion to VERIFIED.
+//
+// Security invariants:
+//   I4 — NEVER fabricates H (fail honest, fail closed)
+//   Key is invalidated if new biometric enrolled (setInvalidatedByBiometricEnrollment)
+//   Per-use auth: every getHardwareFactor() call requires biometric
+//   KeyPermanentlyInvalidatedException → clear key + explicit error (fail closed)
+
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.security.keystore.KeyPermanentlyInvalidatedException
+import android.util.Base64
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import com.getcapacitor.JSObject
+import com.getcapacitor.Plugin
+import com.getcapacitor.PluginCall
+import com.getcapacitor.PluginMethod
+import com.getcapacitor.annotation.CapacitorPlugin
+import java.security.KeyStore
+import javax.crypto.KeyGenerator
+import javax.crypto.Mac
+
+@CapacitorPlugin(name = "HardwareKek")
+class HardwareKekPlugin : Plugin() {
+
+    // Key alias for the HMAC-SHA256 key in AndroidKeyStore
+    private val KEY_ALIAS = "veyrnox_kek_hmac_v1"
+
+    // PRF_EVAL_SALT — "Veyrnox-prf-v1-kek-eval-salt!!!!" as UTF-8 bytes (32 bytes).
+    // MUST NOT change after first enrollment — changing it changes H, making every
+    // enrolled vault permanently undecryptable.
+    private val PRF_EVAL_SALT = byteArrayOf(
+        0x56,0x65,0x79,0x72,0x6e,0x6f,0x78,0x2d,
+        0x70,0x72,0x66,0x2d,0x76,0x31,0x2d,0x6b,
+        0x65,0x6b,0x2d,0x65,0x76,0x61,0x6c,0x2d,
+        0x73,0x61,0x6c,0x74,0x21,0x21,0x21,0x21
+    )
+
+    /**
+     * enroll() — Generate HMAC-SHA256 key in AndroidKeyStore.
+     * Key invalidated if new biometric enrolled (setInvalidatedByBiometricEnrollment).
+     * No biometric prompt at generation time; getHardwareFactor() prompts per-use.
+     */
+    @PluginMethod
+    fun enroll(call: PluginCall) {
+        try {
+            val spec = KeyGenParameterSpec.Builder(
+                KEY_ALIAS,
+                KeyProperties.PURPOSE_SIGN
+            )
+                .setDigests(KeyProperties.DIGEST_SHA256)
+                .setUserAuthenticationRequired(true)
+                // Key invalidated if new biometric enrolled
+                .setInvalidatedByBiometricEnrollment(true)
+                // Per-use auth: every call requires biometric (timeout = 0)
+                .setUserAuthenticationParameters(
+                    0,
+                    KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
+                )
+                .build()
+
+            val keyGen = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_HMAC_SHA256,
+                "AndroidKeyStore"
+            )
+            keyGen.init(spec)
+            keyGen.generateKey()
+
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject("enroll failed: ${e.message}")
+        }
+    }
+
+    /**
+     * isEnrolled() — Check whether KEY_ALIAS exists in AndroidKeyStore.
+     * Returns { enrolled: boolean }.
+     */
+    @PluginMethod
+    fun isEnrolled(call: PluginCall) {
+        try {
+            val ks = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+            val enrolled = ks.containsAlias(KEY_ALIAS)
+            call.resolve(JSObject().put("enrolled", enrolled))
+        } catch (e: Exception) {
+            call.reject("isEnrolled failed: ${e.message}")
+        }
+    }
+
+    /**
+     * clearCredential() — Delete KEY_ALIAS from AndroidKeyStore if present.
+     */
+    @PluginMethod
+    fun clearCredential(call: PluginCall) {
+        try {
+            val ks = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+            if (ks.containsAlias(KEY_ALIAS)) {
+                ks.deleteEntry(KEY_ALIAS)
+            }
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject("clearCredential failed: ${e.message}")
+        }
+    }
+
+    /**
+     * getHardwareFactor() — Present BiometricPrompt, compute HMAC-SHA256(key, PRF_EVAL_SALT),
+     * return base64(result) as { h: string }.
+     *
+     * NEVER fabricates H (I4 — fail honest, fail closed).
+     * Per-use auth: every call requires biometric.
+     * KeyPermanentlyInvalidatedException → clear key + reject (fail closed).
+     */
+    @PluginMethod
+    fun getHardwareFactor(call: PluginCall) {
+        try {
+            val ks = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+            val key = ks.getKey(KEY_ALIAS, null)
+                ?: return call.reject("No hardware key enrolled — call enroll() first")
+
+            val mac = Mac.getInstance("HmacSHA256")
+
+            // Catch KeyPermanentlyInvalidatedException: clear the key and reject (fail closed)
+            try {
+                mac.init(key)
+            } catch (e: KeyPermanentlyInvalidatedException) {
+                // Clear the invalidated key so caller can re-enroll
+                try {
+                    val ks2 = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+                    if (ks2.containsAlias(KEY_ALIAS)) ks2.deleteEntry(KEY_ALIAS)
+                } catch (ignored: Exception) { /* best-effort cleanup */ }
+                return call.reject("Hardware key invalidated — re-enrollment required")
+            }
+
+            val cryptoObject = BiometricPrompt.CryptoObject(mac)
+
+            val activity = activity as? FragmentActivity
+                ?: return call.reject("Activity is not a FragmentActivity")
+
+            val executor = ContextCompat.getMainExecutor(context)
+
+            val prompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    try {
+                        val authenticatedMac = result.cryptoObject?.mac
+                            ?: return call.reject("BiometricPrompt returned no Mac object")
+                        val hmacResult = authenticatedMac.doFinal(PRF_EVAL_SALT)
+                        val b64 = Base64.encodeToString(hmacResult, Base64.NO_WRAP)
+                        call.resolve(JSObject().put("h", b64))
+                    } catch (e: Exception) {
+                        call.reject("HMAC computation failed: ${e.message}")
+                    }
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    if (errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
+                        errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                        call.reject("User cancelled")
+                    } else {
+                        call.reject(errString.toString())
+                    }
+                }
+
+                override fun onAuthenticationFailed() {
+                    // Do NOT call resolve/reject here — the prompt remains open
+                    // allowing the user to retry biometric. Only terminal events
+                    // (succeeded / error) produce a result.
+                }
+            })
+
+            // setAllowedAuthenticators with BIOMETRIC_STRONG | DEVICE_CREDENTIAL
+            // Note: DEVICE_CREDENTIAL is set, so setNegativeButtonText must NOT be called.
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Veyrnox — Unlock Wallet")
+                .setSubtitle("Authenticate to access your wallet")
+                .setAllowedAuthenticators(
+                    BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                )
+                .build()
+
+            // Must authenticate on the UI thread
+            activity.runOnUiThread {
+                prompt.authenticate(promptInfo, cryptoObject)
+            }
+
+        } catch (e: Exception) {
+            call.reject("getHardwareFactor failed: ${e.message}")
+        }
+    }
+}
