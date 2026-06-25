@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Veyrnox — Feature Catalogue</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f5f3;
+    --color-background-tertiary: #eeede9;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #6b6a65;
+    --color-text-tertiary: #9b9a94;
+    --color-border-tertiary: rgba(0,0,0,.12);
+    --color-border-secondary: rgba(0,0,0,.22);
+    --color-border-primary: rgba(0,0,0,.35);
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --font-sans: system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1c1c1a;
+      --color-background-secondary: #262623;
+      --color-background-tertiary: #2e2e2b;
+      --color-text-primary: #f0efe8;
+      --color-text-secondary: #a8a79f;
+      --color-text-tertiary: #72716b;
+      --color-border-tertiary: rgba(255,255,255,.10);
+      --color-border-secondary: rgba(255,255,255,.18);
+      --color-border-primary: rgba(255,255,255,.28);
+    }
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-background-tertiary);
+    color: var(--color-text-primary);
+    padding: 2rem;
+    min-height: 100vh;
+  }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 1.5rem; }
+  .vx-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .vx-stat { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 16px; }
+  .vx-stat-label { font-size: 11px; color: var(--color-text-secondary); }
+  .vx-stat-val { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+  .vx-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .vx-filter { padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); font-size: 13px; cursor: pointer; transition: all .15s; font-family: var(--font-sans); }
+  .vx-filter.active, .vx-filter:hover { background: var(--color-background-primary); color: var(--color-text-primary); border-color: var(--color-border-primary); }
+  .vx-search { flex: 1; min-width: 200px; padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-size: 13px; font-family: var(--font-sans); outline: none; }
+  .vx-search:focus { border-color: var(--color-border-primary); }
+  .vx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .vx-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 12px 14px; cursor: default; transition: border-color .15s; }
+  .vx-card:hover { border-color: var(--color-border-secondary); }
+  .vx-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+  .vx-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.3; }
+  .vx-note { font-size: 11px; color: var(--color-text-tertiary); }
+  .vx-badge { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+  .badge-live { background: #E1F5EE; color: #0F6E56; }
+  .badge-built { background: #E6F1FB; color: #185FA5; }
+  .badge-target { background: #FAEEDA; color: #854F0B; }
+  .badge-planned { background: #F1EFE8; color: #5F5E5A; }
+  .vx-section { margin-bottom: 1.75rem; }
+  .vx-section-title { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .vx-empty { color: var(--color-text-tertiary); font-size: 13px; padding: 2rem 0; text-align: center; }
+</style>
+</head>
+<body>
+<h1>Veyrnox — feature catalogue</h1>
+<div class="vx-stats" id="stats"></div>
+<div class="vx-controls">
+  <input class="vx-search" type="search" id="search" placeholder="Search features…" aria-label="Search features" />
+  <button class="vx-filter active" data-filter="all">All</button>
+  <button class="vx-filter" data-filter="live">Live</button>
+  <button class="vx-filter" data-filter="built">Built</button>
+  <button class="vx-filter" data-filter="target">Target</button>
+  <button class="vx-filter" data-filter="planned">Planned</button>
+</div>
+<div id="output"></div>
+
+<script>
+const FEATURES = [
+  { name: "ETH (Ethereum)", cat: "Assets", status: "live", note: "EVM secp256k1 m/44'/60'" },
+  { name: "USDC", cat: "Assets", status: "live", note: "Mainnet tx 0xc3731477…" },
+  { name: "USDT", cat: "Assets", status: "live", note: "Mainnet tx 0xf06a0ba7…" },
+  { name: "MATIC (Polygon)", cat: "Assets", status: "live", note: "Testnet tx 0x6a4dede5…" },
+  { name: "ARB (Arbitrum)", cat: "Assets", status: "live", note: "Testnet tx 0x797928ef…" },
+  { name: "OP (Optimism)", cat: "Assets", status: "live", note: "Testnet tx 0xc3fd1e14…" },
+  { name: "AVAX (Avalanche)", cat: "Assets", status: "live", note: "Fuji tx 0x3697e0df…" },
+  { name: "BNB", cat: "Assets", status: "live", note: "Use Standard+ fee (1 Gwei min)" },
+  { name: "BTC (Bitcoin)", cat: "Assets", status: "live", note: "BIP-84/P2WPKH, tx 2da87a27…" },
+  { name: "SOL (Solana)", cat: "Assets", status: "live", note: "ed25519/SLIP-0010, sig 5KGXAGTJTd…" },
+  { name: "Send crypto", cat: "Wallet operations", status: "live", note: "EVM, BTC, SOL, ERC-20 paths" },
+  { name: "Receive crypto + QR", cat: "Wallet operations", status: "built", note: "Local QR, gated to live assets" },
+  { name: "Transaction history", cat: "Wallet operations", status: "built", note: "Per-chain, read-only" },
+  { name: "Message signing", cat: "Wallet operations", status: "built", note: "Proof-of-ownership, no dApp path" },
+  { name: "Cold-key (air-gap) signing", cat: "Wallet operations", status: "built", note: "QR-encoded unsigned tx / PSBT" },
+  { name: "Hardware wallet (Ledger/Trezor)", cat: "Wallet operations", status: "built", note: "Unverified — no explorer txid yet" },
+  { name: "WalletConnect v2", cat: "Wallet operations", status: "live", note: "D3 eth_sendTransaction Sepolia" },
+  { name: "Encrypted vault (Argon2id + AES-256-GCM)", cat: "Security", status: "built", note: "Keys never leave device" },
+  { name: "Duress PIN / decoy wallet", cat: "Security", status: "built", note: "ECC audit 2026-06-23, no findings" },
+  { name: "Stealth / hidden wallets", cat: "Security", status: "built", note: "Unaudited-provisional" },
+  { name: "Panic wipe", cat: "Security", status: "built", note: "ECC audit 2026-06-23; local only" },
+  { name: "RASP (browser probes)", cat: "Security", status: "built", note: "Blocks signing on webdriver detect" },
+  { name: "RASP (OS-level probes)", cat: "Security", status: "planned", note: "Needs native Capacitor plugin" },
+  { name: "2FA (PIN + action password)", cat: "Security", status: "built", note: "Sequential Argon2id" },
+  { name: "2FA (PIN + Passkey/FIDO2)", cat: "Security", status: "built", note: "H-1 bypass fixed PR #340" },
+  { name: "Biometric unlock", cat: "Security", status: "built", note: "Face ID/Touch ID → decoy only" },
+  { name: "Passkey unlock", cat: "Security", status: "built", note: "WebAuthn; PIN escape hatch" },
+  { name: "PIN unlock (6-digit min)", cat: "Security", status: "built", note: "ECC audit; 10-attempt wipe" },
+  { name: "Hardware KEK (Secure Enclave)", cat: "Security", status: "planned", note: "Groundwork in kek.js; not wired" },
+  { name: "Audit log", cat: "Security", status: "built", note: "Opt-in, max 100 entries, no amounts" },
+  { name: "Session manager + auto-lock", cat: "Security", status: "built", note: "Per-session revoke" },
+  { name: "Whitelist manager", cat: "Security", status: "built", note: "Pre-approved recipients" },
+  { name: "Suspicious address screening", cat: "Security", status: "built", note: "Local blocklist + OFAC flag" },
+  { name: "Address-poisoning warnings", cat: "Security", status: "built", note: "Pre-confirmation in Send flow" },
+  { name: "Token approvals (view + revoke)", cat: "Security", status: "built", note: "Flag unlimited approvals" },
+  { name: "Spam token filter", cat: "Security", status: "built", note: "" },
+  { name: "Calldata decode + approval guard", cat: "Security", status: "built", note: "Shown on confirm screen" },
+  { name: "Transaction simulation", cat: "Security", status: "built", note: "eth_call dry-run; risk flags" },
+  { name: "Anomaly / fraud detection", cat: "Security", status: "built", note: "On-device, no telemetry" },
+  { name: "Risk scoring", cat: "Security", status: "built", note: "ECC audit; fail-closed" },
+  { name: "DApp security alerts", cat: "Security", status: "built", note: "" },
+  { name: "Security scanner", cat: "Security", status: "built", note: "" },
+  { name: "Portfolio dashboard", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Advanced analytics", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "On-chain analytics", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "P&L tracking", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Net worth tracker", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Portfolio benchmark", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Portfolio risk score", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Portfolio rewind / snapshots", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Spending patterns", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Fee analytics", cat: "Portfolio & analytics", status: "built", note: "EVM fails honest if unavailable" },
+  { name: "Asset correlation matrix", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Custom index builder", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Tax report (CSV export)", cat: "Portfolio & analytics", status: "built", note: "Raw CSV, no fabricated cost-basis" },
+  { name: "Live balances", cat: "Portfolio & analytics", status: "built", note: "" },
+  { name: "Price alerts", cat: "Prices & notifications", status: "built", note: "" },
+  { name: "Price charts", cat: "Prices & notifications", status: "built", note: "" },
+  { name: "Watchlist", cat: "Prices & notifications", status: "built", note: "" },
+  { name: "News sentiment", cat: "Prices & notifications", status: "built", note: "" },
+  { name: "Gas fee control", cat: "Prices & notifications", status: "built", note: "" },
+  { name: "Notification centre", cat: "Prices & notifications", status: "built", note: "" },
+  { name: "Push notifications", cat: "Prices & notifications", status: "built", note: "" },
+  { name: "Address book", cat: "Payments & utilities", status: "built", note: "" },
+  { name: "Recurring payment reminders", cat: "Payments & utilities", status: "built", note: "Reminders only; user signs each" },
+  { name: "Invoice generator", cat: "Payments & utilities", status: "built", note: "" },
+  { name: "Calculator", cat: "Payments & utilities", status: "built", note: "" },
+  { name: "Savings goals", cat: "Payments & utilities", status: "built", note: "" },
+  { name: "Budget limits", cat: "Payments & utilities", status: "built", note: "" },
+  { name: "Transaction receipt", cat: "Payments & utilities", status: "built", note: "" },
+  { name: "Payment links", cat: "Payments & utilities", status: "built", note: "" },
+  { name: "NFT portfolio (display)", cat: "NFTs", status: "built", note: "Display only" },
+  { name: "Multi-chain NFT (display)", cat: "NFTs", status: "built", note: "Display only" },
+  { name: "Voice commands", cat: "Other", status: "built", note: "Read-only nav, 8 commands, no tx" },
+  { name: "Solana tokens", cat: "Other", status: "built", note: "" },
+  { name: "Watch wallets", cat: "Other", status: "built", note: "" },
+  { name: "Network manager", cat: "Other", status: "built", note: "" },
+  { name: "Cloud backup (encrypt-then-export)", cat: "Other", status: "built", note: "" },
+  { name: "Wallet seed QR", cat: "Other", status: "built", note: "" },
+  { name: "HD wallet manager", cat: "Other", status: "built", note: "" },
+  { name: "Referral tracker", cat: "Other", status: "built", note: "Egress only if Supabase keys set" },
+  { name: "Custom dashboard widgets", cat: "Other", status: "built", note: "" },
+  { name: "Subscription / plans", cat: "Other", status: "built", note: "" },
+  { name: "Trust score", cat: "Other", status: "built", note: "" },
+  { name: "Crypto will / inheritance", cat: "Roadmap", status: "planned", note: "" },
+  { name: "iOS App Store", cat: "Roadmap", status: "planned", note: "Needs Apple org account (Mac)" },
+  { name: "Android app", cat: "Roadmap", status: "planned", note: "Scaffolded, not shipped" },
+  { name: "Web3 in-app browser", cat: "Roadmap", status: "planned", note: "" },
+  { name: "Additional ERC-20 tokens (DAI, LINK…)", cat: "Roadmap", status: "planned", note: "" },
+  { name: "Additional EVM networks (Base, zkSync…)", cat: "Roadmap", status: "planned", note: "" },
+  { name: "Native secure storage hardening", cat: "Roadmap", status: "planned", note: "" },
+  { name: "AI assistant (tx explain, scam detect)", cat: "Roadmap", status: "planned", note: "" },
+  { name: "What-if simulator", cat: "Roadmap", status: "planned", note: "" },
+  { name: "Split bill", cat: "Roadmap", status: "planned", note: "" },
+];
+
+const BADGE = { live: "Live", built: "Built", target: "Target", planned: "Planned" };
+const BADGE_CLS = { live: "badge-live", built: "badge-built", target: "badge-target", planned: "badge-planned" };
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const f = document.querySelector('.vx-filter.active').dataset.filter;
+  const filtered = FEATURES.filter(x =>
+    (f === 'all' || x.status === f) &&
+    (!q || x.name.toLowerCase().includes(q) || x.cat.toLowerCase().includes(q) || (x.note && x.note.toLowerCase().includes(q)))
+  );
+  const groups = {};
+  filtered.forEach(x => { (groups[x.cat] = groups[x.cat] || []).push(x); });
+  const out = document.getElementById('output');
+  if (!filtered.length) { out.innerHTML = '<p class="vx-empty">No features match.</p>'; return; }
+  out.innerHTML = Object.keys(groups).map(cat => `
+    <div class="vx-section">
+      <div class="vx-section-title">${cat}</div>
+      <div class="vx-grid">
+        ${groups[cat].map(x => `
+          <div class="vx-card">
+            <div class="vx-card-top">
+              <span class="vx-name">${x.name}</span>
+              <span class="vx-badge ${BADGE_CLS[x.status]}">${BADGE[x.status]}</span>
+            </div>
+            ${x.note ? `<div class="vx-note">${x.note}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  const counts = {};
+  FEATURES.forEach(x => { counts[x.status] = (counts[x.status] || 0) + 1; });
+  document.getElementById('stats').innerHTML = [
+    { l: 'Total', v: FEATURES.length },
+    { l: 'Live', v: counts.live || 0 },
+    { l: 'Built', v: counts.built || 0 },
+    { l: 'Planned', v: (counts.planned || 0) + (counts.target || 0) },
+  ].map(s => `<div class="vx-stat"><div class="vx-stat-label">${s.l}</div><div class="vx-stat-val">${s.v}</div></div>`).join('');
+}
+
+document.querySelectorAll('.vx-filter').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.vx-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}));
+document.getElementById('search').addEventListener('input', render);
+render();
+</script>
+</body>
+</html>
