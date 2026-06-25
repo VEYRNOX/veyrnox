@@ -55,8 +55,9 @@ export const CLASSIFICATION = {
     note: 'Migrated (2026-06-17): MONTHLY_PERFORMANCE removed. Monthly inflow/outflow derived from real tx history + live prices. VOLATILITY/SHARPE/CORRELATION retained as disclosed reference tables. USD views gated on pricesEnabled.',
   },
   '/benchmark': {
-    verdict: 'live', dataSource: 'local-first',
-    note: 'Migrated (2026-06-17): genBenchmark/fake BTC/SP500 lines removed. Portfolio return derived from real tx history + live prices. Gated on pricesEnabled; honest disclosure that benchmark comparison requires historical market data not available in local-only mode.',
+    verdict: 'cut', reason: 'off-wedge',
+    dataSource: 'local-first',
+    note: 'Benchmarking cut: benchmark comparison requires historical market data not available in local-only mode; the feature cannot be delivered honestly without a live market data feed, which is off-wedge.',
   },
   '/risk-score': {
     verdict: 'live', dataSource: 'base44-entities',
