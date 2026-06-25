@@ -14,7 +14,6 @@ export const USD_DISCLOSURE = {
   '/security':   { discloses: true },   // "sent today" daily-limit progress
   '/analytics':         { discloses: true },   // Total Value / Net PnL / allocation $ figures
   '/advanced-analytics':{ discloses: true },   // Best/Worst Month + monthly activity $ figures
-  '/benchmark':         { discloses: true },   // Net Invested / Current Value / monthly cash flow $
   '/portfolio-rewind':  { discloses: true },   // past/current portfolio value + asset breakdown $
   '/anomaly-detection': { discloses: true },   // large-transfer anomaly detail renders "$<n> — <σ>σ above average" from USD_RATES → carries ReferenceRateNote
   '/fraud': {
