@@ -75,6 +75,11 @@
  *   OPTIONAL: enroll the Hardware KEK on a bare vault. After enrollment, unlock
  *   and changePassword require the hardware factor in addition to the password.
  *   Fails closed (I4): missing hardware factor → explicit error, never silent fallback.
+ *
+ * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [unenrollKek]
+ *   OPTIONAL (NATIVE-ONLY): re-wrap vault to bare format then delete the hardware
+ *   key. Fail-closed: vault re-wrapped BEFORE key deletion; if re-wrap fails the
+ *   key survives and vault remains accessible.
  */
 
 export {};

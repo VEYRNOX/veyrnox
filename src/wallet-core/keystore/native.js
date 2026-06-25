@@ -175,6 +175,43 @@ async function authenticateOrThrow() {
   await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
 }
 
+async function _unlockInner(password, opts = {}) {
+  const raw = await SecureStorage.get(VAULT_KEY, false);
+  if (raw === null || raw === undefined) {
+    throw new Error('No wallet found on this device');
+  }
+  const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+  if (blob.kekWrap) {
+    // KEK-enrolled vault: hardware factor H (via biometric) + PIN-derived C required (I4).
+    // getHardwareFactor() already presents the biometric prompt via Android Keystore,
+    // so authenticateOrThrow() is intentionally skipped here to avoid a double prompt.
+    const getHF = opts && opts.getHardwareFactor;
+    if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    const H = await getHF(); // biometric prompt from HardwareKekPlugin (Android Keystore)
+    const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+    const C = await deriveKekC(password, saltBytes);
+    const kek = await combineKek(H, C);
+    const dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+    return decryptVaultWithDek(blob, dek);
+  }
+
+  // Non-KEK vault: apply biometric gate if requested (e.g. Biometric Unlock setting).
+  if (opts.requireBiometric) {
+    try {
+      await authenticateOrThrow(); // throws on cancel/failure/lockout
+    } catch (err) {
+      // TAG the biometric failure so the caller FAILS CLOSED (clear biometric
+      // error + password escape hatch) rather than treating it like a wrong
+      // password and consulting the deniability path.
+      if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
+      throw err;
+    }
+  }
+
+  return decryptVault(blob, password);
+}
+
 /** @type {import('./keyStore.js').KeyStore} */
 export const nativeKeyStore = {
   // True when a device credential (passcode/biometrics) is set, which is the
@@ -228,44 +265,7 @@ export const nativeKeyStore = {
     // which would otherwise navigate the user back to the PIN pad before unlock
     // completes. Safe: the user initiated unlock; lock is restored immediately
     // when this call exits (success or error).
-    return withLockSuppressed(() => this._unlockInner(password, opts));
-  },
-
-  async _unlockInner(password, opts = {}) {
-    const raw = await SecureStorage.get(VAULT_KEY, false);
-    if (raw === null || raw === undefined) {
-      throw new Error('No wallet found on this device');
-    }
-    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
-
-    if (blob.kekWrap) {
-      // KEK-enrolled vault: hardware factor H (via biometric) + PIN-derived C required (I4).
-      // getHardwareFactor() already presents the biometric prompt via Android Keystore,
-      // so authenticateOrThrow() is intentionally skipped here to avoid a double prompt.
-      const getHF = opts && opts.getHardwareFactor;
-      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-      const H = await getHF(); // biometric prompt from HardwareKekPlugin (Android Keystore)
-      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
-      const C = await deriveKekC(password, saltBytes);
-      const kek = await combineKek(H, C);
-      const dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
-      return decryptVaultWithDek(blob, dek);
-    }
-
-    // Non-KEK vault: apply biometric gate if requested (e.g. Biometric Unlock setting).
-    if (opts.requireBiometric) {
-      try {
-        await authenticateOrThrow(); // throws on cancel/failure/lockout
-      } catch (err) {
-        // TAG the biometric failure so the caller FAILS CLOSED (clear biometric
-        // error + password escape hatch) rather than treating it like a wrong
-        // password and consulting the deniability path.
-        if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
-        throw err;
-      }
-    }
-
-    return decryptVault(blob, password);
+    return withLockSuppressed(() => _unlockInner(password, opts));
   },
 
   // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
