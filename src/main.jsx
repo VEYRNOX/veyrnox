@@ -14,6 +14,9 @@ if (typeof globalThis.Buffer === 'undefined') {
   globalThis.Buffer = NodeBuffer
 }
 
+import { applyRpcEnvOverrides } from '@/wallet-core/rpcConfig.js'
+applyRpcEnvOverrides()
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
