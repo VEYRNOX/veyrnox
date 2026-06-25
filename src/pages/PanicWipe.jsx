@@ -36,12 +36,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import {
-  Bomb, AlertOctagon, ShieldOff, CheckCircle2, Eye, EyeOff,
+  Bomb, AlertOctagon, ShieldOff, CheckCircle2,
   FlaskConical, Lock, Trash2, Database, HardDrive, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PinPad from "@/components/security/PinPad";
 
 // Fixed demo credentials so the simulator walkthrough is one-click reproducible.
 // DEMO ONLY — never used outside the demonstration panel.
@@ -101,7 +102,7 @@ export default function PanicWipe() {
   // ----- setup card state -----
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
-  const [showPin, setShowPin] = useState(false);
+  const [panicPinStep, setPanicPinStep] = useState("enter");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -128,13 +129,13 @@ export default function PanicWipe() {
   // ----- setup handlers -----
   const handleSave = async () => {
     setError(""); setSaved(false);
-    if (pin.length < 8) { setError("Panic/wipe PIN must be at least 8 characters"); return; }
+    if (pin.length < 8) { setError("Panic/wipe PIN must be exactly 8 digits"); return; }
     if (pin !== confirmPin) { setError("PINs do not match"); return; }
     setSaving(true);
     try {
       await setPanicPin(pin);
       setSaved(true);
-      setPin(""); setConfirmPin("");
+      setPin(""); setConfirmPin(""); setPanicPinStep("enter");
       await refresh();
     } catch (e) {
       setError(e?.message || "Could not save panic/wipe PIN");
@@ -264,49 +265,41 @@ export default function PanicWipe() {
         </div>
 
         <div className="space-y-4">
-          <div>
-            <Label>New panic/wipe PIN</Label>
-            <div className="relative mt-1.5">
-              <Input
-                type={showPin ? "text" : "password"}
-                maxLength={64}
-                placeholder="At least 6 characters — unlike anything you'd type by accident"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                className="pr-10 tracking-widest text-lg"
-              />
-              <button
-                type="button"
-                aria-label={showPin ? "Hide PIN" : "Show PIN"}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowPin((s) => !s)}
-              >
-                {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-          <div>
-            <Label>Confirm panic/wipe PIN</Label>
-            <Input
-              type={showPin ? "text" : "password"}
-              maxLength={64}
-              placeholder="Re-enter PIN"
-              value={confirmPin}
-              onChange={(e) => setConfirmPin(e.target.value)}
-              className="mt-1.5 tracking-widest text-lg"
-            />
-          </div>
           <p className="text-[11px] text-muted-foreground">
             ⚠️ Make this PIN <b>different</b> from your real password, any duress PIN,
             and any hidden-wallet secret — otherwise that path opens at unlock and the
             wipe never fires. We can't check this for you (we never hold them in
             plaintext). Entering this PIN at unlock will <b>destroy your keys</b>.
           </p>
+
+          {panicPinStep === "enter" ? (
+            <div className="space-y-2">
+              <Label>New panic/wipe PIN (8 digits)</Label>
+              <PinPad
+                value={pin}
+                onChange={setPin}
+                onComplete={() => setPanicPinStep("confirm")}
+                length={8}
+                submitLabel="Continue"
+                disabled={saving}
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Confirm panic/wipe PIN</Label>
+              <PinPad
+                value={confirmPin}
+                onChange={setConfirmPin}
+                onComplete={handleSave}
+                length={8}
+                submitLabel="Save panic PIN"
+                disabled={saving}
+              />
+            </div>
+          )}
+
           {error && <p className="text-xs text-destructive">{error}</p>}
-          {saved && <p className="text-xs text-success">✓ Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}
-          <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
-            {saving ? "Saving…" : "Set / Change panic/wipe PIN"}
-          </Button>
+          {saved && <p className="text-xs text-success">Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}
           {/* No "is a panic PIN set?" indicator and no remove button BY DESIGN:
               every PIN device seeds CHAFF into the panic ('tertiary') slot
               (provisionChaff.js), so hasPanicVault() is always true and cannot
