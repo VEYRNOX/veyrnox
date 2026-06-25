@@ -1,0 +1,18 @@
+<svg viewBox="0 0 1200 630" width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#050608"/>
+  <g transform="translate(430,315)">
+    <polygon
+      points="0,-88 76.2,-44 76.2,44 0,88 -76.2,44 -76.2,-44"
+      fill="none" stroke="#4ADAC2" stroke-width="6" stroke-linejoin="round"/>
+    <polyline
+      points="-38,-16 0,48 38,-16"
+      fill="none" stroke="#4ADAC2" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text
+    x="540" y="341"
+    text-anchor="start"
+    font-family="Arial Black, Arial, sans-serif"
+    font-size="86" font-weight="900"
+    letter-spacing="6"
+    fill="#FFFFFF">VEYRNOX</text>
+</svg>

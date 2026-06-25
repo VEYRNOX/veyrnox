@@ -47,6 +47,51 @@ Thumbs.db
 # Local wallet artifacts (safety: never commit any seed/key material)
 *.mnemonic
 *.seed
+
+# Claude Code tool artifacts — local only
+.claire/
+.claude-flow/
+.clone/
+.gstack/
+.claude/agents/browser/
+.claude/agents/consensus/
+.claude/agents/core/
+.claude/agents/sparc/
+.claude/agents/swarm/
+.claude/agents/testing/
+.claude/commands/agents/
+.claude/commands/analysis/
+.claude/commands/automation/
+.claude/commands/coordination/
+.claude/commands/github/
+.claude/commands/hive-mind/
+.claude/commands/hooks/
+.claude/commands/memory/
+.claude/commands/monitoring/
+.claude/commands/optimization/
+.claude/commands/sparc/
+.claude/commands/swarm/
+.claude/commands/workflows/
+.claude/commands/claude-flow-*.md
+.claude/helpers/
+.claude/skills/agentdb-*/
+.claude/skills/browser/
+.claude/skills/github-*/
+.claude/skills/hooks-automation/
+.claude/skills/impeccable/
+.claude/skills/pair-programming/
+.claude/skills/reasoningbank-*/
+.claude/skills/skill-builder/
+.claude/skills/sparc-methodology/
+.claude/skills/stream-chain/
+.claude/skills/swarm-*/
+.claude/skills/v3-*/
+.claude/skills/verification-quality/
+.github/skills/
+CLAUDE.md.bak
+test-results/
+audit.json
+convert-og.html
 wallet-backup*
 
 # ruflo / ECC memory tooling — local-only state dropped into the worktree by the
