@@ -53,8 +53,14 @@ function makeNativeFacade() {
     async unlock(password, opts) {
       return (await load()).nativeKeyStore.unlock(password, opts);
     },
-    async changePassword(currentPassword, newPassword) {
-      return (await load()).nativeKeyStore.changePassword(currentPassword, newPassword);
+    async changePassword(currentPassword, newPassword, opts) {
+      return (await load()).nativeKeyStore.changePassword(currentPassword, newPassword, opts);
+    },
+    async enrollKek(password, opts) {
+      return (await load()).nativeKeyStore.enrollKek(password, opts);
+    },
+    async unenrollKek(password, opts) {
+      return (await load()).nativeKeyStore.unenrollKek(password, opts);
     },
     // Synchronous, matching the interface. If native isn't loaded yet there is
     // nothing unlocked to clear; once loaded, delegate to the real lock().
@@ -68,6 +74,10 @@ function makeNativeFacade() {
     // the background listeners early. Web's keyStore omits this method.
     setLockHook(cb) {
       load().then((m) => m.nativeKeyStore.setLockHook(cb));
+    },
+    // Native-only: deliver H for a KEK-enrolled vault unlock. Web omits this.
+    async getHardwareFactor() {
+      return (await load()).nativeKeyStore.getHardwareFactor();
     },
   };
 }

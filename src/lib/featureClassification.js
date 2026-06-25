@@ -21,7 +21,7 @@ export const ALL_ROUTE_PATHS = [
   '/recurring', '/push', '/advanced-analytics', '/nft-multichain',
   '/fraud', '/risk', '/news-sentiment', '/notifications',
   '/savings', '/invoices', '/watchlist', '/address-book',
-  '/net-worth', '/benchmark', '/budget', '/duress-pin',
+  '/net-worth', '/budget', '/duress-pin',
   '/wallet-access', '/stealth-wallets', '/panic-wipe', '/risk-score',
   '/correlation', '/session-manager', '/receipt', '/tx-history',
   '/address-checker', '/fee-analytics', '/correlation-timeline',
