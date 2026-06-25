@@ -43,12 +43,13 @@ import {
 import { getBiometricStatus } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
-  Shield, Eye, EyeOff, AlertTriangle, Lock, Unlock, FlaskConical,
+  Shield, AlertTriangle, Lock, Unlock, FlaskConical,
   Copy, Check, RefreshCw, Coins, ExternalLink, Fingerprint,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PinPad from "@/components/security/PinPad";
 
 // Fixed demo credentials so the simulator walkthrough is one-click reproducible.
 // DEMO ONLY — never used outside the demonstration panel.
@@ -105,7 +106,7 @@ export default function DuressPin() {
   // ----- setup card state -----
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
-  const [showPin, setShowPin] = useState(false);
+  const [duressStep, setDuressStep] = useState("enter"); // "enter" | "confirm"
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedPhrase, setSavedPhrase] = useState("");   // decoy mnemonic (shown once)
@@ -149,7 +150,7 @@ export default function DuressPin() {
   // ----- setup handlers -----
   const handleSave = async () => {
     setError(""); setSavedPhrase(""); setSavedAddr("");
-    if (pin.length < 8) { setError("Emergency PIN must be at least 8 characters"); return; }
+    if (pin.length < 8) { setError("Emergency PIN must be exactly 8 digits"); return; }
     if (pin !== confirmPin) { setError("PINs do not match"); return; }
     // CRITICAL: configuring the decoy/duress system is gated behind the second
     // factor when one is set (no-op otherwise). Runs after local validation so a
@@ -170,7 +171,7 @@ export default function DuressPin() {
         }
         setSavedPhrase(mnemonic);
         setSavedAddr(address);
-        setPin(""); setConfirmPin("");
+        setPin(""); setConfirmPin(""); setDuressStep("enter");
         await refresh();
       } catch (e) {
         setError(e?.message || "Could not save Emergency PIN");
@@ -315,40 +316,30 @@ export default function DuressPin() {
         </div>
 
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="duress-new-pin">New Emergency PIN</Label>
-            <div className="relative mt-1.5">
-              <Input
-                id="duress-new-pin"
-                type={showPin ? "text" : "password"}
-                maxLength={64}
-                placeholder="At least 4 characters — different from your real PIN"
+          {duressStep === "enter" ? (
+            <div>
+              <Label className="block mb-3">New Emergency PIN</Label>
+              <PinPad
                 value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                className="pr-10 tracking-widest text-lg"
+                onChange={setPin}
+                onComplete={() => setDuressStep("confirm")}
+                length={8}
+                submitLabel="Continue"
               />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowPin((s) => !s)}
-                aria-label={showPin ? "Hide PIN" : "Show PIN"}
-              >
-                {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
             </div>
-          </div>
-          <div>
-            <Label htmlFor="duress-confirm-pin">Confirm Emergency PIN</Label>
-            <Input
-              id="duress-confirm-pin"
-              type={showPin ? "text" : "password"}
-              maxLength={64}
-              placeholder="Re-enter PIN"
-              value={confirmPin}
-              onChange={(e) => setConfirmPin(e.target.value)}
-              className="mt-1.5 tracking-widest text-lg"
-            />
-          </div>
+          ) : (
+            <div>
+              <Label className="block mb-3">Confirm Emergency PIN</Label>
+              <PinPad
+                value={confirmPin}
+                onChange={setConfirmPin}
+                onComplete={handleSave}
+                length={8}
+                submitLabel="Save emergency PIN"
+                disabled={saving}
+              />
+            </div>
+          )}
           {/* Face-ID-opens-the-decoy opt-in. Shown ONLY when a biometric sensor
               is available on this device. OFF by default. Honest copy: Face ID
               opens the DECOY; the real wallet always needs the typed real PIN. */}
@@ -379,9 +370,6 @@ export default function DuressPin() {
             </div>
           )}
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button className="w-full" disabled={!pin || !confirmPin || saving} onClick={handleSave}>
-            {saving ? "Saving…" : "Set / Change Emergency PIN"}
-          </Button>
         </div>
 
         {savedPhrase && (
