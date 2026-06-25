@@ -1274,8 +1274,7 @@ export function WalletProvider({ children }) {
         // reached on the happy path, and the sentinel carries the signal on any
         // exceptional path so the caller never sees "Incorrect PIN" instead.
         try { await panicWipe(); } catch { /* partial wipe — data may already be gone */ }
-        const panicErr = new Error("PANIC_WIPE_FIRED");
-        panicErr.isPanicWipe = true;
+        const panicErr = Object.assign(new Error("PANIC_WIPE_FIRED"), { isPanicWipe: true });
         throw panicErr;
       }
       if (duressMnemonic != null) {
