@@ -53,7 +53,6 @@ const RAW_NAV_GROUPS = [
       { path: "/notifications", label: "Notifications", icon: BellRing },
       { path: "/analytics", label: "Analytics", icon: BarChart2 },
       { path: "/advanced-analytics", label: "Advanced Analytics", icon: Activity },
-      { path: "/benchmark", label: "Benchmarking", icon: BarChart2 },
       { path: "/risk-score", label: "Risk Score", icon: ShieldQuestion },
       { path: "/correlation", label: "Correlation Matrix", icon: Grid2X2 },
       { path: "/correlation-timeline", label: "Event Timeline", icon: Newspaper },

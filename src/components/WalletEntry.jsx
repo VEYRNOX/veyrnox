@@ -65,7 +65,7 @@
 // NONE of this is "verified" — it needs the internal audit + real-device proof.
 
 import { useEffect, useRef, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -316,6 +316,7 @@ function ExploreShell({ onCreate, children }) {
 }
 
 export default function WalletEntry() {
+  const navigate = useNavigate();
   const {
     isUnlocked, createWallet, importWallet, unlock, hasVault,
     enableBiometricUnlock, unlockWithBiometric,
@@ -327,6 +328,10 @@ export default function WalletEntry() {
 
   // null until we know whether a vault exists; drives unlock vs first-run.
   const [vaultExists, setVaultExists] = useState(null);
+  // Local panic-wipe flag: set true in the isPanicWipe catch path so WipedNotice
+  // renders immediately without waiting for context wasWiped to propagate through
+  // a separate React batch (avoids a timing window on the wasWiped && vaultExists gate).
+  const [localWiped, setLocalWiped] = useState(false);
   // first-run sub-view: 'choose' | 'generate' | 'import'. When a vault exists we
   // start on 'unlock'; "Forgot password?" switches to 'import' (seed recovery).
   const [view, setView] = useState("choose");
@@ -551,6 +556,9 @@ export default function WalletEntry() {
         setError(e?.message || "Couldn't unlock. Try again.");
         return;
       }
+      // Panic-PIN path: provider fired panicWipe() and threw a distinguishable sentinel.
+      // Show WipedNotice immediately — no "Incorrect PIN" error message.
+      if (e?.isPanicWipe) { setLocalWiped(true); setVaultExists(false); return; }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
       // decides whether this miss is the wipe trigger and what to warn.
       const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
@@ -773,17 +781,19 @@ export default function WalletEntry() {
   // get an unmistakable sign their keys are gone — not the silent generic onboarding.
   // Render BEFORE welcome/onboarding. Both actions acknowledgeWipe() (clear the marker)
   // BEFORE routing on so the screen does not reappear once they move forward.
-  if (wasWiped && vaultExists === false) {
+  if ((wasWiped || localWiped) && vaultExists === false) {
     return (
       <WipedNotice
         onRestore={() => {
-          acknowledgeWipe();
+          acknowledgeWipe(); setLocalWiped(false);
+          navigate("/");
           setError(""); setRecovering(true);
           setRecoverySeed(""); setRealPin(""); setRealPinConfirm("");
           setPinStep("seed"); setView("pin-recover");
         }}
         onStartNew={() => {
-          acknowledgeWipe();
+          acknowledgeWipe(); setLocalWiped(false);
+          navigate("/");
           setError("");
           setRealPin(""); setRealPinConfirm(""); setPinStep("real");
           setView("pin-create");
