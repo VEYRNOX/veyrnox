@@ -85,7 +85,8 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         {isPinModel ? (
           <PinPad
             aria-label="8-digit PIN"
-            onChange={() => {}}
+            value={pin}
+            onChange={setPin}
             onComplete={(digits) => setPin(digits)}
             submitLabel="Verify"
             disabled={busy}
