@@ -43,18 +43,11 @@ function rpcUrlCandidates(networkKey) {
   return [net.defaultRpcUrl, ...(net.fallbackRpcUrls || [])];
 }
 
-// Capacitor WebView on Android blocks outbound WSS connections to external hosts,
-// causing all @solana/web3.js RPC calls to fail even though plain HTTPS works in
-// Chrome. web3.js Connection opens a WebSocket subscription by default; we never
-// use subscription APIs (only HTTP RPC calls), so we point wsEndpoint at a dummy
-// localhost address to suppress the WebSocket entirely.
-const CONNECTION_CONFIG = { commitment: 'confirmed', wsEndpoint: 'ws://localhost' };
-
 /** Memoized Connection for a network (rebuilt if the override URL changes). */
 export function getConnection(networkKey) {
   if (!_connections[networkKey]) {
     const [primary] = rpcUrlCandidates(networkKey);
-    _connections[networkKey] = new Connection(primary, CONNECTION_CONFIG);
+    _connections[networkKey] = new Connection(primary, 'confirmed');
   }
   return _connections[networkKey];
 }
@@ -69,23 +62,23 @@ async function withFallback(networkKey, fn) {
   const candidates = rpcUrlCandidates(networkKey);
   let lastErr;
   for (const url of candidates) {
-    _connections[networkKey] = new Connection(url, CONNECTION_CONFIG);
+    // Point the memoized connection at this candidate URL.
+    _connections[networkKey] = new Connection(url, 'confirmed');
     try {
       return await fn(_connections[networkKey]);
     } catch (err) {
       lastErr = err;
-      delete _connections[networkKey];
+      delete _connections[networkKey]; // reset so next iteration rebuilds
     }
   }
   throw lastErr;
 }
 
 /**
- * POST a Solana JSON-RPC request to `url`. On native Android/iOS platforms we
- * use CapacitorHttp (built into @capacitor/core) which routes through the
- * system HTTP client and bypasses WebView CORS restrictions. On web/desktop we
- * fall back to plain fetch — CORS is not an issue there because Solana devnet
- * RPCs allow all origins for browser clients.
+ * POST a Solana JSON-RPC request. On native Android/iOS we use CapacitorHttp
+ * (built into @capacitor/core) which routes through the system HTTP client and
+ * bypasses WebView CORS — the public devnet RPC returns 403 on OPTIONS preflight
+ * from the Capacitor app origin. On web/desktop plain fetch is fine.
  */
 async function solRpcPost(url, method, params) {
   const payload = { jsonrpc: '2.0', id: 1, method, params };
@@ -96,9 +89,8 @@ async function solRpcPost(url, method, params) {
       data: payload,
     });
     if (res.status >= 400) throw new Error(`HTTP ${res.status}`);
-    const json = res.data;
-    if (json.error) throw new Error(json.error.message || 'RPC error');
-    return json.result;
+    if (res.data.error) throw new Error(res.data.error.message || 'RPC error');
+    return res.data.result;
   }
   const res = await fetch(url, {
     method: 'POST',
@@ -112,8 +104,8 @@ async function solRpcPost(url, method, params) {
 }
 
 /**
- * Confirmed balance in lamports (BigInt). Uses solRpcPost with fallback
- * across candidate URLs so a rate-limited or unreachable primary is skipped.
+ * Confirmed balance in lamports (BigInt). Uses solRpcPost with fallback across
+ * candidate URLs so a rate-limited or unreachable primary is skipped.
  * @returns {Promise<bigint>}
  */
 export async function getBalanceLamports(networkKey, address) {
