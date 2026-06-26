@@ -18,6 +18,7 @@
 //     balance; we do not count unconfirmed/processed lamports.
 
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { getSolNetwork, getSolNetworkInfo } from './networks.js';
 import { assertSafeRpcUrl } from '../netUrl.js';
 
@@ -74,16 +75,51 @@ async function withFallback(networkKey, fn) {
 }
 
 /**
- * Confirmed balance in lamports (BigInt). lamports are integers (1 SOL = 1e9
- * lamports); we keep them as BigInt to avoid float rounding on lamport math.
+ * POST a Solana JSON-RPC request. On native Android/iOS we use CapacitorHttp
+ * (built into @capacitor/core) which routes through the system HTTP client and
+ * bypasses WebView CORS — the public devnet RPC returns 403 on OPTIONS preflight
+ * from the Capacitor app origin. On web/desktop plain fetch is fine.
+ */
+async function solRpcPost(url, method, params) {
+  const payload = { jsonrpc: '2.0', id: 1, method, params };
+  if (Capacitor.isNativePlatform()) {
+    const res = await CapacitorHttp.post({
+      url,
+      headers: { 'Content-Type': 'application/json' },
+      data: payload,
+    });
+    if (res.status >= 400) throw new Error(`HTTP ${res.status}`);
+    if (res.data.error) throw new Error(res.data.error.message || 'RPC error');
+    return res.data.result;
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message || 'RPC error');
+  return json.result;
+}
+
+/**
+ * Confirmed balance in lamports (BigInt). Uses solRpcPost with fallback across
+ * candidate URLs so a rate-limited or unreachable primary is skipped.
  * @returns {Promise<bigint>}
  */
 export async function getBalanceLamports(networkKey, address) {
-  const pubkey = new PublicKey(address);
-  return withFallback(networkKey, async (conn) => {
-    const lamports = await conn.getBalance(pubkey, 'confirmed');
-    return BigInt(lamports);
-  });
+  const candidates = rpcUrlCandidates(networkKey);
+  let lastErr;
+  for (const url of candidates) {
+    try {
+      const result = await solRpcPost(url, 'getBalance', [address, { commitment: 'confirmed' }]);
+      return BigInt(result.value);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
 }
 
 /** Convenience: confirmed balance as a SOL number (display only). */
