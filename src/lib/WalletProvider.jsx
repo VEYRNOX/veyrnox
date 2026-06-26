@@ -997,7 +997,7 @@ export function WalletProvider({ children }) {
   // (or an equivalent gate) BEFORE calling. To make that contract machine-checkable,
   // pass { callerGated: true } as the second argument — the function throws if absent.
   // This prevents future callers from accidentally bypassing the re-auth requirement.
-  const revealWalletMnemonic = useCallback((walletId, { callerGated } = {}) => {
+  const revealWalletMnemonic = useCallback((walletId, { callerGated } = /** @type {{callerGated?: boolean}} */ ({})) => {
     if (!callerGated) {
       throw new Error(
         'revealWalletMnemonic requires the caller to gate this action behind ' +
