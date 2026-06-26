@@ -13,7 +13,7 @@
 // BOTH the nav and search automatically.
 
 import {
-  LayoutDashboard, Send, Download, Settings, ShieldCheck, Plug, Bell, Calculator, BarChart2, Zap,
+  LayoutDashboard, Send, Download, Settings, ShieldCheck, Plug, Calculator, BarChart2, Zap,
   Receipt, Repeat, ShieldAlert, Image,
   BarChart3, Camera, TrendingUp, Network, PieChart, BellRing, Link2, BellDot, Users,
   Activity, Layers, Fingerprint, Cpu,
@@ -129,7 +129,6 @@ const RAW_NAV_GROUPS = [
       { path: "/spam-filter", label: "Spam Filter", icon: FilterX },
       { path: "/trust-score", label: "Token Spam Screening", icon: ScanLine },
       { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
-      { path: "/alerts", label: "Price Alerts", icon: Bell },
     ],
   },
   {
