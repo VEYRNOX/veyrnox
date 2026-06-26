@@ -19,10 +19,12 @@ import {
   pairWithDapp,
 } from '@/wallet-core/evm/walletconnect/session.js';
 import { classifyRequest, isBlocked, REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
-import { parseTypedData, detectAssetAuthorising, describeTypedData, checkTypedDataChainId } from '@/wallet-core/evm/typed-data.js';
+import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wallet-core/evm/typed-data.js';
 import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
+import { presignGate } from '@/sign-gate/presign';
+import { detect, degrade, browserProbeSource } from '@/rasp';
 
 const WalletConnectCtx = createContext(null);
 
@@ -96,6 +98,161 @@ export function checkSessionExpiry(session, nowMs = Date.now()) {
   }
   if (expiry * 1000 <= nowMs) return { ok: false, code: 'SESSION_EXPIRED' };
   return { ok: true };
+}
+
+// C3 — the RASP pre-sign gate the audit requires on EVERY WalletConnect signing
+// handler. These module-level pure functions encapsulate the gate + per-method
+// validation so they are unit-testable in isolation (the component closures below
+// are thin delegators). txLevel is null for WC signing (no in-app risk score);
+// acknowledged is true because the user confirmed in the WC modal before the
+// handler runs. A blocked gate rejects the request and NEVER reaches
+// withPrivateKey (fail closed, I4).
+// Coerce an EIP-712 / CAIP-2 chain id (number, bigint, decimal or 0x-hex string)
+// to a finite integer, or null when it cannot be interpreted. Pure.
+function toNumericChainId(v) {
+  if (typeof v === 'number' && Number.isInteger(v)) return v;
+  if (typeof v === 'bigint') return Number(v);
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (/^0x[0-9a-fA-F]+$/.test(s)) return parseInt(s, 16);
+    if (/^\d+$/.test(s)) return parseInt(s, 10);
+  }
+  return null;
+}
+
+function presignGateOrReject() {
+  const { tier } = degrade(detect(browserProbeSource));
+  return presignGate(tier, null, true);
+}
+
+export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic, id, params) {
+  const gate = presignGateOrReject();
+  if (!gate.proceedAllowed) {
+    await rejectRequest(topic, id).catch(() => {});
+    return;
+  }
+  const arr = Array.isArray(params) ? params : [];
+  let hexMsg;
+  if (evmAddress) {
+    // H8 — resolve which param is the message and bind the address param to our
+    // own wallet (EIP-1474 [message, address] vs MetaMask-legacy [address,
+    // message]). Reject (fail closed, I4) if no param is our own address.
+    const own = evmAddress.toLowerCase();
+    const isOwn = (v) =>
+      typeof v === 'string' && ethers.isAddress(v) && v.toLowerCase() === own;
+    if (isOwn(arr[1])) {
+      hexMsg = arr[0]; // EIP-1474 order [message, ownAddress]
+    } else if (isOwn(arr[0])) {
+      hexMsg = arr[1]; // MetaMask-legacy order [ownAddress, message]
+    } else {
+      await rejectRequest(topic, id).catch(() => {});
+      throw new Error(
+        `Rejected personal_sign [PERSONAL_SIGN_ADDRESS_MISMATCH]: the signing ` +
+        `address does not match this wallet (address mismatch). ` +
+        `Veyrnox will not sign a message bound to a different address.`,
+      );
+    }
+  } else {
+    hexMsg = arr[0];
+  }
+  const sig = await withPrivateKey(0, async (pk) => {
+    const wallet = new ethers.Wallet(pk);
+    return wallet.signMessage(ethers.getBytes(hexMsg));
+  });
+  await respondToRequest(topic, id, sig);
+}
+
+export async function _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2) {
+  const gate = presignGateOrReject();
+  if (!gate.proceedAllowed) {
+    await rejectRequest(topic, id).catch(() => {});
+    return;
+  }
+  const typedDataJson = params[1] ?? params[0];
+  const parsed = parseTypedData(typedDataJson);
+  if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
+
+  // H7 — bind the EIP-712 domain.chainId to the WalletConnect SESSION chain.
+  // Only reject on an actual mismatch (or an invalid session chain when the
+  // domain DOES carry a chainId); a domain with no chainId field is
+  // backwards-compatible and must still sign. Computed inline (pure) so the gate
+  // does not depend on a separately-imported helper.
+  const rawDomainChainId = parsed?.domain?.chainId;
+  if (rawDomainChainId !== undefined && rawDomainChainId !== null) {
+    const domainChainId = toNumericChainId(rawDomainChainId);
+    const sessionChainId = toNumericChainId(
+      typeof sessionCaip2 === 'string' ? sessionCaip2.split(':')[1] : null,
+    );
+    if (sessionChainId == null) {
+      await rejectRequest(topic, id).catch(() => {});
+      throw new Error(
+        `Rejected typed-data signature [SESSION_CHAINID_INVALID]: this connection has no valid chain. ` +
+        `Veyrnox will not produce a signature valid on a different chain.`,
+      );
+    }
+    if (domainChainId !== sessionChainId) {
+      await rejectRequest(topic, id).catch(() => {});
+      throw new Error(
+        `Rejected typed-data signature [CHAINID_MISMATCH]: domain.chainId (${domainChainId}) ` +
+        `does not match this connection's chain (${sessionChainId}). ` +
+        `Veyrnox will not produce a signature valid on a different chain.`,
+      );
+    }
+  }
+
+  const { EIP712Domain: _ignored, ...typesWithoutDomain } = parsed.types;
+  const sig = await withPrivateKey(0, async (pk) => {
+    const wallet = new ethers.Wallet(pk);
+    return wallet.signTypedData(parsed.domain, typesWithoutDomain, parsed.message);
+  });
+  await respondToRequest(topic, id, sig);
+}
+
+export async function _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId) {
+  const gate = presignGateOrReject();
+  if (!gate.proceedAllowed) {
+    await rejectRequest(topic, id).catch(() => {});
+    return;
+  }
+  const txParams = params[0];
+  const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
+  const net = getNetworkByChainId(chainId);
+
+  const hash = await withPrivateKey(0, async (pk) => {
+    const provider = getProvider(net.key);
+    // VULN-19 guard: verify the RPC endpoint is actually on the expected chain.
+    const onChain = parseInt(await provider.send('eth_chainId', []), 16);
+    if (onChain !== chainId) throw new Error(`Chain ID mismatch: expected ${chainId}, got ${onChain}`);
+
+    const wallet = new ethers.Wallet(pk, provider);
+    const tx = {
+      to: txParams.to,
+      value: txParams.value ? BigInt(txParams.value) : 0n,
+      data: txParams.data ?? '0x',
+    };
+
+    if (txParams.maxFeePerGas) {
+      tx.maxFeePerGas = BigInt(txParams.maxFeePerGas);
+      tx.maxPriorityFeePerGas = BigInt(txParams.maxPriorityFeePerGas ?? 0);
+      tx.type = 2;
+    } else if (txParams.gasPrice) {
+      tx.gasPrice = BigInt(txParams.gasPrice);
+      tx.type = 0;
+    }
+
+    // M9 — cap gas to 1M whether or not the dApp supplied `gas`. When omitted we
+    // estimate ourselves and clamp the estimate too, so a dApp can never bypass
+    // the cap by leaving `gas` out. If no estimate is available, clamp to the cap.
+    const estimatedGas = txParams.gas != null
+      ? 0n
+      : (typeof wallet.estimateGas === 'function' ? await wallet.estimateGas(tx) : WC_GAS_CAP);
+    tx.gasLimit = resolveGasLimit(txParams.gas, estimatedGas);
+
+    const sent = await wallet.sendTransaction(tx);
+    return sent.hash;
+  });
+
+  await respondToRequest(topic, id, hash);
 }
 
 export function WalletConnectProvider({ children }) {
@@ -209,64 +366,19 @@ export function WalletConnectProvider({ children }) {
   // BEFORE the key is touched.
   const handlePersonalSign = useCallback(async (topic, id, params) => {
     await assertSessionLive(topic, id); // M11
-    const resolved = resolvePersonalSignMessage(params, evmAddress);
-    if (!resolved.ok) {
-      await rejectRequest(topic, id).catch(() => {});
-      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-      const detail = resolved.code === 'PERSONAL_SIGN_NO_WALLET'
-        ? 'no unlocked wallet address is available'
-        : 'the signing address does not match this wallet';
-      throw new Error(
-        `Rejected personal_sign [${resolved.code}]: ${detail}. ` +
-        `Veyrnox will not sign a message bound to a different address.`,
-      );
-    }
-    const hexMsg = resolved.message;
-    const sig = await withPrivateKey(0, async (pk) => {
-      const wallet = new ethers.Wallet(pk);
-      return wallet.signMessage(ethers.getBytes(hexMsg));
-    });
-    await respondToRequest(topic, id, sig);
+    await _handlePersonalSign({ withPrivateKey, evmAddress }, topic, id, params);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
   }, [withPrivateKey, evmAddress, assertSessionLive]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
   const handleSignTypedData = useCallback(async (topic, id, params) => {
     await assertSessionLive(topic, id); // M11
-    const typedDataJson = params[1] ?? params[0];
-    const parsed = parseTypedData(typedDataJson);
-    if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
-
-    // H7 — bind the EIP-712 domain.chainId to the WalletConnect SESSION chain.
-    // The session's CAIP-2 chain id (e.g. "eip155:11155111") lives on the pending
-    // request that the modal is acting on. A dApp on a testnet session that
-    // supplies a mainnet domain.chainId would otherwise obtain a mainnet-valid
-    // Permit/Permit2 drain signature. Reject (fail closed, I4) BEFORE the key is
-    // touched — never downgrade to warn-and-continue.
+    // H7 — the session's CAIP-2 chain id lives on the pending request the modal
+    // is acting on; pass it to the pure helper for cross-chain replay protection.
     const sessionCaip2 = pendingRequests.find(
       (r) => r.topic === topic && r.id === id,
     )?.params?.chainId;
-    const chainCheck = checkTypedDataChainId(parsed, sessionCaip2);
-    if (!chainCheck.ok) {
-      const detail = chainCheck.code === 'CHAINID_MISMATCH'
-        ? `the signature's chain (${chainCheck.got}) does not match this connection's chain (${chainCheck.expected})`
-        : chainCheck.code === 'CHAINID_MISSING'
-          ? 'it does not state which chain it is for'
-          : 'this connection has no valid chain';
-      await rejectRequest(topic, id).catch(() => {});
-      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-      throw new Error(
-        `Rejected typed-data signature [${chainCheck.code}]: ${detail}. ` +
-        `Veyrnox will not produce a signature valid on a different chain.`,
-      );
-    }
-
-    const { EIP712Domain: _ignored, ...typesWithoutDomain } = parsed.types;
-    const sig = await withPrivateKey(0, async (pk) => {
-      const wallet = new ethers.Wallet(pk);
-      return wallet.signTypedData(parsed.domain, typesWithoutDomain, parsed.message);
-    });
-    await respondToRequest(topic, id, sig);
+    await _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
   }, [withPrivateKey, pendingRequests, assertSessionLive]);
 
@@ -275,43 +387,7 @@ export function WalletConnectProvider({ children }) {
   // Gas cap of 1M enforced regardless of dApp suggestion (I5 — backend untrusted).
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
     await assertSessionLive(topic, id); // M11
-    const txParams = params[0];
-    const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
-    const net = getNetworkByChainId(chainId);
-
-    const hash = await withPrivateKey(0, async (pk) => {
-      const provider = getProvider(net.key);
-      // VULN-19 guard: verify the RPC endpoint is actually on the expected chain.
-      const onChain = parseInt(await provider.send('eth_chainId', []), 16);
-      if (onChain !== chainId) throw new Error(`Chain ID mismatch: expected ${chainId}, got ${onChain}`);
-
-      const wallet = new ethers.Wallet(pk, provider);
-      const tx = {
-        to: txParams.to,
-        value: txParams.value ? BigInt(txParams.value) : 0n,
-        data: txParams.data ?? '0x',
-      };
-
-      if (txParams.maxFeePerGas) {
-        tx.maxFeePerGas = BigInt(txParams.maxFeePerGas);
-        tx.maxPriorityFeePerGas = BigInt(txParams.maxPriorityFeePerGas ?? 0);
-        tx.type = 2;
-      } else if (txParams.gasPrice) {
-        tx.gasPrice = BigInt(txParams.gasPrice);
-        tx.type = 0;
-      }
-
-      // M9 — cap gas to 1M whether or not the dApp supplied `gas`. When omitted
-      // we estimate ourselves and clamp the estimate too, so a dApp can never
-      // bypass the cap by leaving `gas` out and letting ethers auto-estimate.
-      const estimatedGas = txParams.gas != null ? 0n : await wallet.estimateGas(tx);
-      tx.gasLimit = resolveGasLimit(txParams.gas, estimatedGas);
-
-      const sent = await wallet.sendTransaction(tx);
-      return sent.hash;
-    });
-
-    await respondToRequest(topic, id, hash);
+    await _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
   }, [withPrivateKey, assertSessionLive]);
 
