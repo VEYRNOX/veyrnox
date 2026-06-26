@@ -185,12 +185,14 @@ export default function TwoFactorSettings() {
               <Label htmlFor="ap-new">{actionPasswordConfigured ? 'New Action Password' : 'Action Password'}</Label>
               <Input id="ap-new" type="password" autoComplete="new-password" value={apNew}
                 onChange={e => setApNew(e.target.value)} placeholder="At least 8 characters" className="mt-1.5 mono-value" />
+              <p className="text-xs text-muted-foreground mt-1">At least 8 characters · any characters allowed</p>
               {apTooShort && <p className="text-[11px] text-destructive mt-1">Use at least 8 characters.</p>}
             </div>
             <div>
               <Label htmlFor="ap-confirm">Confirm</Label>
               <Input id="ap-confirm" type="password" autoComplete="new-password" value={apConfirm}
                 onChange={e => setApConfirm(e.target.value)} placeholder="Re-enter the Action Password" className="mt-1.5 mono-value" />
+              <p className="text-xs text-muted-foreground mt-1">Must match your Action Password</p>
               {apMismatch && <p className="text-[11px] text-destructive mt-1">Passwords don't match.</p>}
             </div>
             <Button className="w-full gap-2" onClick={handleSetActionPassword} disabled={!apCanSave}>

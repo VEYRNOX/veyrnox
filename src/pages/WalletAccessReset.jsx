@@ -40,7 +40,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 // Minimum vault-password length — matches the create/import flow (HDWalletManager).
-const MIN_PW = 8;
+const MIN_PW = 12;
 
 // Fixed demo credentials so the simulator walkthrough is one-click reproducible.
 // DEMO ONLY — never used outside the demonstration panel.
@@ -265,6 +265,7 @@ export default function WalletAccessReset() {
                 onChange={(e) => setNewPw(e.target.value)}
                 placeholder={`At least ${MIN_PW} characters`}
               />
+              <p className="text-xs text-muted-foreground mt-1">At least 12 characters · any characters allowed</p>
             </div>
             <div>
               <Label>Confirm new password</Label>
@@ -275,6 +276,7 @@ export default function WalletAccessReset() {
                 onChange={(e) => setConfirmPw(e.target.value)}
                 placeholder="Re-enter the new password"
               />
+              <p className="text-xs text-muted-foreground mt-1">Must match your new password</p>
             </div>
             {cpErr && <p className="text-xs text-destructive">{cpErr}</p>}
             {cpDone && (
@@ -347,6 +349,7 @@ export default function WalletAccessReset() {
             onChange={(e) => setRecPw(e.target.value)}
             placeholder={`Encrypts your seed on this device — at least ${MIN_PW} characters`}
           />
+          <p className="text-xs text-muted-foreground mt-1">At least 12 characters · any characters allowed</p>
         </div>
         {recErr && <p className="text-xs text-destructive">{recErr}</p>}
         <Button

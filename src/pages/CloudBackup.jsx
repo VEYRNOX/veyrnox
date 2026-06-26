@@ -134,6 +134,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
           onChange={setPassword}
           placeholder="A new password to protect this backup (min 8)"
         />
+        <p className="text-xs text-muted-foreground mt-1">At least 8 characters · any characters allowed</p>
         {password.length > 0 && password.length < 8 && (
           <p className="text-xs text-destructive">Use at least 8 characters.</p>
         )}
@@ -271,6 +272,7 @@ function RestoreTab({ lock }) {
           onChange={setNewPassword}
           placeholder="Choose a strong password"
         />
+        <p className="text-xs text-muted-foreground mt-1">At least 12 characters · any characters allowed</p>
         <Field
           label="Confirm new password"
           type="password"
@@ -278,6 +280,7 @@ function RestoreTab({ lock }) {
           onChange={setNewPasswordConfirm}
           placeholder="Repeat password"
         />
+        <p className="text-xs text-muted-foreground mt-1">Must match your new password</p>
         {newPasswordConfirm.length > 0 && newPassword !== newPasswordConfirm && (
           <p className="text-xs text-destructive">Passwords do not match.</p>
         )}
