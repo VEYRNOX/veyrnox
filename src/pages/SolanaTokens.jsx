@@ -28,7 +28,7 @@ export default function SolanaTokens() {
       const sol = await getBalanceSol("devnet", solAccount.address);
       setBalance(sol);
     } catch (e) {
-      setError("RPC unavailable — try again");
+      setError(`RPC unavailable — ${e?.message || String(e)}`);
     } finally {
       setLoading(false);
     }
