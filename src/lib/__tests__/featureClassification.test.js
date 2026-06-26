@@ -67,7 +67,7 @@ describe('registryEntriesFromClassification', () => {
     expect(out['/referrals']).toBeUndefined();
     // Non-live entries: 4 original seeds + 9 Overview-group pages classified in batch 1
     // + 5 Wallet-group pages classified in batch 2
-    // + 7 Invest/Finance pages classified in batch 3
+    // + 7 Invest/Finance pages classified in batch 3 (/benchmark cut in #363)
     // + 5 Assets-group pages classified in batch 4 (/nft-multichain and /spending are live)
     // + 2 Security-group pages classified in batch A (/wallet-seed-qr, /hardware-wallet)
     //   (10 Security-A pages are live; only 2 are disabled)
@@ -91,6 +91,7 @@ describe('registryEntriesFromClassification', () => {
         //   /hardware-wallet (M-complexity build), /anomaly-detection,
         //   /fraud (M-complexity build), /alerts, /watch-wallets, /solana,
         //   /price-charts (M-complexity build).
+        '/benchmark',
         '/leaderboard', '/public-profiles', '/shared-portfolio',
         '/advisor', '/ai-assistant', '/ai-rebalancer',
         '/what-if', '/split-bill',

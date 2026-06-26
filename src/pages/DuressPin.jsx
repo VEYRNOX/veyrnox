@@ -320,6 +320,7 @@ export default function DuressPin() {
             <div>
               <Label className="block mb-3">New Emergency PIN</Label>
               <PinPad
+                aria-label="New Emergency PIN"
                 value={pin}
                 onChange={setPin}
                 onComplete={() => setDuressStep("confirm")}
@@ -331,6 +332,7 @@ export default function DuressPin() {
             <div>
               <Label className="block mb-3">Confirm Emergency PIN</Label>
               <PinPad
+                aria-label="Confirm Emergency PIN"
                 value={confirmPin}
                 onChange={setConfirmPin}
                 onComplete={handleSave}
