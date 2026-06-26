@@ -1,21 +1,33 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# Veyrnox ProGuard rules — required for Capacitor + native plugins to survive minification.
 #
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# M16 audit fix: minifyEnabled was false, leaving wallet logic readable in the APK.
+# These rules keep the Capacitor bridge and registered plugins while allowing R8 to
+# shrink and obfuscate everything else.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ── Capacitor core bridge ─────────────────────────────────────────────────────
+-keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keep @com.getcapacitor.annotation.PluginMethod class * { *; }
+-keepclassmembers class * extends com.getcapacitor.Plugin {
+    @com.getcapacitor.annotation.PluginMethod public *;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ── Veyrnox native plugins ────────────────────────────────────────────────────
+-keep class com.veyrnox.app.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ── AndroidX / Biometric (used by HardwareKekPlugin) ─────────────────────────
+-keep class androidx.biometric.** { *; }
+
+# ── Kotlin reflection used by Capacitor plugin dispatch ──────────────────────
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
+
+# ── Coroutines (Kotlin) ───────────────────────────────────────────────────────
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlinx.coroutines.**
+
+# ── Debugging: preserve line numbers in stack traces ─────────────────────────
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

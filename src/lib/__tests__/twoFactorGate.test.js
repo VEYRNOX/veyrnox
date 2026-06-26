@@ -11,22 +11,35 @@ describe('evaluateTwoFactor — the PIN + Action Password critical-action gate',
     });
   });
 
-  it('blocks when the PIN is wrong (password right)', () => {
+  // H4: all wrong-credential permutations return the same opaque WRONG code and
+  // the same message — no oracle that reveals which factor was correct.
+  it('blocks with WRONG when only PIN is wrong', () => {
     const r = evaluateTwoFactor({ pinOk: false, passwordOk: true });
     expect(r.allowed).toBe(false);
-    expect(r.code).toBe(TWO_FACTOR.PIN_WRONG);
+    expect(r.code).toBe(TWO_FACTOR.WRONG);
   });
 
-  it('blocks when the Action Password is wrong (PIN right)', () => {
+  it('blocks with WRONG when only Action Password is wrong', () => {
     const r = evaluateTwoFactor({ pinOk: true, passwordOk: false });
     expect(r.allowed).toBe(false);
-    expect(r.code).toBe(TWO_FACTOR.PASSWORD_WRONG);
+    expect(r.code).toBe(TWO_FACTOR.WRONG);
   });
 
-  it('blocks with BOTH_WRONG when neither verifies — without hinting which was closer', () => {
+  it('blocks with WRONG when both factors are wrong', () => {
     const r = evaluateTwoFactor({ pinOk: false, passwordOk: false });
     expect(r.allowed).toBe(false);
-    expect(r.code).toBe(TWO_FACTOR.BOTH_WRONG);
+    expect(r.code).toBe(TWO_FACTOR.WRONG);
+  });
+
+  it('oracle-prevention: all three wrong-credential cases return identical code and message (H4)', () => {
+    const pinOnly  = evaluateTwoFactor({ pinOk: false, passwordOk: true });
+    const passOnly = evaluateTwoFactor({ pinOk: true,  passwordOk: false });
+    const both     = evaluateTwoFactor({ pinOk: false, passwordOk: false });
+    expect(pinOnly.code).toBe(TWO_FACTOR.WRONG);
+    expect(passOnly.code).toBe(TWO_FACTOR.WRONG);
+    expect(both.code).toBe(TWO_FACTOR.WRONG);
+    expect(pinOnly.message).toBe(passOnly.message);
+    expect(passOnly.message).toBe(both.message);
   });
 
   it('FAILS CLOSED: a missing/undefined factor result counts as NOT verified', () => {

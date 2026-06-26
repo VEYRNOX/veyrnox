@@ -45,7 +45,7 @@ export default function WalletSeedQR() {
   const handleReveal = () => {
     if (!selectedWalletId) return;
     requireTwoFactor(() => {
-      const phrase = revealWalletMnemonic(selectedWalletId);
+      const phrase = revealWalletMnemonic(selectedWalletId, { callerGated: true });
       if (phrase) {
         setMnemonic(phrase);
         mnemonicRef.current = phrase;
