@@ -26,6 +26,45 @@ import { useWallet } from '@/lib/WalletProvider.jsx';
 
 const WalletConnectCtx = createContext(null);
 
+// H8 — resolve which personal_sign param is the message and bind the address
+// param to the wallet's own EVM address. EIP-1474 specifies [message, address]
+// but MetaMask-legacy dApps send [address, message] (reversed). If we blindly
+// signed params[0] a reversed payload would sign the address bytes, and a
+// payload naming a foreign address would let a dApp obtain a signature it
+// attributes to someone else. Fail closed (I4) before the key is touched.
+//
+// Returns { ok: true, message } or { ok: false, code }.
+export function resolvePersonalSignMessage(params, ownAddress) {
+  if (!ownAddress) return { ok: false, code: 'PERSONAL_SIGN_NO_WALLET' };
+  let own;
+  try {
+    own = ethers.getAddress(ownAddress);
+  } catch {
+    return { ok: false, code: 'PERSONAL_SIGN_NO_WALLET' };
+  }
+
+  const arr = Array.isArray(params) ? params : [];
+  // Find the index whose value is a valid EVM address equal to our own address.
+  const isOwn = (v) => {
+    if (typeof v !== 'string') return false;
+    try {
+      return ethers.getAddress(v) === own;
+    } catch {
+      return false;
+    }
+  };
+
+  if (isOwn(arr[1])) {
+    // EIP-1474 order [message, ownAddress].
+    return { ok: true, message: arr[0] };
+  }
+  if (isOwn(arr[0])) {
+    // MetaMask-legacy order [ownAddress, message] — swap.
+    return { ok: true, message: arr[1] };
+  }
+  return { ok: false, code: 'PERSONAL_SIGN_ADDRESS_MISMATCH' };
+}
+
 export function WalletConnectProvider({ children }) {
   // NOTE: lastAuthAt is NOT in the WalletProvider context value (it lives in a
   // private ref: lastAuthAtRef). isSendReauthRequired() is the context-exposed gate
@@ -110,16 +149,31 @@ export function WalletConnectProvider({ children }) {
     setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
   }, []);
 
-  // Sign a personal_sign request. params: [hexMessage, address]
+  // Sign a personal_sign request. EIP-1474 order is [hexMessage, address] but
+  // MetaMask-legacy dApps reverse it to [address, hexMessage]. H8: resolve the
+  // message safely and reject (fail closed, I4) if no param is our own address,
+  // BEFORE the key is touched.
   const handlePersonalSign = useCallback(async (topic, id, params) => {
-    const hexMsg = params[0];
+    const resolved = resolvePersonalSignMessage(params, evmAddress);
+    if (!resolved.ok) {
+      await rejectRequest(topic, id).catch(() => {});
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      const detail = resolved.code === 'PERSONAL_SIGN_NO_WALLET'
+        ? 'no unlocked wallet address is available'
+        : 'the signing address does not match this wallet';
+      throw new Error(
+        `Rejected personal_sign [${resolved.code}]: ${detail}. ` +
+        `Veyrnox will not sign a message bound to a different address.`,
+      );
+    }
+    const hexMsg = resolved.message;
     const sig = await withPrivateKey(0, async (pk) => {
       const wallet = new ethers.Wallet(pk);
       return wallet.signMessage(ethers.getBytes(hexMsg));
     });
     await respondToRequest(topic, id, sig);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey]);
+  }, [withPrivateKey, evmAddress]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
   const handleSignTypedData = useCallback(async (topic, id, params) => {

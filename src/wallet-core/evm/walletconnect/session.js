@@ -11,8 +11,38 @@ const PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 
 let _client = null;
 const _listeners = new Set();
-// Store pending proposals by id so approveSession can call buildApprovedNamespaces
+// Store pending proposals by id so approveSession can call buildApprovedNamespaces.
+// Each entry is { proposal, insertedAt }. Stale entries (a dApp proposed but the
+// user dismissed the modal without pressing Reject) are TTL-evicted so the map
+// cannot grow unbounded and a stale id cannot trigger a later approveSession race.
 const _pendingProposals = new Map();
+
+// H9 — pending proposals live at most this long before being rejected + evicted.
+export const PROPOSAL_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Injectable clock so tests can advance time deterministically.
+let _now = () => Date.now();
+
+function _storeProposal(proposal) {
+  _pendingProposals.set(proposal.id, { proposal, insertedAt: _now() });
+}
+
+// Reject + evict every proposal older than PROPOSAL_TTL_MS. Safe to call on a
+// timer or lazily on the next insert. Rejection failures are swallowed per id so
+// one bad id can't block cleanup of the rest (fail honest, fail closed).
+export async function cleanupExpiredProposals() {
+  const cutoff = _now() - PROPOSAL_TTL_MS;
+  for (const [id, entry] of _pendingProposals) {
+    if (entry.insertedAt <= cutoff) {
+      _pendingProposals.delete(id);
+      try {
+        if (_client) {
+          await _client.rejectSession({ id, reason: getSdkError('SESSION_SETTLEMENT_FAILED') });
+        }
+      } catch { /* dApp may already be gone; eviction still stands */ }
+    }
+  }
+}
 
 export function isWalletConnectConfigured() {
   return Boolean(PROJECT_ID);
@@ -38,7 +68,9 @@ export async function initWalletConnect() {
     },
   });
   _client.on('session_proposal', (proposal) => {
-    _pendingProposals.set(proposal.id, proposal);
+    // Lazily evict stale proposals on each new one so a spamming dApp can't pile up.
+    void cleanupExpiredProposals();
+    _storeProposal(proposal);
     _emit('session_proposal', proposal);
   });
   _client.on('session_request', (data) => _emit('session_request', data));
@@ -67,8 +99,11 @@ export async function pairWithDapp(uri) {
 export async function approveSession(proposalId, evmAddress, chainIds) {
   const client = await initWalletConnect();
   if (!client) throw new Error('WalletConnect is not configured on this build.');
-  const proposal = _pendingProposals.get(proposalId);
-  if (!proposal) throw new Error('Proposal not found — it may have expired');
+  // Evict first so an already-expired proposal can never be approved (stale-race guard).
+  await cleanupExpiredProposals();
+  const entry = _pendingProposals.get(proposalId);
+  if (!entry) throw new Error('Proposal not found — it may have expired');
+  const proposal = entry.proposal;
   const supportedCaip = chainIds
     .filter((id) => SUPPORTED_CHAIN_IDS.has(id))
     .map((id) => `eip155:${id}`);
@@ -142,3 +177,13 @@ export function destroyWalletConnect() {
   _pendingProposals.clear();
   _listeners.clear();
 }
+
+// Active (non-evicted) proposal ids. Useful for diagnostics and tests.
+export function getPendingProposalIds() {
+  return Array.from(_pendingProposals.keys());
+}
+
+// --- Test-only seams (no production caller) ---
+export function __setProposalClock(fn) { _now = fn; }
+export function __setTestClient(client) { _client = client; }
+export function __injectPendingProposal(proposal) { _storeProposal(proposal); }

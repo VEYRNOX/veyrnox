@@ -14,16 +14,26 @@ export const REQUEST_TYPES = {
 const METHOD_MAP = {
   eth_sendTransaction: REQUEST_TYPES.SEND_TRANSACTION,
   personal_sign: REQUEST_TYPES.PERSONAL_SIGN,
-  eth_signTypedData: REQUEST_TYPES.SIGN_TYPED_DATA,
-  eth_signTypedData_v3: REQUEST_TYPES.SIGN_TYPED_DATA,
+  // eth_signTypedData (v1) and _v3 use DIFFERENT encoding from v4 (v1: array of
+  // {type,name,value}, no domain separator; v3: different encodeData for type refs).
+  // Routing them to the v4 handler would sign a different hash than the user is shown,
+  // so they are BLOCKED below rather than mapped to SIGN_TYPED_DATA (H6).
   eth_signTypedData_v4: REQUEST_TYPES.SIGN_TYPED_DATA,
   eth_sign: REQUEST_TYPES.ETH_SIGN,
   wallet_switchEthereumChain: REQUEST_TYPES.SWITCH_CHAIN,
   wallet_addEthereumChain: REQUEST_TYPES.ADD_CHAIN,
 };
 
-// Methods rejected immediately — never prompt the user
-export const BLOCKED_METHODS = new Set(['eth_sign', 'wallet_addEthereumChain', 'wallet_switchEthereumChain']);
+// Methods rejected immediately — never prompt the user.
+// eth_signTypedData (v1) and _v3 are unsupported: their encoding diverges from v4,
+// so signing under v4 semantics produces a hash the user never saw (H6).
+export const BLOCKED_METHODS = new Set([
+  'eth_sign',
+  'eth_signTypedData',
+  'eth_signTypedData_v3',
+  'wallet_addEthereumChain',
+  'wallet_switchEthereumChain',
+]);
 
 export function classifyRequest(method) {
   return METHOD_MAP[method] ?? REQUEST_TYPES.UNKNOWN;

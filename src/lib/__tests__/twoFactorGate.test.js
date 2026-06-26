@@ -11,22 +11,41 @@ describe('evaluateTwoFactor — the PIN + Action Password critical-action gate',
     });
   });
 
-  it('blocks when the PIN is wrong (password right)', () => {
+  it('blocks when the PIN is wrong (password right) with the generic code', () => {
     const r = evaluateTwoFactor({ pinOk: false, passwordOk: true });
     expect(r.allowed).toBe(false);
-    expect(r.code).toBe(TWO_FACTOR.PIN_WRONG);
+    expect(r.code).toBe(TWO_FACTOR.CREDENTIALS_WRONG);
   });
 
-  it('blocks when the Action Password is wrong (PIN right)', () => {
+  it('blocks when the Action Password is wrong (PIN right) with the generic code', () => {
     const r = evaluateTwoFactor({ pinOk: true, passwordOk: false });
     expect(r.allowed).toBe(false);
-    expect(r.code).toBe(TWO_FACTOR.PASSWORD_WRONG);
+    expect(r.code).toBe(TWO_FACTOR.CREDENTIALS_WRONG);
   });
 
-  it('blocks with BOTH_WRONG when neither verifies — without hinting which was closer', () => {
+  it('blocks with the generic code when neither verifies', () => {
     const r = evaluateTwoFactor({ pinOk: false, passwordOk: false });
     expect(r.allowed).toBe(false);
-    expect(r.code).toBe(TWO_FACTOR.BOTH_WRONG);
+    expect(r.code).toBe(TWO_FACTOR.CREDENTIALS_WRONG);
+  });
+
+  // H4 — no oracle: the verdict for "PIN wrong / password right" must be byte-for-byte
+  // identical to "password wrong / PIN right" (and to "both wrong"). Any difference in
+  // code OR message leaks which factor was correct, letting an adversary brute-force the
+  // two factors sequentially instead of simultaneously.
+  it('H4: gives NO oracle — code and message are identical regardless of which factor failed', () => {
+    const pinWrong = evaluateTwoFactor({ pinOk: false, passwordOk: true });
+    const pwWrong = evaluateTwoFactor({ pinOk: true, passwordOk: false });
+    const bothWrong = evaluateTwoFactor({ pinOk: false, passwordOk: false });
+
+    expect(pinWrong).toEqual(pwWrong);
+    expect(pinWrong).toEqual(bothWrong);
+    // explicit on the two fields an adversary can observe
+    expect(pinWrong.code).toBe(pwWrong.code);
+    expect(pinWrong.message).toBe(pwWrong.message);
+    // and the message must not name a specific factor
+    expect(pinWrong.message).not.toMatch(/PIN/i);
+    expect(pinWrong.message).not.toMatch(/Action Password/i);
   });
 
   it('FAILS CLOSED: a missing/undefined factor result counts as NOT verified', () => {

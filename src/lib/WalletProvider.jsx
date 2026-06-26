@@ -26,7 +26,7 @@ import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
-import { captureVerifierSafe, verifyCredential, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
+import { captureVerifierSafe, verifyCredential, verifyCredentialDetailed, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
 import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore } from '@/wallet-core/keystore';
@@ -162,11 +162,22 @@ const BACKGROUND_LOCK_GRACE_MS = 45 * 1000;
 // same interface. Stable singleton, so it lives at module scope.
 const keyStore = getKeyStore();
 
-// VULN-17 equalizer: primary success is ~1 KDF faster than any other outcome.
-// This sleep closes the gap so correct-primary and wrong-password cost the same
-// wall-clock time to the user/attacker. 300 ms matches one Argon2id KDF at
-// KDF_PARAMS (64 MiB / t=3). See deniabilityUnlock.js for full rationale.
-const PRIMARY_UNLOCK_EQUALIZER_MS = 300;
+// VULN-17 / H3 equalizer: primary success runs ~1 fewer Argon2id KDF than any
+// other unlock outcome (a miss / duress / panic / hidden all spend 3 KDFs via
+// resolveDeniabilityUnlock; primary success short-circuits). This sleep closes
+// the gap so correct-primary and wrong-password cost the same wall-clock time to
+// the user/attacker. See deniabilityUnlock.js for full rationale.
+//
+// INVARIANT: this MUST be >= the wall-clock cost of ONE Argon2id KDF at the
+// CURRENT KDF_PARAMS, otherwise the primary-success path is measurably faster
+// than a miss and becomes a timing oracle. The old value (300 ms) was calibrated
+// to the legacy 64 MiB / t=3 params. M3 raised the KDF to 192 MiB / t=3 (~1.7 s
+// per the audit), so the pad was ~1.4 s short. A single KDF at current params
+// measures ~1.7 s on a target device and ~2.2 s in the test harness; 2500 ms
+// covers the worst-case single KDF at current params with margin. If KDF_PARAMS
+// is raised again, this constant must be re-checked against a measured single KDF
+// (see deniability-timing.test.js, "equalizer covers one KDF at current params").
+export const PRIMARY_UNLOCK_EQUALIZER_MS = 2500;
 
 export function WalletProvider({ children }) {
   // MULTI-SEED CONTAINER (LIVE SECRETS while unlocked). Holds the parsed vault
@@ -1065,11 +1076,23 @@ export function WalletProvider({ children }) {
   // calls unlock()/resolveDeniabilityUnlock — so it can NEVER trigger panic/decoy. A
   // successful verify refreshes the recent-auth window. Returns false (never throws) if
   // there is no session/verifier (fail closed).
-  const verifyActiveCredential = useCallback(async (entered) => {
-    const ok = await verifyCredential(verifierRef.current, entered);
-    if (ok) lastAuthAtRef.current = Date.now();
-    return ok;
+  // H5: detailed step-up verify — distinguishes an OOM-bricked session (null verifier,
+  // captureVerifierSafe returned null at unlock) from a wrong credential, so the UI can
+  // tell the user WHY re-auth is impossible ("re-lock and unlock the wallet") rather than
+  // letting them retry a permanently-unsatisfiable verifier forever. Returns the machine-
+  // coded { ok, bricked, reason? } from verifyCredentialDetailed.
+  const verifyActiveCredentialDetailed = useCallback(async (entered) => {
+    const result = await verifyCredentialDetailed(verifierRef.current, entered);
+    if (result.ok) lastAuthAtRef.current = Date.now();
+    return result;
   }, []);
+  // Boolean convenience wrapper — preserves the existing call sites that branch on a
+  // plain truthy result. A bricked verifier reads as `false` here (fail closed); callers
+  // that need to explain WHY use verifyActiveCredentialDetailed.
+  const verifyActiveCredential = useCallback(
+    async (entered) => (await verifyActiveCredentialDetailed(entered)).ok,
+    [verifyActiveCredentialDetailed],
+  );
 
   // STEP-UP: is re-auth required before a send? True when the recent-auth window has
   // lapsed (or no session). Resets only on unlock + successful verifyActiveCredential.
@@ -1788,6 +1811,7 @@ export function WalletProvider({ children }) {
     clearPendingPin,
     // SEND STEP-UP RE-AUTH (see lib/sendReauth.js + wallet-core/credentialVerifier.js).
     verifyActiveCredential,
+    verifyActiveCredentialDetailed, // H5: { ok, bricked, reason } — lets the UI explain an OOM-bricked verifier
     isSendReauthRequired,
     // ACTION PASSWORD (2FA second factor) — PRIMARY set this phase. See twoFactorGate.js
     // for the PIN+password verdict the critical-action gate composes from these.
