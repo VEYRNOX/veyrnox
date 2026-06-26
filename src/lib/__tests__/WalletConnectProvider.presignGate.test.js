@@ -1,7 +1,6 @@
 // src/lib/__tests__/WalletConnectProvider.presignGate.test.js
 //
-// RED: presignGate is NOT yet wired into WalletConnectProvider handlers.
-// These tests MUST FAIL before the implementation step.
+// Security gate tests: presignGate wired into all three WalletConnect signing handlers.
 //
 // Security fix: C3/H11 audit remediation — wire presignGate into all three
 // WalletConnect signing handlers so RASP environment checks cannot be bypassed
