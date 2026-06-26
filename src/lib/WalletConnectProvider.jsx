@@ -116,7 +116,7 @@ export function WalletConnectProvider({ children }) {
   const handlePersonalSign = useCallback(async (topic, id, params) => {
     let raspArtifact = null;
     try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
-    const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+    const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
     const gate = presignGate(raspTier, 'allow', true);
     if (!gate.proceedAllowed) {
       await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
@@ -136,7 +136,7 @@ export function WalletConnectProvider({ children }) {
   const handleSignTypedData = useCallback(async (topic, id, params) => {
     let raspArtifact = null;
     try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
-    const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+    const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
     const gate = presignGate(raspTier, 'allow', true);
     if (!gate.proceedAllowed) {
       await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
@@ -161,7 +161,7 @@ export function WalletConnectProvider({ children }) {
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
     let raspArtifact = null;
     try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
-    const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+    const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
     const gate = presignGate(raspTier, 'allow', true);
     if (!gate.proceedAllowed) {
       await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
