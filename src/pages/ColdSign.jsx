@@ -8,12 +8,10 @@
 //   3) Broadcast.
 //
 // WHERE THE RISK GATE LIVES (be honest — I4):
-//   The real pre-sign risk/RASP gate is enforced on the Send screen, BEFORE the cold
-//   flow is entered. The presignGate() call in handleBroadcast() below is a STRUCTURAL
-//   PLACEHOLDER ONLY: it is invoked with hardcoded ALLOW constants, so it always passes
-//   and CANNOT block. It does NOT re-evaluate RASP or tx-risk for the cold transaction.
-//   It is kept as a wiring point for a future real re-check (see option A in the issue
-//   triage); until then it provides NO independent enforcement at the broadcast step.
+//   The RASP probe runs at broadcast time (handleBroadcast). degrade(detect(browserProbeSource))
+//   produces the live tier; if raspArtifact?.tier is falsy the fallback is TIER.BLOCK (fail
+//   closed, I4). presignGate(raspTier, "allow", riskAck) is the enforcement chokepoint —
+//   BLOCK tier returns proceedAllowed:false and broadcast is refused.
 //
 // SECURITY:
 //   - I1: the private key NEVER leaves the external signer and never touched this
@@ -45,6 +43,21 @@ import { parseEther, parseUnits } from "ethers";
 
 import { presignGate } from "@/sign-gate/presign";
 import { TIER, detect, degrade, browserProbeSource } from "@/rasp";
+
+/**
+ * Pure helper — the RASP probe + gate evaluation used by handleBroadcast.
+ * Exported for unit testing; the component's handleBroadcast calls this.
+ * Fails closed (TIER.BLOCK) if the RASP probe throws or returns no tier (I4).
+ *
+ * @param {boolean} riskAck  user's "I reviewed this transaction" acknowledgement
+ * @returns {{ proceedAllowed: boolean, decision: string, owner: string|null, signerReachable: boolean }}
+ */
+export function evalPresignGate(riskAck) {
+  let raspArtifact = null;
+  try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
+  const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
+  return presignGate(raspTier, "allow", riskAck);
+}
 
 export default function ColdSign() {
   const navigate = useNavigate();
@@ -147,10 +160,7 @@ export default function ColdSign() {
       return;
     }
 
-    let raspArtifact = null;
-    try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
-    const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
-    const gate = presignGate(raspTier, "allow", riskAck);
+    const gate = evalPresignGate(riskAck);
     if (!gate.proceedAllowed) {
       setErrorMsg("This transaction is blocked by the pre-sign risk gate and cannot be broadcast.");
       return;
