@@ -44,7 +44,7 @@ import { encodeColdPayload, decodeColdPayload, COLD_KIND } from "@/wallet-core/c
 import { parseEther, parseUnits } from "ethers";
 
 import { presignGate } from "@/sign-gate/presign";
-import { TIER } from "@/rasp";
+import { TIER, detect, degrade, browserProbeSource } from "@/rasp";
 
 export default function ColdSign() {
   const navigate = useNavigate();
@@ -147,13 +147,10 @@ export default function ColdSign() {
       return;
     }
 
-    // STRUCTURAL PLACEHOLDER ONLY — NOT a security re-check (see header comment).
-    // This is called with hardcoded ALLOW constants, so it ALWAYS passes and CANNOT
-    // block. The real RASP / tx-risk gate ran on the Send screen before this flow was
-    // entered; this build does NOT re-evaluate either at the cold-broadcast step. The
-    // call is kept as the wiring point for a future real per-cold-tx verdict (option A);
-    // today its only effect is to require the user's riskAck checkbox below.
-    const gate = presignGate(TIER.ALLOW, "allow", riskAck);
+    let raspArtifact = null;
+    try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
+    const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+    const gate = presignGate(raspTier, "allow", riskAck);
     if (!gate.proceedAllowed) {
       setErrorMsg("This transaction is blocked by the pre-sign risk gate and cannot be broadcast.");
       return;
