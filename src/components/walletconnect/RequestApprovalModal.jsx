@@ -29,9 +29,17 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   const { topic, id, params, type, blocked, typedDataMeta } = request;
   const { request: { method, params: reqParams } } = params;
 
-  const nativeSymbol = (() => {
-    try { return getNetworkByChainId(parseWcChainId(params.chainId))?.symbol ?? 'ETH'; } catch { return 'ETH'; }
+  // Resolve the request's network once: it drives the native symbol, the network
+  // NAME shown to the user, and the mainnet "real funds" warning. A chain we cannot
+  // identify is treated as real-funds (fail loud), never silently as testnet.
+  const wcChainIdNum = parseWcChainId(params.chainId);
+  const wcNetwork = (() => {
+    try { return getNetworkByChainId(wcChainIdNum) ?? null; } catch { return null; }
   })();
+  const nativeSymbol = wcNetwork?.symbol ?? 'ETH';
+  const networkLabel = wcNetwork?.name
+    ?? (Number.isFinite(wcChainIdNum) ? `Unknown network (chain ${wcChainIdNum})` : 'Unknown network');
+  const realFundsWarning = wcNetwork ? wcNetwork.isTestnet === false : true;
 
   const needsReauth = isSendReauthRequired();
 
@@ -225,6 +233,10 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
             <p className={styles.label}>Transaction</p>
             <div className={styles.txBox}>
               <div className={styles.txRow}>
+                <span>Network</span>
+                <span className={realFundsWarning ? styles.networkMainnet : styles.mono}>{networkLabel}</span>
+              </div>
+              <div className={styles.txRow}>
                 <span>To</span>
                 <span className={styles.mono}>{reqParams[0]?.to ?? '—'}</span>
               </div>
@@ -243,6 +255,11 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                 </div>
               )}
             </div>
+            {realFundsWarning && (
+              <p className={styles.mainnetFlag}>
+                ⚠ REAL FUNDS — live mainnet transaction, not testnet. Double-check the network and amount before approving.
+              </p>
+            )}
             <div className={styles.permitWarning}>
               <p className={styles.permitTitle}>⚠ This will broadcast a transaction</p>
               <p className={styles.permitBody}>
