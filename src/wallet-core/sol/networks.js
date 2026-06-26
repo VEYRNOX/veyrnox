@@ -28,8 +28,14 @@ export const SOL_NETWORKS = {
     key: 'devnet',
     name: 'Solana Devnet',
     cluster: 'devnet',
-    // Untrusted public RPC. Overridable via setSolRpcUrl().
+    // Untrusted public RPC. Overridable via setSolRpcUrl(). Falls back through
+    // the list in order when the primary is rate-limited or unreachable — all
+    // carry the same security posture (reads + broadcast only, keys stay local).
     defaultRpcUrl: 'https://api.devnet.solana.com',
+    fallbackRpcUrls: [
+      'https://devnet.helius-rpc.com/?api-key=public',
+      'https://rpc.ankr.com/solana_devnet',
+    ],
     // Explorer links carry the cluster query so they resolve to devnet.
     explorer: 'https://explorer.solana.com',
     explorerCluster: 'devnet',
