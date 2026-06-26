@@ -225,7 +225,7 @@ export default function RecurringPayments() {
         )}
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent>
+        <DialogContent className="top-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
           <DialogHeader><DialogTitle>New Recurring Payment</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <div><Label>Label</Label><Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="e.g. Rent" className="mt-1.5" /></div>
@@ -261,7 +261,10 @@ export default function RecurringPayments() {
               </div>
             </div>
             <div><Label>Note (optional)</Label><Input value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} className="mt-1.5" /></div>
-            <Button className="w-full" onClick={() => addPayment.mutate()} disabled={!form.label || !form.wallet_id || !form.to_address || !form.amount || showToAddrError || addPayment.isPending}>Create Payment</Button>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button className="flex-1 bg-[#4ADAC2] text-[#050608] hover:bg-[#4ADAC2]/90" onClick={() => addPayment.mutate()} disabled={!form.label || !form.wallet_id || !form.to_address || !form.amount || showToAddrError || addPayment.isPending}>Create Payment</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
