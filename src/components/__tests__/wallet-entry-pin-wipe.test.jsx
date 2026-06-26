@@ -15,6 +15,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('@/lib/WalletProvider', () => ({ useWallet: vi.fn() }));
 vi.mock('@/lib/authModel', () => ({ getAuthModel: vi.fn(() => 'pin'), setAuthModel: vi.fn() }));
@@ -72,7 +73,7 @@ describe('WalletEntry — 10 wrong PINs trigger the real panic wipe', () => {
     const panicWipe = vi.fn(async () => ({ clean: true }));
     vi.mocked(useWallet).mockReturnValue(makeCtx({ unlock, panicWipe }));
 
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
 
     for (let i = 1; i <= PIN_WIPE_AFTER; i++) {
@@ -98,7 +99,7 @@ describe('WalletEntry — 10 wrong PINs trigger the real panic wipe', () => {
     const panicWipe = vi.fn(async () => ({ clean: true }));
     vi.mocked(useWallet).mockReturnValue(makeCtx({ unlock, panicWipe }));
 
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
 
     for (let i = 1; i <= 11; i++) {
@@ -117,7 +118,7 @@ describe('WalletEntry — 10 wrong PINs trigger the real panic wipe', () => {
     vi.mocked(isBiometricGateError).mockReturnValue(true); // classify as infra
     vi.mocked(useWallet).mockReturnValue(makeCtx({ unlock, panicWipe }));
 
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
 
     for (let i = 1; i <= PIN_WIPE_AFTER + 2; i++) {
@@ -132,7 +133,7 @@ describe('WalletEntry — 10 wrong PINs trigger the real panic wipe', () => {
     const panicWipe = vi.fn(async () => ({ clean: true }));
     vi.mocked(useWallet).mockReturnValue(makeCtx({ unlock, panicWipe }));
 
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
 
     // 6 misses → 4 attempts remaining; the warning must say so.
@@ -158,7 +159,7 @@ describe('WalletEntry — in-session loud wipe transition after 10-attempt auto-
     const ctx = makeCtx({ unlock, wasWiped: true, acknowledgeWipe });
     vi.mocked(useWallet).mockReturnValue(ctx);
 
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
 
     for (let i = 1; i <= PIN_WIPE_AFTER; i++) {
