@@ -17,17 +17,17 @@ import { fetchPortfolioPricesUsd, PORTFOLIO_SYMBOLS } from '@/lib/cryptoCompare.
 // price call. Device-global and holdings-blind — reveals nothing about holdings.
 export const LIVE_PRICE_PREF_KEY = 'veyrnox-live-prices';
 
-/** @returns {boolean} whether the user opted into live prices. */
+/** @returns {boolean} whether live prices are enabled (on by default; off only if explicitly disabled). */
 export function isLivePricesEnabled() {
-  try { return localStorage.getItem(LIVE_PRICE_PREF_KEY) === '1'; }
-  catch { return false; } // storage unavailable → treat as OFF (no egress)
+  try { return localStorage.getItem(LIVE_PRICE_PREF_KEY) !== '0'; }
+  catch { return true; } // storage unavailable → treat as ON (default)
 }
 
-/** Persist the opt-in. OFF is stored as ABSENCE of the key (no lingering tell). */
+/** Persist the preference. ON is stored as ABSENCE of the key; OFF is stored as '0'. */
 export function setLivePricesEnabled(on) {
   try {
-    if (on) localStorage.setItem(LIVE_PRICE_PREF_KEY, '1');
-    else localStorage.removeItem(LIVE_PRICE_PREF_KEY);
+    if (on) localStorage.removeItem(LIVE_PRICE_PREF_KEY);
+    else localStorage.setItem(LIVE_PRICE_PREF_KEY, '0');
   } catch { /* best-effort */ }
 }
 
