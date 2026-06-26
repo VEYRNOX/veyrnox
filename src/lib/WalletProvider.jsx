@@ -179,6 +179,23 @@ const keyStore = getKeyStore();
 // (see deniability-timing.test.js, "equalizer covers one KDF at current params").
 export const PRIMARY_UNLOCK_EQUALIZER_MS = 2500;
 
+// M6: re-export so callers/tests pin the reveal window against the same constant.
+export { REAUTH_WINDOW_MS };
+
+/**
+ * M6 — Defense-in-depth gate for revealWalletMnemonic. The seed is the user's
+ * identity; an in-session caller setting a convention flag must NOT be enough to
+ * dump it. Reveal proceeds ONLY while the session was re-authenticated within
+ * REAUTH_WINDOW_MS. Otherwise we fail closed (I4) with a machine-coded error.
+ * Pure helper so the math is unit-pinned.
+ * @param {{ lastAuthAt: number|null, now?: number, windowMs?: number }} args
+ */
+export function assertRevealReauthFresh({ lastAuthAt, now = Date.now(), windowMs = REAUTH_WINDOW_MS }) {
+  if (sendReauthRequired({ lastAuthAt, now, windowMs })) {
+    throw new Error('REVEAL_REQUIRES_REAUTH: recent re-authentication required to reveal a seed');
+  }
+}
+
 export function WalletProvider({ children }) {
   // MULTI-SEED CONTAINER (LIVE SECRETS while unlocked). Holds the parsed vault
   // container { wallets: [{ id, mnemonic }, ...] } — ALL seeds the vault unlocked.
@@ -1006,6 +1023,14 @@ export function WalletProvider({ children }) {
   // it is the same exposure as withPrivateKey). LIVE SECRET: the caller shows it
   // once for backup and must never persist it. Returns null when locked.
   const revealWalletMnemonic = useCallback((walletId) => {
+    // M6: defense-in-depth. A caller-set flag is only a convention marker and
+    // must NOT be trusted to mean a real re-auth happened. Enforce the
+    // recent-auth window INSIDE the function so a stale in-session caller cannot
+    // dump seeds: reveal proceeds only while the two-factor / unlock gate was
+    // satisfied within REAUTH_WINDOW_MS, else this throws REVEAL_REQUIRES_REAUTH
+    // (fail closed, I4). The UI callers already wrap reveal in requireTwoFactor,
+    // which refreshes lastAuthAtRef — this is the enforcement behind that gate.
+    assertRevealReauthFresh({ lastAuthAt: lastAuthAtRef.current, now: Date.now() });
     const c = containerRef.current;
     if (!c) return null;
     const w = mv.findWallet(c, walletId || activeIdRef.current);
