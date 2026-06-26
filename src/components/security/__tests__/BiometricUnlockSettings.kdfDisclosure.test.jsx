@@ -24,12 +24,12 @@ describe('BiometricUnlockSettings KDF-bypass disclosure (VULN-1)', () => {
     expect(els.length).toBeGreaterThan(0);
   });
 
-  it('disclosure mentions that the vault password is stored in Keychain', () => {
+  it('disclosure mentions that the vault password is stored in secure storage', () => {
     render(<BiometricUnlockSettings />);
     const els = screen.getAllByTestId('kdf-bypass-disclosure');
     const el = els[0];
     expect(el.textContent.toLowerCase()).toMatch(/vault password/);
-    expect(el.textContent.toLowerCase()).toMatch(/keychain|secure store/);
+    expect(el.textContent.toLowerCase()).toMatch(/keychain|secure stor/);
   });
 
   it('disclosure mentions that Argon2id / offline brute-force protection is reduced', () => {
