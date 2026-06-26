@@ -9,6 +9,7 @@ import { buildRiskInputsFromWcRequest } from '@/risk/fromWalletConnect.js';
 import RiskVerdictBanner from '@/components/RiskVerdictBanner.jsx';
 import { simulateEvmTransaction } from '@/wallet-core/evm/simulate.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+import { getActiveSessions } from '@/wallet-core/evm/walletconnect/session.js';
 
 // "eip155:11155111" -> 11155111. Returns NaN for anything unparseable.
 function parseWcChainId(caip2) {
@@ -136,7 +137,11 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
     type === REQUEST_TYPES.UNKNOWN ||
     riskBlocks;
 
-  const sessionMeta = request.params?.proposer?.metadata ?? {};
+  // C4: a session_request has no `proposer` (that's only on session_proposal).
+  // The dApp metadata lives on the live session, matched by the request topic.
+  // getActiveSessions() returns an array of sessions, each with `.topic`.
+  const sessionMeta =
+    getActiveSessions().find((s) => s.topic === request.topic)?.peer?.metadata ?? {};
   const dapp = checkDappDomain(sessionMeta.url);
 
   async function handleApprove() {

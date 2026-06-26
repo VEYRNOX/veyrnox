@@ -29,26 +29,50 @@ vi.mock('@/lib/WalletConnectProvider.jsx', () => ({
   }),
 }));
 
-afterEach(cleanup);
+// C4: the dApp domain for a session_request comes from the live session keyed by
+// the request topic, NOT from request.params.proposer (which only exists on a
+// session_proposal). Mock the session store so the banner derives the real URL.
+import { getActiveSessions } from '@/wallet-core/evm/walletconnect/session.js';
+vi.mock('@/wallet-core/evm/walletconnect/session.js', () => ({
+  getActiveSessions: vi.fn(() => []),
+}));
 
-function personalSignRequest(url) {
+afterEach(() => {
+  cleanup();
+  getActiveSessions.mockReset();
+});
+
+// A real session_request event: NO proposer field anywhere on params.
+function personalSignRequest() {
   return {
     topic: 't', id: 1, type: 'personal_sign', blocked: false, typedDataMeta: null,
     params: {
       request: { method: 'personal_sign', params: ['0x48656c6c6f'] }, // "Hello"
-      proposer: { metadata: { name: 'Bad dApp', url } },
     },
   };
 }
 
+// Build a live-session list keyed (by .topic) to a peer metadata URL.
+function sessionFor(topic, url) {
+  return [{ topic, peer: { metadata: { name: 'Bad dApp', url } } }];
+}
+
 describe('RequestApprovalModal — connected known-bad dApp domain', () => {
-  it('surfaces a RISK alert when the connected dApp domain is known-bad', () => {
-    render(<RequestApprovalModal request={personalSignRequest('https://airdrop-claim2024.io')} onClose={vi.fn()} />);
+  it('surfaces a RISK alert when the live session domain is known-bad', () => {
+    getActiveSessions.mockReturnValue(sessionFor('t', 'https://airdrop-claim2024.io'));
+    render(<RequestApprovalModal request={personalSignRequest()} onClose={vi.fn()} />);
     expect(screen.getByText(/known scam/i)).toBeTruthy();
   });
 
-  it('shows no scam alert for a clean connected dApp domain', () => {
-    render(<RequestApprovalModal request={personalSignRequest('https://app.example.org')} onClose={vi.fn()} />);
+  it('shows no scam alert for a clean live session domain', () => {
+    getActiveSessions.mockReturnValue(sessionFor('t', 'https://app.example.org'));
+    render(<RequestApprovalModal request={personalSignRequest()} onClose={vi.fn()} />);
+    expect(screen.queryByText(/known scam/i)).toBeNull();
+  });
+
+  it('shows no scam alert when no live session matches the request topic', () => {
+    getActiveSessions.mockReturnValue([]); // no matching session
+    render(<RequestApprovalModal request={personalSignRequest()} onClose={vi.fn()} />);
     expect(screen.queryByText(/known scam/i)).toBeNull();
   });
 });
