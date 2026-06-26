@@ -8,12 +8,13 @@
 //   3) Broadcast.
 //
 // WHERE THE RISK GATE LIVES (be honest — I4):
-//   The real pre-sign risk/RASP gate is enforced on the Send screen, BEFORE the cold
-//   flow is entered. The presignGate() call in handleBroadcast() below is a STRUCTURAL
-//   PLACEHOLDER ONLY: it is invoked with hardcoded ALLOW constants, so it always passes
-//   and CANNOT block. It does NOT re-evaluate RASP or tx-risk for the cold transaction.
-//   It is kept as a wiring point for a future real re-check (see option A in the issue
-//   triage); until then it provides NO independent enforcement at the broadcast step.
+//   The pre-sign risk/RASP gate is enforced on the Send screen BEFORE the cold flow
+//   is entered, and AGAIN at the cold-broadcast step in handleBroadcast() below. That
+//   second call now runs REAL runtime RASP detection (detect/degrade of the live
+//   environment) and fails closed (TIER.BLOCK) if detection throws, so an unsafe
+//   runtime (automation / tampered WebDriver) blocks the broadcast. It does NOT
+//   re-score tx-risk for the locally-built cold tx — that was scored on the Send
+//   screen; the RASP tier is what this step independently enforces.
 //
 // SECURITY:
 //   - I1: the private key NEVER leaves the external signer and never touched this
@@ -44,7 +45,8 @@ import { encodeColdPayload, decodeColdPayload, COLD_KIND } from "@/wallet-core/c
 import { parseEther, parseUnits } from "ethers";
 
 import { presignGate } from "@/sign-gate/presign";
-import { TIER } from "@/rasp";
+import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
+import { LEVEL } from "@/risk/levels";
 
 export default function ColdSign() {
   const navigate = useNavigate();
@@ -147,13 +149,15 @@ export default function ColdSign() {
       return;
     }
 
-    // STRUCTURAL PLACEHOLDER ONLY — NOT a security re-check (see header comment).
-    // This is called with hardcoded ALLOW constants, so it ALWAYS passes and CANNOT
-    // block. The real RASP / tx-risk gate ran on the Send screen before this flow was
-    // entered; this build does NOT re-evaluate either at the cold-broadcast step. The
-    // call is kept as the wiring point for a future real per-cold-tx verdict (option A);
-    // today its only effect is to require the user's riskAck checkbox below.
-    const gate = presignGate(TIER.ALLOW, "allow", riskAck);
+    // Re-evaluate the RASP plane at the cold-broadcast step using REAL runtime
+    // detection (detect/degrade are pure functions of the environment). We fail
+    // closed: if detection throws we default to TIER.BLOCK. The tx-risk level is
+    // not re-scored on a locally-built cold tx (the Send screen already gated it),
+    // so we pass LEVEL.OK for that arg — the RASP tier is what gates here. riskAck
+    // is the user's broadcast acknowledgement and is unchanged.
+    let tier;
+    try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
+    const gate = presignGate(tier, LEVEL.OK, riskAck);
     if (!gate.proceedAllowed) {
       setErrorMsg("This transaction is blocked by the pre-sign risk gate and cannot be broadcast.");
       return;
