@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react';
 import BiometricAuth from '@/pages/BiometricAuth';
 import {
-  registerPasskeyCredential, is2faPasskeyEnabled, isPasskeyRegistered, TWOFACTOR_PASSKEY_KEY,
+  is2faPasskeyEnabled, isPasskeyRegistered, TWOFACTOR_PASSKEY_KEY,
 } from '@/lib/passkey';
 
 // Force the SIMULATED registration path (no real platform authenticator in jsdom),
