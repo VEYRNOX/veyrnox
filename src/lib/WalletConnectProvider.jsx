@@ -19,7 +19,7 @@ import {
   pairWithDapp,
 } from '@/wallet-core/evm/walletconnect/session.js';
 import { classifyRequest, isBlocked, REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
-import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wallet-core/evm/typed-data.js';
+import { parseTypedData, detectAssetAuthorising, describeTypedData, checkTypedDataChainId } from '@/wallet-core/evm/typed-data.js';
 import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
@@ -126,6 +126,31 @@ export function WalletConnectProvider({ children }) {
     const typedDataJson = params[1] ?? params[0];
     const parsed = parseTypedData(typedDataJson);
     if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
+
+    // H7 — bind the EIP-712 domain.chainId to the WalletConnect SESSION chain.
+    // The session's CAIP-2 chain id (e.g. "eip155:11155111") lives on the pending
+    // request that the modal is acting on. A dApp on a testnet session that
+    // supplies a mainnet domain.chainId would otherwise obtain a mainnet-valid
+    // Permit/Permit2 drain signature. Reject (fail closed, I4) BEFORE the key is
+    // touched — never downgrade to warn-and-continue.
+    const sessionCaip2 = pendingRequests.find(
+      (r) => r.topic === topic && r.id === id,
+    )?.params?.chainId;
+    const chainCheck = checkTypedDataChainId(parsed, sessionCaip2);
+    if (!chainCheck.ok) {
+      const detail = chainCheck.code === 'CHAINID_MISMATCH'
+        ? `the signature's chain (${chainCheck.got}) does not match this connection's chain (${chainCheck.expected})`
+        : chainCheck.code === 'CHAINID_MISSING'
+          ? 'it does not state which chain it is for'
+          : 'this connection has no valid chain';
+      await rejectRequest(topic, id).catch(() => {});
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      throw new Error(
+        `Rejected typed-data signature [${chainCheck.code}]: ${detail}. ` +
+        `Veyrnox will not produce a signature valid on a different chain.`,
+      );
+    }
+
     const { EIP712Domain: _ignored, ...typesWithoutDomain } = parsed.types;
     const sig = await withPrivateKey(0, async (pk) => {
       const wallet = new ethers.Wallet(pk);
@@ -133,7 +158,7 @@ export function WalletConnectProvider({ children }) {
     });
     await respondToRequest(topic, id, sig);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey]);
+  }, [withPrivateKey, pendingRequests]);
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
