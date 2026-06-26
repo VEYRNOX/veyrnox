@@ -33,20 +33,44 @@ export function setSolRpcUrl(networkKey, url) {
   delete _connections[networkKey]; // force a rebuild against the new URL
 }
 
-// Resolve the RPC URL WITHOUT the mainnet gate (reads are display-only and the
-// gate is enforced at the broadcast path). Broadcast re-checks the gate.
-function rpcUrl(networkKey) {
+// Ordered list of URLs to try: operator override first, then defaultRpcUrl,
+// then any fallbackRpcUrls defined on the network entry.
+function rpcUrlCandidates(networkKey) {
   const net = getSolNetworkInfo(networkKey);
   if (!net) throw new Error(`Unknown Solana network: ${networkKey}`);
-  return _overrides[networkKey] || net.defaultRpcUrl;
+  if (_overrides[networkKey]) return [_overrides[networkKey]];
+  return [net.defaultRpcUrl, ...(net.fallbackRpcUrls || [])];
 }
 
 /** Memoized Connection for a network (rebuilt if the override URL changes). */
 export function getConnection(networkKey) {
   if (!_connections[networkKey]) {
-    _connections[networkKey] = new Connection(rpcUrl(networkKey), 'confirmed');
+    const [primary] = rpcUrlCandidates(networkKey);
+    _connections[networkKey] = new Connection(primary, 'confirmed');
   }
   return _connections[networkKey];
+}
+
+/**
+ * Try fn(connection) against each candidate URL in order, returning the first
+ * success. Clears the memoized connection on failure so the next call rebuilds
+ * against the next candidate. Only used for read operations — broadcast
+ * re-enforces the gate independently.
+ */
+async function withFallback(networkKey, fn) {
+  const candidates = rpcUrlCandidates(networkKey);
+  let lastErr;
+  for (const url of candidates) {
+    // Point the memoized connection at this candidate URL.
+    _connections[networkKey] = new Connection(url, 'confirmed');
+    try {
+      return await fn(_connections[networkKey]);
+    } catch (err) {
+      lastErr = err;
+      delete _connections[networkKey]; // reset so next iteration rebuilds
+    }
+  }
+  throw lastErr;
 }
 
 /**
@@ -55,9 +79,11 @@ export function getConnection(networkKey) {
  * @returns {Promise<bigint>}
  */
 export async function getBalanceLamports(networkKey, address) {
-  const conn = getConnection(networkKey);
-  const lamports = await conn.getBalance(new PublicKey(address), 'confirmed');
-  return BigInt(lamports);
+  const pubkey = new PublicKey(address);
+  return withFallback(networkKey, async (conn) => {
+    const lamports = await conn.getBalance(pubkey, 'confirmed');
+    return BigInt(lamports);
+  });
 }
 
 /** Convenience: confirmed balance as a SOL number (display only). */
@@ -74,8 +100,7 @@ export async function getBalanceSol(networkKey, address) {
  * @returns {Promise<{ blockhash: string, lastValidBlockHeight: number }>}
  */
 export async function getLatestBlockhash(networkKey) {
-  const conn = getConnection(networkKey);
-  return conn.getLatestBlockhash('confirmed');
+  return withFallback(networkKey, (conn) => conn.getLatestBlockhash('confirmed'));
 }
 
 /**
@@ -87,9 +112,10 @@ export async function getLatestBlockhash(networkKey) {
  * @returns {Promise<bigint>}
  */
 export async function getRentExemptMinimum(networkKey, space = 0) {
-  const conn = getConnection(networkKey);
-  const lamports = await conn.getMinimumBalanceForRentExemption(space, 'confirmed');
-  return BigInt(lamports);
+  return withFallback(networkKey, async (conn) => {
+    const lamports = await conn.getMinimumBalanceForRentExemption(space, 'confirmed');
+    return BigInt(lamports);
+  });
 }
 
 /**
