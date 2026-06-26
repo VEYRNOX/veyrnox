@@ -29,7 +29,7 @@ import { pinPadReduce, keyToPinAction } from "@/lib/pinPadReducer";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];
 
-export default function PinPad({ value = "", onChange, onComplete, disabled = false, length = 8, submitLabel = "Continue" }) {
+export default function PinPad({ value = "", onChange, onComplete, disabled = false, length = 8, submitLabel = "Continue", "aria-label": ariaLabel = "PIN entry" }) {
   // Single dispatch for both button presses and physical keys: the reducer is the
   // only place the cap / numeric-only / explicit-submit rules live.
   const dispatch = (action) => {
@@ -55,7 +55,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
     <div
       className="space-y-5 outline-none"
       role="group"
-      aria-label="PIN entry"
+      aria-label={ariaLabel}
       aria-describedby="pin-hint"
       tabIndex={disabled ? -1 : 0}
       onKeyDown={onKeyDown}
