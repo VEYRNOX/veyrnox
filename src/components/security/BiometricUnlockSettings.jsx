@@ -111,12 +111,10 @@ export default function BiometricUnlockSettings() {
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-caution">Security trade-off.</span>{' '}
-            One-tap unlock stores your <strong>vault password</strong> in your device&apos;s secure storage
-            (the Keychain / Keystore). The device passcode and biometrics protect it, but{' '}
-            one-tap unlock bypasses the memory-hard <strong>Argon2id</strong> key derivation: an
-            offline attacker who extracts the secure-storage item — for example from an encrypted
-            backup, without needing the physical device — can decrypt your wallet without running
-            Argon2id. Disable this to keep full Argon2id offline-attack resistance.
+            One-tap unlock stores your <strong>vault password</strong> in your device&apos;s secure
+            storage, protected by your device passcode and biometrics. If someone extracts your
+            device backup without the physical device, they may be able to decrypt your wallet.
+            Disable this for maximum offline protection.
           </p>
           {/* Provisional (audit status — not shown to users): biometric check runs in
               app code, not as an OS-enforced Keychain ACL; OS-bound binding is
@@ -161,8 +159,8 @@ export default function BiometricUnlockSettings() {
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">
               <span className="font-semibold text-caution">Confirm trade-off.</span>{' '}
-              Offline Keychain extraction (e.g. from an encrypted backup, without the physical
-              device) bypasses the memory-hard Argon2id key derivation — only enable if you accept that risk.
+              If someone extracts your device backup without the physical device, they may be able
+              to decrypt your wallet. Only enable this if you accept that risk.
             </p>
           </div>
           <div className="flex gap-2">

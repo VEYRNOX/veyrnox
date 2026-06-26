@@ -26,6 +26,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { ShieldCheck, KeyRound, Lock, Trash2, Fingerprint, Send, Eye, UserX, EyeOff } from 'lucide-react';
+import PinPad from '@/components/security/PinPad';
+import { getAuthModel } from '@/lib/authModel';
 
 // The critical actions the guard gates — shown explicitly so the user knows what the
 // second factor actually protects (matches the useActionGuard call sites).
@@ -50,6 +52,7 @@ export default function TwoFactorSettings() {
   const apMismatch = apConfirm.length > 0 && apConfirm !== apNew;
   const apCanSave = !!apVaultPw && apNew.length >= 8 && apConfirm === apNew && !apBusy;
   const resetApForm = () => { setApVaultPw(''); setApNew(''); setApConfirm(''); };
+  const isPinModel = getAuthModel() === 'pin';
   const setupBlocked = isDecoy || isHidden; // configure from your real session only
 
   const handleSetActionPassword = async () => {
@@ -121,9 +124,7 @@ export default function TwoFactorSettings() {
       {/* What it is + WHICH actions it gates (explicit) */}
       <div className="p-4 rounded-xl border border-border bg-card space-y-3">
         <p className="text-sm text-muted-foreground">
-          A second factor required <strong>together with your PIN</strong> before the
-          most sensitive actions, so a shoulder-surfed PIN alone no longer authorises
-          them. It does <strong>not</strong> change how you unlock the wallet.
+          A second factor required alongside your PIN for sensitive actions — a shoulder-surfed PIN alone no longer authorises them.
         </p>
         <div className="space-y-2">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Actions it protects</p>
@@ -157,16 +158,28 @@ export default function TwoFactorSettings() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">PIN + Action Password {actionPasswordConfigured && <span className="text-primary">· ON</span>}</p>
-            <p className="text-[11px] text-muted-foreground">A second password you know, verified at full vault strength and stored only inside your encrypted vault, per wallet-set. Two things you know on one device: strong, but <strong>not</strong> hardware 2FA.</p>
+            <p className="text-[11px] text-muted-foreground">A second password stored in your encrypted vault, verified at full strength. Two knowledge factors on one device — strong but not hardware 2FA.</p>
           </div>
         </div>
 
         {!setupBlocked && (
           <div className="space-y-3 pt-1">
             <div>
-              <Label htmlFor="ap-vault">Wallet PIN / password</Label>
-              <Input id="ap-vault" type="password" autoComplete="current-password" value={apVaultPw}
-                onChange={e => setApVaultPw(e.target.value)} placeholder="Confirm it's you" className="mt-1.5 mono-value" />
+              <Label>{isPinModel ? 'Your PIN' : 'Wallet password'}</Label>
+              {isPinModel ? (
+                <div className="mt-2">
+                  <PinPad
+                    value={apVaultPw}
+                    onChange={setApVaultPw}
+                    onComplete={v => setApVaultPw(v)}
+                    disabled={apBusy}
+                    submitLabel={null}
+                  />
+                </div>
+              ) : (
+                <Input id="ap-vault" type="password" autoComplete="current-password" value={apVaultPw}
+                  onChange={e => setApVaultPw(e.target.value)} placeholder="Confirm it's you" className="mt-1.5 mono-value" />
+              )}
             </div>
             <div>
               <Label htmlFor="ap-new">{actionPasswordConfigured ? 'New Action Password' : 'Action Password'}</Label>
@@ -201,7 +214,7 @@ export default function TwoFactorSettings() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">PIN + Passkey / FIDO2 {(passkey2fa && passkeyRegistered) && <span className="text-primary">· ON</span>}</p>
-            <p className="text-[11px] text-muted-foreground">Your PIN plus a tap of a passkey or security key — a genuine <strong>possession</strong> factor. Fails closed: if the passkey can't be used, the action is refused. Device-global, not per wallet-set; losing it never costs funds, as your PIN + password still unlock.</p>
+            <p className="text-[11px] text-muted-foreground">Your PIN plus a passkey tap — a genuine possession factor. Fails closed: action refused if passkey unavailable. Device-global; losing it never costs funds.</p>
           </div>
           <Switch
             checked={passkey2fa && passkeyRegistered}

@@ -457,7 +457,7 @@ export default function Layout() {
               aria-label={item.label}
             >
               <item.icon className="h-5 w-5" aria-hidden="true" />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[11px] font-medium">{item.label}</span>
             </button>
           );
         })}
@@ -468,7 +468,7 @@ export default function Layout() {
           aria-expanded={moreOpen}
         >
           <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-          <span className="text-[10px] font-medium">More</span>
+          <span className="text-[11px] font-medium">More</span>
         </button>
       </nav>
 
@@ -486,24 +486,24 @@ export default function Layout() {
               <div key={group.label} className="rounded-2xl p-2.5 border" style={{ backgroundColor: color + "0d", borderColor: color + "33" }}>
                 <div className="flex items-center gap-2 px-1 pb-2">
                   <span className="h-2 w-2 rounded-full shrink-0" style={{ background: color }} />
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{group.label}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{group.label}</p>
                 </div>
-                <div className="grid grid-cols-4 gap-1">
+                <div className="grid grid-cols-3 gap-1.5">
                   {group.items.map(item => {
                     const active = location.pathname === item.path;
                     return (
                       <Link key={item.path} to={item.path} state={{ fromMore: true }} onClick={() => setMoreOpen(false)}
                         aria-current={active ? "page" : undefined}
                         data-active={active ? "" : undefined}
-                        className="more-tile flex flex-col items-center justify-center gap-1 p-2 min-h-[60px] rounded-xl border cursor-pointer select-none transition-[transform,background-color,border-color,box-shadow] duration-150 text-foreground/90 hover:text-foreground"
+                        className="more-tile flex flex-col items-center justify-center gap-1.5 p-3 min-h-[72px] rounded-xl border cursor-pointer select-none transition-[transform,background-color,border-color,box-shadow] duration-150 text-foreground/90 hover:text-foreground"
                         style={{
                           "--mt-bg": color + "1c", "--mt-bd": color + "40",
                           "--mt-hbg": color + "59", "--mt-hbd": color + "ee", "--mt-glow": color + "b3",
                           "--mt-abg": color + "3a", "--mt-abd": color + "99",
                         }}
                       >
-                        <item.icon className="h-5 w-5" style={active ? { color } : undefined} />
-                        <span className="text-[9px] font-medium text-center leading-tight line-clamp-2">{item.label}</span>
+                        <item.icon className="h-6 w-6" style={active ? { color } : undefined} />
+                        <span className="text-[11px] font-medium text-center leading-tight line-clamp-2">{item.label}</span>
                       </Link>
                     );
                   })}
