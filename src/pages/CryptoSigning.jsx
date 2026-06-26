@@ -4,6 +4,10 @@ import { Key, Eye, EyeOff, Copy, Check, RefreshCw, ShieldCheck, FileSignature, A
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { copySecret } from "@/lib/copySecret";
+import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
+import { presignGate } from "@/sign-gate/presign";
+import { LEVEL } from "@/risk/levels";
 
 const DERIVATION_PATHS = [
   { label: "Ethereum (m/44'/60'/0'/0/0)", path: "m/44'/60'/0'/0/0" },
@@ -31,7 +35,31 @@ export default function CryptoSigning() {
   const [expandedPath, setExpandedPath] = useState(null);
   const [error, setError] = useState("");
 
-  const copy = (text, key) => { navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(null), 1500); };
+  // H13: route EVERY clipboard write through copySecret(), which schedules a
+  // 30s best-effort wipe. The mnemonic and private key are secrets — a bare
+  // clipboard write left them in Android keyboard/clipboard
+  // history indefinitely. copySecret() is harmless for public values (address,
+  // signature, raw tx) and closes the leak for the secret ones. The explicit
+  // secret call sites below pass `mnemonic` / `wallet.privateKey` so the H13
+  // structural guard can pin them.
+  const copy = (text, key) => { copySecret(text); setCopied(key); setTimeout(() => setCopied(null), 1500); };
+
+  // H13: RASP pre-sign environment gate. Browser automation / WebDriver
+  // (Playwright/Selenium) and other hostile-runtime tells must block signing of
+  // a message OR a raw transaction here, exactly as the Send chokepoint does.
+  // detect()/degrade() are PURE functions of the environment only (I3 set-blind);
+  // a RASP crash fails closed to the strongest BLOCK (I4). This page derives a
+  // real key from a mnemonic and signs with it, so it is a signing chokepoint and
+  // must carry the same gate. The tx-risk plane is N/A here (no recipient risk
+  // scoring on a locally-built demo tx), so we pass TIER.ALLOW-equivalent 'allow'
+  // for the tx level — the RASP plane is what gates. TIER is referenced so the
+  // fail-closed default tier is explicit in the source.
+  const raspGuardAllowsSigning = () => {
+    let tier;
+    try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
+    const gate = presignGate(tier, LEVEL.OK, false);
+    return gate.proceedAllowed && gate.signerReachable;
+  };
 
   const generateWallet = () => {
     setError("");
@@ -75,6 +103,13 @@ export default function CryptoSigning() {
 
   const signMsg = async () => {
     if (!wallet) return;
+    setError("");
+    // H13: RASP pre-sign gate. Refuse to sign in a hostile runtime (automation /
+    // WebDriver). Fail closed — if the gate doesn't allow, no signature is produced.
+    if (!raspGuardAllowsSigning()) {
+      setError("Signing is blocked: this environment looks unsafe (automation or a tampered runtime was detected).");
+      return;
+    }
     const sig = await wallet.signMessage(signMessage);
     setSignature(sig);
   };
@@ -82,6 +117,11 @@ export default function CryptoSigning() {
   const buildSignedTx = async () => {
     if (!wallet || !txTo) return;
     setError("");
+    // H13: RASP pre-sign gate — same chokepoint guard as message signing.
+    if (!raspGuardAllowsSigning()) {
+      setError("Signing is blocked: this environment looks unsafe (automation or a tampered runtime was detected).");
+      return;
+    }
     try {
       const tx = {
         to: txTo,
@@ -142,7 +182,7 @@ export default function CryptoSigning() {
                   <p className="text-xs font-semibold">BIP-39 Mnemonic (12 words)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowPhrase(s => !s)} aria-label={showPhrase ? "Hide recovery phrase" : "Reveal recovery phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showPhrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(mnemonic, "mnemonic")} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => { copySecret(mnemonic); setCopied("mnemonic"); setTimeout(() => setCopied(null), 1500); }} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showPhrase ? (
@@ -167,7 +207,7 @@ export default function CryptoSigning() {
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-mono text-muted-foreground flex-1">{showKey ? wallet.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
                   <button onClick={() => setShowKey(s => !s)} aria-label={showKey ? "Hide private key" : "Reveal private key"} className="text-muted-foreground">{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                  {showKey && <button onClick={() => copy(wallet.privateKey, "pk")} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
+                  {showKey && <button onClick={() => { copySecret(wallet.privateKey); setCopied("pk"); setTimeout(() => setCopied(null), 1500); }} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
                 </div>
               </div>
 
