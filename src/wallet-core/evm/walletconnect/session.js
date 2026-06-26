@@ -99,16 +99,14 @@ const WC_V2_URI_RE = /^wc:[0-9a-zA-Z]+@2\?[^#]*relay-protocol=/;
 
 export function validatePairingUri(uri) {
   if (typeof uri !== 'string') {
-    const e = new Error('WalletConnect pairing URI must be a string.');
-    e.code = 'WC_INVALID_PAIRING_URI';
+    const e = Object.assign(new Error('WalletConnect pairing URI must be a string.'), { code: 'WC_INVALID_PAIRING_URI' });
     throw e;
   }
   const trimmed = uri.trim();
   if (!WC_V2_URI_RE.test(trimmed)) {
-    const e = new Error(
+    const e = Object.assign(new Error(
       'Not a valid WalletConnect v2 pairing URI (expected wc:<topic>@2?relay-protocol=...).',
-    );
-    e.code = 'WC_INVALID_PAIRING_URI';
+    ), { code: 'WC_INVALID_PAIRING_URI' });
     throw e;
   }
   return trimmed;
