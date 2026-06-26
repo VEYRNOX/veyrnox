@@ -277,11 +277,22 @@
     min-height: 44px;
   }
 
-  /* Mobile readability: bump :root font-size so rem-scaled text is legible */
+  /* Mobile readability: bump :root so all rem-scaled text is legible */
   @media (max-width: 639px) {
     :root {
-      font-size: 17px;
+      font-size: 18px;
     }
+
+    /*
+     * Clamp hardcoded tiny pixel sizes up to readable minimums.
+     * 294 instances of text-[9-11px] across the codebase are fixed
+     * here rather than file-by-file — iOS WebView renders 9-11px as
+     * visually straining; 12-13px is the floor for secondary labels.
+     */
+    [class*="text-[9px]"]  { font-size: 12px !important; }
+    [class*="text-[10px]"] { font-size: 12px !important; }
+    [class*="text-[11px]"] { font-size: 13px !important; }
+    [class*="text-[13px]"] { font-size: 14px !important; }
   }
 
   /* Restore natural height for icon-only buttons */
