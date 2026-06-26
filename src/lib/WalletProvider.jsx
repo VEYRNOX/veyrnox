@@ -126,6 +126,7 @@ import {
 import {
   isPasskeyUnlockEnabled,
   isPasskeyRegistered,
+  is2faPasskeyEnabled,
   getPasskeyStatus,
   verifyPasskeyAssertion,
   PASSKEY_GATE,
@@ -193,6 +194,39 @@ export { REAUTH_WINDOW_MS };
 export function assertRevealReauthFresh({ lastAuthAt, now = Date.now(), windowMs = REAUTH_WINDOW_MS }) {
   if (sendReauthRequired({ lastAuthAt, now, windowMs })) {
     throw new Error('REVEAL_REQUIRES_REAUTH: recent re-authentication required to reveal a seed');
+  }
+}
+
+/**
+ * M3 — Passkey UNAVAILABLE must NOT silently downgrade 2FA→1FA.
+ *
+ * The unlock convenience gate (passkey "unlock with passkey" pref) is allowed to
+ * DEGRADE to the password path when the passkey cannot run, because there the
+ * password is the real control and passkey loss must never strand a user from
+ * funds (passkey loss ≠ fund loss). That degrade is fine ONLY for the convenience
+ * gate.
+ *
+ * But when the user has ENROLLED the passkey as a REQUIRED SECOND FACTOR
+ * (is2faPasskeyEnabled — TWOFACTOR_PASSKEY_KEY), 2FA is part of the unlock
+ * contract: the wallet requires BOTH the password AND the passkey. If the passkey
+ * is UNAVAILABLE at unlock time, we must FAIL CLOSED (I4) rather than quietly
+ * proceed with the password alone — otherwise a coercer who has only the password
+ * could unlock simply because the passkey "can't run right now".
+ *
+ * This pure helper pins that decision: given the gate status and whether 2FA is
+ * configured, it throws a machine-coded PASSKEY_REQUIRED when a configured second
+ * factor cannot be satisfied. UNAVAILABLE is the only status routed here (a
+ * cancel/hard-failure already throws a PasskeyGateError upstream and never reaches
+ * the degrade branch).
+ *
+ * @param {{ gateStatus: string, twoFactorConfigured: boolean }} args
+ */
+export function assertPasskeyFactorSatisfied({ gateStatus, twoFactorConfigured }) {
+  if (twoFactorConfigured && gateStatus === PASSKEY_GATE.UNAVAILABLE) {
+    throw new Error(
+      'PASSKEY_REQUIRED: this wallet requires both PIN and passkey to unlock, '
+      + 'but the passkey is unavailable on this device',
+    );
   }
 }
 
@@ -1258,6 +1292,14 @@ export function WalletProvider({ children }) {
       passkeySkipped = 'escape-hatch';
     } else {
       const gate = await runPasskeyGate();
+      // M3: an UNAVAILABLE passkey may degrade to the password path ONLY for the
+      // convenience unlock gate. When the passkey is enrolled as a REQUIRED second
+      // factor, 2FA is part of the unlock contract — fail CLOSED (throws
+      // PASSKEY_REQUIRED) rather than silently dropping to 1FA. (I4.)
+      assertPasskeyFactorSatisfied({
+        gateStatus: gate.status,
+        twoFactorConfigured: is2faPasskeyEnabled(),
+      });
       if (gate.status === PASSKEY_GATE.UNAVAILABLE) passkeySkipped = 'unavailable';
     }
     // Signal (not secret) when the biometric convenience factor was bypassed via

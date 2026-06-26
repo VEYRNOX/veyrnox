@@ -1,7 +1,7 @@
 import styles from './SessionProposalModal.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { useState } from 'react';
-import { checkDappDomain } from '@/risk/knownBadDapps.js';
+import { checkDappDomain, LOCAL_KNOWN_BAD } from '@/risk/knownBadDapps.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { SUPPORTED_CHAIN_IDS } from '@/wallet-core/evm/walletconnect/router.js';
 
@@ -76,6 +76,10 @@ export function SessionProposalModal({ proposal, onClose }) {
             </label>
           </div>
         )}
+
+        <p className={styles.honestyCaveat}>
+          Veyrnox checks against {LOCAL_KNOWN_BAD.length} known scam domains. A clean result does not confirm this site is safe — always verify the dApp URL independently.
+        </p>
 
         <div className={styles.dappInfo}>
           {meta.icons?.[0] && (

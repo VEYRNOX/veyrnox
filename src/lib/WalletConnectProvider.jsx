@@ -26,6 +26,22 @@ import { useWallet } from '@/lib/WalletProvider.jsx';
 
 const WalletConnectCtx = createContext(null);
 
+// M9 — enforce a 1,000,000 gas cap UNCONDITIONALLY, including when the dApp
+// omits the `gas` field. Previously the cap only applied to a dApp-supplied
+// `gas`; with `gas` omitted, ethers auto-estimated with no ceiling, so a
+// malicious dApp could craft a tx that consumes the full block gas limit and
+// drain funds. We estimate gas ourselves when omitted, then clamp either value
+// (dApp's or our estimate) to the cap. I5 — backend/dApp untrusted by design.
+//
+// txGas: the dApp-supplied `gas` (hex string, bigint, or undefined).
+// estimatedGas: bigint result of provider.estimateGas, used when txGas is absent.
+// Returns a bigint <= 1_000_000n.
+export const WC_GAS_CAP = 1_000_000n;
+export function resolveGasLimit(txGas, estimatedGas) {
+  const requested = txGas != null ? BigInt(txGas) : BigInt(estimatedGas);
+  return requested > WC_GAS_CAP ? WC_GAS_CAP : requested;
+}
+
 // H8 — resolve which personal_sign param is the message and bind the address
 // param to the wallet's own EVM address. EIP-1474 specifies [message, address]
 // but MetaMask-legacy dApps send [address, message] (reversed). If we blindly
@@ -63,6 +79,23 @@ export function resolvePersonalSignMessage(params, ownAddress) {
     return { ok: true, message: arr[1] };
   }
   return { ok: false, code: 'PERSONAL_SIGN_ADDRESS_MISMATCH' };
+}
+
+// M11 — enforce WalletConnect session expiry client-side. The session's `expiry`
+// (Unix seconds) is displayed in ActiveSessions but was never enforced on the
+// signing path: a session past its expiry kept producing signatures and sending
+// transactions. Gate every signing handler through this BEFORE the key is touched
+// (fail closed, I4). A missing or non-numeric expiry is treated as expired.
+//
+// Returns { ok: true } or { ok: false, code }.
+export function checkSessionExpiry(session, nowMs = Date.now()) {
+  if (!session) return { ok: false, code: 'SESSION_NOT_FOUND' };
+  const expiry = session.expiry;
+  if (typeof expiry !== 'number' || !Number.isFinite(expiry)) {
+    return { ok: false, code: 'SESSION_EXPIRED' };
+  }
+  if (expiry * 1000 <= nowMs) return { ok: false, code: 'SESSION_EXPIRED' };
+  return { ok: true };
 }
 
 export function WalletConnectProvider({ children }) {
@@ -149,11 +182,33 @@ export function WalletConnectProvider({ children }) {
     setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
   }, []);
 
+  // M11 — every signing handler must call this BEFORE touching the key. It looks
+  // up the live session by topic from getActiveSessions() (the authoritative
+  // source, not stale React state) and rejects the request + clears it if the
+  // session has expired. On rejection it throws so the caller surfaces the error;
+  // it never falls through to the signing path (fail closed, I4).
+  const assertSessionLive = useCallback(async (topic, id) => {
+    const session = getActiveSessions().find((s) => s.topic === topic);
+    const check = checkSessionExpiry(session);
+    if (check.ok) return;
+    await rejectRequest(topic, id).catch(() => {});
+    setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+    refreshSessions();
+    const detail = check.code === 'SESSION_NOT_FOUND'
+      ? 'the connection no longer exists'
+      : 'this connection has expired';
+    throw new Error(
+      `Rejected signing request [${check.code}]: ${detail}. ` +
+      `Veyrnox will not sign for an expired connection — reconnect the dApp.`,
+    );
+  }, [refreshSessions]);
+
   // Sign a personal_sign request. EIP-1474 order is [hexMessage, address] but
   // MetaMask-legacy dApps reverse it to [address, hexMessage]. H8: resolve the
   // message safely and reject (fail closed, I4) if no param is our own address,
   // BEFORE the key is touched.
   const handlePersonalSign = useCallback(async (topic, id, params) => {
+    await assertSessionLive(topic, id); // M11
     const resolved = resolvePersonalSignMessage(params, evmAddress);
     if (!resolved.ok) {
       await rejectRequest(topic, id).catch(() => {});
@@ -173,10 +228,11 @@ export function WalletConnectProvider({ children }) {
     });
     await respondToRequest(topic, id, sig);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, evmAddress]);
+  }, [withPrivateKey, evmAddress, assertSessionLive]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
   const handleSignTypedData = useCallback(async (topic, id, params) => {
+    await assertSessionLive(topic, id); // M11
     const typedDataJson = params[1] ?? params[0];
     const parsed = parseTypedData(typedDataJson);
     if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
@@ -212,12 +268,13 @@ export function WalletConnectProvider({ children }) {
     });
     await respondToRequest(topic, id, sig);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, pendingRequests]);
+  }, [withPrivateKey, pendingRequests, assertSessionLive]);
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
   // Gas cap of 1M enforced regardless of dApp suggestion (I5 — backend untrusted).
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
+    await assertSessionLive(topic, id); // M11
     const txParams = params[0];
     const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
     const net = getNetworkByChainId(chainId);
@@ -244,10 +301,11 @@ export function WalletConnectProvider({ children }) {
         tx.type = 0;
       }
 
-      const GAS_CAP = 1_000_000n;
-      if (txParams.gas) {
-        tx.gasLimit = BigInt(txParams.gas) < GAS_CAP ? BigInt(txParams.gas) : GAS_CAP;
-      }
+      // M9 — cap gas to 1M whether or not the dApp supplied `gas`. When omitted
+      // we estimate ourselves and clamp the estimate too, so a dApp can never
+      // bypass the cap by leaving `gas` out and letting ethers auto-estimate.
+      const estimatedGas = txParams.gas != null ? 0n : await wallet.estimateGas(tx);
+      tx.gasLimit = resolveGasLimit(txParams.gas, estimatedGas);
 
       const sent = await wallet.sendTransaction(tx);
       return sent.hash;
@@ -255,7 +313,7 @@ export function WalletConnectProvider({ children }) {
 
     await respondToRequest(topic, id, hash);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey]);
+  }, [withPrivateKey, assertSessionLive]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);

@@ -90,10 +90,37 @@ function _emit(event, data) {
   }
 }
 
+// M8 — structurally validate a WalletConnect v2 pairing URI BEFORE handing it to
+// the SDK. We do not parse it fully (the SDK owns that); we only reject anything
+// that is not shaped like `wc:<topic>@2?relay-protocol=...` so non-wc schemes
+// (javascript:, https:, empty) can never reach client.pair. Fail honest, closed.
+// Format ref: wc:{topic}@{version}?relay-protocol={protocol}&symKey={key}
+const WC_V2_URI_RE = /^wc:[0-9a-zA-Z]+@2\?[^#]*relay-protocol=/;
+
+export function validatePairingUri(uri) {
+  if (typeof uri !== 'string') {
+    const e = new Error('WalletConnect pairing URI must be a string.');
+    e.code = 'WC_INVALID_PAIRING_URI';
+    throw e;
+  }
+  const trimmed = uri.trim();
+  if (!WC_V2_URI_RE.test(trimmed)) {
+    const e = new Error(
+      'Not a valid WalletConnect v2 pairing URI (expected wc:<topic>@2?relay-protocol=...).',
+    );
+    e.code = 'WC_INVALID_PAIRING_URI';
+    throw e;
+  }
+  return trimmed;
+}
+
 export async function pairWithDapp(uri) {
+  // Validate structure BEFORE touching the SDK so a malformed/non-wc URI is
+  // rejected at the boundary, never injected into client.pair.
+  const safeUri = validatePairingUri(uri);
   const client = await initWalletConnect();
   if (!client) throw new Error('WalletConnect is not configured on this build.');
-  await client.pair({ uri: uri.trim() });
+  await client.pair({ uri: safeUri });
 }
 
 export async function approveSession(proposalId, evmAddress, chainIds) {

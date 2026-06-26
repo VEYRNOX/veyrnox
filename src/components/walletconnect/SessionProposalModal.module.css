@@ -74,6 +74,13 @@
 .approveBtn:hover:not(:disabled) { background: #5de8d0; }
 .rejectBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.honestyCaveat {
+  font-size: 0.78rem;
+  color: #8b949e;
+  margin: 0;
+  line-height: 1.5;
+}
+
 .riskAlert {
   background: rgba(248, 81, 73, 0.1);
   border: 1px solid rgba(248, 81, 73, 0.4);
