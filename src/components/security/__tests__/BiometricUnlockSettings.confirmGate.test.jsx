@@ -103,15 +103,17 @@ describe('BiometricUnlockSettings — NF-2 enable confirm gate', () => {
     expect(panel).toBeTruthy();
   });
 
-  it('confirm panel mentions Argon2id and offline Keychain extraction', async () => {
+  it('confirm panel discloses the backup-extraction decrypt risk', async () => {
     await renderSettled();
 
     fireEvent.click(getToggle());
 
     const panel = screen.getByTestId('biometric-enable-confirm');
     const text = panel.textContent.toLowerCase();
-    expect(text).toMatch(/argon2id/);
-    expect(text).toMatch(/keychain|extraction/);
+    // Must still disclose the core risk in plain language:
+    // someone extracting a device backup could decrypt the wallet.
+    expect(text).toMatch(/extract|backup/);
+    expect(text).toMatch(/decrypt/);
   });
 
   it('confirm panel has "Enable one-tap unlock" and "Cancel" buttons', async () => {
