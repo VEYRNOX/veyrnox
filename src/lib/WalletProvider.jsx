@@ -990,11 +990,20 @@ export function WalletProvider({ children }) {
     touch();
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
 
-  // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container (the
-  // session already holds every seed while unlocked, so this needs no password —
-  // it is the same exposure as withPrivateKey). LIVE SECRET: the caller shows it
-  // once for backup and must never persist it. Returns null when locked.
-  const revealWalletMnemonic = useCallback((walletId) => {
+  // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container.
+  // LIVE SECRET — the caller shows it once for backup and must never persist it.
+  //
+  // M6 (defense-in-depth re-auth gate): callers MUST wrap this in requireTwoFactor
+  // (or an equivalent gate) BEFORE calling. To make that contract machine-checkable,
+  // pass { callerGated: true } as the second argument — the function throws if absent.
+  // This prevents future callers from accidentally bypassing the re-auth requirement.
+  const revealWalletMnemonic = useCallback((walletId, { callerGated } = {}) => {
+    if (!callerGated) {
+      throw new Error(
+        'revealWalletMnemonic requires the caller to gate this action behind ' +
+        'requireTwoFactor (or equivalent). Pass { callerGated: true } to confirm.'
+      );
+    }
     const c = containerRef.current;
     if (!c) return null;
     const w = mv.findWallet(c, walletId || activeIdRef.current);
