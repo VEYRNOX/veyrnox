@@ -23,6 +23,25 @@ import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wal
 import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
+import { presignGate } from '@/sign-gate/presign';
+import { degrade, detect, TIER, browserProbeSource } from '@/rasp';
+import { LEVEL } from '@/risk/levels';
+
+// C3: RASP pre-sign environment gate for dApp (WalletConnect) signing handlers.
+// personal_sign / signTypedData / sendTransaction reach withPrivateKey() and sign
+// or broadcast with a real key, so they are signing chokepoints and must carry the
+// SAME RASP plane the in-app Send chokepoint enforces — otherwise a paired dApp
+// could exfiltrate a signature in a hostile runtime that Send would BLOCK.
+// detect()/degrade() are PURE functions of the environment (I3 set-blind); a RASP
+// crash fails closed to the strongest BLOCK (I4). The tx-risk plane is N/A at this
+// seam (no recipient risk scoring here), so we pass LEVEL.OK for tx level — the
+// RASP plane is what gates. Mirrors CryptoSigning.jsx raspGuardAllowsSigning().
+function raspGuardAllowsSigning() {
+  let tier;
+  try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
+  const gate = presignGate(tier, LEVEL.OK, false);
+  return gate.proceedAllowed && gate.signerReachable;
+}
 
 const WalletConnectCtx = createContext(null);
 
@@ -112,6 +131,11 @@ export function WalletConnectProvider({ children }) {
 
   // Sign a personal_sign request. params: [hexMessage, address]
   const handlePersonalSign = useCallback(async (topic, id, params) => {
+    if (!raspGuardAllowsSigning()) {
+      await rejectRequest(topic, id, 'RASP_BLOCK');
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      return;
+    }
     const hexMsg = params[0];
     const sig = await withPrivateKey(0, async (pk) => {
       const wallet = new ethers.Wallet(pk);
@@ -123,6 +147,11 @@ export function WalletConnectProvider({ children }) {
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
   const handleSignTypedData = useCallback(async (topic, id, params) => {
+    if (!raspGuardAllowsSigning()) {
+      await rejectRequest(topic, id, 'RASP_BLOCK');
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      return;
+    }
     const typedDataJson = params[1] ?? params[0];
     const parsed = parseTypedData(typedDataJson);
     if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
@@ -139,6 +168,11 @@ export function WalletConnectProvider({ children }) {
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
   // Gas cap of 1M enforced regardless of dApp suggestion (I5 — backend untrusted).
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
+    if (!raspGuardAllowsSigning()) {
+      await rejectRequest(topic, id, 'RASP_BLOCK');
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      return;
+    }
     const txParams = params[0];
     const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
     const net = getNetworkByChainId(chainId);
