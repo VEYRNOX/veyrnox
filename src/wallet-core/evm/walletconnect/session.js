@@ -199,7 +199,31 @@ export function getActiveSessions() {
 // Call on wallet lock — destroys the singleton so the next unlock gets a fresh client.
 // Required by I3: deniability mode must make zero backend calls; destroying the WC
 // client ensures no lingering relay connection can be tied back to the real wallet.
-export function destroyWalletConnect() {
+//
+// L4 — before nulling the client we MUST signal each active session as
+// USER_DISCONNECTED, otherwise the dApp believes the session is still live and
+// can queue signing requests that resurface on the next unlock. Per-session
+// errors are swallowed (a stale session must not block disconnecting the rest).
+//
+// Returns a promise so callers that *can* await get a clean teardown, but it is
+// safe to call fire-and-forget (the sync caller on lock does not await): the
+// client and maps are torn down synchronously after the best-effort disconnects.
+export async function destroyWalletConnect() {
+  const client = _client;
+  if (client) {
+    let sessions = [];
+    try {
+      sessions = Object.values(client.getActiveSessions() || {});
+    } catch { /* if we can't enumerate, still proceed to tear down */ }
+    for (const session of sessions) {
+      try {
+        await client.disconnectSession({
+          topic: session.topic,
+          reason: getSdkError('USER_DISCONNECTED'),
+        });
+      } catch { /* dApp/relay may already be gone; teardown still proceeds */ }
+    }
+  }
   _client = null;
   _pendingProposals.clear();
   _listeners.clear();

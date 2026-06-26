@@ -30,6 +30,10 @@ export function SessionProposalModal({ proposal, onClose }) {
   const methods = requiredNs.eip155?.methods ?? [];
   const chains = requiredNs.eip155?.chains ?? [];
 
+  const optionalNs = proposal.params?.optionalNamespaces ?? {};
+  const optionalChains = optionalNs.eip155?.chains ?? [];
+  const optionalMethods = optionalNs.eip155?.methods ?? [];
+
   const [ackKnownBad, setAckKnownBad] = useState(false);
   const dapp = checkDappDomain(meta.url);
 
@@ -115,6 +119,28 @@ export function SessionProposalModal({ proposal, onClose }) {
               {methods.map((m) => <li key={m}>{m}</li>)}
             </ul>
           </>
+        )}
+
+        {(optionalChains.length > 0 || optionalMethods.length > 0) && (
+          <div className={styles.optionalSection}>
+            <p className={styles.label}>Optional chains also requested</p>
+            {optionalChains.length > 0 && (
+              <ul className={styles.list}>
+                {optionalChains.map((c) => <li key={c}>{chainLabel(c)}</li>)}
+              </ul>
+            )}
+            {optionalMethods.length > 0 && (
+              <>
+                <p className={styles.label}>Optional methods also requested</p>
+                <ul className={styles.list}>
+                  {optionalMethods.map((m) => <li key={m}>{m}</li>)}
+                </ul>
+              </>
+            )}
+            <p className={styles.optionalNote}>
+              These are optional — the dApp has declared it can work without them. They will be included in the approved session if your wallet supports them.
+            </p>
+          </div>
         )}
 
         <p className={styles.warning}>
