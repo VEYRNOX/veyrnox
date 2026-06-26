@@ -11,10 +11,10 @@ let package = Package(
             targets: ["CapApp-SPM"])
     ],
     dependencies: [
-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.4.1"),
-        .package(name: "AparajitaCapacitorBiometricAuth", path: "../../../node_modules/@aparajita/capacitor-biometric-auth"),
-        .package(name: "AparajitaCapacitorSecureStorage", path: "../../../node_modules/@aparajita/capacitor-secure-storage"),
-        .package(name: "CapacitorApp", path: "../../../node_modules/@capacitor/app")
+        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.3.4"),
+        .package(name: "AparajitaCapacitorBiometricAuth", path: "..\..\..\..\..\..\node_modules\@aparajita\capacitor-biometric-auth"),
+        .package(name: "AparajitaCapacitorSecureStorage", path: "..\..\..\..\..\..\node_modules\@aparajita\capacitor-secure-storage"),
+        .package(name: "CapacitorApp", path: "..\..\..\..\..\..\node_modules\@capacitor\app")
     ],
     targets: [
         .target(
