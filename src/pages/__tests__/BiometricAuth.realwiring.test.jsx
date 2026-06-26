@@ -13,13 +13,13 @@ vi.mock('@/api/demoClient', () => ({ DEMO: true }));
 
 const passkeyPreview = vi.fn(async () => true);
 vi.mock('@/lib/WalletProvider', () => ({
-  useWallet: () => ({ passkeyPreview: (...a) => passkeyPreview(...a), recordAudit: vi.fn() }),
+  useWallet: () => ({ passkeyPreview: () => passkeyPreview(), recordAudit: vi.fn() }),
 }));
 
 beforeEach(() => {
   window.localStorage.clear();
   passkeyPreview.mockClear();
-  if (!window.PublicKeyCredential) window.PublicKeyCredential = function () {};
+  if (!window.PublicKeyCredential) window.PublicKeyCredential = /** @type {any} */ (function () {});
   Object.defineProperty(navigator, 'credentials', {
     value: { create: vi.fn(), get: vi.fn() }, configurable: true,
   });
@@ -43,7 +43,7 @@ describe('BiometricAuth — wired to the REAL send-2FA passkey control (not a de
 
     // No passkey registered → the factor cannot be turned on (gate would brick the
     // send on a factor we cannot satisfy). The real pref stays unset.
-    expect(toggle.disabled).toBe(true);
+    expect(/** @type {HTMLButtonElement} */ (toggle).disabled).toBe(true);
     expect(is2faPasskeyEnabled()).toBe(false);
     expect(window.localStorage.getItem(TWOFACTOR_PASSKEY_KEY)).toBeNull();
 
@@ -55,7 +55,7 @@ describe('BiometricAuth — wired to the REAL send-2FA passkey control (not a de
     expect(window.localStorage.getItem(TWOFACTOR_PASSKEY_KEY)).toBe('1');
 
     // The toggle now genuinely flips the real pref off within one mount.
-    await waitFor(() => expect(screen.getByLabelText('Require passkey at critical actions').disabled).toBe(false));
+    await waitFor(() => expect(/** @type {HTMLButtonElement} */ (screen.getByLabelText('Require passkey at critical actions')).disabled).toBe(false));
     fireEvent.click(screen.getByLabelText('Require passkey at critical actions'));
     expect(is2faPasskeyEnabled()).toBe(false);
     expect(window.localStorage.getItem(TWOFACTOR_PASSKEY_KEY)).toBeNull();
