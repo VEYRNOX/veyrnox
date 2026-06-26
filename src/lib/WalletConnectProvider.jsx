@@ -23,6 +23,8 @@ import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wal
 import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
+import { degrade, detect, TIER, browserProbeSource } from '@/rasp';
+import { presignGate } from '@/sign-gate/presign';
 
 const WalletConnectCtx = createContext(null);
 
@@ -112,6 +114,15 @@ export function WalletConnectProvider({ children }) {
 
   // Sign a personal_sign request. params: [hexMessage, address]
   const handlePersonalSign = useCallback(async (topic, id, params) => {
+    let raspArtifact = null;
+    try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
+    const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+    const gate = presignGate(raspTier, 'allow', true);
+    if (!gate.proceedAllowed) {
+      await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      return;
+    }
     const hexMsg = params[0];
     const sig = await withPrivateKey(0, async (pk) => {
       const wallet = new ethers.Wallet(pk);
@@ -123,6 +134,15 @@ export function WalletConnectProvider({ children }) {
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
   const handleSignTypedData = useCallback(async (topic, id, params) => {
+    let raspArtifact = null;
+    try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
+    const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+    const gate = presignGate(raspTier, 'allow', true);
+    if (!gate.proceedAllowed) {
+      await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      return;
+    }
     const typedDataJson = params[1] ?? params[0];
     const parsed = parseTypedData(typedDataJson);
     if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
@@ -139,6 +159,15 @@ export function WalletConnectProvider({ children }) {
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
   // Gas cap of 1M enforced regardless of dApp suggestion (I5 — backend untrusted).
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
+    let raspArtifact = null;
+    try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
+    const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+    const gate = presignGate(raspTier, 'allow', true);
+    if (!gate.proceedAllowed) {
+      await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      return;
+    }
     const txParams = params[0];
     const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
     const net = getNetworkByChainId(chainId);
