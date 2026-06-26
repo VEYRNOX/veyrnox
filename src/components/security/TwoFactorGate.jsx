@@ -70,6 +70,12 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
       onSuccess?.();
       return;
     }
+    // audit-H5: OOM verdict means the session verifier was never captured (Argon2id
+    // OOM at unlock). This is not a wrong-credential attempt — don't burn the cap.
+    if (verdict?.oom) {
+      setError(verdict.message || 'Step-up re-auth unavailable — please lock and unlock.');
+      return;
+    }
     const n = attempts + 1;
     setAttempts(n);
     setPin('');
