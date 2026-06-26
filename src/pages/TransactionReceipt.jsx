@@ -18,7 +18,7 @@ export default function TransactionReceipt() {
 
   const filtered = transactions.filter(tx =>
     !search || tx.id?.toLowerCase().includes(search.toLowerCase()) ||
-    tx.recipient_address?.toLowerCase().includes(search.toLowerCase()) ||
+    tx.to_address?.toLowerCase().includes(search.toLowerCase()) ||
     tx.currency?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -49,7 +49,7 @@ export default function TransactionReceipt() {
       ["Amount", `${selected.amount ?? ""} ${selected.currency ?? ""}`],
       ["Network Fee", fee > 0 ? `${fee} ${selected.currency}` : "—"],
       ["Status", (selected.status || "completed").toUpperCase()],
-      ["To", selected.recipient_address ? selected.recipient_address.slice(0, 20) + "..." : "—"],
+      ["To", selected.to_address ? selected.to_address.slice(0, 20) + "..." : "—"],
     ];
 
     const h2 = doc.createElement("h2");
@@ -141,7 +141,7 @@ export default function TransactionReceipt() {
                 ["Amount", `${selected.amount} ${selected.currency}`],
                 ["Network Fee", fee > 0 ? `${fee} ${selected.currency}` : "—"],
                 ["Status", (selected.status || "completed").toUpperCase()],
-                ["To", selected.recipient_address ? selected.recipient_address.slice(0, 20) + "..." : "—"],
+                ["To", selected.to_address ? selected.to_address.slice(0, 20) + "..." : "—"],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between py-0.5">
                   <span className="text-muted-foreground">{k}</span>
