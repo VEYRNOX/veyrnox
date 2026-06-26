@@ -80,6 +80,8 @@
 .txRow { display: flex; justify-content: space-between; font-size: 0.85rem; }
 .txRow span:first-child { color: #8b949e; }
 .mono { font-family: 'IBM Plex Mono', monospace; color: #f0f2f5; word-break: break-all; max-width: 72%; text-align: right; }
+.networkMainnet { font-family: 'IBM Plex Mono', monospace; color: #f85149; font-weight: 700; word-break: break-all; max-width: 72%; text-align: right; }
+.mainnetFlag { background: rgba(248, 81, 73, 0.12); border: 1px solid rgba(248, 81, 73, 0.45); border-radius: 8px; padding: 9px 11px; color: #f85149; font-weight: 600; font-size: 0.82rem; line-height: 1.45; margin: 0; }
 .simBtn {
   background: #1D222B;
   border: 1px solid #2d3748;

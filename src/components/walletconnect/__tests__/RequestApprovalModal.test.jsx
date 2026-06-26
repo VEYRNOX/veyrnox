@@ -13,7 +13,9 @@ vi.mock('@/wallet-core/evm/simulate.js', () => ({
   simulateEvmTransaction: vi.fn(async () => ({ recipientCode: '0x6080' })), // a contract
 }));
 vi.mock('@/wallet-core/evm/networks.js', () => ({
-  getNetworkByChainId: () => ({ key: 'sepolia' }),
+  getNetworkByChainId: (id) => (id === 1
+    ? { key: 'mainnet', name: 'Ethereum Mainnet', symbol: 'ETH', isTestnet: false }
+    : { key: 'sepolia', name: 'Sepolia Testnet', symbol: 'ETH', isTestnet: true }),
 }));
 
 vi.mock('@/lib/WalletConnectProvider.jsx', () => ({
@@ -86,5 +88,33 @@ describe('RequestApprovalModal — eth_sendTransaction risk scoring', () => {
     expect(boxes.length).toBe(2);
     boxes.forEach((b) => fireEvent.click(b));
     expect(approve.disabled).toBe(false);
+  });
+});
+
+function sendTxOnChain(caip2) {
+  return {
+    topic: 't', id: 3, type: 'send_transaction', blocked: false, typedDataMeta: null,
+    params: {
+      chainId: caip2,
+      request: {
+        method: 'eth_sendTransaction',
+        params: [{ to: '0x1111111111111111111111111111111111111111', value: '0x16345785d8a0000', data: '0x' }],
+      },
+      proposer: { metadata: { name: 'Some dApp', url: 'https://app.example.org' } },
+    },
+  };
+}
+
+describe('RequestApprovalModal — network shown on send (mainnet vs testnet)', () => {
+  it('shows the testnet network name and no real-funds warning', async () => {
+    render(<RequestApprovalModal request={sendTxOnChain('eip155:11155111')} onClose={vi.fn()} />);
+    expect(await screen.findByText(/sepolia testnet/i)).toBeTruthy();
+    expect(screen.queryByText(/real funds/i)).toBeNull();
+  });
+
+  it('names the mainnet network AND flags it as REAL FUNDS', async () => {
+    render(<RequestApprovalModal request={sendTxOnChain('eip155:1')} onClose={vi.fn()} />);
+    expect(await screen.findByText(/ethereum mainnet/i)).toBeTruthy();
+    expect(screen.getByText(/real funds/i)).toBeTruthy();
   });
 });
