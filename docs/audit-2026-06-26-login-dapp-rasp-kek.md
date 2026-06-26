@@ -1,5 +1,10 @@
-# Independent Security Audit — 2026-06-26
+# Internal Security Audit — 2026-06-26
 ## Scope: Login Activity · dApp Connectors · RASP · Hardware KEK / Secure Enclave
+
+> **Internal static-analysis pass.** This audit was conducted by internal Claude specialist
+> agents (not a third-party auditor). It consists of static code review only — no dynamic
+> testing, no on-device verification, and no independent sign-off. An independent third-party
+> audit remains RECOMMENDED for the strongest assurance (see CLAUDE.md §Hard rules).
 
 Conducted: 2026-06-26  
 Method: Static code analysis via parallel specialist agents (secskills:mobile-pentester × 4)  

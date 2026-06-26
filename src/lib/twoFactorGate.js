@@ -27,12 +27,9 @@
 
 export const TWO_FACTOR = Object.freeze({
   ALLOW: 'ALLOW',
-  // H4 — single generic failure code for any wrong-factor combination. Distinct
-  // PIN_WRONG / PASSWORD_WRONG / BOTH_WRONG codes were an oracle: they let an
-  // adversary brute-force the PIN and Action Password SEQUENTIALLY (and so cut the
-  // effective search space) instead of having to get both right at once. The gate
-  // must reveal that it failed, never which factor was wrong.
-  CREDENTIALS_WRONG: 'CREDENTIALS_WRONG',
+  // H4: collapsed PIN_WRONG / PASSWORD_WRONG / BOTH_WRONG into a single opaque code so
+  // incorrect attempts do not reveal which factor was right — prevents oracle attacks.
+  WRONG: 'WRONG',
   NOT_CONFIGURED: 'NOT_CONFIGURED',
 });
 
@@ -62,11 +59,10 @@ export function evaluateTwoFactor({
     );
   }
 
-  // 1 — H4: any wrong-factor combination returns ONE indistinguishable verdict
-  // (same code AND same message) so nothing leaks which factor was correct. The
-  // caller learns only that the gate failed.
+  // H4: single opaque WRONG code for all wrong-credential cases — never reveals which
+  // factor was correct, so an attacker cannot use the gate as an oracle.
   if (!pinOk || !passwordOk) {
-    return block(TWO_FACTOR.CREDENTIALS_WRONG, 'Incorrect credentials.');
+    return block(TWO_FACTOR.WRONG, 'Incorrect PIN or Action Password.');
   }
 
   // 2 — both factors verified AND a second factor is configured.

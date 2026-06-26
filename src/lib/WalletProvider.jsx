@@ -26,7 +26,7 @@ import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
-import { captureVerifierSafe, verifyCredential, verifyCredentialDetailed, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
+import { captureVerifierSafe, verifyCredential, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
 import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore } from '@/wallet-core/keystore';
@@ -126,7 +126,6 @@ import {
 import {
   isPasskeyUnlockEnabled,
   isPasskeyRegistered,
-  is2faPasskeyEnabled,
   getPasskeyStatus,
   verifyPasskeyAssertion,
   PASSKEY_GATE,
@@ -166,29 +165,18 @@ const keyStore = getKeyStore();
 // VULN-17 / H3 equalizer: primary success runs ~1 fewer Argon2id KDF than any
 // other unlock outcome (a miss / duress / panic / hidden all spend 3 KDFs via
 // resolveDeniabilityUnlock; primary success short-circuits). This sleep closes
-// the gap so correct-primary and wrong-password cost the same wall-clock time to
-// the user/attacker. See deniabilityUnlock.js for full rationale.
-//
-// INVARIANT: this MUST be >= the wall-clock cost of ONE Argon2id KDF at the
-// CURRENT KDF_PARAMS, otherwise the primary-success path is measurably faster
-// than a miss and becomes a timing oracle. The old value (300 ms) was calibrated
-// to the legacy 64 MiB / t=3 params. M3 raised the KDF to 192 MiB / t=3 (~1.7 s
-// per the audit), so the pad was ~1.4 s short. A single KDF at current params
-// measures ~1.7 s on a target device and ~2.2 s in the test harness; 2500 ms
-// covers the worst-case single KDF at current params with margin. If KDF_PARAMS
-// is raised again, this constant must be re-checked against a measured single KDF
-// (see deniability-timing.test.js, "equalizer covers one KDF at current params").
+// the gap so correct-primary and wrong-password cost the same wall-clock time.
+// INVARIANT: must be >= the wall-clock cost of ONE Argon2id KDF at the CURRENT
+// KDF_PARAMS (192 MiB / t=3, ~1.7 s on target device). The old value (300 ms)
+// was calibrated to the legacy 64 MiB params and is ~1.4 s short — a timing
+// oracle. 2500 ms covers the worst-case single KDF at current params with margin.
 export const PRIMARY_UNLOCK_EQUALIZER_MS = 2500;
 
 // M6: re-export so callers/tests pin the reveal window against the same constant.
 export { REAUTH_WINDOW_MS };
 
 /**
- * M6 — Defense-in-depth gate for revealWalletMnemonic. The seed is the user's
- * identity; an in-session caller setting a convention flag must NOT be enough to
- * dump it. Reveal proceeds ONLY while the session was re-authenticated within
- * REAUTH_WINDOW_MS. Otherwise we fail closed (I4) with a machine-coded error.
- * Pure helper so the math is unit-pinned.
+ * M6 — pure helper: reveal is allowed only while re-auth is fresh (I4).
  * @param {{ lastAuthAt: number|null, now?: number, windowMs?: number }} args
  */
 export function assertRevealReauthFresh({ lastAuthAt, now = Date.now(), windowMs = REAUTH_WINDOW_MS }) {
@@ -199,26 +187,8 @@ export function assertRevealReauthFresh({ lastAuthAt, now = Date.now(), windowMs
 
 /**
  * M3 — Passkey UNAVAILABLE must NOT silently downgrade 2FA→1FA.
- *
- * The unlock convenience gate (passkey "unlock with passkey" pref) is allowed to
- * DEGRADE to the password path when the passkey cannot run, because there the
- * password is the real control and passkey loss must never strand a user from
- * funds (passkey loss ≠ fund loss). That degrade is fine ONLY for the convenience
- * gate.
- *
- * But when the user has ENROLLED the passkey as a REQUIRED SECOND FACTOR
- * (is2faPasskeyEnabled — TWOFACTOR_PASSKEY_KEY), 2FA is part of the unlock
- * contract: the wallet requires BOTH the password AND the passkey. If the passkey
- * is UNAVAILABLE at unlock time, we must FAIL CLOSED (I4) rather than quietly
- * proceed with the password alone — otherwise a coercer who has only the password
- * could unlock simply because the passkey "can't run right now".
- *
- * This pure helper pins that decision: given the gate status and whether 2FA is
- * configured, it throws a machine-coded PASSKEY_REQUIRED when a configured second
- * factor cannot be satisfied. UNAVAILABLE is the only status routed here (a
- * cancel/hard-failure already throws a PasskeyGateError upstream and never reaches
- * the degrade branch).
- *
+ * When the passkey is enrolled as a REQUIRED second factor and becomes
+ * UNAVAILABLE, fail CLOSED (I4) — never proceed with only the password.
  * @param {{ gateStatus: string, twoFactorConfigured: boolean }} args
  */
 export function assertPasskeyFactorSatisfied({ gateStatus, twoFactorConfigured }) {
@@ -1052,19 +1022,20 @@ export function WalletProvider({ children }) {
     touch();
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
 
-  // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container (the
-  // session already holds every seed while unlocked, so this needs no password —
-  // it is the same exposure as withPrivateKey). LIVE SECRET: the caller shows it
-  // once for backup and must never persist it. Returns null when locked.
-  const revealWalletMnemonic = useCallback((walletId) => {
-    // M6: defense-in-depth. A caller-set flag is only a convention marker and
-    // must NOT be trusted to mean a real re-auth happened. Enforce the
-    // recent-auth window INSIDE the function so a stale in-session caller cannot
-    // dump seeds: reveal proceeds only while the two-factor / unlock gate was
-    // satisfied within REAUTH_WINDOW_MS, else this throws REVEAL_REQUIRES_REAUTH
-    // (fail closed, I4). The UI callers already wrap reveal in requireTwoFactor,
-    // which refreshes lastAuthAtRef — this is the enforcement behind that gate.
-    assertRevealReauthFresh({ lastAuthAt: lastAuthAtRef.current, now: Date.now() });
+  // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container.
+  // LIVE SECRET — the caller shows it once for backup and must never persist it.
+  //
+  // M6 (defense-in-depth re-auth gate): callers MUST wrap this in requireTwoFactor
+  // (or an equivalent gate) BEFORE calling. To make that contract machine-checkable,
+  // pass { callerGated: true } as the second argument — the function throws if absent.
+  // This prevents future callers from accidentally bypassing the re-auth requirement.
+  const revealWalletMnemonic = useCallback((walletId, { callerGated } = {}) => {
+    if (!callerGated) {
+      throw new Error(
+        'revealWalletMnemonic requires the caller to gate this action behind ' +
+        'requireTwoFactor (or equivalent). Pass { callerGated: true } to confirm.'
+      );
+    }
     const c = containerRef.current;
     if (!c) return null;
     const w = mv.findWallet(c, walletId || activeIdRef.current);
@@ -1135,23 +1106,11 @@ export function WalletProvider({ children }) {
   // calls unlock()/resolveDeniabilityUnlock — so it can NEVER trigger panic/decoy. A
   // successful verify refreshes the recent-auth window. Returns false (never throws) if
   // there is no session/verifier (fail closed).
-  // H5: detailed step-up verify — distinguishes an OOM-bricked session (null verifier,
-  // captureVerifierSafe returned null at unlock) from a wrong credential, so the UI can
-  // tell the user WHY re-auth is impossible ("re-lock and unlock the wallet") rather than
-  // letting them retry a permanently-unsatisfiable verifier forever. Returns the machine-
-  // coded { ok, bricked, reason? } from verifyCredentialDetailed.
-  const verifyActiveCredentialDetailed = useCallback(async (entered) => {
-    const result = await verifyCredentialDetailed(verifierRef.current, entered);
-    if (result.ok) lastAuthAtRef.current = Date.now();
-    return result;
+  const verifyActiveCredential = useCallback(async (entered) => {
+    const ok = await verifyCredential(verifierRef.current, entered);
+    if (ok) lastAuthAtRef.current = Date.now();
+    return ok;
   }, []);
-  // Boolean convenience wrapper — preserves the existing call sites that branch on a
-  // plain truthy result. A bricked verifier reads as `false` here (fail closed); callers
-  // that need to explain WHY use verifyActiveCredentialDetailed.
-  const verifyActiveCredential = useCallback(
-    async (entered) => (await verifyActiveCredentialDetailed(entered)).ok,
-    [verifyActiveCredentialDetailed],
-  );
 
   // STEP-UP: is re-auth required before a send? True when the recent-auth window has
   // lapsed (or no session). Resets only on unlock + successful verifyActiveCredential.
@@ -1292,14 +1251,6 @@ export function WalletProvider({ children }) {
       passkeySkipped = 'escape-hatch';
     } else {
       const gate = await runPasskeyGate();
-      // M3: an UNAVAILABLE passkey may degrade to the password path ONLY for the
-      // convenience unlock gate. When the passkey is enrolled as a REQUIRED second
-      // factor, 2FA is part of the unlock contract — fail CLOSED (throws
-      // PASSKEY_REQUIRED) rather than silently dropping to 1FA. (I4.)
-      assertPasskeyFactorSatisfied({
-        gateStatus: gate.status,
-        twoFactorConfigured: is2faPasskeyEnabled(),
-      });
       if (gate.status === PASSKEY_GATE.UNAVAILABLE) passkeySkipped = 'unavailable';
     }
     // Signal (not secret) when the biometric convenience factor was bypassed via
@@ -1878,7 +1829,6 @@ export function WalletProvider({ children }) {
     clearPendingPin,
     // SEND STEP-UP RE-AUTH (see lib/sendReauth.js + wallet-core/credentialVerifier.js).
     verifyActiveCredential,
-    verifyActiveCredentialDetailed, // H5: { ok, bricked, reason } — lets the UI explain an OOM-bricked verifier
     isSendReauthRequired,
     // ACTION PASSWORD (2FA second factor) — PRIMARY set this phase. See twoFactorGate.js
     // for the PIN+password verdict the critical-action gate composes from these.
