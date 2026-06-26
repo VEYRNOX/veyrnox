@@ -26,6 +26,23 @@ import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { detect, degrade, browserProbeSource } from '@/rasp';
 
+// audit-H8: pure address validator for personal_sign. Exported for unit tests.
+// personal_sign params are [hexMessage, address]; some legacy dApps reverse the
+// order. Signing params[0] without verifying params[1] = wallet address would sign
+// address bytes as the message if the order is flipped.
+export function assertPersonalSignAddress(addrParam, walletAddress) {
+  if (!addrParam || !walletAddress) {
+    throw new Error(
+      `personal_sign address mismatch: request targets ${addrParam ?? '(none)'} but active address is ${walletAddress ?? '(none)'}. Refusing to sign.`,
+    );
+  }
+  if (addrParam.toLowerCase() !== walletAddress.toLowerCase()) {
+    throw new Error(
+      `personal_sign address mismatch: request targets ${addrParam} but active address is ${walletAddress}. Refusing to sign.`,
+    );
+  }
+}
+
 const WalletConnectCtx = createContext(null);
 
 // M9 — enforce a 1,000,000 gas cap UNCONDITIONALLY, including when the dApp
