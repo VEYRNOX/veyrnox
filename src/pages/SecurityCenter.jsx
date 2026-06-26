@@ -3,7 +3,7 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Monitor, Trash2, Plus, DollarSign, ShieldCheck, LogOut } from "lucide-react";
+import { Monitor, Trash2, Plus, DollarSign, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,7 +90,7 @@ export default function SecurityCenter() {
       // Honest scope: revoking marks the session revoked; the device with that
       // session locks its wallet + requires re-auth (immediately for this device,
       // next-open for others). See lib/sessionRevocation.js + SessionRevocationGuard.
-      toast.success("Session revoked — that device is signed out and must re-authenticate.");
+      toast.success("Device signed out.");
     },
   });
 
@@ -131,22 +131,14 @@ export default function SecurityCenter() {
       <Tabs defaultValue="sessions">
         <TabsList className="w-full bg-secondary">
           <TabsTrigger value="sessions" className="flex-1">Sessions</TabsTrigger>
-          <TabsTrigger value="limits" className="flex-1">Tx Limits</TabsTrigger>
+          <TabsTrigger value="limits" className="flex-1">Spend Limits</TabsTrigger>
         </TabsList>
 
         {/* ── Sessions Tab ── */}
         <TabsContent value="sessions" className="mt-4 space-y-3">
-          <p className="text-xs text-muted-foreground">All devices currently signed in to your account.</p>
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
-            <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Revoking a session signs that device out — it locks the wallet and
-              asks for the password again. This device applies it now; others apply it next time they&apos;re
-              opened, since no server can force-close them instantly.
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">Devices currently signed in to your wallet.</p>
           {errorSessions && (
-            <p className="text-xs text-caution">Couldn't load sessions — this signal may be incomplete.</p>
+            <p className="text-xs text-caution">Couldn't load sessions.</p>
           )}
           {sessions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No active sessions found</p>
@@ -204,16 +196,16 @@ export default function SecurityCenter() {
         {/* ── Limits Tab ── */}
         <TabsContent value="limits" className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Set daily or per-transaction spend caps.</p>
+            <p className="text-xs text-muted-foreground">Cap how much you can send per day or per transaction.</p>
             <Button size="sm" onClick={() => setShowAddLimit(true)}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Add Limit
             </Button>
           </div>
           {errorLimits && (
-            <p className="text-xs text-caution">Couldn't load transaction limits — this signal may be incomplete.</p>
+            <p className="text-xs text-caution">Couldn't load limits.</p>
           )}
           {errorHistory && (
-            <p className="text-xs text-caution">Couldn't load transaction history — "sent today" totals may be incomplete.</p>
+            <p className="text-xs text-caution">Couldn't load history — today's totals may be off.</p>
           )}
           {limits.length === 0 ? (
             <div className="text-center py-8 space-y-2">
@@ -240,7 +232,7 @@ export default function SecurityCenter() {
                     return (
                       <div className="mt-1.5">
                         <div className="flex justify-between text-[11px] text-muted-foreground">
-                          <span>Sent today (local)</span>
+                          <span>Sent today</span>
                           <span className={spent >= l.daily_limit ? "text-destructive font-medium" : "text-foreground"}>
                             {approxUsd(spent)} / ${l.daily_limit.toLocaleString()}
                           </span>

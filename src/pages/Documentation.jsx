@@ -201,14 +201,14 @@ export default function Documentation() {
   const roadmapCount = totalFeatures - availableCount;
 
   return (
-    <div className="max-w-[1600px] mx-auto p-6 space-y-8">
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">VEYRNOX Documentation</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">VEYRNOX Documentation</h1>
           <p className="text-muted-foreground mt-1">Feature guide and user workflows for a non-custodial, security-first self-custody wallet</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" onClick={() => window.print()}>
             <FileText className="h-4 w-4 mr-2" />
             Print
@@ -254,10 +254,7 @@ export default function Documentation() {
             Feature Catalog
           </CardTitle>
           <CardDescription>
-            {totalFeatures} in-scope features across {features.length} categories — {availableCount} available
-            today, {roadmapCount} on the roadmap. Scope follows docs/WalletFeatures.spec.md; custodial /
-            regulated features (swaps, perps, staking/yield/lending, fiat ramps, bank links, KYC/DID, NFT
-            minting, etc.) are deliberately not built. Live network unlocked 2026-06-17 (internal audit complete).
+            {totalFeatures} features across {features.length} categories — {availableCount} available, {roadmapCount} on the roadmap. Custodial features (swaps, fiat, KYC) are not built by design.
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
             <Badge variant="outline" className={STATUS_META.available.className}>{availableCount} Available</Badge>
@@ -289,9 +286,9 @@ export default function Documentation() {
                     <TableBody>
                       {category.items.map((feature) => (
                         <TableRow key={feature.name}>
-                          <TableCell className="font-medium">{feature.name}</TableCell>
-                          <TableCell className="text-muted-foreground">{feature.desc}</TableCell>
-                          <TableCell>
+                          <TableCell className="font-medium" data-label="Feature">{feature.name}</TableCell>
+                          <TableCell className="text-muted-foreground" data-label="Description">{feature.desc}</TableCell>
+                          <TableCell data-label="Status">
                             <Badge variant="outline" className={STATUS_META[feature.status].className}>
                               {STATUS_META[feature.status].label}
                             </Badge>
