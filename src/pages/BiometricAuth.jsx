@@ -198,7 +198,13 @@ export default function BiometricAuth() {
             {active ? <ShieldCheck className="h-6 w-6 text-success" /> : <ShieldOff className="h-6 w-6 text-muted-foreground" />}
             <div>
               <p className="font-semibold">{active ? "Biometric Re-Auth Enabled" : "Biometric Re-Auth Disabled"}</p>
-              <p className="text-xs text-muted-foreground">{registered ? `Passkey registered${simulated ? " (simulated)" : ""} ✓` : "No passkey registered"}</p>
+              <p className="text-xs text-muted-foreground">
+                {registered
+                  ? `Passkey registered${simulated ? " (simulated)" : ""} ✓`
+                  : supported
+                    ? "Step 1 — register a passkey to enable"
+                    : "Not available on this device"}
+              </p>
             </div>
           </div>
           <Switch
@@ -209,11 +215,29 @@ export default function BiometricAuth() {
           />
         </div>
 
+        {/* Make the disabled switch self-explanatory so the page never reads as "broken". */}
+        {!active && supported && (
+          <p className="text-[11px] text-muted-foreground mt-2">
+            {!registered
+              ? "The switch stays off until a passkey exists — register one below, then flip it on. It can't require a factor you haven't set up yet."
+              : (!simulated && !available)
+                ? "No usable passkey on this device right now (no Face ID / Touch ID / Windows Hello detected). Re-register, or use PIN + Action Password."
+                : "Flip the switch to require your passkey at the actions listed below."}
+          </p>
+        )}
+
         {!registered && supported && (
-          <Button className="w-full mt-4 gap-2" onClick={handleRegister} disabled={busy || (!simulated && !available)}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
-            {busy ? "Registering…" : "Register Biometric / Passkey"}
-          </Button>
+          <>
+            <Button className="w-full mt-3 gap-2" onClick={handleRegister} disabled={busy || (!simulated && !available)}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
+              {busy ? "Registering…" : "Register Biometric / Passkey"}
+            </Button>
+            {!simulated && !available && (
+              <p className="text-[11px] text-muted-foreground mt-2">
+                To register, set up device biometrics (Face ID / Touch ID / Windows Hello) first, or use <span className="font-medium text-foreground">PIN + Action Password</span> in Security Settings.
+              </p>
+            )}
+          </>
         )}
 
         {registered && (
