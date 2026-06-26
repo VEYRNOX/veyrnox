@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, ShieldCheck, Fingerprint } from 'lucide-react';
+import PinPad from '@/components/security/PinPad';
+import { getAuthModel } from '@/lib/authModel';
 
 const ATTEMPT_CAP = 5;
 
@@ -39,6 +41,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
   const [attempts, setAttempts] = useState(0);
 
   const isPasskey = mode === 'passkey';
+  const isPinModel = getAuthModel() === 'pin';
   const resolvedTitle = title || (isPasskey ? 'Confirm with your PIN + passkey' : 'Confirm with your PIN + Action Password');
   // Passkey mode needs only the PIN in-field; the second factor is the WebAuthn tap.
   const canSubmit = !busy && pin.length > 0 && (isPasskey || password.length > 0);
@@ -79,17 +82,28 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         {isPasskey ? 'Your PIN and a passkey tap are required for this action.' : 'Both factors are required for this action.'}
       </p>
       <div>
-        <Label htmlFor="tfg-pin">PIN / password</Label>
-        <Input
-          id="tfg-pin"
-          type="password"
-          autoComplete="off"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          onKeyDown={(e) => { if (isPasskey && e.key === 'Enter') submit(); }}
-          className="mt-1.5 mono-value"
-          disabled={busy}
-        />
+        {isPinModel ? (
+          <PinPad
+            label="8-digit PIN"
+            onComplete={(digits) => setPin(digits)}
+            submitLabel="Verify"
+            disabled={busy}
+          />
+        ) : (
+          <>
+            <Label htmlFor="tfg-pin">Vault password</Label>
+            <Input
+              id="tfg-pin"
+              type="password"
+              autoComplete="off"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+              className="mt-1.5 mono-value"
+              disabled={busy}
+            />
+          </>
+        )}
       </div>
       {!isPasskey && (
         <div>
