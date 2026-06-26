@@ -43,11 +43,18 @@ function rpcUrlCandidates(networkKey) {
   return [net.defaultRpcUrl, ...(net.fallbackRpcUrls || [])];
 }
 
+// Capacitor WebView on Android blocks outbound WSS connections to external hosts,
+// causing all @solana/web3.js RPC calls to fail even though plain HTTPS works in
+// Chrome. web3.js Connection opens a WebSocket subscription by default; we never
+// use subscription APIs (only HTTP RPC calls), so we point wsEndpoint at a dummy
+// localhost address to suppress the WebSocket entirely.
+const CONNECTION_CONFIG = { commitment: 'confirmed', wsEndpoint: 'ws://localhost' };
+
 /** Memoized Connection for a network (rebuilt if the override URL changes). */
 export function getConnection(networkKey) {
   if (!_connections[networkKey]) {
     const [primary] = rpcUrlCandidates(networkKey);
-    _connections[networkKey] = new Connection(primary, 'confirmed');
+    _connections[networkKey] = new Connection(primary, CONNECTION_CONFIG);
   }
   return _connections[networkKey];
 }
@@ -62,13 +69,12 @@ async function withFallback(networkKey, fn) {
   const candidates = rpcUrlCandidates(networkKey);
   let lastErr;
   for (const url of candidates) {
-    // Point the memoized connection at this candidate URL.
-    _connections[networkKey] = new Connection(url, 'confirmed');
+    _connections[networkKey] = new Connection(url, CONNECTION_CONFIG);
     try {
       return await fn(_connections[networkKey]);
     } catch (err) {
       lastErr = err;
-      delete _connections[networkKey]; // reset so next iteration rebuilds
+      delete _connections[networkKey];
     }
   }
   throw lastErr;
