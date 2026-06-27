@@ -35,14 +35,14 @@ describe('CryptoSigning clipboard wipe (M15)', () => {
     const copy = makeCopy(() => {});
     copy('abandon abandon about', 'mnemonic', { sensitive: true });
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('');
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('•'.repeat(24));
   });
 
   it('schedules a wipe after copying a private key (sensitive)', async () => {
     const copy = makeCopy(() => {});
     copy('0xdeadbeef', 'pk', { sensitive: true });
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('');
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('•'.repeat(24));
   });
 
   it('does NOT schedule a wipe for an address (non-sensitive)', async () => {

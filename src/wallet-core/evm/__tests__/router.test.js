@@ -22,12 +22,12 @@ describe('walletconnect router — typed-data version safety (H6)', () => {
     expect(BLOCKED_METHODS.has('eth_signTypedData_v3')).toBe(true);
   });
 
-  // Classification and blocking are independent: v1/v3 are classified as
-  // SIGN_TYPED_DATA (so UI can label them) but isBlocked gates them before
-  // any handler runs. The security control is the block, not the label.
-  it('classifies v1 and v3 as SIGN_TYPED_DATA but keeps them blocked', () => {
-    expect(classifyRequest('eth_signTypedData')).toBe(REQUEST_TYPES.SIGN_TYPED_DATA);
-    expect(classifyRequest('eth_signTypedData_v3')).toBe(REQUEST_TYPES.SIGN_TYPED_DATA);
+  // v1/v3 get their own classification key (SIGN_TYPED_DATA_UNSUPPORTED) so the
+  // UI can label them distinctly from safe v4. isBlocked gates them before any
+  // handler runs. The security control is the block, not the label.
+  it('classifies v1 and v3 as SIGN_TYPED_DATA_UNSUPPORTED and keeps them blocked', () => {
+    expect(classifyRequest('eth_signTypedData')).toBe(REQUEST_TYPES.SIGN_TYPED_DATA_UNSUPPORTED);
+    expect(classifyRequest('eth_signTypedData_v3')).toBe(REQUEST_TYPES.SIGN_TYPED_DATA_UNSUPPORTED);
     expect(isBlocked('eth_signTypedData')).toBe(true);
     expect(isBlocked('eth_signTypedData_v3')).toBe(true);
   });
