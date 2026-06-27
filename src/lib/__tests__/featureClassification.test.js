@@ -84,13 +84,14 @@ describe('registryEntriesFromClassification', () => {
         // cut: off-wedge / server / unverified — these are the only non-live routes
         // remaining after the S-phase promotion sweep.
         // Promoted to live (removed from this list):
-        //   /analytics, /advanced-analytics, /benchmark, /correlation,
+        //   /analytics, /advanced-analytics, /correlation,
         //   /correlation-timeline, /news-sentiment, /calculator, /receipt,
         //   /recurring, /portfolio-rewind, /index-builder, /pl, /budget, /tax,
         //   /watchlist, /nft, /snapshots, /onchain, /wallet-seed-qr,
         //   /hardware-wallet (M-complexity build), /anomaly-detection,
         //   /fraud (M-complexity build), /alerts, /watch-wallets, /solana,
         //   /price-charts (M-complexity build).
+        '/benchmark',
         '/leaderboard', '/public-profiles', '/shared-portfolio',
         '/advisor', '/ai-assistant', '/ai-rebalancer',
         '/what-if', '/split-bill',
