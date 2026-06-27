@@ -4,14 +4,27 @@ import { Capacitor } from "@capacitor/core";
 import { useWallet } from "@/lib/WalletProvider";
 
 const COMMANDS = [
-  { phrase: "go to dashboard", action: "/", description: "Navigate to Dashboard" },
-  { phrase: "open send", action: "/send", description: "Open Send Crypto" },
-  { phrase: "open receive", action: "/receive", description: "Open Receive" },
-  { phrase: "show portfolio", action: "/", description: "Go to Portfolio" },
-  { phrase: "open settings", action: "/settings", description: "Open Settings" },
-  { phrase: "open tax report", action: "/tax", description: "Open Tax Report" },
-  { phrase: "open analytics", action: "/analytics", description: "Open Analytics" },
-  { phrase: "check alerts", action: "/alerts", description: "Open Price Alerts" },
+  { phrase: "go to dashboard",      action: "/",                description: "Navigate to Dashboard" },
+  { phrase: "open send",            action: "/send",            description: "Open Send Crypto" },
+  { phrase: "open receive",         action: "/receive",         description: "Open Receive" },
+  { phrase: "show portfolio",       action: "/",                description: "Go to Portfolio" },
+  { phrase: "open settings",        action: "/settings",        description: "Open Settings" },
+  { phrase: "open analytics",       action: "/analytics",       description: "Open Analytics" },
+  { phrase: "check alerts",         action: "/alerts",          description: "Open Price Alerts" },
+  { phrase: "show history",         action: "/tx-history",      description: "Open Transaction History" },
+  { phrase: "open history",         action: "/tx-history",      description: "Open Transaction History" },
+  { phrase: "open address book",    action: "/address-book",    description: "Open Address Book" },
+  { phrase: "open security",        action: "/security",        description: "Open Security Centre" },
+  { phrase: "show watchlist",       action: "/watchlist",       description: "Open Watchlist" },
+  { phrase: "open watchlist",       action: "/watchlist",       description: "Open Watchlist" },
+  { phrase: "open calculator",      action: "/calculator",      description: "Open Calculator" },
+  { phrase: "show price charts",    action: "/price-charts",    description: "Open Price Charts" },
+  { phrase: "open charts",          action: "/price-charts",    description: "Open Price Charts" },
+  { phrase: "open walletconnect",   action: "/walletconnect",   description: "Open WalletConnect" },
+  { phrase: "connect wallet",       action: "/walletconnect",   description: "Open WalletConnect" },
+  { phrase: "show notifications",   action: "/notifications",   description: "Open Notifications" },
+  { phrase: "open notifications",   action: "/notifications",   description: "Open Notifications" },
+  { phrase: "open tax report",      action: "/tax",             description: "Open Tax Report" },
 ];
 
 export { COMMANDS };
