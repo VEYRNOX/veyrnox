@@ -27,11 +27,17 @@ describe('copySecret', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('abandon about');
   });
 
-  it('schedules a wipe to empty string after 30 s', async () => {
+  it('schedules a wipe to a non-empty sentinel after 30 s (H-NEW-3)', async () => {
     const { copySecret } = await import('@/lib/copySecret');
     await copySecret('abandon about');
     vi.advanceTimersByTime(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('');
+    // H-NEW-3: wipe overwrites with a non-empty sentinel, not '' — an empty
+    // write is treated as a new clipboard-history entry by some managers,
+    // leaving the secret in history.
+    const last = writtenTexts[writtenTexts.length - 1];
+    expect(last).not.toBe('');
+    expect(last.length).toBeGreaterThan(0);
+    expect(last).not.toBe('abandon about');
   });
 
   it('does NOT wipe before 30 s have elapsed', async () => {
