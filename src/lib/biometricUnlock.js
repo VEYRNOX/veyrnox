@@ -80,6 +80,21 @@ function demoClear() { _demoCache = null; }
 // Native secure-storage helpers. Loaded lazily so the Capacitor plugin never
 // reaches the web/test bundle (exactly like keystore/index.js does for native).
 async function nativeStore(pw) {
+  // H-NEW-5 (ANDROID): @aparajita/capacitor-secure-storage (^8.0.0) does not expose
+  // setInvalidatedByBiometricEnrollment(true) — per its published Android source
+  // (aparajita/capacitor-secure-storage, SecureStorage.java, KeyGenParameterSpec builder)
+  // the Android KeyGenParameterSpec is built WITHOUT
+  // setUserAuthenticationRequired/setInvalidatedByBiometricEnrollment — so a new
+  // fingerprint enrollment does NOT invalidate this cache on Android. Mitigation
+  // requires a custom Capacitor plugin using Android Keystore with
+  // setInvalidatedByBiometricEnrollment(true) (key destroyed on enrollment change).
+  // iOS (separate half): requires kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly +
+  // a biometryCurrentSet (SecAccessControl) ACL via a native Swift shim (needs a Mac).
+  // Both are TARGET — see audit H-NEW-5. We do NOT fake it here (I4): the release-time
+  // OS biometric match in nativeAuthenticateOrThrow() still gates reads, but that is a
+  // live match, NOT a key bound to the current biometric enrollment set.
+  // HONEST STATUS: biometric cache is device-PIN/passcode-gated only; a biometric
+  // enrollment change does not wipe it. Not active; TARGET for a custom plugin.
   const { SecureStorage, KeychainAccess } = await import('@aparajita/capacitor-secure-storage');
   await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
   await SecureStorage.setSynchronize(false);
@@ -179,6 +194,12 @@ export function biometricUnlockSupported() {
  * hold the plaintext password (first-run create/import, or a password change) use
  * this. Storing does NOT release a secret, so it does not itself prompt for
  * biometrics. No-op on plain web (returns false).
+ *
+ * H-NEW-5 honest limit: on Android the cached item is NOT bound to the biometric
+ * enrollment set — enrolling a new fingerprint does NOT wipe this cache, because the
+ * secure-storage plugin does not expose setInvalidatedByBiometricEnrollment(true).
+ * A real fix is TARGET (custom Capacitor/Android Keystore plugin; iOS biometryCurrentSet
+ * Swift shim). See the comment block in nativeStore() and audit H-NEW-5.
  * @returns {Promise<boolean>} true if stored.
  */
 export async function storeUnlockSecret(password) {
