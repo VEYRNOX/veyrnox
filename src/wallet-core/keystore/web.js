@@ -50,19 +50,26 @@ export const webKeyStore = {
       const H = await getHF();
       const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
       const C = await deriveKekC(password, saltBytes);
-      const kek = await combineKek(H, C);
-      // H-NEW-4: combineKek zeroes H/C internally; wipe again at the call site so
-      // the guarantee survives any refactor of combineKek (defense in depth, I4).
-      H.fill(0);
-      C.fill(0);
-      const dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
-      // Seed CT was encrypted with the DEK (not the PIN), so PIN rotation doesn't change it.
+      let kek;
+      let dek;
+      // H-NEW-4: wrap the KEK + DEK lifetime in try/finally so BOTH are wiped on
+      // every path, including when unwrapDek throws (wrong PIN/device). Neither the
+      // key that wraps the DEK nor the key that decrypts the seed may linger in the
+      // JS heap until GC (I4).
       try {
+        kek = await combineKek(H, C);
+        // H-NEW-4: combineKek zeroes H/C internally; wipe again at the call site so
+        // the guarantee survives any refactor of combineKek (defense in depth, I4).
+        H.fill(0);
+        C.fill(0);
+        dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+        // Seed CT was encrypted with the DEK (not the PIN), so PIN rotation doesn't change it.
         return await decryptVaultWithDek(blob, dek);
       } finally {
-        // H-NEW-4: wipe the recovered DEK once the seed is decrypted — never leave
-        // the key that decrypts the seed lingering in the JS heap until GC (I4).
-        dek.fill(0);
+        // H-NEW-4: wipe the derived KEK and the recovered DEK — never leave the key
+        // that wraps the DEK or the key that decrypts the seed in the heap (I4).
+        if (kek) kek.fill(0);
+        if (dek) dek.fill(0);
       }
     }
 
@@ -93,22 +100,24 @@ export const webKeyStore = {
     const saltBytes = crypto.getRandomValues(new Uint8Array(32));
     const kekSalt = btoa(String.fromCharCode(...saltBytes));
     const C = await deriveKekC(password, saltBytes);
-    const kek = await combineKek(H, C);
-    // H-NEW-4: wipe H/C at the call site (defense in depth over combineKek's own
-    // in-place zeroing) — no plaintext key material left in the heap until GC (I4).
-    H.fill(0);
-    C.fill(0);
+    let kek;
     const dek = randomDek();
-    // H-NEW-4b: wrap the entire DEK lifetime in try/finally so the DEK is wiped
-    // even if wrapDek or encryptVaultWithDek throws — never leave the key that
-    // decrypts the seed lingering in the JS heap on an error path (I4).
+    // H-NEW-4b: wrap the entire KEK + DEK lifetime in try/finally so BOTH are wiped
+    // even if combineKek/wrapDek/encryptVaultWithDek throws — never leave the key
+    // that wraps the DEK or the DEK itself in the JS heap on an error path (I4).
     try {
+      kek = await combineKek(H, C);
+      // H-NEW-4: wipe H/C at the call site (defense in depth over combineKek's own
+      // in-place zeroing) — no plaintext key material left in the heap until GC (I4).
+      H.fill(0);
+      C.fill(0);
       const kekWrap = await wrapDek(kek, dek);
       // Re-encrypt seed under the DEK so PIN rotation doesn't require changing CT (§3).
       const { iv, ct } = await encryptVaultWithDek(secret, dek);
       await saveVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
     } finally {
-      // H-NEW-4: dek has been wrapped and consumed (or an error occurred); wipe it (I4).
+      // H-NEW-4: wipe the derived KEK and the DEK (consumed or error occurred) (I4).
+      if (kek) kek.fill(0);
       dek.fill(0);
     }
   },
@@ -135,29 +144,38 @@ export const webKeyStore = {
       const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
       const H = await getHF();
       const H2 = H.slice(); // M20: combineKek zeroes its H/C inputs; copy before first call
-      const oldC = await deriveKekC(currentPassword, oldSaltBytes);
-      const oldKek = await combineKek(H, oldC);
-      // H-NEW-4: wipe the first-combine factors at the call site (defense in depth
-      // over combineKek's own in-place zeroing). H2 still holds the copy for below.
-      H.fill(0);
-      oldC.fill(0);
-      const dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
-      // H-NEW-4b: wrap the recovered DEK lifetime in try/finally so it is wiped
-      // even if combineKek/wrapDek/saveVault throws after unwrap (I4).
+      let oldKek;
+      let newKek;
+      let dek;
+      // H-NEW-4 / H-NEW-4b: wrap the WHOLE key-material lifetime in try/finally so
+      // the H2 hardware-factor copy, BOTH derived KEKs, and the recovered DEK are
+      // wiped on EVERY path — including when deriveKekC/combineKek/unwrapDek/wrapDek/
+      // saveVault throws. None of these may linger in the JS heap until GC (I4).
       try {
+        const oldC = await deriveKekC(currentPassword, oldSaltBytes);
+        oldKek = await combineKek(H, oldC);
+        // H-NEW-4: wipe the first-combine factors at the call site (defense in depth
+        // over combineKek's own in-place zeroing). H2 still holds the copy for below.
+        H.fill(0);
+        oldC.fill(0);
+        dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
         // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
         const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
         const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
         const newC = await deriveKekC(newPassword, newSaltBytes);
-        const newKek = await combineKek(H2, newC);
+        newKek = await combineKek(H2, newC);
         // H-NEW-4: wipe the second-combine factors at the call site (I4).
         H2.fill(0);
         newC.fill(0);
         const newKekWrap = await wrapDek(newKek, dek);
         await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
       } finally {
-        // H-NEW-4: the recovered DEK has been re-wrapped (or an error occurred); wipe it (I4).
-        dek.fill(0);
+        // H-NEW-4: wipe the H2 copy, both derived KEKs, and the recovered DEK on
+        // every path (consumed or an error occurred) (I4).
+        if (H2) H2.fill(0);
+        if (oldKek) oldKek.fill(0);
+        if (newKek) newKek.fill(0);
+        if (dek) dek.fill(0);
       }
       return;
     }
