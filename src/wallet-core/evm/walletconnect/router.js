@@ -25,8 +25,8 @@ const METHOD_MAP = {
   // them, but they are also in BLOCKED_METHODS so they are rejected before signing
   // (H6: their encoding diverges from v4 — routing them to the v4 handler would
   // produce a hash the user never saw).
-  eth_signTypedData: REQUEST_TYPES.SIGN_TYPED_DATA,
-  eth_signTypedData_v3: REQUEST_TYPES.SIGN_TYPED_DATA,
+  eth_signTypedData: REQUEST_TYPES.SIGN_TYPED_DATA_UNSUPPORTED,
+  eth_signTypedData_v3: REQUEST_TYPES.SIGN_TYPED_DATA_UNSUPPORTED,
   eth_signTypedData_v4: REQUEST_TYPES.SIGN_TYPED_DATA,
   eth_sign: REQUEST_TYPES.ETH_SIGN,
   wallet_switchEthereumChain: REQUEST_TYPES.SWITCH_CHAIN,
