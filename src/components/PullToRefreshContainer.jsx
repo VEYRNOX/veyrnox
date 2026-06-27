@@ -26,8 +26,17 @@ export default function PullToRefreshContainer({ onRefresh, children, className 
     if (!pulling.current || refreshing) return;
     const dy = e.touches[0].clientY - startY.current;
     if (dy > 0) {
-      e.preventDefault();
+      // Only prevent default for genuine pull-down (not scroll-up into content).
+      // Calling preventDefault on a non-passive listener blocks native scroll;
+      // guard strictly so upward swipes to scroll content are never blocked.
+      if ((containerRef.current?.scrollTop ?? 0) === 0) {
+        e.preventDefault();
+      }
       setPullY(Math.min(dy * 0.45, THRESHOLD + 24));
+    } else {
+      // User is scrolling up into content — cancel any pull state immediately.
+      pulling.current = false;
+      setPullY(0);
     }
   };
 
