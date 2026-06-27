@@ -76,9 +76,15 @@ function relativeTime(ts) {
 export default function LoginActivity() {
   const { lastUnlockAt, isDecoy, isHidden } = useWallet();
 
+  // I3 (deniability): decoy/hidden sessions must make zero backend calls.
+  // Gate the query so base44.entities.UserSession.list is never invoked, and
+  // render the same neutral empty/loading state — no UI tell that confirms a
+  // decoy/hidden session.
+  const sessionQueryEnabled = !isDecoy && !isHidden;
   const { data: sessions = [], isLoading, isError } = useQuery({
     queryKey: ["user-sessions-activity"],
     queryFn: () => base44.entities.UserSession.list("-last_active", 20),
+    enabled: sessionQueryEnabled,
   });
 
   const activeSessions = sessions.filter((s) => s.status !== "revoked");

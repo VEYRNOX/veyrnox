@@ -44,6 +44,8 @@ import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
 import { resolveSend2faMethod, SEND_2FA } from "@/lib/send2faMethod";
 import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from "@/lib/passkey";
+import { is2faBiometricEnabled, verifyBiometric2fa } from "@/lib/biometric";
+import { Capacitor } from "@capacitor/core";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
@@ -86,7 +88,7 @@ function PoisonWarning({ screen }) {
 export default function SendCrypto() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
 
   // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
   // see lib/send2faMethod.js). Audit H-1: keying the send gate off actionPasswordConfigured
@@ -95,6 +97,8 @@ export default function SendCrypto() {
   // was not configured — the send proceeds via the baseline windowed PIN step-up, unchanged.
   const send2faMethod = resolveSend2faMethod({
     demo: DEMO,
+    isNative: Capacitor.isNativePlatform(),
+    biometric2faEnabled: is2faBiometricEnabled(),
     passkey2faEnabled: is2faPasskeyEnabled(),
     passkeyRegistered: isPasskeyRegistered(),
     actionPasswordConfigured,
@@ -789,8 +793,12 @@ export default function SendCrypto() {
     setReauthPending(true);
     setReauthError("");
     try {
-      const ok = await verifyActiveCredential(entered);
-      if (ok) {
+      const result = await verifyActiveCredentialDetailed(entered);
+      if (result.bricked) {
+        setReauthError("Verification unavailable — please re-lock and unlock the wallet.");
+        return;
+      }
+      if (result.ok) {
         setReauthValue("");
         sendTx.mutate();
         return;
@@ -1260,12 +1268,19 @@ export default function SendCrypto() {
                 return (
                   <TwoFactorGate
                     mode={send2faMethod}
-                    title={send2faMethod === SEND_2FA.PASSKEY ? "Authorise this send with your PIN + passkey" : "Authorise this send with your PIN + Action Password"}
+                    title={send2faMethod === SEND_2FA.BIOMETRIC ? "Authorise this send with your PIN + biometrics" : send2faMethod === SEND_2FA.PASSKEY ? "Authorise this send with your PIN + passkey" : "Authorise this send with your PIN + Action Password"}
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
                     onSuccess={() => { twoFactorVerifiedRef.current = true; sendTx.mutate(); }}
                     verify={async ({ pin, password }) => {
                       const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
+                      if (send2faMethod === SEND_2FA.BIOMETRIC) {
+                        // Factor 2: a real OS biometric match (fingerprint / Face).
+                        // FAIL CLOSED (I4) — any cancel/no-match/error counts as NOT verified.
+                        let bioOk = false;
+                        try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
+                        return evaluateTwoFactor({ pinOk, passwordOk: bioOk, actionPasswordConfigured: true });
+                      }
                       if (send2faMethod === SEND_2FA.PASSKEY) {
                         // Factor 2: a WebAuthn assertion bound to this device's passkey.
                         // FAIL CLOSED (I4) — any cancel/timeout/error counts as NOT verified.

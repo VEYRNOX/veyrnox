@@ -24,13 +24,15 @@ const ATTEMPT_CAP = 5;
 
 /**
  * @param {object} props
- * @param {(creds:{pin:string,password:string}) => Promise<{allowed:boolean,message:(string|null)}>} props.verify
+ * @param {(creds:{pin:string,password:string}) => Promise<{allowed:boolean,message:(string|null),oom?:boolean}>} props.verify
  *   Composes the two verifications + evaluateTwoFactor; returns the gate verdict.
  * @param {() => void} props.onSuccess  called once on an allowed verdict
  * @param {() => void} [props.onCancel]
  * @param {() => void} [props.onLock]   called after ATTEMPT_CAP wrong attempts (caller locks)
- * @param {'password'|'passkey'} [props.mode]  second-factor type. 'passkey' collects the
- *   PIN then triggers a WebAuthn assertion inside verify() (no password field).
+ * @param {'password'|'passkey'|'biometric'} [props.mode]  second-factor type. 'passkey'
+ *   collects the PIN then triggers a WebAuthn assertion inside verify(); 'biometric'
+ *   collects the PIN then triggers an OS biometric prompt inside verify() (both have
+ *   no password field). 'password' collects PIN + Action Password.
  * @param {string} [props.title]
  */
 export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mode = 'password', title }) {
@@ -41,10 +43,17 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
   const [attempts, setAttempts] = useState(0);
 
   const isPasskey = mode === 'passkey';
+  const isBio = mode === 'biometric';
+  // Both passkey and biometric supply the second factor via an external prompt
+  // (no in-field password): only the PIN is collected here.
+  const isExternalFactor = isPasskey || isBio;
   const isPinModel = getAuthModel() === 'pin';
-  const resolvedTitle = title || (isPasskey ? 'Confirm with your PIN + passkey' : 'Confirm with your PIN + Action Password');
-  // Passkey mode needs only the PIN in-field; the second factor is the WebAuthn tap.
-  const canSubmit = !busy && pin.length > 0 && (isPasskey || password.length > 0);
+  const resolvedTitle = title || (
+    isBio ? 'Confirm with your PIN + biometrics'
+      : isPasskey ? 'Confirm with your PIN + passkey'
+        : 'Confirm with your PIN + Action Password');
+  // External-factor modes need only the PIN in-field; the second factor is the tap.
+  const canSubmit = !busy && pin.length > 0 && (isExternalFactor || password.length > 0);
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -59,6 +68,12 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
     setBusy(false);
     if (verdict?.allowed) {
       onSuccess?.();
+      return;
+    }
+    // audit-H5: OOM verdict means the session verifier was never captured (Argon2id
+    // OOM at unlock). This is not a wrong-credential attempt — don't burn the cap.
+    if (verdict?.oom) {
+      setError(verdict.message || 'Step-up re-auth unavailable — please lock and unlock.');
       return;
     }
     const n = attempts + 1;
@@ -79,7 +94,9 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         <p className="text-sm font-medium">{resolvedTitle}</p>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        {isPasskey ? 'Your PIN and a passkey tap are required for this action.' : 'Both factors are required for this action.'}
+        {isBio ? 'Your PIN and a fingerprint / Face check are required for this action.'
+          : isPasskey ? 'Your PIN and a passkey tap are required for this action.'
+            : 'Both factors are required for this action.'}
       </p>
       <div>
         {isPinModel ? (
@@ -107,7 +124,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
           </>
         )}
       </div>
-      {!isPasskey && (
+      {!isExternalFactor && (
         <div>
           <Label htmlFor="tfg-ap">Action Password</Label>
           <Input
@@ -122,6 +139,9 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
           />
         </div>
       )}
+      {isBio && (
+        <p className="text-[11px] text-muted-foreground">After your PIN, your device will ask for your fingerprint or face.</p>
+      )}
       {isPasskey && (
         <p className="text-[11px] text-muted-foreground">After your PIN, your browser will ask you to tap your passkey or security key.</p>
       )}
@@ -131,7 +151,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
           <Button variant="ghost" className="flex-1" onClick={onCancel} disabled={busy}>Back</Button>
         )}
         <Button className="flex-1 gap-2" onClick={submit} disabled={!canSubmit}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : (isPasskey ? <Fingerprint className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />)} {isPasskey ? 'Verify with passkey' : 'Verify & continue'}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : (isExternalFactor ? <Fingerprint className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />)} {isBio ? 'Verify with biometrics' : isPasskey ? 'Verify with passkey' : 'Verify & continue'}
         </Button>
       </div>
     </div>

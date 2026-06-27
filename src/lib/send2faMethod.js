@@ -22,6 +22,7 @@
 // the WebAuthn assertion itself) stay in the caller.
 
 export const SEND_2FA = Object.freeze({
+  BIOMETRIC: 'biometric',
   PASSKEY: 'passkey',
   PASSWORD: 'password',
   NONE: 'none',
@@ -30,21 +31,37 @@ export const SEND_2FA = Object.freeze({
 /**
  * Resolve the active send-time second factor.
  *
+ * MOBILE (audit follow-up): WebAuthn passkeys do NOT work inside the Android
+ * Capacitor WebView (no platform authenticator is exposed to it), so on a real
+ * device the genuine, working possession factor is the OS biometric via
+ * @aparajita/capacitor-biometric-auth — the SAME prompt the wallet already uses to
+ * unlock. It therefore takes precedence on native when enabled. It is gated on
+ * `isNative` (the OS prompt cannot run on plain web) and FAILS CLOSED at verify
+ * time if biometrics are later removed (a blocked send is safe; the user can turn
+ * the factor off). Enabling it requires a live availability check + test in the UI.
+ *
  * @param {object}  [i]
  * @param {boolean} [i.demo]                    demo mode — fake sends, no vault, no factor
+ * @param {boolean} [i.isNative]                running in the native (Capacitor) app
+ * @param {boolean} [i.biometric2faEnabled]     user turned on "OS biometric as my 2nd factor"
  * @param {boolean} [i.passkey2faEnabled]       user turned on "passkey as my 2nd factor"
  * @param {boolean} [i.passkeyRegistered]       a passkey is actually registered on this device
  * @param {boolean} [i.actionPasswordConfigured] the active set has an Action Password
- * @returns {'passkey'|'password'|'none'}
+ * @returns {'biometric'|'passkey'|'password'|'none'}
  */
 export function resolveSend2faMethod({
   demo = false,
+  isNative = false,
+  biometric2faEnabled = false,
   passkey2faEnabled = false,
   passkeyRegistered = false,
   actionPasswordConfigured = false,
 } = {}) {
   if (demo) return SEND_2FA.NONE; // demo has no vault → no real second factor
-  // Passkey wins, but ONLY when one is genuinely registered so the assertion can
+  // Native OS biometric wins on a real device — the only possession factor that
+  // actually runs in the app (WebAuthn passkeys can't in the Android WebView).
+  if (isNative && biometric2faEnabled) return SEND_2FA.BIOMETRIC;
+  // Passkey next, but ONLY when one is genuinely registered so the assertion can
   // honestly run (a stale "on" pref with nothing registered must not gate on a
   // factor we cannot satisfy — that would brick the send, not secure it).
   if (passkey2faEnabled && passkeyRegistered) return SEND_2FA.PASSKEY;

@@ -8,10 +8,22 @@ package com.veyrnox.app
 //   Key is invalidated if new biometric enrolled (setInvalidatedByBiometricEnrollment)
 //   Per-use auth: every getHardwareFactor() call requires biometric
 //   KeyPermanentlyInvalidatedException → clear key + explicit error (fail closed)
+//
+// H15: StrongBox preference — enroll() tries the dedicated security chip first;
+//   falls back to TEE (or software AndroidKeyStore) if StrongBoxUnavailableException.
+//   StrongBox is NOT enforced: setIsStrongBoxBacked(true) is best-effort and silently
+//   falls back, so the key may land in the TEE or in software (AndroidKeyStore), with
+//   no guarantee of StrongBox. Do NOT claim unqualified hardware backing or a guaranteed
+//   StrongBox tier — the delivered guarantee is device-bound + AndroidKeyStore. Enforcing
+//   StrongBox (or surfacing the actual backing tier to the user) is TARGET — see audit H15.
+//   Both tiers use AUTH_BIOMETRIC_STRONG only (H16: no DEVICE_CREDENTIAL fallback).
+// H16: AUTH_DEVICE_CREDENTIAL removed. A PIN/pattern unlock bypasses biometric
+//   binding and undermines the possession-factor guarantee. BIOMETRIC_STRONG only.
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.KeyPermanentlyInvalidatedException
+import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -44,37 +56,65 @@ class HardwareKekPlugin : Plugin() {
 
     /**
      * enroll() — Generate HMAC-SHA256 key in AndroidKeyStore.
-     * Key invalidated if new biometric enrolled (setInvalidatedByBiometricEnrollment).
+     *
+     * H15: Tries StrongBox (dedicated security chip) first; falls back to TEE if the
+     *   device has no StrongBox. Both tiers are AndroidKeyStore-backed and satisfy the
+     *   same key-invalidation and per-use-auth invariants.
+     * H16: AUTH_DEVICE_CREDENTIAL removed — only AUTH_BIOMETRIC_STRONG is permitted.
+     *   A PIN/pattern bypass would degrade the possession factor to a knowledge factor.
+     *
      * No biometric prompt at generation time; getHardwareFactor() prompts per-use.
+     * Key invalidated if new biometric enrolled (setInvalidatedByBiometricEnrollment).
      */
     @PluginMethod
     fun enroll(call: PluginCall) {
         try {
-            val spec = KeyGenParameterSpec.Builder(
+            // H15: prefer StrongBox; fall back to TEE on devices without it.
+            val enrolled = tryEnrollKey(useStrongBox = true)
+                || tryEnrollKey(useStrongBox = false)
+            if (!enrolled) {
+                call.reject("enroll failed: key generation returned false")
+                return
+            }
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject("enroll failed: ${e.message}")
+        }
+    }
+
+    /**
+     * Build and store the HMAC key spec. Returns true on success, false if StrongBox
+     * is requested but unavailable (caller retries with useStrongBox = false).
+     */
+    private fun tryEnrollKey(useStrongBox: Boolean): Boolean {
+        return try {
+            // NOTE: setIsStrongBoxBacked(true) is only set on the first (useStrongBox)
+            // attempt and is NOT enforced — on a StrongBoxUnavailableException we retry
+            // with it unset, so the key may land in the TEE or in software. StrongBox
+            // enforcement (and reporting the real backing tier) is TARGET — see audit H15.
+            val specBuilder = KeyGenParameterSpec.Builder(
                 KEY_ALIAS,
                 KeyProperties.PURPOSE_SIGN
             )
                 .setDigests(KeyProperties.DIGEST_SHA256)
                 .setUserAuthenticationRequired(true)
-                // Key invalidated if new biometric enrolled
                 .setInvalidatedByBiometricEnrollment(true)
-                // Per-use auth: every call requires biometric (timeout = 0)
-                .setUserAuthenticationParameters(
-                    0,
-                    KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
-                )
-                .build()
+                // H16: AUTH_BIOMETRIC_STRONG only — no DEVICE_CREDENTIAL fallback
+                .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+
+            if (useStrongBox) {
+                specBuilder.setIsStrongBoxBacked(true)
+            }
 
             val keyGen = KeyGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_HMAC_SHA256,
                 "AndroidKeyStore"
             )
-            keyGen.init(spec)
+            keyGen.init(specBuilder.build())
             keyGen.generateKey()
-
-            call.resolve()
-        } catch (e: Exception) {
-            call.reject("enroll failed: ${e.message}")
+            true
+        } catch (e: StrongBoxUnavailableException) {
+            false  // caller will retry without StrongBox
         }
     }
 
@@ -174,15 +214,13 @@ class HardwareKekPlugin : Plugin() {
                 }
             })
 
-            // setAllowedAuthenticators with BIOMETRIC_STRONG | DEVICE_CREDENTIAL
-            // Note: DEVICE_CREDENTIAL is set, so setNegativeButtonText must NOT be called.
+            // H16: BIOMETRIC_STRONG only — DEVICE_CREDENTIAL removed.
+            // setNegativeButtonText is required when DEVICE_CREDENTIAL is not set.
             val promptInfo = BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Veyrnox — Unlock Wallet")
                 .setSubtitle("Authenticate to access your wallet")
-                .setAllowedAuthenticators(
-                    BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                )
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                .setNegativeButtonText("Cancel")
                 .build()
 
             // Must authenticate on the UI thread

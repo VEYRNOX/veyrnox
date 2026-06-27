@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44, LLM_AVAILABLE } from "@/api/base44Client";
-import { Newspaper, TrendingUp, TrendingDown, Minus, Sparkles } from "lucide-react";
+import { Newspaper, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import LocalBuildNotice from "@/components/LocalBuildNotice";
 import CryptoNewsFeed from "@/components/CryptoNewsFeed";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -39,22 +38,19 @@ function AssetSentimentBar({ asset, news }) {
 export default function NewsSentimentPage() {
   const queryClient = useQueryClient();
   const [filterAsset, setFilterAsset] = useState("all");
-  const [analyzing, setAnalyzing] = useState(false);
 
   const { data: saved = [] } = useQuery({ queryKey: ["news-sentiment"], queryFn: () => base44.entities.NewsSentiment.list("-created_date") });
 
   const allNews = saved;
   const filtered = filterAsset === "all" ? allNews : allNews.filter(n => n.asset === filterAsset);
 
-  const runAI = useMutation({
+  const refresh = useMutation({
     mutationFn: () => {
-      // AI sentiment refresh needs an LLM endpoint (with internet context) that
-      // the local build doesn't ship. Guarded; the button is also disabled.
-      if (!LLM_AVAILABLE) return Promise.reject(new Error("LLM unavailable in local build"));
+      if (!LLM_AVAILABLE) return Promise.reject(new Error("unavailable"));
       return base44.integrations.Core.InvokeLLM({
-      prompt: `Analyze the current crypto market sentiment for BTC, ETH, and SOL based on today's news and on-chain data. Return a JSON array of 3 news items with fields: asset (BTC/ETH/SOL), headline (string), source (string), sentiment (very_bullish/bullish/neutral/bearish/very_bearish), score (-1 to 1), published_at (ISO), summary (1-2 sentences).`,
-      add_context_from_internet: true,
-      response_json_schema: { type: "object", properties: { items: { type: "array", items: { type: "object" } } } },
+        prompt: `Analyze the current crypto market sentiment for BTC, ETH, and SOL based on today's news and on-chain data. Return a JSON array of 3 news items with fields: asset (BTC/ETH/SOL), headline (string), source (string), sentiment (very_bullish/bullish/neutral/bearish/very_bearish), score (-1 to 1), published_at (ISO), summary (1-2 sentences).`,
+        add_context_from_internet: true,
+        response_json_schema: { type: "object", properties: { items: { type: "array", items: { type: "object" } } } },
       });
     },
     onSuccess: async (res) => {
@@ -63,9 +59,9 @@ export default function NewsSentimentPage() {
         await base44.entities.NewsSentiment.create(item);
       }
       queryClient.invalidateQueries({ queryKey: ["news-sentiment"] });
-      toast.success(`AI found ${items.length} fresh sentiment signals`);
+      toast.success(`Updated ${items.length} sentiment signals`);
     },
-    onError: () => toast.error("AI analysis failed"),
+    onError: () => toast.error("Refresh failed"),
   });
 
   return (
@@ -73,26 +69,14 @@ export default function NewsSentimentPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Newspaper className="h-6 w-6 text-primary" /> News Sentiment</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">AI-powered real-time crypto news sentiment analysis</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Real-time crypto news sentiment</p>
         </div>
-        <Button onClick={() => runAI.mutate()} disabled={runAI.isPending || !LLM_AVAILABLE}>
-          <Sparkles className={`h-4 w-4 mr-1.5 ${runAI.isPending ? "animate-spin" : ""}`} />
-          {runAI.isPending ? "Analysing..." : "AI Refresh"}
-        </Button>
-      </div>
-
-      {!LLM_AVAILABLE && (
-        <LocalBuildNotice
-          feature="AI sentiment refresh"
-          detail="Fetching fresh AI-scored sentiment needs an LLM service with internet context, which this offline-first build doesn't include. The sentiment shown below is illustrative sample data."
-        />
-      )}
-
-      <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/30 border border-border">
-        <Newspaper className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground">
-          No live news feed is connected. Articles shown here come from records saved by AI Refresh (requires the LLM endpoint). A real-time news API integration is on the roadmap.
-        </p>
+        {LLM_AVAILABLE && (
+          <Button onClick={() => refresh.mutate()} disabled={refresh.isPending}>
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${refresh.isPending ? "animate-spin" : ""}`} />
+            {refresh.isPending ? "Refreshing…" : "Refresh"}
+          </Button>
+        )}
       </div>
 
       {/* Overall sentiment bars */}
@@ -113,7 +97,7 @@ export default function NewsSentimentPage() {
         ))}
       </div>
 
-      {/* AI-scored sentiment items */}
+      {/* Sentiment items */}
       <div className="space-y-3">
         {filtered.map((n, i) => {
           const cfg = SENTIMENT_CONFIG[n.sentiment] || SENTIMENT_CONFIG.neutral;

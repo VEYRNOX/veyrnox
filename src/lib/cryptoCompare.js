@@ -3,8 +3,8 @@
 // All CryptoCompare price traffic goes through here. The deniability invariant
 // (I2: a price request must NEVER reveal what the user holds) is enforced
 // STRUCTURALLY: no fetcher accepts a caller-supplied symbol list — each sources
-// its `fsyms` from a fixed module constant below, so an outbound request is
-// byte-identical for every user regardless of holdings/wallets/decoy state.
+// its `fsyms` from a fixed module constant below, so symbol queries are
+// holdings-agnostic regardless of wallets/decoy state.
 // `tsyms` (fiats) may be passed: fiat choice reveals nothing about holdings.
 //
 // Two fixed universes (both holdings-agnostic; see design 2026-06-17):
@@ -14,25 +14,40 @@
 //
 // I4 (fail closed): every fetcher throws on a non-OK response; callers fall back
 // honestly (approximate / hide-the-delta) and never show stale-as-live.
+//
+// EGRESS CORRELATION NOTE (I2 trade-off):
+// When VITE_CRYPTOCOMPARE_API_KEY is set, requests to the v2 OHLCV endpoint
+// include `api_key=<key>`. That key is a build-time constant shared across all
+// installs of a given build, so CryptoCompare (or a log observer) can identify
+// this build as Veyrnox — a per-deployment correlator, not a per-user one.
+// The symbol query itself still reveals no per-user holdings (structural I2 above).
+// VULN-14 removed the old per-request `extraParams=safecryptowallet` app tag for
+// the same reason; wiring an api_key re-introduces a similar signal on the OHLCV
+// path only. Operators who need the v2 OHLCV endpoint (chart data on Android) and
+// accept this trade-off should set the key in .env.local. The default (no key) is
+// fully anonymous — OHLCV calls without a key may be CORS-blocked on some clients.
 
 import { ASSETS } from '@/wallet-core/assets.js';
 import { TOP_SYMBOLS } from '@/lib/cryptos.js';
 
 const BASE = 'https://min-api.cryptocompare.com/data';
-// VULN-14 fix: omit the named app identifier. The previous extraParams=safecryptowallet
-// tagged every request with a named Veyrnox identifier, allowing CryptoCompare (or any
-// party with access to their logs) to correlate timestamps, IPs, and symbol queries to
-// this app. Omitting it means requests are indistinguishable from any other CryptoCompare
-// client. Rate-limit allowances are unaffected — the free tier does not require it.
-const EXTRA = '';
+const _CC_KEY = import.meta.env.VITE_CRYPTOCOMPARE_API_KEY;
+// api_key is appended to ALL CryptoCompare requests when set.
+// See egress correlation note above — per-build correlator, not per-user (I2 trade-off).
+const EXTRA = _CC_KEY ? `api_key=${encodeURIComponent(_CC_KEY)}` : '';
 
 // Holdable assets (deduped) — the FULL registry, never narrowed to held assets.
 export const PORTFOLIO_SYMBOLS = Object.freeze([...new Set(ASSETS.map((a) => a.symbol))]);
 // Top-coin market basket — the canonical list already defined in cryptos.js.
 export const MARKET_SYMBOLS = TOP_SYMBOLS;
 
+function withKey(url) {
+  if (!EXTRA) return url;
+  return url.includes('?') ? `${url}&${EXTRA}` : `${url}?${EXTRA}`;
+}
+
 async function getJson(url) {
-  const res = await fetch(url);
+  const res = await fetch(withKey(url));
   if (!res.ok) throw new Error(`cryptocompare HTTP ${res.status}`);
   return res.json();
 }
@@ -91,7 +106,7 @@ export async function fetchMarketChanges24h() {
  */
 export async function fetchOHLCV(fsym, resolution = 'hour', limit = 24) {
   const endpoint = resolution === 'day' ? 'histoday' : resolution === 'minute' ? 'histominute' : 'histohour';
-  const raw = await getJson(`${BASE}/v2/${endpoint}?fsym=${fsym}&tsym=USD&limit=${limit}&${EXTRA}`);
+  const raw = await getJson(`${BASE}/v2/${endpoint}?fsym=${fsym}&tsym=USD&limit=${limit}`);
   if (raw.Response !== 'Success') throw new Error(`cryptocompare OHLCV: ${raw.Message || raw.Response}`);
   return raw.Data.Data;
 }

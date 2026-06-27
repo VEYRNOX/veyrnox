@@ -27,9 +27,9 @@
 
 export const TWO_FACTOR = Object.freeze({
   ALLOW: 'ALLOW',
-  PIN_WRONG: 'PIN_WRONG',
-  PASSWORD_WRONG: 'PASSWORD_WRONG',
-  BOTH_WRONG: 'BOTH_WRONG',
+  // H4: collapsed PIN_WRONG / PASSWORD_WRONG / BOTH_WRONG into a single opaque code so
+  // incorrect attempts do not reveal which factor was right — prevents oracle attacks.
+  WRONG: 'WRONG',
   NOT_CONFIGURED: 'NOT_CONFIGURED',
 });
 
@@ -59,13 +59,11 @@ export function evaluateTwoFactor({
     );
   }
 
-  // 1 — both wrong is its own code so the UI can say "start over" without implying
-  // which factor was closer (minimises the which-one-was-right hint).
-  if (!pinOk && !passwordOk) {
-    return block(TWO_FACTOR.BOTH_WRONG, 'Your PIN and Action Password are both incorrect.');
+  // H4: single opaque WRONG code for all wrong-credential cases — never reveals which
+  // factor was correct, so an attacker cannot use the gate as an oracle.
+  if (!pinOk || !passwordOk) {
+    return block(TWO_FACTOR.WRONG, 'Incorrect PIN or Action Password.');
   }
-  if (!pinOk) return block(TWO_FACTOR.PIN_WRONG, 'Incorrect PIN.');
-  if (!passwordOk) return block(TWO_FACTOR.PASSWORD_WRONG, 'Incorrect Action Password.');
 
   // 2 — both factors verified AND a second factor is configured.
   return { allowed: true, code: TWO_FACTOR.ALLOW, message: null };

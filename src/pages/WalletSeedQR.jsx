@@ -46,7 +46,7 @@ export default function WalletSeedQR() {
   const handleReveal = () => {
     if (!selectedWalletId) return;
     requireTwoFactor(() => {
-      const { mnemonic: phrase, reauthRequired } = revealWalletMnemonic(selectedWalletId);
+      const { mnemonic: phrase, reauthRequired } = revealWalletMnemonic(selectedWalletId, { callerGated: true });
       if (reauthRequired) {
         toast.error('Session timed out. Unlock again to reveal your recovery phrase.');
         return;

@@ -75,6 +75,13 @@
 .approveBtn:hover:not(:disabled) { background: #5de8d0; }
 .rejectBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.honestyCaveat {
+  font-size: 0.78rem;
+  color: #8b949e;
+  margin: 0;
+  line-height: 1.5;
+}
+
 .riskAlert {
   background: rgba(248, 81, 73, 0.1);
   border: 1px solid rgba(248, 81, 73, 0.4);
@@ -89,3 +96,19 @@
 .riskDomain { font-family: 'IBM Plex Mono', monospace; color: #f85149; margin: 0; font-size: 0.85rem; word-break: break-all; }
 .riskCheck { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; color: #f0f2f5; cursor: pointer; }
 .domainCaveat { font-size: 0.75rem; color: #8b949e; margin: 0; }
+
+.optionalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(29, 34, 43, 0.6);
+  border: 1px solid #1D222B;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.optionalNote {
+  font-size: 0.78rem;
+  color: #8b949e;
+  margin: 0;
+  line-height: 1.5;
+}

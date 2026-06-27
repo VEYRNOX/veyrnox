@@ -488,7 +488,7 @@ export default function WalletPortfolioPage() {
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> Manage assets</button>
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> Rename</button>
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> Move to portfolio</button>
-                  {!w.backedUp && <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); requireTwoFactor(() => { const { mnemonic, reauthRequired } = revealWalletMnemonic(w.id); if (reauthRequired) { toast.error("Session timed out. Unlock again to reveal your recovery phrase."); return; } setBackupTarget({ id: w.id, name: w.name, mnemonic }); }, { title: "Reveal your recovery phrase" }); }}><ShieldAlert className="h-3.5 w-3.5" /> Back up</button>}
+                  {!w.backedUp && <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); requireTwoFactor(() => { const { mnemonic, reauthRequired } = revealWalletMnemonic(w.id, { callerGated: true }); if (reauthRequired) { toast.error("Session timed out. Unlock again to reveal your recovery phrase."); return; } setBackupTarget({ id: w.id, name: w.name, mnemonic }); }, { title: "Reveal your recovery phrase" }); }}><ShieldAlert className="h-3.5 w-3.5" /> Back up</button>}
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> Remove</button>
                 </div>
               )}
@@ -600,7 +600,7 @@ export default function WalletPortfolioPage() {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {unbacked.map((w) => (
-              <button key={w.id} onClick={() => requireTwoFactor(() => { const { mnemonic, reauthRequired } = revealWalletMnemonic(w.id); if (reauthRequired) { toast.error("Session timed out. Unlock again to reveal your recovery phrase."); return; } setBackupTarget({ id: w.id, name: w.name, mnemonic }); }, { title: "Reveal your recovery phrase" })}
+              <button key={w.id} onClick={() => requireTwoFactor(() => { const { mnemonic, reauthRequired } = revealWalletMnemonic(w.id, { callerGated: true }); if (reauthRequired) { toast.error("Session timed out. Unlock again to reveal your recovery phrase."); return; } setBackupTarget({ id: w.id, name: w.name, mnemonic }); }, { title: "Reveal your recovery phrase" })}
                 className="text-[11px] px-2 py-1 rounded-md bg-caution/20 text-caution hover:bg-caution/30">
                 Back up “{w.name}”
               </button>

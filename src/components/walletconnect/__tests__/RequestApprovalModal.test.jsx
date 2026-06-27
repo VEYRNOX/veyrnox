@@ -18,6 +18,8 @@ vi.mock('@/wallet-core/evm/networks.js', () => ({
     : { key: 'sepolia', name: 'Sepolia Testnet', symbol: 'ETH', isTestnet: true }),
 }));
 
+// The live sessions the modal looks up by topic. Tests mutate this before render.
+let mockSessions = [];
 vi.mock('@/lib/WalletConnectProvider.jsx', () => ({
   useWalletConnect: () => ({
     signPersonal: vi.fn(),
@@ -26,24 +28,16 @@ vi.mock('@/lib/WalletConnectProvider.jsx', () => ({
     rejectRequest: vi.fn(),
     isSendReauthRequired: () => false,
     evmAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+    sessions: mockSessions,
   }),
 }));
 
-// C4: the dApp domain for a session_request comes from the live session keyed by
-// the request topic, NOT from request.params.proposer (which only exists on a
-// session_proposal). Mock the session store so the banner derives the real URL.
-import { getActiveSessions } from '@/wallet-core/evm/walletconnect/session.js';
-vi.mock('@/wallet-core/evm/walletconnect/session.js', () => ({
-  getActiveSessions: vi.fn(() => []),
-}));
+afterEach(() => { cleanup(); mockSessions.length = 0; });
 
-afterEach(() => {
-  cleanup();
-  getActiveSessions.mockReset();
-});
-
-// A real session_request event: NO proposer field anywhere on params.
-function personalSignRequest() {
+function personalSignRequest(url) {
+  // The dApp identity lives on the live session (looked up by topic), so register
+  // it before returning the bare session_request the modal will receive.
+  mockSessions.push({ topic: 't', peer: { metadata: { name: 'dApp', url } } });
   return {
     topic: 't', id: 1, type: 'personal_sign', blocked: false, typedDataMeta: null,
     params: {
@@ -52,28 +46,52 @@ function personalSignRequest() {
   };
 }
 
-// Build a live-session list keyed (by .topic) to a peer metadata URL.
-function sessionFor(topic, url) {
-  return [{ topic, peer: { metadata: { name: 'Bad dApp', url } } }];
+// session_request events carry NO proposer; the dApp identity lives on the live
+// session, looked up by topic, at session.peer.metadata. C4: the phishing check
+// must read THAT, not request.params.proposer.metadata.
+function sessionRequest(topic) {
+  return {
+    topic, id: 9, type: 'personal_sign', blocked: false, typedDataMeta: null,
+    params: { request: { method: 'personal_sign', params: ['0x48656c6c6f'] } },
+  };
 }
+
+describe('RequestApprovalModal — phishing check uses session.peer.metadata (C4)', () => {
+  it('flags a known-bad dApp whose domain is on the live session, not on the request', () => {
+    mockSessions.push({ topic: 'abc', peer: { metadata: { name: 'Bad dApp', url: 'https://airdrop-claim2024.io' } } });
+    render(<RequestApprovalModal request={sessionRequest('abc')} onClose={vi.fn()} />);
+    expect(screen.getByText(/known scam/i)).toBeTruthy();
+  });
+
+  it('shows no scam alert for a clean dApp domain on the live session', () => {
+    mockSessions.push({ topic: 'abc', peer: { metadata: { name: 'Good dApp', url: 'https://app.example.org' } } });
+    render(<RequestApprovalModal request={sessionRequest('abc')} onClose={vi.fn()} />);
+    expect(screen.queryByText(/known scam/i)).toBeNull();
+  });
+
+  it('fails closed: no matching live session -> treated as suspicious (flagged)', () => {
+    // mockSessions is empty; topic does not resolve.
+    render(<RequestApprovalModal request={sessionRequest('missing')} onClose={vi.fn()} />);
+    expect(screen.getByText(/known scam/i)).toBeTruthy();
+  });
+});
 
 describe('RequestApprovalModal — connected known-bad dApp domain', () => {
   it('surfaces a RISK alert when the live session domain is known-bad', () => {
-    getActiveSessions.mockReturnValue(sessionFor('t', 'https://airdrop-claim2024.io'));
-    render(<RequestApprovalModal request={personalSignRequest()} onClose={vi.fn()} />);
+    render(<RequestApprovalModal request={personalSignRequest('https://airdrop-claim2024.io')} onClose={vi.fn()} />);
     expect(screen.getByText(/known scam/i)).toBeTruthy();
   });
 
   it('shows no scam alert for a clean live session domain', () => {
-    getActiveSessions.mockReturnValue(sessionFor('t', 'https://app.example.org'));
-    render(<RequestApprovalModal request={personalSignRequest()} onClose={vi.fn()} />);
+    render(<RequestApprovalModal request={personalSignRequest('https://app.example.org')} onClose={vi.fn()} />);
     expect(screen.queryByText(/known scam/i)).toBeNull();
   });
 
-  it('shows no scam alert when no live session matches the request topic', () => {
-    getActiveSessions.mockReturnValue([]); // no matching session
-    render(<RequestApprovalModal request={personalSignRequest()} onClose={vi.fn()} />);
-    expect(screen.queryByText(/known scam/i)).toBeNull();
+  it('fails closed when no live session matches the request topic', () => {
+    // personalSignRequest with no url still pushes a session with undefined url;
+    // test the case where no session matches at all by using sessionRequest directly.
+    render(<RequestApprovalModal request={sessionRequest('no-match')} onClose={vi.fn()} />);
+    expect(screen.getByText(/known scam/i)).toBeTruthy();
   });
 });
 
@@ -84,6 +102,7 @@ const APPROVE_UNLIMITED =
   'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 
 function sendTxRequest(data) {
+  mockSessions.push({ topic: 't', peer: { metadata: { name: 'Some dApp', url: 'https://app.example.org' } } });
   return {
     topic: 't', id: 2, type: 'send_transaction', blocked: false, typedDataMeta: null,
     params: {
@@ -92,7 +111,6 @@ function sendTxRequest(data) {
         method: 'eth_sendTransaction',
         params: [{ to: '0x1111111111111111111111111111111111111111', value: '0x0', data }],
       },
-      proposer: { metadata: { name: 'Some dApp', url: 'https://app.example.org' } },
     },
   };
 }
@@ -116,6 +134,7 @@ describe('RequestApprovalModal — eth_sendTransaction risk scoring', () => {
 });
 
 function sendTxOnChain(caip2) {
+  mockSessions.push({ topic: 't', peer: { metadata: { name: 'Some dApp', url: 'https://app.example.org' } } });
   return {
     topic: 't', id: 3, type: 'send_transaction', blocked: false, typedDataMeta: null,
     params: {
@@ -124,7 +143,6 @@ function sendTxOnChain(caip2) {
         method: 'eth_sendTransaction',
         params: [{ to: '0x1111111111111111111111111111111111111111', value: '0x16345785d8a0000', data: '0x' }],
       },
-      proposer: { metadata: { name: 'Some dApp', url: 'https://app.example.org' } },
     },
   };
 }

@@ -18,7 +18,7 @@ function parseWcChainId(caip2) {
 }
 
 export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
-  const { signPersonal, signTypedData, sendTransaction, rejectRequest, isSendReauthRequired, evmAddress } = useWalletConnect();
+  const { signPersonal, signTypedData, sendTransaction, rejectRequest, isSendReauthRequired, evmAddress, sessions } = useWalletConnect();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [permitAcknowledged, setPermitAcknowledged] = useState(false);
@@ -137,12 +137,22 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
     type === REQUEST_TYPES.UNKNOWN ||
     riskBlocks;
 
-  // C4: a session_request has no `proposer` (that's only on session_proposal).
-  // The dApp metadata lives on the live session, matched by the request topic.
-  // getActiveSessions() returns an array of sessions, each with `.topic`.
-  const sessionMeta =
-    getActiveSessions().find((s) => s.topic === request.topic)?.peer?.metadata ?? {};
-  const dapp = checkDappDomain(sessionMeta.url);
+  // C4: session_request events carry NO proposer field — the dApp identity lives on
+  // the live session, keyed by topic, at session.peer.metadata. Read it from there,
+  // never from request.params.proposer (which is always absent here). Fail closed
+  // (I4): a request whose session we cannot resolve is treated as suspicious so the
+  // phishing banner shows, rather than silently suppressed.
+  const liveSession = (Array.isArray(sessions) ? sessions : []).find((s) => s?.topic === topic);
+  const sessionMeta = liveSession?.peer?.metadata ?? {};
+  const sessionUnresolved = !liveSession;
+  const dappCheck = checkDappDomain(sessionMeta.url);
+  const dapp = sessionUnresolved
+    ? {
+        domain: sessionMeta.url ? dappCheck.domain : 'unknown dApp',
+        flagged: true,
+        reason: 'Veyrnox could not verify which dApp made this request (no active session). Treat it as suspicious.',
+      }
+    : dappCheck;
 
   async function handleApprove() {
     if (needsReauth) { onReauthNeeded?.(); return; }
@@ -153,7 +163,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
       if (type === REQUEST_TYPES.PERSONAL_SIGN) {
         await signPersonal(topic, id, reqParams);
       } else if (type === REQUEST_TYPES.SIGN_TYPED_DATA) {
-        await signTypedData(topic, id, reqParams, params.chainId);
+        await signTypedData(topic, id, reqParams, params.chainId); // audit-H7: pass session chain for domain.chainId validation
       } else if (type === REQUEST_TYPES.SEND_TRANSACTION) {
         await sendTransaction(topic, id, reqParams, params.chainId);
       } else {

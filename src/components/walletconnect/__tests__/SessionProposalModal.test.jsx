@@ -60,23 +60,28 @@ describe('SessionProposalModal — M12: optional chains disclosure', () => {
 describe('SessionProposalModal — known-bad dApp alert', () => {
   it('flags a known-bad domain and disables Connect until acknowledged', () => {
     render(<SessionProposalModal proposal={makeProposal('https://fakeswap-rewards.xyz')} onClose={vi.fn()} />);
-    expect(screen.getByText(/known scam/i)).toBeTruthy();
+    // M10: always-visible caveat also contains "known scam" — use getAllByText
+    expect(screen.getAllByText(/known scam/i).length).toBeGreaterThan(0);
     const connect = screen.getByRole('button', { name: /^connect$/i });
     expect(connect.disabled).toBe(true);
     fireEvent.click(screen.getByRole('checkbox'));
     expect(connect.disabled).toBe(false);
   });
 
-  it('makes no scam claim for a domain absent from the local list, shows blocklist caveat, and leaves Connect enabled', () => {
+  it('makes no per-domain scam claim for a domain absent from the local list, shows blocklist caveat, and leaves Connect enabled', () => {
     render(<SessionProposalModal proposal={makeProposal('https://app.uniswap.org')} onClose={vi.fn()} />);
-    expect(screen.queryByText(/known scam/i)).toBeNull();
+    // M10: the always-visible honesty caveat mentions "known scam domains" but the
+    // per-domain RISK ALERT (with "RISK" heading) should NOT appear for a clean domain.
+    expect(screen.queryByText(/RISK/i)).toBeNull();
     expect(screen.getByText(/limited blocklist/i)).toBeTruthy();
+    // M10: the acknowledge checkbox only appears for blocked (flagged) domains.
+    expect(screen.queryByRole('checkbox')).toBeNull();
     expect(screen.getByRole('button', { name: /^connect$/i }).disabled).toBe(false);
   });
 
   it('shows the blocklist caveat alongside the phishing warning when the domain is flagged', () => {
     render(<SessionProposalModal proposal={makeProposal('https://fakeswap-rewards.xyz')} onClose={vi.fn()} />);
-    expect(screen.getByText(/known scam/i)).toBeTruthy();
+    expect(screen.getAllByText(/known scam/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/limited blocklist/i)).toBeTruthy();
   });
 });

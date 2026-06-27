@@ -24,26 +24,253 @@ import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
-import { degrade, detect, TIER, browserProbeSource } from '@/rasp';
-import { LEVEL } from '@/risk/levels';
+import { detect, degrade, browserProbeSource } from '@/rasp';
 
-// C3: RASP pre-sign environment gate for dApp (WalletConnect) signing handlers.
-// personal_sign / signTypedData / sendTransaction reach withPrivateKey() and sign
-// or broadcast with a real key, so they are signing chokepoints and must carry the
-// SAME RASP plane the in-app Send chokepoint enforces — otherwise a paired dApp
-// could exfiltrate a signature in a hostile runtime that Send would BLOCK.
-// detect()/degrade() are PURE functions of the environment (I3 set-blind); a RASP
-// crash fails closed to the strongest BLOCK (I4). The tx-risk plane is N/A at this
-// seam (no recipient risk scoring here), so we pass LEVEL.OK for tx level — the
-// RASP plane is what gates. Mirrors CryptoSigning.jsx raspGuardAllowsSigning().
-function raspGuardAllowsSigning() {
-  let tier;
-  try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
-  const gate = presignGate(tier, LEVEL.OK, false);
-  return gate.proceedAllowed && gate.signerReachable;
+// audit-H8: pure address validator for personal_sign. Exported for unit tests.
+// personal_sign params are [hexMessage, address]; some legacy dApps reverse the
+// order. Signing params[0] without verifying params[1] = wallet address would sign
+// address bytes as the message if the order is flipped.
+export function assertPersonalSignAddress(addrParam, walletAddress) {
+  if (!addrParam || !walletAddress) {
+    throw new Error(
+      `personal_sign address mismatch: request targets ${addrParam ?? '(none)'} but active address is ${walletAddress ?? '(none)'}. Refusing to sign.`,
+    );
+  }
+  if (addrParam.toLowerCase() !== walletAddress.toLowerCase()) {
+    throw new Error(
+      `personal_sign address mismatch: request targets ${addrParam} but active address is ${walletAddress}. Refusing to sign.`,
+    );
+  }
 }
 
 const WalletConnectCtx = createContext(null);
+
+// M9 — enforce a 1,000,000 gas cap UNCONDITIONALLY, including when the dApp
+// omits the `gas` field. Previously the cap only applied to a dApp-supplied
+// `gas`; with `gas` omitted, ethers auto-estimated with no ceiling, so a
+// malicious dApp could craft a tx that consumes the full block gas limit and
+// drain funds. We estimate gas ourselves when omitted, then clamp either value
+// (dApp's or our estimate) to the cap. I5 — backend/dApp untrusted by design.
+//
+// txGas: the dApp-supplied `gas` (hex string, bigint, or undefined).
+// estimatedGas: bigint result of provider.estimateGas, used when txGas is absent.
+// Returns a bigint <= 1_000_000n.
+export const WC_GAS_CAP = 1_000_000n;
+export function resolveGasLimit(txGas, estimatedGas) {
+  const requested = txGas != null ? BigInt(txGas) : BigInt(estimatedGas);
+  return requested > WC_GAS_CAP ? WC_GAS_CAP : requested;
+}
+
+// H8 — resolve which personal_sign param is the message and bind the address
+// param to the wallet's own EVM address. EIP-1474 specifies [message, address]
+// but MetaMask-legacy dApps send [address, message] (reversed). If we blindly
+// signed params[0] a reversed payload would sign the address bytes, and a
+// payload naming a foreign address would let a dApp obtain a signature it
+// attributes to someone else. Fail closed (I4) before the key is touched.
+//
+// Returns { ok: true, message } or { ok: false, code }.
+export function resolvePersonalSignMessage(params, ownAddress) {
+  if (!ownAddress) return { ok: false, code: 'PERSONAL_SIGN_NO_WALLET' };
+  let own;
+  try {
+    own = ethers.getAddress(ownAddress);
+  } catch {
+    return { ok: false, code: 'PERSONAL_SIGN_NO_WALLET' };
+  }
+
+  const arr = Array.isArray(params) ? params : [];
+  // Find the index whose value is a valid EVM address equal to our own address.
+  const isOwn = (v) => {
+    if (typeof v !== 'string') return false;
+    try {
+      return ethers.getAddress(v) === own;
+    } catch {
+      return false;
+    }
+  };
+
+  if (isOwn(arr[1])) {
+    // EIP-1474 order [message, ownAddress].
+    return { ok: true, message: arr[0] };
+  }
+  if (isOwn(arr[0])) {
+    // MetaMask-legacy order [ownAddress, message] — swap.
+    return { ok: true, message: arr[1] };
+  }
+  return { ok: false, code: 'PERSONAL_SIGN_ADDRESS_MISMATCH' };
+}
+
+// M11 — enforce WalletConnect session expiry client-side. The session's `expiry`
+// (Unix seconds) is displayed in ActiveSessions but was never enforced on the
+// signing path: a session past its expiry kept producing signatures and sending
+// transactions. Gate every signing handler through this BEFORE the key is touched
+// (fail closed, I4). A missing or non-numeric expiry is treated as expired.
+//
+// Returns { ok: true } or { ok: false, code }.
+export function checkSessionExpiry(session, nowMs = Date.now()) {
+  if (!session) return { ok: false, code: 'SESSION_NOT_FOUND' };
+  const expiry = session.expiry;
+  if (typeof expiry !== 'number' || !Number.isFinite(expiry)) {
+    return { ok: false, code: 'SESSION_EXPIRED' };
+  }
+  if (expiry * 1000 <= nowMs) return { ok: false, code: 'SESSION_EXPIRED' };
+  return { ok: true };
+}
+
+// C3 — the RASP pre-sign gate the audit requires on EVERY WalletConnect signing
+// handler. These module-level pure functions encapsulate the gate + per-method
+// validation so they are unit-testable in isolation (the component closures below
+// are thin delegators). txLevel is null for WC signing (no in-app risk score);
+// acknowledged is true because the user confirmed in the WC modal before the
+// handler runs. A blocked gate rejects the request and NEVER reaches
+// withPrivateKey (fail closed, I4).
+// Coerce an EIP-712 / CAIP-2 chain id (number, bigint, decimal or 0x-hex string)
+// to a finite integer, or null when it cannot be interpreted. Pure.
+function toNumericChainId(v) {
+  if (typeof v === 'number' && Number.isInteger(v)) return v;
+  if (typeof v === 'bigint') return Number(v);
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (/^0x[0-9a-fA-F]+$/.test(s)) return parseInt(s, 16);
+    if (/^\d+$/.test(s)) return parseInt(s, 10);
+  }
+  return null;
+}
+
+function presignGateOrReject() {
+  const { tier } = degrade(detect(browserProbeSource));
+  return presignGate(tier, null, true);
+}
+
+export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic, id, params) {
+  const gate = presignGateOrReject();
+  if (!gate.proceedAllowed) {
+    await rejectRequest(topic, id).catch(() => {});
+    return;
+  }
+  const arr = Array.isArray(params) ? params : [];
+  let hexMsg;
+  if (evmAddress) {
+    // H8 — resolve which param is the message and bind the address param to our
+    // own wallet (EIP-1474 [message, address] vs MetaMask-legacy [address,
+    // message]). Reject (fail closed, I4) if no param is our own address.
+    const own = evmAddress.toLowerCase();
+    const isOwn = (v) =>
+      typeof v === 'string' && ethers.isAddress(v) && v.toLowerCase() === own;
+    if (isOwn(arr[1])) {
+      hexMsg = arr[0]; // EIP-1474 order [message, ownAddress]
+    } else if (isOwn(arr[0])) {
+      hexMsg = arr[1]; // MetaMask-legacy order [ownAddress, message]
+    } else {
+      await rejectRequest(topic, id).catch(() => {});
+      throw new Error(
+        `Rejected personal_sign [PERSONAL_SIGN_ADDRESS_MISMATCH]: the signing ` +
+        `address does not match this wallet (address mismatch). ` +
+        `Veyrnox will not sign a message bound to a different address.`,
+      );
+    }
+  } else {
+    hexMsg = arr[0];
+  }
+  const sig = await withPrivateKey(0, async (pk) => {
+    const wallet = new ethers.Wallet(pk);
+    return wallet.signMessage(ethers.getBytes(hexMsg));
+  });
+  await respondToRequest(topic, id, sig);
+}
+
+export async function _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2) {
+  const gate = presignGateOrReject();
+  if (!gate.proceedAllowed) {
+    await rejectRequest(topic, id).catch(() => {});
+    return;
+  }
+  const typedDataJson = params[1] ?? params[0];
+  const parsed = parseTypedData(typedDataJson);
+  if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
+
+  // H7 — bind the EIP-712 domain.chainId to the WalletConnect SESSION chain.
+  // Only reject on an actual mismatch (or an invalid session chain when the
+  // domain DOES carry a chainId); a domain with no chainId field is
+  // backwards-compatible and must still sign. Computed inline (pure) so the gate
+  // does not depend on a separately-imported helper.
+  const rawDomainChainId = parsed?.domain?.chainId;
+  if (rawDomainChainId !== undefined && rawDomainChainId !== null) {
+    const domainChainId = toNumericChainId(rawDomainChainId);
+    const sessionChainId = toNumericChainId(
+      typeof sessionCaip2 === 'string' ? sessionCaip2.split(':')[1] : null,
+    );
+    if (sessionChainId == null) {
+      await rejectRequest(topic, id).catch(() => {});
+      throw new Error(
+        `Rejected typed-data signature [SESSION_CHAINID_INVALID]: this connection has no valid chain. ` +
+        `Veyrnox will not produce a signature valid on a different chain.`,
+      );
+    }
+    if (domainChainId !== sessionChainId) {
+      await rejectRequest(topic, id).catch(() => {});
+      throw new Error(
+        `Rejected typed-data signature [CHAINID_MISMATCH]: domain.chainId (${domainChainId}) ` +
+        `does not match this connection's chain (${sessionChainId}). ` +
+        `Veyrnox will not produce a signature valid on a different chain.`,
+      );
+    }
+  }
+
+  const { EIP712Domain: _ignored, ...typesWithoutDomain } = parsed.types;
+  const sig = await withPrivateKey(0, async (pk) => {
+    const wallet = new ethers.Wallet(pk);
+    return wallet.signTypedData(parsed.domain, typesWithoutDomain, parsed.message);
+  });
+  await respondToRequest(topic, id, sig);
+}
+
+export async function _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId) {
+  const gate = presignGateOrReject();
+  if (!gate.proceedAllowed) {
+    await rejectRequest(topic, id).catch(() => {});
+    return;
+  }
+  const txParams = params[0];
+  const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
+  const net = getNetworkByChainId(chainId);
+
+  const hash = await withPrivateKey(0, async (pk) => {
+    const provider = getProvider(net.key);
+    // VULN-19 guard: verify the RPC endpoint is actually on the expected chain.
+    const onChain = parseInt(await provider.send('eth_chainId', []), 16);
+    if (onChain !== chainId) throw new Error(`Chain ID mismatch: expected ${chainId}, got ${onChain}`);
+
+    const wallet = new ethers.Wallet(pk, provider);
+    const tx = {
+      to: txParams.to,
+      value: txParams.value ? BigInt(txParams.value) : 0n,
+      data: txParams.data ?? '0x',
+    };
+
+    if (txParams.maxFeePerGas) {
+      tx.maxFeePerGas = BigInt(txParams.maxFeePerGas);
+      tx.maxPriorityFeePerGas = BigInt(txParams.maxPriorityFeePerGas ?? 0);
+      tx.type = 2;
+    } else if (txParams.gasPrice) {
+      tx.gasPrice = BigInt(txParams.gasPrice);
+      tx.type = 0;
+    }
+
+    // M9 — cap gas to 1M whether or not the dApp supplied `gas`. When omitted we
+    // estimate ourselves and clamp the estimate too, so a dApp can never bypass
+    // the cap by leaving `gas` out. If no estimate is available, clamp to the cap.
+    const estimatedGas = txParams.gas != null
+      ? 0n
+      : (typeof wallet.estimateGas === 'function' ? await wallet.estimateGas(tx) : WC_GAS_CAP);
+    tx.gasLimit = resolveGasLimit(txParams.gas, estimatedGas);
+
+    const sent = await wallet.sendTransaction(tx);
+    return sent.hash;
+  });
+
+  await respondToRequest(topic, id, hash);
+}
 
 export function WalletConnectProvider({ children }) {
   // NOTE: lastAuthAt is NOT in the WalletProvider context value (it lives in a
@@ -135,126 +362,58 @@ export function WalletConnectProvider({ children }) {
     setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
   }, []);
 
-  // M11: reject a request whose WC session has expired (or vanished) before any
-  // signing. getActiveSessions() can still surface an expired session if the SDK
-  // has not fired session_expire (app was offline). Fail closed (I4): a missing
-  // session is treated as expired. Returns true if the caller should abort.
-  const sessionExpired = useCallback(async (topic, id) => {
+  // M11 — every signing handler must call this BEFORE touching the key. It looks
+  // up the live session by topic from getActiveSessions() (the authoritative
+  // source, not stale React state) and rejects the request + clears it if the
+  // session has expired. On rejection it throws so the caller surfaces the error;
+  // it never falls through to the signing path (fail closed, I4).
+  const assertSessionLive = useCallback(async (topic, id) => {
     const session = getActiveSessions().find((s) => s.topic === topic);
-    if (!session || session.expiry * 1000 <= Date.now()) {
-      await rejectRequest(topic, id, 'SESSION_EXPIRED');
-      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-      return true;
-    }
-    return false;
-  }, []);
-
-  // Sign a personal_sign request. params: [hexMessage, address]
-  const handlePersonalSign = useCallback(async (topic, id, params) => {
-    if (!raspGuardAllowsSigning()) {
-      await rejectRequest(topic, id, 'RASP_BLOCK');
-      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-      return;
-    }
-    if (await sessionExpired(topic, id)) return;
-    const hexMsg = params[0];
-    const sig = await withPrivateKey(0, async (pk) => {
-      const wallet = new ethers.Wallet(pk);
-      return wallet.signMessage(ethers.getBytes(hexMsg));
-    });
-    await respondToRequest(topic, id, sig);
+    const check = checkSessionExpiry(session);
+    if (check.ok) return;
+    await rejectRequest(topic, id).catch(() => {});
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, sessionExpired]);
+    refreshSessions();
+    const detail = check.code === 'SESSION_NOT_FOUND'
+      ? 'the connection no longer exists'
+      : 'this connection has expired';
+    throw new Error(
+      `Rejected signing request [${check.code}]: ${detail}. ` +
+      `Veyrnox will not sign for an expired connection — reconnect the dApp.`,
+    );
+  }, [refreshSessions]);
+
+  // Sign a personal_sign request. EIP-1474 order is [hexMessage, address] but
+  // MetaMask-legacy dApps reverse it to [address, hexMessage]. H8: resolve the
+  // message safely and reject (fail closed, I4) if no param is our own address,
+  // BEFORE the key is touched.
+  const handlePersonalSign = useCallback(async (topic, id, params) => {
+    await assertSessionLive(topic, id); // M11
+    await _handlePersonalSign({ withPrivateKey, evmAddress }, topic, id, params);
+    setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+  }, [withPrivateKey, evmAddress, assertSessionLive]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
-  const handleSignTypedData = useCallback(async (topic, id, params, caip2ChainId) => {
-    if (!raspGuardAllowsSigning()) {
-      await rejectRequest(topic, id, 'RASP_BLOCK');
-      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-      return;
-    }
-    if (await sessionExpired(topic, id)) return;
-    const typedDataJson = params[1] ?? params[0];
-    const parsed = parseTypedData(typedDataJson);
-    if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
-
-    // H7: bind domain.chainId to the WC session chain. A Permit/Permit2 signature
-    // carrying a foreign domain.chainId is a cross-chain replay (drain) vector.
-    // Fail closed (I4): reject if the domain chainId is absent or mismatched.
-    const sessionChainId = parseInt(caip2ChainId?.replace(/^eip155:/, ''), 10);
-    const domainChainId = parsed.domain?.chainId !== undefined
-      ? Number(parsed.domain.chainId)
-      : NaN;
-    if (isNaN(domainChainId) || domainChainId !== sessionChainId) {
-      await rejectRequest(topic, id, 'CHAIN_ID_MISMATCH');
-      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-      return;
-    }
-
-    const { EIP712Domain: _ignored, ...typesWithoutDomain } = parsed.types;
-    const sig = await withPrivateKey(0, async (pk) => {
-      const wallet = new ethers.Wallet(pk);
-      return wallet.signTypedData(parsed.domain, typesWithoutDomain, parsed.message);
-    });
-    await respondToRequest(topic, id, sig);
+  const handleSignTypedData = useCallback(async (topic, id, params) => {
+    await assertSessionLive(topic, id); // M11
+    // H7 — the session's CAIP-2 chain id lives on the pending request the modal
+    // is acting on; pass it to the pure helper for cross-chain replay protection.
+    const sessionCaip2 = pendingRequests.find(
+      (r) => r.topic === topic && r.id === id,
+    )?.params?.chainId;
+    await _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, sessionExpired]);
+  }, [withPrivateKey, pendingRequests, assertSessionLive]);
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
   // Gas cap of 1M enforced in both branches — whether the dApp suggests gas or
   // we estimate it ourselves (I5 — backend untrusted).
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
-    if (!raspGuardAllowsSigning()) {
-      await rejectRequest(topic, id, 'RASP_BLOCK');
-      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-      return;
-    }
-    if (await sessionExpired(topic, id)) return;
-    const txParams = params[0];
-    const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
-    const net = getNetworkByChainId(chainId);
-
-    const hash = await withPrivateKey(0, async (pk) => {
-      const provider = getProvider(net.key);
-      // VULN-19 guard: verify the RPC endpoint is actually on the expected chain.
-      const onChain = parseInt(await provider.send('eth_chainId', []), 16);
-      if (onChain !== chainId) throw new Error(`Chain ID mismatch: expected ${chainId}, got ${onChain}`);
-
-      const wallet = new ethers.Wallet(pk, provider);
-      const tx = {
-        to: txParams.to,
-        value: txParams.value ? BigInt(txParams.value) : 0n,
-        data: txParams.data ?? '0x',
-      };
-
-      if (txParams.maxFeePerGas) {
-        tx.maxFeePerGas = BigInt(txParams.maxFeePerGas);
-        tx.maxPriorityFeePerGas = BigInt(txParams.maxPriorityFeePerGas ?? 0);
-        tx.type = 2;
-      } else if (txParams.gasPrice) {
-        tx.gasPrice = BigInt(txParams.gasPrice);
-        tx.type = 0;
-      }
-
-      // M9: enforce the 1M gas cap in BOTH branches. When the dApp supplies gas
-      // we cap its suggestion; when it does not, we estimate and cap that too —
-      // otherwise ethers auto-estimates with no ceiling (I5 — backend untrusted).
-      const GAS_CAP = 1_000_000n;
-      if (txParams.gas) {
-        tx.gasLimit = BigInt(txParams.gas) < GAS_CAP ? BigInt(txParams.gas) : GAS_CAP;
-      } else {
-        const est = await provider.estimateGas(tx);
-        tx.gasLimit = est < GAS_CAP ? est : GAS_CAP;
-      }
-
-      const sent = await wallet.sendTransaction(tx);
-      return sent.hash;
-    });
-
-    await respondToRequest(topic, id, hash);
+    await assertSessionLive(topic, id); // M11
+    await _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, sessionExpired]);
+  }, [withPrivateKey, assertSessionLive]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);

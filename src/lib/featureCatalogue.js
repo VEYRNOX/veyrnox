@@ -181,8 +181,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Native Secure Storage',
         status: 'roadmap',
-        summary: 'Secure Enclave / Android Keystore hardening',
-        explanation: 'OS-enforced key storage via Secure Enclave / Android Keystore. Partially in place and provisional pending audit; full hardening is on the roadmap.',
+        summary: 'Device-bound key storage (iOS Keychain / Android Keystore) — roadmap',
+        explanation: 'OS-protected key storage via the iOS Keychain (passcode-gated, ThisDeviceOnly) and Android Keystore. NOTE: no Secure Enclave / StrongBox key-wrap of the vault key yet — full hardware binding is on the roadmap. Partially provisional pending audit.',
       },
       {
         name: 'Session Manager & Auto-Lock',
@@ -526,7 +526,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Voice Commands',
         status: 'built',
         summary: 'Hands-free, read-only navigation',
-        explanation: 'Built (/voice-commands). Web Speech API voice navigation: recognises a fixed command set (go to dashboard, check balance, etc.) and navigates the app. Read-only; never initiates or signs transactions by voice.',
+        explanation: 'Built (/voice-commands). Voice navigation via the native @capacitor-community/speech-recognition plugin (Android SpeechRecognizer), with a Web Speech API fallback on web: recognises a fixed command set (go to dashboard, check balance, etc.) and navigates the app. Read-only navigation only — never initiates or signs transactions by voice. Transcription happens off-device on the platform speech service (Google on Android), and voice is disabled when locked or in a deniability/duress session (I3, fail closed).',
       },
     ],
   },

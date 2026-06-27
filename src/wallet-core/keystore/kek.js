@@ -10,12 +10,18 @@
 //   The seed is wrapped under a DEK (data-encryption key); the DEK is wrapped under a
 //   KEK; the KEK is COMBINED from two factors that are BOTH required:
 //
-//       H  — hardware factor: WebAuthn `prf` output for a FIXED salt, computed inside
-//            the device's secure element. Identical for every credential/set on the
-//            device (spec §3: "one hardware credential, set count invisible"). H NEVER
-//            leaves the SE on a real device (I1); this module receives it only as the
-//            opaque bytes the platform hands back. Source: src/dev/prfSpike.js
-//            (evaluatePrf) on a real device, gated by the §8 spike outcome.
+//       H  — device-bound factor (Keychain/TEE): on web, the WebAuthn `prf` output for
+//            a FIXED salt; on native, an HMAC over a fixed salt with a key held by the
+//            platform key store. NOTE (H14/H15): on iOS the native key lives in the
+//            standard Keychain (kSecClassGenericPassword), NOT the Secure Enclave; on
+//            Android it is AndroidKeyStore-backed with StrongBox preferred but NOT
+//            enforced. So "device-bound (Keychain/TEE)" is honest; "Secure Enclave" or
+//            unqualified "hardware-backed" is NOT. Identical for every credential/set on
+//            the device (spec §3: "one device-bound credential, set count invisible").
+//            H is produced and held by the platform key store, never persisted by this
+//            module (I1); this module receives it only as the opaque bytes the platform
+//            hands back. Source: src/dev/prfSpike.js (evaluatePrf) on a real device,
+//            gated by the §8 spike outcome.
 //       C  — set factor: Argon2id(PIN, salt_set) — the EXISTING vault.js derivation.
 //            This is what FORKS: real / duress / panic PIN -> different C -> different
 //            KEK -> different DEK -> different seed-set.
@@ -121,8 +127,20 @@ export async function combineKek(H, C) {
     baseKey,
     KEK_LEN * 8,
   );
+
+  // M20: zero the highest-sensitivity intermediates in place before returning.
+  // H is the hardware binding key and C is the FULL Argon2id(PIN, salt) output;
+  // both are wiped so they do not linger in the JS heap until GC (I4, fail
+  // closed). NOTE: this mutates the caller's arrays — every production caller
+  // (keystore/web.js, keystore/native.js) derives a FRESH H (getHardwareFactor)
+  // and a FRESH C (deriveKekC) per combineKek and does NOT read H/C afterwards.
+  // A caller that needs the SAME H/C for a second combineKek (e.g. PIN rotation)
+  // must derive/copy them per call rather than relying on these arrays surviving.
+  zero(H);
+  zero(C);
+
   // Copy the derived key material out, then wipe the raw deriveBits ArrayBuffer so
-  // no KEK bytes linger in a buffer the caller never sees (M20). `kek` owns its own
+  // no KEK bytes linger in a buffer the caller never sees. `kek` owns its own
   // backing buffer; zeroing the `bits` view does not touch it.
   const kek = new Uint8Array(KEK_LEN);
   kek.set(new Uint8Array(bits));

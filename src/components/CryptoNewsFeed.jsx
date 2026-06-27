@@ -29,7 +29,7 @@ async function fetchCryptoNews() {
   const articles = results
     .filter(r => r.status === "fulfilled")
     .flatMap(r => r.value)
-    .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
+    .sort((a, b) => +new Date(b.pubDate) - +new Date(a.pubDate))
     .slice(0, 15);
 
   if (!articles.length) throw new Error("No articles from any feed");

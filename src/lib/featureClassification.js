@@ -255,8 +255,8 @@ export const CLASSIFICATION = {
     note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (base44.entities.Transaction). Scan button now synchronously runs the detection and stores results in state — no fake delay. Labels updated to "Transaction Anomaly Detection" / "Statistical analysis"; "AI Pattern Scanner" / "machine learning" removed. Three explicit heuristic checks shown to the user: large-transfer z-score (>2.5σ), velocity burst (3+ tx/hr), off-hours (02:00–05:00). All runs on-device.',
   },
   '/voice-commands': {
-    verdict: 'live', dataSource: 'on-device',
-    note: 'Uses browser-native window.SpeechRecognition / window.webkitSpeechRecognition for transcription. Command matching and routing are local (phrase map + React Router navigate). Audio processing is browser-engine-dependent: Chrome sends audio to Google for transcription; the page discloses this. Degrades gracefully when the browser API is absent.',
+    verdict: 'live', dataSource: 'external',
+    note: 'Native uses the @capacitor-community/speech-recognition plugin (Android SpeechRecognizer); web falls back to window.SpeechRecognition / window.webkitSpeechRecognition. Command matching and routing are local (phrase map + React Router navigate). Audio leaves the device for transcription by the platform speech service (Google on Android; browser engine on web) — not on-device recognition; the page discloses this. VoiceProvider fails closed (I3): it never starts and force-stops whenever the vault is locked or a deniability (decoy/hidden) session is active. Degrades gracefully when the plugin/API is unavailable.',
   },
   '/token-approvals': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -288,7 +288,7 @@ export const CLASSIFICATION = {
   },
   '/alerts': {
     verdict: 'live', dataSource: 'external',
-    note: 'CryptoCompare egress gated behind isLivePricesEnabled(). Live prices useQuery has enabled: isLivePricesEnabled() and refetchInterval removed — no auto-poll. Ticker hidden when off (shows "enable in Settings" note). checkNow remains user-triggered (calls fetchMarketPricesUsd on demand — intentional opt-in action). Alert CRUD on base44.entities.PriceAlert is real. On-device trigger evaluation unchanged.',
+    note: 'CryptoCompare egress gated behind isLivePricesEnabled(). Live prices useQuery has enabled: isLivePricesEnabled() and refetchInterval removed — no auto-poll. Ticker hidden when off (shows "enable in Settings" note). checkNow remains user-triggered (calls fetchMarketPricesUsd on demand — intentional opt-in action). Alert CRUD on base44.entities.PriceAlert is real. On-device trigger evaluation unchanged. On native platforms, triggered alerts fire OS-level local notifications via @capacitor/local-notifications (I3-gated: suppressed in decoy/hidden/locked sessions; payload contains user-selected currency + target price only — no wallet holdings derived).',
   },
 
   // ── Connect group (audit batch 5) ─────────────────────────────────────────

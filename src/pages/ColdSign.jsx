@@ -149,12 +149,14 @@ export default function ColdSign() {
       return;
     }
 
-    // Re-evaluate the RASP plane at the cold-broadcast step using REAL runtime
+    // H11: Re-evaluate the RASP plane at the cold-broadcast step using REAL runtime
     // detection (detect/degrade are pure functions of the environment). We fail
     // closed: if detection throws we default to TIER.BLOCK. The tx-risk level is
     // not re-scored on a locally-built cold tx (the Send screen already gated it),
     // so we pass LEVEL.OK for that arg — the RASP tier is what gates here. riskAck
     // is the user's broadcast acknowledgement and is unchanged.
+    // NOTE: do NOT call presignGate(TIER.ALLOW, ...) — it always passes and implies
+    // a gate that does not exist (I4: fail honest, fail closed). We use real detect().
     let tier;
     try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
     const gate = presignGate(tier, LEVEL.OK, riskAck);
