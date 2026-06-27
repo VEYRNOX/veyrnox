@@ -14,11 +14,15 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        // H-NEW-1: release signing certificate SHA-256 fingerprint for RASP APK
-        // tamper detection (RaspIntegrityPlugin.detectTamper). This is a PUBLIC
-        // certificate hash, not a secret. CI injects the real release fingerprint
-        // via -PRELEASE_CERT_SHA256=<value>; local/dev builds fall back to the
-        // committed dev fingerprint so the check is never a silent no-op.
+        // H-NEW-1 (TARGET — dev fingerprint only): release signing certificate SHA-256
+        // fingerprint for RASP APK tamper detection (RaspIntegrityPlugin.detectTamper).
+        // This is a PUBLIC certificate hash, not a secret. The fallback below is the
+        // dev/debug signing cert for this repo — it does NOT represent a release identity.
+        // PREREQUISITE before this control is functional on release builds:
+        //   (1) add a release signingConfig (storeFile/keyAlias/passwords) to this file,
+        //   (2) inject the matching fingerprint via CI: -PRELEASE_CERT_SHA256=<real-hash>.
+        // Until both are configured, detectTamper() validates against the dev cert only
+        // (catches re-signing by a third party, but NOT against a genuine release key).
         buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('RELEASE_CERT_SHA256') ?: '2F:A3:38:63:AC:DD:30:F6:0F:27:84:8E:22:3E:3C:63:BE:82:0B:ED:82:94:8D:21:C4:A4:33:87:FF:4D:B1:70'}\""
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
