@@ -394,11 +394,14 @@ export function WalletConnectProvider({ children }) {
   }, [withPrivateKey, evmAddress, assertSessionLive]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
-  const handleSignTypedData = useCallback(async (topic, id, params) => {
+  // caip2ChainId is optional: callers that know the chain (e.g. tests, future
+  // direct-invocation paths) may pass it; the modal flow falls back to the
+  // pending-request record which always carries it from the WC event.
+  const handleSignTypedData = useCallback(async (topic, id, params, caip2ChainId) => {
     await assertSessionLive(topic, id); // M11
     // H7 — the session's CAIP-2 chain id lives on the pending request the modal
     // is acting on; pass it to the pure helper for cross-chain replay protection.
-    const sessionCaip2 = pendingRequests.find(
+    const sessionCaip2 = caip2ChainId ?? pendingRequests.find(
       (r) => r.topic === topic && r.id === id,
     )?.params?.chainId;
     await _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2);
