@@ -256,7 +256,7 @@ export const CLASSIFICATION = {
   },
   '/voice-commands': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'Uses browser-native window.SpeechRecognition / window.webkitSpeechRecognition for transcription. Command matching and routing are local (phrase map + React Router navigate). Audio processing is browser-engine-dependent: Chrome sends audio to Google for transcription; the page discloses this. Degrades gracefully when the browser API is absent.',
+    note: 'Native uses the @capacitor-community/speech-recognition plugin (Android SpeechRecognizer); web falls back to window.SpeechRecognition / window.webkitSpeechRecognition. Command matching and routing are local (phrase map + React Router navigate). Audio leaves the device for transcription by the platform speech service (Google on Android; browser engine on web) — not on-device recognition; the page discloses this. VoiceProvider fails closed (I3): it never starts and force-stops whenever the vault is locked or a deniability (decoy/hidden) session is active. Degrades gracefully when the plugin/API is unavailable.',
   },
   '/token-approvals': {
     verdict: 'live', dataSource: 'wallet-core',
