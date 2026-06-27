@@ -80,9 +80,10 @@ function demoClear() { _demoCache = null; }
 // Native secure-storage helpers. Loaded lazily so the Capacitor plugin never
 // reaches the web/test bundle (exactly like keystore/index.js does for native).
 async function nativeStore(pw) {
-  // H-NEW-5 (ANDROID): @aparajita/capacitor-secure-storage does not expose
-  // setInvalidatedByBiometricEnrollment(true) — and its Android KeyGenParameterSpec
-  // (node_modules/.../android/.../SecureStorage.java) is built WITHOUT
+  // H-NEW-5 (ANDROID): @aparajita/capacitor-secure-storage (^8.0.0) does not expose
+  // setInvalidatedByBiometricEnrollment(true) — per its published Android source
+  // (aparajita/capacitor-secure-storage, SecureStorage.java, KeyGenParameterSpec builder)
+  // the Android KeyGenParameterSpec is built WITHOUT
   // setUserAuthenticationRequired/setInvalidatedByBiometricEnrollment — so a new
   // fingerprint enrollment does NOT invalidate this cache on Android. Mitigation
   // requires a custom Capacitor plugin using Android Keystore with
