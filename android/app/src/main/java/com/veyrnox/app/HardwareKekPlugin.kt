@@ -10,7 +10,12 @@ package com.veyrnox.app
 //   KeyPermanentlyInvalidatedException → clear key + explicit error (fail closed)
 //
 // H15: StrongBox preference — enroll() tries the dedicated security chip first;
-//   falls back to TEE (software-backed AndroidKeyStore) if StrongBoxUnavailableException.
+//   falls back to TEE (or software AndroidKeyStore) if StrongBoxUnavailableException.
+//   StrongBox is NOT enforced: setIsStrongBoxBacked(true) is best-effort and silently
+//   falls back, so the key may land in the TEE or in software (AndroidKeyStore), with
+//   no guarantee of StrongBox. Do NOT claim unqualified hardware backing or a guaranteed
+//   StrongBox tier — the delivered guarantee is device-bound + AndroidKeyStore. Enforcing
+//   StrongBox (or surfacing the actual backing tier to the user) is TARGET — see audit H15.
 //   Both tiers use AUTH_BIOMETRIC_STRONG only (H16: no DEVICE_CREDENTIAL fallback).
 // H16: AUTH_DEVICE_CREDENTIAL removed. A PIN/pattern unlock bypasses biometric
 //   binding and undermines the possession-factor guarantee. BIOMETRIC_STRONG only.
@@ -83,6 +88,10 @@ class HardwareKekPlugin : Plugin() {
      */
     private fun tryEnrollKey(useStrongBox: Boolean): Boolean {
         return try {
+            // NOTE: setIsStrongBoxBacked(true) is only set on the first (useStrongBox)
+            // attempt and is NOT enforced — on a StrongBoxUnavailableException we retry
+            // with it unset, so the key may land in the TEE or in software. StrongBox
+            // enforcement (and reporting the real backing tier) is TARGET — see audit H15.
             val specBuilder = KeyGenParameterSpec.Builder(
                 KEY_ALIAS,
                 KeyProperties.PURPOSE_SIGN
