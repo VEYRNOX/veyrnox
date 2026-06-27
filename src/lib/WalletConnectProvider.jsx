@@ -58,7 +58,13 @@ export function WalletConnectProvider({ children }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [sessions, setSessions] = useState([]);
 
-  const refreshSessions = useCallback(() => setSessions(getActiveSessions()), []);
+  // M11: getActiveSessions() may include sessions whose expiry has passed if the
+  // SDK has not yet fired session_expire (e.g. the app was offline). Drop them so
+  // the UI never shows — nor lets a request resolve against — a dead session.
+  const refreshSessions = useCallback(() => {
+    const now = Math.floor(Date.now() / 1000);
+    setSessions(getActiveSessions().filter((s) => s.expiry > now));
+  }, []);
 
   useEffect(() => {
     if (!isUnlocked || !isWalletConnectConfigured()) return;
@@ -129,6 +135,20 @@ export function WalletConnectProvider({ children }) {
     setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
   }, []);
 
+  // M11: reject a request whose WC session has expired (or vanished) before any
+  // signing. getActiveSessions() can still surface an expired session if the SDK
+  // has not fired session_expire (app was offline). Fail closed (I4): a missing
+  // session is treated as expired. Returns true if the caller should abort.
+  const sessionExpired = useCallback(async (topic, id) => {
+    const session = getActiveSessions().find((s) => s.topic === topic);
+    if (!session || session.expiry * 1000 <= Date.now()) {
+      await rejectRequest(topic, id, 'SESSION_EXPIRED');
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      return true;
+    }
+    return false;
+  }, []);
+
   // Sign a personal_sign request. params: [hexMessage, address]
   const handlePersonalSign = useCallback(async (topic, id, params) => {
     if (!raspGuardAllowsSigning()) {
@@ -136,6 +156,7 @@ export function WalletConnectProvider({ children }) {
       setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
       return;
     }
+    if (await sessionExpired(topic, id)) return;
     const hexMsg = params[0];
     const sig = await withPrivateKey(0, async (pk) => {
       const wallet = new ethers.Wallet(pk);
@@ -143,7 +164,7 @@ export function WalletConnectProvider({ children }) {
     });
     await respondToRequest(topic, id, sig);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey]);
+  }, [withPrivateKey, sessionExpired]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
   const handleSignTypedData = useCallback(async (topic, id, params, caip2ChainId) => {
@@ -152,6 +173,7 @@ export function WalletConnectProvider({ children }) {
       setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
       return;
     }
+    if (await sessionExpired(topic, id)) return;
     const typedDataJson = params[1] ?? params[0];
     const parsed = parseTypedData(typedDataJson);
     if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
@@ -176,7 +198,7 @@ export function WalletConnectProvider({ children }) {
     });
     await respondToRequest(topic, id, sig);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey]);
+  }, [withPrivateKey, sessionExpired]);
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
@@ -188,6 +210,7 @@ export function WalletConnectProvider({ children }) {
       setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
       return;
     }
+    if (await sessionExpired(topic, id)) return;
     const txParams = params[0];
     const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
     const net = getNetworkByChainId(chainId);
@@ -231,7 +254,7 @@ export function WalletConnectProvider({ children }) {
 
     await respondToRequest(topic, id, hash);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey]);
+  }, [withPrivateKey, sessionExpired]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);

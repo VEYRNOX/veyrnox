@@ -92,6 +92,17 @@ vi.mock('@/lib/WalletProvider.jsx', () => ({
 // ethers Wallet must not actually sign — stub the signing surface.
 // M9: capture the tx object passed to sendTransaction so tests can assert gasLimit.
 const sentTxCapture = { last: null };
+
+// Most signing-path tests assume a live (non-expired) session for the request's
+// topic. M11 added an expiry gate; this returns an array whose .find() yields a
+// far-future-expiry session for ANY looked-up topic, so the allow-path tests
+// (which use many different topics) behave as before without per-topic setup.
+const FUTURE_EXPIRY = Math.floor(Date.now() / 1000) + 86_400;
+function liveSessionsAnyTopic() {
+  // .find() ignores the topic predicate and always yields a live session, so the
+  // M11 expiry gate passes for whatever topic the handler under test looks up.
+  return { find: () => ({ topic: '__live__', expiry: FUTURE_EXPIRY }) };
+}
 vi.mock('ethers', () => ({
   ethers: {
     Wallet: class {
@@ -106,6 +117,7 @@ vi.mock('ethers', () => ({
 
 import { WalletConnectProvider, useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { parseTypedData } from '@/wallet-core/evm/typed-data.js';
+import { getActiveSessions } from '@/wallet-core/evm/walletconnect/session.js';
 
 function captureHandlers() {
   const out = {};
@@ -167,6 +179,7 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
   describe('gate ALLOWS → signer reached, request answered', () => {
     beforeEach(() => {
       presignGate.mockReturnValue({ proceedAllowed: true, signerReachable: true });
+      getActiveSessions.mockReturnValue(liveSessionsAnyTopic());
     });
 
     it('handlePersonalSign responds and never rejects', async () => {
@@ -208,6 +221,7 @@ describe('WalletConnectProvider — H7: EIP-712 domain.chainId bound to session 
     withPrivateKey.mockClear();
     presignGate.mockReset();
     presignGate.mockReturnValue({ proceedAllowed: true, signerReachable: true });
+    getActiveSessions.mockReturnValue(liveSessionsAnyTopic());
     parseTypedData.mockReturnValue({
       valid: true,
       types: { EIP712Domain: [] },
@@ -258,6 +272,63 @@ describe('WalletConnectProvider — H7: EIP-712 domain.chainId bound to session 
   });
 });
 
+describe('WalletConnectProvider — M11: expired session rejected before signing', () => {
+  // An expired session (expiry seconds < now) must never reach withPrivateKey.
+  // getActiveSessions() can still return it if the SDK has not fired
+  // session_expire (e.g. app was offline). Fail closed (I4): reject SESSION_EXPIRED.
+  const PAST = Math.floor(Date.now() / 1000) - 60; // 60s ago, expired
+
+  beforeEach(() => {
+    respondToRequest.mockClear();
+    rejectRequest.mockClear();
+    withPrivateKey.mockClear();
+    presignGate.mockReset();
+    presignGate.mockReturnValue({ proceedAllowed: true, signerReachable: true });
+    parseTypedData.mockReturnValue({
+      valid: true,
+      types: { EIP712Domain: [] },
+      domain: { chainId: 11155111 },
+      message: {},
+    });
+    getActiveSessions.mockReturnValue([{ topic: 'expTopic', expiry: PAST }]);
+  });
+
+  it('handlePersonalSign rejects SESSION_EXPIRED and never signs', async () => {
+    const h = captureHandlers();
+    await act(async () => { await h.signPersonal('expTopic', 200, ['0xdeadbeef', '0xabc']); });
+    expect(rejectRequest).toHaveBeenCalledWith('expTopic', 200, 'SESSION_EXPIRED');
+    expect(respondToRequest).not.toHaveBeenCalled();
+    expect(withPrivateKey).not.toHaveBeenCalled();
+  });
+
+  it('handleSignTypedData rejects SESSION_EXPIRED and never signs', async () => {
+    const h = captureHandlers();
+    await act(async () => { await h.signTypedData('expTopic', 201, ['0xabc', '{}'], 'eip155:11155111'); });
+    expect(rejectRequest).toHaveBeenCalledWith('expTopic', 201, 'SESSION_EXPIRED');
+    expect(respondToRequest).not.toHaveBeenCalled();
+    expect(withPrivateKey).not.toHaveBeenCalled();
+  });
+
+  it('handleSendTransaction rejects SESSION_EXPIRED and never signs', async () => {
+    const h = captureHandlers();
+    await act(async () => {
+      await h.sendTransaction('expTopic', 202, [{ to: '0xdef', value: '0x0' }], 'eip155:11155111');
+    });
+    expect(rejectRequest).toHaveBeenCalledWith('expTopic', 202, 'SESSION_EXPIRED');
+    expect(respondToRequest).not.toHaveBeenCalled();
+    expect(withPrivateKey).not.toHaveBeenCalled();
+  });
+
+  it('handlePersonalSign rejects SESSION_EXPIRED when session is absent (fail closed)', async () => {
+    getActiveSessions.mockReturnValue([]);
+    const h = captureHandlers();
+    await act(async () => { await h.signPersonal('goneTopic', 203, ['0xdeadbeef', '0xabc']); });
+    expect(rejectRequest).toHaveBeenCalledWith('goneTopic', 203, 'SESSION_EXPIRED');
+    expect(respondToRequest).not.toHaveBeenCalled();
+    expect(withPrivateKey).not.toHaveBeenCalled();
+  });
+});
+
 describe('WalletConnectProvider — M9: 1M gas cap enforced in BOTH branches', () => {
   beforeEach(() => {
     respondToRequest.mockClear();
@@ -267,6 +338,7 @@ describe('WalletConnectProvider — M9: 1M gas cap enforced in BOTH branches', (
     sentTxCapture.last = null;
     presignGate.mockReset();
     presignGate.mockReturnValue({ proceedAllowed: true, signerReachable: true });
+    getActiveSessions.mockReturnValue(liveSessionsAnyTopic());
   });
 
   it('caps dApp-supplied gas above 1M to exactly 1M', async () => {
