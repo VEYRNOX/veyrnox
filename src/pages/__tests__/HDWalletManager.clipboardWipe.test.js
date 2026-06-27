@@ -30,11 +30,17 @@ describe('HDWalletManager clipboard wipe (M15)', () => {
     delete navigator.clipboard;
   });
 
+  // H-NEW-3: the wipe overwrites the clipboard with a NON-EMPTY replacement,
+  // not '' — an empty write is treated as a fresh history entry by some
+  // clipboard managers (Samsung, Gboard), leaving the secret in history.
+  const WIPE_REPLACEMENT = '•'.repeat(24);
+
   it('schedules a wipe after copying the recovery phrase (sensitive)', async () => {
     const copy = makeCopy(() => {});
     copy('abandon abandon about', 'seed', { sensitive: true });
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('');
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(WIPE_REPLACEMENT);
+    expect(writtenTexts.at(-1)).not.toBe('abandon abandon about'); // secret was overwritten
   });
 
   it('does NOT schedule a wipe for a public address (non-sensitive)', async () => {
