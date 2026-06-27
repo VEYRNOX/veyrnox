@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 # Cancel superseded runs on the same ref to save minutes.
 concurrency:
@@ -41,3 +42,33 @@ jobs:
       - run: npm run check:rng
       - run: npm run build
       - run: npm test
+
+  android-release:
+    runs-on: ubuntu-latest
+    # Only build the release APK on main-branch pushes (not every PR).
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: verify
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install -g npm@11
+      - run: npm ci
+      - run: npm run build
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Build release APK
+        run: ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+        working-directory: android
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: veyrnox-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
