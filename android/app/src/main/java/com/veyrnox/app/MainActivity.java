@@ -5,12 +5,14 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
+import com.veyrnox.app.FileSaverPlugin;
 import com.veyrnox.app.HardwareKekPlugin;
 import com.veyrnox.app.RaspIntegrityPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(FileSaverPlugin.class);
         registerPlugin(HardwareKekPlugin.class);
         registerPlugin(RaspIntegrityPlugin.class);
         super.onCreate(savedInstanceState);
