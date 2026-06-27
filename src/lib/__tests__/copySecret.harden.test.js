@@ -26,16 +26,16 @@ describe('copySecret — H-NEW-3 wipe hardening', () => {
     expect(code).not.toMatch(/writeText\(\s*``\s*\)/);
   });
 
-  it('defines a non-empty wipe sentinel', () => {
-    const m = code.match(/WIPE_SENTINEL\s*=\s*(.+)/);
+  it('defines a non-empty wipe replacement', () => {
+    const m = code.match(/WIPE_REPLACEMENT\s*=\s*(.+)/);
     expect(m).toBeTruthy();
-    // The sentinel must produce a string of length > 0.
+    // The replacement must produce a string of length > 0.
     expect(m[1]).toMatch(/repeat\(\s*([1-9]\d*)\s*\)/);
   });
 
   it('catches a rejected wipe write (focus lost)', () => {
     // A .catch must directly follow a wipe writeText call.
-    expect(code).toMatch(/writeText\(\s*WIPE_SENTINEL\s*\)\s*\.catch\(/);
+    expect(code).toMatch(/writeText\(\s*WIPE_REPLACEMENT\s*\)\s*\.catch\(/);
   });
 
   it('registers a visibilitychange listener for early wipe', () => {

@@ -3,7 +3,7 @@
 // background app or clipboard history feature can read the phrase.
 //
 // H-NEW-3 hardening:
-//  - Wipe writes a NON-EMPTY sentinel, not ''. Some clipboard managers (Samsung,
+//  - Wipe writes a NON-EMPTY replacement, not ''. Some clipboard managers (Samsung,
 //    Gboard) treat an empty write as a new history entry, leaving the secret in
 //    history; overwriting with real content replaces it instead.
 //  - The wipe write is wrapped in .catch() — writeText requires document focus in
@@ -11,7 +11,11 @@
 //  - A visibilitychange listener wipes early when the page is hidden (navigation,
 //    lock screen, app background), shrinking the exposure window.
 const WIPE_MS = 30_000;
-const WIPE_SENTINEL = '•'.repeat(24); // non-empty replacement defeats clipboard-history dedup
+// The clipboard is overwritten with this string on wipe. Note: this is an
+// unconditional best-effort overwrite — we do not read back the clipboard before
+// wiping, so if the user copied something else afterward, it will also be
+// overwritten. It is a replacement string, not a read-back sentinel.
+const WIPE_REPLACEMENT = '•'.repeat(24); // non-empty replacement defeats clipboard-history dedup
 
 export async function copySecret(text) {
   if (!navigator?.clipboard?.writeText) return;
@@ -19,7 +23,7 @@ export async function copySecret(text) {
 
   const wipe = () => {
     // Focus may be lost (page hidden / blurred) — best effort, swallow rejection.
-    navigator?.clipboard?.writeText(WIPE_SENTINEL).catch(() => {});
+    navigator?.clipboard?.writeText(WIPE_REPLACEMENT).catch(() => {});
   };
 
   const timer = setTimeout(() => {
