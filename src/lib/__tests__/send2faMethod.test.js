@@ -90,10 +90,59 @@ describe('resolveSend2faMethod — the send-time second-factor resolver (audit H
     ).toBe(SEND_2FA.NONE);
   });
 
+  it('resolves BIOMETRIC on native when the OS-biometric 2FA factor is enabled', () => {
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isNative: true,
+        biometric2faEnabled: true,
+        actionPasswordConfigured: false,
+      }),
+    ).toBe(SEND_2FA.BIOMETRIC);
+  });
+
+  it('biometric wins over passkey AND password on native (it is the genuine, working possession factor)', () => {
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isNative: true,
+        biometric2faEnabled: true,
+        passkey2faEnabled: true,
+        passkeyRegistered: true,
+        actionPasswordConfigured: true,
+      }),
+    ).toBe(SEND_2FA.BIOMETRIC);
+  });
+
+  it('biometric 2FA enabled but NOT native does NOT resolve to biometric (web has no OS biometric)', () => {
+    // On web the OS biometric cannot run, so a stale/cross-device pref must fall
+    // through to whatever else is configured rather than gate on an absent factor.
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isNative: false,
+        biometric2faEnabled: true,
+        passkeyRegistered: true,
+        passkey2faEnabled: true,
+        actionPasswordConfigured: false,
+      }),
+    ).toBe(SEND_2FA.PASSKEY);
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isNative: false,
+        biometric2faEnabled: true,
+        actionPasswordConfigured: false,
+      }),
+    ).toBe(SEND_2FA.NONE);
+  });
+
   it('DEMO short-circuits to NONE regardless of any configured factor (fake sends, no vault)', () => {
     expect(
       resolveSend2faMethod({
         demo: true,
+        isNative: true,
+        biometric2faEnabled: true,
         passkey2faEnabled: true,
         passkeyRegistered: true,
         actionPasswordConfigured: true,
