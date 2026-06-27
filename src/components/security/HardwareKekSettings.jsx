@@ -53,7 +53,7 @@ export default function HardwareKekSettings() {
       const { enrollHardwareCredential, getHardwareFactor } = await import('@/wallet-core/keystore/hardware.js');
       // Step 1: create WebAuthn credential + get initial H (one biometric prompt).
       await enrollHardwareCredential();
-      // Step 2: enroll KEK on the vault using the hardware factor.
+      // Step 2: enroll KEK on the vault using the device-bound factor (Keychain/TEE).
       // getHardwareFactor() is called inside enrollKek — second biometric prompt.
       await getKeyStore().enrollKek(pin, { getHardwareFactor });
       setEnrolled(true);
@@ -120,9 +120,10 @@ export default function HardwareKekSettings() {
 
       <p className="text-xs text-muted-foreground">
         Binds your vault to this physical device using the{' '}
-        {isNative ? 'Secure Enclave / Android Keystore' : 'Secure Enclave / Keystore'}.
-        After enabling, your wallet can only decrypt on <strong>this device</strong> — a
-        stolen vault file without the device is useless, even with your PIN.
+        {isNative ? 'iOS Keychain / Android Keystore' : 'platform Keystore'} (device-bound,
+        biometric-gated). After enabling, your wallet can only decrypt on{' '}
+        <strong>this device</strong> — a stolen vault file without the device is useless,
+        even with your PIN.
       </p>
 
       <div className="flex items-start gap-2 rounded-lg bg-muted/40 border border-border px-3 py-2">
