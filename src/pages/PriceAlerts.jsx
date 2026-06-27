@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { getKeyStore } from "@/wallet-core/keystore";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -39,7 +40,13 @@ export default function PriceAlerts() {
 
   const requestNotifPermission = async () => {
     if (Capacitor.isNativePlatform()) {
-      const { display } = await LocalNotifications.requestPermissions();
+      // Suppress the background-lock hook while the OS permission dialog is open.
+      // The OS briefly pauses the app to show the dialog, which would otherwise
+      // trigger an immediate lock() and demand re-auth when the user returns.
+      const ks = getKeyStore();
+      const { display } = await (ks.suppressLock
+        ? ks.suppressLock(() => LocalNotifications.requestPermissions())
+        : LocalNotifications.requestPermissions());
       const perm = display === "granted" ? "granted" : display === "denied" ? "denied" : "default";
       setNotifPermission(perm);
       if (perm === "denied") {
@@ -123,8 +130,8 @@ export default function PriceAlerts() {
       queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
       queryClient.invalidateQueries({ queryKey: ["live-prices"] });
       toast.success(`Checked ${active.length} alert${active.length === 1 ? "" : "s"} — ${triggered} triggered`);
-    } catch {
-      toast.error("Check failed — could not reach the price feed.");
+    } catch (err) {
+      toast.error(`Check failed: ${err?.message || "could not reach the price feed"}`);
     } finally {
       setChecking(false);
     }

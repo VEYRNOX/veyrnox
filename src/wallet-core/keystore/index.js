@@ -79,6 +79,10 @@ function makeNativeFacade() {
     async getHardwareFactor() {
       return (await load()).nativeKeyStore.getHardwareFactor();
     },
+    // Native-only: suppress background-lock hook for non-security OS dialogs.
+    async suppressLock(fn) {
+      return (await load()).nativeKeyStore.suppressLock(fn);
+    },
   };
 }
 

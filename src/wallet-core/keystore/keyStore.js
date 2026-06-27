@@ -82,6 +82,11 @@
  *   OPTIONAL (NATIVE-ONLY): re-wrap vault to bare format then delete the hardware
  *   key. Fail-closed: vault re-wrapped BEFORE key deletion; if re-wrap fails the
  *   key survives and vault remains accessible.
+ *
+ * @property {<T>(fn: () => Promise<T>) => Promise<T>} [suppressLock]
+ *   NATIVE-ONLY (optional): run `fn` with the background-lock hook suppressed,
+ *   so OS-level dialogs that briefly pause the app do not trigger a re-lock.
+ *   Web has no equivalent; callers invoke it optionally (`?.`).
  */
 
 export {};
