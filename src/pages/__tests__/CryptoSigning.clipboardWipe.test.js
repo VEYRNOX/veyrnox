@@ -31,18 +31,26 @@ describe('CryptoSigning clipboard wipe (M15)', () => {
     delete navigator.clipboard;
   });
 
+  // H-NEW-3: the wipe overwrites the clipboard with a NON-EMPTY replacement,
+  // not '' — an empty write is treated as a fresh history entry by some
+  // clipboard managers (Samsung, Gboard), leaving the secret in history.
+  // What we pin is that a wipe happened and it replaced the secret, not the
+  // exact replacement glyphs.
+  const WIPE_REPLACEMENT = '•'.repeat(24);
+
   it('schedules a wipe after copying the mnemonic (sensitive)', async () => {
     const copy = makeCopy(() => {});
     copy('abandon abandon about', 'mnemonic', { sensitive: true });
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('•'.repeat(24));
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(WIPE_REPLACEMENT);
+    expect(writtenTexts.at(-1)).not.toBe('abandon abandon about'); // secret was overwritten
   });
 
   it('schedules a wipe after copying a private key (sensitive)', async () => {
     const copy = makeCopy(() => {});
     copy('0xdeadbeef', 'pk', { sensitive: true });
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('•'.repeat(24));
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(WIPE_REPLACEMENT);
   });
 
   it('does NOT schedule a wipe for an address (non-sensitive)', async () => {
