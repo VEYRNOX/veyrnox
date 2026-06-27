@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { fetchMarketPricesUsd, MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Bell, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -24,11 +26,29 @@ export default function PriceAlerts() {
   const [volatilityPct, setVolatilityPct] = useState("");
   const [note, setNote] = useState("");
   const [checking, setChecking] = useState(false);
-  const [notifPermission, setNotifPermission] = useState(
-    typeof Notification !== "undefined" ? Notification.permission : "default"
-  );
+  const [notifPermission, setNotifPermission] = useState("default");
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      LocalNotifications.checkPermissions().then(({ display }) => {
+        setNotifPermission(display === "granted" ? "granted" : display === "denied" ? "denied" : "default");
+      });
+    } else if (typeof Notification !== "undefined") {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
 
   const requestNotifPermission = async () => {
+    if (Capacitor.isNativePlatform()) {
+      const { display } = await LocalNotifications.requestPermissions();
+      const perm = display === "granted" ? "granted" : display === "denied" ? "denied" : "default";
+      setNotifPermission(perm);
+      if (perm === "denied") {
+        toast.error("Notifications blocked. Enable them in Android Settings → Apps → Veyrnox.");
+      } else if (perm === "granted") {
+        toast.success("Notifications enabled.");
+      }
+      return;
+    }
     if (typeof Notification === "undefined") {
       toast.error("Push notifications are not supported in this environment.");
       return;
