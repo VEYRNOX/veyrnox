@@ -3,11 +3,24 @@ import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { fetchMarketPricesUsd } from "@/lib/cryptoCompare.js";
 import { useWallet } from "@/lib/WalletProvider";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
-function sendNotification(title, body, icon = "/favicon.ico") {
-  if (Notification.permission !== "granted") return;
+let _localNotifId = 1;
+
+async function sendNotification(title, body) {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await LocalNotifications.schedule({
+        notifications: [{ title, body, id: _localNotifId++ }],
+      });
+    } catch {}
+    return;
+  }
+  // Web fallback
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   try {
-    new Notification(title, { body, icon, badge: "/favicon.ico" });
+    new Notification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
   } catch {}
 }
 

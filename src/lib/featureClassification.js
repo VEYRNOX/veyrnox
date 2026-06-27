@@ -288,7 +288,7 @@ export const CLASSIFICATION = {
   },
   '/alerts': {
     verdict: 'live', dataSource: 'external',
-    note: 'CryptoCompare egress gated behind isLivePricesEnabled(). Live prices useQuery has enabled: isLivePricesEnabled() and refetchInterval removed — no auto-poll. Ticker hidden when off (shows "enable in Settings" note). checkNow remains user-triggered (calls fetchMarketPricesUsd on demand — intentional opt-in action). Alert CRUD on base44.entities.PriceAlert is real. On-device trigger evaluation unchanged.',
+    note: 'CryptoCompare egress gated behind isLivePricesEnabled(). Live prices useQuery has enabled: isLivePricesEnabled() and refetchInterval removed — no auto-poll. Ticker hidden when off (shows "enable in Settings" note). checkNow remains user-triggered (calls fetchMarketPricesUsd on demand — intentional opt-in action). Alert CRUD on base44.entities.PriceAlert is real. On-device trigger evaluation unchanged. On native platforms, triggered alerts fire OS-level local notifications via @capacitor/local-notifications (I3-gated: suppressed in decoy/hidden/locked sessions; payload contains user-selected currency + target price only — no wallet holdings derived).',
   },
 
   // ── Connect group (audit batch 5) ─────────────────────────────────────────
