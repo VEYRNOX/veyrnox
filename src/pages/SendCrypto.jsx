@@ -25,7 +25,7 @@ import { signAndBroadcastBtc, estimateBtcSend } from "@/wallet-core/btc/send";
 import { describeBtcPlan } from "@/wallet-core/btc/simulate";
 import { signAndBroadcastSol } from "@/wallet-core/sol/send";
 import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
-import { getNetworkInfo } from "@/wallet-core/evm/networks";
+import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
@@ -151,7 +151,10 @@ export default function SendCrypto() {
         // I2/I5: resolve on-chain via the user's own RPC — no third-party lookup
         // service sees the name or recipient. Traffic goes only to the same RPC
         // used for tx broadcast (audited VULN-1 fix).
-        const network = import.meta.env.VITE_ALLOW_MAINNET === 'true' ? 'mainnet' : 'sepolia';
+        // Single source of truth (H-C): the same ALLOW_MAINNET constant that gates
+        // getNetwork()/getProvider() also selects the resolver network. No separate
+        // separate env-var path that could diverge from the enforced gate.
+        const network = ALLOW_MAINNET ? 'mainnet' : 'sepolia';
         const provider = getProvider(network);
         const address = await resolveEnsName(provider, name);
         if (address) setEnsResolved({ name, address });
