@@ -8,6 +8,51 @@ import { useWallet } from '@/lib/WalletProvider.jsx';
 
 const CONFIGURED = Boolean(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID);
 
+const POPULAR_DAPPS = [
+  { name: 'Binance Web3 Wallet', url: 'https://www.binance.com/en/web3wallet', category: 'Exchange', chains: ['ETH', 'BNB', 'MATIC'] },
+  { name: 'Uniswap', url: 'https://app.uniswap.org', category: 'DEX', chains: ['ETH', 'MATIC', 'ARB', 'OP'] },
+  { name: '1inch', url: 'https://app.1inch.io', category: 'DEX Aggregator', chains: ['ETH', 'BNB', 'MATIC', 'ARB', 'OP', 'AVAX'] },
+  { name: 'PancakeSwap', url: 'https://pancakeswap.finance', category: 'DEX', chains: ['BNB', 'ETH', 'MATIC', 'ARB', 'OP'] },
+  { name: 'Aave', url: 'https://app.aave.com', category: 'Lending', chains: ['ETH', 'MATIC', 'ARB', 'OP', 'AVAX'] },
+  { name: 'Curve', url: 'https://curve.fi', category: 'DEX', chains: ['ETH', 'MATIC', 'ARB', 'OP', 'AVAX'] },
+  { name: 'OpenSea', url: 'https://opensea.io', category: 'NFT', chains: ['ETH', 'MATIC', 'ARB', 'OP'] },
+  { name: 'Blur', url: 'https://blur.io', category: 'NFT', chains: ['ETH'] },
+  { name: 'dYdX', url: 'https://dydx.exchange', category: 'Perps', chains: ['ETH', 'ARB'] },
+  { name: 'GMX', url: 'https://app.gmx.io', category: 'Perps', chains: ['ARB', 'AVAX'] },
+  { name: 'Raydium', url: 'https://raydium.io', category: 'DEX', chains: ['ETH'] },
+  { name: 'Trader Joe', url: 'https://traderjoexyz.com', category: 'DEX', chains: ['AVAX', 'ARB', 'BNB'] },
+];
+
+function PopularDapps() {
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>Popular dApps</h2>
+      <p className={styles.hint}>
+        Open a dApp, choose &ldquo;WalletConnect&rdquo; in its connect dialog, then paste the URI above.
+      </p>
+      <div className={styles.dappGrid}>
+        {POPULAR_DAPPS.map((dapp) => (
+          <a
+            key={dapp.url}
+            href={dapp.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.dappCard}
+          >
+            <span className={styles.dappName}>{dapp.name}</span>
+            <span className={styles.dappCategory}>{dapp.category}</span>
+            <div className={styles.dappChains}>
+              {dapp.chains.map((c) => (
+                <span key={c} className={styles.chainPill}>{c}</span>
+              ))}
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function WalletConnectInner() {
   const { initialized, error, pendingProposals, pendingRequests, pair } = useWalletConnect();
   const { isUnlocked } = useWallet();
@@ -43,6 +88,7 @@ function WalletConnectInner() {
             browser manually — do not click links in the wallet UI).
           </p>
         </div>
+        <PopularDapps />
       </div>
     );
   }
@@ -75,6 +121,8 @@ function WalletConnectInner() {
       <h1 className={styles.heading}>dApp Connector</h1>
 
       {error && <p className={styles.error}>dApp Connector error: {error}</p>}
+
+      <PopularDapps />
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Pair with dApp</h2>

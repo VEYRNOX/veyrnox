@@ -40,7 +40,7 @@ describe('M8 — pairWithDapp structural URI validation', () => {
 
   it('accepts a well-formed wc v2 URI and passes it (trimmed) to the SDK', async () => {
     const uri =
-      'wc:7f6e9b1c2d3e4f5a@2?relay-protocol=irn&symKey=deadbeef';
+      'wc:7f6e9b1c2d3e4f5a@2?relay-protocol=irn&symKey=deadbeef00112233445566778899aabbccddeeff00112233445566778899aabb';
     await pairWithDapp(`  ${uri}  `);
     expect(pairCalls).toEqual([uri]);
   });
