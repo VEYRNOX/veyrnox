@@ -112,6 +112,11 @@ vi.mock('ethers', () => ({
       sendTransaction(tx) { sentTxCapture.last = tx; return Promise.resolve({ hash: '0xhash' }); }
     },
     getBytes: (x) => x,
+    // Lenient: accept the short 0x fixtures these tests use (e.g. '0xabc') so
+    // the H8 [message,address] vs [address,message] binding can resolve. Real
+    // ethers.isAddress enforces 40 hex chars; the binding logic is under test
+    // here, not address-length validation.
+    isAddress: (v) => typeof v === 'string' && /^0x[0-9a-fA-F]+$/.test(v),
   },
 }));
 
@@ -147,6 +152,10 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
   describe('gate BLOCKS (hostile runtime) → reject, never sign', () => {
     beforeEach(() => {
       presignGate.mockReturnValue({ proceedAllowed: false, signerReachable: false });
+      // M11 expiry runs BEFORE the C3 RASP gate; without a live session the
+      // expiry check fires first (SESSION_EXPIRED) and we never reach the RASP
+      // assertion under test. Give every topic a live session.
+      getActiveSessions.mockReturnValue(liveSessionsAnyTopic());
     });
 
     it('handlePersonalSign rejects and does not respond', async () => {
@@ -238,8 +247,10 @@ describe('WalletConnectProvider — H7: EIP-712 domain.chainId bound to session 
       message: {},
     });
     const h = captureHandlers();
+    // The handler rejects the request AND throws to surface the error to the
+    // modal; swallow the throw so the security assertions below still bind.
     await act(async () => {
-      await h.signTypedData('topicH7a', 70, ['0xabc', '{}'], 'eip155:11155111');
+      await h.signTypedData('topicH7a', 70, ['0xabc', '{}'], 'eip155:11155111').catch(() => {});
     });
     expect(rejectRequest).toHaveBeenCalledWith('topicH7a', 70, 'CHAIN_ID_MISMATCH');
     expect(respondToRequest).not.toHaveBeenCalled();
@@ -264,7 +275,7 @@ describe('WalletConnectProvider — H7: EIP-712 domain.chainId bound to session 
     });
     const h = captureHandlers();
     await act(async () => {
-      await h.signTypedData('topicH7c', 72, ['0xabc', '{}'], 'eip155:11155111');
+      await h.signTypedData('topicH7c', 72, ['0xabc', '{}'], 'eip155:11155111').catch(() => {});
     });
     expect(rejectRequest).toHaveBeenCalledWith('topicH7c', 72, 'CHAIN_ID_MISMATCH');
     expect(respondToRequest).not.toHaveBeenCalled();
@@ -295,7 +306,7 @@ describe('WalletConnectProvider — M11: expired session rejected before signing
 
   it('handlePersonalSign rejects SESSION_EXPIRED and never signs', async () => {
     const h = captureHandlers();
-    await act(async () => { await h.signPersonal('expTopic', 200, ['0xdeadbeef', '0xabc']); });
+    await act(async () => { await h.signPersonal('expTopic', 200, ['0xdeadbeef', '0xabc']).catch(() => {}); });
     expect(rejectRequest).toHaveBeenCalledWith('expTopic', 200, 'SESSION_EXPIRED');
     expect(respondToRequest).not.toHaveBeenCalled();
     expect(withPrivateKey).not.toHaveBeenCalled();
@@ -303,7 +314,7 @@ describe('WalletConnectProvider — M11: expired session rejected before signing
 
   it('handleSignTypedData rejects SESSION_EXPIRED and never signs', async () => {
     const h = captureHandlers();
-    await act(async () => { await h.signTypedData('expTopic', 201, ['0xabc', '{}'], 'eip155:11155111'); });
+    await act(async () => { await h.signTypedData('expTopic', 201, ['0xabc', '{}'], 'eip155:11155111').catch(() => {}); });
     expect(rejectRequest).toHaveBeenCalledWith('expTopic', 201, 'SESSION_EXPIRED');
     expect(respondToRequest).not.toHaveBeenCalled();
     expect(withPrivateKey).not.toHaveBeenCalled();
@@ -312,7 +323,7 @@ describe('WalletConnectProvider — M11: expired session rejected before signing
   it('handleSendTransaction rejects SESSION_EXPIRED and never signs', async () => {
     const h = captureHandlers();
     await act(async () => {
-      await h.sendTransaction('expTopic', 202, [{ to: '0xdef', value: '0x0' }], 'eip155:11155111');
+      await h.sendTransaction('expTopic', 202, [{ to: '0xdef', value: '0x0' }], 'eip155:11155111').catch(() => {});
     });
     expect(rejectRequest).toHaveBeenCalledWith('expTopic', 202, 'SESSION_EXPIRED');
     expect(respondToRequest).not.toHaveBeenCalled();
@@ -322,7 +333,7 @@ describe('WalletConnectProvider — M11: expired session rejected before signing
   it('handlePersonalSign rejects SESSION_EXPIRED when session is absent (fail closed)', async () => {
     getActiveSessions.mockReturnValue([]);
     const h = captureHandlers();
-    await act(async () => { await h.signPersonal('goneTopic', 203, ['0xdeadbeef', '0xabc']); });
+    await act(async () => { await h.signPersonal('goneTopic', 203, ['0xdeadbeef', '0xabc']).catch(() => {}); });
     expect(rejectRequest).toHaveBeenCalledWith('goneTopic', 203, 'SESSION_EXPIRED');
     expect(respondToRequest).not.toHaveBeenCalled();
     expect(withPrivateKey).not.toHaveBeenCalled();

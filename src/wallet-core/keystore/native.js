@@ -213,6 +213,11 @@ async function _unlockInner(password, opts = {}) {
   return decryptVault(blob, password);
 }
 
+// Narrow-scope export: only file-picker call sites (backup save / restore open)
+// use this to suppress the pause-driven lock while a native picker Activity is
+// foregrounded. See keystore/index.js for the cross-platform facade.
+export { withLockSuppressed };
+
 /** @type {import('./keyStore.js').KeyStore} */
 export const nativeKeyStore = {
   // True when a device credential (passcode/biometrics) is set, which is the

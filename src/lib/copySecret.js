@@ -17,6 +17,12 @@ const WIPE_MS = 30_000;
 // overwritten. It is a replacement string, not a read-back sentinel.
 const WIPE_REPLACEMENT = '•'.repeat(24); // non-empty replacement defeats clipboard-history dedup
 
+// Plain clipboard write without a wipe timer — for public values (addresses,
+// signatures) that the user may still need on the clipboard after copy.
+export function copyPlain(text) {
+  navigator?.clipboard?.writeText(text).catch(() => {});
+}
+
 export async function copySecret(text) {
   if (!navigator?.clipboard?.writeText) return;
   await navigator.clipboard.writeText(text);
