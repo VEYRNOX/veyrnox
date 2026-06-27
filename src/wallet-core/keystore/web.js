@@ -112,6 +112,7 @@ export const webKeyStore = {
       // Verify current PIN first.
       const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
       const H = await getHF();
+      const H2 = H.slice(); // M20: combineKek zeroes its H/C inputs; copy before first call
       const oldC = await deriveKekC(currentPassword, oldSaltBytes);
       const oldKek = await combineKek(H, oldC);
       const dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
@@ -119,7 +120,7 @@ export const webKeyStore = {
       const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
       const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
       const newC = await deriveKekC(newPassword, newSaltBytes);
-      const newKek = await combineKek(H, newC);
+      const newKek = await combineKek(H2, newC);
       const newKekWrap = await wrapDek(newKek, dek);
       await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
       return;

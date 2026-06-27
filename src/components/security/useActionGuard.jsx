@@ -38,7 +38,7 @@ import { is2faBiometricEnabled, verifyBiometric2fa } from '@/lib/biometric';
 import TwoFactorGate from './TwoFactorGate';
 
 export function useActionGuard() {
-  const { actionPasswordConfigured, verifyActiveCredential, verifyActionPassword, lock } = useWallet();
+  const { actionPasswordConfigured, verifyActiveCredentialDetailed, verifyActionPassword, lock } = useWallet();
   const [pending, setPending] = useState(null); // { run, title }
 
   // Resolve the ACTIVE second-factor method at call time (prefs/registration are
@@ -62,7 +62,11 @@ export function useActionGuard() {
 
   const verify = useCallback(async ({ pin, password }) => {
     // Factor 1 (all methods): the unlock credential, full vault Argon2id cost.
-    const pinOk = await verifyActiveCredential(pin);
+    const pinResult = await verifyActiveCredentialDetailed(pin);
+    if (pinResult.bricked) {
+      return { allowed: false, message: 'Verification unavailable — please re-lock and unlock the wallet.' };
+    }
+    const pinOk = pinResult.ok;
     if (pending?.method === 'biometric') {
       // Factor 2: a real OS biometric match (fingerprint / Face). FAIL CLOSED — a
       // cancel/no-match/lockout/unavailable all count as NOT verified.
@@ -82,7 +86,7 @@ export function useActionGuard() {
     // (never concurrent with the PIN KDF) — one 192 MiB allocation at a time.
     const passwordOk = await verifyActionPassword(password);
     return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
-  }, [pending, verifyActiveCredential, verifyActionPassword]);
+  }, [pending, verifyActiveCredentialDetailed, verifyActionPassword]);
 
   const gateModal = (
     <Dialog open={!!pending} onOpenChange={(open) => { if (!open) setPending(null); }}>
