@@ -207,17 +207,22 @@ class RaspIntegrityPlugin : Plugin() {
     // embedded at build time. An unsigned or re-signed APK (sideloaded repack)
     // produces a different fingerprint → tampered = true.
     //
-    // HONEST LIMITATION: EXPECTED_CERT_SHA256 is the placeholder sentinel below.
-    // A build-time CI step must replace it with the release-key fingerprint before
-    // this check is meaningful. Until then it always returns false (not tampered).
-
-    private val EXPECTED_CERT_SHA256 = "VEYRNOX_RELEASE_CERT_SHA256_PLACEHOLDER"
+    // The expected fingerprint is injected at build time via the
+    // RELEASE_CERT_SHA256 BuildConfig field (android/app/build.gradle). CI passes
+    // -PRELEASE_CERT_SHA256=<secret> to inject the real release-key fingerprint;
+    // local/dev builds fall back to the committed dev fingerprint. The fingerprint
+    // is a public certificate hash, not a secret. If it is somehow blank we fail
+    // honest (I4): log a warning and report not-tampered rather than fabricating a
+    // signal or blocking all installs.
+    // val (not const val): BuildConfig fields are not compile-time constants in
+    // every Kotlin configuration.
+    private val EXPECTED_CERT_SHA256: String = BuildConfig.RELEASE_CERT_SHA256
 
     private fun detectTamper(): Boolean {
-        // Skip if the expected fingerprint hasn't been configured — returning false
-        // (not detected) rather than blocking all installs is the safe default while
-        // the placeholder is present.
-        if (EXPECTED_CERT_SHA256.startsWith("VEYRNOX_")) return false
+        if (EXPECTED_CERT_SHA256.isBlank()) {
+            android.util.Log.w("RASP", "RELEASE_CERT_SHA256 not configured — tamper check skipped")
+            return false
+        }
 
         return runCatching {
             val pm = context.packageManager
@@ -240,7 +245,11 @@ class RaspIntegrityPlugin : Plugin() {
                 md.digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
             } ?: return false
 
-            actualHex != EXPECTED_CERT_SHA256.lowercase()
+            // actualHex is lowercase hex with no separators; the expected value may
+            // be colon-separated uppercase (the standard fingerprint format) — strip
+            // colons and lowercase both sides before comparing.
+            val expectedHex = EXPECTED_CERT_SHA256.replace(":", "").lowercase()
+            actualHex != expectedHex
         }.getOrDefault(false)
     }
 }
