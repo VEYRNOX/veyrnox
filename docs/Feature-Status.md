@@ -28,12 +28,12 @@
 > status ONLY with a real explorer-confirmed txid. Where a feature still carries a
 > RESIDUAL gate below, that gate is now a **native-plugin / hardware-KEK / real-device /
 > backend-escrow** gate — NOT "pending an audit" (both are done). Internal ≠ independent
-> is still honoured throughout. Status last verified: 2026-06-23 (both audits + PR #340).
+> is still honoured throughout. Status last verified: 2026-06-27 (post-audit security hardening PRs #392-#429 merged — see §8a below).
 
 ---
 
 ## Reality check (read first)
-- **Test suite:** 1,495+ tests, all green (`npm test`); `check:rng` green. (PR #340 added `send2faMethod.test.js` + typed-data + notifier tests; count updated 2026-06-23.)
+- **Test suite:** 220 test files, all green (`npm test`); `check:rng` green. (PR #340 added `send2faMethod.test.js` + typed-data + notifier tests, 2026-06-23; §8a security hardening PRs added webVaultEntropy, kek, WalletConnectProvider, CryptoSigning, mainnetGate tests; count confirmed green 2026-06-27.)
 - **What actually SENDS on-chain today:** **ETH (Sepolia), USDC (Ethereum mainnet ✓ MAINNET),
   USDT (Ethereum mainnet ✓ MAINNET), MATIC (Polygon Amoy), ARB (Arbitrum Sepolia), OP (OP Sepolia),
   AVAX (Fuji), BNB (testnet), BTC (Bitcoin testnet), and SOL (Solana devnet)** are `live` — each send verified
@@ -209,6 +209,34 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - ECC audit Track 2 — independent third-party audit — ✅ fixed (PR #340, 2026-06-23): C-1 (evidence schema testnet/mainnet), H-1 (passkey 2FA bypass on Send — `send2faMethod.js` + TDD), H-2 (VERIFIED labels without txids), M-3 (dormant FraudAlert/RASPEvent/SmartAlert renderer), M-4 (stale RASP "NOT WIRED" comments), M-5 (duplicate receive emitter), M-6 (demo-mode RPC leak), L-1 (PIN floor 4→6 in vaultBackup.js). Full findings: `docs/audit-triage/ecc-independent-audit-2026-06-23.md`.
 - Test-suite determinism (Argon2id WASM-heap OOM under parallel vitest) — ✅ fixed (PR #73); suite pinned to a single worker so the 192 MiB KDF can't exhaust the heap. Deterministic but slower; a test-only low-memory KDF override is the noted future fix.
 
+## 8a. Post-audit security hardening — ✅ all merged 2026-06-27 (PRs #392-#429)
+
+A dedicated security hardening sweep after both audits closed, driven by an independent ECC re-review of previously unvalidated audit doc claims (`docs/audit-2026-06-27-unvalidated-claims.md`, PR #423). All PRs merged to `main` by 2026-06-27; test suite green at 220 files.
+
+| ID | Finding | Control | PR | Status |
+|---|---|---|---|---|
+| H-NEW-1 | APK tamper / certificate pinning | `RaspIntegrityPlugin.kt` reads `BuildConfig.RELEASE_CERT_SHA256` (injected by CI via `-PRELEASE_CERT_SHA256`); blank cert → honest block (I4). `ci/android-release-job` builds signed release APK on every main push. | #421 | ✅ BUILT |
+| H-NEW-3 | Clipboard wipe (CopySecret) | `copySecret()` overwrites the clipboard with `'•'.repeat(24)` after the TTL; a zero-length wipe was a no-op on many platforms. | #392+ | ✅ BUILT |
+| H-NEW-4 | KEK + DEK zeroing after use | `web.js` `unlock()`, `enrollKek()`, `changePassword()` wrap the full KEK/DEK lifetime in `try/finally`; both keys are zeroed on every path — including when `unwrapDek`/`wrapDek` throws. Defense-in-depth over `combineKek`'s own in-place zeroing. | #418 | ✅ BUILT |
+| H-NEW-5 | Biometric cache invalidation gap | `@aparajita/capacitor-secure-storage` does NOT call `setInvalidatedByBiometricEnrollment(true)`; a new biometric enrol therefore does not invalidate the cached PIN. Honestly documented; a drop-in replacement plugin with proper ACL is the TARGET fix (requires real-device verification — cannot test in JS). Biometric step-up 2FA wired regardless. | #420 | ✅ HONEST-DISABLED / doc gap recorded |
+| H-NEW-6 | KEK H2 copy zeroed | `web.js changePassword()` held an `H2 = H.slice()` copy across both `combineKek` calls. Both `H2` and `newC` are now zeroed in `finally` (defense-in-depth, I4). | #418 | ✅ BUILT |
+| C3 | WC signing handlers — no RASP gate | `handlePersonalSign` / `handleSignTypedData` / `handleSendTransaction` called `withPrivateKey` with no `presignGate()` check. Gate now runs before any key operation; blocked → `rejectRequest`, return (I4). | #427 | ✅ BUILT |
+| H7 | EIP-712 domain.chainId vs session chain | `eth_signTypedData_v4` now validates `domain.chainId` against the WC session's CAIP-2 chain; mismatch → `rejectRequest(CHAINID_MISMATCH)` + throw. No-chainId domain signs through (EIP-712 backwards-compat). | #427 | ✅ BUILT |
+| H8 | personal_sign address binding | Resolves EIP-1474 vs MetaMask-legacy param order; rejects if neither param is the connected wallet's own address (`PERSONAL_SIGN_ADDRESS_MISMATCH`) before the key is touched. | #427 | ✅ BUILT |
+| M9 | WC 1M gas cap | `handleSendTransaction` caps gas at 1,000,000 regardless of dApp-supplied value; estimates gas via `provider.estimateGas` when dApp omits `gas`, then clamps the estimate too. | #427 | ✅ BUILT |
+| M11 | WC session expiry not enforced | `assertSessionLive` now runs before any WC signing handler — expired or absent session → `rejectRequest` + throw; key is never touched (I4). | #427 | ✅ BUILT |
+| H13 | CopySeed / CopySecret — seed copy guard | `makeCopy` abstraction added in `HDWalletManager.jsx`; bare `navigator.clipboard.writeText` calls on sensitive values eliminated; structural test guards the pattern. | #410+ | ✅ BUILT |
+| H14/H15/H16 | KEK honest naming | `isKekEnrolled`, `biometricUnlockUsesKek`, `hasHardwareFactor` renamed to remove misleading "hardware" from purely software-layer controls; `isSecureHardwareAvailable()` is the honest gate that returns `true` only when OS-enforced ACL is actually present. | #414 | ✅ BUILT |
+| H-A | Web vault password entropy | `validateWebVaultPassword()` enforces a 12-character minimum at `createVault` on web mainnet builds (`ALLOW_MAINNET = true`). A short password is `WEB_VAULT_PASSWORD_TOO_SHORT` — rejected before any ciphertext is written (I4 fail-closed). Web-only: native vaults have a hardware KEK factor and this restriction is deliberately NOT applied there. UI disclosure banner added (`WalletEntry.jsx`, web-only). | #424 | ✅ BUILT |
+| H-B | CryptoSigning ephemeral key warning | Persistent amber `role="alert"` banner on the CryptoSigning page: keys displayed there are temporary (derived on-the-fly, never persisted); funds sent to a displayed address are unrecoverable without first exporting the key. | #425 | ✅ BUILT |
+| H-C | Mainnet gate consolidation | `SendCrypto.jsx` read `import.meta.env.VITE_ALLOW_MAINNET === 'true'` (a runtime env var, bypassable). Now imports the compile-time constant `ALLOW_MAINNET` from `networks.js` directly; `vite.config.js` dead-code-eliminates the gated path in production. | #426 | ✅ BUILT |
+| — | Android release APK CI | `.github/workflows/ci.yml` `android-release` job: runs on every `main` push after `verify` passes; `npx cap sync android` + `./gradlew assembleRelease -PRELEASE_CERT_SHA256` (secret-injected). Signed APK uploaded as a 30-day artifact. | #421 | ✅ BUILT |
+| — | Independent audit of unvalidated claims | `docs/audit-2026-06-27-unvalidated-claims.md`: 3 HIGH + 5 MEDIUM findings from static analysis of previously-unvalidated audit doc claims. H-A / H-B / H-C are the code fixes; remaining M-class items are documentation gaps (no code change required). | #423 | ✅ BUILT (doc) |
+
+> **Honest framing:** "BUILT" here means the code fix is on `main` and tests are green. These are security hardening PRs, not features with on-chain verification — no txid is claimed. Controls involving hardware (H-NEW-5 biometric ACL, H-NEW-1 APK cert pin on real devices) remain **BUILT / real-device-unverified** — they require a physical device or signed APK install to exercise the OS-enforced path. The JS/web test suite verifies the code structure and branching, not the hardware guarantee.
+
+---
+
 ## 9. AI (advisory only) — 💡 none built
 - Plain-language tx explanation, scam/phishing explanation, educational assistant, portfolio Q&A — 💡
 - AI portfolio advisor — 💡 advisory-only allowed; auto-executing ❌ out of scope
@@ -240,8 +268,19 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Android native (Capacitor) — 🟡 scaffolded
 - Mobile App PWA / Mobile Widget — ❌ removed (PR #48)
 
-## 12. High-risk / deferred
-- WalletConnect / dApp connector / Web3 browser — 📋 POST-AUDIT only; Web Bridge page ❌ removed (PR #48)
+## 12. WalletConnect / dApp connector
+
+WalletConnect / dApp connector — ✅ BUILT (post-audit, 2026-06-27). WC v2 pairing, session management, and the full signing surface are live. All signing handlers have been through a dedicated security hardening sweep (§8a); the surface is substantially more locked-down than when it was first shipped. Specific controls wired:
+
+- **C3 RASP pre-sign gate** — every `handlePersonalSign` / `handleSignTypedData` / `handleSendTransaction` runs `presignGate()` (RASP tier check) BEFORE touching `withPrivateKey`; a blocked gate calls `rejectRequest` and returns — never signs (I4 fail-closed).
+- **H7 EIP-712 domain chain binding** — `eth_signTypedData_v4` checks `domain.chainId` against the WalletConnect session's CAIP-2 chain; an explicit mismatch throws `CHAINID_MISMATCH` and rejects. A domain with no `chainId` signs through (backwards-compatible per EIP-712 §2.1).
+- **H8 personal_sign address binding** — params `[message, address]` (EIP-1474) vs `[address, message]` (MetaMask-legacy) are resolved correctly; if neither param is the connected wallet's address the request is rejected (`PERSONAL_SIGN_ADDRESS_MISMATCH`) before the key is touched (I4).
+- **M9 gas cap** — `handleSendTransaction` caps gas at 1,000,000 unconditionally. If the dApp omits `gas`, the cap is applied to the provider estimate; if present it is clamped to the cap. A dApp cannot bypass by omitting gas.
+- **M11 session expiry** — `assertSessionLive` runs before any key operation on every signing handler. An expired or absent session calls `rejectRequest` then throws; the key is never touched (I4).
+- **Popular dApps grid** — curated shortcut grid on the dApp Connector page (feat PR, 2026-06-27).
+- **H-C mainnet gate consolidation** — `SendCrypto.jsx` no longer reads `VITE_ALLOW_MAINNET` from env; it imports the compile-time `ALLOW_MAINNET` constant from `networks.js` directly, eliminating a runtime environment bypass vector (PR #426).
+
+Web Bridge page ❌ removed (PR #48 — the swap/relay gateway, not the WC pairing surface).
 
 ---
 
