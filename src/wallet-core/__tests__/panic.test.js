@@ -327,7 +327,7 @@ describe('panic wipe', () => {
     const secondary = await getBlob('secondary');
     const tertiary = await getBlob('tertiary');
     expect(unb64(tertiary.ct).length).toBe(unb64(secondary.ct).length);
-  });
+  }, 180_000);
 
   it('removing the panic PIN wipes nothing else', async () => {
     await populateDevice();

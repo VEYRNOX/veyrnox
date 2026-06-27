@@ -275,7 +275,7 @@ export async function verifyBackupEnvelope(envelope, password, pin) {
  * dismissed (so the caller can show an honest toast).
  *
  * @param {object} envelope  result of createBackupEnvelope()
- * @returns {Promise<boolean>}
+ * @returns {Promise<boolean|{saved:boolean,path:string}>}
  */
 export async function downloadBackupFile(envelope) {
   const bytes = encodeBinary(envelope);
