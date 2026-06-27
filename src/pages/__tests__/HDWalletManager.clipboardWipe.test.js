@@ -34,7 +34,7 @@ describe('HDWalletManager clipboard wipe (M15)', () => {
     const copy = makeCopy(() => {});
     copy('abandon abandon about', 'seed', { sensitive: true });
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('');
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('•'.repeat(24));
   });
 
   it('does NOT schedule a wipe for a public address (non-sensitive)', async () => {
