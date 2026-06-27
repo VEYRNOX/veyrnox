@@ -61,19 +61,21 @@ export function useActionGuard() {
   }, [resolveMethod]);
 
   const verify = useCallback(async ({ pin, password }) => {
-    // Factor 1 (all methods): the unlock credential, full vault Argon2id cost.
+    if (pending?.method === 'biometric') {
+      // Biometric-only step-up: the wallet was already unlocked with the user's
+      // credential; the gate adds a live biometric re-auth (possession factor).
+      // No PIN re-entry — PIN was already consumed at unlock. FAIL CLOSED.
+      let bioOk = false;
+      try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
+      if (bioOk) return { allowed: true };
+      return { allowed: false, message: 'Biometric check did not pass — not proceeding.' };
+    }
+    // Factor 1 (password / passkey methods): the unlock credential, full vault Argon2id cost.
     const pinResult = await verifyActiveCredentialDetailed(pin);
     if (pinResult.bricked) {
       return { allowed: false, message: 'Verification unavailable — please re-lock and unlock the wallet.' };
     }
     const pinOk = pinResult.ok;
-    if (pending?.method === 'biometric') {
-      // Factor 2: a real OS biometric match (fingerprint / Face). FAIL CLOSED — a
-      // cancel/no-match/lockout/unavailable all count as NOT verified.
-      let bioOk = false;
-      try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
-      return evaluateTwoFactor({ pinOk, passwordOk: bioOk, actionPasswordConfigured: true });
-    }
     if (pending?.method === 'passkey') {
       // Factor 2: a WebAuthn assertion bound to this device's registered passkey.
       // FAIL CLOSED — a cancel, timeout, missing authenticator, or any other error
