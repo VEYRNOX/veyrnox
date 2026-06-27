@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { copySecret } from "@/lib/copySecret";
+import { copyPlain } from "@/lib/copySecret";
 import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { LEVEL } from "@/risk/levels";
@@ -19,7 +20,7 @@ export function makeCopy(setCopied) {
     if (sensitive) {
       copySecret(text);
     } else {
-      navigator.clipboard.writeText(text);
+      copyPlain(text);
     }
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
