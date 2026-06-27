@@ -145,7 +145,7 @@ function presignGateOrReject() {
 export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic, id, params) {
   const gate = presignGateOrReject();
   if (!gate.proceedAllowed) {
-    await rejectRequest(topic, id).catch(() => {});
+    await rejectRequest(topic, id, 'RASP_BLOCK').catch(() => {});
     return;
   }
   const arr = Array.isArray(params) ? params : [];
@@ -162,7 +162,7 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
     } else if (isOwn(arr[0])) {
       hexMsg = arr[1]; // MetaMask-legacy order [ownAddress, message]
     } else {
-      await rejectRequest(topic, id).catch(() => {});
+      await rejectRequest(topic, id, 'PERSONAL_SIGN_ADDRESS_MISMATCH').catch(() => {});
       throw new Error(
         `Rejected personal_sign [PERSONAL_SIGN_ADDRESS_MISMATCH]: the signing ` +
         `address does not match this wallet (address mismatch). ` +
@@ -182,7 +182,7 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
 export async function _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2) {
   const gate = presignGateOrReject();
   if (!gate.proceedAllowed) {
-    await rejectRequest(topic, id).catch(() => {});
+    await rejectRequest(topic, id, 'RASP_BLOCK').catch(() => {});
     return;
   }
   const typedDataJson = params[1] ?? params[0];
@@ -190,31 +190,30 @@ export async function _handleSignTypedData({ withPrivateKey }, topic, id, params
   if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
 
   // H7 — bind the EIP-712 domain.chainId to the WalletConnect SESSION chain.
-  // Only reject on an actual mismatch (or an invalid session chain when the
-  // domain DOES carry a chainId); a domain with no chainId field is
-  // backwards-compatible and must still sign. Computed inline (pure) so the gate
-  // does not depend on a separately-imported helper.
-  const rawDomainChainId = parsed?.domain?.chainId;
-  if (rawDomainChainId !== undefined && rawDomainChainId !== null) {
-    const domainChainId = toNumericChainId(rawDomainChainId);
-    const sessionChainId = toNumericChainId(
-      typeof sessionCaip2 === 'string' ? sessionCaip2.split(':')[1] : null,
+  // Fail closed (I4): when the session chain is known, the typed data MUST carry
+  // a matching domain.chainId. A domain with no chainId cannot be bound to this
+  // session, so it is rejected rather than signed — an unbound signature could be
+  // replayed on another chain. Computed inline (pure) so the gate does not depend
+  // on a separately-imported helper.
+  const sessionChainId = toNumericChainId(
+    typeof sessionCaip2 === 'string' ? sessionCaip2.split(':')[1] : null,
+  );
+  if (sessionChainId == null) {
+    await rejectRequest(topic, id, 'SESSION_CHAINID_INVALID').catch(() => {});
+    throw new Error(
+      `Rejected typed-data signature [SESSION_CHAINID_INVALID]: this connection has no valid chain. ` +
+      `Veyrnox will not produce a signature valid on a different chain.`,
     );
-    if (sessionChainId == null) {
-      await rejectRequest(topic, id).catch(() => {});
-      throw new Error(
-        `Rejected typed-data signature [SESSION_CHAINID_INVALID]: this connection has no valid chain. ` +
-        `Veyrnox will not produce a signature valid on a different chain.`,
-      );
-    }
-    if (domainChainId !== sessionChainId) {
-      await rejectRequest(topic, id).catch(() => {});
-      throw new Error(
-        `Rejected typed-data signature [CHAINID_MISMATCH]: domain.chainId (${domainChainId}) ` +
-        `does not match this connection's chain (${sessionChainId}). ` +
-        `Veyrnox will not produce a signature valid on a different chain.`,
-      );
-    }
+  }
+  const rawDomainChainId = parsed?.domain?.chainId;
+  const domainChainId = rawDomainChainId != null ? toNumericChainId(rawDomainChainId) : null;
+  if (domainChainId == null || domainChainId !== sessionChainId) {
+    await rejectRequest(topic, id, 'CHAIN_ID_MISMATCH').catch(() => {});
+    throw new Error(
+      `Rejected typed-data signature [CHAIN_ID_MISMATCH]: domain.chainId (${rawDomainChainId ?? '(absent)'}) ` +
+      `does not match this connection's chain (${sessionChainId}). ` +
+      `Veyrnox will not produce a signature valid on a different chain.`,
+    );
   }
 
   const { EIP712Domain: _ignored, ...typesWithoutDomain } = parsed.types;
@@ -228,7 +227,7 @@ export async function _handleSignTypedData({ withPrivateKey }, topic, id, params
 export async function _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId) {
   const gate = presignGateOrReject();
   if (!gate.proceedAllowed) {
-    await rejectRequest(topic, id).catch(() => {});
+    await rejectRequest(topic, id, 'RASP_BLOCK').catch(() => {});
     return;
   }
   const txParams = params[0];
@@ -262,7 +261,7 @@ export async function _handleSendTransaction({ withPrivateKey }, topic, id, para
     // the cap by leaving `gas` out. If no estimate is available, clamp to the cap.
     const estimatedGas = txParams.gas != null
       ? 0n
-      : (typeof wallet.estimateGas === 'function' ? await wallet.estimateGas(tx) : WC_GAS_CAP);
+      : await provider.estimateGas(tx).catch(() => WC_GAS_CAP);
     tx.gasLimit = resolveGasLimit(txParams.gas, estimatedGas);
 
     const sent = await wallet.sendTransaction(tx);
@@ -371,14 +370,17 @@ export function WalletConnectProvider({ children }) {
     const session = getActiveSessions().find((s) => s.topic === topic);
     const check = checkSessionExpiry(session);
     if (check.ok) return;
-    await rejectRequest(topic, id).catch(() => {});
+    // Normalise both SESSION_NOT_FOUND and SESSION_EXPIRED to SESSION_EXPIRED on
+    // the wire: from the signer's perspective an absent session is equally dead,
+    // and a single fail-closed code keeps the contract simple (I4).
+    await rejectRequest(topic, id, 'SESSION_EXPIRED').catch(() => {});
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
     refreshSessions();
     const detail = check.code === 'SESSION_NOT_FOUND'
       ? 'the connection no longer exists'
       : 'this connection has expired';
     throw new Error(
-      `Rejected signing request [${check.code}]: ${detail}. ` +
+      `Rejected signing request [SESSION_EXPIRED]: ${detail}. ` +
       `Veyrnox will not sign for an expired connection — reconnect the dApp.`,
     );
   }, [refreshSessions]);
@@ -394,13 +396,14 @@ export function WalletConnectProvider({ children }) {
   }, [withPrivateKey, evmAddress, assertSessionLive]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
-  const handleSignTypedData = useCallback(async (topic, id, params) => {
+  const handleSignTypedData = useCallback(async (topic, id, params, caip2ChainId) => {
     await assertSessionLive(topic, id); // M11
     // H7 — the session's CAIP-2 chain id lives on the pending request the modal
     // is acting on; pass it to the pure helper for cross-chain replay protection.
+    // Fall back to the caller-supplied chain when the request is not in state.
     const sessionCaip2 = pendingRequests.find(
       (r) => r.topic === topic && r.id === id,
-    )?.params?.chainId;
+    )?.params?.chainId ?? caip2ChainId;
     await _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
   }, [withPrivateKey, pendingRequests, assertSessionLive]);

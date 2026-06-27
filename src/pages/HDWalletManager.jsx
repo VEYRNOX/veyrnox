@@ -24,7 +24,7 @@ import { copySecret } from "@/lib/copySecret";
 // clipboard wipe. Public addresses copy plainly — wiping a value the user
 // pasted would be a bug. Pure factory so the routing is unit-testable.
 export function makeCopy(setCopied) {
-  return (text, id, { sensitive = false } = {}) => {
+  return (text, id, sensitive = false) => {
     if (sensitive) {
       copySecret(text);
     } else {
@@ -511,7 +511,7 @@ export default function HDWalletManager() {
                   <p className="text-xs font-semibold">Your Recovery Phrase (shown once)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label={showSeed ? "Hide recovery phrase" : "Show recovery phrase"}>{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(generatedSeed, "seed", { sensitive: true })} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy recovery phrase">{copied === "seed" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => copy(generatedSeed, "seed", true)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy recovery phrase">{copied === "seed" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showSeed ? (
