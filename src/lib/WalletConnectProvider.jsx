@@ -146,7 +146,7 @@ export function WalletConnectProvider({ children }) {
   }, [withPrivateKey]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
-  const handleSignTypedData = useCallback(async (topic, id, params) => {
+  const handleSignTypedData = useCallback(async (topic, id, params, caip2ChainId) => {
     if (!raspGuardAllowsSigning()) {
       await rejectRequest(topic, id, 'RASP_BLOCK');
       setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
@@ -155,6 +155,20 @@ export function WalletConnectProvider({ children }) {
     const typedDataJson = params[1] ?? params[0];
     const parsed = parseTypedData(typedDataJson);
     if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
+
+    // H7: bind domain.chainId to the WC session chain. A Permit/Permit2 signature
+    // carrying a foreign domain.chainId is a cross-chain replay (drain) vector.
+    // Fail closed (I4): reject if the domain chainId is absent or mismatched.
+    const sessionChainId = parseInt(caip2ChainId?.replace(/^eip155:/, ''), 10);
+    const domainChainId = parsed.domain?.chainId !== undefined
+      ? Number(parsed.domain.chainId)
+      : NaN;
+    if (isNaN(domainChainId) || domainChainId !== sessionChainId) {
+      await rejectRequest(topic, id, 'CHAIN_ID_MISMATCH');
+      setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
+      return;
+    }
+
     const { EIP712Domain: _ignored, ...typesWithoutDomain } = parsed.types;
     const sig = await withPrivateKey(0, async (pk) => {
       const wallet = new ethers.Wallet(pk);

@@ -97,6 +97,7 @@ vi.mock('ethers', () => ({
 }));
 
 import { WalletConnectProvider, useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
+import { parseTypedData } from '@/wallet-core/evm/typed-data.js';
 
 function captureHandlers() {
   const out = {};
@@ -168,8 +169,15 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
     });
 
     it('handleSignTypedData responds and never rejects', async () => {
+      // H7: typed data must carry a domain.chainId matching the session chain.
+      parseTypedData.mockReturnValue({
+        valid: true,
+        types: { EIP712Domain: [] },
+        domain: { chainId: 11155111 },
+        message: {},
+      });
       const h = captureHandlers();
-      await act(async () => { await h.signTypedData('topicB', 11, ['0xabc', '{}']); });
+      await act(async () => { await h.signTypedData('topicB', 11, ['0xabc', '{}'], 'eip155:11155111'); });
       expect(respondToRequest).toHaveBeenCalled();
       expect(rejectRequest).not.toHaveBeenCalled();
     });
@@ -182,5 +190,62 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
       expect(respondToRequest).toHaveBeenCalled();
       expect(rejectRequest).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('WalletConnectProvider — H7: EIP-712 domain.chainId bound to session chain', () => {
+  beforeEach(() => {
+    respondToRequest.mockClear();
+    rejectRequest.mockClear();
+    withPrivateKey.mockClear();
+    presignGate.mockReset();
+    presignGate.mockReturnValue({ proceedAllowed: true, signerReachable: true });
+    parseTypedData.mockReturnValue({
+      valid: true,
+      types: { EIP712Domain: [] },
+      domain: { chainId: 11155111 },
+      message: {},
+    });
+  });
+
+  it('rejects CHAIN_ID_MISMATCH when domain.chainId differs from session chain', async () => {
+    parseTypedData.mockReturnValue({
+      valid: true,
+      types: { EIP712Domain: [] },
+      domain: { chainId: 1 }, // mainnet permit on a Sepolia session
+      message: {},
+    });
+    const h = captureHandlers();
+    await act(async () => {
+      await h.signTypedData('topicH7a', 70, ['0xabc', '{}'], 'eip155:11155111');
+    });
+    expect(rejectRequest).toHaveBeenCalledWith('topicH7a', 70, 'CHAIN_ID_MISMATCH');
+    expect(respondToRequest).not.toHaveBeenCalled();
+    expect(withPrivateKey).not.toHaveBeenCalled();
+  });
+
+  it('signs when domain.chainId matches the session chain', async () => {
+    const h = captureHandlers();
+    await act(async () => {
+      await h.signTypedData('topicH7b', 71, ['0xabc', '{}'], 'eip155:11155111');
+    });
+    expect(respondToRequest).toHaveBeenCalled();
+    expect(rejectRequest).not.toHaveBeenCalled();
+  });
+
+  it('rejects CHAIN_ID_MISMATCH when domain.chainId is absent (fail closed)', async () => {
+    parseTypedData.mockReturnValue({
+      valid: true,
+      types: { EIP712Domain: [] },
+      domain: {}, // no chainId — cannot be bound to this session
+      message: {},
+    });
+    const h = captureHandlers();
+    await act(async () => {
+      await h.signTypedData('topicH7c', 72, ['0xabc', '{}'], 'eip155:11155111');
+    });
+    expect(rejectRequest).toHaveBeenCalledWith('topicH7c', 72, 'CHAIN_ID_MISMATCH');
+    expect(respondToRequest).not.toHaveBeenCalled();
+    expect(withPrivateKey).not.toHaveBeenCalled();
   });
 });
