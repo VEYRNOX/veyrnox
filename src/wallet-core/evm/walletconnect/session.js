@@ -58,10 +58,39 @@ function _emit(event, data) {
   }
 }
 
+// M8 — structural validation of a WalletConnect pairing URI before it reaches the SDK.
+// Fail closed (I4): a malformed URI must never be handed to client.pair(). Returns the
+// trimmed URI on success; throws a clear error otherwise.
+export function validateWcUri(uri) {
+  const trimmed = String(uri ?? '').trim();
+  if (!trimmed.startsWith('wc:')) {
+    throw new Error('Invalid WalletConnect URI: must start with wc:');
+  }
+  const atIdx = trimmed.indexOf('@');
+  const qIdx = trimmed.indexOf('?');
+  if (atIdx === -1 || qIdx === -1 || atIdx >= qIdx) {
+    throw new Error('Invalid WalletConnect URI: malformed');
+  }
+  const version = trimmed.slice(atIdx + 1, qIdx);
+  if (version !== '2') {
+    throw new Error(`Invalid WalletConnect URI: unsupported version ${version} (expected 2)`);
+  }
+  const params = new URLSearchParams(trimmed.slice(qIdx + 1));
+  if (!params.get('relay-protocol')) {
+    throw new Error('Invalid WalletConnect URI: missing relay-protocol');
+  }
+  const symKey = params.get('symKey');
+  if (!symKey || !/^[0-9a-f]{64}$/i.test(symKey)) {
+    throw new Error('Invalid WalletConnect URI: missing or malformed symKey');
+  }
+  return trimmed;
+}
+
 export async function pairWithDapp(uri) {
+  const validated = validateWcUri(uri);
   const client = await initWalletConnect();
   if (!client) throw new Error('WalletConnect is not configured on this build.');
-  await client.pair({ uri: uri.trim() });
+  await client.pair({ uri: validated });
 }
 
 export async function approveSession(proposalId, evmAddress, chainIds) {
