@@ -27,6 +27,12 @@ describe('M8 — pairWithDapp structural URI validation', () => {
     ['wc without version', 'wc:topic'],
     ['wrong scheme prefix', 'notwc:abc@2?relay-protocol=irn'],
     ['non-string', undefined],
+    // branch 3 — wrong WC version
+    ['wrong version (v1)', 'wc:7f6e9b1c2d3e4f5a@1?relay-protocol=irn&symKey=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'],
+    // branch 4 — missing relay-protocol
+    ['missing relay-protocol', 'wc:7f6e9b1c2d3e4f5a@2?symKey=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'],
+    // branch 5 — malformed symKey (too short)
+    ['malformed symKey', 'wc:7f6e9b1c2d3e4f5a@2?relay-protocol=irn&symKey=tooshort'],
   ];
 
   for (const [label, uri] of bad) {
