@@ -148,7 +148,9 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
       if (type === REQUEST_TYPES.PERSONAL_SIGN) {
         await signPersonal(topic, id, reqParams);
       } else if (type === REQUEST_TYPES.SIGN_TYPED_DATA) {
-        await signTypedData(topic, id, reqParams);
+        // Pass the session chain (CAIP-2) so the H7 EIP-712 domain.chainId
+        // cross-chain replay guard can actually fire (else it's dormant).
+        await signTypedData(topic, id, reqParams, params.chainId);
       } else if (type === REQUEST_TYPES.SEND_TRANSACTION) {
         await sendTransaction(topic, id, reqParams, params.chainId);
       } else {
