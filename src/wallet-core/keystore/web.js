@@ -45,10 +45,12 @@ export function validateWebVaultPassword(password) {
   if (!ALLOW_MAINNET) return;
   const len = typeof password === 'string' ? password.length : 0;
   if (len < WEB_VAULT_MIN_PASSWORD_LEN) {
-    const err = new Error(WEB_VAULT_ERR.PASSWORD_TOO_SHORT);
-    err.code = WEB_VAULT_ERR.PASSWORD_TOO_SHORT;
-    err.userMessage =
-      `On web, your password is your only protection — use at least ${WEB_VAULT_MIN_PASSWORD_LEN} characters.`;
+    const err = /** @type {Error & {code: string, userMessage: string}} */ (
+      Object.assign(new Error(WEB_VAULT_ERR.PASSWORD_TOO_SHORT), {
+        code: WEB_VAULT_ERR.PASSWORD_TOO_SHORT,
+        userMessage: `On web, your password is your only protection — use at least ${WEB_VAULT_MIN_PASSWORD_LEN} characters.`,
+      })
+    );
     throw err;
   }
 }
