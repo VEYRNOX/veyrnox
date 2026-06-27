@@ -13,19 +13,20 @@
 // │ testing). See docs/M2.secure-storage.md, "Verification gates".           │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
-// DESIGN B — implemented as HARDWARE-GATED UNLOCK + HARDWARE-BACKED AT-REST
-// STORAGE (see docs/M2.secure-storage.md; Design B explicitly permits the
-// "or to gate access" interpretation). To be precise about what this is NOT:
-// no bespoke Secure Enclave / StrongBox key wraps the vault-encryption key —
-// that key is still the Argon2id-derived WebCrypto key from ../vault.js.
-// "hardware-backed" here means the plugin's at-rest store (iOS Keychain /
-// Android Keystore-backed); "gated" means the biometric/passcode prompt below.
+// DESIGN B — implemented as PASSCODE/BIOMETRIC-GATED UNLOCK + PLATFORM-SECURE-
+// STORE AT-REST STORAGE (iOS Keychain, passcode-gated; Android Keystore) — NOT a
+// Secure Enclave / StrongBox key-wrap (see docs/M2.secure-storage.md; Design B
+// explicitly permits the "or to gate access" interpretation). To be precise about
+// what this is NOT: no bespoke Secure Enclave / StrongBox key wraps the
+// vault-encryption key — that key is still the Argon2id-derived WebCrypto key
+// from ../vault.js. "platform secure store" here means the plugin's at-rest store
+// (iOS Keychain / Android Keystore); "gated" means the biometric/passcode prompt below.
 //   - The EXISTING Argon2id+AES-GCM vault FORMAT is reused BYTE-IDENTICALLY.
 //     We call the same ../vault.js encryptVault/decryptVault as the web path;
 //     no algorithm, parameter, or blob layout changes here.
 //   - WHAT CHANGES vs web:
-//       1. The ciphertext blob is persisted in the platform's hardware-backed
-//          secure store (iOS Keychain / Android Keystore-backed storage) via
+//       1. The ciphertext blob is persisted in the platform secure store
+//          (iOS Keychain / Android Keystore) via
 //          @aparajita/capacitor-secure-storage, with `ThisDeviceOnly`,
 //          passcode-gated accessibility — NEVER in webview IndexedDB/localStorage
 //          and NEVER synced to iCloud.
@@ -44,7 +45,7 @@
 //   NOT an OS-enforced biometric ACL bound to the Keychain/Keystore item
 //   (kSecAttrAccessControl(biometryCurrentSet) on iOS / setUserAuthentication-
 //   Required on a Keystore key on Android). The chosen plugins protect the item
-//   with hardware-backed, ThisDeviceOnly, passcode-gated accessibility, but do
+//   with platform secure store (iOS Keychain / Android Keystore), ThisDeviceOnly, passcode-gated accessibility, but do
 //   NOT expose per-item biometric ACL binding. A stronger variant (OS-bound
 //   biometric ACL) needs either a plugin that exposes it or a thin custom native
 //   plugin — that EXPANDS the audit scope and is deferred (see M2c/M2d + the PR).
@@ -141,7 +142,7 @@ async function authenticateOrThrow() {
   // (we require a passcode), and there is nothing to authenticate against.
   if (!info.isAvailable && !info.deviceIsSecure) {
     throw new Error(
-      'This device has no passcode or biometrics set; cannot unlock the hardware-backed vault',
+      'This device has no passcode or biometrics set; cannot unlock the secure-store vault',
     );
   }
 
@@ -215,10 +216,11 @@ async function _unlockInner(password, opts = {}) {
 /** @type {import('./keyStore.js').KeyStore} */
 export const nativeKeyStore = {
   // True when a device credential (passcode/biometrics) is set, which is the
-  // precondition for the OS to hardware-protect the stored item (Secure Enclave-
-  // wrapped Keychain on iOS; Keystore-backed storage on Android). NOTE: this is a
-  // proxy — these plugins do not expose a direct StrongBox/Enclave probe, so we
-  // cannot assert StrongBox specifically. Treated as an audit/device-test item.
+  // precondition for the OS to protect the stored item (passcode-gated Keychain
+  // on iOS (NOT Secure-Enclave-wrapped — see header, H14); Keystore-backed
+  // storage on Android). NOTE: this is a proxy — these plugins do not expose a
+  // direct StrongBox/Enclave probe, so we cannot assert StrongBox specifically.
+  // Treated as an audit/device-test item.
   async isSecureHardwareAvailable() {
     try {
       const info = await BiometricAuth.checkBiometry();
@@ -237,7 +239,7 @@ export const nativeKeyStore = {
   },
 
   // Encrypt with the SAME audited crypto as web, then persist CIPHERTEXT ONLY to
-  // the hardware-backed secure store. The live secret never touches IndexedDB/
+  // the platform secure store (iOS Keychain / Android Keystore). The live secret never touches IndexedDB/
   // localStorage and is not retained here after this call returns.
   async createVault(secret, password) {
     await init();
@@ -381,7 +383,7 @@ export const nativeKeyStore = {
   },
 
   // Remove the stored vault and the hardware KEK credential (if any) from the
-  // hardware-backed store. Both must be cleared together so a re-import starts
+  // platform secure store (iOS Keychain / Android Keystore). Both must be cleared together so a re-import starts
   // fresh and does not inherit a stale credential ID.
   async clearVault() {
     await init();

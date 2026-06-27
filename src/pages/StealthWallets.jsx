@@ -548,10 +548,11 @@ export default function StealthWallets() {
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-caution">Storage note.</span>{' '}
           Hidden wallets live in <strong>web IndexedDB</strong>. The primary vault is
-          hardware-backed on native (iOS Keychain / Android Keystore), but
-          hidden-wallet hardware backing is still planned (M2c/M2d). Until then a full
-          device-data extraction can expose the hidden-wallet container without a
-          hardware key — though its contents stay encrypted under your secret.
+          stored in the platform secure store (iOS Keychain / Android Keystore) on
+          native — passcode-gated, ThisDeviceOnly, but NOT a Secure Enclave / StrongBox
+          key-wrap. Native secure-store placement for hidden wallets is still planned
+          (M2c/M2d). Either way a full device-data extraction can expose the
+          hidden-wallet container — though its contents stay encrypted under your secret.
         </p>
       </div>
 

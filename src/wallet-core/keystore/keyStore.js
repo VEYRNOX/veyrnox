@@ -3,10 +3,11 @@
 // ONE interface, per-platform implementations (see docs/M2.secure-storage.md):
 //   - web    (M2a): existing IndexedDB + Argon2id+AES-GCM vault, UNCHANGED,
 //                   composed behind this contract in ./web.js.
-//   - native (M2b): Capacitor plugin bridging iOS Keychain/Secure Enclave +
-//                   Android Keystore/StrongBox, with biometric gating
-//                   (Design B — hardware-gated unlock + hardware-backed
-//                   at-rest store; same vault FORMAT, no Enclave key-wrap).
+//   - native (M2b): Capacitor plugin bridging the iOS Keychain (passcode-gated)
+//                   + Android Keystore, with biometric gating
+//                   (Design B — passcode/biometric-gated unlock + platform
+//                   secure-store at-rest store; same vault FORMAT, no Enclave
+//                   key-wrap).
 //
 // The wallet-core crypto (mnemonic/derivation/signing) does NOT change; it just
 // receives the secret from whichever store unlocked it. This module is the
@@ -20,9 +21,10 @@
  * @typedef {Object} KeyStore
  *
  * @property {() => Promise<boolean>} isSecureHardwareAvailable
- *   Whether a hardware-backed keystore (Secure Enclave / StrongBox) is
- *   available to protect key material. Web: always false. Native (M2b): true
- *   when the device provides one.
+ *   Whether the device has a passcode/biometric-gated platform keystore
+ *   available. NOTE: this is a proxy check (passcode present) — it does NOT
+ *   probe for an actual Secure Enclave / StrongBox-bound key. Web: always
+ *   false. Native (M2b): true when the device has a credential set.
  *
  * @property {() => Promise<boolean>} hasVault
  *   Whether an encrypted vault already exists for this device.

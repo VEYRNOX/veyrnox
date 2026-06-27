@@ -34,12 +34,14 @@ describe('StealthWallets storage disclosure (VULN-4)', () => {
     expect(el).toBeTruthy();
   });
 
-  it('disclosure mentions IndexedDB and hardware-backed asymmetry', () => {
+  it('disclosure mentions IndexedDB and platform-secure-store asymmetry', () => {
     render(<StealthWallets />);
     const els = screen.getAllByTestId('stealth-storage-disclosure');
     const el = els[0];
     const text = el.textContent.toLowerCase();
     expect(text).toMatch(/indexeddb|web storage/);
-    expect(text).toMatch(/hardware/);
+    // PR #406 replaced "hardware-backed" overclaim with accurate "platform secure store
+    // (ios keychain / android keystore)" — test updated to match honest wording.
+    expect(text).toMatch(/keychain|keystore|platform secure store/);
   });
 });
