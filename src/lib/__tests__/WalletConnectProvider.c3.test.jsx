@@ -64,8 +64,14 @@ vi.mock('@/wallet-core/evm/typed-data.js', () => ({
   describeTypedData: vi.fn(),
 }));
 
+// M9: estimateGas is a per-test seam. Default returns a small estimate; tests
+// override estimateGasMock to exercise the cap.
+const estimateGasMock = vi.fn(() => Promise.resolve(21_000n));
 vi.mock('@/wallet-core/evm/provider.js', () => ({
-  getProvider: vi.fn(() => ({ send: vi.fn(() => Promise.resolve('0xaa36a7')) })),
+  getProvider: vi.fn(() => ({
+    send: vi.fn(() => Promise.resolve('0xaa36a7')),
+    estimateGas: (...a) => estimateGasMock(...a),
+  })),
 }));
 vi.mock('@/wallet-core/evm/networks.js', () => ({
   getNetworkByChainId: vi.fn(() => ({ key: 'sepolia' })),
@@ -84,13 +90,15 @@ vi.mock('@/lib/WalletProvider.jsx', () => ({
 }));
 
 // ethers Wallet must not actually sign — stub the signing surface.
+// M9: capture the tx object passed to sendTransaction so tests can assert gasLimit.
+const sentTxCapture = { last: null };
 vi.mock('ethers', () => ({
   ethers: {
     Wallet: class {
       constructor() {}
       signMessage() { return Promise.resolve('0xsig'); }
       signTypedData() { return Promise.resolve('0xsig'); }
-      sendTransaction() { return Promise.resolve({ hash: '0xhash' }); }
+      sendTransaction(tx) { sentTxCapture.last = tx; return Promise.resolve({ hash: '0xhash' }); }
     },
     getBytes: (x) => x,
   },
@@ -247,5 +255,71 @@ describe('WalletConnectProvider — H7: EIP-712 domain.chainId bound to session 
     expect(rejectRequest).toHaveBeenCalledWith('topicH7c', 72, 'CHAIN_ID_MISMATCH');
     expect(respondToRequest).not.toHaveBeenCalled();
     expect(withPrivateKey).not.toHaveBeenCalled();
+  });
+});
+
+describe('WalletConnectProvider — M9: 1M gas cap enforced in BOTH branches', () => {
+  beforeEach(() => {
+    respondToRequest.mockClear();
+    rejectRequest.mockClear();
+    withPrivateKey.mockClear();
+    estimateGasMock.mockReset();
+    sentTxCapture.last = null;
+    presignGate.mockReset();
+    presignGate.mockReturnValue({ proceedAllowed: true, signerReachable: true });
+  });
+
+  it('caps dApp-supplied gas above 1M to exactly 1M', async () => {
+    const h = captureHandlers();
+    await act(async () => {
+      await h.sendTransaction(
+        'topicM9a', 90,
+        [{ to: '0xdef', value: '0x0', gas: '0x1312D00' }], // 20,000,000
+        'eip155:11155111',
+      );
+    });
+    expect(sentTxCapture.last.gasLimit).toBe(1_000_000n);
+    expect(estimateGasMock).not.toHaveBeenCalled();
+  });
+
+  it('uses dApp-supplied gas as-is when below 1M', async () => {
+    const h = captureHandlers();
+    await act(async () => {
+      await h.sendTransaction(
+        'topicM9b', 91,
+        [{ to: '0xdef', value: '0x0', gas: '0x5208' }], // 21,000
+        'eip155:11155111',
+      );
+    });
+    expect(sentTxCapture.last.gasLimit).toBe(21_000n);
+    expect(estimateGasMock).not.toHaveBeenCalled();
+  });
+
+  it('estimates gas when gas is absent and caps the estimate at 1M', async () => {
+    estimateGasMock.mockResolvedValue(5_000_000n); // estimate above the cap
+    const h = captureHandlers();
+    await act(async () => {
+      await h.sendTransaction(
+        'topicM9c', 92,
+        [{ to: '0xdef', value: '0x0' }], // no gas
+        'eip155:11155111',
+      );
+    });
+    expect(estimateGasMock).toHaveBeenCalled();
+    expect(sentTxCapture.last.gasLimit).toBe(1_000_000n);
+  });
+
+  it('estimates gas when gas is absent and uses the estimate when below 1M', async () => {
+    estimateGasMock.mockResolvedValue(42_000n); // estimate below the cap
+    const h = captureHandlers();
+    await act(async () => {
+      await h.sendTransaction(
+        'topicM9d', 93,
+        [{ to: '0xdef', value: '0x0' }], // no gas
+        'eip155:11155111',
+      );
+    });
+    expect(estimateGasMock).toHaveBeenCalled();
+    expect(sentTxCapture.last.gasLimit).toBe(42_000n);
   });
 });

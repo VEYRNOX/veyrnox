@@ -180,7 +180,8 @@ export function WalletConnectProvider({ children }) {
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
-  // Gas cap of 1M enforced regardless of dApp suggestion (I5 — backend untrusted).
+  // Gas cap of 1M enforced in both branches — whether the dApp suggests gas or
+  // we estimate it ourselves (I5 — backend untrusted).
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
     if (!raspGuardAllowsSigning()) {
       await rejectRequest(topic, id, 'RASP_BLOCK');
@@ -213,9 +214,15 @@ export function WalletConnectProvider({ children }) {
         tx.type = 0;
       }
 
+      // M9: enforce the 1M gas cap in BOTH branches. When the dApp supplies gas
+      // we cap its suggestion; when it does not, we estimate and cap that too —
+      // otherwise ethers auto-estimates with no ceiling (I5 — backend untrusted).
       const GAS_CAP = 1_000_000n;
       if (txParams.gas) {
         tx.gasLimit = BigInt(txParams.gas) < GAS_CAP ? BigInt(txParams.gas) : GAS_CAP;
+      } else {
+        const est = await provider.estimateGas(tx);
+        tx.gasLimit = est < GAS_CAP ? est : GAS_CAP;
       }
 
       const sent = await wallet.sendTransaction(tx);
