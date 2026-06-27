@@ -98,7 +98,7 @@ describe('registryEntriesFromClassification', () => {
         // cut: off-wedge / server / unverified — these are the only non-live routes
         // remaining after the S-phase promotion sweep.
         // Promoted to live (removed from this list):
-        //   /analytics, /advanced-analytics, /benchmark, /correlation,
+        //   /analytics, /advanced-analytics, /correlation,
         //   /correlation-timeline, /news-sentiment, /calculator, /receipt,
         //   /recurring, /portfolio-rewind, /index-builder, /pl, /budget, /tax,
         //   /watchlist, /nft, /snapshots, /onchain, /wallet-seed-qr,
