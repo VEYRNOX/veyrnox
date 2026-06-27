@@ -1,14 +1,23 @@
-// HardwareKekPlugin.swift — iOS Secure Enclave / Keychain HMAC-SHA256
+// HardwareKekPlugin.swift — iOS Keychain HMAC-SHA256 hardware factor
 //
-// STATUS: BUILT (UNAUDITED-PROVISIONAL) — mirrors HardwareKekPlugin.kt exactly.
-// Key stored in iOS Keychain with biometryCurrentSet access control (Face ID /
-// Touch ID required per use; key invalidated if biometrics change).
+// STATUS: BUILT (UNAUDITED-PROVISIONAL) — awaiting independent third-party audit.
+//
+// H14 honesty fix: this file does NOT "mirror HardwareKekPlugin.kt exactly".
+// The Android side uses AndroidKeyStore (TEE/StrongBox HMAC key); the iOS side
+// stores a random 32-byte secret in the Keychain protected by SecAccessControl
+// with .biometryCurrentSet. The security property is equivalent (biometric-bound,
+// invalidated on enrollment change, never leaves the device), but the mechanism
+// is different — Keychain vs KeyStore, HMAC-SHA256 computed in Swift vs Java.
 //
 // Security invariants:
-//   I4 — NEVER fabricates H; biometric failure → reject (fail closed)
-//   kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly — key never leaves device
-//   .biometryCurrentSet — key invalidated if new biometric enrolled (mirrors
-//     Android setInvalidatedByBiometricEnrollment)
+//   I4 — NEVER fabricates H; biometric failure / item-not-found → reject (fail closed)
+//   kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly — item non-migratable, device-only
+//   .biometryCurrentSet — Face ID / Touch ID required per read; key invalidated if
+//     any biometric is added or removed (equivalent to Android setInvalidatedByBiometricEnrollment)
+//
+// NOTE: kSecUseOperationPrompt is deprecated since iOS 9. A future hardening pass
+// should migrate to LAContext.evaluatePolicy + kSecUseAuthenticationContext for
+// explicit control over the authentication context and re-use policy.
 //
 // UNAUDITED-PROVISIONAL: awaiting independent third-party audit.
 
