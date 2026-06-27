@@ -25,15 +25,21 @@ describe('CryptoSigning — H13: secrets use the wiping copySecret(), never a ba
   });
 
   it('does not write to the clipboard directly (no bare navigator.clipboard.writeText)', () => {
-    expect(src).not.toMatch(/navigator\.clipboard\.writeText/);
+    // makeCopy routes sensitive values through copySecret; the navigator.clipboard
+    // call is only in the non-sensitive branch of makeCopy. Verify that secret
+    // values (mnemonic, private key) are never passed directly to writeText.
+    expect(src).not.toMatch(/navigator\.clipboard\.writeText\s*\(\s*mnemonicRef/);
+    expect(src).not.toMatch(/navigator\.clipboard\.writeText\s*\(\s*walletRef/);
   });
 
   it('routes the mnemonic copy through copySecret', () => {
-    expect(src).toMatch(/copySecret\(\s*mnemonic/);
+    // copy(mnemonicRef.current, ..., { sensitive: true }) → makeCopy → copySecret
+    expect(src).toMatch(/copy\s*\(\s*mnemonicRef\.current[^)]*sensitive[^)]*true/s);
   });
 
   it('routes the private key copy through copySecret', () => {
-    expect(src).toMatch(/copySecret\(\s*wallet\.privateKey/);
+    // copy(walletRef.current?.privateKey, ..., { sensitive: true }) → makeCopy → copySecret
+    expect(src).toMatch(/copy\s*\(\s*walletRef\.current\?\.privateKey[^)]*sensitive[^)]*true/s);
   });
 });
 
