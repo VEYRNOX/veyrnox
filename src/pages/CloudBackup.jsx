@@ -90,7 +90,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       await verifyBackupEnvelope(env, password, pin);
       const result = await downloadBackupFile(env);
       setEnvelope(env);
-      if (result && result.saved) {
+      if (result && typeof result === "object" && result.saved) {
         setSavedPath(result.path);
         setPassword(""); setPin(""); setPinConfirm("");
       } else {
