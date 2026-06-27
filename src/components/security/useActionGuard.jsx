@@ -36,7 +36,7 @@ import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from
 import TwoFactorGate from './TwoFactorGate';
 
 export function useActionGuard() {
-  const { actionPasswordConfigured, verifyActiveCredential, verifyActionPassword, lock } = useWallet();
+  const { actionPasswordConfigured, verifyActiveCredentialDetailed, verifyActionPassword, lock } = useWallet();
   const [pending, setPending] = useState(null); // { run, title }
 
   // Resolve the ACTIVE second-factor method at call time (prefs/registration are
@@ -57,7 +57,11 @@ export function useActionGuard() {
 
   const verify = useCallback(async ({ pin, password }) => {
     // Factor 1 (both methods): the unlock credential, full vault Argon2id cost.
-    const pinOk = await verifyActiveCredential(pin);
+    const pinResult = await verifyActiveCredentialDetailed(pin);
+    if (pinResult.bricked) {
+      return { allowed: false, message: 'Verification unavailable — please re-lock and unlock the wallet.' };
+    }
+    const pinOk = pinResult.ok;
     if (pending?.method === 'passkey') {
       // Factor 2: a WebAuthn assertion bound to this device's registered passkey.
       // FAIL CLOSED — a cancel, timeout, missing authenticator, or any other error
@@ -70,7 +74,7 @@ export function useActionGuard() {
     // (never concurrent with the PIN KDF) — one 192 MiB allocation at a time.
     const passwordOk = await verifyActionPassword(password);
     return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
-  }, [pending, verifyActiveCredential, verifyActionPassword]);
+  }, [pending, verifyActiveCredentialDetailed, verifyActionPassword]);
 
   const gateModal = (
     <Dialog open={!!pending} onOpenChange={(open) => { if (!open) setPending(null); }}>

@@ -14,6 +14,10 @@ export const REQUEST_TYPES = {
 const METHOD_MAP = {
   eth_sendTransaction: REQUEST_TYPES.SEND_TRANSACTION,
   personal_sign: REQUEST_TYPES.PERSONAL_SIGN,
+  // eth_signTypedData (v1) and _v3 are CLASSIFIED here so the router can identify
+  // them, but they are also in BLOCKED_METHODS so they are rejected before signing
+  // (H6: their encoding diverges from v4 — routing them to the v4 handler would
+  // produce a hash the user never saw).
   eth_signTypedData: REQUEST_TYPES.SIGN_TYPED_DATA,
   eth_signTypedData_v3: REQUEST_TYPES.SIGN_TYPED_DATA,
   eth_signTypedData_v4: REQUEST_TYPES.SIGN_TYPED_DATA,
@@ -22,8 +26,16 @@ const METHOD_MAP = {
   wallet_addEthereumChain: REQUEST_TYPES.ADD_CHAIN,
 };
 
-// Methods rejected immediately — never prompt the user
-export const BLOCKED_METHODS = new Set(['eth_sign', 'wallet_addEthereumChain', 'wallet_switchEthereumChain']);
+// Methods rejected immediately — never prompt the user.
+// eth_signTypedData (v1) and _v3 are unsupported: their encoding diverges from v4,
+// so signing under v4 semantics produces a hash the user never saw (H6).
+export const BLOCKED_METHODS = new Set([
+  'eth_sign',
+  'eth_signTypedData',
+  'eth_signTypedData_v3',
+  'wallet_addEthereumChain',
+  'wallet_switchEthereumChain',
+]);
 
 export function classifyRequest(method) {
   return METHOD_MAP[method] ?? REQUEST_TYPES.UNKNOWN;
