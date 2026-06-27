@@ -121,6 +121,18 @@ export async function combineKek(H, C) {
     baseKey,
     KEK_LEN * 8,
   );
+
+  // M20: zero the highest-sensitivity intermediates in place before returning.
+  // H is the hardware binding key and C is the FULL Argon2id(PIN, salt) output;
+  // both are wiped so they do not linger in the JS heap until GC (I4, fail
+  // closed). NOTE: this mutates the caller's arrays — every production caller
+  // (keystore/web.js, keystore/native.js) derives a FRESH H (getHardwareFactor)
+  // and a FRESH C (deriveKekC) per combineKek and does NOT read H/C afterwards.
+  // A caller that needs the SAME H/C for a second combineKek (e.g. PIN rotation)
+  // must derive/copy them per call rather than relying on these arrays surviving.
+  zero(H);
+  zero(C);
+
   return new Uint8Array(bits);
 }
 

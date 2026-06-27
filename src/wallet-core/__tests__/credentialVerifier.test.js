@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createCredentialVerifier,
   verifyCredential,
+  verifyCredentialDetailed,
   constantTimeEqual,
   captureVerifierSafe,
 } from '../credentialVerifier.js';
@@ -59,6 +60,35 @@ describe('createCredentialVerifier / verifyCredential', () => {
   it('returns false (never throws) when the verifier is null/absent — fail closed', async () => {
     expect(await verifyCredential(null, 'anything')).toBe(false);
     expect(await verifyCredential(undefined, 'anything')).toBe(false);
+  });
+
+  // H5: a null verifier means the per-session verifier was OOM-bricked at unlock
+  // (captureVerifierSafe returned null). verifyCredentialDetailed must make that
+  // distinguishable from a wrong-password false, so the caller can tell the user WHY
+  // re-auth is impossible ("re-lock and unlock") rather than silently failing closed.
+  describe('verifyCredentialDetailed (H5 — distinguishable OOM-brick)', () => {
+    it('null verifier returns a bricked machine code, not a plain false', async () => {
+      expect(await verifyCredentialDetailed(null, 'anything')).toEqual({
+        ok: false,
+        bricked: true,
+        reason: 'VERIFIER_OOM',
+      });
+      expect(await verifyCredentialDetailed(undefined, 'anything')).toEqual({
+        ok: false,
+        bricked: true,
+        reason: 'VERIFIER_OOM',
+      });
+    });
+
+    it('correct credential returns { ok: true, bricked: false }', async () => {
+      const v = await createCredentialVerifier('123456', { params: CHEAP });
+      expect(await verifyCredentialDetailed(v, '123456')).toEqual({ ok: true, bricked: false });
+    });
+
+    it('wrong credential returns { ok: false, bricked: false } (NOT bricked)', async () => {
+      const v = await createCredentialVerifier('123456', { params: CHEAP });
+      expect(await verifyCredentialDetailed(v, '000000')).toEqual({ ok: false, bricked: false });
+    });
   });
 
   it('returns false (never throws) when verifier.params is structurally incomplete', async () => {

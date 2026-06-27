@@ -4,6 +4,24 @@ import { Key, Eye, EyeOff, Copy, Check, RefreshCw, ShieldCheck, FileSignature, A
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { copySecret } from "@/lib/copySecret";
+
+// M15: build the clipboard-copy handler. Sensitive copies (mnemonic, private
+// key) route through copySecret, which schedules a 30 s best-effort clipboard
+// wipe so a secret can't linger in clipboard history. Public values (address,
+// signature, signed tx) copy plainly — wiping a value the user pasted is a bug.
+// Extracted as a pure factory so the routing is unit-testable without React.
+export function makeCopy(setCopied) {
+  return (text, key, { sensitive = false } = {}) => {
+    if (sensitive) {
+      copySecret(text);
+    } else {
+      navigator.clipboard.writeText(text);
+    }
+    setCopied(key);
+    setTimeout(() => setCopied(null), 1500);
+  };
+}
 
 const DERIVATION_PATHS = [
   { label: "Ethereum (m/44'/60'/0'/0/0)", path: "m/44'/60'/0'/0/0" },
@@ -31,7 +49,7 @@ export default function CryptoSigning() {
   const [expandedPath, setExpandedPath] = useState(null);
   const [error, setError] = useState("");
 
-  const copy = (text, key) => { navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(null), 1500); };
+  const copy = makeCopy(setCopied);
 
   const generateWallet = () => {
     setError("");
@@ -142,7 +160,7 @@ export default function CryptoSigning() {
                   <p className="text-xs font-semibold">BIP-39 Mnemonic (12 words)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowPhrase(s => !s)} aria-label={showPhrase ? "Hide recovery phrase" : "Reveal recovery phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showPhrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(mnemonic, "mnemonic")} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => copy(mnemonic, "mnemonic", { sensitive: true })} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showPhrase ? (
@@ -167,7 +185,7 @@ export default function CryptoSigning() {
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-mono text-muted-foreground flex-1">{showKey ? wallet.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
                   <button onClick={() => setShowKey(s => !s)} aria-label={showKey ? "Hide private key" : "Reveal private key"} className="text-muted-foreground">{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                  {showKey && <button onClick={() => copy(wallet.privateKey, "pk")} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
+                  {showKey && <button onClick={() => copy(wallet.privateKey, "pk", { sensitive: true })} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
                 </div>
               </div>
 

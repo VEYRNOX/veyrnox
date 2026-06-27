@@ -41,6 +41,17 @@ describe('checkDappDomain', () => {
     expect(checkDappDomain(undefined)).toEqual({ domain: '', flagged: false, reason: null });
     expect(checkDappDomain('')).toEqual({ domain: '', flagged: false, reason: null });
   });
+  it('L5: flags a subdomain of a known-bad parent domain (suffix walk)', () => {
+    const r = checkDappDomain('https://app.fakeswap-rewards.xyz/claim');
+    expect(r.flagged).toBe(true);
+    expect(r.domain).toBe('app.fakeswap-rewards.xyz');
+    expect(typeof r.reason).toBe('string');
+    expect(checkDappDomain('evil.deep.fakeswap-rewards.xyz').flagged).toBe(true);
+  });
+  it('L5: does NOT over-match on a shared TLD only', () => {
+    // shares the .xyz TLD with fakeswap-rewards.xyz but is not a subdomain of it
+    expect(checkDappDomain('https://totally-legit.xyz').flagged).toBe(false);
+  });
   it('every list entry is itself flagged (self-consistency)', () => {
     for (const b of LOCAL_KNOWN_BAD) {
       expect(checkDappDomain(b.domain).flagged).toBe(true);

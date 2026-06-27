@@ -29,7 +29,8 @@ vi.mock('hash-wasm', async (importOriginal) => {
 });
 
 import { resolveDeniabilityUnlock } from '../deniabilityUnlock.js';
-import { KDF_PARAMS } from '../vault.js';
+import { KDF_PARAMS, deriveKekC } from '../vault.js';
+import { PRIMARY_UNLOCK_EQUALIZER_MS } from '../../lib/WalletProvider.jsx';
 import { parseVault } from '../multiVault.js';
 
 // The removed Option-A deterministic-decoy fallback was the ONLY KDF keyed by a fixed
@@ -163,6 +164,24 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
     const decoy = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
     await setDuressVault(decoy, 'rt-duress');
     expect(payloadMnemonic(await tryDuressUnlock('rt-duress'))).toBe(decoy);
+  });
+});
+
+describe('H3 — primary-success equalizer covers one KDF at current params', () => {
+  // The primary-success unlock path runs ~1 FEWER Argon2id KDF than any other
+  // outcome (miss/duress/panic/hidden all spend 3 via resolveDeniabilityUnlock).
+  // WalletProvider pads that path with PRIMARY_UNLOCK_EQUALIZER_MS. If the pad is
+  // SHORTER than one real KDF at the CURRENT params, primary success is measurably
+  // faster than a miss — a timing oracle. The constant was calibrated to legacy
+  // 64 MiB params (300 ms) but the KDF was raised to 192 MiB, so it must be re-checked.
+  it('PRIMARY_UNLOCK_EQUALIZER_MS >= the measured cost of one KDF at KDF_PARAMS', async () => {
+    const salt = new Uint8Array(16).fill(7);
+    // Warm-up KDF (first call pays wasm init cost) so the measured one is steady-state.
+    await deriveKekC('warmup-pw', salt);
+    const t0 = performance.now();
+    await deriveKekC('measure-pw', salt);
+    const oneKdfMs = performance.now() - t0;
+    expect(PRIMARY_UNLOCK_EQUALIZER_MS).toBeGreaterThanOrEqual(oneKdfMs);
   });
 });
 

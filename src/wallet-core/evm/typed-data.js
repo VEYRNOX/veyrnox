@@ -21,6 +21,48 @@ export function parseTypedData(raw) {
   return { valid: true, types, domain: domain ?? {}, primaryType, message };
 }
 
+// H7 — bind an EIP-712 signature to the WalletConnect SESSION chain.
+//
+// A dApp on e.g. a Sepolia session (caip2 "eip155:11155111") can supply a
+// typed-data payload whose domain.chainId is mainnet (1). EIP-712's domain
+// separator includes chainId, so signing the dApp-supplied domain yields a
+// signature valid on THAT chain — a cross-chain Permit/Permit2 drain. We must
+// reject (fail closed, I4) unless the parsed domain.chainId equals the numeric
+// chain id of the active session. Pure: returns a machine code, never throws.
+function toChainIdNum(v) {
+  if (typeof v === 'number' && Number.isInteger(v)) return v;
+  if (typeof v === 'bigint') return Number(v);
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (/^0x[0-9a-fA-F]+$/.test(s)) return parseInt(s, 16);
+    if (/^\d+$/.test(s)) return parseInt(s, 10);
+  }
+  return null;
+}
+
+export function checkTypedDataChainId(parsed, caip2SessionChainId) {
+  const expected = toChainIdNum(
+    typeof caip2SessionChainId === 'string'
+      ? caip2SessionChainId.split(':')[1]
+      : null,
+  );
+  if (expected == null || !Number.isFinite(expected)) {
+    return { ok: false, code: 'SESSION_CHAINID_INVALID', expected: null, got: null };
+  }
+  const rawDomainChainId = parsed?.domain?.chainId;
+  if (rawDomainChainId === undefined || rawDomainChainId === null) {
+    return { ok: false, code: 'CHAINID_MISSING', expected, got: null };
+  }
+  const got = toChainIdNum(rawDomainChainId);
+  if (got == null || !Number.isFinite(got)) {
+    return { ok: false, code: 'CHAINID_MISSING', expected, got: null };
+  }
+  if (got !== expected) {
+    return { ok: false, code: 'CHAINID_MISMATCH', expected, got };
+  }
+  return { ok: true, code: 'CHAINID_OK', expected, got };
+}
+
 export function detectAssetAuthorising(parsed) {
   if (!parsed.valid) return { isAssetAuthorising: false, reason: null };
   const pt = parsed.primaryType;

@@ -90,6 +90,26 @@ export async function verifyCredential(verifier, entered) {
 }
 
 /**
+ * H5: structured variant of verifyCredential that distinguishes an OOM-BRICKED session
+ * (the per-session verifier is null/absent because captureVerifierSafe returned null at
+ * unlock — Defect-A Argon2id OOM) from a plain wrong-credential. A bare `false` told the
+ * user only THAT re-auth failed, never WHY; for a bricked verifier no entered credential
+ * can ever satisfy it, so the honest remedy is to re-lock and unlock (re-capture the
+ * verifier), not to keep retrying the password. Returns a machine-coded result:
+ *   - verifier absent  -> { ok: false, bricked: true, reason: 'VERIFIER_OOM' }
+ *   - correct match    -> { ok: true,  bricked: false }
+ *   - wrong / malformed -> { ok: false, bricked: false }
+ * @returns {Promise<{ ok: boolean, bricked: boolean, reason?: string }>}
+ */
+export async function verifyCredentialDetailed(verifier, entered) {
+  if (!verifier || !verifier.hash || !verifier.salt) {
+    return { ok: false, bricked: true, reason: 'VERIFIER_OOM' };
+  }
+  const ok = await verifyCredential(verifier, entered);
+  return { ok, bricked: false };
+}
+
+/**
  * Constant-time byte-array equality: XOR-accumulate over the FULL length, no early
  * return on the first differing byte (avoids a timing side channel).
  */

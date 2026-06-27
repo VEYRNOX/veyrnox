@@ -17,6 +17,23 @@ import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { getTokenBalance } from "@/wallet-core/evm/token-send";
+import { copySecret } from "@/lib/copySecret";
+
+// M15: build the clipboard-copy handler. The recovery phrase ("seed") is
+// sensitive and routes through copySecret, which schedules a 30 s best-effort
+// clipboard wipe. Public addresses copy plainly — wiping a value the user
+// pasted would be a bug. Pure factory so the routing is unit-testable.
+export function makeCopy(setCopied) {
+  return (text, id, { sensitive = false } = {}) => {
+    if (sensitive) {
+      copySecret(text);
+    } else {
+      navigator.clipboard.writeText(text);
+    }
+    setCopied(id);
+    setTimeout(() => setCopied(null), 1500);
+  };
+}
 
 // Live on-chain balance for a receivable EVM-family asset, read from the asset's
 // OWN chain (Phase C: each asset carries its testnet network key, e.g. MATIC ->
@@ -136,7 +153,7 @@ export default function HDWalletManager() {
      
   }, [isUnlocked, accounts, hdWallets]);
 
-  const copy = (text, id) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(null), 1500); };
+  const copy = makeCopy(setCopied);
 
   const handleGenerate = async () => {
     setError("");
@@ -494,7 +511,7 @@ export default function HDWalletManager() {
                   <p className="text-xs font-semibold">Your Recovery Phrase (shown once)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label={showSeed ? "Hide recovery phrase" : "Show recovery phrase"}>{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(generatedSeed, "seed")} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy recovery phrase">{copied === "seed" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => copy(generatedSeed, "seed", { sensitive: true })} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy recovery phrase">{copied === "seed" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showSeed ? (

@@ -162,11 +162,43 @@ const BACKGROUND_LOCK_GRACE_MS = 45 * 1000;
 // same interface. Stable singleton, so it lives at module scope.
 const keyStore = getKeyStore();
 
-// VULN-17 equalizer: primary success is ~1 KDF faster than any other outcome.
-// This sleep closes the gap so correct-primary and wrong-password cost the same
-// wall-clock time to the user/attacker. 300 ms matches one Argon2id KDF at
-// KDF_PARAMS (64 MiB / t=3). See deniabilityUnlock.js for full rationale.
-const PRIMARY_UNLOCK_EQUALIZER_MS = 300;
+// VULN-17 / H3 equalizer: primary success runs ~1 fewer Argon2id KDF than any
+// other unlock outcome (a miss / duress / panic / hidden all spend 3 KDFs via
+// resolveDeniabilityUnlock; primary success short-circuits). This sleep closes
+// the gap so correct-primary and wrong-password cost the same wall-clock time.
+// INVARIANT: must be >= the wall-clock cost of ONE Argon2id KDF at the CURRENT
+// KDF_PARAMS (192 MiB / t=3, ~1.7 s on target device). The old value (300 ms)
+// was calibrated to the legacy 64 MiB params and is ~1.4 s short — a timing
+// oracle. 2500 ms covers the worst-case single KDF at current params with margin.
+export const PRIMARY_UNLOCK_EQUALIZER_MS = 2500;
+
+// M6: re-export so callers/tests pin the reveal window against the same constant.
+export { REAUTH_WINDOW_MS };
+
+/**
+ * M6 — pure helper: reveal is allowed only while re-auth is fresh (I4).
+ * @param {{ lastAuthAt: number|null, now?: number, windowMs?: number }} args
+ */
+export function assertRevealReauthFresh({ lastAuthAt, now = Date.now(), windowMs = REAUTH_WINDOW_MS }) {
+  if (sendReauthRequired({ lastAuthAt, now, windowMs })) {
+    throw new Error('REVEAL_REQUIRES_REAUTH: recent re-authentication required to reveal a seed');
+  }
+}
+
+/**
+ * M3 — Passkey UNAVAILABLE must NOT silently downgrade 2FA→1FA.
+ * When the passkey is enrolled as a REQUIRED second factor and becomes
+ * UNAVAILABLE, fail CLOSED (I4) — never proceed with only the password.
+ * @param {{ gateStatus: string, twoFactorConfigured: boolean }} args
+ */
+export function assertPasskeyFactorSatisfied({ gateStatus, twoFactorConfigured }) {
+  if (twoFactorConfigured && gateStatus === PASSKEY_GATE.UNAVAILABLE) {
+    throw new Error(
+      'PASSKEY_REQUIRED: this wallet requires both PIN and passkey to unlock, '
+      + 'but the passkey is unavailable on this device',
+    );
+  }
+}
 
 export function WalletProvider({ children }) {
   // MULTI-SEED CONTAINER (LIVE SECRETS while unlocked). Holds the parsed vault
@@ -997,7 +1029,7 @@ export function WalletProvider({ children }) {
   // (or an equivalent gate) BEFORE calling. To make that contract machine-checkable,
   // pass { callerGated: true } as the second argument — the function throws if absent.
   // This prevents future callers from accidentally bypassing the re-auth requirement.
-  const revealWalletMnemonic = useCallback((walletId, { callerGated } = {}) => {
+  const revealWalletMnemonic = useCallback((walletId, { callerGated } = /** @type {{ callerGated?: boolean }} */ ({})) => {
     if (!callerGated) {
       throw new Error(
         'revealWalletMnemonic requires the caller to gate this action behind ' +

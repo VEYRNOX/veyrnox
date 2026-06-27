@@ -21,6 +21,9 @@ export function ActiveSessions() {
     <ul className={styles.list}>
       {sessions.map((s) => {
         const meta = s.peer?.metadata ?? {};
+        // M11 — expiry is enforced on the signing path; also mark it here so the
+        // user can see a stale connection that should be revoked/reconnected.
+        const isExpired = !(typeof s.expiry === 'number' && s.expiry * 1000 > Date.now());
         const expiry = new Date(s.expiry * 1000).toLocaleDateString();
         const accounts = s.namespaces?.eip155?.accounts ?? [];
         const chainIds = [...new Set(accounts.map((a) => {
@@ -31,13 +34,15 @@ export function ActiveSessions() {
           try { return getNetworkByChainId(id).name; } catch { return `eip155:${id}`; }
         });
         return (
-          <li key={s.topic} className={styles.item}>
+          <li key={s.topic} className={styles.item} data-expired={isExpired || undefined}>
             <div className={styles.info}>
               {meta.icons?.[0] && <img src={meta.icons[0]} alt="" className={styles.icon} width={32} height={32} />}
               <div>
                 <p className={styles.name}>{meta.name ?? 'Unknown dApp'}</p>
                 <p className={styles.url}>{meta.url ?? s.topic.slice(0, 16) + '…'}</p>
-                <p className={styles.expiry}>Expires {expiry}</p>
+                <p className={styles.expiry}>
+                  {isExpired ? `Expired ${expiry} — signing disabled` : `Expires ${expiry}`}
+                </p>
                 {chainNames.length > 0 && (
                   <p className={styles.expiry}>Chains: {chainNames.join(', ')}</p>
                 )}

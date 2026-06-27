@@ -3,6 +3,7 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
 import { Monitor, Trash2, Plus, DollarSign, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,10 @@ function getDeviceInfo() {
 
 export default function SecurityCenter() {
   const queryClient = useQueryClient();
+  // I2/I3: decoy/hidden sessions must make zero backend calls and write no
+  // trackable identifiers. Gate session registration + the tx-history query.
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
   const [showAddLimit, setShowAddLimit] = useState(false);
   const [limitCurrency, setLimitCurrency] = useState("ALL");
   const [dailyLimit, setDailyLimit] = useState("");
@@ -56,10 +61,14 @@ export default function SecurityCenter() {
   const { data: history = [], isError: errorHistory } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
+    enabled: !deniable,
   });
 
-  // Register current session on mount
+  // Register current session on mount.
+  // I2/I3: in a decoy/hidden session, skip entirely — no UUID write to
+  // localStorage, no UserSession filter/create/update backend calls.
   useEffect(() => {
+    if (deniable) return;
     const registerSession = async () => {
       const info = getDeviceInfo();
       const token = localStorage.getItem("sdw_session_token") || (() => {
@@ -81,7 +90,7 @@ export default function SecurityCenter() {
       }
     };
     registerSession();
-  }, []);
+  }, [deniable]);
 
   const revokeSession = useMutation({
     mutationFn: (/** @type {any} */ id) => base44.entities.UserSession.update(id, { status: "revoked" }),

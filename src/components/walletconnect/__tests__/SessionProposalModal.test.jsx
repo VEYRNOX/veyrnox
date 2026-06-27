@@ -32,7 +32,8 @@ function makeProposal(url) {
 describe('SessionProposalModal — known-bad dApp alert', () => {
   it('flags a known-bad domain and disables Connect until acknowledged', () => {
     render(<SessionProposalModal proposal={makeProposal('https://fakeswap-rewards.xyz')} onClose={vi.fn()} />);
-    expect(screen.getByText(/known scam/i)).toBeTruthy();
+    // M10: always-visible caveat also contains "known scam" — use getAllByText
+    expect(screen.getAllByText(/known scam/i).length).toBeGreaterThan(0);
     const connect = screen.getByRole('button', { name: /^connect$/i });
     expect(connect.disabled).toBe(true);
     fireEvent.click(screen.getByRole('checkbox'));
@@ -41,7 +42,9 @@ describe('SessionProposalModal — known-bad dApp alert', () => {
 
   it('makes no scam claim for a domain absent from the local list and leaves Connect enabled', () => {
     render(<SessionProposalModal proposal={makeProposal('https://app.uniswap.org')} onClose={vi.fn()} />);
-    expect(screen.queryByText(/known scam/i)).toBeNull();
+    // M10: always-visible caveat mentions "known scam domains" for any proposal.
+    // Check no RISK ALERT (the per-domain block) is shown — not the general caveat.
+    expect(screen.queryByRole('checkbox')).toBeNull(); // acknowledge checkbox only appears for blocked domains
     expect(screen.getByRole('button', { name: /^connect$/i }).disabled).toBe(false);
   });
 });

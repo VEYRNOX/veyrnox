@@ -86,7 +86,7 @@ function PoisonWarning({ screen }) {
 export default function SendCrypto() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
 
   // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
   // see lib/send2faMethod.js). Audit H-1: keying the send gate off actionPasswordConfigured
@@ -789,8 +789,12 @@ export default function SendCrypto() {
     setReauthPending(true);
     setReauthError("");
     try {
-      const ok = await verifyActiveCredential(entered);
-      if (ok) {
+      const result = await verifyActiveCredentialDetailed(entered);
+      if (result.bricked) {
+        setReauthError("Verification unavailable — please re-lock and unlock the wallet.");
+        return;
+      }
+      if (result.ok) {
         setReauthValue("");
         sendTx.mutate();
         return;
