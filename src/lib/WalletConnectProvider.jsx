@@ -119,7 +119,7 @@ export function WalletConnectProvider({ children }) {
     const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
     const gate = presignGate(raspTier, 'allow', true);
     if (!gate.proceedAllowed) {
-      await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
+      await rejectRequest(topic, id);
       setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
       return;
     }
@@ -139,7 +139,7 @@ export function WalletConnectProvider({ children }) {
     const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
     const gate = presignGate(raspTier, 'allow', true);
     if (!gate.proceedAllowed) {
-      await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
+      await rejectRequest(topic, id);
       setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
       return;
     }
@@ -164,7 +164,7 @@ export function WalletConnectProvider({ children }) {
     const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
     const gate = presignGate(raspTier, 'allow', true);
     if (!gate.proceedAllowed) {
-      await rejectRequest(topic, id, 'RASP_BLOCK: signing blocked by environment check');
+      await rejectRequest(topic, id);
       setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
       return;
     }

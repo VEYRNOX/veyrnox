@@ -1,4 +1,4 @@
-# Independent Security Audit — 2026-06-26
+# Internal Security Audit (agent-assisted static analysis) — 2026-06-26
 ## Scope: Login Activity · dApp Connectors · RASP · Hardware KEK / Secure Enclave
 
 Conducted: 2026-06-26  

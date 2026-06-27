@@ -156,10 +156,9 @@ describe('WalletConnectProvider — presignGate wiring (C3/H11)', () => {
       expect(mockPresignGate).toHaveBeenCalledTimes(1);
       expect(mockWithPrivateKey).not.toHaveBeenCalled();
       expect(mockRejectRequest).toHaveBeenCalledTimes(1);
-      const [topic, id, reason] = mockRejectRequest.mock.calls[0];
-      expect(topic).toBe('topic1');
-      expect(id).toBe(1);
-      expect(String(reason ?? '')).toMatch(/RASP_BLOCK/);
+      // rejectRequest's real signature is (topic, id) — no reason arg. Pin that
+      // contract so the test can't pass on a reason the real function discards.
+      expect(mockRejectRequest).toHaveBeenCalledWith('topic1', 1);
     });
   });
 
@@ -197,10 +196,7 @@ describe('WalletConnectProvider — presignGate wiring (C3/H11)', () => {
       expect(mockPresignGate).toHaveBeenCalledTimes(1);
       expect(mockWithPrivateKey).not.toHaveBeenCalled();
       expect(mockRejectRequest).toHaveBeenCalledTimes(1);
-      const [topic, id, reason] = mockRejectRequest.mock.calls[0];
-      expect(topic).toBe('topic2');
-      expect(id).toBe(2);
-      expect(String(reason ?? '')).toMatch(/RASP_BLOCK/);
+      expect(mockRejectRequest).toHaveBeenCalledWith('topic2', 2);
     });
   });
 
@@ -233,10 +229,7 @@ describe('WalletConnectProvider — presignGate wiring (C3/H11)', () => {
       expect(mockPresignGate).toHaveBeenCalledTimes(1);
       expect(mockWithPrivateKey).not.toHaveBeenCalled();
       expect(mockRejectRequest).toHaveBeenCalledTimes(1);
-      const [topic, id, reason] = mockRejectRequest.mock.calls[0];
-      expect(topic).toBe('topic3');
-      expect(id).toBe(3);
-      expect(String(reason ?? '')).toMatch(/RASP_BLOCK/);
+      expect(mockRejectRequest).toHaveBeenCalledWith('topic3', 3);
     });
   });
 });
