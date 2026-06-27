@@ -162,7 +162,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
       if (type === REQUEST_TYPES.PERSONAL_SIGN) {
         await signPersonal(topic, id, reqParams);
       } else if (type === REQUEST_TYPES.SIGN_TYPED_DATA) {
-        await signTypedData(topic, id, reqParams);
+        await signTypedData(topic, id, reqParams, params.chainId); // audit-H7: pass session chain for domain.chainId validation
       } else if (type === REQUEST_TYPES.SEND_TRANSACTION) {
         await sendTransaction(topic, id, reqParams, params.chainId);
       } else {

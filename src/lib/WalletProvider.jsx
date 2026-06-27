@@ -1112,6 +1112,12 @@ export function WalletProvider({ children }) {
     return ok;
   }, []);
 
+  // audit-H5: expose whether the step-up verifier was captured successfully. Returns
+  // false when captureVerifierSafe returned null (Argon2id OOM at unlock time), so
+  // callers can surface a "please re-lock" message rather than silently returning
+  // wrong-password failures until the attempt cap locks the user out.
+  const isVerifierReady = useCallback(() => verifierRef.current !== null, []);
+
   // STEP-UP: is re-auth required before a send? True when the recent-auth window has
   // lapsed (or no session). Resets only on unlock + successful verifyActiveCredential.
   const isSendReauthRequired = useCallback(
@@ -1829,6 +1835,7 @@ export function WalletProvider({ children }) {
     clearPendingPin,
     // SEND STEP-UP RE-AUTH (see lib/sendReauth.js + wallet-core/credentialVerifier.js).
     verifyActiveCredential,
+    isVerifierReady,
     isSendReauthRequired,
     // ACTION PASSWORD (2FA second factor) — PRIMARY set this phase. See twoFactorGate.js
     // for the PIN+password verdict the critical-action gate composes from these.

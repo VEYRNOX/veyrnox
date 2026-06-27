@@ -43,8 +43,6 @@ import { buildUnsignedPsbt } from "@/wallet-core/coldkey/psbt";
 import { encodeColdPayload, decodeColdPayload, COLD_KIND } from "@/wallet-core/coldkey/qr";
 import { parseEther, parseUnits } from "ethers";
 
-import { presignGate } from "@/sign-gate/presign";
-import { TIER } from "@/rasp";
 
 export default function ColdSign() {
   const navigate = useNavigate();
@@ -147,17 +145,12 @@ export default function ColdSign() {
       return;
     }
 
-    // STRUCTURAL PLACEHOLDER ONLY — NOT a security re-check (see header comment).
-    // This is called with hardcoded ALLOW constants, so it ALWAYS passes and CANNOT
-    // block. The real RASP / tx-risk gate ran on the Send screen before this flow was
-    // entered; this build does NOT re-evaluate either at the cold-broadcast step. The
-    // call is kept as the wiring point for a future real per-cold-tx verdict (option A);
-    // today its only effect is to require the user's riskAck checkbox below.
-    const gate = presignGate(TIER.ALLOW, "allow", riskAck);
-    if (!gate.proceedAllowed) {
-      setErrorMsg("This transaction is blocked by the pre-sign risk gate and cannot be broadcast.");
-      return;
-    }
+    // audit-H11: HONEST-DISABLED — no RASP enforcement at the cold-broadcast step
+    // (status: TARGET). The real risk/RASP gate ran on the Send screen before this
+    // flow was entered. The only guard here is the riskAck checkbox, enforced on
+    // the button's disabled state — sufficient for the current build, not RASP.
+    // Do NOT call presignGate(TIER.ALLOW, ...) — it always passes and implies a
+    // gate that does not exist (I4: fail honest, fail closed).
 
     setPhase("broadcasting");
     try {
