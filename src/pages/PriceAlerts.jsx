@@ -130,8 +130,8 @@ export default function PriceAlerts() {
       queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
       queryClient.invalidateQueries({ queryKey: ["live-prices"] });
       toast.success(`Checked ${active.length} alert${active.length === 1 ? "" : "s"} — ${triggered} triggered`);
-    } catch {
-      toast.error("Check failed — could not reach the price feed.");
+    } catch (err) {
+      toast.error(`Check failed: ${err?.message || "could not reach the price feed"}`);
     } finally {
       setChecking(false);
     }
