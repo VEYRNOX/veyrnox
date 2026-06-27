@@ -1,4 +1,4 @@
-import { Mic, MicOff, Volume2, CheckCircle, AlertCircle, Zap } from "lucide-react";
+import { Mic, MicOff, Volume2, CheckCircle, AlertCircle, Zap, ShieldAlert } from "lucide-react";
 import { useVoice, COMMANDS } from "@/context/VoiceContext";
 
 export default function VoiceCommands() {
@@ -9,6 +9,28 @@ export default function VoiceCommands() {
       <div>
         <h1 className="text-xl font-bold">Voice Commands</h1>
         <p className="text-sm text-muted-foreground">Navigate your wallet hands-free</p>
+      </div>
+
+      {/* I2 — off-device egress disclosure. Voice transcription is NOT on-device:
+          the microphone audio leaves the device to the platform speech service
+          (Google on Android) and Veyrnox does not control it. Surface this
+          BEFORE the enable toggle, never buried in a footer. */}
+      <div
+        data-testid="voice-egress-disclosure"
+        role="note"
+        className="p-4 rounded-xl border border-caution/40 bg-caution/5 flex items-start gap-3"
+      >
+        <ShieldAlert className="h-5 w-5 text-caution shrink-0" />
+        <div className="space-y-1">
+          <p className="text-sm font-semibold">Your voice is sent off this device</p>
+          <p className="text-xs text-muted-foreground">
+            Enabling voice sends your microphone audio to your device's speech
+            recognition service (Google on Android) for transcription. While voice
+            is active it listens globally as you navigate. This service is run by
+            the platform vendor, not Veyrnox, and we cannot control what they do
+            with the audio. Leave voice off if you need full on-device privacy.
+          </p>
+        </div>
       </div>
 
       {!supported ? (

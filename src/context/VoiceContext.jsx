@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
+import { useWallet } from "@/lib/WalletProvider";
 
 const COMMANDS = [
   { phrase: "go to dashboard", action: "/", description: "Navigate to Dashboard" },
@@ -19,6 +20,10 @@ const VoiceContext = createContext(null);
 
 export function VoiceProvider({ children }) {
   const navigate = useNavigate();
+  // I3 — deniability/lock awareness. An always-on mic must never run while the
+  // vault is locked or while a deniability (decoy/hidden) session is active, or
+  // it leaks audio to the platform speech service. Fail closed.
+  const { isUnlocked, isDecoy, isHidden } = useWallet();
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(false);
   const [lastCommand, setLastCommand] = useState(null);
@@ -168,10 +173,31 @@ export function VoiceProvider({ children }) {
   const start = isNative ? startNative : startWeb;
   const stop  = isNative ? stopNative  : stopWeb;
 
+  // I3 — fail closed. Voice is forbidden whenever the vault is locked OR a
+  // deniability (decoy/hidden) session is active. Gate the toggle and force a
+  // hard stop the moment any of these becomes true.
+  const voiceForbidden = !isUnlocked || isDecoy || isHidden;
+
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+
+  useEffect(() => {
+    if (voiceForbidden) {
+      keepListeningRef.current = false;
+      // Best-effort tear-down of whichever engine is active, then force the UI
+      // state off so no "listening" indicator survives into a duress session.
+      try { stopRef.current?.(); } catch { /* ignore */ }
+      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+      try { pluginRef.current?.stop?.(); } catch { /* ignore */ }
+      setListening(false);
+    }
+  }, [voiceForbidden]);
+
   const toggle = useCallback(() => {
+    if (voiceForbidden) return; // never start voice while locked / in deniability
     if (listening) stop();
     else start();
-  }, [listening, start, stop]);
+  }, [voiceForbidden, listening, start, stop]);
 
   // Cleanup on unmount (app teardown).
   useEffect(() => () => {
