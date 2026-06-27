@@ -32,8 +32,8 @@ import { TOP_SYMBOLS } from '@/lib/cryptos.js';
 
 const BASE = 'https://min-api.cryptocompare.com/data';
 const _CC_KEY = import.meta.env.VITE_CRYPTOCOMPARE_API_KEY;
-// api_key is appended ONLY to the v2 OHLCV endpoint (fetchOHLCV below).
-// See egress correlation note above — this is a known, disclosed I2 trade-off.
+// api_key is appended to ALL CryptoCompare requests when set.
+// See egress correlation note above — per-build correlator, not per-user (I2 trade-off).
 const EXTRA = _CC_KEY ? `api_key=${encodeURIComponent(_CC_KEY)}` : '';
 
 // Holdable assets (deduped) — the FULL registry, never narrowed to held assets.
@@ -41,8 +41,13 @@ export const PORTFOLIO_SYMBOLS = Object.freeze([...new Set(ASSETS.map((a) => a.s
 // Top-coin market basket — the canonical list already defined in cryptos.js.
 export const MARKET_SYMBOLS = TOP_SYMBOLS;
 
+function withKey(url) {
+  if (!EXTRA) return url;
+  return url.includes('?') ? `${url}&${EXTRA}` : `${url}?${EXTRA}`;
+}
+
 async function getJson(url) {
-  const res = await fetch(url);
+  const res = await fetch(withKey(url));
   if (!res.ok) throw new Error(`cryptocompare HTTP ${res.status}`);
   return res.json();
 }
@@ -101,7 +106,7 @@ export async function fetchMarketChanges24h() {
  */
 export async function fetchOHLCV(fsym, resolution = 'hour', limit = 24) {
   const endpoint = resolution === 'day' ? 'histoday' : resolution === 'minute' ? 'histominute' : 'histohour';
-  const raw = await getJson(`${BASE}/v2/${endpoint}?fsym=${fsym}&tsym=USD&limit=${limit}&${EXTRA}`);
+  const raw = await getJson(`${BASE}/v2/${endpoint}?fsym=${fsym}&tsym=USD&limit=${limit}`);
   if (raw.Response !== 'Success') throw new Error(`cryptocompare OHLCV: ${raw.Message || raw.Response}`);
   return raw.Data.Data;
 }
