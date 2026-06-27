@@ -86,32 +86,41 @@ export async function verifyBiometric2fa() {
     throw new BiometricGateError('unavailable');
   }
   const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+  // Suppress the native keyStore's background-lock hook while the OS biometric
+  // dialog is open — the dialog briefly pauses the app, which normally fires
+  // lock() and redirects to the unlock screen mid-flow.
+  const { nativeKeyStore } = await import('@/wallet-core/keystore/native.js');
   const info = await BiometricAuth.checkBiometry();
   if (!info.isAvailable && !info.deviceIsSecure) {
     throw new BiometricGateError('unavailable');
   }
   const reason = 'Authorise this action in VEYRNOX';
-  if (info.isAvailable) {
-    try {
-      await BiometricAuth.authenticate({
-        reason,
-        cancelTitle: 'Cancel',
-        androidTitle: 'VEYRNOX',
-        androidSubtitle: 'Authorise this action',
-        allowDeviceCredential: false,
-      });
-      return true;
-    } catch (err) {
-      if (err && err.code === 'biometryLockout') {
-        await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+  nativeKeyStore.suppressLockStart();
+  try {
+    if (info.isAvailable) {
+      try {
+        await BiometricAuth.authenticate({
+          reason,
+          cancelTitle: 'Cancel',
+          androidTitle: 'VEYRNOX',
+          androidSubtitle: 'Authorise this action',
+          allowDeviceCredential: false,
+        });
         return true;
+      } catch (err) {
+        if (err && err.code === 'biometryLockout') {
+          await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+          return true;
+        }
+        throw err;
       }
-      throw err;
     }
+    // Biometrics not enrolled but the device IS secured → deliberate passcode fallback.
+    await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+    return true;
+  } finally {
+    nativeKeyStore.unsuppressLock();
   }
-  // Biometrics not enrolled but the device IS secured → deliberate passcode fallback.
-  await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
-  return true;
 }
 
 /**
