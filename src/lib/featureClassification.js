@@ -255,7 +255,7 @@ export const CLASSIFICATION = {
     note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (base44.entities.Transaction). Scan button now synchronously runs the detection and stores results in state — no fake delay. Labels updated to "Transaction Anomaly Detection" / "Statistical analysis"; "AI Pattern Scanner" / "machine learning" removed. Three explicit heuristic checks shown to the user: large-transfer z-score (>2.5σ), velocity burst (3+ tx/hr), off-hours (02:00–05:00). All runs on-device.',
   },
   '/voice-commands': {
-    verdict: 'live', dataSource: 'on-device',
+    verdict: 'live', dataSource: 'external',
     note: 'Native uses the @capacitor-community/speech-recognition plugin (Android SpeechRecognizer); web falls back to window.SpeechRecognition / window.webkitSpeechRecognition. Command matching and routing are local (phrase map + React Router navigate). Audio leaves the device for transcription by the platform speech service (Google on Android; browser engine on web) — not on-device recognition; the page discloses this. VoiceProvider fails closed (I3): it never starts and force-stops whenever the vault is locked or a deniability (decoy/hidden) session is active. Degrades gracefully when the plugin/API is unavailable.',
   },
   '/token-approvals': {
