@@ -140,6 +140,7 @@ const RAW_NAV_GROUPS = [
       { path: "/network-manager", label: "Network Manager", icon: Network },
       { path: "/solana", label: "Solana / SPL", icon: Layers },
       { path: "/price-charts", label: "Price Charts", icon: BarChart3 },
+      { path: "/alerts", label: "Price Alerts", icon: BellRing },
       { path: "/gas-fees", label: "Gas Fees", icon: Gauge },
       { path: "/walletconnect", label: "dApp Connector", icon: Link2 },
       { path: "/connect", label: "Connect Wallet", icon: Plug },
