@@ -203,6 +203,14 @@ export default function CryptoSigning() {
     }
   };
 
+  function copyPrivateKey() {
+    const wallet = walletRef.current;
+    if (!wallet?.privateKey) return;
+    copySecret(wallet.privateKey);
+    setCopied("pk");
+    setTimeout(() => setCopied(null), 1500);
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
@@ -258,7 +266,7 @@ export default function CryptoSigning() {
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-mono text-muted-foreground flex-1">{showKey ? walletRef.current?.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
                   <button onClick={() => setShowKey(s => !s)} aria-label={showKey ? "Hide private key" : "Reveal private key"} className="text-muted-foreground">{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                  {showKey && <button onClick={() => { const wallet = walletRef.current; if (wallet?.privateKey) { copySecret(wallet.privateKey); setCopied("pk"); setTimeout(() => setCopied(null), 1500); } }} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
+                  {showKey && <button onClick={copyPrivateKey} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
                 </div>
               </div>
 
