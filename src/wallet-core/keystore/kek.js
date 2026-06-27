@@ -139,7 +139,13 @@ export async function combineKek(H, C) {
   zero(H);
   zero(C);
 
-  return new Uint8Array(bits);
+  // Copy the derived key material out, then wipe the raw deriveBits ArrayBuffer so
+  // no KEK bytes linger in a buffer the caller never sees. `kek` owns its own
+  // backing buffer; zeroing the `bits` view does not touch it.
+  const kek = new Uint8Array(KEK_LEN);
+  kek.set(new Uint8Array(bits));
+  zero(new Uint8Array(bits));
+  return kek;
 }
 
 /** Fresh random 256-bit DEK (the key that actually encrypts the seed in vault.js). */

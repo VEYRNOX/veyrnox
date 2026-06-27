@@ -9,6 +9,7 @@ import { buildRiskInputsFromWcRequest } from '@/risk/fromWalletConnect.js';
 import RiskVerdictBanner from '@/components/RiskVerdictBanner.jsx';
 import { simulateEvmTransaction } from '@/wallet-core/evm/simulate.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+import { getActiveSessions } from '@/wallet-core/evm/walletconnect/session.js';
 
 // "eip155:11155111" -> 11155111. Returns NaN for anything unparseable.
 function parseWcChainId(caip2) {

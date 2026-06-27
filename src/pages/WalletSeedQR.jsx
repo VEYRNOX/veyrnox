@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
+import { toast } from "sonner";
 import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound, QrCode } from "lucide-react";
 import CoinLogo from "@/components/CoinLogo";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
@@ -45,7 +46,11 @@ export default function WalletSeedQR() {
   const handleReveal = () => {
     if (!selectedWalletId) return;
     requireTwoFactor(() => {
-      const phrase = revealWalletMnemonic(selectedWalletId, { callerGated: true });
+      const { mnemonic: phrase, reauthRequired } = revealWalletMnemonic(selectedWalletId, { callerGated: true });
+      if (reauthRequired) {
+        toast.error('Session timed out. Unlock again to reveal your recovery phrase.');
+        return;
+      }
       if (phrase) {
         setMnemonic(phrase);
         mnemonicRef.current = phrase;

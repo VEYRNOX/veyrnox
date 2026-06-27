@@ -1022,13 +1022,26 @@ export function WalletProvider({ children }) {
     touch();
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
 
-  // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container.
-  // LIVE SECRET — the caller shows it once for backup and must never persist it.
-  //
-  // M6 (defense-in-depth re-auth gate): callers MUST wrap this in requireTwoFactor
-  // (or an equivalent gate) BEFORE calling. To make that contract machine-checkable,
-  // pass { callerGated: true } as the second argument — the function throws if absent.
-  // This prevents future callers from accidentally bypassing the re-auth requirement.
+  // STEP-UP: is re-auth required before a send (or seed reveal)? True when the
+  // recent-auth window has lapsed (or no session). Resets only on unlock +
+  // successful verifyActiveCredential. Defined ABOVE revealWalletMnemonic so its
+  // dependency reference is not in the temporal dead zone.
+  const isSendReauthRequired = useCallback(
+    () => sendReauthRequired({ lastAuthAt: lastAuthAtRef.current, now: Date.now(), windowMs: REAUTH_WINDOW_MS }),
+    [],
+  );
+
+  // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container (the
+  // session already holds every seed while unlocked, so this needs no password —
+  // it is the same exposure as withPrivateKey). LIVE SECRET: the caller shows it
+  // once for backup and must never persist it. Returns null when locked.
+  // M6: an idle-but-unlocked session must NOT extract seeds freely. The
+  // recent-auth window (the same primitive the Send flow uses) gates this
+  // reveal, so requireTwoFactor at the call sites is no longer the only
+  // protection. Returns a shaped object so callers can distinguish a stale
+  // (re-auth-required) session from a missing wallet.
+  // Callers MUST wrap this in requireTwoFactor (or an equivalent gate) BEFORE
+  // calling. Pass { callerGated: true } to confirm — the function throws if absent.
   const revealWalletMnemonic = useCallback((walletId, { callerGated } = /** @type {{ callerGated?: boolean }} */ ({})) => {
     if (!callerGated) {
       throw new Error(
@@ -1036,11 +1049,12 @@ export function WalletProvider({ children }) {
         'requireTwoFactor (or equivalent). Pass { callerGated: true } to confirm.'
       );
     }
+    if (isSendReauthRequired()) return { mnemonic: null, reauthRequired: true };
     const c = containerRef.current;
-    if (!c) return null;
+    if (!c) return { mnemonic: null, reauthRequired: false };
     const w = mv.findWallet(c, walletId || activeIdRef.current);
-    return w ? w.mnemonic : null;
-  }, []);
+    return { mnemonic: w ? w.mnemonic : null, reauthRequired: false };
+  }, [isSendReauthRequired]);
 
   // Confirm the user has backed up a wallet's seed (defaults to the active one).
   // Cheap localStorage flip — no password, no re-encrypt (it is not secret).
@@ -1112,18 +1126,13 @@ export function WalletProvider({ children }) {
     return ok;
   }, []);
 
+
   // audit-H5: expose whether the step-up verifier was captured successfully. Returns
   // false when captureVerifierSafe returned null (Argon2id OOM at unlock time), so
   // callers can surface a "please re-lock" message rather than silently returning
   // wrong-password failures until the attempt cap locks the user out.
   const isVerifierReady = useCallback(() => verifierRef.current !== null, []);
 
-  // STEP-UP: is re-auth required before a send? True when the recent-auth window has
-  // lapsed (or no session). Resets only on unlock + successful verifyActiveCredential.
-  const isSendReauthRequired = useCallback(
-    () => sendReauthRequired({ lastAuthAt: lastAuthAtRef.current, now: Date.now(), windowMs: REAUTH_WINDOW_MS }),
-    [],
-  );
 
   // PHASE 2 (create): atomically create the real wallet + both chaff slots under the
   // in-memory pendingPin, fail-closed (provisionPinWallet tears down on chaff failure
