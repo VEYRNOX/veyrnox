@@ -155,8 +155,7 @@ export default function ColdSign() {
     // not re-scored on a locally-built cold tx (the Send screen already gated it),
     // so we pass LEVEL.OK for that arg — the RASP tier is what gates here. riskAck
     // is the user's broadcast acknowledgement and is unchanged.
-    // NOTE: passing TIER.ALLOW unconditionally would bypass real detection and must
-    // not be done here (I4: fail honest, fail closed). We use real detect().
+    // NOTE: Never pass a hardcoded tier constant here — real detect() is used below.
     let tier;
     try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
     const gate = presignGate(tier, LEVEL.OK, riskAck);
