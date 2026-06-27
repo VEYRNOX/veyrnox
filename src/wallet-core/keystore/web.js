@@ -99,12 +99,18 @@ export const webKeyStore = {
     H.fill(0);
     C.fill(0);
     const dek = randomDek();
-    const kekWrap = await wrapDek(kek, dek);
-    // Re-encrypt seed under the DEK so PIN rotation doesn't require changing CT (§3).
-    const { iv, ct } = await encryptVaultWithDek(secret, dek);
-    // H-NEW-4: dek has been wrapped and consumed; wipe it (I4).
-    dek.fill(0);
-    await saveVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+    // H-NEW-4b: wrap the entire DEK lifetime in try/finally so the DEK is wiped
+    // even if wrapDek or encryptVaultWithDek throws — never leave the key that
+    // decrypts the seed lingering in the JS heap on an error path (I4).
+    try {
+      const kekWrap = await wrapDek(kek, dek);
+      // Re-encrypt seed under the DEK so PIN rotation doesn't require changing CT (§3).
+      const { iv, ct } = await encryptVaultWithDek(secret, dek);
+      await saveVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+    } finally {
+      // H-NEW-4: dek has been wrapped and consumed (or an error occurred); wipe it (I4).
+      dek.fill(0);
+    }
   },
 
   // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
@@ -136,18 +142,23 @@ export const webKeyStore = {
       H.fill(0);
       oldC.fill(0);
       const dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
-      // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
-      const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
-      const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
-      const newC = await deriveKekC(newPassword, newSaltBytes);
-      const newKek = await combineKek(H2, newC);
-      // H-NEW-4: wipe the second-combine factors at the call site (I4).
-      H2.fill(0);
-      newC.fill(0);
-      const newKekWrap = await wrapDek(newKek, dek);
-      // H-NEW-4: the recovered DEK has been re-wrapped; wipe it (I4).
-      dek.fill(0);
-      await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
+      // H-NEW-4b: wrap the recovered DEK lifetime in try/finally so it is wiped
+      // even if combineKek/wrapDek/saveVault throws after unwrap (I4).
+      try {
+        // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
+        const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+        const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+        const newC = await deriveKekC(newPassword, newSaltBytes);
+        const newKek = await combineKek(H2, newC);
+        // H-NEW-4: wipe the second-combine factors at the call site (I4).
+        H2.fill(0);
+        newC.fill(0);
+        const newKekWrap = await wrapDek(newKek, dek);
+        await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
+      } finally {
+        // H-NEW-4: the recovered DEK has been re-wrapped (or an error occurred); wipe it (I4).
+        dek.fill(0);
+      }
       return;
     }
 
