@@ -191,10 +191,28 @@ async function _unlockInner(password, opts = {}) {
     if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
     const H = await getHF(); // biometric prompt from HardwareKekPlugin (Android Keystore)
     const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
-    const C = await deriveKekC(password, saltBytes);
-    const kek = await combineKek(H, C);
-    const dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
-    return decryptVaultWithDek(blob, dek);
+    let C;
+    let kek;
+    let dek;
+    // H-NEW-6b: wrap the KEK + DEK lifetime in try/finally so H, C, the derived KEK,
+    // and the recovered DEK are wiped on EVERY path, including when unwrapDek throws
+    // (wrong PIN/device). None may linger in the JS heap until GC (I4), mirroring web.js.
+    try {
+      C = await deriveKekC(password, saltBytes);
+      kek = await combineKek(H, C);
+      // combineKek zeroes H/C internally; wipe again at the call site so the guarantee
+      // survives any refactor of combineKek (defense in depth, I4).
+      if (H && H.fill) H.fill(0);
+      if (C) C.fill(0);
+      dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+      return await decryptVaultWithDek(blob, dek);
+    } finally {
+      if (H && H.fill) H.fill(0);
+      if (C) C.fill(0);
+      if (kek) kek.fill(0);
+      if (dek) dek.fill(0);
+      saltBytes.fill(0);
+    }
   }
 
   // Non-KEK vault: apply biometric gate if requested (e.g. Biometric Unlock setting).
@@ -294,16 +312,40 @@ export const nativeKeyStore = {
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
       const H = await getHF();
-      const oldC = await deriveKekC(currentPassword, oldSaltBytes);
-      const oldKek = await combineKek(H, oldC);
-      const dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
-      // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
-      const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
-      const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
-      const newC = await deriveKekC(newPassword, newSaltBytes);
-      const newKek = await combineKek(H, newC);
-      const newKekWrap = await wrapDek(newKek, dek);
-      await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt }));
+      const H2 = H.slice(); // combineKek zeroes its H input; copy before the first call
+      let oldC;
+      let oldKek;
+      let newKek;
+      let dek;
+      // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so the H2 copy,
+      // both derived KEKs, and the recovered DEK are wiped on EVERY path — including
+      // when deriveKekC/combineKek/unwrapDek/wrapDek/set throws. None may linger in
+      // the JS heap until GC (I4), mirroring web.js.
+      try {
+        oldC = await deriveKekC(currentPassword, oldSaltBytes);
+        oldKek = await combineKek(H, oldC);
+        if (H && H.fill) H.fill(0);
+        if (oldC) oldC.fill(0);
+        dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
+        // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
+        const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+        const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+        const newC = await deriveKekC(newPassword, newSaltBytes);
+        newKek = await combineKek(H2, newC);
+        if (H2 && H2.fill) H2.fill(0);
+        if (newC) newC.fill(0);
+        const newKekWrap = await wrapDek(newKek, dek);
+        newSaltBytes.fill(0);
+        await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt }));
+      } finally {
+        if (H && H.fill) H.fill(0);
+        if (H2 && H2.fill) H2.fill(0);
+        if (oldC) oldC.fill(0);
+        if (oldKek) oldKek.fill(0);
+        if (newKek) newKek.fill(0);
+        if (dek) dek.fill(0);
+        oldSaltBytes.fill(0);
+      }
       return;
     }
 
@@ -330,13 +372,28 @@ export const nativeKeyStore = {
       const H = await getHF();
       const saltBytes = crypto.getRandomValues(new Uint8Array(32));
       const kekSalt = btoa(String.fromCharCode(...saltBytes));
-      const C = await deriveKekC(password, saltBytes);
-      const kek = await combineKek(H, C);
+      let C;
+      let kek;
       const dek = randomDek();
-      const kekWrap = await wrapDek(kek, dek);
-      // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
-      const { iv, ct } = await encryptVaultWithDek(secret, dek);
-      await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt }));
+      // H-NEW-6b: wrap the entire KEK + DEK lifetime in try/finally so H, C, the
+      // derived KEK, and the DEK are wiped even if combineKek/wrapDek/encryptVaultWithDek
+      // throws — never leave plaintext key material in the JS heap until GC (I4).
+      try {
+        C = await deriveKekC(password, saltBytes);
+        kek = await combineKek(H, C);
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        const kekWrap = await wrapDek(kek, dek);
+        // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
+        const { iv, ct } = await encryptVaultWithDek(secret, dek);
+        await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt }));
+      } finally {
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        if (kek) kek.fill(0);
+        dek.fill(0);
+        saltBytes.fill(0);
+      }
     });
   },
 
@@ -357,19 +414,35 @@ export const nativeKeyStore = {
       // Recover DEK: H (hardware factor, biometric) + PIN-derived C
       const H = await getHF();
       const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
-      const C = await deriveKekC(password, saltBytes);
-      const kek = await combineKek(H, C);
-      const dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+      let C;
+      let kek;
+      let dek;
+      // H-NEW-6b: wrap the KEK + DEK lifetime in try/finally so H, C, the derived KEK,
+      // and the recovered DEK are wiped on EVERY path — including when unwrapDek throws
+      // (wrong PIN/device). None may linger in the JS heap until GC (I4).
+      try {
+        C = await deriveKekC(password, saltBytes);
+        kek = await combineKek(H, C);
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
 
-      // Decrypt the seed using the recovered DEK
-      const secret = await decryptVaultWithDek(blob, dek);
+        // Decrypt the seed using the recovered DEK
+        const secret = await decryptVaultWithDek(blob, dek);
 
-      // Re-encrypt in bare (PIN-only) format — no kekWrap, no kekSalt
-      const bareBlob = await encryptVault(secret, password);
-      await SecureStorage.set(VAULT_KEY, JSON.stringify(bareBlob));
+        // Re-encrypt in bare (PIN-only) format — no kekWrap, no kekSalt
+        const bareBlob = await encryptVault(secret, password);
+        await SecureStorage.set(VAULT_KEY, JSON.stringify(bareBlob));
 
-      // Only delete the Keystore key AFTER the vault is safely re-written
-      await clearHardwareCredential();
+        // Only delete the Keystore key AFTER the vault is safely re-written
+        await clearHardwareCredential();
+      } finally {
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        if (kek) kek.fill(0);
+        if (dek) dek.fill(0);
+        saltBytes.fill(0);
+      }
     });
   },
 
