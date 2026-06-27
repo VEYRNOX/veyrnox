@@ -67,7 +67,7 @@ export function useActionGuard() {
       // No PIN re-entry — PIN was already consumed at unlock. FAIL CLOSED.
       let bioOk = false;
       try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
-      if (bioOk) return { allowed: true };
+      if (bioOk) return { allowed: true, message: null };
       return { allowed: false, message: 'Biometric check did not pass — not proceeding.' };
     }
     // Factor 1 (password / passkey methods): the unlock credential, full vault Argon2id cost.

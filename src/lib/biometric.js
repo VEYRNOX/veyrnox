@@ -78,7 +78,7 @@ export function set2faBiometricEnabled(on) {
  *
  * DEMO: resolves true (the caller shows the clearly-SIMULATED prompt, like the
  * passkey/biometric-unlock demo flows). Plain web: THROWS (no OS biometric).
- * @returns {Promise<true>}
+ * @returns {Promise<boolean>}
  */
 export async function verifyBiometric2fa() {
   if (DEMO) return true;
@@ -95,8 +95,9 @@ export async function verifyBiometric2fa() {
     throw new BiometricGateError('unavailable');
   }
   const reason = 'Authorise this action in VEYRNOX';
-  nativeKeyStore.suppressLockStart();
-  try {
+  // Suppress the background-lock hook while the OS dialog is open (the dialog
+  // briefly pauses the app, which would otherwise fire lock() mid-flow).
+  return nativeKeyStore.suppressLock(async () => {
     if (info.isAvailable) {
       try {
         await BiometricAuth.authenticate({
@@ -118,9 +119,7 @@ export async function verifyBiometric2fa() {
     // Biometrics not enrolled but the device IS secured → deliberate passcode fallback.
     await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
     return true;
-  } finally {
-    nativeKeyStore.unsuppressLock();
-  }
+  });
 }
 
 /**

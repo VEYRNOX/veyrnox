@@ -407,11 +407,8 @@ export const nativeKeyStore = {
     if (_lockHook) init();
   },
 
-  // NATIVE-ONLY: suppress the background-lock hook while a caller runs a biometric
-  // prompt or other OS dialog that briefly pauses the app. Two forms:
-  //   withLockSuppressed(fn) — callback wrapper (used internally)
-  //   suppressLock() / unsuppressLock() — counter pair for try/finally callers
+  // NATIVE-ONLY: suppress the background-lock hook for the duration of `fn`.
+  // Used by verifyBiometric2fa and other OS-dialog callers that briefly pause
+  // the app without wanting to trigger lock() mid-operation.
   suppressLock: withLockSuppressed,
-  suppressLockStart() { _lockSuppressDepth++; },
-  unsuppressLock() { if (_lockSuppressDepth > 0) _lockSuppressDepth--; },
 };
