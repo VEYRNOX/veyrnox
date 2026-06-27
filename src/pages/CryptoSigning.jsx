@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ethers } from "ethers";
 import { Key, Eye, EyeOff, Copy, Check, RefreshCw, ShieldCheck, FileSignature, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,10 +32,7 @@ const DERIVATION_PATHS = [
 
 export default function CryptoSigning() {
   const [tab, setTab] = useState("generate");
-  const [mnemonic, setMnemonic] = useState("");
   const [importMnemonic, setImportMnemonic] = useState("");
-  const [wallet, setWallet] = useState(null);
-  const [derivedWallets, setDerivedWallets] = useState([]);
   const [showPhrase, setShowPhrase] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(null);
@@ -49,13 +46,47 @@ export default function CryptoSigning() {
   const [expandedPath, setExpandedPath] = useState(null);
   const [error, setError] = useState("");
 
+  // C6: Key material is held in refs, NEVER in React state. React state is
+  // snapshotable by DevTools and readable from the console by any script with
+  // devtools access, and is retained in the component closure for its whole
+  // lifetime — a direct exfiltration vector for a mainnet-live wallet. Refs are
+  // mutable boxes that are not part of the React tree/snapshot.
+  //   walletRef     — the active ethers Wallet object (.address/.privateKey/sign)
+  //   mnemonicRef    — the BIP-39 phrase string
+  //   derivedRef     — derived accounts WITH privateKey (never rendered)
+  const walletRef = useRef(null);
+  const mnemonicRef = useRef("");
+  const derivedRef = useRef([]);
+
+  // Non-secret display mirrors that drive render. `hasWallet` flips render of
+  // the wallet panels; `walletAddr` is the only key-derived value that is safe
+  // to mirror (a public address). `derivedDisplay` carries address/label/path
+  // ONLY — never privateKey. `mnemonicReady` gates the phrase panel; the words
+  // themselves are read straight from mnemonicRef during render (and only when
+  // the user reveals them), so the phrase never lands in state.
+  const [hasWallet, setHasWallet] = useState(false);
+  const [walletAddr, setWalletAddr] = useState("");
+  const [mnemonicReady, setMnemonicReady] = useState(false);
+  const [derivedDisplay, setDerivedDisplay] = useState([]);
+
+  // C6: zero/clear all key-material refs on unmount so nothing lingers in the
+  // closure after the page is left. JS strings are immutable so we cannot wipe
+  // the bytes in place; best-effort is to drop the references.
+  useEffect(() => {
+    return () => {
+      if (walletRef.current) walletRef.current = null;
+      if (mnemonicRef.current) mnemonicRef.current = "";
+      if (derivedRef.current) derivedRef.current = null;
+    };
+  }, []);
+
   const copy = makeCopy(setCopied);
 
   const generateWallet = () => {
     setError("");
     const w = ethers.Wallet.createRandom();
-    setMnemonic(w.mnemonic.phrase);
-    setWallet(w);
+    walletRef.current = w;
+    mnemonicRef.current = w.mnemonic.phrase;
     setShowPhrase(false);
     setSignature("");
     setSignedTx("");
@@ -65,7 +96,11 @@ export default function CryptoSigning() {
       const dw = hdNode.derivePath(p.path.replace("m/", ""));
       return { path: p.path, label: p.label, address: dw.address, privateKey: dw.privateKey };
     });
-    setDerivedWallets(derived);
+    derivedRef.current = derived;
+    setDerivedDisplay(derived.map(({ path, label, address }) => ({ path, label, address })));
+    setWalletAddr(w.address);
+    setMnemonicReady(true);
+    setHasWallet(true);
   };
 
   const importWallet = () => {
@@ -78,26 +113,32 @@ export default function CryptoSigning() {
       }
       const hdNode = ethers.HDNodeWallet.fromPhrase(phrase);
       const w = hdNode.derivePath("44'/60'/0'/0/0");
-      setMnemonic(phrase);
-      setWallet(w);
+      walletRef.current = w;
+      mnemonicRef.current = phrase;
       setShowPhrase(false);
       const derived = DERIVATION_PATHS.map(p => {
         const dw = hdNode.derivePath(p.path.replace("m/", ""));
         return { path: p.path, label: p.label, address: dw.address, privateKey: dw.privateKey };
       });
-      setDerivedWallets(derived);
+      derivedRef.current = derived;
+      setDerivedDisplay(derived.map(({ path, label, address }) => ({ path, label, address })));
+      setWalletAddr(w.address);
+      setMnemonicReady(true);
+      setHasWallet(true);
     } catch (e) {
       setError(e.message);
     }
   };
 
   const signMsg = async () => {
+    const wallet = walletRef.current;
     if (!wallet) return;
     const sig = await wallet.signMessage(signMessage);
     setSignature(sig);
   };
 
   const buildSignedTx = async () => {
+    const wallet = walletRef.current;
     if (!wallet || !txTo) return;
     setError("");
     try {
@@ -124,7 +165,7 @@ export default function CryptoSigning() {
     try {
       const recovered = ethers.verifyMessage(signMessage, signature);
       setVerifyAddress(recovered);
-      setVerifyResult(wallet ? recovered.toLowerCase() === wallet.address.toLowerCase() : null);
+      setVerifyResult(walletAddr ? recovered.toLowerCase() === walletAddr.toLowerCase() : null);
     } catch (e) {
       setVerifyResult(false);
     }
@@ -152,7 +193,7 @@ export default function CryptoSigning() {
           </div>
           <Button className="w-full gap-2" onClick={generateWallet}><RefreshCw className="h-4 w-4" /> Generate New Random Wallet</Button>
 
-          {mnemonic && wallet && (
+          {mnemonicReady && hasWallet && (
             <>
               {/* Mnemonic */}
               <div className="p-4 rounded-xl border border-border bg-card">
@@ -160,12 +201,12 @@ export default function CryptoSigning() {
                   <p className="text-xs font-semibold">BIP-39 Mnemonic (12 words)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowPhrase(s => !s)} aria-label={showPhrase ? "Hide recovery phrase" : "Reveal recovery phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showPhrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(mnemonic, "mnemonic", { sensitive: true })} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => copy(mnemonicRef.current, "mnemonic", { sensitive: true })} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showPhrase ? (
                   <div className="grid grid-cols-3 gap-2">
-                    {mnemonic.split(" ").map((w, i) => (
+                    {mnemonicRef.current.split(" ").map((w, i) => (
                       <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary text-xs">
                         <span className="text-muted-foreground w-4 text-right shrink-0">{i+1}.</span>
                         <span className="font-mono font-semibold">{w}</span>
@@ -179,20 +220,20 @@ export default function CryptoSigning() {
               <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
                 <p className="text-xs font-semibold">Primary Address (m/44'/60'/0'/0/0)</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-mono break-all flex-1">{wallet.address}</p>
-                  <button onClick={() => copy(wallet.address, "addr")} aria-label="Copy address">{copied === "addr" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
+                  <p className="text-sm font-mono break-all flex-1">{walletAddr}</p>
+                  <button onClick={() => copy(walletAddr, "addr")} aria-label="Copy address">{copied === "addr" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <p className="text-xs font-mono text-muted-foreground flex-1">{showKey ? wallet.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
+                  <p className="text-xs font-mono text-muted-foreground flex-1">{showKey ? walletRef.current?.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
                   <button onClick={() => setShowKey(s => !s)} aria-label={showKey ? "Hide private key" : "Reveal private key"} className="text-muted-foreground">{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                  {showKey && <button onClick={() => copy(wallet.privateKey, "pk", { sensitive: true })} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
+                  {showKey && <button onClick={() => copy(walletRef.current?.privateKey, "pk", { sensitive: true })} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
                 </div>
               </div>
 
               {/* HD derived accounts */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground">HD Derived Accounts</p>
-                {derivedWallets.map((dw, i) => (
+                {derivedDisplay.map((dw, i) => (
                   <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
                     <button onClick={() => setExpandedPath(expandedPath === i ? null : i)} className="w-full p-3 flex items-center gap-2 text-left">
                       <span className="text-xs font-mono text-muted-foreground flex-1 truncate">{dw.path}</span>
@@ -218,12 +259,12 @@ export default function CryptoSigning() {
             <textarea id="import-mnemonic" value={importMnemonic} onChange={e => setImportMnemonic(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ..." className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
           </div>
           <Button className="w-full" onClick={importWallet} disabled={!importMnemonic.trim()}>Import and Derive Wallets</Button>
-          {wallet && mnemonic && (
+          {hasWallet && mnemonicReady && (
             <div className="p-4 rounded-xl border border-success/30 bg-success/5 space-y-2">
               <p className="text-xs font-semibold text-success flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /> Valid BIP-39 Mnemonic Imported</p>
               <p className="text-xs text-muted-foreground">Primary address derived:</p>
-              <p className="text-sm font-mono break-all">{wallet.address}</p>
-              <p className="text-xs text-muted-foreground">{derivedWallets.length} HD accounts derived successfully.</p>
+              <p className="text-sm font-mono break-all">{walletAddr}</p>
+              <p className="text-xs text-muted-foreground">{derivedDisplay.length} HD accounts derived successfully.</p>
             </div>
           )}
         </div>
@@ -231,12 +272,12 @@ export default function CryptoSigning() {
 
       {tab === "sign" && (
         <div className="space-y-4">
-          {!wallet && <div className="p-4 rounded-xl bg-secondary/30 text-sm text-muted-foreground text-center">Generate or import a wallet first.</div>}
-          {wallet && (
+          {!hasWallet && <div className="p-4 rounded-xl bg-secondary/30 text-sm text-muted-foreground text-center">Generate or import a wallet first.</div>}
+          {hasWallet && (
             <>
               <div className="p-3 rounded-xl border border-border bg-card text-xs">
                 <span className="text-muted-foreground">Signing with: </span>
-                <span className="font-mono">{wallet.address.slice(0,18)}...</span>
+                <span className="font-mono">{walletAddr.slice(0,18)}...</span>
               </div>
               <div><Label htmlFor="sign-message">Message to Sign</Label>
                 <textarea id="sign-message" value={signMessage} onChange={e => setSignMessage(e.target.value)} rows={3} className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
@@ -265,8 +306,8 @@ export default function CryptoSigning() {
 
       {tab === "tx" && (
         <div className="space-y-4">
-          {!wallet && <div className="p-4 rounded-xl bg-secondary/30 text-sm text-muted-foreground text-center">Generate or import a wallet first.</div>}
-          {wallet && (
+          {!hasWallet && <div className="p-4 rounded-xl bg-secondary/30 text-sm text-muted-foreground text-center">Generate or import a wallet first.</div>}
+          {hasWallet && (
             <>
               <div className="p-3 rounded-xl border border-caution/20 bg-caution/5 text-xs text-caution">
                 This builds a signed raw transaction. You can broadcast it via any Ethereum node. Nonce is set to 0 for demo.
