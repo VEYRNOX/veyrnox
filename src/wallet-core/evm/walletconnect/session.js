@@ -230,7 +230,7 @@ export async function respondToRequest(topic, id, result) {
   });
 }
 
-export async function rejectRequest(topic, id) {
+export async function rejectRequest(topic, id, _reason) {
   const client = await initWalletConnect();
   if (!client) throw new Error('WalletConnect is not configured on this build.');
   await client.respondSessionRequest({

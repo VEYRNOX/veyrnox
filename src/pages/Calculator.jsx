@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { ArrowLeftRight, RefreshCw, TrendingUp, AlertTriangle } from "lucide-react";
-import { fetchMarketPricesFiat, MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
+import { MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
+import { fetchMarketPricesFiatCG } from "@/lib/coinGecko.js";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
@@ -12,7 +13,7 @@ const CRYPTO_ICONS = { BTC: "₿", ETH: "Ξ", SOL: "◎", USDC: "Ⓢ", USDT: "�
 const FIAT_FLAGS = { USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "🇯🇵", CAD: "🇨🇦", AUD: "🇦🇺", CHF: "🇨🇭", CNY: "🇨🇳" };
 const CRYPTO_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
-const fetchPrices = () => fetchMarketPricesFiat(FIATS);
+const fetchPrices = () => fetchMarketPricesFiatCG(FIATS);
 
 function formatNumber(value, fiat) {
   if (value == null || isNaN(value)) return "—";
@@ -86,8 +87,8 @@ export default function Calculator() {
           <div className="flex-1 space-y-1">
             <p className="text-sm font-semibold text-caution">Live prices off</p>
             <p className="text-xs text-muted-foreground">
-              The converter requires a live price feed (CryptoCompare). Enable live prices in Settings to use it.
-              When on, a fixed public symbol list is sent to CryptoCompare — not your holdings.
+              The converter requires a live price feed (CoinGecko). Enable live prices in Settings to use it.
+              When on, a fixed public symbol list is sent to CoinGecko — not your holdings.
             </p>
           </div>
           <button onClick={() => { setLivePricesEnabled(true); window.location.reload(); }}

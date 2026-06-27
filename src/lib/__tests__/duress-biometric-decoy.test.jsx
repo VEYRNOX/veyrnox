@@ -57,8 +57,9 @@ import { WalletProvider, useWallet } from '@/lib/WalletProvider';
 import { setAuthModel, clearAuthModel } from '@/lib/authModel';
 import { isBiometricUnlockEnabled, setBiometricUnlockEnabled } from '@/lib/biometric';
 
-const REAL_PIN = '13572468';
-const DURESS_PIN = '24681357';
+// 12-char minimum enforced by H-A (validateWebVaultPassword) on web mainnet builds.
+const REAL_PIN = '135724680000';
+const DURESS_PIN = '246813570000';
 
 // Capture the live wallet context so tests can call provider methods directly.
 let ctx;

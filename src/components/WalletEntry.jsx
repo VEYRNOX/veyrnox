@@ -90,6 +90,7 @@ import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { checkPinStrength } from "@/lib/pinStrength";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
+import { Capacitor } from "@capacitor/core";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import {
   registerFailedPinAttempt,
@@ -1135,6 +1136,15 @@ export default function WalletEntry() {
             <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
               Your seed phrase will be shown ONCE on the next step. You'll write it down and confirm before entering the wallet — anyone with it has full access to your funds, and it is the only way to recover this wallet.
             </div>
+            {/* H-A — honest web-vault disclosure (I4). On web there is no hardware
+                second factor: the password is the ONLY thing protecting the seed.
+                Native adds the hardware KEK, so this banner is web-only. */}
+            {!Capacitor.isNativePlatform() && (
+              <div className="p-3 rounded-xl border border-border bg-secondary/30 text-xs text-muted-foreground flex items-start gap-2" data-testid="web-vault-entropy-notice">
+                <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <span>Web vault: your password is the only protection for your seed. Use a strong passphrase, not a short PIN. The native app adds a hardware layer.</span>
+              </div>
+            )}
             <div>
               <Label>Vault Password</Label>
               <Input type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />

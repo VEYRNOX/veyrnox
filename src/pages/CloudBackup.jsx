@@ -1,12 +1,15 @@
 import { useState, useRef, useId } from "react";
 import { useNavigate } from "react-router-dom";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { useWallet } from "@/lib/WalletProvider";
+import { withLockSuppressed } from "@/wallet-core/keystore";
 import {
   parseBackupFile,
   restoreWithPassword,
   decryptPinSeal,
   finalisePinRestore,
   downloadBackupFile,
+  downloadBackupFilePicker,
   verifyBackupEnvelope,
 } from "@/wallet-core/vaultBackup";
 import { toast } from "sonner";
@@ -63,9 +66,9 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
   const [busy, setBusy] = useState(false);
-  // Re-authorize the export with the credential the user ACTUALLY unlocks with
-  // (verifyActiveCredential + optional Action Password), not the raw vault key.
-  const { requireTwoFactor, gateModal } = useActionGuard();
+  const [savedPath, setSavedPath] = useState(null);   // set after successful Downloads save
+  const [envelope, setEnvelope] = useState(null);     // held so user can re-save without re-encrypting
+  const { gateModal } = useActionGuard();
 
   if (isDecoy || isHidden) {
     return (
@@ -78,21 +81,23 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
     );
   }
 
-  // The backup password is a NEW credential the user chooses to protect the
-  // file — min 8, matching the vault-password floor.
   const canExport = password.length >= 8 && pin.length >= 8 && pin === pinConfirm;
 
   const runExport = async () => {
     setBusy(true);
     try {
-      const envelope = await createBackup(password, pin);
-      // Prove the backup is actually restorable with these exact credentials
-      // BEFORE downloading / claiming success — never hand the user a file they
-      // can't reopen.
-      await verifyBackupEnvelope(envelope, password, pin);
-      downloadBackupFile(envelope);
-      toast.success("Backup verified ✓ and downloaded — it opens with this password or PIN.");
-      setPassword(""); setPin(""); setPinConfirm("");
+      const env = await createBackup(password, pin);
+      await verifyBackupEnvelope(env, password, pin);
+      const result = await downloadBackupFile(env);
+      setEnvelope(env);
+      if (result && typeof result === "object" && result.saved) {
+        setSavedPath(result.path);
+        setPassword(""); setPin(""); setPinConfirm("");
+      } else {
+        // Web / non-Android: anchor download triggered
+        toast.success("Backup verified ✓ and saved — it opens with this password or PIN.");
+        setPassword(""); setPin(""); setPinConfirm("");
+      }
     } catch (err) {
       toast.error(err?.message || "Backup failed.");
     } finally {
@@ -100,13 +105,60 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
     }
   };
 
-  // Gate the export behind 2FA (no-op if no second factor is configured), then
-  // seal the already-unlocked wallet under the chosen backup password + PIN.
-  const handleExport = () => {
-    if (!canExport) return;
-    requireTwoFactor(() => { runExport(); }, { title: 'Create encrypted backup' });
+  // "Choose location" — opens the system file picker with the already-verified envelope
+  const runPickerSave = async () => {
+    if (!envelope) return;
+    setBusy(true);
+    try {
+      const saved = await downloadBackupFilePicker(envelope);
+      if (saved) {
+        setSavedPath(null);
+        toast.success("Backup saved to your chosen location.");
+      }
+    } catch (err) {
+      toast.error(err?.message || "Save failed.");
+    } finally {
+      setBusy(false);
+    }
   };
 
+  // ── Saved confirmation screen ─────────────────────────────────────────────
+  if (savedPath) {
+    return (
+      <div className="space-y-4">
+        <div className="p-5 rounded-xl border border-success/30 bg-success/5 flex items-start gap-3">
+          <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold">Backup saved to Downloads</p>
+            <p className="text-xs text-muted-foreground mt-1 font-mono">{savedPath}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Find it in your <strong>Files app → Downloads</strong>. From there you can copy it to Google Drive, Dropbox, a USB drive, or anywhere you like.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={runPickerSave}
+          disabled={busy}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary/40 transition-colors disabled:opacity-50"
+        >
+          <CloudUpload className="h-4 w-4" />
+          {busy ? "Opening…" : "Also save to a different location"}
+        </button>
+
+        <button
+          onClick={() => { setSavedPath(null); setEnvelope(null); }}
+          className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Create another backup
+        </button>
+
+        {gateModal}
+      </div>
+    );
+  }
+
+  // ── Form screen ───────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
       <div className="p-4 rounded-xl border border-border bg-card/50 space-y-1 text-xs text-muted-foreground">
@@ -146,17 +198,17 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       </div>
 
       <button
-        onClick={handleExport}
+        onClick={() => { if (canExport) runExport(); }}
         disabled={!canExport || busy}
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 transition-opacity"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        {busy ? "Creating & verifying…" : "Download backup file"}
+        {busy ? "Creating & verifying…" : "Save backup to Downloads"}
       </button>
 
       <p className="text-xs text-muted-foreground text-center">
-        Save the downloaded <span className="font-mono">veyrnox.enc</span> file to iCloud, Google Drive, a USB drive, or anywhere you control.
-        Only the <strong>VEYRNOX</strong> app can open it — and only with the backup password or PIN you chose.
+        Saves <span className="font-mono">veyrnox.enc</span> to your Downloads folder.
+        Only <strong>VEYRNOX</strong> can open it — and only with the backup password or PIN you chose.
       </p>
 
       {gateModal}
@@ -166,7 +218,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 
 // ── Restore tab ──────────────────────────────────────────────────────────────
 
-function RestoreTab({ lock }) {
+function RestoreTab({ lock, onBack }) {
   const navigate = useNavigate();
   const fileRef = useRef(null);
   const [envelope, setEnvelope] = useState(null);
@@ -179,27 +231,51 @@ function RestoreTab({ lock }) {
   const [busy, setBusy] = useState(false);
   const [pinDecryptedJson, setPinDecryptedJson] = useState(null);
 
+  // Shared: parse already-read bytes into an envelope and advance to unlock.
+  const ingestBytes = (bytes, name) => {
+    try {
+      // The current format is a binary container; parseBackupFile also accepts
+      // the legacy text formats decoded from those bytes.
+      const parsed = parseBackupFile(bytes);
+      setFileName(name);
+      setEnvelope(parsed);
+      setPhase("unlock");
+    } catch (err) {
+      toast.error(err.message || "Invalid backup file.");
+      setEnvelope(null);
+      setFileName("");
+    }
+  };
+
+  // Web (and non-Android) path: <input type="file"> → FileReader.
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFileName(file.name);
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        // Read as bytes: the current format is a binary container; parseBackupFile
-        // also accepts the legacy text formats decoded from those bytes.
-        const parsed = parseBackupFile(/** @type {ArrayBuffer} */ (ev.target.result));
-        setEnvelope(parsed);
-        setPhase("unlock");
-      } catch (err) {
-        toast.error(err.message || "Invalid backup file.");
-        setEnvelope(null);
-        setFileName("");
-      }
-    };
+    reader.onload = (ev) => ingestBytes(/** @type {ArrayBuffer} */ (ev.target.result), file.name);
     reader.readAsArrayBuffer(file);
     // Reset the input so the same file can be re-selected if needed
     e.target.value = "";
+  };
+
+  // Native Android path: open the system document picker through the FileSaver
+  // plugin so the call can be wrapped in withLockSuppressed — the picker
+  // Activity fires Capacitor's pause event, which would otherwise lock the
+  // wallet mid-restore.
+  const pickFile = async () => {
+    if (Capacitor.getPlatform() !== "android") {
+      fileRef.current?.click();
+      return;
+    }
+    try {
+      const FileSaver = registerPlugin("FileSaver");
+      const result = await withLockSuppressed(() => FileSaver.openFile());
+      if (!result || result.cancelled) return;
+      const bytes = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
+      ingestBytes(bytes.buffer, result.filename || "veyrnox.enc");
+    } catch (err) {
+      toast.error(err?.message || "Could not open the file.");
+    }
   };
 
   const handleUnlock = async () => {
@@ -348,6 +424,13 @@ function RestoreTab({ lock }) {
         >
           Choose a different file
         </button>
+
+        <button
+          onClick={onBack}
+          className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          ← Back to Create backup
+        </button>
       </div>
     );
   }
@@ -355,6 +438,13 @@ function RestoreTab({ lock }) {
   // phase === 'pick'
   return (
     <div className="space-y-4">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Upload className="h-3 w-3 rotate-180" />
+        Back to Create backup
+      </button>
       <div className="p-4 rounded-xl border border-border bg-card/50 space-y-1 text-xs text-muted-foreground">
         <p className="font-medium text-foreground text-sm">Restoring from a backup</p>
         <ul className="list-disc list-inside space-y-0.5 mt-1">
@@ -366,7 +456,7 @@ function RestoreTab({ lock }) {
       </div>
 
       <button
-        onClick={() => fileRef.current?.click()}
+        onClick={pickFile}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border hover:border-primary/40 bg-card/50 hover:bg-secondary/40 text-sm text-muted-foreground transition-colors"
       >
         <Upload className="h-4 w-4" />
@@ -404,8 +494,8 @@ export default function CloudBackup() {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-secondary/50 rounded-xl">
+      {/* Tab bar — sticky so it stays reachable when content is long on mobile */}
+      <div className="sticky top-0 z-10 flex gap-1 p-1 bg-secondary/50 rounded-xl backdrop-blur-sm">
         {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
@@ -423,7 +513,7 @@ export default function CloudBackup() {
       {/* Tab content */}
       {tab === "export"
         ? <ExportTab createBackup={createBackup} isDecoy={isDecoy} isHidden={isHidden} />
-        : <RestoreTab lock={lock} />}
+        : <RestoreTab lock={lock} onBack={() => setTab("export")} />}
 
       {/* Footer note */}
       <p className="text-[10px] text-muted-foreground text-center pb-4">

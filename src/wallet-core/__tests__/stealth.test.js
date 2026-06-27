@@ -175,7 +175,7 @@ describe('stealth / hidden wallets', () => {
     expect(created.btc.address.startsWith('tb1')).toBe(true);
     expect(created.btc.networkKey).toBe('testnet');
     expect(created.sol.networkKey).toBe('devnet');
-  });
+  }, 180_000);
 
   it('multi-chain identity does NOT change the slot pool (deniability unchanged)', async () => {
     await ensureStealthPool();

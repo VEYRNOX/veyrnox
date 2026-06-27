@@ -181,8 +181,9 @@ describe('KEK I3 — combine is input-shape-constant across real and decoy sets'
 describe('web.js KEK wiring — enroll, unlock, rotate, fail-closed', () => {
   // dynamic import so the kek-combine tests above run even if the store deps differ.
   const SECRET = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
-  const PIN = '13371337';
-  const NEW_PIN = '90909090';
+  // 12-char minimum enforced by H-A (validateWebVaultPassword) on web mainnet builds.
+  const PIN = '133713370000';
+  const NEW_PIN = '909090900000';
   const testHF = () => Promise.resolve(fixedBytes(0xaa)); // TEST-ONLY device factor
 
   it('enrolls KEK then unlocks only with the hardware factor + correct PIN', async () => {

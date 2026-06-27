@@ -60,6 +60,7 @@ vi.mock('@/wallet-core/evm/typed-data.js', () => ({
 vi.mock('@/wallet-core/evm/provider.js', () => ({
   getProvider: vi.fn(() => ({
     send: vi.fn(async () => '0xaa36a7'), // eth_chainId = Sepolia
+    estimateGas: vi.fn(async () => 21_000n), // M9: gas estimate when dApp omits `gas`
   })),
 }));
 
@@ -172,7 +173,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
       await _handlePersonalSign({ withPrivateKey }, 'topic1', 1, ['0xdeadbeef', '0xabc']);
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
-      expect(rejectRequest).toHaveBeenCalledWith('topic1', 1);
+      expect(rejectRequest).toHaveBeenCalledWith('topic1', 1, 'RASP_BLOCK');
     });
 
     // H8 — personal_sign param order normalization and address validation
@@ -211,7 +212,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
           ['0xdeadbeef', OTHER_ADDR],
         )
       ).rejects.toThrow(/address mismatch/);
-      expect(rejectRequest).toHaveBeenCalledWith('topic1', 1);
+      expect(rejectRequest).toHaveBeenCalledWith('topic1', 1, 'PERSONAL_SIGN_ADDRESS_MISMATCH');
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
     });
   });
@@ -227,8 +228,18 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
     });
 
     it('A — calls presignGate before withPrivateKey when gate allows', async () => {
+      // H7 (fail closed): the typed data must carry a domain.chainId matching the
+      // session chain for the handler to reach the signer.
+      const { parseTypedData } = await import('@/wallet-core/evm/typed-data.js');
+      vi.mocked(parseTypedData).mockReturnValueOnce({
+        valid: true,
+        types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }], Mail: [] },
+        domain: { chainId: 11155111 },
+        message: { from: '0x0' },
+        error: null,
+      });
       const { _handleSignTypedData } = await import('../WalletConnectProvider.jsx');
-      await _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', typedDataJson]);
+      await _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', typedDataJson], 'eip155:11155111');
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).toHaveBeenCalled();
       expect(respondToRequest).toHaveBeenCalled();
@@ -240,7 +251,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
       await _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', typedDataJson]);
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
-      expect(rejectRequest).toHaveBeenCalledWith('topic2', 2);
+      expect(rejectRequest).toHaveBeenCalledWith('topic2', 2, 'RASP_BLOCK');
     });
 
     // H7 — EIP-712 domain.chainId cross-chain replay protection
@@ -257,7 +268,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
       await expect(
         _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', 'irrelevant'], 'eip155:11155111')
       ).rejects.toThrow(/domain.chainId.*does not match/);
-      expect(rejectRequest).toHaveBeenCalledWith('topic2', 2);
+      expect(rejectRequest).toHaveBeenCalledWith('topic2', 2, 'CHAIN_ID_MISMATCH');
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
     });
 
@@ -276,12 +287,17 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
       expect(respondToRequest).toHaveBeenCalled();
     });
 
-    it('E — skips chainId check when domain has no chainId field (H7 — backwards compatible)', async () => {
-      // default mock returns domain: { name: 'Test' } (no chainId) — check must not fire
+    it('E — rejects CHAIN_ID_MISMATCH when domain has no chainId field (H7 — fail closed)', async () => {
+      // default mock returns domain: { name: 'Test' } (no chainId). An unbound
+      // signature could be replayed on another chain, so when the session chain is
+      // known we fail closed (I4) rather than signing. This supersedes the earlier
+      // "backwards compatible / skip the check" behaviour.
       const { _handleSignTypedData } = await import('../WalletConnectProvider.jsx');
-      await _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', typedDataJson], 'eip155:11155111');
-      expect(withPrivateKeySpy).toHaveBeenCalled();
-      expect(respondToRequest).toHaveBeenCalled();
+      await expect(
+        _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', typedDataJson], 'eip155:11155111')
+      ).rejects.toThrow(/CHAIN_ID_MISMATCH/);
+      expect(rejectRequest).toHaveBeenCalledWith('topic2', 2, 'CHAIN_ID_MISMATCH');
+      expect(withPrivateKeySpy).not.toHaveBeenCalled();
     });
   });
 
@@ -304,7 +320,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
       await _handleSendTransaction({ withPrivateKey }, 'topic3', 3, txParams, 'eip155:11155111');
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
-      expect(rejectRequest).toHaveBeenCalledWith('topic3', 3);
+      expect(rejectRequest).toHaveBeenCalledWith('topic3', 3, 'RASP_BLOCK');
     });
   });
 });
