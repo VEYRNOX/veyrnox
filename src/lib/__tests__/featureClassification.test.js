@@ -30,6 +30,20 @@ describe('classification completeness', () => {
     }
   });
 
+  it('voice-commands dataSource is external (audio leaves the device for transcription)', () => {
+    // The note states audio leaves the device for platform speech transcription
+    // (Google SpeechRecognizer on Android), so dataSource must not claim on-device. I4.
+    expect(CLASSIFICATION['/voice-commands'].dataSource).toBe('external');
+  });
+
+  it('no entry whose note says data leaves the device claims dataSource on-device', () => {
+    for (const [path, entry] of Object.entries(CLASSIFICATION)) {
+      if (/leaves? the device/i.test(entry.note)) {
+        expect(entry.dataSource, `${path} dataSource`).not.toBe('on-device');
+      }
+    }
+  });
+
   it('every disabled entry carries a reason (leaks|server|unverified)', () => {
     for (const [path, entry] of Object.entries(CLASSIFICATION)) {
       if (entry.verdict === 'disabled') {

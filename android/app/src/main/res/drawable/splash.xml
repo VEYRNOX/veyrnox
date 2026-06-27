@@ -1,16 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Veyrnox launcher foreground — hex mark.
-  ViewBox mirrors VeyrnoxLogo.jsx (512 × 512).
-  Flat teal (#4ADAC2) used for stroke; gradients are unreliable in
-  adaptive-icon foreground layers across all API levels.
-  Background is transparent so the ic_launcher_background color shows through.
+  Veyrnox splash screen vector drawable.
+  Geometry mirrors VeyrnoxLogo.jsx (viewBox 512 × 512).
+  Replaces the third-party PNG splash assets for API 21+ devices.
+  The PNG files in drawable-port-*/drawable-land-* are kept as fallbacks
+  but Android resource resolution will prefer this XML for @drawable/splash
+  on any device that supports vector drawables (API 21+).
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
+    android:width="512dp"
+    android:height="512dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
+
+    <!-- Near-black background (#050608) -->
+    <path
+        android:pathData="M0,0 L512,0 L512,512 L0,512 Z"
+        android:fillColor="#050608" />
 
     <!-- Flat-top hexagon: teal-tinted near-black fill + teal stroke -->
     <path
@@ -20,7 +26,7 @@
         android:strokeWidth="20"
         android:strokeLineJoin="round" />
 
-    <!-- The "V" cutout — stroke only, no fill -->
+    <!-- The "V" mark — stroke only, no fill -->
     <path
         android:pathData="M188,188 L256,330 L324,188"
         android:fillColor="#00000000"
