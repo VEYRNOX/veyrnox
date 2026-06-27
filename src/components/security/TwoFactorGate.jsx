@@ -24,7 +24,7 @@ const ATTEMPT_CAP = 5;
 
 /**
  * @param {object} props
- * @param {(creds:{pin:string,password:string}) => Promise<{allowed:boolean,message:(string|null)}>} props.verify
+ * @param {(creds:{pin:string,password:string}) => Promise<{allowed:boolean,message:(string|null),oom?:boolean}>} props.verify
  *   Composes the two verifications + evaluateTwoFactor; returns the gate verdict.
  * @param {() => void} props.onSuccess  called once on an allowed verdict
  * @param {() => void} [props.onCancel]
@@ -68,6 +68,12 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
     setBusy(false);
     if (verdict?.allowed) {
       onSuccess?.();
+      return;
+    }
+    // audit-H5: OOM verdict means the session verifier was never captured (Argon2id
+    // OOM at unlock). This is not a wrong-credential attempt — don't burn the cap.
+    if (verdict?.oom) {
+      setError(verdict.message || 'Step-up re-auth unavailable — please lock and unlock.');
       return;
     }
     const n = attempts + 1;
