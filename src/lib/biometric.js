@@ -78,7 +78,7 @@ export function set2faBiometricEnabled(on) {
  *
  * DEMO: resolves true (the caller shows the clearly-SIMULATED prompt, like the
  * passkey/biometric-unlock demo flows). Plain web: THROWS (no OS biometric).
- * @returns {Promise<true>}
+ * @returns {Promise<boolean>}
  */
 export async function verifyBiometric2fa() {
   if (DEMO) return true;
@@ -86,32 +86,40 @@ export async function verifyBiometric2fa() {
     throw new BiometricGateError('unavailable');
   }
   const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+  // Suppress the native keyStore's background-lock hook while the OS biometric
+  // dialog is open — the dialog briefly pauses the app, which normally fires
+  // lock() and redirects to the unlock screen mid-flow.
+  const { nativeKeyStore } = await import('@/wallet-core/keystore/native.js');
   const info = await BiometricAuth.checkBiometry();
   if (!info.isAvailable && !info.deviceIsSecure) {
     throw new BiometricGateError('unavailable');
   }
   const reason = 'Authorise this action in VEYRNOX';
-  if (info.isAvailable) {
-    try {
-      await BiometricAuth.authenticate({
-        reason,
-        cancelTitle: 'Cancel',
-        androidTitle: 'VEYRNOX',
-        androidSubtitle: 'Authorise this action',
-        allowDeviceCredential: false,
-      });
-      return true;
-    } catch (err) {
-      if (err && err.code === 'biometryLockout') {
-        await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+  // Suppress the background-lock hook while the OS dialog is open (the dialog
+  // briefly pauses the app, which would otherwise fire lock() mid-flow).
+  return nativeKeyStore.suppressLock(async () => {
+    if (info.isAvailable) {
+      try {
+        await BiometricAuth.authenticate({
+          reason,
+          cancelTitle: 'Cancel',
+          androidTitle: 'VEYRNOX',
+          androidSubtitle: 'Authorise this action',
+          allowDeviceCredential: false,
+        });
         return true;
+      } catch (err) {
+        if (err && err.code === 'biometryLockout') {
+          await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+          return true;
+        }
+        throw err;
       }
-      throw err;
     }
-  }
-  // Biometrics not enrolled but the device IS secured → deliberate passcode fallback.
-  await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
-  return true;
+    // Biometrics not enrolled but the device IS secured → deliberate passcode fallback.
+    await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+    return true;
+  });
 }
 
 /**

@@ -408,8 +408,7 @@ export const nativeKeyStore = {
   },
 
   // NATIVE-ONLY: suppress the background-lock hook for the duration of `fn`.
-  // Use for OS-level dialogs (e.g. LocalNotifications.requestPermissions) that
-  // briefly pause the app without requiring biometric re-auth. The caller is
-  // responsible for only suppressing non-security-sensitive async OS calls.
+  // Used by verifyBiometric2fa and other OS-dialog callers that briefly pause
+  // the app without wanting to trigger lock() mid-operation.
   suppressLock: withLockSuppressed,
 };

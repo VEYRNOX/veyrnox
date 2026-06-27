@@ -52,8 +52,9 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
     isBio ? 'Confirm with your PIN + biometrics'
       : isPasskey ? 'Confirm with your PIN + passkey'
         : 'Confirm with your PIN + Action Password');
-  // External-factor modes need only the PIN in-field; the second factor is the tap.
-  const canSubmit = !busy && pin.length > 0 && (isExternalFactor || password.length > 0);
+  // Biometric mode: no PIN field — biometric is the only step-up. Passkey/password
+  // modes still collect the PIN as factor 1.
+  const canSubmit = !busy && (isBio || (pin.length > 0 && (isPasskey || password.length > 0)));
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -98,32 +99,34 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
           : isPasskey ? 'Your PIN and a passkey tap are required for this action.'
             : 'Both factors are required for this action.'}
       </p>
-      <div>
-        {isPinModel ? (
-          <PinPad
-            aria-label="8-digit PIN"
-            value={pin}
-            onChange={setPin}
-            onComplete={(digits) => setPin(digits)}
-            submitLabel="Verify"
-            disabled={busy}
-          />
-        ) : (
-          <>
-            <Label htmlFor="tfg-pin">Vault password</Label>
-            <Input
-              id="tfg-pin"
-              type="password"
-              autoComplete="off"
+      {!isBio && (
+        <div>
+          {isPinModel ? (
+            <PinPad
+              aria-label="8-digit PIN"
               value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-              className="mt-1.5 mono-value"
+              onChange={setPin}
+              onComplete={(digits) => setPin(digits)}
+              submitLabel="Verify"
               disabled={busy}
             />
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <Label htmlFor="tfg-pin">Vault password</Label>
+              <Input
+                id="tfg-pin"
+                type="password"
+                autoComplete="off"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+                className="mt-1.5 mono-value"
+                disabled={busy}
+              />
+            </>
+          )}
+        </div>
+      )}
       {!isExternalFactor && (
         <div>
           <Label htmlFor="tfg-ap">Action Password</Label>

@@ -26,7 +26,7 @@ import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
-import { captureVerifierSafe, verifyCredential, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
+import { captureVerifierSafe, verifyCredential, verifyCredentialDetailed, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
 import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore } from '@/wallet-core/keystore';
@@ -1126,6 +1126,19 @@ export function WalletProvider({ children }) {
     return ok;
   }, []);
 
+  const verifyActiveCredentialDetailed = useCallback(async (entered) => {
+    try {
+      const result = await verifyCredentialDetailed(verifierRef.current, entered);
+      if (result.ok) lastAuthAtRef.current = Date.now();
+      return result;
+    } catch (err) {
+      // verifyCredential can throw if argon2id (hash-wasm) OOMs or crashes on device.
+      // Return bricked so the caller surfaces "please re-lock" rather than the generic
+      // TwoFactorGate catch message "Could not complete verification."
+      console.error('[veyrnox] verifyActiveCredentialDetailed threw:', err?.message ?? err);
+      return { ok: false, bricked: true, reason: 'STEP_UP_THROW' };
+    }
+  }, []);
 
   // audit-H5: expose whether the step-up verifier was captured successfully. Returns
   // false when captureVerifierSafe returned null (Argon2id OOM at unlock time), so
@@ -1844,6 +1857,7 @@ export function WalletProvider({ children }) {
     clearPendingPin,
     // SEND STEP-UP RE-AUTH (see lib/sendReauth.js + wallet-core/credentialVerifier.js).
     verifyActiveCredential,
+    verifyActiveCredentialDetailed,
     isVerifierReady,
     isSendReauthRequired,
     // ACTION PASSWORD (2FA second factor) — PRIMARY set this phase. See twoFactorGate.js
