@@ -526,7 +526,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Voice Commands',
         status: 'built',
         summary: 'Hands-free, read-only navigation',
-        explanation: 'Built (/voice-commands). Web Speech API voice navigation: recognises a fixed command set (go to dashboard, check balance, etc.) and navigates the app. Read-only; never initiates or signs transactions by voice.',
+        explanation: 'Built (/voice-commands). Voice navigation via the native @capacitor-community/speech-recognition plugin (Android SpeechRecognizer), with a Web Speech API fallback on web: recognises a fixed command set (go to dashboard, check balance, etc.) and navigates the app. Read-only navigation only — never initiates or signs transactions by voice. Transcription happens off-device on the platform speech service (Google on Android), and voice is disabled when locked or in a deniability/duress session (I3, fail closed).',
       },
     ],
   },
