@@ -83,3 +83,16 @@ function makeNativeFacade() {
 }
 
 export { webKeyStore };
+
+// Lock-suppression escape hatch for native file-picker operations. The Capacitor
+// `pause` event fires when a native Activity (system file/document picker) comes
+// to the foreground, which would otherwise fire the lock hook. On native this
+// re-exports native.js's depth-counted suppressor; on web it is a transparent
+// no-op — the `<input type="file">` path never pauses the app. Scope is narrow
+// by intent: only file-picker call sites should use it.
+export function withLockSuppressed(fn) {
+  if (Capacitor.isNativePlatform()) {
+    return import('./native.js').then((m) => m.withLockSuppressed(fn));
+  }
+  return Promise.resolve().then(fn);
+}
