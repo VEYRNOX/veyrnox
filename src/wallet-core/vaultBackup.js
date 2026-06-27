@@ -31,9 +31,10 @@
 //   PIN restore: PIN seal is decrypted → containerJson extracted → re-encrypted
 //     under a new password the user sets → saved via createVault.
 
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { encryptVault, decryptVault } from './vault.js';
 import { saveVault } from './evm/vaultStore.js';
-import { getKeyStore } from './keystore/index.js';
+import { getKeyStore, withLockSuppressed } from './keystore/index.js';
 
 export const BACKUP_APP = 'veyrnox';
 export const BACKUP_VERSION = 1;
@@ -261,22 +262,79 @@ export async function verifyBackupEnvelope(envelope, password, pin) {
 }
 
 /**
- * Trigger a browser file download of the backup envelope.
- * Uses a neutral filename (.enc) — not a tell that the file is a seed backup.
+ * Deliver the backup envelope to the user.
+ *
+ * On native Android the <a download> path is silently dropped by the WebView.
+ * We use @capacitor/filesystem to write the file to the app's cache directory,
+ * then @capacitor/share to open the OS share sheet (Google Drive, Dropbox,
+ * Files, email, etc.) so the user chooses the destination.
+ *
+ * On web/desktop the standard <a download> anchor click is used.
+ *
+ * Returns true if delivery was initiated, false if the share sheet was
+ * dismissed (so the caller can show an honest toast).
+ *
  * @param {object} envelope  result of createBackupEnvelope()
+ * @returns {Promise<boolean|{saved:boolean,path:string}>}
  */
-export function downloadBackupFile(envelope) {
-  // Write the binary encrypted-vault container — opaque bytes, not text.
-  const blob = new Blob([encodeBinary(envelope)], { type: 'application/octet-stream' });
+export async function downloadBackupFile(envelope) {
+  const bytes = encodeBinary(envelope);
+  const filename = 'veyrnox.enc';
+
+  // Native Android: save directly to the public Downloads folder — no picker,
+  // no gestures, no navigation. The user gets a clear confirmation of where
+  // the file landed. A separate "Choose location" path (ACTION_CREATE_DOCUMENT)
+  // is available for users who want Google Drive, Dropbox, etc.
+  const isAndroid = Capacitor.getPlatform() === 'android';
+
+  if (isAndroid) {
+    const FileSaver = registerPlugin('FileSaver');
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
+    const result = await FileSaver.saveToDownloads({ data: base64, filename });
+    // result.path is e.g. "Download/veyrnox.enc"
+    return { saved: true, path: result.path };
+  }
+
+  // Web / desktop: standard anchor-click download.
+  const blob = new Blob([bytes], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  // Neutral filename — does not announce what the file is.
-  a.download = 'veyrnox.enc';
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return true;
+}
+
+/**
+ * Open the system file picker (ACTION_CREATE_DOCUMENT) so the user can choose
+ * a specific save location — Google Drive, Dropbox, a subfolder, etc.
+ * Returns true if saved, false if cancelled.
+ * @param {object} envelope  result of createBackupEnvelope()
+ * @returns {Promise<boolean>}
+ */
+export async function downloadBackupFilePicker(envelope) {
+  const bytes = encodeBinary(envelope);
+  const filename = 'veyrnox.enc';
+  const isAndroid = Capacitor.getPlatform() === 'android';
+  if (isAndroid) {
+    const FileSaver = registerPlugin('FileSaver');
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
+    // The picker opens a native Activity, which fires Capacitor's pause event;
+    // suppress the lock hook for the duration so the wallet stays unlocked.
+    const result = await withLockSuppressed(() => FileSaver.saveFile({ data: base64, filename }));
+    return !result.cancelled;
+  }
+  // Web fallback (desktop browser)
+  const blob = new Blob([bytes], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return true;
 }
 
 // ── Restore ────────────────────────────────────────────────────────────────────
