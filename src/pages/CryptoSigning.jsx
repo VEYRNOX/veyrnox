@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { copySecret } from "@/lib/copySecret";
+import { copyPlain } from "@/lib/copySecret";
 import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { LEVEL } from "@/risk/levels";
@@ -19,7 +20,7 @@ export function makeCopy(setCopied) {
     if (sensitive) {
       copySecret(text);
     } else {
-      navigator.clipboard.writeText(text);
+      copyPlain(text);
     }
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
@@ -232,7 +233,7 @@ export default function CryptoSigning() {
                   <p className="text-xs font-semibold">BIP-39 Mnemonic (12 words)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowPhrase(s => !s)} aria-label={showPhrase ? "Hide recovery phrase" : "Reveal recovery phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showPhrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(mnemonicRef.current, "mnemonic", { sensitive: true })} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
+                    <button onClick={() => { copySecret(mnemonicRef.current); setCopied("mnemonic"); setTimeout(() => setCopied(null), 1500); }} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
                   </div>
                 </div>
                 {showPhrase ? (
@@ -257,7 +258,7 @@ export default function CryptoSigning() {
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-mono text-muted-foreground flex-1">{showKey ? walletRef.current?.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
                   <button onClick={() => setShowKey(s => !s)} aria-label={showKey ? "Hide private key" : "Reveal private key"} className="text-muted-foreground">{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                  {showKey && <button onClick={() => copy(walletRef.current?.privateKey, "pk", { sensitive: true })} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
+                  {showKey && <button onClick={() => { const wallet = walletRef.current; if (wallet?.privateKey) { copySecret(wallet.privateKey); setCopied("pk"); setTimeout(() => setCopied(null), 1500); } }} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
                 </div>
               </div>
 
