@@ -285,7 +285,13 @@ export function WalletConnectProvider({ children }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [sessions, setSessions] = useState([]);
 
-  const refreshSessions = useCallback(() => setSessions(getActiveSessions()), []);
+  // M11: getActiveSessions() may include sessions whose expiry has passed if the
+  // SDK has not yet fired session_expire (e.g. the app was offline). Drop them so
+  // the UI never shows — nor lets a request resolve against — a dead session.
+  const refreshSessions = useCallback(() => {
+    const now = Math.floor(Date.now() / 1000);
+    setSessions(getActiveSessions().filter((s) => s.expiry > now));
+  }, []);
 
   useEffect(() => {
     if (!isUnlocked || !isWalletConnectConfigured()) return;
@@ -401,7 +407,8 @@ export function WalletConnectProvider({ children }) {
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
-  // Gas cap of 1M enforced regardless of dApp suggestion (I5 — backend untrusted).
+  // Gas cap of 1M enforced in both branches — whether the dApp suggests gas or
+  // we estimate it ourselves (I5 — backend untrusted).
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
     await assertSessionLive(topic, id); // M11
     await _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId);

@@ -77,14 +77,21 @@ describe('RequestApprovalModal — phishing check uses session.peer.metadata (C4
 });
 
 describe('RequestApprovalModal — connected known-bad dApp domain', () => {
-  it('surfaces a RISK alert when the connected dApp domain is known-bad', () => {
+  it('surfaces a RISK alert when the live session domain is known-bad', () => {
     render(<RequestApprovalModal request={personalSignRequest('https://airdrop-claim2024.io')} onClose={vi.fn()} />);
     expect(screen.getByText(/known scam/i)).toBeTruthy();
   });
 
-  it('shows no scam alert for a clean connected dApp domain', () => {
+  it('shows no scam alert for a clean live session domain', () => {
     render(<RequestApprovalModal request={personalSignRequest('https://app.example.org')} onClose={vi.fn()} />);
     expect(screen.queryByText(/known scam/i)).toBeNull();
+  });
+
+  it('fails closed when no live session matches the request topic', () => {
+    // personalSignRequest with no url still pushes a session with undefined url;
+    // test the case where no session matches at all by using sessionRequest directly.
+    render(<RequestApprovalModal request={sessionRequest('no-match')} onClose={vi.fn()} />);
+    expect(screen.getByText(/known scam/i)).toBeTruthy();
   });
 });
 

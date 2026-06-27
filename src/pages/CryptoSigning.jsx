@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { copySecret } from "@/lib/copySecret";
+import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
+import { presignGate } from "@/sign-gate/presign";
+import { LEVEL } from "@/risk/levels";
 
 // M15: build the clipboard-copy handler. Sensitive copies (mnemonic, private
 // key) route through copySecret, which schedules a 30 s best-effort clipboard
@@ -80,7 +83,23 @@ export default function CryptoSigning() {
     };
   }, []);
 
+  // H13/M15: route clipboard writes through makeCopy — sensitive values (mnemonic,
+  // private key) use copySecret (30s wipe); public values copy plainly.
   const copy = makeCopy(setCopied);
+
+  // H13: RASP pre-sign environment gate. Browser automation / WebDriver
+  // (Playwright/Selenium) and other hostile-runtime tells must block signing of
+  // a message OR a raw transaction here, exactly as the Send chokepoint does.
+  // detect()/degrade() are PURE functions of the environment only (I3 set-blind);
+  // a RASP crash fails closed to the strongest BLOCK (I4). This page derives a
+  // real key from a mnemonic and signs with it, so it is a signing chokepoint and
+  // must carry the same gate.
+  const raspGuardAllowsSigning = () => {
+    let tier;
+    try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
+    const gate = presignGate(tier, LEVEL.OK, false);
+    return gate.proceedAllowed && gate.signerReachable;
+  };
 
   const generateWallet = () => {
     setError("");
@@ -133,6 +152,13 @@ export default function CryptoSigning() {
   const signMsg = async () => {
     const wallet = walletRef.current;
     if (!wallet) return;
+    setError("");
+    // H13: RASP pre-sign gate. Refuse to sign in a hostile runtime (automation /
+    // WebDriver). Fail closed — if the gate doesn't allow, no signature is produced.
+    if (!raspGuardAllowsSigning()) {
+      setError("Signing is blocked: this environment looks unsafe (automation or a tampered runtime was detected).");
+      return;
+    }
     const sig = await wallet.signMessage(signMessage);
     setSignature(sig);
   };
@@ -141,6 +167,11 @@ export default function CryptoSigning() {
     const wallet = walletRef.current;
     if (!wallet || !txTo) return;
     setError("");
+    // H13: RASP pre-sign gate — same chokepoint guard as message signing.
+    if (!raspGuardAllowsSigning()) {
+      setError("Signing is blocked: this environment looks unsafe (automation or a tampered runtime was detected).");
+      return;
+    }
     try {
       const tx = {
         to: txTo,

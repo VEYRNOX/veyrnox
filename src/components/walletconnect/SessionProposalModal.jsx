@@ -27,10 +27,9 @@ export function SessionProposalModal({ proposal, onClose }) {
 
   const meta = proposal.params?.proposer?.metadata ?? {};
   const requiredNs = proposal.params?.requiredNamespaces ?? {};
+  const optionalNs = proposal.params?.optionalNamespaces ?? {};
   const methods = requiredNs.eip155?.methods ?? [];
   const chains = requiredNs.eip155?.chains ?? [];
-
-  const optionalNs = proposal.params?.optionalNamespaces ?? {};
   const optionalChains = optionalNs.eip155?.chains ?? [];
   const optionalMethods = optionalNs.eip155?.methods ?? [];
 
@@ -95,12 +94,16 @@ export function SessionProposalModal({ proposal, onClose }) {
           </div>
         </div>
 
+        <p className={styles.domainCaveat}>
+          Domain check covers a limited blocklist — absence does not confirm safety.
+        </p>
+
         <p className={styles.label}>Connecting wallet</p>
         <p className={styles.address}>{evmAddress ?? '—'}</p>
 
         {chains.length > 0 && (
           <>
-            <p className={styles.label}>Requested chains</p>
+            <p className={styles.label}>Required chains</p>
             <ul className={styles.list}>
               {chains.map((c) => <li key={c}>{chainLabel(c)}</li>)}
             </ul>
@@ -109,6 +112,15 @@ export function SessionProposalModal({ proposal, onClose }) {
                 Unsupported chains will be excluded from the approved session.
               </p>
             )}
+          </>
+        )}
+
+        {optionalChains.length > 0 && (
+          <>
+            <p className={styles.label}>Also requested (optional)</p>
+            <ul className={`${styles.list} ${styles.optionalList}`}>
+              {optionalChains.map((c) => <li key={c}>{chainLabel(c)}</li>)}
+            </ul>
           </>
         )}
 
