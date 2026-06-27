@@ -209,6 +209,15 @@ export default function CryptoSigning() {
         <p className="text-sm text-muted-foreground">BIP-39 mnemonic generation, HD derivation, and EIP-191 message signing via ethers.js v6</p>
       </div>
 
+      {/* H-B: Persistent ephemeral-key warning — not dismissible, safety-critical */}
+      <div role="alert" aria-live="polite" className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm">
+        <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+        <p className="text-amber-200 leading-snug">
+          <strong className="font-semibold text-amber-100">Keys on this page are temporary.</strong>{" "}
+          They are not saved to your wallet. If you send funds to an address shown here without first exporting and saving the private key, those funds cannot be recovered.
+        </p>
+      </div>
+
       <div className="flex gap-1 p-1 bg-secondary/30 rounded-xl">
         {[["generate","Generate Wallet"],["import","Import Mnemonic"],["sign","Sign Messages"],["tx","Build Transaction"]].map(([t,l]) => (
           <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2 rounded-lg text-[11px] font-semibold transition-colors ${tab === t ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{l}</button>
