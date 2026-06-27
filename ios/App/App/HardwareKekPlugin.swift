@@ -1,13 +1,21 @@
-// HardwareKekPlugin.swift — iOS Keychain HMAC-SHA256 hardware factor
+// HardwareKekPlugin.swift — iOS Keychain HMAC-SHA256 device-bound factor
 //
 // STATUS: BUILT (UNAUDITED-PROVISIONAL) — awaiting independent third-party audit.
 //
+// NOTE (H14): This uses STANDARD Keychain (kSecClassGenericPassword). It is
+// not the Secure Enclave: the SE is never invoked here (no
+// kSecAttrTokenIDSecureEnclave / SecKeyCreateRandomKey). Storage is device-bound
+// (a Keychain item protected by a biometric SecAccessControl ACL) — do NOT describe
+// it as SE-backed or claim unqualified hardware backing. Migrating the key
+// into the SE is TARGET — see audit H14.
+//
 // H14 honesty fix: this file does NOT "mirror HardwareKekPlugin.kt exactly".
-// The Android side uses AndroidKeyStore (TEE/StrongBox HMAC key); the iOS side
-// stores a random 32-byte secret in the Keychain protected by SecAccessControl
-// with .biometryCurrentSet. The security property is equivalent (biometric-bound,
-// invalidated on enrollment change, never leaves the device), but the mechanism
-// is different — Keychain vs KeyStore, HMAC-SHA256 computed in Swift vs Java.
+// The Android side uses AndroidKeyStore (TEE/StrongBox-preferring HMAC key); the
+// iOS side stores a random 32-byte secret in the Keychain (kSecClassGenericPassword,
+// not the Secure Enclave — see H14) protected by SecAccessControl with .biometryCurrentSet.
+// The security property is comparable (biometric-bound, invalidated on enrollment
+// change, non-migratable/device-only), but the mechanism is different — Keychain vs
+// KeyStore, HMAC-SHA256 computed in Swift vs Java.
 //
 // Security invariants:
 //   I4 — NEVER fabricates H; biometric failure / item-not-found → reject (fail closed)
@@ -73,6 +81,9 @@ public class HardwareKekPlugin: CAPPlugin, CAPBridgedPlugin {
         // Delete existing key (idempotent re-enroll)
         deleteKey()
 
+        // NOTE: This uses standard Keychain, not the Secure Enclave. SE migration
+        // is TARGET — see audit H14. kSecClassGenericPassword stores the
+        // 32-byte secret as a Keychain item (device-bound, biometric ACL), not in the SE.
         let addQuery: [String: Any] = [
             kSecClass as String:              kSecClassGenericPassword,
             kSecAttrService as String:        KEYCHAIN_SVC,
