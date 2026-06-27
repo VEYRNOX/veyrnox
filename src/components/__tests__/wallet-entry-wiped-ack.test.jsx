@@ -14,6 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('@/lib/WalletProvider', () => ({ useWallet: vi.fn() }));
 vi.mock('@/lib/authModel', () => ({ getAuthModel: vi.fn(() => 'pin'), setAuthModel: vi.fn() }));
@@ -52,7 +53,7 @@ afterEach(() => { cleanup(); });
 describe('WalletEntry — loud next-open wipe acknowledgment', () => {
   it('renders the LOUD "This device was wiped" screen when wasWiped && no vault', async () => {
     vi.mocked(useWallet).mockReturnValue(makeCtx());
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
     await waitFor(() => expect(screen.getByText(/this device was wiped/i)).toBeTruthy());
     // Honest body copy: keys permanently destroyed, recoverable ONLY via recovery phrase,
@@ -69,7 +70,7 @@ describe('WalletEntry — loud next-open wipe acknowledgment', () => {
   it('"Start a new wallet" calls acknowledgeWipe (clears the marker before proceeding)', async () => {
     const acknowledgeWipe = vi.fn();
     vi.mocked(useWallet).mockReturnValue(makeCtx({ acknowledgeWipe }));
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
     await waitFor(() => expect(screen.getByText(/this device was wiped/i)).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: /start a new wallet/i }));
@@ -79,7 +80,7 @@ describe('WalletEntry — loud next-open wipe acknowledgment', () => {
   it('"Restore from recovery phrase" calls acknowledgeWipe (clears the marker before proceeding)', async () => {
     const acknowledgeWipe = vi.fn();
     vi.mocked(useWallet).mockReturnValue(makeCtx({ acknowledgeWipe }));
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
     await waitFor(() => expect(screen.getByText(/this device was wiped/i)).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: /restore from recovery phrase/i }));
@@ -88,7 +89,7 @@ describe('WalletEntry — loud next-open wipe acknowledgment', () => {
 
   it('does NOT show the wiped screen when wasWiped is false (normal first-run)', async () => {
     vi.mocked(useWallet).mockReturnValue(makeCtx({ wasWiped: false }));
-    render(<WalletEntry />);
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     // Give the mount probe a tick to resolve to the normal onboarding path.
     await waitFor(() => expect(screen.queryByText(/this device was wiped/i)).toBeNull());
   });

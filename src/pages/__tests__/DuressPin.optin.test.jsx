@@ -15,6 +15,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 const { mockSetDuressPin, mockEnableDecoyBiometricUnlock } = vi.hoisted(() => ({
   mockSetDuressPin: vi.fn(async () => ({ mnemonic: 'a b c', address: '0xDECOY' })),
@@ -62,12 +63,21 @@ vi.mock('@/lib/authModel', () => ({ getAuthModel: () => 'pin', isPinModel: () =>
 import DuressPin from '@/pages/DuressPin';
 
 async function renderSettled() {
-  await act(async () => { render(<DuressPin />); });
+  await act(async () => { render(<MemoryRouter><DuressPin /></MemoryRouter>); });
 }
 
-function setPins(pin = '24681357') {
-  fireEvent.change(screen.getByLabelText('New Emergency PIN'), { target: { value: pin } });
-  fireEvent.change(screen.getByLabelText('Confirm Emergency PIN'), { target: { value: pin } });
+// Drive the two-step PinPad flow. onComplete fires only on explicit submit
+// (never auto-submits at N digits — deniability §7). The submit button always
+// carries aria-label="Submit PIN" regardless of the submitLabel prop.
+// An explicit act() flush between steps is required: without it the outer act()
+// batches all state updates together so `pin` never accumulates between digit clicks.
+async function enterBothPins(pin = '24681357') {
+  for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' })); // step 1 → confirm step
+  });
+  for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
+  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' })); // step 2 → handleSave
 }
 
 beforeEach(() => {
@@ -107,9 +117,9 @@ describe('DuressPin — Face-ID-opens-the-decoy opt-in', () => {
   it('saving with the opt-in CHECKED caches the DURESS pin behind Face ID', async () => {
     await renderSettled();
     const optin = await screen.findByTestId('decoy-biometric-optin');
-    setPins('24681357');
+    // Check opt-in on step 1 (visible throughout both steps)
     fireEvent.click(optin);
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Set \/ Change Emergency PIN/i })); });
+    await enterBothPins('24681357');
 
     await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalledWith('24681357'));
     await waitFor(() => expect(mockEnableDecoyBiometricUnlock).toHaveBeenCalledWith('24681357'));
@@ -118,8 +128,8 @@ describe('DuressPin — Face-ID-opens-the-decoy opt-in', () => {
   it('saving with the opt-in UNCHECKED never enables Face-ID-for-decoy', async () => {
     await renderSettled();
     await screen.findByTestId('decoy-biometric-optin');
-    setPins('24681357');
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Set \/ Change Emergency PIN/i })); });
+    // Leave opt-in unchecked
+    await enterBothPins('24681357');
 
     await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalledWith('24681357'));
     expect(mockEnableDecoyBiometricUnlock).not.toHaveBeenCalled();
