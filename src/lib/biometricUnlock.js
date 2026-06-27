@@ -18,7 +18,8 @@
 // │ HOW THE BIOMETRIC GATE IS ENFORCED (read this — it is precise on purpose) │
 // │   The underlying secure-storage plugin (@aparajita/capacitor-secure-      │
 // │   storage) can pin an item's *accessibility* (whenPasscodeSetThisDevice-  │
-// │   Only — hardware-backed, device-only, passcode-required) but it does NOT │
+// │   Only — Keychain/Keystore platform secure store, device-only, passcode-  │
+// │   required) but it does NOT                                               │
 // │   expose the iOS access-control / SecAccessControl biometry flags         │
 // │   (kSecAccessControlBiometryCurrentSet / .userPresence) nor the Android   │
 // │   Keystore setUserAuthenticationRequired equivalent. So the Keychain      │
@@ -53,7 +54,8 @@
 // │ DEMO honesty: in demo the cache lives in localStorage and the prompt is a │
 // │ clearly-labelled SIMULATION (see BiometricPrompt.jsx) — NOT real OS       │
 // │ security, and NOT an OS authenticate(). On a real native device the cache │
-// │ lives in the hardware-backed, ThisDeviceOnly, passcode-gated secure store │
+// │ lives in the platform secure store (iOS Keychain / Android Keystore),     │
+// │ ThisDeviceOnly, passcode-gated                                            │
 // │ (same store class as keystore/native.js), and the real OS biometric sheet │
 // │ gates the release as described above.                                     │
 // └─────────────────────────────────────────────────────────────────────────┘
@@ -63,7 +65,7 @@ import { DEMO } from '@/api/demoClient';
 
 // DEMO cache lives in an in-memory module variable — session-scoped, cleared on
 // page unload, never written to localStorage or any persistent store. This is a
-// UI simulation; the real native path uses the hardware-backed secure store.
+// UI simulation; the real native path uses the platform secure store (iOS Keychain / Android Keystore).
 // (VULN-2 fix: the previous localStorage path left the plaintext vault password
 // readable by same-origin scripts and browser extensions for the session lifetime.)
 const NATIVE_KEY = 'bio_unlock_secret';

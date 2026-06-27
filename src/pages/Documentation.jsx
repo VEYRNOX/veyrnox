@@ -56,7 +56,7 @@ const features = [
     { name: "Biometric Unlock", desc: "Face ID / Touch ID unlock gate with fallback", status: "available" },
     { name: "PIN Unlock", desc: "Numeric-PIN onboarding + returning-PIN unlock over the same Argon2id vault, with Face-ID-to-decoy. No hardware-bound KEK yet — a numeric PIN is offline-exhaustible on a seized device; hardware-KEK is the audit-gated fast-follow. UNAUDITED-PROVISIONAL.", status: "available" },
     { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password (per-set knowledge factor) or PIN + Passkey (possession, fails closed). Primary-set today; decoy/hidden parity audit-gated. UNAUDITED-PROVISIONAL.", status: "available" },
-    { name: "Native Secure Storage", desc: "Secure Enclave / Android Keystore hardening", status: "roadmap" },
+    { name: "Native Secure Storage", desc: "Device-bound key storage (iOS Keychain / Android Keystore) — no Secure Enclave / StrongBox key-wrap yet; roadmap", status: "roadmap" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "available" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "available" },
     { name: "Hardware Wallet", desc: "Ledger (WebHID, Chrome/Edge) + Trezor — cold-key address derivation and transaction signing for ETH, BTC, and SOL; private key never leaves the hardware device.", status: "available" },

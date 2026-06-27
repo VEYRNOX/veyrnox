@@ -181,8 +181,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Native Secure Storage',
         status: 'roadmap',
-        summary: 'Secure Enclave / Android Keystore hardening',
-        explanation: 'OS-enforced key storage via Secure Enclave / Android Keystore. Partially in place and provisional pending audit; full hardening is on the roadmap.',
+        summary: 'Device-bound key storage (iOS Keychain / Android Keystore) — roadmap',
+        explanation: 'OS-protected key storage via the iOS Keychain (passcode-gated, ThisDeviceOnly) and Android Keystore. NOTE: no Secure Enclave / StrongBox key-wrap of the vault key yet — full hardware binding is on the roadmap. Partially provisional pending audit.',
       },
       {
         name: 'Session Manager & Auto-Lock',
