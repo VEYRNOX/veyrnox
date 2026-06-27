@@ -406,4 +406,10 @@ export const nativeKeyStore = {
     // even before the first storage call. Fire-and-forget; safe to call repeatedly.
     if (_lockHook) init();
   },
+
+  // NATIVE-ONLY: suppress the background-lock hook for the duration of `fn`.
+  // Use for OS-level dialogs (e.g. LocalNotifications.requestPermissions) that
+  // briefly pause the app without requiring biometric re-auth. The caller is
+  // responsible for only suppressing non-security-sensitive async OS calls.
+  suppressLock: withLockSuppressed,
 };
