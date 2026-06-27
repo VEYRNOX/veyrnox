@@ -990,16 +990,31 @@ export function WalletProvider({ children }) {
     touch();
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
 
+  // STEP-UP: is re-auth required before a send (or seed reveal)? True when the
+  // recent-auth window has lapsed (or no session). Resets only on unlock +
+  // successful verifyActiveCredential. Defined ABOVE revealWalletMnemonic so its
+  // dependency reference is not in the temporal dead zone.
+  const isSendReauthRequired = useCallback(
+    () => sendReauthRequired({ lastAuthAt: lastAuthAtRef.current, now: Date.now(), windowMs: REAUTH_WINDOW_MS }),
+    [],
+  );
+
   // Reveal a wallet's mnemonic FOR BACKUP from the in-memory container (the
   // session already holds every seed while unlocked, so this needs no password —
   // it is the same exposure as withPrivateKey). LIVE SECRET: the caller shows it
   // once for backup and must never persist it. Returns null when locked.
+  // M6: an idle-but-unlocked session must NOT extract seeds freely. The
+  // recent-auth window (the same primitive the Send flow uses) gates this
+  // reveal, so requireTwoFactor at the call sites is no longer the only
+  // protection. Returns a shaped object so callers can distinguish a stale
+  // (re-auth-required) session from a missing wallet.
   const revealWalletMnemonic = useCallback((walletId) => {
+    if (isSendReauthRequired()) return { mnemonic: null, reauthRequired: true };
     const c = containerRef.current;
-    if (!c) return null;
+    if (!c) return { mnemonic: null, reauthRequired: false };
     const w = mv.findWallet(c, walletId || activeIdRef.current);
-    return w ? w.mnemonic : null;
-  }, []);
+    return { mnemonic: w ? w.mnemonic : null, reauthRequired: false };
+  }, [isSendReauthRequired]);
 
   // Confirm the user has backed up a wallet's seed (defaults to the active one).
   // Cheap localStorage flip — no password, no re-encrypt (it is not secret).
@@ -1070,13 +1085,6 @@ export function WalletProvider({ children }) {
     if (ok) lastAuthAtRef.current = Date.now();
     return ok;
   }, []);
-
-  // STEP-UP: is re-auth required before a send? True when the recent-auth window has
-  // lapsed (or no session). Resets only on unlock + successful verifyActiveCredential.
-  const isSendReauthRequired = useCallback(
-    () => sendReauthRequired({ lastAuthAt: lastAuthAtRef.current, now: Date.now(), windowMs: REAUTH_WINDOW_MS }),
-    [],
-  );
 
   // PHASE 2 (create): atomically create the real wallet + both chaff slots under the
   // in-memory pendingPin, fail-closed (provisionPinWallet tears down on chaff failure
