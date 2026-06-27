@@ -16,6 +16,32 @@ const _listeners = new Set();
 // user dismissed the modal without pressing Reject) are TTL-evicted so the map
 // cannot grow unbounded and a stale id cannot trigger a later approveSession race.
 const _pendingProposals = new Map();
+// audit-H9: companion timer map — one clearTimeout handle per proposal so stale
+// entries are evicted even if the user dismisses the modal without pressing Reject.
+const _proposalTimers = new Map();
+
+// audit-H9: WalletConnect proposals carry their own expiry (Unix seconds).
+// Use it if present; fall back to 5 minutes so the map never fills indefinitely.
+export const DEFAULT_PROPOSAL_TTL_MS = 5 * 60 * 1000;
+
+// Pure — exported for unit tests. Computes the ms until a proposal expires.
+// Clamps to 0 (fire immediately) if the expiry has already passed.
+export function computeProposalTtlMs(expiryEpochSeconds, nowMs = Date.now()) {
+  if (!expiryEpochSeconds) return DEFAULT_PROPOSAL_TTL_MS;
+  return Math.max(0, expiryEpochSeconds * 1000 - nowMs);
+}
+
+function _scheduleProposalExpiry(proposalId, expiryEpochSeconds) {
+  return setTimeout(() => {
+    _pendingProposals.delete(proposalId);
+    _proposalTimers.delete(proposalId);
+  }, computeProposalTtlMs(expiryEpochSeconds));
+}
+
+function _clearProposalTimer(proposalId) {
+  const t = _proposalTimers.get(proposalId);
+  if (t !== undefined) { clearTimeout(t); _proposalTimers.delete(proposalId); }
+}
 
 // H9 — pending proposals live at most this long before being rejected + evicted.
 export const PROPOSAL_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -139,11 +165,12 @@ export async function approveSession(proposalId, evmAddress, chainIds) {
     supportedNamespaces: {
       eip155: {
         chains: supportedCaip,
+        // audit-H6: eth_signTypedData (v1) and eth_signTypedData_v3 are blocked
+        // (encoding mismatch with v4 handler). Do not advertise them — a dApp
+        // that requests them will receive a USER_REJECTED, not a bad signature.
         methods: [
           'eth_sendTransaction',
           'personal_sign',
-          'eth_signTypedData',
-          'eth_signTypedData_v3',
           'eth_signTypedData_v4',
         ],
         events: ['chainChanged', 'accountsChanged'],
@@ -152,6 +179,7 @@ export async function approveSession(proposalId, evmAddress, chainIds) {
     },
   });
   await client.approveSession({ id: proposalId, namespaces });
+  _clearProposalTimer(proposalId); // audit-H9
   _pendingProposals.delete(proposalId);
 }
 
@@ -159,6 +187,7 @@ export async function rejectSession(proposalId) {
   const client = await initWalletConnect();
   if (!client) throw new Error('WalletConnect is not configured on this build.');
   await client.rejectSession({ id: proposalId, reason: getSdkError('USER_REJECTED') });
+  _clearProposalTimer(proposalId); // audit-H9
   _pendingProposals.delete(proposalId);
 }
 
@@ -223,6 +252,10 @@ export async function destroyWalletConnect() {
     }
   }
   _client = null;
+  // audit-H9: clear all pending timers before wiping the map so nothing fires
+  // after destroy (e.g. a proposal that arrived just before a wallet lock).
+  for (const t of _proposalTimers.values()) clearTimeout(t);
+  _proposalTimers.clear();
   _pendingProposals.clear();
   _listeners.clear();
 }
