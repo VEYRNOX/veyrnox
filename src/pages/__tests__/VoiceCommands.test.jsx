@@ -98,9 +98,12 @@ function resetWallet() {
 beforeEach(() => {
   resetWallet();
   // Web path (not native) under jsdom — provide getUserMedia.
-  global.navigator.mediaDevices = /** @type {MediaDevices} */ (/** @type {unknown} */ ({
-    getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }),
-  }));
+  // navigator.mediaDevices is read-only; use defineProperty.
+  Object.defineProperty(global.navigator, 'mediaDevices', {
+    value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }) },
+    writable: true,
+    configurable: true,
+  });
 });
 afterEach(() => {
   cleanup();
@@ -227,7 +230,8 @@ describe('VoiceProvider — I3 lock / deniability gating', () => {
   }
 
   async function renderProbe() {
-    let utils;
+    /** @type {ReturnType<typeof render>} */
+    let utils = /** @type {any} */ (undefined);
     await act(async () => {
       utils = render(
         <MemoryRouter>
