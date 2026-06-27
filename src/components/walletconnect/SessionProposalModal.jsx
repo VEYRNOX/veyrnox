@@ -87,6 +87,10 @@ export function SessionProposalModal({ proposal, onClose }) {
           </div>
         </div>
 
+        <p className={styles.domainCaveat}>
+          Domain check covers a limited blocklist — absence does not confirm safety.
+        </p>
+
         <p className={styles.label}>Connecting wallet</p>
         <p className={styles.address}>{evmAddress ?? '—'}</p>
 

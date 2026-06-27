@@ -39,9 +39,16 @@ describe('SessionProposalModal — known-bad dApp alert', () => {
     expect(connect.disabled).toBe(false);
   });
 
-  it('makes no scam claim for a domain absent from the local list and leaves Connect enabled', () => {
+  it('makes no scam claim for a domain absent from the local list, shows blocklist caveat, and leaves Connect enabled', () => {
     render(<SessionProposalModal proposal={makeProposal('https://app.uniswap.org')} onClose={vi.fn()} />);
     expect(screen.queryByText(/known scam/i)).toBeNull();
+    expect(screen.getByText(/limited blocklist/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /^connect$/i }).disabled).toBe(false);
+  });
+
+  it('shows the blocklist caveat alongside the phishing warning when the domain is flagged', () => {
+    render(<SessionProposalModal proposal={makeProposal('https://fakeswap-rewards.xyz')} onClose={vi.fn()} />);
+    expect(screen.getByText(/known scam/i)).toBeTruthy();
+    expect(screen.getByText(/limited blocklist/i)).toBeTruthy();
   });
 });
