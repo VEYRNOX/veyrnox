@@ -15,6 +15,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 const { mockSetDuressPin, mockEnableDecoyBiometricUnlock } = vi.hoisted(() => ({
   mockSetDuressPin: vi.fn(async () => ({ mnemonic: 'a b c', address: '0xDECOY' })),
@@ -59,35 +60,24 @@ vi.mock('@/lib/biometric', () => ({ getBiometricStatus }));
 
 vi.mock('@/lib/authModel', () => ({ getAuthModel: () => 'pin', isPinModel: () => true }));
 
-// PinPad is a custom keyboard widget. We capture each mounted instance's onChange/
-// onComplete props so tests can invoke them directly (DOM events on the mock div
-// don't reliably drive React's synthetic event system in JSDOM).
-const pinPadHandlers = vi.hoisted(() => ({}));
-vi.mock('@/components/security/PinPad', () => ({
-  default: ({ onChange, onComplete, 'aria-label': label, submitLabel = 'Submit' }) => {
-    pinPadHandlers[label] = { onChange, onComplete };
-    return <button type="button" data-testid={`pinpad-submit-${label}`} onClick={() => onComplete?.()}>{submitLabel}</button>;
-  },
-}));
-
 import DuressPin from '@/pages/DuressPin';
 
 async function renderSettled() {
-  await act(async () => { render(<DuressPin />); });
+  await act(async () => { render(<MemoryRouter><DuressPin /></MemoryRouter>); });
 }
 
-async function setPins(pin = '24681357') {
-  // DuressPin is a two-step wizard. Call onChange/onComplete props directly so
-  // React state updates reliably without depending on JSDOM's synthetic event chain.
+// Drive the two-step PinPad flow. onComplete fires only on explicit submit
+// (never auto-submits at N digits — deniability §7). The submit button always
+// carries aria-label="Submit PIN" regardless of the submitLabel prop.
+// An explicit act() flush between steps is required: without it the outer act()
+// batches all state updates together so `pin` never accumulates between digit clicks.
+async function enterBothPins(pin = '24681357') {
+  for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
   await act(async () => {
-    pinPadHandlers['New Emergency PIN'].onChange(pin);
+    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' })); // step 1 → confirm step
   });
-  await act(async () => {
-    pinPadHandlers['New Emergency PIN'].onComplete?.();
-  });
-  await act(async () => {
-    pinPadHandlers['Confirm Emergency PIN'].onChange(pin);
-  });
+  for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
+  fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' })); // step 2 → handleSave
 }
 
 beforeEach(() => {
@@ -127,12 +117,9 @@ describe('DuressPin — Face-ID-opens-the-decoy opt-in', () => {
   it('saving with the opt-in CHECKED caches the DURESS pin behind Face ID', async () => {
     await renderSettled();
     const optin = await screen.findByTestId('decoy-biometric-optin');
-    // Check opt-in BEFORE saving so the flag is set when handleSave fires.
+    // Check opt-in on step 1 (visible throughout both steps)
     fireEvent.click(optin);
-    await setPins('24681357');
-    await act(async () => {
-      pinPadHandlers['Confirm Emergency PIN'].onComplete?.();
-    });
+    await enterBothPins('24681357');
 
     await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalledWith('24681357'));
     await waitFor(() => expect(mockEnableDecoyBiometricUnlock).toHaveBeenCalledWith('24681357'));
@@ -141,11 +128,8 @@ describe('DuressPin — Face-ID-opens-the-decoy opt-in', () => {
   it('saving with the opt-in UNCHECKED never enables Face-ID-for-decoy', async () => {
     await renderSettled();
     await screen.findByTestId('decoy-biometric-optin');
-    // opt-in stays unchecked (default).
-    await setPins('24681357');
-    await act(async () => {
-      pinPadHandlers['Confirm Emergency PIN'].onComplete?.();
-    });
+    // Leave opt-in unchecked
+    await enterBothPins('24681357');
 
     await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalledWith('24681357'));
     expect(mockEnableDecoyBiometricUnlock).not.toHaveBeenCalled();
