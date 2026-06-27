@@ -75,7 +75,7 @@ const WINDOW = 7; // rolling window in days
 // ---------------------------------------------------------------------------
 // Tooltip
 // ---------------------------------------------------------------------------
-const CorrTooltip = ({ active, payload, label }) => {
+const CorrTooltip = ({ active = undefined, payload = undefined, label = undefined }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-card border border-border rounded-xl p-3 text-xs shadow-lg space-y-1">
