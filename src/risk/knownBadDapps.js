@@ -49,8 +49,20 @@ export function normalizeDomain(input) {
 export function checkDappDomain(url) {
   const domain = normalizeDomain(url);
   if (!domain) return { domain: '', flagged: false, reason: null };
-  const hit = BAD_SET.get(domain);
-  return hit
-    ? { domain, flagged: true, reason: hit.reason }
-    : { domain, flagged: false, reason: null };
+  // Exact match first.
+  const exact = BAD_SET.get(domain);
+  if (exact) return { domain, flagged: true, reason: exact.reason };
+
+  // L5: parent-domain (suffix) walk. A subdomain of a known-bad domain is also
+  // bad: app.knownbad.com matches knownbad.com. Strip one leading label at a
+  // time and re-check. Stop before the final two labels would collapse to a
+  // bare TLD — we never match on a shared TLD alone (that would over-match).
+  const labels = domain.split('.');
+  for (let i = 1; i < labels.length - 1; i++) {
+    const suffix = labels.slice(i).join('.');
+    const hit = BAD_SET.get(suffix);
+    if (hit) return { domain, flagged: true, reason: hit.reason };
+  }
+
+  return { domain, flagged: false, reason: null };
 }

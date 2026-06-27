@@ -29,20 +29,25 @@
 // this device. UNAUDITED-PROVISIONAL.
 
 import { useState, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWallet } from '@/lib/WalletProvider';
 import { evaluateTwoFactor } from '@/lib/twoFactorGate';
 import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from '@/lib/passkey';
+import { is2faBiometricEnabled, verifyBiometric2fa } from '@/lib/biometric';
 import TwoFactorGate from './TwoFactorGate';
 
 export function useActionGuard() {
-  const { actionPasswordConfigured, verifyActiveCredential, verifyActionPassword, lock } = useWallet();
+  const { actionPasswordConfigured, verifyActiveCredentialDetailed, verifyActionPassword, lock } = useWallet();
   const [pending, setPending] = useState(null); // { run, title }
 
   // Resolve the ACTIVE second-factor method at call time (prefs/registration are
   // read from storage). Passkey wins if both are set; password is the per-set knowledge
   // factor; otherwise there is no second factor and the action runs unguarded.
   const resolveMethod = useCallback(() => {
+    // Native OS biometric wins on a real device — the genuine possession factor that
+    // actually runs in the app (WebAuthn passkeys can't in the Android WebView).
+    if (Capacitor.isNativePlatform() && is2faBiometricEnabled()) return 'biometric';
     if (is2faPasskeyEnabled() && isPasskeyRegistered()) return 'passkey';
     if (actionPasswordConfigured) return 'password';
     return 'none';
@@ -56,8 +61,19 @@ export function useActionGuard() {
   }, [resolveMethod]);
 
   const verify = useCallback(async ({ pin, password }) => {
-    // Factor 1 (both methods): the unlock credential, full vault Argon2id cost.
-    const pinOk = await verifyActiveCredential(pin);
+    // Factor 1 (all methods): the unlock credential, full vault Argon2id cost.
+    const pinResult = await verifyActiveCredentialDetailed(pin);
+    if (pinResult.bricked) {
+      return { allowed: false, message: 'Verification unavailable — please re-lock and unlock the wallet.' };
+    }
+    const pinOk = pinResult.ok;
+    if (pending?.method === 'biometric') {
+      // Factor 2: a real OS biometric match (fingerprint / Face). FAIL CLOSED — a
+      // cancel/no-match/lockout/unavailable all count as NOT verified.
+      let bioOk = false;
+      try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
+      return evaluateTwoFactor({ pinOk, passwordOk: bioOk, actionPasswordConfigured: true });
+    }
     if (pending?.method === 'passkey') {
       // Factor 2: a WebAuthn assertion bound to this device's registered passkey.
       // FAIL CLOSED — a cancel, timeout, missing authenticator, or any other error
@@ -70,7 +86,7 @@ export function useActionGuard() {
     // (never concurrent with the PIN KDF) — one 192 MiB allocation at a time.
     const passwordOk = await verifyActionPassword(password);
     return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
-  }, [pending, verifyActiveCredential, verifyActionPassword]);
+  }, [pending, verifyActiveCredentialDetailed, verifyActionPassword]);
 
   const gateModal = (
     <Dialog open={!!pending} onOpenChange={(open) => { if (!open) setPending(null); }}>
@@ -80,7 +96,7 @@ export function useActionGuard() {
         </DialogHeader>
         {pending && (
           <TwoFactorGate
-            mode={pending.method === 'passkey' ? 'passkey' : 'password'}
+            mode={pending.method}
             title={pending.title}
             verify={verify}
             onCancel={() => setPending(null)}

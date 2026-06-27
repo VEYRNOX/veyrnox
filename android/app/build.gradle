@@ -22,7 +22,7 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             // Explicitly non-debuggable in release (defense-in-depth alongside the
             // MainActivity setWebContentsDebuggingEnabled(false) guard).
             debuggable false
