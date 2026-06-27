@@ -24,7 +24,7 @@ const ATTEMPT_CAP = 5;
 
 /**
  * @param {object} props
- * @param {(creds:{pin:string,password:string}) => Promise<{allowed:boolean,message:(string|null)}>} props.verify
+ * @param {(creds:{pin:string,password:string}) => Promise<{allowed:boolean,message:(string|null),oom?:boolean}>} props.verify
  *   Composes the two verifications + evaluateTwoFactor; returns the gate verdict.
  * @param {() => void} props.onSuccess  called once on an allowed verdict
  * @param {() => void} [props.onCancel]
