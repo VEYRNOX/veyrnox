@@ -29,8 +29,15 @@ export default function PriceAlerts() {
   );
 
   const requestNotifPermission = async () => {
+    if (typeof Notification === "undefined") {
+      toast.error("Push notifications are not supported in this environment.");
+      return;
+    }
     const perm = await Notification.requestPermission();
     setNotifPermission(perm);
+    if (perm === "denied") {
+      toast.error("Notifications blocked. Enable them in your browser settings.");
+    }
   };
 
   const { data: alerts = [] } = useQuery({

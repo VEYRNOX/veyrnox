@@ -24,7 +24,10 @@ const BASE = 'https://min-api.cryptocompare.com/data';
 // party with access to their logs) to correlate timestamps, IPs, and symbol queries to
 // this app. Omitting it means requests are indistinguishable from any other CryptoCompare
 // client. Rate-limit allowances are unaffected — the free tier does not require it.
-const EXTRA = '';
+// API key is optional — set VITE_CRYPTOCOMPARE_API_KEY in .env.local for higher rate limits
+// and to avoid CORS rejections on keyless v2 OHLCV endpoints.
+const _CC_KEY = import.meta.env.VITE_CRYPTOCOMPARE_API_KEY;
+const EXTRA = _CC_KEY ? `api_key=${_CC_KEY}` : '';
 
 // Holdable assets (deduped) — the FULL registry, never narrowed to held assets.
 export const PORTFOLIO_SYMBOLS = Object.freeze([...new Set(ASSETS.map((a) => a.symbol))]);
