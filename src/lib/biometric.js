@@ -25,6 +25,13 @@ import { DEMO } from '@/api/demoClient';
 // demoClient.js). Stored as "1" (on) / absent (off).
 export const BIOMETRIC_PREF_KEY = 'veyrnox-biometric-unlock';
 
+// Separate preference for "use the OS biometric as my SECOND FACTOR at critical
+// actions" (send, reveal seed, duress/stealth setup) — the device-global dual of
+// the passkey-2FA pref (lib/passkey.js TWOFACTOR_PASSKEY_KEY). Independent of the
+// biometric-UNLOCK pref above: a user can require biometrics on send without
+// requiring them to unlock, and vice-versa. Stored as "1" (on) / absent (off).
+export const TWOFACTOR_BIOMETRIC_KEY = 'veyrnox-2fa-biometric';
+
 /** @returns {boolean} whether the user has required biometric unlock. */
 export function isBiometricUnlockEnabled() {
   try {
@@ -32,6 +39,79 @@ export function isBiometricUnlockEnabled() {
   } catch {
     return false;
   }
+}
+
+/** @returns {boolean} has the user turned on "OS biometric as my critical-action second factor"? */
+export function is2faBiometricEnabled() {
+  try {
+    return localStorage.getItem(TWOFACTOR_BIOMETRIC_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Persist the "OS biometric is my critical-action second factor" preference. */
+export function set2faBiometricEnabled(on) {
+  try {
+    if (on) localStorage.setItem(TWOFACTOR_BIOMETRIC_KEY, '1');
+    else localStorage.removeItem(TWOFACTOR_BIOMETRIC_KEY);
+  } catch {
+    /* storage unavailable — preference is best-effort, non-fatal. */
+  }
+}
+
+/**
+ * Perform a REAL OS biometric authentication as a SECOND FACTOR, returning true on
+ * a successful match. This is the possession-factor dual of verifyPasskeyAssertion()
+ * (lib/passkey.js): it yields NO secret and decrypts nothing — it is purely a gate
+ * signal the caller composes with the PIN via evaluateTwoFactor().
+ *
+ * FAIL CLOSED (I4): a cancel / no-match / lockout / unavailable all THROW, so the
+ * caller's `try { ok = await verifyBiometric2fa() } catch { ok = false }` treats
+ * them as NOT verified — the opposite of the unlock gate's deliberate degrade path.
+ * (A blocked critical action is safe; the user can disable this factor in settings.)
+ *
+ * Policy mirrors the audited keystore/native.js → authenticateOrThrow and
+ * biometricUnlock.js: require a biometric match, with a one-time device-credential
+ * fallback only on biometryLockout, and a passcode fallback when biometrics are not
+ * enrolled but the device IS secured.
+ *
+ * DEMO: resolves true (the caller shows the clearly-SIMULATED prompt, like the
+ * passkey/biometric-unlock demo flows). Plain web: THROWS (no OS biometric).
+ * @returns {Promise<true>}
+ */
+export async function verifyBiometric2fa() {
+  if (DEMO) return true;
+  if (!Capacitor.isNativePlatform()) {
+    throw new BiometricGateError('unavailable');
+  }
+  const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+  const info = await BiometricAuth.checkBiometry();
+  if (!info.isAvailable && !info.deviceIsSecure) {
+    throw new BiometricGateError('unavailable');
+  }
+  const reason = 'Authorise this action in VEYRNOX';
+  if (info.isAvailable) {
+    try {
+      await BiometricAuth.authenticate({
+        reason,
+        cancelTitle: 'Cancel',
+        androidTitle: 'VEYRNOX',
+        androidSubtitle: 'Authorise this action',
+        allowDeviceCredential: false,
+      });
+      return true;
+    } catch (err) {
+      if (err && err.code === 'biometryLockout') {
+        await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+        return true;
+      }
+      throw err;
+    }
+  }
+  // Biometrics not enrolled but the device IS secured → deliberate passcode fallback.
+  await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
+  return true;
 }
 
 /**
