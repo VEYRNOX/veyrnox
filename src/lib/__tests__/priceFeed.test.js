@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   LIVE_PRICE_PREF_KEY, isLivePricesEnabled, setLivePricesEnabled,
-  SUPPORTED_SYMBOLS, fetchLivePricesUsd,
+  fetchLivePricesUsd,
 } from '../priceFeed.js';
 
 describe('live-prices opt-in pref', () => {
