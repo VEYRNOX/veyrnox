@@ -44,9 +44,9 @@ self.onmessage = async (e) => {
   }
 
   try {
-    const raw = await argon2id({ ...opts, outputType: 'binary' });
+    const raw = /** @type {Uint8Array} */ (await argon2id({ ...opts, outputType: 'binary' }));
     opts.password.fill(0);
-    self.postMessage({ type: 'result', id, raw }, [raw.buffer]);
+    self.postMessage({ type: 'result', id, raw }, { transfer: [raw.buffer] });
   } catch (err) {
     opts.password.fill(0);
     self.postMessage({ type: 'error', id, message: String((err && err.message) || err) });
