@@ -78,6 +78,16 @@ and reads the item SECOND; a cancel/failure throws and the item is never read.
 
 ## Test 4 — Change password → stale secret cannot unlock
 
+> **Password-cohort wallets only.** This test applies when the wallet was created
+> with a **vault password** (not a PIN). For **PIN-cohort** wallets
+> (`authModel = 'pin'`), `shouldCacheUnlockSecret()` returns `false` — the real
+> PIN is never stored behind biometrics (by design; `WalletProvider.jsx:1226`),
+> so one-tap Face ID does not unlock the real wallet and the one-tap button will
+> not appear for it. PIN-cohort users who enabled biometric via `enableDecoyBiometricUnlock`
+> will see Face ID route to the **decoy** wallet only — the real wallet is reachable
+> by typing the real PIN. If you are testing with a PIN-cohort wallet and find the
+> one-tap button absent after setup, that is correct behaviour, not a bug.
+
 1. Re-enable Face ID unlock (Settings ▸ Security), confirm one-tap works (Test 1).
 2. **Settings ▸ Security ▸ Change vault password** → set a new password.
 3. Lock / relaunch → one-tap Face ID → Matching Face.
