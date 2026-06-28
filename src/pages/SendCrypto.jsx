@@ -757,7 +757,7 @@ export default function SendCrypto() {
           const maxPriorityFeePerGas = fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n;
           let signedHex;
           if (isErc20) {
-            const { data, to: contractAddr } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
+            const { data, contract: contractAddr } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
             signedHex = await trezorSignEvmTx({
               chainId: chainInfo.chainId,
               nonce,
