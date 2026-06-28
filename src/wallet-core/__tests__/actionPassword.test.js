@@ -9,7 +9,9 @@ import { createCredentialVerifier, verifyCredential } from '../credentialVerifie
 
 // Cheap Argon2id params so the round-trip integration test is fast (the PRODUCTION
 // verifier uses the full vault KDF_PARAMS — see createCredentialVerifier).
-const CHEAP = { parallelism: 1, iterations: 1, memorySize: 64, hashLength: 32 };
+// memorySize 1024 KiB == 1 MiB is the MIN_KDF_PARAMS floor (vault.js): cheap enough
+// for fast tests yet in-range for the M-I bounds check deserialize now applies.
+const CHEAP = { parallelism: 1, iterations: 1, memorySize: 1024, hashLength: 32 };
 
 describe('actionPassword record — persistable second-factor verifier', () => {
   it('serialises a live verifier into a JSON-safe record (base64 salt/hash + params)', () => {
@@ -70,6 +72,29 @@ describe('actionPassword record — persistable second-factor verifier', () => {
 
     expect(await verifyCredential(reloaded, password)).toBe(true);        // right secret verifies
     expect(await verifyCredential(reloaded, 'wrong password')).toBe(false); // wrong secret rejected
+  });
+
+  // M-I: deserialize must apply the SAME KDF bounds as vault.js:assertSaneKdfParams,
+  // so a malicious record cannot carry an OOM-sized memorySize into verifyCredential
+  // (which runs argon2id BEFORE the AEAD auth tag is checked). Fail closed → null.
+  it('M-I: rejects a record with out-of-range KDF params (OOM guard, fail closed to null)', () => {
+    const base = serializeActionPasswordRecord({
+      salt: new Uint8Array([1, 2, 3, 4]),
+      hash: new Uint8Array([5, 6, 7, 8]),
+      params: { parallelism: 1, iterations: 3, memorySize: 196608, hashLength: 32 },
+    });
+    // memorySize = 1 TiB — the OOM payload. wellFormedParams alone (positive integer)
+    // would let this through; the bounds check must reject it.
+    const oom = { ...base, params: { ...base.params, memorySize: 1_073_741_824 } };
+    expect(deserializeActionPasswordRecord(oom)).toBeNull();
+    expect(hasActionPasswordRecord(oom)).toBe(false);
+
+    // Oversized iterations and parallelism are likewise rejected.
+    expect(deserializeActionPasswordRecord({ ...base, params: { ...base.params, iterations: 0xFFFFFFFF } })).toBeNull();
+    expect(deserializeActionPasswordRecord({ ...base, params: { ...base.params, parallelism: 1024 } })).toBeNull();
+
+    // A sane, in-range record still deserialises.
+    expect(deserializeActionPasswordRecord(base)).not.toBeNull();
   });
 
   // REGRESSION: callers MUST deserialize before verifying. WalletProvider.verifyActionPassword
