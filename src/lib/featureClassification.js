@@ -344,7 +344,7 @@ export const CLASSIFICATION = {
   },
   '/plans': {
     verdict: 'live', dataSource: 'static',
-    note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") and PRO_FEATURES from lib/tier. The upgrade button is permanently disabled with an honest disclosure: "no payment system is active" and "no payment can be made on this screen." Preview disclosure banner explicitly warns pricing is not final. No fabricated capabilities listed as currently available.',
+    note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). The upgrade button is permanently disabled with an honest disclosure. Preview disclosure notes IAP is coming at launch. No fabricated capabilities listed as currently available.',
   },
   '/referrals': {
     verdict: 'live', dataSource: 'on-device',
