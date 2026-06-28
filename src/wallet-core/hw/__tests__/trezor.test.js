@@ -123,6 +123,11 @@ describe('trezorSignBtcTx', () => {
     expect(call.inputs[0].script_type).toBe('SPENDWITNESS');
     expect(call.outputs[0].address).toBe('tb1qtest');
     expect(call.outputs[0].amount).toBe('90000');
+    // Change output should be present and use native SegWit type
+    expect(call.outputs[1]).toBeDefined();
+    expect(call.outputs[1].address_n).toBeDefined();
+    expect(call.outputs[1].script_type).toBe('PAYTOWITNESS');
+    expect(call.outputs[1].amount).toBe('9000');
   });
 
   it('uses btc coin for mainnet', async () => {
@@ -144,6 +149,8 @@ describe('trezorSignBtcTx', () => {
     });
 
     expect(TrezorConnect.signTransaction.mock.calls[0][0].coin).toBe('btc');
+    // No change output when changeAmountSats is 0
+    expect(TrezorConnect.signTransaction.mock.calls[0][0].outputs.length).toBe(1);
   });
 
   it('throws on Trezor failure', async () => {

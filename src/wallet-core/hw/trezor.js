@@ -84,9 +84,11 @@ export async function trezorSignEvmTx({
 }
 
 function btcPathArray(networkKey) {
+  if (networkKey !== 'btc-mainnet' && networkKey !== 'btc-testnet') {
+    throw new Error(`Unknown BTC networkKey: ${networkKey}`);
+  }
   const isMainnet = networkKey === 'btc-mainnet';
-  // BIP32 hardened path: 84'/coin'/0'/0/0
-  const coinType = isMainnet ? 0x80000000 : 0x80000001; // 0' or 1'
+  const coinType = isMainnet ? 0x80000000 : 0x80000001;
   return [0x80000054, coinType, 0x80000000, 0, 0];
 }
 
@@ -115,7 +117,7 @@ export async function trezorSignBtcTx({ plan, networkKey }) {
     outputs.push({
       address_n: pathArray,
       amount: String(plan.changeAmountSats),
-      script_type: 'PAYTOP2SHWITNESS',
+      script_type: 'PAYTOWITNESS',
     });
   }
 
