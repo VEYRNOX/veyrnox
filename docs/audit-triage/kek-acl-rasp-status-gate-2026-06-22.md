@@ -259,6 +259,20 @@ with StrongBox, and an engaged independent auditor.
 
 ---
 
+### §4c — INTERNAL static-analysis pass 2026-06-28 (KEK/RASP-relevant items)
+
+| Finding | Status | Resolution |
+|---|---|---|
+| H-NEW-A — native.js KEK zeroing (changePassword/enrollKek/unenrollKek) | ✅ FIXED | PR #433 (c8a7f5e) — pre-audit |
+| H-NEW-D — iOS HardwareKekPlugin uses Keychain item not Secure Enclave | OPEN / TARGET | Requires Mac + Xcode + SE entitlement; see docs/M2cd.native-acl-plan.md |
+| F-01/F-02 — biometric cache not OS-ACL bound (Android: no setInvalidatedByBiometricEnrollment; iOS: cache item not kSecAccessControlBiometryCurrentSet) | OPEN / TARGET | M2c/M2d plan; requires custom Capacitor plugin + real device |
+| F-09 — RaspIntegrityPlugin not adversarially tested on rooted/Frida devices | OPEN | Phase 4 roadmap — real device required |
+| M-K — passkey assertion counter not persisted (no replay detection) | OPEN | No server-side verifier; architectural limitation |
+
+Gate conditions in §4 are UNCHANGED. ALLOW_MAINNET stays true.
+
+---
+
 ## 5. Cross-references
 
 - KEK design + open questions: `docs/kek-architecture-spec.md` (§7, §8, §9)
