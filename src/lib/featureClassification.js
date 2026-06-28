@@ -32,6 +32,7 @@ export const ALL_ROUTE_PATHS = [
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
   '/security-scanner', '/docs', '/features',
   '/plans',
+  '/safety-plus',
   '/referrals',
   '/walletconnect',
 ];
@@ -345,6 +346,10 @@ export const CLASSIFICATION = {
   '/plans': {
     verdict: 'live', dataSource: 'static',
     note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). The upgrade button is permanently disabled with an honest disclosure. Preview disclosure notes IAP is coming at launch. No fabricated capabilities listed as currently available.',
+  },
+  '/safety-plus': {
+    verdict: 'live', dataSource: 'static',
+    note: 'Safety Plus feature hub. Display-only — lists 16 Safety Plus features grouped by nav section (SECURITY, FINANCE, CONNECT) with lock badges for Free users and live links for Safety Plus subscribers. No payment system active; getCurrentTier() always returns "free". Honest about gating requiring IAP receipt verification at launch.',
   },
   '/referrals': {
     verdict: 'live', dataSource: 'on-device',
