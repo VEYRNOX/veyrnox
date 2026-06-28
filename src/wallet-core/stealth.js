@@ -46,7 +46,7 @@
 //      wallets from one who does not. An all-chaff pool is the baseline state.
 //
 //   3. SECRET-DERIVED PLACEMENT + CONSTANT REVEAL WORK. A hidden wallet lives in
-//      the slot SHA-256(secret) mod POOL_SIZE. Reveal recomputes that slot and
+//      the slot HKDF-SHA256(deviceSalt, secret) mod POOL_SIZE. Reveal recomputes that slot and
 //      attempts exactly ONE decryptVault on it. A wrong password derives some
 //      slot, runs exactly ONE KDF on whatever blob (chaff or real) sits there,
 //      and fails — the SAME work as a correct reveal that lands on chaff. Reveal
@@ -80,7 +80,7 @@
 //     is for wallets the adversary has NOT already catalogued; the UI warns the
 //     user explicitly and it is flagged for specific audit scrutiny.
 //   - SLOT COLLISION (M1 — fund-loss hardening). Two DIFFERENT secrets can hash
-//     to the same slot. The slot is SHA-256(secret) mod POOL_SIZE, a uniform draw
+//     to the same slot. The slot is HKDF-SHA256(deviceSalt, secret) mod POOL_SIZE, a uniform draw
 //     over POOL_SIZE buckets, so by the birthday bound the chance that SOME pair
 //     among k hidden wallets collides is ≈ k(k-1)/(2·POOL_SIZE). The original
 //     POOL_SIZE = 12 made this materially likely ("a handful" understated it):
@@ -358,7 +358,7 @@ export async function ensureStealthPool() {
  * unchanged (so re-entering a secret never silently destroys the wallet behind
  * it). Otherwise a FRESH BIP-39 mnemonic is generated, encrypted with `secret`
  * via the SAME crypto as the primary vault, and written into the secret's slot
- * (SHA-256(secret) mod POOL_SIZE), ensuring the pool exists first. Returns the
+ * (HKDF-SHA256(deviceSalt, secret) mod POOL_SIZE), ensuring the pool exists first. Returns the
  * hidden wallet's mnemonic + public EVM address ONCE so the UI can show a backup
  * and a fund-me address; callers MUST NOT persist the return value. Never persists
  * plaintext.
