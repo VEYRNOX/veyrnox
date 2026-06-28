@@ -41,9 +41,11 @@ export const TIERS = [
 export const FREE_FEATURES = [
   { name: 'Full HD wallet — 10 assets (ETH, BTC, SOL + 7 more)', summary: 'EVM, Bitcoin, Solana, ERC-20 tokens' },
   { name: 'Biometric / Passkey / PIN unlock', summary: 'FIDO2, Face ID, numeric PIN over Argon2id' },
-  { name: 'Hardware wallet (Ledger & Trezor)', summary: 'Cold-key signing, keys never leave the device' },
   { name: 'Duress PIN & Panic Wipe', summary: 'Coercion-resistant — always free on principle' },
   { name: 'Stealth / Hidden Wallets', summary: 'Deniable wallet pool — always free on principle' },
+  { name: 'Reveal seed phrase', summary: 'Always accessible — your emergency recovery fallback' },
+  { name: 'Calldata Decode & Approval Guard', summary: 'Human-readable pre-sign summary with unlimited-approval warning' },
+  { name: 'Network Manager', summary: 'Switch and add custom EVM networks with RPC validation' },
   { name: 'WalletConnect / dApp Connector', summary: 'Connect to dApps, verified on Sepolia' },
   { name: 'Portfolio & P&L tracking', summary: 'Net-worth overview and fee analytics' },
   { name: 'Address Book', summary: 'Saved, labelled addresses with per-chain validation' },
@@ -54,6 +56,9 @@ export const FREE_FEATURES = [
 // feature here is presentation only — it does NOT gate or unlock the feature
 // until real billing (IAP receipt verification) is wired up.
 export const SAFETY_PLUS_FEATURES = [
+  { name: 'Hardware wallet (Ledger & Trezor)', summary: 'Cold-key signing for ETH, BTC, SOL — keys never leave the device' },
+  { name: 'Encrypted Personal Backup', summary: 'Export an encrypted .enc vault file for off-device storage' },
+  { name: 'Spam Token Filter', summary: 'Auto-classify and hide airdropped scam tokens' },
   { name: 'Transaction Simulation', summary: 'Local-first pre-sign preview with risk flags' },
   { name: 'Anomaly / Fraud Detection', summary: 'Rule-based deviation flags over your own history' },
   { name: 'Suspicious-Address Screening', summary: 'Local blocklist + sanctioned-address checks' },
