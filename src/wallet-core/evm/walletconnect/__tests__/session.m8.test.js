@@ -10,8 +10,8 @@ const pairMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('@walletconnect/core', () => ({
   Core: class {},
 }));
-vi.mock('@walletconnect/web3wallet', () => ({
-  Web3Wallet: {
+vi.mock('@reown/walletkit', () => ({
+  WalletKit: {
     init: vi.fn().mockResolvedValue({
       pair: pairMock,
       on: vi.fn(),
