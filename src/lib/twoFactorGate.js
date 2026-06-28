@@ -42,13 +42,15 @@ const block = (code, message) => ({ allowed: false, code, message });
  * @param {boolean} [i.pinOk]                    the entered PIN verified against the active set
  * @param {boolean} [i.passwordOk]               the entered Action Password verified
  * @param {boolean} [i.actionPasswordConfigured] the ACTIVE set has an Action Password set
- *                                               (default true; pass false to force setup-first)
+ *                                               (M-G: default FALSE — fail closed. A caller
+ *                                               that omits this is treated as not-configured
+ *                                               and gets NOT_CONFIGURED, never a silent proceed)
  * @returns {{ allowed: boolean, code: string, message: (string|null) }}
  */
 export function evaluateTwoFactor({
   pinOk = false,
   passwordOk = false,
-  actionPasswordConfigured = true,
+  actionPasswordConfigured = false,
 } = {}) {
   // 0 — there must BE a second factor for this set, or there is nothing to enforce.
   // The caller decides whether NOT_CONFIGURED blocks the action or routes to setup.
