@@ -21,19 +21,33 @@ describe('live-prices opt-in pref', () => {
 describe('fetchLivePricesUsd — holdings-agnostic live fetch', () => {
   afterEach(() => { vi.restoreAllMocks(); });
 
-  it('requests the FULL fixed supported-symbol list (never holdings) in USD', async () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      json: async () => Object.fromEntries(SUPPORTED_SYMBOLS.map((s) => [s, { USD: 10 }])),
-    }));
+  it('requests the FULL fixed supported-symbol list (never holdings) in USD via CoinGecko', async () => {
+    // CoinGecko returns { [coin-id]: { usd: number } } — mock that shape.
+    const cgResponse = {
+      ethereum: { usd: 10 },
+      'usd-coin': { usd: 1 },
+      tether: { usd: 1 },
+      'matic-network': { usd: 0.5 },
+      arbitrum: { usd: 0.8 },
+      optimism: { usd: 1.2 },
+      'avalanche-2': { usd: 20 },
+      binancecoin: { usd: 300 },
+      bitcoin: { usd: 60000 },
+      solana: { usd: 150 },
+    };
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => cgResponse }));
     vi.stubGlobal('fetch', fetchMock);
 
     const out = await fetchLivePricesUsd();
     const url = fetchMock.mock.calls[0][0];
-    for (const s of SUPPORTED_SYMBOLS) expect(url).toContain(s);
-    expect(url).toContain('tsyms=USD');
+    // CoinGecko URL uses coin IDs and vs_currencies, not tickers or tsyms
+    expect(url).toContain('api.coingecko.com');
+    expect(url).toContain('vs_currencies=usd');
+    expect(url).toContain('ethereum');
+    expect(url).toContain('bitcoin');
+    // Output is keyed by Veyrnox ticker
     expect(out.ETH).toBe(10);
-    expect(Object.keys(out).sort()).toEqual([...SUPPORTED_SYMBOLS].sort());
+    expect(out.BTC).toBe(60000);
   });
 
   it('throws on a non-OK HTTP response (caller treats as unavailable)', async () => {
