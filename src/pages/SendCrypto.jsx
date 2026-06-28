@@ -1,4 +1,8 @@
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
+import { useTrezor } from '../context/TrezorContext.jsx';
+import { trezorSignEvmTx } from '../wallet-core/hw/trezor.js';
+import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
+import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -123,6 +127,11 @@ export default function SendCrypto() {
   const [showErrors, setShowErrors] = useState(false);
   const [txResult, setTxResult] = useState(null); // { hash, explorerUrl } from a real broadcast
   const [selectedFee, setSelectedFee] = useState(null); // user-chosen EIP-1559 fee (FeeSelector)
+
+  // TREZOR hardware-wallet signing mode
+  const { connected: trezorConnected, platform: trezorPlatform, evmAddress: trezorEvmAddress, btcAddress: trezorBtcAddress, solAddress: trezorSolAddress } = useTrezor();
+  const [useTrezorMode, setUseTrezorMode] = useState(false);
+  const [trezorModalOpen, setTrezorModalOpen] = useState(false);
 
   // STEP-UP RE-AUTH state (replaces the stranded passkey/OTP 2FA).
   const [reauthValue, setReauthValue] = useState("");
@@ -696,40 +705,97 @@ export default function SendCrypto() {
       // to that chain's integer base unit (sats / lamports / wei) for signing.
       let raw;
       if (isBtc) {
-        // BTC (BIP-84 P2WPKH). Auto fee-rate this slice (no fee UI). BTC -> sats.
-        raw = await withBtcPrivateKey(({ privateKey, publicKey, address }) =>
-          signAndBroadcastBtc({
-            networkKey,
-            privateKey,
-            publicKey,
-            fromAddress: address,
-            toAddress,
-            amountSats: toBaseUnits(amount, 8),
-          })
-        );
+        if (useTrezorMode) {
+          if (!trezorConnected) throw new Error('Trezor not connected');
+          // BTC Trezor signing path: requires a dedicated broadcast helper
+          // (broadcastBtcTx) that is not yet implemented. Fail honest + closed (I4).
+          throw new Error(
+            'Trezor BTC signing is BUILT but the broadcast helper is not yet wired. ' +
+            'Use the software key path for now, or implement broadcastBtcTx in wallet-core/btc/send.js.'
+          );
+        } else {
+          // BTC (BIP-84 P2WPKH). Auto fee-rate this slice (no fee UI). BTC -> sats.
+          raw = await withBtcPrivateKey(({ privateKey, publicKey, address }) =>
+            signAndBroadcastBtc({
+              networkKey,
+              privateKey,
+              publicKey,
+              fromAddress: address,
+              toAddress,
+              amountSats: toBaseUnits(amount, 8),
+            })
+          );
+        }
       } else if (isSolana) {
-        // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
-        raw = await withSolPrivateKey(({ privateKey, address }) =>
-          signAndBroadcastSol({
-            networkKey,
-            privateKey,
-            fromAddress: address,
-            toAddress,
-            amountLamports: toBaseUnits(amount, 9),
-          })
-        );
+        if (useTrezorMode) {
+          if (!trezorConnected) throw new Error('Trezor not connected');
+          // SOL Trezor signing path: requires separate build/sign/broadcast helpers
+          // (buildSolTx, broadcastSolTx) that are not yet implemented. Fail honest + closed (I4).
+          throw new Error(
+            'Trezor SOL signing is BUILT but the build/broadcast helpers are not yet wired. ' +
+            'Use the software key path for now, or implement buildSolTx/broadcastSolTx in wallet-core/sol/send.js.'
+          );
+        } else {
+          // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
+          raw = await withSolPrivateKey(({ privateKey, address }) =>
+            signAndBroadcastSol({
+              networkKey,
+              privateKey,
+              fromAddress: address,
+              toAddress,
+              amountLamports: toBaseUnits(amount, 9),
+            })
+          );
+        }
       } else {
-        // EVM native + ERC-20. Map the wallet to its HD derivation index (public
-        // address match). The user-selected EIP-1559 fee flows straight into the
-        // signing call; null falls back to ethers' auto-fill (never blocks send).
-        const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
-        if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
-        const fee = selectedFee?.fee || undefined;
-        raw = await withPrivateKey(acct.index, (privateKey) =>
-          isErc20
-            ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount, fee })
-            : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: amount, fee })
-        );
+        // EVM native + ERC-20.
+        if (useTrezorMode) {
+          if (!trezorConnected) throw new Error('Trezor not connected');
+          const provider = getProvider(networkKey);
+          const nonce = await provider.getTransactionCount(trezorEvmAddress);
+          const feeData = await provider.getFeeData();
+          const chainInfo = getNetworkInfo(networkKey);
+          const fee = selectedFee?.fee || undefined;
+          const maxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
+          const maxPriorityFeePerGas = fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n;
+          let signedHex;
+          if (isErc20) {
+            const { data, contract: contractAddr } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
+            signedHex = await trezorSignEvmTx({
+              chainId: chainInfo.chainId,
+              nonce,
+              to: contractAddr,
+              value: 0n,
+              gasLimit: 65000n,
+              maxFeePerGas,
+              maxPriorityFeePerGas,
+              data,
+            });
+          } else {
+            signedHex = await trezorSignEvmTx({
+              chainId: chainInfo.chainId,
+              nonce,
+              to: toAddress,
+              value: parseEther(String(amount)),
+              gasLimit: 21000n,
+              maxFeePerGas,
+              maxPriorityFeePerGas,
+            });
+          }
+          raw = await provider.broadcastTransaction(signedHex);
+        } else {
+          // Map the wallet to its HD derivation index (public address match).
+          // The user-selected EIP-1559 fee flows straight into the signing call;
+          // null falls back to ethers' auto-fill (never blocks send).
+          const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
+          if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
+          const fee = selectedFee?.fee || undefined;
+          raw = await withPrivateKey(acct.index, (privateKey) =>
+            isErc20
+              ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount, fee })
+              : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: amount, fee })
+          );
+        }
       }
 
       // Normalize each family's distinct result shape to one record shape.
@@ -1118,6 +1184,29 @@ export default function SendCrypto() {
             </p>
           </div>
         )}
+
+        {/* TREZOR SIGNING TOGGLE */}
+        {trezorPlatform === 'unsupported' && useTrezorMode && <TrezorUnsupportedScreen />}
+        {trezorPlatform !== 'unsupported' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#8B929E', fontFamily: 'Schibsted Grotesk, sans-serif', fontSize: 14, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={useTrezorMode}
+                onChange={(e) => { setUseTrezorMode(e.target.checked); if (e.target.checked && !trezorConnected) setTrezorModalOpen(true); }}
+                style={{ accentColor: '#4ADAC2' }}
+              />
+              Sign with Trezor
+            </label>
+            {useTrezorMode && trezorConnected && <span style={{ color: '#4ADAC2', fontFamily: 'Schibsted Grotesk, sans-serif', fontSize: 12 }}>✓ Device connected</span>}
+            {useTrezorMode && !trezorConnected && (
+              <button onClick={() => setTrezorModalOpen(true)} style={{ background: 'none', border: 'none', color: '#4ADAC2', fontFamily: 'Schibsted Grotesk, sans-serif', fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+                Connect device
+              </button>
+            )}
+          </div>
+        )}
+        <TrezorConnectModal open={trezorModalOpen} onClose={() => setTrezorModalOpen(false)} onConnected={() => setTrezorModalOpen(false)} btcNetworkKey={networkKey === 'btc-mainnet' ? 'btc-mainnet' : 'btc-testnet'} />
 
         {step === "form" && (
           <Button
