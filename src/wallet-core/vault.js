@@ -116,6 +116,94 @@ function randomBytes(n) {
   return b;
 }
 
+// --- Off-main-thread Argon2id (perceived-perf only; crypto + params UNCHANGED) ---
+// The 192 MiB derivation blocks the UI thread, so the unlock spinner can't animate
+// and the app looks frozen. Run it in a Web Worker when one is available; ALWAYS
+// fall back to the exact in-thread argon2id on ANY worker problem (unsupported,
+// error, or timeout), so unlock can never break (I4, fail closed). The worker runs
+// the SAME hash-wasm argon2id with the SAME opts -> byte-identical key. Identical
+// for every set (params unchanged), so it adds no deniability/timing tell (I3).
+let _kdfWorker = null;
+let _kdfWorkerState = 'idle'; // 'idle' | 'ready' | 'broken'
+let _kdfReqId = 0;
+const _kdfPending = new Map();
+
+function _disableKdfWorker() {
+  _kdfWorkerState = 'broken';
+  try { if (_kdfWorker) _kdfWorker.terminate(); } catch { /* ignore */ }
+  _kdfWorker = null;
+  for (const p of _kdfPending.values()) p.reject(new Error('kdf-worker-disabled'));
+  _kdfPending.clear();
+}
+
+function _spawnKdfWorker() {
+  if (_kdfWorkerState === 'broken') return null;
+  if (_kdfWorker) return _kdfWorker;
+  // No Worker (jsdom/test/SSR) -> in-thread only. This is the fast, no-op path.
+  if (typeof Worker === 'undefined') { _kdfWorkerState = 'broken'; return null; }
+  try {
+    const w = new Worker(new URL('./keystore/argon2.worker.js', import.meta.url), { type: 'module' });
+    w.onmessage = (e) => {
+      const d = e.data || {};
+      if (d.type === 'ready') { _kdfWorkerState = 'ready'; return; }
+      const p = _kdfPending.get(d.id);
+      if (!p) return;
+      _kdfPending.delete(d.id);
+      if (d.type === 'result') p.resolve(new Uint8Array(d.raw));
+      else p.reject(new Error(d.message || 'kdf-worker-error'));
+    };
+    w.onerror = () => _disableKdfWorker();
+    w.onmessageerror = () => _disableKdfWorker();
+    _kdfWorker = w;
+    return w;
+  } catch {
+    _kdfWorkerState = 'broken';
+    return null;
+  }
+}
+
+// Resolve a worker that has confirmed it can run (posted 'ready'), bounded by a
+// short probe so a worker that constructs but can't load the module falls back
+// fast instead of hanging. null -> derive in-thread.
+async function _readyKdfWorker(probeMs = 3000) {
+  const w = _spawnKdfWorker();
+  if (!w) return null;
+  if (_kdfWorkerState === 'ready') return w;
+  const start = Date.now();
+  while (_kdfWorkerState === 'idle' && Date.now() - start < probeMs) {
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  if (_kdfWorkerState !== 'ready') { _disableKdfWorker(); return null; }
+  return w;
+}
+
+/**
+ * Run hash-wasm argon2id off the main thread when possible, else in-thread. Output
+ * is byte-identical either way (same impl + opts). A worker fault never propagates
+ * past the in-thread fallback; only a genuine argon2id failure surfaces.
+ * @returns {Promise<Uint8Array>}
+ */
+async function runArgon2idBinary(opts) {
+  const w = await _readyKdfWorker();
+  if (w) {
+    try {
+      return await new Promise((resolve, reject) => {
+        const id = ++_kdfReqId;
+        const timer = setTimeout(() => { _kdfPending.delete(id); reject(new Error('kdf-worker-timeout')); }, 60000);
+        _kdfPending.set(id, {
+          resolve: (v) => { clearTimeout(timer); resolve(v); },
+          reject: (e) => { clearTimeout(timer); reject(e); },
+        });
+        w.postMessage({ id, opts });
+      });
+    } catch {
+      _disableKdfWorker(); // this environment's worker can't derive -> stop trying
+      // fall through to the in-thread derivation
+    }
+  }
+  return /** @type {Uint8Array} */ (await argon2id({ ...opts, outputType: 'binary' }));
+}
+
 /**
  * @param {string} password
  * @param {Uint8Array} salt
@@ -123,15 +211,13 @@ function randomBytes(n) {
  */
 async function deriveKey(password, salt, params = KDF_PARAMS) {
   const { parallelism, iterations, memorySize, hashLength } = params;
-  const raw = await argon2id({
-    password: enc.encode(password.normalize('NFKC')),
-    salt,
-    parallelism,
-    iterations,
-    memorySize,
-    hashLength,
-    outputType: 'binary',
-  });
+  const pw = enc.encode(password.normalize('NFKC'));
+  let raw;
+  try {
+    raw = await runArgon2idBinary({ password: pw, salt, parallelism, iterations, memorySize, hashLength });
+  } finally {
+    zero(pw); // wipe our copy of the password bytes (the worker wipes its own copy)
+  }
   // Import into WebCrypto as a non-extractable AES-GCM key.
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (raw), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
   zero(raw);
