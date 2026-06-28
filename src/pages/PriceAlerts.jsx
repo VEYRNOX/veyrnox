@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { fetchMarketPricesUsd, MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
+import { fetchMarketPricesUsdCG as fetchMarketPricesUsd } from "@/lib/coinGecko.js";
+import { MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
 import { isLivePricesEnabled } from "@/lib/priceFeed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

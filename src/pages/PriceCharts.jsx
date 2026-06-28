@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ResponsiveContainer, ComposedChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from "@/lib/recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
-import { fetchOHLCV } from "@/lib/cryptoCompare";
+import { fetchOHLCVCG as fetchOHLCV } from "@/lib/coinGecko";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 
 // Top 10 by market cap, derived from the canonical source so every feature
