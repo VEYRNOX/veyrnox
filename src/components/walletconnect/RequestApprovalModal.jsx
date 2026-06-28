@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import styles from './RequestApprovalModal.module.css';
-import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
+import { useWalletConnect, resolvePersonalSignMessage } from '@/lib/WalletConnectProvider.jsx';
 import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 import { checkDappDomain } from '@/risk/knownBadDapps.js';
 import { score } from '@/risk/score.js';
@@ -114,12 +114,19 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   }
 
   // --- personal_sign: decode hex message to UTF-8 where possible ---
+  // H-NEW-C — use resolvePersonalSignMessage() to handle both EIP-1474 [message,
+  // address] and MetaMask-legacy [address, message] param ordering. Previously
+  // this decoded reqParams[0] directly, which would show garbage (the address
+  // bytes) to the user while the signing handler correctly signed the real message
+  // — a display/sign divergence. Now both paths use the same resolution logic.
   let personalSignMessage = null;
   if (type === REQUEST_TYPES.PERSONAL_SIGN) {
+    const resolved = resolvePersonalSignMessage(reqParams, evmAddress);
+    const hexMsg = resolved.ok ? resolved.message : reqParams[0];
     try {
-      personalSignMessage = ethers.toUtf8String(reqParams[0]);
+      personalSignMessage = ethers.toUtf8String(hexMsg);
     } catch {
-      personalSignMessage = reqParams[0]; // show raw hex if not valid UTF-8
+      personalSignMessage = hexMsg; // show raw hex if not valid UTF-8
     }
   }
 

@@ -20,7 +20,19 @@ vi.mock('@/wallet-core/evm/networks.js', () => ({
 
 // The live sessions the modal looks up by topic. Tests mutate this before render.
 let mockSessions = [];
+// resolvePersonalSignMessage is a pure helper exported from WalletConnectProvider.
+// Inline the implementation here so the modal can call it without pulling in
+// @reown/walletkit (which is not installed in the test environment).
+function resolvePersonalSignMessage(params, ownAddress) {
+  if (!ownAddress) return { ok: false, code: 'PERSONAL_SIGN_NO_WALLET' };
+  const arr = Array.isArray(params) ? params : [];
+  const isOwn = (v) => typeof v === 'string' && v.toLowerCase() === ownAddress.toLowerCase();
+  if (isOwn(arr[1])) return { ok: true, message: arr[0] };
+  if (isOwn(arr[0])) return { ok: true, message: arr[1] };
+  return { ok: false, code: 'PERSONAL_SIGN_ADDRESS_MISMATCH' };
+}
 vi.mock('@/lib/WalletConnectProvider.jsx', () => ({
+  resolvePersonalSignMessage,
   useWalletConnect: () => ({
     signPersonal: vi.fn(),
     signTypedData: vi.fn(),
