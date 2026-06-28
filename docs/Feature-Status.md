@@ -24,11 +24,17 @@
 > audit (the mainnet gate) on 2026-06-17, and the independent ECC third-party audit on
 > 2026-06-23 (satisfies §24; 1 CRITICAL + 2 HIGH + 4 MEDIUM + 1 LOW all resolved in
 > PR #340, merged 8f1dd95 — see `docs/audit-triage/ecc-independent-audit-2026-06-23.md`).
+> A **2026-06-28 internal static-analysis pass** (specialist agents: wallet-core/crypto,
+> web-app/auth, mobile/native) found 0 CRITICAL, 4 HIGH (3 fixed pre/during audit, 1
+> open/device-gated), 11 MEDIUM (9 fixed, 2 open/native), 8 LOW. Fixes landed in PRs
+> #433 (pre-audit), #440–#443. ALLOW_MAINNET unchanged. INTERNAL pass only — not
+> independent, not ECC. See `docs/audit-2026-06-28-internal-static-analysis.md`.
 > "Audited" is **not** "verified": a feature still earns the strict catalogue `verified`
 > status ONLY with a real explorer-confirmed txid. Where a feature still carries a
 > RESIDUAL gate below, that gate is now a **native-plugin / hardware-KEK / real-device /
 > backend-escrow** gate — NOT "pending an audit" (both are done). Internal ≠ independent
-> is still honoured throughout. Status last verified: 2026-06-27 (post-audit security hardening PRs #392-#429 merged — see §8a below).
+> is still honoured throughout. Status last verified: 2026-06-28 (2026-06-28 internal
+> static-analysis pass + PRs #440–#443).
 
 ---
 
@@ -279,6 +285,8 @@ WalletConnect / dApp connector — ✅ BUILT (post-audit, 2026-06-27). WC v2 pai
 - **M11 session expiry** — `assertSessionLive` runs before any key operation on every signing handler. An expired or absent session calls `rejectRequest` then throws; the key is never touched (I4).
 - **Popular dApps grid** — curated shortcut grid on the dApp Connector page (feat PR, 2026-06-27).
 - **H-C mainnet gate consolidation** — `SendCrypto.jsx` no longer reads `VITE_ALLOW_MAINNET` from env; it imports the compile-time `ALLOW_MAINNET` constant from `networks.js` directly, eliminating a runtime environment bypass vector (PR #426).
+- **H-NEW-B step-up re-auth at signing chokepoint** (PR #443, 2026-06-28 internal pass) — `handlePersonalSign`, `handleSignTypedData`, `handleSendTransaction` now invoke the step-up gate at the function boundary, not just in the UI modal.
+- **H-NEW-C personal_sign display/sign parity** (PR #443, 2026-06-28 internal pass) — MetaMask-legacy param order `[message, address]` consistent between display and signing paths; no display/sign divergence.
 
 Web Bridge page ❌ removed (PR #48 — the swap/relay gateway, not the WC pairing surface).
 
@@ -326,6 +334,19 @@ value / mutate balances without a user signature through wallet-core signing).
 - Legal entity + Track-B legal review (Guardian tier wording, etc.).
 - Hands-on testnet send verifications for every `receive_only` asset
   (EVM chains, USDC/USDT, BTC, SOL) before any flips to `live`.
+
+## Open / residual items — device-gated (from 2026-06-28 internal static-analysis pass)
+
+These items were surfaced by the 2026-06-28 internal static-analysis pass and cannot be
+addressed in the JS/web environment. They are consistent with existing M2c/M2d and Phase 4
+RASP gates. None affect ALLOW_MAINNET.
+
+| ID | Area | Description | Gate |
+|---|---|---|---|
+| H-NEW-D | iOS native / KEK | iOS HardwareKekPlugin uses Keychain item not Secure Enclave-backed key — KEK not hardware-bound | Mac + Xcode + SE entitlement; see `docs/M2cd.native-acl-plan.md` |
+| F-01 / F-02 | Mobile / biometric | Biometric cache not OS-ACL bound (M2c/M2d plan) — app-layer gate, not hardware-enforced ACL | Native plugin + real device required |
+| F-09 | RASP | RASP not adversarially tested on rooted/Frida devices — OS-level probes unverified on live targets | Phase 4 — native RASP OS-level probes + real rooted/Frida device |
+| M-K | Web-App / passkey | Passkey assertion counter (`signCount`) not persisted between sessions — cloned authenticator undetectable | No-backend architecture trade-off; local counter persistence deferred |
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses

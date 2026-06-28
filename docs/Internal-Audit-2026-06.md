@@ -265,3 +265,25 @@ any mobile-native mainnet scope opens.
 **Additional fixes since gate opened (2026-06-20):**
 - SAST S1 passkey (M-1/M-2/M-3 per `SAST_S1_FINDINGS.md`) — ✅ fixed, PRs #38/#40
 - ECC audit Track 1 (C-1/C-3/C-4/H-3/H-7 per `docs/ECC-Track1-spec.md`) — ✅ fixed, PR #264
+
+### 2026-06-28 — INTERNAL static-analysis pass
+
+Internal specialist agent audit (0 CRITICAL, 4 HIGH, 11 MEDIUM, 8 LOW). NOT an independent audit. ALLOW_MAINNET and §24 gate unchanged.
+
+Fixes landed on main:
+- H-NEW-A — native.js KEK zeroing (changePassword/enrollKek/unenrollKek): ✅ FIXED pre-audit, commit c8a7f5e, PR #433
+- H-NEW-B — WC step-up reauth at signing chokepoint: ✅ FIXED PR #443
+- H-NEW-C — personal_sign display/sign divergence: ✅ FIXED PR #443
+- M-H — stealth.js write-path slot post-panic: ✅ FIXED PR #440
+- M-I — AP KDF params unclamped before verifyCredential: ✅ FIXED PR #440
+- M-J — deriveKekC raw buffer not zeroed: ✅ FIXED PR #440
+- M-F — clearActionPassword decoy/hidden skips reauth: ✅ FIXED PR #441
+- M-G — evaluateTwoFactor default=true (unsafe): ✅ FIXED PR #441
+- M-A — WebView access origin="*" wildcard: ✅ FIXED PR #442
+- M-B — APK tamper check silent-pass on blank cert: ✅ FIXED PR #442
+
+Still open (native/device-gated):
+- H-NEW-D — iOS HardwareKekPlugin uses Keychain not SE (TARGET)
+- F-01/F-02 — biometric cache not OS-ACL bound (TARGET, M2c/M2d)
+- F-09 — RASP not adversarially tested on hostile devices (Phase 4)
+- M-K — passkey assertion counter not persisted
