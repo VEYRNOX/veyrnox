@@ -13,7 +13,11 @@ identity; the app never holds keys server-side.
   audit (2026-06-23). A 2026-06-27 independent review of unvalidated audit claims
   (`docs/audit-2026-06-27-unvalidated-claims.md`) identified 3 HIGH + 5 MEDIUM findings —
   mitigations landed in PRs #421–#426 (see §8a in `docs/Feature-Status.md`). "Internal"
-  is never to be presented as "independent" (I4 honesty). (See `docs/Audit.scope.md`.)
+  is never to be presented as "independent" (I4 honesty).
+  A 2026-06-28 internal static-analysis pass (0C/4H/11M/8L) fixed 10 of 11 actionable
+  findings (PRs #433, #440–#443); H-NEW-D (iOS SE) + F-01/F-02 (biometric OS-ACL) +
+  F-09 (RASP device) + M-K (passkey counter) remain open, all native/device-gated.
+  INTERNAL pass — not independent. (See `docs/Audit.scope.md`.)
 - **Verify, don't assert.** An asset/feature is "verified" ONLY after a real on-chain
   testnet transaction confirms on a block explorer with a txid the user supplies. Passing
   tests, clean review, or a green suite are NOT verification. Never flip an asset `status`
