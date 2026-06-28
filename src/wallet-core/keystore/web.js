@@ -97,7 +97,7 @@ export const webKeyStore = {
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const H = await getHF();
       const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
-      const C = await deriveKekC(password, saltBytes);
+      let C = null;
       let kek;
       let dek;
       // H-NEW-4: wrap the KEK + DEK lifetime in try/finally so BOTH are wiped on
@@ -105,6 +105,7 @@ export const webKeyStore = {
       // key that wraps the DEK nor the key that decrypts the seed may linger in the
       // JS heap until GC (I4).
       try {
+        C = await deriveKekC(password, saltBytes);
         kek = await combineKek(H, C);
         // H-NEW-4: combineKek zeroes H/C internally; wipe again at the call site so
         // the guarantee survives any refactor of combineKek (defense in depth, I4).
@@ -116,6 +117,7 @@ export const webKeyStore = {
       } finally {
         // H-NEW-4: wipe the derived KEK and the recovered DEK — never leave the key
         // that wraps the DEK or the key that decrypts the seed in the heap (I4).
+        if (C) C.fill(0);
         if (kek) kek.fill(0);
         if (dek) dek.fill(0);
       }
@@ -192,6 +194,9 @@ export const webKeyStore = {
       const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
       const H = await getHF();
       const H2 = H.slice(); // M20: combineKek zeroes its H/C inputs; copy before first call
+      let oldC = null;
+      let newC = null;
+      let newSaltBytes = null;
       let oldKek;
       let newKek;
       let dek;
@@ -200,7 +205,7 @@ export const webKeyStore = {
       // wiped on EVERY path — including when deriveKekC/combineKek/unwrapDek/wrapDek/
       // saveVault throws. None of these may linger in the JS heap until GC (I4).
       try {
-        const oldC = await deriveKekC(currentPassword, oldSaltBytes);
+        oldC = await deriveKekC(currentPassword, oldSaltBytes);
         oldKek = await combineKek(H, oldC);
         // H-NEW-4: wipe the first-combine factors at the call site (defense in depth
         // over combineKek's own in-place zeroing). H2 still holds the copy for below.
@@ -208,9 +213,9 @@ export const webKeyStore = {
         oldC.fill(0);
         dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
         // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
-        const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+        newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
         const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
-        const newC = await deriveKekC(newPassword, newSaltBytes);
+        newC = await deriveKekC(newPassword, newSaltBytes);
         newKek = await combineKek(H2, newC);
         // H-NEW-4: wipe the second-combine factors at the call site (I4).
         H2.fill(0);
@@ -221,6 +226,9 @@ export const webKeyStore = {
         // H-NEW-4: wipe the H2 copy, both derived KEKs, and the recovered DEK on
         // every path (consumed or an error occurred) (I4).
         if (H2) H2.fill(0);
+        if (oldC) oldC.fill(0);
+        if (newC) newC.fill(0);
+        if (newSaltBytes) newSaltBytes.fill(0);
         if (oldKek) oldKek.fill(0);
         if (newKek) newKek.fill(0);
         if (dek) dek.fill(0);
