@@ -283,7 +283,12 @@ export async function deriveKekC(password, salt) {
     outputType: 'binary',
   });
   await new Promise((resolve) => setTimeout(resolve, 0));
-  return new Uint8Array(raw);
+  const result = new Uint8Array(raw);
+  // M-J: zero the raw Argon2id output once copied, matching deriveKey()'s zero(raw).
+  // Best-effort secret hygiene (JS cannot guarantee it) — but leaving the raw KEK-C
+  // factor live in a GC'd buffer is an inconsistent, avoidable exposure window.
+  if (raw && typeof raw.fill === 'function') raw.fill(0);
+  return result;
 }
 
 function zero(u8) { if (u8 && u8.fill) u8.fill(0); }
