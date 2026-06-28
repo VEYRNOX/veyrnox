@@ -24,11 +24,17 @@
 > audit (the mainnet gate) on 2026-06-17, and the independent ECC third-party audit on
 > 2026-06-23 (satisfies §24; 1 CRITICAL + 2 HIGH + 4 MEDIUM + 1 LOW all resolved in
 > PR #340, merged 8f1dd95 — see `docs/audit-triage/ecc-independent-audit-2026-06-23.md`).
+> A **2026-06-28 internal static-analysis pass** (specialist agents: wallet-core/crypto,
+> web-app/auth, mobile/native) found 0 CRITICAL, 4 HIGH (3 fixed pre/during audit, 1
+> open/device-gated), 11 MEDIUM (9 fixed, 2 open/native), 8 LOW. Fixes landed in PRs
+> #433 (pre-audit), #440–#443. ALLOW_MAINNET unchanged. INTERNAL pass only — not
+> independent, not ECC. See `docs/audit-2026-06-28-internal-static-analysis.md`.
 > "Audited" is **not** "verified": a feature still earns the strict catalogue `verified`
 > status ONLY with a real explorer-confirmed txid. Where a feature still carries a
 > RESIDUAL gate below, that gate is now a **native-plugin / hardware-KEK / real-device /
 > backend-escrow** gate — NOT "pending an audit" (both are done). Internal ≠ independent
-> is still honoured throughout. Status last verified: 2026-06-23 (both audits + PR #340).
+> is still honoured throughout. Status last verified: 2026-06-28 (2026-06-28 internal
+> static-analysis pass + PRs #440–#443).
 
 ---
 
@@ -241,7 +247,17 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - Mobile App PWA / Mobile Widget — ❌ removed (PR #48)
 
 ## 12. High-risk / deferred
-- WalletConnect / dApp connector / Web3 browser — 📋 POST-AUDIT only; Web Bridge page ❌ removed (PR #48)
+- WalletConnect / dApp connector / Web3 browser — 🟡 BUILT (core signing path hardened); Web Bridge page ❌ removed (PR #48).
+  **Security controls wired as of PRs #443 (2026-06-28 internal audit) + prior fixes:**
+  - ✅ Step-up re-auth at signing chokepoint (H-NEW-B, PR #443) — `handlePersonalSign`, `handleSignTypedData`, `handleSendTransaction` now invoke the step-up gate at the function boundary, not just in the UI modal.
+  - ✅ personal_sign display/sign parity (H-NEW-C, PR #443) — MetaMask-legacy param order `[message, address]` consistent between display and signing paths; no display/sign divergence.
+  - ✅ EIP-712 chain-ID binding (C3/H7 from prior audits) — `domain.chainId` included in typed-data hash.
+  - ✅ personal_sign address validation (H8 from prior audit) — signer address validated against `evmAddress`.
+  - ✅ RASP / presignGate at WC signing (C3 from 2026-06-26 audit) — gate runs on all WC signing operations.
+  - ✅ eth_signTypedData v1/v3 → v4 routing fix (H6 from prior audit).
+  - ✅ Phishing check on session_request (C4 from prior audit) — looks up `getActiveSessions()[request.topic]?.peer?.metadata`.
+  - ✅ M9, M11 controls (prior audits) — confirmed present.
+  **Still TARGET / not-built:** multi-account WC routing, ERC-20 hardware signing via WC, remote-attestation integration with WC session lifecycle.
 
 ---
 
@@ -287,6 +303,19 @@ value / mutate balances without a user signature through wallet-core signing).
 - Legal entity + Track-B legal review (Guardian tier wording, etc.).
 - Hands-on testnet send verifications for every `receive_only` asset
   (EVM chains, USDC/USDT, BTC, SOL) before any flips to `live`.
+
+## Open / residual items — device-gated (from 2026-06-28 internal static-analysis pass)
+
+These items were surfaced by the 2026-06-28 internal static-analysis pass and cannot be
+addressed in the JS/web environment. They are consistent with existing M2c/M2d and Phase 4
+RASP gates. None affect ALLOW_MAINNET.
+
+| ID | Area | Description | Gate |
+|---|---|---|---|
+| H-NEW-D | iOS native / KEK | iOS HardwareKekPlugin uses Keychain item not Secure Enclave-backed key — KEK not hardware-bound | Mac + Xcode + SE entitlement; see `docs/M2cd.native-acl-plan.md` |
+| F-01 / F-02 | Mobile / biometric | Biometric cache not OS-ACL bound (M2c/M2d plan) — app-layer gate, not hardware-enforced ACL | Native plugin + real device required |
+| F-09 | RASP | RASP not adversarially tested on rooted/Frida devices — OS-level probes unverified on live targets | Phase 4 — native RASP OS-level probes + real rooted/Frida device |
+| M-K | Web-App / passkey | Passkey assertion counter (`signCount`) not persisted between sessions — cloned authenticator undetectable | No-backend architecture trade-off; local counter persistence deferred |
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
