@@ -1012,9 +1012,32 @@ export function WalletProvider({ children }) {
     touch();
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
 
-  /** Remove the Action Password from the ACTIVE set (disables its second factor). */
+  /** Remove the Action Password from the ACTIVE set (disables its second factor).
+   *
+   * M-F (audit 2026-06-28): clearing the second factor is itself a CRITICAL
+   * credential change, so the caller MUST prove knowledge of the ACTIVE set's
+   * credential FIRST. The primary path re-auths via decryptPrimaryContainer
+   * (a wrong vault password throws there). The decoy/hidden paths previously read
+   * containerRef.current with NO re-auth, letting an already-open decoy/hidden
+   * session strip 2FA without the duress/reveal secret. We now verify the supplied
+   * credential against the active set BEFORE touching the container, using the same
+   * decoy/hidden primitives the rest of the provider uses (tryDuressUnlock /
+   * tryRevealHidden). Fail closed (I4): a wrong credential throws and mutates nothing. */
   const clearActionPassword = useCallback(async (password) => {
-    const current = isDecoy || isHidden ? containerRef.current : await decryptPrimaryContainer(password);
+    let current;
+    if (isDecoy) {
+      // Re-auth the decoy: tryDuressUnlock returns null on a wrong duress credential.
+      const opened = await tryDuressUnlock(password);
+      if (opened == null) throw new Error('Decryption failed: wrong password or corrupted vault');
+      current = containerRef.current;
+    } else if (isHidden) {
+      // Re-auth the hidden set: tryRevealHidden returns null on a wrong reveal secret.
+      const revealed = await tryRevealHidden(password);
+      if (revealed == null) throw new Error('Decryption failed: wrong password or corrupted vault');
+      current = containerRef.current;
+    } else {
+      current = await decryptPrimaryContainer(password);
+    }
     const container = mv.clearActionPasswordRecord(current);
     await persistActiveSetContainer(password, container);
     containerRef.current = container;
