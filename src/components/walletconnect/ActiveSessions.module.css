@@ -1,28 +1,100 @@
-.empty { color: #8b949e; font-size: 0.9rem; text-align: center; padding: 24px 0; margin: 0; }
-.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.empty {
+  color: #8b949e;
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 28px 16px;
+  margin: 0;
+  border: 1px dashed #1D222B;
+  border-radius: 12px;
+}
+
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+
+/* Uniform card: icon + flexible info column + revoke, all top-aligned so cards of
+   different content heights stay on a tidy grid instead of floating mid-row. */
 .item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
   background: #0d1117;
   border: 1px solid #1D222B;
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 12px;
+  padding: 14px;
 }
-.info { display: flex; align-items: center; gap: 10px; }
-.icon { border-radius: 6px; flex-shrink: 0; }
-.name { font-size: 0.9rem; font-weight: 600; color: #f0f2f5; margin: 0; }
-.url { font-size: 0.78rem; color: #8b949e; margin: 0; font-family: 'IBM Plex Mono', monospace; }
-.expiry { font-size: 0.75rem; color: #6e7681; margin: 0; }
+.item[data-expired] { opacity: 0.72; border-color: rgba(248, 81, 73, 0.28); }
+
+.icon { width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0; object-fit: cover; }
+.iconFallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1D222B;
+  color: #8b949e;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+/* min-width:0 lets the name/url ellipsis-truncate instead of pushing the card wide. */
+.info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #f0f2f5;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.url {
+  font-size: 0.78rem;
+  color: #8b949e;
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.chip {
+  font-size: 0.7rem;
+  color: #c9d1d9;
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.status { font-size: 0.72rem; color: #6e7681; white-space: nowrap; }
+.statusExpired {
+  font-size: 0.7rem;
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .revokeBtn {
+  flex-shrink: 0;
+  align-self: flex-start;
   background: transparent;
   border: 1px solid rgba(248, 81, 73, 0.35);
   color: #f85149;
-  border-radius: 7px;
-  padding: 6px 12px;
+  border-radius: 8px;
+  padding: 0 14px;
+  min-height: 44px;
   font-size: 0.82rem;
+  font-weight: 500;
   cursor: pointer;
-  flex-shrink: 0;
 }
 .revokeBtn:hover:not(:disabled) { background: rgba(248, 81, 73, 0.1); }
+.revokeBtn:active:not(:disabled) { background: rgba(248, 81, 73, 0.16); }
 .revokeBtn:disabled { opacity: 0.4; cursor: not-allowed; }
