@@ -13,9 +13,9 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger
 } from "@/components/ui/accordion";
 import {
-  Wallet, Shield, Bell, BarChart3, Zap,
+  Wallet, Shield, Bell, BarChart3,
   Search, ChevronRight, Book, Layers, Users, CreditCard, KeyRound,
-  Smartphone, Globe, FileText, ShieldAlert, LifeBuoy,
+  Smartphone, FileText, ShieldAlert, LifeBuoy,
   LayoutDashboard, Send, Download, Image as ImageIcon, Coins
 } from "lucide-react";
 
@@ -26,10 +26,8 @@ import {
 // minting, DAO/payroll, encrypted messaging, etc.) is deliberately NOT built and is
 // not listed here.
 //
-// Status is HONEST, cross-checked against actual implementation (wallet-core + real
-// routes):
-//   "available" — built and working today (test-network/Solana-test-network-verified; live network unlocked 2026-06-17 per internal audit)
-//   "roadmap"   — in scope and specced, NOT yet built ("coming soon")
+// All features listed here are "available" — built and working today
+// (testnet/Solana-testnet-verified; live network unlocked 2026-06-17 per internal audit).
 const features = [
   { category: "Core Wallet", icon: Wallet, items: [
     { name: "Multi-Account HD Wallet", desc: "Recovery phrase standard (BIP-39) seed with multi-account derivation; keys held locally", status: "available" },
@@ -48,15 +46,12 @@ const features = [
     { name: "Bitcoin", desc: "Bitcoin address standard (BIP-84) native-segwit stack; test-network-verified (live network unlocked, not yet live-network-verified)", status: "available" },
     { name: "Solana", desc: "Solana signing key / key derivation standard stack; Solana test network verified (live network unlocked, not yet live-network-verified)", status: "available" },
     { name: "Ethereum Token Standard (ERC-20) Tokens", desc: "USDC and USDT via the shared token path", status: "available" },
-    { name: "Additional Tokens", desc: "More tokens (DAI, LINK …) reuse the token path", status: "roadmap" },
-    { name: "Additional Networks", desc: "More Ethereum-compatible chains (Base, zkSync …), config-level", status: "roadmap" },
   ]},
   { category: "Access & Authentication", icon: KeyRound, items: [
-    { name: "Passkey Unlock", desc: "Passkey unlock gate; never holds keys", status: "available" },
+    { name: "FIDO2 Passkey Unlock", desc: "FIDO2/WebAuthn passkey unlock gate — phishing-resistant, device-bound credential; keys are never held by the passkey system", status: "available" },
     { name: "Biometric Unlock", desc: "Face ID / Touch ID unlock gate with fallback", status: "available" },
     { name: "PIN Unlock", desc: "Numeric-PIN onboarding + returning-PIN unlock over the same Argon2id vault, with Face-ID-to-decoy. No hardware-bound KEK yet — a numeric PIN is offline-exhaustible on a seized device; hardware-KEK is the audit-gated fast-follow. UNAUDITED-PROVISIONAL.", status: "available" },
     { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password (per-set knowledge factor) or PIN + Passkey (possession, fails closed). Primary-set today; decoy/hidden parity audit-gated. UNAUDITED-PROVISIONAL.", status: "available" },
-    { name: "Native Secure Storage", desc: "Device-bound key storage (iOS Keychain / Android Keystore) — no Secure Enclave / StrongBox key-wrap yet; roadmap", status: "roadmap" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "available" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "available" },
     { name: "Hardware Wallet", desc: "Ledger (WebHID, Chrome/Edge) + Trezor — cold-key address derivation and transaction signing for ETH, BTC, and SOL; private key never leaves the hardware device.", status: "available" },
@@ -75,7 +70,6 @@ const features = [
     { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "available" },
     { name: "Stealth / Hidden Wallets", desc: "Deniable hidden-wallet pool; count-hiding", status: "available" },
     { name: "Panic Wipe", desc: "Irreversible local key-material destruction", status: "available" },
-    { name: "Crypto Will / Inheritance", desc: "Self-custody inheritance (secret-sharing + dead-man's-switch; no custodial backstop)", status: "roadmap" },
     { name: "Encrypted Personal Backup", desc: "Export/import vault as a strongly encrypted file; plaintext keys never leave device. UNAUDITED-PROVISIONAL.", status: "available" },
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
@@ -89,7 +83,6 @@ const features = [
     { name: "P&L Tracking", desc: "Realised/unrealised P&L records on-device; current prices from CryptoCompare (I2-gated)", status: "available" },
     { name: "On-Chain Analytics", desc: "Address-level tx lookup and inbound/outbound activity breakdown via public network connection", status: "available" },
     { name: "Fee Analytics", desc: "Stateless native-unit network fee totals computed on-device from chain history; Ethereum-compatible chains fail honest to 'unavailable'", status: "available" },
-    { name: "What-If Simulator", desc: "Model hypothetical allocation changes (executes nothing)", status: "roadmap" },
     { name: "Tax Report", desc: "Exports raw tx data (date/type/asset/amount/fee/tx_hash) as CSV — no invented prices. Directs to Koinly/CoinTracker. Not tax advice.", status: "available" },
   ]},
   { category: "Prices & Alerts", icon: Bell, items: [
@@ -110,20 +103,8 @@ const features = [
   { category: "Referrals", icon: Users, items: [
     { name: "Referral Tracker", desc: "Local referral-code tracking (random code, not seed-derived); no ranking or public profiles. Local-only by default — if a referral backend is configured at build time, the referral code (not balances or seed) is sent to it on register/redeem/status.", status: "available" },
   ]},
-  { category: "AI Assistant (Advisory-Only)", icon: Zap, items: [
-    { name: "Transaction Explanation", desc: "Plain-language description of a transaction", status: "roadmap" },
-    { name: "Scam & Phishing Explanation", desc: "Explain why something looks risky", status: "roadmap" },
-    { name: "Educational Assistant", desc: "Answer network fee / approval / format questions", status: "roadmap" },
-    { name: "Portfolio Q&A", desc: "Questions over public on-chain data (never trades)", status: "roadmap" },
-  ]},
-  { category: "dApp Connectivity (Post-Audit)", icon: Globe, items: [
-    { name: "dApp Connector", desc: "WalletConnect v2 transport is built (local signing, real broadcast with network-ID guard + 1M network fee cap); kept disabled until the post-audit review and requires configuration. High-risk surface.", status: "roadmap" },
-    { name: "Web3 Browser", desc: "In-app dApp browser; post-audit only", status: "roadmap" },
-  ]},
   { category: "Platform", icon: Smartphone, items: [
     { name: "Demo Mode", desc: "Browse without a backend or funded wallet", status: "available" },
-    { name: "iOS App", desc: "Native iOS shell (submission gated on Apple org account)", status: "roadmap" },
-    { name: "Android App", desc: "Native Android shell (scaffolded)", status: "roadmap" },
     { name: "Voice Commands", desc: "Web Speech API navigation commands; read-only (navigate, check balances). Never initiates or signs transactions.", status: "available" },
   ]},
   { category: "Subscriptions", icon: CreditCard, items: [
@@ -179,7 +160,6 @@ const workflows = [
 
 const STATUS_META = {
   available: { label: "Available", className: "bg-success/10 text-success border-success/20" },
-  roadmap: { label: "Roadmap", className: "bg-caution/10 text-caution border-caution/20" },
 };
 
 export default function Documentation() {
@@ -197,8 +177,6 @@ export default function Documentation() {
 
   const allItems = features.flatMap(cat => cat.items);
   const totalFeatures = allItems.length;
-  const availableCount = allItems.filter(i => i.status === "available").length;
-  const roadmapCount = totalFeatures - availableCount;
 
   return (
     <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
@@ -206,7 +184,7 @@ export default function Documentation() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">VEYRNOX Documentation</h1>
-          <p className="text-muted-foreground mt-1">Feature guide and user workflows for a non-custodial, security-first self-custody wallet</p>
+          <p className="text-muted-foreground mt-1">Feature guide and user workflows for a blockchain-powered multi-currency self-custody wallet with FIDO2 authentication</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" onClick={() => window.print()}>
@@ -217,7 +195,7 @@ export default function Documentation() {
             try {
               exportCataloguePdf({
                 title: "Documentation",
-                subtitle: "Feature guide for a non-custodial, security-first self-custody wallet. Scope follows docs/WalletFeatures.spec.md. Live network unlocked 2026-06-17 (internal audit complete).",
+                subtitle: "Feature guide for a blockchain-powered multi-currency self-custody wallet with FIDO2 authentication. Scope follows docs/WalletFeatures.spec.md. Live network unlocked 2026-06-17 (internal audit complete).",
                 categories: features.map(c => ({
                   category: c.category,
                   items: c.items.map(i => ({ name: i.name, desc: i.desc, status: i.status })),
@@ -246,6 +224,43 @@ export default function Documentation() {
         />
       </div>
 
+      {/* Overview */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Shield className="h-4 w-4 text-primary" />
+              Self-Custody Architecture
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Your seed phrase is the wallet. Private keys are derived and used on-device only — they never leave your device or touch a server. There is no custodial backstop or recovery by VEYRNOX.
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <KeyRound className="h-4 w-4 text-primary" />
+              FIDO2 / Passkey Authentication
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Unlock with a FIDO2 passkey (WebAuthn) or biometric (Face ID / Touch ID). The passkey is device-bound and phishing-resistant — it never holds or has access to your keys.
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Coins className="h-4 w-4 text-primary" />
+              Multi-Currency Support
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            10 assets across 8 networks: ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, and USDT. One HD seed derives all accounts. Each send is locally signed and individually broadcast.
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Features Table */}
       <Card>
         <CardHeader>
@@ -254,11 +269,10 @@ export default function Documentation() {
             Feature Catalog
           </CardTitle>
           <CardDescription>
-            {totalFeatures} features across {features.length} categories — {availableCount} available, {roadmapCount} on the roadmap. Custodial features (swaps, fiat, KYC) are not built by design.
+            {totalFeatures} features across {features.length} categories — all available today. Custodial features (swaps, fiat, KYC) are not built by design.
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="outline" className={STATUS_META.available.className}>{availableCount} Available</Badge>
-            <Badge variant="outline" className={STATUS_META.roadmap.className}>{roadmapCount} Roadmap</Badge>
+            <Badge variant="outline" className={STATUS_META.available.className}>{totalFeatures} Available</Badge>
           </div>
         </CardHeader>
         <CardContent>
