@@ -10,7 +10,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Sparkles, Info } from "lucide-react";
+import { Check, Sparkles, Info, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
 import { FREE_FEATURES, SAFETY_PLUS_FEATURES } from "@/lib/tier";
@@ -103,6 +104,21 @@ export default function Subscription() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Safety Plus hub link — explore all features grouped by nav section */}
+      <Link
+        to="/safety-plus"
+        className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary/20 bg-primary/5 hover:border-primary/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Sparkles className="h-5 w-5 text-primary shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">Explore Safety Plus features</p>
+            <p className="text-xs text-muted-foreground">See every feature grouped by SECURITY · FINANCE · CONNECT</p>
+          </div>
+        </div>
+        <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+      </Link>
 
       {/* Upgrade CTA — permanently disabled until billing is wired up */}
       <div className="flex flex-col items-center gap-2 pt-2">
