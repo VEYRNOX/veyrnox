@@ -391,13 +391,25 @@ export function WalletConnectProvider({ children }) {
   // BEFORE the key is touched.
   const handlePersonalSign = useCallback(async (topic, id, params) => {
     await assertSessionLive(topic, id); // M11
+    // H-NEW-B — step-up re-auth check at the signing chokepoint. The UI gate in
+    // RequestApprovalModal can be bypassed; this is the authoritative enforcement.
+    // Reject and throw before the key is ever touched (fail closed, I4).
+    if (isSendReauthRequired()) {
+      await rejectRequest(topic, id, 'STEP_UP_REQUIRED').catch(() => {});
+      throw new Error('Signing rejected [STEP_UP_REQUIRED]: re-authentication required before signing.');
+    }
     await _handlePersonalSign({ withPrivateKey, evmAddress }, topic, id, params);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, evmAddress, assertSessionLive]);
+  }, [withPrivateKey, evmAddress, assertSessionLive, isSendReauthRequired]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
   const handleSignTypedData = useCallback(async (topic, id, params, caip2ChainId) => {
     await assertSessionLive(topic, id); // M11
+    // H-NEW-B — step-up re-auth check at the signing chokepoint (fail closed, I4).
+    if (isSendReauthRequired()) {
+      await rejectRequest(topic, id, 'STEP_UP_REQUIRED').catch(() => {});
+      throw new Error('Signing rejected [STEP_UP_REQUIRED]: re-authentication required before signing.');
+    }
     // H7 — the session's CAIP-2 chain id lives on the pending request the modal
     // is acting on; pass it to the pure helper for cross-chain replay protection.
     // Fall back to the caller-supplied chain when the request is not in state.
@@ -406,7 +418,7 @@ export function WalletConnectProvider({ children }) {
     )?.params?.chainId ?? caip2ChainId;
     await _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, pendingRequests, assertSessionLive]);
+  }, [withPrivateKey, pendingRequests, assertSessionLive, isSendReauthRequired]);
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
@@ -414,9 +426,14 @@ export function WalletConnectProvider({ children }) {
   // we estimate it ourselves (I5 — backend untrusted).
   const handleSendTransaction = useCallback(async (topic, id, params, caip2ChainId) => {
     await assertSessionLive(topic, id); // M11
+    // H-NEW-B — step-up re-auth check at the signing chokepoint (fail closed, I4).
+    if (isSendReauthRequired()) {
+      await rejectRequest(topic, id, 'STEP_UP_REQUIRED').catch(() => {});
+      throw new Error('Signing rejected [STEP_UP_REQUIRED]: re-authentication required before signing.');
+    }
     await _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, assertSessionLive]);
+  }, [withPrivateKey, assertSessionLive, isSendReauthRequired]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);
