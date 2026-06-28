@@ -34,25 +34,20 @@ import { argon2id } from 'hash-wasm';
 // more conservative, memory-hard cost (memory is the lever against parallel
 // cracking hardware).
 //
-// CHOSEN: 192 MiB / t=3 — 3x the memory-hardness of the old 64 MiB, deliberately
-// BALANCED for a phone rather than maxed out. Measured unlock-KDF latency (desktop
-// browser, native WASM): 64 MiB ~160 ms -> 192 MiB ~440 ms; a low-end phone runs
-// ~2-4x slower (~1-1.7 s), which is tolerable for an infrequent seed-vault unlock
-// without risking the webview-memory pressure / multi-second stalls a flat 256 MiB
-// (~720 ms desktop, ~2-3 s low-end phone) would bring with no per-device tuning yet.
-//
-// ⚠️ THE CHOSEN VALUES REQUIRE INDEPENDENT AUDIT VALIDATION (see
-// docs/Security.roadmap.md): the right point on the security/unlock-latency curve
-// is device-dependent. The migration below (decrypt-with-blob-params + lazy rekey)
-// EXISTS precisely so the audit can later raise this — e.g. to 256 MiB on capable
-// devices, tuned by device class — without locking anyone out. EXPORTED so the
-// stealth chaff pool advertises the SAME params (otherwise chaff vs real blobs
-// would differ by their kdf field — a deniability tell).
+// CHOSEN: 64 MiB / t=3 — tuned for acceptable on-device unlock latency (~1-2 s on
+// a mid-range phone in Capacitor WebView). The prior 192 MiB setting produced
+// 4-8 s unlock times on real devices; Capacitor WebView runs the WASM KDF ~3-5x
+// slower than a desktop browser due to WebView JIT/memory constraints. 64 MiB at
+// t=3 retains memory-hardness against GPU/ASIC cracking while keeping interactive
+// unlock tolerable. The independent audit can raise this (e.g. 128 MiB on capable
+// devices) via the lazy-rekey migration below without locking anyone out. EXPORTED
+// so stealth chaff advertises the SAME params (otherwise chaff vs real blobs differ
+// on the kdf field — a deniability tell).
 export const KDF_PARAMS = Object.freeze({
   parallelism: 1,
   iterations: 3,
-  memorySize: 196608, // KiB == 192 MiB
-  hashLength: 32,     // 256-bit key for AES-256
+  memorySize: 65536, // KiB == 64 MiB
+  hashLength: 32,    // 256-bit key for AES-256
 });
 
 // LEGACY params used by vaults encrypted before M3. We do NOT decrypt with the
@@ -76,7 +71,7 @@ const LEGACY_KDF_PARAMS = Object.freeze({
 const MAX_KDF_PARAMS = Object.freeze({
   parallelism: 4,
   iterations: 12,
-  memorySize: 1048576, // KiB == 1 GiB (CURRENT is 192 MiB)
+  memorySize: 1048576, // KiB == 1 GiB (CURRENT is 64 MiB)
   hashLength: 64,
 });
 
@@ -249,18 +244,19 @@ function paramsFromVault(vault) {
 }
 
 /**
- * Whether a blob was encrypted with WEAKER params than the current default and
- * should be transparently re-encrypted (rekeyed) at the stronger params on the
- * next successful unlock. Migration is upgrade-only — we never downgrade.
+ * Whether a blob's stored KDF params differ from the current KDF_PARAMS and should
+ * be transparently re-encrypted on the next successful unlock. Triggers in both
+ * directions so vaults encrypted at the old 192 MiB default are silently rekeyed
+ * down to 64 MiB after one successful unlock (8 s → ~2 s from that point on).
  * @param {object} vault
  * @returns {boolean}
  */
 export function vaultNeedsRekey(vault) {
   const p = paramsFromVault(vault);
-  return p.memorySize < KDF_PARAMS.memorySize
-    || p.iterations < KDF_PARAMS.iterations
-    || p.parallelism < KDF_PARAMS.parallelism
-    || p.hashLength < KDF_PARAMS.hashLength;
+  return p.memorySize !== KDF_PARAMS.memorySize
+    || p.iterations !== KDF_PARAMS.iterations
+    || p.parallelism !== KDF_PARAMS.parallelism
+    || p.hashLength !== KDF_PARAMS.hashLength;
 }
 
 /**

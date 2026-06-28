@@ -21,7 +21,7 @@ import { decryptVault, encryptVault, vaultNeedsRekey, KDF_PARAMS } from '../vaul
 import { webKeyStore } from '../keystore/web.js';
 import { saveVault, loadVault, clearVault } from '../evm/vaultStore.js';
 
-const OLD_PARAMS = { parallelism: 1, iterations: 3, memorySize: 65536, hashLength: 32 };
+const OLD_PARAMS = { parallelism: 1, iterations: 3, memorySize: 196608, hashLength: 32 };
 const enc = new TextEncoder();
 
 function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }
