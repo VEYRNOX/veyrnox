@@ -209,19 +209,18 @@ class RaspIntegrityPlugin : Plugin() {
     //
     // The expected fingerprint is injected at build time via the
     // RELEASE_CERT_SHA256 BuildConfig field (android/app/build.gradle). CI passes
-    // -PRELEASE_CERT_SHA256=<secret> to inject the real release-key fingerprint;
-    // local/dev builds fall back to the committed dev fingerprint. The fingerprint
-    // is a public certificate hash, not a secret. If it is somehow blank we fail
-    // honest (I4): log a warning and report not-tampered rather than fabricating a
-    // signal or blocking all installs.
+    // -PRELEASE_CERT_SHA256=<secret> to inject the real release-key fingerprint.
+    // If the property is absent, BuildConfig.RELEASE_CERT_SHA256 is an empty
+    // string and this function returns tampered = true (fail-closed, I4). A blank
+    // cert means the build is misconfigured or unkeyed — it must not be trusted.
     // val (not const val): BuildConfig fields are not compile-time constants in
     // every Kotlin configuration.
     private val EXPECTED_CERT_SHA256: String = BuildConfig.RELEASE_CERT_SHA256
 
     private fun detectTamper(): Boolean {
         if (EXPECTED_CERT_SHA256.isBlank()) {
-            android.util.Log.w("RASP", "RELEASE_CERT_SHA256 not configured — tamper check skipped")
-            return false
+            android.util.Log.w("RASP", "RELEASE_CERT_SHA256 not set — treating as tampered (fail-closed)")
+            return true
         }
 
         return runCatching {
