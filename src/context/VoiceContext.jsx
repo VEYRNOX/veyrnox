@@ -24,7 +24,6 @@ const COMMANDS = [
   { phrase: "connect wallet",       action: "/walletconnect",   description: "Open WalletConnect" },
   { phrase: "show notifications",   action: "/notifications",   description: "Open Notifications" },
   { phrase: "open notifications",   action: "/notifications",   description: "Open Notifications" },
-  { phrase: "open tax report",      action: "/tax",             description: "Open Tax Report" },
 ];
 
 export { COMMANDS };

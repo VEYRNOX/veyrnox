@@ -27,6 +27,8 @@
 // accept this trade-off should set the key in .env.local. The default (no key) is
 // fully anonymous — OHLCV calls without a key may be CORS-blocked on some clients.
 
+import { Capacitor } from '@capacitor/core';
+import { CapacitorHttp } from '@capacitor/core';
 import { ASSETS } from '@/wallet-core/assets.js';
 import { TOP_SYMBOLS } from '@/lib/cryptos.js';
 
@@ -47,7 +49,13 @@ function withKey(url) {
 }
 
 async function getJson(url) {
-  const res = await fetch(withKey(url));
+  const fullUrl = withKey(url);
+  if (Capacitor.isNativePlatform()) {
+    const res = await CapacitorHttp.get({ url: fullUrl });
+    if (res.status < 200 || res.status >= 300) throw new Error(`cryptocompare HTTP ${res.status}`);
+    return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+  }
+  const res = await fetch(fullUrl);
   if (!res.ok) throw new Error(`cryptocompare HTTP ${res.status}`);
   return res.json();
 }
