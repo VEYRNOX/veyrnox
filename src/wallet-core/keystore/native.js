@@ -319,6 +319,7 @@ export const nativeKeyStore = {
       const H = await getHF();
       const H2 = H.slice(); // combineKek zeroes its H input; copy before the first call
       let oldC;
+      let newC;
       let oldKek;
       let newKek;
       let dek;
@@ -335,7 +336,7 @@ export const nativeKeyStore = {
         // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
         const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
         const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
-        const newC = await deriveKekC(newPassword, newSaltBytes);
+        newC = await deriveKekC(newPassword, newSaltBytes);
         newKek = await combineKek(H2, newC);
         if (H2 && H2.fill) H2.fill(0);
         if (newC) newC.fill(0);
@@ -346,6 +347,7 @@ export const nativeKeyStore = {
         if (H && H.fill) H.fill(0);
         if (H2 && H2.fill) H2.fill(0);
         if (oldC) oldC.fill(0);
+        if (newC) newC.fill(0);
         if (oldKek) oldKek.fill(0);
         if (newKek) newKek.fill(0);
         if (dek) dek.fill(0);
