@@ -46,12 +46,18 @@ export default function PasskeySetup({ wallet, onRegistered }) {
     setLoading(true);
     try {
       const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
-      await BiometricAuth.authenticate({
-        reason: "Register a passkey for this wallet",
-        androidTitle: "Register Wallet Passkey",
-        androidSubtitle: "Confirm your identity to register",
-        cancelTitle: "Cancel",
-        allowDeviceCredential: false,
+      const { nativeKeyStore } = await import("@/wallet-core/keystore/native.js");
+      // suppressLock prevents the app's background-lock hook from firing while
+      // the OS biometric dialog is open (the dialog briefly pauses the app which
+      // would otherwise redirect to the PIN unlock screen mid-flow).
+      await nativeKeyStore.suppressLock(async () => {
+        await BiometricAuth.authenticate({
+          reason: "Register a passkey for this wallet",
+          androidTitle: "Register Wallet Passkey",
+          androidSubtitle: "Confirm your identity to register",
+          cancelTitle: "Cancel",
+          allowDeviceCredential: false,
+        });
       });
       const credentialId = generateNativeCredentialId();
       await onRegistered(credentialId);
