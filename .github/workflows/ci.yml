@@ -69,7 +69,9 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          # Capacitor 8 / the Android Gradle build target Java 21; JDK 17 fails the
+          # release build with "invalid source release: 21". (Local APK builds use 21.)
+          java-version: 21
       - name: Decode keystore
         # KEYSTORE_BASE64: base64-encoded .jks file stored as a GitHub secret.
         # If absent the build falls back to debug signing (unsigned release not installable).
