@@ -204,7 +204,7 @@ export default function Settings() {
           </div>
           <div>
             <p className="text-sm font-semibold">Current plan: Free</p>
-            <p className="text-xs text-muted-foreground">View plans</p>
+            <p className="text-xs text-muted-foreground">Upgrade to Safety Plus — $5.99/mo</p>
           </div>
         </div>
         <span className="text-sm text-primary font-medium">View plans</span>

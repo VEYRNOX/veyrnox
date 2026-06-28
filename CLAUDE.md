@@ -8,9 +8,12 @@ identity; the app never holds keys server-side.
 
 - **Mainnet unlocked 2026-06-17.** Internal security audit complete; owner sign-off
   recorded in `docs/audit-triage/internal-audit-2026-06-17.md`. `ALLOW_MAINNET = true`,
-  `ALLOW_BTC_MAINNET = true`, `ALLOW_SOL_MAINNET = true`. An independent third-party
-  audit is still RECOMMENDED for the strongest assurance but was not required under the
-  owner's gate policy. "Internal" is never to be presented as "independent" (I4 honesty).
+  `ALLOW_BTC_MAINNET = true`, `ALLOW_SOL_MAINNET = true`. Both audits are now complete:
+  the internal audit (2026-06-17, the mainnet gate) and the independent ECC third-party
+  audit (2026-06-23). A 2026-06-27 independent review of unvalidated audit claims
+  (`docs/audit-2026-06-27-unvalidated-claims.md`) identified 3 HIGH + 5 MEDIUM findings —
+  mitigations landed in PRs #421–#426 (see §8a in `docs/Feature-Status.md`). "Internal"
+  is never to be presented as "independent" (I4 honesty).
   A 2026-06-28 internal static-analysis pass (0C/4H/11M/8L) fixed 10 of 11 actionable
   findings (PRs #433, #440–#443); H-NEW-D (iOS SE) + F-01/F-02 (biometric OS-ACL) +
   F-09 (RASP device) + M-K (passkey counter) remain open, all native/device-gated.
@@ -62,11 +65,37 @@ in-app UI path on testnet (AVAX Fuji `0x3697e0d…`, re-confirmed on-chain 2026-
 BNB BSC-testnet `0x1a6ee75…`, per session record + owner confirmation, not yet
 independently re-confirmed on-chain). All 10 assets are LIVE — see `src/wallet-core/assets.js`.
 
+## WalletConnect security controls (BUILT, 2026-06-27)
+
+`src/lib/WalletConnectProvider.jsx` has been through a post-audit security hardening
+sweep. Key controls now on main:
+- **C3 — RASP pre-sign gate:** `presignGate()` runs before every WC signing handler;
+  blocked → `rejectRequest` + return, key never touched (I4).
+- **H7 — EIP-712 chain binding:** `eth_signTypedData_v4` validates `domain.chainId` vs
+  WC session CAIP-2 chain; mismatch → `CHAINID_MISMATCH` reject. No-chainId domain
+  signs through (EIP-712 backwards-compat).
+- **H8 — personal_sign address binding:** resolves EIP-1474 vs MetaMask-legacy param
+  order; rejects if neither param is the wallet's own address (I4).
+- **M9 — 1M gas cap:** dApp-supplied gas is clamped to 1,000,000; estimates are also
+  capped.
+- **M11 — session expiry:** `assertSessionLive` runs before any key operation;
+  expired/absent session → reject + throw (I4).
+- **H-A — web vault password minimum:** `validateWebVaultPassword()` enforces ≥12 chars
+  on web mainnet (`ALLOW_MAINNET = true`); `WEB_VAULT_PASSWORD_TOO_SHORT` on short input.
+- **H-NEW-4/6 — KEK zeroing:** `web.js` wraps full KEK/DEK lifetime in `try/finally`;
+  H, KEK, H2 copies all zeroed on every path.
+- **H14/H15/H16 — KEK honest naming:** misleading "hardware" names removed from
+  software-layer controls; `isSecureHardwareAvailable()` is the honest gate.
+- **H-C — mainnet gate consolidation:** `SendCrypto.jsx` imports compile-time
+  `ALLOW_MAINNET` from `networks.js` (not a runtime env var). Dead-code-eliminated in prod.
+
 ## Per-chain gotchas
 
 - BNB testnet: enforces a minimum gas price; the "Slow" fee tier can underprice and get
   rejected — use Standard+.
 - USDT: no official Tether Sepolia; uses an Aave faucet stand-in.
+- WalletConnect: test PINs/passwords must be ≥12 chars (H-A minimum on mainnet builds).
+  Use `ALLOW_MAINNET = false` in test env or use ≥12-char test secrets.
 
 ## Environment
 

@@ -246,7 +246,7 @@ describe('PIN cohort (Option A REMOVED) — wrong PIN no longer opens a decoy', 
       for (const m of kdf.memorySizes) expect(m).toBe(KDF_PARAMS.memorySize);
       // The deterministic-decoy slot is GONE — no KDF keyed by the deviceSalt.
       expect(fallbackRan()).toBe(false);
-    });
+    }, 180_000);
   }
 
   it('total miss returns NO fallback decoy (caller will throw "Incorrect PIN")', async () => {

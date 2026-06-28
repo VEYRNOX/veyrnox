@@ -1,4 +1,4 @@
-# Veyrnox — Static Application Security Testing (SAST) Findings
+﻿# Veyrnox — Static Application Security Testing (SAST) Findings
 
 **Date:** 2026-06-01
 **Branch:** `chore/sast-pass`
@@ -185,6 +185,20 @@ The findings below are where the manual read diverges from, or adds nuance to, t
 - **Why it matters:** The whole point of duress/stealth is that a coercer *cannot tell* a hidden/decoy wallet exists. A timing oracle that reveals the *count of configured deniability features* degrades that guarantee. It does not reveal secrets or contents, and exploiting it requires repeated local timing under noise — hence Medium, not High, and with honest uncertainty about real-world measurability.
 - **Self-review caveat:** I wrote each module's timing analysis independently and each is locally correct; the gap is the **interaction**, which no single file's comments own. Classic self-review blind spot — the per-file reasoning looks airtight in isolation.
 - **Suggested fix (not implemented):** Make the post-primary-miss path run a **constant number of KDFs regardless of configuration** — e.g. always evaluate all of {panic, duress, stealth} on every miss (seed real AES-GCM markers for the *absent* features too, so there's always a blob to attempt), and avoid early-return short-circuits that change the KDF count between success and failure. Equalize work, then branch on the boolean results. This needs careful design + a timing-harness verification and is exactly the kind of thing the independent audit should own.
+
+> **Subsequently addressed (2026-06-27, architecture):** The constant-3-KDF design in
+> `src/wallet-core/deniabilityUnlock.js` (merged as part of the H2 multi-seed container
+> work, `commit b4871b1`) implements the constant-KDF architecture described above.
+> Every post-primary-miss call now runs exactly 3 KDFs via `constantPanic` /
+> `constantDuress` / `tryRevealHidden`, regardless of which deniability features are
+> configured. The variable-KDF distinguisher this finding describes is architecturally
+> resolved at the code level.
+>
+> **Status: BUILT-UNVALIDATED.** Wall-clock equalization still requires an on-device
+> timing harness on the lowest-spec target device (see `docs/audit-triage/audit-2026-06-27-unvalidated-claims.md`
+> M-A). The code structure is correct; the claim that 2500 ms sleep covers the real-device
+> 3-KDF wall-clock time has not been measured under noise. Do not treat this as VERIFIED
+> without a timing harness run. An independent audit should own the final verification.
 
 ---
 

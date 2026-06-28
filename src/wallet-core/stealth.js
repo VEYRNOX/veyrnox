@@ -597,7 +597,16 @@ export async function setHiddenActionPasswordRecord(secret, mnemonic, record) {
   if (current !== mnemonic) {
     throw new Error('Decryption failed: wrong password or corrupted vault');
   }
-  const slot = await slotForSecret(secret);
+  // M-H: use the READ-PATH slot mapping. slotForSecret (write-path) auto-provisions
+  // the per-device salt if absent — which could re-create the 'veyrnox-stealth-slot-
+  // salt' forensic tell a panic wipe erased (panic.js F-02). A hidden wallet already
+  // had to exist for the reveal above to succeed, so the salt is necessarily present
+  // and readSlotForSecret returns a real slot; null here means the structural
+  // precondition is violated, so we fail closed rather than provision a salt.
+  const slot = readSlotForSecret(secret);
+  if (slot == null) {
+    throw new Error('Hidden wallet not found — cannot set action password record');
+  }
   const container = makeContainer([{ id: newWalletId(), mnemonic }], record ?? undefined);
   const blob = await encryptVault(serializeContainer(container), secret);
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {

@@ -9,6 +9,51 @@
 import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR } from './kek.js';
+import { ALLOW_MAINNET } from '../evm/networks.js';
+
+// H-A — WEB VAULT PASSWORD ENTROPY (I4 — fail honest, fail closed).
+//
+// On web, isSecureHardwareAvailable() === false: the seed vault is Argon2id over
+// the PIN ALONE — there is NO hardware second factor. A short numeric PIN (e.g. 6
+// digits) is offline-exhaustible once the ciphertext is copied off the device, so
+// on a LIVE-mainnet web vault the password IS the only protection. We therefore
+// require a minimum password LENGTH at vault creation on the web path.
+//
+// This restriction is deliberately NOT applied on native (keystore/native.js):
+// there the hardware KEK (factor H) is REQUIRED alongside the PIN-derived C, so a
+// shorter PIN is still backed by a device-bound secret. Enforcing it on native
+// would add no honest security and would break existing short-PIN enrollment.
+//
+// Machine code is the contract (copy can change; codes cannot).
+export const WEB_VAULT_MIN_PASSWORD_LEN = 12;
+
+export const WEB_VAULT_ERR = Object.freeze({
+  PASSWORD_TOO_SHORT: 'WEB_VAULT_PASSWORD_TOO_SHORT',
+});
+
+/**
+ * Enforce the web-path minimum password length for mainnet vaults.
+ *
+ * Throws an Error whose `.message` is the machine code WEB_VAULT_ERR.PASSWORD_TOO_SHORT
+ * and whose `.userMessage` is a plain-language disclosure. Gated on ALLOW_MAINNET:
+ * if mainnet is gated (pre-audit builds) the restriction does not fire, matching the
+ * fact that the at-risk funds only exist once mainnet is live.
+ *
+ * @param {string} password
+ */
+export function validateWebVaultPassword(password) {
+  if (!ALLOW_MAINNET) return;
+  const len = typeof password === 'string' ? password.length : 0;
+  if (len < WEB_VAULT_MIN_PASSWORD_LEN) {
+    const err = /** @type {Error & {code: string, userMessage: string}} */ (
+      Object.assign(new Error(WEB_VAULT_ERR.PASSWORD_TOO_SHORT), {
+        code: WEB_VAULT_ERR.PASSWORD_TOO_SHORT,
+        userMessage: `On web, your password is your only protection — use at least ${WEB_VAULT_MIN_PASSWORD_LEN} characters.`,
+      })
+    );
+    throw err;
+  }
+}
 
 /** @type {import('./keyStore.js').KeyStore} */
 export const webKeyStore = {
@@ -25,6 +70,9 @@ export const webKeyStore = {
   // (encryptVault + saveVault) exactly; saveVault still enforces its
   // plaintext-blob guard.
   async createVault(secret, password) {
+    // H-A: on web there is no hardware factor, so reject weak passwords up front
+    // (fail closed BEFORE any ciphertext is written). See validateWebVaultPassword.
+    validateWebVaultPassword(password);
     const blob = await encryptVault(secret, password);
     await saveVault(blob);
   },

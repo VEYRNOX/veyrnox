@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { copySecret } from "@/lib/copySecret";
+import { copyPlain } from "@/lib/copySecret";
 import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { LEVEL } from "@/risk/levels";
@@ -19,7 +20,7 @@ export function makeCopy(setCopied) {
     if (sensitive) {
       copySecret(text);
     } else {
-      navigator.clipboard.writeText(text);
+      copyPlain(text);
     }
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
@@ -207,6 +208,15 @@ export default function CryptoSigning() {
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2"><Key className="h-5 w-5 text-primary" /> Real Cryptographic Signing</h1>
         <p className="text-sm text-muted-foreground">BIP-39 mnemonic generation, HD derivation, and EIP-191 message signing via ethers.js v6</p>
+      </div>
+
+      {/* H-B: Persistent ephemeral-key warning — not dismissible, safety-critical */}
+      <div role="alert" aria-live="polite" className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm">
+        <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+        <p className="text-amber-200 leading-snug">
+          <strong className="font-semibold text-amber-100">Keys on this page are temporary.</strong>{" "}
+          They are not saved to your wallet. If you send funds to an address shown here without first exporting and saving the private key, those funds cannot be recovered.
+        </p>
       </div>
 
       <div className="flex gap-1 p-1 bg-secondary/30 rounded-xl">

@@ -3,7 +3,7 @@
 // NEVER holds or touches key material. Pure transport layer.
 
 import { Core } from '@walletconnect/core';
-import { Web3Wallet } from '@walletconnect/web3wallet';
+import { WalletKit } from '@reown/walletkit';
 import { getSdkError, buildApprovedNamespaces } from '@walletconnect/utils';
 import { SUPPORTED_CHAIN_IDS } from './router.js';
 
@@ -81,10 +81,7 @@ export async function initWalletConnect() {
     return null;
   }
   const core = new Core({ projectId: PROJECT_ID });
-  _client = await Web3Wallet.init({
-    // pino version mismatch between @walletconnect/core and @walletconnect/web3wallet causes a
-    // spurious ICore type error; runtime is correct, both packages resolve the same Core instance.
-    // @ts-ignore
+  _client = await WalletKit.init({
     core,
     metadata: {
       name: 'Veyrnox',
@@ -101,7 +98,7 @@ export async function initWalletConnect() {
   });
   _client.on('session_request', (data) => _emit('session_request', data));
   _client.on('session_delete', (data) => _emit('session_delete', data));
-  _client.on('session_request_expire', (data) => _emit('session_request_expire', data));
+  _client.on('session_request_expire', (data) => _emit('session_expire', data));
   return _client;
 }
 
@@ -227,16 +224,16 @@ export async function rejectSession(proposalId) {
 export async function respondToRequest(topic, id, result) {
   const client = await initWalletConnect();
   if (!client) throw new Error('WalletConnect is not configured on this build.');
-  await client.respondToSessionRequest({
+  await client.respondSessionRequest({
     topic,
     response: { id, result, jsonrpc: '2.0' },
   });
 }
 
-export async function rejectRequest(topic, id) {
+export async function rejectRequest(topic, id, _reason) {
   const client = await initWalletConnect();
   if (!client) throw new Error('WalletConnect is not configured on this build.');
-  await client.respondToSessionRequest({
+  await client.respondSessionRequest({
     topic,
     response: {
       id,
