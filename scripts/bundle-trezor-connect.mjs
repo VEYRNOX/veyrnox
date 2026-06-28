@@ -23,7 +23,6 @@ import { pipeline } from 'stream/promises';
 import { createRequire } from 'module';
 import path from 'path';
 import https from 'https';
-import { URL } from 'url';
 
 const require = createRequire(import.meta.url);
 

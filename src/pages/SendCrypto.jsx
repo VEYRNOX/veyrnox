@@ -1,6 +1,6 @@
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
-import { trezorSignEvmTx, trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
+import { trezorSignEvmTx } from '../wallet-core/hw/trezor.js';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
