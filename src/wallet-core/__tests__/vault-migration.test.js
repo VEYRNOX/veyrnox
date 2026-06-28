@@ -1,10 +1,10 @@
 // wallet-core/__tests__/vault-migration.test.js
 //
-// SAST M3 — raising the at-rest Argon2id params must NOT lock users out of
+// SAST M3 — changing the at-rest Argon2id params must NOT lock users out of
 // existing vaults. These tests assert the migration contract:
-//   - a vault encrypted with the OLD (64 MiB) params still decrypts after the
-//     default is raised (decrypt uses the blob's OWN recorded params);
-//   - new encryptions use the new (256 MiB) params;
+//   - a vault encrypted with the OLD (192 MiB) params still decrypts after the
+//     default is lowered to 64 MiB (decrypt uses the blob's OWN recorded params);
+//   - new encryptions use the current (64 MiB) params;
 //   - vaultNeedsRekey flags an old blob and not a current one;
 //   - webKeyStore.unlock transparently re-encrypts an old vault at the new params
 //     on first unlock, while still returning the secret, and is a no-op after.
@@ -19,7 +19,7 @@ import { encryptVault, decryptVault, vaultNeedsRekey, KDF_PARAMS } from '../vaul
 import { webKeyStore } from '../keystore/web.js';
 import { saveVault, loadVault, clearVault } from '../evm/vaultStore.js';
 
-const OLD_PARAMS = { parallelism: 1, iterations: 3, memorySize: 65536, hashLength: 32 };
+const OLD_PARAMS = { parallelism: 1, iterations: 3, memorySize: 196608, hashLength: 32 };
 const enc = new TextEncoder();
 
 function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }
@@ -53,14 +53,14 @@ describe('SAST M3 — KDF parameter migration', () => {
     await clearVault();
   });
 
-  it('the new default params are stronger (192 MiB) than the legacy 64 MiB', () => {
-    expect(KDF_PARAMS.memorySize).toBe(196608);
-    expect(KDF_PARAMS.memorySize).toBeGreaterThan(OLD_PARAMS.memorySize);
+  it('the current default params are 64 MiB (lowered from 192 MiB for device perf)', () => {
+    expect(KDF_PARAMS.memorySize).toBe(65536);
+    expect(KDF_PARAMS.memorySize).toBeLessThan(OLD_PARAMS.memorySize);
   });
 
   it('an OLD-params (64 MiB) vault still decrypts after the default is raised', async () => {
     const oldBlob = await encryptAtParams(SECRET, PASSWORD, OLD_PARAMS);
-    expect(oldBlob.kdf.memorySize).toBe(65536);
+    expect(oldBlob.kdf.memorySize).toBe(196608);
     // Decrypt must use the blob's OWN params, not the new default — no lockout.
     expect(await decryptVault(oldBlob, PASSWORD)).toBe(SECRET);
     // A wrong password still fails generically.
@@ -108,6 +108,6 @@ describe('SAST M3 — KDF parameter migration', () => {
     await saveVault(await encryptAtParams(SECRET, PASSWORD, OLD_PARAMS));
     await expect(webKeyStore.unlock('nope')).rejects.toThrow(/wrong password or corrupted/i);
     // Still the old blob — a failed unlock must not rewrite the vault.
-    expect((await loadVault()).kdf.memorySize).toBe(65536);
+    expect((await loadVault()).kdf.memorySize).toBe(OLD_PARAMS.memorySize);
   });
 });
