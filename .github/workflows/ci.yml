@@ -14,6 +14,13 @@ concurrency:
 permissions:
   contents: read
 
+# WalletConnect (Reown) project ID — a PUBLIC client identifier (it ships in the
+# bundle; not a secret), stored as a repo Actions variable. Injected here at the
+# workflow level so every `npm run build` (verify + android-release) bakes it in,
+# otherwise CI / release APKs ship with the dApp Connector "Project ID required".
+env:
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
