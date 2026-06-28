@@ -111,7 +111,7 @@ export default function Calculator() {
         </button>
       </div>
 
-      {livePricesOn && isError && (
+      {livePricesOn && isError && !isFetching && (
         <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
           <div className="flex items-start gap-2 text-sm text-destructive">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -145,15 +145,27 @@ export default function Calculator() {
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              type="number"
-              min="0"
-              value={lastEdited === "crypto" ? cryptoAmount : (convertedCrypto !== "" ? formatNumber(convertedCrypto, null) : "")}
-              onChange={e => handleCryptoChange(e.target.value)}
-              onFocus={() => setLastEdited("crypto")}
-              placeholder="0.00"
-              className="flex-1 text-right font-mono text-base"
-            />
+            {lastEdited === "crypto" ? (
+              <Input
+                type="number"
+                min="0"
+                value={cryptoAmount}
+                onChange={e => handleCryptoChange(e.target.value)}
+                placeholder="0.00"
+                autoFocus
+                className="flex-1 text-right font-mono text-base"
+              />
+            ) : (
+              <button
+                onClick={() => {
+                  if (convertedCrypto !== "") setCryptoAmount(String(convertedCrypto));
+                  setLastEdited("crypto");
+                }}
+                className="flex-1 text-right font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
+              >
+                {convertedCrypto !== "" ? formatNumber(convertedCrypto, null) : <span className="text-muted-foreground">0.00</span>}
+              </button>
+            )}
           </div>
         </div>
 
@@ -195,15 +207,27 @@ export default function Calculator() {
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              type="number"
-              min="0"
-              value={lastEdited === "fiat" ? fiatAmount : (convertedFiat !== "" ? formatNumber(convertedFiat, toFiat) : "")}
-              onChange={e => handleFiatChange(e.target.value)}
-              onFocus={() => setLastEdited("fiat")}
-              placeholder="0.00"
-              className="flex-1 text-right font-mono text-base"
-            />
+            {lastEdited === "fiat" ? (
+              <Input
+                type="number"
+                min="0"
+                value={fiatAmount}
+                onChange={e => handleFiatChange(e.target.value)}
+                placeholder="0.00"
+                autoFocus
+                className="flex-1 text-right font-mono text-base"
+              />
+            ) : (
+              <button
+                onClick={() => {
+                  if (convertedFiat !== "") setFiatAmount(String(convertedFiat));
+                  setLastEdited("fiat");
+                }}
+                className="flex-1 text-right font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
+              >
+                {convertedFiat !== "" ? formatNumber(convertedFiat, toFiat) : <span className="text-muted-foreground">0.00</span>}
+              </button>
+            )}
           </div>
         </div>
       </div>

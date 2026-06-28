@@ -103,3 +103,5 @@ wallet-backup*
 .swarm/
 ruvector.db
 *.ruvector.db
+veyrnox-release.jks
+keystore.jks
