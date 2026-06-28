@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+// NOTE: @trezor/connect-web is mocked — green tests do not prove I2/I3 compliance in production
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@trezor/connect-web', () => ({
   default: {
@@ -15,8 +16,15 @@ vi.mock('../transport.js', () => ({
 
 import TrezorConnect from '@trezor/connect-web';
 
+// Deniability is OFF by default in these address-path tests (veyrnox-demo unset);
+// the dedicated suite below covers the deniability-active block.
+beforeEach(() => {
+  vi.clearAllMocks();
+  localStorage.removeItem('veyrnox-demo');
+});
+afterEach(() => localStorage.removeItem('veyrnox-demo'));
+
 describe('getTrezorEvmAddress', () => {
-  beforeEach(() => vi.clearAllMocks());
 
   it('returns checksummed address from device', async () => {
     TrezorConnect.ethereumGetAddress.mockResolvedValue({

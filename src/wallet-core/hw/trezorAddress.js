@@ -1,31 +1,83 @@
+// STATUS: BUILT — Trezor WebUSB address derivation. Not device-verified on testnet yet.
+// I2/I3 note: deniability guard blocks all calls when veyrnox-demo=1 (I3). In dev,
+// connectSrc points to self-hosted localhost bundle (no CDN). In prod, connectSrc is
+// omitted and connect.trezor.io CDN is used (disclosed; corsValidator blocks bare paths).
+
 import TrezorConnect from '@trezor/connect-web';
 import { ethers } from 'ethers';
 import { getTransport } from './transport.js';
 
 const EVM_PATH = "m/44'/60'/0'/0/0";
 const SOL_PATH = "m/44'/501'/0'/0'";
+const BTC_MAINNET_PATH = "m/84'/0'/0'/0/0";
+const BTC_TESTNET_PATH = "m/84'/1'/0'/0/0";
 
-function ensureInit() {
-  TrezorConnect.init({
-    lazyLoad: true,
-    manifest: {
-      email: 'al.jobson@21stclick.co.uk',
-      appUrl: 'https://veyrnox.app',
-      appName: 'Veyrnox',
-    },
-  });
+export const TREZOR_PATHS = Object.freeze({
+  evm: EVM_PATH,
+  sol: SOL_PATH,
+  btcMainnet: BTC_MAINNET_PATH,
+  btcTestnet: BTC_TESTNET_PATH,
+});
+
+// Fix 1 — memoize init. Real TrezorConnect throws on a second init() call, so the
+// promise is created at most once and every caller awaits the same one.
+let _initPromise = null;
+async function ensureInit() {
+  if (!_initPromise) {
+    // connectSrc: @trezor/connect corsValidator only accepts *.trezor.io,
+    // localhost:5xxx/8xxx, and *.sldev.cz — bare paths are silently dropped.
+    // In dev we pass a full localhost URL so the self-hosted bundle loads (no CDN).
+    // In prod connectSrc is omitted; the CDN (connect.trezor.io/9/) is used, which
+    // is disclosed. The deniability guard above (checkDeniability) ensures zero
+    // network calls when I3 is active regardless of the connectSrc setting.
+    const connectSrc = (typeof import.meta !== 'undefined' && import.meta.env?.DEV)
+      ? `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`
+      : undefined;
+    _initPromise = TrezorConnect.init({
+      lazyLoad: true,
+      ...(connectSrc ? { connectSrc } : {}),
+      manifest: {
+        email: 'al.jobson@21stclick.co.uk',
+        appUrl: 'https://veyrnox.app',
+        appName: 'Veyrnox',
+      },
+    });
+  }
+  return _initPromise;
 }
 
-function requireWebUsb() {
+// Fix 2 — deniability guard (I3). @trezor/connect-web reaches out to
+// connect.trezor.io; in deniability mode the app must make ZERO backend calls, so
+// we refuse before init/transport is ever touched. The persisted `veyrnox-demo=1`
+// flag is the deniability/demo signal used across the codebase (see api/demoClient.js).
+function deniabilityActive() {
+  try {
+    return (
+      typeof localStorage !== 'undefined' &&
+      localStorage.getItem('veyrnox-demo') === '1'
+    );
+  } catch {
+    // Fail closed (I4): if we cannot read the flag, do NOT assume it is safe to
+    // emit network calls — treat it as deniability-active.
+    return true;
+  }
+}
+
+function checkDeniability() {
+  if (deniabilityActive()) throw new Error('TREZOR_DENIABILITY_BLOCKED');
+}
+
+async function requireWebUsb() {
+  checkDeniability();
   const transport = getTransport();
   if (transport.type !== 'webusb') {
     throw new Error('TREZOR_UNSUPPORTED');
   }
-  ensureInit();
+  await ensureInit();
 }
 
 export async function getTrezorEvmAddress() {
-  requireWebUsb();
+  await requireWebUsb();
   const result = await TrezorConnect.ethereumGetAddress({
     path: EVM_PATH,
     showOnTrezor: true,
@@ -36,10 +88,10 @@ export async function getTrezorEvmAddress() {
 }
 
 export async function getTrezorBtcAddress(networkKey) {
-  requireWebUsb();
+  await requireWebUsb();
   const isMainnet = networkKey === 'btc-mainnet';
   const result = await TrezorConnect.getAddress({
-    path: isMainnet ? "m/84'/0'/0'/0/0" : "m/84'/1'/0'/0/0",
+    path: isMainnet ? BTC_MAINNET_PATH : BTC_TESTNET_PATH,
     coin: isMainnet ? 'btc' : 'tbtc',
     showOnTrezor: true,
   });
@@ -48,7 +100,7 @@ export async function getTrezorBtcAddress(networkKey) {
 }
 
 export async function getTrezorSolAddress() {
-  requireWebUsb();
+  await requireWebUsb();
   const result = await TrezorConnect.solanaGetAddress({
     path: SOL_PATH,
     showOnTrezor: true,

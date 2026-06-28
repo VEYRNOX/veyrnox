@@ -6,8 +6,16 @@ const EVM_PATH = "m/44'/60'/0'/0/0";
 const SOL_PATH = "m/44'/501'/0'/0'";
 
 function ensureInit() {
+  // connectSrc: corsValidator only accepts *.trezor.io / localhost:5xxx/8xxx.
+  // In dev, pass localhost so the self-hosted bundle loads (no CDN call).
+  // In prod, omit — CDN (connect.trezor.io) is used and is disclosed.
+  // I3 is enforced upstream via requireWebUsb() in each entry point.
+  const connectSrc = (typeof import.meta !== 'undefined' && import.meta.env?.DEV)
+    ? `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`
+    : undefined;
   TrezorConnect.init({
     lazyLoad: true,
+    ...(connectSrc ? { connectSrc } : {}),
     manifest: {
       email: 'al.jobson@21stclick.co.uk',
       appUrl: 'https://veyrnox.app',
