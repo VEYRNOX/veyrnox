@@ -18,6 +18,12 @@ const config: CapacitorConfig = {
       smallIcon: 'ic_launcher_foreground',
       iconColor: '#4ADAC2',
     },
+    // Route all fetch/XHR through the native HTTP layer on Android/iOS so that
+    // CORS restrictions from https://localhost don't block external API calls
+    // (ethers.js RPC, CryptoCompare, CoinGecko, Etherscan, etc.).
+    CapacitorHttp: {
+      enabled: true,
+    },
   },
 };
 

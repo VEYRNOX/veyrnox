@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchMarketChanges24h } from "@/lib/cryptoCompare.js";
+import { fetchMarketChanges24hCG as fetchMarketChanges24h } from "@/lib/coinGecko.js";
 import { isLivePricesEnabled } from "@/lib/priceFeed.js";
 
 // ── Fixed-basket 24h price-change feed (HOLDINGS-DECOUPLED). ──────────────────

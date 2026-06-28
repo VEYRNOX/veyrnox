@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { fetchOHLCV } from "@/lib/cryptoCompare";
+import { fetchOHLCVCG as fetchOHLCV } from "@/lib/coinGecko";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import {
   ResponsiveContainer,

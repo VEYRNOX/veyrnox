@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { fetchMarketPricesUsd } from "@/lib/cryptoCompare.js";
+import { fetchMarketPricesUsdCG as fetchMarketPricesUsd } from "@/lib/coinGecko.js";
 import { useWallet } from "@/lib/WalletProvider";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";

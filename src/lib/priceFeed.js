@@ -10,7 +10,8 @@
 // stale USD_RATES and label the figure approximate — never stale-as-live.
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchPortfolioPricesUsd, PORTFOLIO_SYMBOLS } from '@/lib/cryptoCompare.js';
+import { fetchPortfolioPricesUsdCG as fetchPortfolioPricesUsd } from '@/lib/coinGecko.js';
+import { PORTFOLIO_SYMBOLS } from '@/lib/cryptoCompare.js';
 
 // localStorage opt-in pref. "1" = on / ABSENT = off (mirrors lib/biometric.js,
 // wallet-core/auditLog.js). Absence = off is deliberate: a fresh device makes no
