@@ -63,9 +63,21 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Decode keystore
+        # KEYSTORE_BASE64: base64-encoded .jks file stored as a GitHub secret.
+        # If absent the build falls back to debug signing (unsigned release not installable).
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
+            echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> $GITHUB_ENV
+          fi
       - name: Build release APK
         run: ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
         working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

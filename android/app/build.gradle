@@ -30,8 +30,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // Populated from CI secrets (KEYSTORE_BASE64 decoded to keystore.jks).
+            // Local dev: omit these env vars and Gradle falls back to debug signing.
+            def ksPath = System.getenv("KEYSTORE_PATH")
+            if (ksPath) {
+                storeFile     file(ksPath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias      System.getenv("KEY_ALIAS")
+                keyPassword   System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            def ksPath = System.getenv("KEYSTORE_PATH")
+            signingConfig ksPath ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             // Explicitly non-debuggable in release (defense-in-depth alongside the
             // MainActivity setWebContentsDebuggingEnabled(false) guard).
