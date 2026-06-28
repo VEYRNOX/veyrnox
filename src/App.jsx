@@ -12,6 +12,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { HardwareWalletProvider } from '@/context/HardwareWalletContext';
+import { TrezorProvider } from '@/context/TrezorContext';
 import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { NotificationsProvider } from '@/notify/useNotifications';
@@ -237,6 +238,7 @@ function App() {
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
       <WalletProvider>
         <HardwareWalletProvider>
+        <TrezorProvider>
         <TierProvider>
           <QueryClientProvider client={queryClientInstance}>
             <Router>
@@ -249,6 +251,7 @@ function App() {
             <Toaster />
           </QueryClientProvider>
         </TierProvider>
+        </TrezorProvider>
         </HardwareWalletProvider>
       </WalletProvider>
     </ThemeProvider>

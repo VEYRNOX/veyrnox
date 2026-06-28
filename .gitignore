@@ -11,6 +11,10 @@ node_modules/
 dist/
 build/
 
+# Trezor Connect self-hosted iframe bundle — generated at build time from node_modules.
+# Re-created by: node scripts/bundle-trezor-connect.mjs  (also runs as npm prebuild).
+public/trezor-connect/
+
 # Local-only test/config overrides — NEVER commit (CI uses a full checkout).
 # e.g. the worktree vitest shim that extends vitest.config.js with a server.fs.allow
 # widening so the parent repo's node_modules resolves under Vite's /@fs guard.
