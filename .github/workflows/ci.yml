@@ -72,7 +72,9 @@ jobs:
             echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> $GITHUB_ENV
           fi
       - name: Build release APK
-        run: ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
