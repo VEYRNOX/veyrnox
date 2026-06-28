@@ -24,7 +24,7 @@ npm install            # installs deps incl. the Capacitor packages already in p
 ## 2. Sanity-check the project before mobile
 ```bash
 npm run check:rng      # crypto RNG guard — must pass
-npm test               # must be 58/58 green
+npm test               # 220 test files, all green (as of 2026-06-27)
 npm run build          # produces the web build in dist/ (Capacitor's webDir)
 ```
 
@@ -71,6 +71,35 @@ GitHub is the bridge. Push from whichever machine you worked on; pull on the
 other before starting. Don't switch branches with uncommitted work (the M1
 tangle lesson). Always `git status` before `git checkout`.
 
+## 7. Android Release CI (automated, runs on `main`)
+
+As of 2026-06-27 (PR #421), the CI pipeline includes an `android-release` job that
+runs on every push to `main` (after the `verify` job passes):
+
+```yaml
+android-release:
+  needs: verify
+  runs-on: ubuntu-latest
+  steps:
+    - npx cap sync android
+    - ./gradlew assembleRelease -PRELEASE_CERT_SHA256=${{ secrets.RELEASE_CERT_SHA256 }}
+    - upload-artifact: app-release.apk (30-day retention)
+```
+
+The certificate fingerprint is injected via the `RELEASE_CERT_SHA256` CI secret (never
+committed). `RaspIntegrityPlugin.kt` reads `BuildConfig.RELEASE_CERT_SHA256` at runtime;
+a blank cert honest-blocks the app (H-NEW-1, I4 fail-closed).
+
+To install a CI-built APK on a physical device:
+1. Download the `app-release.apk` artifact from the GitHub Actions run.
+2. `adb install app-release.apk` (enable USB debugging on the device first).
+3. The `RELEASE_CERT_SHA256` must match the signing cert or the RASP gate will block.
+
+---
+
 ## Hard line (unchanged)
-Testnet only. Mainnet stays gated (ALLOW_MAINNET=false) until the independent
-audit clears. Build MVP → freeze → audit → fix → THEN mainnet. Never the reverse.
+
+Mainnet unlocked 2026-06-17 (internal audit, owner sign-off). Both audits complete.
+Independent security audit also complete (ECC, 2026-06-23; unvalidated-claims review
+2026-06-27). An independent audit is RECOMMENDED for the strongest assurance. "Internal"
+is never to be presented as "independent" (I4 honesty).

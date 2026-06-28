@@ -259,6 +259,76 @@ with StrongBox, and an engaged independent auditor.
 
 ---
 
+---
+
+## 5a. Post-2026-06-27 addendum — security hardening PRs merged to `main`
+
+> **WHAT THIS IS:** a record of code-level hardening that landed after this gate doc was
+> written. None of these PRs satisfy the gate conditions in §4 — they require real-device
+> verification, adversarial verification, and independent audit sign-off which remain OPEN.
+> They are incremental defence-in-depth improvements recorded here so the gap between this
+> doc and current `main` is auditable.
+>
+> **Reminder:** "BUILT" = code on main + tests green. Not "verified", not "audited".
+
+### KEK zeroing hardening (H-NEW-4, H-NEW-6) — PR #418
+
+`src/wallet-core/keystore/web.js` `unlock()`, `enrollKek()`, `changePassword()` now wrap the
+full KEK/DEK lifetime in `try/finally`. Both `H` (hardware factor) and the derived KEK are
+zeroed on every code path — including when `unwrapDek` or `wrapDek` throws. `changePassword`
+previously held an `H2 = H.slice()` copy across two `combineKek` calls; both `H2` and `newC`
+are now zeroed in `finally`. Defence-in-depth over `combineKek`'s own in-place zeroing (which
+was already implemented). **Status: BUILT.** Gate conditions in §4 unchanged; this is a
+belt-and-suspenders improvement, not a gate drop.
+
+**Impact on K4 (PRF/H exportability):** H zeroing reduces the window a seized+rooted device
+has to read `H` from JS heap. It does NOT close the exportability concern — that remains an
+open audit item requiring real-device adversarial verification. The gate still holds.
+
+### Biometric ACL gap — honest-documented (H-NEW-5) — PR #420
+
+`@aparajita/capacitor-secure-storage` does **NOT** call `setInvalidatedByBiometricEnrollment(true)`.
+A new biometric enrolment therefore does **not** invalidate the cached PIN. This was documented
+as HONEST-DISABLED: the gap is clearly disclosed in code comments and the audit record. A
+drop-in replacement plugin with proper ACL binding is the TARGET fix; it requires real-device
+verification and cannot be confirmed in JS. **Status: HONEST-DISABLED (gap recorded, not closed).**
+
+This finding is consistent with NF-9 in §4b above. The gap is now formally recorded in
+`docs/audit-2026-06-27-unvalidated-claims.md` (H-NEW-5, 2026-06-27 independent review).
+
+### KEK honest naming sweep (H14/H15/H16) — PR #414
+
+`isKekEnrolled`, `biometricUnlockUsesKek`, `hasHardwareFactor` renamed. Names previously
+implied a hardware guarantee for what is (on web/M2b) a software-layer KEK. `isSecureHardwareAvailable()`
+is the honest gate that returns `true` only when OS-enforced ACL is actually present.
+
+**Impact on NF-4 (`isSecureHardwareAvailable()` as passcode proxy, §4b):** the rename does
+not fix the underlying OS-ACL gap but eliminates the names that were the source of over-claim.
+The finding in the §4b table is partially addressed at the naming level; the substance (no
+real OS-enforced ACL) is unchanged and the gate in §4 still holds.
+
+### Web vault password minimum (H-A) — PR #424
+
+`validateWebVaultPassword()` enforces a 12-character minimum for web vault creation on mainnet
+builds (`ALLOW_MAINNET = true`). This raises the effective keyspace for the offline-brute-force
+scenario (H-2) from 8-digit PIN (10^8 / Argon2id 192 MiB) to a ≥12-character password.
+
+**Impact on H-2 (K3 / sole at-rest factor):** this is a **partial defence-in-depth mitigation**
+of H-2. A 12-character user-chosen password is still exhaustible offline with sufficient compute
+(quality depends on entropy, not just length). H-2 **remains OPEN** — the hardware-bound KEK
+(binding to a non-exportable `H` factor from the secure element) is still the named long-term
+fix. H-A raises the bar without closing the finding. Gate conditions in §4 unchanged.
+
+### android-release CI job — PR #421
+
+`.github/workflows/ci.yml` now includes an `android-release` job that runs on every `main`
+push after `verify` passes: `npx cap sync android` + `./gradlew assembleRelease -PRELEASE_CERT_SHA256`
+(cert hash injected from CI secret). The signed APK is uploaded as a 30-day CI artifact.
+Scope: CI build automation. Does not affect the gate conditions in §4 (which are about
+real-device verification, not CI build).
+
+---
+
 ## 5. Cross-references
 
 - KEK design + open questions: `docs/kek-architecture-spec.md` (§7, §8, §9)
