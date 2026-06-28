@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   ensureStealthPool, createHiddenWallet, moveWalletToHidden, tryRevealHidden,
-  hasStealthPool, wipeStealthPool, slotForSecret,
+  hasStealthPool, wipeStealthPool, slotForSecret, setHiddenActionPasswordRecord,
 } from '../stealth.js';
 import { deriveEvmAccount } from '../derivation.js';
 import { generateMnemonic } from '../mnemonic.js';
@@ -294,5 +294,33 @@ describe('stealth / hidden wallets', () => {
     const b = await moveWalletToHidden(mnemonic, 'idem-secret-dddd');
     expect(b.address).toBe(a.address);
     expect(b.slot).toBe(a.slot);
+  });
+
+  // ---- M-H: setHiddenActionPasswordRecord must use the READ-PATH slot mapping ----
+
+  it('setHiddenActionPasswordRecord does NOT re-provision the device salt when none exists (post-wipe deniability tell)', async () => {
+    // Simulate the post-panic-wipe state: pool gone AND the per-device slot salt
+    // erased. A real hidden wallet cannot exist in this state, so the function must
+    // fail closed WITHOUT re-creating the 'veyrnox-stealth-slot-salt' localStorage
+    // entry (the forensic tell the wipe removed). The old code called the WRITE-PATH
+    // slotForSecret, which would re-provision the salt.
+    localStorage.removeItem('veyrnox-stealth-slot-salt');
+    expect(localStorage.getItem('veyrnox-stealth-slot-salt')).toBeNull();
+
+    const mnemonic = generateMnemonic(128);
+    await expect(setHiddenActionPasswordRecord('no-such-secret-1', mnemonic, null))
+      .rejects.toThrow();
+
+    // The salt tell must NOT have been re-created.
+    expect(localStorage.getItem('veyrnox-stealth-slot-salt')).toBeNull();
+  });
+
+  it('setHiddenActionPasswordRecord still re-writes a REAL hidden wallet in place via the read-path slot', async () => {
+    // Happy path after the read-path change: a real hidden wallet (its create() has
+    // provisioned the salt) can still have its slot re-written, and the wallet stays
+    // revealable. record=null clears any AP — the slot is re-encrypted with the same seed.
+    const created = await createHiddenWallet('ap-rewrite-secret-1');
+    await setHiddenActionPasswordRecord('ap-rewrite-secret-1', created.mnemonic, null);
+    expect(revealedMnemonic(await tryRevealHidden('ap-rewrite-secret-1'))).toBe(created.mnemonic);
   });
 });

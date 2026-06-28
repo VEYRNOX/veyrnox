@@ -22,6 +22,13 @@
 //
 // Pure: no crypto, no I/O, no React. UNAUDITED-PROVISIONAL.
 
+// M-I: reuse vault.js's KDF bounds check (a pure function — no crypto/I/O) so a stored
+// record's Argon2id params face the SAME [MIN,MAX] ceiling as a vault blob's. Without
+// it a malicious record could carry an OOM-sized memorySize that verifyCredential feeds
+// straight into argon2id BEFORE any auth tag is checked — a pre-auth resource-exhaustion
+// vector identical to the vault import path (vault.js B-1/B-2).
+import { assertSaneKdfParams } from './vault.js';
+
 const RECORD_VERSION = 1;
 
 // base64 (browser-safe, no Buffer) — mirrors vault.js so the on-disk encoding is
@@ -83,6 +90,15 @@ export function deserializeActionPasswordRecord(record) {
     return null;
   }
   const { parallelism, iterations, memorySize, hashLength } = record.params;
+  // M-I: bound the KDF params (same ceiling/floor as a vault blob) BEFORE the verifier
+  // is handed to verifyCredential. assertSaneKdfParams throws on out-of-range values;
+  // we fail closed to null (a null verifier makes verifyCredential return false) rather
+  // than let an OOM-sized memorySize reach argon2id.
+  try {
+    assertSaneKdfParams({ parallelism, iterations, memorySize, hashLength });
+  } catch {
+    return null;
+  }
   return {
     salt: unb64(record.salt),
     hash: unb64(record.hash),
