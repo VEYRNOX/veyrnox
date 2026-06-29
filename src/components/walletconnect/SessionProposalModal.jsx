@@ -33,7 +33,6 @@ export function SessionProposalModal({ proposal, onClose }) {
   const optionalChains = optionalNs.eip155?.chains ?? [];
   const optionalMethods = optionalNs.eip155?.methods ?? [];
 
-  const [ackKnownBad, setAckKnownBad] = useState(false);
   const dapp = checkDappDomain(meta.url);
 
   async function handleApprove() {
@@ -66,17 +65,12 @@ export function SessionProposalModal({ proposal, onClose }) {
 
         {dapp.flagged && (
           <div className={styles.riskAlert}>
-            <p className={styles.riskTitle}>⚠ Known scam / phishing site</p>
+            <p className={styles.riskTitle}>⚠ Known scam / phishing site — connection blocked</p>
             <p className={styles.riskBody}>{dapp.reason}</p>
             <p className={styles.riskDomain}>{dapp.domain}</p>
-            <label className={styles.riskCheck}>
-              <input
-                type="checkbox"
-                checked={ackKnownBad}
-                onChange={(e) => setAckKnownBad(e.target.checked)}
-              />
-              I understand this site is flagged as a phishing risk and want to connect anyway.
-            </label>
+            <p className={styles.riskBody}>
+              This domain is on the known-bad blocklist, so Veyrnox will not connect to it. There is no override.
+            </p>
           </div>
         )}
 
@@ -165,7 +159,7 @@ export function SessionProposalModal({ proposal, onClose }) {
           <button className={styles.rejectBtn} onClick={handleReject} disabled={busy}>
             Reject
           </button>
-          <button className={styles.approveBtn} onClick={handleApprove} disabled={busy || (dapp.flagged && !ackKnownBad)}>
+          <button className={styles.approveBtn} onClick={handleApprove} disabled={busy || dapp.flagged}>
             {busy ? 'Connecting…' : 'Connect'}
           </button>
         </div>

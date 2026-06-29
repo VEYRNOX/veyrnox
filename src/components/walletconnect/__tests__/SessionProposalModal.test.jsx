@@ -1,12 +1,12 @@
 // src/components/walletconnect/__tests__/SessionProposalModal.test.jsx
 //
-// Connect-time alert: a known-bad dApp domain renders a RISK alert and gates
-// Connect behind an acknowledgement; a clean domain makes no claim and leaves
-// Connect enabled. (No jest-dom in this repo — core matchers only.)
+// Connect-time alert: a known-bad dApp domain renders a RISK alert and HARD-BLOCKS
+// Connect (no acknowledgement bypass — I4 fail closed); a clean domain makes no
+// claim and leaves Connect enabled. (No jest-dom in this repo — core matchers only.)
 
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import { SessionProposalModal } from '@/components/walletconnect/SessionProposalModal.jsx';
 
 afterEach(cleanup);
@@ -58,14 +58,15 @@ describe('SessionProposalModal — M12: optional chains disclosure', () => {
 });
 
 describe('SessionProposalModal — known-bad dApp alert', () => {
-  it('flags a known-bad domain and disables Connect until acknowledged', () => {
+  it('hard-blocks a known-bad domain: Connect stays disabled and no bypass checkbox exists', () => {
     render(<SessionProposalModal proposal={makeProposal('https://fakeswap-rewards.xyz')} onClose={vi.fn()} />);
     // M10: always-visible caveat also contains "known scam" — use getAllByText
     expect(screen.getAllByText(/known scam/i).length).toBeGreaterThan(0);
     const connect = screen.getByRole('button', { name: /^connect$/i });
     expect(connect.disabled).toBe(true);
-    fireEvent.click(screen.getByRole('checkbox'));
-    expect(connect.disabled).toBe(false);
+    // I4: no acknowledgement override — there is no checkbox to re-enable Connect.
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(connect.disabled).toBe(true);
   });
 
   it('makes no per-domain scam claim for a domain absent from the local list, shows blocklist caveat, and leaves Connect enabled', () => {
