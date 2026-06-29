@@ -93,4 +93,35 @@ describe('WalletEntry — web cohort must persist authModel=password (lockout fi
     expect(setAuthModel).not.toHaveBeenCalledWith('pin');
     expect(getAuthModel()).toBe('password');
   });
+
+  it('web Phase 2 create calls createWallet, not createWalletFromPendingPin', async () => {
+    const ctx = makeCtx();
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+
+    // Fresh device → welcome hero → Get Started → pin-create
+    await waitFor(() => expect(screen.getByRole('button', { name: /get started/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /get started/i }));
+
+    // Web pin-create: enter password and continue to confirm step
+    const pwInput = await screen.findByPlaceholderText(/at least 12 characters/i);
+    fireEvent.change(pwInput, { target: { value: WEB_PASSWORD } });
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+    // Confirm step: re-enter password and submit
+    const confirmInput = await screen.findByPlaceholderText(/re-enter your password/i);
+    fireEvent.change(confirmInput, { target: { value: WEB_PASSWORD } });
+    fireEvent.click(screen.getByRole('button', { name: /set password & continue/i }));
+
+    // Phase 2 (choose screen) should now be visible; click Create
+    const createBtn = await screen.findByRole('button', { name: /create( a)? (new )?wallet/i });
+    fireEvent.click(createBtn);
+
+    // createWallet must be called with the 12+ char password; the PIN-path variant must not
+    await waitFor(() => expect(ctx.createWallet).toHaveBeenCalledWith(
+      expect.stringMatching(/.{12,}/), // the web vault password
+    ));
+    expect(ctx.createWalletFromPendingPin).not.toHaveBeenCalled();
+  });
 });

@@ -457,6 +457,10 @@ export default function WalletEntry() {
     return () => { active = false; };
   }, [hasVault, isUnlocked]);
 
+  // Zero the web vault password ref on unmount so it cannot be read from memory
+  // if the component is torn down mid-flow (navigation away, error boundary, crash).
+  useEffect(() => () => { webVaultPasswordRef.current = null; }, []);
+
   const copySeed = async () => {
     await copySecret(generatedSeed);
     setCopied(true);
