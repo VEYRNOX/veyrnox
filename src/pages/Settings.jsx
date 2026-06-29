@@ -147,27 +147,12 @@ export default function Settings() {
         )}
       </div>
 
-      {/* On native Android: simple biometric status row + Hardware KEK + Session.
-          Passkey/FIDO2/TwoFactor require WebAuthn which is unavailable in the
-          Capacitor WebView — honest-hidden rather than shown broken. */}
-      {isNative ? (
-        <div className="p-5 rounded-xl border border-border bg-card flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Fingerprint className="h-5 w-5 text-primary" />
-            <div>
-              <p className="font-semibold text-sm">Biometric Unlock</p>
-              <p className="text-xs text-muted-foreground">Always required on this device</p>
-            </div>
-          </div>
-          <ShieldCheck className="h-4 w-4 text-success" />
-        </div>
-      ) : (
-        <>
-          <BiometricUnlockSettings />
-          <PasskeyUnlockSettings />
-          <TwoFactorSettings />
-        </>
-      )}
+      {/* Security settings — shown on all platforms.
+          TwoFactorSettings now handles native biometric 2FA (Face ID) via
+          BiometricAuth, so it is no longer WebAuthn-only and can render on native. */}
+      <BiometricUnlockSettings />
+      {!isNative && <PasskeyUnlockSettings />}
+      <TwoFactorSettings />
 
       <HardwareKekSettings />
       <SessionSettings />
