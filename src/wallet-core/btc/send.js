@@ -62,6 +62,38 @@ export function buildAndSignTx({ plan, privateKey, publicKey, params }) {
 }
 
 /**
+ * PURE: re-derive the canonical txid from already-signed raw tx bytes. The signed
+ * hex may come from an external signer (e.g. a Trezor device on the BTC path), so
+ * we recompute the id LOCALLY from the bytes rather than trusting the untrusted
+ * indexer's echoed value. Throws on malformed hex (fail closed, I4).
+ * @param {string} signedTxHex - fully-signed, finalized raw transaction (hex).
+ * @returns {string} the 64-hex transaction id.
+ */
+export function btcTxidFromHex(signedTxHex) {
+  const tx = Transaction.fromRaw(hex.decode(signedTxHex), { allowUnknownOutputs: true });
+  return tx.id;
+}
+
+/**
+ * Broadcast an ALREADY-SIGNED raw transaction (hex) and return the canonical
+ * txid + explorer URL. This is the broadcast-only half of signAndBroadcastBtc,
+ * for signers that produce the signed bytes elsewhere (the Trezor BTC path signs
+ * on-device, never exposing a key to this process — I1). The txid is re-derived
+ * locally from the signed bytes; broadcastTx re-enforces the mainnet gate and
+ * throws on a rejected/empty broadcast (no silent unbroadcast "success").
+ *
+ * @param {string} networkKey
+ * @param {string} signedTxHex - fully-signed, finalized raw transaction (hex).
+ * @returns {Promise<{ txid:string, hex:string, explorerUrl:string }>}
+ */
+export async function broadcastBtcTx(networkKey, signedTxHex) {
+  const net = getBtcNetwork(networkKey); // throws if mainnet gated / disabled
+  const txid = btcTxidFromHex(signedTxHex); // local, deterministic — not indexer-trusted
+  await broadcastTx(networkKey, signedTxHex);
+  return { txid, hex: signedTxHex, explorerUrl: `${net.explorer}/tx/${txid}` };
+}
+
+/**
  * Estimate a send WITHOUT signing — for a confirm screen. Fetches live UTXOs and
  * fee rate, runs coin selection, and returns the plan (amounts in sats).
  */

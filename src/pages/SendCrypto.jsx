@@ -1,6 +1,6 @@
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
-import { trezorSignEvmTx } from '../wallet-core/hw/trezor.js';
+import { trezorSignEvmTx, trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -25,9 +25,9 @@ import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { isDevSendUngated } from "@/lib/devSendOverride";
-import { signAndBroadcastBtc, estimateBtcSend } from "@/wallet-core/btc/send";
+import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
 import { describeBtcPlan } from "@/wallet-core/btc/simulate";
-import { signAndBroadcastSol } from "@/wallet-core/sol/send";
+import { signAndBroadcastSol, buildUnsignedSolTx, broadcastSignedSolTx, attachSolSignature } from "@/wallet-core/sol/send";
 import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
@@ -707,12 +707,32 @@ export default function SendCrypto() {
       if (isBtc) {
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
-          // BTC Trezor signing path: requires a dedicated broadcast helper
-          // (broadcastBtcTx) that is not yet implemented. Fail honest + closed (I4).
-          throw new Error(
-            'Trezor BTC signing is BUILT but the broadcast helper is not yet wired. ' +
-            'Use the software key path for now, or implement broadcastBtcTx in wallet-core/btc/send.js.'
-          );
+          if (!trezorBtcAddress) throw new Error('Trezor BTC address not available');
+          // BTC Trezor path: the key never leaves the device (I1). Build a
+          // coin-selection plan against the Trezor-derived address (it owns the
+          // UTXOs and receives change), translate it into the device's input/
+          // output shape, sign on-device, then broadcast the signed bytes.
+          const amountSats = toBaseUnits(amount, 8);
+          const { plan } = await estimateBtcSend({
+            networkKey,
+            fromAddress: trezorBtcAddress,
+            toAddress,
+            amountSats,
+            changeAddress: trezorBtcAddress,
+          });
+          // coinselect plan -> @trezor/connect signTransaction shape. Recipient
+          // outputs use { address, amountSats }; the change output (isChange) is
+          // collapsed into changeAmountSats so the device derives + pays-to-self.
+          const changeOut = plan.outputs.find((o) => o.isChange);
+          const trezorPlan = {
+            inputs: plan.inputs.map((i) => ({ txid: i.txid, vout: i.vout, amountSats: BigInt(i.value) })),
+            outputs: plan.outputs
+              .filter((o) => !o.isChange)
+              .map((o) => ({ address: o.address, amountSats: BigInt(o.value) })),
+            changeAmountSats: changeOut ? BigInt(changeOut.value) : 0n,
+          };
+          const signedHex = await trezorSignBtcTx({ plan: trezorPlan, networkKey });
+          raw = await broadcastBtcTx(networkKey, signedHex);
         } else {
           // BTC (BIP-84 P2WPKH). Auto fee-rate this slice (no fee UI). BTC -> sats.
           raw = await withBtcPrivateKey(({ privateKey, publicKey, address }) =>
@@ -729,12 +749,20 @@ export default function SendCrypto() {
       } else if (isSolana) {
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
-          // SOL Trezor signing path: requires separate build/sign/broadcast helpers
-          // (buildSolTx, broadcastSolTx) that are not yet implemented. Fail honest + closed (I4).
-          throw new Error(
-            'Trezor SOL signing is BUILT but the build/broadcast helpers are not yet wired. ' +
-            'Use the software key path for now, or implement buildSolTx/broadcastSolTx in wallet-core/sol/send.js.'
-          );
+          if (!trezorSolAddress) throw new Error('Trezor SOL address not available');
+          // SOL Trezor path: the key never leaves the device (I1). Build the
+          // unsigned transfer (fresh blockhash via the network provider), sign it
+          // on-device, reattach the device signature, then broadcast.
+          const lamports = toBaseUnits(amount, 9);
+          const { unsignedTxBase64 } = await buildUnsignedSolTx({
+            fromAddress: trezorSolAddress,
+            toAddress,
+            lamports,
+            networkKey,
+          });
+          const signatureHex = await trezorSignSolTx({ serializedTxBase64: unsignedTxBase64 });
+          const signedTxBase64 = attachSolSignature(unsignedTxBase64, trezorSolAddress, signatureHex);
+          raw = await broadcastSignedSolTx(signedTxBase64, networkKey);
         } else {
           // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
           raw = await withSolPrivateKey(({ privateKey, address }) =>
