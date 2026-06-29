@@ -46,6 +46,30 @@ describe('trezor.js deniability guard (I3)', () => {
     expect(TrezorConnect.init).not.toHaveBeenCalled();
     expect(TrezorConnect.ethereumSignTransaction).not.toHaveBeenCalled();
   });
+
+  it('blocks signing when a REAL decoy/hidden session is active (NOT just demo flag)', async () => {
+    // No demo flag set — this is the genuine coercion case the old guard missed.
+    const { setDeniabilitySession } = await import('../../deniabilitySession.js');
+    setDeniabilitySession(true);
+    try {
+      const { trezorSignEvmTx } = await import('../trezor.js');
+      await expect(trezorSignEvmTx({
+        chainId: 1,
+        nonce: 0,
+        to: '0x1234567890123456789012345678901234567890',
+        value: 1n,
+        gasLimit: 21000n,
+        maxFeePerGas: 1n,
+        maxPriorityFeePerGas: 1n,
+      })).rejects.toThrow('TREZOR_DENIABILITY_BLOCKED');
+
+      // I3: zero device/network calls in a real deniability session
+      expect(TrezorConnect.init).not.toHaveBeenCalled();
+      expect(TrezorConnect.ethereumSignTransaction).not.toHaveBeenCalled();
+    } finally {
+      setDeniabilitySession(false);
+    }
+  });
 });
 
 describe('trezor.js init memoization (Gap C)', () => {

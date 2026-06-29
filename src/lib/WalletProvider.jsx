@@ -89,6 +89,11 @@ import {
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
+// I3: surface the in-memory decoy/hidden session state to wallet-core egress gates
+// (e.g. hw/trezor.js) WITHOUT persisting it (a localStorage flag would be a
+// deniability tell). isDecoy/isHidden is React-only; this mirrors it to a plain
+// module flag wallet-core can read synchronously.
+import { setDeniabilitySession } from '@/wallet-core/deniabilitySession';
 import { createBackupEnvelope } from '@/wallet-core/vaultBackup';
 import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
 import {
@@ -270,14 +275,35 @@ export function WalletProvider({ children }) {
   // duress password (a decoy vault) rather than the real one. Internal flag for
   // app logic; the normal wallet UI deliberately does NOT surface it, so a
   // coercer sees no "decoy mode" indicator. See wallet-core/duress.js.
-  const [isDecoy, setIsDecoy] = useState(false);
+  const [isDecoy, setIsDecoyState] = useState(false);
   // STEALTH / HIDDEN WALLETS (S3 — Direction-C): true when the CURRENT session
   // was opened by a hidden wallet's reveal secret (entered at the SAME unlock
   // prompt) rather than the primary or duress password. Like isDecoy this is an
   // internal flag for app logic; the normal wallet UI deliberately does NOT
   // surface it, so an observer sees no "hidden wallet" indicator. A hidden
   // wallet is a real, independently-encrypted vault — see wallet-core/stealth.js.
-  const [isHidden, setIsHidden] = useState(false);
+  const [isHidden, setIsHiddenState] = useState(false);
+  // I3 egress guard sync. isDecoy/isHidden are React-only (never persisted — a
+  // localStorage flag would be a deniability tell). These wrappers mirror the
+  // CURRENT decoy/hidden state into the in-memory wallet-core marker so egress
+  // gates (e.g. hw/trezor.js) can see a real coerced session and refuse network/
+  // device calls. We compute "deniability active" from BOTH flags using refs so a
+  // setter for one does not read a stale value of the other.
+  const decoyRef = useRef(false);
+  const hiddenRef = useRef(false);
+  const syncDeniabilityMarker = useCallback(() => {
+    setDeniabilitySession(decoyRef.current === true || hiddenRef.current === true);
+  }, []);
+  const setIsDecoy = useCallback((v) => {
+    decoyRef.current = v === true;
+    setIsDecoyState(v);
+    syncDeniabilityMarker();
+  }, [syncDeniabilityMarker]);
+  const setIsHidden = useCallback((v) => {
+    hiddenRef.current = v === true;
+    setIsHiddenState(v);
+    syncDeniabilityMarker();
+  }, [syncDeniabilityMarker]);
   // Last SUCCESSFUL unlock timestamp (epoch ms) of the PREVIOUS primary unlock,
   // read from the container at unlock and shown to the owner as a tamper signal.
   // null in decoy/hidden/first-open. Primary-session only (deniability I3).
