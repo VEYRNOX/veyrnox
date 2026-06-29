@@ -1,6 +1,7 @@
 import TrezorConnect from '@trezor/connect-web';
 import { ethers } from 'ethers';
 import { getTransport } from './transport.js';
+import { isDeniabilitySessionActive } from '../deniabilitySession.js';
 
 const EVM_PATH = "m/44'/60'/0'/0/0";
 const SOL_PATH = "m/44'/501'/0'/0'";
@@ -33,9 +34,25 @@ async function ensureInit() {
 
 // Gap B — deniability guard (I3), mirrors trezorAddress.js. @trezor/connect-web
 // reaches out to connect.trezor.io; in deniability mode the app must make ZERO
-// backend calls, so we refuse before init/transport is ever touched. The persisted
-// `veyrnox-demo=1` flag is the deniability/demo signal used across the codebase.
+// backend calls, so we refuse before init/transport is ever touched.
+//
+// TWO signals are checked:
+//   1. A REAL decoy (duress) or hidden (stealth) session — the coercion case that
+//      matters most. This is held in-memory by WalletProvider (isDecoy/isHidden)
+//      and surfaced to wallet-core via deniabilitySession.js (it is deliberately
+//      NOT persisted to localStorage, which would be a forensic deniability tell).
+//      Previously ONLY the demo flag was checked, so a real coerced decoy/hidden
+//      session could still reach connect.trezor.io — a genuine I2/I3 violation.
+//   2. The persisted `veyrnox-demo=1` flag (demo/tour mode).
 function deniabilityActive() {
+  // (1) Real decoy/hidden session — in-memory, no localStorage dependency.
+  try {
+    if (isDeniabilitySessionActive()) return true;
+  } catch {
+    // Fail closed (I4): if the session marker cannot be read, block.
+    return true;
+  }
+  // (2) Demo/tour flag.
   try {
     return (
       typeof localStorage !== 'undefined' &&
