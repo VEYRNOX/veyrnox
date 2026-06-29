@@ -282,7 +282,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Encrypted Personal Backup',
         status: 'built',
         summary: 'Ciphertext-only vault backup',
-        explanation: 'Built (/cloud-backup). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device. The ECC independent audit (2026-06-23) confirmed key custody for this LOCAL path (plaintext seed never leaves the device; Argon2id 192 MiB + AES-256-GCM; verify-before-success) and the only finding (L-1, PIN floor 4→6 digits) was fixed in PR #340. Scope note: this is the local file path only — the BACKEND-ESCROW variant (a server-side ciphertext target) remains backend + audit gated and is not built.',
+        explanation: 'Built (/cloud-backup). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device. The ECC independent audit (2026-06-23) confirmed key custody for this LOCAL path (plaintext seed never leaves the device; Argon2id (64 MiB / t=3, audited at 192 MiB then lowered for device latency — not yet re-audited) + AES-256-GCM; verify-before-success) and the only finding (L-1, PIN floor 4→6 digits) was fixed in PR #340. Scope note: this is the local file path only — the BACKEND-ESCROW variant (a server-side ciphertext target) remains backend + audit gated and is not built.',
       },
     ],
   },

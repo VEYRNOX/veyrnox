@@ -172,8 +172,9 @@ describe('H3 — primary-success equalizer covers one KDF at current params', ()
   // outcome (miss/duress/panic/hidden all spend 3 via resolveDeniabilityUnlock).
   // WalletProvider pads that path with PRIMARY_UNLOCK_EQUALIZER_MS. If the pad is
   // SHORTER than one real KDF at the CURRENT params, primary success is measurably
-  // faster than a miss — a timing oracle. The constant was calibrated to legacy
-  // 64 MiB params (300 ms) but the KDF was raised to 192 MiB, so it must be re-checked.
+  // faster than a miss — a timing oracle. The constant is re-checked here against a
+  // real measured KDF at the CURRENT KDF_PARAMS (64 MiB / t=3; commit 1226085e
+  // lowered memory 192 → 64 MiB), so it tracks the params instead of a stale number.
   it('PRIMARY_UNLOCK_EQUALIZER_MS >= the measured cost of one KDF at KDF_PARAMS', async () => {
     const salt = new Uint8Array(16).fill(7);
     // Warm-up KDF (first call pays wasm init cost) so the measured one is steady-state.

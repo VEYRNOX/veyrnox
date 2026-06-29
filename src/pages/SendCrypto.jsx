@@ -888,7 +888,7 @@ export default function SendCrypto() {
   const resetVerify = () => {
     // Intentionally does NOT reset reauthAttempts — going Back to edit must not reset the
     // wrong-attempt cap within an unlocked session. Attempts reset on a new send (Send
-    // Another) or on lock/unmount. (The 192 MiB Argon2id per attempt is the real rate
+    // Another) or on lock/unmount. (The 64 MiB Argon2id per attempt is the real rate
     // limiter; the 5-cap → lock is the UX backstop on top of it.)
     setReauthValue(""); setReauthError(""); setApprovalAck(false);
   };

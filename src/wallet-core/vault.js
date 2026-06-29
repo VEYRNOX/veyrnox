@@ -112,7 +112,8 @@ function randomBytes(n) {
 }
 
 // --- Off-main-thread Argon2id (perceived-perf only; crypto + params UNCHANGED) ---
-// The 192 MiB derivation blocks the UI thread, so the unlock spinner can't animate
+// The KDF derivation (KDF_PARAMS.memorySize, currently 64 MiB) blocks the UI
+// thread, so the unlock spinner can't animate
 // and the app looks frozen. Run it in a Web Worker when one is available; ALWAYS
 // fall back to the exact in-thread argon2id on ANY worker problem (unsupported,
 // error, or timeout), so unlock can never break (I4, fail closed). The worker runs
@@ -216,9 +217,10 @@ async function deriveKey(password, salt, params = KDF_PARAMS) {
   // Import into WebCrypto as a non-extractable AES-GCM key.
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (raw), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
   zero(raw);
-  // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's ~192 MiB Argon2
-  // WASM instance from THIS derivation becomes GC-eligible before the next sequential
-  // derivation allocates its own 192 MiB — keeping peak memory one-at-a-time rather
+  // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's Argon2 WASM
+  // instance (KDF_PARAMS.memorySize, currently 64 MiB) from THIS derivation becomes
+  // GC-eligible before the next sequential derivation allocates its own
+  // KDF_PARAMS.memorySize — keeping peak memory one-at-a-time rather
   // than concurrent. Best-effort (GC is non-deterministic) and negligible latency;
   // the v2 onboarding architecture (create from the light empty dashboard) is the
   // primary mitigation. Web-Worker-per-KDF is the documented escalation if on-device
@@ -251,6 +253,7 @@ function paramsFromVault(vault) {
  * @param {object} vault
  * @returns {boolean}
  */
+// Bidirectional: existing 192 MiB vaults rekey down to 64 MiB on first unlock (latency trade-off, deliberate).
 export function vaultNeedsRekey(vault) {
   const p = paramsFromVault(vault);
   return p.memorySize !== KDF_PARAMS.memorySize

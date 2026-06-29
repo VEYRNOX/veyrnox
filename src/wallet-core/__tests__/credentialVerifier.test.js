@@ -8,7 +8,7 @@ import {
 } from '../credentialVerifier.js';
 import { KDF_PARAMS } from '../vault.js';
 
-// Cheap Argon2id params for the behavioural tests (full KDF_PARAMS is 192 MiB and
+// Cheap Argon2id params for the behavioural tests (full KDF_PARAMS is 64 MiB and
 // slow). The params==unlock guarantee is checked separately and cheaply below.
 const CHEAP = Object.freeze({ parallelism: 1, iterations: 1, memorySize: 1024, hashLength: 32 });
 

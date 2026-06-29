@@ -30,10 +30,11 @@ async function deriveRaw(credential, salt, params) {
     outputType: 'binary',
   });
   // DEFECT-A memory management (mirrors wallet-core/vault.js deriveKey). At unlock the
-  // vault decrypt KDF and THIS verifier KDF run back-to-back; both allocate ~192 MiB in
+  // vault decrypt KDF and THIS verifier KDF run back-to-back; both allocate
+  // KDF_PARAMS.memorySize (currently 64 MiB) in
   // hash-wasm. Yield to a macrotask so this derivation's WASM instance becomes
-  // GC-eligible BEFORE the next sequential 192 MiB allocation — without it, that is the
-  // exact two-concurrent-192-MiB pattern that caused the Defect-A RangeError in
+  // GC-eligible BEFORE the next sequential allocation — without it, that is the
+  // exact two-concurrent-allocation pattern that caused the Defect-A RangeError in
   // onboarding. Keeps peak memory one-KDF-at-a-time. Negligible latency.
   await new Promise((resolve) => setTimeout(resolve, 0));
   return raw;

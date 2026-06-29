@@ -14,7 +14,7 @@
 // This module performs NO cryptography and touches NO storage. It only
 // serialises/parses the JSON that sits INSIDE the existing AES-GCM ciphertext.
 // The audited primitives are untouched and unaware of it:
-//   - vault.js (Argon2id 192 MiB/t=3 + AES-256-GCM) still encrypts/decrypts a
+//   - vault.js (Argon2id 64 MiB/t=3 + AES-256-GCM) still encrypts/decrypts a
 //     single opaque string. We simply hand it `serializeContainer(...)` instead
 //     of a bare mnemonic, and parse what comes back out.
 //   - keystore (web.js / native.js) and vaultStore.js are unchanged: still one

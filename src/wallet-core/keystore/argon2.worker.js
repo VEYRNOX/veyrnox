@@ -2,7 +2,8 @@
 // STATUS: BUILT — off-main-thread Argon2id KDF (perf only; no new crypto).
 //
 // Runs the SAME hash-wasm argon2id with the SAME params the main thread would —
-// purely so the ~192 MiB derivation does not block the UI thread. vault.js always
+// purely so the derivation (KDF_PARAMS.memorySize, currently 64 MiB) does not
+// block the UI thread. vault.js always
 // falls back to in-thread derivation on any worker fault (I4, fail closed), so this
 // file can never lock a user out. KDF_PARAMS are unchanged; every set derives
 // identically (no deniability/timing tell, I3).
