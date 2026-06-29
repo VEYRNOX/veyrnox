@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, TrendingUp, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useWallet } from "@/lib/WalletProvider";
 
 // RSS feeds proxied through rss2json.com (free, no API key, CORS-friendly).
 // Two sources merged and sorted by date for broader coverage.
@@ -77,12 +78,22 @@ function NewsCard({ article }) {
 }
 
 export default function CryptoNewsFeed() {
+  // I3 guard: this useQuery fires on Dashboard / NewsSentiment mount and calls
+  // api.rss2json.com (a third-party RSS proxy). In a decoy or hidden session that
+  // is unauthorised network egress, violating I3 (deniable sessions make zero
+  // backend calls). Disable the fetch in those sessions — the component then
+  // renders a neutral placeholder (NOT an error), so a network/screen observer
+  // cannot distinguish a deniability session from an ordinary empty/loading state.
+  const { isDecoy, isHidden } = useWallet();
+  const i3Active = !isDecoy && !isHidden;
+
   const { data: news = [], isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["crypto-news"],
     queryFn: fetchCryptoNews,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
+    enabled: i3Active,
   });
 
   return (
@@ -104,7 +115,15 @@ export default function CryptoNewsFeed() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {!i3Active ? (
+        // Deniability session: render a neutral, network-silent placeholder that
+        // is indistinguishable from "no news available" — never an error state
+        // (which would tell an observer a deniability session is active).
+        <div className="text-center py-8 text-sm text-muted-foreground flex flex-col items-center gap-2">
+          <TrendingUp className="h-8 w-8 text-muted-foreground/40" />
+          <p>No news available right now</p>
+        </div>
+      ) : isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex gap-3 p-3 animate-pulse">
