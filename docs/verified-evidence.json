@@ -31,6 +31,18 @@
       "txid": "0x2d4d5df057c6f61abaf78383d6cad9d1f7f66abfa2b2aec6520a0be8811b8ea9",
       "date": "2026-06-11"
     },
+    "Two-Factor — Face ID biometric possession factor (physical iPhone, Sepolia)": {
+      "chain": "sepolia",
+      "txid": "0xd1c97fa2f0a8ec2ae1038364f0106f6ef98b27258ad1ec2faa227de0baf1e2e7",
+      "explorer": "https://sepolia.etherscan.io/tx/0xd1c97fa2f0a8ec2ae1038364f0106f6ef98b27258ad1ec2faa227de0baf1e2e7",
+      "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+      "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+      "amount": "0.001 ETH",
+      "block": 11168258,
+      "confirmations": 51,
+      "verified_onchain": "Explorer-confirmed 2026-06-29: status SUCCESS, chainId 11155111, block 11168258, 51 confirmations. Send was gated behind Face ID (OS biometric possession factor) on a physical iOS device — NOT a software authenticator. This is the physical-device bar stated in _h1_passkey_2fa_fix_confirmation caveats.",
+      "date": "2026-06-29"
+    },
     "Bitcoin send (wallet-core module, testnet script)": {
       "chain": "bitcoin-testnet",
       "txid": "d9cc113f2c9c94d7175e546e29b16920aeadd9d34baca7596a0394ab2362a62e",
