@@ -200,7 +200,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Hardware Wallet',
         status: 'built',
         summary: 'Trezor — cold-key signing for ETH, BTC, SOL',
-        explanation: 'Built (/hardware-wallet): Trezor (WebUSB, Chrome/Edge desktop) supports address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. Private key never leaves the hardware device (I1). Deniability mode blocks all Trezor calls (I3). Non-WebUSB browsers (e.g. iOS WKWebView) fail soft to a "not available" card (no silent error). Ledger, ERC-20 hardware signing, and multi-account paths are not yet wired.',
+        explanation: 'Built (/hardware-wallet): Trezor (WebUSB, Chrome/Edge desktop) supports address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. Private key never leaves the hardware device (I1). Deniability sessions block all Trezor calls before any connect.trezor.io egress: demo/tour mode (veyrnox-demo) AND a real decoy/hidden (duress/stealth) session are both gated via the in-memory deniabilitySession marker, fail-closed (I3). Built, not device-verified. Non-WebUSB browsers (e.g. iOS WKWebView) fail soft to a "not available" card (no silent error). Ledger, ERC-20 hardware signing, and multi-account paths are not yet wired.',
       },
     ],
   },
