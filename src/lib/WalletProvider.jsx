@@ -166,11 +166,16 @@ const keyStore = getKeyStore();
 // other unlock outcome (a miss / duress / panic / hidden all spend 3 KDFs via
 // resolveDeniabilityUnlock; primary success short-circuits). This sleep closes
 // the gap so correct-primary and wrong-password cost the same wall-clock time.
-// INVARIANT: must be >= the wall-clock cost of ONE Argon2id KDF at the CURRENT
-// KDF_PARAMS (192 MiB / t=3, ~1.7 s on target device). The old value (300 ms)
-// was calibrated to the legacy 64 MiB params and is ~1.4 s short — a timing
-// oracle. 2500 ms covers the worst-case single KDF at current params with margin.
-export const PRIMARY_UNLOCK_EQUALIZER_MS = 2500;
+// INVARIANT (two-sided): must be >= the wall-clock cost of ONE Argon2id KDF at
+// the CURRENT KDF_PARAMS, but also NOT much larger than the worst-case path
+// (<= 4 KDFs) — over-padding turns the fast path into a SLOWER-than-miss oracle.
+// At the current 64 MiB / t=3 params one KDF is ~500 ms (commit 1226085e lowered
+// memory 192 → 64 MiB). The legacy 2500 ms was calibrated for the old ~1.7 s
+// 192 MiB KDF and now over-pads (success ≈ 1 KDF + 2500 ms vs miss ≈ 4 × 500 ms
+// = 2 s → success ~1 s SLOWER). 1500 ms (≈ 3 × one 64 MiB KDF) keeps the padded
+// success path level with the 4-KDF worst case. See primaryUnlockEqualizer.test.js
+// for the two-sided bound derived from KDF_PARAMS.memorySize.
+export const PRIMARY_UNLOCK_EQUALIZER_MS = 1500;
 
 // M6: re-export so callers/tests pin the reveal window against the same constant.
 export { REAUTH_WINDOW_MS };

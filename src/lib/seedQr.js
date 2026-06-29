@@ -6,7 +6,7 @@
 // construction on an independent audit (§12); the owner has deliberately
 // overridden that gate. To minimize risk this module invents NO crypto — it
 // reuses the wallet's in-production vault construction (wallet-core/vault.js:
-// Argon2id 192 MiB / t=3 -> AES-256-GCM, CSPRNG salt/IV). Treat as provisional
+// Argon2id 64 MiB / t=3 -> AES-256-GCM, CSPRNG salt/IV). Treat as provisional
 // until independently audited. This file adds only the versioned artifact
 // envelope and the QR encode/decode.
 import QRCode from 'qrcode';

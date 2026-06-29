@@ -1,34 +1,38 @@
 import { describe, it, expect } from 'vitest';
 import { PRIMARY_UNLOCK_EQUALIZER_MS } from '../WalletProvider.jsx';
+import { KDF_PARAMS } from '../../wallet-core/vault.js';
 
-// H3 — timing equalizer must cover one Argon2id KDF at the CURRENT KDF_PARAMS.
+// H3 — timing equalizer must cover one Argon2id KDF at the CURRENT KDF_PARAMS,
+// and must NOT exceed the worst-case multi-KDF path.
 //
 // The primary-success unlock path runs ~1 FEWER Argon2id KDF than any other
 // outcome (miss/duress/panic/hidden each spend 3 via resolveDeniabilityUnlock).
 // WalletProvider pads the fast path with PRIMARY_UNLOCK_EQUALIZER_MS so correct
-// password and wrong password cost the same wall-clock time. If the pad is much
-// shorter than one real KDF, primary success is measurably faster than a miss —
-// a timing oracle survives.
+// password and wrong password cost the same wall-clock time. The bound is
+// TWO-SIDED:
+//   - too short  → primary success is measurably FASTER than a miss (legacy
+//     192-MiB-calibrated oracle, the 300 ms regression).
+//   - too long   → primary success is measurably SLOWER than a miss. After the
+//     64 MiB KDF downgrade (commit 1226085e), a 2500 ms pad that was sized for
+//     ~1.7 s 192 MiB KDFs over-pads the fast path: primary-success ≈ 1 KDF + pad
+//     while a miss ≈ 4 KDFs. At ~0.5 s/KDF that makes success ~1 s SLOWER than a
+//     miss — a fresh distinguisher in the opposite direction.
 //
-// The audit measured one KDF at the current 192 MiB / t=3 params at ~1.7 s. The
-// legacy value (300 ms) was calibrated to the old 64 MiB params and is ~1.4 s
-// short. This is a FAST guard (a plain constant assertion, no KDF run) so it can
-// run on every commit; deniability-timing.test.js has the heavy variant that
-// measures a real KDF and compares directly.
-describe('H3 — PRIMARY_UNLOCK_EQUALIZER_MS floor', () => {
-  // Conservative floor: well above the legacy 300 ms (which fails this) but below
-  // the ~1.7 s audit measurement, so it pins the regression without coupling to an
-  // exact device-specific KDF time.
-  const ONE_KDF_FLOOR_MS = 1500;
+// Estimate one KDF from KDF_PARAMS.memorySize so this guard tracks the runtime
+// cost instead of a hardcoded device number. One KDF touches
+// memorySize × iterations of memory; measured mobile-WebView Argon2id
+// throughput is ~400 MB/s, which puts a 64 MiB / t=3 KDF at ~500 ms.
+describe('H3 — PRIMARY_UNLOCK_EQUALIZER_MS two-sided bound', () => {
+  const memMiB = KDF_PARAMS.memorySize / 1024;
+  const totalMiB = memMiB * KDF_PARAMS.iterations; // memory touched per full KDF
+  const THROUGHPUT_MIB_PER_S = 400; // measured mobile-WebView Argon2id ≈ 400 MB/s
+  const oneKdfMs = (totalMiB / THROUGHPUT_MIB_PER_S) * 1000; // ≈ 480 ms at 64 MiB/t3
 
-  it('is at least the conservative one-KDF floor (>= 1500 ms)', () => {
-    expect(PRIMARY_UNLOCK_EQUALIZER_MS).toBeGreaterThanOrEqual(ONE_KDF_FLOOR_MS);
+  it('is at least one KDF (>= oneKdfMs) so the fast path is not the short oracle', () => {
+    expect(PRIMARY_UNLOCK_EQUALIZER_MS).toBeGreaterThanOrEqual(oneKdfMs);
   });
 
-  // Upper sanity bound: keep the pad from being absurd. One KDF at current params
-  // is ~1.7 s; the constant should not be wildly larger (which would hurt UX for
-  // no security gain) nor smaller than the floor.
-  it('is within a sane range (< 5000 ms) so unlock UX stays reasonable', () => {
-    expect(PRIMARY_UNLOCK_EQUALIZER_MS).toBeLessThan(5000);
+  it('is at most the worst-case path (<= 4 * oneKdfMs) so it is not the long oracle', () => {
+    expect(PRIMARY_UNLOCK_EQUALIZER_MS).toBeLessThanOrEqual(4 * oneKdfMs);
   });
 });

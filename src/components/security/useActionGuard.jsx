@@ -20,7 +20,7 @@
 //
 // When NO second factor is configured, requireTwoFactor runs the action immediately
 // (opt-in — unchanged behaviour). When one IS, it pops the gate; the action runs
-// ONLY on an allowed verdict. The 192 MiB Argon2id checks run SEQUENTIALLY inside
+// ONLY on an allowed verdict. The 64 MiB Argon2id checks run SEQUENTIALLY inside
 // verify() (one-at-a-time — Defect-A safe). 5 wrong attempts -> lock() (fail closed).
 //
 // Honest scope: the 'password' method enforces on the ACTIVE set (primary);
@@ -85,7 +85,7 @@ export function useActionGuard() {
       return evaluateTwoFactor({ pinOk, passwordOk: passkeyOk, actionPasswordConfigured: true });
     }
     // Factor 2 (password method): the Action Password, also full vault cost. Sequential
-    // (never concurrent with the PIN KDF) — one 192 MiB allocation at a time.
+    // (never concurrent with the PIN KDF) — one 64 MiB allocation at a time.
     const passwordOk = await verifyActionPassword(password);
     return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
   }, [pending, verifyActiveCredentialDetailed, verifyActionPassword]);
