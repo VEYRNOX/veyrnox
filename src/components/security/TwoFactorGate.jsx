@@ -8,7 +8,7 @@
 //
 // The component is presentation + attempt-tracking only; it holds NO secret beyond
 // the in-progress inputs and clears them after every attempt. The slow part (two
-// 192 MiB Argon2id derivations) happens inside verify(), in the caller.
+// 64 MiB Argon2id derivations) happens inside verify(), in the caller.
 //
 // UNAUDITED-PROVISIONAL.
 

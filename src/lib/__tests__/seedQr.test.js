@@ -17,7 +17,7 @@ const MN12 = 'legal winner thank year wave sausage worth useful legal winner tha
 const MN24 = 'letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless';
 const PW = 'correct horse battery staple T3st!';
 
-// Argon2id @192 MiB is ~2-3s per derivation; encrypt ONCE per mnemonic and reuse.
+// Argon2id @64 MiB is ~0.5-1s per derivation; encrypt ONCE per mnemonic and reuse.
 let art12, art24;
 beforeAll(async () => {
   art12 = await encryptSeedBackup(MN12, PW);

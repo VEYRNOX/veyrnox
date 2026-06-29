@@ -125,8 +125,9 @@ function b64(u8) {
 //
 // The kdf field MUST carry the CURRENT params (imported from vault.js), not
 // hardcoded ones: decryptVault derives with the blob's OWN recorded params
-// (M3 migration), so a stale 64 MiB here would make a padded/absent feature cost
-// one 64 MiB KDF while a configured feature's real blob costs a 192 MiB KDF —
+// (M3 migration), so a stale/hardcoded value here would make a padded/absent
+// feature cost a KDF at the wrong work factor while a configured feature's real
+// blob costs a KDF at the current KDF_PARAMS.memorySize —
 // reintroducing exactly the timing tell M2 closed. Tracking KDF_PARAMS keeps the
 // dummy cost equal to a real attempt as the at-rest params evolve.
 function chaffBlob() {
