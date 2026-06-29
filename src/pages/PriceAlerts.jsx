@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { fetchMarketPricesUsdCG as fetchMarketPricesUsd } from "@/lib/coinGecko.js";
 import { MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
 import { isLivePricesEnabled } from "@/lib/priceFeed";
+import { useWallet } from "@/lib/WalletProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,13 @@ const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: 
 
 export default function PriceAlerts() {
   const queryClient = useQueryClient();
+  // I3 guard: live prices default ON, so navigating here in a decoy/hidden
+  // session would poll CoinGecko. Also gate the price query on the deniability
+  // flags so a deniable session makes zero egress (I3); the ticker then falls
+  // back to its existing "Live prices off" static state — no network, no tell.
+  // (The PriceAlert.list query is local storage, not network egress — left as-is.)
+  const { isDecoy, isHidden } = useWallet();
+  const pricesEnabled = isLivePricesEnabled() && !isDecoy && !isHidden;
   const [open, setOpen] = useState(false);
   const [currency, setCurrency] = useState("BTC");
   const [direction, setDirection] = useState("above");
@@ -77,7 +85,7 @@ export default function PriceAlerts() {
     queryKey: ["live-prices"],
     queryFn: fetchMarketPricesUsd,
     staleTime: 30_000,
-    enabled: isLivePricesEnabled(),
+    enabled: pricesEnabled,
   });
 
   const createAlert = useMutation({
@@ -107,6 +115,9 @@ export default function PriceAlerts() {
   // device's alerts, on demand. Volatility alerts are left to the in-app poller
   // (usePriceAlertNotifier) which needs two samples to measure a swing.
   const checkNow = async () => {
+    // I3: never reach the price feed in a deniability session, even on an
+    // explicit tap. Silent no-op (no error tell).
+    if (!pricesEnabled) return;
     setChecking(true);
     try {
       const livePrices = await fetchMarketPricesUsd();
@@ -138,7 +149,9 @@ export default function PriceAlerts() {
     }
   };
 
-  const livePricesOn = isLivePricesEnabled();
+  // Mirror the query gate (incl. deniability) so the ticker basis matches what we
+  // actually fetch: false in a deniability session ⇒ neutral "Live prices off".
+  const livePricesOn = pricesEnabled;
 
   const activeAlerts = alerts.filter(a => a.status === "active");
   const triggeredAlerts = alerts.filter(a => a.status === "triggered");
