@@ -9,6 +9,7 @@
 
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const SRC = 'public/veyrnox-icon.svg';
 const DEST = 'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png';
