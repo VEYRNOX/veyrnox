@@ -12,6 +12,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchPortfolioPricesUsdCG as fetchPortfolioPricesUsd } from '@/lib/coinGecko.js';
 import { PORTFOLIO_SYMBOLS } from '@/lib/cryptoCompare.js';
+import { useWallet } from '@/lib/WalletProvider';
 
 // localStorage opt-in pref. "1" = on / ABSENT = off (mirrors lib/biometric.js,
 // wallet-core/auditLog.js). Absence = off is deliberate: a fresh device makes no
@@ -52,7 +53,12 @@ export async function fetchLivePricesUsd() {
  * react-query's shape plus a stable `updatedAt`.
  */
 export function useLivePrices() {
-  const enabled = isLivePricesEnabled();
+  // I3 guard: live prices default ON, so the localStorage pref alone would let a
+  // decoy/hidden session poll CoinGecko. Also gate on the deniability flags so a
+  // deniable session makes zero price egress (I3). Disabled returns null data —
+  // identical to "live prices off", so there is no visual tell.
+  const { isDecoy, isHidden } = useWallet();
+  const enabled = isLivePricesEnabled() && !isDecoy && !isHidden;
   const q = useQuery({
     queryKey: ['live-prices-usd'],
     queryFn: fetchLivePricesUsd,
