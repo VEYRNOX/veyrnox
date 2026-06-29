@@ -124,7 +124,7 @@ function EntryShell({ error, children }) {
           <p className="text-sm text-muted-foreground">Your seed phrase is your account. We never hold your keys.</p>
         </div>
         {error && (
-          <div className="flex items-start gap-2 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
+          <div role="alert" aria-live="assertive" className="flex items-start gap-2 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {error}
           </div>
         )}
@@ -608,10 +608,18 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try { await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
-      clearPendingPin(); setProvisioning(false);
-      const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
-        ? (e.userMessage || "On web, use a password of at least 12 characters instead of a PIN.")
-        : "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
+      setProvisioning(false);
+      if (e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT) {
+        // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
+        // Web mainnet vaults require a ≥12-char password; the user needs to go back
+        // and restart onboarding with a full password instead of a PIN.
+        const msg = e.userMessage || "Web vaults require a password of at least 12 characters. Go back and restart setup using a password instead of a PIN.";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      clearPendingPin();
+      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
       toast.error(msg);
     } finally { setBusy(false); }
@@ -634,13 +642,20 @@ export default function WalletEntry() {
         setError("That doesn't look like a valid recovery phrase. Check the words and try again.");
         return;
       }
+      if (e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT) {
+        // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
+        // Web mainnet vaults require a ≥12-char password; the user needs to go back
+        // and restart onboarding with a full password instead of a PIN.
+        const msg = e.userMessage || "Web vaults require a password of at least 12 characters. Go back and restart setup using a password instead of a PIN.";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
       // Genuine provisioning/teardown failure: fail closed. Clear the pending PIN;
       // the message must reflect that the user has to set their PIN again.
       if (import.meta.env.DEV) console.error('[WalletEntry] import failed:', e?.name || e);
       clearPendingPin();
-      const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
-        ? (e.userMessage || "On web, use a password of at least 12 characters instead of a PIN.")
-        : "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
+      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
       toast.error(msg);
     } finally { setBusy(false); }
