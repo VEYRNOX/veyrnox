@@ -6,6 +6,7 @@ import { Core } from '@walletconnect/core';
 import { WalletKit } from '@reown/walletkit';
 import { getSdkError, buildApprovedNamespaces } from '@walletconnect/utils';
 import { SUPPORTED_CHAIN_IDS } from './router.js';
+import { checkDappDomain } from '../../../risk/knownBadDapps.js';
 
 const PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 
@@ -185,6 +186,20 @@ export async function approveSession(proposalId, evmAddress, chainIds) {
   const entry = _pendingProposals.get(proposalId);
   if (!entry) throw new Error('Proposal not found — it may have expired');
   const proposal = entry.proposal;
+  // I4 defense-in-depth: re-check the dApp domain in the handler itself so a
+  // known-bad dApp is rejected even if the UI ackKnownBad gate is bypassed.
+  // Fail closed — the key is never touched and client.approveSession is never
+  // reached. This mirrors the SessionProposalModal block; it is not a substitute
+  // for it.
+  const dappCheck = checkDappDomain(proposal.params?.proposer?.metadata?.url);
+  if (dappCheck.flagged) {
+    _clearProposalTimer(proposalId);
+    _pendingProposals.delete(proposalId);
+    throw Object.assign(
+      new Error(`Connection blocked: ${dappCheck.domain} is on the local known-bad dApp list (${dappCheck.reason}).`),
+      { code: 'DAPP_BLOCKED_KNOWN_BAD', domain: dappCheck.domain },
+    );
+  }
   const supportedCaip = chainIds
     .filter((id) => SUPPORTED_CHAIN_IDS.has(id))
     .map((id) => `eip155:${id}`);

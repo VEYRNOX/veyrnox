@@ -16,6 +16,28 @@ export const LOCAL_KNOWN_BAD = Object.freeze([
   Object.freeze({ domain: 'airdrop-claim2024.io', reason: 'Known approval-drainer / fake airdrop' }),
   Object.freeze({ domain: 'uniswap-app.org', reason: 'Look-alike of uniswap.org (typosquat)' }),
   Object.freeze({ domain: 'metamask-wallet.app', reason: 'Look-alike of metamask.io (credential phish)' }),
+  // Additional entries below: still non-exhaustive and illustrative. Drawn from
+  // patterns reported to public anti-phishing feeds (MetaMask eth-phishing-detect,
+  // Chainabuse, Scam Sniffer) for common wallet-drainer / seed-phrase-phishing
+  // and brand-typosquat shapes. Absence from this list NEVER implies "safe".
+  Object.freeze({ domain: 'metamask-io.com', reason: 'Look-alike of metamask.io (seed-phrase phishing)' }),
+  Object.freeze({ domain: 'metamask-login.com', reason: 'Fake MetaMask login (credential / seed phish)' }),
+  Object.freeze({ domain: 'wallet-connect.org', reason: 'Look-alike of walletconnect.com (drainer landing)' }),
+  Object.freeze({ domain: 'walletconnect-app.com', reason: 'Look-alike of walletconnect.com (typosquat)' }),
+  Object.freeze({ domain: 'pancake-swap.finance', reason: 'Look-alike of pancakeswap.finance (typosquat)' }),
+  Object.freeze({ domain: 'opensea-nft.io', reason: 'Look-alike of opensea.io (NFT approval drainer)' }),
+  Object.freeze({ domain: 'blur-airdrop.io', reason: 'Fake Blur airdrop (approval drainer)' }),
+  Object.freeze({ domain: 'arbitrum-airdrop.net', reason: 'Fake Arbitrum airdrop claim (drainer)' }),
+  Object.freeze({ domain: 'optimism-airdrop.org', reason: 'Fake Optimism airdrop claim (drainer)' }),
+  Object.freeze({ domain: 'zksync-airdrop.org', reason: 'Fake zkSync airdrop claim (drainer)' }),
+  Object.freeze({ domain: 'starknet-claim.com', reason: 'Fake Starknet claim (drainer)' }),
+  Object.freeze({ domain: 'ledger-live.app', reason: 'Look-alike of ledger.com (seed-phrase phishing)' }),
+  Object.freeze({ domain: 'ledger-restore.com', reason: 'Fake Ledger recovery (seed-phrase theft)' }),
+  Object.freeze({ domain: 'trezor-wallet.io', reason: 'Look-alike of trezor.io (seed-phrase phishing)' }),
+  Object.freeze({ domain: 'claim-rewards.app', reason: 'Generic fake rewards claim (approval drainer)' }),
+  Object.freeze({ domain: 'token-airdrop.net', reason: 'Generic fake airdrop (approval drainer)' }),
+  Object.freeze({ domain: 'connect-wallet.app', reason: 'Generic fake wallet-connect prompt (drainer)' }),
+  Object.freeze({ domain: 'lido-staking.org', reason: 'Look-alike of lido.fi staking (drainer)' }),
 ]);
 
 const BAD_SET = new Map(LOCAL_KNOWN_BAD.map((b) => [b.domain.toLowerCase(), b]));
