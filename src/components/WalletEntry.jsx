@@ -636,6 +636,7 @@ export default function WalletEntry() {
       }
       // Genuine provisioning/teardown failure: fail closed. Clear the pending PIN;
       // the message must reflect that the user has to set their PIN again.
+      if (import.meta.env.DEV) console.error('[WalletEntry] import failed:', e?.name || e);
       clearPendingPin();
       const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
         ? (e.userMessage || "On web, use a password of at least 12 characters instead of a PIN.")
