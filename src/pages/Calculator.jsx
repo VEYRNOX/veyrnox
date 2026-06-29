@@ -6,6 +6,7 @@ import { ArrowLeftRight, RefreshCw, TrendingUp, AlertTriangle } from "lucide-rea
 import { MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
 import { fetchMarketPricesFiatCG } from "@/lib/coinGecko.js";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
+import { useWallet } from "@/lib/WalletProvider";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
@@ -33,12 +34,19 @@ export default function Calculator() {
   const [fiatAmount, setFiatAmount] = useState("");
   const [lastEdited, setLastEdited] = useState("crypto"); // "crypto" | "fiat"
 
+  // I3 guard: live prices default ON, so navigating here in a decoy/hidden
+  // session would fetch CoinGecko. Also gate on the deniability flags so a
+  // deniable session makes zero egress (I3); the page then shows its existing
+  // "Live prices off" static state — no network call, no error reveal.
+  const { isDecoy, isHidden } = useWallet();
+  const pricesEnabled = isLivePricesEnabled() && !isDecoy && !isHidden;
+
   const { data: prices, isLoading, isError, error, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["conversion-prices"],
     queryFn: fetchPrices,
     refetchInterval: 30_000,
     staleTime: 20_000,
-    enabled: isLivePricesEnabled(),
+    enabled: pricesEnabled,
   });
 
   const rate = prices?.[fromCrypto]?.[toFiat] ?? null;
@@ -78,7 +86,10 @@ export default function Calculator() {
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : null;
 
-  const livePricesOn = isLivePricesEnabled();
+  // Mirror the query gate so the UI basis matches what we actually fetch: in a
+  // deniability session this is false, surfacing the neutral "Live prices off"
+  // static state (no error tell).
+  const livePricesOn = pricesEnabled;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
