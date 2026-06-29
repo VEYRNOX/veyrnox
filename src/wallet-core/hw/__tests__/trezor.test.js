@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock @trezor/connect-web
 vi.mock('@trezor/connect-web', () => ({
@@ -17,6 +17,70 @@ vi.mock('../transport.js', () => ({
 
 import TrezorConnect from '@trezor/connect-web';
 import { ethers } from 'ethers';
+
+afterEach(() => {
+  try { localStorage.removeItem('veyrnox-demo'); } catch { /* ignore */ }
+});
+
+describe('trezor.js deniability guard (I3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    try { localStorage.removeItem('veyrnox-demo'); } catch { /* ignore */ }
+  });
+
+  it('blocks signing with TREZOR_DENIABILITY_BLOCKED when demo/deniability is active', async () => {
+    localStorage.setItem('veyrnox-demo', '1');
+    const { trezorSignEvmTx } = await import('../trezor.js');
+
+    await expect(trezorSignEvmTx({
+      chainId: 1,
+      nonce: 0,
+      to: '0x1234567890123456789012345678901234567890',
+      value: 1n,
+      gasLimit: 21000n,
+      maxFeePerGas: 1n,
+      maxPriorityFeePerGas: 1n,
+    })).rejects.toThrow('TREZOR_DENIABILITY_BLOCKED');
+
+    // I3: zero device/network calls when deniability is active
+    expect(TrezorConnect.init).not.toHaveBeenCalled();
+    expect(TrezorConnect.ethereumSignTransaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('trezor.js init memoization (Gap C)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules(); // fresh module → fresh _initPromise, order-independent
+    try { localStorage.removeItem('veyrnox-demo'); } catch { /* ignore */ }
+  });
+
+  it('calls TrezorConnect.init at most once across multiple sign calls', async () => {
+    // Real TrezorConnect.init() returns a promise; mirror that so the memo guard
+    // (`if (!_initPromise)`) sees a truthy value and does not re-init.
+    TrezorConnect.init.mockResolvedValue(undefined);
+    TrezorConnect.ethereumSignTransaction.mockResolvedValue({
+      success: true,
+      payload: { v: '0x1', r: '0x' + 'a'.repeat(64), s: '0x' + 'b'.repeat(64) },
+    });
+    const { trezorSignEvmTx } = await import('../trezor.js');
+
+    const tx = {
+      chainId: 11155111,
+      nonce: 0,
+      to: '0x1234567890123456789012345678901234567890',
+      value: 1000n,
+      gasLimit: 21000n,
+      maxFeePerGas: 1000000000n,
+      maxPriorityFeePerGas: 100000000n,
+    };
+    await trezorSignEvmTx(tx);
+    await trezorSignEvmTx(tx);
+    await trezorSignEvmTx(tx);
+
+    expect(TrezorConnect.init).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('trezorSignEvmTx', () => {
   beforeEach(() => vi.clearAllMocks());
