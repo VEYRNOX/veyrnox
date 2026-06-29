@@ -170,6 +170,110 @@ export function buildAndSignSol({ keypair, toPubkey, amountLamports, blockhash, 
   return { rawTx, signature };
 }
 
+/**
+ * Build an UNSIGNED System-transfer transaction and return it serialized as
+ * base64. This is the build half for an EXTERNAL signer (the Trezor SOL path
+ * signs on-device, never exposing a key to this process — I1). A blockhash may
+ * be supplied directly (network-free, for tests/precomputed) OR fetched live via
+ * a connection (`{ getLatestBlockhash() }`) or a `networkKey`.
+ *
+ * The returned tx carries NO signature; the caller hands the serialized bytes to
+ * the device, gets a signature back, then attaches it and broadcasts.
+ *
+ * @param {object} p
+ * @param {string} p.fromAddress  - fee-payer / sender base58 address.
+ * @param {string} p.toAddress    - recipient base58 address.
+ * @param {bigint|number|string} p.lamports
+ * @param {number} [p.priorityFee=0]      - priority micro-lamports (price).
+ * @param {number} [p.computeUnitLimit=0]
+ * @param {string} [p.blockhash]          - precomputed recent blockhash (skips fetch).
+ * @param {object} [p.connection]         - has getLatestBlockhash() (web3.js Connection).
+ * @param {string} [p.networkKey]         - fetch a fresh blockhash via provider.
+ * @returns {Promise<{ unsignedTxBase64:string, blockhash:string, lastValidBlockHeight?:number }> | { unsignedTxBase64:string, blockhash:string }}
+ */
+export function buildUnsignedSolTx({
+  fromAddress,
+  toAddress,
+  lamports,
+  priorityFee = 0,
+  computeUnitLimit = 0,
+  blockhash,
+  connection,
+  networkKey,
+}) {
+  assertSolRecipient(toAddress);
+  const fromPubkey = new PublicKey(fromAddress);
+  const toPubkey = new PublicKey(toAddress);
+
+  const assemble = (bh, lastValidBlockHeight) => {
+    const tx = new Transaction({ feePayer: fromPubkey, recentBlockhash: bh });
+    for (const ix of solComputeBudgetIxns({ priorityMicroLamports: priorityFee, computeUnitLimit })) {
+      tx.add(ix);
+    }
+    tx.add(SystemProgram.transfer({ fromPubkey, toPubkey, lamports: BigInt(lamports) }));
+    // Serialize WITHOUT requiring signatures — it is intentionally unsigned here.
+    const raw = tx.serialize({ requireAllSignatures: false, verifySignatures: false });
+    const out = { unsignedTxBase64: Buffer.from(raw).toString('base64'), blockhash: bh };
+    if (lastValidBlockHeight != null) out.lastValidBlockHeight = lastValidBlockHeight;
+    return out;
+  };
+
+  // Network-free path: caller supplied a blockhash (tests / precomputed).
+  if (blockhash != null) return assemble(blockhash);
+
+  // Live path: fetch a fresh blockhash, then assemble.
+  const fetchBh = connection
+    ? connection.getLatestBlockhash()
+    : getLatestBlockhash(networkKey);
+  return Promise.resolve(fetchBh).then(({ blockhash: bh, lastValidBlockHeight }) =>
+    assemble(bh, lastValidBlockHeight),
+  );
+}
+
+/**
+ * Reassemble a broadcastable signed transaction from an unsigned base64 tx + an
+ * EXTERNAL signer's signature (the Trezor SOL path returns only the signature
+ * hex; the device holds the key — I1). The signature is attached for the
+ * fee-payer; the result is verified before it is returned (fail closed, I4).
+ *
+ * @param {string} unsignedTxBase64 - from buildUnsignedSolTx.
+ * @param {string} fromAddress      - fee-payer base58 address (the signer).
+ * @param {string} signatureHex     - device signature (hex), 64 bytes.
+ * @returns {string} signed transaction serialized as base64.
+ */
+export function attachSolSignature(unsignedTxBase64, fromAddress, signatureHex) {
+  const tx = Transaction.from(Buffer.from(unsignedTxBase64, 'base64'));
+  const sig = Buffer.from(signatureHex.replace(/^0x/, ''), 'hex');
+  if (sig.length !== 64) throw new Error('Invalid signature length for Solana (expected 64 bytes).');
+  tx.addSignature(new PublicKey(fromAddress), sig);
+  if (!tx.verifySignatures()) {
+    throw new Error('Device signature does not verify for this transaction — refusing to broadcast.');
+  }
+  const raw = tx.serialize(); // requires + verifies all signatures
+  return Buffer.from(raw).toString('base64');
+}
+
+/**
+ * Broadcast an ALREADY-SIGNED transaction (base64) and return its signature +
+ * explorer URL. The broadcast half for an external signer (Trezor SOL path).
+ * broadcastRawTx re-enforces the mainnet gate. The signature is read back from
+ * the deserialized signed bytes (the device produced it); the RPC's returned
+ * signature is preferred when present.
+ *
+ * @param {string} signedTxBase64 - fully-signed serialized transaction (base64).
+ * @param {string} networkKey
+ * @returns {Promise<{ signature:string, explorerUrl:string }>}
+ */
+export async function broadcastSignedSolTx(signedTxBase64, networkKey) {
+  getSolNetwork(networkKey); // throws if mainnet gated / disabled
+  const raw = Buffer.from(signedTxBase64, 'base64');
+  const tx = Transaction.from(raw);
+  const localSig = base58FromSignature(tx);
+  const sig = await broadcastRawTx(networkKey, raw);
+  const signature = sig || localSig;
+  return { signature, explorerUrl: solExplorerUrl(networkKey, 'tx', signature) };
+}
+
 // The tx's first signature, base58-encoded, is the canonical transaction id.
 // (Encoded with @scure/base rather than reaching into web3.js's bundled bs58.)
 function base58FromSignature(tx) {

@@ -66,6 +66,9 @@ function AddressRow({ label, address }) {
 
 function friendlyError(err) {
   if (err === 'TREZOR_UNSUPPORTED') return 'Trezor is not supported on this platform.';
+  if (err === 'TREZOR_DENIABILITY_BLOCKED' || err.toLowerCase().includes('deniability')) {
+    return 'Not available in this wallet mode.';
+  }
   if (err.toLowerCase().includes('cancel')) return 'Cancelled on device.';
   if (err.toLowerCase().includes('firmware')) return 'Firmware update required. Open Trezor Suite to update.';
   return err;

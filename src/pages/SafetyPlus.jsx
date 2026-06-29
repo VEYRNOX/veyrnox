@@ -17,7 +17,7 @@ const SECTIONS = [
     nav: "SECURITY",
     icon: ShieldCheck,
     features: [
-      { name: "Hardware Wallet", summary: "Cold-key signing with Ledger & Trezor — keys never leave the device", route: "/hardware-wallet" },
+      { name: "Hardware Wallet", summary: "Cold-key signing with Trezor — keys never leave the device", route: "/hardware-wallet" },
       { name: "Transaction Simulation", summary: "Pre-sign preview with risk flags before you approve anything", route: "/risk" },
       { name: "Spending Limits", summary: "Rule-based per-transaction and daily caps", route: "/security" },
       { name: "Token Approvals (View + Revoke)", summary: "Inspect and revoke ERC-20 allowances", route: "/token-approvals" },
