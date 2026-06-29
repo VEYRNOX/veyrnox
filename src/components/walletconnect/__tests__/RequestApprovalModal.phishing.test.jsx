@@ -41,4 +41,19 @@ describe('C4 — phishing check reads active-session metadata, not proposer', ()
     // request is flagged so the phishing banner renders (I4 fail closed).
     expect(src).toMatch(/flagged:\s*true/);
   });
+
+  it('renders a known-bad warning banner gated on dapp.flagged', () => {
+    // The per-signing phishing warning is shown when the resolved dApp is flagged.
+    expect(src).toMatch(/dapp\.flagged\s*&&/);
+  });
+
+  it('warns but does NOT re-block signing on a flagged dApp (dapp.flagged absent from approveBlocked)', () => {
+    // The user already acknowledged the phishing risk at connection time (the
+    // approveSession UI + handler gate). Re-blocking every signing request would be
+    // UX-hostile, so the per-sign treatment is a warning only. Pin that dapp.flagged
+    // is NOT folded into the approveBlocked predicate.
+    const m = src.match(/const approveBlocked\s*=([\s\S]*?);/);
+    expect(m).not.toBeNull();
+    expect(m[1]).not.toMatch(/dapp\.flagged/);
+  });
 });
