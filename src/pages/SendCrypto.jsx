@@ -1393,14 +1393,16 @@ export default function SendCrypto() {
                     onLock={lock}
                     onSuccess={() => { twoFactorVerifiedRef.current = true; sendTx.mutate(); }}
                     verify={async ({ pin, password }) => {
-                      const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
                       if (send2faMethod === SEND_2FA.BIOMETRIC) {
-                        // Factor 2: a real OS biometric match (fingerprint / Face).
+                        // BIOMETRIC mode: the user is already unlocked (vault open = PIN proved).
+                        // TwoFactorGate shows NO PIN field in this mode — the step-up is Face ID only.
+                        // pinOk is treated as true (unlock = first-factor already satisfied).
                         // FAIL CLOSED (I4) — any cancel/no-match/error counts as NOT verified.
                         let bioOk = false;
                         try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
-                        return evaluateTwoFactor({ pinOk, passwordOk: bioOk, actionPasswordConfigured: true });
+                        return evaluateTwoFactor({ pinOk: true, passwordOk: bioOk, actionPasswordConfigured: true });
                       }
+                      const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
                       if (send2faMethod === SEND_2FA.PASSKEY) {
                         // Factor 2: a WebAuthn assertion bound to this device's passkey.
                         // FAIL CLOSED (I4) — any cancel/timeout/error counts as NOT verified.
