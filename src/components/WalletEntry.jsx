@@ -374,6 +374,15 @@ export default function WalletEntry() {
   // ref (not state) so it is never copied into a render snapshot.
   const createdPasswordRef = useRef(null);
 
+  // WEB COHORT bridge (the analogue of the provider's pendingPin for native PIN):
+  // on web there is no PIN cohort and no hardware KEK — the vault-creation screen
+  // collects a ≥12-char PASSWORD, and Phase 2 must encrypt under it via the plain
+  // createWallet/importWallet path (NOT createWalletFromPendingPin, which forces the
+  // 'pin' cohort). Holding it in a ref (not state) keeps the secret out of render
+  // snapshots. Non-null signals "web Phase 2 uses this password" to doCreateWallet/
+  // doImportWallet; wiped on success or teardown.
+  const webVaultPasswordRef = useRef(null);
+
   // v1 PIN cohort. authModel is read once the vault-existence probe resolves.
   const [authModel, setAuthModelState] = useState("password");
   // PIN onboarding sub-steps: 'real' -> 'real-confirm' -> Dashboard. Returning PIN
@@ -392,6 +401,10 @@ export default function WalletEntry() {
   // block. The PIN is the credential here — there is NO vault-password field.
   const [importPhrasePin, setImportPhrasePin] = useState("");
   const [choosePinImport, setChoosePinImport] = useState(false);
+  // WEB cohort analogue of the provider's hasPendingPin: true once finishPinSetup has
+  // bridged a web vault password into webVaultPasswordRef, so the post-Phase-1 'choose'
+  // view renders the Create/Import options instead of the "set a PIN first" CTA.
+  const [webVaultPending, setWebVaultPending] = useState(false);
   const [referralInput, setReferralInput] = useState("");
   // True while a PIN wallet is being ATOMICALLY provisioned (create + both chaff
   // slots + cohort + salt). Holds the dashboard back until everything is committed;
@@ -443,6 +456,10 @@ export default function WalletEntry() {
       .catch(() => { if (active) { setVaultExists(false); setView("pin-create"); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setBioReady(false); } });
     return () => { active = false; };
   }, [hasVault, isUnlocked]);
+
+  // Zero the web vault password ref on unmount so it cannot be read from memory
+  // if the component is torn down mid-flow (navigation away, error boundary, crash).
+  useEffect(() => () => { webVaultPasswordRef.current = null; }, []);
 
   const copySeed = async () => {
     await copySecret(generatedSeed);
@@ -594,8 +611,23 @@ export default function WalletEntry() {
   // the empty dashboard. NO wallet is created here — that's Phase 2 (a separate
   // dashboard action). pendingPin (in the provider) bridges the two.
   const finishPinSetup = () => {
-    setupPin(realPin);                 // authModel + salt + pendingPin + enter explore
-    setAuthModelState("pin");
+    if (Capacitor.isNativePlatform()) {
+      // NATIVE: PIN cohort. setupPin bridges the in-memory pendingPin + flips the
+      // 'pin' cohort marker; Phase 2 (doCreateWallet/doImportWallet) consumes it via
+      // createWalletFromPendingPin/importWalletForPendingPin.
+      setupPin(realPin);               // authModel='pin' + salt + pendingPin + enter explore
+      setAuthModelState("pin");
+    } else {
+      // WEB: password cohort. There is no PIN and no hardware KEK — realPin here is a
+      // ≥12-char vault PASSWORD. Persist the 'password' marker NOW so a reload renders
+      // the password unlock surface, never the numeric PinPad (the lockout bug). Bridge
+      // the password in a ref for Phase 2 to encrypt under via createWallet/importWallet.
+      webVaultPasswordRef.current = realPin;
+      setWebVaultPending(true);
+      setAuthModel("password");
+      setAuthModelState("password");
+      enterExplore();                  // mirror setupPin's explore entry (no pendingPin on web)
+    }
     setRealPin(""); setRealPinConfirm(""); setError(""); setPinStep("real");
     setView("choose");                 // post-Phase-1: leaving explore lands on the create/import choice
     setChoosePinImport(false);         // reset the Phase-2 import sub-toggle
@@ -606,6 +638,31 @@ export default function WalletEntry() {
   // fail-closed). The provisioning gate below holds the dashboard back until it commits.
   const doCreateWallet = async () => {
     setBusy(true); setProvisioning(true); setError("");
+    // WEB cohort: encrypt the new seed under the bridged vault PASSWORD via the plain
+    // createWallet path (NOT createWalletFromPendingPin, which forces the 'pin' cohort
+    // and would re-lock the user out). authModel='password' was already persisted in
+    // finishPinSetup. We surface the one-time seed via the existing backup screen.
+    if (!Capacitor.isNativePlatform() && webVaultPasswordRef.current) {
+      try {
+        const pw = webVaultPasswordRef.current;
+        createdPasswordRef.current = pw;
+        const seed = await createWallet(pw); // returns mnemonic ONCE for backup; unlocks
+        webVaultPasswordRef.current = null;
+        setWebVaultPending(false);
+        setProvisioning(false);
+        setGeneratedSeed(seed);          // hold on the seed-backup screen (handleGenerate parity)
+        setShowSeed(false);
+        setBioEnabled(false);
+      } catch (e) {
+        createdPasswordRef.current = null;
+        setProvisioning(false);
+        const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
+          ? (e.userMessage || "Web vaults require a password of at least 12 characters.")
+          : (e?.message || "Wallet setup couldn't finish securely, so nothing was saved.");
+        setError(msg); toast.error(msg);
+      } finally { setBusy(false); }
+      return;
+    }
     try { await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
       setProvisioning(false);
@@ -632,6 +689,30 @@ export default function WalletEntry() {
     const phrase = importPhrasePin.trim().replace(/\s+/g, " ");
     if (!phrase) return;
     setBusy(true); setProvisioning(true); setError("");
+    // WEB cohort: import under the bridged vault PASSWORD via the plain importWallet
+    // path (NOT importWalletForPendingPin, which forces the 'pin' cohort). authModel=
+    // 'password' was already persisted in finishPinSetup. importWallet validates BIP-39
+    // + unlocks; no seed-backup screen (the user supplied the seed).
+    if (!Capacitor.isNativePlatform() && webVaultPasswordRef.current) {
+      try {
+        await importWallet(phrase, webVaultPasswordRef.current);
+        webVaultPasswordRef.current = null;
+        setWebVaultPending(false);
+        setImportPhrasePin("");
+        setProvisioning(false);
+      } catch (e) {
+        setProvisioning(false);
+        if (isRecoverableSeedInputError(e)) {
+          setError("That doesn't look like a valid recovery phrase. Check the words and try again.");
+          return;
+        }
+        const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
+          ? (e.userMessage || "Web vaults require a password of at least 12 characters.")
+          : (e?.message || "Wallet setup couldn't finish securely, so nothing was saved.");
+        setError(msg); toast.error(msg);
+      } finally { setBusy(false); }
+      return;
+    }
     try { await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
     catch (e) {
       setProvisioning(false);
@@ -976,7 +1057,10 @@ export default function WalletEntry() {
   //   • No PIN yet → a single CTA into PIN-create (Phase 1); both create and import
   //     require a PIN first.
   if (view === "choose") {
-    if (hasPendingPin) {
+    // hasPendingPin = native PIN cohort Phase-1 done; webVaultPending = web password
+    // cohort Phase-1 done. Either one means the credential is set and the user is at
+    // the Phase-2 Create/Import choice.
+    if (hasPendingPin || webVaultPending) {
       return (
         <EntryShell error={error}>
           <div className="p-6 rounded-xl border border-dashed border-border bg-card space-y-4">
