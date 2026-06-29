@@ -131,6 +131,34 @@ describe('getTrezorSolAddress', () => {
   });
 });
 
+describe('trezorAddress.js deniability guard (I3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.removeItem('veyrnox-demo');
+  });
+
+  it('blocks address derivation with the demo flag set', async () => {
+    localStorage.setItem('veyrnox-demo', '1');
+    const { getTrezorEvmAddress } = await import('../trezorAddress.js');
+    await expect(getTrezorEvmAddress()).rejects.toThrow('TREZOR_DENIABILITY_BLOCKED');
+    expect(TrezorConnect.init).not.toHaveBeenCalled();
+    expect(TrezorConnect.ethereumGetAddress).not.toHaveBeenCalled();
+  });
+
+  it('blocks address derivation in a REAL decoy/hidden session (NOT just demo flag)', async () => {
+    const { setDeniabilitySession } = await import('../../deniabilitySession.js');
+    setDeniabilitySession(true);
+    try {
+      const { getTrezorEvmAddress } = await import('../trezorAddress.js');
+      await expect(getTrezorEvmAddress()).rejects.toThrow('TREZOR_DENIABILITY_BLOCKED');
+      expect(TrezorConnect.init).not.toHaveBeenCalled();
+      expect(TrezorConnect.ethereumGetAddress).not.toHaveBeenCalled();
+    } finally {
+      setDeniabilitySession(false);
+    }
+  });
+});
+
 describe('TREZOR_PATHS', () => {
   it('exports correct derivation paths', async () => {
     const { TREZOR_PATHS } = await import('../trezorAddress.js');

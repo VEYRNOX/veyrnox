@@ -1,0 +1,50 @@
+// wallet-core/deniabilitySession.js
+//
+// RUNTIME DENIABILITY-SESSION MARKER (I3).  PROVISIONAL.
+//
+// THE PROBLEM. A decoy (duress) or hidden (stealth) session is the I3 case that
+// matters most under coercion: the app must make ZERO backend/device calls that
+// could betray that a real wallet exists or leak the coerced user's activity.
+// But decoy/hidden session state is deliberately held in React state ONLY
+// (WalletProvider's isDecoy/isHidden) and is NEVER persisted to localStorage —
+// persisting it would itself be a forensic deniability TELL. So wallet-core
+// modules (which run outside React and must gate network/device egress, e.g.
+// hw/trezor.js reaching connect.trezor.io) cannot read isDecoy/isHidden from
+// storage. The previous Trezor "deniability guard" only checked the demo flag
+// (`veyrnox-demo=1`), so a REAL coerced decoy/hidden session was NOT blocked —
+// an I2/I3 violation.
+//
+// THE FIX. A single in-memory (module-scoped) boolean, set by WalletProvider the
+// instant a decoy/hidden session opens and cleared on lock / primary unlock.
+// In-memory means:
+//   - NOT persisted, so it adds NO storage artifact / deniability tell (unlike a
+//     localStorage flag, which a forensic dump would reveal).
+//   - Readable synchronously by wallet-core egress gates WITHOUT a React import.
+//   - Reset on reload (a fresh page load has no unlocked session anyway).
+//
+// FAIL CLOSED (I4). The reader treats "unknown" as deniability-active is NOT the
+// model here (a fresh primary session must be allowed to use Trezor). Instead the
+// SETTER is the trusted authority: WalletProvider sets the flag true for every
+// decoy/hidden unlock BEFORE any signing UI can run, and false only for a
+// confirmed primary session. Any wallet-core egress that cannot positively
+// confirm a primary session via this marker plus its own checks must refuse.
+
+let _deniabilityActive = false;
+
+/**
+ * Mark whether the CURRENT in-memory session is a deniability (decoy/hidden) one.
+ * Called by WalletProvider.unlock for every session: true for decoy/hidden,
+ * false for a confirmed primary session. Called by lock() to clear on lock.
+ * @param {boolean} active
+ */
+export function setDeniabilitySession(active) {
+  _deniabilityActive = active === true;
+}
+
+/**
+ * @returns {boolean} true when the current in-memory session is a decoy/hidden
+ * (deniability) session and backend/device egress must be refused (I3).
+ */
+export function isDeniabilitySessionActive() {
+  return _deniabilityActive === true;
+}
