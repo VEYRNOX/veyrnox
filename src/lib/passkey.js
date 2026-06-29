@@ -65,6 +65,7 @@
 //     password, never blocking access to funds). A hardware-bound native
 //     passkey API is future work (tracked alongside the M2b/M2c keystore rework).
 
+import { Capacitor } from '@capacitor/core';
 import { DEMO } from '@/api/demoClient';
 
 // localStorage keys. Mirrors the app's existing preference convention
@@ -364,6 +365,24 @@ export async function registerPasskeyCredential(opts = {}) {
  * @returns {Promise<true>}
  */
 export async function verifyPasskeyAssertion() {
+  // NATIVE (iOS/Android): the WKWebView does not expose a usable WebAuthn platform
+  // authenticator, so the genuine, working possession factor here is the OS
+  // biometric — the same prompt the wallet uses to unlock. We route through it so
+  // the existing SendCrypto/useActionGuard call sites work on-device WITHOUT
+  // change. HONEST: this is an OS biometric standing in for the possession factor,
+  // NOT a FIDO2 passkey. FAIL CLOSED (I4): a cancel / no-match throws, which the
+  // callers' `try { ok = await ... } catch { ok = false }` treats as not verified.
+  // The OS prompt itself enforces user presence + verification; we add no metadata
+  // record requirement (the biometry is the credential).
+  if (Capacitor.isNativePlatform()) {
+    const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+    await BiometricAuth.authenticate({
+      reason: 'Confirm this action',
+      allowDeviceCredential: false,
+    });
+    return true;
+  }
+
   const rec = getRegisteredPasskey();
   if (!rec) throw new Error('No passkey registered');
   if (!isWebAuthnSupported()) throw new Error('WebAuthn is not supported in this browser');
