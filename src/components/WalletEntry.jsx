@@ -90,6 +90,7 @@ import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { checkPinStrength } from "@/lib/pinStrength";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import { validateMnemonic } from "@/wallet-core/mnemonic";
+import { WEB_VAULT_ERR } from "@/wallet-core/keystore/web";
 import { Capacitor } from "@capacitor/core";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import {
@@ -606,9 +607,11 @@ export default function WalletEntry() {
   const doCreateWallet = async () => {
     setBusy(true); setProvisioning(true); setError("");
     try { await createWalletFromPendingPin(); setProvisioning(false); }
-    catch {
+    catch (e) {
       clearPendingPin(); setProvisioning(false);
-      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
+      const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
+        ? (e.userMessage || "On web, use a password of at least 12 characters instead of a PIN.")
+        : "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
       toast.error(msg);
     } finally { setBusy(false); }
@@ -635,7 +638,9 @@ export default function WalletEntry() {
       // the message must reflect that the user has to set their PIN again.
       if (import.meta.env.DEV) console.error('[WalletEntry] import failed:', e?.name || e);
       clearPendingPin();
-      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
+      const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
+        ? (e.userMessage || "On web, use a password of at least 12 characters instead of a PIN.")
+        : "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
       toast.error(msg);
     } finally { setBusy(false); }
