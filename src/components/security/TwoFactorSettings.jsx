@@ -15,11 +15,15 @@
 // (not per wallet-set) and is provisional/unaudited. UNAUDITED-PROVISIONAL.
 
 import { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useWallet } from '@/lib/WalletProvider';
 import {
   is2faPasskeyEnabled, set2faPasskeyEnabled, isPasskeyRegistered, isWebAuthnSupported,
   PASSKEY_REGISTRATION_EVENT,
 } from '@/lib/passkey';
+import {
+  is2faBiometricEnabled, set2faBiometricEnabled, getBiometricStatus,
+} from '@/lib/biometric';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,8 +84,27 @@ export default function TwoFactorSettings() {
     } finally { setApBusy(false); }
   };
 
-  // ── Passkey (possession) toggle ──
-  const webauthn = isWebAuthnSupported();
+  // ── Possession-factor toggle (passkey on web, OS biometric on native) ──
+  // On native (iOS/Android) the WKWebView exposes no usable WebAuthn platform
+  // authenticator, so the genuine working possession factor is the OS biometric —
+  // the same prompt the wallet uses to unlock. The toggle drives the BIOMETRIC 2FA
+  // pref there (→ resolveSend2faMethod → SEND_2FA.BIOMETRIC), NOT the passkey pref.
+  // FAIL CLOSED (I4): we only show the toggle on native once getBiometricStatus()
+  // confirms a biometric/passcode is actually available — never an inert switch.
+  const isNative = Capacitor.isNativePlatform();
+  const webauthn = isWebAuthnSupported() || isNative;
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState('Face ID / Touch ID');
+  useEffect(() => {
+    if (!isNative) return;
+    let live = true;
+    getBiometricStatus().then((s) => {
+      if (!live) return;
+      setBioAvailable(!!s.available);
+      if (s.label) setBiometricLabel(s.label);
+    }).catch(() => { if (live) setBioAvailable(false); });
+    return () => { live = false; };
+  }, [isNative]);
   // Reactive: a passkey can be registered/removed by a sibling section (Unlock
   // with Passkey) within THIS same Settings mount. Re-read on the registration
   // event passkey.js publishes (and on cross-tab `storage` changes) so the toggle
@@ -98,20 +121,28 @@ export default function TwoFactorSettings() {
       window.removeEventListener('storage', refresh);
     };
   }, []);
-  const [passkey2fa, setPasskey2fa] = useState(is2faPasskeyEnabled());
+  const [passkey2fa, setPasskey2fa] = useState(isNative ? is2faBiometricEnabled() : is2faPasskeyEnabled());
+  // On native the factor is "ready" when the OS biometric/passcode is available;
+  // on web it is ready when a passkey is actually registered.
+  const factorReady = isNative ? bioAvailable : passkeyRegistered;
   const togglePasskey2fa = (on) => {
-    if (on && !passkeyRegistered) {
-      toast.error('Register a passkey first (Wallet Passkeys, below).');
+    if (on && !factorReady) {
+      toast.error(isNative
+        ? `${biometricLabel} is not set up on this device.`
+        : 'Register a passkey first (Wallet Passkeys, below).');
       return;
     }
-    set2faPasskeyEnabled(on);
+    if (isNative) set2faBiometricEnabled(on);
+    else set2faPasskeyEnabled(on);
     setPasskey2fa(on);
-    toast.success(on ? 'Passkey second factor on' : 'Passkey second factor off');
+    toast.success(on
+      ? (isNative ? `${biometricLabel} second factor on` : 'Passkey second factor on')
+      : (isNative ? `${biometricLabel} second factor off` : 'Passkey second factor off'));
     recordAudit('settings_changed');
   };
 
-  // Which method the guard will actually enforce (passkey wins if both are set).
-  const activeMethod = (passkey2fa && passkeyRegistered) ? 'passkey'
+  // Which method the guard will actually enforce (possession wins if both are set).
+  const activeMethod = (passkey2fa && factorReady) ? (isNative ? 'biometric' : 'passkey')
     : actionPasswordConfigured ? 'password' : 'none';
 
   return (
@@ -139,7 +170,7 @@ export default function TwoFactorSettings() {
         <div className="flex items-center gap-2 pt-1">
           <span className="text-[11px] text-muted-foreground">Currently enforcing:</span>
           <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${activeMethod === 'none' ? 'bg-secondary text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-            {activeMethod === 'passkey' ? 'PIN + Passkey' : activeMethod === 'password' ? 'PIN + Action Password' : 'Off (PIN only)'}
+            {activeMethod === 'biometric' ? `PIN + ${biometricLabel}` : activeMethod === 'passkey' ? 'PIN + Passkey' : activeMethod === 'password' ? 'PIN + Action Password' : 'Off (PIN only)'}
           </span>
         </div>
       </div>
@@ -208,25 +239,37 @@ export default function TwoFactorSettings() {
         )}
       </div>
 
-      {/* ── Method B: PIN + Passkey / FIDO2 (possession) ── */}
+      {/* ── Method B: possession factor — passkey on web, OS biometric on native ── */}
       <div className="p-4 rounded-xl border border-border bg-card space-y-3">
         <div className="flex items-center gap-2">
-          <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${(passkey2fa && passkeyRegistered) ? 'bg-primary/10' : 'bg-secondary'}`}>
-            <Fingerprint className={`h-5 w-5 ${(passkey2fa && passkeyRegistered) ? 'text-primary' : 'text-muted-foreground'}`} />
+          <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${(passkey2fa && factorReady) ? 'bg-primary/10' : 'bg-secondary'}`}>
+            <Fingerprint className={`h-5 w-5 ${(passkey2fa && factorReady) ? 'text-primary' : 'text-muted-foreground'}`} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">PIN + Passkey / FIDO2 {(passkey2fa && passkeyRegistered) && <span className="text-primary">· ON</span>}</p>
-            <p className="text-[11px] text-muted-foreground">Your PIN plus a passkey tap — a genuine possession factor. Fails closed: action refused if passkey unavailable. Device-global; losing it never costs funds.</p>
+            <p className="text-sm font-medium">
+              {isNative ? `PIN + ${biometricLabel}` : 'PIN + Passkey / FIDO2'} {(passkey2fa && factorReady) && <span className="text-primary">· ON</span>}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {isNative
+                ? `Your PIN plus ${biometricLabel} — a genuine OS possession check (not a FIDO2 passkey). Fails closed: action refused if biometrics are unavailable. Losing the device never costs funds.`
+                : 'Your PIN plus a passkey tap — a genuine possession factor. Fails closed: action refused if passkey unavailable. Device-global; losing it never costs funds.'}
+            </p>
           </div>
           <Switch
-            checked={passkey2fa && passkeyRegistered}
+            checked={passkey2fa && factorReady}
             onCheckedChange={togglePasskey2fa}
-            disabled={!webauthn}
-            aria-label="Use passkey as my second factor"
+            disabled={!webauthn || (isNative && !bioAvailable)}
+            aria-label={isNative ? 'Use my device biometrics as my second factor' : 'Use passkey as my second factor'}
           />
         </div>
-        {!webauthn && <p className="text-[11px] text-muted-foreground">This browser doesn't support WebAuthn / passkeys.</p>}
-        {webauthn && !passkeyRegistered && (
+        {isNative && bioAvailable && (
+          <p className="text-[11px] text-muted-foreground">Confirm critical actions with {biometricLabel}.</p>
+        )}
+        {isNative && !bioAvailable && (
+          <p className="text-[11px] text-muted-foreground">{biometricLabel} / device passcode is not set up on this device — enable it in your device settings to use this factor.</p>
+        )}
+        {!isNative && !webauthn && <p className="text-[11px] text-muted-foreground">This browser doesn't support WebAuthn / passkeys.</p>}
+        {!isNative && webauthn && !passkeyRegistered && (
           <p className="text-[11px] text-muted-foreground">No passkey registered yet — set one up in <strong>Wallet Passkeys</strong> below, then enable this.</p>
         )}
       </div>
