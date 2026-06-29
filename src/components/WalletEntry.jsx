@@ -633,6 +633,7 @@ export default function WalletEntry() {
       }
       // Genuine provisioning/teardown failure: fail closed. Clear the pending PIN;
       // the message must reflect that the user has to set their PIN again.
+      console.error('[WalletEntry] import failed:', e);
       clearPendingPin();
       const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
