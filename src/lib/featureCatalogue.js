@@ -199,8 +199,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Hardware Wallet',
         status: 'built',
-        summary: 'Trezor — cold-key signing for ETH, BTC, SOL',
-        explanation: 'Built (/hardware-wallet): Trezor (WebUSB, Chrome/Edge desktop) supports address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. Private key never leaves the hardware device (I1). Deniability sessions block all Trezor calls before any connect.trezor.io egress: demo/tour mode (veyrnox-demo) AND a real decoy/hidden (duress/stealth) session are both gated via the in-memory deniabilitySession marker, fail-closed (I3). Built, not device-verified. Non-WebUSB browsers (e.g. iOS WKWebView) fail soft to a "not available" card (no silent error). Ledger, ERC-20 hardware signing, and multi-account paths are not yet wired.',
+        summary: 'Trezor — cold-key signing for ETH, BTC, SOL (send paths wired 2026-06-29)',
+        explanation: 'Built (/hardware-wallet): Trezor (WebUSB, Chrome/Edge desktop) supports address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. trezorSignBtcTx and trezorSignSolTx are wired in SendCrypto (PR #475, 2026-06-29); broadcastBtcTx, buildUnsignedSolTx, and attachSolSignature added. Private key never leaves the hardware device (I1). Deniability sessions block all Trezor calls before any connect.trezor.io egress: demo/tour mode (veyrnox-demo) AND a real decoy/hidden (duress/stealth) session are both gated via the in-memory deniabilitySession marker (wallet-core/deniabilitySession.js, PR #476, 2026-06-29), fail-closed (I3). TrezorContext is the sole hardware wallet context (HardwareWalletContext deleted). Built, not device-verified — no physical-device txid. Non-WebUSB browsers (e.g. iOS WKWebView) fail soft to a "not available" card. ERC-20 hardware signing and multi-account paths not yet wired.',
       },
     ],
   },
@@ -491,7 +491,10 @@ export const FEATURE_CATEGORIES = [
           'Session approval passes the dApp\'s requested chains through to the namespace (all 12 EVM chains ' +
           'in SUPPORTED_CHAIN_IDS — testnets + mainnet); unsupported chains are filtered silently. ' +
           'Active sessions display their approved chain set. ' +
-          'Requires VITE_WALLETCONNECT_PROJECT_ID in .env.local; absent it, the page honest-disables.',
+          'Requires VITE_WALLETCONNECT_PROJECT_ID in .env.local; absent it, the page honest-disables. ' +
+          'dApp domain security (PR #477, 2026-06-29): checkDappDomain now runs inside approveSession — ' +
+          'a blocked domain is rejected at session approval before any signing surface opens (I4 fail-closed). ' +
+          'Blocklist expanded from 5 to 23 entries.',
       },
       {
         name: 'Web3 Browser',
