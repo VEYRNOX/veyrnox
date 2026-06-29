@@ -124,7 +124,7 @@ function EntryShell({ error, children }) {
           <p className="text-sm text-muted-foreground">Your seed phrase is your account. We never hold your keys.</p>
         </div>
         {error && (
-          <div className="flex items-start gap-2 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
+          <div role="alert" aria-live="assertive" className="flex items-start gap-2 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {error}
           </div>
         )}
@@ -608,10 +608,18 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try { await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
-      clearPendingPin(); setProvisioning(false);
-      const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
-        ? (e.userMessage || "On web, use a password of at least 12 characters instead of a PIN.")
-        : "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
+      setProvisioning(false);
+      if (e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT) {
+        // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
+        // Web mainnet vaults require a ≥12-char password; the user needs to go back
+        // and restart onboarding with a full password instead of a PIN.
+        const msg = e.userMessage || "Web vaults require a password of at least 12 characters. Go back and restart setup using a password instead of a PIN.";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      clearPendingPin();
+      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
       toast.error(msg);
     } finally { setBusy(false); }
@@ -634,13 +642,20 @@ export default function WalletEntry() {
         setError("That doesn't look like a valid recovery phrase. Check the words and try again.");
         return;
       }
+      if (e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT) {
+        // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
+        // Web mainnet vaults require a ≥12-char password; the user needs to go back
+        // and restart onboarding with a full password instead of a PIN.
+        const msg = e.userMessage || "Web vaults require a password of at least 12 characters. Go back and restart setup using a password instead of a PIN.";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
       // Genuine provisioning/teardown failure: fail closed. Clear the pending PIN;
       // the message must reflect that the user has to set their PIN again.
       if (import.meta.env.DEV) console.error('[WalletEntry] import failed:', e?.name || e);
       clearPendingPin();
-      const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
-        ? (e.userMessage || "On web, use a password of at least 12 characters instead of a PIN.")
-        : "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
+      const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
       toast.error(msg);
     } finally { setBusy(false); }
@@ -1046,7 +1061,23 @@ export default function WalletEntry() {
               only reachable AFTER the PIN is set. */}
           <button type="button" onClick={() => { setError(""); clearPendingPin(); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
 
-          {pinStep === "real" && (
+          {pinStep === "real" && !Capacitor.isNativePlatform() && (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-center">Set a vault password</p>
+              <div className="p-3 rounded-xl border border-border bg-secondary/30 text-xs text-muted-foreground flex items-start gap-2">
+                <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <span>Web vault: your password is the only protection for your seed. Use a strong passphrase of at least 12 characters. The native app adds a hardware layer.</span>
+              </div>
+              <div>
+                <Label>Vault Password</Label>
+                <Input type="password" className="mt-1.5" value={realPin} onChange={e => { setRealPin(e.target.value); if (error) setError(""); }} placeholder="At least 12 characters" onKeyDown={e => { if (e.key === "Enter" && realPin.length >= 12) { setRealPinConfirm(""); setPinStep("real-confirm"); } }} />
+                <p className="text-xs text-muted-foreground mt-1">At least 12 characters · any characters allowed.</p>
+              </div>
+              <Button className="w-full" disabled={realPin.length < 12} onClick={() => { setError(""); setRealPinConfirm(""); setPinStep("real-confirm"); }}>Continue</Button>
+            </div>
+          )}
+
+          {pinStep === "real" && Capacitor.isNativePlatform() && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Choose an 8-digit PIN</p>
               <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN. Always guard your device.</p>
@@ -1058,7 +1089,18 @@ export default function WalletEntry() {
             </div>
           )}
 
-          {pinStep === "real-confirm" && (
+          {pinStep === "real-confirm" && !Capacitor.isNativePlatform() && (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-center">Confirm your password</p>
+              <div>
+                <Label>Confirm Vault Password</Label>
+                <Input type="password" className="mt-1.5" value={realPinConfirm} onChange={e => { setRealPinConfirm(e.target.value); if (error) setError(""); }} placeholder="Re-enter your password" onKeyDown={e => { if (e.key === "Enter" && realPinConfirm.length >= 12) { if (!pinsEqual(realPinConfirm, realPin)) { setError("Passwords didn't match. Try again."); setRealPinConfirm(""); return; } finishPinSetup(); } }} />
+              </div>
+              <Button className="w-full" disabled={realPinConfirm.length < 12} onClick={() => { if (!pinsEqual(realPinConfirm, realPin)) { setError("Passwords didn't match. Try again."); setRealPinConfirm(""); return; } finishPinSetup(); }}>Set Password & Continue</Button>
+            </div>
+          )}
+
+          {pinStep === "real-confirm" && Capacitor.isNativePlatform() && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Confirm your PIN</p>
               <PinPad value={realPinConfirm} onChange={(v) => { setRealPinConfirm(v); if (error) setError(""); }} onComplete={(p) => {
