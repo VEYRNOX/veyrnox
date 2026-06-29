@@ -10,7 +10,7 @@
 //     on first unlock, while still returning the secret, and is a no-op after.
 //
 // We craft an old-params blob with hash-wasm argon2id directly (the exact
-// construction encryptVault used at 64 MiB), since encryptVault now always emits
+// construction encryptVault used at 192 MiB), since encryptVault now always emits
 // the new params.
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -58,7 +58,7 @@ describe('SAST M3 — KDF parameter migration', () => {
     expect(KDF_PARAMS.memorySize).toBeLessThan(OLD_PARAMS.memorySize);
   });
 
-  it('an OLD-params (64 MiB) vault still decrypts after the default is raised', async () => {
+  it('an OLD-params (192 MiB) vault still decrypts after the default is lowered', async () => {
     const oldBlob = await encryptAtParams(SECRET, PASSWORD, OLD_PARAMS);
     expect(oldBlob.kdf.memorySize).toBe(196608);
     // Decrypt must use the blob's OWN params, not the new default — no lockout.

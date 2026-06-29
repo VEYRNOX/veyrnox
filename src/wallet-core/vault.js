@@ -112,7 +112,7 @@ function randomBytes(n) {
 }
 
 // --- Off-main-thread Argon2id (perceived-perf only; crypto + params UNCHANGED) ---
-// The 192 MiB derivation blocks the UI thread, so the unlock spinner can't animate
+// The Argon2id KDF derivation blocks the UI thread, so the unlock spinner can't animate
 // and the app looks frozen. Run it in a Web Worker when one is available; ALWAYS
 // fall back to the exact in-thread argon2id on ANY worker problem (unsupported,
 // error, or timeout), so unlock can never break (I4, fail closed). The worker runs
@@ -216,9 +216,9 @@ async function deriveKey(password, salt, params = KDF_PARAMS) {
   // Import into WebCrypto as a non-extractable AES-GCM key.
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (raw), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
   zero(raw);
-  // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's ~192 MiB Argon2
+  // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's ~64 MiB Argon2
   // WASM instance from THIS derivation becomes GC-eligible before the next sequential
-  // derivation allocates its own 192 MiB — keeping peak memory one-at-a-time rather
+  // derivation allocates its own 64 MiB — keeping peak memory one-at-a-time rather
   // than concurrent. Best-effort (GC is non-deterministic) and negligible latency;
   // the v2 onboarding architecture (create from the light empty dashboard) is the
   // primary mitigation. Web-Worker-per-KDF is the documented escalation if on-device
@@ -293,8 +293,8 @@ export async function decryptVault(vault, password) {
   const iv = unb64(vault.iv);
   const ct = unb64(vault.ct);
   // Decrypt with the params THIS blob was encrypted with (M3 migration), so a
-  // vault written under the old 64 MiB params still opens after the default is
-  // raised. New vaults record the new params and decrypt with them.
+  // vault written under the old 192 MiB params still opens after the default is
+  // lowered. New vaults record the new params and decrypt with them.
   const key = await deriveKey(password, salt, paramsFromVault(vault));
   let ptBuf;
   try {
