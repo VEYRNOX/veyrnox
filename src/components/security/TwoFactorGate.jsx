@@ -13,6 +13,7 @@
 // UNAUDITED-PROVISIONAL.
 
 import { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,6 +45,10 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
 
   const isPasskey = mode === 'passkey';
   const isBio = mode === 'biometric';
+  // On native, the 'passkey' possession factor is satisfied by the OS biometric
+  // (the WKWebView exposes no usable WebAuthn authenticator), so the copy must say
+  // Face ID / Touch ID rather than "tap your passkey" (honest UX, no fake claims).
+  const isNative = Capacitor.isNativePlatform();
   // Both passkey and biometric supply the second factor via an external prompt
   // (no in-field password): only the PIN is collected here.
   const isExternalFactor = isPasskey || isBio;
@@ -96,7 +101,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
       </div>
       <p className="text-[11px] text-muted-foreground">
         {isBio ? 'Your PIN and a fingerprint / Face check are required for this action.'
-          : isPasskey ? 'Your PIN and a passkey tap are required for this action.'
+          : isPasskey ? (isNative ? 'Your PIN and a Face ID / Touch ID check are required for this action.' : 'Your PIN and a passkey tap are required for this action.')
             : 'Both factors are required for this action.'}
       </p>
       {!isBio && (
@@ -146,7 +151,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         <p className="text-[11px] text-muted-foreground">After your PIN, your device will ask for your fingerprint or face.</p>
       )}
       {isPasskey && (
-        <p className="text-[11px] text-muted-foreground">After your PIN, your browser will ask you to tap your passkey or security key.</p>
+        <p className="text-[11px] text-muted-foreground">{isNative ? 'After your PIN, Face ID / Touch ID will confirm this action.' : 'After your PIN, your browser will ask you to tap your passkey or security key.'}</p>
       )}
       {error && <p className="text-[11px] text-destructive">{error}</p>}
       <div className="flex gap-2">
