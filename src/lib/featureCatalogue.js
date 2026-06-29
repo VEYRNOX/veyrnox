@@ -199,8 +199,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Hardware Wallet',
         status: 'built',
-        summary: 'Ledger + Trezor — cold-key signing for ETH, BTC, SOL',
-        explanation: 'Built (/hardware-wallet): Ledger (WebHID, Chrome/Edge desktop) and Trezor (Connect popup) support address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. Private key never leaves the hardware device (I1). iOS WKWebView fails soft to a "WebHID unavailable" card (no silent error). ERC-20 hardware signing and multi-account paths are not yet wired.',
+        summary: 'Trezor — cold-key signing for ETH, BTC, SOL',
+        explanation: 'Built (/hardware-wallet): Trezor (WebUSB, Chrome/Edge desktop) supports address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. Private key never leaves the hardware device (I1). Deniability mode blocks all Trezor calls (I3). Non-WebUSB browsers (e.g. iOS WKWebView) fail soft to a "not available" card (no silent error). Ledger, ERC-20 hardware signing, and multi-account paths are not yet wired.',
       },
     ],
   },

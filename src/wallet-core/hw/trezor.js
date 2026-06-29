@@ -5,31 +5,59 @@ import { getTransport } from './transport.js';
 const EVM_PATH = "m/44'/60'/0'/0/0";
 const SOL_PATH = "m/44'/501'/0'/0'";
 
-function ensureInit() {
-  // connectSrc: corsValidator only accepts *.trezor.io / localhost:5xxx/8xxx.
-  // In dev, pass localhost so the self-hosted bundle loads (no CDN call).
-  // In prod, omit — CDN (connect.trezor.io) is used and is disclosed.
-  // I3 is enforced upstream via requireWebUsb() in each entry point.
-  const connectSrc = (typeof import.meta !== 'undefined' && import.meta.env?.DEV)
-    ? `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`
-    : undefined;
-  TrezorConnect.init({
-    lazyLoad: true,
-    ...(connectSrc ? { connectSrc } : {}),
-    manifest: {
-      email: 'al.jobson@21stclick.co.uk',
-      appUrl: 'https://veyrnox.app',
-      appName: 'Veyrnox',
-    },
-  });
+// Gap C — memoize init (mirrors trezorAddress.js). Real TrezorConnect throws on a
+// second init() call, so the promise is created at most once and every caller awaits
+// the same one; concurrent sign calls no longer double-init.
+let _initPromise = null;
+async function ensureInit() {
+  if (!_initPromise) {
+    // connectSrc: corsValidator only accepts *.trezor.io / localhost:5xxx/8xxx.
+    // In dev, pass localhost so the self-hosted bundle loads (no CDN call).
+    // In prod, omit — CDN (connect.trezor.io) is used and is disclosed.
+    // I3 is enforced upstream via checkDeniability() in requireWebUsb().
+    const connectSrc = (typeof import.meta !== 'undefined' && import.meta.env?.DEV)
+      ? `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`
+      : undefined;
+    _initPromise = TrezorConnect.init({
+      lazyLoad: true,
+      ...(connectSrc ? { connectSrc } : {}),
+      manifest: {
+        email: 'al.jobson@21stclick.co.uk',
+        appUrl: 'https://veyrnox.app',
+        appName: 'Veyrnox',
+      },
+    });
+  }
+  return _initPromise;
 }
 
-function requireWebUsb() {
+// Gap B — deniability guard (I3), mirrors trezorAddress.js. @trezor/connect-web
+// reaches out to connect.trezor.io; in deniability mode the app must make ZERO
+// backend calls, so we refuse before init/transport is ever touched. The persisted
+// `veyrnox-demo=1` flag is the deniability/demo signal used across the codebase.
+function deniabilityActive() {
+  try {
+    return (
+      typeof localStorage !== 'undefined' &&
+      localStorage.getItem('veyrnox-demo') === '1'
+    );
+  } catch {
+    // Fail closed (I4): if we cannot read the flag, treat deniability as active.
+    return true;
+  }
+}
+
+function checkDeniability() {
+  if (deniabilityActive()) throw new Error('TREZOR_DENIABILITY_BLOCKED');
+}
+
+async function requireWebUsb() {
+  checkDeniability();
   const transport = getTransport();
   if (transport.type !== 'webusb') {
     throw new Error('TREZOR_UNSUPPORTED');
   }
-  ensureInit();
+  await ensureInit();
 }
 
 export async function trezorSignEvmTx({
@@ -42,7 +70,7 @@ export async function trezorSignEvmTx({
   maxPriorityFeePerGas,
   data = '0x',
 }) {
-  requireWebUsb();
+  await requireWebUsb();
 
   const result = await TrezorConnect.ethereumSignTransaction({
     path: EVM_PATH,
@@ -101,7 +129,7 @@ function btcPathArray(networkKey) {
 }
 
 export async function trezorSignBtcTx({ plan, networkKey }) {
-  requireWebUsb();
+  await requireWebUsb();
 
   const isMainnet = networkKey === 'btc-mainnet';
   const coin = isMainnet ? 'btc' : 'tbtc';
@@ -135,7 +163,7 @@ export async function trezorSignBtcTx({ plan, networkKey }) {
 }
 
 export async function trezorSignSolTx({ serializedTxBase64 }) {
-  requireWebUsb();
+  await requireWebUsb();
 
   const serializedTxHex = Buffer.from(serializedTxBase64, 'base64').toString('hex');
 
