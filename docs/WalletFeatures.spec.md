@@ -97,12 +97,6 @@
 33c. Constant-KDF unlock timing across the deniability stack — ✅ (SAST M-2 fix)
 34. Hardware wallet (Ledger / Trezor) — 🟡 BUILT (Ledger WebHID address derivation + Trezor guide; TX signing coming soon; BTC/SOL hardware signing not wired; VULN-3+7 closed)
 35. Login activity (+ map) — ✅ VERIFIED 2026-06-20
-36. Social recovery (guardian / SSS) — ❌ removed [audit-blocked-and-not-advertised]
-    (never built; removed from UI/catalogue)
-36a. Crypto Will / inheritance — 📋 (SELF-CUSTODY ONLY: secret-sharing + dead-man's-
-     switch design; Veyrnox NEVER custodies keys or adjudicates death. High
-     cryptographic risk + LEGAL/estate dimensions → own audit attention AND a lawyer.
-     Defer — not near-term.)
 
 ## 6. Security — S4 hardening
 37. RASP (jailbreak/root/tamper detection) — ✅ BUILT/VERIFIED browser-level 2026-06-20 (navigator.webdriver → HOOKED → signing blocked; degradation policy + send-path wiring + I3 guard built + tested); OS-level probes still audit-gated
@@ -186,6 +180,7 @@ self-custody utilities + more chains. Candidate additions, triaged per the rules
 > [audit-blocked-and-not-advertised] cryptographically sensitive, never shipped, no
 > longer advertised · [out-of-scope-regulated] custodial/regulated, never in scope.
 > - **Social Recovery** (guardian / Shamir SSS) — [audit-blocked-and-not-advertised] never built; removed from UI/catalogue.
+> - **Crypto Will / inheritance** — [audit-blocked-and-not-advertised] never built; removed from roadmap 2026-06. No code exists.
 > - **Multi-Sig wallets** (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
 > - **Rebalance** + **Rebalance History** — [breaks-self-custody] autonomous value movement; removed (PR #47).
 > - **Recurring auto-debit** — [breaks-self-custody] auto-debit path gutted (PR #47); Recurring Payments is now schedule/reminder only, hands off to Send for user signing.

@@ -56,7 +56,6 @@ Custody: ON = on-device/self-custody · SRV = needs server. Y included · X not 
 | Solana / SPL tokens | N | Fake | T3 | ON | - | X | X | X |
 | Full deniability suite | ~ | Real, provisional | T3 | ON | - | - | Y | Y |
 | Hardware wallet | Y | Disabled (planned) | T3 | ON | - | - | Y | Y |
-| Inheritance / crypto-will setup | N | Removed (#82) | T3 | ON | - | - | Y | Y |
 | AI assistant / advisor / rebalancer | Y | Disabled (#89) | - | SRV | - | - | - | - |
 | Leaderboard | N | Fake/shell | T4 | SRV | - | ? | ? | ? |
 | Public profiles | N | Fake/shell | T4 | SRV | - | ? | ? | ? |
@@ -64,7 +63,6 @@ Custody: ON = on-device/self-custody · SRV = needs server. Y included · X not 
 | Shared portfolio | N | Fake | T4 | SRV | - | ? | ? | ? |
 | 1:1 setup + written threat model | Y | Service | - | ON | - | - | - | Y |
 | Quarterly review + priority support | Y | Service | - | ON | - | - | - | Y |
-| Recovery/inheritance setup (advisory) | Y | Service | - | ON | - | - | - | Y |
 | DFIR advisory (post-incident) | Y | Service | - | ON | - | - | - | Y |
 
 \* SRV* = needs an external DATA source (indexer/price/API) but does NOT take custody of keys.

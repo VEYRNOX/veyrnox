@@ -311,6 +311,8 @@ value / mutate balances without a user signature through wallet-core signing).
 > shipped, no longer advertised · [out-of-scope-regulated] = custodial/regulated,
 > never in scope.
 
+- ❌ **Social Recovery** (guardian / Shamir SSS / multi-party approval) — [audit-blocked-and-not-advertised] never built; audit-flagged and removed from roadmap 2026-06. No code exists.
+- ❌ **Crypto Will / Inheritance** — [audit-blocked-and-not-advertised] never built; removed from roadmap 2026-06. No code exists.
 - ❌ Multi-Sig wallets (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
 - ❌ Rebalance + Rebalance History — [breaks-self-custody] autonomous value movement; removed (PR #47).
 - ❌ Recurring auto-debit — [breaks-self-custody] auto-debit path gutted (PR #47); Recurring Payments is now schedule/reminder only, hands off to Send for user signing.
