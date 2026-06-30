@@ -108,8 +108,6 @@ import { getAuthModel, setAuthModel, shouldCacheUnlockSecret, clearAuthModel } f
 import { provisionPinWallet } from '@/lib/pinOnboarding';
 import { provisionPinRecovery } from '@/lib/pinRecovery';
 import { consumePendingPin } from '@/lib/pendingPinFlow';
-// H2 DURESS PIN + FACE ID REDIRECT: tracking wrong attempts + wipe at 10 (I4 fail-closed)
-import { shouldWipeVault, resetH2State } from '@/lib/duressPin';
 import {
   isBiometricUnlockEnabled,
   setBiometricUnlockEnabled,
@@ -138,6 +136,7 @@ import {
   PASSKEY_GATE,
   PasskeyGateError,
   classifyPasskeyError,
+  isPasskeyClonedError,
 } from '@/lib/passkey';
 import {
   loadAutoLockValue,
@@ -460,6 +459,24 @@ export function WalletProvider({ children }) {
     try {
       await verifyPasskeyAssertion(); // fail closed on cancel/failure
     } catch (err) {
+      // M-K — cloned-authenticator detection is ADVISORY, not a hard block. The
+      // user DID complete a user-verifying assertion (the possession factor was
+      // satisfied); the signCount stall is a heuristic warning, not proof, and the
+      // password below is still the real control. So we PASS the gate but carry a
+      // structured warning so the unlock UI can surface it (consistent with the
+      // wallet's warn-not-block posture). The counter is intentionally NOT
+      // advanced (verifyPasskeyAssertion threw before persisting), so the warning
+      // keeps showing until a legitimately higher signCount overtakes it.
+      if (isPasskeyClonedError(err)) {
+        return {
+          status: PASSKEY_GATE.PASSED,
+          warning: {
+            code: 'authenticator_cloned',
+            oldSignCount: err.oldSignCount,
+            newSignCount: err.newSignCount,
+          },
+        };
+      }
       // Classify cancel-vs-broken so the UI can decide whether to surface the
       // password-only escape hatch (SAST M-3). We still THROW here — the unlock
       // fails closed; the escape hatch is a separate, deliberate user action.
@@ -790,7 +807,6 @@ export function WalletProvider({ children }) {
     clearAllWalletMeta();
     clearAllPortfolios();
     clearAuthModel();   // drop any 'pin' cohort marker (matters for the recovery rollback case)
-    resetH2State();     // clear wrong attempts + H2 state (best-effort)
     lock();             // drop the in-memory secret + reset session flags (isUnlocked -> false)
     // Deliberately NO setWasWiped(true): this is a setup-failure rollback, not a panic wipe.
   }, [lock]);
@@ -1332,11 +1348,16 @@ export function WalletProvider({ children }) {
     // vault. The deliberate password-only escape hatch (opts.skipPasskey) is the
     // ONLY way past a failed gate, and it still requires the password below.
     let passkeySkipped = null;
+    // M-K — advisory cloned-authenticator warning (code 'authenticator_cloned').
+    // Carried out to the caller so the unlock UI can surface it as a WARNING; it
+    // never blocks unlock (the password below is the real control).
+    let passkeyWarning = null;
     if (opts.skipPasskey) {
       passkeySkipped = 'escape-hatch';
     } else {
       const gate = await runPasskeyGate();
       if (gate.status === PASSKEY_GATE.UNAVAILABLE) passkeySkipped = 'unavailable';
+      if (gate.warning) passkeyWarning = gate.warning;
     }
     // Signal (not secret) when the biometric convenience factor was bypassed via
     // the escape hatch, so the UI can disclose it rather than silently proceed.
@@ -1429,25 +1450,6 @@ export function WalletProvider({ children }) {
         // equivalent throwaway verifier KDF first so a miss and a hit cost the same
         // number of KDFs. The result is discarded (we throw regardless).
         await captureVerifierSafe(password);
-
-        // H2 WRONG ATTEMPT TRACKING: increment the counter and check if we've hit
-        // the 10-attempt wipe threshold (I4 fail-closed). The timer-oracle mitigation
-        // (VULN-17) already equalizes the cost whether this is the first or tenth
-        // wrong attempt (constant 3 KDFs + verifier), so adding the wipe check here
-        // doesn't leak timing — we throw the SAME error in all cases.
-        try {
-          const wrongAttempts = (parseInt(localStorage.getItem('duress-wrong-attempts') || '0', 10)) + 1;
-          localStorage.setItem('duress-wrong-attempts', String(wrongAttempts));
-          if (wrongAttempts >= 10 && shouldWipeVault()) {
-            // Wipe vault on the 10th wrong attempt. This runs asynchronously so
-            // unlock() still throws the original error (same UX, no tell). The wipe
-            // is best-effort — if it fails, the next unlock will retry.
-            void panicWipe().catch(() => {});
-          }
-        } catch {
-          // localStorage error: best-effort, don't let it block unlock
-        }
-
         throw primaryErr; // total miss (PIN or password): equalized cost, then error
       }
     }
@@ -1541,9 +1543,6 @@ export function WalletProvider({ children }) {
       setActivePortfolioIdState(MAIN_PORTFOLIO_ID);
     }
 
-    // H2: Clear wrong attempt counter on successful unlock (I4 fail-closed)
-    try { localStorage.removeItem('duress-wrong-attempts'); } catch {}
-
     setUnlocked(true);
     setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
@@ -1567,7 +1566,7 @@ export function WalletProvider({ children }) {
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
-    return { passkeySkipped, biometricSkipped };
+    return { passkeySkipped, biometricSkipped, passkeyWarning };
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).
