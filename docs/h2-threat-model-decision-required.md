@@ -1,9 +1,11 @@
-# H2 Threat-Model Decision Required
+# H2 Threat-Model Decision — RESOLVED
 
 **Date:** 2026-06-30  
-**Status:** BUILT-PARTIAL (storage landed, enforcement pending owner decision)  
-**Audit Gate:** §24 SATISFIED — both audits complete. This is a design call, not audit-gated.  
-**Blocker:** Owner threat-model intent (frictionless-under-coercion vs. second-factor enforcement)
+**Decision:** **OPTION A** — Decoy wallet WITH second factor (PIN + Action Password / Passkey / Face ID)  
+**Decided By:** Owner (2026-06-30)  
+**Status:** IMPLEMENTATION READY (storage landed, enforcement to be wired)  
+**Audit Gate:** §24 SATISFIED — both audits complete. This was a design call, now resolved.  
+**Next Step:** Implement UI + enforcement wiring (estimated 2–3 hours)
 
 ---
 
