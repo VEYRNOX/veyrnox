@@ -340,10 +340,10 @@ RASP gates. None affect ALLOW_MAINNET.
 
 | ID | Area | Description | Gate |
 |---|---|---|---|
-| H-NEW-D | iOS native / KEK | iOS HardwareKekPlugin uses standard Keychain item (kSecClassGenericPassword), not a Secure Enclave-backed key — KEK is not hardware-bound (self-disclosed in plugin file header). Status: TARGET. Migration to SE requires Mac + Xcode + SE entitlement; cannot be fixed in this JS/Windows environment. See `docs/M2cd.native-acl-plan.md`. | Mac + Xcode + SE entitlement; see `docs/M2cd.native-acl-plan.md` |
-| F-01 / F-02 | Mobile / biometric | Biometric cache not OS-ACL bound (M2c/M2d plan) — app-layer gate, not hardware-enforced ACL | Native plugin + real device required |
+| H-NEW-D | iOS native / KEK | **BUILT (2026-06-30)**: SE P-256 ECIES KEK implementation complete (HardwareKekPlugin.swift). Non-extractable SE key, biometric ACL, fail-closed. **Blocker**: Capacitor inline-plugin registration (JS-side registerPlugin() can't find plugin). Next: convert to SPM package or accept blocker. See `docs/Feature-Status.md §8a` + memory `h-new-d-ios-se-implementation.md`. | Capacitor SPM package conversion (or accept blocker as documented) |
+| F-01 / F-02 | Mobile / biometric | Biometric cache not OS-ACL bound (M2c/M2d plan) — app-layer gate, not hardware-enforced ACL | Native plugin + real device required; would hit same Capacitor blocker as H-NEW-D |
 | F-09 | RASP | RASP not adversarially tested on rooted/Frida devices — OS-level probes unverified on live targets | Phase 4 — native RASP OS-level probes + real rooted/Frida device |
-| M-K | Web-App / passkey | Passkey assertion counter (`signCount`) not persisted between sessions — cloned authenticator undetectable | No-backend architecture trade-off; local counter persistence deferred |
+| M-K | Web-App / passkey | **BUILT (2026-06-30)**: WebAuthn signCount persistence + cloned authenticator detection. Extracts signCount from assertion response, compares to stored value, rejects replays (signCount must increase). Stored in localStorage (best-effort, no backend). Tests passing ✓. Ready for device verification with real clone attempt. | Device verification with cloned soft authenticator test |
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
