@@ -35,7 +35,14 @@ export default function BiometricUnlockSettings() {
   useEffect(() => {
     let active = true;
     getBiometricStatus()
-      .then(s => { if (active) setStatus(s); })
+      .then(s => {
+        if (!active) return;
+        setStatus(s);
+        // On native the biometric is hardwired (forcedOnDevice) — the toggle is shown
+        // as permanently on. Ensure the localStorage flag matches so isBiometricUnlockEnabled()
+        // returns true and the unlock screen shows the Face ID button.
+        if (s?.mode === 'native' && s?.available) setBiometricUnlockEnabled(true);
+      })
       .catch(() => {
         // Probe failed — fail honest: render the unavailable state instead of
         // hanging on "Checking availability…" forever (mirrors PasskeyUnlockSettings).
