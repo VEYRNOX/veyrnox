@@ -62,7 +62,7 @@ export default function HardwareKekSettings() {
       toast.success('Hardware protection enabled — your vault now requires this device to unlock.');
     } catch (e) {
       const msg = e?.message || String(e);
-      if (msg.includes('No wallet') || msg.includes('password') || msg.includes('Decryption')) {
+      if (msg.includes('No wallet') || msg.toLowerCase().includes('password') || msg.includes('Decryption')) {
         setError('Wrong PIN — enter the PIN you use to unlock your wallet.');
       } else {
         setError(`Failed: ${msg}`);
@@ -91,7 +91,7 @@ export default function HardwareKekSettings() {
       toast.success('Hardware protection removed.');
     } catch (e) {
       const msg = e?.message || String(e);
-      if (msg.includes('UNWRAP') || msg.includes('password') || msg.includes('Decryption')) {
+      if (msg.includes('UNWRAP') || msg.toLowerCase().includes('password') || msg.includes('Decryption')) {
         setError('Wrong PIN — enter the PIN you use to unlock your wallet.');
       } else {
         setError(`Failed: ${msg}`);
