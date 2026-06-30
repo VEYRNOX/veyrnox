@@ -71,6 +71,20 @@ public class HardwareKekPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getHardwareFactor", returnType: CAPPluginReturnPromise),
     ]
 
+    // Static initialization hook to ensure the class is loaded into the Swift runtime
+    // This helps Capacitor's plugin discovery find the class
+    static let _staticInit: Void = {
+        #if DEBUG
+        print("🔧 HardwareKekPlugin static initializer executed")
+        #endif
+    }()
+
+    public override init() {
+        super.init()
+        // Force static initializer to run
+        _ = HardwareKekPlugin._staticInit
+    }
+
     /// Enroll: generate SE key + random H, encrypt H under ECIES, store in Keychain.
     /// Idempotent — clears any prior enrollment before writing.
     @objc func enroll(_ call: CAPPluginCall) {
