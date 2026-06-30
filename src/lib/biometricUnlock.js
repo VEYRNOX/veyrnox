@@ -112,7 +112,10 @@ async function nativeReadSecret() {
   const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
   await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
   const v = await SecureStorage.get(NATIVE_KEY, false);
-  return v == null ? null : String(v);
+  const s = v == null ? null : String(v);
+  // Guard against empty-string returns from Android SecureStorage (missing/corrupt
+  // entry returns "" rather than null on some plugin versions — empty is no-secret).
+  return (s != null && s.length > 0) ? s : null;
 }
 
 // PRIVATE presence check — metadata only (lists keys, never reads the value), so

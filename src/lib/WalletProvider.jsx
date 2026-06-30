@@ -1637,7 +1637,7 @@ export function WalletProvider({ children }) {
       // route to the password fallback, same as a cancelled demo prompt.
       throw new BiometricGateError('cancelled', err);
     }
-    if (password == null) throw new BiometricGateError('no-secret');
+    if (!password) throw new BiometricGateError('no-secret');
     return unlock(password, { skipBiometric: true });
   }, [showSimulatedPrompt, unlock]);
 
