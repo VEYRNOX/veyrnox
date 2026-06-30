@@ -122,8 +122,11 @@ async function nativeHasSecret() {
   try {
     const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
     await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
-    const keys = await SecureStorage.keys();
-    return Array.isArray(keys) && keys.includes(NATIVE_KEY);
+    const result = await SecureStorage.keys();
+    const keys = Array.isArray(result) ? result : (result?.keys ?? []);
+    // keys() may return prefixed or unprefixed keys depending on the platform
+    // implementation — check both to be safe.
+    return keys.includes(NATIVE_KEY) || keys.includes(NATIVE_PREFIX + NATIVE_KEY);
   } catch {
     return false;
   }
