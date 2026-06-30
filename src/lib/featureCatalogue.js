@@ -181,9 +181,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Native Secure Storage',
-        status: 'built',
-        summary: 'iOS Secure Enclave P-256 ECIES KEK (H-NEW-D, 2026-06-30)',
-        explanation: 'iOS: H-NEW-D (Hardware-bound Encryption Key, iOS Secure Enclave) is BUILT. Ephemeral ECDH + HKDF-SHA256 + AES-GCM seal/unseal of the vault key in the SE. Non-extractable SE private key, biometric ACL. Status: UNAUDITED-PROVISIONAL. Blocker: Capacitor inline-plugin registration (documented; future: SPM package conversion). Android: StrongBox hardware binding (setIsStrongBoxBacked) is best-effort; StrongBox is NOT enforced. See docs/Feature-Status.md for full audit findings.',
+        status: 'roadmap',
+        summary: 'iOS Secure Enclave P-256 ECIES KEK (H-NEW-D) — designed, audit-gated, plugin registration blocked',
+        explanation: 'iOS: H-NEW-D (Hardware-bound Encryption Key, iOS Secure Enclave) design complete. Ephemeral ECDH + HKDF-SHA256 + AES-GCM seal/unseal of the vault key in the SE. Non-extractable SE private key, biometric ACL. Status: ROADMAP (audit-gated, not confirmed in shipped code). Blocker: Capacitor inline-plugin runtime discovery (documented; future: SPM package conversion). Android: StrongBox hardware binding (setIsStrongBoxBacked) is best-effort; StrongBox is NOT enforced. See docs/Feature-Status.md for full audit findings.',
       },
       {
         name: 'Session Manager & Auto-Lock',
