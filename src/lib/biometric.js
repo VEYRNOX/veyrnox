@@ -34,10 +34,12 @@ export const TWOFACTOR_BIOMETRIC_KEY = 'veyrnox-2fa-biometric';
 
 /** @returns {boolean} whether the user has required biometric unlock. */
 export function isBiometricUnlockEnabled() {
-  // On native, biometric/passcode is always required by the OS — treat as always on.
-  // localStorage is wiped on app uninstall, so we can't rely on the stored pref here.
+  // Always read the user's stored preference. NEVER hardcode `true` (not even on
+  // native): the unlock gate must not claim a control the user never enabled (I4).
+  // localStorage is wiped on uninstall; post-reinstall the *button visibility* is
+  // recovered from the OS keystore via hasStoredUnlockSecret() (see WalletEntry),
+  // not by faking this preference to true.
   try {
-    if (Capacitor.isNativePlatform()) return true;
     return localStorage.getItem(BIOMETRIC_PREF_KEY) === '1';
   } catch {
     return false;

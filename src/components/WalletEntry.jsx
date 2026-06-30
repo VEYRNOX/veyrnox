@@ -459,7 +459,13 @@ export default function WalletEntry() {
         const entry = resolveOnboardingEntry({ hasVault: v });
         setView(entry);
         if (entry === "pin-create") { setRealPin(""); setRealPinConfirm(""); setPinStep("real"); }
-        if (v && isBiometricUnlockEnabled()) {
+        // Offer the biometric one-tap button when a returning user has a cached
+        // secret AND either the preference is set, OR we're on native (where the
+        // OS keystore is the authoritative signal). After reinstall, localStorage
+        // is wiped so the pref reads false, but the secret survives in the
+        // keystore — on native, hasStoredUnlockSecret() is what gates the button.
+        // Web NEVER shows the button without the explicit preference.
+        if (v && (isBiometricUnlockEnabled() || Capacitor.isNativePlatform())) {
           try { setBioReady(await hasStoredUnlockSecret()); }
           catch { setBioReady(false); }
         } else {
