@@ -136,6 +136,7 @@ import {
   PASSKEY_GATE,
   PasskeyGateError,
   classifyPasskeyError,
+  isPasskeyClonedError,
 } from '@/lib/passkey';
 import {
   loadAutoLockValue,
@@ -458,6 +459,24 @@ export function WalletProvider({ children }) {
     try {
       await verifyPasskeyAssertion(); // fail closed on cancel/failure
     } catch (err) {
+      // M-K — cloned-authenticator detection is ADVISORY, not a hard block. The
+      // user DID complete a user-verifying assertion (the possession factor was
+      // satisfied); the signCount stall is a heuristic warning, not proof, and the
+      // password below is still the real control. So we PASS the gate but carry a
+      // structured warning so the unlock UI can surface it (consistent with the
+      // wallet's warn-not-block posture). The counter is intentionally NOT
+      // advanced (verifyPasskeyAssertion threw before persisting), so the warning
+      // keeps showing until a legitimately higher signCount overtakes it.
+      if (isPasskeyClonedError(err)) {
+        return {
+          status: PASSKEY_GATE.PASSED,
+          warning: {
+            code: 'authenticator_cloned',
+            oldSignCount: err.oldSignCount,
+            newSignCount: err.newSignCount,
+          },
+        };
+      }
       // Classify cancel-vs-broken so the UI can decide whether to surface the
       // password-only escape hatch (SAST M-3). We still THROW here — the unlock
       // fails closed; the escape hatch is a separate, deliberate user action.
@@ -1329,11 +1348,16 @@ export function WalletProvider({ children }) {
     // vault. The deliberate password-only escape hatch (opts.skipPasskey) is the
     // ONLY way past a failed gate, and it still requires the password below.
     let passkeySkipped = null;
+    // M-K — advisory cloned-authenticator warning (code 'authenticator_cloned').
+    // Carried out to the caller so the unlock UI can surface it as a WARNING; it
+    // never blocks unlock (the password below is the real control).
+    let passkeyWarning = null;
     if (opts.skipPasskey) {
       passkeySkipped = 'escape-hatch';
     } else {
       const gate = await runPasskeyGate();
       if (gate.status === PASSKEY_GATE.UNAVAILABLE) passkeySkipped = 'unavailable';
+      if (gate.warning) passkeyWarning = gate.warning;
     }
     // Signal (not secret) when the biometric convenience factor was bypassed via
     // the escape hatch, so the UI can disclose it rather than silently proceed.
@@ -1542,7 +1566,7 @@ export function WalletProvider({ children }) {
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
-    return { passkeySkipped, biometricSkipped };
+    return { passkeySkipped, biometricSkipped, passkeyWarning };
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).

@@ -2,12 +2,24 @@ import UIKit
 import Capacitor
 import CryptoKit
 
+// Force HardwareKekPlugin class to load into memory at app startup.
+// This ensures Capacitor can find it when the bridge initializes.
+private let _pluginClass: AnyClass = HardwareKekPlugin.self
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Force the root view controller to be MainViewController to ensure
+        // our plugin registration code runs.
+        // This bypasses any storyboard issues.
+        if let window = self.window {
+            let mainVC = MainViewController()
+            window.rootViewController = mainVC
+            window.makeKeyAndVisible()
+        }
         return true
     }
 

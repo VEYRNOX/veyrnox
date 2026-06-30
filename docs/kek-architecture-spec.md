@@ -5,6 +5,8 @@
 **Owner:** Al · **Reviewer (required before status drop):** independent audit
 **Framing:** PRE-AUDIT.
 
+> **IMPORTANT — Shipped KDF parameter update (commit 1226085e, 2026-06-19):** The current shipped build uses **64 MiB / t=3** Argon2id (reduced from the 192 MiB design spec below) for device-latency trade-off. This is a deliberate security/usability trade-off not yet independently re-audited. Readers of this spec should note that the KDF_PARAMS in production code differ from the original design. See docs/Feature-Status.md §5 for full context.
+
 This document is self-contained. It states the problem, the resolved design, the
 keying construction, the four credential paths, the deniability rules, and the
 open empirical/audit questions, so it stands alone as an audit input and as the

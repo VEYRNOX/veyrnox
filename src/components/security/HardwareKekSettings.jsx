@@ -45,8 +45,9 @@ export default function HardwareKekSettings() {
     return () => { active = false; };
   }, []);
 
-  const handleEnroll = async () => {
-    if (!pin) { setError('Enter your vault PIN first.'); return; }
+  const handleEnroll = async (testPin) => {
+    const pinToUse = testPin || pin;
+    if (!pinToUse) { setError('Enter your vault PIN first.'); return; }
     setError('');
     setBusy(true);
     try {
@@ -55,7 +56,7 @@ export default function HardwareKekSettings() {
       await enrollHardwareCredential();
       // Step 2: enroll KEK on the vault using the device-bound factor (Keychain/TEE).
       // getHardwareFactor() is called inside enrollKek — second biometric prompt.
-      await getKeyStore().enrollKek(pin, { getHardwareFactor });
+      await getKeyStore().enrollKek(pinToUse, { getHardwareFactor });
       setEnrolled(true);
       setPin('');
       recordAudit('settings_changed');

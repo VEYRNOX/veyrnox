@@ -267,7 +267,7 @@ with StrongBox, and an engaged independent auditor.
 | H-NEW-D — iOS HardwareKekPlugin uses Keychain item not Secure Enclave | OPEN / TARGET | Requires Mac + Xcode + SE entitlement; see docs/M2cd.native-acl-plan.md |
 | F-01/F-02 — biometric cache not OS-ACL bound (Android: no setInvalidatedByBiometricEnrollment; iOS: cache item not kSecAccessControlBiometryCurrentSet) | OPEN / TARGET | M2c/M2d plan; requires custom Capacitor plugin + real device |
 | F-09 — RaspIntegrityPlugin not adversarially tested on rooted/Frida devices | OPEN | Phase 4 roadmap — real device required |
-| M-K — passkey assertion counter not persisted (no replay detection) | OPEN | No server-side verifier; architectural limitation |
+| M-K — passkey assertion counter (signCount) cloned authenticator detection | ✅ BUILT (2026-06-30) | WebAuthn signCount persistence + validation (localStorage, best-effort). Detects cloned/replayed soft authenticators. Device verification gate: real cloned-authenticator test (e.g. iCloud Keychain backup replay). See docs/Feature-Status.md §8a |
 
 Gate conditions in §4 are UNCHANGED. ALLOW_MAINNET stays true.
 

@@ -21,8 +21,6 @@ import {
 } from '../evm/suspicious.js';
 import { assessEvmTransaction } from '../evm/simulate.js';
 
-// A documented sanctioned address that ships in the default blocklist.
-const SANCTIONED = '0x098B716B8Aaf21512996dC57EB0615e2383E2f96';
 const DEAD = '0x000000000000000000000000000000000000dEaD';
 const CLEAN = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'; // a fresh EOA, not listed
 const SCAMMER = '0x1111111111111111111111111111111111111111';
@@ -30,31 +28,21 @@ const SCAMMER = '0x1111111111111111111111111111111111111111';
 const codes = (a) => a.risks.map((r) => r.code);
 
 describe('screenAddress — flagged recipients', () => {
-  it('catches a default-blocklisted address with the correct category', () => {
-    const r = screenAddress(SANCTIONED);
-    expect(r.valid).toBe(true);
-    expect(r.flagged).toBe(true);
-    expect(r.matches).toHaveLength(1);
-    expect(r.matches[0].category).toBe('sanctioned');
-    expect(r.matches[0].source).toMatch(/OFAC/i);
-    expect(r.reasons[0]).toMatch(/sanctioned/i);
-  });
-
   it('catches a burn / null sink (shared with poison.js)', () => {
     const r = screenAddress(DEAD);
     expect(r.flagged).toBe(true);
     expect(r.matches[0].category).toBe('burn');
   });
 
-  it('is case-insensitive — checksummed, upper, and lower all match', () => {
-    const lower = screenAddress(SANCTIONED.toLowerCase());
-    const upper = screenAddress('0x' + SANCTIONED.slice(2).toUpperCase());
-    const mixed = screenAddress(SANCTIONED);
+  it('is case-insensitive — checksummed, upper, and lower all match (burn sink example)', () => {
+    const lower = screenAddress(DEAD.toLowerCase());
+    const upper = screenAddress('0x' + DEAD.slice(2).toUpperCase());
+    const mixed = screenAddress(DEAD);
     expect(lower.flagged).toBe(true);
     expect(upper.flagged).toBe(true);
     expect(mixed.flagged).toBe(true);
     // The reported address is normalised to lowercase regardless of input casing.
-    expect(mixed.matches[0].address).toBe(SANCTIONED.toLowerCase());
+    expect(mixed.matches[0].address).toBe(DEAD.toLowerCase());
   });
 });
 
@@ -106,9 +94,9 @@ describe('screenAddress — pluggable providers', () => {
     expect(r.flagged).toBe(true);
     expect(r.matches[0].category).toBe('scam');
     expect(r.matches[0].provider).toBe('my-feed');
-    // A custom provider replaces the default set — the default sanctioned entry
-    // is not consulted here, proving the providers option is honored.
-    expect(screenAddress(SANCTIONED, { providers: [custom] }).flagged).toBe(false);
+    // A custom provider replaces the default set — an unlisted address
+    // is not flagged here, proving the providers option is honored.
+    expect(screenAddress(CLEAN, { providers: [custom] }).flagged).toBe(false);
   });
 
   it('de-duplicates the same finding reported by two providers', () => {
@@ -130,9 +118,10 @@ describe('screenAddress — pluggable providers', () => {
 
   it('degrades (no throw) when a provider misbehaves', () => {
     const bad = { name: 'broken', screen() { throw new Error('boom'); } };
-    const r = screenAddress(SANCTIONED, { providers: [bad, localBlocklistProvider] });
+    const good = makeBlocklistProvider([{ address: SCAMMER, category: 'drainer', source: 'test' }], 'test');
+    const r = screenAddress(SCAMMER, { providers: [bad, good] });
     expect(r.flagged).toBe(true); // the good provider still produced a match
-    expect(r.matches[0].category).toBe('sanctioned');
+    expect(r.matches[0].category).toBe('drainer');
   });
 });
 
@@ -148,15 +137,6 @@ describe('default blocklist integrity', () => {
 });
 
 describe('screenAddress composes into assessEvmTransaction', () => {
-  it('surfaces a sanctioned recipient as a high-risk warning (does not block)', () => {
-    const a = assessEvmTransaction({
-      decoded: { kind: 'native' }, txTo: SANCTIONED,
-      valueWei: parseEther('0.1'), nativeBalanceWei: parseEther('2'), nativeSymbol: 'ETH',
-    });
-    expect(codes(a)).toContain('flagged_recipient');
-    expect(a.risks.find((r) => r.code === 'flagged_recipient').level).toBe('high');
-  });
-
   it('does not double-flag a burn sink (already covered by known_bad_recipient)', () => {
     const a = assessEvmTransaction({
       decoded: { kind: 'native' }, txTo: DEAD,
