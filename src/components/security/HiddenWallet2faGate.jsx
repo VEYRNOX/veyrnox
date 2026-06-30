@@ -38,8 +38,6 @@ export default function HiddenWallet2faGate() {
 
   const handleCancel = useCallback(() => {
     // Disallow cancelling the 2FA gate for hidden wallet access
-    // (unlike critical actions which can be dismissed)
-    // Actually, we let them cancel but they can't access the wallet without 2FA
   }, []);
 
   const handleLock = useCallback(() => {
@@ -48,12 +46,12 @@ export default function HiddenWallet2faGate() {
   }, [lock]);
 
   const verify = useCallback(async ({ pin, password }) => {
-    // For biometric mode: re-verify with OS biometric
+    // For biometric mode: verify with biometric only
     if (hiddenWallet2faMode === 'biometric') {
       let bioOk = false;
       try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
       if (bioOk) return { allowed: true, message: null };
-      return { allowed: false, message: 'Biometric check did not pass.' };
+      return { allowed: false, message: 'Biometric verification failed.' };
     }
 
     // For password/passkey: verify the PIN first
@@ -71,6 +69,9 @@ export default function HiddenWallet2faGate() {
     }
 
     // Password mode: PIN + Action Password
+    if (!password) {
+      return { allowed: false, message: 'Action Password is required.' };
+    }
     const passwordOk = await verifyActionPassword(password);
     return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
   }, [hiddenWallet2faMode, verifyActiveCredentialDetailed, verifyActionPassword]);

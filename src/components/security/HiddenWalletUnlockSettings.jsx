@@ -121,9 +121,14 @@ export default function HiddenWalletUnlockSettings() {
 
   // Filter available modes based on platform
   const availableModes = MODES.filter((m) => {
-    if (m.nativeOnly && !isNative) return false;
-    if (m.value === 'biometric' && !bioAvailable) return false;
-    return true;
+    // TODO (TARGET): Password & biometric modes need custom UI integration
+    // Current implementation uses TwoFactorGate (designed for critical actions)
+    // which doesn't properly separate PIN verification from secondary factors
+    // for the hidden wallet 2FA use case. Requires dedicated modal components.
+    if (m.value === 'password') return false;  // Needs custom password field UI
+    if (m.value === 'biometric') return false; // Needs FaceID-only UI (no PIN)
+    if (m.value === 'passkey') return false;   // Passkey needs integration test
+    return true; // Only 'none' (disabled) mode available
   });
 
   return (
