@@ -240,6 +240,9 @@ export function WalletProvider({ children }) {
   // encrypted container (containerRef) — this is only the non-secret boolean. False
   // in a decoy/hidden session (those carry no container record this phase).
   const [actionPasswordConfigured, setActionPasswordConfigured] = useState(false);
+  // Hidden wallet 2FA unlock mode ('none'|'password'|'passkey'|'biometric'), from
+  // containerRef. Only meaningful on primary set (decoy/hidden always use PIN).
+  const [hiddenWallet2faMode, setHiddenWallet2faModeState] = useState('none');
   // Public, non-secret per-wallet info for the UI: [{ id, name, backedUp,
   // enabledAssets }] — NO mnemonics. Derived from the container ids + walletMeta.
   const [wallets, setWallets] = useState([]);
@@ -1095,6 +1098,28 @@ export function WalletProvider({ children }) {
     touch();
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
 
+  /** Set the hidden wallet unlock 2FA mode for the PRIMARY set only.
+   * Mode must be one of: 'none'|'password'|'passkey'|'biometric'.
+   * (Decoy and hidden sets do not have this gate — they use PIN to unlock.)
+   * Requires the primary vault password for re-encryption.
+   */
+  const setHiddenWallet2faMode = useCallback(async (mode, password) => {
+    if (isDecoy || isHidden) {
+      throw new Error('Configure hidden wallet 2FA from your real wallet session only');
+    }
+    const validModes = ['none', 'password', 'passkey', 'biometric'];
+    if (!validModes.includes(mode)) {
+      throw new Error(`Invalid mode: ${mode}`);
+    }
+    // Re-auth the primary set before changing the setting
+    const current = await decryptPrimaryContainer(password);
+    const container = mv.withHiddenWallet2faMode(current, mode);
+    await persistActiveSetContainer(password, container);
+    containerRef.current = container;
+    setHiddenWallet2faModeState(mode);
+    touch();
+  }, [isDecoy, isHidden, decryptPrimaryContainer, persistActiveSetContainer, touch]);
+
   // STEP-UP: is re-auth required before a send (or seed reveal)? True when the
   // recent-auth window has lapsed (or no session). Resets only on unlock +
   // successful verifyActiveCredential. Defined ABOVE revealWalletMnemonic so its
@@ -1477,6 +1502,8 @@ export function WalletProvider({ children }) {
     // a decoy/hidden set that has an Action Password, so the 2FA gate fires identically
     // across primary/decoy/hidden — the decoy no longer betrays itself by skipping it.
     setActionPasswordConfigured(mv.getActionPasswordRecord(container) != null);
+    // Hidden wallet 2FA mode (primary set only; decoy/hidden always use PIN).
+    setHiddenWallet2faModeState(mv.getHiddenWallet2faMode(container));
     const isPrimary = !decoy && !hidden;
 
     if (isPrimary) {
@@ -1945,6 +1972,10 @@ export function WalletProvider({ children }) {
     verifyActionPassword,
     setActionPassword,
     clearActionPassword,
+    // HIDDEN WALLET 2FA UNLOCK (optional second factor before reveal).
+    // Mode is 'none'|'password'|'passkey'|'biometric'; primary set only.
+    hiddenWallet2faMode,
+    setHiddenWallet2faMode,
     hasPendingPin: pendingPinRef.current != null,
     // DURESS / DECOY (S3): is the current session a decoy? Off by default.
     isDecoy,
