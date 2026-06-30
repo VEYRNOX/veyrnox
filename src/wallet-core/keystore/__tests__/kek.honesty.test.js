@@ -1,12 +1,12 @@
-// kek.honesty.test.js — H14/H15 honesty source-scan (I4: fail honest, no fake security).
+// kek.honesty.test.js — H-NEW-D/H15 honesty source-scan (I4: fail honest, no fake security).
 //
 // These tests pin the HONESTY CONTRACT, not crypto behaviour. They read the native
 // KEK plugins and the user-facing KEK status string as TEXT and assert they do NOT
 // overstate the hardware protection actually delivered:
-//   H14 (iOS): kSecClassGenericPassword is regular Keychain, NOT the Secure Enclave.
+//   H-NEW-D (iOS): Secure Enclave P-256 ECIES with non-extractable key + biometric ACL.
 //   H15 (Android): setIsStrongBoxBacked is best-effort; StrongBox is NOT enforced.
 //
-// Copy can change; the contract is "no unqualified SE/hardware-backed/StrongBox claim".
+// Copy can change; the contract is "document mechanisms accurately, qualify all claims".
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -37,20 +37,26 @@ function hasMisleadingSecureEnclave(text) {
   return false;
 }
 
-describe('H14 — iOS HardwareKekPlugin.swift does not claim Secure Enclave storage', () => {
+describe('H-NEW-D — iOS HardwareKekPlugin.swift documents Secure Enclave correctly', () => {
   const swift = read(SWIFT);
 
-  it('contains no Secure Enclave storage claim (only allowed as a "not Secure Enclave" caveat)', () => {
-    expect(hasMisleadingSecureEnclave(swift)).toBe(false);
+  it('documents that the SE private key is non-extractable (I4 invariant)', () => {
+    expect(swift).toMatch(/non-extractable|never leaves/i);
+    expect(swift).toMatch(/Secure Enclave|coprocessor/i);
   });
 
-  it('documents that storage is standard Keychain, not the Secure Enclave (H14)', () => {
-    expect(swift).toMatch(/not\s+(the\s+)?Secure Enclave/i);
-    expect(swift).toMatch(/H14/);
+  it('documents biometric ACL requirement (.biometryCurrentSet)', () => {
+    expect(swift).toMatch(/biometric|Face ID|Touch ID/i);
+    expect(swift).toMatch(/ACL|access.?control/i);
   });
 
-  it('does not use an unqualified "hardware-backed" claim', () => {
-    expect(swift).not.toMatch(/hardware-backed/i);
+  it('documents that H-NEW-D is UNAUDITED-PROVISIONAL', () => {
+    expect(swift).toMatch(/UNAUDITED-PROVISIONAL|awaiting.*audit/i);
+    expect(swift).toMatch(/H-NEW-D/);
+  });
+
+  it('documents ECIES encryption scheme (ephemeral ECDH + HKDF + AES-GCM)', () => {
+    expect(swift).toMatch(/ECIES|ephemeral|ECDH|AES-GCM/i);
   });
 });
 
