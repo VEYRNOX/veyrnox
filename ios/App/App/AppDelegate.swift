@@ -2,6 +2,10 @@ import UIKit
 import Capacitor
 import CryptoKit
 
+// Force HardwareKekPlugin class to load into memory at app startup.
+// This ensures Capacitor can find it when the bridge initializes.
+private let _pluginClass: AnyClass = HardwareKekPlugin.self
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
