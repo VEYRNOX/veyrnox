@@ -1,20 +1,18 @@
 // wallet-core/evm/__tests__/suspicious.ofac-honest.test.js
 //
-// Contract test pinning the HONEST OFAC posture (audit: "OFAC screening — legal
-// review gate still open before shipping").
+// Contract test pinning the complete removal of OFAC sanctions screening (audit:
+// "OFAC screening — legal review gate still open before shipping").
 //
-// The project DELIBERATELY removed the bundled OFAC SDN snapshot provider in
-// PR #263 and deleted src/wallet-core/data/ofac-sanctioned.json, because:
-//   - automated bulk pulls from treasury.gov carry commercial ToS constraints, and
-//   - a bundled snapshot is stale-by-design and cannot stay delisting-current,
-//     which is exactly what reliable sanctions screening requires.
+// The project has completely removed OFAC sanctions screening:
+//   - PR #263 removed the bundled OFAC SDN snapshot provider
+//   - All hand-curated sanctioned entries have been removed
+//   - scripts/refresh-ofac-blocklist.mjs (retired) has been deleted
 //
-// So the honest state is: NO bundled snapshot, NO network provider in the default
-// set, and only a single citable hand-curated sanctioned entry (Ronin/Lazarus)
-// that does not depend on any automated feed. Full SDN coverage is blocked on
-// (a) an independent legal review and (b) an enterprise-licensed RUNTIME API —
-// not a re-introduced snapshot. This test FAILS if anyone silently re-adds the
-// stale-snapshot machinery, and it pins the legal-gate doc as the audit record.
+// For production compliance screening, wire in an enterprise-licensed API
+// (Chainalysis, TRM Labs, Elliptic, etc.) as an additional provider via
+// screenAddress(). See docs/OFAC-legal-gate.md for rationale.
+//
+// This test FAILS if anyone re-introduces OFAC screening in any form.
 //
 // These assertions check machine CONTRACT (provider set shape, file absence,
 // entry category code), not prose copy.
@@ -35,14 +33,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../../../..');
 const SNAPSHOT_PATH = resolve(REPO_ROOT, 'src/wallet-core/data/ofac-sanctioned.json');
 const LEGAL_GATE_DOC = resolve(REPO_ROOT, 'docs/OFAC-legal-gate.md');
+const REFRESH_SCRIPT = resolve(REPO_ROOT, 'scripts/refresh-ofac-blocklist.mjs');
 
-const RONIN_LAZARUS = '0x098B716B8Aaf21512996dC57EB0615e2383E2f96';
-
-describe('OFAC honest posture — no bundled snapshot, single citable entry', () => {
-  it('DEFAULT_BLOCKLIST carries exactly one sanctioned entry and it is Ronin/Lazarus', () => {
+describe('OFAC sanctions screening — completely removed', () => {
+  it('DEFAULT_BLOCKLIST contains zero sanctioned entries (OFAC removed)', () => {
     const sanctioned = DEFAULT_BLOCKLIST.filter((e) => e?.category === 'sanctioned');
-    expect(sanctioned).toHaveLength(1);
-    expect(sanctioned[0].address.toLowerCase()).toBe(RONIN_LAZARUS.toLowerCase());
+    expect(sanctioned).toHaveLength(0);
   });
 
   it('the default provider set is local-only (no network/snapshot provider)', () => {
@@ -66,14 +62,17 @@ describe('OFAC honest posture — no bundled snapshot, single citable entry', ()
     expect(existsSync(SNAPSHOT_PATH)).toBe(false);
   });
 
-  it('the legal-gate doc exists and records the honest contract', () => {
+  it('the refresh script is deleted', () => {
+    expect(existsSync(REFRESH_SCRIPT)).toBe(false);
+  });
+
+  it('the legal-gate doc exists and records the complete removal', () => {
     expect(existsSync(LEGAL_GATE_DOC)).toBe(true);
     const doc = readFileSync(LEGAL_GATE_DOC, 'utf8');
-    // Pin the load-bearing facts, not phrasing: status tag, the removal PR, the
-    // surviving entry, and that a bundled snapshot is explicitly NOT the fix.
-    expect(doc).toMatch(/HONEST-DISABLED/);
+    // Pin the load-bearing facts: status (removed), the removal PR, and that
+    // bundled snapshots and all OFAC screening are gone.
+    expect(doc).toMatch(/removed|HONEST-DISABLED/i);
     expect(doc).toMatch(/#263/);
-    expect(doc).toMatch(/0x098B716B/i);
-    expect(doc).toMatch(/legal review/i);
+    expect(doc).toMatch(/enterprise-licensed|runtime API/i);
   });
 });
