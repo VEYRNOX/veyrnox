@@ -29,7 +29,7 @@ identity; the app never holds keys server-side.
 - **Audit gate (§24).** The **internal audit** is the hard gate: it reviews the
   architecture BEFORE any backend or seed-touching build, and is the pass that opens
   mainnet. (An independent audit is also performed for depth, but does not gate.) RASP,
-  hardware KEK, device attestation, network hardening, cloud recovery, and inheritance are
+  hardware KEK, device attestation, network hardening, and cloud recovery are
   TARGET/PLANNED — do not build them blind; they need real-device verification and the audit.
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
