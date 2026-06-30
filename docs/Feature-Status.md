@@ -124,7 +124,12 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ## 4. Security — S1 foundation
 - Native secure storage (M2a done; M2b provisional, app-layer) — 🟡 (OS-enforced ACL / Enclave-StrongBox binding = M2c/M2d 📋, not built — gated on a thin custom **native plugin + real-device hardware verification** (Swift SE/Keychain + Kotlin Keystore/StrongBox), NOT on an audit. See M2c/d decision note.)
-- Biometric unlock — ✅ (`biometric.js`; app-layer preference gate, PROVISIONAL — not an OS-enforced ACL)
+- Biometric unlock — ✅ (`biometric.js`; app-layer preference gate, PROVISIONAL — not an OS-enforced ACL). **Native Face ID / biometric unlock — BUILT on iOS and Android (2026-06-29/PR #483):**
+  - **Stale Keychain guard (PIN cohort):** a fresh install clears any stale Keychain entry before onboarding, so the PIN cohort does not collide with a previous vault.
+  - **Face ID → real wallet:** Face ID unlock (via Biometric Unlock toggle in Settings → Security) opens the primary/real wallet.
+  - **Face ID → decoy wallet:** "Use Face ID for hidden wallet" toggle in the Duress PIN screen binds Face ID to the decoy path — coercion-resistant by design, the real wallet is only reachable with the real PIN.
+  - **Face ID 2FA at critical actions:** PIN + Face ID toggle in Settings → Security → Two-Factor gates Send / reveal seed / critical actions behind a native OS biometric assertion (I4 fail-closed on cancel/error). VERIFIED on-chain 2026-06-29 — see Two-Factor at critical actions entry (§5) and `docs/verified-evidence.json`.
+  - **Android biometric permission (PR #483):** `USE_BIOMETRIC` and `USE_FINGERPRINT` added to `AndroidManifest.xml`. Without these, `BiometricPrompt` threw `SecurityException` on Android 9+. Now BUILT for Android.
 - FIDO2 / passkeys (unlock gate, NOT key custody) — ✅ (`passkey.js`; password-only escape hatch present — SAST M-3 fix)
 - Session manager + auto-lock (idle / background) — ✅ (`session.js`)
 - At-rest KDF work-factor raise + param migration — ✅ (SAST M3; KDF params reviewed under both audits — internal 2026-06-17 + independent ECC 2026-06-23, see `docs/audit-triage/a2-deniability-kdf-param-timing-2026-06-23.md`)
