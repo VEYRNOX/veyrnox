@@ -1,11 +1,11 @@
 # H2 Threat-Model Decision — RESOLVED
 
 **Date:** 2026-06-30  
-**Decision:** **OPTION A** — Decoy wallet WITH second factor (PIN + Action Password / Passkey / Face ID)  
-**Decided By:** Owner (2026-06-30)  
-**Status:** IMPLEMENTATION READY (storage landed, enforcement to be wired)  
+**Decision:** **OPTION B** — Decoy wallet WITHOUT second factor (PIN only, frictionless)  
+**Decided By:** Owner (2026-06-30, revised)  
+**Status:** HONEST-DISABLED BY DESIGN (storage groundwork remains, enforcement wiring NOT needed)  
 **Audit Gate:** §24 SATISFIED — both audits complete. This was a design call, now resolved.  
-**Next Step:** Implement UI + enforcement wiring (estimated 2–3 hours)
+**Next Step:** Document decision + verify existing code doesn't enable 2FA in decoy/hidden (estimated 30 min)
 
 ---
 
