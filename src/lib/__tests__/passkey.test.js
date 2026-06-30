@@ -181,6 +181,145 @@ describe('assertion (real path)', () => {
   });
 });
 
+describe('M-K — signCount validation (cloned authenticator detection)', () => {
+  // Create authenticatorData with signCount bytes at positions 33-36.
+  // The first 32 bytes are rpIdHash; bytes 32 is flags; bytes 33-36 are signCount.
+  function makeAuthenticatorData(signCount) {
+    const data = new Uint8Array(37);
+    // rpIdHash (32 bytes) — dummy value
+    for (let i = 0; i < 32; i++) data[i] = 0xaa;
+    // flags (byte 32) — UP=1 (user present)
+    data[32] = 0x01;
+    // signCount (bytes 33-36, big-endian uint32)
+    data[33] = (signCount >>> 24) & 0xff;
+    data[34] = (signCount >>> 16) & 0xff;
+    data[35] = (signCount >>> 8) & 0xff;
+    data[36] = signCount & 0xff;
+    return data;
+  }
+
+  it('stores signCount on first successful assertion', async () => {
+    const { get } = installAuthenticator();
+    await registerPasskeyCredential();
+    // Mock the assertion response with authenticatorData containing signCount=1
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(1),
+      },
+    });
+    await verifyPasskeyAssertion();
+    // Verify signCount was stored (internal state, not directly visible, but
+    // we can test the behavior in the next assertion).
+    const key = 'veyrnox-passkey-signcount';
+    expect(storage.getItem(key)).toBe('1');
+  });
+
+  it('rejects assertion with same signCount (cloned authenticator replay)', async () => {
+    const { get } = installAuthenticator();
+    await registerPasskeyCredential();
+
+    // First assertion: signCount=5
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(5),
+      },
+    });
+    await verifyPasskeyAssertion();
+    expect(storage.getItem('veyrnox-passkey-signcount')).toBe('5');
+
+    // Second assertion: same signCount=5 (as if the authenticator was cloned
+    // and replayed the same state — signCount never incremented).
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(5),
+      },
+    });
+    await expect(verifyPasskeyAssertion()).rejects.toThrow(
+      /signCount did not increase.*cloned|replayed/i
+    );
+  });
+
+  it('rejects assertion with lower signCount (rollback attack)', async () => {
+    const { get } = installAuthenticator();
+    await registerPasskeyCredential();
+
+    // First assertion: signCount=10
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(10),
+      },
+    });
+    await verifyPasskeyAssertion();
+
+    // Second assertion: signCount=8 (lower than stored 10 — rollback)
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(8),
+      },
+    });
+    await expect(verifyPasskeyAssertion()).rejects.toThrow(
+      /signCount did not increase/i
+    );
+  });
+
+  it('accepts assertion with strictly increasing signCount (legitimate flow)', async () => {
+    const { get } = installAuthenticator();
+    await registerPasskeyCredential();
+
+    // First assertion: signCount=1
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(1),
+      },
+    });
+    await expect(verifyPasskeyAssertion()).resolves.toBe(true);
+    expect(storage.getItem('veyrnox-passkey-signcount')).toBe('1');
+
+    // Second assertion: signCount=2 (strictly increases)
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(2),
+      },
+    });
+    await expect(verifyPasskeyAssertion()).resolves.toBe(true);
+    expect(storage.getItem('veyrnox-passkey-signcount')).toBe('2');
+
+    // Third assertion: signCount=100 (can jump, as long as it increases)
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(100),
+      },
+    });
+    await expect(verifyPasskeyAssertion()).resolves.toBe(true);
+    expect(storage.getItem('veyrnox-passkey-signcount')).toBe('100');
+  });
+
+  it('handles initial assertion with no prior signCount (first use)', async () => {
+    const { get } = installAuthenticator();
+    await registerPasskeyCredential();
+    // Do NOT do a prior assertion; signCount key is absent from storage.
+    expect(storage.getItem('veyrnox-passkey-signcount')).toBe(null);
+
+    get.mockResolvedValueOnce({
+      rawId: new Uint8Array([1, 2, 3, 4]).buffer,
+      response: {
+        authenticatorData: makeAuthenticatorData(1),
+      },
+    });
+    // First assertion with no prior signCount should succeed (treat absent as 0).
+    await expect(verifyPasskeyAssertion()).resolves.toBe(true);
+    expect(storage.getItem('veyrnox-passkey-signcount')).toBe('1');
+  });
+});
+
 describe('status (web)', () => {
   it('is unavailable + unsupported with no WebAuthn API', async () => {
     const s = await getPasskeyStatus();
