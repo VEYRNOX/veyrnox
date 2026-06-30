@@ -163,8 +163,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Biometric Unlock',
         status: 'built',
-        summary: 'Face ID / Touch ID unlock gate',
-        explanation: 'Use device biometrics as an app-layer unlock gate where the platform supports it, falling back to passkey or password. Biometrics gate access; they do not custody keys.',
+        summary: 'Face ID / Touch ID / Android fingerprint unlock gate — native on iOS and Android',
+        explanation: 'Use device biometrics as an app-layer unlock gate where the platform supports it, falling back to passkey or password. Biometrics gate access; they do not custody keys. Native Face ID / biometric unlock is built on iOS and Android (2026-06-29): Face ID opens the real wallet (Biometric Unlock in Settings → Security) or optionally the decoy wallet ("Use Face ID for hidden wallet" in Duress PIN screen). Android: USE_BIOMETRIC and USE_FINGERPRINT permissions added to AndroidManifest.xml (PR #483) — previously BiometricPrompt threw SecurityException on Android 9+. App-layer gate; OS-enforced ACL binding (M2c/M2d) remains a TARGET (native plugin + real-device required).',
       },
       {
         name: 'PIN Unlock',
@@ -174,9 +174,10 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Two-Factor at Critical Actions',
-        status: 'built',
-        summary: 'PIN + Action Password, or PIN + Passkey, on sensitive actions',
-        explanation: 'Built (Security Settings → "Two-factor at critical actions"). Opt-in second factor required before sensitive actions — send, reveal recovery phrase, set duress PIN, create/hide a wallet. Method 1: PIN + Action Password — a second KNOWLEDGE factor, per wallet-set, stored inside the encrypted container (two Argon2id checks run sequentially). Method 2: PIN + Passkey / FIDO2 — a POSSESSION factor that fails closed on any cancel/timeout/error (device-global). 5 wrong attempts locks the app. Enforces on the PRIMARY set today; decoy/hidden parity is pending build plus an open threat-model decision (forcing a second factor inside a coercion decoy may be undesirable — see Feature-Status §6), the fixed-length-container storage groundwork has landed but enforcement + collection UI are not — this is NOT gated on the now-complete §24 audit. The ECC independent audit (2026-06-23) reviewed this feature and found the H-1 passkey-2FA Send bypass, fixed in PR #340 (resolveSend2faMethod). Still BUILT, not "verified": a passkey-only 2FA send needs an on-device testnet send with a confirmed explorer txid before it can flip.',
+        status: 'verified',
+        verifiedBy: 'Two-Factor — Face ID biometric possession factor (physical iPhone, Sepolia)',
+        summary: 'PIN + Action Password, or PIN + Face ID / Passkey, on sensitive actions — Face ID path verified on-chain 2026-06-29',
+        explanation: 'VERIFIED (Face ID / biometric possession path, physical iPhone 17 Pro Max, Sepolia txid 0xd1c97fa2f0a8ec2ae1038364f0106f6ef98b27258ad1ec2faa227de0baf1e2e7, 2026-06-29 — see docs/verified-evidence.json). Opt-in second factor before sensitive actions — send, reveal recovery phrase, set duress PIN, create/hide a wallet. Three methods: (1) PIN + Action Password — a second KNOWLEDGE factor, per wallet-set, stored inside the encrypted container (two Argon2id checks run sequentially); (2) PIN + Passkey / FIDO2 — a POSSESSION factor (device-global, fails closed on any cancel/timeout/error); (3) PIN + Face ID / native biometric — OS biometric assertion via @aparajita/capacitor-biometric-auth, SEND_2FA.BIOMETRIC path, fails closed (I4). Face ID cancel blocks the send. 5 wrong attempts locks the app. Enforces on the PRIMARY set today; decoy/hidden parity is a pending design decision (forcing a second factor inside a coercion decoy may be undesirable). The ECC independent audit (2026-06-23) found the H-1 passkey-2FA Send bypass, fixed in PR #340 (resolveSend2faMethod). Honest scope: the Action Password path is two things you know on one device (not hardware 2FA); Face ID / native biometric is OS-level possession but not a FIDO2 WebAuthn credential (WKWebView WebAuthn is unreliable; native biometric is the honest possession factor equivalent on iOS).',
       },
       {
         name: 'Native Secure Storage',
