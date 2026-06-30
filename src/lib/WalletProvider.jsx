@@ -108,6 +108,8 @@ import { getAuthModel, setAuthModel, shouldCacheUnlockSecret, clearAuthModel } f
 import { provisionPinWallet } from '@/lib/pinOnboarding';
 import { provisionPinRecovery } from '@/lib/pinRecovery';
 import { consumePendingPin } from '@/lib/pendingPinFlow';
+// H2 DURESS PIN + FACE ID REDIRECT: tracking wrong attempts + wipe at 10 (I4 fail-closed)
+import { shouldWipeVault, resetH2State } from '@/lib/duressPin';
 import {
   isBiometricUnlockEnabled,
   setBiometricUnlockEnabled,
@@ -788,6 +790,7 @@ export function WalletProvider({ children }) {
     clearAllWalletMeta();
     clearAllPortfolios();
     clearAuthModel();   // drop any 'pin' cohort marker (matters for the recovery rollback case)
+    resetH2State();     // clear wrong attempts + H2 state (best-effort)
     lock();             // drop the in-memory secret + reset session flags (isUnlocked -> false)
     // Deliberately NO setWasWiped(true): this is a setup-failure rollback, not a panic wipe.
   }, [lock]);
@@ -1426,6 +1429,25 @@ export function WalletProvider({ children }) {
         // equivalent throwaway verifier KDF first so a miss and a hit cost the same
         // number of KDFs. The result is discarded (we throw regardless).
         await captureVerifierSafe(password);
+
+        // H2 WRONG ATTEMPT TRACKING: increment the counter and check if we've hit
+        // the 10-attempt wipe threshold (I4 fail-closed). The timer-oracle mitigation
+        // (VULN-17) already equalizes the cost whether this is the first or tenth
+        // wrong attempt (constant 3 KDFs + verifier), so adding the wipe check here
+        // doesn't leak timing — we throw the SAME error in all cases.
+        try {
+          const wrongAttempts = (parseInt(localStorage.getItem('duress-wrong-attempts') || '0', 10)) + 1;
+          localStorage.setItem('duress-wrong-attempts', String(wrongAttempts));
+          if (wrongAttempts >= 10 && shouldWipeVault()) {
+            // Wipe vault on the 10th wrong attempt. This runs asynchronously so
+            // unlock() still throws the original error (same UX, no tell). The wipe
+            // is best-effort — if it fails, the next unlock will retry.
+            void panicWipe().catch(() => {});
+          }
+        } catch {
+          // localStorage error: best-effort, don't let it block unlock
+        }
+
         throw primaryErr; // total miss (PIN or password): equalized cost, then error
       }
     }
@@ -1518,6 +1540,9 @@ export function WalletProvider({ children }) {
       activePortfolioRef.current = MAIN_PORTFOLIO_ID;
       setActivePortfolioIdState(MAIN_PORTFOLIO_ID);
     }
+
+    // H2: Clear wrong attempt counter on successful unlock (I4 fail-closed)
+    try { localStorage.removeItem('duress-wrong-attempts'); } catch {}
 
     setUnlocked(true);
     setExploreMode(false);
