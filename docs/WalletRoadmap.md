@@ -23,7 +23,7 @@
 3. Read-only niceties (analytics/UX) are cheap, safe, parallelizable fillers.
 4. New chains (BTC, SOL, others) are separate stacks — slot deliberately, each
    adds audit cost.
-5. High-risk/legal features (Crypto Will, WalletConnect) come late, with audit +
+5. High-risk/legal features (WalletConnect) come late, with audit +
    (where noted) legal input. (Social Recovery + Multi-Sig were ❌ removed —
    audit-blocked, never shipped; see Removed section.)
 
@@ -64,8 +64,6 @@
 - Constant-KDF unlock timing across deniability stack — ✅ (SAST M-2 fix)
 - Hardware wallet (Ledger/Trezor) — 🟡 BUILT — Ledger WebHID address derivation + Trezor guide; TX signing coming soon; BTC/SOL hardware signing not wired; VULN-3+7 closed
 - Login activity (+ map) — ✅ VERIFIED 2026-06-20
-- Social recovery (guardian/SSS) — ❌ removed [audit-blocked-and-not-advertised] (never built; UI/catalogue removed)
-- Crypto Will / inheritance — 📋 (self-custody via secret-sharing + dead-man's-switch; audit + LAWYER)
 - Watch wallets — ✅ BUILT
 
 ## PHASE S4 — Hardening & monitoring
@@ -130,6 +128,7 @@
 > sensitive, never shipped, no longer advertised · [out-of-scope-regulated]
 > custodial/regulated, never in scope.
 - ❌ Social Recovery (guardian / Shamir SSS) — [audit-blocked-and-not-advertised] never built; removed from UI/catalogue.
+- ❌ Crypto Will / inheritance — [audit-blocked-and-not-advertised] never built; removed from roadmap 2026-06. No code exists.
 - ❌ Multi-Sig wallets (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
 - ❌ Rebalance + Rebalance History — [breaks-self-custody] autonomous value movement; removed (PR #47).
 - ❌ Recurring auto-debit — [breaks-self-custody] auto-debit path gutted (PR #47); Recurring Payments is now schedule/reminder only, hands off to Send for user signing.

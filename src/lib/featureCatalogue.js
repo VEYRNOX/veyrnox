@@ -274,12 +274,6 @@ export const FEATURE_CATEGORIES = [
         explanation: 'BUILT; the ECC independent audit (2026-06-23) confirmed the prior key-material residue gap (stealth-slot salt, audit-device salt, passkey credential IDs) is CLOSED and the deletion is now test-pinned (no findings, §24 satisfied). Two wipe paths: (1) a dedicated panic PIN at the unlock screen triggers an immediate irreversible local wipe; (2) 10 consecutive wrong PINs trigger the same wipe automatically (pinAttemptGuard.js — this is the v2 model\'s mitigation for the now-explicit wrong-PIN error). The 10-attempt counter lives in software and can be bypassed by imaging the storage before the first attempt on a seized device; hardware KEK is the planned fast-follow. Wipe destroys local key material only; on-chain funds are unaffected and the seed phrase elsewhere still recovers the wallet.',
       },
       {
-        name: 'Crypto Will / Inheritance',
-        status: 'roadmap',
-        summary: 'Self-custody inheritance (no custodial backstop)',
-        explanation: 'Inheritance built on secret-sharing plus a dead-man’s-switch — VEYRNOX never custodies keys or adjudicates death. Specced, not yet built; needs audit and legal input.',
-      },
-      {
         name: 'Encrypted Personal Backup',
         status: 'built',
         summary: 'Ciphertext-only vault backup',
