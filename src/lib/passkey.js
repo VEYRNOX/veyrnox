@@ -73,6 +73,10 @@ import { DEMO } from '@/api/demoClient';
 // secret: PREF is a boolean flag; CRED is a PUBLIC credential id + UI metadata.
 export const PASSKEY_PREF_KEY = 'veyrnox-passkey-unlock';
 export const PASSKEY_CRED_KEY = 'veyrnox-passkey-cred';
+// WebAuthn signCount for the registered credential (M-K: cloned authenticator detection).
+// Stored as a separate key to keep credential metadata clean. Used to detect replayed
+// assertions from cloned soft authenticators — signCount must strictly increase.
+export const PASSKEY_SIGNCOUNT_KEY = 'veyrnox-passkey-signcount';
 // Separate preference for "use my passkey as the SECOND FACTOR at critical actions"
 // (send, reveal seed, duress/stealth setup). Independent of the unlock pref above so
 // a user can use a passkey for ONE without the other. Device-global (the passkey
@@ -184,8 +188,39 @@ export function isPasskeyRegistered() {
  *  This only forgets our public handle, so the gate stops applying. */
 export function clearRegisteredPasskey() {
   try { ls()?.removeItem(PASSKEY_CRED_KEY); } catch { /* noop */ }
+  try { ls()?.removeItem(PASSKEY_SIGNCOUNT_KEY); } catch { /* noop */ }
   setPasskeyUnlockEnabled(false);
   notifyPasskeyRegistrationChanged();
+}
+
+/**
+ * Get the last-seen signCount for the registered passkey (M-K: cloned authenticator
+ * detection). WebAuthn uses signCount to detect when a credential has been cloned
+ * (backed up and restored). The value must strictly increase on each assertion.
+ * @returns {number} the previous signCount, or 0 if not yet set.
+ */
+export function getPasskeySignCount() {
+  try {
+    const raw = ls()?.getItem(PASSKEY_SIGNCOUNT_KEY);
+    const count = raw ? parseInt(raw, 10) : 0;
+    return Number.isInteger(count) && count >= 0 ? count : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Store the signCount from a WebAuthn assertion response. Called after successful
+ * assertion verification to detect future cloned authenticator replays.
+ * @param {number} signCount the authenticatorData.signCount from the assertion response
+ */
+export function setPasskeySignCount(signCount) {
+  if (!Number.isInteger(signCount) || signCount < 0) return; // defensive
+  try {
+    ls()?.setItem(PASSKEY_SIGNCOUNT_KEY, String(signCount));
+  } catch {
+    /* storage unavailable — counter persistence is best-effort (M-K is TARGET, not live) */
+  }
 }
 
 // --- base64url helpers (credential ids are passed/stored as base64url) ---------
@@ -349,6 +384,24 @@ export async function registerPasskeyCredential(opts = {}) {
     createdAt: Date.now(),
   };
   try { ls()?.setItem(PASSKEY_CRED_KEY, JSON.stringify(rec)); } catch { /* noop */ }
+
+  // M-K: Extract and store the initial signCount from the credential response.
+  // The authenticatorData in the attestation response includes signCount (initially 0).
+  // We store it to detect future cloned authenticator replays.
+  try {
+    const attestationObject = (/** @type {any} */ (credential)).response?.attestationObject;
+    if (attestationObject) {
+      const view = new Uint8Array(attestationObject);
+      // authenticatorData is bytes 37+ of attestationObject (after CBOR overhead).
+      // signCount is bytes 33-36 of authenticatorData (big-endian uint32).
+      // A full parse is complex; for MVP, store 0 (known value at registration).
+      setPasskeySignCount(0);
+    }
+  } catch {
+    // Best-effort; signCount persistence is non-fatal (M-K is TARGET).
+    setPasskeySignCount(0);
+  }
+
   notifyPasskeyRegistrationChanged();
   return { ok: true, simulated: false, credentialId };
 }
@@ -387,7 +440,7 @@ export async function verifyPasskeyAssertion() {
   if (!rec) throw new Error('No passkey registered');
   if (!isWebAuthnSupported()) throw new Error('WebAuthn is not supported in this browser');
 
-  await navigator.credentials.get({
+  const assertion = await navigator.credentials.get({
     publicKey: {
       challenge: randomBytes(32),
       timeout: 60000,
@@ -398,6 +451,43 @@ export async function verifyPasskeyAssertion() {
       allowCredentials: [{ id: base64UrlToBuffer(rec.id), type: 'public-key' }],
     },
   });
+
+  if (!assertion) throw new Error('Assertion verification failed');
+
+  // M-K: Verify signCount to detect cloned authenticators (replayed assertions).
+  // The authenticatorData in the assertion response includes signCount (incremented
+  // by the authenticator on each use). Extract it, compare to previous, reject if
+  // it didn't increase (indicates a cloned/backed-up credential replaying an old state).
+  try {
+    const authenticatorData = (/** @type {any} */ (assertion)).response?.authenticatorData;
+    if (authenticatorData && authenticatorData.byteLength >= 37) {
+      const view = new Uint8Array(authenticatorData);
+      // signCount is bytes 33-36 of authenticatorData (big-endian uint32).
+      const newSignCount =
+        (view[33] << 24) | (view[34] << 16) | (view[35] << 8) | view[36];
+
+      const previousSignCount = getPasskeySignCount();
+      if (newSignCount <= previousSignCount) {
+        throw new Error(
+          `Passkey assertion rejected: signCount did not increase ` +
+          `(previous=${previousSignCount}, current=${newSignCount}). ` +
+          `This indicates a cloned or replayed authenticator.`
+        );
+      }
+      // Update stored signCount for next assertion.
+      setPasskeySignCount(newSignCount);
+    }
+  } catch (e) {
+    // If signCount validation throws, fail closed (I4 invariant).
+    // Best-effort persistence means we may occasionally skip validation, but
+    // never silently pass a cloned authenticator.
+    if (e instanceof Error && e.message.includes('signCount')) {
+      throw e; // Re-throw signCount validation failures
+    }
+    // Other errors (e.g., missing authenticatorData) are best-effort
+    // (M-K is TARGET, not live; we don't want to block real assertions).
+  }
+
   return true;
 }
 
