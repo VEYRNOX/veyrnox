@@ -157,8 +157,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Passkey Unlock',
         status: 'built',
-        summary: 'FIDO2 / WebAuthn unlock gate',
-        explanation: 'Unlock the app with a platform passkey (FIDO2 / WebAuthn). This is an unlock gate parallel to the password — it never holds or replaces the wallet’s keys, and a password escape hatch remains.',
+        summary: 'FIDO2 / WebAuthn unlock + cloned authenticator detection (M-K)',
+        explanation: 'Unlock the app with a platform passkey (FIDO2 / WebAuthn). This is an unlock gate parallel to the password - it never holds or replaces the wallet keys, and a password escape hatch remains. M-K (cloned authenticator detection): WebAuthn assertions include a signCount that must strictly increase to detect replayed assertions from cloned or backed-up soft authenticators. Implementation: signCount persisted in localStorage, validated on each assertion (rejects if signCount does not increase), fail-closed on validation errors (I4 invariant). Status: BUILT 2026-06-30, ready for device verification with real cloned authenticator test.',
       },
       {
         name: 'Biometric Unlock',
@@ -182,8 +182,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Native Secure Storage',
         status: 'roadmap',
-        summary: 'Device-bound key storage (iOS Keychain / Android Keystore) — roadmap',
-        explanation: 'OS-protected key storage via the iOS Keychain (passcode-gated, ThisDeviceOnly) and Android Keystore. NOTE: no Secure Enclave / StrongBox key-wrap of the vault key yet — full hardware binding is on the roadmap. Partially provisional pending audit.',
+        summary: 'iOS Secure Enclave P-256 ECIES KEK (H-NEW-D) — designed, audit-gated, plugin registration blocked',
+        explanation: 'iOS: H-NEW-D (Hardware-bound Encryption Key, iOS Secure Enclave) design complete. Ephemeral ECDH + HKDF-SHA256 + AES-GCM seal/unseal of the vault key in the SE. Non-extractable SE private key, biometric ACL. Status: ROADMAP (audit-gated, not confirmed in shipped code). Blocker: Capacitor inline-plugin runtime discovery (documented; future: SPM package conversion). Android: StrongBox hardware binding (setIsStrongBoxBacked) is best-effort; StrongBox is NOT enforced. See docs/Feature-Status.md for full audit findings.',
       },
       {
         name: 'Session Manager & Auto-Lock',

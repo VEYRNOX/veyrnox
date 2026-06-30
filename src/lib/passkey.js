@@ -73,6 +73,13 @@ import { DEMO } from '@/api/demoClient';
 // secret: PREF is a boolean flag; CRED is a PUBLIC credential id + UI metadata.
 export const PASSKEY_PREF_KEY = 'veyrnox-passkey-unlock';
 export const PASSKEY_CRED_KEY = 'veyrnox-passkey-cred';
+// WebAuthn signCount for the registered credential (M-K: cloned-authenticator
+// detection). The authenticator increments this monotonically on each assertion;
+// we persist the last value we saw and reject any assertion whose signCount does
+// NOT strictly increase — the FIDO2-defined signal of a credential clone/replay.
+// This is a PUBLIC counter, not a secret. See verifyPasskeyAssertion() for the
+// honest limitations (signCount==0 authenticators, cleared localStorage, no server).
+export const PASSKEY_SIGNCOUNT_KEY = 'veyrnox-passkey-signcount';
 // Separate preference for "use my passkey as the SECOND FACTOR at critical actions"
 // (send, reveal seed, duress/stealth setup). Independent of the unlock pref above so
 // a user can use a passkey for ONE without the other. Device-global (the passkey
@@ -184,8 +191,85 @@ export function isPasskeyRegistered() {
  *  This only forgets our public handle, so the gate stops applying. */
 export function clearRegisteredPasskey() {
   try { ls()?.removeItem(PASSKEY_CRED_KEY); } catch { /* noop */ }
+  // Forget the clone-detection counter too: it belongs to the credential we are
+  // forgetting, and a stale high value would otherwise falsely reject the first
+  // assertion of a freshly re-registered passkey.
+  try { ls()?.removeItem(PASSKEY_SIGNCOUNT_KEY); } catch { /* noop */ }
   setPasskeyUnlockEnabled(false);
   notifyPasskeyRegistrationChanged();
+}
+
+/**
+ * Read the last-seen WebAuthn signCount for the registered passkey (M-K).
+ * Absent / malformed storage is treated as 0 ("first use"), never as an error —
+ * persistence is best-effort and must never strand the unlock gate.
+ * @returns {number} the previously-stored signCount, or 0.
+ */
+export function getPasskeySignCount() {
+  try {
+    const raw = ls()?.getItem(PASSKEY_SIGNCOUNT_KEY);
+    if (raw == null) return 0;
+    const n = parseInt(raw, 10);
+    return Number.isInteger(n) && n >= 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Persist the WebAuthn signCount after a SUCCESSFUL assertion (M-K). Only called
+ * once an assertion has passed the clone check, so a rejected (cloned) assertion
+ * never advances the stored value — fail-closed (I4). Best-effort: a storage
+ * hiccup is swallowed (we degrade to "can't detect clone", never "block unlock").
+ * @param {number} signCount uint32 signCount from authenticatorData.
+ */
+export function setPasskeySignCount(signCount) {
+  if (!Number.isInteger(signCount) || signCount < 0) return; // defensive
+  try { ls()?.setItem(PASSKEY_SIGNCOUNT_KEY, String(signCount)); } catch { /* best-effort */ }
+}
+
+/**
+ * Error thrown when an assertion's signCount fails the monotonicity check — the
+ * FIDO2 signal of a cloned/replayed authenticator. Carries a STABLE machine
+ * `code` ('authenticator_cloned') and the structured old/new counters so the UI
+ * can surface a WARNING without parsing prose copy.
+ */
+export class PasskeyClonedError extends Error {
+  /** @param {number} oldSignCount @param {number} newSignCount */
+  constructor(oldSignCount, newSignCount) {
+    super(
+      `Passkey signCount did not increase (was ${oldSignCount}, saw ${newSignCount}). ` +
+      `This can indicate a cloned or replayed authenticator.`,
+    );
+    this.name = 'PasskeyClonedError';
+    /** @type {'authenticator_cloned'} stable, minification-proof code (the contract). */
+    this.code = 'authenticator_cloned';
+    this.authenticatorCloned = true;
+    this.oldSignCount = oldSignCount;
+    this.newSignCount = newSignCount;
+  }
+}
+
+/** @returns {boolean} did this error come from the clone-detection check? */
+export function isPasskeyClonedError(err) {
+  return !!(err && typeof err === 'object' && err.code === 'authenticator_cloned');
+}
+
+/**
+ * Extract the signCount (big-endian uint32, authenticatorData bytes 33–36) from a
+ * WebAuthn assertion response. Returns null if the data is absent/too short — the
+ * caller treats a missing count as "can't check this time", NOT as a clone.
+ * `>>> 0` forces an unsigned 32-bit result (a naive `<<24` goes negative when the
+ * top bit is set, i.e. signCount >= 2^31).
+ * @param {*} assertion
+ * @returns {number|null}
+ */
+function extractSignCount(assertion) {
+  const ad = (/** @type {any} */ (assertion))?.response?.authenticatorData;
+  if (!ad) return null;
+  const view = ad instanceof Uint8Array ? ad : new Uint8Array(ad);
+  if (view.byteLength < 37) return null;
+  return ((view[33] << 24) | (view[34] << 16) | (view[35] << 8) | view[36]) >>> 0;
 }
 
 // --- base64url helpers (credential ids are passed/stored as base64url) ---------
@@ -362,7 +446,29 @@ export async function registerPasskeyCredential(opts = {}) {
  * NOTE: the DEMO path does NOT call this — the provider shows the simulated
  * sheet instead (mirroring how the biometric gate simulates in demo).
  *
+ * M-K — CLONED-AUTHENTICATOR DETECTION (signCount):
+ *   After a successful WebAuthn `get`, we read the authenticator's signCount and
+ *   require it to STRICTLY INCREASE vs the last value we persisted. A value that
+ *   stalls or rolls back is the FIDO2-defined signal of a cloned/exported soft
+ *   authenticator replaying old state → we throw a PasskeyClonedError (code
+ *   'authenticator_cloned'). The stored counter is advanced ONLY on success, so a
+ *   rejected assertion never moves it (fail-closed, I4).
+ *
+ *   HONEST LIMITATIONS (this is pure-JS clone *detection*, not prevention):
+ *     • signCount == 0: some authenticators (notably many platform passkeys, and
+ *       FIDO2 devices that disable the counter for privacy) always report 0. We
+ *       cannot distinguish "first use" from "cloned at 0", so a 0/0 case is NOT
+ *       treated as a clone — it simply yields no signal. This is a known gap.
+ *     • localStorage is best-effort and device-local — there is no backend by
+ *       design (self-custody). A wiped/cleared store loses the counter, and the
+ *       NEXT assertion re-seeds from whatever value it sees (no false reject).
+ *     • No remote attestation: real cryptographic clone *prevention* would need a
+ *       server-side counter authority, which is out of scope for this wallet.
+ *   Consequently the gate surfaces clone detection as an ADVISORY WARNING, not a
+ *   hard lockout — consistent with the wallet's warn-not-block posture.
+ *
  * @returns {Promise<true>}
+ * @throws {PasskeyClonedError} when signCount fails the monotonicity check.
  */
 export async function verifyPasskeyAssertion() {
   // NATIVE (iOS/Android): the WKWebView does not expose a usable WebAuthn platform
@@ -387,7 +493,7 @@ export async function verifyPasskeyAssertion() {
   if (!rec) throw new Error('No passkey registered');
   if (!isWebAuthnSupported()) throw new Error('WebAuthn is not supported in this browser');
 
-  await navigator.credentials.get({
+  const assertion = await navigator.credentials.get({
     publicKey: {
       challenge: randomBytes(32),
       timeout: 60000,
@@ -398,6 +504,23 @@ export async function verifyPasskeyAssertion() {
       allowCredentials: [{ id: base64UrlToBuffer(rec.id), type: 'public-key' }],
     },
   });
+
+  // M-K: clone-detection via signCount monotonicity (see fn-level doc above).
+  const newSignCount = extractSignCount(assertion);
+  if (newSignCount != null) {
+    const oldSignCount = getPasskeySignCount();
+    // signCount == 0 carries no signal (authenticator with the counter disabled);
+    // only a non-zero count that fails to advance indicates a clone/replay.
+    if (newSignCount === 0 && oldSignCount === 0) {
+      // No-op: nothing to compare, nothing to advance. Honest gap, documented.
+    } else if (newSignCount <= oldSignCount) {
+      // FAIL CLOSED (I4): do NOT advance the stored counter on a rejected assertion.
+      throw new PasskeyClonedError(oldSignCount, newSignCount);
+    } else {
+      setPasskeySignCount(newSignCount);
+    }
+  }
+
   return true;
 }
 

@@ -1,0 +1,53 @@
+{
+  "_readme": "TESTNET-ONLY fixture data for device verification packages. Seeds listed here are well-known BIP-39 test vectors or throwaway seeds — NEVER use these on mainnet. Never store real value against these addresses.",
+
+  "testnet_seeds": {
+    "m_k_test": {
+      "seed": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "network": "Sepolia",
+      "purpose": "M-K cloned authenticator test — passkey registration and unlock only, no send required",
+      "warning": "BIP-39 vector 0 — widely known, zero real value. Testnet only."
+    },
+    "h1_test": {
+      "seed": "legal winner thank year wave sausage worth useful legal winner thank yellow",
+      "network": "Sepolia",
+      "purpose": "H-1 biometric 2FA send verification — small ETH Sepolia send (0.0001 ETH)",
+      "warning": "BIP-39 vector 1 — widely known, zero real value. Fund from a Sepolia faucet. Testnet only."
+    },
+    "rasp_test": {
+      "seed": "letter advice cage absurd amount doctor acoustic avoid letter advice cage above",
+      "network": "Sepolia",
+      "purpose": "RASP adversarial test — wallet present to trigger gates; no send required",
+      "warning": "BIP-39 vector 2 — widely known, zero real value. Testnet only."
+    }
+  },
+
+  "webauthn_notes": {
+    "platform_authenticator": {
+      "type": "platform",
+      "transport": "internal",
+      "note": "On iOS: Face ID or Touch ID via OS biometric (not FIDO2 on native — see h1-passkey-2fa-se-verification.md architecture note). On macOS/web: Touch ID or iCloud Keychain passkey (real WebAuthn). On Android: Titan M2 or equivalent via BiometricAuth."
+    },
+    "virtual_authenticator_cdp": {
+      "how_to_enable": "Chrome DevTools > More tools > WebAuthn. Add virtual authenticator: CTAP2, Internal transport, hasUserVerification: true, hasResidentKey: true.",
+      "signcount_editing": "After assertions, select the credential in the WebAuthn panel and edit signCount to simulate a stale counter. This is the recommended approach for M-K verification.",
+      "note": "CDP virtual authenticator sets navigator.webdriver = true in the controlled browser. This will also trigger the RASP browser probe (HOOKED condition). Run M-K and RASP Scope A tests in separate browser sessions."
+    }
+  },
+
+  "rasp_notes": {
+    "browser_probe_trigger": "Run the wallet under Playwright or any CDP-controlled browser. navigator.webdriver will be true, triggering CONDITION.HOOKED and TIER.BLOCK.",
+    "native_probe_status": "Native OS-level probe (RaspIntegrityPlugin) is not implemented. On a real device, nativeProbeSource() fails closed to { available: false }, which maps to CONDITION.INTEGRITY_UNAVAILABLE and TIER.WARN. This is the expected honest state. See rasp-rooted-device-test.md.",
+    "frida_tools": "Frida 16.x. Install: pip install frida-tools. Device server from https://github.com/frida/frida/releases matching device OS."
+  },
+
+  "sepolia_faucets": [
+    "https://sepoliafaucet.com",
+    "https://faucet.sepolia.dev",
+    "https://www.alchemy.com/faucets/ethereum-sepolia"
+  ],
+
+  "block_explorers": {
+    "sepolia": "https://sepolia.etherscan.io"
+  }
+}
