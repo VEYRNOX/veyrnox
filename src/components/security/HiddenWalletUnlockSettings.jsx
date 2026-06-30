@@ -19,12 +19,8 @@ import { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { useWallet } from '@/lib/WalletProvider';
 import {
-  isWebAuthnSupported, isPasskeyRegistered,
-} from '@/lib/passkey';
-import {
   getBiometricStatus,
 } from '@/lib/biometric';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
