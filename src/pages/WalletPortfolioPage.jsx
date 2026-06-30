@@ -35,6 +35,7 @@ import CoinLogo from "@/components/CoinLogo";
 import QuickAccessGrid from "@/components/QuickAccessGrid";
 import SpendingPatternsCard from "@/components/SpendingPatternsCard";
 import { copySecret } from "@/lib/copySecret";
+import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -536,6 +537,9 @@ export default function WalletPortfolioPage() {
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
+      {/* Hidden wallet 2FA gate — appears post-unlock, blocks access until verified */}
+      <HiddenWallet2faGate />
+
       {/* Portfolio switcher */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
         {portfolios.map((p) => (

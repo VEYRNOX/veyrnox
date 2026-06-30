@@ -156,7 +156,7 @@ export function isMultiContainer(obj) {
  * Build a fresh container from a list of wallet entries (each already shaped
  * { id, mnemonic }). Defensive copy so callers can't alias our internal array.
  */
-export function makeContainer(wallets, actionPassword, lastUnlockAt) {
+export function makeContainer(wallets, actionPassword, lastUnlockAt, hiddenWallet2faMode = null) {
   const c = {
     vlt: MULTI_VAULT_TAG,
     v: CONTAINER_VERSION,
@@ -174,6 +174,11 @@ export function makeContainer(wallets, actionPassword, lastUnlockAt) {
   // and is attached ONLY when set, so a container without it serialises byte-
   // identically to before. Primary-set only — decoy/hidden are never persisted.
   if (lastUnlockAt != null) c.lastUnlockAt = lastUnlockAt;
+  // Hidden wallet 2FA unlock mode ('none'|'password'|'passkey'|'biometric').
+  // Lives INSIDE the encrypted container (no on-disk tell). Primary-set only.
+  if (hiddenWallet2faMode != null && hiddenWallet2faMode !== 'none') {
+    c.hiddenWallet2faMode = hiddenWallet2faMode;
+  }
   return c;
 }
 
@@ -262,6 +267,11 @@ export function validateContainer(container) {
       (typeof container.lastUnlockAt !== 'number' || !Number.isFinite(container.lastUnlockAt))) {
     throw new Error('Container has a malformed lastUnlockAt');
   }
+  // Hidden wallet 2FA mode is OPTIONAL, but if present must be one of the valid modes.
+  const validModes = ['password', 'passkey', 'biometric'];
+  if (container.hiddenWallet2faMode != null && !validModes.includes(container.hiddenWallet2faMode)) {
+    throw new Error(`Container has an invalid hiddenWallet2faMode: "${container.hiddenWallet2faMode}"`);
+  }
   return true;
 }
 
@@ -345,9 +355,9 @@ export function addWallet(container, mnemonic) {
     throw new Error('This recovery phrase is already in your wallet');
   }
   const id = newWalletId();
-  // Carry the set's Action Password through unchanged (it is a property of the SET,
-  // not of any one wallet).
-  const next = makeContainer([...container.wallets, { id, mnemonic }], container.actionPassword, container.lastUnlockAt);
+  // Carry the set's Action Password + hidden wallet 2FA mode through unchanged
+  // (they are properties of the SET, not of any one wallet).
+  const next = makeContainer([...container.wallets, { id, mnemonic }], container.actionPassword, container.lastUnlockAt, container.hiddenWallet2faMode);
   return { container: next, walletId: id };
 }
 
@@ -363,7 +373,7 @@ export function removeWallet(container, walletId) {
   if (container.wallets.length <= 1) {
     throw new Error('Cannot remove the last wallet; wipe the vault instead');
   }
-  return makeContainer(container.wallets.filter((w) => w.id !== walletId), container.actionPassword, container.lastUnlockAt);
+  return makeContainer(container.wallets.filter((w) => w.id !== walletId), container.actionPassword, container.lastUnlockAt, container.hiddenWallet2faMode);
 }
 
 // ── Action Password (2FA second factor) — per-SET, carried inside the container ──
@@ -390,7 +400,7 @@ export function withLastUnlockAt(container, ts) {
   if (typeof ts !== 'number' || !Number.isFinite(ts) || ts <= 0) {
     throw new Error('withLastUnlockAt requires a positive epoch-ms timestamp');
   }
-  return makeContainer(container.wallets, container.actionPassword, ts);
+  return makeContainer(container.wallets, container.actionPassword, ts, container.hiddenWallet2faMode);
 }
 
 /**
@@ -401,7 +411,7 @@ export function withLastUnlockAt(container, ts) {
  */
 export function withActionPasswordRecord(container, record) {
   if (!hasActionPasswordRecord(record)) throw new Error('withActionPasswordRecord: invalid Action Password record');
-  return makeContainer(container.wallets, record, container.lastUnlockAt);
+  return makeContainer(container.wallets, record, container.lastUnlockAt, container.hiddenWallet2faMode);
 }
 
 /**
@@ -410,5 +420,30 @@ export function withActionPasswordRecord(container, record) {
  * @returns {object} the new container
  */
 export function clearActionPasswordRecord(container) {
-  return makeContainer(container.wallets, undefined, container.lastUnlockAt);
+  return makeContainer(container.wallets, undefined, container.lastUnlockAt, container.hiddenWallet2faMode);
+}
+
+/**
+ * Get the hidden wallet 2FA unlock mode for this set ('none'|'password'|'passkey'|'biometric').
+ * Returns 'none' if not configured.
+ */
+export function getHiddenWallet2faMode(container) {
+  return (container && container.hiddenWallet2faMode) || 'none';
+}
+
+/**
+ * Return a NEW container with the hidden wallet 2FA mode set. The wallets and
+ * other settings are carried over unchanged. Mode must be one of:
+ * 'none' (disabled), 'password' (PIN + action password), 'passkey' (PIN + WebAuthn),
+ * 'biometric' (PIN + Face ID/Touch ID).
+ * @param {object} container
+ * @param {string} mode one of 'none'|'password'|'passkey'|'biometric'
+ * @returns {object} the new container
+ */
+export function withHiddenWallet2faMode(container, mode) {
+  const validModes = ['none', 'password', 'passkey', 'biometric'];
+  if (!validModes.includes(mode)) {
+    throw new Error(`withHiddenWallet2faMode: invalid mode "${mode}". Must be one of: ${validModes.join(', ')}`);
+  }
+  return makeContainer(container.wallets, container.actionPassword, container.lastUnlockAt, mode === 'none' ? null : mode);
 }
