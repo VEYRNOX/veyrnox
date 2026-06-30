@@ -89,7 +89,7 @@ classifier estimates are NOT promoted to "built".
 - Built — honest-disabled: AI assistant/advisor/rebalancer (until rebuilt on-device/stripped);
   hardware-wallet page (honest "planned").
 - Planned — designed, gated: encrypted seed backup + cloud self-recovery (audit-gated); full
-  multi-asset send (per-asset verification; 1 of 10); inheritance/crypto-will (audit + legal gated);
+  multi-asset send (per-asset verification; 1 of 10);
   real fraud-detection wiring to the on-device anomaly engine.
 - Planned — salvageable shells: on-device/safe — net worth, P&L, spending patterns, snapshots,
   watchlist, price/smart alerts, fee analytics, tax report, invoice generator. External-data
@@ -299,7 +299,7 @@ their provider. Seed-crypto parameters unset pending audit. None of this is audi
 1. Independent audit reviews this architecture BEFORE backend / seed-touching build.
 2. Crypto constructions (KDF/AEAD/params) chosen + reviewed before coding.
 3. Per-asset send verification before multi-asset live; mainnet gated on audit.
-4. Legal entity gates billing + iOS + inheritance feature.
+4. Legal entity gates billing + iOS.
 This document is the brief for that audit and the MASVS test plan, not a substitute for the audit.
 
 ## Related

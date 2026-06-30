@@ -188,8 +188,9 @@ so it is allowed, not a violation.)
 see the removed record under "Explicitly EXCLUDED".)
 > ✅ BUILT (PROVISIONAL, testnet/demo): Duress PIN, Stealth/hidden wallets,
 > Panic wipe, constant-KDF unlock timing (details below). 📋 NOT BUILT: Hardware
-> wallet (UI shell only), Login activity (UI shell only), Crypto Will/inheritance.
-> ❌ REMOVED: Social Recovery (audit-blocked, never shipped), Multi-Sig
+> wallet (UI shell only), Login activity (UI shell only).
+> ❌ REMOVED: Social Recovery (audit-blocked, never shipped), Crypto Will /
+> inheritance (never built, removed from roadmap 2026-06), Multi-Sig
 > (UI shell w/ fake addresses; page/route/nav/catalogue deleted) — see the
 > removed record in "Explicitly EXCLUDED" below.
 - **Duress PIN** ✅ — decoy PIN opens an empty/fake wallet under coercion. Self-
@@ -197,14 +198,6 @@ see the removed record under "Explicitly EXCLUDED".)
 - **Hardware Wallet support** — Ledger/Trezor connect via established libs
   (strongest key security for power users).
 - **Login Activity** (+ map) — show recent access events (needs backend to record).
-- **Social Recovery** (guardian / Shamir's-Secret-Sharing) — ❌ REMOVED
-  [audit-blocked-and-not-advertised]. Cryptographically nontrivial, never shipped,
-  no longer advertised; removed from UI/catalogue. (A flaw here would lose or leak
-  the seed — it stays out until/unless a dedicated audited design is greenlit.)
-- **Crypto Will / inheritance** ◈ — self-custody only (secret-sharing +
-  dead-man's-switch design; NEVER custodial, NEVER adjudicates death). High
-  cryptographic risk + LEGAL/estate dimensions → audit attention AND a lawyer. 📋
-  roadmap (not near-term).
 - **Stealth / hidden wallets** ◈ — wallets revealed only by a specific PIN
   (plausible deniability). Pairs with Duress PIN. **IMPLEMENTED (PROVISIONAL,
   testnet/demo).** Design: a user creates one or more HIDDEN wallets that never
@@ -452,6 +445,7 @@ These site pages sound security/compliance but contradict the strategy:
 > sensitive, never shipped, no longer advertised · [out-of-scope-regulated]
 > custodial/regulated, never in scope.
 - ❌ Social Recovery (guardian / Shamir SSS) — [audit-blocked-and-not-advertised] never built; removed from UI/catalogue.
+- ❌ Crypto Will / inheritance — [audit-blocked-and-not-advertised] never built; removed from roadmap 2026-06. No code exists.
 - ❌ Multi-Sig wallets (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
 - ❌ Rebalance + Rebalance History — [breaks-self-custody] autonomous value movement; removed (PR #47).
 - ❌ Recurring auto-debit — [breaks-self-custody] auto-debit path gutted (PR #47); Recurring Payments is now schedule/reminder only, hands off to Send for user signing.
