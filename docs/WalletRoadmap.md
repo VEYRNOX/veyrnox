@@ -23,7 +23,7 @@
 3. Read-only niceties (analytics/UX) are cheap, safe, parallelizable fillers.
 4. New chains (BTC, SOL, others) are separate stacks — slot deliberately, each
    adds audit cost.
-5. High-risk/legal features (Crypto Will, WalletConnect) come late, with audit +
+5. High-risk/legal features (WalletConnect) come late, with audit +
    (where noted) legal input. (Social Recovery + Multi-Sig were ❌ removed —
    audit-blocked, never shipped; see Removed section.)
 

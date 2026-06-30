@@ -259,9 +259,7 @@ Other regulated/out-of-scope: Crypto Subscriptions (payment processing), Smart
 Contract Deploy (dev platform), NFT Minting/Fractionalization (minting/securities-
 adjacent), Encrypted Messaging (separate product).
 
-Note: "Crypto Will" from the site is reclassified as SELF-CUSTODY (section 5,
-item 36a) — but only in a secret-sharing + dead-man's-switch form, never custodial.
-(Social Recovery itself is ❌ removed — see the removed record above.)
+Crypto Will: removed — see removed features section.
 
 ## Decision rule (unchanged)
 Build from A (finish) and pull selectively from B by value. Never build C without
