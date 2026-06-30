@@ -73,23 +73,6 @@ export const DEFAULT_BLOCKLIST = [
     source: 'poison.js LOCAL_FLAGGED (universal burn/null sinks)',
     note: 'Funds sent here are destroyed and unrecoverable.',
   })),
-
-  // Publicly documented, sanctioned addresses (well-known, citable). Sanctioned
-  // status is a matter of public record; this is informational and not legal
-  // advice. These are illustrative, not a complete OFAC mirror.
-  //
-  // MUST TRACK DELISTINGS, NOT JUST ADDITIONS. A "sanctioned" label is a factual
-  // claim about current legal status, so it has to be removed when the authority
-  // delists an address — otherwise a stale flag becomes a false accusation. (E.g.
-  // Tornado Cash was removed here after OFAC delisted it on 2025-03-21 following
-  // Van Loon v. Treasury, 5th Cir.; keeping its 'sanctioned' entry would have been
-  // factually wrong.)
-  {
-    address: '0x098B716B8Aaf21512996dC57EB0615e2383E2f96',
-    category: 'sanctioned',
-    source: 'US Treasury OFAC SDN list (Apr 2022) — Lazarus Group / Ronin Bridge exploiter',
-    note: 'OFAC-designated address tied to the $600M Ronin Bridge theft.',
-  },
 ];
 
 /**
@@ -131,14 +114,11 @@ export function makeBlocklistProvider(blocklist = DEFAULT_BLOCKLIST, name = 'loc
 // The local, on-device seed blocklist above. Calls nothing.
 export const localBlocklistProvider = makeBlocklistProvider();
 
-// NOTE: The OFAC SDN snapshot provider (previously ofacSanctionsProvider) has
-// been removed. Automated bulk pulls from treasury.gov have commercial ToS
-// constraints, and a stale bundled snapshot cannot provide the delisting-current
-// coverage that reliable sanctions screening requires. For production compliance
-// screening, wire in an enterprise-licensed API (Chainalysis, TRM Labs, Elliptic,
-// etc.) as an additional provider via the providers opt-in in screenAddress().
-// The local seed list above retains individual well-documented entries (Ronin/
-// Lazarus) that do not depend on the automated feed.
+// NOTE: OFAC sanctions screening (both bulk SDN snapshot and individual entries)
+// has been removed entirely. For production compliance screening, wire in an
+// enterprise-licensed API (Chainalysis, TRM Labs, Elliptic, etc.) as an
+// additional provider via the providers opt-in in screenAddress(). See
+// docs/OFAC-legal-gate.md for rationale and status.
 
 // The DEFAULT provider set — local seed blocklist only (EVM). No network call.
 export const DEFAULT_PROVIDERS = [localBlocklistProvider];
