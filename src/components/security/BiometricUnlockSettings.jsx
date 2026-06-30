@@ -19,6 +19,8 @@ import {
   setBiometricUnlockEnabled,
   getBiometricStatus,
 } from '@/lib/biometric';
+// NOTE: setBiometricUnlockEnabled is used ONLY in the explicit confirmEnable() path
+// (a deliberate user action), never automatically on mount.
 
 export default function BiometricUnlockSettings() {
   const { biometricPreview, disableBiometricUnlock, recordAudit } = useWallet();
@@ -38,10 +40,13 @@ export default function BiometricUnlockSettings() {
       .then(s => {
         if (!active) return;
         setStatus(s);
-        // On native the biometric is hardwired (forcedOnDevice) — the toggle is shown
-        // as permanently on. Ensure the localStorage flag matches so isBiometricUnlockEnabled()
-        // returns true and the unlock screen shows the Face ID button.
-        if (s?.mode === 'native' && s?.available) setBiometricUnlockEnabled(true);
+        // CRITICAL (I4): READ the biometric status and surface it in the UI; do NOT
+        // silently MUTATE the stored opt-in preference here. The previous auto-enable
+        // (setBiometricUnlockEnabled(true) for every native user with an available
+        // sensor) turned a user choice into an automatic write — opting people in
+        // without consent and, in the PIN cohort, risking a real-secret cache. Enabling
+        // is now only ever the user's deliberate confirm action below (confirmEnable).
+        // Availability is shown via the status line / forcedOnDevice indicator only.
       })
       .catch(() => {
         // Probe failed — fail honest: render the unavailable state instead of
