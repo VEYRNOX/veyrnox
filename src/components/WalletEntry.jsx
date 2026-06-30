@@ -435,6 +435,19 @@ export default function WalletEntry() {
     hasVault()
       .then(async v => {
         if (!active) return;
+
+        // NATIVE FRESH-INSTALL GUARD: iOS Keychain persists across app deletes so a
+        // reinstall can find a stale vault (Keychain) with no auth-model marker
+        // (localStorage cleared). Detect this and wipe the stale Keychain vault so the
+        // user lands on fresh PIN onboarding instead of a password unlock screen.
+        if (Capacitor.isNativePlatform() && v && !localStorage.getItem('veyrnox-auth-model')) {
+          try {
+            const { getKeyStore } = await import('@/wallet-core/keystore');
+            await getKeyStore().clearVault();
+          } catch { /* best-effort; if it fails, onboarding still routes to pin-create */ }
+          v = false;
+        }
+
         setVaultExists(v);
         setAuthModelState(getAuthModel());
         // PIN-FIRST onboarding (authoritative brief): a fresh device (no vault)
@@ -562,6 +575,17 @@ export default function WalletEntry() {
   const runPinUnlock = async (pin) => {
     setError(""); setBusy(true);
     try {
+      // Cache the PIN behind Face ID only if the user explicitly enabled biometric unlock
+      // AND no secret is cached yet (e.g. enabled in Settings after onboarding).
+      // NOTE: on native, Face ID may be configured to open the DECOY wallet instead
+      // (set in Duress PIN screen) — in that case the decoy PIN is cached, not the real
+      // PIN. Never overwrite an existing cache on every unlock.
+      if (isBiometricUnlockEnabled()) {
+        const alreadyCached = await hasStoredUnlockSecret().catch(() => false);
+        if (!alreadyCached) {
+          try { await enableBiometricUnlock(pin); } catch { /* best-effort; non-fatal */ }
+        }
+      }
       await unlock(pin, { pinModel: true });
       setUnlockPin("");
       // Success (real / duress / panic all return without throwing) — reset the streak.
