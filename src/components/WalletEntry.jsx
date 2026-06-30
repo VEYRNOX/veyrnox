@@ -573,6 +573,7 @@ export default function WalletEntry() {
   // Option-A deterministic-decoy fallback was removed (owner-approved threat-model
   // change). pinModel:true is kept on the unlock() call as the cohort marker.
   const runPinUnlock = async (pin) => {
+    if (!pin) { setError("Enter your PIN."); return; }
     setError(""); setBusy(true);
     try {
       // Cache the PIN behind Face ID only if the user explicitly enabled biometric unlock
