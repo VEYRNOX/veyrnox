@@ -521,6 +521,13 @@ export default function WalletEntry() {
       if (res?.biometricSkipped === "escape-hatch") {
         toast.warning("Unlocked with your vault password. Re-enable biometric unlock in Security settings when it's working again.");
       }
+      // M-K — advisory cloned-authenticator warning. The unlock succeeded (the
+      // password is the real control); this surfaces the signCount-stall heuristic
+      // without blocking. If you did not register a new device, treat your passkey
+      // as compromised and re-register it in Security settings.
+      if (res?.passkeyWarning?.code === "authenticator_cloned") {
+        toast.warning("Security check: your passkey's usage counter did not advance, which can mean it was copied to another device. If you didn't set up a new device, re-register your passkey in Security settings.");
+      }
     } catch (e) {
       if (isPasskeyGateError(e)) {
         setPasskeyFailed({ reason: e.reason });
