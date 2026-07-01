@@ -26,6 +26,11 @@
  *   probe for an actual Secure Enclave / StrongBox-bound key. Web: always
  *   false. Native (M2b): true when the device has a credential set.
  *
+ * @property {() => Promise<boolean>} [isHardwareKeystoreAvailable]
+ *   Probe for hardware factor (PRF) availability for KEK enrollment. Web:
+ *   returns true if WebAuthn PRF is supported (Chrome, Firefox, Edge); false
+ *   on Safari and older browsers. Native: currently unused (Phase 2).
+ *
  * @property {() => Promise<boolean>} hasVault
  *   Whether an encrypted vault already exists for this device.
  *
@@ -69,9 +74,10 @@
  *   has no equivalent, so callers invoke it optionally (`?.`) and web is a no-op.
  *
  * @property {() => Promise<Uint8Array>} [getHardwareFactor]
- *   NATIVE-ONLY (optional): evaluate WebAuthn PRF and return the 32-byte
- *   hardware factor H for a KEK-enrolled vault. Web has no equivalent; callers
- *   invoke it optionally (`?.`). Never fabricates H (I4).
+ *   Retrieve a 32-byte hardware factor H from the platform. Web: returns PRF
+ *   output via WebAuthn (Chrome/Firefox/Edge); throws on Safari. Native:
+ *   TARGET/Phase 2 (Secure Enclave on iOS, StrongBox on Android). Never
+ *   fabricates H (I4); throws if unavailable or user cancels.
  *
  * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [enrollKek]
  *   OPTIONAL: enroll the Hardware KEK on a bare vault. After enrollment, unlock
