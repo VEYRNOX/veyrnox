@@ -126,7 +126,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ### PIN Security & Hardware Key Encryption (KEK)
 
-**Phase 1 — Web WebAuthn PRF (SHIPPING):** ✅ BUILT, 🟢 PARTIALLY VERIFIED
+**Phase 1 — Web WebAuthn PRF (SHIPPING):** ✅ BUILT, 🟡 UAT-PENDING (browser UAT + testnet txids outstanding — not yet verified)
 - **Implementation Status:** Code complete (200+ LOC, `src/lib/web.js`); unit-tested (19 PRF-specific tests, 1973/1973 total); security invariants verified (I1–I6).
 - **Hardware Factor H:** WebAuthn PRF (HMAC-secret) bound to platform authenticator (Windows Hello, Touch ID, etc.).
 - **KEK Derivation:** `combineKek(H, C)` via HKDF-SHA256, where C is Argon2id password factor.
