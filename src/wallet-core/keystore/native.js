@@ -338,6 +338,23 @@ export const nativeKeyStore = {
     return !!blob.kekWrap;
   },
 
+  // Read the persisted hardware security tier from the vault blob.
+  // Returns a securityLevelName string (e.g. 'STRONGBOX', 'TRUSTED_ENVIRONMENT',
+  // 'SecureEnclave') or null when not enrolled or the tier was never stored.
+  // No biometric prompt, no secret read — metadata only.
+  async getVaultKekTier() {
+    await init();
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) return null;
+    let blob;
+    try {
+      blob = parseVaultBlob(raw);
+    } catch {
+      return null;
+    }
+    return blob.hardwareKekTier ?? null;
+  },
+
   // Encrypt with the SAME audited crypto as web, then persist CIPHERTEXT ONLY to
   // the platform secure store (iOS Keychain / Android Keystore). The live secret never touches IndexedDB/
   // localStorage and is not retained here after this call returns.
@@ -547,7 +564,13 @@ export const nativeKeyStore = {
           const kekWrap = await wrapDek(kek, dek);
           // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
           const { iv, ct } = await encryptVaultWithDek(secret, dek);
-          await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+          // H-1: persist tier alongside wrap so the badge can show StrongBox/TEE/SE
+          // rather than a generic "ON" label. Tier comes from enrollHardwareCredential()
+          // via opts.hardwareKekTier; omitted for callers that don't pass it (web, legacy).
+          const tierEntry = opts && opts.hardwareKekTier
+            ? { hardwareKekTier: opts.hardwareKekTier }
+            : {};
+          await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, ...tierEntry });
         } finally {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
