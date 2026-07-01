@@ -36,9 +36,9 @@ export default function HiddenWallet2faGate() {
     toast.success('Hidden wallet unlocked');
   }, []);
 
-  const handleCancel = useCallback(() => {
-    // Disallow cancelling the 2FA gate for hidden wallet access
-  }, []);
+  // NOTE: no cancel handler. This modal cannot be dismissed (see Dialog onOpenChange /
+  // onInteractOutside below), so we pass onCancel={undefined} to TwoFactorGate — which
+  // then renders NO "Back" button, instead of a dead no-op one that does nothing.
 
   const handleLock = useCallback(() => {
     // After too many failed attempts, lock the wallet
@@ -65,6 +65,8 @@ export default function HiddenWallet2faGate() {
       // Passkey mode: PIN + WebAuthn assertion
       let passkeyOk = false;
       try { passkeyOk = (await verifyPasskeyAssertion()) === true; } catch { passkeyOk = false; }
+      // PASSKEY is a possession factor (not the Action Password); its precondition is a
+      // registered passkey, not the AP record — keep this leg configured-by-construction.
       return evaluateTwoFactor({ pinOk, passwordOk: passkeyOk, actionPasswordConfigured: true });
     }
 
@@ -73,8 +75,10 @@ export default function HiddenWallet2faGate() {
       return { allowed: false, message: 'Action Password is required.' };
     }
     const passwordOk = await verifyActionPassword(password);
-    return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
-  }, [hiddenWallet2faMode, verifyActiveCredentialDetailed, verifyActionPassword]);
+    // Pass the REAL actionPasswordConfigured (the active set's AP record). If it is
+    // absent, evaluateTwoFactor returns NOT_CONFIGURED — fail closed, never a silent pass.
+    return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured });
+  }, [hiddenWallet2faMode, actionPasswordConfigured, verifyActiveCredentialDetailed, verifyActionPassword]);
 
   if (!shouldShow) return null;
 
@@ -102,7 +106,7 @@ export default function HiddenWallet2faGate() {
           mode={hiddenWallet2faMode}
           verify={verify}
           onSuccess={handleSuccess}
-          onCancel={handleCancel}
+          onCancel={undefined}
           onLock={handleLock}
         />
 

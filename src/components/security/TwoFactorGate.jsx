@@ -59,7 +59,11 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         : 'Confirm with your PIN + Action Password');
   // Biometric mode: no PIN field — biometric is the only step-up. Passkey/password
   // modes still collect the PIN as factor 1.
-  const canSubmit = !busy && (isBio || (pin.length > 0 && (isPasskey || password.length > 0)));
+  // #2: gate on the TRIMMED value so a whitespace-only PIN/Action Password cannot be
+  // submitted. This does NOT bypass the gate (real credentials are still verified by
+  // verify()); it only prevents a blank entry from burning one of the ATTEMPT_CAP
+  // attempts and accidentally locking the user out.
+  const canSubmit = !busy && (isBio || (pin.trim().length > 0 && (isPasskey || password.trim().length > 0)));
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -148,17 +152,25 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         </div>
       )}
       {isBio && (
-        <p className="text-[11px] text-muted-foreground">After your PIN, your device will ask for your fingerprint or face.</p>
+        <p id="tfg-external-help" className="text-[11px] text-muted-foreground">After your PIN, your device will ask for your fingerprint or face.</p>
       )}
       {isPasskey && (
-        <p className="text-[11px] text-muted-foreground">{isNative ? 'After your PIN, Face ID / Touch ID will confirm this action.' : 'After your PIN, your browser will ask you to tap your passkey or security key.'}</p>
+        <p id="tfg-external-help" className="text-[11px] text-muted-foreground">{isNative ? 'After your PIN, Face ID / Touch ID will confirm this action.' : 'After your PIN, your browser will ask you to tap your passkey or security key.'}</p>
       )}
-      {error && <p className="text-[11px] text-destructive">{error}</p>}
+      {/* #4 a11y: announce the attempt-error (the "(N left)" copy) to assistive tech. */}
+      {error && <p role="alert" aria-live="polite" className="text-[11px] text-destructive">{error}</p>}
       <div className="flex gap-2">
         {onCancel && (
           <Button variant="ghost" className="flex-1" onClick={onCancel} disabled={busy}>Back</Button>
         )}
-        <Button className="flex-1 gap-2" onClick={submit} disabled={!canSubmit}>
+        {/* #4 a11y: for external-factor modes, tie the helper text to the submit so a
+            screen reader announces what the button will trigger (a passkey/biometric prompt). */}
+        <Button
+          className="flex-1 gap-2"
+          onClick={submit}
+          disabled={!canSubmit}
+          aria-describedby={isExternalFactor ? 'tfg-external-help' : undefined}
+        >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : (isExternalFactor ? <Fingerprint className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />)} {isBio ? 'Verify with biometrics' : isPasskey ? 'Verify with passkey' : 'Verify & continue'}
         </Button>
       </div>

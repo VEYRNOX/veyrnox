@@ -8,7 +8,7 @@
 
 import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
-import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR } from './kek.js';
+import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt } from './kek.js';
 import { ALLOW_MAINNET } from '../evm/networks.js';
 
 // H-A — WEB VAULT PASSWORD ENTROPY (I4 — fail honest, fail closed).
@@ -324,8 +324,8 @@ export const webKeyStore = {
       // KEK-enrolled vault: BOTH hardware factor H and PIN-derived C are required (I4).
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → KEK_ERR.MALFORMED_VAULT
       const H = await getHF();
-      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
       let C = null;
       let kek;
       let dek;
@@ -411,8 +411,8 @@ export const webKeyStore = {
     if (!blob) throw new Error('No wallet found on this device');
     if (!blob.kekWrap) throw new Error('Hardware KEK not enrolled.');
 
+    const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → KEK_ERR.MALFORMED_VAULT
     const H = await getHF();
-    const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
     let C = null;
     let kek;
     let dek;
@@ -460,7 +460,7 @@ export const webKeyStore = {
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       // Verify current PIN first.
-      const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → KEK_ERR.MALFORMED_VAULT
       const H = await getHF();
       const H2 = H.slice(); // M20: combineKek zeroes its H/C inputs; copy before first call
       let oldC = null;

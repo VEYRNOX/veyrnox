@@ -23,7 +23,49 @@ import { HardDrive, ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWallet } from '@/lib/WalletProvider';
 import { getKeyStore } from '@/wallet-core/keystore';
+import { KEK_ERR } from '@/wallet-core/keystore/kek.js';
 import PinPad from '@/components/security/PinPad';
+
+// Classify a thrown error by its STABLE machine CODE (not prose — copy is not a
+// contract and a raw message can leak internals). Returns the plain-language string
+// to show. The final fallback is deliberately GENERIC: we never render the raw
+// thrown text (I4 — fail honest, and no internal-detail leak to the UI).
+const WRONG_PIN_MSG = 'Wrong PIN — enter the PIN you use to unlock your wallet.';
+const NO_HARDWARE_MSG =
+  'Couldn’t reach this device’s hardware security. Try again, or use a different device.';
+const MALFORMED_MSG =
+  'Your stored wallet data couldn’t be read on this device.';
+const GENERIC_MSG = 'Something went wrong. Please try again.';
+
+function classifyKekError(e) {
+  const code = e?.code || e?.message;
+  switch (code) {
+    // Wrong PIN against a KEK wrap decrypts to a failed unwrap (generic oracle).
+    case KEK_ERR.UNWRAP_FAILED:
+      return WRONG_PIN_MSG;
+    case KEK_ERR.NO_HARDWARE_FACTOR:
+      return NO_HARDWARE_MSG;
+    case KEK_ERR.MALFORMED_VAULT:
+      return MALFORMED_MSG;
+    default:
+      return GENERIC_MSG;
+  }
+}
+
+// Enroll can also fail on a wrong PIN via decryptVault (which throws a vault error,
+// not a KEK_ERR) and on an insecure hardware tier (ENROLL_ERR.INSECURE_TIER). Those
+// are surfaced by dedicated messages before falling through to classifyKekError.
+const INSECURE_TIER_MSG =
+  'This device has no secure hardware element — hardware protection can’t be enabled here.';
+
+// decryptVault (../vault.js) throws a code-less Error whose message is a STABLE
+// internal sentinel ('Decryption failed: …' / 'No wallet …'). These are not
+// user-facing copy — they are the module's fixed error identity — so matching their
+// prefix to show wrong-PIN guidance is safe. We never render the raw message itself.
+function isWrongPinVaultError(e) {
+  const msg = e?.message || '';
+  return msg.startsWith('Decryption failed') || msg.startsWith('No wallet');
+}
 
 const isNative = (() => {
   try { return Capacitor.isNativePlatform(); } catch { return false; }
@@ -105,15 +147,16 @@ export default function HardwareKekSettings() {
       recordAudit('settings_changed');
       toast.success('Hardware protection enabled — your vault now requires this device to unlock.');
     } catch (e) {
-      const msg = e?.message || String(e);
-      // Honest, plain-language failure when the device has no secure hardware element (M2).
-      // 'KEK_ENROLL_INSECURE_TIER' is the machine code from hardware.js ENROLL_ERR.INSECURE_TIER.
-      if (e?.code === 'KEK_ENROLL_INSECURE_TIER' || msg.includes('KEK_ENROLL_INSECURE_TIER')) {
-        setError('This device has no secure hardware element — hardware protection can’t be enabled here.');
-      } else if (msg.includes('No wallet') || msg.toLowerCase().includes('password') || msg.includes('Decryption')) {
-        setError('Wrong PIN — enter the PIN you use to unlock your wallet.');
+      // Classify by STABLE machine CODE, never by prose (copy is not a contract) and
+      // never render the raw thrown message (no internal-detail leak, I4).
+      const code = e?.code;
+      if (code === 'KEK_ENROLL_INSECURE_TIER') {
+        // Machine code from hardware.js ENROLL_ERR.INSECURE_TIER.
+        setError(INSECURE_TIER_MSG);
+      } else if (isWrongPinVaultError(e)) {
+        setError(WRONG_PIN_MSG);
       } else {
-        setError(`Failed: ${msg}`);
+        setError(classifyKekError(e));
       }
       // Best-effort cleanup of any partially-created credential.
       try {
@@ -149,11 +192,12 @@ export default function HardwareKekSettings() {
       recordAudit('settings_changed');
       toast.success('Hardware protection removed.');
     } catch (e) {
-      const msg = e?.message || String(e);
-      if (msg.includes('UNWRAP') || msg.toLowerCase().includes('password') || msg.includes('Decryption')) {
-        setError('Wrong PIN — enter the PIN you use to unlock your wallet.');
+      // Classify by STABLE machine CODE (UNWRAP_FAILED = wrong PIN/device). Vault
+      // decrypt sentinels also map to wrong-PIN guidance; everything else is generic.
+      if (isWrongPinVaultError(e)) {
+        setError(WRONG_PIN_MSG);
       } else {
-        setError(`Failed: ${msg}`);
+        setError(classifyKekError(e));
       }
     } finally {
       setBusy(false);
@@ -246,10 +290,10 @@ export default function HardwareKekSettings() {
                   ? ' You will be asked to authenticate with biometric.'
                   : ' You will be asked to authenticate with your passkey.'}
               </p>
-              {error && <p className="text-xs text-destructive">{error}</p>}
+              {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
               {busy
                 ? (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
+                  <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
                     <Loader2 className="h-4 w-4 animate-spin" /> Removing — approve the prompt…
                   </p>
                 ) : (
@@ -281,11 +325,11 @@ export default function HardwareKekSettings() {
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">Enter your vault PIN to enable hardware protection.</p>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
 
           {busy
             ? (
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
+              <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
                 <Loader2 className="h-4 w-4 animate-spin" /> Enrolling — approve the biometric prompt…
               </p>
             ) : (
@@ -314,11 +358,11 @@ export default function HardwareKekSettings() {
             created to bind your vault to this device.
           </p>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
 
           {busy
             ? (
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
+              <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
                 <Loader2 className="h-4 w-4 animate-spin" /> Enrolling — approve the passkey prompt…
               </p>
             ) : (
