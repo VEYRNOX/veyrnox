@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { FileText, Table2, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { safeFormat } from "@/lib/safeDate";
 
 // Raw CSV — date, type, asset, amount, fee, tx_hash only.
 // No fabricated cost basis, no invented USD rates.
@@ -11,9 +12,11 @@ function downloadRawCSV(transactions) {
   const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const rows = [
     ["Date", "Type", "Asset", "Amount", "Fee", "TxHash", "Status"].map(esc).join(","),
-    ...transactions.map(tx =>
+    ...transactions
+      .filter(tx => tx.created_date != null && !Number.isNaN(new Date(tx.created_date).getTime()))
+      .map(tx =>
       [
-        format(new Date(tx.created_date), "yyyy-MM-dd HH:mm:ss"),
+        safeFormat(tx.created_date, "yyyy-MM-dd HH:mm:ss"),
         tx.type || "",
         tx.currency || "",
         tx.amount ?? "",

@@ -21,7 +21,13 @@ export default function BudgetLimits() {
   const { data: transactions = [], isError: txError } = useQuery({ queryKey: ["transactions"], queryFn: () => base44.entities.Transaction.list("-created_date", 500) });
 
   const create = useMutation({
-    mutationFn: (/** @type {any} */ d) => base44.entities.BudgetLimit.create({ ...d, limit_usd: parseFloat(d.limit_usd) }),
+    mutationFn: (/** @type {any} */ d) => {
+      const limit = parseFloat(d.limit_usd);
+      if (!Number.isFinite(limit) || limit <= 0) throw new Error("Limit must be a positive number");
+      const rawAlert = parseInt(d.alert_at_percent, 10);
+      const alert_at_percent = Number.isFinite(rawAlert) ? Math.min(100, Math.max(0, rawAlert)) : 80;
+      return base44.entities.BudgetLimit.create({ ...d, limit_usd: limit, alert_at_percent });
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["budgets"] }); setOpen(false); setForm({ currency: "ETH", period: "monthly", limit_usd: "", alert_at_percent: 80, enabled: true }); },
   });
   const remove = useMutation({
