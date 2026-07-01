@@ -100,10 +100,20 @@
  *   TARGET/Phase 2 (Secure Enclave on iOS, StrongBox on Android). Never
  *   fabricates H (I4); throws if unavailable or user cancels.
  *
- * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [enrollKek]
+ * @property {() => Promise<string|null>} [getVaultKekTier]
+ *   NATIVE-ONLY (optional): read the persisted hardware security tier name from
+ *   the vault blob (e.g. 'STRONGBOX', 'SecureEnclave', 'TRUSTED_ENVIRONMENT'),
+ *   or null when not enrolled / tier never stored. Metadata-only read — no
+ *   biometric prompt, no key material. Used by the Hardware Protection badge
+ *   (H-1) to surface the real tier instead of a generic "ON".
+ *
+ * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array>, hardwareKekTier?: string }) => Promise<void>} [enrollKek]
  *   OPTIONAL: enroll the Hardware KEK on a bare vault. After enrollment, unlock
  *   and changePassword require the hardware factor in addition to the password.
  *   Fails closed (I4): missing hardware factor → explicit error, never silent fallback.
+ *   `opts.hardwareKekTier` is an optional tier name from the native plugin
+ *   (e.g. 'STRONGBOX', 'SecureEnclave', 'TRUSTED_ENVIRONMENT') persisted alongside
+ *   the wrap so the badge can surface the real tier (H-1); omitted by web/legacy callers.
  *
  * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [unenrollKek]
  *   OPTIONAL (NATIVE-ONLY): re-wrap vault to bare format then delete the hardware
