@@ -129,6 +129,16 @@ export async function isHardwareEnrolled() {
  */
 export async function enrollHardwareCredential() {
   const plugin = getPlugin();
+  // iOS-F6 (JS layer): enroll() is DESTRUCTIVE — on iOS it deletes the existing SE
+  // key and mints a new H; on Android it overwrites the Keystore key. Either rotates H
+  // and permanently invalidates the existing kekWrap (funds lock-out). Guard against
+  // double-enrollment and fail closed (I4) rather than silently destroying a wrap.
+  const alreadyEnrolled = await plugin.isEnrolled();
+  if (alreadyEnrolled?.enrolled) {
+    throw Object.assign(new Error('HARDWARE_KEK_ALREADY_ENROLLED'), {
+      code: 'HARDWARE_KEK_ALREADY_ENROLLED',
+    });
+  }
   const raw = await plugin.enroll();
   const tier = normalizeTier(raw);
   if (!tier.securityLevelName || !ACCEPTED_TIER_NAMES.has(tier.securityLevelName)) {
@@ -178,6 +188,15 @@ export async function getHardwareFactor() {
   // length is not a usable H — reject with the stable code, never pad or truncate.
   if (result.length !== 32) {
     throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+  }
+  // H-4 / iOS-F8: 32 zero bytes is a valid LENGTH but a degenerate H — it reduces the
+  // KEK to a deterministic HKDF of 0^32 || C, i.e. C-only protection, silently voiding
+  // the hardware binding (I6). Reject and fail closed (I4).
+  const isAllZero = result.every((b) => b === 0);
+  if (isAllZero) {
+    throw Object.assign(new Error('HARDWARE_FACTOR_DEGENERATE'), {
+      code: 'HARDWARE_FACTOR_DEGENERATE',
+    });
   }
   return result;
 }

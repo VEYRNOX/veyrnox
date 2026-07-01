@@ -205,6 +205,12 @@ async function authenticateOrThrow() {
       // On lockout (too many failed biometric attempts) fall back ONCE to the
       // device credential (PIN/passcode/pattern) — the deliberate passcode
       // fallback policy called out in the spec.
+      //
+      // H16-DEVIATION: On biometric lockout, we fall back to device credential (PIN/passcode)
+      // for the APP-LAYER gate (enrollKek, changePassword) only. The KEYSTORE KEY itself
+      // does not have allowDeviceCredential — that was removed by H16. This means lockout
+      // degrades the app-layer UX gate to PIN, but the Keystore HMAC/ECIES operation still
+      // requires biometric at the OS level. Accepted deviation; see docs/audit-2026-06-28.
       if (err && err.code === 'biometryLockout') {
         await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
         return;

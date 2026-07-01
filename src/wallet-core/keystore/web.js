@@ -31,13 +31,21 @@ export const WEB_VAULT_MIN_PASSWORD_LEN = 12;
 //
 // The WebAuthn PRF (hmac-secret extension) is evaluated with a FIXED salt to
 // derive a stable 32-byte hardware factor H. The same salt in → same bytes out,
-// across calls and app restarts on the same device. This constant MUST match
-// the spike's prfSpike.FIXED_SALT (they are identical domain-separated labels).
+// across calls and app restarts on the same device.
+//
+// F-03 (audit, I4 honesty): the label was previously "Veyrnox-prf-spike-v1-..."
+// — a leftover from the dev spike (src/dev/prfSpike.js). Naming a SHIPPING KEK
+// derivation "spike" is dishonest, so it is renamed to the honest "prf-kek"
+// label below. This is a PROTOCOL VERSION BUMP: changing the PRF eval salt
+// changes the derived H for the same authenticator, so any vault enrolled under
+// the old salt would derive a DIFFERENT H and no longer unlock via KEK. This is
+// acceptable because no production vault has been enrolled on this web path yet
+// (only test/dev). Existing test/dev enrollment data is intentionally invalidated.
 export const PRF_FIXED_SALT = new Uint8Array([
   0x56, 0x65, 0x79, 0x72, 0x6e, 0x6f, 0x78, 0x2d, // "Veyrnox-"
-  0x70, 0x72, 0x66, 0x2d, 0x73, 0x70, 0x69, 0x6b, // "prf-spik"
-  0x65, 0x2d, 0x76, 0x31, 0x2d, 0x66, 0x69, 0x78, // "e-v1-fix"
-  0x65, 0x64, 0x2d, 0x73, 0x61, 0x6c, 0x74, 0x21, // "ed-salt!"
+  0x70, 0x72, 0x66, 0x2d, 0x6b, 0x65, 0x6b, 0x2d, // "prf-kek-"
+  0x76, 0x31, 0x2d, 0x66, 0x69, 0x78, 0x65, 0x64, // "v1-fixed"
+  0x2d, 0x73, 0x61, 0x6c, 0x74, 0x21, 0x21, 0x21, // "-salt!!!"
 ]);
 
 export const WEB_VAULT_ERR = Object.freeze({
@@ -128,72 +136,64 @@ function b64uToBuffer(s) {
   return out;
 }
 
+// localStorage key holding the base64url PRF credential id for this device.
+const PRF_CRED_KEY = 'veyrnox-prf-cred-id';
+
+/** Read the persisted PRF credential id, or null if none is stored. */
+function readStoredCredentialId() {
+  const stored = typeof window !== 'undefined' && window.localStorage?.getItem(PRF_CRED_KEY);
+  return stored && typeof stored === 'string' ? stored : null;
+}
+
 /**
- * Retrieve or create a passkey with WebAuthn PRF extension support, storing
- * the credential ID for future evaluations. On first enrollment, creates a
- * platform authenticator credential. On subsequent calls (unlock), retrieves
- * a stored credential ID from localStorage and uses it to get() a PRF evaluation.
+ * Create a NEW passkey with the WebAuthn PRF extension and return its base64url
+ * credential id. On first enrollment this registers a platform-authenticator
+ * credential.
  *
- * @returns {Promise<string>} base64url credentialId, persisted in localStorage
+ * F-05 (audit): this function intentionally does NOT persist the credential id.
+ * Persistence is the caller's (getHardwareFactor) responsibility and must happen
+ * only AFTER a non-null PRF output is confirmed by a subsequent get() — otherwise a
+ * WebAuthn-capable but PRF-incapable browser (Safari) would leave an orphan
+ * credential id in localStorage that can never yield an H.
+ *
+ * @returns {Promise<{ credId: string }>}
  */
-async function getPrfCredentialId() {
-  const CRED_KEY = 'veyrnox-prf-cred-id';
-  try {
-    // Check if a credential ID is already stored
-    const stored = typeof window !== 'undefined' && window.localStorage?.getItem(CRED_KEY);
-    if (stored && typeof stored === 'string') {
-      return stored;
-    }
-
-    // No stored credential — create a new one with the prf extension
-    if (!window.PublicKeyCredential || !navigator.credentials?.create) {
-      throw new Error('WebAuthn PRF not supported on this browser.');
-    }
-
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const rpId = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-
-    const cred = await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: { name: 'Veyrnox', id: rpId },
-        user: {
-          id: crypto.getRandomValues(new Uint8Array(16)),
-          name: 'veyrnox-prf-user',
-          displayName: 'Veyrnox PRF',
-        },
-        pubKeyCredParams: [
-          { alg: -7, type: 'public-key' }, // ES256
-          { alg: -257, type: 'public-key' }, // RS256
-        ],
-        authenticatorSelection: {
-          authenticatorAttachment: 'platform',
-          residentKey: 'preferred',
-          userVerification: 'required',
-        },
-        timeout: 60000,
-        extensions: { prf: { eval: { first: PRF_FIXED_SALT } } },
-      },
-    });
-
-    if (!cred) {
-      throw new Error('Failed to create passkey credential.');
-    }
-
-    // Store the credential ID for future get() calls
-    const credId = bufferToB64u((/** @type {any} */ (cred)).rawId);
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        window.localStorage.setItem(CRED_KEY, credId);
-      } catch {
-        // localStorage unavailable (private mode, etc.) — proceed without persistence
-      }
-    }
-
-    return credId;
-  } catch (e) {
-    throw new Error(`Failed to get PRF credential: ${e?.message || String(e)}`);
+async function createPrfCredential() {
+  if (!window.PublicKeyCredential || !navigator.credentials?.create) {
+    throw new Error('WebAuthn PRF not supported on this browser.');
   }
+
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const rpId = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+
+  const cred = await navigator.credentials.create({
+    publicKey: {
+      challenge,
+      rp: { name: 'Veyrnox', id: rpId },
+      user: {
+        id: crypto.getRandomValues(new Uint8Array(16)),
+        name: 'veyrnox-prf-user',
+        displayName: 'Veyrnox PRF',
+      },
+      pubKeyCredParams: [
+        { alg: -7, type: 'public-key' }, // ES256
+        { alg: -257, type: 'public-key' }, // RS256
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        residentKey: 'preferred',
+        userVerification: 'required',
+      },
+      timeout: 60000,
+      extensions: { prf: { eval: { first: PRF_FIXED_SALT } } },
+    },
+  });
+
+  if (!cred) {
+    throw new Error('Failed to create passkey credential.');
+  }
+
+  return { credId: bufferToB64u((/** @type {any} */ (cred)).rawId) };
 }
 
 /** @type {import('./keyStore.js').KeyStore} */
@@ -260,9 +260,38 @@ export const webKeyStore = {
       throw new Error('WebAuthn PRF (hmac-secret) not supported on this browser. Use a strong password (≥12 characters) instead.');
     }
 
-    const credId = await getPrfCredentialId();
+    let credId = readStoredCredentialId();
+
+    // freshCredId is set only when we CREATE a new credential this call. Per F-05
+    // its id is persisted to localStorage ONLY after a non-null PRF output is
+    // confirmed by the get() below — never before — so a WebAuthn-capable but
+    // PRF-incapable browser (Safari) leaves no orphan credential id behind.
+    let freshCredId = null;
+
     if (!credId) {
-      throw new Error('Failed to retrieve PRF credential ID.');
+      // F-01 (audit, I4 — fail closed): if the vault is already KEK-enrolled but the
+      // PRF credential id is gone from localStorage (cleared/private-mode), we MUST
+      // NOT silently create a new credential — a fresh credential yields a DIFFERENT
+      // H, which can never unwrap the existing DEK, so the enrolled vault would be
+      // permanently locked out AND an orphan authenticator credential would be left
+      // behind. Fail honestly and point the user at seed-phrase recovery.
+      let enrolled = false;
+      try {
+        const existing = await loadVault();
+        enrolled = !!(existing && existing.kekWrap);
+      } catch {
+        enrolled = false;
+      }
+      if (enrolled) {
+        throw new Error(
+          'PRF_CREDENTIAL_LOST: vault is KEK-enrolled but PRF credential ID is missing. Recover via seed phrase.',
+        );
+      }
+
+      // Fresh enrollment: create the credential but DO NOT persist its id yet (F-05).
+      const created = await createPrfCredential();
+      credId = created.credId;
+      freshCredId = created.credId;
     }
 
     // get() with the prf extension to evaluate the hardware factor
@@ -295,12 +324,25 @@ export const webKeyStore = {
     const prfOutput = prf.results?.first;
 
     if (!prfOutput) {
+      // F-05: PRF unavailable (e.g. Safari). We reach here having possibly CREATED a
+      // credential, but we deliberately never persisted its id, so no orphan id is
+      // left in localStorage. Fail honestly.
       throw new Error('WebAuthn PRF extension did not return output. This platform may not support hmac-secret.');
     }
 
     const H = new Uint8Array(prfOutput);
     if (H.length !== 32) {
       throw new Error(`PRF output length mismatch: expected 32 bytes, got ${H.length}.`);
+    }
+
+    // PRF output confirmed — NOW it is safe to persist a freshly created credential
+    // id for future unlocks (F-05: persist only after a real PRF result).
+    if (freshCredId && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem(PRF_CRED_KEY, freshCredId);
+      } catch {
+        // localStorage unavailable (private mode) — proceed without persistence.
+      }
     }
 
     return H;
@@ -373,6 +415,11 @@ export const webKeyStore = {
     if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
     const blob = await loadVault();
     if (!blob) throw new Error('No wallet found on this device');
+    // F-02 (audit, I4): refuse to re-enroll an already-enrolled vault. Overwriting
+    // an existing kekWrap would silently orphan the old DEK-wrap (and, with a fresh
+    // random DEK, re-encrypt the seed under a new key), so make it an explicit,
+    // machine-coded fail-closed rather than a silent clobber.
+    if (blob.kekWrap) throw Object.assign(new Error('KEK_ALREADY_ENROLLED'), { code: 'KEK_ALREADY_ENROLLED' });
     const secret = await decryptVault(blob, password); // verify password and recover seed
 
     const H = await getHF();
@@ -492,6 +539,11 @@ export const webKeyStore = {
         const newKekWrap = await wrapDek(newKek, dek);
         await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
       } finally {
+        // F-06 (audit, I4): H is captured before the try block (needed to make the
+        // H2 copy). If ANY step between its capture and its in-try zeroing throws
+        // (e.g. deriveKekC), H would otherwise linger in the heap. Zero it here too
+        // as a defence — double-zeroing is harmless.
+        if (H) H.fill(0);
         // H-NEW-4: wipe the H2 copy, both derived KEKs, and the recovered DEK on
         // every path (consumed or an error occurred) (I4).
         if (H2) H2.fill(0);

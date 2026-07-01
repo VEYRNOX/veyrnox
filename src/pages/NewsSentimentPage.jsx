@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import CryptoNewsFeed from "@/components/CryptoNewsFeed";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { safeFormat } from "@/lib/safeDate";
 
 const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -21,7 +22,8 @@ const SENTIMENT_CONFIG = {
 function AssetSentimentBar({ asset, news }) {
   const assetNews = news.filter(n => n.asset === asset);
   if (!assetNews.length) return null;
-  const avgScore = assetNews.reduce((a, n) => a + n.score, 0) / assetNews.length;
+  const rawAvg = assetNews.reduce((a, n) => a + Number(n.score || 0), 0) / assetNews.length;
+  const avgScore = Number.isFinite(rawAvg) ? rawAvg : 0;
   const pct = ((avgScore + 1) / 2) * 100;
   const color = avgScore > 0.3 ? "hsl(var(--success))" : avgScore > -0.3 ? "hsl(var(--muted-foreground))" : "hsl(var(--destructive))";
   return (
@@ -101,6 +103,7 @@ export default function NewsSentimentPage() {
       <div className="space-y-3">
         {filtered.map((n, i) => {
           const cfg = SENTIMENT_CONFIG[n.sentiment] || SENTIMENT_CONFIG.neutral;
+          const score = Number.isFinite(Number(n.score)) ? Number(n.score) : 0;
           return (
             <div key={i} className={`p-4 rounded-xl border ${cfg.bg} space-y-2`}>
               <div className="flex items-start justify-between gap-2">
@@ -109,13 +112,13 @@ export default function NewsSentimentPage() {
                   <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
                   <span className={`text-[10px] font-semibold ${cfg.color}`}>{cfg.label}</span>
                 </div>
-                <span className={`text-xs font-bold ${cfg.color}`}>{n.score >= 0 ? "+" : ""}{n.score.toFixed(2)}</span>
+                <span className={`text-xs font-bold ${cfg.color}`}>{score >= 0 ? "+" : ""}{score.toFixed(2)}</span>
               </div>
               <p className="text-sm font-semibold leading-snug">{n.headline}</p>
               {n.summary && <p className="text-xs text-muted-foreground">{n.summary}</p>}
               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                 <span>{n.source}</span>
-                <span>{formatDistanceToNow(new Date(n.published_at), { addSuffix: true })}</span>
+                <span>{safeFormat(n.published_at, d => formatDistanceToNow(d, { addSuffix: true }))}</span>
               </div>
             </div>
           );
