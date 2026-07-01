@@ -237,18 +237,22 @@ class RaspIntegrityPlugin : Plugin() {
             } else {
                 @Suppress("DEPRECATION")
                 info.signatures
-            } ?: return false
+            } ?: return true  // no signatures readable → can't verify → tampered (I4)
 
             val md = java.security.MessageDigest.getInstance("SHA-256")
             val actualHex = sigs.firstOrNull()?.let { sig ->
                 md.digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
-            } ?: return false
+            } ?: return true  // no cert digest → can't verify → tampered (I4)
 
             // actualHex is lowercase hex with no separators; the expected value may
             // be colon-separated uppercase (the standard fingerprint format) — strip
             // colons and lowercase both sides before comparing.
             val expectedHex = EXPECTED_CERT_SHA256.replace(":", "").lowercase()
             actualHex != expectedHex
-        }.getOrDefault(false)
+        }
+        // Tamper detection is binary — if we can't check, assume tampered (fail-closed, I4).
+        // Consistent with the blank-cert guard above; unlike detectRoot/detectHook/
+        // detectEmulator (heuristics), a failed signing-cert check must not pass silently.
+        .getOrElse { true }
     }
 }
