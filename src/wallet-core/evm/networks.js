@@ -190,11 +190,6 @@ export const NETWORKS = {
 // (docs/audit-triage/internal-audit-2026-06-17.md). 0 crit/high/med findings.
 export const ALLOW_MAINNET = true;
 
-// Hardware KEK native-platform support gate (Phase 1/2). Phase 1 (web only) uses
-// WebAuthn PRF for hardware-bound PIN protection; this flag is off because native
-// Secure Enclave (iOS) + StrongBox (Android) integration is Phase 2 (Q3 2026).
-// Web PRF is always active when isHardwareKeystoreAvailable() returns true.
-export const HARDWARE_KEK_NATIVE_ENABLED = false;
 
 /**
  * Display-only lookup. Returns the raw network entry (or null) WITHOUT applying

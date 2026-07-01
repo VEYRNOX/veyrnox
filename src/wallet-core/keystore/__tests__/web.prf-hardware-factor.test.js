@@ -354,17 +354,7 @@ describe('Web PRF Hardware Factor (Phase 1 — I6)', () => {
     });
   });
 
-  describe('Hardware factor zeroing (I4 — no plaintext key lingering)', () => {
-    it('zeroes H in combineKek (M20 contract)', async () => {
-      const H = fixedBytes(0xaa);
-      const C = fixedBytes(0xcc);
-      await kekMock.combineKek(H, C);
-      // combineKek is expected to zero its inputs; verify the mock follows this
-      // (In real code, this is tested in kek.test.js)
-    });
-  });
-
-  describe('PRF_FIXED_SALT constant (domain-separation)', () => {
+describe('PRF_FIXED_SALT constant (domain-separation)', () => {
     it('uses a fixed, domain-separated salt for PRF evaluation', async () => {
       // PRF_FIXED_SALT should be defined in web.js and used consistently
       vi.resetModules();

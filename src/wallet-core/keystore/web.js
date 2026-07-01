@@ -71,28 +71,33 @@ export function validateWebVaultPassword(password) {
 // ── WebAuthn PRF hardware factor (I6 — hardware binding for PIN KEK) ──────────
 
 /**
- * Probe whether WebAuthn PRF (hmac-secret extension) is available on this browser.
- * PRF support indicates the platform can derive a stable hardware-bound 32-byte
- * factor for use as the H in the KEK construction. Returns false on Safari, older
- * Firefox, or platforms without PublicKeyCredential.
+ * Best-effort probe for WebAuthn availability. Returns true if
+ * PublicKeyCredential exists in this environment — NOT a true PRF/hmac-secret
+ * capability check. isConditionalMediationAvailable() tests autofill UI support,
+ * not PRF; browsers (including Safari) that pass this check may still lack the
+ * prf extension. The real gate is getHardwareFactor(): if the platform doesn't
+ * support PRF it will throw and the caller must fall back to PIN-only.
  *
- * @returns {Promise<boolean>} true if PRF can be used for hardware factor derivation
+ * Do not use this to advertise "hardware KEK available" to the user — it is
+ * only a cheap pre-flight to avoid enrolling on a platform with no WebAuthn at
+ * all. Treat the return value as best-effort/unknown, not as confirmed PRF support.
+ *
+ * @returns {Promise<boolean>} false if WebAuthn is definitely unavailable; true
+ *   means WebAuthn exists but PRF support is unconfirmed until getHardwareFactor()
  */
 async function isPrfSupported() {
   try {
     if (typeof window === 'undefined' || !window.PublicKeyCredential) {
       return false;
     }
-    // Conditional UI check: if the browser/platform supports WebAuthn and can
-    // evaluate the `prf` extension without user interaction, assume PRF support.
-    // This is a best-effort probe; the real gate happens when getHardwareFactor()
-    // actually calls get() with the prf extension.
+    // isConditionalMediationAvailable probes autofill-UI support, not PRF — but
+    // a false return reliably means the platform is too old for our purposes.
     if (window.PublicKeyCredential.isConditionalMediationAvailable) {
       const conditional = await window.PublicKeyCredential.isConditionalMediationAvailable();
-      return conditional !== false; // undefined = assume support; false = no
+      if (conditional === false) return false;
     }
-    // Fallback: if PublicKeyCredential exists, assume WebAuthn is available.
-    // Safari and older browsers will fail when actually calling get() with prf.
+    // PublicKeyCredential exists and no negative signal — assume WebAuthn is
+    // present. PRF availability is only confirmed by getHardwareFactor() itself.
     return true;
   } catch {
     return false;
