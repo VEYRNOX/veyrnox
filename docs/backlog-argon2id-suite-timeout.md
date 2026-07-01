@@ -25,9 +25,9 @@ The 60s timeout is **per test**, not per file. In isolation, no single test appr
 60s (the whole 13-test set runs in ~63s uncontended). Under the full suite, multiple
 Argon2id-heavy tests run concurrently across vitest workers and contend for CPU/memory;
 the heaviest duress/chaff tests — each performing **several** Argon2id passes (the
-constant-number deniability resolution + multi-slot provisioning) at **192 MiB / t=3**
+constant-number deniability resolution + multi-slot provisioning) at **64 MiB / t=3**
 (`src/wallet-core/vault.js` `KDF_PARAMS`: `parallelism:1, iterations:3,
-memorySize:196608` KiB) — stretch a single test past the 60s cap. A single uncontended
+memorySize:65536` KiB) — stretch a single test past the 60s cap. A single uncontended
 pass is ~440ms (`vault.js` header); contention is the multiplier, not the work itself.
 
 > Correction vs. the original draft of this note: an earlier draft claimed "each test
@@ -53,7 +53,7 @@ but that's one box, not a guarantee across runners.
   its own pool) so they don't contend.
 - Lower Argon2id cost params **for the test environment only** — risky: must not weaken
   the params the security tests actually assert on (`vault-migration.test.js` pins
-  `memorySize === 196608`), and would need to confirm the tests still exercise the real
+  `memorySize === 65536`), and would need to confirm the tests still exercise the real
   production cost path. Likely the wrong fix.
 
 ## Not doing now
@@ -69,5 +69,5 @@ than a regression.
   `Duration 889.69s`; the 3 failures were the timeouts above.
 - Isolation (default cap): `npx vitest run …/panic.test.js …/provisionChaff.test.js` →
   `2 passed (2)`, `Tests 13 passed (13)`, `Duration ~66s` (tests ~63s).
-- Argon2id params: `src/wallet-core/vault.js` `KDF_PARAMS` (192 MiB / t=3), corroborated
-  by `vault-migration.test.js` (`memorySize === 196608`) and `src/lib/seedQr.js`.
+- Argon2id params: `src/wallet-core/vault.js` `KDF_PARAMS` (64 MiB / t=3), corroborated
+  by `vault-migration.test.js` (`memorySize === 65536`) and `src/lib/seedQr.js`.

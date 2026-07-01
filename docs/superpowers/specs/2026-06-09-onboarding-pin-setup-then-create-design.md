@@ -60,7 +60,7 @@ Entry: the fresh-open landing. A vault-less cold mount routes directly to the PI
 Triggered by **Create Wallet**, **Import an existing seed**, or a wallet-requiring action (e.g. **Send**) tapped on the empty dashboard while `pendingPin` is set. All write the real wallet AND both chaff slots as ONE atomic, fail-closed block, reusing the existing `provisionPinWallet` orchestrator (commit `7a5582e`) and `discardIncompleteWallet` teardown (`ca91cd1`).
 
 **Create Wallet** → `provisionPinWallet({createWallet, provisionDeniabilityChaff, setAuthModel, getOrCreateDeviceSalt, discardIncompleteWallet}, { pin: pendingPin })`:
-1. `createWallet(pendingPin)` → `primary` blob + stealth pool (Argon2id 192 MiB).
+1. `createWallet(pendingPin)` → `primary` blob + stealth pool (Argon2id 64 MiB).
 2. `provisionDeniabilityChaff()` → `secondary` (duress chaff) + `tertiary` (panic chaff), each via the same `setDuressVault`/`setPanicVault` → `encryptVault` path as a real credential (no chaff branch). **Defect-A memory management applies here (see below).**
 3. `setAuthModel('pin')` + `getOrCreateDeviceSalt()` (idempotent; markers already set in Phase 1).
 4. Wallet is `backedUp:false`.
@@ -74,11 +74,11 @@ Triggered by **Create Wallet**, **Import an existing seed**, or a wallet-requiri
 
 ## Defect A — manage Argon2 allocation in Phase 2 (now in scope)
 
-Phase 2 runs **from the mounted (empty) app shell**, so the 3 sequential 192 MiB Argon2 KDFs (primary + 2 chaff) run under the app's memory pressure — the exact condition under which the chaff KDF threw `RangeError: Invalid typed array length` in browser verification (the dashboard-mounted `chaffProbe` failed; unmounted onboarding KDFs succeeded). Root cause (systematic-debugging): `hash-wasm` instantiates a fresh ~192 MiB WASM memory per `argon2id()` call (`index.umd.js:244-248`); under the mounted app, allocating the next 192 MiB before the previous is reclaimed exceeds the budget.
+Phase 2 runs **from the mounted (empty) app shell**, so the 3 sequential 64 MiB Argon2 KDFs (primary + 2 chaff) run under the app's memory pressure — the exact condition under which the chaff KDF threw `RangeError: Invalid typed array length` in browser verification (the dashboard-mounted `chaffProbe` failed; unmounted onboarding KDFs succeeded). Root cause (systematic-debugging): `hash-wasm` instantiates a fresh ~64 MiB WASM memory per `argon2id()` call (`index.umd.js:244-248`); under the mounted app, allocating the next 64 MiB before the previous is reclaimed exceeds the budget.
 
-**Fix — make peak 192 MiB once, not concurrent. Never lower chaff's KDF params** (chaff must be byte-identical to personalized; the T1 `chaff.kdf === real.kdf` parity test forbids it). Approach, in order:
+**Fix — make peak 64 MiB once, not concurrent. Never lower chaff's KDF params** (chaff must be byte-identical to personalized; the T1 `chaff.kdf === real.kdf` parity test forbids it). Approach, in order:
 1. **Diagnose** whether a yield-between-KDFs (`await` a macrotask so the previous instance is GC-eligible before the next allocates) suffices on the empty-dashboard app shell. Test against a memory-constrained context, not just the dev box.
-2. If insufficient, **run each Argon2 in a short-lived Web Worker that is terminated after the call**, so the OS reclaims its 192 MiB before the next KDF — deterministic peak of one 192 MiB at a time. This is a `vault.js`/`deriveKey` change affecting all KDF callers; scope carefully and verify unlock/decrypt still work.
+2. If insufficient, **run each Argon2 in a short-lived Web Worker that is terminated after the call**, so the OS reclaims its 64 MiB before the next KDF — deterministic peak of one 64 MiB at a time. This is a `vault.js`/`deriveKey` change affecting all KDF callers; scope carefully and verify unlock/decrypt still work.
 
 Verify the fix against a mobile-like constraint (the deploy target has *less* headroom than the dev box).
 

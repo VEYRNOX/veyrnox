@@ -46,7 +46,7 @@ hashes, no key egress, no plaintext persistence, mainnet gating intact.
 - Account indices distinct — PASS for 0/1; broader coverage is **F3**.
 
 ### Vault / encryption
-- **Argon2id params — PASS.** `vault.js:51-56`: t=3, p=1, memory=192 MiB, hashLength=32; per-blob params + upgrade-only rekey. (Param *strength* = NEEDS-OWNER, flagged in-code at `vault.js:44-50`.)
+- **Argon2id params — PASS.** `vault.js:51-56`: t=3, p=1, memory=192 MiB, hashLength=32; per-blob params + upgrade-only rekey. *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)* (Param *strength* = NEEDS-OWNER, flagged in-code at `vault.js:44-50`.)
 - **Fresh CSPRNG salt(16)+iv(12) per encryption, never reused — PASS.** `vault.js:139-142` via `crypto.getRandomValues`.
 - **Wrong password AND tampered ciphertext fail closed — PASS.** `vault.js:169-175`; tests `vectors.test.js:64-73`.
 - **Only ciphertext persisted; no plaintext to storage/log/analytics/network — PASS.** `vault.js:146-153`, `vaultStore.js:36-48`, native `native.js:75-84` (`setSynchronize(false)`). No `console`/`fetch`/`analytics` on secret material.
