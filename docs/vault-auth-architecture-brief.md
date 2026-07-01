@@ -17,7 +17,7 @@
 > - **Merged on `main`.** `duress` / `stealth` / `panic` / `deniabilityUnlock` are
 >   committed to `main`, not worktree-only. History: PRs #34 (M2 constant-KDF timing) and
 >   #35 (M3 Argon2id params) are merged; the SAST fix chain is on `main` — `3890cb8`
->   (M2, constant KDF count on wrong unlock), `bb9afaa` (M3, at-rest Argon2id 64→64 MiB),
+>   (M2, constant KDF count on wrong unlock), `bb9afaa` (M3, at-rest Argon2id 64→192 MiB; later reverted to 64 MiB in `1226085e`),
 >   `7bbad7b` (dummy-KDF chaff pinned to current params, so M3's raise can't reopen the
 >   M2 timing tell).
 > - **§1 confirmed — no KEK indirection.** `src/wallet-core/vault.js` derives the AES key
