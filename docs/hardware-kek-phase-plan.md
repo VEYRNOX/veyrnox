@@ -141,7 +141,17 @@ Native mobile requires custom plugin development (Swift + Kotlin), real-device t
 `android.hardware.strongbox_keystore` feature flag present (value 300). Debug build
 `com.veyrnox.app.debug`, side-by-side install.
 
-**What was observed (logcat evidence, this device only):**
+**IMPORTANT CORRECTION to the original entry below (dated 2026-07-01, PR #496):** the
+H15/H16 evidence captured that session was real and is preserved as-is, but it only
+covered ENROLL-TIME and prompt-time behavior. At that point in the day, the KEK did
+**NOT** actually persist across a restart or gate unlock — every unlock silently
+re-wrapped the vault back under a bare Argon2id key, discarding the KEK wrap
+(root-caused and fixed later the same day, see "Three bugs" below). The original
+enroll-time observations (H15, H16) are kept verbatim below for the record; the
+end-to-end persistence + unlock-gating claim is a separate, later fix (PRs #497/#499)
+and is recorded in its own section immediately after.
+
+**What was observed (logcat evidence, this device only, ENROLL-TIME ONLY):**
 
 - **H15 — StrongBox tier, OBSERVABILITY half only.** A new tier probe in
   `HardwareKekPlugin.enroll()` reads `KeyInfo.getSecurityLevel()` post-generation and logs
@@ -160,18 +170,67 @@ Native mobile requires custom plugin development (Swift + Kotlin), real-device t
   i.e. no PIN/pattern/password fallback was offered by the prompt — the possession factor
   is intact, biometric-only as designed.
 
-**What this does NOT cover (still outstanding, not device-verified):**
-- No on-chain testnet send was performed in this session. The Sepolia
-  fingerprint-gated SEND (item 2 in the checklist below) remains unchecked.
-- The biometric re-enrollment invalidation test (old key invalidated after re-enroll) was
-  NOT run this session and remains unchecked.
-- StrongBox tier ENFORCEMENT (reject non-StrongBox devices) is TARGET, not built — only
-  the read/log observability landed.
-- Audit refresh / owner sign-off on the device-gated Phase 2 implementation is still
-  pending.
+**What this ENROLL-TIME evidence did NOT cover, at the time it was recorded:**
+- Whether the KEK wrap actually survived past enrollment (it did not — see below).
+- No on-chain testnet send was performed in that session.
+- The biometric re-enrollment invalidation test was not run.
 
-**Status stays BUILT / device-verified (enroll, tier-observability, biometric-gating
-only) — NOT independently audited, NOT "verified" in the on-chain asset sense.**
+---
+
+### Android End-to-End Persistence + Unlock-Gating Fix (2026-07-01, same device, PRs #497/#499)
+
+Later the same day, full end-to-end testing (enroll → cold restart → unlock) surfaced
+that the KEK enrolled by H15/H16 above was NOT actually protecting anything after
+enrollment — three stacked bugs were found and fixed, in this order:
+
+1. **Badge measured key-presence, not vault-wrap (PR #497, commit `27e1125d`).** The
+   "Hardware Protection ON" badge read raw key-presence from the OS keystore, which
+   stays true even after the vault silently falls back to a bare Argon2id wrap. Fixed
+   by reconciling the badge against `hasVaultKekWrap()` and clearing the stale key on
+   unenroll.
+2. **Async-persistence plugin bug, Android-only.** `@aparajita/capacitor-secure-storage@8.0.0`
+   persists via `SharedPreferences.apply()` — asynchronous, fire-and-forget — so a write
+   could be silently lost if the app was killed before the OS flushed it. Patched to the
+   synchronous `.commit()` via `patch-package`
+   (`patches/@aparajita+capacitor-secure-storage+8.0.0.patch`, commit `470b1ef0`). iOS
+   Keychain storage was unaffected — it is synchronous already.
+3. **Silent re-wrap-to-bare-KDF on every unlock — the real "won't stick" root cause
+   (commit `ad7ef9ad`).** Every unlock re-persisted the vault via `createVault()`, which
+   silently downgraded a genuine KEK wrap back to a bare Argon2id wrap immediately after
+   a correct KEK-gated unlock — meaning the KEK never actually protected the second and
+   subsequent unlocks. Fixed with a KEK-preserving `saveVaultContents()`, and by skipping
+   the `lastUnlockAt` re-write path on KEK-enrolled vaults (typedef hotfix landed in
+   PR #499).
+
+**What is now reproduced on-device, this same Pixel 10 Pro XL:**
+Enroll → cold force-stop restart → unlock. The StrongBox-backed key gates the unlock
+(`getHardwareFactor`, `BiometricService StrengthRequested: 15`, biometric-only, no
+credential fallback); the vault reads back as `kek-dek` (not silently downgraded); no
+unwanted `clearCredential` fires; and the "Hardware Protection ON" badge stays ON across
+the restart. Reproduced.
+
+**Tests:** keystore suite 95/95 passing; keystore+WalletProvider suite 116/116 passing.
+
+**Operational caveat:** the `.commit()` fix is a `patch-package` patch against the
+third-party plugin, not a first-party source change — it requires a clean native plugin
+recompile (Gradle caches the AAR; a stale cached build will silently keep running the
+unpatched `.apply()` behavior).
+
+**Still outstanding (not done, honestly unchecked):**
+- No KEK-gated Sepolia testnet send has been performed on Android. This is a genuinely
+  different, additional claim from "unlock is gated" — it remains open.
+- The biometric re-enrollment invalidation test (old key invalidated after re-enroll,
+  unlock re-prompts / requires password fallback) was NOT run.
+- StrongBox tier ENFORCEMENT (reject non-StrongBox devices outright) remains TARGET —
+  only the read/log observability (H15) landed.
+- Independent audit / owner sign-off on this device-gated Phase 2 implementation is
+  still pending.
+
+**Status: BUILT, end-to-end device-verified** (enroll, persistence-across-restart,
+StrongBox-gated unlock, badge-stays-on-after-restart) **on Pixel 10 Pro XL — NOT
+independently audited, NOT "verified" in the on-chain/asset sense** (no KEK-gated
+Android send txid yet). StrongBox tier is device-specific; a non-StrongBox device would
+log `TRUSTED_ENVIRONMENT` instead and this claim would not apply to it.
 
 ### Device Verification (Gate for "VERIFIED")
 
@@ -191,7 +250,12 @@ Before a native send is marked "verified" and Phase 2 is considered shipped:
      tier logged as STRONGBOX)
    - [x] Launch app, unlock with PIN → Fingerprint prompt renders, biometric-only
      (no credential fallback) confirmed via `BiometricService` log, 2026-07-01
-   - [ ] Send real ETH on Sepolia — **NOT YET DONE**
+   - [x] KEK wrap persists across a cold force-stop restart and gates the NEXT unlock
+     too, not just the first one (2026-07-01, PRs #497/#499 — three stacked bugs found
+     and fixed: badge/vault-wrap mismatch, async-persistence plugin bug, silent
+     re-wrap-to-bare-KDF on every unlock; see "Android End-to-End Persistence +
+     Unlock-Gating Fix" above). Badge stays "Hardware Protection ON" across the restart.
+   - [ ] Send real ETH on Sepolia (KEK-gated) — **NOT YET DONE**
    - [ ] Capture txid from explorer — **NOT YET DONE**
    - [ ] Re-enroll fingerprint → unlock re-prompts (old key invalidated) — **NOT YET DONE**
    - [ ] Confirm unlock requires password fallback after re-enroll — **NOT YET DONE**
@@ -330,16 +394,25 @@ I6 — Hardware Binding: PIN-cohort DEK wrapped under KEK = HKDF(H ⊕ C)
 - Fallback to standard Keystore (honest disclosure)
 - All I1–I6 security invariants verified
 
-**Real-Device Verification:** 🟡 PARTIAL — both platforms device-verified on distinct legs
-(2026-07-01); no platform passes the full criterion-1 gate yet. **NOT COMPLETE.**
+**Real-Device Verification:** 🟡 PARTIAL — both platforms device-verified; Android is now
+end-to-end (enroll + persist-across-restart + unlock-gating), iOS has real on-chain sends
+from a KEK-enrolled vault but no captured unlock log trace. Neither platform has a
+KEK-gated Sepolia send with a captured hardware-unlock log trace on THAT platform, so no
+platform passes the full criterion-1 gate yet. **NOT COMPLETE.**
 - [~] iPhone (Face ID, SE-ECIES, PR #495): **two Sepolia sends confirmed on-chain**
   (2026-07-01 — see "Testnet Txid Evidence" above) from a KEK-enrolled vault; SE-KEK unlock
   gated signing (fail-closed proof). OUTSTANDING: live `getHardwareFactor` log trace tied to
   the send + biometric re-enrollment invalidation test. → DEVICE-VERIFIED (PARTIAL).
-- [~] Pixel (Fingerprint, StrongBox, PR #496): enroll succeeds, **StrongBox tier observed**
-  (securityLevel=2), biometric-only gate confirmed (2026-07-01, Pixel 10 Pro XL — see
-  "Android Device-Verification Evidence" above). OUTSTANDING: Sepolia send `0x___` +
-  biometric re-enrollment invalidation test. → DEVICE-VERIFIED (PARTIAL).
+- [x] Pixel (Fingerprint, StrongBox, PRs #496/#497/#499): enroll succeeds, **StrongBox
+  tier observed** (securityLevel=2), biometric-only gate confirmed, AND the KEK wrap now
+  genuinely **persists across a cold restart and gates every subsequent unlock**
+  (2026-07-01, Pixel 10 Pro XL — three stacked bugs found and fixed this session; see
+  "Android End-to-End Persistence + Unlock-Gating Fix" above). This is a stronger claim
+  than the original PR #496 note, which only covered enroll-time behavior and did not
+  catch that the KEK was being silently downgraded on every unlock. OUTSTANDING: Sepolia
+  send `0x___` + biometric re-enrollment invalidation test + StrongBox tier enforcement
+  + independent audit. → **BUILT, end-to-end device-verified** (not "verified" in the
+  on-chain sense, not independently audited).
 - [ ] Audit refresh: Sign-off on device-gated implementation (UNAUDITED-PROVISIONAL, both platforms)
 
 **Ship Decision:** READY (once device txids and audit sign-off confirmed)
