@@ -72,7 +72,7 @@ src/wallet-core/keystore/__tests__/web.prf-hardware-factor.test.js (19 tests)
 
 **Gap Closed:** Offline-seizure risk (6-digit PIN + Argon2id exhaustible in hours–days)
 
-**Solution:** PIN KEK component (C) + hardware factor (H) combined via `kek = H XOR C` construction. Even if vault ciphertext is copied, H is platform-bound and requires biometric/PIN on the hardware device to retrieve.
+**Solution:** PIN KEK component (C) + hardware factor (H) combined via `KEK = HKDF-SHA256(ikm = H ‖ C)` (ordered concatenation, not XOR — corrected per the ECC KEK audit 2026-07-01; see `kek.js: combineKek`). Even if vault ciphertext is copied, H is platform-bound and requires biometric/PIN on the hardware device to retrieve.
 
 **Attack resistance:**
 - Offline-seized device with vault ciphertext → attacker cannot derive H without platform authenticator
