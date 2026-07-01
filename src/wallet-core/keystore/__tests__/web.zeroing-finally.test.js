@@ -34,6 +34,18 @@ const kekMock = {
   wrapDek: vi.fn(async () => 'wrap'),
   unwrapDek: vi.fn(async () => new Uint8Array(32).fill(4)),
   KEK_ERR: { NO_HARDWARE_FACTOR: 'NO_HARDWARE_FACTOR', UNWRAP_FAILED: 'UNWRAP_FAILED' },
+  // I/O-boundary helpers (real behaviour) so callers can decode a valid kekSalt / parse a blob.
+  MALFORMED_VAULT: 'KEK_MALFORMED_VAULT',
+  decodeKekSalt: (kekSalt) => {
+    if (typeof kekSalt !== 'string' || kekSalt.length === 0) throw new Error('KEK_MALFORMED_VAULT');
+    let bin; try { bin = atob(kekSalt); } catch { throw new Error('KEK_MALFORMED_VAULT'); }
+    const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out;
+  },
+  parseVaultBlob: (raw) => {
+    if (raw && typeof raw === 'object') return raw;
+    if (typeof raw !== 'string') throw new Error('KEK_MALFORMED_VAULT');
+    try { return JSON.parse(raw); } catch { throw new Error('KEK_MALFORMED_VAULT'); }
+  },
 };
 
 vi.mock('../../vault.js', () => vaultMock);

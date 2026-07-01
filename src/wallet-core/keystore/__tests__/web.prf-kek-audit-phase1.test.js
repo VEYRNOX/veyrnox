@@ -79,10 +79,15 @@ const kekMock = {
   randomDek: vi.fn(() => fixedBytes(0xdd)),
   wrapDek: vi.fn(async () => ({ v: 2, iv: 'iv', ct: 'ct' })),
   unwrapDek: vi.fn(async () => fixedBytes(0xdd)),
+  // Real-behaviour decode so valid base64 salts pass through (added when kek.js
+  // gained the decodeKekSalt/parseVaultBlob blob-shape guards).
+  decodeKekSalt: vi.fn((s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))),
+  parseVaultBlob: vi.fn((raw) => (typeof raw === 'string' ? JSON.parse(raw) : raw)),
   KEK_ERR: {
     NO_HARDWARE_FACTOR: 'KEK_NO_HARDWARE_FACTOR',
     NO_SET_FACTOR: 'KEK_NO_SET_FACTOR',
     UNWRAP_FAILED: 'KEK_UNWRAP_FAILED',
+    MALFORMED_VAULT: 'KEK_MALFORMED_VAULT',
   },
 };
 

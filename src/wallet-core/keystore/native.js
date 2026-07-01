@@ -61,7 +61,7 @@ import {
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
-import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR } from './kek.js';
+import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 
 // Single-vault slice, mirroring evm/vaultStore.js's web layout (KEY='primary').
@@ -243,7 +243,7 @@ async function _unlockInner(password, opts = {}) {
   if (raw === null || raw === undefined) {
     throw new Error('No wallet found on this device');
   }
-  const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT (not raw SyntaxError)
 
   if (blob.kekWrap) {
     // KEK-enrolled vault: hardware factor H (via biometric) + PIN-derived C required (I4).
@@ -251,7 +251,10 @@ async function _unlockInner(password, opts = {}) {
     // so authenticateOrThrow() is intentionally skipped here to avoid a double prompt.
     const getHF = opts && opts.getHardwareFactor;
     if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-    const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+    // Validate the blob's kekSalt BEFORE any biometric prompt / key derivation: a
+    // KEK-enrolled blob with a missing/empty/non-base64 kekSalt is malformed and must
+    // fail closed with the stable code (never a raw InvalidCharacterError).
+    const saltBytes = decodeKekSalt(blob.kekSalt);
     // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
     const H = await getHF(hfOptsForBlob(blob, saltBytes)); // biometric prompt (Android Keystore)
     let C;
@@ -334,8 +337,40 @@ export const nativeKeyStore = {
     await init();
     const raw = await SecureStorage.get(VAULT_KEY, false);
     if (raw === null || raw === undefined) return false;
-    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    // BADGE HONESTY (I4): this is the source-of-truth for the "Hardware Protection ON"
+    // badge. A blob we cannot even parse is NOT usable KEK protection, so we report
+    // "not enrolled" (false) — the badge reads OFF safely — rather than throwing and
+    // breaking the settings screen. This is deliberately the ONLY place a malformed
+    // blob is swallowed to a benign value: it is a read-only presence check that never
+    // touches key material. Genuine decrypt/unlock errors are NOT swallowed here — the
+    // unlock/enroll paths still surface MALFORMED_VAULT and fail closed.
+    let blob;
+    try {
+      blob = parseVaultBlob(raw);
+    } catch {
+      return false;
+    }
     return !!blob.kekWrap;
+  },
+
+  // Read the persisted hardware security tier from the vault blob.
+  // Returns a securityLevelName string (e.g. 'STRONGBOX', 'TRUSTED_ENVIRONMENT',
+  // 'SecureEnclave') or null when not enrolled or the tier was never stored.
+  // No biometric prompt, no secret read — metadata only.
+  async getVaultKekTier() {
+    await init();
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) return null;
+    let blob;
+    try {
+      blob = parseVaultBlob(raw);
+    } catch {
+      return null;
+    }
+    // Only report a tier for an actually KEK-wrapped vault — a bare vault (e.g. after
+    // unenroll) may carry a stale hardwareKekTier field; the badge must read null then.
+    if (!blob.kekWrap) return null;
+    return blob.hardwareKekTier ?? null;
   },
 
   // Encrypt with the SAME audited crypto as web, then persist CIPHERTEXT ONLY to
@@ -375,7 +410,7 @@ export const nativeKeyStore = {
       const raw = await SecureStorage.get(VAULT_KEY, false);
       const blob = raw === null || raw === undefined
         ? null
-        : (typeof raw === 'string' ? JSON.parse(raw) : raw);
+        : parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
 
       // Bare (or first-write) vault: identical to createVault — plain argon2id, no KEK.
       if (!blob || !blob.kekWrap) {
@@ -387,7 +422,7 @@ export const nativeKeyStore = {
       // KEK-enrolled: re-encrypt the new content under the EXISTING DEK, preserving wrap.
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
       // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
       const H = await getHF(hfOptsForBlob(blob, saltBytes)); // one biometric prompt for this write
       let C;
@@ -453,14 +488,14 @@ export const nativeKeyStore = {
       if (raw === null || raw === undefined) {
         throw new Error('No wallet found on this device');
       }
-      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
 
       if (blob.kekWrap) {
         // KEK-enrolled: rotate the PIN by re-wrapping the DEK under a new KEK.
         // The seed ciphertext (blob.ct) stays UNCHANGED — that is the §3 property.
         const getHF = opts && opts.getHardwareFactor;
         if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-        const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+        const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
         // C-1 (v2): the re-wrap uses a FRESH kekSalt, so its H is bound to a DIFFERENT
         // salt than the unlock side — the old H2-reuse is INVALID under v2. Generate the
         // new salt up front and derive H TWICE: once bound to the old salt (unlock), once
@@ -518,19 +553,6 @@ export const nativeKeyStore = {
   // and changePassword() require BOTH the hardware factor H (via opts.getHardwareFactor)
   // and the correct PIN. Fail-closed (I4): missing hardware factor → explicit throw.
   // Gates behind the biometric prompt so the operation itself is authenticated.
-  // Read the persisted hardware security tier from the vault blob.
-  // Returns the securityLevelName string (e.g. 'STRONGBOX', 'TRUSTED_ENVIRONMENT',
-  // 'SecureEnclave') or null when not enrolled or the tier was never stored.
-  // Metadata-only read — never the secret, never a biometric prompt.
-  async getVaultKekTier() {
-    await init();
-    const raw = await SecureStorage.get(VAULT_KEY, false);
-    if (raw === null || raw === undefined) return null;
-    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (!blob.kekWrap) return null;
-    return blob.hardwareKekTier ?? null;
-  },
-
   async enrollKek(password, opts) {
     await init();
     return withLockSuppressed(async () => {
@@ -539,7 +561,7 @@ export const nativeKeyStore = {
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (raw === null || raw === undefined) throw new Error('No wallet found on this device');
-      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
       const secret = await decryptVault(blob, password); // verify password and recover seed
 
       // L2 (audit): getHF() materialises the hardware credential (AndroidKeyStore /
@@ -575,7 +597,8 @@ export const nativeKeyStore = {
           // show the real protection level (STRONGBOX / TEE / SecureEnclave) honestly
           // rather than a generic "ON" label (H-1 honesty fix). The tier comes from
           // enrollHardwareCredential() and is passed in via opts.hardwareKekTier.
-          // Omitted when absent (older callers / unenroll path).
+          // Omitted when absent (older callers / unenroll path). hardwareKekVersion:2
+          // marks the vault as C-1 (per-enrollment kekSalt-bound H).
           const tierEntry = opts && opts.hardwareKekTier
             ? { hardwareKekTier: opts.hardwareKekTier }
             : {};
@@ -613,7 +636,7 @@ export const nativeKeyStore = {
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (!raw) throw new Error('No wallet found on this device');
-      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
       if (!blob.kekWrap) {
         // Already-bare vault: no key material to re-wrap, but a stale Keystore
         // alias may survive from a prior partial/interrupted unenroll. Clearing
@@ -626,7 +649,7 @@ export const nativeKeyStore = {
       }
 
       // Recover DEK: H (hardware factor, biometric) + PIN-derived C
-      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
       // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
       const H = await getHF(hfOptsForBlob(blob, saltBytes));
       let C;

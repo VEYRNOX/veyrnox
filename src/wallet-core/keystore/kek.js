@@ -98,8 +98,57 @@ export const KEK_ERR = Object.freeze({
   NO_HARDWARE_FACTOR: 'KEK_NO_HARDWARE_FACTOR',
   NO_SET_FACTOR: 'KEK_NO_SET_FACTOR',
   UNWRAP_FAILED: 'KEK_UNWRAP_FAILED',
+  // The stored vault blob is unreadable/ill-shaped at the I/O boundary BEFORE any
+  // crypto runs: JSON.parse of a corrupt secure-store value, or a missing/empty/
+  // non-base64 kekSalt on a KEK-enrolled blob. Distinct from UNWRAP_FAILED (which is
+  // a GENERIC wrong-KEK/tamper result and must stay a deniability-safe oracle). This
+  // is a structural "the blob is malformed" signal — not a wrong-PIN signal — and
+  // carries no per-set information (it fires the same for real/decoy). Fail-closed.
+  MALFORMED_VAULT: 'KEK_MALFORMED_VAULT',
+  // A degenerate hardware/set factor (e.g. all-zero H) rejected before combine (H-4).
   DEGENERATE_INPUT: 'KEK_DEGENERATE_INPUT',
 });
+
+/**
+ * Decode a base64 kekSalt from a stored vault blob to bytes, FAILING CLOSED with the
+ * stable KEK_ERR.MALFORMED_VAULT if it is absent/empty/non-base64 — never a raw
+ * InvalidCharacterError. A KEK-enrolled blob with an unusable kekSalt is structurally
+ * malformed; we reject before deriving any key material. Shared by web.js/native.js so
+ * the contract is identical on both paths.
+ * @param {unknown} kekSalt
+ * @returns {Uint8Array}
+ */
+export function decodeKekSalt(kekSalt) {
+  if (typeof kekSalt !== 'string' || kekSalt.length === 0) {
+    throw new Error(KEK_ERR.MALFORMED_VAULT);
+  }
+  let bin;
+  try {
+    bin = atob(kekSalt);
+  } catch {
+    throw new Error(KEK_ERR.MALFORMED_VAULT);
+  }
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/**
+ * Parse a stored vault blob string, FAILING CLOSED with the stable
+ * KEK_ERR.MALFORMED_VAULT on a corrupt value — never a raw SyntaxError. Accepts an
+ * already-parsed object (some stores return objects) and returns it unchanged.
+ * @param {unknown} raw
+ * @returns {any}
+ */
+export function parseVaultBlob(raw) {
+  if (raw && typeof raw === 'object') return raw;
+  if (typeof raw !== 'string') throw new Error(KEK_ERR.MALFORMED_VAULT);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(KEK_ERR.MALFORMED_VAULT);
+  }
+}
 
 function isExactBytes(x, len) {
   return x instanceof Uint8Array && x.length === len;
