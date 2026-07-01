@@ -245,6 +245,7 @@ describe('panic wipe', () => {
       'veyrnox-biometric-unlock',
       'veyrnox-pin-attempts',
       'veyrnox-pin-backoff-until',
+      'veyrnox-prf-cred-id',          // WebAuthn PRF credential ID — web.js CRED_KEY (I3/I4)
       // non-secret wallet/token metadata residue (METADATA_RESIDUE_KEYS) — F-06
       'veyrnox-wallet-meta',
       'veyrnox-active-wallet',
