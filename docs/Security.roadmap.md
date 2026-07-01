@@ -125,14 +125,14 @@ so it is allowed, not a violation.)
   vault KDF is not gating an interactive login — it stands between an exfiltrated
   ciphertext blob and the seed, offline and GPU/ASIC-crackable. 64 MiB / t=3 cleared
   only the OWASP interactive-login floor, low for this threat.
-  - **OLD → NEW:** Argon2id `memorySize` **64 MiB → 192 MiB** (`65536 → 196608`
-    KiB), `iterations` 3, `parallelism` 1, `hashLength` 32. ~3× memory-hardness
-    (memory is the lever against parallel cracking hardware). Deliberately balanced
-    for a phone rather than maxed: measured unlock-KDF latency (desktop browser,
-    native WASM) 64 MiB ~160 ms → 192 MiB ~440 ms; a low-end phone runs ~2–4× slower
-    (~1–1.7 s), tolerable for an infrequent seed-vault unlock. A flat 256 MiB
-    (~720 ms desktop, ~2–3 s low-end phone + webview memory pressure) was rejected as
-    too aggressive WITHOUT per-device tuning.
+  - **OLD → NEW → REVERTED:** Argon2id `memorySize` was raised **64 MiB → 192 MiB**
+    (`65536 → 196608` KiB) under this finding, then **reverted to 64 MiB** (commit
+    1226085e) due to mobile memory pressure concerns. **Current value: 64 MiB / t=3.**
+    The raise to 192 MiB was ~3× memory-hardness (memory is the lever against parallel
+    cracking hardware). Measured unlock-KDF latency (desktop browser, native WASM):
+    64 MiB ~160 ms → 192 MiB ~440 ms; a low-end phone runs ~2–4× slower (~1–1.7 s).
+    A flat 256 MiB (~720 ms desktop, ~2–3 s low-end phone + webview memory pressure)
+    was rejected as too aggressive WITHOUT per-device tuning.
   - **MIGRATION (no lockout).** `decryptVault` now derives with the params recorded
     in EACH blob (`paramsFromVault`), so vaults written at 64 MiB still open. After a
     successful unlock, `webKeyStore.unlock` transparently re-encrypts at the new

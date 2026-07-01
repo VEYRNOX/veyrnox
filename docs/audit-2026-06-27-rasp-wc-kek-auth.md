@@ -65,7 +65,7 @@ Encoding divergence is exploitable: a dApp sends a v1 payload, user approves a m
 ### H3 — Timing equalizer stale (300 ms vs. ~1.7 s mobile KDF cost) *(confirmed)*
 **File:** `src/lib/WalletProvider.jsx:169`
 
-`PRIMARY_UNLOCK_EQUALIZER_MS = 300` was calibrated to the old 64 MiB params. KDF is now 192 MiB (~1.5–2 s on mobile). The deniability-path cost (3 KDFs) far exceeds primary-success (1 KDF + 300 ms). An on-device timing observer can distinguish correct password from incorrect in fewer attempts than the KDF work factor implies.
+`PRIMARY_UNLOCK_EQUALIZER_MS = 300` was calibrated to the old 64 MiB params. KDF is now 192 MiB (~1.5–2 s on mobile). *(note: equalizer raised to 1500ms and KDF reverted to 64 MiB post-audit; see commit 1226085e)* The deniability-path cost (3 KDFs) far exceeds primary-success (1 KDF + 300 ms). An on-device timing observer can distinguish correct password from incorrect in fewer attempts than the KDF work factor implies.
 
 ---
 

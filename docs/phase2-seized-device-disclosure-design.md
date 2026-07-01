@@ -31,7 +31,7 @@ Read before drafting, so the disclosure matches what the code actually does:
 
 | Claim in the disclosure | Code reality | Ref |
 |---|---|---|
-| PIN encrypts the wallet on-device | Argon2id (192 MiB, t=3, p=1) + AES-256-GCM, vault ciphertext only | `src/wallet-core/vault.js` (`KDF_PARAMS`); shown to user at `src/components/WalletEntry.jsx:754` |
+| PIN encrypts the wallet on-device | Argon2id (64 MiB, t=3, p=1) + AES-256-GCM, vault ciphertext only | `src/wallet-core/vault.js` (`KDF_PARAMS`); shown to user at `src/components/WalletEntry.jsx:754` |
 | Each guess is *slow* (memory-hard) | Argon2id memory-hardness raises per-guess cost / resists GPU farms | `vault.js`, `deniabilityUnlock.js` |
 | But 6 digits = small keyspace | 10⁶ combinations; memory-hardness slows, does **not** shrink the space | (keyspace is inherent) |
 | No offline attempt limit | App **cannot** rate-limit a seized, imaged device (stateless at rest); unlock path has no lockout counter | `src/lib/WalletProvider.jsx` unlock path (`runPinUnlock` → `unlock`) |

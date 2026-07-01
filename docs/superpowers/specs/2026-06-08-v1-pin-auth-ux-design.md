@@ -24,7 +24,7 @@ oracle-free resolution:
 - on total miss → re-throws the original primary error.
 
 `vault.js` derives the AES-256-GCM key **directly** from the typed secret via
-Argon2id (192 MiB / t=3) — this IS the KEK-less derivation the task names. The
+Argon2id (64 MiB / t=3) — this IS the KEK-less derivation the task names. The
 6-digit PIN is simply the `password` string passed into the unchanged crypto.
 
 v1 adds three things in front of / around this, **for the new PIN cohort only**:
@@ -46,7 +46,7 @@ v1 adds three things in front of / around this, **for the new PIN cohort only**:
 | Panic | **Onboarding prompts panic-PIN setup with an explicit, honest skip** (review item 2). Not omitted, not forced. Reuses `setPanicVault`. |
 | Option A UX | **Pure Option A + a generic, set-existence-independent "Re-enter" control** on the pad — softens the fat-finger-real-PIN case without creating an oracle. |
 | Biometric cache | **Duress PIN only, never the real PIN** (review item 3). No code path caches the real PIN. |
-| Argon2id cost | **Stays at the shared 192 MiB / t=3.** It cannot be raised for just the PIN path — `KDF_PARAMS` is shared with the stealth chaff pool, so a different `kdf` field on the real blob would be a deniability tell. The 10⁶ weakness is FLAGGED for audit, not patched here. |
+| Argon2id cost | **Stays at the shared 64 MiB / t=3.** It cannot be raised for just the PIN path — `KDF_PARAMS` is shared with the stealth chaff pool, so a different `kdf` field on the real blob would be a deniability tell. The 10⁶ weakness is FLAGGED for audit, not patched here. |
 
 ## 3. The timing-correctness core (review item 1 — the line in the sand)
 
@@ -69,7 +69,7 @@ post-primary-miss, PIN cohort — EVERY outcome runs exactly 4 Argon2id KDFs:
 then the caller branches:  panic > duress > hidden > fallback
 ```
 
-- Slot 4 calls `argon2id` at the **shared `KDF_PARAMS` (192 MiB / t=3)** — the SAME
+- Slot 4 calls `argon2id` at the **shared `KDF_PARAMS` (64 MiB / t=3)** — the SAME
   memory-hard cost as a real attempt — and **always succeeds** (it always yields a
   valid BIP-39 decoy mnemonic). It runs even when an enrolled path wins; the wasted
   work is the property, not a bug.
@@ -178,7 +178,7 @@ Face ID ─▶ unlockWithBiometric() ─▶ replays cached DURESS PIN ─▶ dec
 ## 6. The Argon2id-cost finding (explicit deliverable — #1 audit line-item)
 
 A 6-digit PIN is **10⁶ = 1,000,000** candidates. Under the shared `KDF_PARAMS`
-(192 MiB / t=3, ~0.4–1.7 s/guess), an attacker who has **seized the device and
+(64 MiB / t=3, ~0.4–1.7 s/guess), an attacker who has **seized the device and
 extracted the ciphertext** can exhaust the entire keyspace **offline in roughly
 hours to ~a day** on a modest memory-hard cracking rig. Memory-hardness raises the
 per-guess cost but cannot rescue a 10⁶ keyspace — the space is simply small.
@@ -187,7 +187,7 @@ per-guess cost but cannot rescue a 10⁶ keyspace — the space is simply small.
 pool advertises the SAME params; the real primary blob's `kdf` field must byte-match
 chaff or it becomes a real-vs-chaff distinguisher (a deniability tell). So Argon2id
 **cannot** be raised for only the PIN path — raising it is a device-wide,
-deniability-sensitive, audit-gated decision, not a v1 tweak. v1 keeps 192 MiB / t=3
+deniability-sensitive, audit-gated decision, not a v1 tweak. v1 keeps 64 MiB / t=3
 and flags this as the headline audit item.
 
 **Why this is acceptable for v1, narrowly:** testnet-only; UNAUDITED-PROVISIONAL;
@@ -251,7 +251,7 @@ rides with the hardware-KEK fast-follow.
 
 ## 10. Audit line-items (carried forward from spec §9)
 
-1. **KDF cost for a 6-digit input (§6)** — the 10⁶ keyspace under 192 MiB / t=3;
+1. **KDF cost for a 6-digit input (§6)** — the 10⁶ keyspace under 64 MiB / t=3;
    exhaustible offline on a seized device. The #1 item.
 2. **Option A resolution leaks nothing** via error, timing (§3 — the 4th constant
    KDF), or output (the deterministic decoy is a genuine empty wallet).

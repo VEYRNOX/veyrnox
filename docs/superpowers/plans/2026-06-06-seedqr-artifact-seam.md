@@ -4,7 +4,7 @@
 
 **Goal:** Add the pure `src/lib/seedQr.js` artifact seam — encrypt/decrypt a mnemonic into a versioned encrypted backup artifact and QR-encode/decode it — with a CI-enforced B1 round-trip test.
 
-**Architecture:** Reuse `wallet-core/vault.js` (Argon2id 192 MiB/t=3 → AES-256-GCM, CSPRNG) for the crypto — NO new crypto. `seedQr.js` adds the versioned envelope `{fmt:'veyrnox-seed-backup', v:1, blob:<vault blob>}` plus `qrcode` encode + `jsqr` decode (DOM-free ImageData path for testability). Provisional/unaudited (owner-approved audit-gate override).
+**Architecture:** Reuse `wallet-core/vault.js` (Argon2id 64 MiB/t=3 → AES-256-GCM, CSPRNG) for the crypto — NO new crypto. `seedQr.js` adds the versioned envelope `{fmt:'veyrnox-seed-backup', v:1, blob:<vault blob>}` plus `qrcode` encode + `jsqr` decode (DOM-free ImageData path for testability). Provisional/unaudited (owner-approved audit-gate override).
 
 **Tech Stack:** Vitest (jsdom — provides `crypto.subtle`), `qrcode`, `jsqr`, `@/` alias.
 
@@ -50,7 +50,7 @@ const MN12 = 'legal winner thank year wave sausage worth useful legal winner tha
 const MN24 = 'letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless';
 const PW = 'correct horse battery staple T3st!';
 
-// Argon2id @192 MiB is ~2-3s per derivation; encrypt ONCE per mnemonic and reuse.
+// Argon2id @64 MiB is ~2-3s per derivation; encrypt ONCE per mnemonic and reuse.
 let art12, art24;
 beforeAll(async () => {
   art12 = await encryptSeedBackup(MN12, PW);
@@ -139,7 +139,7 @@ git commit -m "test(seedqr): add seed-backup artifact round-trip tests (red)"
 // construction on an independent audit (§12); the owner has deliberately
 // overridden that gate. To minimize risk this module invents NO crypto — it
 // reuses the wallet's in-production vault construction (wallet-core/vault.js:
-// Argon2id 192 MiB / t=3 -> AES-256-GCM, CSPRNG salt/IV). Treat as provisional
+// Argon2id 64 MiB / t=3 -> AES-256-GCM, CSPRNG salt/IV). Treat as provisional
 // until independently audited. This file adds only the versioned artifact
 // envelope and the QR encode/decode.
 import QRCode from 'qrcode';
@@ -223,7 +223,7 @@ export function decodeArtifactQr(imageData) {
 - [ ] **Step 2: Run the test and confirm it PASSES**
 
 Run: `npx vitest run src/lib/__tests__/seedQr.test.js`
-Expected: PASS — all tests green. (~15-25s total; Argon2id @192 MiB dominates.)
+Expected: PASS — all tests green. (~15-25s total; Argon2id @64 MiB dominates.)
 If the B1 round-trip fails, the QR render didn't decode — do NOT weaken the
 assertion; raise `scale` (e.g. 8) or check the `qr.modules` access. The pre-
 validation used scale 6 / margin 4 successfully.
