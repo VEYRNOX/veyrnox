@@ -51,8 +51,11 @@ export function raspSurfaceModel(status) {
   return { detectionLive: false, detection: "pending" };
 }
 
-// Static design content — the DESIGNED ladder, framed current-tense now that
-// browser-level detection is active.
+// Static design content — the DESIGNED ladder. NOTE: the WARN tier's
+// "biometric re-confirm" is a TARGET, NOT currently wired. degrade.js and
+// compose.js are explicit: compose maps WARN → signerReachable:true with no
+// biometric step; degrade.js warns "Copy must not imply it is live." The copy
+// below reflects the designed/planned state, not a live enforcement.
 const TONE = {
   allow: { text: "text-accent", dot: "bg-accent" },
   warn: { text: "text-caution", dot: "bg-caution" },
@@ -60,7 +63,7 @@ const TONE = {
 };
 const LADDER = [
   { tier: "allow", copy: "Clean runtime — normal sign flow" },
-  { tier: "warn", copy: "Rooted / jailbroken — one sentence, biometric re-confirm" },
+  { tier: "warn", copy: "Rooted / jailbroken — one sentence, planned biometric re-confirm (not yet wired)" },
   { tier: "block", copy: "Hooking / tamper / emulator — signing refused, no override" },
 ];
 
