@@ -47,6 +47,11 @@ function makeNativeFacade() {
     async hasVault() {
       return (await load()).nativeKeyStore.hasVault();
     },
+    // Native-only: metadata-only check of whether the stored vault is KEK-wrapped.
+    // Used to reconcile the "hardware enrolled" badge against real protection.
+    async hasVaultKekWrap() {
+      return (await load()).nativeKeyStore.hasVaultKekWrap();
+    },
     async createVault(secret, password) {
       return (await load()).nativeKeyStore.createVault(secret, password);
     },
