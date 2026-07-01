@@ -42,8 +42,8 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
 @interface HardwareKekPlugin (PrivateMethods)
 - (void)storeKeychainItem:(NSString *)label data:(NSData *)data;
 - (NSData *)loadKeychainItem:(NSString *)label;
-- (void)deleteKeychainItem:(NSString *)label;
-- (void)deleteSecureEnclaveKey;
+- (OSStatus)deleteKeychainItem:(NSString *)label;
+- (OSStatus)deleteSecureEnclaveKey;
 @end
 
 @implementation HardwareKekPlugin
@@ -160,9 +160,25 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
 
 #pragma mark - clearCredential
 
+// Fail-honest (I4): report the real result of removal. SecItemDelete is treated
+// as success for errSecSuccess (deleted) and errSecItemNotFound (already gone).
+// Any other status means the SE key or ciphertext genuinely could NOT be removed,
+// so we reject — the JS layer must never believe a clear that did not happen
+// (a false "removed" is what lets a stale credential show the vault as protected).
 - (void)clearCredential:(CAPPluginCall *)call {
-    [self deleteSecureEnclaveKey];
-    [self deleteKeychainItem:KEY_ENC_H];
+    OSStatus seSt  = [self deleteSecureEnclaveKey];
+    OSStatus encSt = [self deleteKeychainItem:KEY_ENC_H];
+
+    BOOL seOk  = (seSt  == errSecSuccess || seSt  == errSecItemNotFound);
+    BOOL encOk = (encSt == errSecSuccess || encSt == errSecItemNotFound);
+
+    if (!seOk || !encOk) {
+        NSString *msg = [NSString stringWithFormat:
+            @"Failed to fully remove hardware credential (SE key OSStatus %d, ciphertext OSStatus %d)",
+            (int)seSt, (int)encSt];
+        [call reject:@"CLEAR_FAILED" :msg :nil :nil];
+        return;
+    }
     [call resolve:@{}];
 }
 
@@ -259,23 +275,23 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
     return (__bridge_transfer NSData *)result;
 }
 
-- (void)deleteKeychainItem:(NSString *)label {
+- (OSStatus)deleteKeychainItem:(NSString *)label {
     NSDictionary *query = @{
         (__bridge id)kSecClass:        (__bridge id)kSecClassGenericPassword,
         (__bridge id)kSecAttrService:  KEYCHAIN_SVC,
         (__bridge id)kSecAttrAccount:  label,
     };
-    SecItemDelete((__bridge CFDictionaryRef)query);
+    return SecItemDelete((__bridge CFDictionaryRef)query);
 }
 
-- (void)deleteSecureEnclaveKey {
+- (OSStatus)deleteSecureEnclaveKey {
     NSData *tag = [SE_KEY_TAG dataUsingEncoding:NSUTF8StringEncoding];
     NSDictionary *query = @{
         (__bridge id)kSecClass:              (__bridge id)kSecClassKey,
         (__bridge id)kSecAttrApplicationTag: tag,
         (__bridge id)kSecAttrKeyType:        (__bridge id)kSecAttrKeyTypeECSECPrimeRandom,
     };
-    SecItemDelete((__bridge CFDictionaryRef)query);
+    return SecItemDelete((__bridge CFDictionaryRef)query);
 }
 
 @end
