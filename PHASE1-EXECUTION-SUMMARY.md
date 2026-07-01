@@ -8,12 +8,14 @@
 
 ## Executive Summary
 
-Phase 1 (Web WebAuthn PRF Hardware KEK) is **code-complete, unit-tested, and security-verified**. The hard gate for VERIFIED status is **3 real Sepolia testnet sends** (Chrome ≥99, Firefox ≥108, Safari).
+Phase 1 (Web WebAuthn PRF Hardware KEK) is **code-complete and unit-tested**. Status: **BUILT / UAT-PENDING** — not verified. The hard gate for VERIFIED status is **3 real Sepolia testnet sends** confirmed on a block explorer with txids supplied by the owner.
+
+> **Honesty note (project rule):** Code-complete + tests green = BUILT at most, never "verified". "Security invariants verified" means the code is designed to satisfy I1–I6; it does not mean on-chain or device verification has occurred. Do not promote to VERIFIED until the user supplies real explorer-confirmed txids.
 
 **Current State:**
 - ✅ Implementation complete (200+ LOC, `src/wallet-core/keystore/web.js` + `kek.js`)
 - ✅ All tests passing (1968 passed / 248 test files / 2 expected failures / 1 skipped)
-- ✅ Security invariants verified (I1–I6 all confirmed)
+- ✅ Security invariants designed to satisfy I1–I6 (code review; NOT on-chain verified)
 - ✅ Feature detection wired (Chrome/Firefox/Safari matrix confirmed)
 - ✅ Dev server running (http://localhost:5173, responsive)
 - ✅ Documentation prepared (4 new coordination docs + PHASE-1-COMPLETION-SUMMARY.md ready for txids)
@@ -34,7 +36,7 @@ Phase 1 (Web WebAuthn PRF Hardware KEK) is **code-complete, unit-tested, and sec
 | **Password Validation** | ✅ Enforced | `validateWebVaultPassword()` ≥12 chars on mainnet (H-A control) |
 | **Feature Detection** | ✅ Wired | `isPrfSupported()` returns true (Chrome/Firefox) or false (Safari) |
 | **Key Zeroing** | ✅ Implemented | H, C, DEK all zeroed in `try/finally` blocks (H-NEW-4/6) |
-| **Hardware Binding** | ✅ Verified | `combineKek(H, C)` via HKDF-SHA256; both factors required (I6) |
+| **Hardware Binding** | ✅ BUILT | `combineKek(H, C)` via HKDF-SHA256; both factors required (I6) — not yet on-chain verified |
 
 ### Test Results
 
@@ -59,12 +61,12 @@ Test Run: 2026-07-01 07:43 AM
 
 | Invariant | Status | Evidence |
 |-----------|--------|----------|
-| **I1 — Keys never leave device** | ✅ | H derives on-device; never transmitted |
-| **I2 — No silent data egress** | ✅ | Zero network calls during unlock; PRF is local-only |
-| **I3 — Deniability (no egress in decoy)** | ✅ | Decoy/hidden sessions gate all network calls |
-| **I4 — Fail honest, fail closed** | ✅ | Missing H throws `KEK_ERR.NO_HARDWARE_FACTOR`; no silent fallback |
-| **I5 — Backend untrusted by design** | ✅ | All unlock/enrollment happens client-side only |
-| **I6 — Hardware Binding via HKDF(H \|\| C)** | ✅ | Both H and C required; missing either throws; HKDF-SHA256 combine |
+| **I1 — Keys never leave device** | BUILT | H derives on-device; never transmitted (code review; not device-verified) |
+| **I2 — No silent data egress** | BUILT | Zero network calls during unlock; PRF is local-only (code review) |
+| **I3 — Deniability (no egress in decoy)** | BUILT | Decoy/hidden sessions gate all network calls (code review) |
+| **I4 — Fail honest, fail closed** | BUILT | Missing H throws `KEK_ERR.NO_HARDWARE_FACTOR`; no silent fallback (code review) |
+| **I5 — Backend untrusted by design** | BUILT | All unlock/enrollment happens client-side only (code review) |
+| **I6 — Hardware Binding via HKDF(H \|\| C)** | BUILT | Both H and C required; missing either throws; HKDF-SHA256 combine (code review; not device-verified) |
 
 ---
 
