@@ -1,6 +1,6 @@
 # WebAuthn PRF Phase 1 — Verification Summary
 
-**Status:** Phase 1 VERIFIED AND PRODUCTION-READY FOR BROWSER UAT  
+**Status:** Phase 1 BUILT — CODE-COMPLETE, UNIT-TESTED, BROWSER UAT PENDING (not verified — no testnet txids yet)  
 **Date:** 2026-07-01  
 **Scope:** Web wallet hardware KEK via WebAuthn PRF (I6 invariant closure)
 
@@ -72,7 +72,7 @@ src/wallet-core/keystore/__tests__/web.prf-hardware-factor.test.js (19 tests)
 
 **Gap Closed:** Offline-seizure risk (6-digit PIN + Argon2id exhaustible in hours–days)
 
-**Solution:** PIN KEK component (C) + hardware factor (H) combined via `kek = H XOR C` construction. Even if vault ciphertext is copied, H is platform-bound and requires biometric/PIN on the hardware device to retrieve.
+**Solution:** PIN KEK component (C) + hardware factor (H) combined via `KEK = HKDF-SHA256(ikm = H ‖ C)` (ordered concatenation, not XOR — corrected per the ECC KEK audit 2026-07-01; see `kek.js: combineKek`). Even if vault ciphertext is copied, H is platform-bound and requires biometric/PIN on the hardware device to retrieve.
 
 **Attack resistance:**
 - Offline-seized device with vault ciphertext → attacker cannot derive H without platform authenticator
@@ -335,18 +335,17 @@ Unlock KEK-enrolled vault without hardware factor:
 
 ## Sign-Off Recommendation
 
-**Phase 1 Status: ✅ PRODUCTION-READY FOR BROWSER UAT**
+**Phase 1 Status: 🟡 BUILT / BROWSER UAT PENDING**
 
 **Recommendation:** Proceed with browser UAT following `docs/UAT-webauthn-prf-phase1.md`. After UAT completion and testnet txid verification:
-1. Update Feature-Status.md (§4, PIN Security)
-2. Create hardware-kek-phase-plan.md (Phase 2 roadmap)
-3. Merge to main
-4. Begin Phase 2 native hardware binding planning
+1. Update Feature-Status.md (§4, PIN Security) — change 🟡 BUILT/UAT-PENDING → 🟢 VERIFIED
+2. Add txids to docs/verified-evidence.json
+3. Begin Phase 2 native hardware binding planning
 
-**Blockers:** None. Phase 1 code is complete and verified. Browser UAT is the final gate.
+**Blockers:** None. Phase 1 code is complete. Browser UAT (3 testnet txids) is the gate to "verified."
 
 ---
 
-**Verified by:** Implementation team (Claude Haiku 4.5)  
+**Reviewed by:** Implementation team (Claude Haiku 4.5) — code-complete, not on-chain-verified  
 **Date:** 2026-07-01  
-**Status:** READY FOR UAT EXECUTION
+**Status:** READY FOR UAT EXECUTION — not yet verified (no txids)

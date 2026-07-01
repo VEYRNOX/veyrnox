@@ -181,9 +181,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Native Secure Storage',
-        status: 'roadmap',
-        summary: 'iOS Secure Enclave P-256 ECIES KEK (H-NEW-D) — designed, audit-gated, plugin registration blocked',
-        explanation: 'iOS: H-NEW-D (Hardware-bound Encryption Key, iOS Secure Enclave) design complete. Ephemeral ECDH + HKDF-SHA256 + AES-GCM seal/unseal of the vault key in the SE. Non-extractable SE private key, biometric ACL. Status: ROADMAP (audit-gated, not confirmed in shipped code). Blocker: Capacitor inline-plugin runtime discovery (documented; future: SPM package conversion). Android: StrongBox hardware binding (setIsStrongBoxBacked) is best-effort; StrongBox is NOT enforced. See docs/Feature-Status.md for full audit findings.',
+        status: 'built',
+        summary: 'iOS Secure Enclave ECIES + Android StrongBox/Keystore HMAC KEK (H-NEW-D) — BUILT, device-verified (PARTIAL), unaudited',
+        explanation: 'Built (UNAUDITED-PROVISIONAL, device-verified PARTIAL). Native hardware Key-Encryption-Key that wraps the PIN-derived vault DEK under KEK = HKDF-SHA256(H ‖ C) + AES-256-GCM, so an offline-seized vault blob cannot be PIN-exhausted without the device: the hardware factor H is released only per-use behind biometric auth and never leaves the secure element. iOS: Secure Enclave P-256 ECIES (non-extractable key, .biometryCurrentSet biometric ACL) shipped as a native Objective-C plugin (PR #495, registration blocker resolved via the two-file CAPPlugin split) and device-verified on iPhone 17 Pro Max. Android: AndroidKeyStore HMAC-SHA256, StrongBox-preferred but NOT enforced (honest tier reporting), device-verified on Pixel 10 Pro XL. NOT "verified": the biometric re-enrollment invalidation test (both platforms) and the live iOS SE-unlock trace remain outstanding. Independent ECC source-level audit 2026-07-01 (docs/audit-triage/ecc-hardware-kek-audit-2026-07-01.md): 0 CRITICAL / 0 HIGH; known gap — Android SOFTWARE-tier keys are not yet refused. See docs/Feature-Status.md §4.',
       },
       {
         name: 'Session Manager & Auto-Lock',
@@ -277,7 +277,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Encrypted Personal Backup',
         status: 'built',
         summary: 'Ciphertext-only vault backup',
-        explanation: 'Built (/cloud-backup). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device. The ECC independent audit (2026-06-23) confirmed key custody for this LOCAL path (plaintext seed never leaves the device; Argon2id (64 MiB / t=3, audited at 192 MiB then lowered for device latency — not yet re-audited) + AES-256-GCM; verify-before-success) and the only finding (L-1, PIN floor 4→6 digits) was fixed in PR #340. Scope note: this is the local file path only — the BACKEND-ESCROW variant (a server-side ciphertext target) remains backend + audit gated and is not built.',
+        explanation: 'Built (/cloud-backup). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device. The ECC independent audit (2026-06-23) confirmed key custody for this LOCAL path (plaintext seed never leaves the device; Argon2id (64 MiB / t=3, audited at 192 MiB then lowered for device latency — not yet re-audited at 64 MiB) + AES-256-GCM; verify-before-success) and the only finding (L-1, PIN floor 4→6 digits) was fixed in PR #340. Scope note: this is the local file path only — the BACKEND-ESCROW variant (a server-side ciphertext target) remains backend + audit gated and is not built.',
       },
     ],
   },

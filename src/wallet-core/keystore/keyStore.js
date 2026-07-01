@@ -39,9 +39,25 @@
  * @property {() => Promise<boolean>} hasVault
  *   Whether an encrypted vault already exists for this device.
  *
+ * @property {() => Promise<boolean>} [hasVaultKekWrap]
+ *   Native-only. Whether the stored vault is actually KEK-wrapped (blob has
+ *   `kekWrap`). Metadata-only read — never the secret, never a biometric prompt.
+ *   Used by the Hardware Protection badge to reconcile "enrolled" against REAL
+ *   protection (alias-present + vault-bare must read OFF, not a false ON). Web
+ *   omits this (no KEK at rest).
+ *
  * @property {(secret: string, password: string) => Promise<void>} createVault
  *   Encrypt `secret` under `password` and persist CIPHERTEXT ONLY. The live
  *   secret is never written to storage. (Web: encryptVault + saveVault.)
+ *
+ * @property {(secret: string, password: string, opts?: { getHardwareFactor?: () => Promise<Uint8Array> }) => Promise<void>} saveVaultContents
+ *   Re-persist NEW vault CONTENT (a mutated container) PRESERVING the current
+ *   at-rest format. Web: always a bare argon2id write (no KEK at rest), identical
+ *   to createVault. Native: if the stored vault is KEK-wrapped, re-encrypts the
+ *   new plaintext under the EXISTING DEK (recovered via opts.getHardwareFactor +
+ *   PIN) and preserves kekWrap/kekSalt — it does NOT downgrade to bare. On an
+ *   enrolled vault a missing hardware factor or failed DEK recovery THROWS (I4:
+ *   never a silent bare downgrade). A bare vault writes bare and never prompts.
  *
  * @property {(password: string, opts?: { requireBiometric?: boolean, getHardwareFactor?: () => Promise<Uint8Array> }) => Promise<string>} unlock
  *   Return the live secret for transient in-memory use by the caller. Web:

@@ -77,7 +77,7 @@ jobs:
 
 - **One job, sequential steps.** No matrix (single Node version is enough; YAGNI).
   Step order `lint → build → test` puts the fast checks first so failures surface
-  before the ~5–7 min test step (the 192 MiB Argon2id KDF makes the suite slow;
+  before the ~5–7 min test step (the 64 MiB Argon2id KDF makes the suite slow;
   it runs fine on `ubuntu-latest`, which has more RAM than vitest's parallelism
   cap needs).
 - **Node 20 LTS** — no `engines` field pins a version, so we choose current LTS.

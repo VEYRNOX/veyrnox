@@ -27,7 +27,7 @@ brief a Claude Code session builds from.
 ## 1. The problem this closes
 
 Today `vault.js` derives the wallet key **directly** from the PIN/passphrase via
-Argon2id (192 MiB / t=3). The seed's encryption key is reachable with the PIN
+Argon2id (64 MiB / t=3). The seed's encryption key is reachable with the PIN
 **alone**. The biometric gate is an *app-level chokepoint* — it gates whether the
 app runs the derivation, but no key material is bound to the device's secure
 element.
@@ -75,7 +75,7 @@ hardware factor binds in as a *set-agnostic side input*.
               │                                │
               ▼                                ▼
    Argon2id(PIN, salt_set) → C        passkey.prf(salt_fixed) → H
-   192 MiB / t=3                      H never leaves secure element
+   64 MiB / t=3                       H never leaves secure element
    the set-selecting factor           ONE operation, identical for every set
               │                                │
               └──────────────┬─────────────────┘
@@ -280,7 +280,7 @@ hand-rolled. Same posture as the R2 capability-proof and the audit-log storage s
    AEAD choice for wrap/unwrap. The exact KDF and the ordering/encoding of `H` and
    `C`.
 2. **KDF cost for an 8-digit input** — the PIN space is 10^8 (PIN was widened
-   6→8; see §9-item-5 implementation note). Argon2id (192 MiB /
+   6→8; see §9-item-5 implementation note). Argon2id (64 MiB /
    t=3) is the *only* thing between a captured vault and exhaustive offline search.
    Is the per-guess cost sufficient? This is load-bearing and explicitly in scope.
 3. **Non-enrolled PIN handling (§7)** — does any resolution path leak set existence

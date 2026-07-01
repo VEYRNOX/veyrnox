@@ -106,7 +106,7 @@ in the pre-sign risk/limits gate.
 
 **H-2 (Deniability) — 6-digit PIN is the sole at-rest factor on web; seized ciphertext is offline-brute-forceable.**
 In the PIN cohort on web, the vault is encrypted directly under the 6-digit PIN
-(`pinOnboarding.js` → `vault.js encryptVault`). Keyspace 10^6, with Argon2id (192 MiB) as
+(`pinOnboarding.js` → `vault.js encryptVault`). Keyspace 10^6, with Argon2id (192 MiB) *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)* as
 the only barrier — crackable in hours-to-days on a rig, defeating the whole deniability
 stack on a seized device. **Honestly documented** (`docs/kek-architecture-spec.md`,
 TARGET) and the hardware-bound KEK that fixes it is correctly audit-gated/unbuilt — so not
@@ -153,7 +153,7 @@ opt-in, and disable it when `isDecoy || isHidden`.
 - **Cryptographic core — clears.** CSPRNG-only entropy (`check:rng` green), AES-256-GCM with
   fresh per-encryption salt/nonce + verified tags, only ciphertext persisted, no key material
   logged, BIP-44/SLIP-0010 derivation pinned to authoritative vectors, fail-closed errors,
-  conservative Argon2id (192 MiB) with safe upgrade-only migration. Residual LOWs: JS strings
+  conservative Argon2id (192 MiB) *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)* with safe upgrade-only migration. Residual LOWs: JS strings
   can't be truly zeroized (inherent; native keystore is the mitigation); the biometric one-tap
   password cache needs an OS-bound biometric ACL before it's "audited-secure" (native, §3).
 

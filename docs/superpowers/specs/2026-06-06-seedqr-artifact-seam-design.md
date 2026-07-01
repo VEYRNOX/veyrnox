@@ -9,7 +9,7 @@
 > an independent audit (§12). The repo owner has **explicitly chosen to build
 > without that audit**, accepting the risk. To minimize it, this slice **invents
 > no crypto**: it reuses the wallet's existing in-production vault construction
-> (`vault.js`: Argon2id 192 MiB / t=3 → AES-256-GCM, CSPRNG salt/IV). The module
+> (`vault.js`: Argon2id 64 MiB / t=3 → AES-256-GCM, CSPRNG salt/IV). The module
 > is labeled **provisional / unaudited** in-code; a real audit is still
 > recommended before it guards significant funds. Implementation still honors the
 > parent invariants B1 (round-trip), B2/B3 (confidential + authenticated),
@@ -26,7 +26,7 @@ CI-enforced here.
 
 `encryptSeedBackup`/`decryptSeedBackup` delegate to `vault.js`'s `encryptVault`/
 `decryptVault`:
-- KDF: Argon2id (`hash-wasm`), params from `vault.js` `KDF_PARAMS` (192 MiB,
+- KDF: Argon2id (`hash-wasm`), params from `vault.js` `KDF_PARAMS` (64 MiB,
   t=3, recorded in the blob for forward-migration).
 - AEAD: AES-256-GCM (WebCrypto), 16-byte salt, 12-byte IV, both from
   `crypto.getRandomValues` (the only RNG — satisfies the `check:rng` guard).
@@ -105,7 +105,7 @@ constructor; `jsqr` consumes that shape directly.
   **different** `salt`/`iv`/`ct` (fresh CSPRNG per call) but both round-trip — a
   nonce-reuse smoke check.
 
-Tests run under the existing vitest/jsdom config; `hash-wasm` Argon2id at 192 MiB
+Tests run under the existing vitest/jsdom config; `hash-wasm` Argon2id at 64 MiB
 is slow (~seconds/derivation) — keep the test count tight (a handful of
 encrypt/decrypt) to stay within the suite's `testTimeout`.
 

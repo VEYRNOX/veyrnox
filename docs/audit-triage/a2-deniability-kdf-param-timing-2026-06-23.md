@@ -9,7 +9,7 @@
 The constant-KDF deniability model equalizes unlock timing by spending exactly one
 Argon2id KDF per feature branch, padding an ABSENT feature with a dummy KDF
 (`deniabilityUnlock.js` `chaffBlob`/`dummyKdf`). The dummy blob carries the **CURRENT**
-at-rest params (`{...KDF_PARAMS}` = 192 MiB).
+at-rest params (`{...KDF_PARAMS}` = 192 MiB). *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)*
 
 `decryptVault` derives with each blob's **own recorded** params (the M3 migration:
 `vault.js paramsFromVault`). A real duress / panic / stealth blob written **before** the

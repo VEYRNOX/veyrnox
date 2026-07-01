@@ -204,9 +204,9 @@ export const webKeyStore = {
     return false;
   },
 
-  // Probe for WebAuthn PRF support (hardware factor availability on web).
-  // Returns true on Chrome/Firefox/Edge with PRF support; false on Safari,
-  // older browsers, or platforms without WebAuthn.
+  // Structural PRF capability probe — confirms the API exists; does NOT
+  // guarantee a successful PRF credential. The real gate is getHardwareFactor()
+  // at enrollment. Returns false on Safari / older browsers without WebAuthn.
   async isHardwareKeystoreAvailable() {
     return isPrfSupported();
   },
@@ -236,6 +236,17 @@ export const webKeyStore = {
     } catch {
       return false;
     }
+  },
+
+  // Web has no hardware KEK at rest, so re-persisting vault CONTENT is always a
+  // plain bare write — identical to createVault. Present so the cross-platform
+  // facade can call one method for content re-persist; the `opts` (getHardwareFactor)
+  // is ignored here (no KEK to preserve). Keeps parity with native.saveVaultContents,
+  // which DOES preserve the kek-dek wrap on enrolled devices.
+  async saveVaultContents(secret, password /* , opts */) {
+    validateWebVaultPassword(password);
+    const blob = await encryptVault(secret, password);
+    await saveVault(blob);
   },
 
   // Retrieve the WebAuthn PRF-derived 32-byte hardware factor H. This is the

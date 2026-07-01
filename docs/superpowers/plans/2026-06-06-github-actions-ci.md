@@ -101,7 +101,7 @@ Expected: exit 0; `vite build` completes and writes `dist/`.
 
 Run: `npm test`
 Expected: PASS — 438 passed / 48 files, 0 failures (runs the `pretest`
-crypto-RNG check first). Takes ~5–7 min (192 MiB Argon2id KDF).
+crypto-RNG check first). Takes ~5–7 min (64 MiB Argon2id KDF).
 
 - [ ] **Step 5: Confirm clean tree**
 

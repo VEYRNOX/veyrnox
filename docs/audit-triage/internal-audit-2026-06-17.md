@@ -62,7 +62,7 @@ as deprecated. **DONE — see commit for fix.**
 
 **I1 — KDF parameter validation on target devices**
 
-`vault.js` KDF: Argon2id 192 MiB / t=3 / p=1. The code comment correctly calls this
+`vault.js` KDF: Argon2id 192 MiB / t=3 / p=1. *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)* The code comment correctly calls this
 out as AUDIT-GATED and notes measured desktop latency (~440 ms). The migration design
 (`vaultNeedsRekey`) allows a future increase without locking out existing users.
 Action: verify on representative low-end Android (likely 2–4× slower than desktop);
@@ -137,7 +137,7 @@ a block of zero bytes). Domain separation is correctly done via the `info` param
 - ☐ **OWNER ACTION:** manually confirm account indices 0..n produce correct addresses vs an independent reference.
 
 ### Vault / encryption
-- ✅ Argon2id 192 MiB / t=3 reviewed (audit item I1)
+- ✅ Argon2id 192 MiB / t=3 reviewed (audit item I1) *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)*
 - ✅ Fresh salt (16 B) + IV (12 B) per encryption, from `crypto.getRandomValues`
 - ✅ Wrong password + tampered blob both throw (GCM auth) — confirmed in code + tests
 - ✅ Only ciphertext persisted (B3/B4 PASS)

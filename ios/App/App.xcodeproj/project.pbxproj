@@ -11,6 +11,7 @@
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		BBCCDD011FED79650016851F /* HardwareKekPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD001FED79650016851F /* HardwareKekPlugin.m */; };
+		BBCCDD041FED79650016851F /* HardwareKekPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
@@ -24,6 +25,7 @@
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BBCCDD001FED79650016851F /* HardwareKekPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HardwareKekPlugin.m; sourceTree = "<group>"; };
 		BBCCDD021FED79650016851F /* HardwareKekPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HardwareKekPlugin.h; sourceTree = "<group>"; };
+		BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HardwareKekPluginBridge.m; sourceTree = "<group>"; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -68,6 +70,7 @@
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				BBCCDD001FED79650016851F /* HardwareKekPlugin.m */,
 				BBCCDD021FED79650016851F /* HardwareKekPlugin.h */,
+				BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
@@ -161,6 +164,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BBCCDD011FED79650016851F /* HardwareKekPlugin.m in Sources */,
+				BBCCDD041FED79650016851F /* HardwareKekPluginBridge.m in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

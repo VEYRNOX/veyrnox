@@ -1,7 +1,11 @@
 {
   "_schema": "feature-name -> { chain, txid, date }. A catalogue feature is 'verified' ONLY when a real, explorer-confirmed testnet or mainnet txid exists here. This file is the SOLE source of the 'verified' state; the catalogue reads it and nothing else writes it. Code inspection, passing tests, and clean review NEVER promote a feature to verified (see CLAUDE.md 'Verify, don't assert'). Empty = nothing on-chain-verified yet; every code-complete feature shows 'built' until a txid lands here.",
   "_example": {
-    "Send Crypto": { "chain": "sepolia", "txid": "0x…", "date": "2026-01-01" }
+    "Send Crypto": {
+      "chain": "sepolia",
+      "txid": "0x…",
+      "date": "2026-01-01"
+    }
   },
   "_corrected": {
     "USDT mainnet send (full UI path, build:release, Ethereum mainnet)": "Txid corrected 2026-06-22. PR #280 originally recorded 0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986 — that hash is a real mainnet tx but targets the USDC contract, not USDT, so it did not substantiate the USDT claim. The actual USDT mainnet send is 0xf06a0ba731d1b8bf4d3f859a5904830b2f064725ba837c8c7332e5264f0b5b08 (verified on-chain via eth_getTransactionByHash/Receipt 2026-06-22: to=Tether USDT contract 0xdAC17F95…831ec7, transfer 1 USDT to 0x82D0…5BAB, chainId 1, status SUCCESS, block 25360159). Entry below now carries the correct txid."
@@ -19,6 +23,47 @@
     "verified_onchain": "eth_getTransactionByHash + eth_getTransactionReceipt, chainId 11155111, status SUCCESS, gasUsed 21000, 2026-06-23",
     "caveats": "(1) The authenticator is a CDP virtual (software) authenticator, NOT a Secure Enclave — this confirms the H-1 WIRING (no silent bypass; the assertion genuinely gates the send), which is what H-1 is, but NOT the hardware-possession strength of the factor. A physical-device (iPhone Face ID / security key) passkey send is still the bar to flip Two-Factor from BUILT to 'verified'. (2) navigator.webdriver was masked to false so RASP did not block the test harness — touches RASP's automation probe only, never the 2FA path. Incidentally, with webdriver=true RASP DID block the send (blockedByRisk suppressed the gate), confirming RASP is wired into SendCrypto.",
     "date": "2026-06-23"
+  },
+  "_ios_hardware_kek_device_verification": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. iOS Hardware KEK (H-NEW-D) stays BUILT / device-verified (PARTIAL). Records that the real Secure Enclave ECIES KEK (PR #495) gated two real on-chain Sepolia sends on a physical iPhone, while being honest that the getHardwareFactor SE-unlock trace was not captured live and the biometric re-enrollment invalidation test + independent audit are outstanding.",
+    "what_was_verified": "Real Objective-C SE-ECIES HardwareKekPlugin (SecKeyCreateEncryptedData/DecryptedData over a persistent Secure Enclave P-256 key, .biometryCurrentSet ACL, Face ID gates every decrypt; binary-confirmed superclass=CAPPlugin). Two real Sepolia ETH sends from a KEK-enrolled vault on iPhone 17 Pro Max, both SUCCESS on-chain. NOT demo (real wallet address + real on-chain balance change).",
+    "proof_basis": "Architectural + enrollment: the vault had kekWrap present; the fail-closed native.js _unlockInner KEK path (~L188-215) cannot decrypt the seed — hence cannot sign — unless getHardwareFactor() returns valid H from the SE (Face ID) AND the correct PIN derives C. Two valid on-chain signatures from a KEK-enrolled vault therefore prove the SE-KEK unlock gated signing. This is architectural proof, NOT an observed getHardwareFactor log line.",
+    "chain": "sepolia",
+    "txids": [
+      {
+        "txid": "0xf09c036c87ea9db415d11cdfc1426632220f6e8bbf93eca1bf9b5f1d1a926f37",
+        "nonce": 27,
+        "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        "amount": "0.001 ETH",
+        "block": 11178961
+      },
+      {
+        "txid": "0x0b13d5538421936d7146c0d864dfbcee6e49d2300e18a87ca17028788f85f4f9",
+        "nonce": 28,
+        "to": "0x82D0Fa9d0692dbaDA375fe58Be8368C2a7455BAB",
+        "amount": "0.001 ETH",
+        "block": 11179002
+      }
+    ],
+    "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+    "device": "iPhone 17 Pro Max",
+    "verified_onchain": "publicnode Sepolia RPC (eth_getTransactionByHash + eth_getTransactionReceipt), chainId 11155111, both status SUCCESS, 2026-07-01",
+    "caveats": "(1) The live getHardwareFactor SE-unlock log trace tied to these sends was NOT captured — proof is architectural (fail-closed KEK path) + user-confirmed enrollment, not an observed SE-unlock line. (2) The biometric re-enrollment invalidation test (disable/re-enroll Face ID -> old SE key invalidated -> unlock re-prompts / password fallback) is NOT done. (3) UNAUDITED-PROVISIONAL — no independent audit. This is the KEK unlock gate, not an asset status (ETH is already LIVE). Android StrongBox equivalent: PR #496 (Pixel 10 Pro XL).",
+    "date": "2026-07-01"
+  },
+  "_android_hardware_kek_device_verification": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. Android Hardware KEK (H-NEW-D / StrongBox) stays BUILT / device-verified (PARTIAL). Moved here from 'evidence' per the ECC KEK audit 2026-07-01 (finding L6) so it mirrors _ios_hardware_kek_device_verification and cannot become a latent promotion trap. Records that the StrongBox KEK gated a real on-chain Sepolia send on a Pixel 10 Pro XL, honest that this gates UNLOCK (not per-signature), StrongBox tier is observed not enforced, and biometric re-enrollment invalidation + independent audit are outstanding.",
+    "chain": "sepolia",
+    "txid": "0x9d9ff549728b43e795189e34613b3ff419284adf7f41ceb8758ea84ec47edab9",
+    "explorer": "https://sepolia.etherscan.io/tx/0x9d9ff549728b43e795189e34613b3ff419284adf7f41ceb8758ea84ec47edab9",
+    "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+    "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "amount": "0.001 ETH",
+    "block": 11180398,
+    "nonce": 30,
+    "verified_onchain": "eth_getTransactionByHash + eth_getTransactionReceipt, chainId 11155111, status SUCCESS, block 11180398, 2026-07-01. Sent from a StrongBox-KEK-enrolled vault whose unlock was gated by the Android StrongBox KEK: device logcat (Pixel 10 Pro XL, com.veyrnox.app.debug) shows HardwareKek.getHardwareFactor + BiometricService StrengthRequested:15 (BIOMETRIC_STRONG, no credential fallback) and the vault reading back as kek-dek (kekWrap present) — the seed could only be decrypted, and thus this tx signed, after the StrongBox hardware factor H was produced.",
+    "caveats": "(1) The KEK gates UNLOCK (H + PIN unwrap the DEK); the send then signs with the in-memory DEK — this confirms the send REQUIRED the StrongBox KEK to unlock, not that a per-signature SE/StrongBox key signed the tx. (2) StrongBox tier is device-specific to this Pixel 10 Pro XL (securityLevel=2); a non-StrongBox device would log TRUSTED_ENVIRONMENT — tier ENFORCEMENT is still TARGET. (3) BUILT + device-verified, NOT independently audited. (4) Depends on the 3-bug fix (PRs #497/#499) that made the KEK actually persist + gate unlock — before that the vault was silently downgraded to bare on every unlock, so no earlier Android send was genuinely KEK-gated. (5) Biometric re-enrollment invalidation test (old key invalidated after re-enroll) still NOT done.",
+    "date": "2026-07-01"
   },
   "evidence": {
     "Solana send (wallet-core module, devnet script)": {
