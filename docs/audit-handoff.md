@@ -136,7 +136,8 @@ shipped), Base44 backend/billing. Keeping these out keeps the scope (and cost) t
 
 | Item | Location | Status |
 |------|----------|--------|
-| M2 native Keystore/Secure Enclave | `docs/M2.secure-storage.md` | TARGET — not built; JS memory-zeroisation limitation documented |
+| **Hardware KEK (H-NEW-D) native** | **`docs/audit-triage/hardware-kek-audit-package-2026-07-01.md`** | **BUILT / device-verified (PARTIAL) / UNAUDITED-PROVISIONAL — dedicated audit package: threat model, code map, evidence (Sepolia txids + StrongBox tier), outstanding device tests, 6 reviewer questions. iOS SE-ECIES + Android StrongBox. Supersedes the "not built" M2 row.** |
+| M2 native Keystore/Secure Enclave | `docs/M2.secure-storage.md` | Was TARGET; the native SE/StrongBox KEK is now BUILT + device-verified (PARTIAL) — see the Hardware KEK package above for current status. |
 | Decoy Action Password UI | `src/wallet-core/duress.js` (TODO comment) | Decoy AP record is provisioned null; duress-setup UI to collect a separate decoy AP is not yet built |
 | Panic blob length differs from duress | `src/wallet-core/panic.js` | Panic stayed a bare-mnemonic marker; duress is now a padded container — acceptable but asymmetric |
 | OFAC screening needs legal review | `src/wallet-core/data/` | The OFAC sanctions snapshot cannot ship without independent legal sign-off (separate from this security audit) |
