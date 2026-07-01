@@ -181,9 +181,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Native Secure Storage',
-        status: 'roadmap',
-        summary: 'iOS Secure Enclave P-256 ECIES KEK (H-NEW-D) — designed, audit-gated, plugin registration blocked',
-        explanation: 'iOS: H-NEW-D (Hardware-bound Encryption Key, iOS Secure Enclave) design complete. Ephemeral ECDH + HKDF-SHA256 + AES-GCM seal/unseal of the vault key in the SE. Non-extractable SE private key, biometric ACL. Status: ROADMAP (audit-gated, not confirmed in shipped code). Blocker: Capacitor inline-plugin runtime discovery (documented; future: SPM package conversion). Android: StrongBox hardware binding (setIsStrongBoxBacked) is best-effort; StrongBox is NOT enforced. See docs/Feature-Status.md for full audit findings.',
+        status: 'built',
+        summary: 'iOS SE ECIES KEK + Android StrongBox KEK (H-NEW-D) — BUILT / device-verified (PARTIAL) / UNAUDITED-PROVISIONAL',
+        explanation: 'iOS: Secure Enclave ECIES KEK (PR #495) — BUILT and partial device-verified 2026-07-01 (two Sepolia sends confirmed on-chain from KEK-enrolled vault on iPhone 17 Pro Max). Outstanding: biometric re-enrollment invalidation test, on-chain KEK-gated txid with unlock log trace, independent audit. Android: StrongBox HMAC-SHA256 KEK (PRs #497, #499) — BUILT and end-to-end device-verified 2026-07-01 on Pixel 10 Pro XL (enroll → cold restart → StrongBox-gated unlock → badge confirmed). Outstanding: KEK-gated Sepolia txid, biometric re-enrollment test, StrongBox tier enforcement (currently observe-only), independent audit. Status: BUILT / device-verified (PARTIAL) / UNAUDITED-PROVISIONAL. Not independently audited. See docs/Feature-Status.md §4.',
       },
       {
         name: 'Session Manager & Auto-Lock',
