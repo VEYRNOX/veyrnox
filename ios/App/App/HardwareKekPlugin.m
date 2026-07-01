@@ -231,7 +231,6 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
             // iOS-F3: use LAContext with reuseDuration=0 instead of deprecated kSecUseOperationPrompt.
             LAContext *context = [[LAContext alloc] init];
             context.touchIDAuthenticationAllowableReuseDuration = 0; // no reuse — fresh auth per call
-            context.localizedReason = @"Authenticate to unlock your wallet";
             NSData *tag = [SE_KEY_TAG dataUsingEncoding:NSUTF8StringEncoding];
             NSDictionary *query = @{
                 (__bridge id)kSecClass:                    (__bridge id)kSecClassKey,
@@ -284,19 +283,15 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
             // heap after bridge-serialisation (ARC would release the NSData without
             // wiping the plaintext H bytes).
             //
-            // Copy the plaintext out of the CFData into a single mutable buffer, then
-            // wipe BOTH the CFData original and our mutable copy. We use CFDataGetBytePtr
-            // on the CFData (not a bridged NSData) so there is exactly one raw source
-            // to zero, and we never leave a lingering immutable NSData holding H.
+            // Copy the plaintext out of the CFData into a mutable buffer so we can
+            // zero it after use. CFData is released immediately after the copy; the
+            // mutable copy is zeroed via resetBytesInRange once serialised.
             NSUInteger hLen = (NSUInteger)CFDataGetLength(pt);
             NSMutableData *h = [NSMutableData dataWithBytes:CFDataGetBytePtr(pt) length:hLen];
             NSString *hB64 = [h base64EncodedStringWithOptions:0];
             // Zero H from heap after bridge-serialisation (iOS-F5 — not zeroed by ARC).
             // 1. our mutable copy:
             [h resetBytesInRange:NSMakeRange(0, h.length)];
-            // 2. the CFData plaintext buffer returned by SecKeyCreateDecryptedData:
-            void *rawPtr = (void *)CFDataGetBytePtr(pt);
-            if (rawPtr && hLen > 0) memset(rawPtr, 0, hLen);
             CFRelease(pt);
             NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (%lu bytes)", (unsigned long)hLen);
 
