@@ -84,10 +84,12 @@ describe('H-NEW-D — iOS HardwareKekPlugin is honest about SE-ECIES implementat
       expect(src).toMatch(/H-NEW-D/);
     });
     it('does not falsely claim H is SE-ECIES-wrapped while storing it in plaintext', () => {
-      // If H is stored unencrypted (no AES-GCM seal), the method must be gated.
-      const storesPlainH = /storeKeychainItem.*KEY_ENC_H.*hData|KEY_ENC_H data:hData/i.test(src);
-      if (storesPlainH) {
-        // Plaintext H storage is only acceptable if guarded by honest-disable.
+      // Match any storeKeychainItem call for KEY_ENC_H regardless of local variable name
+      // (encH, hData, etc.) — the old regex used "hData" and missed "encH".
+      const storesH = /storeKeychainItem[^;]*KEY_ENC_H/i.test(src);
+      const hasEciesBeforeStore = /SecKeyCreateEncryptedData|AES\.GCM\.seal|sharedSecretFromKeyAgreement/i.test(src);
+      if (storesH && !hasEciesBeforeStore) {
+        // Storing H without ECIES is only acceptable if the method is honest-disabled.
         expect(src).toMatch(/NOT_IMPLEMENTED|HONEST.DISABLED/i);
       }
     });

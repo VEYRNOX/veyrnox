@@ -12,7 +12,7 @@
 - ✅ Phase 1 implementation COMPLETE: `src/wallet-core/keystore/web.js` + `src/wallet-core/keystore/kek.js`
 - ✅ All tests PASSING: 1968 tests passed (248 test files, 2 expected failures, 1 skipped)
 - ✅ TypeScript validation: CLEAN
-- ✅ Security invariants (I1–I6): ALL VERIFIED
+- ✅ Security invariants (I1–I6): designed and unit-tested (BUILT; NOT on-chain/device verified — see CLAUDE.md verify-don't-assert rule)
 - ✅ Feature detection: WIRED (Chrome/Firefox/Safari matrix confirmed)
 
 ### Environment Status

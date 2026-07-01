@@ -20,7 +20,7 @@ Phase 2 infrastructure prep runs in parallel; does not block Phase 1 ship.
 
 - [x] Code complete: `src/wallet-core/keystore/web.js` + `kek.js` (200+ LOC)
 - [x] Tests pass: 1973/1973 (running at 2026-07-01 07:43 AM)
-- [x] Security invariants verified: I1–I6 (documented in web.js + kek.js)
+- [x] Security invariants designed to satisfy I1–I6 (documented in web.js + kek.js; NOT on-chain/device verified)
 - [x] Feature detection wired: `isPrfSupported()` distinguishes Chrome/Firefox (✅ PRF) from Safari (❌ fallback)
 - [x] Password minimum enforced: `validateWebVaultPassword()` ≥12 chars on mainnet
 - [x] Zeroing controls: H, C, DEK all zeroed in `try/finally` (web.js unlock)
@@ -245,7 +245,7 @@ Phase 2 infrastructure prep runs in parallel; does not block Phase 1 ship.
 **Phase 2 Ready IF:**
 - [ ] Devices ordered (receipts captured)
 - [ ] Testnet funds approved or confirmed
-- [ ] Build tools verified (Xcode 15.3+, Android API 35+)
+- [ ] Build tools checked (Xcode 15.3+, Android API 35+)
 - [ ] Git worktree script created + tested
 - [ ] GitHub project board created + populated
 

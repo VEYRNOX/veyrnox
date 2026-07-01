@@ -6,7 +6,9 @@
 
 ## Executive Summary
 
-Phase 1 (Web WebAuthn PRF Hardware KEK) implementation is **code-complete, unit-tested (1973/1973 passing), and security-verified (I1–I6)**. The final gate for VERIFIED status is **3 real Sepolia testnet sends**, one per supported browser family (Chrome ≥99, Firefox ≥108, Safari password-only).
+Phase 1 (Web WebAuthn PRF Hardware KEK) implementation is **code-complete and unit-tested (1973/1973 passing)**. Status: **BUILT / UAT-PENDING** — not verified. The final gate for VERIFIED status is **3 real Sepolia testnet sends**, one per supported browser family (Chrome ≥99, Firefox ≥108, Safari password-only).
+
+> **Honesty note:** "security-verified (I1–I6)" has been corrected — code-complete + green tests = BUILT at most. I1–I6 are designed and unit-tested but not on-chain or device-verified. See CLAUDE.md: "verify, don't assert."
 
 **Status:** Pending browser UAT (real on-chain sends)
 
@@ -18,7 +20,7 @@ Phase 1 (Web WebAuthn PRF Hardware KEK) implementation is **code-complete, unit-
 |-----------|--------|---------|
 | **Code** | ✅ Complete | `src/wallet-core/keystore/web.js` (210 LOC) + `src/wallet-core/keystore/kek.js` (180 LOC) |
 | **Tests** | ✅ 1973/1973 passing | All PRF-specific tests green; no platform skips |
-| **Security Invariants** | ✅ I1–I6 verified | Hardware binding (I6), fail-closed (I4), key zeroing (H-NEW-4/6) |
+| **Security Invariants** | BUILT (unit-tested) | I1–I6 designed + unit-tested; NOT on-chain/device verified — see honesty note above |
 | **Feature Detection** | ✅ Wired | `isPrfSupported()` returns true (Chrome/Firefox) or false (Safari) |
 | **Password Minimum** | ✅ Enforced | `validateWebVaultPassword()` ≥12 chars on mainnet (H-A control) |
 | **Browser Compatibility** | ✅ Matrix confirmed | Chrome, Firefox, Safari all wired + tested |
@@ -84,7 +86,7 @@ Tester: ____________________
 
 ## Code-Level Verification Checklist
 
-**Pre-UAT (already verified):**
+**Pre-UAT (code-review / test-green — not device or on-chain verified):**
 
 - [x] `src/wallet-core/keystore/web.js:210` → `isHardwareKeystoreAvailable()` feature detection
 - [x] `src/wallet-core/keystore/web.js:233` → `getHardwareFactor()` retrieves WebAuthn PRF
@@ -195,7 +197,7 @@ PHASE 1 SIGN-OFF: WEB WEBAUTHN PRF HARDWARE FACTOR
 Implementation Status:
   ✅ Code complete (200+ LOC, src/wallet-core/keystore/web.js + kek.js)
   ✅ Tests passing (1973/1973, including 19 PRF-specific tests)
-  ✅ Security invariants verified (I1–I6 all implemented and tested)
+  ✅ Security invariants designed to satisfy I1–I6 (implemented and unit-tested; NOT on-chain/device verified)
   ✅ Browser compatibility (Chrome ≥99, Firefox ≥108, Safari password-only fallback)
   ✅ Feature detection wired (isPrfSupported returns correct values per browser)
   ✅ Password minimum enforced (≥12 chars on mainnet, H-A control active)
