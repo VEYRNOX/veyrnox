@@ -52,8 +52,11 @@ describe('H-NEW-D — iOS HardwareKekPlugin is honest about SE-ECIES implementat
 
   // When the real SE-ECIES implementation is not present, the plugin MUST be
   // honest-disabled (I4) and must NOT pretend to deliver hardware binding.
-  const hasRealEcies = /ECDH.*HKDF|AES.GCM.*seal|sharedSecretFromKeyAgreement/i.test(src)
-    && !/NOT_IMPLEMENTED|HONEST.DISABLED/i.test(src);
+  // Real ECIES: Swift uses sharedSecretFromKeyAgreement/AES.GCM.seal;
+  // ObjC/Apple uses SecKeyCreateEncryptedData/SecKeyCreateDecryptedData.
+  const hasRealEcies = (
+    /sharedSecretFromKeyAgreement|AES\.GCM\.seal|SecKeyCreateEncryptedData|SecKeyCreateDecryptedData/i.test(src)
+  ) && !/NOT_IMPLEMENTED|HONEST.DISABLED/i.test(src);
 
   if (hasRealEcies) {
     // Real implementation path — verify full ECIES honesty contract.
