@@ -1100,7 +1100,7 @@ Implements the v1 PIN authentication entry surface per docs/superpowers/specs/20
 - `changePassword` guarded to never re-cache the real PIN behind Face ID.
 
 ## Audit flags carried (do NOT drop the provisional caveat until reviewed)
-- **#1:** the 10^6 PIN keyspace under the shared 192 MiB/t=3 Argon2id is exhaustible offline on a seized device; params can't be raised for the PIN path alone (stealth-chaff param-match constraint). Hardware KEK is the fast-follow.
+- **#1:** the 10^6 PIN keyspace under the shared 64 MiB/t=3 Argon2id is exhaustible offline on a seized device; params can't be raised for the PIN path alone (stealth-chaff param-match constraint). Hardware KEK is the fast-follow.
 - Empty-vs-lived-in decoy under repeated live probing (accepted v1 limitation).
 
 ## Tests
@@ -1124,7 +1124,7 @@ EOF
 - §3 timing core (4th unconditional KDF slot, execution-not-count test) → Task 4. ✓
 - §4 components (PinPad, decoyFallback, deniabilityUnlock, WalletProvider, WalletEntry) → Tasks 2,4,5,6,7. ✓
 - §5 data flow → Tasks 5,7. ✓
-- §6 Argon2id finding (kept at 192 MiB, flagged) → Tasks 2 (comment), 8 (header), PR body. ✓
+- §6 Argon2id finding (kept at 64 MiB, flagged) → Tasks 2 (comment), 8 (header), PR body. ✓
 - §7 threat-model note incl. live-probe limitation → Task 8. ✓
 - §9 testing (decoyFallback unit, constant-work execution, Option A integration, Face-ID-to-decoy, regression) → Tasks 2,4 + Task 7 preview + Task 5 suite. ✓
 - §10 audit line-items → PR body + headers. ✓

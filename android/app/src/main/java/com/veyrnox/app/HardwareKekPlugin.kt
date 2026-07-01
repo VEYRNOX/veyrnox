@@ -14,17 +14,23 @@ package com.veyrnox.app
 //   StrongBox is NOT enforced: setIsStrongBoxBacked(true) is best-effort and silently
 //   falls back, so the key may land in the TEE or in software (AndroidKeyStore), with
 //   no guarantee of StrongBox. Do NOT claim unqualified hardware backing or a guaranteed
-//   StrongBox tier — the delivered guarantee is device-bound + AndroidKeyStore. Enforcing
-//   StrongBox (or surfacing the actual backing tier to the user) is TARGET — see audit H15.
+//   StrongBox tier — the delivered guarantee is device-bound + AndroidKeyStore.
+//   OBSERVABILITY (H15 partial): enroll() now reads the key's real KeyInfo.securityLevel
+//   and both logs it (tag "HardwareKek") and returns it as { securityLevel, securityLevelName }.
+//   This reports the TRUE tier (StrongBox / TEE / software) — it never fabricates a tier
+//   (fail honest). ENFORCING StrongBox (rejecting non-StrongBox devices) remains TARGET.
 //   Both tiers use AUTH_BIOMETRIC_STRONG only (H16: no DEVICE_CREDENTIAL fallback).
 // H16: AUTH_DEVICE_CREDENTIAL removed. A PIN/pattern unlock bypasses biometric
 //   binding and undermines the possession-factor guarantee. BIOMETRIC_STRONG only.
 
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
+import android.util.Log
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -37,6 +43,8 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
 import javax.crypto.Mac
+import javax.crypto.SecretKey
+import javax.crypto.SecretKeyFactory
 
 @CapacitorPlugin(name = "HardwareKek")
 class HardwareKekPlugin : Plugin() {
@@ -65,10 +73,41 @@ class HardwareKekPlugin : Plugin() {
      *
      * No biometric prompt at generation time; getHardwareFactor() prompts per-use.
      * Key invalidated if new biometric enrolled (setInvalidatedByBiometricEnrollment).
+     *
+     * M4 (audit): the key spec uses setUserAuthenticationParameters(0, ...) — an API 30
+     *   call — and setIsStrongBoxBacked (API 28). minSdk is 24, so on API 24-29 the spec
+     *   build throws an opaque failure. We gate the whole enroll path on
+     *   Build.VERSION.SDK_INT >= 30 and reject with a CLEAR machine code
+     *   (KEK_REQUIRES_ANDROID_11) so the UI can say "Hardware KEK requires Android 11+".
+     *   We do NOT weaken the auth strength to run on old APIs (fail honest, fail closed).
+     * L3 (audit): generateKey() on the fixed KEY_ALIAS silently RE-KEYS an existing
+     *   enrollment, permanently bricking the current kekWrap (H changes → old wrap is
+     *   undecryptable). We refuse to overwrite: if KEY_ALIAS already exists, reject with
+     *   KEK_ALREADY_ENROLLED so re-enroll is explicit (caller must clearCredential first).
      */
     @PluginMethod
     fun enroll(call: PluginCall) {
+        // M4: the KEK enroll path requires API 30+ (setUserAuthenticationParameters is
+        // API 30; setIsStrongBoxBacked is API 28 — the >= 30 gate covers both). minSdk is
+        // 24, so gate here and reject pre-Android-11 with an honest, machine-coded error
+        // rather than failing later with an opaque "enroll failed:" message. We do NOT
+        // weaken the auth strength to run on old APIs (fail honest, fail closed).
+        if (Build.VERSION.SDK_INT >= 30) {
+            enrollApi30(call)
+        } else {
+            call.reject("KEK_REQUIRES_ANDROID_11: Hardware KEK requires Android 11+ (API 30)")
+        }
+    }
+
+    private fun enrollApi30(call: PluginCall) {
         try {
+            // L3: never silently re-key. Refuse to overwrite an existing enrollment;
+            // re-enroll must be explicit (clearCredential first).
+            val existing = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+            if (existing.containsAlias(KEY_ALIAS)) {
+                call.reject("KEK_ALREADY_ENROLLED: clearCredential first to re-enroll")
+                return
+            }
             // H15: prefer StrongBox; fall back to TEE on devices without it.
             val enrolled = tryEnrollKey(useStrongBox = true)
                 || tryEnrollKey(useStrongBox = false)
@@ -76,10 +115,65 @@ class HardwareKekPlugin : Plugin() {
                 call.reject("enroll failed: key generation returned false")
                 return
             }
-            call.resolve()
+            // H15 observability: report the REAL security tier of the stored key.
+            // Never fabricated — read straight from KeyInfo (fail honest).
+            val tier = readSecurityLevel()
+            Log.i(
+                "HardwareKek",
+                "enroll: key stored — tier=${tier.getString("securityLevelName")} " +
+                    "(securityLevel=${tier.getInteger("securityLevel")})"
+            )
+            call.resolve(tier)
         } catch (e: Exception) {
             call.reject("enroll failed: ${e.message}")
         }
+    }
+
+    /**
+     * readSecurityLevel() — Read the stored key's actual backing tier from KeyInfo.
+     * Returns { securityLevel: Int, securityLevelName: String }.
+     *
+     * Reads key metadata only — no biometric prompt, no key use. Reports the TRUE tier
+     * (StrongBox / TEE / software); on any failure returns an explicit error marker rather
+     * than guessing a tier (I4 — fail honest, never fabricate a security claim).
+     *
+     * securityLevel values (KeyProperties, API 31+):
+     *   2 = STRONGBOX, 1 = TRUSTED_ENVIRONMENT (TEE), 0 = SOFTWARE,
+     *  -1 = UNKNOWN_SECURE, -2 = UNKNOWN. On API < 31 we fall back to
+     *  isInsideSecureHardware() which only distinguishes secure-hw vs software.
+     */
+    private fun readSecurityLevel(): JSObject {
+        val out = JSObject()
+        return try {
+            val ks = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+            val key = ks.getKey(KEY_ALIAS, null) as? SecretKey
+                ?: return out.put("securityLevel", -99).put("securityLevelName", "NO_KEY")
+            val factory = SecretKeyFactory.getInstance(key.algorithm, "AndroidKeyStore")
+            val info = factory.getKeySpec(key, KeyInfo::class.java) as KeyInfo
+            if (Build.VERSION.SDK_INT >= 31) {
+                val lvl = info.securityLevel
+                out.put("securityLevel", lvl)
+                out.put("securityLevelName", securityLevelName(lvl))
+            } else {
+                @Suppress("DEPRECATION")
+                val secure = info.isInsideSecureHardware
+                out.put("securityLevel", if (secure) 1 else 0)
+                out.put("securityLevelName", if (secure) "SECURE_HARDWARE_PRE31" else "SOFTWARE")
+            }
+            out
+        } catch (e: Exception) {
+            out.put("securityLevel", -98)
+            out.put("securityLevelName", "PROBE_ERROR: ${e.message}")
+        }
+    }
+
+    private fun securityLevelName(level: Int): String = when (level) {
+        KeyProperties.SECURITY_LEVEL_STRONGBOX -> "STRONGBOX"
+        KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT -> "TRUSTED_ENVIRONMENT"
+        KeyProperties.SECURITY_LEVEL_SOFTWARE -> "SOFTWARE"
+        KeyProperties.SECURITY_LEVEL_UNKNOWN_SECURE -> "UNKNOWN_SECURE"
+        KeyProperties.SECURITY_LEVEL_UNKNOWN -> "UNKNOWN"
+        else -> "UNMAPPED_$level"
     }
 
     /**

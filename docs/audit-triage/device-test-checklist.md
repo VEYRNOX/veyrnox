@@ -76,3 +76,37 @@ Per chain (ETH/ARB/OP/BTC/SOL), testnet amounts:
 
 If everything passes, the security sprint is fully verified end-to-end (web + native) and
 `main` is clear for whatever ships next. Record any failure with the exact console line.
+
+---
+
+## 7. Hardware KEK (H-NEW-D) — native SE/StrongBox  (#495 #496 #497 #502) — PHYSICAL DEVICE ONLY
+
+Web/CI and JS unit tests mock the native plugin; the secure-element behaviour below can
+ONLY be verified on real hardware. See `docs/audit-triage/hardware-kek-audit-package-2026-07-01.md`.
+
+### 7a. Enroll + KEK-gated unlock persists
+- [ ] Settings → enable Hardware protection → badge **ON**.
+- [ ] **Cold force-stop** the app, reopen → unlock prompts Face ID / fingerprint; badge stays **ON**.
+- [ ] iOS: logcat/idevicesyslog shows `getHardwareFactor: SUCCESS`; Android: `StrengthRequested: 15`.
+- [ ] Vault reads back as `kek-dek` (no bare re-write on unlock — #497).
+
+### 7b. Remove + badge honesty (#497 / #502)
+- [ ] Remove hardware protection → badge **OFF**.
+- [ ] Force-stop → reopen → badge stays **OFF** (reads vault `kekWrap`, stale credential self-heals).
+- [ ] Reset / re-import wallet → badge **OFF** on the fresh bare vault.
+
+### 7c. Biometric re-enrollment invalidation — **THE OUTSTANDING I6 TEST** (both platforms)
+This is the core hardware-binding property and the last device leg before "verified".
+- [ ] Enroll KEK; confirm Face ID / fingerprint unlock works (baseline).
+- [ ] OS Settings → **add or re-enroll a biometric** (new face / new fingerprint).
+- [ ] Reopen Veyrnox → attempt unlock.
+- [ ] **PASS = fail-closed:** the stale SE/StrongBox key is invalidated → unlock does NOT
+      succeed via the old key → it requires **password/PIN fallback** (no silent bypass).
+- [ ] iOS expected: `getHardwareFactor` rejects (key-invalidated / DECRYPT_FAILED).
+- [ ] Android expected: `KeyPermanentlyInvalidatedException` → credential cleared + explicit error.
+- [ ] **FAIL = silent success** with the new biometric (would mean the ACL/invalidation binding
+      is not enforced) — record and STOP.
+
+### 7d. Real send from KEK-enrolled vault
+- [ ] iOS: DONE — Sepolia `0xf09c036c…` + `0x0b13d553…` (see audit package §6).
+- [ ] Android: OUTSTANDING — capture a Sepolia send from a StrongBox-enrolled vault + txid.

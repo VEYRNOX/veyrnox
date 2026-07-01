@@ -54,8 +54,8 @@ The browser UAT gate is **real Sepolia testnet send txids**, not simulator balan
 
 | Platform | Authentication | Hardware Backing | Status | Notes |
 |----------|----------------|------------------|--------|-------|
-| **Chrome ≥99** | Password + WebAuthn PRF | ✅ Full PRF hardware binding | 🟢 **VERIFIED (code)** | Feature detection: `isHardwareKeystoreAvailable()` returns true; PRF gate flows through `getHardwareFactor()` |
-| **Firefox ≥108** | Password + WebAuthn PRF | ✅ Full PRF hardware binding | 🟢 **VERIFIED (code)** | Same as Chrome; version-gate ensures PRF support (108+) |
+| **Chrome ≥99** | Password + WebAuthn PRF | ✅ Full PRF hardware binding | 🟡 **BUILT / UAT-PENDING** | Code-complete + unit-tested; awaiting browser UAT testnet txid (not yet verified) |
+| **Firefox ≥108** | Password + WebAuthn PRF | ✅ Full PRF hardware binding | 🟡 **BUILT / UAT-PENDING** | Code-complete + unit-tested; awaiting browser UAT testnet txid (not yet verified) |
 | **Safari Desktop** | Password-only fallback | ❌ PRF N/A (browser limit) | 🟢 **WORKING** | `isHardwareKeystoreAvailable()` returns false; gracefully degrades to password-only (≥12 chars enforced) |
 | **Safari iOS** | Password-only fallback | ❌ PRF N/A (browser limit) | 🟢 **WORKING** | Same as Safari Desktop; browser limitation, not code gap |
 

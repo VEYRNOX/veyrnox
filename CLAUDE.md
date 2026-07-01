@@ -43,16 +43,36 @@ identity; the app never holds keys server-side.
 - Status: ✅ Code-complete, unit-tested (1973/1973 passing), browser UAT pending testnet txids
 
 **Phase 2 (Q3 2026):** Native hardware KEK on iOS/Android
-- iOS: Secure Enclave HMAC-SHA256 + biometric ACL
-- Android: StrongBox HMAC-SHA256 + biometric re-enrollment invalidation
-- Requires: Custom native plugins (Swift + Kotlin) + real-device verification
-- Target: Full audit refresh, device-verified testnet sends
+- iOS: Secure Enclave HMAC-SHA256 (ECIES) + biometric ACL. 🟡 BUILT, device-verified
+  (PARTIAL) 2026-07-01 on iPhone 17 Pro Max: two real Sepolia sends confirmed on-chain
+  from a KEK-enrolled vault (PR #495). Outstanding: captured unlock log trace tied to
+  the sends, biometric re-enrollment invalidation test, independent audit.
+- Android: StrongBox HMAC-SHA256 + biometric-only gate (no credential fallback). ✅
+  BUILT, end-to-end device-verified 2026-07-01 on a Pixel 10 Pro XL (Android 16/API 36):
+  enroll → cold restart → StrongBox-gated unlock → badge stays "Hardware Protection ON".
+  Three stacked bugs found and fixed to get here (PRs #497, #499): (1) badge measured
+  key-presence, not vault-wrap — reconciled against `hasVaultKekWrap()`; (2)
+  `@aparajita/capacitor-secure-storage@8.0.0` persisted via async `SharedPreferences.apply()`,
+  losing writes on app-kill — patched to synchronous `.commit()` via patch-package
+  (Android-only; iOS Keychain was unaffected); (3) every unlock silently re-wrapped the
+  vault back to bare Argon2id via `createVault()` — fixed with a KEK-preserving
+  `saveVaultContents()`. Tests: keystore 95/95, keystore+WalletProvider 116/116.
+  Caveat: the `.commit()` fix is a patch-package patch — requires a clean plugin
+  recompile (Gradle caches the AAR). Outstanding: KEK-gated Sepolia send + txid,
+  biometric re-enrollment invalidation test, StrongBox tier enforcement (currently
+  observe-only), independent audit. See `docs/hardware-kek-phase-plan.md` and
+  `docs/Feature-Status.md` §4 for full evidence.
+- Status is BUILT + device-verified for both platforms (Android now end-to-end,
+  iOS partial) — NOT independently audited, NOT "verified" in the on-chain/asset sense
+  (no KEK-gated testnet txid on either platform's hardware-unlock path yet).
 
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
   makes zero backend calls. I4 — fail honest, fail closed. I5 — backend untrusted by design.
-- **I6 — Hardware Binding:** PIN-cohort DEK wrapped under KEK = HKDF(H ⊕ C)
+- **I6 — Hardware Binding:** PIN-cohort DEK wrapped under KEK = HKDF(H ‖ C) — ordered
+  concatenation of H then C as the HKDF IKM (NOT XOR; corrected per the ECC KEK audit
+  2026-07-01 — code is `kek.js: combineKek`, domain `veyrnox/kek/v1/combine(H||C)`)
   - H: Hardware factor (web: WebAuthn PRF; iOS: Secure Enclave; Android: StrongBox)
   - C: Password/PIN-derived factor (Argon2id)
   - Requirement: Both H and C must be present; missing either throws (fail-closed)

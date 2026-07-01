@@ -44,10 +44,24 @@ export default function HardwareKekSettings() {
   useEffect(() => {
     let active = true;
     if (isNative) {
-      import('@/wallet-core/keystore/hardware.js')
-        .then(m => m.isHardwareEnrolled())
-        .then(v => { if (active) setEnrolled(v); })
-        .catch(() => { if (active) setEnrolled(false); });
+      (async () => {
+        try {
+          // Reconcile the enrolled signal against REAL protection (I4 honesty):
+          // "ON" only if the AndroidKeyStore/Keychain alias is present AND the
+          // stored vault is actually KEK-wrapped. Alias-present + vault-bare is a
+          // stale alias (not real protection) → honest state is OFF, and we clean
+          // up the orphan so isEnrolled() stops reporting a false "ON".
+          const hw = await import('@/wallet-core/keystore/hardware.js');
+          const aliasPresent = await hw.isHardwareEnrolled();
+          const vaultWrapped = await getKeyStore().hasVaultKekWrap();
+          if (aliasPresent && !vaultWrapped) {
+            try { await hw.clearHardwareCredential(); } catch { /* best-effort */ }
+          }
+          if (active) setEnrolled(aliasPresent && vaultWrapped);
+        } catch {
+          if (active) setEnrolled(false);
+        }
+      })();
     } else {
       import('@/wallet-core/keystore/web.js').then(async m => {
         const [avail, enr] = await Promise.all([
@@ -73,9 +87,13 @@ export default function HardwareKekSettings() {
     try {
       if (isNative) {
         const { enrollHardwareCredential, getHardwareFactor } = await import('@/wallet-core/keystore/hardware.js');
-        // Step 1: create Keychain/Keystore credential + get initial H (one biometric prompt).
+        // Step 1: generate the hardware-bound key and GATE on the real security tier.
+        // Fail-closed (M2): a SOFTWARE / unknown / unreadable tier throws
+        // ENROLL_ERR.INSECURE_TIER here — before enrollKek — so the vault is never
+        // KEK-wrapped and the "ON" badge can never show for a software-only key.
         await enrollHardwareCredential();
-        // Step 2: enroll KEK on the vault (second biometric prompt inside enrollKek).
+        // Step 2: enroll KEK on the vault using the device-bound factor (Keychain/TEE).
+        // getHardwareFactor() is called inside enrollKek — second biometric prompt.
         await getKeyStore().enrollKek(pinToUse, { getHardwareFactor });
       } else {
         const { webKeyStore } = await import('@/wallet-core/keystore/web.js');
@@ -88,7 +106,11 @@ export default function HardwareKekSettings() {
       toast.success('Hardware protection enabled — your vault now requires this device to unlock.');
     } catch (e) {
       const msg = e?.message || String(e);
-      if (msg.includes('No wallet') || msg.toLowerCase().includes('password') || msg.includes('Decryption')) {
+      // Honest, plain-language failure when the device has no secure hardware element (M2).
+      // 'KEK_ENROLL_INSECURE_TIER' is the machine code from hardware.js ENROLL_ERR.INSECURE_TIER.
+      if (e?.code === 'KEK_ENROLL_INSECURE_TIER' || msg.includes('KEK_ENROLL_INSECURE_TIER')) {
+        setError('This device has no secure hardware element — hardware protection can’t be enabled here.');
+      } else if (msg.includes('No wallet') || msg.toLowerCase().includes('password') || msg.includes('Decryption')) {
         setError('Wrong PIN — enter the PIN you use to unlock your wallet.');
       } else {
         setError(`Failed: ${msg}`);

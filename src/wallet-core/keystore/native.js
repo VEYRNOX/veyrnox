@@ -67,6 +67,44 @@ import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 // Single-vault slice, mirroring evm/vaultStore.js's web layout (KEY='primary').
 const KEY_PREFIX = 'veyrnox_';
 const VAULT_KEY = 'vault_v1';
+// LEGACY journal key from a now-removed journaled safe-write (commit 69ea07f). The
+// journal is gone; we only ever DELETE any leftover value under this key so a stale
+// blob from a prior build can never be promoted over the good vault. NEVER read for
+// content, NEVER written.
+const VAULT_NEXT_KEY = 'vault_v1.next';
+
+// ── Durable verified vault write (I4 fail-closed) ────────────────────────────────
+//
+// ROOT CAUSE (fixed at the plugin layer): @aparajita/capacitor-secure-storage used
+// SharedPreferences.apply() (async) on Android, so writes could be lost on app-kill.
+// That is now patched to .commit() (synchronous, durable), device-verified.
+//
+// So the write is simply: set → read back → verify byte-equal → throw on mismatch.
+// NO temp/journal key, NO recovery, NO promote. A genuine write failure must never
+// look like success (I4): if the persisted value does not match, we throw and the
+// caller fails closed.
+async function safeWriteVault(blob) {
+  const data = typeof blob === 'string' ? blob : JSON.stringify(blob);
+
+  await SecureStorage.set(VAULT_KEY, data);
+
+  // Read back the durably-persisted value and verify byte-equality (fail-closed).
+  const persisted = await SecureStorage.get(VAULT_KEY, false);
+  if ((typeof persisted === 'string' ? persisted : JSON.stringify(persisted)) !== data) {
+    throw new Error('VAULT_WRITE_VERIFY_FAILED');
+  }
+}
+
+// Best-effort removal of any leftover legacy journal key so a stale blob from an
+// earlier build can never linger and mislead a load path. Never throws, never
+// promotes — purely destructive cleanup. Run once on init.
+async function cleanupLegacyJournal() {
+  try {
+    await SecureStorage.remove(VAULT_NEXT_KEY);
+  } catch {
+    /* best-effort — a missing key or plugin quirk must not break init. */
+  }
+}
 
 // Native-only seam: WalletProvider registers its lock() here so that an OS
 // background event can drop the LIVE secret (which lives in WalletProvider, not
@@ -88,6 +126,10 @@ function init() {
     await SecureStorage.setDefaultKeychainAccess(
       KeychainAccess.whenPasscodeSetThisDeviceOnly,
     );
+
+    // One-time cleanup: drop any leftover legacy journal key (vault_v1.next) from a
+    // prior build so a stale blob can never be promoted over the good vault.
+    await cleanupLegacyJournal();
 
     // Background hardening (requirement: clear key material on background):
     // when the OS backgrounds the app, invoke the registered lock hook so the
@@ -261,6 +303,20 @@ export const nativeKeyStore = {
     return raw !== null && raw !== undefined;
   },
 
+  // Reconciliation accessor (I4 honest enrolled-state): reports whether the
+  // stored vault is actually KEK-wrapped. Reads metadata ONLY — never the secret,
+  // never a biometric prompt (passcode-gated read of the vault blob). The badge
+  // treats "hardware enrolled" as aliasPresent AND vaultKekWrapPresent; if the
+  // AndroidKeyStore alias is present but the vault is bare, the honest state is
+  // OFF (a stale alias is not real protection).
+  async hasVaultKekWrap() {
+    await init();
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) return false;
+    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return !!blob.kekWrap;
+  },
+
   // Encrypt with the SAME audited crypto as web, then persist CIPHERTEXT ONLY to
   // the platform secure store (iOS Keychain / Android Keystore). The live secret never touches IndexedDB/
   // localStorage and is not retained here after this call returns.
@@ -269,7 +325,69 @@ export const nativeKeyStore = {
     const blob = await encryptVault(secret, password); // ../vault.js — unchanged
     // Store as a JSON string; convertDate=false on read avoids any date coercion
     // of base64 fields. The blob is { v, kdf, salt, iv, ct } — all ciphertext.
-    await SecureStorage.set(VAULT_KEY, JSON.stringify(blob));
+    // Routed through safeWriteVault for durable set + read-back-verify (I4).
+    await safeWriteVault(blob);
+  },
+
+  // Re-persist NEW vault CONTENT (a mutated multi-seed container) while PRESERVING
+  // the current at-rest format (KEK DOWNGRADE FIX, I4 fail-closed). WalletProvider
+  // calls this for seed add/remove/import and unlock-time container migrations.
+  //
+  //   - BARE vault (no kekWrap): behaves exactly like createVault — encrypt the new
+  //     secret under the password (argon2id) and durably persist. No hardware factor
+  //     is read (getHardwareFactor is NEVER called on a bare vault).
+  //   - KEK-enrolled vault (kekWrap present): recover the DEK with H (opts.getHardwareFactor)
+  //     + PIN-derived C, then re-encrypt the NEW plaintext under that SAME DEK via
+  //     encryptVaultWithDek, preserving kekWrap/kekSalt and kdf:'kek-dek'. The seed's
+  //     DEK is unchanged; only iv/ct (the content ciphertext) change.
+  //
+  // FAIL-CLOSED: on a KEK-enrolled vault, if the hardware factor is missing or DEK
+  // recovery fails we THROW and leave the vault untouched — we NEVER silently rewrite
+  // it bare (that silent downgrade was the device-confirmed bug). H, C, KEK and DEK are
+  // zeroed on every path (H-NEW-6b), mirroring unlock/changePassword/enrollKek.
+  async saveVaultContents(secret, password, opts = {}) {
+    await init();
+    // L1: on a KEK-enrolled vault this opens an OS biometric sheet (getHardwareFactor),
+    // whose appStateChange pause would otherwise fire the background lock hook mid-write.
+    // Suppress the lock hook for the whole operation, matching unlock/enrollKek/unenrollKek.
+    return withLockSuppressed(async () => {
+      const raw = await SecureStorage.get(VAULT_KEY, false);
+      const blob = raw === null || raw === undefined
+        ? null
+        : (typeof raw === 'string' ? JSON.parse(raw) : raw);
+
+      // Bare (or first-write) vault: identical to createVault — plain argon2id, no KEK.
+      if (!blob || !blob.kekWrap) {
+        const bare = await encryptVault(secret, password); // ../vault.js — unchanged
+        await safeWriteVault(bare);
+        return;
+      }
+
+      // KEK-enrolled: re-encrypt the new content under the EXISTING DEK, preserving wrap.
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const H = await getHF(); // one biometric prompt for this content write
+      let C;
+      let kek;
+      let dek;
+      try {
+        C = await deriveKekC(password, saltBytes);
+        kek = await combineKek(H, C);
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        dek = await unwrapDek(kek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
+        const { iv, ct } = await encryptVaultWithDek(secret, dek);
+        // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv change.
+        await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek' });
+      } finally {
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        if (kek) kek.fill(0);
+        if (dek) dek.fill(0);
+        saltBytes.fill(0);
+      }
+    });
   },
 
   // Unlock: read + decrypt. The password/PIN is THE secret; the vault is hardware-
@@ -302,63 +420,69 @@ export const nativeKeyStore = {
   // and persist the re-encrypted blob. The secret never leaves memory.
   async changePassword(currentPassword, newPassword, opts = {}) {
     await init();
-    await authenticateOrThrow(); // throws on cancel/failure/lockout
+    // L1: this both opens an OS biometric sheet (authenticateOrThrow, and on a
+    // KEK vault getHardwareFactor) whose appStateChange pause would otherwise fire
+    // the background lock hook mid-rewrite. Suppress the lock hook for the whole
+    // operation, matching unlock/enrollKek/unenrollKek.
+    return withLockSuppressed(async () => {
+      await authenticateOrThrow(); // throws on cancel/failure/lockout
 
-    const raw = await SecureStorage.get(VAULT_KEY, false);
-    if (raw === null || raw === undefined) {
-      throw new Error('No wallet found on this device');
-    }
-    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
-
-    if (blob.kekWrap) {
-      // KEK-enrolled: rotate the PIN by re-wrapping the DEK under a new KEK.
-      // The seed ciphertext (blob.ct) stays UNCHANGED — that is the §3 property.
-      const getHF = opts && opts.getHardwareFactor;
-      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-      const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
-      const H = await getHF();
-      const H2 = H.slice(); // combineKek zeroes its H input; copy before the first call
-      let oldC;
-      let newC;
-      let oldKek;
-      let newKek;
-      let dek;
-      // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so the H2 copy,
-      // both derived KEKs, and the recovered DEK are wiped on EVERY path — including
-      // when deriveKekC/combineKek/unwrapDek/wrapDek/set throws. None may linger in
-      // the JS heap until GC (I4), mirroring web.js.
-      try {
-        oldC = await deriveKekC(currentPassword, oldSaltBytes);
-        oldKek = await combineKek(H, oldC);
-        if (H && H.fill) H.fill(0);
-        if (oldC) oldC.fill(0);
-        dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
-        // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
-        const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
-        const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
-        newC = await deriveKekC(newPassword, newSaltBytes);
-        newKek = await combineKek(H2, newC);
-        if (H2 && H2.fill) H2.fill(0);
-        if (newC) newC.fill(0);
-        const newKekWrap = await wrapDek(newKek, dek);
-        newSaltBytes.fill(0);
-        await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt }));
-      } finally {
-        if (H && H.fill) H.fill(0);
-        if (H2 && H2.fill) H2.fill(0);
-        if (oldC) oldC.fill(0);
-        if (newC) newC.fill(0);
-        if (oldKek) oldKek.fill(0);
-        if (newKek) newKek.fill(0);
-        if (dek) dek.fill(0);
-        oldSaltBytes.fill(0);
+      const raw = await SecureStorage.get(VAULT_KEY, false);
+      if (raw === null || raw === undefined) {
+        throw new Error('No wallet found on this device');
       }
-      return;
-    }
+      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
 
-    const secret = await decryptVault(blob, currentPassword); // ../vault.js — unchanged
-    const rewrapped = await encryptVault(secret, newPassword); // ../vault.js — unchanged
-    await SecureStorage.set(VAULT_KEY, JSON.stringify(rewrapped));
+      if (blob.kekWrap) {
+        // KEK-enrolled: rotate the PIN by re-wrapping the DEK under a new KEK.
+        // The seed ciphertext (blob.ct) stays UNCHANGED — that is the §3 property.
+        const getHF = opts && opts.getHardwareFactor;
+        if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+        const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+        const H = await getHF();
+        const H2 = H.slice(); // combineKek zeroes its H input; copy before the first call
+        let oldC;
+        let newC;
+        let oldKek;
+        let newKek;
+        let dek;
+        // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so the H2 copy,
+        // both derived KEKs, and the recovered DEK are wiped on EVERY path — including
+        // when deriveKekC/combineKek/unwrapDek/wrapDek/set throws. None may linger in
+        // the JS heap until GC (I4), mirroring web.js.
+        try {
+          oldC = await deriveKekC(currentPassword, oldSaltBytes);
+          oldKek = await combineKek(H, oldC);
+          if (H && H.fill) H.fill(0);
+          if (oldC) oldC.fill(0);
+          dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
+          // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
+          const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+          const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+          newC = await deriveKekC(newPassword, newSaltBytes);
+          newKek = await combineKek(H2, newC);
+          if (H2 && H2.fill) H2.fill(0);
+          if (newC) newC.fill(0);
+          const newKekWrap = await wrapDek(newKek, dek);
+          newSaltBytes.fill(0);
+          await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
+        } finally {
+          if (H && H.fill) H.fill(0);
+          if (H2 && H2.fill) H2.fill(0);
+          if (oldC) oldC.fill(0);
+          if (newC) newC.fill(0);
+          if (oldKek) oldKek.fill(0);
+          if (newKek) newKek.fill(0);
+          if (dek) dek.fill(0);
+          oldSaltBytes.fill(0);
+        }
+        return;
+      }
+
+      const secret = await decryptVault(blob, currentPassword); // ../vault.js — unchanged
+      const rewrapped = await encryptVault(secret, newPassword); // ../vault.js — unchanged
+      await safeWriteVault(rewrapped);
+    });
   },
 
   // Enroll the Hardware KEK on an existing vault. After enrollment, unlock()
@@ -393,7 +517,7 @@ export const nativeKeyStore = {
         const kekWrap = await wrapDek(kek, dek);
         // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
         const { iv, ct } = await encryptVaultWithDek(secret, dek);
-        await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt }));
+        await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
       } finally {
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
@@ -416,7 +540,16 @@ export const nativeKeyStore = {
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (!raw) throw new Error('No wallet found on this device');
       const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      if (!blob.kekWrap) return; // already bare — nothing to do
+      if (!blob.kekWrap) {
+        // Already-bare vault: no key material to re-wrap, but a stale Keystore
+        // alias may survive from a prior partial/interrupted unenroll. Clearing
+        // it here is what makes isHardwareEnrolled() honest — otherwise the "ON"
+        // badge sticks with no way to turn it off (I4 fail-honest, fail-closed).
+        // Idempotent: clearCredential guards on containsAlias, so a no-op when
+        // no key exists. A bare vault needs no hardware key.
+        await clearHardwareCredential();
+        return;
+      }
 
       // Recover DEK: H (hardware factor, biometric) + PIN-derived C
       const H = await getHF();
@@ -439,7 +572,7 @@ export const nativeKeyStore = {
 
         // Re-encrypt in bare (PIN-only) format — no kekWrap, no kekSalt
         const bareBlob = await encryptVault(secret, password);
-        await SecureStorage.set(VAULT_KEY, JSON.stringify(bareBlob));
+        await safeWriteVault(bareBlob);
 
         // Only delete the Keystore key AFTER the vault is safely re-written
         await clearHardwareCredential();
@@ -468,6 +601,8 @@ export const nativeKeyStore = {
   async clearVault() {
     await init();
     await SecureStorage.remove(VAULT_KEY);
+    // Also drop any leftover legacy journal key so a re-import starts truly fresh.
+    await SecureStorage.remove(VAULT_NEXT_KEY);
     await clearHardwareCredential();
   },
 

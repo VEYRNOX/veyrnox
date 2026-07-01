@@ -126,7 +126,7 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ### PIN Security & Hardware Key Encryption (KEK)
 
-**Phase 1 — Web WebAuthn PRF (SHIPPING):** ✅ BUILT, 🟢 PARTIALLY VERIFIED
+**Phase 1 — Web WebAuthn PRF (SHIPPING):** ✅ BUILT, 🟡 UAT-PENDING (browser UAT + testnet txids outstanding — not yet verified)
 - **Implementation Status:** Code complete (200+ LOC, `src/lib/web.js`); unit-tested (19 PRF-specific tests, 1973/1973 total); security invariants verified (I1–I6).
 - **Hardware Factor H:** WebAuthn PRF (HMAC-secret) bound to platform authenticator (Windows Hello, Touch ID, etc.).
 - **KEK Derivation:** `combineKek(H, C)` via HKDF-SHA256, where C is Argon2id password factor.
@@ -134,18 +134,52 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - **Browser Support:**
   | Platform | Authentication | Hardware Backing | Status |
   |----------|----------------|------------------|--------|
-  | Chrome ≥99 | Password-derived + WebAuthn PRF | ✅ Full PRF hardware binding | 🟢 VERIFIED |
-  | Firefox ≥108 | Password-derived + WebAuthn PRF | ✅ Full PRF hardware binding | 🟢 VERIFIED |
+  | Chrome ≥99 | Password-derived + WebAuthn PRF | ✅ Full PRF hardware binding | 🟡 BUILT / UAT-PENDING |
+  | Firefox ≥108 | Password-derived + WebAuthn PRF | ✅ Full PRF hardware binding | 🟡 BUILT / UAT-PENDING |
   | Safari Desktop | Password-only fallback | ❌ PRF N/A (browser limit) | 🟢 WORKING (graceful degradation) |
   | Safari iOS | Password-only fallback | ❌ PRF N/A (browser limit) | 🟢 WORKING (graceful degradation) |
 - **Honest Framing:** Safari users fall back to password-only (≥12 chars). This is by design, not a gap — Phase 2 iOS will have Secure Enclave (stronger than PRF).
 - **Testnet Verification:** 🟢 Code-complete, tests passing, browser UAT pending real Sepolia testnet txids.
 
-**Phase 2 — Native Hardware KEK (Q3 2026 PLANNED):**
-- **iOS:** Secure Enclave HMAC-SHA256 + biometric ACL (Face ID / Secure Enclave tied to unlock).
-- **Android:** StrongBox HMAC-SHA256 + biometric re-enrollment invalidation (Fingerprint / StrongBox tied to unlock).
-- **Target:** Real-device send verification on Sepolia (iPhone + Pixel), full audit refresh, device-verified testnet txids.
-- **Gate:** Custom native plugins (Swift + Kotlin) + real-device verification required; not startable in JS environment.
+**Phase 2 — Native Hardware KEK (Q3 2026 PLANNED, Android now end-to-end device-verified 2026-07-01):**
+- **iOS:** Secure Enclave HMAC-SHA256 + biometric ACL (Face ID / Secure Enclave tied to unlock). See the separate iOS SE-ECIES entry below (🟡 device-verified, partial).
+- **Android:** StrongBox HMAC-SHA256 + biometric re-enrollment invalidation (Fingerprint / StrongBox tied to unlock). ✅ **BUILT, end-to-end device-verified (2026-07-01, Google Pixel 10 Pro XL, `mustang`, Android 16/API 36, debug build `com.veyrnox.app.debug`).**
+  - **CORRECTION to the earlier PR #496 note (2026-07-01):** that session recorded H15/H16 as "device-verified," but at that time it covered ENROLL-TIME behavior only — the StrongBox key did NOT actually persist across restarts or gate unlock; it was silently downgraded to a bare Argon2id wrap on every subsequent unlock (see bug 3 below). The line below supersedes that earlier partial claim.
+  - **Three stacked bugs found and fixed this session, in order:**
+    1. **Badge/vault-wrap mismatch (PR #497, commit `27e1125d`):** the "Hardware Protection ON" badge measured raw key-presence in the OS keystore, not whether the vault was actually wrapped under the KEK. Fixed by reconciling the badge against `hasVaultKekWrap()`, and clearing the stale key on unenroll.
+    2. **Async-persistence plugin bug (Android-only):** `@aparajita/capacitor-secure-storage@8.0.0` persisted writes via `SharedPreferences.apply()` (async, fire-and-forget) — writes were silently lost on app kill. Patched to synchronous `.commit()` via `patch-package` (`patches/@aparajita+capacitor-secure-storage+8.0.0.patch`, commit `470b1ef0`). iOS Keychain was unaffected (already synchronous).
+    3. **Silent re-wrap-to-bare-KDF on every unlock (the real "won't stick" root cause, commit `ad7ef9ad`):** every unlock re-persisted the vault via `createVault()`, which silently downgraded a genuine KEK wrap back to a bare Argon2id wrap immediately after a correct KEK-gated unlock. Fixed with a KEK-preserving `saveVaultContents()` and by skipping the `lastUnlockAt` re-write path on KEK-enrolled vaults (typedef hotfix in PR #499).
+  - **What is now reproduced on-device:** enroll → cold force-stop restart → unlock. The StrongBox-backed key gates the unlock (`getHardwareFactor`, `BiometricService StrengthRequested: 15` biometric-only, no credential fallback), the vault reads back as `kek-dek` (not re-downgraded to bare), no unwanted `clearCredential`, and the "Hardware Protection ON" badge stays ON across the restart. Reproduced.
+  - **StrongBox tier:** confirmed `tier=STRONGBOX (securityLevel=2)` via `KeyInfo.getSecurityLevel()` on this device (Pixel 10 Pro XL). This is device-specific observability, not enforcement — a non-StrongBox device would honestly log `TRUSTED_ENVIRONMENT` instead, and the plugin does not reject enrollment on non-StrongBox hardware. **StrongBox enforcement (reject non-StrongBox devices) remains TARGET.**
+  - **Tests:** keystore 95/95 passing, keystore+WalletProvider 116/116 passing.
+  - **Operational caveat:** the `.commit()` fix is a `patch-package` patch applied to the third-party plugin; it requires a clean native plugin recompile (Gradle caches the AAR — a stale cached build will not pick up the patch).
+  - **Still outstanding (not done):** no KEK-gated Sepolia testnet send has been performed on Android yet — this is a genuinely different claim from "unlock is gated," and remains open. The biometric re-enrollment invalidation test (old key invalidated after re-enroll) was NOT run. StrongBox tier enforcement (vs. observe) is TARGET, not built. No independent audit of this device-gated implementation.
+  - Tag: **BUILT, end-to-end device-verified (enroll, persist-across-restart, StrongBox-gated unlock, badge-stays-on) on Pixel 10 Pro XL — NOT independently audited, NOT "verified"** in the on-chain/asset sense (no KEK-gated Android send txid yet).
+- **Target:** KEK-gated Sepolia send + txid on Android, biometric re-enrollment invalidation test (both platforms), StrongBox tier enforcement, full audit refresh, iOS end-to-end persistence parity with Android.
+- **Gate:** Custom native plugins (Swift + Kotlin) + real-device verification required; not startable in JS environment. See `docs/hardware-kek-phase-plan.md` → "Android Device-Verification Evidence" for full evidence and the bug-fix detail.
+
+**iOS SE-ECIES KEK — 🟡 DEVICE-VERIFIED (PARTIAL) 2026-07-01 (PR #495):** The real
+Objective-C Secure Enclave ECIES plugin (`ios/App/App/HardwareKekPlugin.m` + `.h` +
+`HardwareKekPluginBridge.m`) is on `main` and device-verified on **iPhone 17 Pro Max**.
+Apple ECIES (`SecKeyCreateEncryptedData`/`DecryptedData`) over a persistent SE P-256 key
+with `.biometryCurrentSet` ACL; the SE private key never leaves the enclave and Face ID
+gates every decrypt. Binary-confirmed `superclass = CAPPlugin` (the earlier discovery bug
+where the class silently inherited `NSObject` is fixed). **Two real Sepolia sends from a
+KEK-enrolled vault** (`0x90f9…E68a729`, bamboo… UAT seed) confirmed SUCCESS on-chain:
+`0xf09c036c87ea9db415d11cdfc1426632220f6e8bbf93eca1bf9b5f1d1a926f37` (nonce 27, block
+11178961) and `0x0b13d5538421936d7146c0d864dfbcee6e49d2300e18a87ca17028788f85f4f9`
+(nonce 28, block 11179002), each 0.001 ETH. **Proof basis:** architectural + enrollment —
+the vault had `kekWrap` present and the fail-closed `native.js` `_unlockInner` KEK path
+(~L188-215) cannot decrypt the seed (hence cannot sign) unless `getHardwareFactor()`
+returns valid H from the SE; two valid on-chain signatures therefore prove the SE-KEK
+unlock gated signing. Rules out demo mode (real address + real on-chain balance change).
+**HONEST SCOPE — still BUILT / device-verified (PARTIAL), NOT "verified", NOT audited:**
+(1) the live `getHardwareFactor` SE-unlock log trace tied to these sends was **not
+captured** (proof is architectural, not an observed SE-unlock line); (2) the **biometric
+re-enrollment invalidation** test (disable/re-enroll Face ID → old SE key invalidated →
+unlock re-prompts / password fallback) is **not done**; (3) **UNAUDITED-PROVISIONAL** — no
+independent audit. This is the KEK *unlock gate*, not an asset status (ETH is already LIVE).
+Android StrongBox equivalent: see PR #496 (H15/H16 device-verified on Pixel 10 Pro XL).
 
 ---
 
@@ -366,7 +400,7 @@ RASP gates. None affect ALLOW_MAINNET.
 
 | ID | Area | Description | Gate |
 |---|---|---|---|
-| H-NEW-D | iOS native / KEK | **BUILT-CODE-COMPLETE (2026-06-30)**: SE P-256 ECIES KEK implementation complete (HardwareKekPlugin.swift). Non-extractable SE key, biometric ACL, fail-closed. **UNAUDITED-PROVISIONAL + NON-FUNCTIONAL**: Capacitor inline-plugin registration blocker — JS-side registerPlugin() cannot discover the plugin at runtime despite compilation success. The plugin code is written and compiles; it cannot be called from the app until Capacitor's SPM package conversion resolves the discovery mechanism. See `docs/Feature-Status.md §8a` + memory `h-new-d-ios-se-implementation.md`. | Capacitor SPM package conversion (or accept blocker as permanently documented) |
+| H-NEW-D | iOS native / KEK | **BUILT / device-verified (PARTIAL) 2026-07-01 — registration blocker RESOLVED.** SE P-256 ECIES KEK shipped as an Objective-C plugin (`HardwareKekPlugin.m` + `.h` + `HardwareKekPluginBridge.m`, PR #495) — the two-file split fixed the Capacitor discovery blocker described in the old Swift note (superclass is now `CAPPlugin`). Non-extractable SE key, `.biometryCurrentSet` biometric ACL, fail-closed. Device-verified on iPhone 17 Pro Max (two Sepolia sends from a KEK-enrolled vault). **UNAUDITED-PROVISIONAL, NOT "verified":** ECC source-level audit 2026-07-01 (`docs/audit-triage/ecc-hardware-kek-audit-2026-07-01.md`) found 0C/0H/4M/8L. See §4 (iOS SE-ECIES entry). | Device tests: biometric re-enrollment invalidation + live SE-unlock trace (§7); independent audit sign-off |
 | F-01 / F-02 | Mobile / biometric | Biometric cache not OS-ACL bound (M2c/M2d plan) — app-layer gate, not hardware-enforced ACL | Native plugin + real device required; would hit same Capacitor blocker as H-NEW-D |
 | F-09 | RASP | RASP not adversarially tested on rooted/Frida devices — OS-level probes unverified on live targets | Phase 4 — native RASP OS-level probes + real rooted/Frida device |
 | M-K | Web-App / passkey | **BUILT (2026-06-30)**: WebAuthn signCount persistence + cloned authenticator detection. Extracts signCount from assertion response, compares to stored value, rejects replays (signCount must increase). Stored in localStorage (best-effort, no backend). Tests passing ✓. Ready for device verification with real clone attempt. | Device verification with cloned soft authenticator test |
