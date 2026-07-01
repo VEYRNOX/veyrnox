@@ -134,8 +134,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - **Browser Support:**
   | Platform | Authentication | Hardware Backing | Status |
   |----------|----------------|------------------|--------|
-  | Chrome ≥99 | Password-derived + WebAuthn PRF | ✅ Full PRF hardware binding | 🟢 VERIFIED |
-  | Firefox ≥108 | Password-derived + WebAuthn PRF | ✅ Full PRF hardware binding | 🟢 VERIFIED |
+  | Chrome ≥99 | Password-derived + WebAuthn PRF | ✅ Full PRF hardware binding | 🟡 BUILT / UAT-PENDING |
+  | Firefox ≥108 | Password-derived + WebAuthn PRF | ✅ Full PRF hardware binding | 🟡 BUILT / UAT-PENDING |
   | Safari Desktop | Password-only fallback | ❌ PRF N/A (browser limit) | 🟢 WORKING (graceful degradation) |
   | Safari iOS | Password-only fallback | ❌ PRF N/A (browser limit) | 🟢 WORKING (graceful degradation) |
 - **Honest Framing:** Safari users fall back to password-only (≥12 chars). This is by design, not a gap — Phase 2 iOS will have Secure Enclave (stronger than PRF).

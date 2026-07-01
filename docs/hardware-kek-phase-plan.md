@@ -33,8 +33,8 @@ The Hardware Key Encryption (KEK) rollout addresses the offline-seizure threat b
 
 | Platform | Authentication | Hardware Backing | Status | Notes |
 |----------|----------------|------------------|--------|-------|
-| Chrome ≥99 | Password + WebAuthn PRF | ✅ Full PRF hardware binding | 🟢 VERIFIED | Tested on real device |
-| Firefox ≥108 | Password + WebAuthn PRF | ✅ Full PRF hardware binding | 🟢 VERIFIED | Version-dependent (108+) |
+| Chrome ≥99 | Password + WebAuthn PRF | ✅ Full PRF hardware binding | 🟡 BUILT / UAT-PENDING | Awaiting browser UAT testnet txid |
+| Firefox ≥108 | Password + WebAuthn PRF | ✅ Full PRF hardware binding | 🟡 BUILT / UAT-PENDING | Awaiting browser UAT testnet txid |
 | Safari Desktop | Password-only | ❌ PRF N/A | 🟢 WORKING | Graceful degradation, ≥12 chars enforced |
 | Safari iOS | Password-only | ❌ PRF N/A | 🟢 WORKING | Graceful degradation, ≥12 chars enforced |
 
