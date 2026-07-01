@@ -38,10 +38,24 @@ export default function HardwareKekSettings() {
   useEffect(() => {
     if (!isNative) { setEnrolled(false); return; }
     let active = true;
-    import('@/wallet-core/keystore/hardware.js')
-      .then(m => m.isHardwareEnrolled())
-      .then(v => { if (active) setEnrolled(v); })
-      .catch(() => { if (active) setEnrolled(false); });
+    (async () => {
+      try {
+        // Reconcile the enrolled signal against REAL protection (I4 honesty):
+        // "ON" only if the AndroidKeyStore/Keychain alias is present AND the
+        // stored vault is actually KEK-wrapped. Alias-present + vault-bare is a
+        // stale alias (not real protection) → honest state is OFF, and we clean
+        // up the orphan so isEnrolled() stops reporting a false "ON".
+        const hw = await import('@/wallet-core/keystore/hardware.js');
+        const aliasPresent = await hw.isHardwareEnrolled();
+        const vaultWrapped = await getKeyStore().hasVaultKekWrap();
+        if (aliasPresent && !vaultWrapped) {
+          try { await hw.clearHardwareCredential(); } catch { /* best-effort */ }
+        }
+        if (active) setEnrolled(aliasPresent && vaultWrapped);
+      } catch {
+        if (active) setEnrolled(false);
+      }
+    })();
     return () => { active = false; };
   }, []);
 

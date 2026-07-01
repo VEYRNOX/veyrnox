@@ -261,6 +261,20 @@ export const nativeKeyStore = {
     return raw !== null && raw !== undefined;
   },
 
+  // Reconciliation accessor (I4 honest enrolled-state): reports whether the
+  // stored vault is actually KEK-wrapped. Reads metadata ONLY — never the secret,
+  // never a biometric prompt (passcode-gated read of the vault blob). The badge
+  // treats "hardware enrolled" as aliasPresent AND vaultKekWrapPresent; if the
+  // AndroidKeyStore alias is present but the vault is bare, the honest state is
+  // OFF (a stale alias is not real protection).
+  async hasVaultKekWrap() {
+    await init();
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) return false;
+    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return !!blob.kekWrap;
+  },
+
   // Encrypt with the SAME audited crypto as web, then persist CIPHERTEXT ONLY to
   // the platform secure store (iOS Keychain / Android Keystore). The live secret never touches IndexedDB/
   // localStorage and is not retained here after this call returns.
@@ -416,7 +430,16 @@ export const nativeKeyStore = {
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (!raw) throw new Error('No wallet found on this device');
       const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      if (!blob.kekWrap) return; // already bare — nothing to do
+      if (!blob.kekWrap) {
+        // Already-bare vault: no key material to re-wrap, but a stale Keystore
+        // alias may survive from a prior partial/interrupted unenroll. Clearing
+        // it here is what makes isHardwareEnrolled() honest — otherwise the "ON"
+        // badge sticks with no way to turn it off (I4 fail-honest, fail-closed).
+        // Idempotent: clearCredential guards on containsAlias, so a no-op when
+        // no key exists. A bare vault needs no hardware key.
+        await clearHardwareCredential();
+        return;
+      }
 
       // Recover DEK: H (hardware factor, biometric) + PIN-derived C
       const H = await getHF();
