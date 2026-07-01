@@ -70,7 +70,9 @@ identity; the app never holds keys server-side.
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
   makes zero backend calls. I4 — fail honest, fail closed. I5 — backend untrusted by design.
-- **I6 — Hardware Binding:** PIN-cohort DEK wrapped under KEK = HKDF(H ⊕ C)
+- **I6 — Hardware Binding:** PIN-cohort DEK wrapped under KEK = HKDF(H ‖ C) — ordered
+  concatenation of H then C as the HKDF IKM (NOT XOR; corrected per the ECC KEK audit
+  2026-07-01 — code is `kek.js: combineKek`, domain `veyrnox/kek/v1/combine(H||C)`)
   - H: Hardware factor (web: WebAuthn PRF; iOS: Secure Enclave; Android: StrongBox)
   - C: Password/PIN-derived factor (Argon2id)
   - Requirement: Both H and C must be present; missing either throws (fail-closed)
