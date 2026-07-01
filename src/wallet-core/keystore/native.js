@@ -500,30 +500,51 @@ export const nativeKeyStore = {
       const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
       const secret = await decryptVault(blob, password); // verify password and recover seed
 
+      // L2 (audit): getHF() materialises the hardware credential (AndroidKeyStore /
+      // iOS Keychain). Once it exists, any downstream failure would otherwise ORPHAN
+      // that credential — the old rollback lived only in the UI catch, so a non-UI
+      // caller left a stale credential behind. Guarantee the cleanup here in the
+      // contract: from getHF() onward, wrap the enroll body so ANY throw
+      // (combineKek/wrapDek/encrypt/safeWriteVault) clears the just-created credential
+      // before rethrowing (I4 fail-honest, fail-closed). Only the FAILURE path clears;
+      // the success path (no throw) never touches the credential we just enrolled.
       const H = await getHF();
-      const saltBytes = crypto.getRandomValues(new Uint8Array(32));
-      const kekSalt = btoa(String.fromCharCode(...saltBytes));
-      let C;
-      let kek;
-      const dek = randomDek();
-      // H-NEW-6b: wrap the entire KEK + DEK lifetime in try/finally so H, C, the
-      // derived KEK, and the DEK are wiped even if combineKek/wrapDek/encryptVaultWithDek
-      // throws — never leave plaintext key material in the JS heap until GC (I4).
       try {
-        C = await deriveKekC(password, saltBytes);
-        kek = await combineKek(H, C);
-        if (H && H.fill) H.fill(0);
-        if (C) C.fill(0);
-        const kekWrap = await wrapDek(kek, dek);
-        // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
-        const { iv, ct } = await encryptVaultWithDek(secret, dek);
-        await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
-      } finally {
-        if (H && H.fill) H.fill(0);
-        if (C) C.fill(0);
-        if (kek) kek.fill(0);
-        dek.fill(0);
-        saltBytes.fill(0);
+        const saltBytes = crypto.getRandomValues(new Uint8Array(32));
+        const kekSalt = btoa(String.fromCharCode(...saltBytes));
+        let C;
+        let kek;
+        const dek = randomDek();
+        // H-NEW-6b: wrap the entire KEK + DEK lifetime in try/finally so H, C, the
+        // derived KEK, and the DEK are wiped even if combineKek/wrapDek/encryptVaultWithDek
+        // throws — never leave plaintext key material in the JS heap until GC (I4).
+        try {
+          C = await deriveKekC(password, saltBytes);
+          kek = await combineKek(H, C);
+          if (H && H.fill) H.fill(0);
+          if (C) C.fill(0);
+          const kekWrap = await wrapDek(kek, dek);
+          // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
+          const { iv, ct } = await encryptVaultWithDek(secret, dek);
+          await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+        } finally {
+          if (H && H.fill) H.fill(0);
+          if (C) C.fill(0);
+          if (kek) kek.fill(0);
+          dek.fill(0);
+          saltBytes.fill(0);
+        }
+      } catch (err) {
+        // Enroll failed after the credential was created: roll it back so the
+        // vault (still bare) and the hardware layer stay consistent. clearHardware-
+        // Credential is idempotent (plugin guards on containsAlias). Best-effort —
+        // never mask the original enroll error, and never swallow it (rethrow).
+        try {
+          await clearHardwareCredential();
+        } catch {
+          /* keep the original enroll failure as the surfaced error (I4) */
+        }
+        throw err;
       }
     });
   },
