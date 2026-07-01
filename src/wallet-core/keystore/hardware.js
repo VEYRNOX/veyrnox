@@ -27,6 +27,43 @@ export const PRF_EVAL_SALT = new Uint8Array([
   0x73,0x61,0x6c,0x74,0x21,0x21,0x21,0x21,
 ]);
 
+/**
+ * ENROLL_ERR — machine codes for enroll-time refusals (I4 fail-closed).
+ * The message text is honesty copy; callers assert on the CODE, not the prose.
+ */
+export const ENROLL_ERR = Object.freeze({
+  // The Keystore/Enclave landed the key in a non-hardware (or unverifiable) tier.
+  // A SOFTWARE-tier key gives NO hardware binding, so enrolling it would let a
+  // software-only key present as "Hardware Protection ON" — refused (M2).
+  INSECURE_TIER: 'KEK_ENROLL_INSECURE_TIER',
+});
+
+// Tier names the enroll gate ACCEPTS as real secure hardware.
+//   Android: STRONGBOX (2), TRUSTED_ENVIRONMENT / TEE (1), SECURE_HARDWARE_PRE31
+//            (pre-API-31 secure hardware), UNKNOWN_SECURE (-1, reported secure).
+//   iOS:     SecureEnclave (the iOS plugin resolves { keyTier: 'SecureEnclave' }).
+// TEE is deliberately ACCEPTED — it meets the at-rest threat model; refusing it would
+// needlessly exclude most Androids. StrongBox enforcement stays TARGET (not required
+// here). Everything NOT in this set — SOFTWARE, UNKNOWN, NO_KEY, PROBE_ERROR:*, or a
+// missing/undefined tier — is REFUSED (fail-closed on absent/insecure evidence).
+const ACCEPTED_TIER_NAMES = Object.freeze(new Set([
+  'STRONGBOX',
+  'TRUSTED_ENVIRONMENT',
+  'SECURE_HARDWARE_PRE31',
+  'UNKNOWN_SECURE',
+  'SecureEnclave',
+]));
+
+// Normalize the enroll() result (Android { securityLevel, securityLevelName } OR iOS
+// { keyTier }) to a single { securityLevel, securityLevelName } shape for the caller.
+function normalizeTier(res) {
+  if (!res || typeof res !== 'object') {
+    return { securityLevel: undefined, securityLevelName: undefined };
+  }
+  const name = res.securityLevelName ?? res.keyTier;
+  return { securityLevel: res.securityLevel, securityLevelName: name };
+}
+
 /** Lazy plugin reference — only resolved on native platform */
 let _plugin = null;
 function getPlugin() {
@@ -58,15 +95,45 @@ export async function isHardwareEnrolled() {
 }
 
 /**
- * enrollHardwareCredential() → void
- * Generates the HMAC-SHA256 key in Android Keystore.
- * No biometric prompt at generation time.
- * Caller (enrollKek) will call getHardwareFactor() separately to obtain H.
+ * enrollHardwareCredential() → { securityLevel, securityLevelName }
+ * Generates the hardware-bound key (Android Keystore HMAC / iOS Secure Enclave),
+ * then GATES on the real security tier the platform reports (M2, I4 fail-closed).
+ *
+ * A key that landed in SECURITY_LEVEL_SOFTWARE (or an unknown/unreadable tier) gives
+ * NO hardware binding — enrolling it would let a software-only key present as
+ * "Hardware Protection ON", defeating the offline-seizure protection this feature
+ * exists for. So we REFUSE those tiers here (throw ENROLL_ERR.INSECURE_TIER) BEFORE
+ * enrollKek is ever called — leaving the vault bare (no kekWrap). TEE and StrongBox
+ * (and iOS Secure Enclave) are ACCEPTED.
+ *
+ * On acceptance we RETURN the tier so the caller (enrollKek path / settings UI) can
+ * surface it. No biometric prompt at generation time; enrollKek calls
+ * getHardwareFactor() next to obtain H.
  */
 export async function enrollHardwareCredential() {
   const plugin = getPlugin();
-  await plugin.enroll();
-  // returns void — enrollKek calls getHardwareFactor() next
+  const raw = await plugin.enroll();
+  const tier = normalizeTier(raw);
+  if (!tier.securityLevelName || !ACCEPTED_TIER_NAMES.has(tier.securityLevelName)) {
+    // Fail-closed: refuse a software/unknown/unreadable tier. The caller's cleanup
+    // (clearHardwareCredential) removes the orphaned alias; no kekWrap is written.
+    // Object.assign (not `err.code = …`) so the code/tier are part of the value's type.
+    throw /** @type {Error & {code: string, securityLevel: number|undefined, securityLevelName: string|undefined}} */ (
+      Object.assign(
+        new Error(
+          `${ENROLL_ERR.INSECURE_TIER}: device reported tier ` +
+          `"${tier.securityLevelName ?? 'unknown'}" — no secure hardware element, ` +
+          `hardware protection can't be enabled on this device`,
+        ),
+        {
+          code: ENROLL_ERR.INSECURE_TIER,
+          securityLevel: tier.securityLevel,
+          securityLevelName: tier.securityLevelName,
+        },
+      )
+    );
+  }
+  return tier;
 }
 
 /**
