@@ -109,14 +109,13 @@ of it **under-claiming** the shipped iOS SE work.
 | L1 | LOW | ✅ FIXED | #509 — `withLockSuppressed` on `changePassword` + `saveVaultContents` |
 | L2 | LOW | ✅ FIXED | #514 — `enrollKek` now clears the hardware credential on its own failure (rollback in the contract, not just the UI catch) |
 | L3 | LOW | ✅ FIXED | #508 — `containsAlias` re-enroll guard (`KEK_ALREADY_ENROLLED`) prevents silent re-key/brick |
-| L4 | LOW | 🔵 IN REVIEW | #513 — iOS enroll pre-clear hardened (`STALE_CLEAR_FAILED` on delete failure). Uncompiled ObjC — needs an Xcode build + device reinstall test before merge |
+| L4 | LOW | ✅ FIXED | #513 (merged 2026-07-01) — iOS enroll pre-clear hardened (`STALE_CLEAR_FAILED` on delete failure). Uncompiled ObjC — Mac build + device reinstall test still required to confirm compile |
 | L5 | LOW | ✅ FIXED | #515 — stale iOS "Keychain-not-SE" comments in `kek.js`/`hardware.js` corrected + `.swift` reference removed; honesty tests reconciled to the true SE-ECIES model (user-facing overclaim guard adversarially verified still intact) |
 | L6 | LOW | ✅ FIXED | #507 — Android device-verification moved to non-promoting `_android_hardware_kek_device_verification` META key |
 | L7 | LOW | ✅ FIXED | #515 — versioned GCM AAD: new wraps are v2 and bind the format version into the tag; legacy v1 blobs still unwrap (backward-compatible, no vault brick) |
 | L8 | LOW | ✅ FIXED | #508 — Android source-scan test now pins `setInvalidatedByBiometricEnrollment(true)`, per-use `setUserAuthenticationParameters(0,`, the SDK guard, and the re-enroll guard |
 
-**Fixed & merged:** all 4 MEDIUM + L1/L2/L3/L5/L6/L7/L8 (via #507 / #508 / #509 / #514 / #515 — each honestly tagged BUILT; the code fixes rest on JS/source-scan tests + review, native code not compiled/device-run here).
-**In review:** L4 (#513 — uncompiled ObjC, device build needed).
+**Fixed & merged:** all 4 MEDIUM + all 8 LOW (L1–L8) via #507 / #508 / #509 / #513 / #514 / #515 — each honestly tagged BUILT; native ObjC fixes (L4) are text-level, Mac build + device test still required to confirm compile.
 Nothing from this audit remains un-actioned.
 
 ### Still the gate — device tests (source audit cannot substitute)
