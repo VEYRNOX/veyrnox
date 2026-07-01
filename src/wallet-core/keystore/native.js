@@ -224,6 +224,20 @@ async function authenticateOrThrow() {
   await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
 }
 
+// C-1 (v2 protocol): build the getHardwareFactor() call options for an EXISTING vault
+// blob. A v2 vault (blob.hardwareKekVersion === 2) binds H to its per-enrollment kekSalt,
+// so we pass { kekSalt } (decoded from the stored base64). A legacy v1 vault (no
+// hardwareKekVersion) MUST call getHardwareFactor() with NO kekSalt so the native plugin
+// falls back to the fixed PRF_EVAL_SALT and reproduces the H the wrap was made with —
+// changing this would permanently brick existing v1 wraps (fail closed to backwards-compat).
+// Returns undefined for v1 (call getHF() with no args) or { kekSalt: Uint8Array } for v2.
+function hfOptsForBlob(blob, saltBytes) {
+  if (blob && blob.hardwareKekVersion === 2) {
+    return { kekSalt: saltBytes.slice() };
+  }
+  return undefined;
+}
+
 async function _unlockInner(password, opts = {}) {
   const raw = await SecureStorage.get(VAULT_KEY, false);
   if (raw === null || raw === undefined) {
@@ -237,8 +251,9 @@ async function _unlockInner(password, opts = {}) {
     // so authenticateOrThrow() is intentionally skipped here to avoid a double prompt.
     const getHF = opts && opts.getHardwareFactor;
     if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-    const H = await getHF(); // biometric prompt from HardwareKekPlugin (Android Keystore)
     const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+    // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
+    const H = await getHF(hfOptsForBlob(blob, saltBytes)); // biometric prompt (Android Keystore)
     let C;
     let kek;
     let dek;
@@ -373,7 +388,8 @@ export const nativeKeyStore = {
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
-      const H = await getHF(); // one biometric prompt for this content write
+      // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
+      const H = await getHF(hfOptsForBlob(blob, saltBytes)); // one biometric prompt for this write
       let C;
       let kek;
       let dek;
@@ -445,8 +461,16 @@ export const nativeKeyStore = {
         const getHF = opts && opts.getHardwareFactor;
         if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
         const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
-        const H = await getHF();
-        const H2 = H.slice(); // combineKek zeroes its H input; copy before the first call
+        // C-1 (v2): the re-wrap uses a FRESH kekSalt, so its H is bound to a DIFFERENT
+        // salt than the unlock side — the old H2-reuse is INVALID under v2. Generate the
+        // new salt up front and derive H TWICE: once bound to the old salt (unlock), once
+        // bound to the new salt (re-wrap). For a legacy v1 vault hfOptsForBlob returns
+        // undefined on both sides, so both calls fall back to the fixed salt (H matches).
+        const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+        const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+        const H = await getHF(hfOptsForBlob(blob, oldSaltBytes));
+        // The re-enrolled vault is always v2; bind the new H to the new salt.
+        const H2 = await getHF({ kekSalt: newSaltBytes.slice() });
         let oldC;
         let newC;
         let oldKek;
@@ -463,15 +487,13 @@ export const nativeKeyStore = {
           if (oldC) oldC.fill(0);
           dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
           // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
-          const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
-          const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
           newC = await deriveKekC(newPassword, newSaltBytes);
           newKek = await combineKek(H2, newC);
           if (H2 && H2.fill) H2.fill(0);
           if (newC) newC.fill(0);
           const newKekWrap = await wrapDek(newKek, dek);
           newSaltBytes.fill(0);
-          await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
+          await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 2 });
         } finally {
           if (H && H.fill) H.fill(0);
           if (H2 && H2.fill) H2.fill(0);
@@ -481,6 +503,7 @@ export const nativeKeyStore = {
           if (newKek) newKek.fill(0);
           if (dek) dek.fill(0);
           oldSaltBytes.fill(0);
+          newSaltBytes.fill(0);
         }
         return;
       }
@@ -495,6 +518,19 @@ export const nativeKeyStore = {
   // and changePassword() require BOTH the hardware factor H (via opts.getHardwareFactor)
   // and the correct PIN. Fail-closed (I4): missing hardware factor → explicit throw.
   // Gates behind the biometric prompt so the operation itself is authenticated.
+  // Read the persisted hardware security tier from the vault blob.
+  // Returns the securityLevelName string (e.g. 'STRONGBOX', 'TRUSTED_ENVIRONMENT',
+  // 'SecureEnclave') or null when not enrolled or the tier was never stored.
+  // Metadata-only read — never the secret, never a biometric prompt.
+  async getVaultKekTier() {
+    await init();
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) return null;
+    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!blob.kekWrap) return null;
+    return blob.hardwareKekTier ?? null;
+  },
+
   async enrollKek(password, opts) {
     await init();
     return withLockSuppressed(async () => {
@@ -514,10 +550,13 @@ export const nativeKeyStore = {
       // (combineKek/wrapDek/encrypt/safeWriteVault) clears the just-created credential
       // before rethrowing (I4 fail-honest, fail-closed). Only the FAILURE path clears;
       // the success path (no throw) never touches the credential we just enrolled.
-      const H = await getHF();
+      // C-1 (v2): generate the per-enrollment kekSalt FIRST, then bind H to it via
+      // getHF({ kekSalt }) so this vault's H is UNIQUE on the device (no longer the
+      // global fixed-salt HMAC). hardwareKekVersion:2 records the binding for unlock.
+      const saltBytes = crypto.getRandomValues(new Uint8Array(32));
+      const kekSalt = btoa(String.fromCharCode(...saltBytes));
+      const H = await getHF({ kekSalt: saltBytes.slice() });
       try {
-        const saltBytes = crypto.getRandomValues(new Uint8Array(32));
-        const kekSalt = btoa(String.fromCharCode(...saltBytes));
         let C;
         let kek;
         const dek = randomDek();
@@ -532,7 +571,15 @@ export const nativeKeyStore = {
           const kekWrap = await wrapDek(kek, dek);
           // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
           const { iv, ct } = await encryptVaultWithDek(secret, dek);
-          await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+          // Persist the hardware security tier alongside the wrap so the badge can
+          // show the real protection level (STRONGBOX / TEE / SecureEnclave) honestly
+          // rather than a generic "ON" label (H-1 honesty fix). The tier comes from
+          // enrollHardwareCredential() and is passed in via opts.hardwareKekTier.
+          // Omitted when absent (older callers / unenroll path).
+          const tierEntry = opts && opts.hardwareKekTier
+            ? { hardwareKekTier: opts.hardwareKekTier }
+            : {};
+          await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 2, ...tierEntry });
         } finally {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
@@ -579,8 +626,9 @@ export const nativeKeyStore = {
       }
 
       // Recover DEK: H (hardware factor, biometric) + PIN-derived C
-      const H = await getHF();
       const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
+      const H = await getHF(hfOptsForBlob(blob, saltBytes));
       let C;
       let kek;
       let dek;

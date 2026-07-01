@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { useWallet } from '@/lib/WalletProvider';
 import { getKeyStore } from '@/wallet-core/keystore';
 import PinPad from '@/components/security/PinPad';
+import { tierToBadge } from '@/wallet-core/keystore/tierBadge.js';
 
 const isNative = (() => {
   try { return Capacitor.isNativePlatform(); } catch { return false; }
@@ -36,6 +37,9 @@ export default function HardwareKekSettings() {
   const [enrolled, setEnrolled] = useState(null);
   // web only: null = checking, true/false = PRF available
   const [webPrfAvailable, setWebPrfAvailable] = useState(isNative ? true : null);
+  // Hardware security tier persisted in the vault blob ('STRONGBOX', 'TRUSTED_ENVIRONMENT',
+  // 'SecureEnclave', or null). Drives the tier-specific badge label (H-1 honesty fix).
+  const [kekTier, setKekTier] = useState(null);
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -52,12 +56,24 @@ export default function HardwareKekSettings() {
           // stale alias (not real protection) → honest state is OFF, and we clean
           // up the orphan so isEnrolled() stops reporting a false "ON".
           const hw = await import('@/wallet-core/keystore/hardware.js');
+          const ks = getKeyStore();
           const aliasPresent = await hw.isHardwareEnrolled();
-          const vaultWrapped = await getKeyStore().hasVaultKekWrap();
+          const vaultWrapped = await ks.hasVaultKekWrap();
           if (aliasPresent && !vaultWrapped) {
             try { await hw.clearHardwareCredential(); } catch { /* best-effort */ }
           }
-          if (active) setEnrolled(aliasPresent && vaultWrapped);
+          const isEnrolled = aliasPresent && vaultWrapped;
+          if (active) {
+            setEnrolled(isEnrolled);
+            // Read the persisted security tier so the badge can show the real level.
+            // getVaultKekTier() is metadata-only (no biometric prompt, no secret read).
+            if (isEnrolled && typeof ks.getVaultKekTier === 'function') {
+              try {
+                const tier = await ks.getVaultKekTier();
+                setKekTier(tier);
+              } catch { /* best-effort — falls back to generic badge */ }
+            }
+          }
         } catch {
           if (active) setEnrolled(false);
         }
@@ -91,10 +107,16 @@ export default function HardwareKekSettings() {
         // Fail-closed (M2): a SOFTWARE / unknown / unreadable tier throws
         // ENROLL_ERR.INSECURE_TIER here — before enrollKek — so the vault is never
         // KEK-wrapped and the "ON" badge can never show for a software-only key.
-        await enrollHardwareCredential();
+        // The returned tier is passed into enrollKek so it's persisted in the vault blob
+        // and the badge can show the real protection level (H-1 honesty fix).
+        const enrolledTier = await enrollHardwareCredential();
         // Step 2: enroll KEK on the vault using the device-bound factor (Keychain/TEE).
         // getHardwareFactor() is called inside enrollKek — second biometric prompt.
-        await getKeyStore().enrollKek(pinToUse, { getHardwareFactor });
+        await getKeyStore().enrollKek(pinToUse, {
+          getHardwareFactor,
+          hardwareKekTier: enrolledTier?.securityLevelName ?? null,
+        });
+        setKekTier(enrolledTier?.securityLevelName ?? null);
       } else {
         const { webKeyStore } = await import('@/wallet-core/keystore/web.js');
         // Web: one call — creates the PRF passkey and enrolls the KEK in one flow.
@@ -144,6 +166,7 @@ export default function HardwareKekSettings() {
         await webKeyStore.unenrollKek(pin, { getHardwareFactor: () => webKeyStore.getHardwareFactor() });
       }
       setEnrolled(false);
+      setKekTier(null);
       setPin('');
       setRemoving(false);
       recordAudit('settings_changed');
@@ -170,11 +193,28 @@ export default function HardwareKekSettings() {
       <div className="flex items-center gap-2">
         <HardDrive className="h-5 w-5 text-primary" />
         <h2 className="font-semibold">Hardware Protection</h2>
-        {enrolled && (
-          <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-success">
-            <ShieldCheck className="h-3.5 w-3.5" /> ON
-          </span>
-        )}
+        {enrolled && (() => {
+          // On web (PRF), kekTier is null — show "WebAuthn Protected".
+          // On native, show the real tier label from the vault blob (H-1 honesty fix).
+          if (!isNative) {
+            return (
+              <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-success">
+                <ShieldCheck className="h-3.5 w-3.5" /> WebAuthn Protected
+              </span>
+            );
+          }
+          const badge = tierToBadge(kekTier);
+          const colourClass = badge.variant === 'success'
+            ? 'text-success'
+            : badge.variant === 'caution'
+              ? 'text-caution'
+              : 'text-muted-foreground';
+          return (
+            <span className={`ml-auto inline-flex items-center gap-1 text-xs font-semibold ${colourClass}`}>
+              <ShieldCheck className="h-3.5 w-3.5" /> {badge.label}
+            </span>
+          );
+        })()}
         {showOffBadge && (
           <span className="ml-auto text-xs text-muted-foreground">OFF</span>
         )}
