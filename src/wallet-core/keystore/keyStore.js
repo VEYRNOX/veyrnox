@@ -113,6 +113,9 @@
  *   `opts.hardwareKekTier` (optional) records the REAL tier the enroll landed in
  *   (StrongBox/TEE/SE) into the blob for the honest badge (H-1); omitted by web/legacy.
  *   Fails closed (I4): missing hardware factor → explicit error, never silent fallback.
+ *   `opts.hardwareKekTier` is an optional tier name from the native plugin
+ *   (e.g. 'STRONGBOX', 'SecureEnclave', 'TRUSTED_ENVIRONMENT') persisted alongside
+ *   the wrap so the badge can surface the real tier (H-1); omitted by web/legacy callers.
  *
  * @property {(password: string, opts: { getHardwareFactor: (hfOpts?: { kekSalt?: Uint8Array }) => Promise<Uint8Array> }) => Promise<void>} [unenrollKek]
  *   OPTIONAL (NATIVE-ONLY): re-wrap vault to bare format then delete the hardware
