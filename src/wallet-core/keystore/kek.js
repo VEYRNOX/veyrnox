@@ -98,6 +98,7 @@ export const KEK_ERR = Object.freeze({
   NO_HARDWARE_FACTOR: 'KEK_NO_HARDWARE_FACTOR',
   NO_SET_FACTOR: 'KEK_NO_SET_FACTOR',
   UNWRAP_FAILED: 'KEK_UNWRAP_FAILED',
+  DEGENERATE_INPUT: 'KEK_DEGENERATE_INPUT',
 });
 
 function isExactBytes(x, len) {
@@ -136,6 +137,18 @@ function unb64(str) { const s = atob(str); const u8 = new Uint8Array(s.length); 
 export async function combineKek(H, C) {
   if (!isExactBytes(H, H_LEN)) throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
   if (!isExactBytes(C, C_LEN)) throw new Error(KEK_ERR.NO_SET_FACTOR);
+
+  // H-4 / iOS-F8 (defence in depth): reject an all-zero H or C. An all-zero factor is a
+  // valid length but contributes no entropy, collapsing the KEK to the other factor
+  // alone (I6 hardware binding silently void). The device layer (hardware.js) is the
+  // first line; this is the combine's own fail-closed guard (I4).
+  const hAllZero = H.every((b) => b === 0);
+  const cAllZero = C.every((b) => b === 0);
+  if (hAllZero || cAllZero) {
+    throw Object.assign(new Error(KEK_ERR.DEGENERATE_INPUT), {
+      code: KEK_ERR.DEGENERATE_INPUT,
+    });
+  }
 
   const ikm = new Uint8Array(H_LEN + C_LEN);
   ikm.set(H, 0);
