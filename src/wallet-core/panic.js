@@ -172,6 +172,10 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   'veyrnox-biometric-unlock',
   'veyrnox-pin-attempts',
   'veyrnox-pin-backoff-until',
+  // WebAuthn PRF credential ID — wallet-core/keystore/web.js CRED_KEY. Proves a
+  // hardware-KEK-enrolled Veyrnox vault existed on the device; strongest web tell.
+  // Must be erased by panic wipe (I3/I4).
+  'veyrnox-prf-cred-id',
 ]);
 
 // NON-SECRET wallet/token METADATA residue (F-06). Unlike the keys above, these do
