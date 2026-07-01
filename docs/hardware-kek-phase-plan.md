@@ -135,6 +135,44 @@ Native mobile requires custom plugin development (Swift + Kotlin), real-device t
 | 6 | Biometric re-enrollment test (key invalidation) | Biometric re-enrollment test (key invalidation) | Parallel testing |
 | 7–8 | Audit refresh + sign-off | Audit refresh + sign-off | Pre-ship gating |
 
+### Android Device-Verification Evidence (2026-07-01, Pixel 10 Pro XL)
+
+**Device:** Google Pixel 10 Pro XL (`mustang`), Android 16 / API 36,
+`android.hardware.strongbox_keystore` feature flag present (value 300). Debug build
+`com.veyrnox.app.debug`, side-by-side install.
+
+**What was observed (logcat evidence, this device only):**
+
+- **H15 — StrongBox tier, OBSERVABILITY half only.** A new tier probe in
+  `HardwareKekPlugin.enroll()` reads `KeyInfo.getSecurityLevel()` post-generation and logs
+  the result. On this device it logged:
+  `I/HardwareKek: enroll: key stored — tier=STRONGBOX (securityLevel=2)`
+  confirming the HMAC key genuinely landed in StrongBox hardware (securityLevel 2, not
+  TEE/software fallback). Reproduced across several enroll/unenroll cycles with no errors.
+  **This is device-specific, not a universal claim** — the tier is read and logged
+  per-device; a phone without StrongBox would honestly log `tier=TRUSTED_ENVIRONMENT` (or
+  equivalent) instead. **StrongBox ENFORCEMENT (rejecting a non-StrongBox device outright)
+  is NOT part of this change and remains TARGET** — today the plugin observes and logs the
+  tier it got; it does not yet refuse to enroll on a device that lacks StrongBox.
+- **H16 — biometric-only gate, CONFIRMED on this device.** The OS `BiometricService` log
+  for the `getHardwareFactor()` prompt showed:
+  `StrengthRequested: 15 (BIOMETRIC_STRONG), CredentialRequested: false`
+  i.e. no PIN/pattern/password fallback was offered by the prompt — the possession factor
+  is intact, biometric-only as designed.
+
+**What this does NOT cover (still outstanding, not device-verified):**
+- No on-chain testnet send was performed in this session. The Sepolia
+  fingerprint-gated SEND (item 2 in the checklist below) remains unchecked.
+- The biometric re-enrollment invalidation test (old key invalidated after re-enroll) was
+  NOT run this session and remains unchecked.
+- StrongBox tier ENFORCEMENT (reject non-StrongBox devices) is TARGET, not built — only
+  the read/log observability landed.
+- Audit refresh / owner sign-off on the device-gated Phase 2 implementation is still
+  pending.
+
+**Status stays BUILT / device-verified (enroll, tier-observability, biometric-gating
+only) — NOT independently audited, NOT "verified" in the on-chain asset sense.**
+
 ### Device Verification (Gate for "VERIFIED")
 
 Before a native send is marked "verified" and Phase 2 is considered shipped:
@@ -149,13 +187,14 @@ Before a native send is marked "verified" and Phase 2 is considered shipped:
    - Confirm unlock requires new Face ID enroll or password fallback
 
 2. **Real Pixel (Fingerprint):**
-   - Enroll fingerprint in test device
-   - Launch app, unlock with PIN → Fingerprint prompt renders
-   - Approve fingerprint → unlock succeeds
-   - Send real ETH on Sepolia
-   - Capture txid from explorer
-   - Re-enroll fingerprint → unlock re-prompts (old key invalidated)
-   - Confirm unlock requires password fallback after re-enroll
+   - [x] Enroll fingerprint in test device (Pixel 10 Pro XL, 2026-07-01 — key stored,
+     tier logged as STRONGBOX)
+   - [x] Launch app, unlock with PIN → Fingerprint prompt renders, biometric-only
+     (no credential fallback) confirmed via `BiometricService` log, 2026-07-01
+   - [ ] Send real ETH on Sepolia — **NOT YET DONE**
+   - [ ] Capture txid from explorer — **NOT YET DONE**
+   - [ ] Re-enroll fingerprint → unlock re-prompts (old key invalidated) — **NOT YET DONE**
+   - [ ] Confirm unlock requires password fallback after re-enroll — **NOT YET DONE**
 
 3. **Testnet Txid Evidence:**
    - iPhone Face ID send (SE-ECIES KEK path, PR #495):
@@ -291,12 +330,17 @@ I6 — Hardware Binding: PIN-cohort DEK wrapped under KEK = HKDF(H ⊕ C)
 - Fallback to standard Keystore (honest disclosure)
 - All I1–I6 security invariants verified
 
-**Real-Device Verification:** 🟡 PARTIAL (iOS device-verified, criterion 1 incomplete; Android pending)
-- [x] iPhone (Face ID): Two Sepolia sends confirmed on-chain (2026-07-01) — see Txid Evidence above.
-      OUTSTANDING: live getHardwareFactor log trace + biometric re-enrollment invalidation test.
-      Status: DEVICE-VERIFIED (PARTIAL), not the full criterion-1 gate.
-- [ ] Pixel (Fingerprint): Sepolia send `0x___`, biometric re-enroll test passed
-- [ ] Audit refresh: Sign-off on device-gated implementation (UNAUDITED-PROVISIONAL)
+**Real-Device Verification:** 🟡 PARTIAL — both platforms device-verified on distinct legs
+(2026-07-01); no platform passes the full criterion-1 gate yet. **NOT COMPLETE.**
+- [~] iPhone (Face ID, SE-ECIES, PR #495): **two Sepolia sends confirmed on-chain**
+  (2026-07-01 — see "Testnet Txid Evidence" above) from a KEK-enrolled vault; SE-KEK unlock
+  gated signing (fail-closed proof). OUTSTANDING: live `getHardwareFactor` log trace tied to
+  the send + biometric re-enrollment invalidation test. → DEVICE-VERIFIED (PARTIAL).
+- [~] Pixel (Fingerprint, StrongBox, PR #496): enroll succeeds, **StrongBox tier observed**
+  (securityLevel=2), biometric-only gate confirmed (2026-07-01, Pixel 10 Pro XL — see
+  "Android Device-Verification Evidence" above). OUTSTANDING: Sepolia send `0x___` +
+  biometric re-enrollment invalidation test. → DEVICE-VERIFIED (PARTIAL).
+- [ ] Audit refresh: Sign-off on device-gated implementation (UNAUDITED-PROVISIONAL, both platforms)
 
 **Ship Decision:** READY (once device txids and audit sign-off confirmed)
 
