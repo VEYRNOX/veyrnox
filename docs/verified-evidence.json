@@ -65,6 +65,17 @@
     "caveats": "(1) The KEK gates UNLOCK (H + PIN unwrap the DEK); the send then signs with the in-memory DEK — this confirms the send REQUIRED the StrongBox KEK to unlock, not that a per-signature SE/StrongBox key signed the tx. (2) StrongBox tier is device-specific to this Pixel 10 Pro XL (securityLevel=2); a non-StrongBox device would log TRUSTED_ENVIRONMENT — tier ENFORCEMENT is still TARGET. (3) BUILT + device-verified, NOT independently audited. (4) Depends on the 3-bug fix (PRs #497/#499) that made the KEK actually persist + gate unlock — before that the vault was silently downgraded to bare on every unlock, so no earlier Android send was genuinely KEK-gated. (5) Biometric re-enrollment invalidation test (old key invalidated after re-enroll) still NOT done.",
     "date": "2026-07-01"
   },
+  "_hardware_kek_biometric_reenroll_invalidation": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. This is an on-device PROTECTION test (biometric re-enrollment invalidation), not a testnet txid, so it must stay out of the txid-gated 'evidence' set (featureCatalogue.verifiedFeatureNames = Object.keys(evidence)). Mirrors _ios/_android_hardware_kek_device_verification. Records that setInvalidatedByBiometricEnrollment was verified working on a Pixel 10 Pro XL (I6 hardware-binding property). iOS equivalent still outstanding (device Face ID enrollment was restricted on the test iPhone).",
+    "test_type": "on-device protection verification",
+    "device": "Google Pixel 10 Pro XL (Android 16/API 36)",
+    "what_tested": "setInvalidatedByBiometricEnrollment(true) protection on StrongBox-KEK-enrolled vault",
+    "procedure": "1. Enrolled KEK (biometric + StrongBox). 2. Deleted one OS fingerprint. 3. Re-enrolled new fingerprint (triggers biometric state change). 4. Force-closed app + cold restart. 5. Attempted unlock.",
+    "result": "✅ PASS — unlock attempt returned 'Hardware key invalidated - re-enrollment required' error. The OS invalidated the KEK key (via setInvalidatedByBiometricEnrollment), the app detected it, and refused an insecure unlock (fail-closed, I4).",
+    "proof": "Device logcat + on-device error message. Confirmed PIN fallback worked (recovery path intact).",
+    "date": "2026-07-01",
+    "verified_ondevice": "Pixel 10 Pro XL, com.veyrnox.app.debug, 2026-07-01T16:30 UTC. Biometric invalidation protection (setInvalidatedByBiometricEnrollment) is WORKING — key invalidates on biometric state change, app detects and refuses unlock, fail-closed. Recovery (PIN fallback) successful."
+  },
   "evidence": {
     "Solana send (wallet-core module, devnet script)": {
       "chain": "solana-devnet",
@@ -130,16 +141,6 @@
       "script": "scripts/verify-dapp-connector-send.mjs",
       "verified_onchain": "confirmed block 11123831, status SUCCESS, 2026-06-23",
       "date": "2026-06-23"
-    },
-    "Hardware KEK — Biometric re-enrollment invalidation protection (Android, Pixel 10 Pro XL)": {
-      "test_type": "on-device protection verification",
-      "device": "Google Pixel 10 Pro XL (Android 16/API 36)",
-      "what_tested": "setInvalidatedByBiometricEnrollment(true) protection on StrongBox-KEK-enrolled vault",
-      "procedure": "1. Enrolled KEK (biometric + StrongBox). 2. Deleted one OS fingerprint. 3. Re-enrolled new fingerprint (triggers biometric state change). 4. Force-closed app + cold restart. 5. Attempted unlock.",
-      "result": "✅ PASS — unlock attempt returned 'Hardware key invalidated - re-enrollment required' error. The OS invalidated the KEK key (via setInvalidatedByBiometricEnrollment), the app detected it, and refused an insecure unlock (fail-closed, I4).",
-      "proof": "Device logcat + on-device error message. Confirmed PIN fallback worked (recovery path intact).",
-      "date": "2026-07-01",
-      "verified_ondevice": "Pixel 10 Pro XL, com.veyrnox.app.debug, 2026-07-01T16:30 UTC. Biometric invalidation protection (setInvalidatedByBiometricEnrollment) is WORKING — key invalidates on biometric state change, app detects and refuses unlock, fail-closed. Recovery (PIN fallback) successful."
     }
   }
 }
