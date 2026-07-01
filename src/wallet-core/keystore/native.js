@@ -67,6 +67,99 @@ import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 // Single-vault slice, mirroring evm/vaultStore.js's web layout (KEY='primary').
 const KEY_PREFIX = 'veyrnox_';
 const VAULT_KEY = 'vault_v1';
+// Journal key for the crash-safe safe-write (see safeWriteVault). The new blob is
+// staged here, read-back-verified, THEN promoted to VAULT_KEY.
+const VAULT_NEXT_KEY = 'vault_v1.next';
+
+// ── Durable vault write (Android non-durable-overwrite fix, I4 fail-closed) ──────
+//
+// DEFECT (device-reproduced, Pixel 10 Pro XL): @aparajita/capacitor-secure-storage
+// `set(VAULT_KEY, ...)` OVER an already-existing item does NOT durably overwrite on
+// Android. In-session read-back returns the new blob, but a fresh read (cold launch)
+// returns the ORIGINAL blob — every vault UPDATE (enrollKek/unenrollKek/change-
+// Password) was silently lost on restart, so the KEK never truly persisted.
+//
+// FIX: a journaled safe-write used by ALL vault mutations.
+//   1. Stage the new blob under VAULT_NEXT_KEY. This key has no prior committed
+//      value, so the plugin's Android put DOES commit durably (fresh-item insert
+//      works; it is only overwrite-in-place that fails).
+//   2. Read VAULT_NEXT_KEY back and verify it equals what we intended — fail-closed
+//      throw on mismatch (I4): a silent write failure must never look like success.
+//   3. PROMOTE: remove(VAULT_KEY) then set(VAULT_KEY, blob). Removing first turns
+//      the promote into a fresh-item insert too, so it commits durably.
+//   4. Read VAULT_KEY back and verify — fail-closed throw on mismatch.
+//   5. Delete the journal (VAULT_NEXT_KEY).
+//
+// CRASH-WINDOW ANALYSIS (no data-loss window):
+//   • Crash after (1)/(2), before (3): VAULT_KEY still holds the OLD (durable)
+//     blob AND VAULT_NEXT_KEY holds the VERIFIED new blob. recoverVaultJournal()
+//     (run on every load path) detects the leftover journal and completes the
+//     promote → the NEW vault. No loss either way (old is intact; new is verified).
+//   • Crash during (3) after remove but before set: VAULT_KEY is gone but
+//     VAULT_NEXT_KEY holds the verified new blob → recovery re-does the set from
+//     the journal. Vault recovered.
+//   • Crash after (3), before (5): VAULT_KEY holds the new blob and a stale journal
+//     remains → recovery sees VAULT_KEY already matches (or simply promotes the
+//     identical journal) and deletes it. Consistent.
+// The journal is ONLY ever the fully-formed, verified next blob, so recovering it is
+// always safe — we never promote a half-written value.
+async function safeWriteVault(blob) {
+  const data = typeof blob === 'string' ? blob : JSON.stringify(blob);
+
+  // 1. Stage under the journal key (fresh-item insert commits durably on Android).
+  //    Remove any stale journal first so this is a clean fresh insert.
+  await SecureStorage.remove(VAULT_NEXT_KEY);
+  await SecureStorage.set(VAULT_NEXT_KEY, data);
+
+  // 2. Read-back-verify the journal (fail-closed).
+  const staged = await SecureStorage.get(VAULT_NEXT_KEY, false);
+  if ((typeof staged === 'string' ? staged : JSON.stringify(staged)) !== data) {
+    // Best-effort cleanup; do not mask the real failure.
+    try { await SecureStorage.remove(VAULT_NEXT_KEY); } catch { /* ignore */ }
+    throw new Error('VAULT_WRITE_STAGE_VERIFY_FAILED');
+  }
+
+  // 3. Promote: remove old (so the following set is a fresh insert), then set.
+  await SecureStorage.remove(VAULT_KEY);
+  await SecureStorage.set(VAULT_KEY, data);
+
+  // 4. Read-back-verify the promoted vault (fail-closed) — this is the exact check
+  //    that catches the Android silent-overwrite defect that made the badge lie.
+  const promoted = await SecureStorage.get(VAULT_KEY, false);
+  if ((typeof promoted === 'string' ? promoted : JSON.stringify(promoted)) !== data) {
+    // Leave the verified journal in place so recovery can complete the promote on
+    // next load; do NOT report success (I4).
+    throw new Error('VAULT_WRITE_VERIFY_FAILED');
+  }
+
+  // 5. Success — delete the journal.
+  await SecureStorage.remove(VAULT_NEXT_KEY);
+}
+
+// Complete an interrupted safe-write on load. If a verified journal survives, the
+// previous mutation's promote did not finish; finish it now (promote + delete). Safe
+// because the journal is only ever the fully-formed, verified next blob. Idempotent.
+async function recoverVaultJournal() {
+  const staged = await SecureStorage.get(VAULT_NEXT_KEY, false);
+  if (staged === null || staged === undefined) return;
+  const data = typeof staged === 'string' ? staged : JSON.stringify(staged);
+  const current = await SecureStorage.get(VAULT_KEY, false);
+  const currentData = current === null || current === undefined
+    ? null
+    : (typeof current === 'string' ? current : JSON.stringify(current));
+  if (currentData !== data) {
+    await SecureStorage.remove(VAULT_KEY);
+    await SecureStorage.set(VAULT_KEY, data);
+    const promoted = await SecureStorage.get(VAULT_KEY, false);
+    if ((typeof promoted === 'string' ? promoted : JSON.stringify(promoted)) !== data) {
+      // Could not durably promote — keep the journal, fail closed on the caller side
+      // by leaving state as-is (main still readable if it existed). Do not throw here:
+      // a read path should not hard-fail, but the journal remains for the next attempt.
+      return;
+    }
+  }
+  await SecureStorage.remove(VAULT_NEXT_KEY);
+}
 
 // Native-only seam: WalletProvider registers its lock() here so that an OS
 // background event can drop the LIVE secret (which lives in WalletProvider, not
@@ -177,6 +270,7 @@ async function authenticateOrThrow() {
 }
 
 async function _unlockInner(password, opts = {}) {
+  await recoverVaultJournal();
   const raw = await SecureStorage.get(VAULT_KEY, false);
   if (raw === null || raw === undefined) {
     throw new Error('No wallet found on this device');
@@ -257,6 +351,7 @@ export const nativeKeyStore = {
   // for biometrics (passcode-gated accessibility needs only an unlocked device).
   async hasVault() {
     await init();
+    await recoverVaultJournal();
     const raw = await SecureStorage.get(VAULT_KEY, false);
     return raw !== null && raw !== undefined;
   },
@@ -269,6 +364,7 @@ export const nativeKeyStore = {
   // OFF (a stale alias is not real protection).
   async hasVaultKekWrap() {
     await init();
+    await recoverVaultJournal();
     const raw = await SecureStorage.get(VAULT_KEY, false);
     if (raw === null || raw === undefined) return false;
     const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -283,7 +379,9 @@ export const nativeKeyStore = {
     const blob = await encryptVault(secret, password); // ../vault.js — unchanged
     // Store as a JSON string; convertDate=false on read avoids any date coercion
     // of base64 fields. The blob is { v, kdf, salt, iv, ct } — all ciphertext.
-    await SecureStorage.set(VAULT_KEY, JSON.stringify(blob));
+    // Routed through safeWriteVault for read-back-verify (I4) and to keep every
+    // vault write on one durable, crash-safe path.
+    await safeWriteVault(blob);
   },
 
   // Unlock: read + decrypt. The password/PIN is THE secret; the vault is hardware-
@@ -356,7 +454,7 @@ export const nativeKeyStore = {
         if (newC) newC.fill(0);
         const newKekWrap = await wrapDek(newKek, dek);
         newSaltBytes.fill(0);
-        await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt }));
+        await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
       } finally {
         if (H && H.fill) H.fill(0);
         if (H2 && H2.fill) H2.fill(0);
@@ -372,7 +470,7 @@ export const nativeKeyStore = {
 
     const secret = await decryptVault(blob, currentPassword); // ../vault.js — unchanged
     const rewrapped = await encryptVault(secret, newPassword); // ../vault.js — unchanged
-    await SecureStorage.set(VAULT_KEY, JSON.stringify(rewrapped));
+    await safeWriteVault(rewrapped);
   },
 
   // Enroll the Hardware KEK on an existing vault. After enrollment, unlock()
@@ -407,7 +505,7 @@ export const nativeKeyStore = {
         const kekWrap = await wrapDek(kek, dek);
         // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
         const { iv, ct } = await encryptVaultWithDek(secret, dek);
-        await SecureStorage.set(VAULT_KEY, JSON.stringify({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt }));
+        await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
       } finally {
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
@@ -462,7 +560,7 @@ export const nativeKeyStore = {
 
         // Re-encrypt in bare (PIN-only) format — no kekWrap, no kekSalt
         const bareBlob = await encryptVault(secret, password);
-        await SecureStorage.set(VAULT_KEY, JSON.stringify(bareBlob));
+        await safeWriteVault(bareBlob);
 
         // Only delete the Keystore key AFTER the vault is safely re-written
         await clearHardwareCredential();
@@ -491,6 +589,8 @@ export const nativeKeyStore = {
   async clearVault() {
     await init();
     await SecureStorage.remove(VAULT_KEY);
+    // Also drop any leftover journal so a re-import starts truly fresh.
+    await SecureStorage.remove(VAULT_NEXT_KEY);
     await clearHardwareCredential();
   },
 
