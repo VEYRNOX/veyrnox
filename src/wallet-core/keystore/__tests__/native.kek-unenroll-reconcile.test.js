@@ -17,13 +17,19 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Key-aware store so safeWriteVault's journaled write + read-back-verify works.
+// `store` is the real backing map; `setVault(x)` seeds the initial VAULT_KEY blob.
+const VAULT_KEY = 'vault_v1';
+const NEXT_KEY = 'vault_v1.next';
+const store = new Map();
+const setVault = (v) => { if (v === null || v === undefined) store.delete(VAULT_KEY); else store.set(VAULT_KEY, v); };
 const secureStoreMock = {
   setKeyPrefix: vi.fn(async () => {}),
   setSynchronize: vi.fn(async () => {}),
   setDefaultKeychainAccess: vi.fn(async () => {}),
-  get: vi.fn(async () => null),
-  set: vi.fn(async () => {}),
-  remove: vi.fn(async () => {}),
+  get: vi.fn(async (key) => (store.has(key) ? store.get(key) : null)),
+  set: vi.fn(async (key, data) => { store.set(key, data); }),
+  remove: vi.fn(async (key) => { const e = store.has(key); store.delete(key); return e; }),
 };
 vi.mock('@aparajita/capacitor-secure-storage', () => ({
   SecureStorage: secureStoreMock,
@@ -71,26 +77,30 @@ const newHF = () => new Uint8Array(32).fill(1);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  store.clear();
+  // Re-install the key-aware store impls (clearAllMocks wipes them).
+  secureStoreMock.get.mockImplementation(async (key) => (store.has(key) ? store.get(key) : null));
+  secureStoreMock.set.mockImplementation(async (key, data) => { store.set(key, data); });
+  secureStoreMock.remove.mockImplementation(async (key) => { const e = store.has(key); store.delete(key); return e; });
   vaultMock.deriveKekC.mockResolvedValue(new Uint8Array(32).fill(7));
   vaultMock.decryptVault.mockResolvedValue('seed');
   vaultMock.decryptVaultWithDek.mockResolvedValue('seed');
   vaultMock.encryptVault.mockResolvedValue({ v: 1, kdf: 'argon2id', salt: 's', iv: 'iv', ct: 'ct' });
   kekMock.combineKek.mockResolvedValue(new Uint8Array(32).fill(9));
   kekMock.unwrapDek.mockResolvedValue(new Uint8Array(32).fill(4));
-  secureStoreMock.set.mockResolvedValue(undefined);
 });
 
 describe('Fix A — unenrollKek clears the stale alias on an already-bare vault', () => {
   it('calls clearHardwareCredential even when blob.kekWrap is absent', async () => {
     // Vault is already bare (no kekWrap) but a stale Keystore alias may survive.
-    secureStoreMock.get.mockResolvedValue(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
+    setVault(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
 
     await nativeKeyStore.unenrollKek('pw', { getHardwareFactor: async () => newHF() });
 
     // The alias MUST be cleared so isHardwareEnrolled() stops reporting "ON".
     expect(clearHardwareCredentialMock).toHaveBeenCalledTimes(1);
-    // A bare vault needs no re-wrap; the vault blob must NOT be rewritten.
-    expect(secureStoreMock.set).not.toHaveBeenCalled();
+    // A bare vault needs no re-wrap; the vault blob must NOT be rewritten (no set to VAULT_KEY).
+    expect(secureStoreMock.set).not.toHaveBeenCalledWith(VAULT_KEY, expect.anything());
   });
 });
 
@@ -99,12 +109,13 @@ describe('Fix A regression — unenrollKek normal path still re-wraps bare AND c
     let kek, dek;
     kekMock.combineKek.mockImplementation(async () => { kek = new Uint8Array(32).fill(9); return kek; });
     kekMock.unwrapDek.mockImplementation(async () => { dek = new Uint8Array(32).fill(4); return dek; });
-    secureStoreMock.get.mockResolvedValue(JSON.stringify({ iv: 'x', ct: 'y', kekWrap: { v: 1 }, kekSalt }));
+    setVault(JSON.stringify({ iv: 'x', ct: 'y', kekWrap: { v: 1 }, kekSalt }));
 
     await nativeKeyStore.unenrollKek('pw', { getHardwareFactor: async () => newHF() });
 
-    // bare re-write happened, then credential cleared
-    expect(secureStoreMock.set).toHaveBeenCalledTimes(1);
+    // bare re-write happened (durably persisted to VAULT_KEY), then credential cleared
+    const bare = JSON.parse(store.get(VAULT_KEY));
+    expect(bare.kekWrap).toBeUndefined();
     expect(clearHardwareCredentialMock).toHaveBeenCalledTimes(1);
     // zeroing preserved
     expect(isAllZero(kek)).toBe(true);
@@ -114,17 +125,17 @@ describe('Fix A regression — unenrollKek normal path still re-wraps bare AND c
 
 describe('Fix B — hasVaultKekWrap reconciles the enrolled signal (metadata only)', () => {
   it('returns true when the stored vault has a kekWrap', async () => {
-    secureStoreMock.get.mockResolvedValue(JSON.stringify({ iv: 'x', ct: 'y', kekWrap: { v: 1 }, kekSalt }));
+    setVault(JSON.stringify({ iv: 'x', ct: 'y', kekWrap: { v: 1 }, kekSalt }));
     expect(await nativeKeyStore.hasVaultKekWrap()).toBe(true);
   });
 
   it('returns false when the vault is bare (alias-present + vault-bare divergence → OFF)', async () => {
-    secureStoreMock.get.mockResolvedValue(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
+    setVault(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
     expect(await nativeKeyStore.hasVaultKekWrap()).toBe(false);
   });
 
   it('returns false when there is no vault at all', async () => {
-    secureStoreMock.get.mockResolvedValue(null);
+    setVault(null);
     expect(await nativeKeyStore.hasVaultKekWrap()).toBe(false);
   });
 });
