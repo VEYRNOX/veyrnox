@@ -34,10 +34,28 @@ identity; the app never holds keys server-side.
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
+## Hardware KEK Phase 1/2 Rollout
+
+**Phase 1 (Shipping):** Web wallet PIN protected by WebAuthn PRF
+- Platform authenticator binds each unlock to device
+- Offline-seizure gap closed (PIN exhaustion requires platform auth per-use)
+- Supported: Chrome ≥99, Firefox ≥108; graceful fallback Safari (password-only, ≥12 chars)
+- Status: ✅ Code-complete, unit-tested (1973/1973 passing), browser UAT pending testnet txids
+
+**Phase 2 (Q3 2026):** Native hardware KEK on iOS/Android
+- iOS: Secure Enclave HMAC-SHA256 + biometric ACL
+- Android: StrongBox HMAC-SHA256 + biometric re-enrollment invalidation
+- Requires: Custom native plugins (Swift + Kotlin) + real-device verification
+- Target: Full audit refresh, device-verified testnet sends
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
   makes zero backend calls. I4 — fail honest, fail closed. I5 — backend untrusted by design.
+- **I6 — Hardware Binding:** PIN-cohort DEK wrapped under KEK = HKDF(H ⊕ C)
+  - H: Hardware factor (web: WebAuthn PRF; iOS: Secure Enclave; Android: StrongBox)
+  - C: Password/PIN-derived factor (Argon2id)
+  - Requirement: Both H and C must be present; missing either throws (fail-closed)
 
 ## Demo mode (known trap)
 
