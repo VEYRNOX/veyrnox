@@ -100,6 +100,19 @@
       "script": "scripts/verify-dapp-connector-send.mjs",
       "verified_onchain": "confirmed block 11123831, status SUCCESS, 2026-06-23",
       "date": "2026-06-23"
+    },
+    "Hardware KEK — StrongBox-gated unlock + Sepolia send (Android, Pixel 10 Pro XL)": {
+      "chain": "sepolia",
+      "txid": "0x9d9ff549728b43e795189e34613b3ff419284adf7f41ceb8758ea84ec47edab9",
+      "explorer": "https://sepolia.etherscan.io/tx/0x9d9ff549728b43e795189e34613b3ff419284adf7f41ceb8758ea84ec47edab9",
+      "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+      "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+      "amount": "0.001 ETH",
+      "block": 11180398,
+      "nonce": 30,
+      "verified_onchain": "eth_getTransactionByHash + eth_getTransactionReceipt, chainId 11155111, status SUCCESS, block 11180398, 2026-07-01. Sent from a StrongBox-KEK-enrolled vault whose unlock was gated by the Android StrongBox KEK: device logcat (Pixel 10 Pro XL, com.veyrnox.app.debug) shows HardwareKek.getHardwareFactor + BiometricService StrengthRequested:15 (BIOMETRIC_STRONG, no credential fallback) and the vault reading back as kek-dek (kekWrap present) — the seed could only be decrypted, and thus this tx signed, after the StrongBox hardware factor H was produced.",
+      "caveats": "(1) The KEK gates UNLOCK (H + PIN unwrap the DEK); the send then signs with the in-memory DEK — this confirms the send REQUIRED the StrongBox KEK to unlock, not that a per-signature SE/StrongBox key signed the tx. (2) StrongBox tier is device-specific to this Pixel 10 Pro XL (securityLevel=2); a non-StrongBox device would log TRUSTED_ENVIRONMENT — tier ENFORCEMENT is still TARGET. (3) BUILT + device-verified, NOT independently audited. (4) Depends on the 3-bug fix (PRs #497/#499) that made the KEK actually persist + gate unlock — before that the vault was silently downgraded to bare on every unlock, so no earlier Android send was genuinely KEK-gated. (5) Biometric re-enrollment invalidation test (old key invalidated after re-enroll) still NOT done.",
+      "date": "2026-07-01"
     }
   }
 }
