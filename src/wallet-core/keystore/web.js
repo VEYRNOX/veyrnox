@@ -204,9 +204,9 @@ export const webKeyStore = {
     return false;
   },
 
-  // Probe for WebAuthn PRF support (hardware factor availability on web).
-  // Returns true on Chrome/Firefox/Edge with PRF support; false on Safari,
-  // older browsers, or platforms without WebAuthn.
+  // Structural PRF capability probe — confirms the API exists; does NOT
+  // guarantee a successful PRF credential. The real gate is getHardwareFactor()
+  // at enrollment. Returns false on Safari / older browsers without WebAuthn.
   async isHardwareKeystoreAvailable() {
     return isPrfSupported();
   },
