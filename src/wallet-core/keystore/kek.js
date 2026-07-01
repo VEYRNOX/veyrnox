@@ -250,7 +250,16 @@ export async function unwrapDek(kek, wrapped) {
     : { name: 'AES-GCM', iv: unb64(wrapped.iv) };
   try {
     const ptBuf = await crypto.subtle.decrypt(params, key, unb64(wrapped.ct));
-    return new Uint8Array(ptBuf);
+    // F-08 (audit, I4): copy the DEK out into ITS OWN backing buffer, then zero the
+    // RAW decrypt ArrayBuffer (ptBuf) so the plaintext DEK does not linger in a
+    // buffer the caller never sees until GC. NOTE: `new Uint8Array(ptBuf)` is a VIEW
+    // over ptBuf, not a copy — so we allocate a fresh array and .set() into it,
+    // otherwise zeroing ptBuf would also wipe the returned DEK.
+    const raw = new Uint8Array(ptBuf);
+    const dek = new Uint8Array(raw.length);
+    dek.set(raw);
+    zero(raw); // wipes ptBuf's backing store; `dek` is independent.
+    return dek;
   } catch {
     // Generic: do NOT distinguish wrong-KEK from tampered blob (deniability oracle).
     throw new Error(KEK_ERR.UNWRAP_FAILED);
