@@ -107,20 +107,23 @@ of it **under-claiming** the shipped iOS SE work.
 | M3 | MEDIUM | ✅ FIXED | #507 — `featureCatalogue.js` "Native Secure Storage" → `built`; `Feature-Status.md` H-NEW-D row → BUILT/device-verified (PARTIAL), Swift/NON-FUNCTIONAL language removed |
 | M4 | MEDIUM | ✅ FIXED | #508 — `SDK_INT >= 30` gate on enroll; honest `KEK_REQUIRES_ANDROID_11` reject instead of an opaque failure |
 | L1 | LOW | ✅ FIXED | #509 — `withLockSuppressed` on `changePassword` + `saveVaultContents` |
-| L2 | LOW | ⏳ OPEN | enrollKek rollback belongs in the contract, not just the UI catch — deferred (self-heals via reconcile) |
+| L2 | LOW | ✅ FIXED | #514 — `enrollKek` now clears the hardware credential on its own failure (rollback in the contract, not just the UI catch) |
 | L3 | LOW | ✅ FIXED | #508 — `containsAlias` re-enroll guard (`KEK_ALREADY_ENROLLED`) prevents silent re-key/brick |
-| L4 | LOW | ⏳ OPEN | iOS first-run staleness sweep — deferred (LOW; residual is confusing-state, not compromise) |
-| L5 | LOW | ⏳ OPEN | stale iOS "Keychain-not-SE" comments + `hardware.js` facade header — deferred (test-coupled: `kek.honesty-wider.test.js` encodes the old model; must be reconciled together) |
+| L4 | LOW | 🔵 IN REVIEW | #513 — iOS enroll pre-clear hardened (`STALE_CLEAR_FAILED` on delete failure). Uncompiled ObjC — needs an Xcode build + device reinstall test before merge |
+| L5 | LOW | ✅ FIXED | #515 — stale iOS "Keychain-not-SE" comments in `kek.js`/`hardware.js` corrected + `.swift` reference removed; honesty tests reconciled to the true SE-ECIES model (user-facing overclaim guard adversarially verified still intact) |
 | L6 | LOW | ✅ FIXED | #507 — Android device-verification moved to non-promoting `_android_hardware_kek_device_verification` META key |
-| L7 | LOW | ⏳ OPEN | optional GCM AAD binding — deferred (not exploitable; defense-in-depth) |
+| L7 | LOW | ✅ FIXED | #515 — versioned GCM AAD: new wraps are v2 and bind the format version into the tag; legacy v1 blobs still unwrap (backward-compatible, no vault brick) |
 | L8 | LOW | ✅ FIXED | #508 — Android source-scan test now pins `setInvalidatedByBiometricEnrollment(true)`, per-use `setUserAuthenticationParameters(0,`, the SDK guard, and the re-enroll guard |
 
-**Fixed:** all 4 MEDIUM + L1/L3/L6/L8 (via #507 / #508 / #509, each honestly tagged BUILT — the code fixes rest on JS/source-scan tests + review; native code was not compiled/device-run here).
-**Deferred (LOW):** L2, L4, L5, L7 — candidates for one follow-up TDD batch.
+**Fixed & merged:** all 4 MEDIUM + L1/L2/L3/L5/L6/L7/L8 (via #507 / #508 / #509 / #514 / #515 — each honestly tagged BUILT; the code fixes rest on JS/source-scan tests + review, native code not compiled/device-run here).
+**In review:** L4 (#513 — uncompiled ObjC, device build needed).
+Nothing from this audit remains un-actioned.
 
 ### Still the gate — device tests (source audit cannot substitute)
 
-1. **Biometric re-enrollment invalidation** test on **both** platforms (the core I6 property; `.biometryCurrentSet` / `setInvalidatedByBiometricEnrollment` are code-correct but their runtime guarantee is DEVICE-ONLY). **#1 priority.**
-2. Live iOS `getHardwareFactor` SE-unlock trace tied to a send.
+1. **Biometric re-enrollment invalidation** — the core I6 property.
+   - **Android: ✅ DONE 2026-07-01** — device-verified on Pixel 10 Pro XL (delete + re-enroll fingerprint → `setInvalidatedByBiometricEnrollment` invalidates the StrongBox KEK → app catches `KeyPermanentlyInvalidatedException` and refuses, fail-closed I4; PIN recovery intact). Recorded in `docs/verified-evidence.json` → `_hardware_kek_biometric_reenroll_invalidation` (non-promoting META key). PR #516.
+   - **iOS: ❌ NOT done** — the `.biometryCurrentSet` invalidation must still be exercised on a physical iPhone (delete/re-enroll Face ID → SE key invalidated → unlock fails closed → PIN recovery). Test nuance: removing the device passcode *also* destroys the item, so distinguish "biometric changed" from "passcode removed."
+2. **iOS live `getHardwareFactor` SE-unlock trace** tied to a send (proof to date is architectural).
 
-Until these pass on real hardware, H-NEW-D stays **BUILT / device-verified (PARTIAL) / UNAUDITED-PROVISIONAL — NOT "verified."**
+Android is now essentially complete for the device gate (enroll, persist-across-restart, StrongBox-gated unlock, KEK-gated Sepolia send txid, **and** biometric-invalidation). **iOS is the remaining gap.** Until the iOS items pass on real hardware, H-NEW-D stays **BUILT / device-verified (PARTIAL) / UNAUDITED-PROVISIONAL — NOT "verified."**
