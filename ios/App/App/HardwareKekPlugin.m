@@ -228,18 +228,24 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
 
             // Retrieve the SE private key by tag. Using it for decryption below
             // triggers the biometric (Face ID / Touch ID) prompt via its ACL.
+            // iOS-F3: use LAContext with reuseDuration=0 instead of deprecated kSecUseOperationPrompt.
+            LAContext *context = [[LAContext alloc] init];
+            context.touchIDAuthenticationAllowableReuseDuration = 0; // no reuse — fresh auth per call
+            context.localizedReason = @"Authenticate to unlock your wallet";
             NSData *tag = [SE_KEY_TAG dataUsingEncoding:NSUTF8StringEncoding];
             NSDictionary *query = @{
-                (__bridge id)kSecClass:               (__bridge id)kSecClassKey,
-                (__bridge id)kSecAttrApplicationTag:  tag,
-                (__bridge id)kSecAttrKeyType:         (__bridge id)kSecAttrKeyTypeECSECPrimeRandom,
-                (__bridge id)kSecReturnRef:           @YES,
-                (__bridge id)kSecUseOperationPrompt:  @"Authenticate to unlock your wallet",
+                (__bridge id)kSecClass:                    (__bridge id)kSecClassKey,
+                (__bridge id)kSecAttrApplicationTag:       tag,
+                (__bridge id)kSecAttrKeyType:              (__bridge id)kSecAttrKeyTypeECSECPrimeRandom,
+                (__bridge id)kSecReturnRef:                @YES,
+                (__bridge id)kSecUseAuthenticationContext: context,
             };
             SecKeyRef sePriv = NULL;
             OSStatus st = SecItemCopyMatching((__bridge CFDictionaryRef)query, (CFTypeRef *)&sePriv);
             if (st != errSecSuccess || !sePriv) {
                 if (sePriv) CFRelease(sePriv);
+                [context invalidate];
+                context = nil;
                 NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SE key MISSING (OSStatus %d)", (int)st);
                 [call reject:@"SE_KEY_MISSING" :@"Secure Enclave key not found — re-enrollment required" :nil :nil];
                 return;
@@ -248,6 +254,8 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
 
             if (!SecKeyIsAlgorithmSupported(sePriv, kSecKeyOperationTypeDecrypt, VEYRNOX_ECIES_ALGO)) {
                 CFRelease(sePriv);
+                [context invalidate];
+                context = nil;
                 [call reject:@"ALGO_UNSUPPORTED" :@"ECIES decrypt not supported on this device" :nil :nil];
                 return;
             }
@@ -256,6 +264,10 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
             CFErrorRef decErr = NULL;
             CFDataRef pt = SecKeyCreateDecryptedData(sePriv, VEYRNOX_ECIES_ALGO, (__bridge CFDataRef)encH, &decErr);
             CFRelease(sePriv);
+            // iOS-F3: invalidate the LAContext immediately after the auth-gated
+            // operation completes (success or failure), releasing cached auth state.
+            [context invalidate];
+            context = nil;
             if (!pt) {
                 // Biometric cancel/failure or key-invalidated → fail closed.
                 NSString *msg = @"Face ID authentication failed or was cancelled";
@@ -268,9 +280,25 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
                 if (decErr) CFRelease(decErr);
                 return;
             }
-            NSData *h = (__bridge_transfer NSData *)pt;  // 32-byte H
+            // iOS-F5: hold decrypted H in NSMutableData so we can zero it from the
+            // heap after bridge-serialisation (ARC would release the NSData without
+            // wiping the plaintext H bytes).
+            //
+            // Copy the plaintext out of the CFData into a single mutable buffer, then
+            // wipe BOTH the CFData original and our mutable copy. We use CFDataGetBytePtr
+            // on the CFData (not a bridged NSData) so there is exactly one raw source
+            // to zero, and we never leave a lingering immutable NSData holding H.
+            NSUInteger hLen = (NSUInteger)CFDataGetLength(pt);
+            NSMutableData *h = [NSMutableData dataWithBytes:CFDataGetBytePtr(pt) length:hLen];
             NSString *hB64 = [h base64EncodedStringWithOptions:0];
-            NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (%lu bytes)", (unsigned long)h.length);
+            // Zero H from heap after bridge-serialisation (iOS-F5 — not zeroed by ARC).
+            // 1. our mutable copy:
+            [h resetBytesInRange:NSMakeRange(0, h.length)];
+            // 2. the CFData plaintext buffer returned by SecKeyCreateDecryptedData:
+            void *rawPtr = (void *)CFDataGetBytePtr(pt);
+            if (rawPtr && hLen > 0) memset(rawPtr, 0, hLen);
+            CFRelease(pt);
+            NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (%lu bytes)", (unsigned long)hLen);
 
             [call resolve:@{@"h": hB64}];
         } @catch (NSException *exception) {
