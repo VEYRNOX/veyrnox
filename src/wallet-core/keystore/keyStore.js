@@ -46,6 +46,13 @@
  *   protection (alias-present + vault-bare must read OFF, not a false ON). Web
  *   omits this (no KEK at rest).
  *
+ * @property {() => Promise<string|null>} [getVaultKekTier]
+ *   Native-only. The REAL hardware tier the vault's KEK was enrolled under
+ *   (e.g. "StrongBox" / "TrustedEnvironment" / "SecureEnclave"), read from the
+ *   stored blob's `hardwareKekTier`. Metadata-only — no biometric prompt, no
+ *   secret read. Returns null when unenrolled or unknown. Used by the Hardware
+ *   Protection badge to show the honest tier (H-1), never fabricated.
+ *
  * @property {(secret: string, password: string) => Promise<void>} createVault
  *   Encrypt `secret` under `password` and persist CIPHERTEXT ONLY. The live
  *   secret is never written to storage. (Web: encryptVault + saveVault.)
@@ -100,9 +107,11 @@
  *   TARGET/Phase 2 (Secure Enclave on iOS, StrongBox on Android). Never
  *   fabricates H (I4); throws if unavailable or user cancels.
  *
- * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [enrollKek]
+ * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array>, hardwareKekTier?: string | null }) => Promise<void>} [enrollKek]
  *   OPTIONAL: enroll the Hardware KEK on a bare vault. After enrollment, unlock
  *   and changePassword require the hardware factor in addition to the password.
+ *   `opts.hardwareKekTier` (optional) records the REAL tier the enroll landed in
+ *   (StrongBox/TEE/SE) into the blob for the honest badge (H-1); omitted by web/legacy.
  *   Fails closed (I4): missing hardware factor → explicit error, never silent fallback.
  *
  * @property {(password: string, opts: { getHardwareFactor: () => Promise<Uint8Array> }) => Promise<void>} [unenrollKek]
