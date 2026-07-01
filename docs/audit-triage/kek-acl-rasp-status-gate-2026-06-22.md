@@ -87,7 +87,7 @@ credential paths exist exclusively in `docs/kek-architecture-spec.md`.
   indistinguishability, PRF bridge boundary).
 - **Load-bearing blocker:** `H-2` (OPEN) — the 6-digit PIN is the sole at-rest
   factor on web; seized ciphertext is offline-brute-forceable (keyspace 10⁶ behind
-  Argon2id 192 MiB only). The hardware KEK is the named fix. Until it ships **and
+  Argon2id 192 MiB only). *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)* The hardware KEK is the named fix. Until it ships **and
   is audited**, web PIN-cohort wallets must not hold mainnet value and must not be
   presented as coercion-resistant.
 
@@ -323,7 +323,7 @@ real OS-enforced ACL) is unchanged and the gate in §4 still holds.
 
 `validateWebVaultPassword()` enforces a 12-character minimum for web vault creation on mainnet
 builds (`ALLOW_MAINNET = true`). This raises the effective keyspace for the offline-brute-force
-scenario (H-2) from 8-digit PIN (10^8 / Argon2id 192 MiB) to a ≥12-character password.
+scenario (H-2) from 8-digit PIN (10^8 / Argon2id 192 MiB) *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)* to a ≥12-character password.
 
 **Impact on H-2 (K3 / sole at-rest factor):** this is a **partial defence-in-depth mitigation**
 of H-2. A 12-character user-chosen password is still exhaustible offline with sufficient compute

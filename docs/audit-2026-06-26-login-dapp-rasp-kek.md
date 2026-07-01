@@ -29,7 +29,7 @@ The 10-attempt auto-wipe counter (`veyrnox-pin-attempts`) and backoff deadline (
 **Area:** Login Activity  
 **File:** `src/wallet-core/vault.js:51`, `src/wallet-core/keystore/native.js`
 
-For vaults without Hardware KEK enrollment (the current default for all users), the vault blob is protected solely by Argon2id at 192 MiB / t=3 / p=1. At ~440 ms/attempt on desktop, the full 10^8 space takes ~12,800 CPU-hours — feasible on a GPU cluster. The hardware KEK layer that would bind decryption to the secure element is UNAUDITED-PROVISIONAL and not enrolled by default. Until KEK is audited and enabled by default, a seized device allows offline exhaustion of all 8-digit PINs.
+For vaults without Hardware KEK enrollment (the current default for all users), the vault blob is protected solely by Argon2id at 192 MiB / t=3 / p=1. *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)* At ~440 ms/attempt on desktop, the full 10^8 space takes ~12,800 CPU-hours — feasible on a GPU cluster. The hardware KEK layer that would bind decryption to the secure element is UNAUDITED-PROVISIONAL and not enrolled by default. Until KEK is audited and enabled by default, a seized device allows offline exhaustion of all 8-digit PINs.
 
 ---
 
@@ -79,7 +79,7 @@ No `.biometryCurrentSet` is used, so adding a new fingerprint does not invalidat
 **Area:** Login Activity  
 **File:** `src/lib/WalletProvider.jsx:168`
 
-`PRIMARY_UNLOCK_EQUALIZER_MS = 300` was calibrated to the old 64 MiB Argon2id cost. KDF params were raised to 192 MiB (~440ms desktop / ~1.7s mobile). The equalizer now undershoots the deniability-path cost, reopening a timing side-channel between correct-primary and all other outcomes.
+`PRIMARY_UNLOCK_EQUALIZER_MS = 300` was calibrated to the old 64 MiB Argon2id cost. KDF params were raised to 192 MiB (~440ms desktop / ~1.7s mobile). *(note: equalizer raised to 1500ms and KDF reverted to 64 MiB post-audit; see commit 1226085e)* The equalizer now undershoots the deniability-path cost, reopening a timing side-channel between correct-primary and all other outcomes.
 
 ---
 

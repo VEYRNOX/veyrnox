@@ -17,7 +17,7 @@
 > - **Merged on `main`.** `duress` / `stealth` / `panic` / `deniabilityUnlock` are
 >   committed to `main`, not worktree-only. History: PRs #34 (M2 constant-KDF timing) and
 >   #35 (M3 Argon2id params) are merged; the SAST fix chain is on `main` — `3890cb8`
->   (M2, constant KDF count on wrong unlock), `bb9afaa` (M3, at-rest Argon2id 64→192 MiB),
+>   (M2, constant KDF count on wrong unlock), `bb9afaa` (M3, at-rest Argon2id 64→64 MiB),
 >   `7bbad7b` (dummy-KDF chaff pinned to current params, so M3's raise can't reopen the
 >   M2 timing tell).
 > - **§1 confirmed — no KEK indirection.** `src/wallet-core/vault.js` derives the AES key
@@ -32,7 +32,7 @@
 >   hidden wallets — deniability holds at this layer. (`WalletProvider.jsx:948` confirms
 >   duress/stealth storage is untouched on the decoy/hidden unlock op.)
 > - **Tests:** 291/291 green across 27 files in `src/wallet-core/__tests__/` (~237s;
->   Argon2id at 192 MiB is the runtime cost). Deniability has dedicated tests: no-tell on
+>   Argon2id at 64 MiB is the runtime cost). Deniability has dedicated tests: no-tell on
 >   wrong/chaff secrets, constant slot count, byte-shape indistinguishability, and the M1
 >   collision→distinct-slots case.
 > - **Gate intact.** The §24 independent audit is still required before ship. Unit tests
@@ -59,7 +59,7 @@ At rest the vault holds:
   layer yet. The **KEK-wrapped vault key with a hardware-held KEK is TARGET** — see §2.)*
 - The **encrypted seed** for the real wallet-set.
 
-Crypto (BUILT, PROVISIONAL params): Argon2id (hash-wasm, **192 MiB / t=3**, raised under
+Crypto (BUILT, PROVISIONAL params): Argon2id (hash-wasm, **64 MiB / t=3**, raised under
 SAST finding M3) → AES-256-GCM (WebCrypto, authenticated), fresh random salt/nonce per
 encryption. *The KDF work-factor is PROVISIONAL and requires audit validation; a
 decrypt-with-blob-params + lazy-rekey migration exists so the audit can later raise it
@@ -242,8 +242,8 @@ separate blob, no on-disk tell) and it is **per wallet-set**. Enforcement is com
 `useActionGuard()` + `TwoFactorGate` (mode `password`).
 
 **Concurrency invariant.** The gate verifies the unlock credential **and** the Action
-Password — two full-cost (192 MiB) Argon2id derivations. They run **sequentially**, never
-`Promise.all`, so only one 192 MiB allocation is live at a time (Defect-A). Any new
+Password — two full-cost (64 MiB) Argon2id derivations. They run **sequentially**, never
+`Promise.all`, so only one 64 MiB allocation is live at a time (Defect-A). Any new
 consumer of `useActionGuard` inherits this; do not parallelise the two checks.
 
 **Honest scope (Method 1).** Two knowledge factors on one device is **not** hardware 2FA

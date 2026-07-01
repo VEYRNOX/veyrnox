@@ -169,7 +169,7 @@ The 8 LOW findings cover: informational log statements in release builds that in
 
 The following areas were reviewed cold and confirmed correct:
 
-- **Vault crypto** — Argon2id (192 MiB / t=3 / p=1) + AES-256-GCM with random 12-byte nonces; nonce reuse absence confirmed.
+- **Vault crypto** — Argon2id (192 MiB / t=3 / p=1) + AES-256-GCM with random 12-byte nonces; nonce reuse absence confirmed. *(note: KDF reverted to 64 MiB post-audit; see commit 1226085e)*
 - **Deniability timing** — constant 4-KDF execution across primary / decoy / hidden / panic paths; `deniabilityUnlock.js` confirmed.
 - **BTC conservation invariant** — inputs sum ≥ outputs + fee; confirmed in `btc/buildTx.js`.
 - **SOL double-send guard** — nonce / recent-blockhash uniqueness guard present; confirmed in `sol/signAndBroadcast.js`.
