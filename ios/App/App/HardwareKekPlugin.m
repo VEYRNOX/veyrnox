@@ -26,7 +26,24 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
 
 #pragma mark - Plugin Methods
 
+// HONEST-DISABLED (I4) — H-NEW-D gap: the SE-ECIES wrapping of H (SE ECDH →
+// HKDF → AES-GCM encrypt H) is NOT implemented. The scaffold below generates
+// keys and a nonce but discards them unused, storing raw plaintext H in the
+// Keychain. That is NOT hardware binding — it is Keychain-only storage with a
+// biometric gate. Per the project's "no fake security" hard rule (I4: fail
+// honest, fail closed) this method rejects until the real SE-ECIES
+// implementation has been written and independently audited.
+// See: docs/Audit.scope.md H-NEW-D, CLAUDE.md §H-NEW-D, open finding.
 - (void)enroll:(CAPPluginCall *)call {
+    [call reject:@"NOT_IMPLEMENTED"
+          :@"HardwareKekPlugin.enroll is HONEST-DISABLED: SE-ECIES wrapping of H is not yet implemented (H-NEW-D audit gate). Cannot enroll until the real Secure Enclave ECDH→HKDF→AES-GCM path is written and independently audited."
+          :nil
+          :nil];
+}
+
+// Original scaffold preserved below for reference (not compiled — remove when
+// real SE-ECIES is implemented and passes audit).
+- (void)_enroll_scaffold_NOT_COMPILED:(CAPPluginCall *)call {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @try {
             // 1. Create biometric access control for SE key
@@ -158,7 +175,17 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
     [call resolve:@{}];
 }
 
+// HONEST-DISABLED (I4) — mirrors enroll(). Returns plaintext H without any
+// SE-private-key ECDH decryption. Rejecting here ensures no caller can mistake
+// Keychain-stored plaintext for a hardware-bound secret.
 - (void)getHardwareFactor:(CAPPluginCall *)call {
+    [call reject:@"NOT_IMPLEMENTED"
+          :@"HardwareKekPlugin.getHardwareFactor is HONEST-DISABLED: H is not SE-ECIES wrapped (H-NEW-D audit gate). Use PIN-only KEK path until the real implementation is audited."
+          :nil
+          :nil];
+}
+
+- (void)_getHardwareFactor_scaffold_NOT_COMPILED:(CAPPluginCall *)call {
     dispatch_async(dispatch_get_main_queue(), ^{
         @try {
             NSData *ephemeralPublicKey = [self loadKeychainItem:KEY_EPHEM_PUB];
@@ -199,6 +226,8 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
         }
     });
 }
+// End of scaffold methods — not compiled (prefix _..._NOT_COMPILED prevents
+// the ObjC runtime from registering them as real Capacitor handlers).
 
 #pragma mark - Keychain Helpers
 

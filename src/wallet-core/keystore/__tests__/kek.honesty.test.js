@@ -20,7 +20,8 @@ function read(rel) {
   return readFileSync(resolve(repoRoot, rel), 'utf8');
 }
 
-const SWIFT = 'ios/App/App/HardwareKekPlugin.swift';
+const SWIFT = 'ios/App/App/HardwareKekPlugin.swift'; // may not exist (see ObjC path below)
+const OBJC = 'ios/App/App/HardwareKekPlugin.m';    // ObjC implementation (current)
 const KT = 'android/app/src/main/java/com/veyrnox/app/HardwareKekPlugin.kt';
 const SETTINGS_UI = 'src/components/security/HardwareKekSettings.jsx';
 
@@ -37,32 +38,57 @@ function hasMisleadingSecureEnclave(text) {
   return false;
 }
 
-describe('H-NEW-D — iOS HardwareKekPlugin.swift documents Secure Enclave correctly', () => {
-  // Phase 2: native plugins not yet implemented. Skip this test if the file doesn't exist.
-  if (!existsSync(resolve(repoRoot, SWIFT))) {
-    it.skip('skipped: HardwareKekPlugin.swift not yet implemented (Phase 2)', () => {});
+describe('H-NEW-D — iOS HardwareKekPlugin is honest about SE-ECIES implementation status', () => {
+  // Use the ObjC .m if present (current); fall back to .swift if it exists.
+  const iosPath = existsSync(resolve(repoRoot, OBJC)) ? OBJC
+    : existsSync(resolve(repoRoot, SWIFT)) ? SWIFT
+    : null;
+
+  if (!iosPath) {
+    it.skip('skipped: neither HardwareKekPlugin.m nor .swift found (Phase 2)', () => {});
     return;
   }
-  const swift = read(SWIFT);
+  const src = read(iosPath);
 
-  it('documents that the SE private key is non-extractable (I4 invariant)', () => {
-    expect(swift).toMatch(/non-extractable|never leaves/i);
-    expect(swift).toMatch(/Secure Enclave|coprocessor/i);
-  });
+  // When the real SE-ECIES implementation is not present, the plugin MUST be
+  // honest-disabled (I4) and must NOT pretend to deliver hardware binding.
+  const hasRealEcies = /ECDH.*HKDF|AES.GCM.*seal|sharedSecretFromKeyAgreement/i.test(src)
+    && !/NOT_IMPLEMENTED|HONEST.DISABLED/i.test(src);
 
-  it('documents biometric ACL requirement (.biometryCurrentSet)', () => {
-    expect(swift).toMatch(/biometric|Face ID|Touch ID/i);
-    expect(swift).toMatch(/ACL|access.?control/i);
-  });
-
-  it('documents that H-NEW-D is UNAUDITED-PROVISIONAL', () => {
-    expect(swift).toMatch(/UNAUDITED-PROVISIONAL|awaiting.*audit/i);
-    expect(swift).toMatch(/H-NEW-D/);
-  });
-
-  it('documents ECIES encryption scheme (ephemeral ECDH + HKDF + AES-GCM)', () => {
-    expect(swift).toMatch(/ECIES|ephemeral|ECDH|AES-GCM/i);
-  });
+  if (hasRealEcies) {
+    // Real implementation path — verify full ECIES honesty contract.
+    it('documents that the SE private key is non-extractable (I4)', () => {
+      expect(src).toMatch(/non-extractable|never leaves/i);
+      expect(src).toMatch(/Secure Enclave|coprocessor/i);
+    });
+    it('documents biometric ACL requirement (.biometryCurrentSet)', () => {
+      expect(src).toMatch(/biometric|Face ID|Touch ID/i);
+      expect(src).toMatch(/ACL|access.?control/i);
+    });
+    it('documents UNAUDITED-PROVISIONAL status', () => {
+      expect(src).toMatch(/UNAUDITED-PROVISIONAL|awaiting.*audit/i);
+      expect(src).toMatch(/H-NEW-D/);
+    });
+    it('documents ECIES encryption scheme (ephemeral ECDH + HKDF + AES-GCM)', () => {
+      expect(src).toMatch(/ECIES|ephemeral|ECDH|AES-GCM/i);
+    });
+  } else {
+    // Stub / honest-disable path — verify the file is NOT pretending to be real SE-ECIES.
+    it('is honest-disabled (enroll/getHardwareFactor reject with NOT_IMPLEMENTED)', () => {
+      expect(src).toMatch(/NOT_IMPLEMENTED|HONEST.DISABLED/i);
+    });
+    it('documents the H-NEW-D audit gate', () => {
+      expect(src).toMatch(/H-NEW-D/);
+    });
+    it('does not falsely claim H is SE-ECIES-wrapped while storing it in plaintext', () => {
+      // If H is stored unencrypted (no AES-GCM seal), the method must be gated.
+      const storesPlainH = /storeKeychainItem.*KEY_ENC_H.*hData|KEY_ENC_H data:hData/i.test(src);
+      if (storesPlainH) {
+        // Plaintext H storage is only acceptable if guarded by honest-disable.
+        expect(src).toMatch(/NOT_IMPLEMENTED|HONEST.DISABLED/i);
+      }
+    });
+  }
 });
 
 describe('H15 — Android HardwareKekPlugin.kt does not claim enforced StrongBox/hardware backing', () => {
