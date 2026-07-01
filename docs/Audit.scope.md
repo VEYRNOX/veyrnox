@@ -156,7 +156,8 @@ LOCAL-only recipient screening wired into the send risk assessment; warns-not-bl
 ---
 
 ## Explicitly OUT of scope (deferred features — keep them out of this audit)
-- DEX swaps, DeFi deposits, WalletConnect/dApp arbitrary-tx signing (Phase D).
+- DEX swaps, DeFi deposits.
+- *(WalletConnect/dApp arbitrary-tx signing was originally Phase D / out of scope. It shipped post-audit, was security-hardened in PRs #421–#426, and was covered by the 2026-06-28 internal static-analysis pass (see §8a in Feature-Status.md). It is now BUILT, not out-of-scope — flag for inclusion in any future independent re-audit.)*
 - **Multi-Sig** — ❌ REMOVED from the app [audit-blocked-and-not-advertised];
   it was a UI shell with fake addresses, now deleted. NOT in scope.
   If it is ever greenlit as a real audited design, it adds its own scope.
