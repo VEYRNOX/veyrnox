@@ -147,6 +147,29 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - **Target:** Real-device send verification on Sepolia (iPhone + Pixel), full audit refresh, device-verified testnet txids.
 - **Gate:** Custom native plugins (Swift + Kotlin) + real-device verification required; not startable in JS environment.
 
+**iOS SE-ECIES KEK — 🟡 DEVICE-VERIFIED (PARTIAL) 2026-07-01 (PR #495):** The real
+Objective-C Secure Enclave ECIES plugin (`ios/App/App/HardwareKekPlugin.m` + `.h` +
+`HardwareKekPluginBridge.m`) is on `main` and device-verified on **iPhone 17 Pro Max**.
+Apple ECIES (`SecKeyCreateEncryptedData`/`DecryptedData`) over a persistent SE P-256 key
+with `.biometryCurrentSet` ACL; the SE private key never leaves the enclave and Face ID
+gates every decrypt. Binary-confirmed `superclass = CAPPlugin` (the earlier discovery bug
+where the class silently inherited `NSObject` is fixed). **Two real Sepolia sends from a
+KEK-enrolled vault** (`0x90f9…E68a729`, bamboo… UAT seed) confirmed SUCCESS on-chain:
+`0xf09c036c87ea9db415d11cdfc1426632220f6e8bbf93eca1bf9b5f1d1a926f37` (nonce 27, block
+11178961) and `0x0b13d5538421936d7146c0d864dfbcee6e49d2300e18a87ca17028788f85f4f9`
+(nonce 28, block 11179002), each 0.001 ETH. **Proof basis:** architectural + enrollment —
+the vault had `kekWrap` present and the fail-closed `native.js` `_unlockInner` KEK path
+(~L188-215) cannot decrypt the seed (hence cannot sign) unless `getHardwareFactor()`
+returns valid H from the SE; two valid on-chain signatures therefore prove the SE-KEK
+unlock gated signing. Rules out demo mode (real address + real on-chain balance change).
+**HONEST SCOPE — still BUILT / device-verified (PARTIAL), NOT "verified", NOT audited:**
+(1) the live `getHardwareFactor` SE-unlock log trace tied to these sends was **not
+captured** (proof is architectural, not an observed SE-unlock line); (2) the **biometric
+re-enrollment invalidation** test (disable/re-enroll Face ID → old SE key invalidated →
+unlock re-prompts / password fallback) is **not done**; (3) **UNAUDITED-PROVISIONAL** — no
+independent audit. This is the KEK *unlock gate*, not an asset status (ETH is already LIVE).
+Android StrongBox equivalent: see PR #496 (H15/H16 device-verified on Pixel 10 Pro XL).
+
 ---
 
 - Native secure storage (M2a done; M2b provisional, app-layer) — 🟡 (OS-enforced ACL / Enclave-StrongBox binding = M2c/M2d 📋, not built — gated on a thin custom **native plugin + real-device hardware verification** (Swift SE/Keychain + Kotlin Keystore/StrongBox), NOT on an audit. See M2c/d decision note.)

@@ -20,6 +20,21 @@
     "caveats": "(1) The authenticator is a CDP virtual (software) authenticator, NOT a Secure Enclave — this confirms the H-1 WIRING (no silent bypass; the assertion genuinely gates the send), which is what H-1 is, but NOT the hardware-possession strength of the factor. A physical-device (iPhone Face ID / security key) passkey send is still the bar to flip Two-Factor from BUILT to 'verified'. (2) navigator.webdriver was masked to false so RASP did not block the test harness — touches RASP's automation probe only, never the 2FA path. Incidentally, with webdriver=true RASP DID block the send (blockedByRisk suppressed the gate), confirming RASP is wired into SendCrypto.",
     "date": "2026-06-23"
   },
+  "_ios_hardware_kek_device_verification": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. iOS Hardware KEK (H-NEW-D) stays BUILT / device-verified (PARTIAL). Records that the real Secure Enclave ECIES KEK (PR #495) gated two real on-chain Sepolia sends on a physical iPhone, while being honest that the getHardwareFactor SE-unlock trace was not captured live and the biometric re-enrollment invalidation test + independent audit are outstanding.",
+    "what_was_verified": "Real Objective-C SE-ECIES HardwareKekPlugin (SecKeyCreateEncryptedData/DecryptedData over a persistent Secure Enclave P-256 key, .biometryCurrentSet ACL, Face ID gates every decrypt; binary-confirmed superclass=CAPPlugin). Two real Sepolia ETH sends from a KEK-enrolled vault on iPhone 17 Pro Max, both SUCCESS on-chain. NOT demo (real wallet address + real on-chain balance change).",
+    "proof_basis": "Architectural + enrollment: the vault had kekWrap present; the fail-closed native.js _unlockInner KEK path (~L188-215) cannot decrypt the seed — hence cannot sign — unless getHardwareFactor() returns valid H from the SE (Face ID) AND the correct PIN derives C. Two valid on-chain signatures from a KEK-enrolled vault therefore prove the SE-KEK unlock gated signing. This is architectural proof, NOT an observed getHardwareFactor log line.",
+    "chain": "sepolia",
+    "txids": [
+      { "txid": "0xf09c036c87ea9db415d11cdfc1426632220f6e8bbf93eca1bf9b5f1d1a926f37", "nonce": 27, "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "amount": "0.001 ETH", "block": 11178961 },
+      { "txid": "0x0b13d5538421936d7146c0d864dfbcee6e49d2300e18a87ca17028788f85f4f9", "nonce": 28, "to": "0x82D0Fa9d0692dbaDA375fe58Be8368C2a7455BAB", "amount": "0.001 ETH", "block": 11179002 }
+    ],
+    "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+    "device": "iPhone 17 Pro Max",
+    "verified_onchain": "publicnode Sepolia RPC (eth_getTransactionByHash + eth_getTransactionReceipt), chainId 11155111, both status SUCCESS, 2026-07-01",
+    "caveats": "(1) The live getHardwareFactor SE-unlock log trace tied to these sends was NOT captured — proof is architectural (fail-closed KEK path) + user-confirmed enrollment, not an observed SE-unlock line. (2) The biometric re-enrollment invalidation test (disable/re-enroll Face ID -> old SE key invalidated -> unlock re-prompts / password fallback) is NOT done. (3) UNAUDITED-PROVISIONAL — no independent audit. This is the KEK unlock gate, not an asset status (ETH is already LIVE). Android StrongBox equivalent: PR #496 (Pixel 10 Pro XL).",
+    "date": "2026-07-01"
+  },
   "evidence": {
     "Solana send (wallet-core module, devnet script)": {
       "chain": "solana-devnet",

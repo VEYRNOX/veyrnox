@@ -158,7 +158,24 @@ Before a native send is marked "verified" and Phase 2 is considered shipped:
    - Confirm unlock requires password fallback after re-enroll
 
 3. **Testnet Txid Evidence:**
-   - iPhone Face ID send: `0x______________` (Sepolia, txid + block on explorer)
+   - iPhone Face ID send (SE-ECIES KEK path, PR #495):
+     - `0xf09c036c87ea9db415d11cdfc1426632220f6e8bbf93eca1bf9b5f1d1a926f37` — nonce 27,
+       to 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 (vitalik.eth), 0.001 ETH,
+       Sepolia block 11178961, status SUCCESS, 2026-07-01
+     - `0x0b13d5538421936d7146c0d864dfbcee6e49d2300e18a87ca17028788f85f4f9` — nonce 28,
+       to 0x82D0Fa9d0692dbaDA375fe58Be8368C2a7455BAB, 0.001 ETH,
+       Sepolia block 11179002, status SUCCESS, 2026-07-01
+     - Device: iPhone 17 Pro Max. Wallet: `0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729`
+       (bamboo... throwaway UAT seed). Both sends confirmed on-chain via publicnode RPC.
+     - **Proof basis:** architectural + enrollment (vault had kekWrap present; the
+       fail-closed native.js _unlockInner KEK path, lines ~188-215, cannot decrypt the
+       seed without getHardwareFactor() returning valid H from the SE). Rules out demo
+       mode (real wallet address + real on-chain balance change).
+     - **OUTSTANDING for criterion 1 (iOS):** live device-log trace of getHardwareFactor
+       SE-unlock tied to these sends has NOT been captured. Biometric re-enrollment
+       invalidation test (disable/re-enroll Face ID -> old SE key invalidated -> unlock
+       re-prompts / requires password fallback) has NOT been done. This evidence makes
+       the iPhone criterion DEVICE-VERIFIED (PARTIAL) — not the full criterion-1 pass.
    - Pixel Fingerprint send: `0x______________` (Sepolia, txid + block on explorer)
    - Posted to `docs/Feature-Status.md` §4 + `docs/verified-evidence.json`
 
@@ -274,10 +291,12 @@ I6 — Hardware Binding: PIN-cohort DEK wrapped under KEK = HKDF(H ⊕ C)
 - Fallback to standard Keystore (honest disclosure)
 - All I1–I6 security invariants verified
 
-**Real-Device Verification:** ✅ COMPLETE
-- [ ] iPhone (Face ID): Sepolia send `0x___`, biometric re-enroll test passed
+**Real-Device Verification:** 🟡 PARTIAL (iOS device-verified, criterion 1 incomplete; Android pending)
+- [x] iPhone (Face ID): Two Sepolia sends confirmed on-chain (2026-07-01) — see Txid Evidence above.
+      OUTSTANDING: live getHardwareFactor log trace + biometric re-enrollment invalidation test.
+      Status: DEVICE-VERIFIED (PARTIAL), not the full criterion-1 gate.
 - [ ] Pixel (Fingerprint): Sepolia send `0x___`, biometric re-enroll test passed
-- [ ] Audit refresh: Sign-off on device-gated implementation
+- [ ] Audit refresh: Sign-off on device-gated implementation (UNAUDITED-PROVISIONAL)
 
 **Ship Decision:** READY (once device txids and audit sign-off confirmed)
 
