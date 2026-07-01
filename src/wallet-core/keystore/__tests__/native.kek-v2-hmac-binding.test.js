@@ -49,7 +49,10 @@ const kekMock = {
   randomDek: vi.fn(() => new Uint8Array(32).fill(3)),
   wrapDek: vi.fn(async () => ({ v: 1, iv: 'iv', ct: 'ct' })),
   unwrapDek: vi.fn(async () => new Uint8Array(32).fill(4)),
-  KEK_ERR: { NO_HARDWARE_FACTOR: 'NO_HARDWARE_FACTOR', UNWRAP_FAILED: 'UNWRAP_FAILED' },
+  // Real-behaviour blob-shape guards (added when kek.js gained the error-contract).
+  decodeKekSalt: vi.fn((s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))),
+  parseVaultBlob: vi.fn((raw) => (typeof raw === 'string' ? JSON.parse(raw) : raw)),
+  KEK_ERR: { NO_HARDWARE_FACTOR: 'NO_HARDWARE_FACTOR', UNWRAP_FAILED: 'UNWRAP_FAILED', MALFORMED_VAULT: 'MALFORMED_VAULT' },
 };
 vi.mock('../kek.js', () => kekMock);
 

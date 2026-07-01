@@ -82,13 +82,17 @@ export function useActionGuard() {
       // all count as NOT verified (the opposite of the unlock gate's degrade path).
       let passkeyOk = false;
       try { passkeyOk = (await verifyPasskeyAssertion()) === true; } catch { passkeyOk = false; }
+      // PASSKEY is a possession factor (not the Action Password); its precondition is a
+      // registered passkey, already required for resolveMethod() to pick 'passkey'.
       return evaluateTwoFactor({ pinOk, passwordOk: passkeyOk, actionPasswordConfigured: true });
     }
     // Factor 2 (password method): the Action Password, also full vault cost. Sequential
-    // (never concurrent with the PIN KDF) — one 64 MiB allocation at a time.
+    // (never concurrent with the PIN KDF) — one 64 MiB allocation at a time. Pass the
+    // REAL actionPasswordConfigured (same source resolveMethod used): if the record is
+    // absent, evaluateTwoFactor returns NOT_CONFIGURED — fail closed, not a silent pass.
     const passwordOk = await verifyActionPassword(password);
-    return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
-  }, [pending, verifyActiveCredentialDetailed, verifyActionPassword]);
+    return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured });
+  }, [pending, actionPasswordConfigured, verifyActiveCredentialDetailed, verifyActionPassword]);
 
   const gateModal = (
     <Dialog open={!!pending} onOpenChange={(open) => { if (!open) setPending(null); }}>
