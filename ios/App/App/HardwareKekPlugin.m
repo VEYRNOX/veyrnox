@@ -23,7 +23,7 @@
 //
 // UNAUDITED-PROVISIONAL until independent third-party audit (§24).
 
-#import <Capacitor/Capacitor.h>
+#import "HardwareKekPlugin.h"
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import <LocalAuthentication/LocalAuthentication.h>
@@ -35,12 +35,9 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
 // Apple ECIES: ephemeral ECDH + X9.63-SHA256 KDF + AES-GCM, in one primitive.
 #define VEYRNOX_ECIES_ALGO kSecKeyAlgorithmECIESEncryptionCofactorX963SHA256AESGCM
 
-CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
-  CAP_PLUGIN_METHOD(enroll, CAPPluginReturnPromise);
-  CAP_PLUGIN_METHOD(isEnrolled, CAPPluginReturnPromise);
-  CAP_PLUGIN_METHOD(clearCredential, CAPPluginReturnPromise);
-  CAP_PLUGIN_METHOD(getHardwareFactor, CAPPluginReturnPromise);
-)
+// NOTE: The CAP_PLUGIN(...) registration macro is in HardwareKekPluginBridge.m
+// (separate translation unit) so its forward `@interface : NSObject` does not
+// bind this @implementation to NSObject. Here the class is a real CAPPlugin.
 
 @interface HardwareKekPlugin (PrivateMethods)
 - (void)storeKeychainItem:(NSString *)label data:(NSData *)data;
@@ -89,10 +86,12 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
             SecKeyRef sePriv = SecKeyCreateRandomKey((__bridge CFDictionaryRef)attrs, &genErr);
             CFRelease(access);
             if (!sePriv) {
+                NSLog(@"[VEYRNOX-KEK] enroll: SE key generation FAILED: %@", genErr ? (__bridge NSError *)genErr : nil);
                 [call reject:@"SE_KEYGEN_FAILED" :@"Secure Enclave key generation failed (device may lack SE or biometrics)" :nil :nil];
                 if (genErr) CFRelease(genErr);
                 return;
             }
+            NSLog(@"[VEYRNOX-KEK] enroll: Secure Enclave P-256 key generated (persistent, biometric ACL)");
 
             SecKeyRef sePub = SecKeyCopyPublicKey(sePriv);
             CFRelease(sePriv);  // private key stays in the enclave, retrieved by tag on demand
@@ -127,9 +126,11 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
                 return;
             }
             NSData *encH = (__bridge_transfer NSData *)ct;
+            NSLog(@"[VEYRNOX-KEK] enroll: H (32B) ECIES-encrypted under SE pubkey → ciphertext %lu bytes", (unsigned long)encH.length);
 
             // 5. Persist only the ciphertext. The SE private key lives in the enclave.
             [self storeKeychainItem:KEY_ENC_H data:encH];
+            NSLog(@"[VEYRNOX-KEK] enroll: SUCCESS — ciphertext stored, SE privkey retained in enclave");
 
             [call resolve:@{@"keyTier": @"SecureEnclave"}];
         } @catch (NSException *exception) {
@@ -172,9 +173,11 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
         @try {
             NSData *encH = [self loadKeychainItem:KEY_ENC_H];
             if (!encH || encH.length == 0) {
+                NSLog(@"[VEYRNOX-KEK] getHardwareFactor: NOT ENROLLED (no ciphertext)");
                 [call reject:@"NOT_ENROLLED" :@"No hardware key enrolled — call enroll() first" :nil :nil];
                 return;
             }
+            NSLog(@"[VEYRNOX-KEK] getHardwareFactor: loaded ciphertext %lu bytes, retrieving SE key…", (unsigned long)encH.length);
 
             // Retrieve the SE private key by tag. Using it for decryption below
             // triggers the biometric (Face ID / Touch ID) prompt via its ACL.
@@ -190,9 +193,11 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
             OSStatus st = SecItemCopyMatching((__bridge CFDictionaryRef)query, (CFTypeRef *)&sePriv);
             if (st != errSecSuccess || !sePriv) {
                 if (sePriv) CFRelease(sePriv);
+                NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SE key MISSING (OSStatus %d)", (int)st);
                 [call reject:@"SE_KEY_MISSING" :@"Secure Enclave key not found — re-enrollment required" :nil :nil];
                 return;
             }
+            NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SE key retrieved, decrypting (Face ID prompt now)…");
 
             if (!SecKeyIsAlgorithmSupported(sePriv, kSecKeyOperationTypeDecrypt, VEYRNOX_ECIES_ALGO)) {
                 CFRelease(sePriv);
@@ -211,12 +216,14 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
                     NSError *e = (__bridge NSError *)decErr;
                     if (e.localizedDescription) msg = e.localizedDescription;
                 }
+                NSLog(@"[VEYRNOX-KEK] getHardwareFactor: DECRYPT FAILED — %@", msg);
                 [call reject:@"DECRYPT_FAILED" :msg :nil :nil];
                 if (decErr) CFRelease(decErr);
                 return;
             }
             NSData *h = (__bridge_transfer NSData *)pt;  // 32-byte H
             NSString *hB64 = [h base64EncodedStringWithOptions:0];
+            NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (%lu bytes)", (unsigned long)h.length);
 
             [call resolve:@{@"h": hB64}];
         } @catch (NSException *exception) {
