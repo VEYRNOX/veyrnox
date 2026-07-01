@@ -18,6 +18,12 @@ identity; the app never holds keys server-side.
   findings (PRs #433, #440–#443); H-NEW-D (iOS SE) + F-01/F-02 (biometric OS-ACL) +
   F-09 (RASP device) + M-K (passkey counter) remain open, all native/device-gated.
   INTERNAL pass — not independent. (See `docs/Audit.scope.md`.)
+  A 2026-07-01 internal static-analysis audit (Hardware KEK focused — WebAuthn PRF KEK,
+  iOS SE KEK, Android StrongBox KEK) found 1C/9H/12M/6L; 10 remediable findings fixed in
+  PRs #520–#522; C-1 (CRITICAL: Android HMAC fixed input — v2 protocol migration required)
+  and native/device-gated findings (iOS-F5, iOS-F3, H-1, H-2/iOS-F11, iOS-F9 evidence gap)
+  remain open. H-NEW-D CLOSED (SE ECIES confirmed in ObjC at `HardwareKekPlugin.m:78`).
+  INTERNAL pass — not independent. See `docs/audit-2026-07-01-kek-internal.md`.
 - **Verify, don't assert.** An asset/feature is "verified" ONLY after a real on-chain
   testnet transaction confirms on a block explorer with a txid the user supplies. Passing
   tests, clean review, or a green suite are NOT verification. Never flip an asset `status`
@@ -45,8 +51,16 @@ identity; the app never holds keys server-side.
 **Phase 2 (Q3 2026):** Native hardware KEK on iOS/Android
 - iOS: Secure Enclave HMAC-SHA256 (ECIES) + biometric ACL. 🟡 BUILT, device-verified
   (PARTIAL) 2026-07-01 on iPhone 17 Pro Max: two real Sepolia sends confirmed on-chain
-  from a KEK-enrolled vault (PR #495). Outstanding: captured unlock log trace tied to
-  the sends, biometric re-enrollment invalidation test, independent audit.
+  from a KEK-enrolled vault (PR #495). 2026-07-01 INTERNAL audit: H-NEW-D CLOSED —
+  `kSecAttrTokenIDSecureEnclave` confirmed present in `HardwareKekPlugin.m:78`; SE ECIES
+  design correct at native ObjC layer. Remaining open native items: iOS-F5 (H factor in
+  NSData not zeroed — requires NSMutableData patch + Mac build), iOS-F3 (deprecated
+  kSecUseOperationPrompt — requires LAContext + Mac/Xcode). iOS-F9 evidence gap: SE unlock
+  log trace not captured for the existing Sepolia sends; iOS device-verified status remains
+  PARTIAL. H-2/iOS-F11 (biometric cache not bound to enrollment set) open on both platforms.
+  Outstanding: SE-unlock log trace capture, biometric re-enrollment invalidation test,
+  KEK-gated Sepolia txid, independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
+  also affects the overall KEK design context — see Android bullet.
 - Android: StrongBox HMAC-SHA256 + biometric-only gate (no credential fallback). ✅
   BUILT, end-to-end device-verified 2026-07-01 on a Pixel 10 Pro XL (Android 16/API 36):
   enroll → cold restart → StrongBox-gated unlock → badge stays "Hardware Protection ON".
@@ -58,13 +72,23 @@ identity; the app never holds keys server-side.
   vault back to bare Argon2id via `createVault()` — fixed with a KEK-preserving
   `saveVaultContents()`. Tests: keystore 95/95, keystore+WalletProvider 116/116.
   Caveat: the `.commit()` fix is a patch-package patch — requires a clean plugin
-  recompile (Gradle caches the AAR). Outstanding: KEK-gated Sepolia send + txid,
-  biometric re-enrollment invalidation test, StrongBox tier enforcement (currently
-  observe-only), independent audit. See `docs/hardware-kek-phase-plan.md` and
-  `docs/Feature-Status.md` §4 for full evidence.
-- Status is BUILT + device-verified for both platforms (Android now end-to-end,
-  iOS partial) — NOT independently audited, NOT "verified" in the on-chain/asset sense
-  (no KEK-gated testnet txid on either platform's hardware-unlock path yet).
+  recompile (Gradle caches the AAR). 2026-07-01 INTERNAL audit additional findings:
+  C-1 (CRITICAL) — HMAC input is a global fixed constant; all enrolled Android vaults
+  derive the same H from the same HMAC input string; requires per-enrollment `kekSalt`
+  binding (v2 protocol migration, protocol-breaking change, tracked separately).
+  H-1 — StrongBox tier not surfaced to user; TEE/software fallback silent (UI update needed).
+  H-2/iOS-F11 — biometric cache not bound to enrollment set on both platforms; requires
+  custom Capacitor plugin. M-3 fixed (PR #522): `detectTamper()` now fail-closed
+  (`getOrElse { true }`). H-4 fixed (PR #522): zero-vector H check in `hardware.js`.
+  Outstanding: C-1 v2 migration, KEK-gated Sepolia send + txid, biometric re-enrollment
+  invalidation test, StrongBox tier enforcement, H-1 UI surfacing, independent audit.
+  See `docs/hardware-kek-phase-plan.md`, `docs/Feature-Status.md` §4, and
+  `docs/audit-2026-07-01-kek-internal.md` for full evidence.
+- Status is BUILT + device-verified for both platforms (Android end-to-end,
+  iOS partial / no SE-unlock log trace) — 2026-07-01 INTERNAL static-analysis audit
+  complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; C-1 CRITICAL open). NOT independently
+  audited, NOT "verified" in the on-chain/asset sense (no KEK-gated testnet txid on
+  either platform's hardware-unlock path yet).
 
 ## Security invariants
 
