@@ -95,3 +95,32 @@ of it **under-claiming** the shipped iOS SE work.
 **Code (security-sensitive → strict TDD + review):** M2 (consume tier; refuse/degrade SOFTWARE), M4 (guard the API-30 call; honest "requires Android 11+" state), L1 (`withLockSuppressed` on changePassword/saveVaultContents), L3 (`containsAlias` re-key guard), L4 (iOS first-run staleness sweep), L8 (add invalidation/per-use assertions to the Android source-scan test), L7 (optional GCM AAD).
 
 **Nothing here promotes the feature to "verified."**
+
+---
+
+## Resolution log (2026-07-01)
+
+| ID | Sev | Status | Resolved in |
+|---|---|---|---|
+| M1 | MEDIUM | ✅ FIXED | #507 — CLAUDE.md I6 + `PHASE1-VERIFICATION-SUMMARY.md` corrected to `HKDF(H ‖ C)` |
+| M2 | MEDIUM | ✅ FIXED | #509 — `enrollHardwareCredential` now returns the tier and **refuses SOFTWARE/UNKNOWN/probe-error enrollment** (fail-closed); TEE + StrongBox still accepted; honest UI error; badge can't show ON for a software-tier key |
+| M3 | MEDIUM | ✅ FIXED | #507 — `featureCatalogue.js` "Native Secure Storage" → `built`; `Feature-Status.md` H-NEW-D row → BUILT/device-verified (PARTIAL), Swift/NON-FUNCTIONAL language removed |
+| M4 | MEDIUM | ✅ FIXED | #508 — `SDK_INT >= 30` gate on enroll; honest `KEK_REQUIRES_ANDROID_11` reject instead of an opaque failure |
+| L1 | LOW | ✅ FIXED | #509 — `withLockSuppressed` on `changePassword` + `saveVaultContents` |
+| L2 | LOW | ⏳ OPEN | enrollKek rollback belongs in the contract, not just the UI catch — deferred (self-heals via reconcile) |
+| L3 | LOW | ✅ FIXED | #508 — `containsAlias` re-enroll guard (`KEK_ALREADY_ENROLLED`) prevents silent re-key/brick |
+| L4 | LOW | ⏳ OPEN | iOS first-run staleness sweep — deferred (LOW; residual is confusing-state, not compromise) |
+| L5 | LOW | ⏳ OPEN | stale iOS "Keychain-not-SE" comments + `hardware.js` facade header — deferred (test-coupled: `kek.honesty-wider.test.js` encodes the old model; must be reconciled together) |
+| L6 | LOW | ✅ FIXED | #507 — Android device-verification moved to non-promoting `_android_hardware_kek_device_verification` META key |
+| L7 | LOW | ⏳ OPEN | optional GCM AAD binding — deferred (not exploitable; defense-in-depth) |
+| L8 | LOW | ✅ FIXED | #508 — Android source-scan test now pins `setInvalidatedByBiometricEnrollment(true)`, per-use `setUserAuthenticationParameters(0,`, the SDK guard, and the re-enroll guard |
+
+**Fixed:** all 4 MEDIUM + L1/L3/L6/L8 (via #507 / #508 / #509, each honestly tagged BUILT — the code fixes rest on JS/source-scan tests + review; native code was not compiled/device-run here).
+**Deferred (LOW):** L2, L4, L5, L7 — candidates for one follow-up TDD batch.
+
+### Still the gate — device tests (source audit cannot substitute)
+
+1. **Biometric re-enrollment invalidation** test on **both** platforms (the core I6 property; `.biometryCurrentSet` / `setInvalidatedByBiometricEnrollment` are code-correct but their runtime guarantee is DEVICE-ONLY). **#1 priority.**
+2. Live iOS `getHardwareFactor` SE-unlock trace tied to a send.
+
+Until these pass on real hardware, H-NEW-D stays **BUILT / device-verified (PARTIAL) / UNAUDITED-PROVISIONAL — NOT "verified."**
