@@ -329,6 +329,62 @@ export const nativeKeyStore = {
     await safeWriteVault(blob);
   },
 
+  // Re-persist NEW vault CONTENT (a mutated multi-seed container) while PRESERVING
+  // the current at-rest format (KEK DOWNGRADE FIX, I4 fail-closed). WalletProvider
+  // calls this for seed add/remove/import and unlock-time container migrations.
+  //
+  //   - BARE vault (no kekWrap): behaves exactly like createVault — encrypt the new
+  //     secret under the password (argon2id) and durably persist. No hardware factor
+  //     is read (getHardwareFactor is NEVER called on a bare vault).
+  //   - KEK-enrolled vault (kekWrap present): recover the DEK with H (opts.getHardwareFactor)
+  //     + PIN-derived C, then re-encrypt the NEW plaintext under that SAME DEK via
+  //     encryptVaultWithDek, preserving kekWrap/kekSalt and kdf:'kek-dek'. The seed's
+  //     DEK is unchanged; only iv/ct (the content ciphertext) change.
+  //
+  // FAIL-CLOSED: on a KEK-enrolled vault, if the hardware factor is missing or DEK
+  // recovery fails we THROW and leave the vault untouched — we NEVER silently rewrite
+  // it bare (that silent downgrade was the device-confirmed bug). H, C, KEK and DEK are
+  // zeroed on every path (H-NEW-6b), mirroring unlock/changePassword/enrollKek.
+  async saveVaultContents(secret, password, opts = {}) {
+    await init();
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    const blob = raw === null || raw === undefined
+      ? null
+      : (typeof raw === 'string' ? JSON.parse(raw) : raw);
+
+    // Bare (or first-write) vault: identical to createVault — plain argon2id, no KEK.
+    if (!blob || !blob.kekWrap) {
+      const bare = await encryptVault(secret, password); // ../vault.js — unchanged
+      await safeWriteVault(bare);
+      return;
+    }
+
+    // KEK-enrolled: re-encrypt the new content under the EXISTING DEK, preserving wrap.
+    const getHF = opts && opts.getHardwareFactor;
+    if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+    const H = await getHF(); // one biometric prompt for this content write
+    let C;
+    let kek;
+    let dek;
+    try {
+      C = await deriveKekC(password, saltBytes);
+      kek = await combineKek(H, C);
+      if (H && H.fill) H.fill(0);
+      if (C) C.fill(0);
+      dek = await unwrapDek(kek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
+      const { iv, ct } = await encryptVaultWithDek(secret, dek);
+      // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv change.
+      await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek' });
+    } finally {
+      if (H && H.fill) H.fill(0);
+      if (C) C.fill(0);
+      if (kek) kek.fill(0);
+      if (dek) dek.fill(0);
+      saltBytes.fill(0);
+    }
+  },
+
   // Unlock: read + decrypt. The password/PIN is THE secret; the vault is hardware-
   // protected AT REST (passcode-gated Keychain). Biometric is a CONVENIENCE gate the
   // user OPTS INTO — so it is only required when the caller (WalletProvider) asks for

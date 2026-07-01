@@ -225,6 +225,17 @@ export const webKeyStore = {
     await saveVault(blob);
   },
 
+  // Web has no hardware KEK at rest, so re-persisting vault CONTENT is always a
+  // plain bare write — identical to createVault. Present so the cross-platform
+  // facade can call one method for content re-persist; the `opts` (getHardwareFactor)
+  // is ignored here (no KEK to preserve). Keeps parity with native.saveVaultContents,
+  // which DOES preserve the kek-dek wrap on enrolled devices.
+  async saveVaultContents(secret, password /* , opts */) {
+    validateWebVaultPassword(password);
+    const blob = await encryptVault(secret, password);
+    await saveVault(blob);
+  },
+
   // Retrieve the WebAuthn PRF-derived 32-byte hardware factor H. This is the
   // device-bound component of the KEK (specs §3). On first call, creates a
   // platform-authenticator passkey with PRF extension; on subsequent calls,
