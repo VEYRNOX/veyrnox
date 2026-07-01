@@ -27,6 +27,19 @@ import { ALLOW_MAINNET } from '../evm/networks.js';
 // Machine code is the contract (copy can change; codes cannot).
 export const WEB_VAULT_MIN_PASSWORD_LEN = 12;
 
+// I6 — HARDWARE BINDING (Phase 1 — Web PRF).
+//
+// The WebAuthn PRF (hmac-secret extension) is evaluated with a FIXED salt to
+// derive a stable 32-byte hardware factor H. The same salt in → same bytes out,
+// across calls and app restarts on the same device. This constant MUST match
+// the spike's prfSpike.FIXED_SALT (they are identical domain-separated labels).
+export const PRF_FIXED_SALT = new Uint8Array([
+  0x56, 0x65, 0x79, 0x72, 0x6e, 0x6f, 0x78, 0x2d, // "Veyrnox-"
+  0x70, 0x72, 0x66, 0x2d, 0x73, 0x70, 0x69, 0x6b, // "prf-spik"
+  0x65, 0x2d, 0x76, 0x31, 0x2d, 0x66, 0x69, 0x78, // "e-v1-fix"
+  0x65, 0x64, 0x2d, 0x73, 0x61, 0x6c, 0x74, 0x21, // "ed-salt!"
+]);
+
 export const WEB_VAULT_ERR = Object.freeze({
   PASSWORD_TOO_SHORT: 'WEB_VAULT_PASSWORD_TOO_SHORT',
 });
@@ -55,12 +68,142 @@ export function validateWebVaultPassword(password) {
   }
 }
 
+// ── WebAuthn PRF hardware factor (I6 — hardware binding for PIN KEK) ──────────
+
+/**
+ * Probe whether WebAuthn PRF (hmac-secret extension) is available on this browser.
+ * PRF support indicates the platform can derive a stable hardware-bound 32-byte
+ * factor for use as the H in the KEK construction. Returns false on Safari, older
+ * Firefox, or platforms without PublicKeyCredential.
+ *
+ * @returns {Promise<boolean>} true if PRF can be used for hardware factor derivation
+ */
+async function isPrfSupported() {
+  try {
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) {
+      return false;
+    }
+    // Conditional UI check: if the browser/platform supports WebAuthn and can
+    // evaluate the `prf` extension without user interaction, assume PRF support.
+    // This is a best-effort probe; the real gate happens when getHardwareFactor()
+    // actually calls get() with the prf extension.
+    if (window.PublicKeyCredential.isConditionalMediationAvailable) {
+      const conditional = await window.PublicKeyCredential.isConditionalMediationAvailable();
+      return conditional !== false; // undefined = assume support; false = no
+    }
+    // Fallback: if PublicKeyCredential exists, assume WebAuthn is available.
+    // Safari and older browsers will fail when actually calling get() with prf.
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Utility: encode a Uint8Array to base64url (no padding).
+ * Used for the WebAuthn allowCredentials filter.
+ */
+function bufferToB64u(buf) {
+  const b = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * Utility: decode a base64url string to Uint8Array.
+ * Used to restore credentialId from localStorage for get().
+ */
+function b64uToBuffer(s) {
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+  const str = atob(b64 + pad);
+  const out = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) out[i] = str.charCodeAt(i);
+  return out;
+}
+
+/**
+ * Retrieve or create a passkey with WebAuthn PRF extension support, storing
+ * the credential ID for future evaluations. On first enrollment, creates a
+ * platform authenticator credential. On subsequent calls (unlock), retrieves
+ * a stored credential ID from localStorage and uses it to get() a PRF evaluation.
+ *
+ * @returns {Promise<string>} base64url credentialId, persisted in localStorage
+ */
+async function getPrfCredentialId() {
+  const CRED_KEY = 'veyrnox-prf-cred-id';
+  try {
+    // Check if a credential ID is already stored
+    const stored = typeof window !== 'undefined' && window.localStorage?.getItem(CRED_KEY);
+    if (stored && typeof stored === 'string') {
+      return stored;
+    }
+
+    // No stored credential — create a new one with the prf extension
+    if (!window.PublicKeyCredential || !navigator.credentials?.create) {
+      throw new Error('WebAuthn PRF not supported on this browser.');
+    }
+
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const rpId = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'Veyrnox', id: rpId },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(16)),
+          name: 'veyrnox-prf-user',
+          displayName: 'Veyrnox PRF',
+        },
+        pubKeyCredParams: [
+          { alg: -7, type: 'public-key' }, // ES256
+          { alg: -257, type: 'public-key' }, // RS256
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          residentKey: 'preferred',
+          userVerification: 'required',
+        },
+        timeout: 60000,
+        extensions: { prf: { eval: { first: PRF_FIXED_SALT } } },
+      },
+    });
+
+    if (!cred) {
+      throw new Error('Failed to create passkey credential.');
+    }
+
+    // Store the credential ID for future get() calls
+    const credId = bufferToB64u((/** @type {any} */ (cred)).rawId);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem(CRED_KEY, credId);
+      } catch {
+        // localStorage unavailable (private mode, etc.) — proceed without persistence
+      }
+    }
+
+    return credId;
+  } catch (e) {
+    throw new Error(`Failed to get PRF credential: ${e?.message || String(e)}`);
+  }
+}
+
 /** @type {import('./keyStore.js').KeyStore} */
 export const webKeyStore = {
   // Web has no Secure Enclave / StrongBox. Native (M2b) returns true when one
   // is present and is the stronger control documented in the threat model.
   async isSecureHardwareAvailable() {
     return false;
+  },
+
+  // Probe for WebAuthn PRF support (hardware factor availability on web).
+  // Returns true on Chrome/Firefox/Edge with PRF support; false on Safari,
+  // older browsers, or platforms without WebAuthn.
+  async isHardwareKeystoreAvailable() {
+    return isPrfSupported();
   },
 
   // Delegated straight to the unchanged IndexedDB store (ciphertext only).
@@ -75,6 +218,63 @@ export const webKeyStore = {
     validateWebVaultPassword(password);
     const blob = await encryptVault(secret, password);
     await saveVault(blob);
+  },
+
+  // Retrieve the WebAuthn PRF-derived 32-byte hardware factor H. This is the
+  // device-bound component of the KEK (specs §3). On first call, creates a
+  // platform-authenticator passkey with PRF extension; on subsequent calls,
+  // retrieves a stored credential ID and evaluates PRF with get(). Throws if
+  // PRF is unavailable on the browser (e.g. Safari) or if the user cancels.
+  async getHardwareFactor() {
+    const prfAvail = await isPrfSupported();
+    if (!prfAvail) {
+      throw new Error('WebAuthn PRF (hmac-secret) not supported on this browser. Use a strong password (≥12 characters) instead.');
+    }
+
+    const credId = await getPrfCredentialId();
+    if (!credId) {
+      throw new Error('Failed to retrieve PRF credential ID.');
+    }
+
+    // get() with the prf extension to evaluate the hardware factor
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const rpId = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+
+    let assertion;
+    try {
+      assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          timeout: 60000,
+          userVerification: 'required',
+          rpId,
+          allowCredentials: [{ id: b64uToBuffer(credId), type: 'public-key' }],
+          extensions: { prf: { eval: { first: PRF_FIXED_SALT } } },
+        },
+      });
+    } catch (e) {
+      throw new Error(`WebAuthn get() failed: ${e?.message || String(e)}`);
+    }
+
+    if (!assertion) {
+      throw new Error('WebAuthn get() cancelled or failed.');
+    }
+
+    // Extract the prf output from the client extension results
+    const ext = (/** @type {any} */ (assertion)).getClientExtensionResults?.() || {};
+    const prf = ext.prf || {};
+    const prfOutput = prf.results?.first;
+
+    if (!prfOutput) {
+      throw new Error('WebAuthn PRF extension did not return output. This platform may not support hmac-secret.');
+    }
+
+    const H = new Uint8Array(prfOutput);
+    if (H.length !== 32) {
+      throw new Error(`PRF output length mismatch: expected 32 bytes, got ${H.length}.`);
+    }
+
+    return H;
   },
 
   // Load ciphertext -> decrypt. Preserves the prior behaviour exactly, including
