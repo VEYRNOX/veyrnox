@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { safeFormat } from "@/lib/safeDate";
+import { isValidAddressForCurrency } from "@/lib/addressValidation";
 
 const STATUS_COLORS = { draft: "secondary", sent: "default", paid: "outline", overdue: "destructive" };
 
@@ -29,7 +30,16 @@ export default function InvoiceGenerator() {
   });
 
   const create = useMutation({
-    mutationFn: (/** @type {any} */ d) => base44.entities.Invoice.create({ ...d, total_amount: parseFloat(d.total_amount), status: "draft" }),
+    mutationFn: (/** @type {any} */ d) => {
+      const amount = parseFloat(d.total_amount);
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be a positive number");
+      const addr = (d.wallet_address || "").trim();
+      // Validate address: use currency-aware check when possible, else require non-empty + plausible length
+      const addrOk = isValidAddressForCurrency(addr, d.currency) ||
+        (addr.length >= 25 && addr.length <= 128);
+      if (!addrOk) throw new Error("Wallet address does not look valid for the selected currency");
+      return base44.entities.Invoice.create({ ...d, wallet_address: addr, total_amount: amount, status: "draft" });
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["invoices"] }); setOpen(false); },
   });
 
@@ -83,7 +93,7 @@ export default function InvoiceGenerator() {
                     <p className="font-semibold">{inv.client_name}</p>
                     <Badge variant={STATUS_COLORS[inv.status] || "secondary"}>{inv.status}</Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">{inv.invoice_number} · Due {inv.due_date ? format(new Date(inv.due_date), "MMM d, yyyy") : "No deadline"}</p>
+                  <p className="text-xs text-muted-foreground">{inv.invoice_number} · Due {inv.due_date ? safeFormat(inv.due_date, "MMM d, yyyy", "No deadline") : "No deadline"}</p>
                 </div>
                 <p className="text-lg font-bold">{inv.total_amount} {inv.currency}</p>
               </div>

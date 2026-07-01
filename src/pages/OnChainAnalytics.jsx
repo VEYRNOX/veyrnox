@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/lib/recharts";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { safeFormat } from "@/lib/safeDate";
 
 // Derive on-chain stats from internal transaction history
 export default function OnChainAnalytics() {
@@ -37,7 +37,8 @@ export default function OnChainAnalytics() {
   // Daily volume chart
   const volumeByDay = {};
   transactions.forEach(t => {
-    const day = format(new Date(t.created_date), "dd MMM");
+    const day = safeFormat(t.created_date, "dd MMM");
+    if (day === "—") return;
     volumeByDay[day] = (volumeByDay[day] || 0) + (t.amount || 0);
   });
   const volumeChart = Object.entries(volumeByDay).slice(-14).map(([date, volume]) => ({ date, volume: parseFloat(volume.toFixed(4)) }));
@@ -150,7 +151,7 @@ export default function OnChainAnalytics() {
                 {tx.type === "send" ? <ArrowUpRight className="h-3 w-3 text-destructive" /> : <ArrowDownLeft className="h-3 w-3 text-success" />}
                 <span className="capitalize">{tx.type}</span>
                 <span className="font-medium text-foreground">{tx.amount} {tx.currency}</span>
-                <span>{format(new Date(tx.created_date), "dd MMM")}</span>
+                <span>{safeFormat(tx.created_date, "dd MMM")}</span>
               </div>
             ))}
           </div>
@@ -168,7 +169,7 @@ export default function OnChainAnalytics() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-mono truncate text-muted-foreground">{tx.tx_hash || "—"}</p>
-              <p className="text-[10px] text-muted-foreground">{format(new Date(tx.created_date), "dd MMM yyyy HH:mm")}</p>
+              <p className="text-[10px] text-muted-foreground">{safeFormat(tx.created_date, "dd MMM yyyy HH:mm")}</p>
             </div>
             <div className="text-right shrink-0">
               <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-success"}`}>{tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}</p>

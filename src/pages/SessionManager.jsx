@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Monitor, Smartphone, Globe, ShieldX, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useWallet } from "@/lib/WalletProvider";
 
 function getDeviceIcon(ua) {
   if (!ua) return <Globe className="h-4 w-4" />;
@@ -21,10 +22,16 @@ function parseUA(ua) {
 
 export default function SessionManager() {
   const queryClient = useQueryClient();
+  const { isDecoy, isHidden } = useWallet();
+
+  // I3 (deniability): decoy/hidden sessions must not fire base44 entity queries.
+  // Gate consistent with LoginActivity.jsx — no UI tell that confirms session type.
+  const sessionQueryEnabled = !isDecoy && !isHidden;
 
   const { data: sessions = [], isLoading, isError } = useQuery({
     queryKey: ["user-sessions"],
     queryFn: () => base44.entities.UserSession.list("-created_date", 20),
+    enabled: sessionQueryEnabled,
   });
 
   const revoke = useMutation({
