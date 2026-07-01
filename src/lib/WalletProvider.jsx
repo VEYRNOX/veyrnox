@@ -168,6 +168,21 @@ const BACKGROUND_LOCK_GRACE_MS = 45 * 1000;
 // same interface. Stable singleton, so it lives at module scope.
 const keyStore = getKeyStore();
 
+// Metadata-only check: is the stored primary vault KEK-wrapped (native only)?
+// Reads vault metadata, never the secret, never a biometric prompt. Web omits
+// hasVaultKekWrap, so this is always false there. Best-effort: any error is treated
+// as "not enrolled" (the caller only uses it to DECIDE WHETHER to skip a best-effort
+// lastUnlockAt re-persist — a false negative just performs the harmless bare write).
+async function isVaultKekEnrolledSafe() {
+  try {
+    return typeof keyStore.hasVaultKekWrap === 'function'
+      ? await keyStore.hasVaultKekWrap()
+      : false;
+  } catch {
+    return false;
+  }
+}
+
 // VULN-17 / H3 equalizer: primary success runs ~1 fewer Argon2id KDF than any
 // other unlock outcome (a miss / duress / panic / hidden all spend 3 KDFs via
 // resolveDeniabilityUnlock; primary success short-circuits). This sleep closes
@@ -919,6 +934,20 @@ export function WalletProvider({ children }) {
     return mv.parseVault(plaintext).container;
   }, []);
 
+  // Persist NEW primary-vault CONTENT while PRESERVING the at-rest format (KEK
+  // downgrade fix, I4). On a KEK-enrolled (kek-dek) native vault this re-encrypts the
+  // new plaintext under the EXISTING DEK and keeps kekWrap/kekSalt — it does NOT
+  // rewrite bare (the device-confirmed bug that flipped the badge OFF). On a bare
+  // vault (and always on web, which has no KEK at rest) it writes bare exactly like
+  // createVault. `getHardwareFactor` is the SAME factor used at unlock; on web it is
+  // undefined and ignored. Fail-closed: on an enrolled vault a missing/failed hardware
+  // factor THROWS inside saveVaultContents rather than downgrading protection.
+  const persistPrimaryContents = useCallback(async (serialized, password) => {
+    await keyStore.saveVaultContents(serialized, password, {
+      getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
+    });
+  }, []);
+
   // ADD a brand-new wallet (new seed) to the vault. Returns { walletId, mnemonic }
   // — the mnemonic ONCE so the UI can run the MANDATORY per-wallet backup screen.
   // The wallet is recorded backedUp:false until confirmWalletBackup() so the
@@ -929,7 +958,7 @@ export function WalletProvider({ children }) {
     const current = await decryptPrimaryContainer(password); // verifies password
     const mnemonic = generateMnemonic(/** @type {128|256} */ (strength));
     const { container, walletId } = mv.addWallet(current, mnemonic);
-    await keyStore.createVault(mv.serializeContainer(container), password);
+    await persistPrimaryContents(mv.serializeContainer(container), password);
     containerRef.current = container;
     ensureWalletMeta(walletId, { name: name || `Wallet ${mv.walletCount(container)}`, backedUp: false, enabledAssets });
     assignWalletToPortfolioStore(walletId, activePortfolioRef.current); // joins the current portfolio
@@ -941,7 +970,7 @@ export function WalletProvider({ children }) {
     touch();
     deriveActiveAndAll();
     return { walletId, mnemonic };
-  }, [isDecoy, isHidden, decryptPrimaryContainer, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
+  }, [isDecoy, isHidden, decryptPrimaryContainer, persistPrimaryContents, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // IMPORT an existing seed as an ADDITIONAL wallet in the vault. Marked
   // backedUp:true (the user supplied the seed). Rejects a seed already present.
@@ -950,7 +979,7 @@ export function WalletProvider({ children }) {
     const { name, enabledAssets } = opts;
     const current = await decryptPrimaryContainer(password);
     const { container, walletId } = mv.addWallet(current, (mnemonic || '').trim()); // validates + dedupes
-    await keyStore.createVault(mv.serializeContainer(container), password);
+    await persistPrimaryContents(mv.serializeContainer(container), password);
     containerRef.current = container;
     ensureWalletMeta(walletId, { name: name || `Wallet ${mv.walletCount(container)}`, backedUp: true, enabledAssets });
     assignWalletToPortfolioStore(walletId, activePortfolioRef.current); // joins the current portfolio
@@ -962,7 +991,7 @@ export function WalletProvider({ children }) {
     touch();
     deriveActiveAndAll();
     return { walletId };
-  }, [isDecoy, isHidden, decryptPrimaryContainer, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
+  }, [isDecoy, isHidden, decryptPrimaryContainer, persistPrimaryContents, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // REMOVE a wallet (seed) from the vault. Refuses to remove the last wallet (use
   // panicWipe / clearVault to leave nothing). The other wallets are untouched.
@@ -970,7 +999,7 @@ export function WalletProvider({ children }) {
     if (isDecoy || isHidden) throw new Error('Removing wallets is unavailable in this session.');
     const current = await decryptPrimaryContainer(password);
     const container = mv.removeWallet(current, walletId); // throws if last / not found
-    await keyStore.createVault(mv.serializeContainer(container), password);
+    await persistPrimaryContents(mv.serializeContainer(container), password);
     containerRef.current = container;
     removeWalletMeta(walletId);
     const ids = mv.listWalletIds(container);
@@ -983,7 +1012,7 @@ export function WalletProvider({ children }) {
     refreshPortfoliosState();
     touch();
     deriveActiveAndAll();
-  }, [isDecoy, isHidden, decryptPrimaryContainer, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
+  }, [isDecoy, isHidden, decryptPrimaryContainer, persistPrimaryContents, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // ── ACTION PASSWORD (2FA second factor) — PRIMARY SET (this phase) ──────────────
   // A separate credential, set in the Security Center, required WITH the PIN at
@@ -1047,9 +1076,9 @@ export function WalletProvider({ children }) {
       await setHiddenActionPasswordRecord(credential, mnemonic, mv.getActionPasswordRecord(container));
       return;
     }
-    // Primary set: the multi-seed 'primary' vault.
-    await keyStore.createVault(mv.serializeContainer(container), credential);
-  }, [isDecoy, isHidden]);
+    // Primary set: the multi-seed 'primary' vault. KEK-preserving (see below).
+    await persistPrimaryContents(mv.serializeContainer(container), credential);
+  }, [isDecoy, isHidden, persistPrimaryContents]);
 
   const setActionPassword = useCallback(async (password, actionPassword) => {
     if (!actionPassword) throw new Error('Action Password cannot be empty.');
@@ -1521,13 +1550,22 @@ export function WalletProvider({ children }) {
       // retries on the next unlock. The decrypt above already used the unchanged
       // crypto, so the wallet's funds/addresses are byte-identical. Persist the
       // STAMPED container so migration + last-unlock are ONE write, not two.
+      // KEK DOWNGRADE FIX (I4): any CONTENT re-persist of the primary vault must go
+      // through the KEK-PRESERVING path so a KEK-enrolled (kek-dek) vault is NOT
+      // silently rewritten bare (which clobbered kekWrap and flipped the badge OFF on
+      // every unlock). On a bare vault saveVaultContents writes bare exactly like
+      // createVault. `getHardwareFactor` is the SAME factor unlock just used; on web
+      // it is undefined and ignored (no KEK at rest). The migration branches actually
+      // change content, so the one hardware prompt they may cost is acceptable (they
+      // are one-time and idempotent). The pure lastUnlockAt stamp does NOT re-wrap.
+      const repersistOpts = { getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore) };
       if (migrated) {
         const firstId = mv.listWalletIds(stamped)[0];
         // The migrated wallet went through mandatory backup at its ORIGINAL
         // creation, so backedUp:true (no spurious nag for existing users), and it
         // keeps ALL assets visible so nothing the user saw disappears.
         ensureWalletMeta(firstId, { name: 'Wallet 1', backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] });
-        try { await keyStore.createVault(mv.serializeContainer(stamped), password); }
+        try { await keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts); }
         catch { /* best-effort; retried next unlock */ }
       } else if (primaryNeedsPadMigration) {
         // H2: the on-disk payload was an OLD UNPADDED container. Re-encrypt ONCE in
@@ -1535,13 +1573,16 @@ export function WalletProvider({ children }) {
         // being a length tell. Idempotent: the rewritten payload is exactly FIXED_LEN,
         // so subsequent unlocks take the plain async-stamp branch below. A failed write
         // never blocks unlock — migration simply retries next unlock.
-        try { await keyStore.createVault(mv.serializeContainer(stamped), password); }
+        try { await keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts); }
         catch { /* best-effort; retried next unlock */ }
-      } else {
+      } else if (!(await isVaultKekEnrolledSafe())) {
         // Persist the new last-unlock stamp. Best-effort + async: a failed write
-        // never blocks unlock and can only lose a timestamp (IndexedDB put at key
-        // 'primary' is atomic; the prior blob is retained on failure).
-        void keyStore.createVault(mv.serializeContainer(stamped), password).catch(() => {});
+        // never blocks unlock and can only lose a timestamp. SKIPPED entirely on a
+        // KEK-enrolled vault: re-wrapping metadata-only would need a fresh hardware
+        // factor (a per-unlock biometric prompt) purely to update a timestamp — not
+        // worth it. So a KEK vault simply doesn't refresh lastUnlockAt here; the
+        // stamp is instead refreshed by the next real content write (add/remove/etc.).
+        void keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts).catch(() => {});
       }
       const { activeWalletId: active } = reconcileWalletMeta(mv.listWalletIds(stamped));
       activeIdRef.current = active;
