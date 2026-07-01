@@ -30,7 +30,8 @@
     "build:sit": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=SIT npm run build",
     "build:uat": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=UAT npm run build",
     "mobile:build:sit": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=SIT npm run build && cap sync",
-    "mobile:build:uat": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=UAT npm run build && cap sync"
+    "mobile:build:uat": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=UAT npm run build && cap sync",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
@@ -141,6 +142,7 @@
     "fake-indexeddb": "^6.2.5",
     "globals": "^17.7.0",
     "jsdom": "^29.1.1",
+    "patch-package": "^8.0.1",
     "postcss": "^8.5.16",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",

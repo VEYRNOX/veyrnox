@@ -42,6 +42,14 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // Local device-verification builds install side-by-side with a
+            // release-signed com.veyrnox.app (signatures differ, so in-place update
+            // is impossible). The suffix keeps the existing app's data intact.
+            // Only applicationId changes; `namespace` stays com.veyrnox.app so all
+            // code packages (HardwareKekPlugin, RaspIntegrityPlugin) are unaffected.
+            applicationIdSuffix ".debug"
+        }
         release {
             def ksPath = System.getenv("KEYSTORE_PATH")
             signingConfig ksPath ? signingConfigs.release : signingConfigs.debug

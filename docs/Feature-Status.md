@@ -141,11 +141,38 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - **Honest Framing:** Safari users fall back to password-only (≥12 chars). This is by design, not a gap — Phase 2 iOS will have Secure Enclave (stronger than PRF).
 - **Testnet Verification:** 🟢 Code-complete, tests passing, browser UAT pending real Sepolia testnet txids.
 
-**Phase 2 — Native Hardware KEK (Q3 2026 PLANNED):**
-- **iOS:** Secure Enclave HMAC-SHA256 + biometric ACL (Face ID / Secure Enclave tied to unlock).
-- **Android:** StrongBox HMAC-SHA256 + biometric re-enrollment invalidation (Fingerprint / StrongBox tied to unlock).
-- **Target:** Real-device send verification on Sepolia (iPhone + Pixel), full audit refresh, device-verified testnet txids.
-- **Gate:** Custom native plugins (Swift + Kotlin) + real-device verification required; not startable in JS environment.
+**Phase 2 — Native Hardware KEK (Q3 2026 PLANNED, Android partially device-verified 2026-07-01):**
+- **iOS:** Secure Enclave HMAC-SHA256 + biometric ACL (Face ID / Secure Enclave tied to unlock). Code-complete only; no real-device evidence yet.
+- **Android:** StrongBox HMAC-SHA256 + biometric re-enrollment invalidation (Fingerprint / StrongBox tied to unlock). 🟡 **Device-verified, PARTIAL (2026-07-01, Google Pixel 10 Pro XL, `mustang`, Android 16/API 36, debug build `com.veyrnox.app.debug`):**
+  - **H15 (StrongBox tier) — observability only, device-specific.** New tier probe in `HardwareKekPlugin.enroll()` reads `KeyInfo.getSecurityLevel()`; logcat confirmed `tier=STRONGBOX (securityLevel=2)` on this device across several enroll/unenroll cycles. This is a per-device read/log, NOT enforcement — a non-StrongBox device would honestly log `TRUSTED_ENVIRONMENT` instead, and the plugin does not yet reject enrollment on non-StrongBox hardware. **StrongBox enforcement remains TARGET.**
+  - **H16 (biometric-only gate) — CONFIRMED on this device.** OS `BiometricService` log for `getHardwareFactor()` showed `StrengthRequested: 15 (BIOMETRIC_STRONG), CredentialRequested: false` — no PIN/pattern/password fallback offered.
+  - **Still outstanding (not done this session):** no Sepolia testnet send was performed; the biometric re-enrollment invalidation test was not run. Both remain unchecked in the Phase 2 sign-off checklist (`docs/hardware-kek-phase-plan.md`).
+  - Tag: **BUILT, Android enroll/tier-log/biometric-gate device-verified on Pixel 10 Pro XL — NOT independently audited, NOT "verified"** in the on-chain/asset sense (no txid).
+- **Target:** Real-device send verification on Sepolia (iPhone + Pixel), biometric re-enrollment invalidation test, StrongBox enforcement, full audit refresh, device-verified testnet txids.
+- **Gate:** Custom native plugins (Swift + Kotlin) + real-device verification required; not startable in JS environment. See `docs/hardware-kek-phase-plan.md` → "Android Device-Verification Evidence (2026-07-01, Pixel 10 Pro XL)" for full evidence.
+
+**iOS SE-ECIES KEK — 🟡 DEVICE-VERIFIED (PARTIAL) 2026-07-01 (PR #495):** The real
+Objective-C Secure Enclave ECIES plugin (`ios/App/App/HardwareKekPlugin.m` + `.h` +
+`HardwareKekPluginBridge.m`) is on `main` and device-verified on **iPhone 17 Pro Max**.
+Apple ECIES (`SecKeyCreateEncryptedData`/`DecryptedData`) over a persistent SE P-256 key
+with `.biometryCurrentSet` ACL; the SE private key never leaves the enclave and Face ID
+gates every decrypt. Binary-confirmed `superclass = CAPPlugin` (the earlier discovery bug
+where the class silently inherited `NSObject` is fixed). **Two real Sepolia sends from a
+KEK-enrolled vault** (`0x90f9…E68a729`, bamboo… UAT seed) confirmed SUCCESS on-chain:
+`0xf09c036c87ea9db415d11cdfc1426632220f6e8bbf93eca1bf9b5f1d1a926f37` (nonce 27, block
+11178961) and `0x0b13d5538421936d7146c0d864dfbcee6e49d2300e18a87ca17028788f85f4f9`
+(nonce 28, block 11179002), each 0.001 ETH. **Proof basis:** architectural + enrollment —
+the vault had `kekWrap` present and the fail-closed `native.js` `_unlockInner` KEK path
+(~L188-215) cannot decrypt the seed (hence cannot sign) unless `getHardwareFactor()`
+returns valid H from the SE; two valid on-chain signatures therefore prove the SE-KEK
+unlock gated signing. Rules out demo mode (real address + real on-chain balance change).
+**HONEST SCOPE — still BUILT / device-verified (PARTIAL), NOT "verified", NOT audited:**
+(1) the live `getHardwareFactor` SE-unlock log trace tied to these sends was **not
+captured** (proof is architectural, not an observed SE-unlock line); (2) the **biometric
+re-enrollment invalidation** test (disable/re-enroll Face ID → old SE key invalidated →
+unlock re-prompts / password fallback) is **not done**; (3) **UNAUDITED-PROVISIONAL** — no
+independent audit. This is the KEK *unlock gate*, not an asset status (ETH is already LIVE).
+Android StrongBox equivalent: see PR #496 (H15/H16 device-verified on Pixel 10 Pro XL).
 
 ---
 
