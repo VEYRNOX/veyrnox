@@ -1,63 +1,37 @@
 // src/wallet-core/keystore/__tests__/native.safe-write-durability.test.js
 //
-// DURABILITY BUG (Android, device-reproduced on Pixel 10 Pro XL).
+// Durable verified vault write (I4 fail-closed).
 //
-// Confirmed defect mechanism:
-//   `SecureStorage.set(VAULT_KEY, newBlob)` OVER an already-existing key does NOT
-//   durably overwrite the item on Android. In-session read-back returns the NEW
-//   blob (the write "works" in-process), but every FRESH read (cold app launch /
-//   new process) returns the ORIGINAL blob — the update is silently lost. Net
-//   effect: enrollKek / unenrollKek / changePassword never persist across restart,
-//   so the hardware-KEK badge lies and unlock never truly gates on the KEK.
+// ROOT CAUSE (now fixed at the plugin layer): @aparajita/capacitor-secure-storage
+// used SharedPreferences.apply() (async) on Android, so writes could be lost on
+// app-kill. That is patched to .commit() (synchronous, durable) and device-verified.
 //
-// This suite MODELS non-durable overwrite with a fake store that has two layers:
-//   - `committed`  : what a FRESH read (new process) would return.
-//   - `session`    : the in-session view a `set` mutates.
-// A plain `set` over an existing committed key updates ONLY `session` (mirrors the
-// Android bug). `remove` is what actually deletes the committed item; a `set` on a
-// key that has NO committed value commits durably. `freshRead()` simulates a cold
-// launch by discarding the session layer.
+// The previous journaled safe-write (commit 69ea07f: stage to vault_v1.next +
+// recoverVaultJournal on every load) was built on the pre-patch assumption and is
+// now HARMFUL — on load it could promote a stale/leftover vault_v1.next blob OVER a
+// good kek-dek vault, silently reverting hardware protection. It is REMOVED.
 //
-// The fix is a journaled safe-write: write to a temp key (durably, since temp has
-// no prior committed value), read-back-verify, then promote (remove main + set),
-// read-back-verify again (fail-closed), then delete temp. On load, recover a
-// leftover temp if the main write did not complete.
+// The write is now simply: set(VAULT_KEY) → read back → verify byte-equal → throw
+// VAULT_WRITE_VERIFY_FAILED on mismatch. This suite pins:
+//   (a) a vault mutation writes durably and a fresh read reflects it,
+//   (b) a persisted-value mismatch after write THROWS VAULT_WRITE_VERIFY_FAILED,
+//   (c) a pre-existing stale vault_v1.next is NOT promoted — the real VAULT_KEY
+//       value wins and the stale journal is cleaned up on init.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// ---- Fake secure store that reproduces Android non-durable overwrite ----
-// committed = cold-launch truth; session = in-process view.
-let committed;
-let session;
+// Simple durable key-value store. A `set` durably commits (mirrors the patched
+// plugin using .commit()); a fresh read returns whatever was last committed.
+let store;
 
-function makeStore() {
-  committed = new Map();
-  session = new Map();
-  return {
-    setKeyPrefix: vi.fn(async () => {}),
-    setSynchronize: vi.fn(async () => {}),
-    setDefaultKeychainAccess: vi.fn(async () => {}),
-    get: vi.fn(async (key) => {
-      if (session.has(key)) return session.get(key);
-      return committed.has(key) ? committed.get(key) : null;
-    }),
-    set: vi.fn(async (key, data) => {
-      // Android bug: a set OVER an existing committed key does NOT durably
-      // overwrite — only the in-session view changes. A set on a key with no
-      // committed value DOES commit durably (fresh item insert works).
-      session.set(key, data);
-      if (!committed.has(key)) committed.set(key, data);
-    }),
-    remove: vi.fn(async (key) => {
-      const existed = committed.has(key) || session.has(key);
-      committed.delete(key);
-      session.delete(key);
-      return existed;
-    }),
-  };
-}
-
-const secureStoreMock = makeStore();
+const secureStoreMock = {
+  setKeyPrefix: vi.fn(async () => {}),
+  setSynchronize: vi.fn(async () => {}),
+  setDefaultKeychainAccess: vi.fn(async () => {}),
+  get: vi.fn(async (key) => (store.has(key) ? store.get(key) : null)),
+  set: vi.fn(async (key, data) => { store.set(key, data); }),
+  remove: vi.fn(async (key) => { const e = store.has(key); store.delete(key); return e; }),
+};
 vi.mock('@aparajita/capacitor-secure-storage', () => ({
   SecureStorage: secureStoreMock,
   KeychainAccess: { whenPasscodeSetThisDeviceOnly: 'whenPasscodeSetThisDeviceOnly' },
@@ -100,38 +74,21 @@ const NEXT_KEY = 'vault_v1.next';
 const kekSalt = btoa('s'.repeat(32));
 const newHF = () => new Uint8Array(32).fill(1);
 
-// Simulate a cold app launch: the in-process session layer is gone; only the
-// durably-committed values survive.
+// Simulate a cold app launch read of the durably-committed value.
 function freshRead(key) {
-  return committed.has(key) ? committed.get(key) : null;
+  return store.has(key) ? store.get(key) : null;
 }
 
-// Seed the store as if createVault ran and durably committed a BARE vault.
 function seedBareVault() {
-  const bare = JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' });
-  committed.set(VAULT_KEY, bare);
+  store.set(VAULT_KEY, JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  committed = new Map();
-  session = new Map();
-  // Restore the default (Android-bug-modelling) set implementation — a prior test
-  // may have overridden it via mockImplementation, which clearAllMocks does NOT reset.
-  secureStoreMock.set.mockImplementation(async (key, data) => {
-    session.set(key, data);
-    if (!committed.has(key)) committed.set(key, data);
-  });
-  secureStoreMock.get.mockImplementation(async (key) => {
-    if (session.has(key)) return session.get(key);
-    return committed.has(key) ? committed.get(key) : null;
-  });
-  secureStoreMock.remove.mockImplementation(async (key) => {
-    const existed = committed.has(key) || session.has(key);
-    committed.delete(key);
-    session.delete(key);
-    return existed;
-  });
+  store = new Map();
+  secureStoreMock.get.mockImplementation(async (key) => (store.has(key) ? store.get(key) : null));
+  secureStoreMock.set.mockImplementation(async (key, data) => { store.set(key, data); });
+  secureStoreMock.remove.mockImplementation(async (key) => { const e = store.has(key); store.delete(key); return e; });
   vaultMock.decryptVault.mockResolvedValue('seed');
   vaultMock.decryptVaultWithDek.mockResolvedValue('seed');
   vaultMock.encryptVault.mockResolvedValue({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' });
@@ -143,61 +100,75 @@ beforeEach(() => {
   kekMock.unwrapDek.mockResolvedValue(new Uint8Array(32).fill(4));
 });
 
-describe('enrollKek durability — the vault UPDATE survives a cold launch', () => {
-  it('a fresh read after enrollKek returns a vault WITH kekWrap (durable overwrite)', async () => {
+describe('(a) durable write — a vault mutation survives a cold launch', () => {
+  it('a fresh read after enrollKek returns a vault WITH kekWrap, no temp key', async () => {
     seedBareVault();
 
     await nativeKeyStore.enrollKek('pw', { getHardwareFactor: async () => newHF() });
 
-    // Cold-launch read: the committed truth MUST now be the kek-wrapped blob.
     const raw = freshRead(VAULT_KEY);
     expect(raw).not.toBeNull();
     const blob = JSON.parse(raw);
     expect(blob.kekWrap).toBeTruthy();
     expect(blob.kdf).toBe('kek-dek');
-    // No leftover journal key after a successful mutation.
+    // No journal/temp key is ever written.
     expect(freshRead(NEXT_KEY)).toBeNull();
+    expect(secureStoreMock.set).not.toHaveBeenCalledWith(NEXT_KEY, expect.anything());
   });
 });
 
-describe('read-back-verify fail-closed (I4) — a silent write failure THROWS', () => {
-  it('enrollKek throws if the promoted vault does not match what was written', async () => {
+describe('(b) read-back-verify fail-closed (I4)', () => {
+  it('enrollKek throws VAULT_WRITE_VERIFY_FAILED when the persisted value does not match', async () => {
     seedBareVault();
-    // Simulate a store that accepts the promote set() but silently drops it so the
-    // committed value never actually changes (worst-case non-durable overwrite even
-    // for the promote). The read-back-verify MUST catch this and throw.
+    // Model a silent write failure: set() to VAULT_KEY does nothing, so the read-back
+    // returns the OLD bare blob and the byte-equality check must fail-closed.
     secureStoreMock.set.mockImplementation(async (key, data) => {
-      if (key === NEXT_KEY) {
-        // temp write works durably (fresh key)
-        session.set(key, data);
-        committed.set(key, data);
-        return;
-      }
-      // VAULT_KEY promote: pretend it did nothing at all (silent failure).
+      if (key === VAULT_KEY) return; // silently drop the write
+      store.set(key, data);
     });
 
     await expect(
       nativeKeyStore.enrollKek('pw', { getHardwareFactor: async () => newHF() }),
-    ).rejects.toThrow();
+    ).rejects.toThrow('VAULT_WRITE_VERIFY_FAILED');
   });
 });
 
-describe('crash-safety — a crash between temp-write and promote leaves a RECOVERABLE state', () => {
-  it('load recovers the verified journal when the main promote never happened', async () => {
-    // Model the crash: temp (.next) holds a verified new kek-wrapped blob, but the
-    // main VAULT_KEY still holds the OLD bare blob (promote never ran). This must
-    // NOT be a lost vault — hasVault must be true and a fresh read must recover a
-    // consistent vault (prefer the verified journal).
-    seedBareVault();
-    const nextBlob = JSON.stringify({ v: 1, kdf: 'kek-dek', salt: 's', iv: 'iv2', ct: 'ct2', kekWrap: { v: 1 }, kekSalt });
-    committed.set(NEXT_KEY, nextBlob);
+describe('(c) a stale vault_v1.next journal is NEVER promoted', () => {
+  it('hasVaultKekWrap reflects the real kek-dek VAULT_KEY, ignoring a bare stale journal', async () => {
+    // The good, durable vault is kek-wrapped.
+    store.set(VAULT_KEY, JSON.stringify({ v: 1, kdf: 'kek-dek', salt: 's', iv: 'iv2', ct: 'ct2', kekWrap: { v: 1 }, kekSalt }));
+    // A stale bare journal blob lingers from a prior build.
+    store.set(NEXT_KEY, JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
 
-    // A cold launch sees both keys; recovery must present a consistent vault.
-    expect(await nativeKeyStore.hasVault()).toBe(true);
-    // After recovery the enrolled state must reflect the verified journal (kekWrap).
+    // The real vault wins — hardware protection is NOT reverted by the stale journal.
     expect(await nativeKeyStore.hasVaultKekWrap()).toBe(true);
-    // And the journal must be cleaned up / promoted so a subsequent fresh read is clean.
-    expect(freshRead(NEXT_KEY)).toBeNull();
+    // The good vault is untouched (never overwritten by the bare journal).
     expect(JSON.parse(freshRead(VAULT_KEY)).kekWrap).toBeTruthy();
+    // The load path NEVER reads the journal key for content (no promote).
+    expect(secureStoreMock.get).not.toHaveBeenCalledWith(NEXT_KEY, expect.anything());
+  });
+
+  it('hasVault reads only the real VAULT_KEY, never promoting a kek-wrapped journal', async () => {
+    seedBareVault();
+    store.set(NEXT_KEY, JSON.stringify({ v: 1, kdf: 'kek-dek', kekWrap: { v: 1 } }));
+
+    expect(await nativeKeyStore.hasVault()).toBe(true);
+    // The bare vault must NOT have been overwritten by the kek-wrapped journal.
+    expect(JSON.parse(freshRead(VAULT_KEY)).kekWrap).toBeUndefined();
+    expect(secureStoreMock.get).not.toHaveBeenCalledWith(NEXT_KEY, expect.anything());
+  });
+
+  it('cleanupLegacyJournal removes a stale journal on a FRESH init (first storage call)', async () => {
+    // Fresh module state proves the init-time cleanup deletes the leftover journal.
+    vi.resetModules();
+    store = new Map();
+    seedBareVault();
+    store.set(NEXT_KEY, JSON.stringify({ v: 1, kdf: 'argon2id', iv: 'x', ct: 'y' }));
+    const { nativeKeyStore: fresh } = await import('../native.js');
+
+    await fresh.hasVault(); // triggers init() → cleanupLegacyJournal()
+
+    expect(freshRead(NEXT_KEY)).toBeNull();
+    expect(JSON.parse(freshRead(VAULT_KEY)).kekWrap).toBeUndefined();
   });
 });
