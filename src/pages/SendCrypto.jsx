@@ -1400,6 +1400,11 @@ export default function SendCrypto() {
                         // FAIL CLOSED (I4) — any cancel/no-match/error counts as NOT verified.
                         let bioOk = false;
                         try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
+                        // BIOMETRIC is a possession factor (not the Action Password); the
+                        // second factor here is the live biometric, so this leg is
+                        // configured-by-construction (send2faMethod already resolved to
+                        // BIOMETRIC). Keep the gate's third input honest at `true` only
+                        // for this non-AP method.
                         return evaluateTwoFactor({ pinOk: true, passwordOk: bioOk, actionPasswordConfigured: true });
                       }
                       const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
@@ -1408,10 +1413,16 @@ export default function SendCrypto() {
                         // FAIL CLOSED (I4) — any cancel/timeout/error counts as NOT verified.
                         let passkeyOk = false;
                         try { passkeyOk = (await verifyPasskeyAssertion()) === true; } catch { passkeyOk = false; }
+                        // PASSKEY is a possession factor (not the Action Password) — its
+                        // "configured" precondition is the registered passkey, already
+                        // required for send2faMethod to resolve to PASSKEY.
                         return evaluateTwoFactor({ pinOk, passwordOk: passkeyOk, actionPasswordConfigured: true });
                       }
                       const passwordOk = await verifyActionPassword(password);
-                      return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured: true });
+                      // PASSWORD method: pass the REAL AP-configured state (same source
+                      // resolveSend2faMethod used to pick PASSWORD). If the record is
+                      // absent, evaluateTwoFactor returns NOT_CONFIGURED — fail closed.
+                      return evaluateTwoFactor({ pinOk, passwordOk, actionPasswordConfigured });
                     }}
                   />
                 );
