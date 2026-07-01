@@ -225,6 +225,19 @@ export const webKeyStore = {
     await saveVault(blob);
   },
 
+  // Check whether a PRF KEK is enrolled on the current vault (web path).
+  // Returns true iff the stored vault blob has a kekWrap field, meaning the
+  // vault was enrolled with a hardware factor. Does not probe the PRF extension
+  // — use isHardwareKeystoreAvailable() for that.
+  async isHardwareEnrolled() {
+    try {
+      const blob = await loadVault();
+      return !!(blob && blob.kekWrap);
+    } catch {
+      return false;
+    }
+  },
+
   // Retrieve the WebAuthn PRF-derived 32-byte hardware factor H. This is the
   // device-bound component of the KEK (specs §3). On first call, creates a
   // platform-authenticator passkey with PRF extension; on subsequent calls,
@@ -375,6 +388,46 @@ export const webKeyStore = {
       if (kek) kek.fill(0);
       dek.fill(0);
     }
+  },
+
+  // Remove the Hardware KEK from an existing vault. After removal, unlock()
+  // requires only the PIN (bare-vault path). Fail-closed (I4): missing/wrong
+  // hardware factor → explicit throw, vault unchanged.
+  async unenrollKek(password, opts) {
+    const getHF = opts && opts.getHardwareFactor;
+    if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    const blob = await loadVault();
+    if (!blob) throw new Error('No wallet found on this device');
+    if (!blob.kekWrap) throw new Error('Hardware KEK not enrolled.');
+
+    const H = await getHF();
+    const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+    let C = null;
+    let kek;
+    let dek;
+    let secret;
+    try {
+      C = await deriveKekC(password, saltBytes);
+      kek = await combineKek(H, C);
+      H.fill(0);
+      C.fill(0);
+      dek = await unwrapDek(kek, blob.kekWrap);
+      secret = await decryptVaultWithDek(blob, dek);
+    } finally {
+      if (C) C.fill(0);
+      if (kek) kek.fill(0);
+      if (dek) dek.fill(0);
+    }
+
+    // Re-persist as a bare vault (no KEK wrap). encryptVault writes fresh Argon2id params.
+    await saveVault(await encryptVault(secret, password));
+
+    // Remove the stored PRF credential ID so re-enrollment creates a fresh credential.
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('veyrnox-prf-cred-id');
+      }
+    } catch { /* best-effort */ }
   },
 
   // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
