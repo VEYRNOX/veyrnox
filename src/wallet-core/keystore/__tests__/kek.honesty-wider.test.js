@@ -1,13 +1,23 @@
 // kek.honesty-wider.test.js — source-scan honesty guard (H14/H15 wider sweep).
 //
-// Pins that 6 more files do NOT overclaim Secure Enclave / StrongBox /
-// "hardware-backed" key-wrap of the vault key. The technical truth:
-//   - iOS KEK uses kSecClassGenericPassword Keychain (whenPasscodeSetThisDeviceOnly),
-//     NOT Secure Enclave.
-//   - Android KEK does not call setIsStrongBoxBacked(true) — may land in TEE or SW.
-//   - No Enclave/StrongBox key wraps the vault key.
+// Pins that 6 more files do NOT overclaim the hardware protection to USERS — in
+// particular they must not present the vault key as directly "Secure Enclave /
+// StrongBox / hardware-backed" wrapped when it is not. The technical truth (corrected
+// per the ECC Hardware KEK audit L5 — the earlier note here described a superseded iOS
+// model and is fixed below):
+//   - iOS KEK (HardwareKekPlugin.m): the hardware factor H is ECIES-wrapped under a
+//     NON-EXTRACTABLE Secure Enclave P-256 key; only the ECIES *ciphertext* of H is
+//     stored in the generic Keychain (kSecClassGenericPassword). So iOS H IS bound to
+//     the Secure Enclave — but the Enclave key wraps H, it does NOT directly wrap the
+//     vault key (H feeds the KEK; the KEK wraps the DEK; the DEK encrypts the vault).
+//   - Android KEK: StrongBox is preferred but NOT enforced — the AndroidKeyStore key may
+//     land in TEE (or be refused if it lands in SOFTWARE). No StrongBox guarantee.
+//   - Therefore no Enclave/StrongBox key DIRECTLY wraps the vault key, and any user-
+//     facing "Secure Enclave / Android Keystore hardening" of the vault key would
+//     overclaim — which is what these assertions still forbid.
 //
-// These assert on SOURCE STRINGS (the I4 honesty contract), not runtime behaviour.
+// These assert on SOURCE STRINGS (the I4 honesty contract), not runtime behaviour, and
+// remain a genuine guard against user-facing overclaim.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';

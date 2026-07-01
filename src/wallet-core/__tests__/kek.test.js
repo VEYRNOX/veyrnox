@@ -117,8 +117,10 @@ describe('KEK wrap/unwrap DEK — §3 two-key layering', () => {
     const kek = await combineKek(H_REAL(), C_REAL());
     const dek = randomDek();
     const wrapped = await wrapDek(kek, dek);
-    // structure: { v, iv, ct } — never the raw dek bytes
-    expect(wrapped.v).toBe(1);
+    // structure: { v, iv, ct } — never the raw dek bytes.
+    // New wraps are v2 (GCM AAD binds the format version — L7); legacy v1 blobs
+    // still unwrap (backward-compat covered in keystore/__tests__/kek.wrap-aad.test.js).
+    expect(wrapped.v).toBe(2);
     expect(typeof wrapped.iv).toBe('string');
     expect(typeof wrapped.ct).toBe('string');
     const hay = JSON.stringify(wrapped);

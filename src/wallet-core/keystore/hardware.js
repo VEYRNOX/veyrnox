@@ -1,15 +1,29 @@
 /**
- * hardware.js — Native Android Keystore HMAC-SHA256 implementation
+ * hardware.js — cross-platform native hardware-KEK facade (JS side).
  *
- * STATUS: BUILT (UNAUDITED-PROVISIONAL) — Native Android Keystore HMAC-SHA256
- * implementation. Replaces the WebAuthn PRF approach which fails in the
- * Android Capacitor WebView (window.PublicKeyCredential undefined).
+ * STATUS: BUILT (UNAUDITED-PROVISIONAL). This module is the JS bridge to the native
+ * `HardwareKek` Capacitor plugin; the actual key material and crypto live natively.
+ * It replaces the WebAuthn PRF approach on native, which fails in the Capacitor WebView
+ * (window.PublicKeyCredential undefined). The two shipped native implementations differ
+ * (corrected per the ECC Hardware KEK audit L5):
+ *   - Android (HardwareKekPlugin.kt): H = HMAC-SHA256(key, PRF_EVAL_SALT), the key held
+ *     in AndroidKeyStore. StrongBox is PREFERRED but NOT enforced (may land in TEE);
+ *     enroll() reports the tier and this facade's enroll gate refuses SOFTWARE/unknown.
+ *   - iOS (HardwareKekPlugin.m): H is a random 32-byte value ECIES-wrapped under a
+ *     NON-EXTRACTABLE Secure Enclave P-256 key (Apple ECIES: ephemeral ECDH + X9.63
+ *     SHA-256 KDF + AES-GCM). Only the ECIES ciphertext of H is stored in the generic
+ *     Keychain; the private key never leaves the Secure Enclave. enroll() reports
+ *     keyTier 'SecureEnclave'.
+ * The iOS implementation is Objective-C (HardwareKekPlugin.m/.h) — there is no Swift
+ * plugin file for it.
  *
  * Security invariants:
- *   I4 — NEVER fabricates H; if biometric fails, plugin rejects (fail closed)
- *   Key is invalidated if new biometric enrolled (setInvalidatedByBiometricEnrollment)
- *   Per-use auth: every getHardwareFactor() call requires biometric
- *   KeyPermanentlyInvalidatedException → clear key + explicit error (fail closed)
+ *   I4 — NEVER fabricates H; if biometric fails, the plugin rejects (fail closed)
+ *   Android: key invalidated on new biometric (setInvalidatedByBiometricEnrollment);
+ *            KeyPermanentlyInvalidatedException → clear key + explicit error (fail closed)
+ *   iOS:     SE key ACL is .biometryCurrentSet (adding/removing a biometric invalidates
+ *            the key); every getHardwareFactor() decryption triggers Face ID / Touch ID
+ *   Per-use auth on both platforms: every getHardwareFactor() call requires biometric
  *
  * UNAUDITED-PROVISIONAL: awaiting independent third-party audit before mainnet
  * promotion to VERIFIED.
@@ -18,8 +32,10 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
 // PRF_EVAL_SALT — documented here for test/audit purposes.
-// The actual HMAC computation occurs natively in HardwareKekPlugin.kt (Android)
-// and HardwareKekPlugin.swift (iOS). "Veyrnox-prf-v1-kek-eval-salt!!!!" as UTF-8 bytes
+// Android (HardwareKekPlugin.kt) computes H = HMAC-SHA256(AndroidKeyStore key, this salt)
+// natively. iOS (HardwareKekPlugin.m) does NOT HMAC this salt — it ECIES-wraps a random
+// 32-byte H under a Secure Enclave key — so this salt is Android-only. (iOS is
+// Objective-C, .m/.h; no Swift plugin file.) "Veyrnox-prf-v1-kek-eval-salt!!!!" bytes:
 export const PRF_EVAL_SALT = new Uint8Array([
   0x56,0x65,0x79,0x72,0x6e,0x6f,0x78,0x2d,
   0x70,0x72,0x66,0x2d,0x76,0x31,0x2d,0x6b,
