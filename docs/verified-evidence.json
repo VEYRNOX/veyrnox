@@ -130,6 +130,16 @@
       "script": "scripts/verify-dapp-connector-send.mjs",
       "verified_onchain": "confirmed block 11123831, status SUCCESS, 2026-06-23",
       "date": "2026-06-23"
+    },
+    "Hardware KEK — Biometric re-enrollment invalidation protection (Android, Pixel 10 Pro XL)": {
+      "test_type": "on-device protection verification",
+      "device": "Google Pixel 10 Pro XL (Android 16/API 36)",
+      "what_tested": "setInvalidatedByBiometricEnrollment(true) protection on StrongBox-KEK-enrolled vault",
+      "procedure": "1. Enrolled KEK (biometric + StrongBox). 2. Deleted one OS fingerprint. 3. Re-enrolled new fingerprint (triggers biometric state change). 4. Force-closed app + cold restart. 5. Attempted unlock.",
+      "result": "✅ PASS — unlock attempt returned 'Hardware key invalidated - re-enrollment required' error. The OS invalidated the KEK key (via setInvalidatedByBiometricEnrollment), the app detected it, and refused an insecure unlock (fail-closed, I4).",
+      "proof": "Device logcat + on-device error message. Confirmed PIN fallback worked (recovery path intact).",
+      "date": "2026-07-01",
+      "verified_ondevice": "Pixel 10 Pro XL, com.veyrnox.app.debug, 2026-07-01T16:30 UTC. Biometric invalidation protection (setInvalidatedByBiometricEnrollment) is WORKING — key invalidates on biometric state change, app detects and refuses unlock, fail-closed. Recovery (PIN fallback) successful."
     }
   }
 }
