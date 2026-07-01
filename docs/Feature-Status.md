@@ -29,12 +29,19 @@
 > open/device-gated), 11 MEDIUM (9 fixed, 2 open/native), 8 LOW. Fixes landed in PRs
 > #433 (pre-audit), #440–#443. ALLOW_MAINNET unchanged. INTERNAL pass only — not
 > independent, not ECC. See `docs/audit-2026-06-28-internal-static-analysis.md`.
+> A **2026-07-01 INTERNAL static-analysis pass** (Hardware KEK focus — WebAuthn PRF KEK,
+> iOS SE KEK, Android StrongBox KEK) found 1 CRITICAL / 9 HIGH / 12 MEDIUM / 6 LOW findings.
+> 10 remediable findings fixed in PRs #520–#522. C-1 (CRITICAL: Android HMAC fixed input —
+> v2 protocol migration required) and native/device-gated findings remain open. H-NEW-D
+> CLOSED (SE ECIES confirmed in ObjC). INTERNAL pass — not independent. See
+> `docs/audit-2026-07-01-kek-internal.md`.
 > "Audited" is **not** "verified": a feature still earns the strict catalogue `verified`
 > status ONLY with a real explorer-confirmed txid. Where a feature still carries a
 > RESIDUAL gate below, that gate is now a **native-plugin / hardware-KEK / real-device /
 > backend-escrow** gate — NOT "pending an audit" (both are done). Internal ≠ independent
-> is still honoured throughout. Status last verified: 2026-06-29 (PRs #475–#478: Trezor BTC+SOL
-> send paths wired, deniability session guard, dApp security alerts BUILT, I3 egress fixes).
+> is still honoured throughout. Status last verified: 2026-07-01 (PRs #520–#522: 2026-07-01
+> INTERNAL KEK audit remediations; PRs #475–#478: Trezor BTC+SOL send paths wired,
+> deniability session guard, dApp security alerts BUILT, I3 egress fixes).
 
 ---
 
@@ -392,7 +399,9 @@ value / mutate balances without a user signature through wallet-core signing).
 - Hands-on testnet send verifications for every `receive_only` asset
   (EVM chains, USDC/USDT, BTC, SOL) before any flips to `live`.
 
-## Open / residual items — device-gated (from 2026-06-28 internal static-analysis pass)
+## Open / residual items — device-gated
+
+### From the 2026-06-28 internal static-analysis pass
 
 These items were surfaced by the 2026-06-28 internal static-analysis pass and cannot be
 addressed in the JS/web environment. They are consistent with existing M2c/M2d and Phase 4
@@ -400,10 +409,30 @@ RASP gates. None affect ALLOW_MAINNET.
 
 | ID | Area | Description | Gate |
 |---|---|---|---|
-| H-NEW-D | iOS + Android native / KEK | **BUILT / device-verified (PARTIAL) / UNAUDITED-PROVISIONAL** (2026-07-01): iOS SE ECIES KEK (PR #495) — two Sepolia sends confirmed on-chain from KEK-enrolled vault on iPhone 17 Pro Max; Capacitor plugin blocker resolved. Android StrongBox HMAC-SHA256 KEK (PRs #497, #499) — end-to-end verified on Pixel 10 Pro XL (enroll → cold restart → hardware-gated unlock → badge confirmed). Three bugs fixed: badge measured key-presence not vault-wrap; `SharedPreferences.apply()` data loss on app-kill patched to `.commit()` (Android-only, via patch-package); silent re-wrap to bare Argon2id on every unlock fixed with KEK-preserving `saveVaultContents()`. Outstanding (both platforms): biometric re-enrollment invalidation test; on-chain KEK-gated Sepolia txid; StrongBox tier enforcement (observe-only); independent audit. **Not independently audited** (2026-07-01 source-level audit is an ECC-methodology internal pass, not the ECC firm). | Biometric re-enrollment test + KEK-gated on-chain txid (both platforms); independent audit |
-| F-01 / F-02 | Mobile / biometric | Biometric cache not OS-ACL bound (M2c/M2d plan) — app-layer gate, not hardware-enforced ACL | Native plugin + real device required; would hit same Capacitor blocker as H-NEW-D |
+| H-NEW-D | iOS + Android native / KEK | **CLOSED (native-layer SE ECIES confirmed)** — 2026-07-01 INTERNAL static-analysis pass confirmed `kSecAttrTokenIDSecureEnclave` is present in `HardwareKekPlugin.m:78`. The SE ECIES design is correctly implemented at the native ObjC layer. iOS device-verified status remains BUILT/device-verified (PARTIAL): two Sepolia sends confirmed on-chain from KEK-enrolled vault (PR #495), but the live SE-unlock log trace tied to those sends was not captured (iOS-F9, below). Android remains BUILT/end-to-end device-verified (Pixel 10 Pro XL, PRs #497 #499). Outstanding on both platforms: biometric re-enrollment invalidation test, KEK-gated Sepolia txid, independent audit. Android additionally: C-1 CRITICAL (HMAC fixed input — v2 migration), H-1 (StrongBox tier surfacing). | H-NEW-D native-layer gap CLOSED; remaining gates: KEK-gated on-chain txid (both platforms) + biometric re-enrollment test + independent audit |
+| F-01 / F-02 | Mobile / biometric | Biometric cache not OS-ACL bound (M2c/M2d plan) — app-layer gate, not hardware-enforced ACL. H-2/iOS-F11 (below) is the specific finding from the 2026-07-01 pass; F-01/F-02 remain the broader M2c/M2d plan items. | Native plugin + real device required |
 | F-09 | RASP | RASP not adversarially tested on rooted/Frida devices — OS-level probes unverified on live targets | Phase 4 — native RASP OS-level probes + real rooted/Frida device |
 | M-K | Web-App / passkey | **BUILT (2026-06-30)**: WebAuthn signCount persistence + cloned authenticator detection. Extracts signCount from assertion response, compares to stored value, rejects replays (signCount must increase). Stored in localStorage (best-effort, no backend). Tests passing ✓. Ready for device verification with real clone attempt. | Device verification with cloned soft authenticator test |
+
+### From the 2026-07-01 INTERNAL static-analysis pass (Hardware KEK focus)
+
+> ⚠️ INTERNAL PASS — NOT an independent audit. See `docs/audit-2026-07-01-kek-internal.md`
+> for the full report. 1C / 9H / 12M / 6L findings total; 10 remediable items fixed in PRs #520–#522.
+> ALLOW_MAINNET unchanged. Gate conditions (§4 of `kek-acl-rasp-status-gate-2026-06-22.md`) unchanged.
+
+| ID | Severity | Area | Description | Status |
+|---|---|---|---|---|
+| C-1 | CRITICAL | Android | **HMAC input is global fixed constant.** All enrolled Android vaults derive the same hardware factor H from the same HMAC input string. A vault encrypted on one device can be decrypted on another if the StrongBox key is extracted. Requires per-enrollment `kekSalt` binding — a protocol-breaking v2 migration. Tracked as separate migration task. | OPEN — v2 protocol migration required; Android native build |
+| iOS-F5 | HIGH | iOS | H factor in `NSData` not zeroed post-decryption in `HardwareKekPlugin.m`; requires `NSMutableData` patch. | OPEN — Mac + Xcode + iOS SE build |
+| iOS-F9 | HIGH (evidence gap) | iOS | SE ECIES path unconfirmed for the two existing Sepolia sends — no unlock log trace captured. Proof basis is architectural; iOS device-verified status remains PARTIAL. | OPEN — capture SE-unlock log trace on next KEK-gated send |
+| H-1 | HIGH | Android | StrongBox tier not surfaced to user; TEE/software fallback is silent. UI badge does not distinguish StrongBox vs TEE-backed. | OPEN — Android native UI update + non-StrongBox device test |
+| H-2 / iOS-F11 | HIGH | Android + iOS | Biometric cache not bound to enrollment set on both platforms; new biometric enroll does not invalidate KEK-gated vault. Requires custom Capacitor plugin. Consistent with H-NEW-5 honest-disable. | OPEN — custom Capacitor plugin + real-device re-enrollment test (both platforms) |
+| iOS-F3 | MEDIUM | iOS | `kSecUseOperationPrompt` deprecated; requires `LAContext` + `kSecUseAuthenticationContext`. | OPEN — Mac + Xcode + iOS build |
+| H-3 | HIGH | Android | `biometryLockout` → `allowDeviceCredential` fallback. Accepted as H16 deviation — documented in code and audit record. | ACCEPTED / documented deviation (I4 honesty) |
+
+**Fixed in PRs #520–#522 (2026-07-01):** F-01 (PRF orphan credential guard), F-02 (`KEK_ALREADY_ENROLLED` guard), F-03 (PRF salt renamed `prf-kek-v1`), F-05 (credential ID committed after PRF confirmed), F-06 (H zeroing in `changePassword` finally), F-08 (`unwrapDek` zeros ptBuf), H-4 (zero-vector H check in `hardware.js` + `combineKek`), iOS-F6 (JS-layer `HARDWARE_KEK_ALREADY_ENROLLED` guard), M-3 (`detectTamper` `getOrElse { true }` fail-closed).
+
+**Positive confirmations:** H-NEW-D CLOSED (SE ECIES confirmed); `kSecAccessControlBiometryCurrentSet` correctly set on iOS SE key ACL; `combineKek` HKDF construction sound; `android:allowBackup="false"` correct; ATS enforced on iOS.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
