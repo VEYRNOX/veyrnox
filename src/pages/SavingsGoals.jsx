@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { differenceInDays } from "date-fns";
+import { safeFormat } from "@/lib/safeDate";
 
 const EMOJIS = ["🎯","🏠","🚀","✈️","💎","🏖️","🎓","💻","🏋️","🎸"];
 
@@ -25,12 +26,20 @@ export default function SavingsGoals() {
   });
 
   const create = useMutation({
-    mutationFn: (/** @type {any} */ d) => base44.entities.SavingsGoal.create({ ...d, current_amount_usd: 0, status: "active" }),
+    mutationFn: (/** @type {any} */ d) => {
+      const target = parseFloat(d.target_amount_usd);
+      if (!Number.isFinite(target) || target <= 0) throw new Error("Target amount must be a positive number");
+      return base44.entities.SavingsGoal.create({ ...d, target_amount_usd: target, current_amount_usd: 0, status: "active" });
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["savings-goals"] }); setOpen(false); setForm({ title: "", target_amount_usd: "", currency: "USDC", target_date: "", emoji: "🎯", note: "" }); },
   });
 
   const deposit = useMutation({
-    mutationFn: (/** @type {any} */ vars) => base44.entities.SavingsGoal.update(vars.id, { current_amount_usd: vars.current + parseFloat(vars.amount) }),
+    mutationFn: (/** @type {any} */ vars) => {
+      const amount = parseFloat(vars.amount);
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Deposit amount must be a positive number");
+      return base44.entities.SavingsGoal.update(vars.id, { current_amount_usd: vars.current + amount });
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["savings-goals"] }); setDepositId(null); setDepositAmount(""); },
   });
 
@@ -78,7 +87,9 @@ export default function SavingsGoals() {
         <div className="grid gap-3">
           {goals.map(goal => {
             const pct = goal.target_amount_usd > 0 ? Math.min((goal.current_amount_usd / goal.target_amount_usd) * 100, 100) : 0;
-            const daysLeft = goal.target_date ? differenceInDays(new Date(goal.target_date), new Date()) : null;
+            const daysLeft = goal.target_date
+              ? safeFormat(goal.target_date, d => differenceInDays(d, new Date()), null)
+              : null;
             const done = pct >= 100;
 
             return (

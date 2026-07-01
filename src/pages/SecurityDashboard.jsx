@@ -86,19 +86,27 @@ function StatCard({ icon: Icon, label, value, sub, tone, path }) {
 
 export default function SecurityDashboard() {
   const wallet = useWallet();
+  const { isDecoy, isHidden } = wallet;
+
+  // I3 (deniability): decoy/hidden sessions must not fire base44 entity queries.
+  // Gate consistent with LoginActivity.jsx — no UI tell that confirms session type.
+  const entityQueryEnabled = !isDecoy && !isHidden;
 
   // ── Existing local reads (base44 entities — demo seeds, or real local reads). ──
   const { data: approvalRows = [], isLoading: loadingApprovals, isError: errorApprovals } = useQuery({
     queryKey: ["token-approvals"],
     queryFn: () => base44.entities.TokenApproval.list(),
+    enabled: entityQueryEnabled,
   });
   const { data: tokenRows = [], isLoading: loadingTokens, isError: errorTokens } = useQuery({
     queryKey: ["wallet-tokens"],
     queryFn: () => base44.entities.WalletToken.list(),
+    enabled: entityQueryEnabled,
   });
   const { data: txRows = [], isLoading: loadingTxs, isError: errorTxs } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list(),
+    enabled: entityQueryEnabled,
   });
 
   // ── Feature toggles. Sync ones read directly; the stealth-pool marker is
