@@ -287,3 +287,42 @@ Still open (native/device-gated):
 - F-01/F-02 — biometric cache not OS-ACL bound (TARGET, M2c/M2d)
 - F-09 — RASP not adversarially tested on hostile devices (Phase 4)
 - M-K — passkey assertion counter not persisted
+
+---
+
+### 2026-07-01 — INTERNAL static-analysis pass (Hardware KEK focus)
+
+> ⚠️ INTERNAL PASS — NOT an independent audit. See `docs/audit-2026-07-01-kek-internal.md`
+> for the full report. ALLOW_MAINNET unchanged. Gate conditions in
+> `docs/audit-triage/kek-acl-rasp-status-gate-2026-06-22.md §4` unchanged.
+
+Scope: WebAuthn PRF KEK (`src/wallet-core/keystore/web.js`), iOS SE KEK
+(`ios/App/App/HardwareKekPlugin.m`), Android StrongBox KEK (Android native layer).
+Result: 1 CRITICAL / 9 HIGH / 12 MEDIUM / 6 LOW. 10 remediable findings fixed in PRs
+#520–#522. Full finding list in `docs/audit-2026-07-01-kek-internal.md`.
+
+**Fixed (PRs #520–#522):**
+- F-01 (HIGH, web) — PRF orphan credential on enrollKek: ✅ FIXED PR #520
+- F-02 (HIGH, web) — KEK_ALREADY_ENROLLED guard in enrollKek: ✅ FIXED PR #520
+- iOS-F6 (HIGH, iOS/JS) — JS-layer HARDWARE_KEK_ALREADY_ENROLLED guard: ✅ FIXED PR #521
+- F-03 (MEDIUM, web) — PRF salt renamed from "prf-spike" to "prf-kek-v1": ✅ FIXED PR #520
+- F-05 (MEDIUM, web) — credential ID committed after PRF output confirmed: ✅ FIXED PR #521
+- F-06 (MEDIUM, web) — H zeroing hardened in changePassword finally clause: ✅ FIXED PR #521
+- H-4 (HIGH, Android) — zero-vector H check in hardware.js + combineKek: ✅ FIXED PR #522
+- M-3 (MEDIUM, Android) — detectTamper() getOrElse { true } fail-closed: ✅ FIXED PR #522
+- F-08 (LOW, web/kek) — unwrapDek zeros ptBuf before return: ✅ FIXED PR #522
+- H-3 (HIGH, Android) — biometryLockout → allowDeviceCredential: ACCEPTED deviation / documented PR #522
+
+**Still open (native/device-gated or protocol migration):**
+- C-1 (CRITICAL, Android) — HMAC input global fixed constant; requires per-enrollment kekSalt v2 migration
+- iOS-F5 (HIGH, iOS) — NSData H factor not zeroed; requires Mac + Xcode
+- iOS-F9 (HIGH evidence gap, iOS) — SE unlock log trace not captured for existing Sepolia sends
+- H-1 (HIGH, Android) — StrongBox tier not surfaced to user
+- H-2 / iOS-F11 (HIGH, both) — biometric cache not bound to enrollment set
+- iOS-F3 (MEDIUM, iOS) — deprecated kSecUseOperationPrompt
+
+**Positive confirmations:**
+- H-NEW-D CLOSED — kSecAttrTokenIDSecureEnclave confirmed present in HardwareKekPlugin.m:78
+- kSecAccessControlBiometryCurrentSet correctly set on iOS SE key ACL
+- combineKek HKDF construction sound
+- android:allowBackup="false" correct; ATS enforced on iOS

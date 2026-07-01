@@ -273,6 +273,35 @@ Gate conditions in §4 are UNCHANGED. ALLOW_MAINNET stays true.
 
 ---
 
+### §4d — INTERNAL static-analysis pass 2026-07-01 (Hardware KEK surfaces)
+
+> ⚠️ INTERNAL PASS — NOT an independent audit. Gate conditions in §4 are UNCHANGED.
+> Real-device KEK-gated testnet txid + independent audit still required for mainnet
+> promotion of Hardware KEK feature.
+
+| Finding | Status | Resolution |
+|---|---|---|
+| 2026-07-01 INTERNAL KEK audit — 10 of 20 findings fixed; 10 remain open | See full report | `docs/audit-2026-07-01-kek-internal.md` |
+| C-1 (CRITICAL, Android) — HMAC input is global fixed constant; per-enrollment kekSalt required | OPEN | v2 protocol migration required; Android native build |
+| iOS-F5 (HIGH, iOS) — NSData H factor not zeroed post-decryption | OPEN | Mac + Xcode + iOS SE build |
+| iOS-F9 (HIGH evidence gap, iOS) — SE unlock log trace not captured for existing Sepolia sends | OPEN | Capture SE-unlock log on next KEK-gated send |
+| H-1 (HIGH, Android) — StrongBox tier not surfaced to user | OPEN | Android native UI + non-StrongBox device test |
+| H-2 / iOS-F11 (HIGH, both) — biometric cache not bound to enrollment set | OPEN | Custom Capacitor plugin + real-device re-enrollment test (both platforms) |
+| iOS-F3 (MEDIUM, iOS) — deprecated kSecUseOperationPrompt | OPEN | Mac + Xcode + iOS build |
+| H-NEW-D | CLOSED | kSecAttrTokenIDSecureEnclave confirmed present in HardwareKekPlugin.m:78 — SE ECIES design correct at native ObjC layer. Biometric re-enrollment invalidation test and KEK-gated txid still required per §4. |
+| F-01 (HIGH, web) — PRF orphan credential on enrollKek | ✅ FIXED | PR #520 |
+| F-02 (HIGH, web) — KEK_ALREADY_ENROLLED guard | ✅ FIXED | PR #520 |
+| iOS-F6 (HIGH, iOS/JS) — JS-layer HARDWARE_KEK_ALREADY_ENROLLED guard | ✅ FIXED | PR #521 |
+| F-03 (MEDIUM, web) — PRF salt protocol label | ✅ FIXED | PR #520 (prf-kek-v1) |
+| F-05 (MEDIUM, web) — credential ID after PRF confirmed | ✅ FIXED | PR #521 |
+| F-06 (MEDIUM, web) — H zeroing in changePassword finally | ✅ FIXED | PR #521 |
+| H-4 (HIGH, Android) — zero-vector H check | ✅ FIXED | PR #522 |
+| M-3 (MEDIUM, Android) — detectTamper fail-closed | ✅ FIXED | PR #522 |
+| F-08 (LOW, web/kek) — unwrapDek zeros ptBuf | ✅ FIXED | PR #522 |
+| H-3 (HIGH, Android) — biometryLockout → allowDeviceCredential | Accepted H16 deviation | Documented in PR #522 and audit report (I4 honesty) |
+
+---
+
 ## 5a. Post-2026-06-27 addendum — security hardening PRs merged to `main`
 
 > **WHAT THIS IS:** a record of code-level hardening that landed after this gate doc was
