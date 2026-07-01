@@ -31,6 +31,11 @@
  *   returns true if WebAuthn PRF is supported (Chrome, Firefox, Edge); false
  *   on Safari and older browsers. Native: currently unused (Phase 2).
  *
+ * @property {() => Promise<boolean>} [isHardwareEnrolled]
+ *   Whether the current vault blob has a KEK wrap (i.e. hardware factor was
+ *   enrolled). Web: checks the stored vault for kekWrap. Native: checks for a
+ *   stored Keychain/Keystore credential.
+ *
  * @property {() => Promise<boolean>} hasVault
  *   Whether an encrypted vault already exists for this device.
  *
