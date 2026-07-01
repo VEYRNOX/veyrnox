@@ -52,6 +52,11 @@ function makeNativeFacade() {
     async hasVaultKekWrap() {
       return (await load()).nativeKeyStore.hasVaultKekWrap();
     },
+    // Native-only: metadata-only read of the REAL hardware tier the vault's KEK
+    // was enrolled under (StrongBox/TEE/SE), for the honest badge (H-1).
+    async getVaultKekTier() {
+      return (await load()).nativeKeyStore.getVaultKekTier();
+    },
     async createVault(secret, password) {
       return (await load()).nativeKeyStore.createVault(secret, password);
     },
