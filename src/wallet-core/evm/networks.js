@@ -190,6 +190,7 @@ export const NETWORKS = {
 // (docs/audit-triage/internal-audit-2026-06-17.md). 0 crit/high/med findings.
 export const ALLOW_MAINNET = true;
 
+
 /**
  * Display-only lookup. Returns the raw network entry (or null) WITHOUT applying
  * the mainnet-gate / enabled throw, so the UI can show a chain's name, native
