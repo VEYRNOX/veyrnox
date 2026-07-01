@@ -74,9 +74,9 @@
 // would 4× every real unlock with no security gain (the timing only reveals "the
 // primary password was correct" — inferable only by someone who already holds it).
 // The residual does NOT leak deniability-feature count; every NON-primary outcome
-// costs a constant 4 KDFs. A ~300 ms equalizer sleep on the primary-success path
-// would close this gap at the cost of UX. Decision: accepted for v1, flagged as
-// an explicit audit line-item. See docs/Security.roadmap.md.
+// costs a constant 4 KDFs. An equalizer sleep on the primary-success path closes
+// this gap: PRIMARY_UNLOCK_EQUALIZER_MS (1500 ms) is implemented in WalletProvider.jsx
+// and runs after every primary-path success. See docs/Security.roadmap.md.
 //   - A CORRECT PRIMARY unlock returns after 1 KDF (it never enters this path),
 //     so it is faster than any other outcome. This does NOT leak deniability-
 //     feature presence/count — every NON-primary outcome (wrong / duress / hidden

@@ -1436,7 +1436,9 @@ export function WalletProvider({ children }) {
       });
       // VULN-17 fix: equalize timing between primary success (1 KDF) and all
       // failure paths (4 KDFs via resolveDeniabilityUnlock). A correct password
-      // returns ~300 ms faster without this sleep, creating a timing oracle.
+      // returns ~500 ms faster without this sleep, creating a timing oracle.
+      // (The ~300 ms figure was calibrated at 192 MiB KDF cost; post-downgrade
+      // to 64 MiB / t=3 one KDF ≈ 500 ms, so the advantage is ~500 ms.)
       await new Promise(resolve => setTimeout(resolve, PRIMARY_UNLOCK_EQUALIZER_MS));
     } catch (primaryErr) {
       // BIOMETRIC FAILURE (native, biometric-unlock enabled): the OS prompt was
