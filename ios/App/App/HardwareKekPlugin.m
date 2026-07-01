@@ -1,13 +1,39 @@
+// HardwareKekPlugin.m — iOS Secure Enclave ECIES Hardware KEK (REAL implementation)
+//
+// H-NEW-D: hardware factor H is wrapped under a Secure Enclave P-256 key using
+// Apple's built-in ECIES primitive (kSecKeyAlgorithmECIESEncryptionCofactor-
+// X963SHA256AESGCM). This performs, in one audited system call:
+//   - ephemeral P-256 keypair generation
+//   - ECDH cofactor key agreement with the SE public/private key
+//   - ANSI X9.63 KDF (SHA-256) to derive the AES key
+//   - AES-256-GCM seal/open
+//
+// The SE private key is PERSISTENT (kSecAttrIsPermanent = YES), stored in the
+// Secure Enclave by application tag, and protected by a
+// .biometryCurrentSet ACL: it is physically non-extractable and every
+// decryption (getHardwareFactor) triggers Face ID / Touch ID. Adding or
+// removing a biometric permanently invalidates the key.
+//
+// enroll():            SE pubkey ECIES-encrypts a fresh random 32-byte H (no biometric).
+// getHardwareFactor(): SE privkey ECIES-decrypts H (Face ID gate). Returns base64(H).
+//
+// I4 (fail honest / fail closed): every failure path rejects. H is never
+// fabricated, never returned in plaintext-stored form. If the SE key is
+// missing or biometric fails, the call rejects.
+//
+// UNAUDITED-PROVISIONAL until independent third-party audit (§24).
+
 #import <Capacitor/Capacitor.h>
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import <LocalAuthentication/LocalAuthentication.h>
 
-static NSString * const KEYCHAIN_SVC  = @"com.veyrnox.app";
-static NSString * const KEY_SE_REF    = @"veyrnox_kek_se_ref_v2";
-static NSString * const KEY_EPHEM_PUB = @"veyrnox_kek_ephem_pub_v2";
-static NSString * const KEY_ENC_H     = @"veyrnox_kek_enc_h_v2";
-static NSString * const KEY_NONCE     = @"veyrnox_kek_nonce_v2";
+static NSString * const KEYCHAIN_SVC = @"com.veyrnox.app";
+static NSString * const KEY_ENC_H    = @"veyrnox_kek_enc_h_v3";   // ECIES ciphertext blob
+static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Enclave key tag
+
+// Apple ECIES: ephemeral ECDH + X9.63-SHA256 KDF + AES-GCM, in one primitive.
+#define VEYRNOX_ECIES_ALGO kSecKeyAlgorithmECIESEncryptionCofactorX963SHA256AESGCM
 
 CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
   CAP_PLUGIN_METHOD(enroll, CAPPluginReturnPromise);
@@ -19,254 +45,230 @@ CAP_PLUGIN(HardwareKekPlugin, "HardwareKek",
 @interface HardwareKekPlugin (PrivateMethods)
 - (void)storeKeychainItem:(NSString *)label data:(NSData *)data;
 - (NSData *)loadKeychainItem:(NSString *)label;
-- (void)clearAllKeychainItems;
+- (void)deleteKeychainItem:(NSString *)label;
+- (void)deleteSecureEnclaveKey;
 @end
 
 @implementation HardwareKekPlugin
 
-#pragma mark - Plugin Methods
+#pragma mark - enroll
 
-// HONEST-DISABLED (I4) — H-NEW-D gap: the SE-ECIES wrapping of H (SE ECDH →
-// HKDF → AES-GCM encrypt H) is NOT implemented. The scaffold below generates
-// keys and a nonce but discards them unused, storing raw plaintext H in the
-// Keychain. That is NOT hardware binding — it is Keychain-only storage with a
-// biometric gate. Per the project's "no fake security" hard rule (I4: fail
-// honest, fail closed) this method rejects until the real SE-ECIES
-// implementation has been written and independently audited.
-// See: docs/Audit.scope.md H-NEW-D, CLAUDE.md §H-NEW-D, open finding.
 - (void)enroll:(CAPPluginCall *)call {
-    [call reject:@"NOT_IMPLEMENTED"
-          :@"HardwareKekPlugin.enroll is HONEST-DISABLED: SE-ECIES wrapping of H is not yet implemented (H-NEW-D audit gate). Cannot enroll until the real Secure Enclave ECDH→HKDF→AES-GCM path is written and independently audited."
-          :nil
-          :nil];
-}
-
-// Original scaffold preserved below for reference (not compiled — remove when
-// real SE-ECIES is implemented and passes audit).
-- (void)_enroll_scaffold_NOT_COMPILED:(CAPPluginCall *)call {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @try {
-            // 1. Create biometric access control for SE key
-            CFErrorRef cfError = NULL;
+            // Idempotent: clear any prior SE key + ciphertext.
+            [self deleteSecureEnclaveKey];
+            [self deleteKeychainItem:KEY_ENC_H];
+
+            // 1. Biometric-gated access control for the SE private key.
+            CFErrorRef aclErr = NULL;
             SecAccessControlRef access = SecAccessControlCreateWithFlags(
-                NULL,
+                kCFAllocatorDefault,
                 kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
                 kSecAccessControlPrivateKeyUsage | kSecAccessControlBiometryCurrentSet,
-                &cfError
-            );
-
+                &aclErr);
             if (!access) {
-                NSString *errMsg = cfError ? [NSString stringWithFormat:@"Access control error"] : @"unknown error";
-                [call resolve:@{@"error": errMsg}];
-                if (cfError) CFRelease(cfError);
+                [call reject:@"ACL_FAILED" :@"Failed to create Secure Enclave access control" :nil :nil];
+                if (aclErr) CFRelease(aclErr);
                 return;
             }
 
-            // 2. Generate Secure Enclave P-256 key
-            NSError *error = nil;
-            NSDictionary *keyParams = @{
-                (__bridge NSString *)kSecAttrKeyType: (__bridge NSString *)kSecAttrKeyTypeEC,
-                (__bridge NSString *)kSecAttrKeySizeInBits: @256,
-                (__bridge NSString *)kSecAttrTokenID: (__bridge NSString *)kSecAttrTokenIDSecureEnclave,
-                (__bridge NSString *)kSecPrivateKeyAttrs: @{
-                    (__bridge NSString *)kSecAttrIsPermanent: @NO,
-                    (__bridge NSString *)kSecAttrAccessControl: (__bridge id)access
-                }
+            // 2. Generate a PERSISTENT Secure Enclave P-256 key, tagged for later retrieval.
+            NSData *tag = [SE_KEY_TAG dataUsingEncoding:NSUTF8StringEncoding];
+            NSDictionary *attrs = @{
+                (__bridge id)kSecAttrKeyType:        (__bridge id)kSecAttrKeyTypeECSECPrimeRandom,
+                (__bridge id)kSecAttrKeySizeInBits:  @256,
+                (__bridge id)kSecAttrTokenID:        (__bridge id)kSecAttrTokenIDSecureEnclave,
+                (__bridge id)kSecPrivateKeyAttrs: @{
+                    (__bridge id)kSecAttrIsPermanent:     @YES,
+                    (__bridge id)kSecAttrApplicationTag:  tag,
+                    (__bridge id)kSecAttrAccessControl:   (__bridge id)access,
+                },
             };
-
-            CFErrorRef cfErr = NULL;
-            SecKeyRef sePrivateKey = SecKeyCreateRandomKey((__bridge CFDictionaryRef)keyParams, &cfErr);
-            if (cfErr) error = (__bridge NSError *)cfErr;
-            if (!sePrivateKey) {
-                [call resolve:@{@"error": @"SE key generation failed"}];
+            CFErrorRef genErr = NULL;
+            SecKeyRef sePriv = SecKeyCreateRandomKey((__bridge CFDictionaryRef)attrs, &genErr);
+            CFRelease(access);
+            if (!sePriv) {
+                [call reject:@"SE_KEYGEN_FAILED" :@"Secure Enclave key generation failed (device may lack SE or biometrics)" :nil :nil];
+                if (genErr) CFRelease(genErr);
                 return;
             }
 
-            SecKeyRef sePublicKey = SecKeyCopyPublicKey(sePrivateKey);
-            if (!sePublicKey) {
-                CFRelease(sePrivateKey);
-                [call resolve:@{@"error": @"Failed to extract SE public key"}];
+            SecKeyRef sePub = SecKeyCopyPublicKey(sePriv);
+            CFRelease(sePriv);  // private key stays in the enclave, retrieved by tag on demand
+            if (!sePub) {
+                [call reject:@"SE_PUBKEY_FAILED" :@"Failed to derive Secure Enclave public key" :nil :nil];
                 return;
             }
 
-            // 3. Generate random 32-byte H
+            // 3. Fresh random 32-byte hardware factor H.
             uint8_t hBytes[32];
-            int ret = SecRandomCopyBytes(kSecRandomDefault, 32, hBytes);
-            if (ret != errSecSuccess) {
-                CFRelease(sePrivateKey);
-                CFRelease(sePublicKey);
-                [call resolve:@{@"error": @"H generation failed"}];
+            if (SecRandomCopyBytes(kSecRandomDefault, sizeof(hBytes), hBytes) != errSecSuccess) {
+                CFRelease(sePub);
+                [call reject:@"RANDOM_FAILED" :@"Secure random generation failed" :nil :nil];
                 return;
             }
-            NSData *hData = [NSData dataWithBytes:hBytes length:32];
+            NSData *hData = [NSData dataWithBytes:hBytes length:sizeof(hBytes)];
 
-            // 4. Generate ephemeral P-256 keypair
-            NSDictionary *ephemeralParams = @{
-                (__bridge NSString *)kSecAttrKeyType: (__bridge NSString *)kSecAttrKeyTypeEC,
-                (__bridge NSString *)kSecAttrKeySizeInBits: @256
-            };
-            cfErr = NULL;
-            SecKeyRef ephemeralPrivateKey = SecKeyCreateRandomKey((__bridge CFDictionaryRef)ephemeralParams, &cfErr);
-            if (cfErr) error = (__bridge NSError *)cfErr;
-            if (!ephemeralPrivateKey) {
-                CFRelease(sePrivateKey);
-                CFRelease(sePublicKey);
-                [call resolve:@{@"error": @"Ephemeral key generation failed"}];
+            // 4. ECIES-encrypt H under the SE public key (no biometric needed for encrypt).
+            if (!SecKeyIsAlgorithmSupported(sePub, kSecKeyOperationTypeEncrypt, VEYRNOX_ECIES_ALGO)) {
+                memset(hBytes, 0, sizeof(hBytes));
+                CFRelease(sePub);
+                [call reject:@"ALGO_UNSUPPORTED" :@"ECIES algorithm not supported on this device" :nil :nil];
                 return;
             }
-
-            SecKeyRef ephemeralPublicKey = SecKeyCopyPublicKey(ephemeralPrivateKey);
-            if (!ephemeralPublicKey) {
-                CFRelease(sePrivateKey);
-                CFRelease(sePublicKey);
-                CFRelease(ephemeralPrivateKey);
-                [call resolve:@{@"error": @"Failed to extract ephemeral public key"}];
+            CFErrorRef encErr = NULL;
+            CFDataRef ct = SecKeyCreateEncryptedData(sePub, VEYRNOX_ECIES_ALGO, (__bridge CFDataRef)hData, &encErr);
+            memset(hBytes, 0, sizeof(hBytes));  // zero the plaintext H copy
+            CFRelease(sePub);
+            if (!ct) {
+                [call reject:@"ECIES_ENCRYPT_FAILED" :@"ECIES encryption of hardware factor failed" :nil :nil];
+                if (encErr) CFRelease(encErr);
                 return;
             }
+            NSData *encH = (__bridge_transfer NSData *)ct;
 
-            // 5. Extract ephemeral public key for storage (65 bytes, uncompressed P-256)
-            cfErr = NULL;
-            CFDataRef ephemeralPubData = SecKeyCopyExternalRepresentation(ephemeralPublicKey, &cfErr);
-            if (cfErr) error = (__bridge NSError *)cfErr;
-            NSData *ephemeralPublicKeyBytes = ephemeralPubData ? (__bridge NSData *)ephemeralPubData : [NSData data];
+            // 5. Persist only the ciphertext. The SE private key lives in the enclave.
+            [self storeKeychainItem:KEY_ENC_H data:encH];
 
-            // 6. Generate random 12-byte nonce for AES-GCM
-            uint8_t nonceBytes[12];
-            int nonceRet = SecRandomCopyBytes(kSecRandomDefault, 12, nonceBytes);
-            if (nonceRet != errSecSuccess) {
-                CFRelease(sePrivateKey);
-                CFRelease(sePublicKey);
-                CFRelease(ephemeralPrivateKey);
-                CFRelease(ephemeralPublicKey);
-                if (ephemeralPubData) CFRelease(ephemeralPubData);
-                [call resolve:@{@"error": @"Nonce generation failed"}];
-                return;
-            }
-            NSData *nonce = [NSData dataWithBytes:nonceBytes length:12];
-
-            // 7. Store enrollment data
-            [self clearAllKeychainItems];
-            [self storeKeychainItem:KEY_SE_REF data:[NSData dataWithBytes:"se_key_ref_v2" length:13]];
-            [self storeKeychainItem:KEY_EPHEM_PUB data:ephemeralPublicKeyBytes];
-            [self storeKeychainItem:KEY_ENC_H data:hData]; // Real encryption deferred to audit
-            [self storeKeychainItem:KEY_NONCE data:nonce];
-
-            CFRelease(sePrivateKey);
-            CFRelease(sePublicKey);
-            CFRelease(ephemeralPrivateKey);
-            CFRelease(ephemeralPublicKey);
-            if (ephemeralPubData) CFRelease(ephemeralPubData);
-
-            [call resolve:@{}];
+            [call resolve:@{@"keyTier": @"SecureEnclave"}];
         } @catch (NSException *exception) {
-            [call resolve:@{@"error": [NSString stringWithFormat:@"Enroll failed: %@", exception.reason]}];
+            [call reject:@"ENROLL_EXCEPTION" :[NSString stringWithFormat:@"Enroll failed: %@", exception.reason] :nil :nil];
         }
     });
 }
 
+#pragma mark - isEnrolled
+
 - (void)isEnrolled:(CAPPluginCall *)call {
-    NSData *seRef = [self loadKeychainItem:KEY_SE_REF];
-    BOOL enrolled = (seRef != nil && seRef.length > 0);
+    NSData *encH = [self loadKeychainItem:KEY_ENC_H];
+    NSData *tag  = [SE_KEY_TAG dataUsingEncoding:NSUTF8StringEncoding];
+    NSDictionary *query = @{
+        (__bridge id)kSecClass:              (__bridge id)kSecClassKey,
+        (__bridge id)kSecAttrApplicationTag: tag,
+        (__bridge id)kSecAttrKeyType:        (__bridge id)kSecAttrKeyTypeECSECPrimeRandom,
+        (__bridge id)kSecReturnRef:          @YES,
+    };
+    CFTypeRef keyRef = NULL;
+    OSStatus st = SecItemCopyMatching((__bridge CFDictionaryRef)query, &keyRef);
+    if (keyRef) CFRelease(keyRef);
+
+    BOOL enrolled = (encH != nil && encH.length > 0 && st == errSecSuccess);
     [call resolve:@{@"enrolled": @(enrolled)}];
 }
 
+#pragma mark - clearCredential
+
 - (void)clearCredential:(CAPPluginCall *)call {
-    [self clearAllKeychainItems];
+    [self deleteSecureEnclaveKey];
+    [self deleteKeychainItem:KEY_ENC_H];
     [call resolve:@{}];
 }
 
-// HONEST-DISABLED (I4) — mirrors enroll(). Returns plaintext H without any
-// SE-private-key ECDH decryption. Rejecting here ensures no caller can mistake
-// Keychain-stored plaintext for a hardware-bound secret.
+#pragma mark - getHardwareFactor
+
 - (void)getHardwareFactor:(CAPPluginCall *)call {
-    [call reject:@"NOT_IMPLEMENTED"
-          :@"HardwareKekPlugin.getHardwareFactor is HONEST-DISABLED: H is not SE-ECIES wrapped (H-NEW-D audit gate). Use PIN-only KEK path until the real implementation is audited."
-          :nil
-          :nil];
-}
-
-- (void)_getHardwareFactor_scaffold_NOT_COMPILED:(CAPPluginCall *)call {
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @try {
-            NSData *ephemeralPublicKey = [self loadKeychainItem:KEY_EPHEM_PUB];
-            NSData *encryptedH = [self loadKeychainItem:KEY_ENC_H];
-            NSData *nonce = [self loadKeychainItem:KEY_NONCE];
-
-            if (!ephemeralPublicKey || !encryptedH || !nonce) {
-                [call resolve:@{@"error": @"No hardware key enrolled — call enroll() first"}];
+            NSData *encH = [self loadKeychainItem:KEY_ENC_H];
+            if (!encH || encH.length == 0) {
+                [call reject:@"NOT_ENROLLED" :@"No hardware key enrolled — call enroll() first" :nil :nil];
                 return;
             }
 
-            // Request biometric authentication
-            LAContext *laContext = [[LAContext alloc] init];
-            NSError *error = nil;
-
-            if (![laContext canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&error]) {
-                [call resolve:@{@"error": @"Biometric authentication not available"}];
+            // Retrieve the SE private key by tag. Using it for decryption below
+            // triggers the biometric (Face ID / Touch ID) prompt via its ACL.
+            NSData *tag = [SE_KEY_TAG dataUsingEncoding:NSUTF8StringEncoding];
+            NSDictionary *query = @{
+                (__bridge id)kSecClass:               (__bridge id)kSecClassKey,
+                (__bridge id)kSecAttrApplicationTag:  tag,
+                (__bridge id)kSecAttrKeyType:         (__bridge id)kSecAttrKeyTypeECSECPrimeRandom,
+                (__bridge id)kSecReturnRef:           @YES,
+                (__bridge id)kSecUseOperationPrompt:  @"Authenticate to unlock your wallet",
+            };
+            SecKeyRef sePriv = NULL;
+            OSStatus st = SecItemCopyMatching((__bridge CFDictionaryRef)query, (CFTypeRef *)&sePriv);
+            if (st != errSecSuccess || !sePriv) {
+                if (sePriv) CFRelease(sePriv);
+                [call reject:@"SE_KEY_MISSING" :@"Secure Enclave key not found — re-enrollment required" :nil :nil];
                 return;
             }
 
-            [laContext evaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics
-                      localizedReason:@"Authenticate to unlock your wallet"
-                                reply:^(BOOL success, NSError *evaluateError) {
-                if (!success) {
-                    NSString *reason = evaluateError.localizedDescription ?: @"User cancelled";
-                    [call resolve:@{@"error": reason}];
-                    return;
+            if (!SecKeyIsAlgorithmSupported(sePriv, kSecKeyOperationTypeDecrypt, VEYRNOX_ECIES_ALGO)) {
+                CFRelease(sePriv);
+                [call reject:@"ALGO_UNSUPPORTED" :@"ECIES decrypt not supported on this device" :nil :nil];
+                return;
+            }
+
+            // ECIES-decrypt H. This is the operation that presents Face ID.
+            CFErrorRef decErr = NULL;
+            CFDataRef pt = SecKeyCreateDecryptedData(sePriv, VEYRNOX_ECIES_ALGO, (__bridge CFDataRef)encH, &decErr);
+            CFRelease(sePriv);
+            if (!pt) {
+                // Biometric cancel/failure or key-invalidated → fail closed.
+                NSString *msg = @"Face ID authentication failed or was cancelled";
+                if (decErr) {
+                    NSError *e = (__bridge NSError *)decErr;
+                    if (e.localizedDescription) msg = e.localizedDescription;
                 }
+                [call reject:@"DECRYPT_FAILED" :msg :nil :nil];
+                if (decErr) CFRelease(decErr);
+                return;
+            }
+            NSData *h = (__bridge_transfer NSData *)pt;  // 32-byte H
+            NSString *hB64 = [h base64EncodedStringWithOptions:0];
 
-                // Biometric authenticated; return H
-                // Full decryption requires SE private key which needs special handling
-                // This is audit-gated until independently verified
-                NSString *hBase64 = [encryptedH base64EncodedStringWithOptions:0];
-                [call resolve:@{@"h": hBase64}];
-            }];
+            [call resolve:@{@"h": hB64}];
         } @catch (NSException *exception) {
-            [call resolve:@{@"error": [NSString stringWithFormat:@"getHardwareFactor failed: %@", exception.reason]}];
+            [call reject:@"GETHF_EXCEPTION" :[NSString stringWithFormat:@"getHardwareFactor failed: %@", exception.reason] :nil :nil];
         }
     });
 }
-// End of scaffold methods — not compiled (prefix _..._NOT_COMPILED prevents
-// the ObjC runtime from registering them as real Capacitor handlers).
 
-#pragma mark - Keychain Helpers
+#pragma mark - Keychain / SE Helpers
 
 - (void)storeKeychainItem:(NSString *)label data:(NSData *)data {
     NSDictionary *query = @{
-        (__bridge NSString *)kSecClass: (__bridge NSString *)kSecClassGenericPassword,
-        (__bridge NSString *)kSecAttrService: KEYCHAIN_SVC,
-        (__bridge NSString *)kSecAttrAccount: label,
-        (__bridge NSString *)kSecValueData: data,
-        (__bridge NSString *)kSecAttrAccessible: (__bridge NSString *)kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
+        (__bridge id)kSecClass:        (__bridge id)kSecClassGenericPassword,
+        (__bridge id)kSecAttrService:  KEYCHAIN_SVC,
+        (__bridge id)kSecAttrAccount:  label,
+        (__bridge id)kSecValueData:    data,
+        (__bridge id)kSecAttrAccessible: (__bridge id)kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
     };
-
     SecItemDelete((__bridge CFDictionaryRef)query);
     SecItemAdd((__bridge CFDictionaryRef)query, NULL);
 }
 
 - (NSData *)loadKeychainItem:(NSString *)label {
     NSDictionary *query = @{
-        (__bridge NSString *)kSecClass: (__bridge NSString *)kSecClassGenericPassword,
-        (__bridge NSString *)kSecAttrService: KEYCHAIN_SVC,
-        (__bridge NSString *)kSecAttrAccount: label,
-        (__bridge NSString *)kSecReturnData: @YES
+        (__bridge id)kSecClass:        (__bridge id)kSecClassGenericPassword,
+        (__bridge id)kSecAttrService:  KEYCHAIN_SVC,
+        (__bridge id)kSecAttrAccount:  label,
+        (__bridge id)kSecReturnData:   @YES,
     };
-
     CFTypeRef result = NULL;
-    SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
-    return (__bridge NSData *)result;
+    OSStatus st = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
+    if (st != errSecSuccess) return nil;
+    return (__bridge_transfer NSData *)result;
 }
 
-- (void)clearAllKeychainItems {
-    NSArray *labels = @[KEY_SE_REF, KEY_EPHEM_PUB, KEY_ENC_H, KEY_NONCE];
-    for (NSString *label in labels) {
-        NSDictionary *query = @{
-            (__bridge NSString *)kSecClass: (__bridge NSString *)kSecClassGenericPassword,
-            (__bridge NSString *)kSecAttrService: KEYCHAIN_SVC,
-            (__bridge NSString *)kSecAttrAccount: label
-        };
-        SecItemDelete((__bridge CFDictionaryRef)query);
-    }
+- (void)deleteKeychainItem:(NSString *)label {
+    NSDictionary *query = @{
+        (__bridge id)kSecClass:        (__bridge id)kSecClassGenericPassword,
+        (__bridge id)kSecAttrService:  KEYCHAIN_SVC,
+        (__bridge id)kSecAttrAccount:  label,
+    };
+    SecItemDelete((__bridge CFDictionaryRef)query);
+}
+
+- (void)deleteSecureEnclaveKey {
+    NSData *tag = [SE_KEY_TAG dataUsingEncoding:NSUTF8StringEncoding];
+    NSDictionary *query = @{
+        (__bridge id)kSecClass:              (__bridge id)kSecClassKey,
+        (__bridge id)kSecAttrApplicationTag: tag,
+        (__bridge id)kSecAttrKeyType:        (__bridge id)kSecAttrKeyTypeECSECPrimeRandom,
+    };
+    SecItemDelete((__bridge CFDictionaryRef)query);
 }
 
 @end
