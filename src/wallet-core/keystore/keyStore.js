@@ -34,6 +34,13 @@
  * @property {() => Promise<boolean>} hasVault
  *   Whether an encrypted vault already exists for this device.
  *
+ * @property {() => Promise<boolean>} [hasVaultKekWrap]
+ *   Native-only. Whether the stored vault is actually KEK-wrapped (blob has
+ *   `kekWrap`). Metadata-only read — never the secret, never a biometric prompt.
+ *   Used by the Hardware Protection badge to reconcile "enrolled" against REAL
+ *   protection (alias-present + vault-bare must read OFF, not a false ON). Web
+ *   omits this (no KEK at rest).
+ *
  * @property {(secret: string, password: string) => Promise<void>} createVault
  *   Encrypt `secret` under `password` and persist CIPHERTEXT ONLY. The live
  *   secret is never written to storage. (Web: encryptVault + saveVault.)
