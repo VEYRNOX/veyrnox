@@ -45,3 +45,38 @@ describe('HardwareKekPlugin.kt — H16 biometric-only KEK', () => {
     expect(code).toMatch(/setUserAuthenticationRequired\(true\)/);
   });
 });
+
+// L8 — source-scan hardening. These assertions double as the failing (RED) tests
+// for the M4 (API-30 guard) and L3 (re-enroll guard) fixes. Kotlin cannot be compiled
+// or unit-tested in this JS project, so we pin the executable code (comments stripped).
+describe('HardwareKekPlugin.kt — L8 KEK enroll hardening (M4 + L3)', () => {
+  it('keeps setInvalidatedByBiometricEnrollment(true) (key dies on new biometric)', () => {
+    expect(code).toMatch(/setInvalidatedByBiometricEnrollment\(true\)/);
+  });
+
+  it('keeps the per-use auth window (setUserAuthenticationParameters(0, ...))', () => {
+    expect(code).toMatch(/setUserAuthenticationParameters\(0,/);
+  });
+
+  // M4 — .setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG) is API 30, but
+  // minSdk=24. Without a guard, enroll() throws an opaque failure on API 24-29.
+  // The enroll path must gate on Build.VERSION.SDK_INT >= 30 and reject with a clear,
+  // machine-coded error so the UI can say "Hardware KEK requires Android 11+".
+  it('M4: gates the KEK enroll path on Build.VERSION.SDK_INT >= 30', () => {
+    expect(code).toMatch(/Build\.VERSION\.SDK_INT\s*>=\s*30/);
+  });
+
+  it('M4: rejects pre-Android-11 with the KEK_REQUIRES_ANDROID_11 machine code', () => {
+    expect(code).toMatch(/KEK_REQUIRES_ANDROID_11/);
+  });
+
+  // L3 — enroll() must not silently re-key KEY_ALIAS (that permanently bricks the
+  // existing kekWrap). Re-enroll must be explicit: reject if the alias already exists.
+  it('L3: pre-checks containsAlias(KEY_ALIAS) before generating a new key', () => {
+    expect(code).toMatch(/containsAlias\(KEY_ALIAS\)/);
+  });
+
+  it('L3: rejects an existing enrollment with the KEK_ALREADY_ENROLLED machine code', () => {
+    expect(code).toMatch(/KEK_ALREADY_ENROLLED/);
+  });
+});

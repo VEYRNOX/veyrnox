@@ -73,10 +73,41 @@ class HardwareKekPlugin : Plugin() {
      *
      * No biometric prompt at generation time; getHardwareFactor() prompts per-use.
      * Key invalidated if new biometric enrolled (setInvalidatedByBiometricEnrollment).
+     *
+     * M4 (audit): the key spec uses setUserAuthenticationParameters(0, ...) — an API 30
+     *   call — and setIsStrongBoxBacked (API 28). minSdk is 24, so on API 24-29 the spec
+     *   build throws an opaque failure. We gate the whole enroll path on
+     *   Build.VERSION.SDK_INT >= 30 and reject with a CLEAR machine code
+     *   (KEK_REQUIRES_ANDROID_11) so the UI can say "Hardware KEK requires Android 11+".
+     *   We do NOT weaken the auth strength to run on old APIs (fail honest, fail closed).
+     * L3 (audit): generateKey() on the fixed KEY_ALIAS silently RE-KEYS an existing
+     *   enrollment, permanently bricking the current kekWrap (H changes → old wrap is
+     *   undecryptable). We refuse to overwrite: if KEY_ALIAS already exists, reject with
+     *   KEK_ALREADY_ENROLLED so re-enroll is explicit (caller must clearCredential first).
      */
     @PluginMethod
     fun enroll(call: PluginCall) {
+        // M4: the KEK enroll path requires API 30+ (setUserAuthenticationParameters is
+        // API 30; setIsStrongBoxBacked is API 28 — the >= 30 gate covers both). minSdk is
+        // 24, so gate here and reject pre-Android-11 with an honest, machine-coded error
+        // rather than failing later with an opaque "enroll failed:" message. We do NOT
+        // weaken the auth strength to run on old APIs (fail honest, fail closed).
+        if (Build.VERSION.SDK_INT >= 30) {
+            enrollApi30(call)
+        } else {
+            call.reject("KEK_REQUIRES_ANDROID_11: Hardware KEK requires Android 11+ (API 30)")
+        }
+    }
+
+    private fun enrollApi30(call: PluginCall) {
         try {
+            // L3: never silently re-key. Refuse to overwrite an existing enrollment;
+            // re-enroll must be explicit (clearCredential first).
+            val existing = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+            if (existing.containsAlias(KEY_ALIAS)) {
+                call.reject("KEK_ALREADY_ENROLLED: clearCredential first to re-enroll")
+                return
+            }
             // H15: prefer StrongBox; fall back to TEE on devices without it.
             val enrolled = tryEnrollKey(useStrongBox = true)
                 || tryEnrollKey(useStrongBox = false)
