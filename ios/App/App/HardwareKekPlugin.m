@@ -53,9 +53,40 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
 - (void)enroll:(CAPPluginCall *)call {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @try {
-            // Idempotent: clear any prior SE key + ciphertext.
-            [self deleteSecureEnclaveKey];
-            [self deleteKeychainItem:KEY_ENC_H];
+            // L4 (staleness sweep): iOS Keychain items and the Secure Enclave key
+            // survive an app uninstall. On reinstall the JS vault is gone but a
+            // residual SE key + ECIES ciphertext can remain under our fixed tags,
+            // so this enroll doubles as the first-run staleness clear: it removes
+            // any prior credential before creating a new one.
+            //
+            // Pre-clear must be ROBUST, not best-effort. Previously the two
+            // deletes ignored their OSStatus; if a stale SE key genuinely could
+            // NOT be removed we would go on and call SecKeyCreateRandomKey under
+            // the SAME application tag, producing a second, ambiguous key that
+            // SecItemCopyMatching may resolve unpredictably (isEnrolled /
+            // getHardwareFactor could then bind to the wrong key). To stay
+            // fail-closed (I4) we treat "delete failed for a reason other than
+            // 'nothing was there'" as a hard error and reject BEFORE minting a new
+            // key — rather than silently stacking a second credential on top of an
+            // unremovable stale one.
+            //
+            // errSecSuccess       = a prior credential existed and was removed.
+            // errSecItemNotFound  = clean slate, nothing to remove.
+            // anything else       = the stale item is stuck; do not create a new one.
+            OSStatus preSeSt  = [self deleteSecureEnclaveKey];
+            OSStatus preEncSt = [self deleteKeychainItem:KEY_ENC_H];
+            BOOL preSeOk  = (preSeSt  == errSecSuccess || preSeSt  == errSecItemNotFound);
+            BOOL preEncOk = (preEncSt == errSecSuccess || preEncSt == errSecItemNotFound);
+            if (!preSeOk || !preEncOk) {
+                NSString *msg = [NSString stringWithFormat:
+                    @"Could not clear stale hardware credential before enroll "
+                    @"(SE key OSStatus %d, ciphertext OSStatus %d) — refusing to "
+                    @"create a second key under the same tag",
+                    (int)preSeSt, (int)preEncSt];
+                NSLog(@"[VEYRNOX-KEK] enroll: PRE-CLEAR FAILED — %@", msg);
+                [call reject:@"STALE_CLEAR_FAILED" :msg :nil :nil];
+                return;
+            }
 
             // 1. Biometric-gated access control for the SE private key.
             CFErrorRef aclErr = NULL;
