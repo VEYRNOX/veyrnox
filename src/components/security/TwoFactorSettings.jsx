@@ -52,9 +52,12 @@ export default function TwoFactorSettings() {
   const [apNew, setApNew] = useState('');
   const [apConfirm, setApConfirm] = useState('');
   const [apBusy, setApBusy] = useState(false);
-  const apTooShort = apNew.length > 0 && apNew.length < 8;
+  // #2: trim before the length check so an all-whitespace Action Password (e.g. 8
+  // spaces) is rejected — otherwise a user could set an effectively-empty second
+  // factor and lock critical actions behind nothing.
+  const apTooShort = apNew.length > 0 && apNew.trim().length < 8;
   const apMismatch = apConfirm.length > 0 && apConfirm !== apNew;
-  const apCanSave = !!apVaultPw && apNew.length >= 8 && apConfirm === apNew && !apBusy;
+  const apCanSave = !!apVaultPw && apNew.trim().length >= 8 && apConfirm === apNew && !apBusy;
   const resetApForm = () => { setApVaultPw(''); setApNew(''); setApConfirm(''); };
   const isPinModel = getAuthModel() === 'pin';
   const setupBlocked = isDecoy || isHidden; // configure from your real session only
@@ -196,7 +199,7 @@ export default function TwoFactorSettings() {
         {!setupBlocked && (
           <div className="space-y-3 pt-1">
             <div>
-              <Label>{isPinModel ? 'Your PIN' : 'Wallet password'}</Label>
+              <Label htmlFor={isPinModel ? undefined : 'ap-vault'}>{isPinModel ? 'Your PIN' : 'Wallet password'}</Label>
               {isPinModel ? (
                 <div className="mt-2">
                   <PinPad

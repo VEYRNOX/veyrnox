@@ -61,7 +61,7 @@ import {
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
-import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR } from './kek.js';
+import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 
 // Single-vault slice, mirroring evm/vaultStore.js's web layout (KEY='primary').
@@ -229,7 +229,7 @@ async function _unlockInner(password, opts = {}) {
   if (raw === null || raw === undefined) {
     throw new Error('No wallet found on this device');
   }
-  const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT (not raw SyntaxError)
 
   if (blob.kekWrap) {
     // KEK-enrolled vault: hardware factor H (via biometric) + PIN-derived C required (I4).
@@ -237,8 +237,11 @@ async function _unlockInner(password, opts = {}) {
     // so authenticateOrThrow() is intentionally skipped here to avoid a double prompt.
     const getHF = opts && opts.getHardwareFactor;
     if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    // Validate the blob's kekSalt BEFORE any biometric prompt / key derivation: a
+    // KEK-enrolled blob with a missing/empty/non-base64 kekSalt is malformed and must
+    // fail closed with the stable code (never a raw InvalidCharacterError).
+    const saltBytes = decodeKekSalt(blob.kekSalt);
     const H = await getHF(); // biometric prompt from HardwareKekPlugin (Android Keystore)
-    const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
     let C;
     let kek;
     let dek;
@@ -319,7 +322,19 @@ export const nativeKeyStore = {
     await init();
     const raw = await SecureStorage.get(VAULT_KEY, false);
     if (raw === null || raw === undefined) return false;
-    const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    // BADGE HONESTY (I4): this is the source-of-truth for the "Hardware Protection ON"
+    // badge. A blob we cannot even parse is NOT usable KEK protection, so we report
+    // "not enrolled" (false) — the badge reads OFF safely — rather than throwing and
+    // breaking the settings screen. This is deliberately the ONLY place a malformed
+    // blob is swallowed to a benign value: it is a read-only presence check that never
+    // touches key material. Genuine decrypt/unlock errors are NOT swallowed here — the
+    // unlock/enroll paths still surface MALFORMED_VAULT and fail closed.
+    let blob;
+    try {
+      blob = parseVaultBlob(raw);
+    } catch {
+      return false;
+    }
     return !!blob.kekWrap;
   },
 
@@ -360,7 +375,7 @@ export const nativeKeyStore = {
       const raw = await SecureStorage.get(VAULT_KEY, false);
       const blob = raw === null || raw === undefined
         ? null
-        : (typeof raw === 'string' ? JSON.parse(raw) : raw);
+        : parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
 
       // Bare (or first-write) vault: identical to createVault — plain argon2id, no KEK.
       if (!blob || !blob.kekWrap) {
@@ -372,7 +387,7 @@ export const nativeKeyStore = {
       // KEK-enrolled: re-encrypt the new content under the EXISTING DEK, preserving wrap.
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+      const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
       const H = await getHF(); // one biometric prompt for this content write
       let C;
       let kek;
@@ -437,14 +452,14 @@ export const nativeKeyStore = {
       if (raw === null || raw === undefined) {
         throw new Error('No wallet found on this device');
       }
-      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
 
       if (blob.kekWrap) {
         // KEK-enrolled: rotate the PIN by re-wrapping the DEK under a new KEK.
         // The seed ciphertext (blob.ct) stays UNCHANGED — that is the §3 property.
         const getHF = opts && opts.getHardwareFactor;
         if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-        const oldSaltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
+        const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
         const H = await getHF();
         const H2 = H.slice(); // combineKek zeroes its H input; copy before the first call
         let oldC;
@@ -503,7 +518,7 @@ export const nativeKeyStore = {
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (raw === null || raw === undefined) throw new Error('No wallet found on this device');
-      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
       const secret = await decryptVault(blob, password); // verify password and recover seed
 
       // L2 (audit): getHF() materialises the hardware credential (AndroidKeyStore /
@@ -566,7 +581,7 @@ export const nativeKeyStore = {
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (!raw) throw new Error('No wallet found on this device');
-      const blob = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
       if (!blob.kekWrap) {
         // Already-bare vault: no key material to re-wrap, but a stale Keystore
         // alias may survive from a prior partial/interrupted unenroll. Clearing
@@ -579,8 +594,8 @@ export const nativeKeyStore = {
       }
 
       // Recover DEK: H (hardware factor, biometric) + PIN-derived C
+      const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
       const H = await getHF();
-      const saltBytes = Uint8Array.from(atob(blob.kekSalt), c => c.charCodeAt(0));
       let C;
       let kek;
       let dek;

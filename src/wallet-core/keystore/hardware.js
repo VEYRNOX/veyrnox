@@ -30,6 +30,7 @@
  */
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { KEK_ERR } from './kek.js';
 
 // PRF_EVAL_SALT — documented here for test/audit purposes.
 // Android (HardwareKekPlugin.kt) computes H = HMAC-SHA256(AndroidKeyStore key, this salt)
@@ -170,9 +171,23 @@ export async function enrollHardwareCredential() {
 export async function getHardwareFactor() {
   const plugin = getPlugin();
   const { h } = await plugin.getHardwareFactor();
-  const result = b64ToUint8Array(h);
+  // I/O-boundary validation (fail-closed, I4): the plugin output is UNTRUSTED at the
+  // JS bridge. Validate BEFORE decoding — a missing/non-string h must throw the stable
+  // KEK_ERR.NO_HARDWARE_FACTOR, never reach atob() (raw InvalidCharacterError/TypeError)
+  // and never fabricate/return garbage bytes.
+  if (typeof h !== 'string' || h.length === 0) {
+    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+  }
+  let result;
+  try {
+    result = b64ToUint8Array(h);
+  } catch {
+    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+  }
+  // The hardware factor is fixed-length by construction (spec §3: 32 bytes). A wrong
+  // length is not a usable H — reject with the stable code, never pad or truncate.
   if (result.length !== 32) {
-    throw new Error(`Hardware factor wrong length: ${result.length}`);
+    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
   }
   // H-4 / iOS-F8: 32 zero bytes is a valid LENGTH but a degenerate H — it reduces the
   // KEK to a deterministic HKDF of 0^32 || C, i.e. C-only protection, silently voiding
