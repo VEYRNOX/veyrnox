@@ -10,14 +10,25 @@
 //   The seed is wrapped under a DEK (data-encryption key); the DEK is wrapped under a
 //   KEK; the KEK is COMBINED from two factors that are BOTH required:
 //
-//       H  — device-bound factor (Keychain/TEE): on web, the WebAuthn `prf` output for
-//            a FIXED salt; on native, an HMAC over a fixed salt with a key held by the
-//            platform key store. NOTE (H14/H15): on iOS the native key lives in the
-//            standard Keychain (kSecClassGenericPassword), NOT the Secure Enclave; on
-//            Android it is AndroidKeyStore-backed with StrongBox preferred but NOT
-//            enforced. So "device-bound (Keychain/TEE)" is honest; "Secure Enclave" or
-//            unqualified "hardware-backed" is NOT. Identical for every credential/set on
-//            the device (spec §3: "one device-bound credential, set count invisible").
+//       H  — device-bound factor (platform key store): on web, the WebAuthn `prf`
+//            output for a FIXED salt; on native, a value the platform key store hands
+//            back after a per-use biometric gate. NOTE (H14/H15, corrected per the ECC
+//            Hardware KEK audit L5 to match the SHIPPED plugins):
+//              - iOS (HardwareKekPlugin.m): H is a fresh 32-byte random value ECIES-
+//                wrapped under a NON-EXTRACTABLE Secure Enclave P-256 key (Apple's
+//                kSecKeyAlgorithmECIESEncryptionCofactorX963SHA256AESGCM). Only the
+//                ECIES *ciphertext* of H sits in the generic Keychain
+//                (kSecClassGenericPassword); the decrypting private key never leaves the
+//                Secure Enclave and every getHardwareFactor triggers Face ID / Touch ID.
+//              - Android (HardwareKekPlugin.kt): H is HMAC-SHA256 over a fixed salt with
+//                an AndroidKeyStore-backed key; StrongBox is PREFERRED but NOT enforced
+//                (the key may land in TEE), so the tier is observed, not guaranteed.
+//            Honest claims: iOS H IS bound to a non-extractable Secure Enclave key;
+//            Android H is "device-bound (AndroidKeyStore, StrongBox not enforced)". An
+//            unqualified "hardware-backed" for Android is still NOT honest. This is an
+//            INTERNAL developer note; user-facing copy stays qualified (kek.honesty
+//            tests guard the settings UI). Identical for every credential/set on the
+//            device (spec §3: "one device-bound credential, set count invisible").
 //            H is produced and held by the platform key store, never persisted by this
 //            module (I1); this module receives it only as the opaque bytes the platform
 //            hands back. Source: src/dev/prfSpike.js (evaluatePrf) on a real device,
@@ -66,6 +77,21 @@ export const KEK_DOMAIN = 'veyrnox/kek/v1/combine(H||C)';
 // lives in H and C, not in this salt.
 const KEK_HKDF_SALT = enc.encode('veyrnox/kek/v1/hkdf-salt');
 
+// L7 (ECC Hardware KEK audit): AAD (additional authenticated data) for the DEK wrap.
+// Legacy v1 blobs were sealed with NO AAD, so the blob's own format `version` was not
+// folded into the GCM tag (malleable metadata). v2 binds this fixed context — which
+// carries the format-version identity — as GCM AAD, so a v2 tag verifies only when the
+// version is genuinely v2. This is the only self-contained metadata available at this
+// layer: callers (web.js/native.js) pass wrapDek only (kek, dek), never the kekSalt, so
+// the kekSalt cannot be bound here without a caller-signature change (out of scope). The
+// version is authenticated; a downgrade/cross-version reinterpretation now fails closed.
+const WRAP_AAD_V2 = enc.encode('veyrnox/kek/wrap/v2/aad');
+
+// Wrap format versions. v1 = legacy, no AAD (still unwrappable — real devices hold these).
+// v2 = current, binds WRAP_AAD_V2 as GCM AAD. New wraps are always written as v2.
+const WRAP_V1 = 1;
+const WRAP_V2 = 2;
+
 // Machine codes ARE the contract (copy can change; codes cannot). Used by tests and
 // callers to branch without parsing prose.
 export const KEK_ERR = Object.freeze({
@@ -102,7 +128,8 @@ function unb64(str) { const s = atob(str); const u8 = new Uint8Array(s.length); 
  * The construction sees only fixed-length bytes and never branches on which set C
  * came from, so the op set is identical for real and decoy (I3, §9.5).
  *
- * @param {Uint8Array} H 32-byte hardware PRF output (NEVER fabricated; from the SE)
+ * @param {Uint8Array} H 32-byte hardware factor (NEVER fabricated; from the platform
+ *          key store — web PRF / iOS Secure-Enclave-ECIES / Android AndroidKeyStore HMAC)
  * @param {Uint8Array} C 32-byte Argon2id(PIN, salt_set) output (vault.js)
  * @returns {Promise<Uint8Array>} 32-byte KEK
  */
@@ -163,6 +190,10 @@ async function importKekAesKey(kek, usages) {
  * IV per wrap. Output is an opaque, persistable blob — never the DEK in the clear.
  * Output size is constant for a given DEK length, so it carries no per-set tell (§9.5).
  *
+ * L7: new wraps are format v2 and bind WRAP_AAD_V2 as GCM AAD, authenticating the
+ * format version into the tag (defence-in-depth against version malleability). Legacy
+ * v1 blobs remain unwrappable (see unwrapDek).
+ *
  * @param {Uint8Array} kek 32-byte KEK from combineKek
  * @param {Uint8Array} dek the DEK to protect
  * @returns {Promise<{v:number, iv:string, ct:string}>}
@@ -170,8 +201,12 @@ async function importKekAesKey(kek, usages) {
 export async function wrapDek(kek, dek) {
   const key = await importKekAesKey(kek, ['encrypt']);
   const iv = randomBytes(12);
-  const ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, /** @type {BufferSource} */ (dek));
-  return { v: 1, iv: b64(iv), ct: b64(new Uint8Array(ctBuf)) };
+  const ctBuf = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, additionalData: WRAP_AAD_V2 },
+    key,
+    /** @type {BufferSource} */ (dek),
+  );
+  return { v: WRAP_V2, iv: b64(iv), ct: b64(new Uint8Array(ctBuf)) };
 }
 
 /**
@@ -179,19 +214,29 @@ export async function wrapDek(kek, dek) {
  * decoy PIN's KEK against the real wrap) FAILS the GCM auth and throws a GENERIC
  * KEK_ERR.UNWRAP_FAILED — never distinguishing "wrong set" from "tampered" (oracle).
  *
+ * L7 backward-compat: v1 blobs (legacy, written WITHOUT AAD, already on real devices)
+ * decrypt with NO additionalData — exactly as before. v2 blobs decrypt with the bound
+ * WRAP_AAD_V2, so a v2 tag verifies only under the genuine v2 AAD; a downgraded or
+ * cross-version blob fails the tag and falls through to the generic UNWRAP_FAILED. Any
+ * other/absent version is rejected fail-closed.
+ *
  * @param {Uint8Array} kek 32-byte KEK from combineKek
  * @param {{v:number, iv:string, ct:string}} wrapped
  * @returns {Promise<Uint8Array>} the recovered DEK
  */
 export async function unwrapDek(kek, wrapped) {
-  if (!wrapped || wrapped.v !== 1) throw new Error(KEK_ERR.UNWRAP_FAILED);
+  if (!wrapped || (wrapped.v !== WRAP_V1 && wrapped.v !== WRAP_V2)) {
+    throw new Error(KEK_ERR.UNWRAP_FAILED);
+  }
   const key = await importKekAesKey(kek, ['decrypt']);
+  // v1 = no AAD (legacy); v2 = WRAP_AAD_V2 folded into the tag. The version drives the
+  // AAD, and the version itself is authenticated for v2 (a v2 ct decrypted as v1 has no
+  // AAD and fails the tag), so the version cannot be silently downgraded.
+  const params = wrapped.v === WRAP_V2
+    ? { name: 'AES-GCM', iv: unb64(wrapped.iv), additionalData: WRAP_AAD_V2 }
+    : { name: 'AES-GCM', iv: unb64(wrapped.iv) };
   try {
-    const ptBuf = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: unb64(wrapped.iv) },
-      key,
-      unb64(wrapped.ct),
-    );
+    const ptBuf = await crypto.subtle.decrypt(params, key, unb64(wrapped.ct));
     return new Uint8Array(ptBuf);
   } catch {
     // Generic: do NOT distinguish wrong-KEK from tampered blob (deniability oracle).
