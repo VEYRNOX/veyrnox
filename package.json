@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/bundle-trezor-connect.mjs",
+    "prebuild": "cd android-plugins/webauthn-native && npm run build && cd ../../ && node scripts/bundle-trezor-connect.mjs",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
@@ -39,6 +39,7 @@
     "postinstall": "patch-package"
   },
   "dependencies": {
+    "@veyrnox/webauthn-native": "file:./android-plugins/webauthn-native",
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@aparajita/capacitor-secure-storage": "^8.0.0",
     "@capacitor-community/speech-recognition": "^7.0.1",

@@ -1,6 +1,11 @@
-import { registerPlugin } from '@capacitor/core';
+import { registerPlugin, Capacitor } from '@capacitor/core';
 
-const WebAuthnNative = registerPlugin('WebAuthnNative');
+interface WebAuthnNativePlugin {
+  registerCredential(options: { userId: string }): Promise<any>;
+  authenticateCredential(options: { credentialId: string; challenge: string }): Promise<any>;
+}
+
+const WebAuthnNative = registerPlugin<WebAuthnNativePlugin>('WebAuthnNative');
 
 /**
  * WebAuthn Polyfill for Capacitor
@@ -19,25 +24,30 @@ interface CredentialRequestOptions {
  * Polyfill PublicKeyCredential.create() for Capacitor
  */
 async function polyfillCreate(options: CredentialCreationOptions): Promise<any> {
-  if (!window.Capacitor?.isNativePlatform?.()) {
+  if (!Capacitor.isNativePlatform()) {
     // Fall back to native WebAuthn on web
     return navigator.credentials?.create(options);
   }
 
   try {
-    const userId = new TextDecoder().decode(options.publicKey.user.id);
+    const userId = new TextDecoder().decode(new Uint8Array(options.publicKey.user.id as any));
 
     const result = await WebAuthnNative.registerCredential({
       userId: userId
     });
 
     // Transform native response to WebAuthn format
+    const decodeBase64 = (str: string): Uint8Array => {
+      const chars = atob(str);
+      const codes = Array.from(chars).map((c: string) => c.charCodeAt(0));
+      return new Uint8Array(codes as any);
+    };
     return {
       id: result.credentialId,
-      rawId: new Uint8Array(atob(result.credentialId).split('').map(c => c.charCodeAt(0))),
+      rawId: decodeBase64(result.credentialId),
       response: {
-        clientDataJSON: new Uint8Array(atob(result.clientDataJSON).split('').map(c => c.charCodeAt(0))),
-        attestationObject: new Uint8Array(atob(result.attestationObject).split('').map(c => c.charCodeAt(0)))
+        clientDataJSON: decodeBase64(result.clientDataJSON),
+        attestationObject: decodeBase64(result.attestationObject)
       },
       type: 'public-key'
     };
@@ -50,16 +60,16 @@ async function polyfillCreate(options: CredentialCreationOptions): Promise<any> 
  * Polyfill PublicKeyCredential.get() for Capacitor
  */
 async function polyfillGet(options: CredentialRequestOptions): Promise<any> {
-  if (!window.Capacitor?.isNativePlatform?.()) {
+  if (!Capacitor.isNativePlatform()) {
     // Fall back to native WebAuthn on web
     return navigator.credentials?.get(options);
   }
 
   try {
-    const challenge = new TextDecoder().decode(options.publicKey.challenge);
+    const challenge = new TextDecoder().decode(new Uint8Array(options.publicKey.challenge as any));
     const allowCredentials = options.publicKey.allowCredentials || [];
     const credentialId = allowCredentials[0]?.id ?
-      btoa(String.fromCharCode(...new Uint8Array(allowCredentials[0].id))) :
+      btoa(String.fromCharCode(...Array.from(new Uint8Array(allowCredentials[0].id as any)))) :
       'default';
 
     const result = await WebAuthnNative.authenticateCredential({
@@ -68,13 +78,18 @@ async function polyfillGet(options: CredentialRequestOptions): Promise<any> {
     });
 
     // Transform native response to WebAuthn format
+    const decodeBase64 = (str: string): Uint8Array => {
+      const chars = atob(str);
+      const codes = Array.from(chars).map((c: string) => c.charCodeAt(0));
+      return new Uint8Array(codes as any);
+    };
     return {
       id: credentialId,
-      rawId: new Uint8Array(atob(credentialId).split('').map(c => c.charCodeAt(0))),
+      rawId: decodeBase64(credentialId),
       response: {
-        clientDataJSON: new Uint8Array(atob(result.clientDataJSON).split('').map(c => c.charCodeAt(0))),
-        authenticatorData: new Uint8Array(atob(result.authenticatorData).split('').map(c => c.charCodeAt(0))),
-        signature: new Uint8Array(atob(result.signature).split('').map(c => c.charCodeAt(0)))
+        clientDataJSON: decodeBase64(result.clientDataJSON),
+        authenticatorData: decodeBase64(result.authenticatorData),
+        signature: decodeBase64(result.signature)
       },
       type: 'public-key'
     };
@@ -87,7 +102,7 @@ async function polyfillGet(options: CredentialRequestOptions): Promise<any> {
  * Install polyfill on Capacitor
  */
 export function installWebAuthnPolyfill() {
-  if (!window.Capacitor?.isNativePlatform?.()) {
+  if (!Capacitor.isNativePlatform()) {
     return; // Not on native, use real WebAuthn
   }
 
@@ -95,22 +110,26 @@ export function installWebAuthnPolyfill() {
   const originalCredentials = navigator.credentials;
 
   // Polyfill credentials.create()
-  const originalCreate = originalCredentials.create.bind(originalCredentials);
-  navigator.credentials.create = async function(options: any) {
-    if (options?.publicKey) {
-      return polyfillCreate(options);
-    }
-    return originalCreate(options);
-  };
+  const originalCreate = originalCredentials.create?.bind(originalCredentials);
+  if (navigator.credentials && 'create' in navigator.credentials) {
+    navigator.credentials.create = async function(options: any) {
+      if (options?.publicKey) {
+        return polyfillCreate(options);
+      }
+      return originalCreate?.(options);
+    };
+  }
 
   // Polyfill credentials.get()
-  const originalGet = originalCredentials.get.bind(originalCredentials);
-  navigator.credentials.get = async function(options: any) {
-    if (options?.publicKey) {
-      return polyfillGet(options);
-    }
-    return originalGet(options);
-  };
+  const originalGet = originalCredentials.get?.bind(originalCredentials);
+  if (navigator.credentials && 'get' in navigator.credentials) {
+    navigator.credentials.get = async function(options: any) {
+      if (options?.publicKey) {
+        return polyfillGet(options);
+      }
+      return originalGet?.(options);
+    };
+  }
 
   console.log('[WebAuthn] Polyfill installed for Capacitor native');
 }

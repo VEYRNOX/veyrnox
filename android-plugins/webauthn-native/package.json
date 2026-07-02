@@ -4,8 +4,8 @@
   "description": "Native WebAuthn plugin for Capacitor",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["android", "dist"],
+  "files": ["android", "ios", "dist", "capacitor.plugin.json", "BUILD.md"],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc -p tsconfig.json"
   }
 }
