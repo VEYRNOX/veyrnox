@@ -27,6 +27,25 @@
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import <LocalAuthentication/LocalAuthentication.h>
+#import <os/log.h>
+
+// iOS-F9 (DEBUG-only): mirror the KEK trace NSLogs to os_log so they can be captured
+// off-device via Console.app / `log collect` — iOS 26 does NOT surface a third-party
+// app's plain NSLog to external log tools, which left the SE-unlock trace uncapturable.
+// Gated behind #if DEBUG so PRODUCTION builds never emit KEK-operation traces (no info
+// leak). Only static descriptions + byte LENGTHS are logged as %{public}; the hardware
+// factor H bytes are NEVER logged.
+#if DEBUG
+static os_log_t veyrnoxKekLog(void) {
+    static os_log_t log;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ log = os_log_create("com.veyrnox.app", "kek"); });
+    return log;
+}
+#define VKEK_TRACE(fmt, ...) os_log(veyrnoxKekLog(), fmt, ##__VA_ARGS__)
+#else
+#define VKEK_TRACE(fmt, ...) do {} while (0)
+#endif
 
 static NSString * const KEYCHAIN_SVC = @"com.veyrnox.app";
 static NSString * const KEY_ENC_H    = @"veyrnox_kek_enc_h_v3";   // ECIES ciphertext blob
@@ -250,6 +269,7 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
                 return;
             }
             NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SE key retrieved, decrypting (Face ID prompt now)…");
+            VKEK_TRACE("[VEYRNOX-KEK] getHardwareFactor: SE key retrieved, decrypting (Face ID prompt now)");
 
             if (!SecKeyIsAlgorithmSupported(sePriv, kSecKeyOperationTypeDecrypt, VEYRNOX_ECIES_ALGO)) {
                 CFRelease(sePriv);
@@ -294,6 +314,7 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
             [h resetBytesInRange:NSMakeRange(0, h.length)];
             CFRelease(pt);
             NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (%lu bytes)", (unsigned long)hLen);
+            VKEK_TRACE("[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (%{public}lu bytes)", (unsigned long)hLen);
 
             [call resolve:@{@"h": hB64}];
         } @catch (NSException *exception) {
