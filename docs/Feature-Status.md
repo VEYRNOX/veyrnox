@@ -31,9 +31,11 @@
 > independent, not ECC. See `docs/audit-2026-06-28-internal-static-analysis.md`.
 > A **2026-07-01 INTERNAL static-analysis pass** (Hardware KEK focus — WebAuthn PRF KEK,
 > iOS SE KEK, Android StrongBox KEK) found 1 CRITICAL / 9 HIGH / 12 MEDIUM / 6 LOW findings.
-> 10 remediable findings fixed in PRs #520–#522. C-1 (CRITICAL: Android HMAC fixed input —
-> v2 protocol migration required) — JS-layer code-complete in PR #529 (open, pending merge,
-> 2026-07-02); NOT device-verified, NOT merged. H-1 FIXED in PR #527 (merged 2026-07-02).
+> 10 remediable findings fixed in PRs #520–#522. C-1 (CRITICAL: Android HMAC fixed input)
+> RESOLVED / device-verified 2026-07-02 — PR #529 merged (commit 732f9676); Pixel 10 Pro XL
+> Sepolia txid `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block
+> 11185289; vault confirmed `hardwareKekVersion:2`, `kekSaltLength:44`, `hardwareKekTier:"STRONGBOX"`.
+> H-1 FIXED in PR #527 (merged 2026-07-02).
 > H-NEW-D CLOSED (SE ECIES confirmed in ObjC). INTERNAL pass — not independent. See
 > `docs/audit-2026-07-01-kek-internal.md`.
 > "Audited" is **not** "verified": a feature still earns the strict catalogue `verified`
@@ -435,7 +437,7 @@ RASP gates. None affect ALLOW_MAINNET.
 
 **Fixed in PRs #520–#522 (2026-07-01):** F-01 (PRF orphan credential guard), F-02 (`KEK_ALREADY_ENROLLED` guard), F-03 (PRF salt renamed `prf-kek-v1`), F-05 (credential ID committed after PRF confirmed), F-06 (H zeroing in `changePassword` finally), F-08 (`unwrapDek` zeros ptBuf), H-4 (zero-vector H check in `hardware.js` + `combineKek`), iOS-F6 (JS-layer `HARDWARE_KEK_ALREADY_ENROLLED` guard), M-3 (`detectTamper` `getOrElse { true }` fail-closed).
 
-**Fixed post-audit (2026-07-02):** H-1 — `tierBadge.js` + `HardwareKekSettings.jsx` + `getVaultKekTier()` in `native.js` (PR #527, merged). C-1 — JS-layer v2 protocol migration code-complete in PR #529 (open, pending merge; device-verification still required — NOT device-verified, NOT merged).
+**Fixed post-audit (2026-07-02):** H-1 — `tierBadge.js` + `HardwareKekSettings.jsx` + `getVaultKekTier()` in `native.js` (PR #527, merged). C-1 — v2 protocol migration code-complete in PR #529 (merged 2026-07-02, commit 732f9676); device-verified 2026-07-02 on Pixel 10 Pro XL: v2 re-enroll → cold restart → StrongBox-gated unlock → Sepolia send txid `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289; vault `hardwareKekVersion:2`, `kekSaltLength:44` confirmed. INTERNAL — not independently audited.
 
 **Positive confirmations:** H-NEW-D CLOSED (SE ECIES confirmed); `kSecAccessControlBiometryCurrentSet` correctly set on iOS SE key ACL; `combineKek` HKDF construction sound; `android:allowBackup="false"` correct; ATS enforced on iOS.
 
