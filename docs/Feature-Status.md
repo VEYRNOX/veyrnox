@@ -134,6 +134,8 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ## 4. Security — S1 foundation & Hardware KEK Phase 1/2 Rollout
 
+> Handoff checklist for all remaining device/Mac/browser/auditor-gated items: `docs/hardware-audit-handoff.md`.
+
 ### PIN Security & Hardware Key Encryption (KEK)
 
 **Phase 1 — Web WebAuthn PRF (SHIPPING):** ✅ BUILT, 🟡 UAT-PENDING (browser UAT + testnet txids outstanding — not yet verified)
