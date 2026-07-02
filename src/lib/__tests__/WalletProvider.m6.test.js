@@ -54,13 +54,37 @@ describe('M6 — revealWalletMnemonic staleness gate + shaped return', () => {
   });
 });
 
+// The three reveal call sites (WalletSeedQR, WalletPortfolioPage's per-wallet menu,
+// WalletPortfolioPage's global unbacked-wallet banner) used to each destructure
+// { mnemonic, reauthRequired } from revealWalletMnemonic directly and toast a
+// dead-end error on a stale session. That duplicated handling is now centralised
+// in useRevealWithReauth (src/components/security/useRevealWithReauth.jsx), which
+// turns reauthRequired into an inline "unlock again" prompt that retries the
+// reveal on success instead of a dead-end toast. These assertions follow the
+// logic to its new home rather than re-duplicating it back into the pages.
 describe('M6 — call sites consume the shaped return', () => {
   const seedQr = readFileSync(resolve(here, '../../pages/WalletSeedQR.jsx'), 'utf8');
   const portfolio = readFileSync(resolve(here, '../../pages/WalletPortfolioPage.jsx'), 'utf8');
+  const reauthHook = readFileSync(resolve(here, '../../components/security/useRevealWithReauth.jsx'), 'utf8');
 
-  it('WalletSeedQR destructures { mnemonic, reauthRequired } and short-circuits', () => {
-    expect(seedQr).toMatch(/const\s*\{\s*mnemonic[\s\S]*reauthRequired\s*\}\s*=\s*revealWalletMnemonic/);
-    expect(seedQr).toMatch(/reauthRequired/);
+  it('useRevealWithReauth destructures { mnemonic, reauthRequired } from revealWalletMnemonic and short-circuits on reauthRequired', () => {
+    expect(reauthHook).toMatch(/const\s*\{\s*mnemonic[\s\S]*reauthRequired\s*\}\s*=\s*revealWalletMnemonic/);
+    expect(reauthHook).toMatch(/reauthRequired/);
+  });
+
+  it('useRevealWithReauth never silently drops a stale session (no dead-end toast; sets up the inline prompt)', () => {
+    const fnStart = reauthHook.indexOf('const attemptReveal = useCallback');
+    const body = reauthHook.slice(fnStart, reauthHook.indexOf('}, [', fnStart));
+    expect(fnStart).toBeGreaterThan(-1);
+    expect(body).toMatch(/if\s*\(\s*reauthRequired\s*\)\s*\{/);
+    // Must set pendingWalletId (drives the inline prompt) rather than just toasting.
+    expect(body).toMatch(/setPendingWalletId\(walletId\)/);
+  });
+
+  it('WalletSeedQR no longer imports revealWalletMnemonic or requireTwoFactor directly (delegates to useRevealWithReauth)', () => {
+    expect(seedQr).not.toMatch(/revealWalletMnemonic/);
+    expect(seedQr).not.toMatch(/useActionGuard/);
+    expect(seedQr).toMatch(/useRevealWithReauth/);
   });
 
   it('WalletPortfolioPage no longer uses the raw-string return of revealWalletMnemonic', () => {
@@ -68,8 +92,9 @@ describe('M6 — call sites consume the shaped return', () => {
     expect(portfolio).not.toMatch(/mnemonic:\s*revealWalletMnemonic\(/);
   });
 
-  it('WalletPortfolioPage handles reauthRequired at its call sites', () => {
-    const count = (portfolio.match(/reauthRequired/g) || []).length;
+  it('WalletPortfolioPage delegates both reveal call sites (per-wallet menu + global banner) to the shared hook', () => {
+    const count = (portfolio.match(/revealWithReauth\(/g) || []).length;
     expect(count).toBeGreaterThanOrEqual(2);
+    expect(portfolio).not.toMatch(/revealWalletMnemonic/);
   });
 });

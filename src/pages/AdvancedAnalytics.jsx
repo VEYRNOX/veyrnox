@@ -97,7 +97,7 @@ export default function AdvancedAnalytics() {
   const metrics = [
     { label: "Portfolio Risk", value: riskLevel.label, color: riskLevel.color, bg: riskLevel.bg, icon: Shield },
     { label: "Sharpe Ratio", value: portfolioSharpe.toFixed(2), icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Diversification", value: `${diversificationScore}%`, icon: Target, color: "text-blue-400", bg: "bg-blue-500/10" },
+    { label: "Diversification", value: `${diversificationScore}%`, icon: Target, color: "text-info", bg: "bg-info/10" },
     { label: "Stable Ratio", value: `${stableRatio}%`, icon: Activity, color: "text-purple-400", bg: "bg-purple-500/10" },
   ];
 
@@ -238,21 +238,21 @@ export default function AdvancedAnalytics() {
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th className="text-left py-1 pr-3 text-muted-foreground font-normal"></th>
-                    {CORRELATION_ASSETS.map(a => <th key={a} className="py-1 px-2 text-muted-foreground font-normal">{a}</th>)}
+                    <th scope="col" className="text-left py-1 pr-3 text-muted-foreground font-normal"></th>
+                    {CORRELATION_ASSETS.map(a => <th key={a} scope="col" className="py-1 px-2 text-muted-foreground font-normal">{a}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {CORRELATION.map(row => (
                     <tr key={row.asset}>
-                      <td className="py-1 pr-3 font-semibold">{row.asset}</td>
+                      <th scope="row" className="py-1 pr-3 font-semibold text-left">{row.asset}</th>
                       {CORRELATION_ASSETS.map(col => {
                         const val = row[col];
                         if (val == null) return <td key={col} className="py-1 px-2 text-center font-mono text-muted-foreground">—</td>;
                         const isHigh = val > 0.6 && val < 1;
                         const isLow = val < 0.1;
                         return (
-                          <td key={col} className={`py-1 px-2 text-center rounded font-mono ${val === 1 ? "bg-secondary" : isHigh ? "text-yellow-400" : isLow ? "text-blue-400" : ""}`}>{val.toFixed(2)}</td>
+                          <td key={col} className={`py-1 px-2 text-center rounded font-mono ${val === 1 ? "bg-secondary" : isHigh ? "text-caution" : isLow ? "text-info" : ""}`}>{val.toFixed(2)}</td>
                         );
                       })}
                     </tr>
@@ -263,7 +263,7 @@ export default function AdvancedAnalytics() {
           </div>
           <div className="flex gap-3 items-start p-3 rounded-xl border border-border bg-card text-xs text-muted-foreground">
             <Activity className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <span>Assets with low correlation (blue) improve diversification. Highly correlated assets (yellow) provide less risk reduction benefit when combined.</span>
+            <span>Assets with low correlation (info) improve diversification. Highly correlated assets (caution) provide less risk reduction benefit when combined.</span>
           </div>
         </TabsContent>
       </Tabs>
