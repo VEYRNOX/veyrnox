@@ -189,8 +189,8 @@ unlock gated signing. Rules out demo mode (real address + real on-chain balance 
 (1) the live `getHardwareFactor` SE-unlock log trace tied to these sends was **not
 captured** (proof is architectural, not an observed SE-unlock line); (2) the **biometric
 re-enrollment invalidation** test (disable/re-enroll Face ID → old SE key invalidated →
-unlock re-prompts / password fallback) is **not done**; (3) **UNAUDITED-PROVISIONAL** — no
-independent audit. This is the KEK *unlock gate*, not an asset status (ETH is already LIVE).
+unlock re-prompts / password fallback) is **not done**; (3) no independent audit yet. The
+hardware binding is built and device-verified but has not been independently audited. This is the KEK *unlock gate*, not an asset status (ETH is already LIVE).
 Android StrongBox equivalent: see PR #496 (H15/H16 device-verified on Pixel 10 Pro XL).
 
 ---

@@ -22,6 +22,27 @@
 .header { display: flex; align-items: center; justify-content: space-between; }
 .appName { font-size: 1rem; font-weight: 600; color: #f0f2f5; }
 .title { font-size: 1rem; font-weight: 600; color: #f0f2f5; margin: 0; }
+
+@media (prefers-color-scheme: light) {
+  .appName,
+  .title,
+  .body,
+  .permitBody,
+  .fieldValue,
+  .mono,
+  .simOk,
+  .riskBody,
+  .permitCheck {
+    color: #1a1a1a;
+  }
+  .overlay {
+    background: rgba(255, 255, 255, 0.88);
+  }
+  .modal {
+    background: #ffffff;
+    border-color: #e0e0e0;
+  }
+}
 .methodBadge {
   background: #1D222B;
   color: #8b949e;
