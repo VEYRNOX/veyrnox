@@ -47,6 +47,10 @@ jobs:
       # transitively via the test `pretest` hook (so it can't silently drop if
       # the test script changes).
       - run: npm run check:rng
+      # Brief A — deniability-string scanner: fails on new wallet/set-count
+      # string leaks in rendered copy (D1-D3) or raw-seed clipboard writes.
+      # Dedicated required step, same rationale as check:rng above.
+      - run: npm run check:deniability-strings
       - run: npm run build
       - run: npm test
 

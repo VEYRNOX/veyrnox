@@ -1,12 +1,16 @@
 // src/lib/__tests__/copySecret.harden.test.js
 //
-// H-NEW-3 — harden copySecret clipboard wipe.
+// H-NEW-3 — harden the sensitive clipboard wipe.
 // Source-scan tests (same pattern as useReceiveDetector.test.js): we assert the
 // hardening is present in the source, not just behaviourally inferable.
 //   (1) The wipe does NOT write an empty string (clipboard-history dedup defeat).
 //   (2) The replacement string is non-empty (length > 0).
 //   (3) A .catch handler follows the wipe writeText (focus-lost is swallowed safely).
 //   (4) A visibilitychange listener is registered (early wipe on page hide).
+//
+// Brief A, Lane 2: the wipe lifecycle moved out of copySecret.js into
+// secureClipboard.js (copySecret now delegates to it). The hardening was NOT
+// weakened — it relocated — so this scan follows it to its new home.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -14,12 +18,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(resolve(here, '../copySecret.js'), 'utf8');
+const src = readFileSync(resolve(here, '../secureClipboard.js'), 'utf8');
 const stripComments = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 const code = stripComments(src);
 
-describe('copySecret — H-NEW-3 wipe hardening', () => {
+describe('secureClipboard — H-NEW-3 wipe hardening', () => {
   it('does not wipe with an empty string', () => {
     expect(code).not.toMatch(/writeText\(\s*''\s*\)/);
     expect(code).not.toMatch(/writeText\(\s*""\s*\)/);

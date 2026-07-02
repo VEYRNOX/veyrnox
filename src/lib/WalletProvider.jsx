@@ -89,6 +89,9 @@ import {
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
 import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
+// Brief A, Lane 2: locking must also wipe any sensitive value left on the OS
+// clipboard while the page stays visible (secureClipboard listens for this event).
+import { APP_LOCK_EVENT } from '@/lib/secureClipboard';
 // I3: surface the in-memory decoy/hidden session state to wallet-core egress gates
 // (e.g. hw/trezor.js) WITHOUT persisting it (a localStorage flag would be a
 // deniability tell). isDecoy/isHidden is React-only; this mirrors it to a plain
@@ -534,6 +537,8 @@ export function WalletProvider({ children }) {
     setBtcAccount(null);
     setSolAccount(null);
     keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
+    // clipboard wipe on lock — Brief A Lane 2
+    if (typeof window !== 'undefined') { window.dispatchEvent(new Event(APP_LOCK_EVENT)); }
     if (absoluteLockTimer.current) { clearTimeout(absoluteLockTimer.current); absoluteLockTimer.current = null; }
     if (bgLockTimer.current) { clearTimeout(bgLockTimer.current); bgLockTimer.current = null; }
   }, []);
