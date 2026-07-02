@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 // Three honest states, derived (not re-typed): see src/lib/featureCatalogue.js.
 //   verified — real on-chain testnet txid (docs/verified-evidence.json); teal.
-//   built    — code-complete in the testnet/provisional build, unproven on-chain; amber.
+//   built    — code-complete and working, unproven on-chain; amber.
 //   roadmap  — specced, not built; neutral.
 // One colour per state, no stacking (Veyrnox design-system tokens).
 const STATUS_META = {
@@ -71,7 +71,7 @@ export default function Features() {
             Custodial / regulated features (swaps, perps, staking/yield/lending, fiat ramps, bank links,
             KYC/DID, NFT minting, etc.) are deliberately not built. Status is three honest states:{" "}
             <b>verified</b> means exercised against a real on-chain txid (testnet, or mainnet for shipped assets); <b>built</b> means
-            code-complete in the testnet/provisional build but not yet proven on-chain
+            code-complete and working, but not yet proven on-chain
             (code-ready ≠ verified); <b>roadmap</b> means specced, not built. Mainnet was unlocked
             2026-06-17 (internal audit complete); an independent audit is recommended for strongest assurance.
           </p>

@@ -18,11 +18,11 @@ const ALL_ASSETS = ["BTC", "ETH", "SOL", "USDC", "USDT", "BNB", "ADA"];
 
 function getColor(value) {
   if (value === 1) return "bg-primary/80 text-white";
-  if (value >= 0.7) return "bg-red-500/70 text-white";
-  if (value >= 0.4) return "bg-orange-500/60 text-white";
-  if (value >= 0.1) return "bg-yellow-500/50 text-foreground";
+  if (value >= 0.7) return "bg-destructive/70 text-white";
+  if (value >= 0.4) return "bg-risk/60 text-white";
+  if (value >= 0.1) return "bg-caution/50 text-foreground";
   if (value >= -0.1) return "bg-secondary text-muted-foreground";
-  return "bg-green-500/50 text-white";
+  return "bg-success/50 text-white";
 }
 
 function getLabel(value) {
@@ -55,21 +55,21 @@ export default function CorrelationMatrix() {
           <Info className="h-4 w-4 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">Correlation ranges from -1 (opposite) to +1 (identical). Aim for assets with correlation below 0.5.</p>
         </div>
-        <div className="flex items-start gap-2 mb-3 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-          <p className="text-[10px] text-yellow-400">These coefficients are reference/illustrative values — not live market data. Real correlations shift over time with market regimes. Do not use these figures for financial decisions.</p>
+        <div className="flex items-start gap-2 mb-3 p-2 rounded-lg bg-caution/10 border border-caution/20">
+          <p className="text-[10px] text-caution">These coefficients are reference/illustrative values — not live market data. Real correlations shift over time with market regimes. Do not use these figures for financial decisions.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr>
-                <th className="p-2 text-left text-muted-foreground font-normal w-12"></th>
-                {assets.map(a => <th key={a} className="p-2 text-center font-semibold w-14">{a}</th>)}
+                <th scope="col" className="p-2 text-left text-muted-foreground font-normal w-12"></th>
+                {assets.map(a => <th key={a} scope="col" className="p-2 text-center font-semibold w-14">{a}</th>)}
               </tr>
             </thead>
             <tbody>
               {assets.map(row => (
                 <tr key={row}>
-                  <td className="p-2 font-semibold pr-3 text-right">{row}</td>
+                  <th scope="row" className="p-2 font-semibold pr-3 text-right">{row}</th>
                   {assets.map(col => {
                     const val = CORRELATIONS[row]?.[col] ?? 0;
                     const isHovered = hovered?.[0] === row && hovered?.[1] === col;
@@ -104,11 +104,11 @@ export default function CorrelationMatrix() {
         <p className="text-xs font-semibold mb-3">Legend</p>
         <div className="flex flex-wrap gap-2">
           {[
-            { label: "Strong Positive (0.7–1.0)", cls: "bg-red-500/70 text-white" },
-            { label: "Moderate (0.4–0.7)", cls: "bg-orange-500/60 text-white" },
-            { label: "Weak (0.1–0.4)", cls: "bg-yellow-500/50 text-foreground" },
+            { label: "Strong Positive (0.7–1.0)", cls: "bg-destructive/70 text-white" },
+            { label: "Moderate (0.4–0.7)", cls: "bg-risk/60 text-white" },
+            { label: "Weak (0.1–0.4)", cls: "bg-caution/50 text-foreground" },
             { label: "Neutral (≈0)", cls: "bg-secondary text-muted-foreground" },
-            { label: "Negative (< 0)", cls: "bg-green-500/50 text-white" },
+            { label: "Negative (< 0)", cls: "bg-success/50 text-white" },
           ].map(l => (
             <div key={l.label} className={`text-[10px] px-2 py-1 rounded-md font-medium ${l.cls}`}>{l.label}</div>
           ))}
