@@ -75,6 +75,8 @@ export default function Settings() {
     );
   }
 
+  console.log('[Settings] Rendering with isNative:', isNative);
+
   return (
     <div className="max-w-lg mx-auto space-y-8">
       <BackButton />
