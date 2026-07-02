@@ -337,7 +337,7 @@ export async function getPasskeyStatus() {
   // On Capacitor (mobile), trust the WebAuthn API presence — the platform auth
   // check may not be reliable, but if the APIs exist, we can try.
   let platformAvailable = supported;
-  const isCapacitor = !!Capacitor?.isNative;
+  const isCapacitor = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform?.();
 
   if (supported && !isCapacitor && window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) {
     try {
