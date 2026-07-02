@@ -112,3 +112,6 @@ test-results/
 playwright-report/
 .auth/
 playwright/.auth/
+.claude/scheduled_tasks.lock
+.impeccable/
+.github/hooks/impeccable.json

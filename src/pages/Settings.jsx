@@ -163,27 +163,29 @@ export default function Settings() {
       <RehearsalSettingsRow />
 
       {/* Wallet Passkeys (per-wallet — used for transaction verification in the Send flow) */}
-      <div className="space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Fingerprint className="h-4 w-4 text-primary" />
-          Wallet Passkeys
-        </h2>
-        {wallets.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Create a wallet first</p>
-        ) : (
-          wallets.map(wallet => (
-            <div key={wallet.id} className="space-y-2">
-              <p className="text-sm font-medium">{wallet.name} <span className="text-muted-foreground">({wallet.currency})</span></p>
-              <PasskeySetup
-                wallet={wallet}
-                onRegistered={(credentialId) =>
-                  registerPasskey.mutateAsync({ walletId: wallet.id, credentialId })
-                }
-              />
-            </div>
-          ))
-        )}
-      </div>
+      {!isNative && (
+        <div className="space-y-3">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Fingerprint className="h-4 w-4 text-primary" />
+            Wallet Passkeys
+          </h2>
+          {wallets.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Create a wallet first</p>
+          ) : (
+            wallets.map(wallet => (
+              <div key={wallet.id} className="space-y-2">
+                <p className="text-sm font-medium">{wallet.name} <span className="text-muted-foreground">({wallet.currency})</span></p>
+                <PasskeySetup
+                  wallet={wallet}
+                  onRegistered={(credentialId) =>
+                    registerPasskey.mutateAsync({ walletId: wallet.id, credentialId })
+                  }
+                />
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Current plan (display-only — see pages/Subscription.jsx; tier stays Free) */}
       <Link to="/plans" className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
