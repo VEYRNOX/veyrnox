@@ -16,6 +16,8 @@ import javax.crypto.spec.GCMParameterSpec;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import android.os.Handler;
+import android.os.Looper;
 import java.util.concurrent.Executor;
 
 @CapacitorPlugin(name = "WebAuthnNative")
@@ -203,9 +205,11 @@ public class WebAuthnNativePlugin extends Plugin {
     }
 
     private class BiometricExecutor implements Executor {
+        private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
         @Override
         public void execute(Runnable command) {
-            command.run();
+            mainHandler.post(command);
         }
     }
 
