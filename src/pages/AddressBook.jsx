@@ -108,7 +108,7 @@ export default function AddressBook() {
                 </button>
                 <button onClick={() => toggleTrust.mutate({ id: c.id, is_trusted: !c.is_trusted })}
                   aria-label={c.is_trusted ? "Remove trusted mark" : "Mark as trusted"}
-                  className={`p-2 rounded-lg transition-colors ${c.is_trusted ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}`}>
+                  className={`p-2 rounded-lg transition-colors ${c.is_trusted ? "text-caution" : "text-muted-foreground hover:text-caution"}`}>
                   <Star className="h-4 w-4" fill={c.is_trusted ? "currentColor" : "none"} />
                 </button>
                 <button onClick={() => remove.mutate(c.id)} aria-label="Delete contact" className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">

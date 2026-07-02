@@ -1216,19 +1216,19 @@ export default function SendCrypto() {
         {/* TREZOR SIGNING TOGGLE */}
         {trezorPlatform === 'unsupported' && useTrezorMode && <TrezorUnsupportedScreen />}
         {trezorPlatform !== 'unsupported' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#8B929E', fontFamily: 'Schibsted Grotesk, sans-serif', fontSize: 14, cursor: 'pointer' }}>
+          <div className="flex items-center gap-3 my-4">
+            <label className="flex items-center gap-2 text-muted-foreground text-sm cursor-pointer">
               <input
                 type="checkbox"
                 checked={useTrezorMode}
                 onChange={(e) => { setUseTrezorMode(e.target.checked); if (e.target.checked && !trezorConnected) setTrezorModalOpen(true); }}
-                style={{ accentColor: '#4ADAC2' }}
+                className="accent-primary"
               />
               Sign with Trezor
             </label>
-            {useTrezorMode && trezorConnected && <span style={{ color: '#4ADAC2', fontFamily: 'Schibsted Grotesk, sans-serif', fontSize: 12 }}>✓ Device connected</span>}
+            {useTrezorMode && trezorConnected && <span className="text-primary text-xs">✓ Device connected</span>}
             {useTrezorMode && !trezorConnected && (
-              <button onClick={() => setTrezorModalOpen(true)} style={{ background: 'none', border: 'none', color: '#4ADAC2', fontFamily: 'Schibsted Grotesk, sans-serif', fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+              <button onClick={() => setTrezorModalOpen(true)} className="bg-transparent border-none text-primary text-xs cursor-pointer underline">
                 Connect device
               </button>
             )}

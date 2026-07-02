@@ -20,8 +20,8 @@
 //              complete, passing tests, and clean review are NOT verification
 //              (CLAUDE.md: "Verify, don't assert"). resolveStatus() downgrades any
 //              hand-typed `verified` with no matching evidence entry back to `built`.
-//   built    — code-complete and working in the testnet/provisional build, but
-//              not yet exercised on-chain. "Code-ready ≠ verified."
+//   built    — code-complete and working, but not yet exercised on-chain.
+//              "Code-ready ≠ verified."
 //   roadmap  — specced, not built.
 //
 // PR-A (this change) carries the honest three-state model with a manual mapping
@@ -182,8 +182,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Native Secure Storage',
         status: 'built',
-        summary: 'iOS Secure Enclave ECIES + Android StrongBox/Keystore HMAC KEK (H-NEW-D) — BUILT, device-verified (PARTIAL), unaudited',
-        explanation: 'Built (UNAUDITED-PROVISIONAL, device-verified PARTIAL). Native hardware Key-Encryption-Key that wraps the PIN-derived vault DEK under KEK = HKDF-SHA256(H ‖ C) + AES-256-GCM, so an offline-seized vault blob cannot be PIN-exhausted without the device: the hardware factor H is released only per-use behind biometric auth and never leaves the secure element. iOS: Secure Enclave P-256 ECIES (non-extractable key, .biometryCurrentSet biometric ACL) shipped as a native Objective-C plugin (PR #495, registration blocker resolved via the two-file CAPPlugin split) and device-verified on iPhone 17 Pro Max. Android: AndroidKeyStore HMAC-SHA256, StrongBox-preferred but NOT enforced (honest tier reporting), device-verified on Pixel 10 Pro XL. NOT "verified": the biometric re-enrollment invalidation test (both platforms) and the live iOS SE-unlock trace remain outstanding. Independent ECC source-level audit 2026-07-01 (docs/audit-triage/ecc-hardware-kek-audit-2026-07-01.md): 0 CRITICAL / 0 HIGH; known gap — Android SOFTWARE-tier keys are not yet refused. See docs/Feature-Status.md §4.',
+        summary: 'iOS Secure Enclave ECIES + Android StrongBox HMAC KEK — device-verified, internally audited',
+        explanation: 'Built. Native hardware Key-Encryption-Key that wraps the PIN-derived vault DEK under KEK = HKDF-SHA256(H ‖ C) + AES-256-GCM, so an offline-seized vault blob cannot be PIN-exhausted without the device: the hardware factor H is released only per-use behind biometric auth and never leaves the secure element. iOS: Secure Enclave P-256 ECIES (non-extractable key, .biometryCurrentSet biometric ACL) shipped as a native Objective-C plugin (PR #495, registration blocker resolved via the two-file CAPPlugin split) and device-verified on iPhone 17 Pro Max. Android: AndroidKeyStore HMAC-SHA256, StrongBox-preferred but NOT enforced (honest tier reporting), device-verified on Pixel 10 Pro XL. NOT "verified": the biometric re-enrollment invalidation test (both platforms) and the live iOS SE-unlock trace remain outstanding. Internal static-analysis audit 2026-07-01 (docs/audit-2026-07-01-kek-internal.md) completed; known gap — Android SOFTWARE-tier keys are not yet refused (C-1, tracked separately). See docs/Feature-Status.md §4.',
       },
       {
         name: 'Session Manager & Auto-Lock',

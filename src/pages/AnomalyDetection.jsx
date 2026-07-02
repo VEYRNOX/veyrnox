@@ -45,9 +45,9 @@ function detectAnomalies(transactions) {
 
 const SEVERITY_CONFIG = {
   critical: { cls: "bg-destructive/10 text-destructive border-destructive/30", label: "Critical" },
-  high: { cls: "bg-orange-500/10 text-orange-500 border-orange-500/30", label: "High" },
-  medium: { cls: "bg-yellow-500/10 text-yellow-500 border-yellow-500/30", label: "Medium" },
-  low: { cls: "bg-blue-500/10 text-blue-500 border-blue-500/30", label: "Low" },
+  high: { cls: "bg-risk/10 text-risk border-risk/30", label: "High" },
+  medium: { cls: "bg-caution/10 text-caution border-caution/30", label: "Medium" },
+  low: { cls: "bg-info/10 text-info border-info/30", label: "Low" },
 };
 
 const TYPE_LABELS = { large_transfer: "Large Transfer", rapid_transactions: "Rapid Transactions", unusual_hour: "Unusual Hour" };
@@ -124,8 +124,8 @@ export default function AnomalyDetection() {
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Critical", count: allAlerts.filter(a => a.severity === "critical").length, color: "text-destructive" },
-            { label: "High", count: allAlerts.filter(a => a.severity === "high").length, color: "text-orange-500" },
-            { label: "Medium / Low", count: allAlerts.filter(a => ["medium", "low"].includes(a.severity)).length, color: "text-yellow-500" },
+            { label: "High", count: allAlerts.filter(a => a.severity === "high").length, color: "text-risk" },
+            { label: "Medium / Low", count: allAlerts.filter(a => ["medium", "low"].includes(a.severity)).length, color: "text-caution" },
           ].map(s => (
             <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
               <p className={`font-bold text-2xl ${s.color}`}>{s.count}</p>
