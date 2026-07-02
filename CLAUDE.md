@@ -114,8 +114,15 @@ identity; the app never holds keys server-side.
   iOS partial / no SE-unlock log trace) — 2026-07-01 INTERNAL static-analysis audit
   complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; C-1 RESOLVED / device-verified PR #529
   merged + Sepolia txid `0xeb71a5d…` 2026-07-02; H-1 FIXED PR #527). NOT independently
-  audited, NOT "verified" in the on-chain/asset sense (no KEK-gated testnet txid on
-  either platform's hardware-unlock path yet).
+  audited. On-chain evidence now exists on BOTH platforms' KEK-gated path, but at
+  different confidence: Android is device-verified end-to-end on the StrongBox-unlock
+  path (C-1 v2 Sepolia txid `0xeb71a5d…`, block 11185289, 2026-07-02). iOS has an
+  OS-daemon-corroborated KEK-gated Sepolia txid (`0x5116e7bc…`, block 11185985,
+  2026-07-02 — coreauthd/ctkd/biometrickitd correlation to the app pid), but the
+  LITERAL SE-unlock app-trace (iOS-F9) is still open, so iOS remains device-verified
+  PARTIAL, not full. Neither platform is independently audited; the iOS txids are
+  recorded as non-promoting META evidence (they do not flip iOS KEK to catalogue-
+  `verified`).
 
 ## Security invariants
 
