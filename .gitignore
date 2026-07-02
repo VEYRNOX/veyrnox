@@ -106,3 +106,8 @@ ruvector.db
 veyrnox-release.jks
 keystore.jks
 dist-release/
+
+# Local runtime / tool artifacts (not for commit)
+.claude/scheduled_tasks.lock
+.impeccable/
+.github/hooks/impeccable.json
