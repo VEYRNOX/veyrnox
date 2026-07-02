@@ -37,6 +37,8 @@ import {
   withLastUnlockAt,
   withActionPasswordRecord,
   clearActionPasswordRecord,
+  withHiddenWallet2faMode,
+  getHiddenWallet2faMode,
 } from '../multiVault.js';
 import { encryptVault, decryptVault } from '../vault.js';
 import { generateMnemonic } from '../mnemonic.js';
@@ -352,5 +354,21 @@ describe('container lastUnlockAt field', () => {
     expect(withAp.lastUnlockAt).toBe(4242);
     const cleared = clearActionPasswordRecord(withAp);
     expect(cleared.lastUnlockAt).toBe(4242);
+  });
+});
+
+describe('container hiddenWallet2faMode field', () => {
+  const m1 = generateMnemonic(128);
+  const base = parseVault(m1).container;
+
+  it('serialize -> parseVault round-trips hiddenWallet2faMode (not silently dropped)', () => {
+    // Set a non-default reveal-gate mode, then push it through the exact
+    // serialize -> parseVault path that runs on EVERY unlock.
+    const gated = withHiddenWallet2faMode(base, 'passkey');
+    expect(getHiddenWallet2faMode(gated)).toBe('passkey');
+    const round = parseVault(serializeContainer(gated)).container;
+    // parseVault must preserve the reveal gate; dropping it would silently
+    // weaken/downgrade the hidden-wallet reveal protection.
+    expect(getHiddenWallet2faMode(round)).toBe('passkey');
   });
 });
