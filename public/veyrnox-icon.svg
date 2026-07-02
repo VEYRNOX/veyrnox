@@ -1,19 +1,16 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Veyrnox">
   <defs>
-    <linearGradient id="vx-hex" x1="120" y1="80" x2="392" y2="432" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7BEBD7"/>
-      <stop offset="1" stop-color="#32B6A0"/>
+    <linearGradient id="bg-gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B0F14"/>
+      <stop offset="1" stop-color="#050608"/>
     </linearGradient>
-    <linearGradient id="vx-v" x1="188" y1="180" x2="324" y2="340" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#86EEDB"/>
-      <stop offset="1" stop-color="#3CC3AD"/>
-    </linearGradient>
-    <linearGradient id="vx-fill" x1="256" y1="104" x2="256" y2="408" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#12211F"/>
-      <stop offset="1" stop-color="#0A0F12"/>
+    <linearGradient id="v-gradient" x1="0" y1="100" x2="0" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4ADAC2"/>
+      <stop offset="1" stop-color="#2BA89F"/>
     </linearGradient>
   </defs>
-  <rect x="0" y="0" width="512" height="512" rx="112" fill="#0B0F14"/>
-  <path d="M169 104 L343 104 L431 256 L343 408 L169 408 L81 256 Z" fill="url(#vx-fill)" stroke="url(#vx-hex)" stroke-width="20" stroke-linejoin="round"/>
-  <path d="M188 188 L256 330 L324 188" fill="none" stroke="url(#vx-v)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#bg-gradient)" rx="112"/>
+  <!-- V letter -->
+  <path d="M 120 120 L 256 380 L 392 120" stroke="url(#v-gradient)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 </svg>
