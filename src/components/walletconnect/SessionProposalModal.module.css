@@ -23,6 +23,27 @@
   color: #f0f2f5;
   margin: 0;
 }
+
+@media (prefers-color-scheme: light) {
+  .title,
+  .dappName,
+  .address,
+  .list,
+  .riskBody,
+  .riskCheck,
+  .honestyCaveat,
+  .optionalNote {
+    color: #1a1a1a;
+  }
+  .overlay {
+    background: rgba(255, 255, 255, 0.85);
+  }
+  .modal {
+    background: #ffffff;
+    border-color: #e0e0e0;
+  }
+}
+
 .dappInfo {
   display: flex;
   align-items: center;
