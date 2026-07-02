@@ -21,10 +21,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
 import '@/index.css'
-import { installWebAuthnPolyfill } from '@veyrnox/webauthn-native'
-
-// Install native WebAuthn polyfill on Capacitor
-installWebAuthnPolyfill()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
