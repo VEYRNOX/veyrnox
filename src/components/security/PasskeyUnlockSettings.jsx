@@ -37,7 +37,12 @@ export default function PasskeyUnlockSettings() {
   const [testing, setTesting] = useState(false);
 
   const refresh = useCallback(async () => {
-    const s = await getPasskeyStatus().catch(() => null);
+    console.log('[PasskeyUnlockSettings] Refreshing status...');
+    const s = await getPasskeyStatus().catch(e => {
+      console.error('[PasskeyUnlockSettings] getPasskeyStatus error:', e);
+      return null;
+    });
+    console.log('[PasskeyUnlockSettings] Status loaded:', s);
     setStatus(s);
     setEnabled(isPasskeyUnlockEnabled());
   }, []);
