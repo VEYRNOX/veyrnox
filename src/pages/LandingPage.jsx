@@ -46,14 +46,14 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
-              className="text-muted-foreground hover:text-foreground transition"
+              className="text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
             >
               Features
             </button>
             <button
               type="button"
               onClick={() => document.getElementById("security")?.scrollIntoView({ behavior: "smooth" })}
-              className="text-muted-foreground hover:text-foreground transition"
+              className="text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
             >
               Security
             </button>
@@ -68,7 +68,7 @@ export default function LandingPage() {
           {/* Mobile Menu Toggle */}
           <button
             type="button"
-            className="md:hidden"
+            className="md:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-nav-menu"
@@ -80,7 +80,7 @@ export default function LandingPage() {
 
         {mobileMenuOpen && (
           <div id="mobile-nav-menu" className="md:hidden bg-background/95 border-b border-border px-6 py-4 space-y-4">
-            <button type="button" onClick={() => navigate("/login")} className="block w-full text-left py-2 text-muted-foreground hover:text-foreground">Login</button>
+            <button type="button" onClick={() => navigate("/login")} className="block w-full text-left py-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Login</button>
             <Button onClick={() => navigate("/register")} className="w-full bg-primary hover:bg-primary/90">Get Started</Button>
           </div>
         )}
@@ -149,10 +149,10 @@ export default function LandingPage() {
               </div>
 
               {/* Coin artwork — decorative illustrative currency tokens, not UI chrome */}
-              <div aria-hidden="true" className="absolute top-4 left-0 w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold animate-bounce" style={{animationDelay: '0s'}}>₿</div>
-              <div aria-hidden="true" className="absolute top-8 right-8 w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold animate-bounce" style={{animationDelay: '0.2s'}}>Ξ</div>
-              <div aria-hidden="true" className="absolute bottom-20 left-4 w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold animate-bounce" style={{animationDelay: '0.4s'}}>◎</div>
-              <div aria-hidden="true" className="absolute bottom-4 right-0 w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold animate-bounce" style={{animationDelay: '0.6s'}}>∞</div>
+              <div aria-hidden="true" className="absolute top-4 left-0 w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold animate-pulse" style={{animationDelay: '0s'}}>₿</div>
+              <div aria-hidden="true" className="absolute top-8 right-8 w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold animate-pulse" style={{animationDelay: '0.2s'}}>Ξ</div>
+              <div aria-hidden="true" className="absolute bottom-20 left-4 w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold animate-pulse" style={{animationDelay: '0.4s'}}>◎</div>
+              <div aria-hidden="true" className="absolute bottom-4 right-0 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold animate-pulse" style={{animationDelay: '0.6s'}}>∞</div>
             </div>
           </div>
         </div>
@@ -302,21 +302,21 @@ export default function LandingPage() {
             <div>
               <p className="font-semibold mb-4">Product</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button type="button" onClick={() => navigate("/features")} className="hover:text-primary transition">Features</button></li>
-                <li><button type="button" onClick={() => navigate("/docs")} className="hover:text-primary transition">Documentation</button></li>
+                <li><button type="button" onClick={() => navigate("/features")} className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Features</button></li>
+                <li><button type="button" onClick={() => navigate("/docs")} className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Documentation</button></li>
               </ul>
             </div>
             <div>
               <p className="font-semibold mb-4">Security</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button type="button" onClick={() => navigate("/security")} className="hover:text-primary transition">Security Center</button></li>
+                <li><button type="button" onClick={() => navigate("/security")} className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Security Center</button></li>
               </ul>
             </div>
             <div>
               <p className="font-semibold mb-4">Legal</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-primary transition">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Terms of Service</a></li>
               </ul>
             </div>
           </div>
