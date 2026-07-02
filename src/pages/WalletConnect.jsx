@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import styles from './WalletConnect.module.css';
 import { WalletConnectProvider, useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { SessionProposalModal } from '@/components/walletconnect/SessionProposalModal.jsx';
@@ -26,7 +27,7 @@ const POPULAR_DAPPS = [
 function PopularDapps() {
   return (
     <section className={styles.section}>
-      <h2 className={styles.sectionTitle}>Popular dApps</h2>
+      <h2 className={`${styles.sectionTitle} ${styles.sectionTitleEmphasis}`}>Popular dApps</h2>
       <p className={styles.hint}>
         Open a dApp, choose &ldquo;WalletConnect&rdquo; in its connect dialog, then paste the URI above.
       </p>
@@ -120,7 +121,12 @@ function WalletConnectInner() {
     <div className={styles.page}>
       <h1 className={styles.heading}>dApp Connector</h1>
 
-      {error && <p className={styles.error}>dApp Connector error: {error}</p>}
+      {error && (
+        <p className={styles.error} role="alert">
+          <AlertCircle className={styles.errorIcon} size={16} aria-hidden="true" />
+          <span>dApp Connector error: {error}</span>
+        </p>
+      )}
 
       <PopularDapps />
 
@@ -148,8 +154,18 @@ function WalletConnectInner() {
             {pairing ? 'Pairing…' : 'Pair'}
           </button>
         </div>
-        {pairError && <p className={styles.error}>{pairError}</p>}
-        {!initialized && !error && <p className={styles.hint}>Initialising…</p>}
+        {pairError && (
+          <p className={styles.error} role="alert">
+            <AlertCircle className={styles.errorIcon} size={16} aria-hidden="true" />
+            <span>{pairError}</span>
+          </p>
+        )}
+        {!initialized && !error && (
+          <p className={styles.loadingRow} role="status">
+            <Loader2 className={styles.spinner} size={14} aria-hidden="true" />
+            <span>Initialising dApp Connector…</span>
+          </p>
+        )}
       </section>
 
       {pendingRequests.length > 0 && (
@@ -160,13 +176,15 @@ function WalletConnectInner() {
           </h2>
           <ul className={styles.requestList}>
             {pendingRequests.map((r) => (
-              <li
-                key={`${r.topic}:${r.id}`}
-                className={styles.requestItem}
-                onClick={() => setActiveRequest(r)}
-              >
-                <span className={styles.requestMethod}>{r.params?.request?.method}</span>
-                <span className={styles.requestChevron}>›</span>
+              <li key={`${r.topic}:${r.id}`}>
+                <button
+                  type="button"
+                  className={styles.requestItem}
+                  onClick={() => setActiveRequest(r)}
+                >
+                  <span className={styles.requestMethod}>{r.params?.request?.method}</span>
+                  <span className={styles.requestChevron} aria-hidden="true">›</span>
+                </button>
               </li>
             ))}
           </ul>
