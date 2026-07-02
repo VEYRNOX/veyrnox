@@ -101,6 +101,24 @@
     "date": "2026-07-01",
     "verified_ondevice": "Pixel 10 Pro XL, com.veyrnox.app.debug, 2026-07-01T16:30 UTC. Biometric invalidation protection (setInvalidatedByBiometricEnrollment) is WORKING — key invalidates on biometric state change, app detects and refuses unlock, fail-closed. Recovery (PIN fallback) successful."
   },
+  "_ios_kek_se_operation_os_evidence": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. iOS Hardware KEK stays BUILT / device-verified (PARTIAL). Records OS-daemon (coreauthd/biometrickitd/ctkd) evidence that the Veyrnox app performed a Face-ID-gated Secure Enclave key operation correlated in time to a real on-chain Sepolia send. It is NOT the app's own getHardwareFactor SUCCESS log line and does NOT by itself close iOS-F9's literal app-trace requirement (see caveats).",
+    "test_type": "real-device OS-daemon log correlation (no reinstall; existing KEK-enrolled vault)",
+    "device": "iPhone 17 Pro Max (UDID 00008150-000575E02232401C), iOS 26.5.1",
+    "app_pid": "4913 (com.veyrnox.app) — bound in ctkd token-client.peer[4913] and coreauthd ContextProxy[4913:...]",
+    "chain": "sepolia",
+    "txid": "0x5116e7bc132356b2061791faaf8324d5170f83b66a54c61055d443f51393612c",
+    "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+    "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "amount": "0.001 ETH",
+    "nonce": 32,
+    "block": 11185985,
+    "verified_onchain": "publicnode Sepolia RPC eth_getTransactionByHash, chainId 11155111, block 11185985, nonce 32, from 0x90f9…E68a729, 2026-07-02.",
+    "os_evidence": "Device unified-log window 2026-07-02 09:29–10:09 (log collect --device-udid, read via log show — reading needs no root). At 10:06:2x coreauthd logged two Face ID matches (BKMatchOperation::matchResult via the Pearl camera) then allowTransferToProcess:269 on ContextProxy[4913:38:1712:1818] and evaluateACL … returned — a SecAccessControl ACL evaluation gating a key operation for the Veyrnox process. ctkd (CryptoTokenKit — the Secure Enclave broker) held a token-client.peer[4913] connection from 09:57:09 through 10:07:25 and created the gating LAContext[…:1712:1818] at 10:06:24. Veyrnox's only Secure Enclave key is the HardwareKek ECIES key, so a ctkd/SE key operation from pid 4913 is the KEK getHardwareFactor decrypt. The SE operation is timestamped immediately before the nonce-32 send.",
+    "proof_basis": "Independent Apple security-daemon logs (coreauthd/biometrickitd/ctkd), not the app — the app cannot forge them. Establishes that Veyrnox performed a Face-ID-gated Secure Enclave CryptoTokenKit key operation correlated in time to a real on-chain send. Stronger than a self-reported app log line for authenticity, weaker for explicit labelling (see caveats).",
+    "caveats": "(1) This is NOT the app's own '[VEYRNOX-KEK] getHardwareFactor: SUCCESS' NSLog line. On iOS 26 a third-party app's NSLog is not persisted to / streamable from the device unified log by external tools — idevicesyslog, retroactive log collect, AND live Console.app all showed zero VEYRNOX-KEK lines despite Face ID running and the SE op firing. The literal app trace cannot be captured from the installed build; it would require a fresh debug rebuild logging via os_log(public). (2) coreauthd redacts some client bindings as <private>; the ctkd peer[4913] and coreauthd ContextProxy[4913:…] bindings are explicit and unredacted. (3) iOS-F9's literal app-trace requirement therefore remains OPEN — this entry is OS-side corroboration that upgrades the prior architectural-only proof, NOT a literal close. (4) UNAUDITED — no independent audit. The KEK gates UNLOCK, not asset status (ETH is already LIVE).",
+    "date": "2026-07-02"
+  },
   "evidence": {
     "Solana send (wallet-core module, devnet script)": {
       "chain": "solana-devnet",
