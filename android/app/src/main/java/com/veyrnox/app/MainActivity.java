@@ -8,6 +8,7 @@ import com.getcapacitor.BridgeActivity;
 import com.veyrnox.app.FileSaverPlugin;
 import com.veyrnox.app.HardwareKekPlugin;
 import com.veyrnox.app.RaspIntegrityPlugin;
+import com.veyrnox.plugins.webauthn.WebAuthnNativePlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -15,6 +16,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(FileSaverPlugin.class);
         registerPlugin(HardwareKekPlugin.class);
         registerPlugin(RaspIntegrityPlugin.class);
+        registerPlugin(WebAuthnNativePlugin.class);
         super.onCreate(savedInstanceState);
 
         // FLAG_SECURE — block screenshots, screen recording, and the recents /

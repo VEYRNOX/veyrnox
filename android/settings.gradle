@@ -1,5 +1,7 @@
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+include ':webauthn-native'
+project(':webauthn-native').projectDir = new File('../android-plugins/webauthn-native/android/')
 
 apply from: 'capacitor.settings.gradle'
