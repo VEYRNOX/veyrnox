@@ -127,17 +127,38 @@ export async function isHardwareEnrolled() {
  * surface it. No biometric prompt at generation time; enrollKek calls
  * getHardwareFactor() next to obtain H.
  */
-export async function enrollHardwareCredential() {
+export async function enrollHardwareCredential(opts) {
   const plugin = getPlugin();
   // iOS-F6 (JS layer): enroll() is DESTRUCTIVE — on iOS it deletes the existing SE
   // key and mints a new H; on Android it overwrites the Keystore key. Either rotates H
   // and permanently invalidates the existing kekWrap (funds lock-out). Guard against
   // double-enrollment and fail closed (I4) rather than silently destroying a wrap.
+  //
+  // BUT a native credential's PRESENCE is not, by itself, "enrolled": the iOS Keychain
+  // SE key and the Android Keystore alias SURVIVE an app uninstall, so a STALE alias can
+  // linger over a BARE (unwrapped) vault after a reinstall. The real invariant is the
+  // VAULT kekWrap — the only thing enroll() could destroy — not alias presence (this
+  // mirrors the badge reconciliation in HardwareKekSettings: ON iff alias AND wrap).
+  // Block only when the caller confirms the vault is wrapped; otherwise the alias is
+  // stale — clear it and proceed (native enroll() also pre-clears stale residue, L4).
+  // Callers without a reconciler default to the conservative (block) behaviour.
   const alreadyEnrolled = await plugin.isEnrolled();
   if (alreadyEnrolled?.enrolled) {
-    throw Object.assign(new Error('HARDWARE_KEK_ALREADY_ENROLLED'), {
-      code: 'HARDWARE_KEK_ALREADY_ENROLLED',
-    });
+    const vaultWrapped =
+      opts && typeof opts.isVaultWrapped === 'function'
+        ? await opts.isVaultWrapped()
+        : true;
+    if (vaultWrapped) {
+      throw Object.assign(new Error('HARDWARE_KEK_ALREADY_ENROLLED'), {
+        code: 'HARDWARE_KEK_ALREADY_ENROLLED',
+      });
+    }
+    // Stale alias over a bare vault — remove it so native enroll() starts clean.
+    try {
+      await plugin.clearCredential();
+    } catch {
+      /* best-effort — native enroll() pre-clears stale residue (L4) as backstop */
+    }
   }
   const raw = await plugin.enroll();
   const tier = normalizeTier(raw);

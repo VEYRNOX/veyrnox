@@ -109,4 +109,27 @@ describe('iOS-F6 (JS layer) — double-enrollment guard', () => {
     expect(plugin.enroll).toHaveBeenCalledTimes(1);
     expect(tier.securityLevelName).toBe('STRONGBOX');
   });
+
+  // Regression (was PR #521): the guard keyed on native-alias presence ALONE. The iOS
+  // Keychain SE key / Android Keystore alias SURVIVE an app uninstall, so a stale alias
+  // over a BARE (unwrapped) vault wrongly blocked a fresh enroll → generic "Something
+  // went wrong". The real iOS-F6 invariant is the VAULT kekWrap, not alias presence.
+  it('STALE alias over a BARE vault: does NOT block — clears alias and enrolls', async () => {
+    plugin.isEnrolled.mockResolvedValue({ enrolled: true });   // alias present…
+    plugin.clearCredential.mockResolvedValue({});
+    plugin.enroll.mockResolvedValue({ securityLevelName: 'SecureEnclave', securityLevel: 2 });
+    // …but the vault is bare (no kekWrap) → alias is stale, not real enrollment.
+    const tier = await enrollHardwareCredential({ isVaultWrapped: () => Promise.resolve(false) });
+    expect(plugin.clearCredential).toHaveBeenCalledTimes(1); // stale alias cleared
+    expect(plugin.enroll).toHaveBeenCalledTimes(1);          // fresh enroll proceeds
+    expect(tier.securityLevelName).toBe('SecureEnclave');
+  });
+
+  it('GENUINE enrollment (alias + wrapped vault): still blocks, never rotates the key', async () => {
+    plugin.isEnrolled.mockResolvedValue({ enrolled: true });
+    await expect(
+      enrollHardwareCredential({ isVaultWrapped: () => Promise.resolve(true) }),
+    ).rejects.toMatchObject({ code: 'HARDWARE_KEK_ALREADY_ENROLLED' });
+    expect(plugin.enroll).not.toHaveBeenCalled();
+  });
 });

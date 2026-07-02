@@ -151,7 +151,12 @@ export default function HardwareKekSettings() {
         // KEK-wrapped and the "ON" badge can never show for a software-only key.
         // The returned tier is passed into enrollKek so it's persisted in the vault blob
         // and the badge can show the real protection level (H-1 honesty fix).
-        const enrolledTier = await enrollHardwareCredential();
+        // Reconcile the double-enroll guard against the REAL vault state: a stale native
+        // alias (Keychain/Keystore survive a reinstall) over a bare vault must not block a
+        // fresh enroll. Block only when the vault is genuinely KEK-wrapped (iOS-F6).
+        const enrolledTier = await enrollHardwareCredential({
+          isVaultWrapped: () => getKeyStore().hasVaultKekWrap(),
+        });
         // Step 2: enroll KEK on the vault using the device-bound factor (Keychain/TEE).
         // getHardwareFactor() is called inside enrollKek — second biometric prompt.
         await getKeyStore().enrollKek(pinToUse, {
