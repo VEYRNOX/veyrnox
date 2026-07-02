@@ -108,5 +108,7 @@ keystore.jks
 dist-release/
 
 # Playwright
-playwright-report/
 test-results/
+playwright-report/
+.auth/
+playwright/.auth/
