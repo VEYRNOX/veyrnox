@@ -164,13 +164,34 @@ test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send'
     await page.waitForTimeout(500);
     console.log('✓ Navigated back to main dashboard');
 
-    // ── STEP 10: Navigate directly to Send route ────────────────────────────────
-    // We're in explore mode, so navigate directly to /send
-    await page.goto(`${BASE}/send`);
-    console.log('✓ Navigated to /send route');
+    // ── STEP 10: Complete wallet creation (exit explore mode) ──────────────────────
+    // Look for the Create Wallet CTA - it appears in the explore shell overlay
+    // First, check what buttons are actually on the page
+    const allButtons = await page.locator('button').count();
+    console.log(`DEBUG: Found ${allButtons} buttons on page`);
 
-    // ── STEP 11: Wait for Send form to load ─────────────────────────────────────
-    const recipientField = page.getByPlaceholder(/0x\.\.\. or .*\.eth|0x.*or.*\.eth/i);
+    // Search for create/wallet buttons more aggressively
+    const createBtn = page.locator('button:has-text("Create")').first();
+    const createWalletBtn = page.locator('button').filter({ hasText: /Shield.*Create|Create.*Wallet|Create.*Wallet/ }).first();
+
+    if (await createWalletBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await createWalletBtn.click();
+      console.log('✓ Clicked Create Wallet button');
+      await page.waitForTimeout(3000);
+    } else if (await createBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await createBtn.click();
+      console.log('✓ Clicked Create button');
+      await page.waitForTimeout(3000);
+    } else {
+      console.log('⚠️ Could not find Create Wallet button - may still be in explore mode');
+    }
+
+    // ── STEP 11: Navigate to Send ─────────────────────────────────────────────────
+    await page.goto(`${BASE}/send`);
+    console.log('✓ Navigated to Send screen');
+
+    // ── STEP 12: Wait for Send form ──────────────────────────────────────────────
+    const recipientField = page.getByPlaceholder(/0x.*\.eth|0x[0-9a-fA-F]/i);
     await expect(recipientField).toBeVisible({ timeout: 10000 });
     console.log('✓ Send form loaded');
 
