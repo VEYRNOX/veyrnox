@@ -106,6 +106,13 @@ export function installWebAuthnPolyfill() {
     return; // Not on native, use real WebAuthn
   }
 
+  // Create PublicKeyCredential stub so isWebAuthnSupported() returns true
+  if (typeof window.PublicKeyCredential === 'undefined') {
+    (window as any).PublicKeyCredential = {
+      isUserVerifyingPlatformAuthenticatorAvailable: async () => true,
+    };
+  }
+
   // Save original credentials interface
   const originalCredentials = navigator.credentials;
 

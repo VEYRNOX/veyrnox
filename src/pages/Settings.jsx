@@ -150,10 +150,11 @@ export default function Settings() {
       </div>
 
       {/* Security settings — shown on all platforms.
-          TwoFactorSettings now handles native biometric 2FA (Face ID) via
-          BiometricAuth, so it is no longer WebAuthn-only and can render on native. */}
+          TwoFactorSettings handles native biometric 2FA via BiometricAuth.
+          PasskeyUnlockSettings now shows on native too (WebAuthn polyfill bridges
+          to native Secure Enclave/Keystore via Capacitor plugin). */}
       <BiometricUnlockSettings />
-      {!isNative && <PasskeyUnlockSettings />}
+      <PasskeyUnlockSettings />
       <TwoFactorSettings />
 
       <HardwareKekSettings />
