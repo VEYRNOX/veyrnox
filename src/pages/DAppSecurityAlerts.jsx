@@ -68,20 +68,20 @@ export default function DAppSecurityAlerts() {
           {result && (
             result.flagged ? (
               <div className="p-4 rounded-xl border bg-destructive/10 border-destructive/30 space-y-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <XCircle className="h-5 w-5 text-destructive shrink-0" />
-                  <p className="font-bold text-sm">{result.domain}</p>
-                  <Badge variant="outline" className="text-destructive border-current text-[10px]">On known-bad list</Badge>
+                  <p className="font-bold text-sm font-mono break-all min-w-0">{result.domain}</p>
+                  <Badge variant="outline" className="text-destructive border-current text-[10px] shrink-0">On known-bad list</Badge>
                 </div>
                 <p className="text-xs text-destructive">{result.reason}</p>
                 <Button variant="destructive" size="sm" className="w-full">Do Not Connect to This Site</Button>
               </div>
             ) : (
               <div className="p-4 rounded-xl border bg-secondary/40 border-border space-y-1.5">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Info className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <p className="font-bold text-sm">{result.domain}</p>
-                  <Badge variant="outline" className="text-muted-foreground border-current text-[10px]">Not on local list</Badge>
+                  <p className="font-bold text-sm font-mono break-all min-w-0">{result.domain}</p>
+                  <Badge variant="outline" className="text-muted-foreground border-current text-[10px] shrink-0">Not on local list</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Not on the local known-bad list. This is <span className="font-medium">not</span> a safety verdict — the list is
@@ -94,12 +94,19 @@ export default function DAppSecurityAlerts() {
         </CardContent>
       </Card>
 
-      {/* The local known-bad list itself — shown honestly as a local, non-exhaustive seed. */}
-      <Card>
-        <CardHeader className="pb-2">
+      {/* The local known-bad list itself — shown honestly as a local, non-exhaustive
+          seed. Separated from the checker above with a labelled divider + a distinct
+          caution-toned header so it reads as reference data, not another live result. */}
+      <div className="flex items-center gap-3 pt-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Reference data</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <Card className="border-caution/20">
+        <CardHeader className="pb-2 border-b border-border/60">
           <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-caution" />Local known-bad list</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2 pt-4">
           <p className="text-xs text-muted-foreground mb-1">Illustrative local entries — not a live feed and not exhaustive. A real threat feed is on the roadmap.</p>
           {LOCAL_KNOWN_BAD.map((b) => (
             <div key={b.domain} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors">

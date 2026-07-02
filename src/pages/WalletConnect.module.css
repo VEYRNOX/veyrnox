@@ -1,17 +1,29 @@
 .page {
   max-width: 560px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 20px 16px 64px;
   display: flex;
   flex-direction: column;
   gap: 28px;
 }
 
+@media (min-width: 480px) {
+  .page {
+    padding: 24px 16px 64px;
+  }
+}
+
 .heading {
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #f0f2f5;
+  color: hsl(var(--foreground));
   margin: 0;
+}
+
+@media (min-width: 480px) {
+  .heading {
+    font-size: 1.4rem;
+  }
 }
 
 .section {
@@ -23,7 +35,7 @@
 .sectionTitle {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #8b949e;
+  color: hsl(var(--muted-foreground));
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0;
@@ -32,9 +44,16 @@
   gap: 8px;
 }
 
+/* Popular dApps gets its own slightly stronger title treatment — it's the
+   primary discovery surface on this page, so it should read first. */
+.sectionTitleEmphasis {
+  font-size: 0.95rem;
+  color: hsl(var(--foreground));
+}
+
 .badge {
-  background: #4ADAC2;
-  color: #050608;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
@@ -43,41 +62,46 @@
 
 .hint {
   font-size: 0.85rem;
-  color: #8b949e;
+  color: hsl(var(--muted-foreground));
   margin: 0;
 }
 
 .pairRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
 .uriInput {
-  flex: 1;
-  background: #0d1117;
-  border: 1px solid #1D222B;
+  flex: 1 1 200px;
+  min-width: 0;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 10px;
   padding: 11px 13px;
-  color: #f0f2f5;
+  min-height: 44px;
+  color: hsl(var(--foreground));
   font-size: 0.9rem;
   font-family: 'IBM Plex Mono', monospace;
   outline: none;
 }
 
-.uriInput:focus {
-  border-color: #4ADAC2;
+.uriInput:focus-visible {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.3);
 }
 
 .uriInput::placeholder {
-  color: #6e7681;
+  color: hsl(var(--muted-foreground));
 }
 
 .pairBtn {
-  background: #4ADAC2;
+  background: hsl(var(--primary));
   border: none;
   border-radius: 10px;
   padding: 11px 20px;
-  color: #050608;
+  min-height: 44px;
+  color: hsl(var(--primary-foreground));
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
@@ -90,18 +114,59 @@
 }
 
 .pairBtn:hover:not(:disabled) {
-  background: #5de8d0;
+  background: hsl(var(--primary) / 0.85);
+}
+
+.pairBtn:focus-visible,
+.dappCard:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
 .error {
-  color: #f85149;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: hsl(var(--destructive));
   font-size: 0.85rem;
   margin: 0;
 }
 
+.errorIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 .locked {
-  color: #8b949e;
+  color: hsl(var(--muted-foreground));
   font-size: 0.95rem;
+}
+
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.spinner {
+  flex-shrink: 0;
+  color: hsl(var(--primary));
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.6s;
+  }
 }
 
 .requestList {
@@ -117,31 +182,43 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #0d1117;
-  border: 1px solid #1D222B;
+  gap: 10px;
+  width: 100%;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
   padding: 11px 14px;
+  min-height: 44px;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
 .requestItem:hover {
-  border-color: #4ADAC2;
+  border-color: hsl(var(--primary));
+}
+
+.requestItem:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
 .requestMethod {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.85rem;
-  color: #f0f2f5;
+  color: hsl(var(--foreground));
+  overflow-wrap: anywhere;
 }
 
 .requestChevron {
-  color: #8b949e;
+  color: hsl(var(--muted-foreground));
   font-size: 1.1rem;
+  flex-shrink: 0;
 }
 
 .setupCard {
-  background: #12171f;
-  border: 1px solid #1D222B;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -151,63 +228,75 @@
 
 .setupTitle {
   font-weight: 600;
-  color: #f0f2f5;
+  color: hsl(var(--foreground));
   margin: 0;
 }
 
 .setupBody {
   font-size: 0.88rem;
-  color: #8b949e;
+  color: hsl(var(--muted-foreground));
   margin: 0;
 }
 
 .setupCode {
-  background: #0d1117;
-  border: 1px solid #1D222B;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
   padding: 10px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.85rem;
-  color: #4ADAC2;
+  color: hsl(var(--primary));
   margin: 0;
+  overflow-x: auto;
 }
 
 .link {
-  color: #4ADAC2;
+  color: hsl(var(--primary));
 }
 
 .dappGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
+}
+
+@media (min-width: 420px) {
+  .dappGrid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
 }
 
 .dappCard {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  background: #0d1117;
-  border: 1px solid #1D222B;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 10px;
-  padding: 13px 14px;
+  padding: 14px 15px;
   text-decoration: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background-color 0.15s, transform 0.1s;
 }
 
 .dappCard:hover {
-  border-color: #4ADAC2;
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.05);
+}
+
+.dappCard:active {
+  transform: scale(0.98);
 }
 
 .dappName {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #f0f2f5;
-  line-height: 1.2;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  line-height: 1.25;
 }
 
 .dappCategory {
   font-size: 0.75rem;
-  color: #8b949e;
+  color: hsl(var(--muted-foreground));
 }
 
 .dappChains {
@@ -221,9 +310,9 @@
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.65rem;
   font-weight: 600;
-  color: #4ADAC2;
-  background: rgba(74, 218, 194, 0.08);
-  border: 1px solid rgba(74, 218, 194, 0.2);
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+  border: 1px solid hsl(var(--primary) / 0.2);
   border-radius: 4px;
   padding: 1px 5px;
 }
