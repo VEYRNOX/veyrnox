@@ -51,9 +51,12 @@ public class WebAuthnNativePlugin extends Plugin {
                     String credentialId = generateCredentialId(userId);
 
                     JSObject response = new JSObject();
-                    response.put("credentialId", credentialId);
+                    // Base64 encode credentialId for WebAuthn compatibility
+                    response.put("credentialId", Base64.encodeToString(credentialId.getBytes(), Base64.NO_WRAP));
                     response.put("publicKey", getPubKeyFromKeystore(userId));
-                    response.put("attestationObject", "attestation_placeholder");
+                    // Base64 encode attestationObject placeholder
+                    response.put("clientDataJSON", Base64.encodeToString("{}".getBytes(), Base64.NO_WRAP));
+                    response.put("attestationObject", Base64.encodeToString("attestation_placeholder".getBytes(), Base64.NO_WRAP));
 
                     call.resolve(response);
                 }
