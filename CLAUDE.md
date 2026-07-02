@@ -57,9 +57,12 @@ identity; the app never holds keys server-side.
   NSData not zeroed — requires NSMutableData patch + Mac build), iOS-F3 (deprecated
   kSecUseOperationPrompt — requires LAContext + Mac/Xcode). iOS-F9 evidence gap: SE unlock
   log trace not captured for the existing Sepolia sends; iOS device-verified status remains
-  PARTIAL. H-2/iOS-F11 (biometric cache not bound to enrollment set) open on both platforms.
-  Outstanding: SE-unlock log trace capture, biometric re-enrollment invalidation test,
-  KEK-gated Sepolia txid, independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
+  PARTIAL. H-2/iOS-F11 (biometric factor not bound to enrollment set): Android half RESOLVED
+  / device-verified (PR #516/#518, re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half
+  DEFERRED — the `.biometryCurrentSet` ACL flag is set in code but the runtime re-enroll test
+  is device-blocked (test iPhone 17 Pro Max has Face ID enrollment restricted; needs an
+  unrestricted iPhone). Outstanding (iOS): SE-unlock log trace capture, biometric re-enrollment
+  invalidation test, KEK-gated Sepolia txid, independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
   also affects the overall KEK design context — see Android bullet.
 - Android: StrongBox HMAC-SHA256 + biometric-only gate (no credential fallback). ✅
   BUILT, end-to-end device-verified 2026-07-01 on a Pixel 10 Pro XL (Android 16/API 36):
@@ -88,12 +91,14 @@ identity; the app never holds keys server-side.
   from `getVaultKekTier()` and renders the correct badge (StrongBox Protected / TEE
   Protected / Hardware Protection ON / WebAuthn Protected); `native.js` `enrollKek` stores
   `hardwareKekTier` in vault blob and exposes `getVaultKekTier()` accessor.
-  H-2/iOS-F11 — biometric cache not bound to enrollment set on both platforms; requires
-  custom Capacitor plugin. M-3 fixed (PR #522): `detectTamper()` now fail-closed
+  H-2/iOS-F11 (Android half) — RESOLVED / device-verified: `setInvalidatedByBiometricEnrollment(true)`
+  confirmed working on Pixel 10 Pro XL (PR #516/#518, 2026-07-01) — re-enroll fingerprint →
+  `KeyPermanentlyInvalidatedException` → fail-closed → PIN recovery. (iOS half deferred/device-blocked
+  — see iOS bullet.) M-3 fixed (PR #522): `detectTamper()` now fail-closed
   (`getOrElse { true }`). H-4 fixed (PR #522): zero-vector H check in `hardware.js`.
   Outstanding: C-1 v2 migration (JS layer code-complete in PR #529, pending merge; device
-  verification still required), KEK-gated Sepolia send + txid, biometric re-enrollment
-  invalidation test, StrongBox tier enforcement, independent audit.
+  verification still required), KEK-gated Sepolia send + txid, StrongBox tier enforcement,
+  independent audit. (Android biometric re-enrollment invalidation test DONE, PR #516/#518.)
   H-1 UI surfacing: FIXED PR #527 (merged 2026-07-02).
   See `docs/hardware-kek-phase-plan.md`, `docs/Feature-Status.md` §4, and
   `docs/audit-2026-07-01-kek-internal.md` for full evidence.
