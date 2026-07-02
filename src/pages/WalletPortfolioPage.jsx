@@ -24,7 +24,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { useWallet } from "@/lib/WalletProvider";
-import { useActionGuard } from "@/components/security/useActionGuard";
 import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
 import { ASSETS, getAsset } from "@/wallet-core/assets.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
@@ -36,6 +35,7 @@ import QuickAccessGrid from "@/components/QuickAccessGrid";
 import SpendingPatternsCard from "@/components/SpendingPatternsCard";
 import { copySecret } from "@/lib/copySecret";
 import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
+import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -82,18 +82,27 @@ function SeedGrid({ mnemonic }) {
 
 // Stand-alone seed backup dialog used by the "Back up Wallet N" action on existing
 // wallets (the session already holds the seed in memory; no password needed).
-function BackupDialog({ walletName, mnemonic, onClose, onConfirm }) {
+// reauthPrompt: when the M6 recent-auth window has lapsed, the caller passes the
+// inline "unlock again" prompt here instead of a mnemonic — same dialog, no dead-end
+// toast (see useRevealWithReauth).
+function BackupDialog({ walletName, mnemonic, reauthPrompt, onClose, onConfirm }) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
         <DialogHeader><DialogTitle>Back up “{walletName}”</DialogTitle></DialogHeader>
-        <div className="p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
-          Anyone with this phrase has full access to THIS wallet’s funds, and it is the only way to recover it.
-        </div>
-        <SeedGrid mnemonic={mnemonic} />
-        <DialogFooter>
-          <Button className="w-full gap-2" onClick={onConfirm}><Check className="h-4 w-4" /> I’ve written it down — mark backed up</Button>
-        </DialogFooter>
+        {reauthPrompt ? (
+          reauthPrompt
+        ) : (
+          <>
+            <div className="p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
+              Anyone with this phrase has full access to THIS wallet’s funds, and it is the only way to recover it.
+            </div>
+            <SeedGrid mnemonic={mnemonic} />
+            <DialogFooter>
+              <Button className="w-full gap-2" onClick={onConfirm}><Check className="h-4 w-4" /> I’ve written it down — mark backed up</Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -360,11 +369,9 @@ export default function WalletPortfolioPage() {
   const {
     isUnlocked, requireWallet,
     wallets, activeWalletId, switchWallet, walletAddresses,
-    revealWalletMnemonic, confirmWalletBackup, isDecoy, isHidden,
+    confirmWalletBackup, isDecoy, isHidden,
     portfolios, activePortfolioId, setActivePortfolio, walletPortfolioMap,
   } = useWallet();
-  // 2FA: gate the seed reveal behind the PIN + Action Password when one is configured.
-  const { requireTwoFactor, gateModal } = useActionGuard();
 
   const [addOpen, setAddOpen] = useState(false);
   const [manageWallet, setManageWallet] = useState(null);
@@ -374,6 +381,16 @@ export default function WalletPortfolioPage() {
   const [menuFor, setMenuFor] = useState(null);
   const [backupTarget, setBackupTarget] = useState(null);
   const [pfManageOpen, setPfManageOpen] = useState(false);
+  // Seed reveal (2FA gate + M6 recent-auth window). On a lapsed window this shows
+  // an inline "unlock again" prompt inside the SAME BackupDialog instead of a
+  // dead-end toast — see useRevealWithReauth.
+  const { revealWithReauth, reauthPrompt, isReauthPending, pendingWalletId, cancelReauth, gateModal } = useRevealWithReauth(
+    ({ walletId, mnemonic }) => {
+      const w = wallets.find((x) => x.id === walletId);
+      setBackupTarget({ id: walletId, name: w?.name || "", mnemonic });
+    }
+  );
+  const pendingReauthWallet = isReauthPending ? wallets.find((w) => w.id === pendingWalletId) : null;
   // Zero-state: when the active portfolio is genuinely $0, the per-wallet asset
   // rows are collapsed behind a calm "Wallet ready" panel. This toggle reveals
   // the real (all-zero) rows on demand — nothing is hidden dishonestly.
@@ -489,7 +506,7 @@ export default function WalletPortfolioPage() {
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> Manage assets</button>
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> Rename</button>
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> Move to portfolio</button>
-                  {!w.backedUp && <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); requireTwoFactor(() => { const { mnemonic, reauthRequired } = revealWalletMnemonic(w.id, { callerGated: true }); if (reauthRequired) { toast.error("Session timed out. Unlock again to reveal your recovery phrase."); return; } setBackupTarget({ id: w.id, name: w.name, mnemonic }); }, { title: "Reveal your recovery phrase" }); }}><ShieldAlert className="h-3.5 w-3.5" /> Back up</button>}
+                  {!w.backedUp && <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); revealWithReauth(w.id); }}><ShieldAlert className="h-3.5 w-3.5" /> Back up</button>}
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> Remove</button>
                 </div>
               )}
@@ -604,7 +621,7 @@ export default function WalletPortfolioPage() {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {unbacked.map((w) => (
-              <button key={w.id} onClick={() => requireTwoFactor(() => { const { mnemonic, reauthRequired } = revealWalletMnemonic(w.id, { callerGated: true }); if (reauthRequired) { toast.error("Session timed out. Unlock again to reveal your recovery phrase."); return; } setBackupTarget({ id: w.id, name: w.name, mnemonic }); }, { title: "Reveal your recovery phrase" })}
+              <button key={w.id} onClick={() => revealWithReauth(w.id)}
                 className="text-[11px] px-2 py-1 rounded-md bg-caution/20 text-caution hover:bg-caution/30">
                 Back up “{w.name}”
               </button>
@@ -683,6 +700,12 @@ export default function WalletPortfolioPage() {
         <BackupDialog walletName={backupTarget.name} mnemonic={backupTarget.mnemonic}
           onClose={() => setBackupTarget(null)}
           onConfirm={() => { confirmWalletBackup(backupTarget.id); toast.success(`“${backupTarget.name}” marked backed up.`); setBackupTarget(null); }} />
+      )}
+      {/* Session-timeout re-auth — inline "unlock again" prompt (same dialog chrome
+          as BackupDialog) instead of a dead-end toast. See useRevealWithReauth. */}
+      {isReauthPending && (
+        <BackupDialog walletName={pendingReauthWallet?.name || "wallet"} reauthPrompt={reauthPrompt}
+          onClose={cancelReauth} />
       )}
       {/* PIN + Action Password 2FA gate (seed reveal) — no-op until one is configured */}
       {gateModal}

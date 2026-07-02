@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
-import { toast } from "sonner";
 import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound, QrCode } from "lucide-react";
 import CoinLogo from "@/components/CoinLogo";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
-import { useActionGuard } from "@/components/security/useActionGuard";
+import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 
 // Escape HTML metacharacters before interpolating into the print document.
 function escapeHtml(s) {
@@ -21,8 +20,7 @@ function escapeHtml(s) {
 }
 
 export default function WalletSeedQR() {
-  const { wallets, revealWalletMnemonic, confirmWalletBackup } = useWallet();
-  const { requireTwoFactor, gateModal } = useActionGuard();
+  const { wallets, confirmWalletBackup } = useWallet();
 
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [mnemonic, setMnemonic] = useState(null);
@@ -31,6 +29,16 @@ export default function WalletSeedQR() {
   const mnemonicRef = useRef(null);
 
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+
+  // Seed reveal (2FA gate + M6 recent-auth window). On a lapsed window this shows
+  // an inline "unlock again" prompt in place of the reveal button instead of a
+  // dead-end toast — see useRevealWithReauth.
+  const { revealWithReauth, reauthPrompt, isReauthPending, gateModal } = useRevealWithReauth(
+    ({ mnemonic: phrase }) => {
+      setMnemonic(phrase);
+      mnemonicRef.current = phrase;
+    }
+  );
 
   // Clear mnemonic from memory when wallet changes or component unmounts.
   useEffect(() => {
@@ -45,17 +53,7 @@ export default function WalletSeedQR() {
 
   const handleReveal = () => {
     if (!selectedWalletId) return;
-    requireTwoFactor(() => {
-      const { mnemonic: phrase, reauthRequired } = revealWalletMnemonic(selectedWalletId, { callerGated: true });
-      if (reauthRequired) {
-        toast.error('Session timed out. Unlock again to reveal your recovery phrase.');
-        return;
-      }
-      if (phrase) {
-        setMnemonic(phrase);
-        mnemonicRef.current = phrase;
-      }
-    }, { title: 'Reveal recovery phrase' });
+    revealWithReauth(selectedWalletId, { title: 'Reveal recovery phrase' });
   };
 
   const handlePrint = async () => {
@@ -144,8 +142,12 @@ export default function WalletSeedQR() {
         </Select>
       </div>
 
+      {/* Session-timeout re-auth — inline "unlock again" prompt in place of the
+          reveal button instead of a dead-end toast. See useRevealWithReauth. */}
+      {selectedWalletId && !mnemonic && isReauthPending && reauthPrompt}
+
       {/* Reveal button — shown when wallet selected but mnemonic not yet revealed */}
-      {selectedWalletId && !mnemonic && (
+      {selectedWalletId && !mnemonic && !isReauthPending && (
         <Button onClick={handleReveal} className="gap-2 w-full">
           <KeyRound className="h-4 w-4" /> Reveal Recovery Phrase
         </Button>
