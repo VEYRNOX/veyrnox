@@ -149,9 +149,11 @@ export default function Settings() {
 
       {/* Security settings — shown on all platforms.
           TwoFactorSettings now handles native biometric 2FA (Face ID) via
-          BiometricAuth, so it is no longer WebAuthn-only and can render on native. */}
+          BiometricAuth, so it is no longer WebAuthn-only and can render on native.
+          PasskeyUnlockSettings now shown on all platforms (including mobile) where
+          WebAuthn APIs are available. */}
       <BiometricUnlockSettings />
-      {!isNative && <PasskeyUnlockSettings />}
+      <PasskeyUnlockSettings />
       <TwoFactorSettings />
 
       <HardwareKekSettings />
