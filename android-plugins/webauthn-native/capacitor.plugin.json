@@ -1,0 +1,11 @@
+{
+  "name": "WebAuthnNative",
+  "package": {
+    "name": "com.veyrnox.plugins.webauthn"
+  },
+  "platforms": {
+    "android": {
+      "src": "android/src/main/java/com/veyrnox/plugins/webauthn/WebAuthnNativePlugin.java"
+    }
+  }
+}

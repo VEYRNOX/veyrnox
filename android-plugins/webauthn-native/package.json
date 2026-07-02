@@ -1,0 +1,11 @@
+{
+  "name": "@veyrnox/webauthn-native",
+  "version": "1.0.0",
+  "description": "Native WebAuthn plugin for Capacitor",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["android", "ios", "dist", "capacitor.plugin.json", "BUILD.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

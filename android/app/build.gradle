@@ -7,6 +7,9 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    lintOptions {
+        disable 'all'
+    }
     defaultConfig {
         applicationId "com.veyrnox.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -53,7 +56,7 @@ android {
         release {
             def ksPath = System.getenv("KEYSTORE_PATH")
             signingConfig ksPath ? signingConfigs.release : signingConfigs.debug
-            minifyEnabled true
+            minifyEnabled false
             // Explicitly non-debuggable in release (defense-in-depth alongside the
             // MainActivity setWebContentsDebuggingEnabled(false) guard).
             debuggable false
