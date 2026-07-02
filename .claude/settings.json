@@ -164,13 +164,16 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_FLOW_V3_ENABLED": "true",
     "CLAUDE_FLOW_HOOKS_ENABLED": "true",
-    "NODE_OPTIONS": "--max-old-space-size=768"
+    "NODE_OPTIONS": "--max-old-space-size=2048"
   },
   "permissions": {
     "allow": [
       "Bash(npx @claude-flow*)",
       "Bash(npx claude-flow*)",
       "Bash(node .claude/*)",
+      "Bash(npx playwright*)",
+      "Bash(npm run test:e2e)",
+      "Bash(npm run test)",
       "mcp__claude-flow__*",
       "mcp__Claude_Preview__preview_snapshot",
       "mcp__Claude_Preview__preview_console_logs",

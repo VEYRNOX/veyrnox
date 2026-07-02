@@ -107,7 +107,11 @@ veyrnox-release.jks
 keystore.jks
 dist-release/
 
-# Local runtime / tool artifacts (not for commit)
+# Playwright
+test-results/
+playwright-report/
+.auth/
+playwright/.auth/
 .claude/scheduled_tasks.lock
 .impeccable/
 .github/hooks/impeccable.json

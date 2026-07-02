@@ -35,23 +35,31 @@ import { useWallet } from '@/lib/WalletProvider';
 import { evaluateTwoFactor } from '@/lib/twoFactorGate';
 import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from '@/lib/passkey';
 import { is2faBiometricEnabled, verifyBiometric2fa } from '@/lib/biometric';
+import { resolveSend2faMethod } from '@/lib/send2faMethod';
 import TwoFactorGate from './TwoFactorGate';
 
 export function useActionGuard() {
-  const { actionPasswordConfigured, verifyActiveCredentialDetailed, verifyActionPassword, lock } = useWallet();
+  const { actionPasswordConfigured, verifyActiveCredentialDetailed, verifyActionPassword, lock, isDecoy, isHidden } = useWallet();
   const [pending, setPending] = useState(null); // { run, title }
 
   // Resolve the ACTIVE second-factor method at call time (prefs/registration are
-  // read from storage). Passkey wins if both are set; password is the per-set knowledge
-  // factor; otherwise there is no second factor and the action runs unguarded.
+  // read from storage). Delegates to the shared pure resolver (lib/send2faMethod.js)
+  // so this guard and the Send screen cannot drift. Passkey/biometric are device-global
+  // possession factors; the Action Password is the per-set knowledge factor. In a
+  // decoy/hidden session the device-global factors are suppressed (I3) — the resolver
+  // enforces that; the per-set Action Password still applies. SEND_2FA codes are the
+  // same string literals used below ('biometric'|'passkey'|'password'|'none').
   const resolveMethod = useCallback(() => {
-    // Native OS biometric wins on a real device — the genuine possession factor that
-    // actually runs in the app (WebAuthn passkeys can't in the Android WebView).
-    if (Capacitor.isNativePlatform() && is2faBiometricEnabled()) return 'biometric';
-    if (is2faPasskeyEnabled() && isPasskeyRegistered()) return 'passkey';
-    if (actionPasswordConfigured) return 'password';
-    return 'none';
-  }, [actionPasswordConfigured]);
+    return resolveSend2faMethod({
+      isNative: Capacitor.isNativePlatform(),
+      biometric2faEnabled: is2faBiometricEnabled(),
+      passkey2faEnabled: is2faPasskeyEnabled(),
+      passkeyRegistered: isPasskeyRegistered(),
+      actionPasswordConfigured,
+      isDecoy,
+      isHidden,
+    });
+  }, [actionPasswordConfigured, isDecoy, isHidden]);
 
   const requireTwoFactor = useCallback((run, opts = {}) => {
     if (typeof run !== 'function') return;

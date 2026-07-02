@@ -35,6 +35,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['fake-indexeddb/auto', './vitest.setup.js'],
     include: ['src/**/*.test.{js,jsx}'],
+    globals: true, // Faster test execution
     // The at-rest Argon2id KDF was raised to 192 MiB / t=3 (SAST M3). The pure-JS
     // WASM build in the Node/jsdom test env runs that KDF much slower than the
     // browser's native WASM (~2-3 s per derivation vs ~440 ms), and several tests
@@ -57,5 +58,9 @@ export default defineConfig({
     pool: 'forks',
     maxWorkers: 1,
     minWorkers: 1,
+    // Disable coverage by default (runs faster); enable with --coverage flag
+    coverage: {
+      enabled: false,
+    },
   },
 });

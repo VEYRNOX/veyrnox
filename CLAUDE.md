@@ -20,9 +20,13 @@ identity; the app never holds keys server-side.
   INTERNAL pass — not independent. (See `docs/Audit.scope.md`.)
   A 2026-07-01 internal static-analysis audit (Hardware KEK focused — WebAuthn PRF KEK,
   iOS SE KEK, Android StrongBox KEK) found 1C/9H/12M/6L; 10 remediable findings fixed in
-  PRs #520–#522; C-1 (CRITICAL: Android HMAC fixed input — v2 protocol migration required)
-  and native/device-gated findings (iOS-F5, iOS-F3, H-1, H-2/iOS-F11, iOS-F9 evidence gap)
-  remain open. H-NEW-D CLOSED (SE ECIES confirmed in ObjC at `HardwareKekPlugin.m:78`).
+  PRs #520–#522; C-1 (CRITICAL: Android HMAC fixed input — v2 protocol migration) RESOLVED /
+  device-verified 2026-07-02 (Sepolia txid
+  `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289;
+  PR #529 merged as commit 732f9676; vault confirmed `hardwareKekVersion:2`, `kekSaltLength:44`,
+  `hardwareKekTier:"STRONGBOX"` on Pixel 10 Pro XL). Remaining open: native/device-gated
+  findings (iOS-F5, iOS-F3, H-2/iOS-F11 iOS half, iOS-F9 evidence gap).
+  H-NEW-D CLOSED (SE ECIES confirmed in ObjC at `HardwareKekPlugin.m:78`).
   INTERNAL pass — not independent. See `docs/audit-2026-07-01-kek-internal.md`.
 - **Verify, don't assert.** An asset/feature is "verified" ONLY after a real on-chain
   testnet transaction confirms on a block explorer with a txid the user supplies. Passing
@@ -57,9 +61,12 @@ identity; the app never holds keys server-side.
   NSData not zeroed — requires NSMutableData patch + Mac build), iOS-F3 (deprecated
   kSecUseOperationPrompt — requires LAContext + Mac/Xcode). iOS-F9 evidence gap: SE unlock
   log trace not captured for the existing Sepolia sends; iOS device-verified status remains
-  PARTIAL. H-2/iOS-F11 (biometric cache not bound to enrollment set) open on both platforms.
-  Outstanding: SE-unlock log trace capture, biometric re-enrollment invalidation test,
-  KEK-gated Sepolia txid, independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
+  PARTIAL. H-2/iOS-F11 (biometric factor not bound to enrollment set): Android half RESOLVED
+  / device-verified (PR #516/#518, re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half
+  DEFERRED — the `.biometryCurrentSet` ACL flag is set in code but the runtime re-enroll test
+  is device-blocked (test iPhone 17 Pro Max has Face ID enrollment restricted; needs an
+  unrestricted iPhone). Outstanding (iOS): SE-unlock log trace capture, biometric re-enrollment
+  invalidation test, KEK-gated Sepolia txid, independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
   also affects the overall KEK design context — see Android bullet.
 - Android: StrongBox HMAC-SHA256 + biometric-only gate (no credential fallback). ✅
   BUILT, end-to-end device-verified 2026-07-01 on a Pixel 10 Pro XL (Android 16/API 36):
@@ -76,31 +83,37 @@ identity; the app never holds keys server-side.
   C-1 (CRITICAL) — HMAC input is a global fixed constant; all enrolled Android vaults
   derive the same H from the same HMAC input string; requires per-enrollment `kekSalt`
   binding (v2 protocol migration, protocol-breaking change, tracked separately).
-  JS-layer fix code-complete in PR #529 (open, pending merge, 2026-07-02): `native.js`
+  JS-layer fix code-complete in PR #529 (merged 2026-07-02 as commit 732f9676): `native.js`
   now generates `kekSalt` before calling `getHardwareFactor`, passes `{ kekSalt }` to it,
   and stamps `hardwareKekVersion: 2` on the vault blob; Kotlin plugin was already patched.
-  4/4 C-1 contract tests + 172/172 keystore tests pass. NOT device-verified (needs
-  on-device re-enroll + cold restart + KEK-gated Sepolia txid on v2 path). INTERNAL — not
-  independently audited. PR #529 is open and not yet merged.
+  4/4 C-1 contract tests + 172/172 keystore tests pass. ✅ DEVICE-VERIFIED 2026-07-02 on
+  Pixel 10 Pro XL (Android 16/API 36): v2 re-enroll → cold restart → StrongBox-gated unlock
+  → KEK-gated Sepolia send, txid
+  `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289.
+  Vault read confirmed `hardwareKekVersion:2`, `kekSaltLength:44`, `kekSalt` distinct per
+  enrollment. INTERNAL — not independently audited.
   H-1 — StrongBox tier not surfaced to user; TEE/software fallback silent (UI update needed).
   FIXED in PR #527 (merged 2026-07-02): `tierBadge.js` pure helper maps
   `securityLevelName` → badge label/variant; `HardwareKekSettings.jsx` reads real tier
   from `getVaultKekTier()` and renders the correct badge (StrongBox Protected / TEE
   Protected / Hardware Protection ON / WebAuthn Protected); `native.js` `enrollKek` stores
   `hardwareKekTier` in vault blob and exposes `getVaultKekTier()` accessor.
-  H-2/iOS-F11 — biometric cache not bound to enrollment set on both platforms; requires
-  custom Capacitor plugin. M-3 fixed (PR #522): `detectTamper()` now fail-closed
+  H-2/iOS-F11 (Android half) — RESOLVED / device-verified: `setInvalidatedByBiometricEnrollment(true)`
+  confirmed working on Pixel 10 Pro XL (PR #516/#518, 2026-07-01) — re-enroll fingerprint →
+  `KeyPermanentlyInvalidatedException` → fail-closed → PIN recovery. (iOS half deferred/device-blocked
+  — see iOS bullet.) M-3 fixed (PR #522): `detectTamper()` now fail-closed
   (`getOrElse { true }`). H-4 fixed (PR #522): zero-vector H check in `hardware.js`.
-  Outstanding: C-1 v2 migration (JS layer code-complete in PR #529, pending merge; device
-  verification still required), KEK-gated Sepolia send + txid, biometric re-enrollment
-  invalidation test, StrongBox tier enforcement, independent audit.
+  Outstanding: StrongBox tier enforcement (H-1 FIXED PR #527), independent audit. C-1
+  RESOLVED / device-verified (PR #529 merged; txid
+  `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`). Android biometric
+  re-enrollment invalidation test DONE (PR #516/#518).
   H-1 UI surfacing: FIXED PR #527 (merged 2026-07-02).
   See `docs/hardware-kek-phase-plan.md`, `docs/Feature-Status.md` §4, and
   `docs/audit-2026-07-01-kek-internal.md` for full evidence.
 - Status is BUILT + device-verified for both platforms (Android end-to-end,
   iOS partial / no SE-unlock log trace) — 2026-07-01 INTERNAL static-analysis audit
-  complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; C-1 CRITICAL JS-layer code-complete PR
-  #529 pending merge; H-1 FIXED PR #527). NOT independently
+  complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; C-1 RESOLVED / device-verified PR #529
+  merged + Sepolia txid `0xeb71a5d…` 2026-07-02; H-1 FIXED PR #527). NOT independently
   audited, NOT "verified" in the on-chain/asset sense (no KEK-gated testnet txid on
   either platform's hardware-unlock path yet).
 

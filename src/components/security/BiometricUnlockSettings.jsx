@@ -137,18 +137,15 @@ export default function BiometricUnlockSettings() {
       <div className="flex items-center justify-between">
         <div className="pr-4">
           <p className="text-sm font-medium">
-            {forcedOnDevice ? `${label} required on this device` : `Require ${label} on unlock`}
+            Require {label} on unlock
           </p>
           <p className="text-xs text-muted-foreground">
-            {forcedOnDevice
-              ? `Your wallet always asks for ${label} (or your device passcode) on this device — this can't be turned off here.`
-              : `Ask for ${label} before decrypting your wallet.`}
+            Ask for {label} before decrypting your wallet.
           </p>
         </div>
         <Switch
-          checked={forcedOnDevice ? true : enabled}
+          checked={enabled}
           onCheckedChange={onToggle}
-          disabled={forcedOnDevice}
           aria-label="Require biometric unlock"
         />
       </div>

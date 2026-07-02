@@ -106,6 +106,10 @@ export default function SendCrypto() {
     passkey2faEnabled: is2faPasskeyEnabled(),
     passkeyRegistered: isPasskeyRegistered(),
     actionPasswordConfigured,
+    // I3: suppress device-global passkey/biometric factors in decoy/hidden sessions
+    // (per-set Action Password still applies) — see lib/send2faMethod.js.
+    isDecoy,
+    isHidden,
   });
 
   // Cold-load / deep-link guard: if the vault is confirmed absent (new install),
