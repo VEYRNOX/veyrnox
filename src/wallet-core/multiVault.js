@@ -227,7 +227,7 @@ export function parseVault(plaintext) {
     // Password record (if any) is carried over — validateContainer above has
     // already confirmed it is well-formed.
     return {
-      container: makeContainer(parsed.wallets, parsed.actionPassword, parsed.lastUnlockAt),
+      container: makeContainer(parsed.wallets, parsed.actionPassword, parsed.lastUnlockAt, parsed.hiddenWallet2faMode),
       migrated: false,
     };
   }
@@ -288,6 +288,7 @@ export function serializeContainer(container) {
   // to the pre-feature shape).
   if (container.actionPassword != null) out.actionPassword = container.actionPassword;
   if (container.lastUnlockAt != null) out.lastUnlockAt = container.lastUnlockAt;
+  if (container.hiddenWallet2faMode != null) out.hiddenWallet2faMode = container.hiddenWallet2faMode;
 
   // FIXED-LENGTH PADDING (H2). Serialise the real content first, then append a
   // `pad` field whose length is computed so the FINAL JSON is EXACTLY FIXED_LEN

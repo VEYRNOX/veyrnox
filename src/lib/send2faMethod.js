@@ -47,6 +47,8 @@ export const SEND_2FA = Object.freeze({
  * @param {boolean} [i.passkey2faEnabled]       user turned on "passkey as my 2nd factor"
  * @param {boolean} [i.passkeyRegistered]       a passkey is actually registered on this device
  * @param {boolean} [i.actionPasswordConfigured] the active set has an Action Password
+ * @param {boolean} [i.isDecoy]                  active session is a decoy (duress) set
+ * @param {boolean} [i.isHidden]                 active session is a hidden (stealth) set
  * @returns {'biometric'|'passkey'|'password'|'none'}
  */
 export function resolveSend2faMethod({
@@ -56,15 +58,24 @@ export function resolveSend2faMethod({
   passkey2faEnabled = false,
   passkeyRegistered = false,
   actionPasswordConfigured = false,
+  isDecoy = false,
+  isHidden = false,
 } = {}) {
   if (demo) return SEND_2FA.NONE; // demo has no vault → no real second factor
+  // I3 DENIABILITY: passkey and OS-biometric are DEVICE-GLOBAL factors (single
+  // localStorage prefs), not per-set. A decoy/hidden session is never told the real
+  // session's factors, so firing one here would leak real-session state and — for an
+  // RP-backed passkey — risk a network round-trip inside a session that must make
+  // zero backend calls. Suppress both (treat as disabled). The Action Password below
+  // is per-set (deniability-safe) and continues to apply on its own record.
+  const deniable = isDecoy || isHidden;
   // Native OS biometric wins on a real device — the only possession factor that
   // actually runs in the app (WebAuthn passkeys can't in the Android WebView).
-  if (isNative && biometric2faEnabled) return SEND_2FA.BIOMETRIC;
+  if (!deniable && isNative && biometric2faEnabled) return SEND_2FA.BIOMETRIC;
   // Passkey next, but ONLY when one is genuinely registered so the assertion can
   // honestly run (a stale "on" pref with nothing registered must not gate on a
   // factor we cannot satisfy — that would brick the send, not secure it).
-  if (passkey2faEnabled && passkeyRegistered) return SEND_2FA.PASSKEY;
+  if (!deniable && passkey2faEnabled && passkeyRegistered) return SEND_2FA.PASSKEY;
   if (actionPasswordConfigured) return SEND_2FA.PASSWORD;
   return SEND_2FA.NONE;
 }

@@ -51,6 +51,31 @@
     "caveats": "(1) The live getHardwareFactor SE-unlock log trace tied to these sends was NOT captured — proof is architectural (fail-closed KEK path) + user-confirmed enrollment, not an observed SE-unlock line. (2) The biometric re-enrollment invalidation test (disable/re-enroll Face ID -> old SE key invalidated -> unlock re-prompts / password fallback) is NOT done. (3) UNAUDITED-PROVISIONAL — no independent audit. This is the KEK unlock gate, not an asset status (ETH is already LIVE). Android StrongBox equivalent: PR #496 (Pixel 10 Pro XL).",
     "date": "2026-07-01"
   },
+  "_c1_android_kek_v2_device_verification": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. Records that the C-1 CRITICAL (Android HMAC fixed input) v2 protocol fix was end-to-end device-verified: a vault enrolled under the v2 kekSalt-bound HMAC protocol (hardwareKekVersion:2) gated a real on-chain Sepolia send on a Pixel 10 Pro XL. Android C-1 is RESOLVED / device-verified. Remaining open: iOS kekSalt binding (iOS uses ECIES not HMAC — separate design), independent audit.",
+    "chain": "sepolia",
+    "txid": "0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580",
+    "explorer": "https://sepolia.etherscan.io/tx/0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580",
+    "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+    "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "amount": "0.001 ETH",
+    "block": 11185289,
+    "nonce": 33,
+    "verified_onchain": "eth_getTransactionByHash, chainId 11155111 (Sepolia), type 0x2 (EIP-1559), status confirmed (blockHash present), block 11185289, 2026-07-02.",
+    "vault_state_at_send": {
+      "kdf": "kek-dek",
+      "hardwareKekVersion": 2,
+      "hasKekSalt": true,
+      "kekSaltLength": 44,
+      "hasKekWrap": true,
+      "hardwareKekTier": "STRONGBOX"
+    },
+    "what_was_verified": "C-1 v2 protocol end-to-end on Android. The vault was enrolled via enrollKek() with v2 code (PR #529, commit 732f9676): native.js generated a fresh 32-byte kekSalt, passed it to getHardwareFactor({ kekSalt }) — confirmed via nativePromise intercept (kekSalt Uint8Array arg present in two consecutive getHardwareFactor calls), and stamped hardwareKekVersion:2 + kekSalt on the vault blob (confirmed via SecureStorage.get() CDP read: hardwareKekVersion:2, kekSaltLength:44, hardwareKekTier:STRONGBOX). The vault was then force-killed, relaunched, and biometric-unlocked before signing and broadcasting this send. H = HMAC(StrongBox key, kekSalt) — unique per-enrollment, NOT the global fixed PRF_EVAL_SALT that C-1 identified as the vulnerability.",
+    "device": "Google Pixel 10 Pro XL (57051FDCQ008UD, Android 16/API 36)",
+    "apk": "com.veyrnox.app.debug, versionCode=1, installed 2026-07-02 09:29:47, built from commit a55e5464 (post PR #529 merge at 06:33:05)",
+    "caveats": "(1) The KEK gates UNLOCK (H+C unwrap DEK → decrypt seed → sign tx), not per-signature. (2) INTERNAL verification — not independently audited. (3) iOS v2 equivalent (kekSalt binding via ECIES) is a separate design and remains unverified. (4) C-1 v2 PR #529 is merged (commit 732f9676); no open PRs for C-1 Android.",
+    "date": "2026-07-02"
+  },
   "_android_hardware_kek_device_verification": {
     "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. Android Hardware KEK (H-NEW-D / StrongBox) stays BUILT / device-verified (PARTIAL). Moved here from 'evidence' per the ECC KEK audit 2026-07-01 (finding L6) so it mirrors _ios_hardware_kek_device_verification and cannot become a latent promotion trap. Records that the StrongBox KEK gated a real on-chain Sepolia send on a Pixel 10 Pro XL, honest that this gates UNLOCK (not per-signature), StrongBox tier is observed not enforced, and biometric re-enrollment invalidation + independent audit are outstanding.",
     "chain": "sepolia",
@@ -62,7 +87,7 @@
     "block": 11180398,
     "nonce": 30,
     "verified_onchain": "eth_getTransactionByHash + eth_getTransactionReceipt, chainId 11155111, status SUCCESS, block 11180398, 2026-07-01. Sent from a StrongBox-KEK-enrolled vault whose unlock was gated by the Android StrongBox KEK: device logcat (Pixel 10 Pro XL, com.veyrnox.app.debug) shows HardwareKek.getHardwareFactor + BiometricService StrengthRequested:15 (BIOMETRIC_STRONG, no credential fallback) and the vault reading back as kek-dek (kekWrap present) — the seed could only be decrypted, and thus this tx signed, after the StrongBox hardware factor H was produced.",
-    "caveats": "(1) The KEK gates UNLOCK (H + PIN unwrap the DEK); the send then signs with the in-memory DEK — this confirms the send REQUIRED the StrongBox KEK to unlock, not that a per-signature SE/StrongBox key signed the tx. (2) StrongBox tier is device-specific to this Pixel 10 Pro XL (securityLevel=2); a non-StrongBox device would log TRUSTED_ENVIRONMENT — tier ENFORCEMENT is still TARGET. (3) BUILT + device-verified, NOT independently audited. (4) Depends on the 3-bug fix (PRs #497/#499) that made the KEK actually persist + gate unlock — before that the vault was silently downgraded to bare on every unlock, so no earlier Android send was genuinely KEK-gated. (5) Biometric re-enrollment invalidation test (old key invalidated after re-enroll) still NOT done.",
+    "caveats": "(1) The KEK gates UNLOCK (H + PIN unwrap the DEK); the send then signs with the in-memory DEK — this confirms the send REQUIRED the StrongBox KEK to unlock, not that a per-signature SE/StrongBox key signed the tx. (2) StrongBox tier is device-specific to this Pixel 10 Pro XL (securityLevel=2); a non-StrongBox device would log TRUSTED_ENVIRONMENT — tier ENFORCEMENT is still TARGET. (3) BUILT + device-verified, NOT independently audited. (4) Depends on the 3-bug fix (PRs #497/#499) that made the KEK actually persist + gate unlock — before that the vault was silently downgraded to bare on every unlock, so no earlier Android send was genuinely KEK-gated. (5) Biometric re-enrollment invalidation test (old key invalidated after re-enroll) PASSED on this device (PR #516/#518) — see the _hardware_kek_biometric_reenroll_invalidation META key.",
     "date": "2026-07-01"
   },
   "_hardware_kek_biometric_reenroll_invalidation": {
@@ -75,6 +100,24 @@
     "proof": "Device logcat + on-device error message. Confirmed PIN fallback worked (recovery path intact).",
     "date": "2026-07-01",
     "verified_ondevice": "Pixel 10 Pro XL, com.veyrnox.app.debug, 2026-07-01T16:30 UTC. Biometric invalidation protection (setInvalidatedByBiometricEnrollment) is WORKING — key invalidates on biometric state change, app detects and refuses unlock, fail-closed. Recovery (PIN fallback) successful."
+  },
+  "_ios_kek_se_operation_os_evidence": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. iOS Hardware KEK stays BUILT / device-verified (PARTIAL). Records OS-daemon (coreauthd/biometrickitd/ctkd) evidence that the Veyrnox app performed a Face-ID-gated Secure Enclave key operation correlated in time to a real on-chain Sepolia send. It is NOT the app's own getHardwareFactor SUCCESS log line and does NOT by itself close iOS-F9's literal app-trace requirement (see caveats).",
+    "test_type": "real-device OS-daemon log correlation (no reinstall; existing KEK-enrolled vault)",
+    "device": "iPhone 17 Pro Max (UDID 00008150-000575E02232401C), iOS 26.5.1",
+    "app_pid": "4913 (com.veyrnox.app) — bound in ctkd token-client.peer[4913] and coreauthd ContextProxy[4913:...]",
+    "chain": "sepolia",
+    "txid": "0x5116e7bc132356b2061791faaf8324d5170f83b66a54c61055d443f51393612c",
+    "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+    "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "amount": "0.001 ETH",
+    "nonce": 32,
+    "block": 11185985,
+    "verified_onchain": "publicnode Sepolia RPC eth_getTransactionByHash, chainId 11155111, block 11185985, nonce 32, from 0x90f9…E68a729, 2026-07-02.",
+    "os_evidence": "Device unified-log window 2026-07-02 09:29–10:09 (log collect --device-udid, read via log show — reading needs no root). At 10:06:2x coreauthd logged two Face ID matches (BKMatchOperation::matchResult via the Pearl camera) then allowTransferToProcess:269 on ContextProxy[4913:38:1712:1818] and evaluateACL … returned — a SecAccessControl ACL evaluation gating a key operation for the Veyrnox process. ctkd (CryptoTokenKit — the Secure Enclave broker) held a token-client.peer[4913] connection from 09:57:09 through 10:07:25 and created the gating LAContext[…:1712:1818] at 10:06:24. Veyrnox's only Secure Enclave key is the HardwareKek ECIES key, so a ctkd/SE key operation from pid 4913 is the KEK getHardwareFactor decrypt. The SE operation is timestamped immediately before the nonce-32 send.",
+    "proof_basis": "Independent Apple security-daemon logs (coreauthd/biometrickitd/ctkd), not the app — the app cannot forge them. Establishes that Veyrnox performed a Face-ID-gated Secure Enclave CryptoTokenKit key operation correlated in time to a real on-chain send. Stronger than a self-reported app log line for authenticity, weaker for explicit labelling (see caveats).",
+    "caveats": "(1) This is NOT the app's own '[VEYRNOX-KEK] getHardwareFactor: SUCCESS' NSLog line. On iOS 26 a third-party app's NSLog is not persisted to / streamable from the device unified log by external tools — idevicesyslog, retroactive log collect, AND live Console.app all showed zero VEYRNOX-KEK lines despite Face ID running and the SE op firing. The literal app trace cannot be captured from the installed build; it would require a fresh debug rebuild logging via os_log(public). (2) coreauthd redacts some client bindings as <private>; the ctkd peer[4913] and coreauthd ContextProxy[4913:…] bindings are explicit and unredacted. (3) iOS-F9's literal app-trace requirement therefore remains OPEN — this entry is OS-side corroboration that upgrades the prior architectural-only proof, NOT a literal close. (4) UNAUDITED — no independent audit. The KEK gates UNLOCK, not asset status (ETH is already LIVE).",
+    "date": "2026-07-02"
   },
   "evidence": {
     "Solana send (wallet-core module, devnet script)": {
