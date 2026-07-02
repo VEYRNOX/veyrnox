@@ -29,7 +29,9 @@ const BASE = process.env.BASE_URL || 'http://localhost:5173';
 // If this is native, it will use the PIN; if web, it must be 12+
 const TEST_PASSWORD = '12345678abcd'; // 12 chars minimum for web vault
 const TEST_PIN = '12345678'; // 8 digits for native (fallback)
-const SEPOLIA_RECIPIENT = '0x82D0Fa1ec7a5c1B0B3B8B2B5B2B5B2B5B82D0Fa';
+// Throwaway Sepolia test recipient — 40-char EVM address (original was 39 chars, invalid).
+// Replace with a real funded recipient address before running live UAT.
+const SEPOLIA_RECIPIENT = '0x000000000000000000000000000000000000dEaD';
 const SEND_AMOUNT = '0.001';
 
 // Add CDP virtual authenticator to the page (one-time setup per browser context)
@@ -269,9 +271,12 @@ test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send'
       `   explorer:  ${explorerUrl}\n` +
       `${'='.repeat(80)}\n` +
       `\n` +
-      `   Status: BUILT + RUNNING (code-complete, CDP virtual auth)\n` +
-      `           Testnet broadcast confirmed.\n\n` +
-      `   Verification: Supply this txid to Sepolia Explorer:\n` +
+      `   Status: BUILT / UAT-PENDING (CDP virtual authenticator — NOT a real platform PRF).\n` +
+      `           This txid was broadcast via a simulated WebAuthn authenticator, NOT\n` +
+      `           a real hardware PRF. It does NOT satisfy the project honesty bar for\n` +
+      `           "verified" (which requires a real user-supplied on-chain txid from a\n` +
+      `           real platform authenticator on a real device — see CLAUDE.md).\n\n` +
+      `   If running on real hardware with a real PRF, supply this txid to the owner:\n` +
       `   https://sepolia.etherscan.io/tx/${txid}\n`,
     );
   });
