@@ -172,28 +172,41 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - **Target:** KEK-gated Sepolia send + txid on Android, biometric re-enrollment invalidation test on iOS only (Android PASSED 2026-07-01, PR #516/#518), StrongBox tier enforcement, full audit refresh, iOS end-to-end persistence parity with Android.
 - **Gate:** Custom native plugins (Swift + Kotlin) + real-device verification required; not startable in JS environment. See `docs/hardware-kek-phase-plan.md` → "Android Device-Verification Evidence" for full evidence and the bug-fix detail.
 
-**iOS SE-ECIES KEK — 🟡 DEVICE-VERIFIED (PARTIAL) 2026-07-01 (PR #495):** The real
+**iOS SE-ECIES KEK — 🟡 DEVICE-VERIFIED (PARTIAL) 2026-07-01/07-02 (PR #495):** The real
 Objective-C Secure Enclave ECIES plugin (`ios/App/App/HardwareKekPlugin.m` + `.h` +
 `HardwareKekPluginBridge.m`) is on `main` and device-verified on **iPhone 17 Pro Max**.
 Apple ECIES (`SecKeyCreateEncryptedData`/`DecryptedData`) over a persistent SE P-256 key
 with `.biometryCurrentSet` ACL; the SE private key never leaves the enclave and Face ID
 gates every decrypt. Binary-confirmed `superclass = CAPPlugin` (the earlier discovery bug
-where the class silently inherited `NSObject` is fixed). **Two real Sepolia sends from a
+where the class silently inherited `NSObject` is fixed). **Three real Sepolia sends from a
 KEK-enrolled vault** (`0x90f9…E68a729`, bamboo… UAT seed) confirmed SUCCESS on-chain:
 `0xf09c036c87ea9db415d11cdfc1426632220f6e8bbf93eca1bf9b5f1d1a926f37` (nonce 27, block
 11178961) and `0x0b13d5538421936d7146c0d864dfbcee6e49d2300e18a87ca17028788f85f4f9`
-(nonce 28, block 11179002), each 0.001 ETH. **Proof basis:** architectural + enrollment —
-the vault had `kekWrap` present and the fail-closed `native.js` `_unlockInner` KEK path
-(~L188-215) cannot decrypt the seed (hence cannot sign) unless `getHardwareFactor()`
-returns valid H from the SE; two valid on-chain signatures therefore prove the SE-KEK
-unlock gated signing. Rules out demo mode (real address + real on-chain balance change).
+(nonce 28, block 11179002), each 0.001 ETH (PR #495, 2026-07-01); plus a third send
+`0x5116e7bc132356b2061791faaf8324d5170f83b66a54c61055d443f51393612c` (nonce 32, block
+11185985, 0.001 ETH, 2026-07-02) corroborated by Apple OS-daemon logs (see
+`docs/verified-evidence.json` → `_ios_kek_se_operation_os_evidence`): coreauthd logged
+two Face ID matches → `evaluateACL` → `allowTransferToProcess` for Veyrnox pid 4913; the
+ctkd (CryptoTokenKit / SE broker) held a `token-client.peer[4913]` connection and created
+the gating `LAContext` immediately before that send. These OS-daemon logs are independent
+of the app and cannot be forged by it; the correlation to the nonce-32 txid upgrades the
+prior architectural-only proof for the existing sends. **Proof basis:** architectural +
+enrollment (nonces 27/28) + OS-daemon correlation (nonce 32) — the fail-closed `native.js`
+`_unlockInner` KEK path (~L188-215) cannot decrypt the seed (hence cannot sign) unless
+`getHardwareFactor()` returns valid H from the SE; three valid on-chain signatures, with
+the nonce-32 one OS-corroborated, prove the SE-KEK unlock gated signing. Rules out demo
+mode (real address + real on-chain balance change).
 **HONEST SCOPE — still BUILT / device-verified (PARTIAL), NOT "verified", NOT audited:**
-(1) the live `getHardwareFactor` SE-unlock log trace tied to these sends was **not
-captured** (proof is architectural, not an observed SE-unlock line); (2) the **biometric
+(1) iOS-F9 remains OPEN: the OS-daemon evidence upgrades the prior architectural-only
+proof but is NOT the app's own `[VEYRNOX-KEK] getHardwareFactor: SUCCESS` log line; a
+literal app-trace capture (requires a fresh `os_log(public)` debug rebuild, since iOS 26
+suppresses third-party NSLog from external tools) is still outstanding; (2) the **biometric
 re-enrollment invalidation** test (disable/re-enroll Face ID → old SE key invalidated →
-unlock re-prompts / password fallback) is **not done**; (3) no independent audit yet. The
-hardware binding is built and device-verified but has not been independently audited. This is the KEK *unlock gate*, not an asset status (ETH is already LIVE).
-Android StrongBox equivalent: see PR #496 (H15/H16 device-verified on Pixel 10 Pro XL).
+unlock re-prompts / password fallback) is **not done** (device-blocked — test iPhone 17
+Pro Max has Face ID enrollment restricted; needs an unrestricted iPhone); (3) no independent
+audit yet. The hardware binding is built and device-verified but has not been independently
+audited. This is the KEK *unlock gate*, not an asset status (ETH is already LIVE).
+Android StrongBox equivalent: see Android entry above (end-to-end device-verified, Pixel 10 Pro XL).
 
 ---
 
@@ -431,12 +444,12 @@ RASP gates. None affect ALLOW_MAINNET.
 
 | ID | Severity | Area | Description | Status |
 |---|---|---|---|---|
-| C-1 | CRITICAL | Android | **HMAC input is global fixed constant.** All enrolled Android vaults derive the same hardware factor H from the same HMAC input string. A vault encrypted on one device can be decrypted on another if the StrongBox key is extracted. Requires per-enrollment `kekSalt` binding — a protocol-breaking v2 migration. **JS-layer code-complete in PR #529 (open, pending merge, 2026-07-02):** `native.js` generates `kekSalt` before `getHardwareFactor`, passes `{ kekSalt }` to it, stamps `hardwareKekVersion: 2` on vault blob; Kotlin plugin already patched. 4/4 C-1 contract tests + 172/172 keystore tests pass. NOT device-verified; PR #529 not yet merged. INTERNAL — not independently audited. | JS-layer code-complete (PR #529, open, pending merge). Remaining: merge, on-device re-enroll + KEK-gated Sepolia txid on v2 path, independent audit |
-| iOS-F5 | HIGH | iOS | H factor in `NSData` not zeroed post-decryption in `HardwareKekPlugin.m`; requires `NSMutableData` patch. | 🟡 FIXED IN CODE (PR #526, 2026-07-01) — text-level ObjC; Mac build + SE-unlock test required |
+| C-1 | CRITICAL | Android | **HMAC input is global fixed constant.** All enrolled Android vaults derive the same hardware factor H from the same HMAC input string. A vault encrypted on one device can be decrypted on another if the StrongBox key is extracted. Requires per-enrollment `kekSalt` binding — a protocol-breaking v2 migration. **RESOLVED / device-verified 2026-07-02:** PR #529 merged (commit 732f9676). `native.js` generates `kekSalt` before `getHardwareFactor`, passes `{ kekSalt }` to it, stamps `hardwareKekVersion: 2` on vault blob; Kotlin plugin patched. 4/4 C-1 contract tests + 172/172 keystore tests pass. On-device: v2 re-enroll → cold restart → StrongBox-gated unlock → Sepolia send confirmed on-chain — txid `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289, Pixel 10 Pro XL (Android 16/API 36). Vault read confirmed `hardwareKekVersion:2`, `kekSaltLength:44`, `hardwareKekTier:"STRONGBOX"`. Android-only fix — iOS uses ECIES (not HMAC); iOS kekSalt binding is a separate design and remains unverified. INTERNAL — not independently audited. | ✅ RESOLVED / device-verified (Android) — PR #529 merged (commit 732f9676); Sepolia txid `0xeb71a5d…` block 11185289, 2026-07-02. Remaining: iOS equivalent (separate design, unverified), independent audit |
+| iOS-F5 | HIGH | iOS | H factor in `NSData` not zeroed post-decryption in `HardwareKekPlugin.m`; requires `NSMutableData` patch. | 🟡 Code-complete (PR #526, 2026-07-01) — ObjC text edit exists; NOT compiled or device-verified. Blocked on Mac + Xcode + iOS SE build. Acceptance criteria: Section A of `docs/hardware-audit-handoff.md`. Status remains OPEN as a verification item. |
 | iOS-F9 | HIGH (evidence gap) | iOS | SE ECIES path unconfirmed for the two existing Sepolia sends — no unlock log trace captured. Proof basis is architectural; iOS device-verified status remains PARTIAL. | OPEN — capture SE-unlock log trace on next KEK-gated send |
 | H-1 | HIGH | Android | StrongBox tier not surfaced to user; TEE/software fallback is silent. UI badge does not distinguish StrongBox vs TEE-backed. **FIXED in PR #527 (merged 2026-07-02):** `tierBadge.js` maps `securityLevelName` → badge label/variant; `HardwareKekSettings.jsx` reads real tier from `getVaultKekTier()` and renders the correct badge (StrongBox Protected / TEE Protected / Hardware Protection ON / WebAuthn Protected); `native.js` `enrollKek` stores `hardwareKekTier` in vault blob and exposes `getVaultKekTier()` accessor. | ✅ FIXED — PR #527 (merged 2026-07-02) |
 | H-2 / iOS-F11 | HIGH | Android + iOS | Biometric factor not bound to enrollment set. **Android: RESOLVED / device-verified** — `setInvalidatedByBiometricEnrollment(true)` ([HardwareKekPlugin.kt:199](../android/app/src/main/java/com/veyrnox/app/HardwareKekPlugin.kt)) confirmed working on Pixel 10 Pro XL 2026-07-01 (PR #516/#518): re-enroll → `KeyPermanentlyInvalidatedException` → fail-closed → PIN recovery. **iOS: DEFERRED (device-blocked)** — `kSecAccessControlBiometryCurrentSet` is correctly set on the SE key ACL ([HardwareKekPlugin.m:96](../ios/App/App/HardwareKekPlugin.m)) but the runtime re-enroll test could not be run (test iPhone 17 Pro Max has Face ID enrollment restricted); needs an unrestricted iPhone. Note: the separate `biometricUnlock.js` PIN cache remains H-NEW-5 (plugin cannot set the ACL) — honest-disabled. | Android ✅ device-verified (PR #516/#518). iOS OPEN — re-enroll test on an unrestricted iPhone (flag set in code) |
-| iOS-F3 | MEDIUM | iOS | `kSecUseOperationPrompt` deprecated; requires `LAContext` + `kSecUseAuthenticationContext`. | 🟡 FIXED IN CODE (PR #526, 2026-07-01) — text-level ObjC; Mac build + biometric test required |
+| iOS-F3 | MEDIUM | iOS | `kSecUseOperationPrompt` deprecated; requires `LAContext` + `kSecUseAuthenticationContext`. | 🟡 Code-complete (PR #526, 2026-07-01) — ObjC text edit exists; NOT compiled or device-verified. Blocked on Mac + Xcode + iOS SE build. Acceptance criteria: Section A of `docs/hardware-audit-handoff.md`. Status remains OPEN as a verification item. |
 | H-3 | HIGH | Android | `biometryLockout` → `allowDeviceCredential` fallback. Accepted as H16 deviation — documented in code and audit record. | ACCEPTED / documented deviation (I4 honesty) |
 
 **Fixed in PRs #520–#522 (2026-07-01):** F-01 (PRF orphan credential guard), F-02 (`KEK_ALREADY_ENROLLED` guard), F-03 (PRF salt renamed `prf-kek-v1`), F-05 (credential ID committed after PRF confirmed), F-06 (H zeroing in `changePassword` finally), F-08 (`unwrapDek` zeros ptBuf), H-4 (zero-vector H check in `hardware.js` + `combineKek`), iOS-F6 (JS-layer `HARDWARE_KEK_ALREADY_ENROLLED` guard), M-3 (`detectTamper` `getOrElse { true }` fail-closed).
