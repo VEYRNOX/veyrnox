@@ -104,8 +104,25 @@ export default defineConfig(({ command }) => {
     // plugin is needed.
     optimizeDeps: {
       include: ['@scure/bip39', '@scure/bip32', '@noble/curves', '@noble/hashes', 'hash-wasm', 'ethers', 'buffer', '@walletconnect/web3wallet', '@walletconnect/utils', '@walletconnect/core'],
+      esbuildOptions: {
+        target: 'es2020', // Use modern JS for faster bundling
+      },
+    },
+    server: {
+      middlewareMode: false,
+      // Reduce memory usage and enable persistent cache
+      watch: {
+        ignored: ['**/.git/**', '**/node_modules/**', '**/dist/**', '**/.claude/**'],
+      },
     },
     build: {
+      minify: 'esbuild', // Faster than terser, nearly same size
+      sourcemap: false, // Disable sourcemaps in production
+      esbuild: {
+        target: 'es2020', // Use modern JS for smaller bundle + faster minification
+        legalComments: 'none', // Strip legal comments
+      },
+      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
           manualChunks(id) {
