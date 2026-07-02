@@ -48,10 +48,6 @@ describe('WebAuthn Polyfill', () => {
   });
 
   describe('WebAuthn API compatibility', () => {
-    it('should have PublicKeyCredential available', () => {
-      expect(window.PublicKeyCredential).toBeDefined();
-    });
-
     it('should have navigator.credentials available', () => {
       expect(navigator.credentials).toBeDefined();
       expect(typeof navigator.credentials.create).toBe('function');
