@@ -155,3 +155,86 @@ describe('resolveSend2faMethod — the send-time second-factor resolver (audit H
     expect(resolveSend2faMethod({})).toBe(SEND_2FA.NONE);
   });
 });
+
+describe('resolveSend2faMethod — decoy/hidden suppression of device-global factors (I3 deniability)', () => {
+  // The passkey and biometric 2FA factors are DEVICE-GLOBAL (single localStorage
+  // prefs), not per-set. A decoy/hidden session is never told the real session's
+  // factors; if it fired a real-session passkey/biometric challenge it would (a) leak
+  // real-session state and (b) for an RP-backed passkey risk a network round-trip
+  // inside a session that must make zero backend calls (I3). So in a decoy OR hidden
+  // session those global factors are SUPPRESSED (treated as disabled). The PER-SET
+  // Action Password is unaffected — the active set carries its own AP record.
+
+  it('decoy session suppresses a passkey-only global factor → NONE (was PASSKEY)', () => {
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isDecoy: true,
+        passkey2faEnabled: true,
+        passkeyRegistered: true,
+        actionPasswordConfigured: false,
+      }),
+    ).toBe(SEND_2FA.NONE);
+  });
+
+  it('hidden session suppresses a native biometric-only global factor → NONE (was BIOMETRIC)', () => {
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isHidden: true,
+        isNative: true,
+        biometric2faEnabled: true,
+        actionPasswordConfigured: false,
+      }),
+    ).toBe(SEND_2FA.NONE);
+  });
+
+  it('decoy session PRESERVES the per-set Action Password factor → PASSWORD', () => {
+    // Action Password is per-set (deniability-safe), so it must still gate.
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isDecoy: true,
+        passkey2faEnabled: true,
+        passkeyRegistered: true,
+        actionPasswordConfigured: true,
+      }),
+    ).toBe(SEND_2FA.PASSWORD);
+  });
+
+  it('hidden session with only Action Password still resolves to PASSWORD', () => {
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isHidden: true,
+        actionPasswordConfigured: true,
+      }),
+    ).toBe(SEND_2FA.PASSWORD);
+  });
+
+  it('NO REGRESSION: a normal session (isDecoy=false,isHidden=false) still resolves PASSKEY', () => {
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isDecoy: false,
+        isHidden: false,
+        passkey2faEnabled: true,
+        passkeyRegistered: true,
+        actionPasswordConfigured: false,
+      }),
+    ).toBe(SEND_2FA.PASSKEY);
+  });
+
+  it('NO REGRESSION: a normal session still resolves BIOMETRIC on native', () => {
+    expect(
+      resolveSend2faMethod({
+        demo: false,
+        isDecoy: false,
+        isHidden: false,
+        isNative: true,
+        biometric2faEnabled: true,
+        actionPasswordConfigured: false,
+      }),
+    ).toBe(SEND_2FA.BIOMETRIC);
+  });
+});
