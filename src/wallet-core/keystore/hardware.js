@@ -164,13 +164,15 @@ export async function enrollHardwareCredential() {
 }
 
 /**
- * getHardwareFactor() → Uint8Array (32 bytes)
- * Presents BiometricPrompt, computes HMAC-SHA256(key, PRF_EVAL_SALT) natively,
+ * getHardwareFactor(opts?) → Uint8Array (32 bytes)
+ * Presents BiometricPrompt, computes HMAC-SHA256(key, kekSalt) natively,
  * returns the 32-byte result.
+ * @param {{ kekSalt?: Uint8Array }} [opts]
  */
-export async function getHardwareFactor() {
+export async function getHardwareFactor(opts) {
   const plugin = getPlugin();
-  const { h } = await plugin.getHardwareFactor();
+  const pluginOpts = opts && opts.kekSalt ? { kekSalt: opts.kekSalt } : undefined;
+  const { h } = await plugin.getHardwareFactor(pluginOpts);
   // I/O-boundary validation (fail-closed, I4): the plugin output is UNTRUSTED at the
   // JS bridge. Validate BEFORE decoding — a missing/non-string h must throw the stable
   // KEK_ERR.NO_HARDWARE_FACTOR, never reach atob() (raw InvalidCharacterError/TypeError)

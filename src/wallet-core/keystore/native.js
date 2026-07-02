@@ -511,10 +511,8 @@ export const nativeKeyStore = {
         let oldKek;
         let newKek;
         let dek;
-        // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so the H2 copy,
-        // both derived KEKs, and the recovered DEK are wiped on EVERY path — including
-        // when deriveKekC/combineKek/unwrapDek/wrapDek/set throws. None may linger in
-        // the JS heap until GC (I4), mirroring web.js.
+        // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so H, H2,
+        // both derived KEKs, and the recovered DEK are wiped on EVERY path (I4).
         try {
           oldC = await deriveKekC(currentPassword, oldSaltBytes);
           oldKek = await combineKek(H, oldC);

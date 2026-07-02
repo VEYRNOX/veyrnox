@@ -32,8 +32,9 @@
 > A **2026-07-01 INTERNAL static-analysis pass** (Hardware KEK focus — WebAuthn PRF KEK,
 > iOS SE KEK, Android StrongBox KEK) found 1 CRITICAL / 9 HIGH / 12 MEDIUM / 6 LOW findings.
 > 10 remediable findings fixed in PRs #520–#522. C-1 (CRITICAL: Android HMAC fixed input —
-> v2 protocol migration required) and native/device-gated findings remain open. H-NEW-D
-> CLOSED (SE ECIES confirmed in ObjC). INTERNAL pass — not independent. See
+> v2 protocol migration required) — JS-layer code-complete in PR #529 (open, pending merge,
+> 2026-07-02); NOT device-verified, NOT merged. H-1 FIXED in PR #527 (merged 2026-07-02).
+> H-NEW-D CLOSED (SE ECIES confirmed in ObjC). INTERNAL pass — not independent. See
 > `docs/audit-2026-07-01-kek-internal.md`.
 > "Audited" is **not** "verified": a feature still earns the strict catalogue `verified`
 > status ONLY with a real explorer-confirmed txid. Where a feature still carries a
@@ -422,15 +423,17 @@ RASP gates. None affect ALLOW_MAINNET.
 
 | ID | Severity | Area | Description | Status |
 |---|---|---|---|---|
-| C-1 | CRITICAL | Android | **HMAC input is global fixed constant.** All enrolled Android vaults derive the same hardware factor H from the same HMAC input string. A vault encrypted on one device can be decrypted on another if the StrongBox key is extracted. Requires per-enrollment `kekSalt` binding — a protocol-breaking v2 migration. Tracked as separate migration task. | OPEN — v2 protocol migration required; Android native build |
+| C-1 | CRITICAL | Android | **HMAC input is global fixed constant.** All enrolled Android vaults derive the same hardware factor H from the same HMAC input string. A vault encrypted on one device can be decrypted on another if the StrongBox key is extracted. Requires per-enrollment `kekSalt` binding — a protocol-breaking v2 migration. **JS-layer code-complete in PR #529 (open, pending merge, 2026-07-02):** `native.js` generates `kekSalt` before `getHardwareFactor`, passes `{ kekSalt }` to it, stamps `hardwareKekVersion: 2` on vault blob; Kotlin plugin already patched. 4/4 C-1 contract tests + 172/172 keystore tests pass. NOT device-verified; PR #529 not yet merged. INTERNAL — not independently audited. | JS-layer code-complete (PR #529, open, pending merge). Remaining: merge, on-device re-enroll + KEK-gated Sepolia txid on v2 path, independent audit |
 | iOS-F5 | HIGH | iOS | H factor in `NSData` not zeroed post-decryption in `HardwareKekPlugin.m`; requires `NSMutableData` patch. | 🟡 FIXED IN CODE (PR #526, 2026-07-01) — text-level ObjC; Mac build + SE-unlock test required |
 | iOS-F9 | HIGH (evidence gap) | iOS | SE ECIES path unconfirmed for the two existing Sepolia sends — no unlock log trace captured. Proof basis is architectural; iOS device-verified status remains PARTIAL. | OPEN — capture SE-unlock log trace on next KEK-gated send |
-| H-1 | HIGH | Android | StrongBox tier not surfaced to user; TEE/software fallback is silent. UI badge does not distinguish StrongBox vs TEE-backed. | 🟡 FIXED IN CODE (PR #527, 2026-07-01) — `tierBadge.js` + `hardwareKekTier` persistence landed; non-StrongBox device test + independent audit still required |
+| H-1 | HIGH | Android | StrongBox tier not surfaced to user; TEE/software fallback is silent. UI badge does not distinguish StrongBox vs TEE-backed. **FIXED in PR #527 (merged 2026-07-02):** `tierBadge.js` maps `securityLevelName` → badge label/variant; `HardwareKekSettings.jsx` reads real tier from `getVaultKekTier()` and renders the correct badge (StrongBox Protected / TEE Protected / Hardware Protection ON / WebAuthn Protected); `native.js` `enrollKek` stores `hardwareKekTier` in vault blob and exposes `getVaultKekTier()` accessor. | ✅ FIXED — PR #527 (merged 2026-07-02) |
 | H-2 / iOS-F11 | HIGH | Android + iOS | Biometric cache not bound to enrollment set on both platforms; new biometric enroll does not invalidate KEK-gated vault. Requires custom Capacitor plugin. Consistent with H-NEW-5 honest-disable. | OPEN — custom Capacitor plugin + real-device re-enrollment test (both platforms) |
 | iOS-F3 | MEDIUM | iOS | `kSecUseOperationPrompt` deprecated; requires `LAContext` + `kSecUseAuthenticationContext`. | 🟡 FIXED IN CODE (PR #526, 2026-07-01) — text-level ObjC; Mac build + biometric test required |
 | H-3 | HIGH | Android | `biometryLockout` → `allowDeviceCredential` fallback. Accepted as H16 deviation — documented in code and audit record. | ACCEPTED / documented deviation (I4 honesty) |
 
 **Fixed in PRs #520–#522 (2026-07-01):** F-01 (PRF orphan credential guard), F-02 (`KEK_ALREADY_ENROLLED` guard), F-03 (PRF salt renamed `prf-kek-v1`), F-05 (credential ID committed after PRF confirmed), F-06 (H zeroing in `changePassword` finally), F-08 (`unwrapDek` zeros ptBuf), H-4 (zero-vector H check in `hardware.js` + `combineKek`), iOS-F6 (JS-layer `HARDWARE_KEK_ALREADY_ENROLLED` guard), M-3 (`detectTamper` `getOrElse { true }` fail-closed).
+
+**Fixed post-audit (2026-07-02):** H-1 — `tierBadge.js` + `HardwareKekSettings.jsx` + `getVaultKekTier()` in `native.js` (PR #527, merged). C-1 — JS-layer v2 protocol migration code-complete in PR #529 (open, pending merge; device-verification still required — NOT device-verified, NOT merged).
 
 **Positive confirmations:** H-NEW-D CLOSED (SE ECIES confirmed); `kSecAccessControlBiometryCurrentSet` correctly set on iOS SE key ACL; `combineKek` HKDF construction sound; `android:allowBackup="false"` correct; ATS enforced on iOS.
 

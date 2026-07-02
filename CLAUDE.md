@@ -76,17 +76,31 @@ identity; the app never holds keys server-side.
   C-1 (CRITICAL) — HMAC input is a global fixed constant; all enrolled Android vaults
   derive the same H from the same HMAC input string; requires per-enrollment `kekSalt`
   binding (v2 protocol migration, protocol-breaking change, tracked separately).
+  JS-layer fix code-complete in PR #529 (open, pending merge, 2026-07-02): `native.js`
+  now generates `kekSalt` before calling `getHardwareFactor`, passes `{ kekSalt }` to it,
+  and stamps `hardwareKekVersion: 2` on the vault blob; Kotlin plugin was already patched.
+  4/4 C-1 contract tests + 172/172 keystore tests pass. NOT device-verified (needs
+  on-device re-enroll + cold restart + KEK-gated Sepolia txid on v2 path). INTERNAL — not
+  independently audited. PR #529 is open and not yet merged.
   H-1 — StrongBox tier not surfaced to user; TEE/software fallback silent (UI update needed).
+  FIXED in PR #527 (merged 2026-07-02): `tierBadge.js` pure helper maps
+  `securityLevelName` → badge label/variant; `HardwareKekSettings.jsx` reads real tier
+  from `getVaultKekTier()` and renders the correct badge (StrongBox Protected / TEE
+  Protected / Hardware Protection ON / WebAuthn Protected); `native.js` `enrollKek` stores
+  `hardwareKekTier` in vault blob and exposes `getVaultKekTier()` accessor.
   H-2/iOS-F11 — biometric cache not bound to enrollment set on both platforms; requires
   custom Capacitor plugin. M-3 fixed (PR #522): `detectTamper()` now fail-closed
   (`getOrElse { true }`). H-4 fixed (PR #522): zero-vector H check in `hardware.js`.
-  Outstanding: C-1 v2 migration, KEK-gated Sepolia send + txid, biometric re-enrollment
-  invalidation test, StrongBox tier enforcement, H-1 UI surfacing, independent audit.
+  Outstanding: C-1 v2 migration (JS layer code-complete in PR #529, pending merge; device
+  verification still required), KEK-gated Sepolia send + txid, biometric re-enrollment
+  invalidation test, StrongBox tier enforcement, independent audit.
+  H-1 UI surfacing: FIXED PR #527 (merged 2026-07-02).
   See `docs/hardware-kek-phase-plan.md`, `docs/Feature-Status.md` §4, and
   `docs/audit-2026-07-01-kek-internal.md` for full evidence.
 - Status is BUILT + device-verified for both platforms (Android end-to-end,
   iOS partial / no SE-unlock log trace) — 2026-07-01 INTERNAL static-analysis audit
-  complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; C-1 CRITICAL open). NOT independently
+  complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; C-1 CRITICAL JS-layer code-complete PR
+  #529 pending merge; H-1 FIXED PR #527). NOT independently
   audited, NOT "verified" in the on-chain/asset sense (no KEK-gated testnet txid on
   either platform's hardware-unlock path yet).
 
