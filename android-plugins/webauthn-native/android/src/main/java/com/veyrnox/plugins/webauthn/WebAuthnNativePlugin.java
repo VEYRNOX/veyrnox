@@ -172,36 +172,39 @@ public class WebAuthnNativePlugin extends Plugin {
     }
 
     /**
-     * Show biometric prompt to user
+     * Show biometric prompt to user (runs on main thread)
      */
     private void showBiometricPrompt(String title, BiometricCallback callback) {
-        FragmentActivity activity = getActivity();
+        // BiometricPrompt must be created and shown on main thread
+        new Handler(Looper.getMainLooper()).post(() -> {
+            FragmentActivity activity = getActivity();
 
-        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-            .setTitle(title)
-            .setSubtitle("Confirm your fingerprint")
-            .setNegativeButtonText("Cancel")
-            .build();
+            BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle(title)
+                .setSubtitle("Confirm your fingerprint")
+                .setNegativeButtonText("Cancel")
+                .build();
 
-        BiometricPrompt biometricPrompt = new BiometricPrompt(
-            activity,
-            new BiometricExecutor(),
-            new BiometricPrompt.AuthenticationCallback() {
-                @Override
-                public void onAuthenticationSucceeded(
-                        BiometricPrompt.AuthenticationResult result) {
-                    super.onAuthenticationSucceeded(result);
-                    callback.onSuccess(result);
-                }
+            BiometricPrompt biometricPrompt = new BiometricPrompt(
+                activity,
+                new BiometricExecutor(),
+                new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(
+                            BiometricPrompt.AuthenticationResult result) {
+                        super.onAuthenticationSucceeded(result);
+                        callback.onSuccess(result);
+                    }
 
-                @Override
-                public void onAuthenticationError(int errorCode, CharSequence errString) {
-                    super.onAuthenticationError(errorCode, errString);
-                    callback.onError(errString.toString());
-                }
-            });
+                    @Override
+                    public void onAuthenticationError(int errorCode, CharSequence errString) {
+                        super.onAuthenticationError(errorCode, errString);
+                        callback.onError(errString.toString());
+                    }
+                });
 
-        biometricPrompt.authenticate(promptInfo);
+            biometricPrompt.authenticate(promptInfo);
+        });
     }
 
     private class BiometricExecutor implements Executor {
