@@ -334,8 +334,12 @@ export async function getPasskeyStatus() {
   // A platform authenticator (Face ID / Touch ID / Windows Hello / Android) is
   // what makes a passkey usable for unlock. Probe it where the browser exposes
   // the check; fall back to "supported" if the probe itself is unavailable.
+  // On Capacitor (mobile), trust the WebAuthn API presence — the platform auth
+  // check may not be reliable, but if the APIs exist, we can try.
   let platformAvailable = supported;
-  if (supported && window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) {
+  const isCapacitor = !!Capacitor?.isNative;
+
+  if (supported && !isCapacitor && window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) {
     try {
       platformAvailable = await window.PublicKeyCredential
         .isUserVerifyingPlatformAuthenticatorAvailable();
