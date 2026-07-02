@@ -7,6 +7,7 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.PluginMethod;
 import java.security.KeyStore;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -32,6 +33,7 @@ public class WebAuthnNativePlugin extends Plugin {
     /**
      * Register a new WebAuthn credential using native biometric + Android Keystore
      */
+    @PluginMethod
     public void registerCredential(PluginCall call) {
         try {
             String userId = call.getString("userId", "default");
@@ -67,6 +69,7 @@ public class WebAuthnNativePlugin extends Plugin {
     /**
      * Authenticate with a registered WebAuthn credential
      */
+    @PluginMethod
     public void authenticateCredential(PluginCall call) {
         try {
             String credentialId = call.getString("credentialId");
