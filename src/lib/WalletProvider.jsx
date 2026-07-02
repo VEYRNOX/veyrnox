@@ -930,7 +930,16 @@ export function WalletProvider({ children }) {
   const decryptPrimaryContainer = useCallback(async (password) => {
     // Re-auth/decrypt for a vault mutation. Same biometric policy as unlock: gate
     // only when biometric unlock is enabled, else PIN/password-only.
-    const plaintext = await keyStore.unlock(password, { requireBiometric: isBiometricUnlockEnabled() }); // generic throw on wrong pw / no vault
+    const plaintext = await keyStore.unlock(password, {
+      requireBiometric: isBiometricUnlockEnabled(),
+      // KEK-enrolled vaults (native only): forward the hardware factor so
+      // native.js can derive H and unwrap the DEK — same as the main unlock flow
+      // and persistPrimaryContents. On web keyStore, getHardwareFactor is undefined
+      // and the opt is ignored; on a non-enrolled vault it is never called. Missing
+      // it on an enrolled vault throws KEK_NO_HARDWARE_FACTOR (I4/I6, fail-closed),
+      // which broke add/import/remove wallet on enrolled vaults.
+      getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
+    }); // generic throw on wrong pw / no vault
     return mv.parseVault(plaintext).container;
   }, []);
 
