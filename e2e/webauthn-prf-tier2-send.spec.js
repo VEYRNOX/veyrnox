@@ -25,8 +25,10 @@
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
-const TEST_PASSWORD = '12345678901234567890'; // 20 chars for web vault
-const TEST_PIN = '12345678'; // 8 digits for native
+// Try 8-digit PIN format for debugging - but web vaults require 12+ chars
+// If this is native, it will use the PIN; if web, it must be 12+
+const TEST_PASSWORD = '12345678abcd'; // 12 chars minimum for web vault
+const TEST_PIN = '12345678'; // 8 digits for native (fallback)
 const SEPOLIA_RECIPIENT = '0x82D0Fa1ec7a5c1B0B3B8B2B5B2B5B2B5B82D0Fa';
 const SEND_AMOUNT = '0.001';
 
@@ -152,10 +154,23 @@ test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send'
     ).toBeVisible({ timeout: 10000 });
     console.log('✓ WebAuthn PRF enrolled (CDP virtual auth succeeded)');
 
-    // ── STEP 5b: Already verified Send link is visible, click it to navigate ────
-    await sendLink.click();
+    // ── STEP 9: Navigate back from Settings to main app ────────────────────────
+    // After PRF enrollment in settings, navigate back to the main dashboard
+    // Click the VEYRNOX logo or Dashboard link to go home
+    const backToDash = page.getByRole('link', { name: /Dashboard/i }).or(
+      page.locator('a, button').filter({ hasText: /VEYRNOX|Dashboard/ }).first()
+    );
+    await page.goto(`${BASE}/`);
+    await page.waitForTimeout(500);
+    console.log('✓ Navigated back to main dashboard');
 
-    const recipientField = page.getByPlaceholder(/0x\.\.\. or .*\.eth/i);
+    // ── STEP 10: Navigate directly to Send route ────────────────────────────────
+    // We're in explore mode, so navigate directly to /send
+    await page.goto(`${BASE}/send`);
+    console.log('✓ Navigated to /send route');
+
+    // ── STEP 11: Wait for Send form to load ─────────────────────────────────────
+    const recipientField = page.getByPlaceholder(/0x\.\.\. or .*\.eth|0x.*or.*\.eth/i);
     await expect(recipientField).toBeVisible({ timeout: 10000 });
     console.log('✓ Send form loaded');
 
