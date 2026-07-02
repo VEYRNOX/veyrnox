@@ -85,7 +85,7 @@ function SeedGrid({ mnemonic }) {
 // reauthPrompt: when the M6 recent-auth window has lapsed, the caller passes the
 // inline "unlock again" prompt here instead of a mnemonic — same dialog, no dead-end
 // toast (see useRevealWithReauth).
-function BackupDialog({ walletName, mnemonic, reauthPrompt, onClose, onConfirm }) {
+function BackupDialog({ walletName, mnemonic = null, reauthPrompt = null, onClose, onConfirm = () => {} }) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
