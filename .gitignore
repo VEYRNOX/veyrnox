@@ -106,3 +106,7 @@ ruvector.db
 veyrnox-release.jks
 keystore.jks
 dist-release/
+
+# Playwright
+playwright-report/
+test-results/
