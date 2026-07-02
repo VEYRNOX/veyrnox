@@ -24,11 +24,6 @@ const config: CapacitorConfig = {
     CapacitorHttp: {
       enabled: true,
     },
-    // WebAuthn native bridge: provides WebAuthn API via Secure Enclave (iOS)
-    // and Android Keystore (Android) with biometric authentication
-    WebAuthnNative: {
-      enabled: true,
-    },
   },
 };
 
