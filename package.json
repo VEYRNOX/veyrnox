@@ -25,6 +25,7 @@
     "ios": "cap sync ios && node scripts/register-local-ios-plugins.mjs && cap open ios",
     "mobile:build": "npm run build && npm run cap:sync",
     "mobile:build:demo": "cross-env VITE_DEMO_MODE=1 npm run build && npm run cap:sync",
+    "build:demo": "cross-env VITE_DEMO_MODE=1 npm run build",
     "build:release": "cross-env VITE_RELEASE=1 npm run build",
     "mobile:build:release": "cross-env VITE_RELEASE=1 npm run build && npm run cap:sync",
     "build:beta": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=\"Testnet Beta\" npm run build",
