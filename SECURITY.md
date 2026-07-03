@@ -6,10 +6,9 @@ Veyrnox is a self-custody, coercion-resistant wallet; the seed is the identity; 
 
 Please use GitHub private vulnerability reporting first: open this repository's **Security** tab and choose **Report a vulnerability**.
 
-If private reporting on GitHub is unavailable, contact the maintainer directly:
+If private reporting on GitHub is unavailable, contact:
 
-- **Email:** al.jobson@21stclick.co.uk
-- **WhatsApp:** [+44 7852 799581](https://wa.me/447852799581)
+- **Email:** security@veyrnox.com
 
 Please do **not** open a public issue for a suspected vulnerability.
 
