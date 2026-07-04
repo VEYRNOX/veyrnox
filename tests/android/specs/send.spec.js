@@ -1,11 +1,13 @@
 // Send crypto tests with on-chain verification
+// 🎯 READY FOR TESTNET: Replace TEST_RECIPIENT with your throwaway wallet address
+// Then run: npm run android:test:send
 import appHelper from '../helpers/appHelper.js';
 import walletHelper from '../helpers/walletHelper.js';
 
-describe('Send Crypto', () => {
-  // Use a testnet recipient address (example - replace with actual test account)
+describe('Send Crypto — On-Chain Verification', () => {
+  // ⚠️ TODO: Replace with your throwaway wallet address for on-chain testing
   const TEST_RECIPIENT = '0x742d35Cc6634C0532925a3b844Bc7e7595f42e01';
-  const SEND_AMOUNT = '0.001'; // Small amount for testing
+  const SEND_AMOUNT = '0.001'; // Sepolia ETH test amount (adjust per asset)
 
   before(async () => {
     // Start app and unlock
