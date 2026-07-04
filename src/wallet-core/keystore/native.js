@@ -503,9 +503,10 @@ export const nativeKeyStore = {
         // undefined on both sides, so both calls fall back to the fixed salt (H matches).
         const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
         const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
-        const H = await getHF(hfOptsForBlob(blob, oldSaltBytes));
-        // The re-enrolled vault is always v2; bind the new H to the new salt.
-        const H2 = await getHF({ kekSalt: newSaltBytes.slice() });
+        // F-04: both getHF calls are inside the try/finally so H is always zeroed
+        // even if the second call throws (user cancels second biometric prompt).
+        let H;
+        let H2;
         let oldC;
         let newC;
         let oldKek;
@@ -514,6 +515,9 @@ export const nativeKeyStore = {
         // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so H, H2,
         // both derived KEKs, and the recovered DEK are wiped on EVERY path (I4).
         try {
+          H = await getHF(hfOptsForBlob(blob, oldSaltBytes));
+          // The re-enrolled vault is always v2; bind the new H to the new salt.
+          H2 = await getHF({ kekSalt: newSaltBytes.slice() });
           oldC = await deriveKekC(currentPassword, oldSaltBytes);
           oldKek = await combineKek(H, oldC);
           if (H && H.fill) H.fill(0);
