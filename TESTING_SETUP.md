@@ -8,7 +8,8 @@
 **Test Results:** 
 - Vault tests: 8/8 passing ✅
 - Send tests: 2/2 passing ✅
-- **Total: 10/10 passing**  
+- Hardware KEK tests: 5/5 created (ready for Appium) 🔐
+- **Total: 15 tests across 3 suites**  
 
 ---
 
@@ -29,8 +30,8 @@ tests/android/
 │   └── walletHelper.js       # Wallet flows (create, send, unlock, etc.)
 ├── specs/
 │   ├── vault.spec.js         # 8/8 passing smoke tests ✅
-│   ├── send.spec.js          # Send flow template (ready for on-chain tests)
-│   └── hardware-kek.spec.js  # Hardware KEK tests (real device only)
+│   ├── send.spec.js          # 2/2 passing send flow tests ✅
+│   └── hardware-kek-e2e.spec.js  # Hardware KEK tests (real device, requires Appium) 🔐
 ├── README.md                 # Full testing guide
 ├── QUICKSTART.md            # 5-minute setup
 └── TEST_RESULTS.md          # Current status
@@ -60,9 +61,9 @@ https://github.com/VEYRNOX/veyrnox/actions
 npm run android:test
 
 # Run specific suite
-npm run android:test:vault         # 8/8 passing
-npm run android:test:send         # Send flow (setup needed)
-npm run android:test:hardware-kek # Hardware KEK (device only)
+npm run android:test:vault              # 8/8 passing ✅
+npm run android:test:send               # 2/2 passing ✅
+npm run android:test:hardware-kek-e2e   # 5 tests (ready) 🔐
 ```
 
 ---
