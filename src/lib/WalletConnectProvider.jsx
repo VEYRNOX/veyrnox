@@ -22,6 +22,7 @@ import { classifyRequest, isBlocked, REQUEST_TYPES } from '@/wallet-core/evm/wal
 import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wallet-core/evm/typed-data.js';
 import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { detect, degrade, browserProbeSource } from '@/rasp';
@@ -59,6 +60,27 @@ export const WC_GAS_CAP = 1_000_000n;
 export function resolveGasLimit(txGas, estimatedGas) {
   const requested = txGas != null ? BigInt(txGas) : BigInt(estimatedGas);
   return requested > WC_GAS_CAP ? WC_GAS_CAP : requested;
+}
+
+// F-02-GASCAP — a dApp-supplied `maxFeePerGas` was set directly with no ceiling,
+// letting a malicious dApp pin an arbitrarily large fee. Clamp it to the same
+// per-chain ceiling used by the in-app fee path (MAX_BASE_FEE_GWEI from fees.js).
+// The map is keyed by baseFee gwei; maxFeePerGas is buffered above baseFee, so we
+// use the same cap as an upper bound (I5 — dApp untrusted).
+// Fail closed (I4): if the raw value is absent or cannot be parsed to a BigInt,
+// return null so the caller SKIPS setting maxFeePerGas rather than constructing a
+// bad tx. An unknown networkKey falls back to the mainnet cap (the lowest, safest).
+export function resolveMaxFeePerGas(rawMaxFee, networkKey) {
+  if (rawMaxFee == null) return null;
+  let requested;
+  try {
+    requested = BigInt(rawMaxFee);
+  } catch {
+    return null;
+  }
+  const capGwei = MAX_BASE_FEE_GWEI[networkKey] ?? MAX_BASE_FEE_GWEI.mainnet;
+  const cap = capGwei * 1_000_000_000n;
+  return requested > cap ? cap : requested;
 }
 
 // H8 — resolve which personal_sign param is the message and bind the address
@@ -135,6 +157,24 @@ function toNumericChainId(v) {
     if (/^\d+$/.test(s)) return parseInt(s, 10);
   }
   return null;
+}
+
+// F-07-WC — resolve the CAIP-2 chain a request must be bound to EXCLUSIVELY from
+// the live session store (getActiveSessions()), never from a React prop that a
+// caller could pass stale/wrong. Given the session found by topic and the
+// per-request CAIP-2 (from the WC event), return the CAIP-2 to bind against:
+//   - the request chain must be one the session actually approved, else null
+//     (fail closed, I4 — an unbound/foreign chain must not produce a signature);
+//   - when the request omits a chain but the session approved exactly one, use it.
+// `session.namespaces.eip155.chains` is the authoritative approved-chain list.
+// Pure; exported for unit tests.
+export function resolveSessionCaip2(session, requestCaip2) {
+  const approved = session?.namespaces?.eip155?.chains;
+  if (!Array.isArray(approved) || approved.length === 0) return null;
+  if (typeof requestCaip2 === 'string' && requestCaip2.length > 0) {
+    return approved.includes(requestCaip2) ? requestCaip2 : null;
+  }
+  return approved.length === 1 ? approved[0] : null;
 }
 
 function presignGateOrReject() {
@@ -248,12 +288,23 @@ export async function _handleSendTransaction({ withPrivateKey }, topic, id, para
     };
 
     if (txParams.maxFeePerGas) {
-      tx.maxFeePerGas = BigInt(txParams.maxFeePerGas);
-      tx.maxPriorityFeePerGas = BigInt(txParams.maxPriorityFeePerGas ?? 0);
-      tx.type = 2;
+      // F-02-GASCAP — clamp the dApp-supplied maxFeePerGas to the per-chain
+      // ceiling. Fail closed (I4): if it cannot be parsed, skip setting the fee
+      // fields (let ethers/RPC populate them) rather than build a bad tx.
+      const cappedMaxFee = resolveMaxFeePerGas(txParams.maxFeePerGas, net.key);
+      if (cappedMaxFee != null) {
+        tx.maxFeePerGas = cappedMaxFee;
+        tx.maxPriorityFeePerGas = BigInt(txParams.maxPriorityFeePerGas ?? 0);
+        tx.type = 2;
+      }
     } else if (txParams.gasPrice) {
-      tx.gasPrice = BigInt(txParams.gasPrice);
-      tx.type = 0;
+      // gasPrice is a legacy (type-0) equivalent of maxFeePerGas; apply the same
+      // per-chain ceiling so the type-0 path cannot bypass the cap (F-02-GASCAP).
+      const cappedGasPrice = resolveMaxFeePerGas(txParams.gasPrice, net.key);
+      if (cappedGasPrice != null) {
+        tx.gasPrice = cappedGasPrice;
+        tx.type = 0;
+      }
     }
 
     // M9 — cap gas to 1M whether or not the dApp supplied `gas`. When omitted we
@@ -297,6 +348,7 @@ export function WalletConnectProvider({ children }) {
     // must not open for decoy or hidden sessions (violates I3 if it does).
     if (!isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
     let cancelled = false;
+    // I2-WC-RELAY: WC relay opens at unlock time, not pairing. Lazy-init is a TODO (see audit-2026-07-04-internal.md).
     initWalletConnect()
       .then(() => { if (!cancelled) { setInitialized(true); refreshSessions(); } })
       .catch((e) => { if (!cancelled) setError(e.message); });
@@ -405,22 +457,23 @@ export function WalletConnectProvider({ children }) {
   }, [withPrivateKey, evmAddress, assertSessionLive, isSendReauthRequired]);
 
   // Sign an eth_signTypedData_v4 request. params: [address, typedDataJson]
-  const handleSignTypedData = useCallback(async (topic, id, params, caip2ChainId) => {
+  const handleSignTypedData = useCallback(async (topic, id, params, requestCaip2) => {
     await assertSessionLive(topic, id); // M11
     // H-NEW-B — step-up re-auth check at the signing chokepoint (fail closed, I4).
     if (isSendReauthRequired()) {
       await rejectRequest(topic, id, 'STEP_UP_REQUIRED').catch(() => {});
       throw new Error('Signing rejected [STEP_UP_REQUIRED]: re-authentication required before signing.');
     }
-    // H7 — the session's CAIP-2 chain id lives on the pending request the modal
-    // is acting on; pass it to the pure helper for cross-chain replay protection.
-    // Fall back to the caller-supplied chain when the request is not in state.
-    const sessionCaip2 = pendingRequests.find(
-      (r) => r.topic === topic && r.id === id,
-    )?.params?.chainId ?? caip2ChainId;
+    // H7 + F-07-WC — resolve the CAIP-2 chain to bind against EXCLUSIVELY from the
+    // live session store (getActiveSessions()), never a React prop/state fallback.
+    // resolveSessionCaip2 verifies the per-request chain is one this session
+    // actually approved; a mismatch/absent chain yields null → _handleSignTypedData
+    // rejects with SESSION_CHAINID_INVALID (fail closed, I4).
+    const session = getActiveSessions().find((s) => s.topic === topic);
+    const sessionCaip2 = resolveSessionCaip2(session, requestCaip2);
     await _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, pendingRequests, assertSessionLive, isSendReauthRequired]);
+  }, [withPrivateKey, assertSessionLive, isSendReauthRequired]);
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
