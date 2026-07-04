@@ -34,6 +34,7 @@
 //     REAL unlock path so the behaviour is demonstrable on the simulator.
 
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
@@ -95,6 +96,7 @@ function DecoyBalance({ address, refreshKey }) {
 }
 
 export default function DuressPin() {
+  const navigate = useNavigate();
   const wallet = useWallet();
   const {
     isUnlocked, isDecoy, accounts,
@@ -166,13 +168,12 @@ export default function DuressPin() {
         await disableBiometricUnlock();
         // Explicitly clear localStorage biometric preference to ensure it's gone
         try { localStorage.removeItem(BIOMETRIC_PREF_KEY); } catch { }
-        // Lock the wallet to force state reset and clear stale biometric UI
-        lock();
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
-        setError(""); // clear any previous errors
-        setError("✓ Duress PIN removed. Your wallet is now locked. Unlock with your real PIN to continue.");
+        setError("");
         await refresh();
+        // Navigate back to Settings; WalletEntry will re-evaluate biometric state on render
+        navigate(-1);
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");
       } finally {
