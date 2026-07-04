@@ -320,7 +320,7 @@ function ExploreShell({ onCreate, children }) {
 export default function WalletEntry() {
   const navigate = useNavigate();
   const {
-    isUnlocked, createWallet, importWallet, unlock, hasVault,
+    isUnlocked, isDecoy, createWallet, importWallet, unlock, hasVault,
     enableBiometricUnlock, unlockWithBiometric,
     exploreMode, enterExplore, leaveExplore, confirmWalletBackup,
     setupPin, createWalletFromPendingPin, importWalletForPendingPin,
@@ -598,6 +598,10 @@ export default function WalletEntry() {
       setUnlockPin("");
       // Success (real / duress / panic all return without throwing) — reset the streak.
       clearPinAttempts();
+      // Notify user if decoy wallet was unlocked.
+      if (isUnlocked && isDecoy) {
+        toast.success("Decoy mode active", { duration: 2000 });
+      }
     } catch (e) {
       setUnlockPin("");
       // A passkey/biometric GATE failure is genuine infra, NOT a wrong PIN: keep its own
