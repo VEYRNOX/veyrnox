@@ -24,7 +24,7 @@
   `bamboo lyrics harvest potato seat carry equip nation slam begin admit pet`,
   PIN `30081977`, EVM address `0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729`,
   funded on **Sepolia** (faucet if the balance is low).
-- Build + run **from Xcode** (not a detached install) so the native `NSLog` output and
+- Build + run **from Xcode** (not a detached install) so the native `os_log` output and
   the WKWebView JS console are both visible in the Xcode debug console:
   ```
   npm run ios        # cap sync ios && cap open ios  (preios regenerates the app icon)
@@ -38,27 +38,54 @@
   `kSecAccessControlPrivateKeyUsage | .biometryCurrentSet` over
   `WhenPasscodeSetThisDeviceOnly`). Reject codes used below:
   `DECRYPT_FAILED`, `SE_KEY_MISSING` ("re-enrollment required"), `STALE_CLEAR_FAILED`.
-- Face ID prompt string: `"Authenticate to unlock your wallet"` (`kSecUseOperationPrompt`).
+- Face ID prompt: driven via `LAContext` (iOS-F3); SE-unlock trace via `os_log`
+  (subsystem `com.veyrnox`, category `HardwareKek`) — see the capture section below.
 - JS orchestration: `getHardwareFactor` / `clearHardwareCredential`
   (`src/wallet-core/keystore/hardware.js`); KEK-gated unlock in
   `src/wallet-core/keystore/native.js` (`_unlockInner`, `blob.kekWrap` branch).
 - Enrollment UI + "Hardware Protection ON" badge:
   `src/components/security/HardwareKekSettings.jsx` (badge keys off `hasVaultKekWrap()`).
 
-### Optional: capture the live SE-unlock trace (Test B)
-The outstanding audit item is *a captured getHardwareFactor SE-unlock log line tied to
-a send*. The plugin does not verbosely log by default. To capture it cleanly, add a
-**temporary** one-line trace on the decrypt success path in
-`ios/App/App/HardwareKekPlugin.m` (in `getHardwareFactor`, right after
-`SecKeyCreateDecryptedData` succeeds), e.g.:
-```objc
-NSLog(@"[HardwareKek] getHardwareFactor: SE ECIES decrypt OK — H produced (%lu bytes)", (unsigned long)hData.length);
+### Capturing the live SE-unlock trace (Test B) — iOS-F9 RESOLVED in code
+
+The outstanding audit item (iOS-F9) is *a captured getHardwareFactor SE-unlock log line
+tied to a send*. This is now emitted by the shipping plugin — **no temporary NSLog patch
+needed**. `ios/App/App/HardwareKekPlugin.m` logs through Apple's unified logging
+(`os_log`), so the SE-unlock line is captured in the system log and is streamable /
+collectable off-device (NSLog was NOT reliably streamable on iOS 26+, which was the whole
+reason the trace could not be captured before).
+
+**Subsystem / category:** `subsystem == "com.veyrnox"`, `category == "HardwareKek"`,
+level `OS_LOG_TYPE_INFO`. All string args are `%{public}` so they are readable, not
+`<private>`-redacted. **No secret material is logged** — only fixed markers, ciphertext /
+H **byte lengths**, and OSStatus codes. H's bytes are never logged.
+
+**SE-unlock success marker (grep for this exact substring):**
 ```
-Remove it before shipping (do NOT log H's bytes — only the fact + length). Alternatively,
-set a symbolic breakpoint on `-[HardwareKekPlugin getHardwareFactor:]` and step to the
-success branch. In Console.app, filter by the device and process **App** (bundle
-`com.veyrnox.app`); the system also logs Face ID activity under **BiometricKit** —
-useful corroboration that a *fresh* biometric fired.
+[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (32 bytes)
+```
+Related traces on the same path (useful to confirm the full sequence fired):
+```
+[VEYRNOX-KEK] getHardwareFactor: loaded ciphertext <N> bytes, retrieving SE key…
+[VEYRNOX-KEK] getHardwareFactor: SE key retrieved, decrypting (Face ID prompt now)…
+[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (32 bytes)
+```
+Fail-closed markers (I4): `getHardwareFactor: DECRYPT FAILED — <reason>`,
+`getHardwareFactor: SE key MISSING (OSStatus <n>)`, `getHardwareFactor: NOT ENROLLED`.
+
+**Capture commands** (physical device attached, from the Mac):
+```
+# Live stream while you unlock + send:
+log stream --device --predicate 'subsystem == "com.veyrnox"' --info
+
+# Or collect a window after the fact and open in Console.app / `log show`:
+log collect --device --last 5m
+log show <collected>.logarchive --predicate 'subsystem == "com.veyrnox"' --info
+```
+The Xcode debug console also shows the same `os_log` lines when Run from Xcode.
+The system additionally logs Face ID activity under **BiometricKit** (and
+`coreauthd` / `ctkd` / `biometrickitd`) — useful corroboration that a *fresh* biometric
+fired for the same app pid at the same timestamp as the SUCCESS marker.
 
 ---
 
@@ -118,13 +145,15 @@ signed) **after** a genuine Secure-Enclave ECIES unlock produced H — proven by
 SE-unlock log line immediately preceding a real on-chain send (upgrades the current
 *architectural* proof to an *observed* one).
 
-**Preconditions:** Test A's optional NSLog trace (or breakpoint) in place; vault
-KEK-enrolled; badge ON; Sepolia balance ≥ ~0.0005 ETH.
+**Preconditions:** vault KEK-enrolled; badge ON; Sepolia balance ≥ ~0.0005 ETH.
+The SE-unlock trace ships in the plugin (`os_log`, see above) — no patch needed; just
+have `log stream`/`log collect` ready to capture it.
 
 **Steps:**
-1. Cold-launch from Xcode → unlock with Face ID. Confirm the console shows the
-   `[HardwareKek] getHardwareFactor: SE ECIES decrypt OK` trace and the vault reads back
-   as `kek-dek` (kekWrap present) — i.e. the unlock was genuinely SE-gated.
+1. Cold-launch from Xcode → unlock with Face ID. Confirm the collected system log shows
+   the `[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (32 bytes)`
+   trace (subsystem `com.veyrnox`) and the vault reads back as `kek-dek` (kekWrap present)
+   — i.e. the unlock was genuinely SE-gated.
 2. Go to **Send ▸ ETH (Sepolia)**, send a small amount (e.g. 0.0001 ETH) to
    `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`, approve the step-up.
 3. Record the **txid**; confirm it on-chain (`eth_getTransactionByHash` /
