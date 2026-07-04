@@ -40,7 +40,7 @@ import { DEMO } from "@/api/demoClient";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
-import { getBiometricStatus } from "@/lib/biometric";
+import { getBiometricStatus, setBiometricUnlockEnabled } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
@@ -160,12 +160,15 @@ export default function DuressPin() {
       setRemovingDuress(true);
       try {
         await removeDuressPin();
-        // Don't disable biometric unlock entirely — the user should be able to use
-        // FaceID for the real wallet after removing the duress PIN. The cache has
-        // been cleared by removeDuressPin, so next FaceID attempt will prompt for
-        // real PIN re-authentication in Settings if they want to re-enable it.
+        // Disable biometric unlock to ensure a clean state. The user can re-enable it
+        // in Settings → Security Settings → Biometric Unlock with their real PIN if desired.
+        // This prevents KEK_UNWRAP_FAILED errors that occur when the cache still holds
+        // the deleted duress PIN.
+        setBiometricUnlockEnabled(false);
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
+        setError(""); // clear any previous errors
+        setError("Emergency PIN removed. Biometric unlock has been reset for security. Go to Settings → Security Settings → Biometric Unlock to re-enable it with your real PIN if desired.");
         await refresh();
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");
