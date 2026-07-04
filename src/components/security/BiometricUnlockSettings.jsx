@@ -190,13 +190,6 @@ export default function BiometricUnlockSettings() {
         </div>
       )}
 
-      {/* Recovery caveat on device (see FINDINGS → F-4). */}
-      {forcedOnDevice && (
-        <p className="text-[11px] text-muted-foreground">
-          If you remove your device passcode, the on-device wallet data is erased for
-          security — restore it with your recovery phrase.
-        </p>
-      )}
 
       {/* Availability / status line. */}
       <div className="flex items-start gap-2 text-xs">
