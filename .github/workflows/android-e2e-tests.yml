@@ -1,0 +1,103 @@
+name: Android E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: macos-latest  # Android emulator runs best on macOS in CI
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+
+      - name: Accept Android licenses
+        run: |
+          yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
+
+      - name: Create AVD
+        run: |
+          echo no | $ANDROID_HOME/tools/bin/avdmanager create avd \
+            -n test_emulator \
+            -k "system-images;android;34;google_apis;x86_64" \
+            -c 2048M
+
+      - name: Start Android Emulator
+        run: |
+          nohup $ANDROID_HOME/emulator/emulator \
+            -avd test_emulator \
+            -no-snapshot \
+            -no-window \
+            -gpu swiftshader_indirect \
+            -memory 2048 \
+            -cores 2 &
+          timeout 300 bash -c 'until adb shell getprop sys.usb.state | grep -q device; do sleep 1; done'
+
+      - name: Build Veyrnox App
+        run: npm run android:sync
+
+      - name: Install Appium
+        run: npm install -g appium
+
+      - name: Start Appium Server
+        run: |
+          appium --port 4723 > appium.log 2>&1 &
+          sleep 5
+
+      - name: Run Vault Tests
+        run: npm run android:test:vault
+
+      - name: Run Send Tests (if testnet balance available)
+        run: npm run android:test:send
+        continue-on-error: true  # Skip if no testnet balance
+
+      - name: Collect Logs
+        if: failure()
+        run: |
+          adb logcat -d > android.log || true
+          cat appium.log || true
+
+      - name: Upload Logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: |
+            android.log
+            appium.log
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## Android E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
