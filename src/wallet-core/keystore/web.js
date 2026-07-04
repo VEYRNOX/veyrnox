@@ -394,6 +394,10 @@ export const webKeyStore = {
       }
     }
 
+    // F-08 (audit, I4): a kdf='kek-dek' blob with no kekWrap is malformed — fail closed
+    // with the stable code rather than fall through to bare decrypt (misleading error).
+    if (blob.kdf === 'kek-dek' && !blob.kekWrap) throw new Error(KEK_ERR.MALFORMED_VAULT);
+
     // Non-enrolled: existing bare-vault path (unchanged).
     const secret = await decryptVault(blob, password);
     if (vaultNeedsRekey(blob)) {
@@ -483,6 +487,7 @@ export const webKeyStore = {
     }
 
     // Re-persist as a bare vault (no KEK wrap). encryptVault writes fresh Argon2id params.
+    // F-02: secret is a JS string and cannot be zeroed; structural limitation documented.
     await saveVault(await encryptVault(secret, password));
 
     // Remove the stored PRF credential ID so re-enrollment creates a fresh credential.
@@ -562,6 +567,7 @@ export const webKeyStore = {
       return;
     }
 
+    // F-10: JS-string limitation — secret cannot be zeroed; structural gap documented.
     const secret = await decryptVault(blob, currentPassword);
     await saveVault(await encryptVault(secret, newPassword));
   },
