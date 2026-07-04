@@ -34,13 +34,14 @@
 //     REAL unlock path so the behaviour is demonstrable on the simulator.
 
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
-import { getBiometricStatus, setBiometricUnlockEnabled } from "@/lib/biometric";
+import { getBiometricStatus, setBiometricUnlockEnabled, BIOMETRIC_PREF_KEY } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
@@ -95,11 +96,12 @@ function DecoyBalance({ address, refreshKey }) {
 }
 
 export default function DuressPin() {
+  const navigate = useNavigate();
   const wallet = useWallet();
   const {
     isUnlocked, isDecoy, accounts,
     hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
-    createWallet, unlock, lock, clearVault, hasDuressPin,
+    createWallet, unlock, lock, clearVault, hasDuressPin, disableBiometricUnlock,
   } = wallet;
   const { requireTwoFactor, gateModal } = useActionGuard();
 
@@ -160,16 +162,19 @@ export default function DuressPin() {
       setRemovingDuress(true);
       try {
         await removeDuressPin();
-        // Disable biometric unlock to ensure a clean state. The user can re-enable it
-        // in Settings → Security Settings → Biometric Unlock with their real PIN if desired.
-        // This prevents KEK_UNWRAP_FAILED errors that occur when the cache still holds
-        // the deleted duress PIN.
-        setBiometricUnlockEnabled(false);
+        // Disable biometric unlock completely: clears both preference (localStorage)
+        // AND secure storage cache. This ensures the old duress PIN isn't used.
+        // When user unlocks with real PIN next time, they can re-enable biometric.
+        await disableBiometricUnlock();
+        // Explicitly clear localStorage biometric preference to ensure it's gone
+        try { localStorage.removeItem(BIOMETRIC_PREF_KEY); } catch { }
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
-        setError(""); // clear any previous errors
-        setError("Emergency PIN removed. Biometric unlock has been reset for security. Go to Settings → Security Settings → Biometric Unlock to re-enable it with your real PIN if desired.");
+        setError("");
         await refresh();
+        // Lock the wallet to trigger WalletEntry useEffect, which re-evaluates bioReady
+        // with the fresh (cleared) biometric preference
+        lock();
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");
       } finally {
