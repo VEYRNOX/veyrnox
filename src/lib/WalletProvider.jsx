@@ -1840,10 +1840,12 @@ export function WalletProvider({ children }) {
 
   const removeDuressPin = useCallback(async () => {
     await clearDuressVault();
-    // Clear any cached biometric unlock that was bound to the now-deleted duress PIN.
-    // This prevents FaceID from trying to unlock with a credential that no longer exists.
-    await disableBiometricUnlock();
-  }, [disableBiometricUnlock]);
+    // Clear only the cached secret (not the preference). This allows the user to
+    // re-enable biometric unlock for their real wallet after removing the duress PIN.
+    // Next FaceID attempt will fail gracefully because cache is empty, then they can
+    // re-authenticate in Settings with their real PIN if they want biometric back.
+    try { await clearUnlockSecret(); } catch { /* best-effort */ }
+  }, []);
 
   // STEALTH / HIDDEN WALLETS management (S3). Create a hidden wallet revealed by
   // a dedicated secret entered at the normal unlock prompt. Generates a FRESH
