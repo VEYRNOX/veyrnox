@@ -164,10 +164,12 @@ export default function DuressPin() {
         // AND secure storage cache. This ensures the old duress PIN isn't used.
         // When user unlocks with real PIN next time, they can re-enable biometric.
         await disableBiometricUnlock();
+        // Lock the wallet to force state reset and clear stale biometric UI
+        lock();
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         setError(""); // clear any previous errors
-        setError("Emergency PIN removed. Biometric unlock has been reset for security. Go to Settings → Security Settings → Biometric Unlock to re-enable it with your real PIN if desired.");
+        setError("✓ Duress PIN removed. Your wallet is now locked. Unlock with your real PIN to continue.");
         await refresh();
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");
