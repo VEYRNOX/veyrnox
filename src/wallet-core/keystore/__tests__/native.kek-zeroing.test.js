@@ -182,6 +182,27 @@ describe('unenrollKek — key material zeroed', () => {
 });
 
 describe('changePassword (KEK vault) — key material zeroed', () => {
+  it('[F-04] zeroes H when the second getHF call throws (user cancels second biometric prompt)', async () => {
+    let H;
+    const captureH = async () => {
+      H = new Uint8Array(32).fill(7);
+      return H;
+    };
+    const throwOnSecond = vi
+      .fn()
+      .mockImplementationOnce(captureH)
+      .mockRejectedValueOnce(new Error('biometric-cancel'));
+
+    secureStoreMock.get.mockResolvedValue(JSON.stringify({ iv: 'x', ct: 'y', kekWrap: { v: 1 }, kekSalt }));
+
+    await expect(
+      nativeKeyStore.changePassword('old', 'new', { getHardwareFactor: throwOnSecond }),
+    ).rejects.toThrow('biometric-cancel');
+
+    expect(H).toBeDefined();
+    expect(isAllZero(H)).toBe(true);
+  });
+
   it('zeroes the oldKek when unwrapDek throws', async () => {
     let oldKek;
     kekMock.combineKek.mockImplementationOnce(async () => {

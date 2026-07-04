@@ -20,7 +20,7 @@ import { parseUnits, formatUnits } from 'ethers';
 import { getProvider } from './provider.js';
 import { getNetworkInfo } from './networks.js';
 
-const MAX_BASE_FEE_GWEI = {
+export const MAX_BASE_FEE_GWEI = {
   mainnet:         1_000n,
   polygon:           200n,
   arbitrum:          200n,
