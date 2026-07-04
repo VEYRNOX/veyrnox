@@ -1972,6 +1972,7 @@ export function WalletProvider({ children }) {
 
   const value = {
     isUnlocked,
+    isDecoy,
     // ── MULTI-WALLET (feat/multi-wallet-portfolio) ──
     // Public per-wallet info [{ id, name, backedUp, enabledAssets }] — no seeds.
     wallets,
