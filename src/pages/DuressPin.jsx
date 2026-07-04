@@ -40,7 +40,7 @@ import { DEMO } from "@/api/demoClient";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
-import { getBiometricStatus, setBiometricUnlockEnabled } from "@/lib/biometric";
+import { getBiometricStatus } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
@@ -160,9 +160,10 @@ export default function DuressPin() {
       setRemovingDuress(true);
       try {
         await removeDuressPin();
-        // Explicitly clear the biometric unlock preference (in case it was cached for decoy)
-        // to prevent FaceID from trying to use the now-removed duress PIN
-        setBiometricUnlockEnabled(false);
+        // Don't disable biometric unlock entirely — the user should be able to use
+        // FaceID for the real wallet after removing the duress PIN. The cache has
+        // been cleared by removeDuressPin, so next FaceID attempt will prompt for
+        // real PIN re-authentication in Settings if they want to re-enable it.
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         setError(""); // clear any previous errors
