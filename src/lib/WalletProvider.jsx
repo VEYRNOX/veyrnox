@@ -504,7 +504,6 @@ export function WalletProvider({ children }) {
   }, [showSimulatedPasskeyPrompt]);
 
   const lock = useCallback(() => {
-    console.log("[WalletProvider] lock() called - setting isUnlocked=false");
     const c = containerRef.current;
     if (c && Array.isArray(c.wallets)) {
       // best-effort overwrite of EVERY seed before dropping the container — the
@@ -521,7 +520,6 @@ export function WalletProvider({ children }) {
     verifierRef.current = null;
     lastAuthAtRef.current = null;
     setActionPasswordConfigured(false); // the record lives in containerRef (cleared above)
-    console.log("[WalletProvider] lock() - calling setUnlocked(false)");
     setUnlocked(false);
     setIsDecoy(false);
     setIsHidden(false);

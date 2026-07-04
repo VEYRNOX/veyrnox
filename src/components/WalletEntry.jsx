@@ -370,9 +370,6 @@ export default function WalletEntry() {
 
   // Check biometric preference fresh every render (not cached), so preference changes take effect immediately
   const biometricEnabled = vaultExists && isBiometricUnlockEnabled() && bioReady;
-  if (view === "unlock" && authModel === "pin") {
-    console.log("[WalletEntry] Unlock view - biometricEnabled:", biometricEnabled, "{ vaultExists:", vaultExists, "isBiometricUnlockEnabled:", isBiometricUnlockEnabled(), "bioReady:", bioReady, "}");
-  }
 
   // Transiently holds the just-set vault password between "Generate" and the
   // "Enable Face ID" decision on the SAME screen, so we can cache it for biometric
@@ -463,7 +460,6 @@ export default function WalletEntry() {
 
         setVaultExists(v);
         setAuthModelState(getAuthModel());
-        console.log("[WalletEntry.useEffect] vaultExists changed/isUnlocked changed. hasVault:", v, "isBiometricUnlockEnabled:", isBiometricUnlockEnabled());
         // PIN-FIRST onboarding (authoritative brief): a fresh device (no vault)
         // routes to PIN-create BEFORE any dashboard — never explore-first. The
         // empty (explore) dashboard is a POST-PIN state, entered later by the
@@ -471,22 +467,12 @@ export default function WalletEntry() {
         // is never the cold-mount landing. A returning user (vault exists) gets
         // the unlock gate. See lib/onboardingEntry.js for the pinned invariant.
         const entry = resolveOnboardingEntry({ hasVault: v });
-        console.log("[WalletEntry.useEffect] Setting view to:", entry);
         setView(entry);
         if (entry === "pin-create") { setRealPin(""); setRealPinConfirm(""); setPinStep("real"); }
         if (v && isBiometricUnlockEnabled()) {
-          console.log("[WalletEntry.useEffect] Checking for stored unlock secret...");
-          try {
-            const hasSecret = await hasStoredUnlockSecret();
-            console.log("[WalletEntry.useEffect] hasStoredUnlockSecret returned:", hasSecret);
-            setBioReady(hasSecret);
-          }
-          catch (e) {
-            console.log("[WalletEntry.useEffect] hasStoredUnlockSecret threw:", e);
-            setBioReady(false);
-          }
+          try { setBioReady(await hasStoredUnlockSecret()); }
+          catch { setBioReady(false); }
         } else {
-          console.log("[WalletEntry.useEffect] Biometric not enabled or no vault. Setting bioReady=false");
           setBioReady(false);
         }
       })
@@ -526,7 +512,6 @@ export default function WalletEntry() {
         // PIN whose vault was removed). Wipe the dead cache so the one-tap button
         // stops being offered; the next successful PIN unlock re-caches the real
         // PIN (runPinUnlock) because the preference is still ON.
-        console.log("[WalletEntry] Biometric unlock failed with vault error — clearing stale cache:", e?.message);
         try { await clearUnlockSecret(); } catch { /* best-effort */ }
         setBioReady(false);
         setError("Face ID was out of date and has been reset. Enter your PIN — Face ID will re-arm after this unlock.");

@@ -161,7 +161,6 @@ export default function DuressPin() {
     requireTwoFactor(async () => {
       setRemovingDuress(true);
       try {
-        console.log("[DuressPin] Step 1: removeDuressPin() starting");
         // removeDuressPin() clears the duress vault AND the biometric CACHE (the
         // cached duress PIN) but deliberately KEEPS the biometric preference ON.
         // Design: with pref ON + cache empty, the lock screen shows PIN-only
@@ -173,12 +172,11 @@ export default function DuressPin() {
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         setError("");
-        console.log("[DuressPin] Step 2: refresh() starting");
         await refresh();
-        console.log("[DuressPin] Step 3: lock() - isUnlocked=false, WalletGate shows unlock UI");
+        // lock() drops isUnlocked; WalletGate then renders the unlock UI, which
+        // shows PIN-only because the biometric cache is now empty (bioReady=false).
         lock();
       } catch (e) {
-        console.error("[DuressPin] Error:", e?.message);
         setError(e?.message || "Could not remove Emergency PIN");
       } finally {
         setRemovingDuress(false);

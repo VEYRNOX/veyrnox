@@ -35,11 +35,8 @@ export const TWOFACTOR_BIOMETRIC_KEY = 'veyrnox-2fa-biometric';
 /** @returns {boolean} whether the user has required biometric unlock. */
 export function isBiometricUnlockEnabled() {
   try {
-    const enabled = localStorage.getItem(BIOMETRIC_PREF_KEY) === '1';
-    console.log("[biometric.js] isBiometricUnlockEnabled() returning:", enabled, "localStorage value:", localStorage.getItem(BIOMETRIC_PREF_KEY));
-    return enabled;
+    return localStorage.getItem(BIOMETRIC_PREF_KEY) === '1';
   } catch {
-    console.log("[biometric.js] isBiometricUnlockEnabled() localStorage error");
     return false;
   }
 }
@@ -153,12 +150,9 @@ export function isBiometricGateError(err) {
 /** Persist the "require biometric unlock" preference. */
 export function setBiometricUnlockEnabled(on) {
   try {
-    console.log("[biometric.js] setBiometricUnlockEnabled(" + on + ") - setting localStorage key to:", on ? "'1'" : "removing");
     if (on) localStorage.setItem(BIOMETRIC_PREF_KEY, '1');
     else localStorage.removeItem(BIOMETRIC_PREF_KEY);
-    console.log("[biometric.js] After setBiometricUnlockEnabled, localStorage value:", localStorage.getItem(BIOMETRIC_PREF_KEY));
-  } catch (e) {
-    console.log("[biometric.js] setBiometricUnlockEnabled error:", e);
+  } catch {
     /* storage unavailable — preference is best-effort, non-fatal. */
   }
 }
