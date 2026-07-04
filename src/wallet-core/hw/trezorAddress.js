@@ -38,7 +38,7 @@ async function ensureInit() {
       lazyLoad: true,
       ...(connectSrc ? { connectSrc } : {}),
       manifest: {
-        email: 'al.jobson@21stclick.co.uk',
+        email: 'security@veyrnox.com',
         appUrl: 'https://veyrnox.app',
         appName: 'Veyrnox',
       },
