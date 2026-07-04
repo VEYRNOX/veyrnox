@@ -172,13 +172,13 @@ export default function DuressPin() {
         setSavedPhrase(""); setSavedAddr("");
         setError("");
         await refresh();
-        // Navigate away from DuressPin page. The router will re-evaluate the
-        // unlocked state; if isUnlocked is still true, home will show dashboard;
-        // if isUnlocked is false (from manual lock), lock screen appears.
-        // Then call lock() to ensure biometric cache is cleared and isUnlocked=false
-        // so lock screen appears with fresh (cleared) biometric preference.
-        navigate("/");
+        // Lock FIRST to set isUnlocked=false immediately. This ensures the state
+        // change takes effect before navigation, so when the home route re-renders,
+        // it sees isUnlocked=false and shows the lock screen, not the dashboard.
         lock();
+        // Navigate away from DuressPin page. The router will now render with
+        // isUnlocked=false, showing the lock screen with cleared biometric preference.
+        navigate("/");
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");
       } finally {
