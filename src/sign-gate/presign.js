@@ -14,9 +14,11 @@
 // deniability test drives the full condition range and is verified to bite).
 //
 // proceed rule (§3 affordance table):
-//   allow   → proceed.
-//   warn    → proceed. The re-confirm is the EXISTING verify-step biometric, which
-//             gates BEFORE this point; warn adds no hard stop here.
+//   allow   → proceed (no friction; the only decision that passes without a tap).
+//   warn    → proceed ONLY with the user's explicit acknowledgement (RASP-3 fix,
+//             2026-07-04 internal audit HIGH). A rooted/modified device or a
+//             CAUTION tx must not sign on a passive toast — the user must tap
+//             "sign anyway". Fail-closed friction, not a silent pass.
 //   confirm → proceed ONLY with the user's "sign anyway" acknowledgement (tx RISK
 //             destructive-confirm).
 //   block   → NEVER proceed. No override — a hostile runtime can hook the very
@@ -41,8 +43,14 @@ import { composeGate, DECISION } from './compose.js';
  */
 export function presignGate(raspTier, txLevel, acknowledged = false) {
   const gate = composeGate(raspTier, txLevel);
+  // RASP-3 (2026-07-04 internal audit, HIGH): only a clean ALLOW passes with no
+  // acknowledgement. WARN (e.g. rooted device) and CONFIRM (destructive tx) both
+  // require the user's explicit "sign anyway" tap — a rooted device must not sign
+  // on a passive toast. BLOCK never proceeds (signerReachable=false). Fail-closed:
+  // an unknown decision is not ALLOW, so it also requires ack (and BLOCK/unknown
+  // stay unreachable via signerReachable). (I4)
   const proceedAllowed =
-    gate.signerReachable && (gate.decision !== DECISION.CONFIRM || acknowledged === true);
+    gate.signerReachable && (gate.decision === DECISION.ALLOW || acknowledged === true);
   return {
     decision: gate.decision,
     owner: gate.owner,
