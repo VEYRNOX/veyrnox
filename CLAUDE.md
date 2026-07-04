@@ -175,14 +175,16 @@ sweep. Key controls now on main:
 - **C3 — RASP pre-sign gate:** `presignGate()` runs before every WC signing handler;
   blocked → `rejectRequest` + return, key never touched (I4).
 - **H7 — EIP-712 chain binding:** `eth_signTypedData_v4` validates `domain.chainId` vs
-  WC session CAIP-2 chain; mismatch → `CHAINID_MISMATCH` reject. No-chainId domain
-  signs through (EIP-712 backwards-compat).
+  WC session CAIP-2 chain; mismatch → `CHAIN_ID_MISMATCH` reject (fail-closed).
+  No-chainId domain is also rejected (fail-closed; supersedes earlier backwards-compat).
 - **H8 — personal_sign address binding:** resolves EIP-1474 vs MetaMask-legacy param
   order; rejects if neither param is the wallet's own address (I4).
 - **M9 — 1M gas cap:** dApp-supplied gas is clamped to 1,000,000; estimates are also
   capped.
 - **M11 — session expiry:** `assertSessionLive` runs before any key operation;
   expired/absent session → reject + throw (I4).
+- **H-NEW-B — step-up re-auth:** `isSendReauthRequired()` enforces recent auth window
+  before any key operation; stale auth → reject + throw (fail-closed).
 - **H-A — web vault password minimum:** `validateWebVaultPassword()` enforces ≥12 chars
   on web mainnet (`ALLOW_MAINNET = true`); `WEB_VAULT_PASSWORD_TOO_SHORT` on short input.
 - **H-NEW-4/6 — KEK zeroing:** `web.js` wraps full KEK/DEK lifetime in `try/finally`;

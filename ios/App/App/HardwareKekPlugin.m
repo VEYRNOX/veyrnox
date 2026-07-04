@@ -27,10 +27,36 @@
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import <LocalAuthentication/LocalAuthentication.h>
+#import <os/log.h>
 
 static NSString * const KEYCHAIN_SVC = @"com.veyrnox.app";
 static NSString * const KEY_ENC_H    = @"veyrnox_kek_enc_h_v3";   // ECIES ciphertext blob
 static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Enclave key tag
+
+// iOS-F9: shared unified-logging handle. All plugin traces go through this one
+// os_log_t so they land under a single filterable subsystem/category
+// (subsystem "com.veyrnox", category "HardwareKek") in the system log.
+//
+// Why os_log, not NSLog: on iOS 26+ NSLog output is NOT reliably streamable via
+// `idevicesyslog` / `log collect` / Console.app device filtering, so the getHardwareFactor
+// SE-unlock trace could not be captured off-device to tie a KEK-gated Sepolia send to the
+// SE-unlock path (iOS-F9). os_log lands in the unified log and is collectable with e.g.:
+//   log collect --device --last 5m   (then filter subsystem == com.veyrnox)
+//   log stream --predicate 'subsystem == "com.veyrnox"' --info
+//
+// Level: OS_LOG_TYPE_INFO (os_log_info). INFO is captured by `log collect` and is the
+// honest level for operational (non-error) traces. All dynamic string args use
+// %{public}s so the fixed markers are readable, not <private>-redacted. NOTE: no secret
+// material is ever logged — only fixed markers, byte lengths, and OSStatus codes. H's
+// bytes are NEVER logged.
+static os_log_t VeyrnoxKekLog(void) {
+    static os_log_t log;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        log = os_log_create("com.veyrnox", "HardwareKek");
+    });
+    return log;
+}
 
 // Apple ECIES: ephemeral ECDH + X9.63-SHA256 KDF + AES-GCM, in one primitive.
 #define VEYRNOX_ECIES_ALGO kSecKeyAlgorithmECIESEncryptionCofactorX963SHA256AESGCM
@@ -83,7 +109,7 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
                     @"(SE key OSStatus %d, ciphertext OSStatus %d) — refusing to "
                     @"create a second key under the same tag",
                     (int)preSeSt, (int)preEncSt];
-                NSLog(@"[VEYRNOX-KEK] enroll: PRE-CLEAR FAILED — %@", msg);
+                os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: PRE-CLEAR FAILED — %{public}s", msg.UTF8String);
                 [call reject:@"STALE_CLEAR_FAILED" :msg :nil :nil];
                 return;
             }
@@ -117,12 +143,13 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
             SecKeyRef sePriv = SecKeyCreateRandomKey((__bridge CFDictionaryRef)attrs, &genErr);
             CFRelease(access);
             if (!sePriv) {
-                NSLog(@"[VEYRNOX-KEK] enroll: SE key generation FAILED: %@", genErr ? (__bridge NSError *)genErr : nil);
+                os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: SE key generation FAILED: %{public}s",
+                    genErr ? ((__bridge NSError *)genErr).localizedDescription.UTF8String : "(no error object)");
                 [call reject:@"SE_KEYGEN_FAILED" :@"Secure Enclave key generation failed (device may lack SE or biometrics)" :nil :nil];
                 if (genErr) CFRelease(genErr);
                 return;
             }
-            NSLog(@"[VEYRNOX-KEK] enroll: Secure Enclave P-256 key generated (persistent, biometric ACL)");
+            os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: Secure Enclave P-256 key generated (persistent, biometric ACL)");
 
             SecKeyRef sePub = SecKeyCopyPublicKey(sePriv);
             CFRelease(sePriv);  // private key stays in the enclave, retrieved by tag on demand
@@ -157,11 +184,11 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
                 return;
             }
             NSData *encH = (__bridge_transfer NSData *)ct;
-            NSLog(@"[VEYRNOX-KEK] enroll: H (32B) ECIES-encrypted under SE pubkey → ciphertext %lu bytes", (unsigned long)encH.length);
+            os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: H (32B) ECIES-encrypted under SE pubkey → ciphertext %lu bytes", (unsigned long)encH.length);
 
             // 5. Persist only the ciphertext. The SE private key lives in the enclave.
             [self storeKeychainItem:KEY_ENC_H data:encH];
-            NSLog(@"[VEYRNOX-KEK] enroll: SUCCESS — ciphertext stored, SE privkey retained in enclave");
+            os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: SUCCESS — ciphertext stored, SE privkey retained in enclave");
 
             [call resolve:@{@"keyTier": @"SecureEnclave"}];
         } @catch (NSException *exception) {
@@ -220,11 +247,11 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
         @try {
             NSData *encH = [self loadKeychainItem:KEY_ENC_H];
             if (!encH || encH.length == 0) {
-                NSLog(@"[VEYRNOX-KEK] getHardwareFactor: NOT ENROLLED (no ciphertext)");
+                os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: NOT ENROLLED (no ciphertext)");
                 [call reject:@"NOT_ENROLLED" :@"No hardware key enrolled — call enroll() first" :nil :nil];
                 return;
             }
-            NSLog(@"[VEYRNOX-KEK] getHardwareFactor: loaded ciphertext %lu bytes, retrieving SE key…", (unsigned long)encH.length);
+            os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: loaded ciphertext %lu bytes, retrieving SE key…", (unsigned long)encH.length);
 
             // Retrieve the SE private key by tag. Using it for decryption below
             // triggers the biometric (Face ID / Touch ID) prompt via its ACL.
@@ -245,11 +272,11 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
                 if (sePriv) CFRelease(sePriv);
                 [context invalidate];
                 context = nil;
-                NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SE key MISSING (OSStatus %d)", (int)st);
+                os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: SE key MISSING (OSStatus %d)", (int)st);
                 [call reject:@"SE_KEY_MISSING" :@"Secure Enclave key not found — re-enrollment required" :nil :nil];
                 return;
             }
-            NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SE key retrieved, decrypting (Face ID prompt now)…");
+            os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: SE key retrieved, decrypting (Face ID prompt now)…");
 
             if (!SecKeyIsAlgorithmSupported(sePriv, kSecKeyOperationTypeDecrypt, VEYRNOX_ECIES_ALGO)) {
                 CFRelease(sePriv);
@@ -274,7 +301,7 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
                     NSError *e = (__bridge NSError *)decErr;
                     if (e.localizedDescription) msg = e.localizedDescription;
                 }
-                NSLog(@"[VEYRNOX-KEK] getHardwareFactor: DECRYPT FAILED — %@", msg);
+                os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: DECRYPT FAILED — %{public}s", msg.UTF8String);
                 [call reject:@"DECRYPT_FAILED" :msg :nil :nil];
                 if (decErr) CFRelease(decErr);
                 return;
@@ -293,7 +320,10 @@ static NSString * const SE_KEY_TAG   = @"com.veyrnox.kek.se.v3";  // Secure Encl
             // 1. our mutable copy:
             [h resetBytesInRange:NSMakeRange(0, h.length)];
             CFRelease(pt);
-            NSLog(@"[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (%lu bytes)", (unsigned long)hLen);
+            // iOS-F9 SE-unlock success marker — the device-verification procedure greps
+            // this exact line in the collected system log to tie an SE unlock to a send.
+            // %{public} keeps the byte-length visible; H's bytes are NEVER logged.
+            os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: SUCCESS — Face ID passed, H recovered (%{public}lu bytes)", (unsigned long)hLen);
 
             [call resolve:@{@"h": hB64}];
         } @catch (NSException *exception) {
