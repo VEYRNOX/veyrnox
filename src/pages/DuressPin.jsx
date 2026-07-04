@@ -160,16 +160,13 @@ export default function DuressPin() {
       setRemovingDuress(true);
       try {
         await removeDuressPin();
-        // Disable biometric unlock to ensure a clean state. The user can re-enable it
-        // in Settings → Security Settings → Biometric Unlock with their real PIN if desired.
-        // This prevents KEK_UNWRAP_FAILED errors that occur when the cache still holds
-        // the deleted duress PIN.
         setBiometricUnlockEnabled(false);
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
-        setError(""); // clear any previous errors
-        setError("Emergency PIN removed. Biometric unlock has been reset for security. Go to Settings → Security Settings → Biometric Unlock to re-enable it with your real PIN if desired.");
+        setError("");
         await refresh();
+        // Simple: just tell user what to do next (one action: unlock with PIN)
+        setError("✓ Duress PIN removed. Unlock with your real PIN, then FaceID will work for your real wallet.");
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");
       } finally {
