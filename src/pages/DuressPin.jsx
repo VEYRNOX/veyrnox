@@ -172,11 +172,13 @@ export default function DuressPin() {
         setSavedPhrase(""); setSavedAddr("");
         setError("");
         await refresh();
-        // Lock the wallet, clearing the unlocked state and all cached secrets
-        lock();
-        // Navigate away from DuressPin to the main app layout, which will show
-        // the lock screen with fresh biometric preference evaluated
+        // Navigate away from DuressPin page. The router will re-evaluate the
+        // unlocked state; if isUnlocked is still true, home will show dashboard;
+        // if isUnlocked is false (from manual lock), lock screen appears.
+        // Then call lock() to ensure biometric cache is cleared and isUnlocked=false
+        // so lock screen appears with fresh (cleared) biometric preference.
         navigate("/");
+        lock();
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");
       } finally {
