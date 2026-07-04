@@ -19,6 +19,8 @@ import {
   setBiometricUnlockEnabled,
   getBiometricStatus,
 } from '@/lib/biometric';
+// NOTE: setBiometricUnlockEnabled is used ONLY in the explicit confirmEnable() path
+// (a deliberate user action), never automatically on mount.
 
 export default function BiometricUnlockSettings() {
   const { biometricPreview, disableBiometricUnlock, recordAudit } = useWallet();
@@ -38,10 +40,13 @@ export default function BiometricUnlockSettings() {
       .then(s => {
         if (!active) return;
         setStatus(s);
-        // On native the biometric is hardwired (forcedOnDevice) — the toggle is shown
-        // as permanently on. Ensure the localStorage flag matches so isBiometricUnlockEnabled()
-        // returns true and the unlock screen shows the Face ID button.
-        if (s?.mode === 'native' && s?.available) setBiometricUnlockEnabled(true);
+        // CRITICAL (I4): READ the biometric status and surface it in the UI; do NOT
+        // silently MUTATE the stored opt-in preference here. The previous auto-enable
+        // (setBiometricUnlockEnabled(true) for every native user with an available
+        // sensor) turned a user choice into an automatic write — opting people in
+        // without consent and, in the PIN cohort, risking a real-secret cache. Enabling
+        // is now only ever the user's deliberate confirm action below (confirmEnable).
+        // Availability is shown via the status line / forcedOnDevice indicator only.
       })
       .catch(() => {
         // Probe failed — fail honest: render the unavailable state instead of
@@ -137,16 +142,19 @@ export default function BiometricUnlockSettings() {
       <div className="flex items-center justify-between">
         <div className="pr-4">
           <p className="text-sm font-medium">
-            Require {label} on unlock
+            Biometric Unlock (Primary Wallet)
           </p>
           <p className="text-xs text-muted-foreground">
-            Ask for {label} before decrypting your wallet.
+            {forcedOnDevice
+              ? "Your wallet always requires biometric on this device — this can't be turned off here."
+              : 'Enable one-tap unlock for your primary wallet using device biometrics.'}
           </p>
         </div>
         <Switch
-          checked={enabled}
+          checked={forcedOnDevice ? true : enabled}
           onCheckedChange={onToggle}
-          aria-label="Require biometric unlock"
+          disabled={forcedOnDevice}
+          aria-label="Biometric Unlock (Primary Wallet)"
         />
       </div>
 
