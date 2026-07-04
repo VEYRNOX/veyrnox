@@ -5,8 +5,8 @@ import appHelper from '../helpers/appHelper.js';
 import walletHelper from '../helpers/walletHelper.js';
 
 describe('Send Crypto — On-Chain Verification', () => {
-  // Loopback test: send to same wallet (self-transfer on Sepolia)
-  const TEST_RECIPIENT = '0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729';
+  // Send to Vitalik's address on Sepolia testnet
+  const TEST_RECIPIENT = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
   const SEND_AMOUNT = '0.001'; // Sepolia ETH test amount
 
   before(async () => {
