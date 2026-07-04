@@ -156,7 +156,7 @@ describe('Hardware KEK (StrongBox)', () => {
   it('should send crypto using hardware KEK-protected vault', async () => {
     if (isEmulator) return;
 
-    const TEST_RECIPIENT = '0x742d35Cc6634C0532925a3b844Bc7e7595f42e01';
+    const TEST_RECIPIENT = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
     const SEND_AMOUNT = '0.001';
 
     // Navigate to Send
