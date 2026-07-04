@@ -99,7 +99,7 @@ export default function DuressPin() {
   const {
     isUnlocked, isDecoy, accounts,
     hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
-    createWallet, unlock, lock, clearVault,
+    createWallet, unlock, lock, clearVault, hasDuressPin,
   } = wallet;
   const { requireTwoFactor, gateModal } = useActionGuard();
 
@@ -136,11 +136,40 @@ export default function DuressPin() {
   const [tryErr, setTryErr] = useState("");
   const [busy, setBusy] = useState("");
 
+  // ----- detect if a duress PIN is already set -----
+  const [hasDuressPin, setHasDuressPin] = useState(false);
+  const [removingDuress, setRemovingDuress] = useState(false);
+
   const refresh = useCallback(async () => {
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
   }, [hasVault]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Detect if a duress PIN is already configured.
+  useEffect(() => {
+    let active = true;
+    hasDuressPin()
+      .then((has) => { if (active) setHasDuressPin(has); })
+      .catch(() => { if (active) setHasDuressPin(false); });
+    return () => { active = false; };
+  }, [hasDuressPin]);
+
+  const handleRemoveDuress = () => {
+    requireTwoFactor(async () => {
+      setRemovingDuress(true);
+      try {
+        await removeDuressPin();
+        setHasDuressPin(false);
+        setSavedPhrase(""); setSavedAddr("");
+        await refresh();
+      } catch (e) {
+        setError(e?.message || "Could not remove Emergency PIN");
+      } finally {
+        setRemovingDuress(false);
+      }
+    }, { title: "Remove your Emergency PIN" });
+  };
 
   const copy = (text, id) => {
     navigator.clipboard?.writeText(text);
@@ -171,6 +200,7 @@ export default function DuressPin() {
         }
         setSavedPhrase(mnemonic);
         setSavedAddr(address);
+        setHasDuressPin(true);
         setPin(""); setConfirmPin(""); setDuressStep("enter");
         await refresh();
       } catch (e) {
@@ -307,6 +337,29 @@ export default function DuressPin() {
           <li>A <b>sophisticated attacker</b> who knows this feature exists, or inspects device storage, may still suspect a hidden wallet — this is runtime deniability, not steganographic hiding.</li>
         </ul>
       </div>
+
+      {/* Remove existing duress PIN — shown when one is already set */}
+      {hasDuressPin && !savedPhrase && (
+        <div className="p-5 rounded-xl border border-destructive/20 bg-destructive/5">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <span className="font-medium">Emergency PIN is configured</span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            You have already set an Emergency PIN. To disable your hidden wallet and remove this PIN,
+            click the button below.
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={removingDuress}
+            onClick={handleRemoveDuress}
+            data-testid="remove-duress-pin-btn"
+          >
+            {removingDuress ? "Removing…" : "Remove Emergency PIN"}
+          </Button>
+        </div>
+      )}
 
       {/* Setup card */}
       <div className="p-5 rounded-xl border border-border bg-card">
