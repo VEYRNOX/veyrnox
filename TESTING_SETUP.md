@@ -11,7 +11,8 @@
 - Hardware KEK tests: 5/5 created (ready for Appium) 🔐
 - Biometric unlock tests: 8/8 created (ready for Appium) 📱
 - Hidden wallet tests: 8/8 created (ready for Appium) 🛡️
-- **Total: 31 tests across 5 suites**  
+- Panic PIN tests: 8/8 created (ready for Appium) 🚨
+- **Total: 39 tests across 6 suites**  
 
 ---
 
@@ -35,7 +36,8 @@ tests/android/
 │   ├── send.spec.js          # 2/2 passing send flow tests ✅
 │   ├── hardware-kek-e2e.spec.js  # 5 Hardware KEK tests (real device, requires Appium) 🔐
 │   ├── biometric-unlock-e2e.spec.js  # 8 Biometric unlock tests (Face ID / fingerprint) 📱
-│   └── hidden-wallet-e2e.spec.js  # 8 Hidden wallet tests (stealth pool, reveal, deniability) 🛡️
+│   ├── hidden-wallet-e2e.spec.js  # 8 Hidden wallet tests (stealth pool, reveal, deniability) 🛡️
+│   └── panic-pin-e2e.spec.js  # 8 Panic PIN tests (destructive wipe, deniability) 🚨
 ├── README.md                 # Full testing guide
 ├── QUICKSTART.md            # 5-minute setup
 └── TEST_RESULTS.md          # Current status
@@ -70,6 +72,7 @@ npm run android:test:send               # 2/2 passing ✅
 npm run android:test:hardware-kek       # 5 tests (ready) 🔐
 npm run android:test:biometric-unlock   # 8 tests (ready) 📱
 npm run android:test:hidden-wallet      # 8 tests (ready) 🛡️
+npm run android:test:panic-pin          # 8 tests (ready) 🚨
 ```
 
 ---
