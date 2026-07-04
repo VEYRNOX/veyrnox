@@ -101,11 +101,6 @@ export default function BiometricUnlockSettings() {
   const available = status?.available;
   const label = status?.label || 'Biometrics';
   const simulated = status?.simulated;
-  // On a real device, native unlock ALWAYS requires biometric/passcode (the
-  // native keyStore gates every unlock); the stored preference only drives the
-  // demo prompt. Reflect that honestly instead of implying an off switch the
-  // device doesn't honour. (See SECURITY_SELFREVIEW_FINDINGS.md → F-3.)
-  const forcedOnDevice = status?.mode === 'native';
 
   return (
     <div className="p-5 rounded-xl border border-border bg-card space-y-4">
@@ -145,15 +140,12 @@ export default function BiometricUnlockSettings() {
             Biometric Unlock (Primary Wallet)
           </p>
           <p className="text-xs text-muted-foreground">
-            {forcedOnDevice
-              ? "Your wallet always requires biometric on this device — this can't be turned off here."
-              : 'Enable one-tap unlock for your primary wallet using device biometrics.'}
+            Enable one-tap unlock for your primary wallet using device biometrics.
           </p>
         </div>
         <Switch
-          checked={forcedOnDevice ? true : enabled}
+          checked={enabled}
           onCheckedChange={onToggle}
-          disabled={forcedOnDevice}
           aria-label="Biometric Unlock (Primary Wallet)"
         />
       </div>
