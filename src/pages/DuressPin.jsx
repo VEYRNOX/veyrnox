@@ -41,7 +41,7 @@ import { DEMO } from "@/api/demoClient";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
-import { getBiometricStatus, setBiometricUnlockEnabled, BIOMETRIC_PREF_KEY } from "@/lib/biometric";
+import { getBiometricStatus } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
@@ -101,7 +101,7 @@ export default function DuressPin() {
   const {
     isUnlocked, isDecoy, accounts,
     hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
-    createWallet, unlock, lock, clearVault, hasDuressPin, disableBiometricUnlock,
+    createWallet, unlock, lock, clearVault, hasDuressPin,
   } = wallet;
   const { requireTwoFactor, gateModal } = useActionGuard();
 
@@ -162,20 +162,21 @@ export default function DuressPin() {
       setRemovingDuress(true);
       try {
         console.log("[DuressPin] Step 1: removeDuressPin() starting");
+        // removeDuressPin() clears the duress vault AND the biometric CACHE (the
+        // cached duress PIN) but deliberately KEEPS the biometric preference ON.
+        // Design: with pref ON + cache empty, the lock screen shows PIN-only
+        // (bioReady=false); the next successful REAL-PIN unlock re-caches the
+        // real PIN (WalletEntry.runPinUnlock), so Face ID then opens the REAL
+        // wallet. Do NOT call disableBiometricUnlock() here — that kills the
+        // preference and permanently breaks the re-arm path.
         await removeDuressPin();
-        console.log("[DuressPin] Step 2: disableBiometricUnlock() starting");
-        await disableBiometricUnlock();
-        console.log("[DuressPin] Step 3: removeItem BIOMETRIC_PREF_KEY");
-        try { localStorage.removeItem(BIOMETRIC_PREF_KEY); } catch { }
-        console.log("[DuressPin] Step 4: After removeItem, isBiometricUnlockEnabled() =", localStorage.getItem(BIOMETRIC_PREF_KEY));
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         setError("");
-        console.log("[DuressPin] Step 5: refresh() starting");
+        console.log("[DuressPin] Step 2: refresh() starting");
         await refresh();
-        console.log("[DuressPin] Step 6: lock() starting - about to set isUnlocked=false");
+        console.log("[DuressPin] Step 3: lock() - isUnlocked=false, WalletGate shows unlock UI");
         lock();
-        console.log("[DuressPin] Step 7: lock complete - lock screen should appear");
       } catch (e) {
         console.error("[DuressPin] Error:", e?.message);
         setError(e?.message || "Could not remove Emergency PIN");
