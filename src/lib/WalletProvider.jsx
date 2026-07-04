@@ -2035,8 +2035,6 @@ export function WalletProvider({ children }) {
     hiddenWallet2faMode,
     setHiddenWallet2faMode,
     hasPendingPin: pendingPinRef.current != null,
-    // DURESS / DECOY (S3): is the current session a decoy? Off by default.
-    isDecoy,
     // STEALTH (S3): is the current session a revealed HIDDEN wallet? Off by
     // default. Like isDecoy, the normal wallet UI must NOT surface this.
     isHidden,
