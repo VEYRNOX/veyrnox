@@ -41,7 +41,7 @@ import { DEMO } from "@/api/demoClient";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
-import { getBiometricStatus, setBiometricUnlockEnabled, BIOMETRIC_PREF_KEY } from "@/lib/biometric";
+import { getBiometricStatus } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
@@ -101,7 +101,7 @@ export default function DuressPin() {
   const {
     isUnlocked, isDecoy, accounts,
     hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
-    createWallet, unlock, lock, clearVault, hasDuressPin, disableBiometricUnlock,
+    createWallet, unlock, lock, clearVault, hasDuressPin,
   } = wallet;
   const { requireTwoFactor, gateModal } = useActionGuard();
 
@@ -161,19 +161,20 @@ export default function DuressPin() {
     requireTwoFactor(async () => {
       setRemovingDuress(true);
       try {
+        // removeDuressPin() clears the duress vault AND the biometric CACHE (the
+        // cached duress PIN) but deliberately KEEPS the biometric preference ON.
+        // Design: with pref ON + cache empty, the lock screen shows PIN-only
+        // (bioReady=false); the next successful REAL-PIN unlock re-caches the
+        // real PIN (WalletEntry.runPinUnlock), so Face ID then opens the REAL
+        // wallet. Do NOT call disableBiometricUnlock() here — that kills the
+        // preference and permanently breaks the re-arm path.
         await removeDuressPin();
-        // Disable biometric unlock completely: clears both preference (localStorage)
-        // AND secure storage cache. This ensures the old duress PIN isn't used.
-        // When user unlocks with real PIN next time, they can re-enable biometric.
-        await disableBiometricUnlock();
-        // Explicitly clear localStorage biometric preference to ensure it's gone
-        try { localStorage.removeItem(BIOMETRIC_PREF_KEY); } catch { }
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         setError("");
         await refresh();
-        // Lock the wallet to trigger WalletEntry useEffect, which re-evaluates bioReady
-        // with the fresh (cleared) biometric preference
+        // lock() drops isUnlocked; WalletGate then renders the unlock UI, which
+        // shows PIN-only because the biometric cache is now empty (bioReady=false).
         lock();
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");

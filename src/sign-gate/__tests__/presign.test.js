@@ -29,10 +29,26 @@ describe('presignGate — proceed/refuse across the matrix', () => {
     expect(g.proceedAllowed).toBe(true);
   });
 
-  it('warn (rasp) proceeds — the biometric verify step is the re-confirm', () => {
-    const g = presignGate(TIER.WARN, LEVEL.OK);
-    expect(g.decision).toBe(DECISION.WARN);
-    expect(g.proceedAllowed).toBe(true);
+  // RASP-3 (2026-07-04 internal audit, HIGH): WARN tier (e.g. rooted device) must
+  // enforce an explicit user acknowledgement before proceeding — no silent pass.
+  it('warn (rasp) REFUSES until acknowledged (RASP-3 friction), then proceeds', () => {
+    const noAck = presignGate(TIER.WARN, LEVEL.OK, false);
+    expect(noAck.decision).toBe(DECISION.WARN);
+    expect(noAck.signerReachable).toBe(true);
+    expect(noAck.proceedAllowed).toBe(false); // rooted device: no ack, no signing
+
+    const acked = presignGate(TIER.WARN, LEVEL.OK, true);
+    expect(acked.decision).toBe(DECISION.WARN);
+    expect(acked.proceedAllowed).toBe(true);
+  });
+
+  it('warn (tx CAUTION) also refuses until acknowledged', () => {
+    expect(presignGate(TIER.ALLOW, LEVEL.CAUTION, false).proceedAllowed).toBe(false);
+    expect(presignGate(TIER.ALLOW, LEVEL.CAUTION, true).proceedAllowed).toBe(true);
+  });
+
+  it('only a clean PROCEED/ALLOW decision passes with no acknowledgement', () => {
+    expect(presignGate(TIER.ALLOW, LEVEL.OK, false).proceedAllowed).toBe(true);
   });
 
   it('confirm (tx RISK) refuses until acknowledged, then proceeds', () => {

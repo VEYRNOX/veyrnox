@@ -7,14 +7,14 @@ import {
 describe('live-prices opt-in pref', () => {
   beforeEach(() => { try { localStorage.removeItem(LIVE_PRICE_PREF_KEY); } catch { /* noop */ } });
 
-  it('is ON by default (absence = on) and toggles', () => {
-    expect(isLivePricesEnabled()).toBe(true);
-    setLivePricesEnabled(false);
+  it('is OFF by default (absence = off) and toggles (I2-LIVEPRICE-DEFAULT-ON fix)', () => {
     expect(isLivePricesEnabled()).toBe(false);
-    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBe('0'); // off = '0'
     setLivePricesEnabled(true);
     expect(isLivePricesEnabled()).toBe(true);
-    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBeNull(); // on = ABSENT
+    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBe('1'); // on = '1'
+    setLivePricesEnabled(false);
+    expect(isLivePricesEnabled()).toBe(false);
+    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBeNull(); // off = ABSENT
   });
 });
 

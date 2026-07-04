@@ -298,7 +298,7 @@ Test Data:
 - Expected: TX confirmed on devnet explorer
 
 Solana Devnet Faucet:
-- Built-in: `solana airdrop 1 <address>` (devnet only)
+- Built-in: "solana airdrop 1 <address>" (devnet only)
 - Web faucet: https://solfaucet.com
 - Sends 1 SOL per request, no cooldown typically
 
