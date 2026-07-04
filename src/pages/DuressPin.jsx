@@ -359,11 +359,12 @@ export default function DuressPin() {
                 <span className="text-xs">
                   <span className="font-medium inline-flex items-center gap-1.5">
                     <Fingerprint className="h-3.5 w-3.5 text-primary" />
-                    Use {bioLabel} to open the hidden wallet
+                    Enable Biometric Unlock (Decoy Wallet)
                   </span>
                   <span className="block text-muted-foreground mt-1">
-                    When on, {bioLabel} at unlock opens the <b>hidden wallet</b> — never your
-                    real wallet, which stays reachable only by typing your{" "}
+                    Use {bioLabel} to unlock your decoy wallet (if Duress PIN is enabled).
+                    When on, {bioLabel} at unlock opens the <b>hidden wallet</b> —
+                    never your real wallet, which stays reachable only by typing your{" "}
                     <b>real PIN</b>. So if you&apos;re forced to unlock with {bioLabel},
                     only the hidden wallet is exposed.
                   </span>
