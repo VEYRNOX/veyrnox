@@ -18,6 +18,10 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
+    "android:test": "wdio tests/android/wdio.conf.js",
+    "android:test:vault": "wdio tests/android/wdio.conf.js --spec tests/android/specs/vault.spec.js",
+    "android:test:send": "wdio tests/android/wdio.conf.js --spec tests/android/specs/send.spec.js",
+    "android:test:hardware-kek": "wdio tests/android/wdio.conf.js --spec tests/android/specs/hardware-kek.spec.js",
     "analyze:build": "npm run build -- --mode analyze",
     "analyze:deps": "npm ls --depth=0",
     "cap:sync": "cap sync && node scripts/register-local-ios-plugins.mjs",
@@ -137,6 +141,11 @@
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.3.4",
+    "@wdio/cli": "^9.29.1",
+    "@wdio/local-runner": "^9.29.1",
+    "@wdio/mocha-framework": "^9.29.1",
+    "@wdio/spec-reporter": "^9.29.1",
+    "appium-uiautomator2-driver": "^8.0.1",
     "autoprefixer": "^10.5.2",
     "baseline-browser-mapping": "^2.10.40",
     "cross-env": "^10.1.0",
@@ -153,7 +162,8 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
     "vite": "^6.4.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "webdriverio": "^9.29.1"
   },
   "overrides": {
     "axios": "^1.18.0",
