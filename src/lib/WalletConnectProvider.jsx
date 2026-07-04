@@ -275,7 +275,7 @@ export function WalletConnectProvider({ children }) {
   // NOTE: lastAuthAt is NOT in the WalletProvider context value (it lives in a
   // private ref: lastAuthAtRef). isSendReauthRequired() is the context-exposed gate
   // that reads it. We expose isSendReauthRequired to the modal instead.
-  const { accounts, isUnlocked, withPrivateKey, isSendReauthRequired } = useWallet();
+  const { accounts, isUnlocked, isDecoy, isHidden, withPrivateKey, isSendReauthRequired } = useWallet();
   const evmAddress = accounts?.[0]?.address ?? null;
 
   const [initialized, setInitialized] = useState(false);
@@ -293,7 +293,9 @@ export function WalletConnectProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!isUnlocked || !isWalletConnectConfigured()) return;
+    // I3: deniability sessions must make zero backend calls — WC relay WebSocket
+    // must not open for decoy or hidden sessions (violates I3 if it does).
+    if (!isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
     let cancelled = false;
     initWalletConnect()
       .then(() => { if (!cancelled) { setInitialized(true); refreshSessions(); } })
@@ -326,18 +328,18 @@ export function WalletConnectProvider({ children }) {
       cancelled = true;
       unsub();
     };
-  }, [isUnlocked, refreshSessions]);
+  }, [isUnlocked, isDecoy, isHidden, refreshSessions]);
 
-  // Destroy client when wallet locks — I3 compliance
+  // Destroy client when wallet locks or transitions into a deniability session (I3).
   useEffect(() => {
-    if (!isUnlocked) {
+    if (!isUnlocked || isDecoy || isHidden) {
       destroyWalletConnect();
       setInitialized(false);
       setPendingProposals([]);
       setPendingRequests([]);
       setSessions([]);
     }
-  }, [isUnlocked]);
+  }, [isUnlocked, isDecoy, isHidden]);
 
   const handleApproveSession = useCallback(async (proposalId) => {
     if (!evmAddress) throw new Error('No wallet address — unlock first');
