@@ -175,9 +175,7 @@ export default function DuressPin() {
         await refresh();
         console.log("[DuressPin] Step 6: lock() starting - about to set isUnlocked=false");
         lock();
-        console.log("[DuressPin] Step 7: navigate('/') starting");
-        navigate("/");
-        console.log("[DuressPin] Step 8: navigate complete - should now show lock screen");
+        console.log("[DuressPin] Step 7: lock complete - lock screen should appear");
       } catch (e) {
         console.error("[DuressPin] Error:", e?.message);
         setError(e?.message || "Could not remove Emergency PIN");
