@@ -1838,7 +1838,12 @@ export function WalletProvider({ children }) {
     return { mnemonic: decoyMnemonic, address };
   }, []);
 
-  const removeDuressPin = useCallback(() => clearDuressVault(), []);
+  const removeDuressPin = useCallback(async () => {
+    await clearDuressVault();
+    // Clear any cached biometric unlock that was bound to the now-deleted duress PIN.
+    // This prevents FaceID from trying to unlock with a credential that no longer exists.
+    await disableBiometricUnlock();
+  }, [disableBiometricUnlock]);
 
   // STEALTH / HIDDEN WALLETS management (S3). Create a hidden wallet revealed by
   // a dedicated secret entered at the normal unlock prompt. Generates a FRESH
@@ -2030,8 +2035,6 @@ export function WalletProvider({ children }) {
     hiddenWallet2faMode,
     setHiddenWallet2faMode,
     hasPendingPin: pendingPinRef.current != null,
-    // DURESS / DECOY (S3): is the current session a decoy? Off by default.
-    isDecoy,
     // STEALTH (S3): is the current session a revealed HIDDEN wallet? Off by
     // default. Like isDecoy, the normal wallet UI must NOT surface this.
     isHidden,
