@@ -172,9 +172,11 @@ export default function DuressPin() {
         setSavedPhrase(""); setSavedAddr("");
         setError("");
         await refresh();
-        // Lock the wallet to trigger WalletEntry useEffect, which re-evaluates bioReady
-        // with the fresh (cleared) biometric preference
+        // Lock the wallet, clearing the unlocked state and all cached secrets
         lock();
+        // Navigate away from DuressPin to the main app layout, which will show
+        // the lock screen with fresh biometric preference evaluated
+        navigate("/");
       } catch (e) {
         setError(e?.message || "Could not remove Emergency PIN");
       } finally {
