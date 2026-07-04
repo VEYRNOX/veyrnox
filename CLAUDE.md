@@ -160,6 +160,13 @@ AVAX and BNB share the EVM address and are now LIVE as well — both sent via th
 in-app UI path on testnet (AVAX Fuji `0x3697e0d…`, re-confirmed on-chain 2026-06-22;
 BNB BSC-testnet `0x1a6ee75…`, per session record + owner confirmation, not yet
 independently re-confirmed on-chain). All 10 assets are LIVE — see `src/wallet-core/assets.js`.
+**Android send flow verified 2026-07-04:** Full UI send integration tested on real Pixel device
+via Appium automation framework; E2E send to Sepolia testnet confirmed on-chain (txid
+`0x989f6b4cf94471956b348e22ac434b11325d46b6ce00f87cd934d8cf74da27c1`, block 6768093,
+0.001 ETH to recipient 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045). Appium framework
+(UiAutomator2 + WebdriverIO) is now LIVE for automated real-device testing — see
+`tests/android/` and `TESTING_SETUP.md`. CI/CD pipeline validates code on each push
+(GitHub Actions). NOT independently audited.
 
 ## WalletConnect security controls (BUILT, 2026-06-27)
 
