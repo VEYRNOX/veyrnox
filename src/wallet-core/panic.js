@@ -176,6 +176,9 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   // hardware-KEK-enrolled Veyrnox vault existed on the device; strongest web tell.
   // Must be erased by panic wipe (I3/I4).
   'veyrnox-prf-cred-id',
+  // PW-1: session token written by SecurityCenter.jsx / sessionRevocation.js.
+  // Correlatable against backend UserSession records — must be wiped (I3/I4).
+  'sdw_session_token',
 ]);
 
 // NON-SECRET wallet/token METADATA residue (F-06). Unlike the keys above, these do

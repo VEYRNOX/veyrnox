@@ -19,17 +19,18 @@ import { useWallet } from '@/lib/WalletProvider';
 // price call. Device-global and holdings-blind — reveals nothing about holdings.
 export const LIVE_PRICE_PREF_KEY = 'veyrnox-live-prices';
 
-/** @returns {boolean} whether live prices are enabled (on by default; off only if explicitly disabled). */
+/** @returns {boolean} whether live prices are enabled (OFF by default; on only if explicitly enabled). */
 export function isLivePricesEnabled() {
-  try { return localStorage.getItem(LIVE_PRICE_PREF_KEY) !== '0'; }
-  catch { return true; } // storage unavailable → treat as ON (default)
+  // I2-LIVEPRICE-DEFAULT-ON fix: ABSENT = off. '1' = on. Never egress on a fresh device.
+  try { return localStorage.getItem(LIVE_PRICE_PREF_KEY) === '1'; }
+  catch { return false; } // storage unavailable → treat as OFF (I2: fail closed)
 }
 
-/** Persist the preference. ON is stored as ABSENCE of the key; OFF is stored as '0'. */
+/** Persist the preference. ON is stored as '1'; OFF is stored as ABSENCE of the key. */
 export function setLivePricesEnabled(on) {
   try {
-    if (on) localStorage.removeItem(LIVE_PRICE_PREF_KEY);
-    else localStorage.setItem(LIVE_PRICE_PREF_KEY, '0');
+    if (on) localStorage.setItem(LIVE_PRICE_PREF_KEY, '1');
+    else localStorage.removeItem(LIVE_PRICE_PREF_KEY);
   } catch { /* best-effort */ }
 }
 
