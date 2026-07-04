@@ -422,16 +422,19 @@ export const webKeyStore = {
     if (blob.kekWrap) throw Object.assign(new Error('KEK_ALREADY_ENROLLED'), { code: 'KEK_ALREADY_ENROLLED' });
     const secret = await decryptVault(blob, password); // verify password and recover seed
 
-    const H = await getHF();
     const saltBytes = crypto.getRandomValues(new Uint8Array(32));
     const kekSalt = btoa(String.fromCharCode(...saltBytes));
-    const C = await deriveKekC(password, saltBytes);
+    // F-01: H is declared here, assigned inside try so the finally always covers it.
+    // deriveKekC and randomDek can throw between H assignment and try entry otherwise.
+    let H;
     let kek;
+    const C = await deriveKekC(password, saltBytes);
     const dek = randomDek();
     // H-NEW-4b: wrap the entire KEK + DEK lifetime in try/finally so BOTH are wiped
     // even if combineKek/wrapDek/encryptVaultWithDek throws — never leave the key
     // that wraps the DEK or the DEK itself in the JS heap on an error path (I4).
     try {
+      H = await getHF();
       kek = await combineKek(H, C);
       // H-NEW-4: wipe H/C at the call site (defense in depth over combineKek's own
       // in-place zeroing) — no plaintext key material left in the heap until GC (I4).
@@ -442,7 +445,9 @@ export const webKeyStore = {
       const { iv, ct } = await encryptVaultWithDek(secret, dek);
       await saveVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
     } finally {
-      // H-NEW-4: wipe the derived KEK and the DEK (consumed or error occurred) (I4).
+      // H-NEW-4 / F-01: wipe H, C, the derived KEK and the DEK on every path (I4).
+      if (H && H.fill) H.fill(0);
+      if (C && C.fill) C.fill(0);
       if (kek) kek.fill(0);
       dek.fill(0);
     }
