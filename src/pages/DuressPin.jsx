@@ -137,7 +137,7 @@ export default function DuressPin() {
   const [busy, setBusy] = useState("");
 
   // ----- detect if a duress PIN is already set -----
-  const [duressExists, setDuressExists] = useState(false);
+  const [hasDuressPin, setHasDuressPin] = useState(false);
   const [removingDuress, setRemovingDuress] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -150,8 +150,8 @@ export default function DuressPin() {
   useEffect(() => {
     let active = true;
     hasDuressPin()
-      .then((has) => { if (active) setDuressExists(has); })
-      .catch(() => { if (active) setDuressExists(false); });
+      .then((has) => { if (active) setHasDuressPin(has); })
+      .catch(() => { if (active) setHasDuressPin(false); });
     return () => { active = false; };
   }, [hasDuressPin]);
 
@@ -160,10 +160,7 @@ export default function DuressPin() {
       setRemovingDuress(true);
       try {
         await removeDuressPin();
-        // Explicitly clear the biometric unlock preference (in case it was cached for decoy)
-        // to prevent FaceID from trying to use the now-removed duress PIN
-        setBiometricUnlockEnabled(false);
-        setDuressExists(false);
+        setHasDuressPin(false);
         setSavedPhrase(""); setSavedAddr("");
         await refresh();
       } catch (e) {
@@ -203,7 +200,7 @@ export default function DuressPin() {
         }
         setSavedPhrase(mnemonic);
         setSavedAddr(address);
-        setDuressExists(true);
+        setHasDuressPin(true);
         setPin(""); setConfirmPin(""); setDuressStep("enter");
         await refresh();
       } catch (e) {
@@ -342,7 +339,7 @@ export default function DuressPin() {
       </div>
 
       {/* Remove existing duress PIN — shown when one is already set */}
-      {duressExists && !savedPhrase && (
+      {hasDuressPin && !savedPhrase && (
         <div className="p-5 rounded-xl border border-destructive/20 bg-destructive/5">
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className="h-5 w-5 text-destructive" />
