@@ -99,7 +99,7 @@ export default function DuressPin() {
   const {
     isUnlocked, isDecoy, accounts,
     hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
-    createWallet, unlock, lock, clearVault, hasDuressPin,
+    createWallet, unlock, lock, clearVault, hasDuressPin, disableBiometricUnlock,
   } = wallet;
   const { requireTwoFactor, gateModal } = useActionGuard();
 
@@ -160,11 +160,10 @@ export default function DuressPin() {
       setRemovingDuress(true);
       try {
         await removeDuressPin();
-        // Disable biometric unlock to ensure a clean state. The user can re-enable it
-        // in Settings → Security Settings → Biometric Unlock with their real PIN if desired.
-        // This prevents KEK_UNWRAP_FAILED errors that occur when the cache still holds
-        // the deleted duress PIN.
-        setBiometricUnlockEnabled(false);
+        // Disable biometric unlock completely: clears both preference (localStorage)
+        // AND secure storage cache. This ensures the old duress PIN isn't used.
+        // When user unlocks with real PIN next time, they can re-enable biometric.
+        await disableBiometricUnlock();
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         setError(""); // clear any previous errors
