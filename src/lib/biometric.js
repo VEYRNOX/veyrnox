@@ -34,10 +34,7 @@ export const TWOFACTOR_BIOMETRIC_KEY = 'veyrnox-2fa-biometric';
 
 /** @returns {boolean} whether the user has required biometric unlock. */
 export function isBiometricUnlockEnabled() {
-  // On native, biometric/passcode is always required by the OS — treat as always on.
-  // localStorage is wiped on app uninstall, so we can't rely on the stored pref here.
   try {
-    if (Capacitor.isNativePlatform()) return true;
     return localStorage.getItem(BIOMETRIC_PREF_KEY) === '1';
   } catch {
     return false;

@@ -411,6 +411,13 @@ export default function WalletEntry() {
   // on failure the vault is torn down (fail closed) and we show an honest error.
   const [provisioning, setProvisioning] = useState(false);
 
+  // Notify user when decoy wallet is unlocked (duress PIN).
+  useEffect(() => {
+    if (isDecoy && isUnlocked) {
+      toast.success("Decoy mode active", { duration: 2000 });
+    }
+  }, [isDecoy, isUnlocked]);
+
   // Resolve biometric availability once on mount (cheap; used by both the
   // onboarding offer and the returning one-tap button).
   useEffect(() => {
