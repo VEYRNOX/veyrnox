@@ -161,25 +161,25 @@ export default function DuressPin() {
     requireTwoFactor(async () => {
       setRemovingDuress(true);
       try {
+        console.log("[DuressPin] Step 1: removeDuressPin() starting");
         await removeDuressPin();
-        // Disable biometric unlock completely: clears both preference (localStorage)
-        // AND secure storage cache. This ensures the old duress PIN isn't used.
-        // When user unlocks with real PIN next time, they can re-enable biometric.
+        console.log("[DuressPin] Step 2: disableBiometricUnlock() starting");
         await disableBiometricUnlock();
-        // Explicitly clear localStorage biometric preference to ensure it's gone
+        console.log("[DuressPin] Step 3: removeItem BIOMETRIC_PREF_KEY");
         try { localStorage.removeItem(BIOMETRIC_PREF_KEY); } catch { }
+        console.log("[DuressPin] Step 4: After removeItem, isBiometricUnlockEnabled() =", localStorage.getItem(BIOMETRIC_PREF_KEY));
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         setError("");
+        console.log("[DuressPin] Step 5: refresh() starting");
         await refresh();
-        // Lock FIRST to set isUnlocked=false immediately. This ensures the state
-        // change takes effect before navigation, so when the home route re-renders,
-        // it sees isUnlocked=false and shows the lock screen, not the dashboard.
+        console.log("[DuressPin] Step 6: lock() starting - about to set isUnlocked=false");
         lock();
-        // Navigate away from DuressPin page. The router will now render with
-        // isUnlocked=false, showing the lock screen with cleared biometric preference.
+        console.log("[DuressPin] Step 7: navigate('/') starting");
         navigate("/");
+        console.log("[DuressPin] Step 8: navigate complete - should now show lock screen");
       } catch (e) {
+        console.error("[DuressPin] Error:", e?.message);
         setError(e?.message || "Could not remove Emergency PIN");
       } finally {
         setRemovingDuress(false);
