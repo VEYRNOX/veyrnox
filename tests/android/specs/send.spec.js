@@ -5,7 +5,7 @@ import appHelper from '../helpers/appHelper.js';
 import walletHelper from '../helpers/walletHelper.js';
 
 describe('Send Crypto — On-Chain Verification', () => {
-  // Throwaway testnet seed derived address (EVM: ETH/MATIC/ARB/OP/AVAX/BNB)
+  // Loopback test: send to same wallet (self-transfer on Sepolia)
   const TEST_RECIPIENT = '0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729';
   const SEND_AMOUNT = '0.001'; // Sepolia ETH test amount
 
