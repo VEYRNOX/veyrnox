@@ -529,7 +529,6 @@ export const nativeKeyStore = {
           if (H2 && H2.fill) H2.fill(0);
           if (newC) newC.fill(0);
           const newKekWrap = await wrapDek(newKek, dek);
-          newSaltBytes.fill(0);
           await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 2 });
         } finally {
           if (H && H.fill) H.fill(0);
@@ -564,6 +563,7 @@ export const nativeKeyStore = {
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (raw === null || raw === undefined) throw new Error('No wallet found on this device');
       const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
+      // F-09: secret is a JS string; cannot be zeroed — known limitation, all TypedArrays are zeroed in finally.
       const secret = await decryptVault(blob, password); // verify password and recover seed
 
       // L2 (audit): getHF() materialises the hardware credential (AndroidKeyStore /
