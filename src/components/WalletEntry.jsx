@@ -368,6 +368,9 @@ export default function WalletEntry() {
   // we show recovery-specific copy and an explicit "no custodial reset" notice.
   const [recovering, setRecovering] = useState(false);
 
+  // Check biometric preference fresh every render (not cached), so preference changes take effect immediately
+  const biometricEnabled = vaultExists && isBiometricUnlockEnabled() && bioReady;
+
   // Transiently holds the just-set vault password between "Generate" and the
   // "Enable Face ID" decision on the SAME screen, so we can cache it for biometric
   // unlock if the user opts in. Wiped immediately after onboarding completes. A
@@ -969,7 +972,7 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-4">
-          {bioReady && !biometricFailed && (
+          {biometricEnabled && !biometricFailed && (
             <>
               <Button className="w-full gap-2 h-12 text-base" disabled={busy} onClick={handleBiometricUnlock}>
                 {busy ? <RefreshCw className="h-5 w-5 animate-spin" /> : <ScanFace className="h-5 w-5" />} Unlock with {bioLabel}
@@ -981,7 +984,7 @@ export default function WalletEntry() {
               </div>
             </>
           )}
-          {bioReady && biometricFailed && (
+          {biometricEnabled && biometricFailed && (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
               {bioLabel} didn't work. Enter your PIN below — it's your real key and always works.
             </p>
@@ -1019,7 +1022,7 @@ export default function WalletEntry() {
       <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-3">
           {/* PROMINENT one-tap Face ID entry (only when it can actually run). */}
-          {bioReady && !biometricFailed && (
+          {biometricEnabled && !biometricFailed && (
             <>
               <div className="flex items-center gap-2 text-sm font-medium">
                 <ScanFace className="h-4 w-4 text-primary" /> Welcome back
@@ -1036,7 +1039,7 @@ export default function WalletEntry() {
           )}
 
           <div className="flex items-center gap-2 text-sm font-medium">
-            <Lock className="h-4 w-4 text-muted-foreground" /> {bioReady && !biometricFailed ? "Enter your vault password" : "Unlock your wallet"}
+            <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? "Enter your vault password" : "Unlock your wallet"}
           </div>
           <Label>Vault Password</Label>
           <Input
@@ -1045,7 +1048,7 @@ export default function WalletEntry() {
             onChange={e => setUnlockPassword(e.target.value)}
             placeholder="Enter your vault password"
             onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
-            autoFocus={!bioReady || biometricFailed}
+            autoFocus={!biometricEnabled || biometricFailed}
           />
           <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
             {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
