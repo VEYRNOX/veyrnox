@@ -160,6 +160,9 @@ export default function DuressPin() {
       setRemovingDuress(true);
       try {
         await removeDuressPin();
+        // Explicitly clear the biometric unlock preference (in case it was cached for decoy)
+        // to prevent FaceID from trying to use the now-removed duress PIN
+        setBiometricUnlockEnabled(false);
         setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         await refresh();
