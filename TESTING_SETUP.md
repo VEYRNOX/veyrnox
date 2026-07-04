@@ -8,11 +8,12 @@
 **Test Results:** 
 - Vault tests: 8/8 passing ✅
 - Send tests: 2/2 passing ✅
+- Send scenarios tests: 10/10 created (ready for Appium) 💰
 - Hardware KEK tests: 5/5 created (ready for Appium) 🔐
 - Biometric unlock tests: 8/8 created (ready for Appium) 📱
 - Hidden wallet tests: 8/8 created (ready for Appium) 🛡️
 - Panic PIN tests: 8/8 created (ready for Appium) 🚨
-- **Total: 39 tests across 6 suites**  
+- **Total: 49 tests across 7 suites**  
 
 ---
 
@@ -34,6 +35,7 @@ tests/android/
 ├── specs/
 │   ├── vault.spec.js         # 8/8 passing smoke tests ✅
 │   ├── send.spec.js          # 2/2 passing send flow tests ✅
+│   ├── send-scenarios-e2e.spec.js  # 10 Send scenarios (multi-asset, fees, errors) 💰
 │   ├── hardware-kek-e2e.spec.js  # 5 Hardware KEK tests (real device, requires Appium) 🔐
 │   ├── biometric-unlock-e2e.spec.js  # 8 Biometric unlock tests (Face ID / fingerprint) 📱
 │   ├── hidden-wallet-e2e.spec.js  # 8 Hidden wallet tests (stealth pool, reveal, deniability) 🛡️
@@ -69,6 +71,7 @@ npm run android:test
 # Run specific suite
 npm run android:test:vault              # 8/8 passing ✅
 npm run android:test:send               # 2/2 passing ✅
+npm run android:test:send-scenarios     # 10 tests (ready) 💰
 npm run android:test:hardware-kek       # 5 tests (ready) 🔐
 npm run android:test:biometric-unlock   # 8 tests (ready) 📱
 npm run android:test:hidden-wallet      # 8 tests (ready) 🛡️
