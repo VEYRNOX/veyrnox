@@ -60,7 +60,7 @@ async function renderSettled() {
 
 // Helper: find the Switch button element (Radix renders role="switch").
 function getToggle() {
-  return screen.getByRole('switch', { name: /require biometric unlock/i });
+  return screen.getByRole('switch', { name: /biometric unlock \(primary wallet\)/i });
 }
 
 // ---------------------------------------------------------------------------
