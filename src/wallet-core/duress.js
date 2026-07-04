@@ -167,6 +167,16 @@ export async function tryDuressUnlock(password) {
   }
 }
 
+/** Check if a duress vault (decoy) is configured. */
+export async function hasDuressPin() {
+  try {
+    const blob = await loadDecoy();
+    return blob !== null;
+  } catch {
+    return false;
+  }
+}
+
 /** Remove the decoy vault. */
 export async function clearDuressVault() {
   const db = await openDb();
