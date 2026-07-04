@@ -40,7 +40,7 @@ import { DEMO } from "@/api/demoClient";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
-import { getBiometricStatus, setBiometricUnlockEnabled } from "@/lib/biometric";
+import { getBiometricStatus, setBiometricUnlockEnabled, BIOMETRIC_PREF_KEY } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
@@ -164,6 +164,8 @@ export default function DuressPin() {
         // AND secure storage cache. This ensures the old duress PIN isn't used.
         // When user unlocks with real PIN next time, they can re-enable biometric.
         await disableBiometricUnlock();
+        // Explicitly clear localStorage biometric preference to ensure it's gone
+        try { localStorage.removeItem(BIOMETRIC_PREF_KEY); } catch { }
         // Lock the wallet to force state reset and clear stale biometric UI
         lock();
         setDuressExists(false);
