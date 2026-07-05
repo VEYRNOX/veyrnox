@@ -20,4 +20,4 @@ jobs:
           cache: npm
       # Lockfile is authored with npm 11; Node 22 ships npm 10. Match CI.
       - run: npm install -g npm@11
-      - run: npm ci
+      - run: npm install --legacy-peer-deps

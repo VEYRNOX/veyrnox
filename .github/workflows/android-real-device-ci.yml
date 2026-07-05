@@ -1,22 +1,8 @@
-name: Android Real Device E2E Tests (BrowserStack)
+name: Android Real Device E2E Tests (BrowserStack) [DISABLED]
 
+# BrowserStack requires a paid subscription ($250+). Disabled from automatic
+# CI runs — trigger manually via workflow_dispatch when subscription is active.
 on:
-  push:
-    branches:
-      - main
-      - develop
-      - 'claude/**'
-    # Docs-only pushes shouldn't burn BrowserStack device minutes.
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-  pull_request:
-    branches:
-      - main
-      - develop
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
   workflow_dispatch:
 
 concurrency:
@@ -59,10 +45,10 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g npm@11
-          npm ci
+          npm install --legacy-peer-deps
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           # Capacitor 8 / the Android Gradle build target Java 21 (matches ci.yml).

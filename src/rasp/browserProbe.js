@@ -94,23 +94,25 @@ function sampleSignals() {
  *
  * @type {{ available: boolean, signals?: import('./detect.js').ProbeSignals }}
  */
-export const browserProbeSource = Object.freeze(
-  Object.defineProperties(
-    {},
-    {
-      available: {
-        enumerable: true,
-        get() {
-          return sampleSignals() !== null;
+export const browserProbeSource = /** @type {{ available: boolean, signals?: import('./detect.js').ProbeSignals }} */ (
+  Object.freeze(
+    Object.defineProperties(
+      {},
+      {
+        available: {
+          enumerable: true,
+          get() {
+            return sampleSignals() !== null;
+          },
+        },
+        signals: {
+          enumerable: true,
+          get() {
+            // Fresh sample per read; undefined when not a browser (available:false).
+            return sampleSignals() ?? undefined;
+          },
         },
       },
-      signals: {
-        enumerable: true,
-        get() {
-          // Fresh sample per read; undefined when not a browser (available:false).
-          return sampleSignals() ?? undefined;
-        },
-      },
-    },
-  ),
+    ),
+  )
 );
