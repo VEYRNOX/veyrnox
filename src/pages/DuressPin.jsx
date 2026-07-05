@@ -34,7 +34,6 @@
 //     REAL unlock path so the behaviour is demonstrable on the simulator.
 
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
@@ -43,7 +42,6 @@ import {
 } from "@/lib/decoyBalance";
 import { getBiometricStatus } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
-import { tryDuressUnlock, clearDuressVault } from "@/wallet-core/duress";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
   Copy, Check, RefreshCw, Coins, ExternalLink, Fingerprint,
@@ -97,12 +95,11 @@ function DecoyBalance({ address, refreshKey }) {
 }
 
 export default function DuressPin() {
-  const navigate = useNavigate();
   const wallet = useWallet();
   const {
     isUnlocked, isDecoy, accounts,
     hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
-    createWallet, unlock, lock, clearVault, hasDuressPin,
+    createWallet, unlock, lock, clearVault,
   } = wallet;
   const { requireTwoFactor, gateModal } = useActionGuard();
 
@@ -139,8 +136,12 @@ export default function DuressPin() {
   const [tryErr, setTryErr] = useState("");
   const [busy, setBusy] = useState("");
 
-  // ----- detect if a duress PIN is already set -----
-  const [duressExists, setDuressExists] = useState(false);
+  // ----- removal (no configured-state probe) -----
+  // DENIABILITY (framing guard, security-framing.test.js): this page must never
+  // ask "is an Emergency PIN set?" — not in copy and not computed from the slot
+  // (no hasDuressPin here). The removal card below is therefore ALWAYS rendered
+  // and removeDuressPin() is idempotent, so the page looks and behaves
+  // identically whether or not a duress vault exists.
   const [removingDuress, setRemovingDuress] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -148,15 +149,6 @@ export default function DuressPin() {
   }, [hasVault]);
 
   useEffect(() => { refresh(); }, [refresh]);
-
-  // Detect if a duress PIN is already configured.
-  useEffect(() => {
-    let active = true;
-    hasDuressPin()
-      .then((has) => { if (active) setDuressExists(has); })
-      .catch(() => { if (active) setDuressExists(false); });
-    return () => { active = false; };
-  }, [hasDuressPin]);
 
   const handleRemoveDuress = () => {
     requireTwoFactor(async () => {
@@ -170,7 +162,6 @@ export default function DuressPin() {
         // wallet. Do NOT call disableBiometricUnlock() here — that kills the
         // preference and permanently breaks the re-arm path.
         await removeDuressPin();
-        setDuressExists(false);
         setSavedPhrase(""); setSavedAddr("");
         setError("");
         await refresh();
@@ -214,7 +205,6 @@ export default function DuressPin() {
         }
         setSavedPhrase(mnemonic);
         setSavedAddr(address);
-        setDuressExists(true);
         setPin(""); setConfirmPin(""); setDuressStep("enter");
         await refresh();
       } catch (e) {
@@ -352,29 +342,6 @@ export default function DuressPin() {
         </ul>
       </div>
 
-      {/* Remove existing duress PIN — shown when one is already set */}
-      {duressExists && !savedPhrase && (
-        <div className="p-5 rounded-xl border border-destructive/20 bg-destructive/5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <span className="font-medium">Emergency PIN is configured</span>
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            You have already set an Emergency PIN. To disable your hidden wallet and remove this PIN,
-            click the button below.
-          </p>
-          <Button
-            variant="destructive"
-            size="sm"
-            disabled={removingDuress}
-            onClick={handleRemoveDuress}
-            data-testid="remove-duress-pin-btn"
-          >
-            {removingDuress ? "Removing…" : "Remove Emergency PIN"}
-          </Button>
-        </div>
-      )}
-
       {/* Setup card */}
       <div className="p-5 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 mb-4">
@@ -494,6 +461,37 @@ export default function DuressPin() {
           </div>
         )}
       </div>
+
+      {/* Remove Emergency PIN — ALWAYS rendered (deniability model v2). Never
+          gated on slot presence: showing this card only when a PIN exists would
+          be a configured-state oracle. removeDuressPin() is idempotent and the
+          biometric cache clear + lock() run unconditionally, so pressing it
+          looks and behaves the same whether or not a duress vault exists.
+          Hidden only during the just-saved success state (session-local UI
+          state, not a slot read). */}
+      {!savedPhrase && (
+        <div className="p-5 rounded-xl border border-border bg-card">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="h-5 w-5 text-muted-foreground" />
+            <span className="font-medium">Remove Emergency PIN</span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Clears any Emergency PIN and hidden-wallet access from this device.
+            For your protection, this page never shows whether an Emergency PIN
+            exists — this action runs the same way either way, and you&apos;ll be
+            asked to unlock again afterwards.
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={removingDuress}
+            onClick={handleRemoveDuress}
+            data-testid="remove-duress-pin-btn"
+          >
+            {removingDuress ? "Removing…" : "Remove Emergency PIN"}
+          </Button>
+        </div>
+      )}
 
       {/* Live demonstration — DEMO only */}
       {DEMO && (
