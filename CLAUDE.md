@@ -36,15 +36,44 @@ identity; the app never holds keys server-side.
   `0xeb71a5d…` txid proved the KEK-gated unlock FLOW end-to-end but did NOT prove
   per-enrollment salt binding — enroll and unlock both silently used the same fixed salt,
   so they matched by construction. All enrolled Android vaults still derive H from the same
-  global HMAC input; the original C-1 CRITICAL condition is unresolved. Status: **C-1
-  REGRESSED / binding-unconfirmed (2026-07-05 finding)** — see the dated annotation in
-  `docs/audit-2026-07-01-kek-internal.md`. A v3 fix (facade arg forwarding + base64 salt
-  over the bridge + Kotlin fail-closed on malformed salt + `hardwareKekVersion:3` with a
-  lazy brickless v2→v3 upgrade) is in progress on branch `claude/silly-knuth-0e85fc`; device
-  re-verification, a new user-supplied txid, and a salt-tamper negative test are REQUIRED
-  before any "RESOLVED" claim returns. The Android StrongBox unlock FLOW itself remains
-  device-verified — only the salt-binding claim has regressed. Remaining open besides this:
-  native/device-gated findings (iOS-F5, iOS-F3, H-2/iOS-F11 iOS half, iOS-F9 evidence gap).
+  global HMAC input; the original C-1 CRITICAL condition was unresolved at that point.
+  **FIXED / device-verified 2026-07-05, later the same day (v3, PR #568):** facade
+  argument forwarding closes Bug A; `hardware.js` base64-encodes `kekSalt` to a STRING
+  before the bridge call, closing Bug B; the Kotlin plugin fails closed on a
+  malformed/absent salt (no silent v1 fallback); the vault stamps `hardwareKekVersion:3`
+  for genuinely salt-bound wraps, with a lazy brickless v2→v3 upgrade path for previously
+  (falsely) v2-stamped vaults. On-device (Pixel 10 Pro XL, Android 16, `com.veyrnox.app.debug`,
+  device-local times): 07:19:35 fresh v3 enrollment (`"enroll: key stored —
+  tier=STRONGBOX (securityLevel=2)"`); 07:19:37 `getHardwareFactor` bridge call carried
+  `kekSalt` as an intact 44-char base64 STRING (previously `{}`), logging `"salt-source:
+  v2-bound"`; cold restart (07:37:46) + unlock (07:40:00-03) repeated the same
+  `"salt-source: v2-bound"` result with the SAME stored salt — closing the Android
+  unlock-path app-trace evidence gap (the Android analogue of iOS-F9); KEK-gated Sepolia
+  send from this vault, txid
+  `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`, block 11206686,
+  status SUCCESS, independently re-confirmed via RPC receipt. Status: **C-1 FIXED /
+  device-verified (v3 fresh-enroll path, end-to-end incl. on-chain txid, 2026-07-05)** —
+  see the dated resolution annotation (the 2026-07-05 regression note above it is
+  preserved, not deleted) in `docs/audit-2026-07-01-kek-internal.md`. Still outstanding,
+  explicitly: (1) salt-tamper negative test not performed (stored vault lives inside
+  encrypted SecureStorage; non-invasive tamper not feasible on this device — the
+  `"salt-source: v2-bound"` branch attestation is the operative evidence that the supplied
+  salt is the HMAC input); (2) v2→v3 lazy migration path NOT device-exercised (test device
+  had no v2 vault — fresh enroll only; migration remains unit-tested only, 11 tests);
+  (3) per-enrollment salt distinctness on device unit-proven only, one enrollment observed;
+  (4) independent audit. **New finding LOG-1 (2026-07-05, HIGH for debug/CI context):**
+  Capacitor's debug bridge logger echoes every native plugin result to logcat in DEBUG
+  builds — captured on-device: the hardware KEK factor H in cleartext base64 and the full
+  encrypted vault blob. Debug builds only; production default is silent but unverified for
+  our actual release build config. Risk: `adb` access to a debug build extracts H; Appium
+  CI logcat artifacts may also capture it. Not a production finding until release config is
+  verified; remediation tracked separately (spawned as its own task), not part of PR #568.
+  Also from this session: the P3 "Biometric unlock" enrollment flow was device-exercised
+  2026-07-05 (honest "Enroll biometric unlock" `BiometricAuth` prompt observed in device
+  logs) — the originally reported bug ("WebAuthn native plugins not working") is FIXED /
+  device-exercised for enrollment; the "passkey" WebAuthn path on native remains
+  honest-disabled by design. Remaining open besides C-1: native/device-gated findings
+  (iOS-F5, iOS-F3, H-2/iOS-F11 iOS half, iOS-F9 evidence gap).
   H-NEW-D CLOSED (SE ECIES confirmed in ObjC at `HardwareKekPlugin.m:78`).
   INTERNAL pass — not independent. See `docs/audit-2026-07-01-kek-internal.md`.
 - **Verify, don't assert.** An asset/feature is "verified" ONLY after a real on-chain
@@ -122,14 +151,41 @@ identity; the app never holds keys server-side.
   also derived H from the fixed salt while stamping `hardwareKekVersion:2`. Net: the
   `0xeb71a5d…` txid proved the KEK-gated unlock FLOW end-to-end but did NOT prove
   per-enrollment salt binding (enroll and unlock silently matched on the same fixed
-  salt); all enrolled Android vaults still derive H from the same global HMAC input —
-  the original C-1 CRITICAL condition. Status: **C-1 REGRESSED / binding-unconfirmed
-  (2026-07-05 finding)**, INTERNAL. A v3 fix (facade arg forwarding + base64 salt over
-  the bridge + Kotlin fail-closed on malformed salt + `hardwareKekVersion:3` with a lazy
-  brickless v2→v3 upgrade) is in progress on branch `claude/silly-knuth-0e85fc`; device
-  re-verification, a new user-supplied txid, and a salt-tamper negative test are REQUIRED
-  before any "RESOLVED" claim returns. The StrongBox-gated unlock FLOW itself remains
-  device-verified from the 2026-07-02 session — only the salt-binding claim regresses.
+  salt); all enrolled Android vaults still derived H from the same global HMAC input —
+  the original C-1 CRITICAL condition, at that point unresolved.
+  **FIXED / device-verified 2026-07-05, later the same day (v3, PR #568):** facade
+  argument forwarding closes Bug A; `hardware.js` base64-encodes `kekSalt` to a STRING
+  before the bridge call, closing Bug B; the Kotlin plugin fails closed on a
+  malformed/absent salt (no silent v1 fallback); the vault stamps `hardwareKekVersion:3`
+  for genuinely salt-bound wraps, with a lazy brickless v2→v3 upgrade path for previously
+  (falsely) v2-stamped vaults. 11 migration unit tests added. On-device (Pixel 10 Pro XL,
+  Android 16, `com.veyrnox.app.debug`, device-local times): 07:19:35 fresh v3 enrollment
+  (`"enroll: key stored — tier=STRONGBOX (securityLevel=2)"`); 07:19:37 `getHardwareFactor`
+  bridge call carried `kekSalt` as an intact 44-char base64 STRING (previously `{}`),
+  logging `"salt-source: v2-bound"`; cold restart (07:37:46) + unlock (07:40:00-03)
+  repeated the same result with the SAME stored salt — closing the Android unlock-path
+  app-trace evidence gap (the Android analogue of iOS-F9); KEK-gated Sepolia send from
+  this vault, txid `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`,
+  block 11206686, status SUCCESS, independently re-confirmed via RPC receipt. Status:
+  **C-1 FIXED / device-verified (v3 fresh-enroll path, end-to-end incl. on-chain txid,
+  2026-07-05)**, INTERNAL — not independently audited. Still outstanding, explicitly:
+  (1) salt-tamper negative test not performed (encrypted SecureStorage makes a
+  non-invasive tamper infeasible on this device — the `"salt-source: v2-bound"` branch
+  attestation is the operative evidence of salt binding); (2) v2→v3 lazy migration path
+  NOT device-exercised (fresh enroll only on the test device; migration remains
+  unit-tested only, 11 tests); (3) per-enrollment salt distinctness on device unit-proven
+  only, one enrollment observed; (4) independent audit. **New finding LOG-1 (2026-07-05,
+  HIGH for debug/CI context):** Capacitor's debug bridge logger echoes every native
+  plugin result to logcat in DEBUG builds — captured on-device: the hardware KEK factor H
+  in cleartext base64 and the full encrypted vault blob. Debug builds only; production
+  default is silent but unverified for our release build config. Risk: `adb` access to a
+  debug build extracts H; Appium CI logcat artifacts may also capture it. Remediation
+  tracked separately (spawned as its own task), not part of PR #568. Also from this
+  session: the P3 "Biometric unlock" enrollment flow was device-exercised 2026-07-05
+  07:19:16 (honest "Enroll biometric unlock" `BiometricAuth` prompt observed in device
+  logs) — the originally reported bug ("WebAuthn native plugins not working") is FIXED /
+  device-exercised for enrollment; the "passkey" WebAuthn path on native remains
+  honest-disabled by design.
   H-1 — StrongBox tier not surfaced to user; TEE/software fallback silent (UI update needed).
   FIXED in PR #527 (merged 2026-07-02): `tierBadge.js` pure helper maps
   `securityLevelName` → badge label/variant; `HardwareKekSettings.jsx` reads real tier
@@ -142,31 +198,48 @@ identity; the app never holds keys server-side.
   — see iOS bullet.) M-3 fixed (PR #522): `detectTamper()` now fail-closed
   (`getOrElse { true }`). H-4 fixed (PR #522): zero-vector H check in `hardware.js`.
   Outstanding: StrongBox tier enforcement (H-1 FIXED PR #527), independent audit. C-1
-  REGRESSED / binding-unconfirmed (2026-07-05 finding — see Android bullet above; PR #529
-  merged and txid `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`
-  proved the unlock FLOW, not salt binding; v3 fix in progress, device re-verification
-  required). Android biometric re-enrollment invalidation test DONE (PR #516/#518).
+  FIXED / device-verified (v3, 2026-07-05, PR #568 — see Android bullet above; txid
+  `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`, block 11206686),
+  following a same-day regression-then-fix cycle (previously REGRESSED / binding-
+  unconfirmed earlier 2026-07-05; before that, RESOLVED / device-verified 2026-07-02 on
+  PR #529 + txid `0xeb71a5d…` block 11185289, which proved the unlock FLOW only, not salt
+  binding). Salt-tamper negative test, v2→v3 migration device-exercise, on-device
+  multi-enrollment salt distinctness, and independent audit remain outstanding. New
+  finding LOG-1 (debug-build logcat leaks H + vault blob in cleartext) also open. Android
+  biometric re-enrollment invalidation test DONE (PR #516/#518).
   H-1 UI surfacing: FIXED PR #527 (merged 2026-07-02).
   See `docs/hardware-kek-phase-plan.md`, `docs/Feature-Status.md` §4, and
   `docs/audit-2026-07-01-kek-internal.md` for full evidence.
 - Status is BUILT + device-verified for both platforms on the unlock FLOW (Android
-  end-to-end, iOS partial / no SE-unlock log trace) — 2026-07-01 INTERNAL static-analysis
-  audit complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; H-1 FIXED PR #527). NOT
-  independently audited. On-chain evidence exists on BOTH platforms' KEK-gated unlock
-  path, but at different confidence and now with a regressed claim on Android's C-1 item:
-  Android is device-verified end-to-end on the StrongBox-unlock FLOW (Sepolia txid
-  `0xeb71a5d…`, block 11185289, 2026-07-02, PR #529) — **but the C-1 per-enrollment
-  salt-binding claim tied to that same PR is REGRESSED / binding-unconfirmed as of a
-  2026-07-05 finding** (see Android bullet above: facade arg-drop + bridge
-  JSON.stringify silently reverted enroll and unlock to the fixed v1 salt, so the txid
-  proved the flow but not the binding; v3 fix in progress on this branch, device
-  re-verification + a new txid + a salt-tamper negative test required before "RESOLVED"
-  is claimed again). iOS has an OS-daemon-corroborated KEK-gated Sepolia txid
-  (`0x5116e7bc…`, block 11185985, 2026-07-02 — coreauthd/ctkd/biometrickitd correlation
-  to the app pid), but the LITERAL SE-unlock app-trace (iOS-F9) is still open, so iOS
-  remains device-verified PARTIAL, not full. Neither platform is independently audited;
-  the iOS txids are recorded as non-promoting META evidence (they do not flip iOS KEK to
-  catalogue-`verified`).
+  end-to-end including the C-1 salt-binding fix, iOS partial / no SE-unlock log trace) —
+  2026-07-01 INTERNAL static-analysis audit complete (1C/9H/12M/6L; 10 fixed
+  PRs #520–#522; H-1 FIXED PR #527). NOT independently audited. On-chain evidence exists
+  on BOTH platforms' KEK-gated unlock path, at different confidence, and Android's C-1
+  item has been through a same-day regression-then-fix cycle on 2026-07-05: Android is
+  device-verified end-to-end on the StrongBox-unlock FLOW (Sepolia txid `0xeb71a5d…`,
+  block 11185289, 2026-07-02, PR #529) — the C-1 per-enrollment salt-binding claim tied
+  to that PR was found REGRESSED / binding-unconfirmed earlier on 2026-07-05 (facade
+  arg-drop + bridge JSON.stringify silently reverted enroll and unlock to the fixed v1
+  salt, so the txid proved the flow but not the binding), then **FIXED / device-verified
+  the same day** via a v3 fix (PR #568): fresh v3 enrollment, cold-restart unlock, and a
+  new KEK-gated Sepolia send (txid
+  `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`, block 11206686)
+  all logged `"salt-source: v2-bound"` only when the intact salt crossed the Capacitor
+  bridge — INTERNAL evidence, not independent audit. Still outstanding on the Android
+  C-1 item: a salt-tamper negative test (not feasible non-invasively on this device), the
+  v2→v3 lazy migration path device-exercise (unit-tested only), on-device multi-enrollment
+  salt distinctness (unit-proven only), and independent audit. A new finding, LOG-1
+  (Capacitor's debug bridge logger echoes the KEK factor H and the full vault blob to
+  logcat in DEBUG builds — HIGH for debug/CI context, not yet a production finding), also
+  surfaced during the 2026-07-05 device-verification session; remediation is tracked
+  separately. iOS has an OS-daemon-corroborated KEK-gated Sepolia txid (`0x5116e7bc…`,
+  block 11185985, 2026-07-02 — coreauthd/ctkd/biometrickitd correlation to the app pid),
+  but the LITERAL SE-unlock app-trace (iOS-F9) is still open, so iOS remains
+  device-verified PARTIAL, not full. Neither platform is independently audited; the iOS
+  txids are recorded as non-promoting META evidence (they do not flip iOS KEK to
+  catalogue-`verified`), and neither are the new Android v3 txids — this update records a
+  device-verified fix, not a catalogue "verified" promotion (that bar remains the strict
+  per-asset explorer-txid rule and does not apply to an unlock-gate feature).
 
 ## Security invariants
 
