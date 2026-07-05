@@ -138,6 +138,11 @@ jobs:
         run: npm run test:e2e
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:5173
+        # Step-level timeout so a hung/slow suite trips continue-on-error
+        # instead of the job-level timeout, which cancels the whole job and
+        # defeats the non-blocking design (observed: suite ran 28 min, job
+        # killed at 30).
+        timeout-minutes: 20
         continue-on-error: true
 
       - name: Upload Web Test Results
