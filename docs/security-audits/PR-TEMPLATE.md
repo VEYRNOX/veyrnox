@@ -1,5 +1,17 @@
 # Pull Request Template - VEYRNOX Security Audit
 
+> **PROVENANCE — INTERNAL AUDIT, NOT INDEPENDENT.** This document was produced by a
+> Claude Code (AI) security-audit agent operated by the Veyrnox project itself. Per
+> project rule I4, an internal audit must never be presented as "independent"; earlier
+> revisions of this document set were mislabeled "Independent" and have been relabeled.
+> The only independent audit of Veyrnox to date is the third-party ECC audit
+> (2026-06-23). Context note: this audit's "conditional mainnet readiness" framing
+> predates awareness that mainnet was already unlocked on 2026-06-17 via the internal
+> audit gate (`docs/audit-triage/internal-audit-2026-06-17.md`); read its deployment
+> recommendations in that light. Its three "critical blockers" were subsequently
+> addressed in PR #598.
+
+
 ## Instructions
 1. Push the branch to remote: `git push -u origin audit/veyrnox-security-2026-07-05`
 2. Create PR on GitHub with this template
@@ -20,7 +32,7 @@ docs(audit): VEYRNOX comprehensive security audit - 2026-07-05
 
 ## 📦 Deliverables (6 Comprehensive Reports)
 
-### ⭐ PRIMARY: VEYRNOX-INDEPENDENT-SECURITY-AUDIT-FINAL.md
+### ⭐ PRIMARY: VEYRNOX-INTERNAL-SECURITY-AUDIT-FINAL.md
 - **Length**: 50+ pages
 - **Scope**: Complete architectural verification, feature assessment, mainnet readiness
 - **Includes**: 
@@ -114,7 +126,7 @@ docs(audit): VEYRNOX comprehensive security audit - 2026-07-05
    - Executive overview for leadership
    - Risk assessment and timeline
 
-2. **VEYRNOX-INDEPENDENT-SECURITY-AUDIT-FINAL.md** (1-2 hours)
+2. **VEYRNOX-INTERNAL-SECURITY-AUDIT-FINAL.md** (1-2 hours)
    - Main comprehensive audit report
    - All findings and assessments
 
@@ -170,7 +182,7 @@ docs(audit): VEYRNOX comprehensive security audit - 2026-07-05
 **Location**: `docs/security-audits/veyrnox-2026-07-05/`
 
 ```
-├── VEYRNOX-INDEPENDENT-SECURITY-AUDIT-FINAL.md (844 lines) ⭐
+├── VEYRNOX-INTERNAL-SECURITY-AUDIT-FINAL.md (844 lines) ⭐
 ├── CRITICAL-FINDINGS-DEEP-DIVE.md (893 lines)
 ├── STAKEHOLDER-PRESENTATION.md (545 lines)
 ├── PENETRATION-TEST-EXECUTION-GUIDE.md (497 lines)

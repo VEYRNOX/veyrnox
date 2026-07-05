@@ -1,4 +1,16 @@
 # VEYRNOX Security Recommendations
+
+> **PROVENANCE — INTERNAL AUDIT, NOT INDEPENDENT.** This document was produced by a
+> Claude Code (AI) security-audit agent operated by the Veyrnox project itself. Per
+> project rule I4, an internal audit must never be presented as "independent"; earlier
+> revisions of this document set were mislabeled "Independent" and have been relabeled.
+> The only independent audit of Veyrnox to date is the third-party ECC audit
+> (2026-06-23). Context note: this audit's "conditional mainnet readiness" framing
+> predates awareness that mainnet was already unlocked on 2026-06-17 via the internal
+> audit gate (`docs/audit-triage/internal-audit-2026-06-17.md`); read its deployment
+> recommendations in that light. Its three "critical blockers" were subsequently
+> addressed in PR #598.
+
 **Date**: 2026-07-05  
 **Audience**: Leadership, Security Team, Engineering  
 **Priority**: CRITICAL PATH TO MAINNET

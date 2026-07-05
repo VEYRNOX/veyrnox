@@ -1,4 +1,16 @@
-# VEYRNOX Independent Security Audit: Complete Deliverables
+# VEYRNOX Internal Security Audit (AI-assisted): Complete Deliverables
+
+> **PROVENANCE — INTERNAL AUDIT, NOT INDEPENDENT.** This document was produced by a
+> Claude Code (AI) security-audit agent operated by the Veyrnox project itself. Per
+> project rule I4, an internal audit must never be presented as "independent"; earlier
+> revisions of this document set were mislabeled "Independent" and have been relabeled.
+> The only independent audit of Veyrnox to date is the third-party ECC audit
+> (2026-06-23). Context note: this audit's "conditional mainnet readiness" framing
+> predates awareness that mainnet was already unlocked on 2026-06-17 via the internal
+> audit gate (`docs/audit-triage/internal-audit-2026-06-17.md`); read its deployment
+> recommendations in that light. Its three "critical blockers" were subsequently
+> addressed in PR #598.
+
 **Audit Date**: 2026-07-05  
 **Status**: COMPLETE  
 **Final Verdict**: 🟡 CONDITIONAL MAINNET READY
@@ -9,7 +21,7 @@
 
 ### Core Audit Documents (4 Reports)
 
-#### 1. **VEYRNOX-INDEPENDENT-SECURITY-AUDIT-FINAL.md** ⭐ PRIMARY REPORT
+#### 1. **VEYRNOX-INTERNAL-SECURITY-AUDIT-FINAL.md** ⭐ PRIMARY REPORT
 **Scope**: Complete comprehensive audit (Full document)  
 **Length**: ~50 pages  
 **Audience**: All stakeholders (technical + non-technical)  
@@ -266,7 +278,7 @@ npm run deploy
 
 **Security Team Lead**:
 → Read: STAKEHOLDER-PRESENTATION.md (20 min)
-→ Then: VEYRNOX-INDEPENDENT-SECURITY-AUDIT-FINAL.md (main findings)
+→ Then: VEYRNOX-INTERNAL-SECURITY-AUDIT-FINAL.md (main findings)
 
 **Engineering Lead**:
 → Read: CRITICAL-FINDINGS-DEEP-DIVE.md (remediation guides)
@@ -380,7 +392,7 @@ C:\Users\aljob\AppData\Local\Temp\claude\C--Users-aljob-Downloads-VEYRNOX-CLONE-
 ```
 
 ### File List
-- `VEYRNOX-INDEPENDENT-SECURITY-AUDIT-FINAL.md` (Primary)
+- `VEYRNOX-INTERNAL-SECURITY-AUDIT-FINAL.md` (Primary)
 - `VEYRNOX-PRELIMINARY-AUDIT-FINDINGS.md` (Design review)
 - `CRITICAL-FINDINGS-DEEP-DIVE.md` (Remediation guide)
 - `STAKEHOLDER-PRESENTATION.md` (Executive brief)
