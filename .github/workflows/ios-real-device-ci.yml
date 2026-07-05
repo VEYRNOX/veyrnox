@@ -1,31 +1,15 @@
-name: Android Real Device E2E Tests (BrowserStack)
+name: iOS Real Device E2E Tests (BrowserStack)
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-      - 'claude/**'
-    # Docs-only pushes shouldn't burn BrowserStack device minutes.
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-  pull_request:
-    branches:
-      - main
-      - develop
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-  workflow_dispatch:
+  workflow_dispatch: # Manually trigger only — iOS workspace setup required before auto-runs
 
 concurrency:
-  group: browserstack-${{ github.ref }}
+  group: browserstack-ios-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   real-device-e2e-tests:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 90
 
     steps:
@@ -42,12 +26,11 @@ jobs:
             -u "${{ secrets.BROWSERSTACK_USERNAME }}:${{ secrets.BROWSERSTACK_ACCESS_KEY }}" \
             https://api-cloud.browserstack.com/app-automate/plan.json)
           if [ "$STATUS" != "200" ]; then
-            echo "::error::BrowserStack credential check failed (HTTP $STATUS). Verify the secrets against https://www.browserstack.com/accounts/profile/details"
+            echo "::error::BrowserStack credential check failed (HTTP $STATUS)"
             cat plan.json || true
             exit 1
           fi
-          echo "BrowserStack credentials OK. Plan:"
-          cat plan.json
+          echo "BrowserStack credentials OK"
           rm -f plan.json
 
       - name: Setup Node.js
@@ -61,45 +44,44 @@ jobs:
           npm install -g npm@11
           npm ci
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          # Capacitor 8 / the Android Gradle build target Java 21 (matches ci.yml).
-          java-version: 21
-
-      - name: Build APK for testing
+      - name: Build IPA for testing
         run: |
           npm run build
-          npx cap sync android
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --build-cache
-          cd ..
+          npx cap sync ios
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -derivedDataPath build
+          cd ../..
 
-      - name: Upload APK to BrowserStack
-        id: upload-apk
+      - name: Upload IPA to BrowserStack
+        id: upload-ipa
         run: |
-          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-          if [ ! -f "$APK_PATH" ]; then
-            echo "::error::Debug APK not found at $APK_PATH"
+          IPA_PATH=$(find ios/App/build -name "*.ipa" 2>/dev/null | head -1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "::error::Debug IPA not found in ios/App/build"
             exit 1
           fi
+          if [ ! -f "$IPA_PATH" ]; then
+            echo "::error::IPA file not found at $IPA_PATH"
+            exit 1
+          fi
+          echo "Found IPA at: $IPA_PATH"
+
           UPLOAD_RESPONSE=$(curl -s -u "${{ secrets.BROWSERSTACK_USERNAME }}:${{ secrets.BROWSERSTACK_ACCESS_KEY }}" \
-            -F "file=@$APK_PATH" \
+            -F "file=@$IPA_PATH" \
             https://api-cloud.browserstack.com/app-automate/upload)
+
           APP_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.app_url // empty')
           if [ -z "$APP_URL" ]; then
             UPLOAD_ERROR=$(echo "$UPLOAD_RESPONSE" | jq -r '.error // empty')
-            # Quota exhaustion is an account condition, not a code failure. Skip
-            # honestly (green + loud warning; tests explicitly DID NOT run) rather
-            # than failing every PR red. All other upload errors stay hard failures.
             if echo "$UPLOAD_ERROR" | grep -q "BROWSERSTACK_TESTING_TIME_LIMIT_EXHAUSTED"; then
               echo "::warning title=Real-device E2E SKIPPED::BrowserStack App Automate testing time is exhausted. Real-device E2E tests DID NOT RUN on this commit. Extend the BrowserStack plan to re-enable."
               echo "skipped=true" >> $GITHUB_OUTPUT
               exit 0
             fi
-            echo "::error::Failed to upload APK to BrowserStack"
+            echo "::error::Failed to upload IPA to BrowserStack"
             echo "Response: $UPLOAD_RESPONSE"
             exit 1
           fi
@@ -108,24 +90,24 @@ jobs:
           echo "skipped=false" >> $GITHUB_OUTPUT
 
       - name: Run E2E tests on BrowserStack real device
-        if: steps.upload-apk.outputs.skipped != 'true'
+        if: steps.upload-ipa.outputs.skipped != 'true'
         env:
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
-          BROWSERSTACK_APP_URL: ${{ steps.upload-apk.outputs.app_url }}
-          BROWSERSTACK_BUILD_NAME: 'Veyrnox ${{ github.ref_name }} @ ${{ github.sha }}'
-        run: npm run android:test:browserstack
+          BROWSERSTACK_APP_URL: ${{ steps.upload-ipa.outputs.app_url }}
+          BROWSERSTACK_BUILD_NAME: 'Veyrnox iOS ${{ github.ref_name }} @ ${{ github.sha }}'
+        run: npm run ios:test:browserstack
 
       - name: Report dashboard link
         if: always()
         run: |
-          echo "## Android Real Device E2E (BrowserStack)" >> $GITHUB_STEP_SUMMARY
+          echo "## iOS Real Device E2E (BrowserStack)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.upload-apk.outputs.skipped }}" = "true" ]; then
+          if [ "${{ steps.upload-ipa.outputs.skipped }}" = "true" ]; then
             echo "> [!WARNING]" >> $GITHUB_STEP_SUMMARY
-            echo "> **SKIPPED — no device tests ran on this commit.** BrowserStack App Automate testing time is exhausted (free-trial quota). The APK built successfully but could not be uploaded. Extend the BrowserStack plan to re-enable real-device E2E." >> $GITHUB_STEP_SUMMARY
+            echo "> **SKIPPED — no device tests ran on this commit.** BrowserStack App Automate testing time is exhausted (free-trial quota). The IPA built successfully but could not be uploaded. Extend the BrowserStack plan to re-enable real-device E2E." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
-          echo "- Device: Google Pixel 10 Pro XL (Android 16.0)" >> $GITHUB_STEP_SUMMARY
+          echo "- Device: iPhone 17 Pro (iOS 18.0)" >> $GITHUB_STEP_SUMMARY
           echo "- Build: Veyrnox ${{ github.ref_name }} @ ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- Sessions, video, and device logs: https://app-automate.browserstack.com/dashboard" >> $GITHUB_STEP_SUMMARY

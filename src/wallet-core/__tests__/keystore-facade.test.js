@@ -9,8 +9,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { unlockSpy } = vi.hoisted(() => ({
+const { unlockSpy, getHardwareFactorSpy } = vi.hoisted(() => ({
   unlockSpy: vi.fn(async () => 'mnemonic-plaintext'),
+  getHardwareFactorSpy: vi.fn(async () => new Uint8Array(32).fill(1)),
 }));
 
 // Force the native branch of getKeyStore() and stub the lazily-imported native
@@ -19,13 +20,13 @@ vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => true },
 }));
 vi.mock('../keystore/native.js', () => ({
-  nativeKeyStore: { unlock: unlockSpy },
+  nativeKeyStore: { unlock: unlockSpy, getHardwareFactor: getHardwareFactorSpy },
 }));
 
 import { getKeyStore } from '../keystore/index.js';
 
 describe('native keystore facade', () => {
-  beforeEach(() => unlockSpy.mockClear());
+  beforeEach(() => { unlockSpy.mockClear(); getHardwareFactorSpy.mockClear(); });
 
   it('forwards unlock opts (requireBiometric) to the native KeyStore', async () => {
     const ks = getKeyStore();
@@ -37,5 +38,21 @@ describe('native keystore facade', () => {
     const ks = getKeyStore();
     await ks.unlock('pw');
     expect(unlockSpy).toHaveBeenCalledWith('pw', undefined);
+  });
+
+  // C-1 regression (2026-07-05): the facade's getHardwareFactor() dropped ALL args,
+  // so the v2 { kekSalt } binding never reached native.js — every enrolled vault fell
+  // back to the fixed v1 salt. Pin that opts are forwarded verbatim (never dropped).
+  it('forwards getHardwareFactor opts ({ kekSalt }) to the native KeyStore', async () => {
+    const ks = getKeyStore();
+    const kekSalt = new Uint8Array(32).fill(5);
+    await ks.getHardwareFactor({ kekSalt });
+    expect(getHardwareFactorSpy).toHaveBeenCalledWith({ kekSalt });
+  });
+
+  it('forwards a no-arg getHardwareFactor as undefined (v1 legacy path)', async () => {
+    const ks = getKeyStore();
+    await ks.getHardwareFactor();
+    expect(getHardwareFactorSpy).toHaveBeenCalledWith(undefined);
   });
 });

@@ -96,7 +96,7 @@ export default function PanicWipe() {
   const {
     isUnlocked, wasWiped,
     hasVault, setDuressPin,
-    setPanicPin, panicWipe, inspectKeyMaterial,
+    setPanicPin, removePanicPin, panicWipe, inspectKeyMaterial,
     addHiddenWallet, createWallet, unlock, lock,
   } = useWallet();
 
@@ -129,6 +129,12 @@ export default function PanicWipe() {
   const [after, setAfter] = useState(null);
   const [busy, setBusy] = useState("");
   const [demoErr, setDemoErr] = useState("");
+
+  // ----- remove panic wipe state -----
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState("");
+  const [removed, setRemoved] = useState(false);
 
   const refresh = useCallback(async () => {
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
@@ -171,6 +177,22 @@ export default function PanicWipe() {
         setWiping(false);
       }
     }, { title: "Confirm device wipe" });
+  };
+
+  // ----- remove panic wipe -----
+  const handleRemovePanic = async () => {
+    setRemoveError("");
+    setRemoving(true);
+    try {
+      await removePanicPin();
+      setShowRemoveConfirm(false);
+      setRemoved(true);
+      await refresh();
+    } catch (e) {
+      setRemoveError(e?.message || "Could not remove panic wipe");
+    } finally {
+      setRemoving(false);
+    }
   };
 
   // ----- demo handlers (use the REAL unlock + wipe path) -----
@@ -315,13 +337,67 @@ export default function PanicWipe() {
 
           {error && <p className="text-xs text-destructive">{error}</p>}
           {saved && <p className="text-xs text-success">Panic/wipe PIN saved. Entering it at the unlock screen will wipe this device.</p>}
-          {/* No "is a panic PIN set?" indicator and no remove button BY DESIGN:
-              every PIN device seeds CHAFF into the panic ('tertiary') slot
-              (provisionChaff.js), so hasPanicVault() is always true and cannot
-              distinguish a real panic PIN from chaff. Surfacing a "set" state would
-              be a false positive, and a "remove" action would clear the chaff and
-              leave an EMPTY slot — a structural deniability tell. Setting/changing
-              overwrites whatever is there; that is the only safe operation. */}
+          {/* NOTE: Deniability tradeoff — exposing a "remove panic PIN" button reveals
+              to an observer that the feature exists on this device and is being
+              managed. This is accepted as a usability requirement for users who want
+              to disable panic wipe after initially enabling it. The underlying
+              `removePanicPin()` clears the panic marker but leaves chaff in the
+              slot (provisionChaff.js always seeds one at creation), so the slot
+              remains forensically indistinguishable. */}
+        </div>
+
+        {/* Remove panic wipe */}
+        <div className="mt-4 pt-4 border-t border-border space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Want to turn off panic wipe? You can remove it anytime without executing it.
+          </p>
+
+          {removed && (
+            <p className="text-xs text-success flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Panic wipe removed. Your panic PIN has been cleared.
+            </p>
+          )}
+
+          {!showRemoveConfirm ? (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowRemoveConfirm(true)}
+              disabled={removed}
+            >
+              <ShieldOff className="h-4 w-4 mr-2" /> Remove panic wipe
+            </Button>
+          ) : (
+            <div className="space-y-2 p-3 rounded-lg bg-caution/5 border border-caution/30">
+              <p className="text-xs font-semibold text-caution">
+                Remove panic wipe?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                This will clear your panic PIN. You'll no longer be able to trigger a wipe via the panic PIN at the unlock screen. This action cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleRemovePanic}
+                  disabled={removing}
+                  className="flex-1"
+                >
+                  {removing ? "Removing…" : "Yes, remove it"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowRemoveConfirm(false)}
+                  disabled={removing}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+              {removeError && <p className="text-xs text-destructive">{removeError}</p>}
+            </div>
+          )}
         </div>
       </div>
 
