@@ -1,6 +1,6 @@
 // src/sign-gate/compose.js
 //
-// RASP §7 — chokepoint compose. UNAUDITED-PROVISIONAL. Call-site LIVE (SendCrypto.jsx).
+// RASP §7 — chokepoint compose. PROVISIONAL (ECC independent audit complete 2026-06-23). Call-site LIVE (SendCrypto.jsx).
 //
 // The PURE compose logic of the one signer gate. The send path's two pre-sign
 // planes — RASP (environment risk → degrade().tier) and Risk Scoring (tx risk →

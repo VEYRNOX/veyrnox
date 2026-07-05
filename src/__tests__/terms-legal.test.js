@@ -46,8 +46,8 @@ describe('Terms/Legal — §A/§B are marked placeholders, not invented legal te
   });
 });
 
-describe('Terms/Legal — §C provisional/unaudited honest copy present', () => {
-  for (const phrase of ['testnet beta', 'provisional and unaudited', 'testnet funds only']) {
+describe('Terms/Legal — §C provisional status & security audits honest copy present', () => {
+  for (const phrase of ['testnet beta', 'independent third-party audit was completed 2026-06-23', 'testnet funds only']) {
     it(`states: "${phrase}"`, () => {
       expect(page).toContain(phrase);
     });

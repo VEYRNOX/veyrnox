@@ -12,7 +12,9 @@
 // HONEST FRAMING (no fake security): a password second factor is two things you KNOW
 // on one device — real defense-in-depth, not hardware 2FA. A passkey adds a genuine
 // possession factor (a key in this device's authenticator), but it is device-global
-// (not per wallet-set) and is provisional/unaudited. UNAUDITED-PROVISIONAL.
+// (not per wallet-set) and remains provisional. PROVISIONAL — independent audit
+// complete (ECC 2026-06-23, §24; H-1 passkey-bypass found and fixed — PR #340,
+// resolveSend2faMethod). Still BUILT, not 'verified'.
 
 import { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';

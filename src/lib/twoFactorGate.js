@@ -23,7 +23,7 @@
 // the gate only returns allowed:true when BOTH factors verify AND an Action
 // Password is configured for the active set.
 //
-// TESTNET-tier; UNAUDITED-PROVISIONAL. No I/O, no crypto, no React — pure values.
+// TESTNET-tier; PROVISIONAL (ECC independent audit complete 2026-06-23). No I/O, no crypto, no React — pure values.
 
 export const TWO_FACTOR = Object.freeze({
   ALLOW: 'ALLOW',

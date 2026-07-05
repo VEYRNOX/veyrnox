@@ -1,6 +1,8 @@
 // src/notify/sources.js
 //
-// In-app Notifications v1 (transient, Path A) — UNAUDITED-PROVISIONAL.
+// In-app Notifications v1 (transient, Path A) — PROVISIONAL — independent audit
+// complete (ECC 2026-06-23, §24; M-3/M-5/M-6/L-2 found and fixed, PR #340).
+// Still BUILT, not 'verified'.
 // Build brief PR-2 §3 (the live edits) + §2 I4 (fail honest / fail closed).
 //
 // CALL-SITE ADAPTERS for the live event sources. Each wraps the corresponding

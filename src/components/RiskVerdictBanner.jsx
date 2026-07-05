@@ -1,6 +1,8 @@
 // src/components/RiskVerdictBanner.jsx
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL — independent audit complete (ECC 2026-06-23,
+// §24; pure on-device, fail-closed, never claims "safe" — no findings). Still
+// BUILT, not 'verified'.
 //
 // The ONE authoritative pre-sign verdict, rendered at the verify step.
 // Presentational only: it renders whatever score() returned and owns no risk

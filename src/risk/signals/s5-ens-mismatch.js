@@ -1,6 +1,6 @@
 // src/risk/signals/s5-ens-mismatch.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL. AUDIT-PRIORITY SIGNAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23). AUDIT-PRIORITY SIGNAL.
 //
 // S5 — ENS / resolved mismatch. The UI may show a human-readable name (ENS) for
 // the recipient. If the tx is actually addressed to a DIFFERENT address than that

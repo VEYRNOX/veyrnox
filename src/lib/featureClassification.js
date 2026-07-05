@@ -199,7 +199,7 @@ export const CLASSIFICATION = {
   },
   '/terms-legal': {
     verdict: 'live', dataSource: 'static',
-    note: 'Static Terms / Legal reference screen reachable from Settings. §A/§B are clearly-marked owner/counsel "to be supplied" placeholders (never invented legal text); §C reuses the existing testnet-beta/provisional-and-unaudited status language; §D is a condensed reference copy of the coercion-feature honest limits already shown inline on DuressPin/StealthWallets/PanicWipe (does not replace them). No acceptance gate, no storage write, no external call — reads identically in real and decoy sessions. Guarded by terms-legal.test.js and security-framing.test.js.',
+    note: 'Static Terms / Legal reference screen reachable from Settings. §A/§B are clearly-marked owner/counsel "to be supplied" placeholders (never invented legal text); §C carries the testnet-beta/provisional status language (updated 2026-07-05: cites the completed internal 2026-06-17 + ECC independent 2026-06-23 audits, no longer "unaudited"); §D is a condensed reference copy of the coercion-feature honest limits already shown inline on DuressPin/StealthWallets/PanicWipe (does not replace them). No acceptance gate, no storage write, no external call — reads identically in real and decoy sessions. Guarded by terms-legal.test.js and security-framing.test.js.',
   },
   '/wallet-access': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -211,7 +211,7 @@ export const CLASSIFICATION = {
   },
   '/duress-pin': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'BUILT, UNAUDITED-PROVISIONAL. Backed by wallet-core/duress.js: setDuressPin creates a real separately-encrypted decoy vault; the duress unlock path routes through the existing WalletProvider.unlock flow. Deniability model v2 (owner-approved 2026-06-22): real PIN → hidden real wallet (no UI tell); duress PIN → decoy; Face ID (opt-in) → decoy only; wrong PIN → explicit "Incorrect PIN" error. The old no-oracle / deterministic-decoy fallback (Option-A) was deliberately removed — a wrong guess is now distinguishable. 10 consecutive wrong PINs trigger an irreversible wipe via pinAttemptGuard.js, making the error-oracle non-fatal before brute-force completes. Decoy balance read via lib/decoyBalance.js — live eth_getBalance in real/native builds, clearly labelled demo simulation in demo. Explicitly discloses: runtime-only deniability (forensic inspection can detect a second vault); does not resist offline seizure without hardware KEK (planned fast-follow, not yet built).',
+    note: 'BUILT, PROVISIONAL — independent audit complete (ECC 2026-06-23: routing confirmed, timing equalised, no coercer tell — no findings). Backed by wallet-core/duress.js: setDuressPin creates a real separately-encrypted decoy vault; the duress unlock path routes through the existing WalletProvider.unlock flow. Deniability model v2 (owner-approved 2026-06-22): real PIN → hidden real wallet (no UI tell); duress PIN → decoy; Face ID (opt-in) → decoy only; wrong PIN → explicit "Incorrect PIN" error. The old no-oracle / deterministic-decoy fallback (Option-A) was deliberately removed — a wrong guess is now distinguishable. 10 consecutive wrong PINs trigger an irreversible wipe via pinAttemptGuard.js, making the error-oracle non-fatal before brute-force completes. Decoy balance read via lib/decoyBalance.js — live eth_getBalance in real/native builds, clearly labelled demo simulation in demo. Explicitly discloses: runtime-only deniability (forensic inspection can detect a second vault); does not resist offline seizure without hardware KEK (planned fast-follow, not yet built).',
   },
   '/stealth-wallets': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -219,7 +219,7 @@ export const CLASSIFICATION = {
   },
   '/panic-wipe': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'BUILT, UNAUDITED-PROVISIONAL. Backed by wallet-core/panic.js: setPanicPin/removePanicPin/panicWipe destroy the primary vault, duress decoy, entire stealth pool, and panic marker via WalletProvider; wipe is triggered via the real unlock path (no confirmation dialog under coercion). v2 model adds a second wipe path: 10 consecutive wrong PINs trigger the same irreversible wipe automatically via src/lib/pinAttemptGuard.js — this is the designed mitigation for the now-explicit wrong-PIN error. The 10-attempt counter is a SOFTWARE counter: bypassed by imaging device storage before the first attempt (offline-seizure gap, hardware KEK not yet built). Honestly discloses: wipe destroys local copy only, seed backup elsewhere still recovers, on-chain history stays public, flash-media forensics out of scope.',
+    note: 'BUILT, PROVISIONAL — independent audit complete (ECC 2026-06-23: prior key-material residue gap confirmed CLOSED, deletion test-pinned — no findings). Backed by wallet-core/panic.js: setPanicPin/removePanicPin/panicWipe destroy the primary vault, duress decoy, entire stealth pool, and panic marker via WalletProvider; wipe is triggered via the real unlock path (no confirmation dialog under coercion). v2 model adds a second wipe path: 10 consecutive wrong PINs trigger the same irreversible wipe automatically via src/lib/pinAttemptGuard.js — this is the designed mitigation for the now-explicit wrong-PIN error. The 10-attempt counter is a SOFTWARE counter: bypassed by imaging device storage before the first attempt (offline-seizure gap, hardware KEK not yet built). Honestly discloses: wipe destroys local copy only, seed backup elsewhere still recovers, on-chain history stays public, flash-media forensics out of scope.',
   },
   '/address-checker': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -277,7 +277,7 @@ export const CLASSIFICATION = {
   },
   '/rasp-security': {
     verdict: 'live', dataSource: 'static',
-    note: 'BUILT — UI-confirmed 2026-06-20: page loaded with live browser probe — Detection=browser-active, Current environment=clean, Wired to send path=yes, Independent audit=not yet. Degradation ladder (allow/warn/block) with honest scope notes rendered. "UNAUDITED-PROVISIONAL" tag and I4 honesty note ("no fabricated event counts") present. Demo OFF, real wallet. OS-level probes (root/jailbreak/tamper) remain audit-gated — correctly disclosed.',
+    note: 'BUILT — UI-confirmed 2026-06-20 (audit labels updated 2026-07-05): page loaded with live browser probe — Detection=browser-active, Current environment=clean, Wired to send path=yes. Degradation ladder (allow/warn/block) with honest scope notes rendered; undroppable provisional tag and I4 honesty note ("no fabricated event counts") present. Demo OFF, real wallet. Audit labels updated 2026-07-05 after the ECC independent audit of 2026-06-23: tag now "PROVISIONAL · AUDITED 2026-06-23", Independent-audit tile now "2026-06-23 (browser lane)" (read "not yet" at the 2026-06-20 check); OS-level probes (root/jailbreak/tamper) remain native/device-gated — roadmap Phase 4, not audit-gated — and correctly disclosed as unbuilt.',
   },
   '/audit-log': {
     verdict: 'live', dataSource: 'local-vault',

@@ -1,6 +1,6 @@
 // src/risk/signals/s1-fresh-recipient.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // S1 — fresh recipient. A recipient this wallet-set has never sent to before is
 // surfaced as a neutral INFO chip. Active-set-scoped (I3): history is the active

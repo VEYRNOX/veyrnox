@@ -1,6 +1,8 @@
 // src/notify/useReceiveDetector.js
 //
-// In-app Notifications v1 — UNAUDITED-PROVISIONAL.
+// In-app Notifications v1 — PROVISIONAL — independent audit complete (ECC
+// 2026-06-23, §24; M-3/M-5/M-6/L-2 found and fixed, PR #340). Still BUILT,
+// not 'verified'.
 // Receive detection: polls the ACTIVE wallet's per-asset balances every 60s and
 // fires emitReceiveDetected when a positive delta is found.
 //

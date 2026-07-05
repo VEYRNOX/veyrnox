@@ -1,6 +1,9 @@
 // src/sign-gate/__tests__/compose.test.js
 //
-// RASP §7 — chokepoint compose. UNAUDITED-PROVISIONAL. PRE-STAGE.
+// RASP §7 — chokepoint compose. PROVISIONAL — independent audit complete (ECC
+// 2026-06-23, §24; sign-gate confirmed genuinely blocking at the wired
+// call-site, no egress; M-4 stale-comment fix). composeGate is WIRED and LIVE
+// in SendCrypto. Still BUILT, not 'verified'.
 //
 // composeGate(raspTier, txLevel) is the PURE compose logic of the one signer
 // gate: it reads the two planes' FINISHED verdicts (RASP's response tier + the tx

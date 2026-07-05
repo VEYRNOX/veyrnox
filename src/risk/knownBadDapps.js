@@ -1,6 +1,6 @@
 // src/risk/knownBadDapps.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // The ONE local source of truth for the known-bad / phishing dApp domain list and
 // the pure check over it. Mirrors wallet-core/evm/poison.js's LOCAL_FLAGGED

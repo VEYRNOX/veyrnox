@@ -1,6 +1,8 @@
 // src/notify/useNotifications.js
 //
-// In-app Notifications v1 (transient, Path A) — UNAUDITED-PROVISIONAL.
+// In-app Notifications v1 (transient, Path A) — PROVISIONAL — independent audit
+// complete (ECC 2026-06-23, §24; M-3/M-5/M-6/L-2 found and fixed, PR #340).
+// Still BUILT, not 'verified'.
 // Build brief §3 (React glue: in-memory queue, session-scoped).
 //
 // Thin React glue: wires the pure queue reducer (queue.js) to useReducer and

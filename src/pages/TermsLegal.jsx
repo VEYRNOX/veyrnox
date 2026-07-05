@@ -2,7 +2,7 @@
 //
 // TERMS / LEGAL — a static reference screen reachable from Settings. It
 // consolidates the app's legal surface (terms of use, not-financial-advice,
-// provisional/unaudited status, and the honest limits of the coercion features)
+// provisional status & security audits, and the honest limits of the coercion features)
 // in one place.
 //
 // DELIBERATELY NOT an acceptance gate. Nothing here is written to disk: no
@@ -101,13 +101,15 @@ export default function TermsLegal() {
           </p>
         </PlaceholderSection>
 
-        {/* §C — Provisional / unaudited status (reuse existing honest language) */}
-        <Section icon={ShieldAlert} title="Provisional, unaudited status">
+        {/* §C — Provisional status & security audits (reuse existing honest language) */}
+        <Section icon={ShieldAlert} title="Provisional status &amp; security audits">
           <p>
             <strong>VEYRNOX</strong> is a self-custody, coercion-resistant crypto wallet in <b>testnet beta</b> —{" "}
-            <b>testnet funds only</b>. Its security features are <b>provisional and unaudited</b>,
-            pending an independent review. Your private keys never leave your device, and the
-            app holds none of them server-side.
+            <b>testnet funds only</b>. Its security features are <b>provisional</b>. An internal
+            security audit was completed 2026-06-17 and an independent third-party audit was
+            completed 2026-06-23 (all findings remediated). Audits reduce risk; they are{" "}
+            <b>not a guarantee</b>. Your private keys never leave your device, and the app holds
+            none of them server-side.
           </p>
         </Section>
 

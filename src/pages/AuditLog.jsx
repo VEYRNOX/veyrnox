@@ -1,6 +1,13 @@
 // src/pages/AuditLog.jsx
 //
-// Local Audit Log viewer — opt-in, primary-session only. UNAUDITED-PROVISIONAL.
+// Local Audit Log viewer — opt-in, primary-session only. PROVISIONAL.
+//
+// AUDIT STATUS. Independent third-party audit (ECC, 2026-06-23) explicitly
+// scoped this feature and passed it with zero findings: "All 8 catalogue
+// claims verified against source; write path confirmed; no exaggeration of
+// scope" (docs/audit-triage/ecc-independent-audit-2026-06-23.md). Still
+// PROVISIONAL / BUILT — an audit pass is not the same as "verified"; there is
+// no on-chain artifact to verify for a local log feature.
 //
 // SCOPE. Reads at most 100 entries ({ type, ts } ONLY — no amounts, addresses,
 // or wallet identity) from the AES-GCM encrypted 'quaternary' vault blob.
@@ -81,7 +88,7 @@ export default function AuditLog() {
           </div>
         </div>
         <span className="shrink-0 px-2.5 py-1 rounded-md border border-caution/40 text-caution font-mono text-xs">
-          UNAUDITED-PROVISIONAL
+          PROVISIONAL · AUDITED 2026-06-23
         </span>
       </div>
 

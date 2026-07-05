@@ -1,7 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // HARNESS A — dev-real send-path GATE-STATE ASSERTION (CI; NEVER signs)
 //
-// Tier: UNAUDITED-PROVISIONAL · Framing: PRE-AUDIT.
+// Tier: PROVISIONAL — independent audit complete (ECC 2026-06-23, §24;
+// sign-gate confirmed genuinely blocking at the wired call-site, no egress).
+// Still BUILT, not 'verified'.
 // Source of truth: the signed LLD "dev-real test harness — two-harness architecture"
 // and dev-real-test-harness-brief.md §3. Where they disagree, the diagram wins.
 //

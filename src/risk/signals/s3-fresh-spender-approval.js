@@ -1,6 +1,6 @@
 // src/risk/signals/s3-fresh-spender-approval.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // S3 — approval to a fresh spender. An approve() whose spender is not in this
 // wallet-set's known-good spender set is the setup half of an approve-then-drain.

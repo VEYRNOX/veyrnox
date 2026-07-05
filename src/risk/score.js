@@ -1,6 +1,6 @@
 // src/risk/score.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // The composite scorer. Pure: no I/O, no network, no signer, no seed. It runs the
 // eight signals over the unsigned tx + active-set local state + already-fetched

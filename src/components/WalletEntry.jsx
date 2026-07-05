@@ -37,7 +37,10 @@
 // panic credentials are personalized later in-app (Security); stealth/hidden likewise
 // remains an in-app, post-onboarding feature.
 //
-// ── v2 PIN AUTH (UNAUDITED-PROVISIONAL) ──────────────────────────────────────
+// ── v2 PIN AUTH ──────────────────────────────────────────────────────────────
+// PROVISIONAL — independent audit complete (ECC 2026-06-23, §24; PIN/Argon2id
+// path reviewed — no findings; hardware-KEK gap remains native work). Still
+// BUILT, not 'verified'.
 // THREAT MODEL (owner-directed model change 2026-06-22 — supersedes the v1
 // "Option-A no-oracle" design; pending internal-audit review):
 //   - Real 8-digit PIN  -> the REAL wallet. The real wallet is HIDDEN: nothing in

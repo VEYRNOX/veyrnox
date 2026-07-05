@@ -1,6 +1,6 @@
 // src/risk/calldata.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // Pure, local calldata inspection shared by the approval signals (S2, S3). NO
 // network, NO signer, NO seed — it only parses bytes already present on the

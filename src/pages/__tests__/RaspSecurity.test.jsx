@@ -6,7 +6,7 @@
 //     built     → 'browser-active' (browser probes are now wired)
 //     verified  → 'live' (evidenced native probes, not yet reached)
 //     roadmap   → 'pending'
-//   - Render: amber banner, 4 stat tiles, ladder, provisional tag, footer.
+//   - Render: amber banner, 4 stat tiles, ladder, "PROVISIONAL · AUDITED 2026-06-23" tag, footer.
 //   - Honest omissions (§2): no "active monitoring", no event counts, no scan.
 //   - Deniability parity (§3, D2/D4): byte-identical under real vs decoy.
 //
@@ -62,7 +62,7 @@ describe('RaspSecurity — honest current-state render', () => {
 
   it('shows the "browser-level detection active" banner', () => {
     expect(t).toMatch(/browser-level detection active/i);
-    expect(t).toMatch(/OS-level detection pending audit/i);
+    expect(t).toMatch(/OS-level detection pending native build/i);
   });
 
   it('shows the four current-state stat values', () => {
@@ -72,7 +72,8 @@ describe('RaspSecurity — honest current-state render', () => {
     expect(t).toMatch(/Wired to send path/i);
     expect(t).toMatch(/\byes\b/);
     expect(t).toMatch(/Independent audit/i);
-    expect(t).toMatch(/not yet/i);
+    expect(t).toMatch(/2026-06-23/);
+    expect(t).toMatch(/browser lane/i);
   });
 
   it('shows the live condition readout (clean in Vitest/jsdom — no webdriver flag set)', () => {
@@ -89,8 +90,8 @@ describe('RaspSecurity — honest current-state render', () => {
     expect(t).toMatch(/block/i);
   });
 
-  it('displays the undroppable UNAUDITED-PROVISIONAL tag', () => {
-    expect(t).toMatch(/UNAUDITED-PROVISIONAL/);
+  it('displays the undroppable "PROVISIONAL · AUDITED 2026-06-23" tag', () => {
+    expect(t).toMatch(/PROVISIONAL · AUDITED 2026-06-23/);
   });
 
   it('states the deliberate omissions in the footer', () => {

@@ -1,6 +1,6 @@
 // src/risk/fromWalletConnect.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // Pure adapter: maps a WalletConnect eth_sendTransaction request to the three
 // inputs score() expects — (unsignedTx, activeSetLocalState, chainData). NO

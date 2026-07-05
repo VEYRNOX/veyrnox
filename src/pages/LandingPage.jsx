@@ -104,7 +104,7 @@ export default function LandingPage() {
                 <span className="text-primary">on your device</span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-lg">
-                A self-custody, coercion-resistant crypto wallet. Testnet beta — testnet funds only; security features are provisional and unaudited pending an independent review.
+                A self-custody, coercion-resistant crypto wallet. Testnet beta — testnet funds only; security features are provisional — internal (2026-06-17) and independent (2026-06-23) security audits are complete.
               </p>
             </div>
 
@@ -129,7 +129,7 @@ export default function LandingPage() {
                 <p className="text-sm text-muted-foreground">Beta — no real funds</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">Pending</p>
+                <p className="text-2xl font-bold text-primary">2026-06-23</p>
                 <p className="text-sm text-muted-foreground">Independent audit</p>
               </div>
             </div>
@@ -164,14 +164,14 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 id="security-highlights-heading" className="text-4xl font-bold mb-4">Security at the Core</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Strong on-device encryption and layered, provisional protections — testnet beta, not yet independently audited
+              Strong on-device encryption and layered, provisional protections — testnet beta, independently audited (2026-06-23)
             </p>
           </div>
 
           <div className="grid md:grid-cols-4 gap-6">
             {[
               { icon: Lock, title: "Passkey / biometric unlock", desc: "WebAuthn/FIDO2 or device biometric to unlock — your password always works too" },
-              { icon: Shield, title: "Duress PIN", desc: "Decoy wallet under coercion (provisional, unaudited)" },
+              { icon: Shield, title: "Duress PIN", desc: "Decoy wallet under coercion (provisional, independent audit 2026-06-23)" },
               { icon: Eye, title: "Whitelist", desc: "Restrict withdrawals to approved addresses" },
               { icon: Zap, title: "Step-up re-auth", desc: "Re-enter your PIN to authorise a send" },
             ].map((item, idx) => (
@@ -198,7 +198,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { icon: Smartphone, title: "Multi-Chain", desc: "Receive & balances on 10 assets; send on Ethereum (testnet verified)" },
-              { icon: Shield, title: "Coercion resistance", desc: "Duress PIN, decoy & panic wipe (provisional, unaudited)" },
+              { icon: Shield, title: "Coercion resistance", desc: "Duress PIN, decoy & panic wipe (provisional, independent audit 2026-06-23)" },
               { icon: Eye, title: "Pre-sign screening", desc: "Local tx simulation + address-poisoning / look-alike checks" },
               { icon: BarChart3, title: "Analytics", desc: "Portfolio tracking and P&L reports" },
               { icon: Bell, title: "Smart Alerts", desc: "Price and local security notifications" },
@@ -226,7 +226,7 @@ export default function LandingPage() {
                 Coercion-resistant by design
               </h2>
               <p className="text-lg text-muted-foreground">
-                Your private keys never leave your device, and we have zero access to your funds. The coercion features are provisional and unaudited — see the limits below.
+                Your private keys never leave your device, and we have zero access to your funds. The coercion features are provisional — an independent audit completed 2026-06-23; see the limits below.
               </p>
 
               <div className="space-y-4">
@@ -267,7 +267,7 @@ export default function LandingPage() {
                 </div>
                 <div className="p-4 rounded-lg bg-background/50">
                   <p className="text-sm text-muted-foreground">Audits</p>
-                  <p className="font-bold text-lg">Planned</p>
+                  <p className="font-bold text-lg">Internal + independent</p>
                 </div>
               </div>
             </div>

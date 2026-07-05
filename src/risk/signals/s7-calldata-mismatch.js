@@ -1,6 +1,6 @@
 // src/risk/signals/s7-calldata-mismatch.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // S7 — calldata / contract-code mismatch. Compares the tx's intent (carries
 // calldata?) against the recipient's code-ness (has bytecode?) to catch
