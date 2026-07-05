@@ -391,7 +391,19 @@ A dedicated security hardening sweep after both audits closed, driven by an inde
 - Desktop web app — ✅
 - Demo mode (browse without backend) — ✅
 - iOS native (Capacitor) — 🟡 runs on simulator; submission gated on Apple org acct
-- Android native (Capacitor) — 🟡 scaffolded
+- Android native (Capacitor) — 🟡 runs on real devices (StrongBox KEK unlock and in-app
+  Sepolia sends device-verified on Pixel 10 Pro XL, 2026-07-01/02 — see §4); Play Store
+  submission not started
+- Android E2E test infrastructure — ✅ BUILT (INTERNAL CI evidence, UI E2E only — no
+  on-chain claims). Appium (UiAutomator2 + WebdriverIO) suite in `tests/android/`;
+  GitHub Actions emulator workflow per push; BrowserStack App Automate real-device
+  workflow added in PR #571 (2026-07-05) — committed `wdio.browserstack.conf.js`
+  targeting `hub-cloud.browserstack.com`, credential pre-check, Node 22/Java 21;
+  green run on a real BrowserStack Pixel 10 Pro XL (7/7 spec files, 52 tests).
+  Attended-only `hardware-kek.spec.js` is excluded from unattended cloud runs
+  (covered by `hardware-kek-e2e.spec.js`). Requires `BROWSERSTACK_USERNAME` /
+  `BROWSERSTACK_ACCESS_KEY` repo secrets; docs-only pushes skip the device run.
+  This is CI infrastructure, not a catalogue status change — no asset is promoted by it.
 - Mobile App PWA / Mobile Widget — ❌ removed (PR #48)
 
 ## 12. WalletConnect / dApp connector
