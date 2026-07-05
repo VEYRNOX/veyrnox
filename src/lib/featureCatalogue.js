@@ -486,7 +486,8 @@ export const FEATURE_CATEGORIES = [
           'Session approval passes the dApp\'s requested chains through to the namespace (all 12 EVM chains ' +
           'in SUPPORTED_CHAIN_IDS — testnets + mainnet); unsupported chains are filtered silently. ' +
           'Active sessions display their approved chain set. ' +
-          'Requires VITE_WALLETCONNECT_PROJECT_ID in .env.local; absent it, the page honest-disables. ' +
+          'Ships with a committed public default project ID (src/wallet-core/evm/walletconnect/projectId.js) ' +
+          'so the connector is enabled on every build; VITE_WALLETCONNECT_PROJECT_ID overrides it. ' +
           'dApp domain security (PR #477, 2026-06-29): checkDappDomain now runs inside approveSession — ' +
           'a blocked domain is rejected at session approval before any signing surface opens (I4 fail-closed). ' +
           'Blocklist expanded from 5 to 23 entries.',
