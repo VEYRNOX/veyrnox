@@ -1,0 +1,60 @@
+diff --git a/node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js b/node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js
+index f5e7cc4..f44bc58 100644
+--- a/node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js
++++ b/node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js
+@@ -315,7 +315,44 @@ var nativeBridge = (function (exports) {
+         };
+         const initLogger = (win, cap) => {
+             const BRIDGED_CONSOLE_METHODS = ['debug', 'error', 'info', 'log', 'trace', 'warn'];
+-            const createLogFromNative = (c) => (result) => {
++            // VEYRNOX PATCH (debug-build log redaction): the bridge echo below prints
++            // every native plugin call/result to the WebView console, and Android
++            // relays the WebView console to logcat. On debug builds this leaked the
++            // hardware KEK factor H (HardwareKek.getHardwareFactor result) and the
++            // encrypted vault blob (SecureStorage.get result) into adb-accessible
++            // logs. Payloads for the plugins listed here are redacted before logging;
++            // call metadata (pluginId, methodName, callbackId, success) still logs.
++            // Only the LOGGER is patched — the bridge itself is untouched and callers
++            // receive full, unredacted results.
++            const VEYRNOX_SENSITIVE_PLUGINS = ['HardwareKek', 'SecureStorage'];
++            const VEYRNOX_REDACTED = '[REDACTED sensitive plugin payload - Veyrnox log-redaction patch]';
++            const veyrnoxIsSensitive = (pluginId) => VEYRNOX_SENSITIVE_PLUGINS.indexOf(pluginId) !== -1;
++            const veyrnoxSanitizeResult = (result) => {
++                if (!result || !veyrnoxIsSensitive(result.pluginId)) {
++                    return result;
++                }
++                return {
++                    callbackId: result.callbackId,
++                    pluginId: result.pluginId,
++                    methodName: result.methodName,
++                    success: result.success,
++                    data: VEYRNOX_REDACTED,
++                    error: result.success === false ? { message: VEYRNOX_REDACTED } : undefined,
++                };
++            };
++            const veyrnoxSanitizeCall = (call) => {
++                if (!call || !veyrnoxIsSensitive(call.pluginId)) {
++                    return call;
++                }
++                return {
++                    callbackId: call.callbackId,
++                    pluginId: call.pluginId,
++                    methodName: call.methodName,
++                    options: VEYRNOX_REDACTED,
++                };
++            };
++            const createLogFromNative = (c) => (rawResult) => {
++                const result = veyrnoxSanitizeResult(rawResult);
+                 if (isFullConsole(c)) {
+                     const success = result.success === true;
+                     const tagStyles = success
+@@ -339,7 +376,8 @@ var nativeBridge = (function (exports) {
+                     }
+                 }
+             };
+-            const createLogToNative = (c) => (call) => {
++            const createLogToNative = (c) => (rawCall) => {
++                const call = veyrnoxSanitizeCall(rawCall);
+                 if (isFullConsole(c)) {
+                     c.groupCollapsed('%cnative %c' + call.pluginId + '.' + call.methodName + ' (#' + call.callbackId + ')', 'font-weight: lighter; color: gray', 'font-weight: bold; color: #000');
+                     c.dir(call);

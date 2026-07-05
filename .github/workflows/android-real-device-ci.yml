@@ -90,14 +90,25 @@ jobs:
             https://api-cloud.browserstack.com/app-automate/upload)
           APP_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.app_url // empty')
           if [ -z "$APP_URL" ]; then
+            UPLOAD_ERROR=$(echo "$UPLOAD_RESPONSE" | jq -r '.error // empty')
+            # Quota exhaustion is an account condition, not a code failure. Skip
+            # honestly (green + loud warning; tests explicitly DID NOT run) rather
+            # than failing every PR red. All other upload errors stay hard failures.
+            if echo "$UPLOAD_ERROR" | grep -q "BROWSERSTACK_TESTING_TIME_LIMIT_EXHAUSTED"; then
+              echo "::warning title=Real-device E2E SKIPPED::BrowserStack App Automate testing time is exhausted. Real-device E2E tests DID NOT RUN on this commit. Extend the BrowserStack plan to re-enable."
+              echo "skipped=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
             echo "::error::Failed to upload APK to BrowserStack"
             echo "Response: $UPLOAD_RESPONSE"
             exit 1
           fi
           echo "Uploaded: $APP_URL"
           echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+          echo "skipped=false" >> $GITHUB_OUTPUT
 
       - name: Run E2E tests on BrowserStack real device
+        if: steps.upload-apk.outputs.skipped != 'true'
         env:
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
@@ -110,6 +121,11 @@ jobs:
         run: |
           echo "## Android Real Device E2E (BrowserStack)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.upload-apk.outputs.skipped }}" = "true" ]; then
+            echo "> [!WARNING]" >> $GITHUB_STEP_SUMMARY
+            echo "> **SKIPPED — no device tests ran on this commit.** BrowserStack App Automate testing time is exhausted (free-trial quota). The APK built successfully but could not be uploaded. Extend the BrowserStack plan to re-enable real-device E2E." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- Device: Google Pixel 10 Pro XL (Android 16.0)" >> $GITHUB_STEP_SUMMARY
           echo "- Build: Veyrnox ${{ github.ref_name }} @ ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- Sessions, video, and device logs: https://app-automate.browserstack.com/dashboard" >> $GITHUB_STEP_SUMMARY
