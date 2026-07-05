@@ -196,7 +196,10 @@ jobs:
 
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
+        with:
+          pattern: android-e2e-results-*
+          path: .
 
       - name: Generate Test Report
         run: |
