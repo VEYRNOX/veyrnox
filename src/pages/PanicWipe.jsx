@@ -120,11 +120,11 @@ export default function PanicWipe() {
   const [busy, setBusy] = useState("");
   const [demoErr, setDemoErr] = useState("");
 
-  // ----- disable panic wipe state -----
-  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
-  const [disabling, setDisabling] = useState(false);
-  const [disableError, setDisableError] = useState("");
-  const [disabled, setDisabled] = useState(false);
+  // ----- remove panic wipe state -----
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState("");
+  const [removed, setRemoved] = useState(false);
 
   const refresh = useCallback(async () => {
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
@@ -164,19 +164,19 @@ export default function PanicWipe() {
     }
   };
 
-  // ----- disable panic wipe -----
-  const handleDisablePanic = async () => {
-    setDisableError("");
-    setDisabling(true);
+  // ----- remove panic wipe -----
+  const handleRemovePanic = async () => {
+    setRemoveError("");
+    setRemoving(true);
     try {
       await removePanicPin();
-      setShowDisableConfirm(false);
-      setDisabled(true);
+      setShowRemoveConfirm(false);
+      setRemoved(true);
       await refresh();
     } catch (e) {
-      setDisableError(e?.message || "Could not disable panic wipe");
+      setRemoveError(e?.message || "Could not remove panic wipe");
     } finally {
-      setDisabling(false);
+      setRemoving(false);
     }
   };
 
@@ -331,56 +331,56 @@ export default function PanicWipe() {
               remains forensically indistinguishable. */}
         </div>
 
-        {/* Disable panic wipe */}
+        {/* Remove panic wipe */}
         <div className="mt-4 pt-4 border-t border-border space-y-3">
           <p className="text-xs text-muted-foreground">
-            Want to turn off panic wipe? You can disable it anytime without executing it.
+            Want to turn off panic wipe? You can remove it anytime without executing it.
           </p>
 
-          {disabled && (
+          {removed && (
             <p className="text-xs text-success flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" /> Panic wipe disabled. Your panic PIN has been removed.
+              <CheckCircle2 className="h-4 w-4" /> Panic wipe removed. Your panic PIN has been cleared.
             </p>
           )}
 
-          {!showDisableConfirm ? (
+          {!showRemoveConfirm ? (
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => setShowDisableConfirm(true)}
-              disabled={disabled}
+              onClick={() => setShowRemoveConfirm(true)}
+              disabled={removed}
             >
-              <ShieldOff className="h-4 w-4 mr-2" /> Disable panic wipe
+              <ShieldOff className="h-4 w-4 mr-2" /> Remove panic wipe
             </Button>
           ) : (
             <div className="space-y-2 p-3 rounded-lg bg-caution/5 border border-caution/30">
               <p className="text-xs font-semibold text-caution">
-                Disable panic wipe?
+                Remove panic wipe?
               </p>
               <p className="text-xs text-muted-foreground">
-                This will remove your panic PIN. You'll no longer be able to trigger a wipe via the panic PIN at the unlock screen. This action cannot be undone.
+                This will clear your panic PIN. You'll no longer be able to trigger a wipe via the panic PIN at the unlock screen. This action cannot be undone.
               </p>
               <div className="flex gap-2">
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={handleDisablePanic}
-                  disabled={disabling}
+                  onClick={handleRemovePanic}
+                  disabled={removing}
                   className="flex-1"
                 >
-                  {disabling ? "Disabling…" : "Yes, disable it"}
+                  {removing ? "Removing…" : "Yes, remove it"}
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setShowDisableConfirm(false)}
-                  disabled={disabling}
+                  onClick={() => setShowRemoveConfirm(false)}
+                  disabled={removing}
                   className="flex-1"
                 >
                   Cancel
                 </Button>
               </div>
-              {disableError && <p className="text-xs text-destructive">{disableError}</p>}
+              {removeError && <p className="text-xs text-destructive">{removeError}</p>}
             </div>
           )}
         </div>
