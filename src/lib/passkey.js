@@ -411,7 +411,7 @@ export async function getPasskeyStatus() {
  * surface it. NEVER stores key material or any vault-decrypting secret.
  *
  * @param {{label?:string, userName?:string}} [opts]
- * @returns {Promise<{ok:true, simulated:boolean, credentialId:string}>}
+ * @returns {Promise<{ok:true, simulated:boolean, credentialId:string, nativeBiometric?:boolean}>}
  */
 export async function registerPasskeyCredential(opts = {}) {
   const label = opts.label || 'Veyrnox passkey';
