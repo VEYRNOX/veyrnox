@@ -258,6 +258,20 @@ identity; the app never holds keys server-side.
   - C: Password/PIN-derived factor (Argon2id)
   - Requirement: Both H and C must be present; missing either throws (fail-closed)
 
+**Vault KDF memory cost raised 64→192 MiB (2026-07-05, commit `d0522bfb`, PR #604).**
+`src/wallet-core/vault.js` `KDF_PARAMS.memorySize` is now 196608 KiB (192 MiB); iterations
+(3) and parallelism (1) unchanged. This reverses PR #465 (2026-06-28), which had lowered
+192→64 MiB specifically to fix 4-8s unlock latency on Capacitor WebView devices — the
+reversal premise is that device-exercised Face ID/biometric unlock (2026-07-05) now gives
+enrolled users a fast path around the slow password KDF. Backward compatible: 64 MiB
+vaults still unlock (each blob carries its own KDF params); a lazy migration re-wraps to
+192 MiB on next password change/unlock; `LEGACY_KDF_PARAMS` stays 64 MiB. Status: BUILT,
+unit-tested (wallet-core 937/937 passing) — **NOT verified**, and device UX timing
+measurement for the mitigation premise is in progress separately, not done. Two honest
+caveats: (1) users without biometric enrollment — including the Safari password-only web
+fallback — still pay the full ~6-8s 192 MiB latency PR #465 existed to fix; (2) "biometric
+mitigates the latency" is an unmeasured real-device UX claim at time of writing.
+
 ## Demo mode (known trap)
 
 Demo mode triggers on `?demo=1`, `VITE_DEMO_MODE=1`, native dev, OR a persisted

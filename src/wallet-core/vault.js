@@ -29,24 +29,27 @@ import { argon2id } from 'hash-wasm';
 // raised these: on web the password is the SOLE factor protecting the seed (no
 // hardware key-wrap; web.js isSecureHardwareAvailable() === false), and this KDF
 // is not gating an interactive login — it stands between an exfiltrated ciphertext
-// blob and the user's seed, offline and GPU/ASIC-crackable. 64 MiB cleared only the
-// OWASP interactive-login floor; for a single-factor at-rest seed vault we want a
-// more conservative, memory-hard cost (memory is the lever against parallel
+// blob and the user's seed, offline and GPU/ASIC-crackable. The OWASP
+// interactive-login floor is far too weak for a single-factor at-rest seed vault;
+// we want a conservative, memory-hard cost (memory is the lever against parallel
 // cracking hardware).
 //
-// CHOSEN: 64 MiB / t=3 — tuned for acceptable on-device unlock latency (~1-2 s on
-// a mid-range phone in Capacitor WebView). The prior 192 MiB setting produced
-// 4-8 s unlock times on real devices; Capacitor WebView runs the WASM KDF ~3-5x
-// slower than a desktop browser due to WebView JIT/memory constraints. 64 MiB at
-// t=3 retains memory-hardness against GPU/ASIC cracking while keeping interactive
-// unlock tolerable. The independent audit can raise this (e.g. 128 MiB on capable
-// devices) via the lazy-rekey migration below without locking anyone out. EXPORTED
-// so stealth chaff advertises the SAME params (otherwise chaff vs real blobs differ
-// on the kdf field — a deniability tell).
+// CHOSEN: 192 MiB / t=3 — the deliberate at-rest cost for a single-factor seed
+// vault. 192 MiB produces ~6-8 s unlock times on real Capacitor WebView devices
+// (the WASM KDF runs ~3-5x slower there than a desktop browser due to WebView
+// JIT/memory constraints). That latency is now an ACCEPTED trade-off: Face ID /
+// biometric unlock (device-verified 2026-07-05) mitigates the UX cost of the slow
+// password path, so the stronger offline-seizure resistance is worth it. History:
+// an earlier pass lowered this to 64 MiB (PR #465, 2026-06-28) purely for unlock
+// latency before biometric unlock existed; with biometrics now available the raise
+// back to 192 MiB is intentional, applied to existing 64 MiB vaults via the
+// lazy-rekey migration below (no lockout). EXPORTED so stealth chaff advertises the
+// SAME params (otherwise chaff vs real blobs differ on the kdf field — a
+// deniability tell).
 export const KDF_PARAMS = Object.freeze({
   parallelism: 1,
   iterations: 3,
-  memorySize: 65536, // KiB == 64 MiB
+  memorySize: 196608, // KiB == 192 MiB
   hashLength: 32,    // 256-bit key for AES-256
 });
 
@@ -71,7 +74,7 @@ const LEGACY_KDF_PARAMS = Object.freeze({
 const MAX_KDF_PARAMS = Object.freeze({
   parallelism: 4,
   iterations: 12,
-  memorySize: 1048576, // KiB == 1 GiB (CURRENT is 64 MiB)
+  memorySize: 1048576, // KiB == 1 GiB (CURRENT is 192 MiB)
   hashLength: 64,
 });
 
@@ -112,7 +115,7 @@ function randomBytes(n) {
 }
 
 // --- Off-main-thread Argon2id (perceived-perf only; crypto + params UNCHANGED) ---
-// The KDF derivation (KDF_PARAMS.memorySize, currently 64 MiB) blocks the UI
+// The KDF derivation (KDF_PARAMS.memorySize, currently 192 MiB) blocks the UI
 // thread, so the unlock spinner can't animate
 // and the app looks frozen. Run it in a Web Worker when one is available; ALWAYS
 // fall back to the exact in-thread argon2id on ANY worker problem (unsupported,
@@ -218,7 +221,7 @@ async function deriveKey(password, salt, params = KDF_PARAMS) {
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (raw), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
   zero(raw);
   // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's Argon2 WASM
-  // instance (KDF_PARAMS.memorySize, currently 64 MiB) from THIS derivation becomes
+  // instance (KDF_PARAMS.memorySize, currently 192 MiB) from THIS derivation becomes
   // GC-eligible before the next sequential derivation allocates its own
   // KDF_PARAMS.memorySize — keeping peak memory one-at-a-time rather
   // than concurrent. Best-effort (GC is non-deterministic) and negligible latency;
@@ -248,12 +251,13 @@ function paramsFromVault(vault) {
 /**
  * Whether a blob's stored KDF params differ from the current KDF_PARAMS and should
  * be transparently re-encrypted on the next successful unlock. Triggers in both
- * directions so vaults encrypted at the old 192 MiB default are silently rekeyed
- * down to 64 MiB after one successful unlock (8 s → ~2 s from that point on).
+ * directions, but the live direction is UP: vaults encrypted at the old 64 MiB
+ * default are silently rekeyed to 192 MiB after one successful unlock (stronger
+ * offline-seizure resistance; the ~6-8 s cost is absorbed by biometric unlock).
  * @param {object} vault
  * @returns {boolean}
  */
-// Bidirectional: existing 192 MiB vaults rekey down to 64 MiB on first unlock (latency trade-off, deliberate).
+// Direction now UP: existing 64 MiB vaults rekey to 192 MiB on first unlock (deliberate, biometric-mitigated).
 export function vaultNeedsRekey(vault) {
   const p = paramsFromVault(vault);
   return p.memorySize !== KDF_PARAMS.memorySize

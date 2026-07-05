@@ -2,12 +2,17 @@
 //
 // SAST M3 — changing the at-rest Argon2id params must NOT lock users out of
 // existing vaults. These tests assert the migration contract:
-//   - a vault encrypted with the OLD (192 MiB) params still decrypts after the
-//     default is lowered to 64 MiB (decrypt uses the blob's OWN recorded params);
-//   - new encryptions use the current (64 MiB) params;
+//   - a vault encrypted with the OLD (64 MiB) params still decrypts after the
+//     default is raised to 192 MiB (decrypt uses the blob's OWN recorded params);
+//   - new encryptions use the current (192 MiB) params;
 //   - vaultNeedsRekey flags an old blob and not a current one;
 //   - webKeyStore.unlock transparently re-encrypts an old vault at the new params
 //     on first unlock, while still returning the secret, and is a no-op after.
+//
+// Direction note: an earlier pass lowered the default 192 MiB -> 64 MiB (PR #465)
+// purely for unlock latency; with biometric unlock (device-verified 2026-07-05)
+// absorbing the ~6-8 s cost, the default was raised back to 192 MiB. So the live
+// migration direction is UP: 64 MiB legacy blobs rekey to 192 MiB.
 //
 // We craft an old-params blob with hash-wasm argon2id directly (the exact
 // construction encryptVault used at 64 MiB), since encryptVault now always emits
@@ -19,7 +24,7 @@ import { encryptVault, decryptVault, vaultNeedsRekey, KDF_PARAMS } from '../vaul
 import { webKeyStore } from '../keystore/web.js';
 import { saveVault, loadVault, clearVault } from '../evm/vaultStore.js';
 
-const OLD_PARAMS = { parallelism: 1, iterations: 3, memorySize: 196608, hashLength: 32 };
+const OLD_PARAMS = { parallelism: 1, iterations: 3, memorySize: 65536, hashLength: 32 };
 const enc = new TextEncoder();
 
 function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }
@@ -53,14 +58,14 @@ describe('SAST M3 — KDF parameter migration', () => {
     await clearVault();
   });
 
-  it('the current default params are 64 MiB (lowered from 192 MiB for device perf)', () => {
-    expect(KDF_PARAMS.memorySize).toBe(65536);
-    expect(KDF_PARAMS.memorySize).toBeLessThan(OLD_PARAMS.memorySize);
+  it('the current default params are 192 MiB (raised from 64 MiB; biometric-mitigated)', () => {
+    expect(KDF_PARAMS.memorySize).toBe(196608);
+    expect(KDF_PARAMS.memorySize).toBeGreaterThan(OLD_PARAMS.memorySize);
   });
 
   it('an OLD-params (64 MiB) vault still decrypts after the default is raised', async () => {
     const oldBlob = await encryptAtParams(SECRET, PASSWORD, OLD_PARAMS);
-    expect(oldBlob.kdf.memorySize).toBe(196608);
+    expect(oldBlob.kdf.memorySize).toBe(65536);
     // Decrypt must use the blob's OWN params, not the new default — no lockout.
     expect(await decryptVault(oldBlob, PASSWORD)).toBe(SECRET);
     // A wrong password still fails generically.
