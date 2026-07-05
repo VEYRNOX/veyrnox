@@ -34,6 +34,16 @@ const FORBIDDEN_COPY = [
 const FORBIDDEN_LOGIC = ['hasDuressPin(', 'hasPanicPin('];
 
 describe('Security framing — no configured-state oracle', () => {
+  // The provider must not export a duress configured-state accessor at all.
+  // Pages are grepped above, but the 2026-07-05 regression showed the API
+  // itself is the attractive nuisance: an exposed hasDuressPin invites the
+  // next page to call it. wallet-core keeps hasDuressVault for internal
+  // unlock/chaff plumbing; the React context exposes only set/remove.
+  it('lib/WalletProvider.jsx does not expose a duress configured-state accessor', () => {
+    const src = read('lib/WalletProvider.jsx');
+    expect(src, 'forbidden context API: "hasDuressPin"').not.toContain('hasDuressPin');
+  });
+
   for (const page of COPY_GUARDED_PAGES) {
     it(`${page} has no configured-vs-not copy`, () => {
       const src = read(page);
