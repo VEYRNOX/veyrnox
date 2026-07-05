@@ -1,4 +1,4 @@
-name: Android Real Device E2E Tests (BrowserStack)
+name: Android Real Device E2E Tests (BrowserStack) [DISABLED - Use android-e2e-emulator.yml instead]
 
 on:
   push:
