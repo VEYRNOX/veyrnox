@@ -458,6 +458,27 @@ RASP gates. None affect ALLOW_MAINNET.
 
 **Positive confirmations:** H-NEW-D CLOSED (SE ECIES confirmed); `kSecAccessControlBiometryCurrentSet` correctly set on iOS SE key ACL; `combineKek` HKDF construction sound; `android:allowBackup="false"` correct; ATS enforced on iOS.
 
+### 2026-07-05 finding — Capacitor debug bridge logger leaked KEK factor H + vault blob to logcat (DEBUG builds)
+
+> Device evidence 2026-07-05 (Pixel debug build): Capacitor's bridge echo logger
+> (`createLogFromNative` in `native-bridge.js`) prints every native plugin result to the
+> WebView console, which Android relays to logcat. Captured in cleartext, adb-accessible:
+> (1) `HardwareKek.getHardwareFactor` → `{"h":"<32-byte base64>"}` — the hardware KEK
+> factor H; (2) the full encrypted vault blob from `SecureStorage.get`. The Appium CI
+> pipeline additionally persisted device logcat into GitHub artifacts (30-day retention).
+> Impact: undermines the offline-seizure story for any DEBUG build (H + wrapped vault in
+> logs collapses the hardware factor to the PIN factor alone). Release builds NOT affected
+> (see below). INTERNAL finding — not independently audited.
+
+| Item | Status |
+|---|---|
+| **Release builds emit no bridge logs** | ✅ Code-verified / 🟡 device spot-check PENDING. Chain: `capacitor.config.ts` had no `loggingBehavior` → Capacitor default `'debug'` → `CapConfig.java` maps it to `loggingEnabled = isDebug`; our release build sets `debuggable false` (`android/app/build.gradle`) → `JSExport.getGlobalJS` injects `isLoggingEnabled: false` → `native-bridge.js` `returnResult` skips `logFromNative`, and `BridgeWebChromeClient.onConsoleMessage` relays through `Logger`, gated by the same flag. Now made EXPLICIT: `loggingBehavior: 'debug'` pinned in `capacitor.config.ts` with a guard test that also fails if anyone flips it to `'production'` (which would enable bridge logs on release). **Spot-check note (owner action, not yet run):** install a release-signed build, enroll KEK, unlock, run `adb logcat -d \| grep -E '"h":\|Capacitor/Console'` — expect zero matches. Until that runs on-device, release silence is code-verified only, per verify-don't-assert. |
+| **Debug-build leak closed at source** | ✅ BUILT. `patches/@capacitor+android+8.4.1.patch` + `patches/@capacitor+ios+8.4.1.patch` (patch-package, applied on `postinstall`) redact `HardwareKek` and `SecureStorage` payloads inside the bridge echo logger — both directions (`createLogFromNative` results AND `createLogToNative` call options, since `SecureStorage.set` carries the blob too). Call metadata (pluginId, methodName, callbackId, success) still logs, so debug remains debuggable. Only the LOGGER is patched; the bridge still carries H by design and callers receive full results. Same patch-package caveat as the secure-storage `.commit()` patch: needs a clean plugin recompile (Gradle caches the module output; the stale `node_modules/@capacitor/android/capacitor/build/` dir was deleted to force it). Guard test: `src/__tests__/bridge-log-redaction.test.js` (fails if the patch disappears, stops covering either plugin/direction, or Capacitor is upgraded without regenerating it — patch-package postinstall also fails hard on version mismatch). |
+| **CI artifact exposure** | ✅ Scrub layer added to `.github/workflows/android-e2e-emulator.yml`: redacts any JSON `"h":"<base64>"` value across all collected files (payloads also transit `appium.log` via WebDriver `getLog` responses) and drops ALL `Capacitor/Console` lines from the uploaded `logcat.log` (bridge payload lines carry no plugin name — Capacitor's `isValidMsg` strips the header line — so name-based filtering cannot catch them). Retention reduced 30 → 7 days. Purpose-built native evidence lines (tag `HardwareKek`, `salt-source: …`) are not Console-tagged and are preserved. **⚠️ Existing artifacts flagged, NOT deleted:** any `android-e2e-results-*` artifacts uploaded before this change may contain H/vault-blob for debug-build runs — owner should purge them (GitHub → Actions → run → delete artifact, or `gh api repos/{owner}/{repo}/actions/artifacts` + DELETE) and treat any H captured in them as burned for those debug enrollments. `android-real-device-ci.yml` has uncommitted local edits in the main checkout and was left untouched — apply the same scrub when it lands. |
+| **Runtime leak canary** | ✅ BUILT. New e2e test in `tests/android/specs/hardware-kek-e2e.spec.js` fails hard if any logcat line matches a base64 `"h"` field or any `Capacitor/Console` line carries a long base64 run; reports counts only (never echoes the matched lines, to avoid re-leaking into CI output). |
+
+No catalogue status changes: Android KEK remains BUILT + device-verified (StrongBox path), iOS remains device-verified PARTIAL. This finding does not affect release builds or the on-chain evidence already recorded; it closes a debug-build/CI log-hygiene gap.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
