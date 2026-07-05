@@ -26,7 +26,6 @@ vi.mock('@/lib/WalletProvider', () => ({
   useWallet: () => ({
     isUnlocked: true, isDecoy: false, accounts: [{ address: '0xREAL' }],
     hasVault: vi.fn(async () => true),
-    hasDuressPin: vi.fn(async () => false),
     setDuressPin: mockSetDuressPin,
     removeDuressPin: vi.fn(),
     enableDecoyBiometricUnlock: mockEnableDecoyBiometricUnlock,

@@ -187,7 +187,7 @@ export const CLASSIFICATION = {
   // ── Security group (audit batch A) ───────────────────────────────────────
   '/security-dashboard': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'Aggregates real local signals only: summarizeApprovals/summarizeSpamTokens/screenAddressHistory from lib/securityPosture.js (run over base44 entity records already held on device); biometric/passkey/session toggles from lib/biometric, lib/passkey, lib/session; hasDuressPin/hasStealthPool/hasPanicPin from WalletProvider (non-destructive IndexedDB reads). No external call, no fabrication. Explicitly disclaims being a guarantee.',
+    note: 'Aggregates real local signals only: summarizeApprovals/summarizeSpamTokens/screenAddressHistory from lib/securityPosture.js (run over base44 entity records already held on device); biometric/passkey/session toggles from lib/biometric, lib/passkey, lib/session; hasStealthPool from WalletProvider (a non-destructive IndexedDB read of the universal baseline pool only — the provider exposes no duress/panic configured-state accessor, deniability v2). No external call, no fabrication. Explicitly disclaims being a guarantee.',
   },
   '/security': {
     verdict: 'live', dataSource: 'base44-entities',
