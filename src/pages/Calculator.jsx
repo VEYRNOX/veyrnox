@@ -113,13 +113,18 @@ export default function Calculator() {
           <h1 className="text-2xl font-bold tracking-tight">Converter</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Real-time crypto ↔ fiat conversion</p>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-          {lastUpdated ? `Updated ${lastUpdated}` : "Refresh"}
-        </button>
+        {/* I3: refetch() bypasses the `enabled` gate in react-query v5, so in a
+            decoy/hidden session (pricesEnabled === false) tapping this would hit
+            CoinGecko — live egress. Hide the trigger when prices are gated off. */}
+        {pricesEnabled && (
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            {lastUpdated ? `Updated ${lastUpdated}` : "Refresh"}
+          </button>
+        )}
       </div>
 
       {livePricesOn && isError && !isFetching && (
