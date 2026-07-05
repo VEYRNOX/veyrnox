@@ -201,6 +201,9 @@ export default function PasskeyUnlockSettings() {
                   ? 'Ask for your device biometric before unlocking (your password still works).'
                   : 'Ask for your passkey before unlocking (your password still works).'}
               </p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Note: this passkey is registered device-wide and applies to all wallet sessions.
+              </p>
             </div>
             <Switch
               checked={enabled}

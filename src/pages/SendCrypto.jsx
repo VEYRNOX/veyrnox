@@ -22,6 +22,7 @@ import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
 import { useNavigate } from "react-router-dom";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
+import { MAX_BASE_FEE_GWEI } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { isDevSendUngated } from "@/lib/devSendOverride";
@@ -788,7 +789,17 @@ export default function SendCrypto() {
           const feeData = await provider.getFeeData();
           const chainInfo = getNetworkInfo(networkKey);
           const fee = selectedFee?.fee || undefined;
-          const maxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
+          const rawMaxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
+          // F-08-TREZOR (I5: RPC untrusted): clamp maxFeePerGas to the same
+          // per-network ceiling the regular tier maths uses, so a misreporting
+          // provider can't inflate the fee on a hardware signer that only shows
+          // raw values. Fall back to the highest cap if the network key is unknown.
+          const feeCapGwei = MAX_BASE_FEE_GWEI[networkKey] ?? 5_000n;
+          const maxFeePerGasCap = feeCapGwei * 1_000_000_000n;
+          const cappedMaxFeePerGas = rawMaxFeePerGas != null && rawMaxFeePerGas > maxFeePerGasCap
+            ? maxFeePerGasCap
+            : rawMaxFeePerGas;
+          const maxFeePerGas = cappedMaxFeePerGas;
           const maxPriorityFeePerGas = fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n;
           let signedHex;
           if (isErc20) {

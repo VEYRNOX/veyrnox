@@ -13,23 +13,25 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchPortfolioPricesUsdCG as fetchPortfolioPricesUsd } from '@/lib/coinGecko.js';
 import { PORTFOLIO_SYMBOLS } from '@/lib/cryptoCompare.js';
 import { useWallet } from '@/lib/WalletProvider';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 
 // localStorage opt-in pref. "1" = on / ABSENT = off (mirrors lib/biometric.js,
 // wallet-core/auditLog.js). Absence = off is deliberate: a fresh device makes no
 // price call. Device-global and holdings-blind — reveals nothing about holdings.
 export const LIVE_PRICE_PREF_KEY = 'veyrnox-live-prices';
 
-/** @returns {boolean} whether live prices are enabled (on by default; off only if explicitly disabled). */
+/** @returns {boolean} whether live prices are enabled (OFF by default; on only if explicitly enabled). */
 export function isLivePricesEnabled() {
-  try { return localStorage.getItem(LIVE_PRICE_PREF_KEY) !== '0'; }
-  catch { return true; } // storage unavailable → treat as ON (default)
+  // I2-LIVEPRICE-DEFAULT-ON fix: ABSENT = off. '1' = on. Never egress on a fresh device.
+  try { return localStorage.getItem(LIVE_PRICE_PREF_KEY) === '1'; }
+  catch { return false; } // storage unavailable → treat as OFF (I2: fail closed)
 }
 
-/** Persist the preference. ON is stored as ABSENCE of the key; OFF is stored as '0'. */
+/** Persist the preference. ON is stored as '1'; OFF is stored as ABSENCE of the key. */
 export function setLivePricesEnabled(on) {
   try {
-    if (on) localStorage.removeItem(LIVE_PRICE_PREF_KEY);
-    else localStorage.setItem(LIVE_PRICE_PREF_KEY, '0');
+    if (on) localStorage.setItem(LIVE_PRICE_PREF_KEY, '1');
+    else localStorage.removeItem(LIVE_PRICE_PREF_KEY);
   } catch { /* best-effort */ }
 }
 
@@ -44,6 +46,10 @@ export const SUPPORTED_SYMBOLS = PORTFOLIO_SYMBOLS;
  * @returns {Promise<Record<string, number>>}
  */
 export async function fetchLivePricesUsd() {
+  // I3-1 (2026-07-04 internal audit): this is a directly-callable export, not just
+  // the hook's queryFn. A deniability session must make ZERO egress — fail closed
+  // here so no caller path can leak a price request from a decoy/hidden session.
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   return /** @type {Promise<Record<string, number>>} */ (fetchPortfolioPricesUsd());
 }
 

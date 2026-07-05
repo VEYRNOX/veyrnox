@@ -101,7 +101,16 @@ const FUTURE_EXPIRY = Math.floor(Date.now() / 1000) + 86_400;
 function liveSessionsAnyTopic() {
   // .find() ignores the topic predicate and always yields a live session, so the
   // M11 expiry gate passes for whatever topic the handler under test looks up.
-  return { find: () => ({ topic: '__live__', expiry: FUTURE_EXPIRY }) };
+  // F-07-WC: the handler now reads the bound CAIP-2 chain from the session's
+  // approved namespaces (not a prop), so the fake session must advertise the
+  // chains the H7 tests bind against (eip155:1 and eip155:11155111).
+  return {
+    find: () => ({
+      topic: '__live__',
+      expiry: FUTURE_EXPIRY,
+      namespaces: { eip155: { chains: ['eip155:1', 'eip155:11155111'] } },
+    }),
+  };
 }
 vi.mock('ethers', () => ({
   ethers: {

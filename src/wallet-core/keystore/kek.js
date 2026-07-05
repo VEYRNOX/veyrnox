@@ -204,6 +204,7 @@ export async function combineKek(H, C) {
   ikm.set(C, H_LEN);
 
   const baseKey = await crypto.subtle.importKey('raw', ikm, { name: 'HKDF' }, false, ['deriveBits']);
+  // F-06: zero(ikm) wipes the JS-visible copy; the CryptoKey retains an opaque internal buffer until GC.
   zero(ikm);
 
   const bits = await crypto.subtle.deriveBits(
