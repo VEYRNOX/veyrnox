@@ -75,8 +75,6 @@ export default function Settings() {
     );
   }
 
-  console.log('[Settings] Rendering with isNative:', isNative);
-
   return (
     <div className="max-w-lg mx-auto space-y-8">
       <BackButton />
@@ -152,8 +150,12 @@ export default function Settings() {
       {/* Security settings — shown on all platforms.
           TwoFactorSettings now handles native biometric 2FA (Face ID) via
           BiometricAuth, so it is no longer WebAuthn-only and can render on native.
-          PasskeyUnlockSettings now shown on all platforms (including mobile) where
-          WebAuthn APIs are available. */}
+          PasskeyUnlockSettings renders on native too, but NOT because WebAuthn
+          works there — the Capacitor app ships NO WebAuthn plugin, so
+          navigator.credentials is a dead stub. On native, lib/passkey.js routes
+          registration + verification through the OS biometric
+          (BiometricAuth) and the UI honestly labels the control "Biometric
+          unlock", never "Passkey". Web keeps the real WebAuthn path. */}
       <BiometricUnlockSettings />
       <PasskeyUnlockSettings />
       <TwoFactorSettings />
