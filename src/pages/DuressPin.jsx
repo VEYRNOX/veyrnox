@@ -1,7 +1,9 @@
 // pages/DuressPin.jsx
 //
 // DURESS PIN / DECOY WALLET  (S3 — individual security).  PROVISIONAL.
-// BUILT, UNAUDITED-PROVISIONAL — not verified; needs independent audit + real-device proof.
+// BUILT, PROVISIONAL — independent audit complete (ECC 2026-06-23, §24; duress
+// routing confirmed, timing equalised, no coercer tell — no findings). Still
+// BUILT, not 'verified'; real-device proof outstanding.
 //
 // DENIABILITY MODEL (v2 — owner-approved 2026-06-22):
 //   - Real PIN        → hidden real wallet (no UI tell it exists).

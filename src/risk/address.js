@@ -1,6 +1,6 @@
 // src/risk/address.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // Pure EVM-address helpers shared by the history/lookalike signals (S1, S4, S5,
 // S7). NO network, NO signer, NO seed — only string/address inspection. Mirrors

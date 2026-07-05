@@ -1,6 +1,6 @@
 // src/risk/signals/s6-dust-input.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // S6 — dust input present. Dusting deanonymises: a tiny tagged input, once
 // consolidated with real funds, links the victim's addresses. Warn when a tx

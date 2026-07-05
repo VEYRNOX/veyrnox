@@ -1,6 +1,8 @@
 // src/rasp/__tests__/degrade.test.js
 //
-// RASP v1 — UNAUDITED-PROVISIONAL.
+// RASP v1 — PROVISIONAL — independent audit complete (ECC 2026-06-23, §24;
+// browser lane confirmed genuinely blocking at the wired call-site, no egress;
+// M-4 stale-comment fix). Still BUILT, not 'verified'.
 //
 // degrade(condition) is the PURE condition → response-tier mapping. It is the I3
 // line-item subject (§5): it takes NO wallet-set handle, and its output is a pure

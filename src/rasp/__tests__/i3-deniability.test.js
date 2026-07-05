@@ -1,6 +1,8 @@
 // src/rasp/__tests__/i3-deniability.test.js
 //
-// RASP v1 — UNAUDITED-PROVISIONAL.  THE §5 AUDIT LINE-ITEM.
+// RASP v1 — PROVISIONAL — independent audit complete (ECC 2026-06-23, §24;
+// browser lane confirmed genuinely blocking at the wired call-site, no egress).
+// THE §5 AUDIT LINE-ITEM. Still BUILT, not 'verified'.
 //
 // I3 — deniability is sacred. The degradation RESPONSE must be identical across
 // the real and decoy sets: same sentence copy, same friction, same blocked-action

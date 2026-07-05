@@ -10,7 +10,9 @@
 // the in-progress inputs and clears them after every attempt. The slow part (two
 // 64 MiB Argon2id derivations) happens inside verify(), in the caller.
 //
-// UNAUDITED-PROVISIONAL.
+// PROVISIONAL — independent audit complete (ECC 2026-06-23, §24; H-1
+// passkey-bypass found and fixed — PR #340, resolveSend2faMethod). Still BUILT,
+// not 'verified'.
 
 import { useState } from 'react';
 import { Capacitor } from '@capacitor/core';

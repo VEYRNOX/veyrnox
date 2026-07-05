@@ -1,6 +1,8 @@
 // src/components/NotificationBell.jsx
 //
-// In-app Notifications v1 (transient, Path A) — UNAUDITED-PROVISIONAL.
+// In-app Notifications v1 (transient, Path A) — PROVISIONAL — independent audit
+// complete (ECC 2026-06-23, §24; M-3/M-5/M-6/L-2 found and fixed, PR #340).
+// Still BUILT, not 'verified'.
 // Build brief §5 (bell badge) + §6 (UI conformance) + §2 D-set (no cardinality leak).
 //
 // Presentational ONLY: a bell with an unseen badge. No keys, no network, no storage.
