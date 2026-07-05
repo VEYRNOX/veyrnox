@@ -10,16 +10,31 @@ on:
     branches:
       - main
       - develop
+  workflow_dispatch:
+
+concurrency:
+  group: android-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
-  JAVA_VERSION: '17'
-  NODE_VERSION: '18'
+  # Capacitor 8 / the Android Gradle build target Java 21; JDK 17 fails with
+  # "invalid source release: 21" (same pin as ci.yml android-release).
+  JAVA_VERSION: '21'
+  # Capacitor CLI requires Node >= 22.
+  NODE_VERSION: '22'
   GRADLE_OPTS: '-Xmx6g -Dorg.gradle.daemon=false'
+  # Public client identifier baked into `npm run build` (see ci.yml).
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
 
 jobs:
   e2e-emulator-tests:
-    runs-on: macos-13  # macOS has faster Android emulator support
-    timeout-minutes: 120
+    # ubuntu-latest runners expose KVM, so the emulator is hardware-accelerated.
+    # (Previously macos-13, which GitHub retired — jobs queued forever.)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     strategy:
       matrix:
@@ -30,6 +45,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -37,7 +58,7 @@ jobs:
           cache: 'npm'
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
@@ -46,132 +67,43 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Create Android Virtual Device (AVD)
-        run: |
-          echo "Creating AVD with API level ${{ matrix.api-level }}"
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
-            "platforms;android-${{ matrix.api-level }}" \
-            "system-images;android-${{ matrix.api-level }};${{ matrix.target }};x86_64" \
-            "emulator" \
-            "platform-tools"
-
-          echo "no" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/avdmanager create avd \
-            -n test-emulator \
-            -k "system-images;android-${{ matrix.api-level }};${{ matrix.target }};x86_64" \
-            -f
-
-      - name: Start Android Emulator
-        run: |
-          nohup $ANDROID_SDK_ROOT/emulator/emulator \
-            -avd test-emulator \
-            -no-snapshot-load \
-            -no-snapshot-save \
-            -no-audio \
-            -no-boot-anim \
-            -gpu swiftshader_indirect \
-            -memory 2048 \
-            -cores 2 \
-            > /tmp/emulator.log 2>&1 &
-
-          # Wait for emulator to be ready
-          $ANDROID_SDK_ROOT/platform-tools/adb wait-for-device
-
-          # Wait for device to finish booting
-          for i in {1..60}; do
-            if $ANDROID_SDK_ROOT/platform-tools/adb shell getprop sys.boot_completed | grep -q 1; then
-              echo "Emulator is ready"
-              break
-            fi
-            echo "Waiting for emulator... ($i/60)"
-            sleep 10
-          done
-
-      - name: Build APK for Testing
+      # Build the APK before booting the emulator so emulator uptime is spent
+      # only on tests.
+      - name: Build debug APK
         run: |
           npm run android:sync
+          chmod +x android/gradlew
           cd android
           ./gradlew assembleDebug --build-cache
-          cd ..
 
-      - name: Install APK on Emulator
-        run: |
-          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-          $ANDROID_SDK_ROOT/platform-tools/adb install -r "$APK_PATH"
-
-          # Wait for installation to complete
-          sleep 5
-
-          # Verify APK is installed
-          $ANDROID_SDK_ROOT/platform-tools/adb shell pm list packages | grep veyrnox
-
-      - name: Install Appium Server
+      - name: Install Appium + UiAutomator2 driver
         run: |
           npm install -g appium
-          npm install -g appium-uiautomator2-driver
+          appium driver install uiautomator2
 
-      - name: Start Appium Server
-        run: |
-          nohup appium --port 4723 \
-            --allow-insecure chromedriver_download \
-            > /tmp/appium.log 2>&1 &
+      - name: Run E2E suites on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash .github/scripts/android-e2e-emulator.sh
 
-          # Wait for Appium to start
-          for i in {1..30}; do
-            if curl -s http://localhost:4723/wd/hub/status | grep -q version; then
-              echo "Appium is ready"
-              break
-            fi
-            echo "Waiting for Appium... ($i/30)"
-            sleep 2
-          done
-
-      - name: Run Vault E2E Tests
-        run: npm run android:test:vault
-        continue-on-error: true
-
-      - name: Run Send E2E Tests
-        run: npm run android:test:send
-        continue-on-error: true
-
-      - name: Run Hardware KEK E2E Tests
-        run: npm run android:test:hardware-kek
-        continue-on-error: true
-
-      - name: Run Biometric Unlock E2E Tests
-        run: npm run android:test:biometric-unlock
-        continue-on-error: true
-
-      - name: Run Hidden Wallet E2E Tests
-        run: npm run android:test:hidden-wallet
-        continue-on-error: true
-
-      - name: Run Panic PIN E2E Tests
-        run: npm run android:test:panic-pin
-        continue-on-error: true
-
-      - name: Run Send Scenarios E2E Tests
-        run: npm run android:test:send-scenarios
-        continue-on-error: true
-
-      - name: Collect Test Results
+      - name: Report per-suite results
         if: always()
         run: |
-          mkdir -p test-results
-
-          # WebdriverIO output (if available)
-          if [ -d ".wdio-*" ]; then
-            cp -r .wdio-* test-results/ || true
+          echo "## Android E2E (emulator, API ${{ matrix.api-level }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f test-results/suite-results.txt ]; then
+            sed 's/^/- /' test-results/suite-results.txt >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "_hardware-kek and biometric-unlock require real hardware (StrongBox / enrolled biometrics) and are expected to fail on an emulator. Suites are non-blocking; this job fails only on infrastructure errors (build, emulator boot, Appium)._" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "**No suites ran — infrastructure failure before test execution.**" >> "$GITHUB_STEP_SUMMARY"
           fi
-
-          # Appium logs
-          cp /tmp/appium.log test-results/ || true
-          cp /tmp/emulator.log test-results/ || true
-
-          # Android logcat
-          $ANDROID_SDK_ROOT/platform-tools/adb logcat -d > test-results/logcat.log || true
 
       # 2026-07-05: the Capacitor debug bridge logger echoed native plugin results
       # (hardware KEK factor H, encrypted vault blob) to the WebView console, which
@@ -207,71 +139,10 @@ jobs:
         with:
           name: android-e2e-results-api${{ matrix.api-level }}
           path: test-results/
-          # Reduced from 30 → 7 days (2026-07-05): these artifacts contain device
+          # Reduced from 30 -> 7 days (2026-07-05): these artifacts contain device
           # logcat; keep the exposure window short even though payloads are scrubbed.
           retention-days: 7
-
-      - name: Stop Emulator
-        if: always()
-        run: |
-          $ANDROID_SDK_ROOT/platform-tools/adb emu kill
-          pkill -f "emulator"
-          pkill -f "appium"
-          sleep 2
-
-  test-summary:
-    runs-on: ubuntu-latest
-    needs: e2e-emulator-tests
-    if: always()
-
-    steps:
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: android-e2e-results-*
-          path: .
-
-      - name: Generate Test Report
-        run: |
-          echo "# Android E2E Test Results" > test-report.md
-          echo "" >> test-report.md
-          echo "## Summary" >> test-report.md
-          echo "- **Total Test Suites**: 7" >> test-report.md
-          echo "- **Total Test Cases**: 49" >> test-report.md
-          echo "" >> test-report.md
-          echo "## Test Suites" >> test-report.md
-          echo "- Vault: 8/8" >> test-report.md
-          echo "- Send: 2/2" >> test-report.md
-          echo "- Send Scenarios: 10/10" >> test-report.md
-          echo "- Hardware KEK: 5/5" >> test-report.md
-          echo "- Biometric Unlock: 8/8" >> test-report.md
-          echo "- Hidden Wallet: 8/8" >> test-report.md
-          echo "- Panic PIN: 8/8" >> test-report.md
-          echo "" >> test-report.md
-          echo "## Device Configuration" >> test-report.md
-          echo "- Platform: Android Emulator (API 31)" >> test-report.md
-          echo "- Driver: UiAutomator2" >> test-report.md
-          echo "- Appium: 3.5.2+" >> test-report.md
-          echo "" >> test-report.md
-          echo "## Test Artifacts" >> test-report.md
-          echo "- See attached test-results for logs and detailed output" >> test-report.md
-
-          cat test-report.md
-
-      - name: Comment PR with Results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const report = fs.readFileSync('test-report.md', 'utf8');
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: report
-            });
+          if-no-files-found: ignore
 
   web-e2e-tests:
     runs-on: ubuntu-latest
@@ -297,6 +168,11 @@ jobs:
         run: npm run test:e2e
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:5173
+        # Step-level timeout so a hung/slow suite trips continue-on-error
+        # instead of the job-level timeout, which cancels the whole job and
+        # defeats the non-blocking design (observed: suite ran 28 min, job
+        # killed at 30).
+        timeout-minutes: 20
         continue-on-error: true
 
       - name: Upload Web Test Results
@@ -306,6 +182,7 @@ jobs:
           name: web-e2e-results
           path: test-results/
           retention-days: 30
+          if-no-files-found: ignore
 
   test-matrix-summary:
     runs-on: ubuntu-latest
@@ -313,21 +190,15 @@ jobs:
     if: always()
 
     steps:
+      # Honest aggregation only: real job statuses, no hardcoded test counts.
+      # Per-suite pass/fail detail lives in the e2e-emulator-tests step summary
+      # and the uploaded artifacts.
       - name: Check Test Status
         run: |
           echo "## E2E Test Matrix Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Android Emulator Tests" >> $GITHUB_STEP_SUMMARY
-          echo "- Status: ${{ needs.e2e-emulator-tests.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- API Level: 31" >> $GITHUB_STEP_SUMMARY
-          echo "- Test Suites: 7" >> $GITHUB_STEP_SUMMARY
-          echo "- Total Tests: 49" >> $GITHUB_STEP_SUMMARY
+          echo "- Job status: ${{ needs.e2e-emulator-tests.result }} (per-suite results in that job's summary/artifacts)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Web E2E Tests" >> $GITHUB_STEP_SUMMARY
-          echo "- Status: ${{ needs.web-e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Platform: Chromium, Firefox, WebKit" >> $GITHUB_STEP_SUMMARY
-          echo "- Total Tests: 10" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Overall" >> $GITHUB_STEP_SUMMARY
-          echo "- Total E2E Tests: 59" >> $GITHUB_STEP_SUMMARY
-          echo "- Coverage: Android (deniability, security, send) + Web (deniability, hardware KEK)" >> $GITHUB_STEP_SUMMARY
+          echo "- Job status: ${{ needs.web-e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
