@@ -266,11 +266,19 @@ reversal premise is that device-exercised Face ID/biometric unlock (2026-07-05) 
 enrolled users a fast path around the slow password KDF. Backward compatible: 64 MiB
 vaults still unlock (each blob carries its own KDF params); a lazy migration re-wraps to
 192 MiB on next password change/unlock; `LEGACY_KDF_PARAMS` stays 64 MiB. Status: BUILT,
-unit-tested (wallet-core 937/937 passing) — **NOT verified**, and device UX timing
-measurement for the mitigation premise is in progress separately, not done. Two honest
+unit-tested (wallet-core 937/937 passing) — **NOT verified**. The latency premise
+(originally an unmeasured real-device UX claim) is now **MEASURED** on one flagship
+Android device (2026-07-05, Pixel 10 Pro XL, Android 16, `com.veyrnox.app.debug`,
+production argon2 worker in the installed APK via CDP): 192 MiB warm-worker median
+603 ms (582–617 ms, n=5), cold-worker median 668 ms (657–678 ms, n=3); 64 MiB warm
+median 182 ms (177–208 ms, n=5). The PR #465 4-8 s figure did NOT reproduce on this
+device (full report: PR #604 comment `issuecomment-4887451367`). Honest remaining
 caveats: (1) users without biometric enrollment — including the Safari password-only web
-fallback — still pay the full ~6-8s 192 MiB latency PR #465 existed to fix; (2) "biometric
-mitigates the latency" is an unmeasured real-device UX claim at time of writing.
+fallback — still pay the full 192 MiB password-KDF cost on every unlock (~0.6-0.7 s on
+this flagship; mid/low-end Android NOT cleared and could be materially slower); (2) single
+flagship datapoint only; (3) the measurement is pure KDF cost, not full unlock UX; (4)
+iOS, web, and the Safari fallback path are unmeasured; (5) INTERNAL evidence, not
+independent.
 
 ## Demo mode (known trap)
 

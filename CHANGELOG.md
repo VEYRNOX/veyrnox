@@ -24,12 +24,20 @@ code), **PLANNED** (roadmap), or **HONEST-DISABLED** (present but off on princip
   params; `LEGACY_KDF_PARAMS` remains 64 MiB; a lazy migration re-wraps a vault to
   192 MiB on the next password change/unlock (no forced re-encryption, no lockout).
   **Status: BUILT**, unit-tested (wallet-core 937/937 passing). **NOT verified** —
-  no on-chain txid or device confirmation is implied. **Honest caveats:** (1) users
-  without biometric enrollment — including the Safari password-only web fallback —
-  still pay the full ~6-8s 192 MiB unlock latency that PR #465 existed to fix; this
-  raise ships no mitigation for that cohort. (2) The "biometric mitigates the
-  latency" premise is itself an unmeasured real-device UX claim at time of writing;
-  device UX timing measurement is in progress separately, not complete. See
+  no on-chain txid is implied, and the migration path itself has no device
+  confirmation (the measurement below covers KDF latency only). **Honest caveats:**
+  (1) users without biometric enrollment — including the Safari password-only web
+  fallback — still pay the full 192 MiB password-KDF cost on every unlock; this
+  raise ships no mitigation for that cohort. (2) The latency premise, unmeasured
+  when this entry was first written, is now **MEASURED** on one flagship Android
+  device (2026-07-05, Pixel 10 Pro XL, Android 16, `com.veyrnox.app.debug`,
+  production argon2 worker in the installed APK via CDP): 192 MiB warm-worker
+  median 603 ms (582–617 ms, n=5), cold-worker median 668 ms (657–678 ms, n=3);
+  64 MiB warm median 182 ms (177–208 ms, n=5). The PR #465 4-8 s figure did NOT
+  reproduce on this device (full report: PR #604 comment
+  `issuecomment-4887451367`). Remaining: single flagship datapoint (mid/low-end
+  Android NOT cleared), pure KDF cost not full unlock UX, iOS/web/Safari-fallback
+  unmeasured, INTERNAL evidence. See
   `docs/crypto-implementation-verification.md` and `docs/Feature-Status.md` §2 for
   the updated parameter table and OWASP comparison.
 
