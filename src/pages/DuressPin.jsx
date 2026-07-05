@@ -43,7 +43,6 @@ import {
 } from "@/lib/decoyBalance";
 import { getBiometricStatus } from "@/lib/biometric";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
-import { tryDuressUnlock, clearDuressVault } from "@/wallet-core/duress";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
   Copy, Check, RefreshCw, Coins, ExternalLink, Fingerprint,

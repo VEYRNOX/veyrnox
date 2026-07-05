@@ -91,8 +91,11 @@ function makeNativeFacade() {
       load().then((m) => m.nativeKeyStore.setLockHook(cb));
     },
     // Native-only: deliver H for a KEK-enrolled vault unlock. Web omits this.
-    async getHardwareFactor() {
-      return (await load()).nativeKeyStore.getHardwareFactor();
+    // MUST forward opts verbatim: the v2 { kekSalt } binding travels through here,
+    // and dropping it silently reverts every enrolled vault to the fixed v1 salt
+    // (C-1 regression, 2026-07-05). Every other facade method already forwards.
+    async getHardwareFactor(opts) {
+      return (await load()).nativeKeyStore.getHardwareFactor(opts);
     },
     // Native-only: suppress background-lock hook for non-security OS dialogs.
     async suppressLock(fn) {
