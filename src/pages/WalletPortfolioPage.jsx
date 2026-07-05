@@ -611,12 +611,20 @@ export default function WalletPortfolioPage() {
       </div>
 
       {/* Global unbacked-wallet warning (fund-loss risk spans all portfolios) */}
+      {/* DENIABILITY (CLAUDE.md "never show wallet count/list" · I3): the banner copy
+          must be byte-identical whether 1 or N wallets are unbacked — interpolating
+          unbacked.length (or picking plural/singular from it) is a cardinality tell,
+          same as a wallet-count line. Presence of the banner may still be gated on
+          unbacked.length > 0 (an empty-state conditional, not a tell); only the
+          rendered text itself must stay count-blind. The per-wallet "Back up" button
+          list below is the functionally-required exception (user must pick which
+          wallet), same precedent as the StealthWallets wallet-picker list. */}
       {unbacked.length > 0 && (
         <div className="p-3 rounded-xl border border-caution/40 bg-caution/10 space-y-2">
           <div className="flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">
-              <b>{unbacked.length} wallet{unbacked.length === 1 ? "" : "s"} not backed up.</b> Each wallet has its own recovery phrase — without it, that wallet’s funds are unrecoverable. Back up now.
+              <b>Wallet backup incomplete.</b> Each wallet has its own recovery phrase — without it, that wallet’s funds are unrecoverable. Back up now.
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
