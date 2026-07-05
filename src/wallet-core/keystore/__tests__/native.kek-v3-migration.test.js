@@ -1,0 +1,267 @@
+// src/wallet-core/keystore/__tests__/native.kek-v3-migration.test.js
+//
+// C-1 regression fix (2026-07-05) — version-stamp reinterpretation + brickless migration.
+//
+// BACKGROUND: existing hardwareKekVersion:2 vaults were stamped v2 but their H was wrapped
+// under the FIXED v1 salt (two masking bugs: the facade dropped getHardwareFactor's opts,
+// and hardware.js sent kekSalt as a raw Uint8Array the bridge could not carry). So a v2
+// stamp does NOT mean the wrap is salt-bound. We therefore:
+//   - introduce hardwareKekVersion:3 = GENUINELY salt-bound wraps;
+//   - hfOptsForBlob: v3 → { kekSalt }; v2 → undefined (inert binding, treat as fixed-salt);
+//     v1 → undefined;
+//   - stamp NEW enrollments v3 (per-enrollment random kekSalt);
+//   - LAZY-UPGRADE a v2 blob on successful unlock: fresh salt → getHardwareFactor({kekSalt})
+//     → re-wrap DEK → persist atomically → stamp v3. If ANY upgrade step fails, the v2 blob
+//     is left byte-for-byte untouched (never brick).
+//
+// Mocking pattern mirrors native.kek-v2-hmac-binding.test.js / native.kek-preserving-repersist.
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const VAULT_KEY = 'vault_v1';
+const store = new Map();
+const setVault = (v) => { if (v === null || v === undefined) store.delete(VAULT_KEY); else store.set(VAULT_KEY, v); };
+const secureStoreMock = {
+  setKeyPrefix: vi.fn(async () => {}),
+  setSynchronize: vi.fn(async () => {}),
+  setDefaultKeychainAccess: vi.fn(async () => {}),
+  get: vi.fn(async (key) => (store.has(key) ? store.get(key) : null)),
+  set: vi.fn(async (key, data) => { store.set(key, data); }),
+  remove: vi.fn(async (key) => { const e = store.has(key); store.delete(key); return e; }),
+};
+vi.mock('@aparajita/capacitor-secure-storage', () => ({
+  SecureStorage: secureStoreMock,
+  KeychainAccess: { whenPasscodeSetThisDeviceOnly: 'whenPasscodeSetThisDeviceOnly' },
+}));
+vi.mock('@aparajita/capacitor-biometric-auth', () => ({
+  BiometricAuth: {
+    checkBiometry: vi.fn(async () => ({ isAvailable: true, deviceIsSecure: true })),
+    authenticate: vi.fn(async () => {}),
+  },
+}));
+vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn() } }));
+
+const vaultMock = {
+  encryptVault: vi.fn(async () => ({ v: 1, kdf: 'argon2id', salt: 's', iv: 'bareiv', ct: 'barect' })),
+  decryptVault: vi.fn(async () => 'seed'),
+  deriveKekC: vi.fn(async () => new Uint8Array(32).fill(7)),
+  encryptVaultWithDek: vi.fn(async () => ({ iv: 'newiv', ct: 'newct' })),
+  decryptVaultWithDek: vi.fn(async () => 'seed'),
+};
+vi.mock('../../vault.js', () => vaultMock);
+
+const kekMock = {
+  combineKek: vi.fn(async () => new Uint8Array(32).fill(9)),
+  randomDek: vi.fn(() => new Uint8Array(32).fill(3)),
+  wrapDek: vi.fn(async () => ({ v: 1, iv: 'reiv', ct: 'rect' })),
+  unwrapDek: vi.fn(async () => new Uint8Array(32).fill(4)),
+  decodeKekSalt: vi.fn((s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))),
+  parseVaultBlob: vi.fn((raw) => (typeof raw === 'string' ? JSON.parse(raw) : raw)),
+  KEK_ERR: { NO_HARDWARE_FACTOR: 'NO_HARDWARE_FACTOR', UNWRAP_FAILED: 'UNWRAP_FAILED', MALFORMED_VAULT: 'MALFORMED_VAULT' },
+};
+vi.mock('../kek.js', () => kekMock);
+
+vi.mock('../hardware.js', () => ({
+  getHardwareFactor: vi.fn(async () => new Uint8Array(32).fill(1)),
+  clearHardwareCredential: vi.fn(async () => {}),
+}));
+
+const { nativeKeyStore, hfOptsForBlob } = await import('../native.js');
+
+const kekSalt = btoa('s'.repeat(32));
+const newHF = () => new Uint8Array(32).fill(1);
+const saltBytesOf = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  store.clear();
+  secureStoreMock.get.mockImplementation(async (key) => (store.has(key) ? store.get(key) : null));
+  secureStoreMock.set.mockImplementation(async (key, data) => { store.set(key, data); });
+  secureStoreMock.remove.mockImplementation(async (key) => { const e = store.has(key); store.delete(key); return e; });
+  vaultMock.deriveKekC.mockResolvedValue(new Uint8Array(32).fill(7));
+  vaultMock.decryptVault.mockResolvedValue('seed');
+  vaultMock.decryptVaultWithDek.mockResolvedValue('seed');
+  vaultMock.encryptVault.mockResolvedValue({ v: 1, kdf: 'argon2id', salt: 's', iv: 'bareiv', ct: 'barect' });
+  vaultMock.encryptVaultWithDek.mockResolvedValue({ iv: 'newiv', ct: 'newct' });
+  kekMock.combineKek.mockResolvedValue(new Uint8Array(32).fill(9));
+  kekMock.unwrapDek.mockResolvedValue(new Uint8Array(32).fill(4));
+  kekMock.wrapDek.mockResolvedValue({ v: 1, iv: 'reiv', ct: 'rect' });
+  kekMock.randomDek.mockReturnValue(new Uint8Array(32).fill(3));
+  kekMock.decodeKekSalt.mockImplementation((s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0)));
+});
+
+describe('(A) hfOptsForBlob — version mapping (v1/v2/v3)', () => {
+  const saltBytes = saltBytesOf(kekSalt);
+
+  it('v3 → { kekSalt } (genuinely salt-bound wrap)', () => {
+    const opts = hfOptsForBlob({ hardwareKekVersion: 3 }, saltBytes);
+    expect(opts).toBeTruthy();
+    expect(opts.kekSalt).toBeInstanceOf(Uint8Array);
+    expect(Array.from(opts.kekSalt)).toEqual(Array.from(saltBytes));
+  });
+
+  it('v2 → undefined (stamped v2 but binding was inert — treated as fixed-salt)', () => {
+    expect(hfOptsForBlob({ hardwareKekVersion: 2 }, saltBytes)).toBeUndefined();
+  });
+
+  it('v1 (no hardwareKekVersion) → undefined (legacy fixed-salt)', () => {
+    expect(hfOptsForBlob({}, saltBytes)).toBeUndefined();
+    expect(hfOptsForBlob(null, saltBytes)).toBeUndefined();
+  });
+});
+
+describe('(B) enrollKek — stamps v3 with a per-enrollment random kekSalt', () => {
+  it('new enrollment stamps hardwareKekVersion:3 and binds H to the fresh salt', async () => {
+    setVault(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
+    const getHF = vi.fn(async () => newHF());
+
+    await nativeKeyStore.enrollKek('pw', { getHardwareFactor: getHF });
+
+    const written = JSON.parse(store.get(VAULT_KEY));
+    expect(written.hardwareKekVersion).toBe(3);
+    expect(getHF).toHaveBeenCalledTimes(1);
+    const arg = getHF.mock.calls[0][0];
+    expect(arg.kekSalt).toBeInstanceOf(Uint8Array);
+    expect(Array.from(arg.kekSalt)).toEqual(Array.from(saltBytesOf(written.kekSalt)));
+  });
+
+  it('two enrollments produce DIFFERENT kekSalts (per-enrollment binding)', async () => {
+    setVault(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
+    await nativeKeyStore.enrollKek('pw', { getHardwareFactor: vi.fn(async () => newHF()) });
+    const first = JSON.parse(store.get(VAULT_KEY)).kekSalt;
+
+    // Reset to bare and enroll again.
+    setVault(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
+    await nativeKeyStore.enrollKek('pw', { getHardwareFactor: vi.fn(async () => newHF()) });
+    const second = JSON.parse(store.get(VAULT_KEY)).kekSalt;
+
+    expect(first).not.toBe(second);
+  });
+});
+
+describe('(C) migration happy path — v2 unlock lazily upgrades to v3', () => {
+  it('unlocking a v2 vault re-wraps the SAME DEK and stamps v3', async () => {
+    setVault(JSON.stringify({
+      v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
+      kekWrap: { v: 1, iv: 'wrapiv', ct: 'wrapct' }, kekSalt, hardwareKekVersion: 2,
+    }));
+    // First getHF: v2 unlock (fixed salt → no kekSalt). Second getHF: v3 re-wrap (fresh salt).
+    const getHF = vi.fn(async () => newHF());
+    // The DEK recovered on unlock must be the DEK re-wrapped for v3.
+    const dek = new Uint8Array(32).fill(4);
+    kekMock.unwrapDek.mockResolvedValue(dek);
+
+    const secret = await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
+    expect(secret).toBe('seed'); // unlock still returns the decrypted seed
+
+    const written = JSON.parse(store.get(VAULT_KEY));
+    expect(written.hardwareKekVersion).toBe(3);
+    expect(written.kekSalt).not.toBe(kekSalt); // fresh salt
+    expect(written.kekWrap).toEqual({ v: 1, iv: 'reiv', ct: 'rect' }); // re-wrapped
+    // The seed ciphertext (iv/ct) is preserved — only the KEK wrap rotates.
+    expect(written.iv).toBe('oldiv');
+    expect(written.ct).toBe('oldct');
+
+    // getHF called twice: once for v2 unlock (no kekSalt), once for v3 re-wrap (fresh salt).
+    expect(getHF).toHaveBeenCalledTimes(2);
+    expect(getHF.mock.calls[0][0]).toBeUndefined(); // v2 unlock: fixed salt
+    const rewrapArg = getHF.mock.calls[1][0];
+    expect(rewrapArg.kekSalt).toBeInstanceOf(Uint8Array);
+    expect(Array.from(rewrapArg.kekSalt)).toEqual(Array.from(saltBytesOf(written.kekSalt)));
+    // The DEK re-wrapped is the SAME DEK recovered on unlock (unchanged seed protection).
+    expect(kekMock.wrapDek).toHaveBeenCalledWith(expect.any(Uint8Array), dek);
+  });
+
+  it('after upgrade the vault unlocks on the v3 path (kekSalt bound)', async () => {
+    setVault(JSON.stringify({
+      v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
+      kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 2,
+    }));
+    await nativeKeyStore.unlock('pw', { getHardwareFactor: vi.fn(async () => newHF()) });
+
+    // Now the stored blob is v3 — a fresh unlock must pass { kekSalt } (v3 binding).
+    const getHF2 = vi.fn(async () => newHF());
+    await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF2 });
+    const v3blob = JSON.parse(store.get(VAULT_KEY));
+    // On a v3 blob the (single) unlock getHF call carries the bound kekSalt.
+    const arg = getHF2.mock.calls[0][0];
+    expect(arg).toBeTruthy();
+    expect(arg.kekSalt).toBeInstanceOf(Uint8Array);
+    expect(Array.from(arg.kekSalt)).toEqual(Array.from(saltBytesOf(v3blob.kekSalt)));
+  });
+});
+
+describe('(D) migration is BRICKLESS — any upgrade-step failure leaves the v2 blob intact', () => {
+  const v2blob = () => JSON.stringify({
+    v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
+    kekWrap: { v: 1, iv: 'wrapiv', ct: 'wrapct' }, kekSalt, hardwareKekVersion: 2,
+  });
+
+  it('re-wrap H (second getHardwareFactor) fails → v2 blob unchanged, unlock still succeeds', async () => {
+    setVault(v2blob());
+    // First getHF (unlock) OK; second getHF (re-wrap) throws.
+    const getHF = vi.fn()
+      .mockResolvedValueOnce(newHF())
+      .mockRejectedValueOnce(new Error('biometric cancelled during upgrade'));
+
+    const secret = await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
+    expect(secret).toBe('seed'); // unlock MUST still succeed — upgrade is best-effort
+
+    const still = JSON.parse(store.get(VAULT_KEY));
+    expect(still.hardwareKekVersion).toBe(2); // untouched
+    expect(still.kekSalt).toBe(kekSalt);
+    expect(still.kekWrap).toEqual({ v: 1, iv: 'wrapiv', ct: 'wrapct' });
+  });
+
+  it('re-wrap (wrapDek) fails → v2 blob unchanged, unlock still succeeds', async () => {
+    setVault(v2blob());
+    kekMock.wrapDek.mockRejectedValueOnce(new Error('wrap failed'));
+    const secret = await nativeKeyStore.unlock('pw', { getHardwareFactor: vi.fn(async () => newHF()) });
+    expect(secret).toBe('seed');
+    const still = JSON.parse(store.get(VAULT_KEY));
+    expect(still.hardwareKekVersion).toBe(2);
+    expect(still.kekSalt).toBe(kekSalt);
+  });
+
+  it('persist (safeWriteVault read-back) fails → v2 blob restored, unlock still succeeds', async () => {
+    setVault(v2blob());
+    // Make the read-back after the v3 write return a mismatching value ONCE so
+    // safeWriteVault throws VAULT_WRITE_VERIFY_FAILED, then keep the store readable.
+    let writes = 0;
+    secureStoreMock.set.mockImplementation(async (key, data) => {
+      writes++;
+      // Corrupt only the v3 upgrade write's persistence (the write whose blob is v3).
+      if (typeof data === 'string' && data.includes('"hardwareKekVersion":3')) {
+        store.set(key, 'CORRUPTED_DIFFERENT_VALUE');
+      } else {
+        store.set(key, data);
+      }
+    });
+
+    const secret = await nativeKeyStore.unlock('pw', { getHardwareFactor: vi.fn(async () => newHF()) });
+    expect(secret).toBe('seed'); // unlock succeeds despite the failed upgrade
+
+    // The v2 blob must remain unlockable — the corrupted v3 write must not be left in place.
+    const still = store.get(VAULT_KEY);
+    expect(still).not.toBe('CORRUPTED_DIFFERENT_VALUE');
+    const parsed = JSON.parse(still);
+    expect(parsed.hardwareKekVersion).toBe(2);
+    expect(parsed.kekSalt).toBe(kekSalt);
+  });
+});
+
+describe('(E) degenerate salt still rejected on the v3 path', () => {
+  it('a v3 blob with an all-zero kekSalt is rejected (decodeKekSalt / degenerate guard upstream)', async () => {
+    // decodeKekSalt returns zero bytes; combineKek is the real degeneracy backstop, but here
+    // we assert native.js does not special-case v3 to bypass the existing salt validation:
+    // a malformed (empty) kekSalt on a v3 blob still fails closed via decodeKekSalt.
+    kekMock.decodeKekSalt.mockImplementation(() => { throw new Error('MALFORMED_VAULT'); });
+    setVault(JSON.stringify({
+      v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
+      kekWrap: { v: 1 }, kekSalt: '', hardwareKekVersion: 3,
+    }));
+    await expect(
+      nativeKeyStore.unlock('pw', { getHardwareFactor: vi.fn(async () => newHF()) }),
+    ).rejects.toThrow('MALFORMED_VAULT');
+  });
+});

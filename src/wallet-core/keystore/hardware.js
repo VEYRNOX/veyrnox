@@ -101,6 +101,13 @@ function b64ToUint8Array(b64) {
   return out;
 }
 
+/** Uint8Array → base64 (no-wrap). Inverse of b64ToUint8Array. */
+function uint8ArrayToB64(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+  return btoa(s);
+}
+
 /**
  * isHardwareEnrolled() → boolean
  * Checks whether the HMAC key exists in Android Keystore.
@@ -187,12 +194,18 @@ export async function enrollHardwareCredential(opts) {
 /**
  * getHardwareFactor(opts?) → Uint8Array (32 bytes)
  * Presents BiometricPrompt, computes HMAC-SHA256(key, kekSalt) natively,
- * returns the 32-byte result.
- * @param {{ kekSalt?: Uint8Array }} [opts]
+ * returns the 32-byte result. kekSalt is passed to the plugin as a base64 STRING
+ * (bridge-safe; see body) — the native plugin base64-decodes it as the MAC input.
+ * @param {{ kekSalt?: Uint8Array }} [opts] — raw salt bytes; encoded before the call.
  */
 export async function getHardwareFactor(opts) {
   const plugin = getPlugin();
-  const pluginOpts = opts && opts.kekSalt ? { kekSalt: opts.kekSalt } : undefined;
+  // C-1 (2026-07-05): kekSalt MUST cross the Capacitor bridge as a base64 STRING. The
+  // bridge JSON.stringify's plugin options, so a raw Uint8Array serialises to a keyed
+  // object ({"0":86,…}) that Kotlin's call.getString("kekSalt") reads as null — silently
+  // reverting to the fixed v1 salt (the binding becomes inert). Encode to base64 here;
+  // the native plugin base64-decodes it back to the MAC input.
+  const pluginOpts = opts && opts.kekSalt ? { kekSalt: uint8ArrayToB64(opts.kekSalt) } : undefined;
   const { h } = await plugin.getHardwareFactor(pluginOpts);
   // I/O-boundary validation (fail-closed, I4): the plugin output is UNTRUSTED at the
   // JS bridge. Validate BEFORE decoding — a missing/non-string h must throw the stable
