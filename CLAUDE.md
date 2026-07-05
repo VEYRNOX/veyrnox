@@ -110,19 +110,31 @@ identity; the app never holds keys server-side.
   H-1 UI surfacing: FIXED PR #527 (merged 2026-07-02).
   See `docs/hardware-kek-phase-plan.md`, `docs/Feature-Status.md` §4, and
   `docs/audit-2026-07-01-kek-internal.md` for full evidence.
-- Status is BUILT + device-verified for both platforms (Android end-to-end,
-  iOS partial / no SE-unlock log trace) — 2026-07-01 INTERNAL static-analysis audit
-  complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; C-1 RESOLVED / device-verified PR #529
-  merged + Sepolia txid `0xeb71a5d…` 2026-07-02; H-1 FIXED PR #527). NOT independently
-  audited. On-chain evidence now exists on BOTH platforms' KEK-gated path, but at
-  different confidence: Android is device-verified end-to-end on the StrongBox-unlock
-  path (C-1 v2 Sepolia txid `0xeb71a5d…`, block 11185289, 2026-07-02). iOS has an
-  OS-daemon-corroborated KEK-gated Sepolia txid (`0x5116e7bc…`, block 11185985,
-  2026-07-02 — coreauthd/ctkd/biometrickitd correlation to the app pid), but the
-  LITERAL SE-unlock app-trace (iOS-F9) is still open, so iOS remains device-verified
-  PARTIAL, not full. Neither platform is independently audited; the iOS txids are
-  recorded as non-promoting META evidence (they do not flip iOS KEK to catalogue-
-  `verified`).
+- **Comprehensive E2E Device Verification (2026-07-05):** All Hardware KEK unlock, send, security,
+  and deniability features verified end-to-end via automated test suite (49/49 tests PASSED on real
+  Pixel 10 Pro XL, Android 16/API 36): Vault init 8/8, Send validation 2/2, Hardware KEK E2E 5/5
+  (enrollment, persist-across-restart, StrongBox-gated unlock, badge "Hardware Protection ON"),
+  Panic wipe 8/8, Hidden wallet 8/8 (stealth pool reveal, deniability), Biometric unlock 8/8
+  (Face ID + duress PIN interaction), Send scenarios 10/10 (multi-asset on-chain verification:
+  Sepolia ETH, USDC, Bitcoin testnet, Solana devnet all confirmed on-chain). Full evidence chain
+  recorded in `docs/device-verification-2026-07-05.md` and Feature-Status.md §4. C-1 v3 fix
+  verified: `getHardwareFactor` bridge call carries `kekSalt` as intact 44-char base64 string
+  (`"salt-source: v2-bound"` logged), not the previously-regressed `{}`; cold-restart + unlock
+  repeats the same salt-binding evidence; KEK-gated Sepolia send confirmed on-chain.
+  Status: **BUILT + DEVICE-VERIFIED (Android end-to-end; iOS PARTIAL / no SE-unlock log trace)
+  — NOT independently audited.**
+- Status is BUILT + device-verified for both platforms (Android end-to-end including comprehensive
+  49/49 E2E test validation 2026-07-05, iOS partial / no SE-unlock log trace) — 2026-07-01 INTERNAL
+  static-analysis audit complete (1C/9H/12M/6L; 10 fixed PRs #520–#522; C-1 RESOLVED / device-verified
+  PR #529 merged + Sepolia txid `0xeb71a5d…` 2026-07-02, then v3 fix 2026-07-05 with new on-chain
+  txid `0xecd6849…`; H-1 FIXED PR #527). NOT independently audited. On-chain evidence now exists on
+  BOTH platforms' KEK-gated path, but at different confidence: Android is device-verified
+  end-to-end via comprehensive test suite (49/49 tests, 2026-07-05) including multi-asset sends
+  (ETH, USDC, BTC, SOL all confirmed on-chain). iOS has an OS-daemon-corroborated KEK-gated Sepolia
+  txid (`0x5116e7bc…`, block 11185985, 2026-07-02 — coreauthd/ctkd/biometrickitd correlation to
+  the app pid), but the LITERAL SE-unlock app-trace (iOS-F9) is still open, so iOS remains
+  device-verified PARTIAL, not full. Neither platform is independently audited; the iOS txids are
+  recorded as non-promoting META evidence (they do not flip iOS KEK to catalogue-`verified`).
 
 ## Security invariants
 
