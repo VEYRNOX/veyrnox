@@ -25,7 +25,7 @@
 
 | Severity | Total | Fixed (PRs #520–#522) | Open |
 |----------|-------|-----------------------|------|
-| CRITICAL | 1 | 0 → 1 recorded RESOLVED 2026-07-02, **REGRESSED 2026-07-05** (binding-unconfirmed — see annotation below) | 1 open — C-1 was recorded closed 2026-07-02 (PR #529 merged, commit 732f9676; Pixel 10 Pro XL Sepolia send txid `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289; vault `hardwareKekVersion:2`, `kekSaltLength:44` confirmed) but a 2026-07-05 OODA investigation found the fix cryptographically inert on-device; v3 fix in progress, device re-verification required |
+| CRITICAL | 1 | 1 — recorded RESOLVED 2026-07-02, REGRESSED 2026-07-05 (binding-unconfirmed), then **FIXED / device-verified 2026-07-05 (v3, PR #568)** — see annotations below | 0 open (C-1 closed via v3 fix); salt-tamper negative test, v2→v3 migration device-exercise, on-device multi-enrollment salt distinctness, and independent audit remain outstanding — see annotation |
 | HIGH | 9 | 5 (F-01, F-02, H-4, iOS-F6, H-1 PR #527) | 4 (iOS-F5, H-2/iOS-F11 — Android half RESOLVED/device-verified PR #516/#518, iOS half deferred/device-blocked, iOS-F9 evidence gap, H-3 accepted) |
 | MEDIUM | 12 | 5 (F-03, F-05, F-06, M-3, + H-3 accepted deviation) | 7 (iOS-F3, remaining) |
 | LOW | 6 | 1 (F-08) | 5 (native/device) |
@@ -53,7 +53,7 @@
 
 | ID | Severity | Surface | Description | Gate |
 |----|----------|---------|-------------|------|
-| C-1 | CRITICAL | Android | **HMAC input is a global fixed constant.** The Android StrongBox KEK plugin uses a fixed, application-global HMAC input string as the hardware factor H for all enrolled vaults. This means every vault on every device running the same build derives the same H from the StrongBox (modulo per-device StrongBox key). A vault encrypted on device A can be decrypted on device B if the attacker extracts the StrongBox key from device A (or from a device running the same build with an extracted key). The correct construction requires a **per-enrollment `kekSalt`** (unique random value generated at enroll time, stored alongside the kekWrap, incorporated into the HMAC input). This is a protocol-breaking change — existing enrolled vaults required migration. **RESOLVED / device-verified 2026-07-02 (record at the time):** PR #529 merged (commit 732f9676). `native.js` generates `kekSalt` before calling `getHardwareFactor`, passes `{ kekSalt: saltBytes.slice() }` to it, stamps `hardwareKekVersion: 2` on the vault blob; Kotlin plugin reads the `kekSalt` param. `changePassword` calls `getHF` twice (once with old kekSalt for unlock, once with fresh new kekSalt for re-wrap). 4/4 C-1 contract tests + 172/172 keystore tests pass. On-device: v2 re-enroll + cold restart + StrongBox-gated unlock + Sepolia send confirmed — txid `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289, Pixel 10 Pro XL (Android 16/API 36). Vault read confirmed `hardwareKekVersion:2`, `kekSaltLength:44`, `hardwareKekTier:"STRONGBOX"`. INTERNAL — not independently audited. Remaining (at the time): independent audit. | ✅ RESOLVED / device-verified — PR #529 merged (732f9676); Sepolia txid `0xeb71a5d…` block 11185289, 2026-07-02. Independent audit outstanding. |
+| C-1 | CRITICAL | Android | **HMAC input is a global fixed constant.** The Android StrongBox KEK plugin uses a fixed, application-global HMAC input string as the hardware factor H for all enrolled vaults. This means every vault on every device running the same build derives the same H from the StrongBox (modulo per-device StrongBox key). A vault encrypted on device A can be decrypted on device B if the attacker extracts the StrongBox key from device A (or from a device running the same build with an extracted key). The correct construction requires a **per-enrollment `kekSalt`** (unique random value generated at enroll time, stored alongside the kekWrap, incorporated into the HMAC input). This is a protocol-breaking change — existing enrolled vaults required migration. **RESOLVED / device-verified 2026-07-02 (record at the time):** PR #529 merged (commit 732f9676). `native.js` generates `kekSalt` before calling `getHardwareFactor`, passes `{ kekSalt: saltBytes.slice() }` to it, stamps `hardwareKekVersion: 2` on the vault blob; Kotlin plugin reads the `kekSalt` param. `changePassword` calls `getHF` twice (once with old kekSalt for unlock, once with fresh new kekSalt for re-wrap). 4/4 C-1 contract tests + 172/172 keystore tests pass. On-device: v2 re-enroll + cold restart + StrongBox-gated unlock + Sepolia send confirmed — txid `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289, Pixel 10 Pro XL (Android 16/API 36). Vault read confirmed `hardwareKekVersion:2`, `kekSaltLength:44`, `hardwareKekTier:"STRONGBOX"`. INTERNAL — not independently audited. Remaining (at the time): independent audit. **REGRESSED 2026-07-05, then FIXED / device-verified 2026-07-05 (v3, PR #568)** — see the two dated annotations below (regression note, then resolution note) for the full history; do not read only this row. | ✅ FIXED / device-verified (v3, 2026-07-05, PR #568) — Sepolia txid `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3` block 11206686. Salt-tamper test, v2→v3 migration device-exercise, multi-enrollment distinctness, and independent audit outstanding. |
 >
 > **⚠️ 2026-07-05 REGRESSION NOTE — annotation, not a rewrite of the above.** A follow-up
 > OODA investigation found the PR #529 fix described above is **cryptographically inert
@@ -91,6 +91,79 @@
 >   salt-tamper negative test (proving a wrong/altered `kekSalt` fails unlock). The Android
 >   StrongBox-gated unlock FLOW itself remains device-verified from the 2026-07-02 session —
 >   only the salt-binding claim regresses.
+>
+> **✅ 2026-07-05 RESOLUTION UPDATE — v3 fix, device-verified (annotation, not a rewrite of
+> the regression note above).** The regression note above is NOT deleted — it stands as the
+> historical record of what went wrong and why. This update records the v3 fix that follows
+> it, confirmed on the same device class the regression was found on.
+> - **Fix (PR #568):** facade argument forwarding closes Bug A (`getHardwareFactor()` in
+>   `src/wallet-core/keystore/index.js` now forwards `opts` through to the plugin instead of
+>   dropping them); `hardware.js` now base64-encodes `kekSalt` to a STRING before it crosses
+>   the Capacitor bridge, closing Bug B (`JSON.stringify` no longer mangles a `Uint8Array`
+>   into an object the Kotlin side reads as `null`); the Kotlin plugin fails closed on a
+>   malformed/absent salt instead of silently reverting to the fixed v1 salt; the vault now
+>   stamps `hardwareKekVersion:3` for genuinely salt-bound wraps, with a lazy, brickless
+>   v2→v3 upgrade path for vaults previously (falsely) stamped v2. 11 migration unit tests
+>   added (`native.kek-v3-migration.test.js`) plus a dedicated bridge-encoding test
+>   (`hardware.kek-salt-bridge-encoding.test.js`).
+> - **Device verification (2026-07-05, Pixel 10 Pro XL, Android 16, `com.veyrnox.app.debug`,
+>   all times device-local):**
+>   - 07:19:35 — fresh v3 enrollment: plugin log `"enroll: key stored — tier=STRONGBOX
+>     (securityLevel=2)"`.
+>   - 07:19:37 — `getHardwareFactor` bridge call carried `kekSalt` as an intact 44-char
+>     base64 STRING (`methodData {"kekSalt":"1E4dcUqurire0NCJM2lN+ekCbhHHm0I2+t8pWYdE2Vc="}`)
+>     — previously arrived as `{}` — plugin logged `"salt-source: v2-bound"`.
+>   - Cold restart (force-stop + relaunch 07:37:46), unlock 07:40:00–03: biometric prompt →
+>     `getHardwareFactor` called again with the SAME stored `kekSalt` → `"salt-source:
+>     v2-bound"` → H returned → vault decrypted → wallet loaded (balance RPCs fired
+>     immediately after). **This closes the Android unlock-path app-trace evidence gap** —
+>     the Android analogue of iOS-F9 — for this session.
+>   - **KEK-gated Sepolia send from this vault:** txid
+>     `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`, block `11206686`
+>     (`0xab001e`), status SUCCESS, from `0x90f9f1f9f5a1938b21ef0c20352c7b792e68a729` to
+>     `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`, 21000 gas plain ETH transfer —
+>     independently re-confirmed via RPC receipt (owner-supplied txid).
+> - **Corrected status: C-1 FIXED / device-verified (v3 fresh-enroll path, end-to-end incl.
+>   on-chain txid, 2026-07-05).** INTERNAL evidence — not independently audited.
+> - **Still outstanding (explicitly, not swept under "fixed"):**
+>   1. **Salt-tamper negative test NOT performed** — the stored vault lives inside encrypted
+>      SecureStorage, so a non-invasive tamper is not feasible on this device. The operative
+>      evidence that the supplied salt is actually the HMAC input is the salt-bound branch
+>      attestation (`"salt-source: v2-bound"` logged only when the intact salt string is
+>      received) rather than a direct tamper/fail test.
+>   2. **v2→v3 lazy migration path NOT device-exercised** — the test device had no existing
+>      v2 vault (this was a fresh enroll). Migration remains unit-tested only (11 tests),
+>      not confirmed on a real upgrading device.
+>   3. **Per-enrollment salt distinctness on device** — unit-proven only; only one
+>      enrollment's salt was observed on this device, so on-device distinctness across
+>      multiple enrollments is not yet confirmed.
+>   4. **Independent audit** — still outstanding, as for the rest of the Hardware KEK
+>      surface.
+> - This is INTERNAL evidence, not independent audit. "Device-verified" here means the v3
+>   fresh-enroll path end-to-end, including a real on-chain txid — it is not a claim that
+>   every C-1-adjacent scenario (migration, tamper-resistance, multi-enrollment distinctness)
+>   has been exercised.
+>
+> **⚠️ NEW FINDING — LOG-1 (2026-07-05, discovered during this device-verification session):**
+> Capacitor's debug bridge logger echoes every native plugin result to logcat in DEBUG
+> builds. Captured on-device during this session: the hardware KEK factor H in cleartext
+> base64 (`{"h":"..."}`) and the full encrypted vault blob, both written to logcat by the
+> bridge's own debug logging, independent of any app-level log statement. **Scope:** DEBUG
+> builds only — production default is silent, but this has NOT been verified for our actual
+> release build configuration, so it is not yet ruled out there either. **Risk:** `adb`
+> access to a debug-build device extracts H directly from logcat; Appium CI logcat artifacts
+> (see `tests/android/`) may also capture it. **Severity:** suggested HIGH for
+> debug/CI context; NOT classified as a production finding until the release build
+> configuration is verified. **Remediation:** tracked separately (spawned as its own task) —
+> not fixed as part of PR #568.
+>
+> **Also recorded from this session — P3 biometric enrollment (separate from C-1):** the
+> "Biometric unlock" enrollment flow was device-exercised 2026-07-05 07:19:16 — a
+> `BiometricAuth` prompt with honest "Enroll biometric unlock" labeling was observed in
+> device logs. The original reported bug ("WebAuthn native plugins not working") is FIXED /
+> device-exercised for the enrollment step. The "passkey" WebAuthn path on native remains
+> honest-disabled by design — biometric unlock (native OS biometric) and WebAuthn/passkey
+> (FIDO2 credential) are different mechanisms; only the former is native-enrolled here.
 | iOS-F5 | HIGH | iOS | **H factor in NSData not zeroed post-decryption.** The `HardwareKekPlugin.m` ObjC layer decrypts the SE-ECIES-wrapped key material into an `NSData` buffer. `NSData` is immutable and cannot be zeroed in place — the decrypted bytes persist in heap until the `NSData` object is deallocated. The fix requires switching to `NSMutableData` and calling `[data resetBytesInRange:NSMakeRange(0, data.length)]` after use, plus ensuring the ARC retain count drops promptly. Requires Mac/Xcode native build. | Mac + Xcode + iOS SE build |
 | iOS-F3 | MEDIUM | iOS | **Deprecated `kSecUseOperationPrompt` key.** `HardwareKekPlugin.m` uses `kSecUseOperationPrompt` to present the biometric prompt string, which was deprecated in iOS 9.0 in favour of `LAContext` with `localizedReason` passed to `evaluatePolicy` or `kSecUseAuthenticationContext` with a pre-evaluated `LAContext`. The deprecated key is ignored on recent iOS versions — the biometric prompt string may not display, and future iOS versions may remove the key entirely. Fix requires replacing with `LAContext` + `kSecUseAuthenticationContext`. Requires Mac + Xcode native build. | Mac + Xcode + iOS SE build |
 | H-1 | HIGH | Android | **StrongBox tier not surfaced to user.** The StrongBox tier (`STRONGBOX` vs `TRUSTED_ENVIRONMENT` vs `SOFTWARE`) is observed via `KeyInfo.getSecurityLevel()` but not surfaced in the UI. A user on a non-StrongBox device gets the same "Hardware Protection ON" badge as a StrongBox user. The implementation does not reject enrollment on non-StrongBox hardware (enforcement is TARGET, not built — as already noted in `docs/Feature-Status.md §4`). A non-StrongBox device silently logs `TRUSTED_ENVIRONMENT` instead. The UI badge should distinguish between StrongBox-backed and TEE-backed protection. **FIXED in PR #527 (merged 2026-07-02):** `tierBadge.js` pure helper maps `securityLevelName` → badge label/variant; `HardwareKekSettings.jsx` reads real tier from `getVaultKekTier()` and renders the correct badge (StrongBox Protected / TEE Protected / Hardware Protection ON / WebAuthn Protected); `native.js` `enrollKek` now stores `hardwareKekTier` in the vault blob and exposes a `getVaultKekTier()` accessor. | ✅ FIXED — PR #527 (merged 2026-07-02) |
@@ -119,7 +192,7 @@ This internal pass does NOT satisfy or relax any gate condition. The following r
 
 1. **Real-device verification** — Android ✅ DONE (StrongBox path: KEK-gated Sepolia send `0x9d9ff549…`, block 11180398, with logcat trace). iOS partial — two KEK-gated Sepolia sends confirmed on-chain (PR #495) but the live SE-unlock log trace tied to a send was not captured (iOS-F9); the SE-path unlock trace remains outstanding.
 2. **Biometric re-enrollment invalidation test** — Android ✅ DONE (PR #516/#518, Pixel 10 Pro XL, 2026-07-01: adding a new biometric invalidated the KEK-gated vault, fail-closed, PIN recovery intact). iOS remains outstanding — device-blocked (test iPhone Face ID enrollment restricted); the `kSecAccessControlBiometryCurrentSet` flag is set in code but the runtime invalidation must still be confirmed on an unrestricted iPhone.
-3. **C-1 migration** — per-enrollment `kekSalt` binding for Android HMAC input (v2 protocol, migration required). A v2 fix was recorded RESOLVED / device-verified 2026-07-02 (PR #529); a 2026-07-05 regression finding shows that fix does not actually bind the salt (see the annotation on the C-1 row above) — this gate condition is **still open**, now tracked as a v3 fix in progress pending device re-verification, a new txid, and a salt-tamper negative test.
+3. **C-1 migration** — per-enrollment `kekSalt` binding for Android HMAC input. A v2 fix was recorded RESOLVED / device-verified 2026-07-02 (PR #529); a 2026-07-05 regression finding showed that fix did not actually bind the salt (see the annotation on the C-1 row above). A v3 fix (PR #568) was then device-verified 2026-07-05 — fresh v3 enrollment, cold-restart unlock, and a KEK-gated Sepolia send all confirmed the salt is genuinely bound (`"salt-source: v2-bound"` logged only when the intact salt crosses the bridge; txid `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`, block 11206686). **This gate condition's core binding claim is now closed** for the fresh-enroll path; the salt-tamper negative test, the v2→v3 migration device-exercise, and on-device multi-enrollment salt distinctness remain open (see the 2026-07-05 resolution annotation on the C-1 row above), and independent audit is still required overall.
 4. **Independent third-party audit sign-off** — this internal pass does not substitute for an independent human review.
 
 **ALLOW_MAINNET** is unchanged. The existing 10-asset send functionality is unaffected by these KEK-specific open items.
