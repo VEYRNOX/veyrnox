@@ -173,13 +173,43 @@ jobs:
           # Android logcat
           $ANDROID_SDK_ROOT/platform-tools/adb logcat -d > test-results/logcat.log || true
 
+      # 2026-07-05: the Capacitor debug bridge logger echoed native plugin results
+      # (hardware KEK factor H, encrypted vault blob) to the WebView console, which
+      # debug builds relay to logcat — and this job persisted logcat into artifacts.
+      # The bridge logger is now redacted at source via
+      # patches/@capacitor+android+8.4.1.patch; this step is a second, independent
+      # layer so secrets can never persist in CI artifacts even if that patch is
+      # bypassed or an app-level console.log leaks.
+      - name: Scrub sensitive payloads from test artifacts
+        if: always()
+        run: |
+          # 1) Redact any JSON "h":"<base64>" value (hardware KEK factor H) in every
+          #    collected file — payloads can also transit appium.log via the
+          #    WebDriver getLog('logcat') responses. Handles quotes escaped inside
+          #    JSON strings (\"h\":\"...\") too.
+          find test-results -type f -print0 | while IFS= read -r -d '' f; do
+            sed -E -i 's@[\\]?"h[\\]?"[[:space:]]*:[[:space:]]*[\\]?"[A-Za-z0-9+/=]{16,}[\\]?"@"h":"[REDACTED-H]"@g' "$f" 2>/dev/null || true
+          done
+          # 2) Drop the entire WebView-console relay class from the logcat capture.
+          #    Bridge result payload lines carry NO plugin name (the pluginId header
+          #    line is filtered by Capacitor's isValidMsg), so name-based filtering
+          #    cannot catch them — dropping all Capacitor/Console lines is the only
+          #    reliable scrub. Native evidence lines (tag "HardwareKek", e.g.
+          #    "salt-source: ...") are not Console-tagged and are preserved.
+          if [ -f test-results/logcat.log ]; then
+            grep -v 'Capacitor/Console' test-results/logcat.log > test-results/logcat.scrubbed.log || true
+            mv test-results/logcat.scrubbed.log test-results/logcat.log
+          fi
+
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-e2e-results-api${{ matrix.api-level }}
           path: test-results/
-          retention-days: 30
+          # Reduced from 30 → 7 days (2026-07-05): these artifacts contain device
+          # logcat; keep the exposure window short even though payloads are scrubbed.
+          retention-days: 7
 
       - name: Stop Emulator
         if: always()

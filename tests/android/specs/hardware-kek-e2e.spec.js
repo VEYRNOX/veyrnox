@@ -243,4 +243,52 @@ On-Chain Evidence:
 - Vault verified with hardwareKekVersion:2, hardwareKekTier:STRONGBOX
     `);
   });
+
+  it('should not leak the hardware KEK factor H or vault blob into logcat (bridge log redaction canary)', async () => {
+    // 2026-07-05 finding: Capacitor's debug bridge logger (createLogFromNative in
+    // native-bridge.js) echoed every native plugin result to the WebView console,
+    // which debug builds relay to logcat. That leaked the HardwareKek
+    // .getHardwareFactor result ({"h":"<32-byte base64>"}) and the full encrypted
+    // vault blob (SecureStorage.get) into adb-accessible logs.
+    // The logger is redacted at source via patches/@capacitor+android+8.4.1.patch;
+    // this canary FAILS HARD if a sensitive payload ever reaches logcat again.
+    let logs = [];
+    try {
+      logs = await driver.getLog('logcat');
+    } catch (e) {
+      console.log('Could not retrieve logcat — leak canary skipped');
+      return;
+    }
+
+    // H is 32 bytes → 44 base64 chars. Match any JSON "h" field carrying a
+    // base64-looking value (raw or with JSON-escaped quotes). The redacted
+    // placeholder ("[REDACTED...") contains '[' so it can never match.
+    const hLeak = logs.filter(l =>
+      /\\?"h\\?"\s*:\s*\\?"[A-Za-z0-9+/=]{16,}\\?"/.test(l.message)
+    );
+
+    // Bridge payload lines carry NO plugin name in logcat (Capacitor's isValidMsg
+    // filters the "%cresult %c<pluginId>" header line), so name-based matching
+    // cannot find them. Instead: any WebView-console-relayed line containing a
+    // long base64 run is treated as a leaked payload (vault blob, wrapped DEK…).
+    // The purpose-built native evidence lines (tag "HardwareKek",
+    // "salt-source: ...") are NOT Console-tagged and never match here.
+    const consolePayloadLeak = logs.filter(l =>
+      /Capacitor\/Console/.test(l.message) && /[A-Za-z0-9+/=]{64,}/.test(l.message)
+    );
+
+    if (hLeak.length > 0 || consolePayloadLeak.length > 0) {
+      // Report counts only — printing the matching lines would re-leak the
+      // payloads into the test output / CI artifacts.
+      console.log(
+        `❌ SENSITIVE PAYLOAD IN LOGCAT: "h"-field matches=${hLeak.length}, ` +
+          `console base64 payloads=${consolePayloadLeak.length}`
+      );
+    } else {
+      console.log('✅ Leak canary clean: no H factor or bridge payload in logcat');
+    }
+
+    expect(hLeak.length).toBe(0);
+    expect(consolePayloadLeak.length).toBe(0);
+  });
 });
