@@ -47,6 +47,10 @@ jobs:
       # transitively via the test `pretest` hook (so it can't silently drop if
       # the test script changes).
       - run: npm run check:rng
+      # Stray-artifact gate: fail if the index contains zero-byte files or
+      # shell-fragment filenames (accidental redirection artifacts — three
+      # reached main before this gate existed: `per-page`, `false))`, `!(r.topic`).
+      - run: npm run check:strays
       - run: npm run build
       - run: npm test
 
