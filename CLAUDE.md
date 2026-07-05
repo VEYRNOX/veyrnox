@@ -51,6 +51,12 @@ identity; the app never holds keys server-side.
 - Offline-seizure gap closed (PIN exhaustion requires platform auth per-use)
 - Supported: Chrome ≥99, Firefox ≥108; graceful fallback Safari (password-only, ≥12 chars)
 - Status: ✅ Code-complete, unit-tested (1973/1973 passing), browser UAT pending testnet txids
+- Native platform fence (2026-07-05): `web.js` secret-touching ops throw
+  `WEB_KEYSTORE_WRONG_PLATFORM` (fail-closed) when `Capacitor.isNativePlatform()` is
+  positively true — the WebAuthn PRF path is now provably, not incidentally, unreachable
+  on native. Bundle analysis confirmed web.js ships in the native main chunk (static
+  import; tree-shaking impossible), so this runtime fence is the only fence. BUILT,
+  unit-tested (`web.native-fence.test.js` 26/26; keystore+wallet-core 730/730).
 
 **Phase 2 (Q3 2026):** Native hardware KEK on iOS/Android
 - iOS: Secure Enclave HMAC-SHA256 (ECIES) + biometric ACL. 🟡 BUILT, device-verified
