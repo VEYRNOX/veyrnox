@@ -17,9 +17,10 @@
 // Status: BUILT (infrastructure complete)
 // Environment: Requires dev server + .env.local with VITE_DEV_UNGATE_SEND=1
 //
-// Run:
+// Run (excluded from `npm run test:e2e` via testIgnore — it needs .env.local with
+// VITE_DEV_UNGATE_SEND=1 and a funded testnet wallet, neither of which exists in CI):
 //   npm i -D @playwright/test && npx playwright install chromium
-//   npx playwright test e2e/webauthn-prf-tier2-send.spec.js --headed --workers=1
+//   RUN_SUPERVISED_E2E=1 npx playwright test e2e/webauthn-prf-tier2-send.spec.js --headed --workers=1
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { test, expect } from '@playwright/test';

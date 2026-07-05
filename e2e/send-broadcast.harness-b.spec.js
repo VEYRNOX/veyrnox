@@ -46,8 +46,10 @@
 //      Then start the dev server:  npm run dev        # http://localhost:5173
 //   2) Install Playwright once (it is intentionally NOT a dependency):
 //          npm i -D @playwright/test && npx playwright install chromium
-//   3) Run HEADED so you can act on-device when the script pauses:
-//          npx playwright test e2e/send-broadcast.harness-b.spec.js --headed --workers=1
+//   3) Run HEADED so you can act on-device when the script pauses. This file is
+//      excluded from `npm run test:e2e` (testIgnore — it blocks on human input, so
+//      an unattended run just burns the clock); RUN_SUPERVISED_E2E=1 re-enables it:
+//          RUN_SUPERVISED_E2E=1 npx playwright test e2e/send-broadcast.harness-b.spec.js --headed --workers=1
 //      Optional knobs (env):
 //          TARGET_ASSET   default 'ETH' (re-confirm the live asset). Set to a
 //                         receive_only symbol (e.g. 'USDC') to mint a NEW verified
