@@ -1,6 +1,8 @@
 // src/notify/events.js
 //
-// In-app Notifications v1 (transient, Path A) — UNAUDITED-PROVISIONAL.
+// In-app Notifications v1 (transient, Path A) — PROVISIONAL — independent audit
+// complete (ECC 2026-06-23, §24; M-3/M-5/M-6/L-2 found and fixed, PR #340).
+// Still BUILT, not 'verified'.
 // Build brief §3 (event-source adapters) + §4 (event set) + §2 (I1–I5).
 //
 // A SELF-CONTAINED, in-memory pub/sub. No network, no storage, no backend — the
@@ -27,9 +29,10 @@
 //
 // TAG DISTINCTION (brief §4/§8): approval is HONEST-DISABLED — deliberately
 // not-wired-by-design, the same tag as audit-log / login-activity. This is NOT
-// the same as UNAUDITED-PROVISIONAL (which means built-but-provisional-pending-
-// audit). The send/receive/risk seams below ARE UNAUDITED-PROVISIONAL: built,
-// unwired, live wiring deferred to PR-2. Approval has no PR-2 — it has no source.
+// the same as the PROVISIONAL tier (built, independent audit complete — ECC
+// 2026-06-23 — still not 'verified'). The send/receive/risk seams below ARE that
+// PROVISIONAL tier: built, with live wiring landed in PR-2 (see sources.js).
+// Approval has no PR-2 — it has no source.
 
 import { EVENT } from './notify.js';
 import { LEVEL, PRIORITY } from '../risk/levels.js';

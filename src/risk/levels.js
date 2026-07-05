@@ -1,6 +1,6 @@
 // src/risk/levels.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // The five levels every signal may return, and their escalation priority. This
 // file is pure constants (no logic, no I/O). It exists so signals, the composite

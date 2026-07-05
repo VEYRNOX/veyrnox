@@ -1,6 +1,12 @@
 // src/pages/LoginActivity.jsx
 //
-// Login Activity — read-only view of device access records. UNAUDITED-PROVISIONAL.
+// Login Activity — read-only view of device access records. PROVISIONAL.
+//
+// AUDIT STATUS. The internal audit (2026-06-17, the mainnet gate) and the
+// independent ECC third-party audit (2026-06-23) are both complete, but this
+// page was not an individually named ECC scope item (see
+// docs/audit-triage/ecc-independent-audit-2026-06-23.md) — so no per-feature
+// independent audit claim is made here. Remains PROVISIONAL / BUILT.
 //
 // HONEST SCOPE. This page shows two things that already exist on-device:
 //   1. lastUnlockAt — the previous session's unlock timestamp, stored in the
@@ -106,7 +112,7 @@ export default function LoginActivity() {
           </div>
         </div>
         <span className="shrink-0 px-2.5 py-1 rounded-md border border-caution/40 text-caution font-mono text-xs">
-          UNAUDITED-PROVISIONAL
+          PROVISIONAL
         </span>
       </div>
 

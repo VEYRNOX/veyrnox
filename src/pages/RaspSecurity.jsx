@@ -1,10 +1,13 @@
 // src/pages/RaspSecurity.jsx
 //
-// RASP Security — honest CURRENT-STATE surface. UNAUDITED-PROVISIONAL.
+// RASP Security — honest CURRENT-STATE surface. PROVISIONAL · AUDITED 2026-06-23.
 //
 // Shows only what is real: the degradation policy is built + tested; browser-level
-// detection is active (navigator.webdriver + legacy fingerprints → HOOKED);
-// OS-level detection (root/jailbreak/tamper) is pending native plugin + audit.
+// detection is active (navigator.webdriver + legacy fingerprints → HOOKED) and was
+// independently audited 2026-06-23 (ECC third-party audit, §24) — confirmed the
+// browser lane genuinely blocks at the wired send call-site, with no network egress.
+// OS-level detection (root/jailbreak/tamper) remains UNBUILT: it needs a native
+// Capacitor plugin + real-device verification (roadmap Phase 4), not an audit.
 // The send path is wired to the browser probe (RASP always runs; a normal browser
 // gets CLEAN → ALLOW, automation gets HOOKED → BLOCK).
 //
@@ -82,7 +85,7 @@ export default function RaspSecurity() {
     { label: "Degradation policy", value: "built" },
     { label: "Detection", value: model.detection },
     { label: "Wired to send path", value: "yes" },
-    { label: "Independent audit", value: "not yet" },
+    { label: "Independent audit", value: "2026-06-23 (browser lane)" },
   ];
 
   return (
@@ -101,7 +104,7 @@ export default function RaspSecurity() {
           </div>
         </div>
         <span className="shrink-0 px-2.5 py-1 rounded-md border border-caution/40 text-caution font-mono text-xs">
-          UNAUDITED-PROVISIONAL
+          PROVISIONAL · AUDITED 2026-06-23
         </span>
       </div>
 
@@ -112,10 +115,11 @@ export default function RaspSecurity() {
       >
         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
         <div>
-          <p className="font-bold text-accent">Browser-level detection active · OS-level detection pending audit</p>
+          <p className="font-bold text-accent">Browser-level detection active · OS-level detection pending native build</p>
           <p className="text-sm text-muted-foreground mt-1">
             The degradation policy is built and tested, and browser probes (automation detection) are active.
-            OS-level probes (root / jailbreak / tamper) need a native plugin, pending the independent audit.
+            OS-level probes (root / jailbreak / tamper) need a native plugin and real-device verification
+            (roadmap Phase 4) — the completed source-level audits could not exercise on-device probes.
           </p>
         </div>
       </div>
@@ -147,7 +151,7 @@ export default function RaspSecurity() {
       {/* Degradation ladder */}
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Degradation ladder — browser-level detection active; OS-level detection pending audit:
+          Degradation ladder — browser-level detection active; OS-level detection pending native build:
         </p>
         {LADDER.map((rung) => {
           const { text: textTone, dot: dotTone } = TONE[rung.tier];

@@ -1,6 +1,6 @@
 // src/risk/signals/s8-value-anomaly.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // S8 — value-vs-history anomaly. A send far above this wallet-set's typical send
 // magnitude is surfaced as a neutral INFO chip.
