@@ -8,8 +8,9 @@
 
 ### UI/UX Fixes (All on main)
 - ✅ **Light mode heading visibility** (cb6f8dbe) — dApp Connector readable in light mode
-- ✅ **Biometric forced-on behavior** (working correctly) — toggle disabled on native, showing "required"
-- ✅ **Passkey sections hidden** (b2912b6f) — web-only features not shown on mobile
+- ✅ **Biometric unlock user-controlled** (530b9924) — forced-on toggle removed; enabling is a deliberate two-step action via the NF-2 confirm panel
+- ✅ **Biometric unlock section honest on native** (PR #542 / fa76570c) — PasskeyUnlockSettings renders on all platforms; on native it routes through OS biometrics and is labeled "Biometric unlock", never "Passkey"
+- ✅ **Wallet Passkeys hidden on mobile** (b2912b6f) — per-wallet passkey registration stays web-only
 - ✅ **Hardware KEK status updated** (757fa827) — provisional warning removed
 
 ### Documentation & Build Tools
@@ -80,15 +81,15 @@ npx cap open ios
 
 #### Settings Page → Security Settings
 - [ ] **Biometric Unlock section:**
-  - [ ] Toggle is **DISABLED** (grayed out, not clickable)
-  - [ ] Text reads: "Fingerprint required on this device"
-  - [ ] Explanation shows: "Your wallet always asks for Fingerprint (or your device passcode) on this device — this can't be turned off here."
+  - [ ] Toggle is **USER-CONTROLLED** (not forced on, not grayed out)
+  - [ ] Flipping the toggle ON does NOT enable immediately — the NF-2 **confirm panel** appears ("Confirm trade-off") and enabling requires the explicit confirm button
+  - [ ] Turning the toggle OFF is immediate (fail-safe direction, no confirm)
 
-- [ ] **NO "Unlock with Passkey" section** (should be completely hidden)
-  - [ ] Scroll through entire Settings page
-  - [ ] Confirm no passkey-related UI appears
+- [ ] **"Biometric unlock" section IS visible** (PasskeyUnlockSettings, per PR #542)
+  - [ ] On native, it is labeled "Biometric unlock" — the word "Passkey" must NOT appear (honest labels: "Enroll biometric unlock", "Require biometric unlock", "Preview biometric prompt")
+  - [ ] On web, the same section reads "Unlock with Passkey" (real WebAuthn path)
 
-- [ ] **NO "Wallet Passkeys" section** (should be completely hidden)
+- [ ] **NO "Wallet Passkeys" section** (should be completely hidden on native)
   - [ ] Confirm no per-wallet passkey registration UI appears
 
 - [ ] **Hardware KEK Settings:**
@@ -182,8 +183,8 @@ zipalign -v 4 app-release-unsigned.apk app-release.apk
 ✅ **Code is clean and ready for production mobile builds**
 
 - All UI/UX fixes integrated on main
-- Biometric behavior is correct (intentionally forced-on on native)
-- Passkey sections properly hidden on mobile
+- Biometric unlock toggle is user-controlled with the NF-2 confirm panel (forced-on removed in 530b9924)
+- "Biometric unlock" section renders on native with honest labels (PR #542); Wallet Passkeys stays web-only
 - Automated build script with verification
 - Complete documentation and checklist
 
@@ -191,5 +192,5 @@ zipalign -v 4 app-release-unsigned.apk app-release.apk
 
 ---
 
-**Last Updated:** 2026-07-02  
+**Last Updated:** 2026-07-06  
 **Build Status:** 🟢 READY FOR PRODUCTION
