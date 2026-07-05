@@ -6,8 +6,12 @@ import { SessionProposalModal } from '@/components/walletconnect/SessionProposal
 import { RequestApprovalModal } from '@/components/walletconnect/RequestApprovalModal.jsx';
 import { ActiveSessions } from '@/components/walletconnect/ActiveSessions.jsx';
 import { useWallet } from '@/lib/WalletProvider.jsx';
+import { WALLETCONNECT_PROJECT_ID } from '@/wallet-core/evm/walletconnect/projectId.js';
 
-const CONFIGURED = Boolean(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID);
+// Committed public default in projectId.js keeps this true on every build (worktree,
+// fresh clone, CI) so the connector is never accidentally honest-disabled after an
+// APK rebuild; VITE_WALLETCONNECT_PROJECT_ID still overrides it.
+const CONFIGURED = Boolean(WALLETCONNECT_PROJECT_ID);
 
 const POPULAR_DAPPS = [
   { name: 'Binance Web3 Wallet', url: 'https://www.binance.com/en/web3wallet', category: 'Exchange', chains: ['ETH', 'BNB', 'MATIC'] },

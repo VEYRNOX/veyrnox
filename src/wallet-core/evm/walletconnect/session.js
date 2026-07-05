@@ -7,8 +7,13 @@ import { WalletKit } from '@reown/walletkit';
 import { getSdkError, buildApprovedNamespaces } from '@walletconnect/utils';
 import { SUPPORTED_CHAIN_IDS } from './router.js';
 import { checkDappDomain } from '../../../risk/knownBadDapps.js';
+import { WALLETCONNECT_PROJECT_ID } from './projectId.js';
 
-const PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
+// The WalletConnect (Reown) project ID. A committed public default lives in
+// projectId.js so EVERY build (a git worktree, a fresh clone, CI) enables the
+// connector out of the box; VITE_WALLETCONNECT_PROJECT_ID still overrides it.
+// See projectId.js for the full "Project ID required on every rebuild" rationale.
+const PROJECT_ID = WALLETCONNECT_PROJECT_ID;
 
 let _client = null;
 const _listeners = new Set();
