@@ -196,7 +196,7 @@ export async function enrollHardwareCredential(opts) {
  * Presents BiometricPrompt, computes HMAC-SHA256(key, kekSalt) natively,
  * returns the 32-byte result. kekSalt is passed to the plugin as a base64 STRING
  * (bridge-safe; see body) — the native plugin base64-decodes it as the MAC input.
- * @param {{ kekSalt?: Uint8Array }} [opts] — raw salt bytes; encoded before the call.
+ * @param {{ kekSalt?: Uint8Array }} [opts] - raw salt bytes; encoded before the call.
  */
 export async function getHardwareFactor(opts) {
   const plugin = getPlugin();
