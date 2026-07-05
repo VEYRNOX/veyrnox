@@ -34,7 +34,6 @@
 //     REAL unlock path so the behaviour is demonstrable on the simulator.
 
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
@@ -96,7 +95,6 @@ function DecoyBalance({ address, refreshKey }) {
 }
 
 export default function DuressPin() {
-  const navigate = useNavigate();
   const wallet = useWallet();
   const {
     isUnlocked, isDecoy, accounts,
