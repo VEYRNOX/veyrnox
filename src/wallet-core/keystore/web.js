@@ -6,10 +6,69 @@
 // storage format are unchanged; the only behavioural addition (SAST M3) is a
 // transparent KDF-parameter MIGRATION on unlock (see unlock()).
 
+import { Capacitor } from '@capacitor/core';
 import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt } from './kek.js';
 import { ALLOW_MAINNET } from '../evm/networks.js';
+
+// ── FAIL-CLOSED PLATFORM FENCE (I4 — fail honest, fail closed) ────────────────
+//
+// keystore/index.js STATICALLY imports this module on ALL platforms (it routes at
+// runtime: Capacitor.isNativePlatform() ? nativeFacade : webKeyStore, and also
+// re-exports webKeyStore directly). Because the import is static, the web keystore
+// CANNOT be excluded from the native bundle — so it can still be REACHED on a
+// native device through a routing / platform-detection bug, or via a direct dynamic
+// import (e.g. HardwareKekSettings.jsx imports webKeyStore).
+//
+// On native the correct keystore is hardware-backed (iOS Secure Enclave / Android
+// StrongBox). If the web keystore's SECRET-TOUCHING operations ran on native they
+// would write a BARE Argon2id vault to the WebView IndexedDB, bypassing the hardware
+// KEK — a SILENT SECURITY DOWNGRADE. Today web.js is only INCIDENTALLY safe on
+// native: getHardwareFactor() throws because the Capacitor WebView lacks
+// window.PublicKeyCredential. But createVault / saveVaultContents have NO PRF
+// dependency and would happily write a bare vault; and if a future Android WebView
+// gains WebAuthn support, even that incidental backstop disappears.
+//
+// This is the RUNTIME fence (bundle exclusion is impossible, see above): every
+// secret-, key-, or ciphertext-touching method throws WEB_KEYSTORE_ERR.WRONG_PLATFORM
+// on native BEFORE any crypto, storage read/write, or WebAuthn call. Metadata-only
+// probes (hasVault, isHardwareEnrolled, isSecureHardwareAvailable,
+// isHardwareKeystoreAvailable, lock, clearVault) are deliberately NOT fenced — they
+// carry no secret and legitimate cross-platform status checks depend on them.
+//
+// Machine code is the contract (copy can change; codes cannot).
+export const WEB_KEYSTORE_ERR = Object.freeze({
+  WRONG_PLATFORM: 'WEB_KEYSTORE_WRONG_PLATFORM',
+});
+
+/**
+ * Throw if we are POSITIVELY on a native platform.
+ *
+ * Fail-closed means we throw only when native is DEFINITELY detected — never when
+ * detection itself errors. On web / in tests without Capacitor semantics the probe
+ * may throw (or Capacitor may be absent); we swallow that and treat it as non-native
+ * so legitimate web use never breaks. The moment isNativePlatform() returns a truthy
+ * value, we refuse the operation before touching any secret or storage.
+ */
+function assertNotNativePlatform() {
+  let isNative = false;
+  try {
+    isNative = Capacitor.isNativePlatform() === true;
+  } catch {
+    isNative = false;
+  }
+  if (isNative) {
+    throw /** @type {Error & {code: string}} */ (
+      Object.assign(
+        new Error(
+          'The web keystore was reached on a native platform. Use the native hardware keystore (Secure Enclave / StrongBox) — refusing to write a bare vault.',
+        ),
+        { code: WEB_KEYSTORE_ERR.WRONG_PLATFORM },
+      )
+    );
+  }
+}
 
 // H-A — WEB VAULT PASSWORD ENTROPY (I4 — fail honest, fail closed).
 //
@@ -218,6 +277,7 @@ export const webKeyStore = {
   // (encryptVault + saveVault) exactly; saveVault still enforces its
   // plaintext-blob guard.
   async createVault(secret, password) {
+    assertNotNativePlatform(); // fail closed BEFORE any crypto/storage (I4)
     // H-A: on web there is no hardware factor, so reject weak passwords up front
     // (fail closed BEFORE any ciphertext is written). See validateWebVaultPassword.
     validateWebVaultPassword(password);
@@ -244,6 +304,7 @@ export const webKeyStore = {
   // is ignored here (no KEK to preserve). Keeps parity with native.saveVaultContents,
   // which DOES preserve the kek-dek wrap on enrolled devices.
   async saveVaultContents(secret, password /* , opts */) {
+    assertNotNativePlatform(); // fail closed BEFORE any crypto/storage (I4)
     validateWebVaultPassword(password);
     const blob = await encryptVault(secret, password);
     await saveVault(blob);
@@ -255,6 +316,7 @@ export const webKeyStore = {
   // retrieves a stored credential ID and evaluates PRF with get(). Throws if
   // PRF is unavailable on the browser (e.g. Safari) or if the user cancels.
   async getHardwareFactor() {
+    assertNotNativePlatform(); // fail closed BEFORE any WebAuthn call (I4)
     const prfAvail = await isPrfSupported();
     if (!prfAvail) {
       throw new Error('WebAuthn PRF (hmac-secret) not supported on this browser. Use a strong password (≥12 characters) instead.');
@@ -359,6 +421,7 @@ export const webKeyStore = {
   // and the rekey simply retries next time. Old vaults are NEVER locked out: the
   // decrypt above already used the blob's own params (see decryptVault).
   async unlock(password, opts) {
+    assertNotNativePlatform(); // fail closed BEFORE any storage read (I4)
     const blob = await loadVault();
     if (!blob) throw new Error('No wallet found on this device');
 
@@ -415,6 +478,7 @@ export const webKeyStore = {
   // Fail-closed (I4): missing/wrong hardware factor → explicit throw, never a
   // silent fallback to bare-vault unlock.
   async enrollKek(password, opts) {
+    assertNotNativePlatform(); // fail closed BEFORE any crypto/storage (I4)
     const getHF = opts && opts.getHardwareFactor;
     if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
     const blob = await loadVault();
@@ -461,6 +525,7 @@ export const webKeyStore = {
   // requires only the PIN (bare-vault path). Fail-closed (I4): missing/wrong
   // hardware factor → explicit throw, vault unchanged.
   async unenrollKek(password, opts) {
+    assertNotNativePlatform(); // fail closed BEFORE any crypto/storage (I4)
     const getHF = opts && opts.getHardwareFactor;
     if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
     const blob = await loadVault();
@@ -508,6 +573,7 @@ export const webKeyStore = {
   // params, a legacy-params vault is also upgraded here (same effect as the
   // unlock-time M3 migration). The secret is never written anywhere in plaintext.
   async changePassword(currentPassword, newPassword, opts) {
+    assertNotNativePlatform(); // fail closed BEFORE any storage read (I4)
     const blob = await loadVault();
     if (!blob) throw new Error('No wallet found on this device');
 
