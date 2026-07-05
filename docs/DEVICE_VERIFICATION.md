@@ -414,7 +414,7 @@ https://explorer.solana.com/tx/{SIGNATURE_FROM_TEST_OUTPUT}?cluster=devnet
 
 ## Next Steps
 - [ ] Merge PR #564 to main
-- [ ] Set up real device CI/CD (BrowserStack/LambdaTest)
+- [x] Set up real device CI/CD (BrowserStack App Automate — Pixel 10 Pro XL, green run 2026-07-05)
 - [ ] Implement performance benchmarking
 - [ ] Add flakiness tracking
 ```

@@ -1,0 +1,115 @@
+name: Android Real Device E2E Tests (BrowserStack)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'claude/**'
+    # Docs-only pushes shouldn't burn BrowserStack device minutes.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: browserstack-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-device-e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate BrowserStack credentials
+        run: |
+          if [ -z "${{ secrets.BROWSERSTACK_USERNAME }}" ] || [ -z "${{ secrets.BROWSERSTACK_ACCESS_KEY }}" ]; then
+            echo "::error::BROWSERSTACK_USERNAME / BROWSERSTACK_ACCESS_KEY secrets are not set"
+            exit 1
+          fi
+          STATUS=$(curl -s -o plan.json -w "%{http_code}" \
+            -u "${{ secrets.BROWSERSTACK_USERNAME }}:${{ secrets.BROWSERSTACK_ACCESS_KEY }}" \
+            https://api-cloud.browserstack.com/app-automate/plan.json)
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::BrowserStack credential check failed (HTTP $STATUS). Verify the secrets against https://www.browserstack.com/accounts/profile/details"
+            cat plan.json || true
+            exit 1
+          fi
+          echo "BrowserStack credentials OK. Plan:"
+          cat plan.json
+          rm -f plan.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install -g npm@11
+          npm ci
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Capacitor 8 / the Android Gradle build target Java 21 (matches ci.yml).
+          java-version: 21
+
+      - name: Build APK for testing
+        run: |
+          npm run build
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --build-cache
+          cd ..
+
+      - name: Upload APK to BrowserStack
+        id: upload-apk
+        run: |
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "::error::Debug APK not found at $APK_PATH"
+            exit 1
+          fi
+          UPLOAD_RESPONSE=$(curl -s -u "${{ secrets.BROWSERSTACK_USERNAME }}:${{ secrets.BROWSERSTACK_ACCESS_KEY }}" \
+            -F "file=@$APK_PATH" \
+            https://api-cloud.browserstack.com/app-automate/upload)
+          APP_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.app_url // empty')
+          if [ -z "$APP_URL" ]; then
+            echo "::error::Failed to upload APK to BrowserStack"
+            echo "Response: $UPLOAD_RESPONSE"
+            exit 1
+          fi
+          echo "Uploaded: $APP_URL"
+          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+
+      - name: Run E2E tests on BrowserStack real device
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          BROWSERSTACK_APP_URL: ${{ steps.upload-apk.outputs.app_url }}
+          BROWSERSTACK_BUILD_NAME: 'Veyrnox ${{ github.ref_name }} @ ${{ github.sha }}'
+        run: npm run android:test:browserstack
+
+      - name: Report dashboard link
+        if: always()
+        run: |
+          echo "## Android Real Device E2E (BrowserStack)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Device: Google Pixel 10 Pro XL (Android 16.0)" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: Veyrnox ${{ github.ref_name }} @ ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Sessions, video, and device logs: https://app-automate.browserstack.com/dashboard" >> $GITHUB_STEP_SUMMARY

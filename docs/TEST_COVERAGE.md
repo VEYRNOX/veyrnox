@@ -289,15 +289,13 @@
 - Helper functions (appHelper, walletHelper)
 
 ### ⏳ Partial
-- CI/CD real device (emulator-only, cloud devices pending)
 - Web CI/CD (Playwright ready, needs URL setup)
-- Test result reporting (artifacts collected, no dashboard yet)
+- Test result reporting (BrowserStack dashboard live for Android; no aggregate dashboard yet)
 
 ### ⏹️ Not Started
 - Performance benchmarking harness
 - Test flakiness tracking
 - Code coverage metrics
-- Real device CI/CD (BrowserStack/LambdaTest)
 - Load/stress testing framework
 
 ---
@@ -385,10 +383,17 @@ PLAYWRIGHT_TEST_BASE_URL=http://localhost:3000 npm run test:e2e
 - Verify on-chain sends (BTC testnet, SOL devnet)
 - Confirm biometric + hardware KEK on device
 
-### Phase 2: Real Device CI/CD (Planned)
-- BrowserStack / LambdaTest integration
-- Parallel device matrix (API 30, 31, 32, 33, etc.)
-- Real device results in PR comments
+### Phase 2: Real Device CI/CD (BUILT — BrowserStack, 2026-07-05)
+- BrowserStack App Automate integration LIVE: `.github/workflows/android-real-device-ci.yml`
+  builds the debug APK, uploads it to BrowserStack, and runs the Appium suite via
+  `tests/android/wdio.browserstack.conf.js` on a real Google Pixel 10 Pro XL (Android 16.0).
+- First green run 2026-07-05 (Actions run 28733812376): 7/7 spec files, 52 tests passing
+  in 5m49s. Sessions (video, Appium/device/network logs) visible in the BrowserStack
+  dashboard, project "Veyrnox" — confirmed by owner. INTERNAL CI evidence; UI E2E only,
+  no on-chain claims (unfunded cloud-device wallets; send specs exercise UI/validation paths).
+- `hardware-kek.spec.js` is excluded on BrowserStack (attended-only: needs a human
+  fingerprint + pre-provisioned vault); `hardware-kek-e2e.spec.js` covers the unattended path.
+- Still planned: parallel device matrix (API 30–36), real-device results in PR comments.
 
 ### Phase 3: Performance Metrics (Planned)
 - Benchmark harness (unlock time, send time, startup)
