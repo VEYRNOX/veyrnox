@@ -25,8 +25,8 @@ describe('usePriceAlertNotifier — I3 deniability structural guards (source sca
     expect(code).toMatch(/isHidden/);
   });
 
-  it('short-circuits BOTH effects in deniability mode / when locked', () => {
-    const guards = code.match(/if\s*\(\s*!isUnlocked\s*\|\|\s*isDecoy\s*\|\|\s*isHidden\s*\)\s*return/g) || [];
+  it('short-circuits BOTH effects in deniability mode / when locked / in DEMO', () => {
+    const guards = code.match(/if\s*\(\s*!isUnlocked\s*\|\|\s*isDecoy\s*\|\|\s*isHidden\s*\|\|\s*DEMO\s*\)\s*return/g) || [];
     expect(guards.length).toBeGreaterThanOrEqual(2); // subscribe effect + poll effect
   });
 
@@ -41,5 +41,39 @@ describe('usePriceAlertNotifier — I3 deniability structural guards (source sca
   it('the deniability flags are in both effect dependency arrays', () => {
     const deps = code.match(/\[\s*queryClient,\s*isUnlocked,\s*isDecoy,\s*isHidden\s*\]/g) || [];
     expect(deps.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ── DEMO gate (mirrors M-6 in notify/useReceiveDetector.js) ───────────────────
+//
+// The hook is mounted unconditionally at Layout.jsx (including demo sessions) and
+// polls api.coingecko.com every 60s via fetchMarketPricesUsdCG. Today it is inert
+// in demo ONLY by accident (WalletProvider.isUnlocked never flips true on the demo
+// tour). Make that explicit: an EXPLICIT DEMO check in BOTH effect guards, so a
+// future refactor cannot silently create a network-egress leak in demo (I2/I3).
+
+describe('usePriceAlertNotifier — explicit DEMO gate (source scan)', () => {
+  it('imports DEMO from @/api/demoClient', () => {
+    expect(code).toMatch(/import\s*\{\s*DEMO\s*\}\s*from\s*['"]@\/api\/demoClient['"]/);
+  });
+
+  it('DEMO appears in BOTH effect early-return guards', () => {
+    const guards = code.match(/if\s*\(\s*!isUnlocked\s*\|\|\s*isDecoy\s*\|\|\s*isHidden\s*\|\|\s*DEMO\s*\)\s*return/g) || [];
+    expect(guards.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('the DEMO guard precedes the coingecko fetch (no market-price egress in demo)', () => {
+    const hookSection = code.slice(code.indexOf('export function usePriceAlertNotifier'));
+    const guardIdx = hookSection.indexOf('DEMO');
+    const fetchCallIdx = hookSection.indexOf('fetchMarketPricesUsd(');
+    expect(guardIdx).toBeGreaterThan(-1);
+    expect(fetchCallIdx).toBeGreaterThan(-1);
+    expect(guardIdx).toBeLessThan(fetchCallIdx);
+  });
+
+  it('the DEMO guard precedes the PriceAlert subscribe (no real-set subscription in demo)', () => {
+    const demoIdx = code.search(/isHidden\s*\|\|\s*DEMO/);
+    expect(demoIdx).toBeGreaterThan(-1);
+    expect(demoIdx).toBeLessThan(code.indexOf('PriceAlert.subscribe'));
   });
 });

@@ -41,3 +41,32 @@ describe('CryptoNewsFeed — I3 deniability structural guards (source scan)', ()
     expect(guard).toBeLessThan(code.indexOf('fetchCryptoNews,'));
   });
 });
+
+// ── DEMO egress suppression (source scan, mirrors useReceiveDetector.test.js) ──
+//
+// I3 gates decoy/hidden sessions, but a demo tour (veyrnox-demo=1, no unlocked
+// vault) has isDecoy/isHidden === false, so the i3Active gate alone still lets the
+// api.rss2json.com fetch fire — a confirmed live network leak. The canonical fix
+// (ECC audit M-6, useReceiveDetector.js) is to also fold DEMO into the enabled
+// gate so the query is suppressed while demo mode is active. The neutral
+// network-silent placeholder ("No news available right now") covers this case —
+// no fake news items are injected.
+
+describe('CryptoNewsFeed — DEMO egress suppression (source scan)', () => {
+  it('imports DEMO from @/api/demoClient', () => {
+    expect(code).toMatch(/import\s*\{[^}]*\bDEMO\b[^}]*\}\s*from\s*['"]@\/api\/demoClient['"]/);
+  });
+
+  it('folds !DEMO into the enabled gate for the news query', () => {
+    // The gate that drives enabled: must include !DEMO so a demo session makes
+    // zero calls to api.rss2json.com.
+    expect(code).toMatch(/!DEMO/);
+    expect(code).toMatch(/&&\s*!DEMO|!DEMO\s*&&/);
+  });
+
+  it('the DEMO gate is defined before the news query definition', () => {
+    const demoGate = code.search(/!DEMO/);
+    expect(demoGate).toBeGreaterThan(-1);
+    expect(demoGate).toBeLessThan(code.indexOf('fetchCryptoNews,'));
+  });
+});
