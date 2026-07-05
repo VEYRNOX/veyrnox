@@ -31,6 +31,13 @@ export const config = {
   specs: [
     path.join(__dirname, 'specs', '**', '*.spec.js'),
   ],
+  exclude: [
+    // Attended-only legacy suite: assumes a pre-provisioned vault and a human
+    // finger on the sensor ("user would provide their fingerprint"). It can
+    // never legitimately pass on an unattended cloud device — run it locally
+    // via wdio.conf.js instead. Superseded by hardware-kek-e2e.spec.js here.
+    path.join(__dirname, 'specs', 'hardware-kek.spec.js'),
+  ],
   maxInstances: 1,
   capabilities: [
     {

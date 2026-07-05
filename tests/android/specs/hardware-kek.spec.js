@@ -10,8 +10,8 @@ describe('Hardware KEK (StrongBox)', () => {
 
   before(async () => {
     // Check if we're on an emulator
-    const capabilities = await driver.getCapabilities();
-    const deviceName = capabilities['appium:deviceName'] || '';
+    const capabilities = driver.capabilities || {};
+    const deviceName = String(capabilities.deviceName || capabilities['appium:deviceName'] || '');
     isEmulator = deviceName.includes('emulator') || deviceName.includes('avd');
 
     if (!isEmulator) {
