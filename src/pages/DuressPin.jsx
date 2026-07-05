@@ -204,7 +204,6 @@ export default function DuressPin() {
         }
         setSavedPhrase(mnemonic);
         setSavedAddr(address);
-        setDuressExists(true);
         setPin(""); setConfirmPin(""); setDuressStep("enter");
         await refresh();
       } catch (e) {
