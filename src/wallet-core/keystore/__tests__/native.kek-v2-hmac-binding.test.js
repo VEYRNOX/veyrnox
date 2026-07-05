@@ -2,15 +2,55 @@
 //
 // C-1 (CRITICAL): Android HMAC input was a global fixed constant (PRF_EVAL_SALT),
 // so HMAC(androidKeyStoreKey, FIXED_SALT) produced an identical H for EVERY vault on
-// the same device. The v2 protocol binds H to the per-enrollment kekSalt: native.js
-// passes blob.kekSalt to getHardwareFactor({ kekSalt }) and stamps the vault blob with
-// hardwareKekVersion: 2. Legacy v1 vaults (no hardwareKekVersion) keep calling
-// getHardwareFactor() with NO kekSalt for backwards compatibility.
+// the same device. The fix binds H to the per-enrollment kekSalt.
+//
+// C-1 regression (2026-07-05): the FIRST attempt at this binding stamped vaults v2 but
+// was cryptographically inert on device — two masking bugs (the facade dropped
+// getHardwareFactor's opts, and hardware.js sent kekSalt as raw bytes the Capacitor bridge
+// could not carry) meant every v2 wrap was ACTUALLY made under the fixed v1 salt. So the
+// real contract now is:
+//   - hardwareKekVersion:3 = GENUINELY salt-bound wrap → unlock passes { kekSalt }.
+//   - hardwareKekVersion:2 = inert stamp → unlock uses the fixed salt (NO kekSalt), then
+//     LAZILY upgrades to v3 (a second getHardwareFactor call re-wraps under a fresh salt).
+//   - v1 (no hardwareKekVersion) = legacy fixed-salt wrap → unlock uses the fixed salt.
+// New enrollments and password changes stamp v3.
 //
 // Tests assert the CONTRACT: what native.js passes to getHF and what version it stamps.
 // Mocking pattern mirrors native.kek-preserving-repersist.test.js.
+//
+// C-1 regression HARDENING (2026-07-05): the v2 { kekSalt } binding was inert on device
+// because native.js handed getHF a raw Uint8Array that the Capacitor bridge could not
+// carry. Here getHF is the boundary native.js calls (hardware.js). To make the bug class
+// UNTESTABLE-AS-PASSING, the getHF the tests inject BRIDGE-CHECKS its kekSalt: it encodes
+// the salt to a base64 string and asserts it survives JSON.parse(JSON.stringify(...)) as a
+// string — mirroring Kotlin's call.getString semantics (a non-string kekSalt reads as null
+// on device and would silently fall back to the fixed salt). A raw Uint8Array now THROWS.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Uint8Array → base64(no-wrap), matching hardware.js's internal encoder.
+const bytesToB64 = (u8) => btoa(String.fromCharCode(...u8));
+
+// A getHF stand-in that enforces the on-device bridge contract: kekSalt must be encodable
+// to a base64 STRING that survives the JSON bridge. Kotlin's getString("kekSalt") returns
+// the string on device only when the JS side sends a string; a Uint8Array serialises to a
+// keyed object and reads as null, silently reverting to the fixed v1 salt (the C-1 bug).
+// This helper rejects that shape so no future regression can pass these tests.
+const makeBridgeCheckedHF = () =>
+  vi.fn(async (opts) => {
+    if (opts && opts.kekSalt !== undefined) {
+      if (!(opts.kekSalt instanceof Uint8Array)) {
+        throw new Error('KEK_SALT_NOT_BYTES: native.js must hand getHardwareFactor raw bytes');
+      }
+      // Encode as hardware.js does, then confirm the encoded value is a bridge-safe string.
+      const encoded = bytesToB64(opts.kekSalt);
+      const bridged = JSON.parse(JSON.stringify({ kekSalt: encoded }));
+      if (typeof bridged.kekSalt !== 'string' || bridged.kekSalt.length === 0) {
+        throw new Error('KEK_SALT_MALFORMED: kekSalt did not survive the bridge as a string');
+      }
+    }
+    return new Uint8Array(32).fill(1);
+  });
 
 const VAULT_KEY = 'vault_v1';
 const store = new Map();
@@ -87,15 +127,15 @@ beforeEach(() => {
 // is expected to hand to getHardwareFactor({ kekSalt }).
 const saltBytesOf = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
-describe('(1) enrollKek — v2 protocol: binds H to fresh kekSalt and stamps hardwareKekVersion:2', () => {
-  it('passes the generated kekSalt to getHardwareFactor and saves hardwareKekVersion:2', async () => {
+describe('(1) enrollKek — v3 protocol: binds H to fresh kekSalt and stamps hardwareKekVersion:3', () => {
+  it('passes the generated kekSalt to getHardwareFactor and saves hardwareKekVersion:3', async () => {
     setVault(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
-    const getHF = vi.fn(async () => newHF());
+    const getHF = makeBridgeCheckedHF();
 
     await nativeKeyStore.enrollKek('pw', { getHardwareFactor: getHF });
 
     const written = JSON.parse(store.get(VAULT_KEY));
-    expect(written.hardwareKekVersion).toBe(2);
+    expect(written.hardwareKekVersion).toBe(3);
 
     // getHF must have been called with { kekSalt } matching the salt written to the blob.
     expect(getHF).toHaveBeenCalledTimes(1);
@@ -106,21 +146,44 @@ describe('(1) enrollKek — v2 protocol: binds H to fresh kekSalt and stamps har
   });
 });
 
-describe('(2) _unlockInner — v2 blob: reads blob.kekSalt and passes it to getHardwareFactor', () => {
-  it('passes { kekSalt } decoded from blob.kekSalt on a v2 vault', async () => {
+describe('(2) _unlockInner — v3 blob: reads blob.kekSalt and passes it to getHardwareFactor', () => {
+  it('passes { kekSalt } decoded from blob.kekSalt on a v3 vault', async () => {
     setVault(JSON.stringify({
       v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
-      kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 2,
+      kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 3,
     }));
-    const getHF = vi.fn(async () => newHF());
+    const getHF = makeBridgeCheckedHF();
 
     await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
 
+    // A v3 vault is already salt-bound — single getHF call, carrying the bound kekSalt,
+    // and NO lazy upgrade (that is v2-only).
     expect(getHF).toHaveBeenCalledTimes(1);
     const arg = getHF.mock.calls[0][0];
     expect(arg).toBeTruthy();
     expect(arg.kekSalt).toBeInstanceOf(Uint8Array);
     expect(Array.from(arg.kekSalt)).toEqual(Array.from(saltBytesOf(kekSalt)));
+  });
+});
+
+describe('(2b) _unlockInner — v2 blob: unlocks with the FIXED salt (inert stamp), then lazily upgrades', () => {
+  it('first getHF has NO kekSalt (fixed salt); a second getHF re-wraps under a fresh v3 salt', async () => {
+    setVault(JSON.stringify({
+      v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
+      kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 2,
+    }));
+    const getHF = makeBridgeCheckedHF();
+
+    await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
+
+    // Unlock side uses the fixed salt (no kekSalt); upgrade side binds a fresh salt.
+    expect(getHF).toHaveBeenCalledTimes(2);
+    expect(getHF.mock.calls[0][0]).toBeUndefined();
+    const written = JSON.parse(store.get(VAULT_KEY));
+    expect(written.hardwareKekVersion).toBe(3);
+    const upgradeArg = getHF.mock.calls[1][0];
+    expect(upgradeArg.kekSalt).toBeInstanceOf(Uint8Array);
+    expect(Array.from(upgradeArg.kekSalt)).toEqual(Array.from(saltBytesOf(written.kekSalt)));
   });
 });
 
@@ -131,7 +194,7 @@ describe('(3) _unlockInner — v1 blob (no hardwareKekVersion): calls getHardwar
       kekWrap: { v: 1 }, kekSalt,
       // NO hardwareKekVersion → v1
     }));
-    const getHF = vi.fn(async () => newHF());
+    const getHF = makeBridgeCheckedHF();
 
     await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
 
@@ -144,31 +207,54 @@ describe('(3) _unlockInner — v1 blob (no hardwareKekVersion): calls getHardwar
   });
 });
 
-describe('(4) changePassword — v2 vault: passes existing kekSalt on unlock, fresh kekSalt on re-enroll', () => {
-  it('unlocks with the stored kekSalt and re-wraps under a NEW v2 kekSalt', async () => {
+describe('(4) changePassword — v3 vault: passes existing kekSalt on unlock, fresh kekSalt on re-wrap', () => {
+  it('unlocks with the stored kekSalt and re-wraps under a NEW v3 kekSalt', async () => {
     setVault(JSON.stringify({
       v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
-      kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 2,
+      kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 3,
     }));
-    const getHF = vi.fn(async () => newHF());
+    const getHF = makeBridgeCheckedHF();
 
     await nativeKeyStore.changePassword('old', 'new', { getHardwareFactor: getHF });
 
     // getHF is called for the OLD (unlock) side and the NEW (re-wrap) side.
     expect(getHF).toHaveBeenCalledTimes(2);
 
-    // Old side: the existing stored kekSalt.
+    // Old side: the existing stored kekSalt (v3 is salt-bound on unlock).
     const oldArg = getHF.mock.calls[0][0];
     expect(oldArg.kekSalt).toBeInstanceOf(Uint8Array);
     expect(Array.from(oldArg.kekSalt)).toEqual(Array.from(saltBytesOf(kekSalt)));
 
     const written = JSON.parse(store.get(VAULT_KEY));
-    expect(written.hardwareKekVersion).toBe(2);
+    expect(written.hardwareKekVersion).toBe(3);
     // The re-wrap side used a FRESH kekSalt (rotated), matching the new blob.
     const newArg = getHF.mock.calls[1][0];
     expect(newArg.kekSalt).toBeInstanceOf(Uint8Array);
     expect(Array.from(newArg.kekSalt)).toEqual(Array.from(saltBytesOf(written.kekSalt)));
     // Salt must actually have rotated.
+    expect(written.kekSalt).not.toBe(kekSalt);
+  });
+});
+
+describe('(4b) changePassword — v2 vault: OLD side uses the FIXED salt, re-wrap stamps v3', () => {
+  it('unlocks a v2 blob with the fixed salt and re-wraps under a fresh v3 salt', async () => {
+    setVault(JSON.stringify({
+      v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
+      kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 2,
+    }));
+    const getHF = makeBridgeCheckedHF();
+
+    await nativeKeyStore.changePassword('old', 'new', { getHardwareFactor: getHF });
+
+    expect(getHF).toHaveBeenCalledTimes(2);
+    // Old side of a v2 vault: fixed salt (no kekSalt) — the v2 wrap was made under it.
+    expect(getHF.mock.calls[0][0]).toBeUndefined();
+
+    const written = JSON.parse(store.get(VAULT_KEY));
+    expect(written.hardwareKekVersion).toBe(3); // re-wrap upgrades to a genuine binding
+    const newArg = getHF.mock.calls[1][0];
+    expect(newArg.kekSalt).toBeInstanceOf(Uint8Array);
+    expect(Array.from(newArg.kekSalt)).toEqual(Array.from(saltBytesOf(written.kekSalt)));
     expect(written.kekSalt).not.toBe(kekSalt);
   });
 });
