@@ -41,27 +41,39 @@ else
   exit 1
 fi
 
-echo -n "✓ Biometric behavior (native forced-on)... "
-if grep -q "disabled={forcedOnDevice}" "$PROJECT_ROOT/src/components/security/BiometricUnlockSettings.jsx"; then
+# Biometric toggle is user-controlled since 530b9924 (PR #542 era): the old
+# forced-on `disabled={forcedOnDevice}` pattern must be ABSENT, and the NF-2
+# two-step enable confirm panel must be present.
+echo -n "✓ Biometric toggle user-controlled (NF-2 confirm, no forced-on)... "
+if ! grep -qF "disabled={forcedOnDevice}" "$PROJECT_ROOT/src/components/security/BiometricUnlockSettings.jsx" \
+   && grep -qF 'data-testid="biometric-enable-confirm"' "$PROJECT_ROOT/src/components/security/BiometricUnlockSettings.jsx"; then
   echo "✅ Correct"
 else
-  echo "❌ BROKEN"
+  echo "❌ BROKEN (expected user-controlled toggle + NF-2 confirm panel; forced-on pattern removed in 530b9924)"
   exit 1
 fi
 
-echo -n "✓ Passkey hidden on mobile (!isNative)... "
-if grep -q "{!isNative && <PasskeyUnlockSettings" "$PROJECT_ROOT/src/pages/Settings.jsx"; then
+# PasskeyUnlockSettings renders on ALL platforms since PR #542 (fa76570c):
+# on native it routes through OS biometrics and is honestly labeled
+# "Biometric unlock" via the nativeBio flag — it must NOT be !isNative-gated.
+echo -n "✓ PasskeyUnlockSettings renders on native with honest labels... "
+if grep -qF "<PasskeyUnlockSettings />" "$PROJECT_ROOT/src/pages/Settings.jsx" \
+   && ! grep -qF "{!isNative && <PasskeyUnlockSettings" "$PROJECT_ROOT/src/pages/Settings.jsx" \
+   && grep -qF "nativeBio ? 'Biometric unlock' : 'Unlock with Passkey'" "$PROJECT_ROOT/src/components/security/PasskeyUnlockSettings.jsx"; then
   echo "✅ Correct"
 else
-  echo "❌ BROKEN"
+  echo "❌ BROKEN (expected unconditional render + nativeBio honest labels per PR #542 / fa76570c)"
   exit 1
 fi
 
-echo -n "✓ Wallet Passkeys hidden on mobile... "
-if grep -q "{!isNative && (" "$PROJECT_ROOT/src/pages/Settings.jsx" | grep -q "Wallet Passkeys"; then
+# Wallet Passkeys (per-wallet, web-only) must still be hidden on native:
+# the section sits directly under its comment, gated by {!isNative && (.
+echo -n "✓ Wallet Passkeys hidden on mobile ({!isNative && ()... "
+if grep -A 2 "Wallet Passkeys" "$PROJECT_ROOT/src/pages/Settings.jsx" | grep -qF "{!isNative && ("; then
   echo "✅ Correct"
 else
-  echo "⚠️  Check manually"
+  echo "❌ BROKEN (expected Wallet Passkeys section gated behind {!isNative && ( in src/pages/Settings.jsx)"
+  exit 1
 fi
 
 echo ""
@@ -117,9 +129,9 @@ echo ""
 echo "📱 Next Steps:"
 echo "1. Verify APK on test device"
 echo "2. Check Settings page:"
-echo "   - Biometric toggle is DISABLED and reads 'Fingerprint required on this device'"
-echo "   - NO 'Unlock with Passkey' section visible"
-echo "   - NO 'Wallet Passkeys' section visible"
+echo "   - Biometric unlock toggle is USER-CONTROLLED; enabling requires the NF-2 confirm panel"
+echo "   - 'Biometric unlock' section IS visible (PasskeyUnlockSettings, honestly relabeled on native)"
+echo "   - NO 'Wallet Passkeys' section visible (web-only)"
 echo "3. Submit to Google Play / App Store"
 echo ""
 echo "📚 Documentation: docs/mobile-apk-build-checklist.md"
