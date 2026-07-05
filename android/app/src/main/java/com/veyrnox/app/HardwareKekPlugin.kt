@@ -267,7 +267,20 @@ class HardwareKekPlugin : Plugin() {
             // C-1: resolve the MAC input. Present kekSalt → v2 per-enrollment binding;
             // absent → v1 fallback to the fixed PRF_EVAL_SALT. A supplied-but-empty
             // kekSalt is a caller error — reject rather than fall back (fail closed).
+            //
+            // C-1 regression guard (2026-07-05): getString("kekSalt") returns null BOTH
+            // when the key is absent AND when it is present-but-not-a-string (e.g. a JS
+            // Uint8Array serialised by the bridge to {"0":86,…}). We MUST distinguish
+            // those: a present-but-malformed kekSalt must FAIL CLOSED, never silently fall
+            // back to the fixed salt (that fallback is what made the v2 binding inert). Use
+            // the raw call data to detect presence, then require a real string value.
+            val hasKekSalt = call.data.has("kekSalt")
             val kekSaltB64 = call.getString("kekSalt")
+            if (hasKekSalt && kekSaltB64 == null) {
+                // Key was supplied but is not a string (wrong type across the bridge) —
+                // reject with a clear code rather than degrading to the fixed-salt path.
+                return call.reject("KEK_SALT_MALFORMED: kekSalt must be a base64 string")
+            }
             val macInput: ByteArray = if (kekSaltB64 != null) {
                 val decoded = try {
                     Base64.decode(kekSaltB64, Base64.NO_WRAP)
@@ -280,6 +293,15 @@ class HardwareKekPlugin : Plugin() {
                 decoded
             } else {
                 PRF_EVAL_SALT
+            }
+            // Evidence tooling for device re-verification (C-1): log WHICH salt branch was
+            // taken so a logcat trace can prove v2-bound vs v1-fixed at unlock time. Debug
+            // builds only, and NEVER logs the salt or H bytes — only the branch label.
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    "HardwareKek",
+                    "salt-source: ${if (kekSaltB64 != null) "v2-bound" else "v1-fixed"}"
+                )
             }
 
             val ks = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }

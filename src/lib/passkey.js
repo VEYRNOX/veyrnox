@@ -59,11 +59,16 @@
 //   • demo (VITE_DEMO_MODE / ?demo) : SIMULATED — no real WebAuthn call, so the
 //     register + unlock flow is demonstrable on the simulator/CI. Clearly
 //     labelled; never mistaken for real security.
-//   • native (Capacitor webview) : WebAuthn in a webview is unreliable and
-//     origin-bound; we attempt the real call where the browser exposes it and
-//     otherwise treat the platform as unsupported (the gate degrades to the
-//     password, never blocking access to funds). A hardware-bound native
-//     passkey API is future work (tracked alongside the M2b/M2c keystore rework).
+//   • native (Capacitor webview) : NO WebAuthn plugin ships in the app, so
+//     navigator.credentials is a dead stub (create() always throws
+//     NotAllowedError). We never call it on native. The honest possession
+//     factor on-device is the OS BIOMETRIC: getPasskeyStatus() reports
+//     mode 'native-biometric' from BiometricAuth.checkBiometry(),
+//     registerPasskeyCredential() enrolls via BiometricAuth.authenticate() and
+//     stores a marker flagged nativeBiometric (NOT a FIDO2 credential), and
+//     verifyPasskeyAssertion() routes through the same OS prompt. A true
+//     hardware-bound native passkey API remains future work (tracked alongside
+//     the M2b/M2c keystore rework).
 
 import { Capacitor } from '@capacitor/core';
 import { DEMO } from '@/api/demoClient';
@@ -300,12 +305,12 @@ function randomBytes(n) {
 
 /**
  * @typedef {object} PasskeyStatus
- * @property {'demo'|'web'|'native'} mode  Which environment resolved this.
- * @property {boolean} supported           Is the WebAuthn API present?
+ * @property {'demo'|'web'|'native-biometric'} mode  Which environment resolved this.
+ * @property {boolean} supported           Is the gate mechanism present here?
  * @property {boolean} available           Can we register/verify here?
  * @property {boolean} registered          Is a passkey already registered?
  * @property {boolean} simulated           Is the prompt a demo stub?
- * @property {string}  label               e.g. "Passkey".
+ * @property {string}  label               e.g. "Passkey" / "Biometric unlock".
  * @property {string}  detail              One-line honest status for the UI.
  */
 
@@ -330,16 +335,45 @@ export async function getPasskeyStatus() {
     };
   }
 
+  const isCapacitor = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform?.();
+
+  // NATIVE (Capacitor WebView): there is NO WebAuthn plugin in the shipped app,
+  // so window.PublicKeyCredential existing means nothing — creation always fails
+  // (NotAllowedError). The honest control on-device is the OS BIOMETRIC, the same
+  // prompt verifyPasskeyAssertion() already routes through. Report exactly that:
+  // mode 'native-biometric', availability from BiometricAuth.checkBiometry(),
+  // and NEVER claim WebAuthn availability here (no fake security).
+  if (isCapacitor) {
+    let biometryAvailable = false;
+    try {
+      const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+      const info = await BiometricAuth.checkBiometry();
+      biometryAvailable = !!info?.isAvailable;
+    } catch {
+      biometryAvailable = false; // fail closed: can't probe → don't offer the gate
+    }
+    return {
+      mode: 'native-biometric',
+      supported: biometryAvailable,
+      available: biometryAvailable,
+      registered,
+      simulated: false,
+      label: 'Biometric unlock',
+      detail: biometryAvailable
+        ? (registered
+          ? 'Biometric unlock is enrolled. Your device biometric runs before unlocking — this is the OS biometric, not a FIDO2 passkey.'
+          : 'Device biometrics are available. Enroll biometric unlock to add the OS prompt before unlocking.')
+        : 'Device biometrics are not set up. Add a fingerprint or face unlock in your device settings first.',
+    };
+  }
+
   const supported = isWebAuthnSupported();
   // A platform authenticator (Face ID / Touch ID / Windows Hello / Android) is
   // what makes a passkey usable for unlock. Probe it where the browser exposes
   // the check; fall back to "supported" if the probe itself is unavailable.
-  // On Capacitor (mobile), trust the WebAuthn API presence — the platform auth
-  // check may not be reliable, but if the APIs exist, we can try.
   let platformAvailable = supported;
-  const isCapacitor = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform?.();
 
-  if (supported && !isCapacitor && window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) {
+  if (supported && window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) {
     try {
       platformAvailable = await window.PublicKeyCredential
         .isUserVerifyingPlatformAuthenticatorAvailable();
@@ -377,7 +411,7 @@ export async function getPasskeyStatus() {
  * surface it. NEVER stores key material or any vault-decrypting secret.
  *
  * @param {{label?:string, userName?:string}} [opts]
- * @returns {Promise<{ok:true, simulated:boolean, credentialId:string}>}
+ * @returns {Promise<{ok:true, simulated:boolean, credentialId:string, nativeBiometric?:boolean}>}
  */
 export async function registerPasskeyCredential(opts = {}) {
   const label = opts.label || 'Veyrnox passkey';
@@ -396,6 +430,54 @@ export async function registerPasskeyCredential(opts = {}) {
     try { ls()?.setItem(PASSKEY_CRED_KEY, JSON.stringify(rec)); } catch { /* noop */ }
     notifyPasskeyRegistrationChanged();
     return { ok: true, simulated: true, credentialId: DEMO_CRED_ID };
+  }
+
+  // NATIVE (iOS/Android): no WebAuthn plugin ships in the Capacitor WebView, so
+  // navigator.credentials.create() ALWAYS fails there (NotAllowedError) — never
+  // call it. Mirror verifyPasskeyAssertion()'s native branch instead: prompt the
+  // OS biometric NOW (proves this device can satisfy the gate), then persist the
+  // same local marker record the web path stores, honestly flagged
+  // nativeBiometric — a biometric-gated marker, NOT a FIDO2/WebAuthn credential
+  // (no fake security). verifyPasskeyAssertion's native branch is what satisfies
+  // the gate at unlock; it requires no WebAuthn record, so this marker only
+  // records that the user completed enrollment (the biometry is the credential).
+  // FAIL CLOSED (I4): a cancel / no-match throws and NO record is stored.
+  if (Capacitor.isNativePlatform()) {
+    const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
+    const promptBiometric = () => BiometricAuth.authenticate({
+      reason: 'Enroll biometric unlock',
+      androidTitle: 'Enroll biometric unlock',
+      androidSubtitle: 'Confirm your identity to enroll',
+      cancelTitle: 'Cancel',
+      allowDeviceCredential: false,
+    });
+    // Suppress the background-lock hook while the OS dialog is up (same pattern
+    // as PasskeySetup.registerNative — the dialog briefly pauses the app, which
+    // would otherwise bounce the user to the unlock screen mid-enrollment).
+    // Suppression is best-effort; the biometric prompt itself is NOT optional.
+    let suppressLock = null;
+    try {
+      const { nativeKeyStore } = await import('@/wallet-core/keystore/native.js');
+      if (typeof nativeKeyStore?.suppressLock === 'function') {
+        suppressLock = (fn) => nativeKeyStore.suppressLock(fn);
+      }
+    } catch { /* no keystore here — run the prompt without suppression. */ }
+    if (suppressLock) await suppressLock(promptBiometric);
+    else await promptBiometric();
+
+    // Random local marker id — NOT derived from any seed/key, carries no secret.
+    const credentialId = 'native-biometric:' + bufferToBase64Url(randomBytes(16).buffer);
+    const rec = {
+      id: credentialId,
+      rpId: typeof window !== 'undefined' ? window.location.hostname : 'native',
+      label,
+      simulated: false,
+      nativeBiometric: true, // honest flag: OS biometric gate, not WebAuthn
+      createdAt: Date.now(),
+    };
+    try { ls()?.setItem(PASSKEY_CRED_KEY, JSON.stringify(rec)); } catch { /* noop */ }
+    notifyPasskeyRegistrationChanged();
+    return { ok: true, simulated: false, nativeBiometric: true, credentialId };
   }
 
   if (!isWebAuthnSupported()) {
@@ -568,6 +650,46 @@ export function classifyPasskeyError(err) {
   // Only a real Error/DOMException carries a `.name`; a string/null/object reads
   // it as undefined and correctly falls through to the hard-failure branch.
   return err?.name === 'NotAllowedError' ? 'cancelled' : 'error';
+}
+
+/**
+ * PURE — did a REGISTRATION/enrollment error mean "the user dismissed the OS
+ * sheet" (quietly ignorable) rather than a real failure (must be surfaced, I4)?
+ *
+ * The cancel signal differs per platform and MUST be scoped to it:
+ *   • web:    WebAuthn reports a user-cancel as DOMException `NotAllowedError`.
+ *   • native: the biometric plugin rejects with `.code === 'userCancel'`; it
+ *     NEVER throws NotAllowedError, so a NotAllowedError on native is a real
+ *     fault (e.g. the WebView's dead WebAuthn stub) and must NOT be swallowed —
+ *     swallowing it is exactly the bug that made Register silently do nothing.
+ *
+ * @param {*} err
+ * @param {boolean} nativeBiometric  true when the native-biometric path ran.
+ * @returns {boolean}
+ */
+export function isRegistrationCancel(err, nativeBiometric) {
+  if (nativeBiometric) {
+    return err?.code === 'userCancel' || err?.message === 'userCancel';
+  }
+  return err?.name === 'NotAllowedError';
+}
+
+/**
+ * PURE — may the "require on unlock" toggle be switched ON?
+ *
+ * WalletProvider.runPasskeyGate() SKIPS the gate whenever no credential is
+ * registered, even if the preference flag is on — so an enabled-but-unregistered
+ * toggle is FAIL-OPEN: the UI shows a gate that silently never runs (fake
+ * security). Enabling therefore requires a completed registration (web WebAuthn
+ * credential, native biometric enrollment, or the demo sentinel). Disabling is
+ * always allowed.
+ *
+ * @param {{requestedOn:boolean, registered:boolean}} args
+ * @returns {boolean} true if the requested state may be persisted.
+ */
+export function canSetPasskeyUnlock({ requestedOn, registered }) {
+  if (!requestedOn) return true; // turning OFF is always allowed
+  return !!registered;
 }
 
 /**
