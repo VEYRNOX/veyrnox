@@ -706,6 +706,12 @@ export default function WalletEntry() {
         setGeneratedSeed(seed);          // hold on the seed-backup screen (handleGenerate parity)
         setShowSeed(false);
         setBioEnabled(false);
+        // Route to the 'generate' view, which OWNS the seed-backup screen. Without
+        // this the render falls through to view==='choose' with webVaultPending now
+        // false → the dead-end "Set a PIN to continue" card, and the one-time seed
+        // is never shown (handleGenerate never needs this because it already runs
+        // inside the 'generate' view).
+        setView("generate");
       } catch (e) {
         createdPasswordRef.current = null;
         setProvisioning(false);

@@ -12,9 +12,23 @@ npx playwright install
 
 ## Running Tests
 
-### Run all tests
+### Run all automated tests
 ```bash
 npm run test:e2e
+```
+
+This runs the **automated** suite only. Two supervised harnesses are excluded by
+`testIgnore` in `playwright.config.ts` because they cannot run unattended:
+
+- `send-broadcast.harness-b.spec.js` — human-in-the-loop broadcast harness
+  (blocks up to 20 min per human step; in CI it just burns the job timeout).
+- `webauthn-prf-tier2-send.spec.js` — UAT harness needing `.env.local` with
+  `VITE_DEV_UNGATE_SEND=1` and a funded testnet wallet.
+
+To run them (headed, supervised — see each file's header for full instructions):
+
+```bash
+RUN_SUPERVISED_E2E=1 npx playwright test e2e/send-broadcast.harness-b.spec.js --headed --workers=1
 ```
 
 ### Run with UI mode (interactive)

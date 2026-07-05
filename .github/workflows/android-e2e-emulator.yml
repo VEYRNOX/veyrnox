@@ -260,18 +260,24 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
+      # Honest pass/fail: no continue-on-error — a red suite fails the job.
+      # Supervised harnesses (harness B human-in-the-loop, WebAuthn tier-2 UAT) are
+      # excluded via testIgnore in playwright.config.ts; they blocked on human input
+      # until the job timeout (run 28734031084). The step timeout is containment only.
       - name: Run Web Deniability E2E Tests
         run: npm run test:e2e
+        timeout-minutes: 20
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:5173
-        continue-on-error: true
 
       - name: Upload Web Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: web-e2e-results
-          path: test-results/
+          path: |
+            test-results/
+            playwright-report/
           retention-days: 30
 
   test-matrix-summary:
@@ -292,9 +298,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Web E2E Tests" >> $GITHUB_STEP_SUMMARY
           echo "- Status: ${{ needs.web-e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Platform: Chromium, Firefox, WebKit" >> $GITHUB_STEP_SUMMARY
-          echo "- Total Tests: 10" >> $GITHUB_STEP_SUMMARY
+          echo "- Platform: Chromium (see playwright.config.ts projects)" >> $GITHUB_STEP_SUMMARY
+          echo "- Supervised harnesses (harness B, WebAuthn tier-2) excluded — run manually with RUN_SUPERVISED_E2E=1" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Overall" >> $GITHUB_STEP_SUMMARY
-          echo "- Total E2E Tests: 59" >> $GITHUB_STEP_SUMMARY
-          echo "- Coverage: Android (deniability, security, send) + Web (deniability, hardware KEK)" >> $GITHUB_STEP_SUMMARY
+          echo "- Coverage: Android (deniability, security, send) + Web (onboarding gate, deniability)" >> $GITHUB_STEP_SUMMARY
