@@ -41,7 +41,7 @@
 //     panic only                3  (primary + panic  + stealth)
 //     panic + duress            4  (primary + panic  + duress + stealth)
 //
-// Argon2id at 64 MiB / t=3 is ~100 ms+, well above scheduling/network noise, so
+// Argon2id at 192 MiB / t=3 is ~100 ms+, well above scheduling/network noise, so
 // an attacker holding the device and timing a few wrong guesses could infer HOW
 // MANY deniability features are configured — i.e. THAT a duress / panic / hidden
 // setup exists, which is exactly what those features must hide. A sharper case:
