@@ -64,7 +64,6 @@ import {
 import {
   setDuressVault,
   clearDuressVault,
-  hasDuressVault,
   tryDuressUnlock,
 } from '@/wallet-core/duress';
 import {
@@ -2060,9 +2059,10 @@ export function WalletProvider({ children }) {
     // above is kept for callers that await it.
     vaultExists,        // resolved boolean | null
     vaultChecking,      // true until first resolution
-    // Duress / decoy controls (see wallet-core/duress.js). hasDuressPin() is the
-    // raw store check; set/remove manage the decoy vault.
-    hasDuressPin: hasDuressVault,
+    // Duress / decoy controls (see wallet-core/duress.js). Deliberately NO
+    // configured-state accessor here (deniability v2): set/remove are the only
+    // exposed operations, both idempotent, so no consumer can ask "is it set?".
+    // Internal unlock/chaff plumbing uses wallet-core's hasDuressVault directly.
     setDuressPin,
     removeDuressPin,
     // Stealth / hidden-wallet controls (see wallet-core/stealth.js). hasStealthPool
