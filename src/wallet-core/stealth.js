@@ -475,7 +475,9 @@ export async function moveWalletToHidden(mnemonic, secret) {
   // Refuse to clobber a DIFFERENT hidden wallet already living under this secret.
   const existing = await revealHiddenMnemonic(secret);
   if (existing != null && existing !== mnemonic) {
-    throw new Error('That reveal secret is already in use by a hidden wallet. Choose a different secret.');
+    // SW-01: generic message — must NOT confirm that a real hidden wallet (vs
+    // chaff) occupies this slot, or a caller could distinguish real from chaff.
+    throw new Error('Could not store hidden wallet — check your recovery phrase and try again');
   }
 
   // H2: same FIXED-LENGTH container wrapping as createHiddenWallet, so a moved

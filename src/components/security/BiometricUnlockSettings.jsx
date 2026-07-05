@@ -123,11 +123,25 @@ export default function BiometricUnlockSettings() {
             device backup without the physical device, they may be able to decrypt your wallet.
             Disable this for maximum offline protection.
           </p>
-          {/* Provisional (audit status — not shown to users): biometric check runs in
-              app code, not as an OS-enforced Keychain ACL; OS-bound binding is
-              pending M2c/M2d native plugin work. */}
         </div>
       </div>
+
+      {/* BIO-03: honest disclosure of app-layer-only biometric gate — shown only
+          when biometrics are available and the user has enabled (or is enabling)
+          the feature. Secondary text, not caution, to keep tone calm not alarming. */}
+      {available && (enabled || pendingEnable) && (
+        <p
+          data-testid="biometric-app-layer-disclosure"
+          className="text-xs text-muted-foreground leading-relaxed"
+        >
+          Biometric unlock stores your password in device secure storage using your
+          biometric to protect access. This protection runs at the app level — it does
+          not use the OS hardware-bound keychain ACL.{' '}
+          Hardware-bound biometric security requires{' '}
+          <span className="font-mono">Hardware KEK</span>{' '}
+          (coming in a future update).
+        </p>
+      )}
 
       {/* The toggle. On a real device it is forced on (and disabled): native
           unlock always requires biometric/passcode. In demo/web it controls the

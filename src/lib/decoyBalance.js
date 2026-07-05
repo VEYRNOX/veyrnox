@@ -23,6 +23,7 @@
 
 import { DEMO } from '@/api/demoClient';
 import { getBalanceEth } from '@/wallet-core/evm/provider';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 
 // The chain the decoy's native balance is read from / funded on. Sepolia is the
 // app's default enabled testnet; one address serves every EVM chain, so the
@@ -68,6 +69,10 @@ export function getDemoDecoyBalance(address) {
  * @returns {Promise<{ eth: string, source: 'demo-seed'|'chain' }>}
  */
 export async function resolveDecoyBalance(address) {
+  // I3: this function performs a live eth_getBalance RPC. It must never run
+  // inside a deniability session — fail closed on the exported function itself,
+  // not just on some callers, so a future caller can't leak egress.
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   if (!address) return { eth: '0', source: DEMO ? 'demo-seed' : 'chain' };
   if (DEMO) {
     return { eth: getDemoDecoyBalance(address), source: 'demo-seed' };

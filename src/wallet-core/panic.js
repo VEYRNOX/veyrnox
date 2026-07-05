@@ -81,6 +81,9 @@
 import { encryptVault, decryptVault } from './vault.js';
 import { generateMnemonic } from './mnemonic.js';
 import { padToFixedLen, stripPad } from './multiVault.js';
+// BIO-05: biometric-2FA enabled tell. Imported (not hardcoded) so a rename in
+// biometric.js is caught at build time and the wipe list stays in sync.
+import { TWOFACTOR_BIOMETRIC_KEY } from '../lib/biometric.js';
 
 // Same database + store as the primary vault (see evm/vaultStore.js), the duress
 // decoy ('secondary'), and the stealth pool ('vault:N'). The panic marker sits in
@@ -170,6 +173,8 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   'veyrnox-passkey-cred',
   'veyrnox-2fa-passkey',
   'veyrnox-biometric-unlock',
+  TWOFACTOR_BIOMETRIC_KEY,       // biometric.js 'veyrnox-2fa-biometric' (biometric-2FA
+                                // enabled tell — reveals security posture after wipe; BIO-05)
   'veyrnox-pin-attempts',
   'veyrnox-pin-backoff-until',
   // WebAuthn PRF credential ID — wallet-core/keystore/web.js CRED_KEY. Proves a
@@ -408,6 +413,22 @@ function readLocalAddressResidue() {
   }
 }
 
+// Known browser cookies a wipe must expire. The sidebar component persists a
+// 7-day 'sidebar_state' cookie; it survives localStorage/IndexedDB wipes and is a
+// forensic tell that the app was recently used. Guarded for Node/test environments.
+const BROWSER_COOKIE_KEYS = Object.freeze(['sidebar_state']);
+
+// PW-02: expire known browser cookies so they do not survive the wipe in the cookie
+// store. Best-effort — cookies are not key material; setting max-age=0 removes them.
+function clearBrowserCookies() {
+  try {
+    if (typeof document === 'undefined') return;
+    for (const name of BROWSER_COOKIE_KEYS) {
+      document.cookie = `${name}=; max-age=0; path=/`;
+    }
+  } catch { /* cookie store may be unavailable; not key material */ }
+}
+
 // Remove EVERY entry in the vault store — the guaranteed key-material kill. Using
 // clear() (not per-key deletes) means primary, secondary, the panic marker, all
 // stealth slots, AND any future-added key are removed; nothing can silently
@@ -469,7 +490,14 @@ function deleteAppDataDatabase() {
     }
     req.onsuccess = finish;
     req.onerror = finish;   // no key material here; deletion is residue hygiene
-    req.onblocked = finish; // do not hang on a lingering connection
+    // PW-05: on blocked, another connection (localClient.js's module-level handle)
+    // holds the DB open. Resolving straight away would claim success while rows are
+    // still readable. Attempt to close the blocking connection first so the delete
+    // can actually proceed, THEN finish (we still never hang the wipe).
+    req.onblocked = () => {
+      try { req.result?.close?.(); } catch { /* best-effort */ }
+      finish();
+    };
   });
 }
 
@@ -525,6 +553,7 @@ export async function panicWipeLocal() {
   await deleteVaultDatabase();
   await deleteAppDataDatabase();
   clearLocalAddressResidue();
+  clearBrowserCookies(); // PW-02: expire known browser cookies (sidebar_state)
   // Write the next-open wipe marker AFTER the residue sweep (clearLocalAddressResidue
   // only touches ALL_RESIDUE_KEYS, which deliberately excludes WIPE_MARKER_KEY) so it
   // survives the wipe and the next app open can LOUDLY acknowledge the destruction.
