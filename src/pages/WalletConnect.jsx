@@ -129,6 +129,7 @@ function WalletConnectInner() {
       <div className={styles.page}>
         <h1 className={styles.heading}>dApp Connector</h1>
         <p className={styles.locked}>Unlock your wallet to connect to dApps.</p>
+        <PopularDapps />
       </div>
     );
   }
