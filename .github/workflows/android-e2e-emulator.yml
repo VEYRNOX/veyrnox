@@ -135,7 +135,7 @@ jobs:
 
       - name: Upload Test Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-e2e-results-api${{ matrix.api-level }}
           path: test-results/
@@ -176,7 +176,7 @@ jobs:
 
       - name: Upload Web Test Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-e2e-results
           path: |
