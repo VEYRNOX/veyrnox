@@ -224,18 +224,84 @@ async function authenticateOrThrow() {
   await BiometricAuth.authenticate({ reason, allowDeviceCredential: true });
 }
 
-// C-1 (v2 protocol): build the getHardwareFactor() call options for an EXISTING vault
-// blob. A v2 vault (blob.hardwareKekVersion === 2) binds H to its per-enrollment kekSalt,
-// so we pass { kekSalt } (decoded from the stored base64). A legacy v1 vault (no
-// hardwareKekVersion) MUST call getHardwareFactor() with NO kekSalt so the native plugin
-// falls back to the fixed PRF_EVAL_SALT and reproduces the H the wrap was made with —
-// changing this would permanently brick existing v1 wraps (fail closed to backwards-compat).
-// Returns undefined for v1 (call getHF() with no args) or { kekSalt: Uint8Array } for v2.
-function hfOptsForBlob(blob, saltBytes) {
-  if (blob && blob.hardwareKekVersion === 2) {
+// C-1 (v3 protocol): build the getHardwareFactor() call options for an EXISTING vault
+// blob. Only a v3 vault (blob.hardwareKekVersion === 3) has a GENUINELY salt-bound wrap,
+// so only v3 passes { kekSalt } (decoded from the stored base64). Everything else calls
+// getHardwareFactor() with NO kekSalt, so the native plugin falls back to the fixed
+// PRF_EVAL_SALT and reproduces the H the wrap was actually made with (fail-closed to
+// backwards-compat; changing this would brick the existing wrap):
+//   - v3 → { kekSalt } (per-enrollment salt-bound H — the real binding).
+//   - v2 → undefined. The v2 stamp was aspirational: two masking bugs (the facade dropped
+//     getHardwareFactor's opts, and hardware.js sent kekSalt as raw bytes the Capacitor
+//     bridge could not carry) meant v2 wraps were ACTUALLY made under the fixed v1 salt.
+//     So a v2 blob MUST unlock with the fixed salt (C-1 regression 2026-07-05; treated as
+//     fixed-salt), then lazily upgrade to a real v3 wrap (see _upgradeV2ToV3).
+//   - v1 (no hardwareKekVersion) → undefined (legacy fixed-salt wrap).
+// Returns undefined (call getHF() with no args) or { kekSalt: Uint8Array } for v3.
+export function hfOptsForBlob(blob, saltBytes) {
+  if (blob && blob.hardwareKekVersion === 3) {
     return { kekSalt: saltBytes.slice() };
   }
   return undefined;
+}
+
+// C-1 lazy migration (2026-07-05): re-wrap a just-unlocked v2 vault's DEK under a
+// GENUINELY salt-bound v3 KEK. Called from _unlockInner AFTER a successful v2 unlock,
+// with the recovered DEK still live.
+//
+// BRICKLESS CONTRACT (I4 fail-safe on the migration path):
+//   - Only acts on a v2 KEK vault (blob.hardwareKekVersion === 2 && blob.kekWrap). Any
+//     other version is a no-op.
+//   - Generates a FRESH per-enrollment kekSalt, derives H bound to it (one extra biometric
+//     prompt), derives C, combines the new KEK, re-wraps the SAME DEK (seed ct/iv
+//     UNCHANGED), and persists atomically via safeWriteVault, stamping hardwareKekVersion:3.
+//   - If ANY step throws, the v2 blob is left byte-for-byte untouched and this function
+//     SWALLOWS the error (returns without rethrowing) — the vault must remain unlockable
+//     exactly as before (never brick on the convenience upgrade). safeWriteVault's own
+//     read-back-verify means a failed persist throws before the v2 blob is replaced.
+//   - New key material (H2, newC, newKek) is zeroed on every path. The DEK is owned and
+//     zeroed by the caller (_unlockInner's finally) — we never zero it here.
+async function _upgradeV2ToV3(blob, dek, password, opts) {
+  if (!blob || blob.hardwareKekVersion !== 2 || !blob.kekWrap) return;
+  const getHF = opts && opts.getHardwareFactor;
+  if (typeof getHF !== 'function') return; // no way to derive the new H — leave v2 as-is
+  // We need C to combine the new KEK; C = Argon2id(password, newSalt). Without the same
+  // password just used to unlock we cannot re-derive C — leave the v2 blob untouched
+  // (fail-safe status quo).
+  if (typeof password !== 'string') return;
+
+  const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+  const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+  let H2;
+  let newC;
+  let newKek;
+  try {
+    H2 = await getHF({ kekSalt: newSaltBytes.slice() }); // one-time extra biometric prompt
+    newC = await deriveKekC(password, newSaltBytes);
+    newKek = await combineKek(H2, newC);
+    if (H2 && H2.fill) H2.fill(0);
+    if (newC) newC.fill(0);
+    const newKekWrap = await wrapDek(newKek, dek); // re-wrap the SAME DEK — seed ct/iv unchanged
+    // Persist atomically. safeWriteVault does set → read-back → verify byte-equal → throw
+    // on mismatch, so a failed write throws here and the v2 blob is NOT left corrupted:
+    // on throw we restore the original v2 bytes below.
+    await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
+  } catch {
+    // BRICKLESS: any failure (biometric cancel, wrap error, persist-verify mismatch) must
+    // leave the vault exactly as it was. Restore the original v2 blob best-effort so a
+    // partially-written store value can never shadow the good v2 wrap, and swallow — unlock
+    // already succeeded and must not fail because the convenience upgrade did (fail-safe).
+    try {
+      await safeWriteVault(blob);
+    } catch {
+      /* best-effort restore; the original v2 value may already be intact in the store */
+    }
+  } finally {
+    if (H2 && H2.fill) H2.fill(0);
+    if (newC) newC.fill(0);
+    if (newKek) newKek.fill(0);
+    newSaltBytes.fill(0);
+  }
 }
 
 async function _unlockInner(password, opts = {}) {
@@ -255,7 +321,8 @@ async function _unlockInner(password, opts = {}) {
     // KEK-enrolled blob with a missing/empty/non-base64 kekSalt is malformed and must
     // fail closed with the stable code (never a raw InvalidCharacterError).
     const saltBytes = decodeKekSalt(blob.kekSalt);
-    // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
+    // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed salt
+    // (v2 inert-binding / v1 legacy). See hfOptsForBlob.
     const H = await getHF(hfOptsForBlob(blob, saltBytes)); // biometric prompt (Android Keystore)
     let C;
     let kek;
@@ -271,7 +338,14 @@ async function _unlockInner(password, opts = {}) {
       if (H && H.fill) H.fill(0);
       if (C) C.fill(0);
       dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
-      return await decryptVaultWithDek(blob, dek);
+      const plaintext = await decryptVaultWithDek(blob, dek);
+      // C-1 lazy migration: a v2 blob was wrapped under the inert fixed salt. Now that
+      // unlock has SUCCEEDED and the DEK is in hand, upgrade it to a genuinely salt-bound
+      // v3 wrap. This is BEST-EFFORT and fail-SAFE: any failure inside _upgradeV2ToV3
+      // leaves the v2 blob byte-for-byte untouched and never throws, so unlock still
+      // returns the seed (never brick). One extra one-time biometric prompt on success.
+      await _upgradeV2ToV3(blob, dek, password, opts);
+      return plaintext;
     } finally {
       if (H && H.fill) H.fill(0);
       if (C) C.fill(0);
@@ -496,15 +570,16 @@ export const nativeKeyStore = {
         const getHF = opts && opts.getHardwareFactor;
         if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
         const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
-        // C-1 (v2): the re-wrap uses a FRESH kekSalt, so its H is bound to a DIFFERENT
-        // salt than the unlock side — the old H2-reuse is INVALID under v2. Generate the
-        // new salt up front and derive H TWICE: once bound to the old salt (unlock), once
-        // bound to the new salt (re-wrap). For a legacy v1 vault hfOptsForBlob returns
-        // undefined on both sides, so both calls fall back to the fixed salt (H matches).
+        // C-1 (v3): the re-wrap uses a FRESH kekSalt, so its H is bound to a DIFFERENT
+        // salt than the unlock side. Generate the new salt up front and derive H TWICE:
+        // once for the UNLOCK side (whatever the stored blob's version binds to — v3 uses
+        // its kekSalt, v2/v1 use the fixed salt via hfOptsForBlob), once bound to the NEW
+        // salt for the re-wrap. The re-wrapped vault is always stamped v3 (genuinely
+        // salt-bound), so H2 is always kekSalt-bound.
         const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
         const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
         const H = await getHF(hfOptsForBlob(blob, oldSaltBytes));
-        // The re-enrolled vault is always v2; bind the new H to the new salt.
+        // The re-enrolled vault is always v3; bind the new H to the new salt.
         const H2 = await getHF({ kekSalt: newSaltBytes.slice() });
         let oldC;
         let newC;
@@ -526,7 +601,7 @@ export const nativeKeyStore = {
           if (newC) newC.fill(0);
           const newKekWrap = await wrapDek(newKek, dek);
           newSaltBytes.fill(0);
-          await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 2 });
+          await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
         } finally {
           if (H && H.fill) H.fill(0);
           if (H2 && H2.fill) H2.fill(0);
@@ -570,9 +645,10 @@ export const nativeKeyStore = {
       // (combineKek/wrapDek/encrypt/safeWriteVault) clears the just-created credential
       // before rethrowing (I4 fail-honest, fail-closed). Only the FAILURE path clears;
       // the success path (no throw) never touches the credential we just enrolled.
-      // C-1 (v2): generate the per-enrollment kekSalt FIRST, then bind H to it via
+      // C-1 (v3): generate the per-enrollment kekSalt FIRST, then bind H to it via
       // getHF({ kekSalt }) so this vault's H is UNIQUE on the device (no longer the
-      // global fixed-salt HMAC). hardwareKekVersion:2 records the binding for unlock.
+      // global fixed-salt HMAC). hardwareKekVersion:3 records the GENUINE binding for
+      // unlock (v2 was the earlier, inert stamp — see hfOptsForBlob).
       const saltBytes = crypto.getRandomValues(new Uint8Array(32));
       const kekSalt = btoa(String.fromCharCode(...saltBytes));
       const H = await getHF({ kekSalt: saltBytes.slice() });
@@ -595,12 +671,14 @@ export const nativeKeyStore = {
           // show the real protection level (STRONGBOX / TEE / SecureEnclave) honestly
           // rather than a generic "ON" label (H-1 honesty fix). The tier comes from
           // enrollHardwareCredential() and is passed in via opts.hardwareKekTier.
-          // Omitted when absent (older callers / unenroll path). hardwareKekVersion:2
-          // marks the vault as C-1 (per-enrollment kekSalt-bound H).
+          // Omitted when absent (older callers / unenroll path). hardwareKekVersion:3
+          // marks the vault as GENUINELY C-1 salt-bound (per-enrollment kekSalt-bound H).
+          // v3 (not v2): the v2 stamp shipped while two bridge bugs left the binding inert,
+          // so a fresh enrollment is stamped v3 to mean the wrap really is salt-bound.
           const tierEntry = opts && opts.hardwareKekTier
             ? { hardwareKekTier: opts.hardwareKekTier }
             : {};
-          await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 2, ...tierEntry });
+          await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, ...tierEntry });
         } finally {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
