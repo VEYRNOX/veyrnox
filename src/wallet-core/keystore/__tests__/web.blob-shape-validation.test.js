@@ -82,4 +82,14 @@ describe('web atob(kekSalt) guard — malformed kekSalt with kekWrap present →
       webKeyStore.changePassword('old', 'new', { getHardwareFactor: async () => newHF() }),
     ).rejects.toThrow(KEK_ERR.MALFORMED_VAULT);
   });
+
+  // F-08 (audit, I4): a kdf='kek-dek' blob with NO kekWrap must fail closed with the
+  // stable MALFORMED_VAULT code — never fall through to bare decryptVault() and surface
+  // a misleading "wrong password" error.
+  it('unlock throws MALFORMED_VAULT when kdf=kek-dek but kekWrap is absent', async () => {
+    storeMock.loadVault.mockResolvedValue({ iv: 'x', ct: 'y', kdf: 'kek-dek' });
+    await expect(
+      webKeyStore.unlock('pw', { getHardwareFactor: async () => newHF() }),
+    ).rejects.toThrow(KEK_ERR.MALFORMED_VAULT);
+  });
 });

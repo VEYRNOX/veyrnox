@@ -83,7 +83,7 @@ import {
   isBiometricUnlockEnabled,
   getBiometricStatus,
 } from "@/lib/biometric";
-import { hasStoredUnlockSecret } from "@/lib/biometricUnlock";
+import { hasStoredUnlockSecret, clearUnlockSecret } from "@/lib/biometricUnlock";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
@@ -507,7 +507,14 @@ export default function WalletEntry() {
             : "Face ID didn't work. Enter your vault password below — it's your real key and always works."
         );
       } else {
-        setError(e?.message || "Unlock failed. Enter your vault password below.");
+        // SELF-HEAL: the biometric MATCH succeeded but the cached secret failed
+        // to unlock the vault — the cache is STALE (e.g. it still holds a duress
+        // PIN whose vault was removed). Wipe the dead cache so the one-tap button
+        // stops being offered; the next successful PIN unlock re-caches the real
+        // PIN (runPinUnlock) because the preference is still ON.
+        try { await clearUnlockSecret(); } catch { /* best-effort */ }
+        setBioReady(false);
+        setError("Face ID was out of date and has been reset. Enter your PIN — Face ID will re-arm after this unlock.");
       }
     } finally { setBusy(false); }
   };
