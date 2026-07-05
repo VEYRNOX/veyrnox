@@ -22,6 +22,69 @@ env:
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
 
 jobs:
+  # Diff-based mainnet activation flag change gate (Critical Blocker #3,
+  # Option A). Mainnet is already live and audited (2026-06-17) — this job
+  # does NOT gate "is mainnet on", it gates "did this PR CHANGE a mainnet
+  # activation flag". See docs/MAINNET_GATE_DESIGN.md and
+  # docs/MAINNET_ACTIVATION.md.
+  #
+  # PROCEDURAL, not cryptographic: this job labels + comments so a human sees
+  # it before merge. It does NOT fail the build and does NOT block merge by
+  # itself — branch protection / required-reviewer policy is what actually
+  # gates the merge, same as any other PR review.
+  mainnet-flag-gate:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history so `git diff <base>...HEAD` can find the merge-base;
+          # a shallow checkout would make every PR look like it changed
+          # everything (or fail the diff outright).
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Detect mainnet flag changes
+        id: detect
+        run: |
+          node scripts/detect-mainnet-flag-changes.js --base "origin/${{ github.base_ref }}" > mainnet-flag-report.json
+          cat mainnet-flag-report.json
+          HAS_CHANGES=$(node -e "console.log(JSON.parse(require('fs').readFileSync('mainnet-flag-report.json','utf8')).hasMainnetChanges)")
+          echo "has_changes=$HAS_CHANGES" >> "$GITHUB_OUTPUT"
+      - name: Label + comment on flagged PR
+        if: steps.detect.outputs.has_changes == 'true'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('mainnet-flag-report.json', 'utf8'));
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number,
+              labels: ['mainnet-gate-required'],
+            });
+
+            const changeList = report.changes
+              .map(c => `- \`${c.flag}\` in \`${c.file}:${c.lineNumber}\` — \`${c.oldValue}\` → \`${c.newValue}\``)
+              .join('\n');
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number,
+              body: [
+                '⚠️ This PR modifies mainnet activation flags. This requires explicit review by the wallet owner before merge.',
+                '',
+                changeList,
+                '',
+                'See `docs/MAINNET_ACTIVATION.md` for the activation process and `docs/MAINNET_GATE_DESIGN.md` for why this is a procedural (not automatic-block) gate.',
+              ].join('\n'),
+            });
+
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -39,6 +102,15 @@ jobs:
       # highs/moderates are triaged for reachability in docs/SAST_FINDINGS.md.
       - run: node scripts/audit-gate.mjs
       - run: npm run lint
+      # Critical Blocker #1 — R0/R1 crypto-core ring-boundary gate as a
+      # DEDICATED required step (not only transitively via `npm run lint`), so it
+      # can't silently drop if the lint script's scope changes — same pattern as
+      # check:rng below. Fails CI (blocks merge) if any UI/backend-layer file
+      # imports a key-touching crypto-core module (keystore / vault / mnemonic /
+      # derivation / coldkey, or the @vault/@signing/@keys aliases). The four
+      # known pre-existing crossings are an explicit labelled baseline in
+      # eslint.config.js; anything NEW fails here.
+      - run: npm run lint:rings
       # Whole-tree type gate. `pretest` only runs typecheck:core (the fast,
       # security-critical wallet-core slice); CI additionally holds the ENTIRE
       # tree at zero checkJs errors so UI-layer types can't silently drift.
