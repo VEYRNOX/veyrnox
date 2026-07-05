@@ -32,15 +32,32 @@
 const CRYPTO_CORE_ALIASES = ["@vault", "@signing", "@keys"];
 
 /**
- * Real crypto-core directories in this repo (R0/R1). Matched as normalized
- * path segments so both `@/wallet-core/...` and `../../wallet-core/...`
- * (and OS-specific separators) are caught.
+ * Real R0/R1 crypto-core modules in this repo — the SECRET-BEARING slice only.
+ * Matched as normalized path segments so both `@/wallet-core/...` and
+ * `../../wallet-core/...` (and OS-specific separators) are caught.
+ *
+ * IMPORTANT: `wallet-core/` is NOT R0/R1 wholesale. It also holds non-secret
+ * metadata that the UI legitimately imports (assets.js, netUrl.js, rpcConfig.js,
+ * evm/walletconnect/projectId.js). Listing the whole tree here produces false
+ * positives against benign metadata imports and dilutes the signal. Only the
+ * modules that touch the seed / vault ciphertext / KEK / signing are R0/R1.
  */
 const CRYPTO_CORE_SEGMENTS = [
-  "wallet-core/keystore",
-  "wallet-core", // seed / vault / derivation / signing primitives
-  "sign-gate", // the signing gate (R1)
+  "wallet-core/keystore", // KEK / keyStore / web / native / hardware (H factor)
+  "wallet-core/vault", // vault.js — DEK-encrypted seed at rest
+  "wallet-core/vaultBackup", // vault export/restore ciphertext
+  "wallet-core/mnemonic", // BIP-39 seed material
+  "wallet-core/derivation", // HD private-key derivation
+  "wallet-core/coldkey", // cold-key signing material
 ];
+// NOTE on sign-gate: `src/sign-gate/*` (presign.js/compose.js) is deliberately a
+// PURE decision facade — presignGate takes (raspTier, txLevel, acknowledged) and
+// returns a proceed/refuse decision, touching NO keys (see the file header: "the
+// call site in SendCrypto.jsx is a thin caller"). It is the R2 gate the UI is
+// SUPPOSED to call before signing, so it is intentionally NOT in the forbidden
+// segment list — flagging it would fight the architecture's own design. The
+// `@signing/*` ALIAS remains forbidden (see CRYPTO_CORE_ALIASES) as the contract
+// for a future key-touching signing entrypoint published under that alias.
 
 /**
  * Outer-ring layers that must never import crypto-core directly. Matched
@@ -87,16 +104,20 @@ function isCryptoCoreImport(specifier) {
     return true;
   }
 
-  // Path-shaped specifiers (relative or @/-aliased) reaching a crypto-core dir.
-  // Guard against bare package names of similar spelling by requiring the
-  // segment to be delimited by a path separator (start/`/`) on the left.
+  // Path-shaped specifiers (relative or @/-aliased) reaching a crypto-core
+  // module. Strip a trailing file extension so `wallet-core/vault.js` matches
+  // the `wallet-core/vault` segment (both the exact file and a subpath under a
+  // directory of that name). The left side is required to be delimited by a
+  // path separator (or string start) so a bare package of similar spelling
+  // ("@vaultish/x", "somewallet-core-ish") is NOT matched.
+  const noExt = s.replace(/\.(js|mjs|cjs|jsx|ts|tsx)$/, "");
   return CRYPTO_CORE_SEGMENTS.some((seg) => {
-    return (
-      s === seg ||
-      s.endsWith(`/${seg}`) ||
-      s.includes(`/${seg}/`) ||
-      s.startsWith(`${seg}/`)
-    );
+    const boundaryOk =
+      noExt === seg ||
+      noExt.endsWith(`/${seg}`) || // .../wallet-core/vault
+      noExt.includes(`/${seg}/`) || // .../wallet-core/keystore/kek
+      noExt.startsWith(`${seg}/`); // wallet-core/keystore/kek (no leading @//..)
+    return boundaryOk;
   });
 }
 

@@ -22,12 +22,21 @@ const RULE_ID = "ring/ring-import-lint";
 function lint(code, filename) {
   const linter = new Linter({ configType: "flat" });
   return linter.verify(code, {
+    // Flat config must match the .jsx extension explicitly, or ESLint reports
+    // "No matching configuration found" and never runs the rule on a UI file.
+    files: ["**/*.js", "**/*.jsx"],
     plugins: {
       ring: { rules: { "ring-import-lint": ringImportLint } },
     },
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
+      // UI-layer files are .jsx; enable JSX so espree parses them (mirrors the
+      // repo eslint.config.js react block). Without this, ESLint bails with
+      // "No matching configuration" before any rule runs on a .jsx filename.
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
     },
     rules: {
       [RULE_ID]: "error",
@@ -70,7 +79,8 @@ describe("ring-import-lint: R0/R1 crypto-core ring boundary", () => {
       { spec: "@/wallet-core/keystore/kek.js", file: "src/ui/Unlock.jsx" },
       { spec: "@/wallet-core/vault.js", file: "src/pages/Vault.jsx" },
       { spec: "../../wallet-core/keystore/native.js", file: "src/backend/x.js" },
-      { spec: "@/sign-gate/presign.js", file: "src/api/sign.js" },
+      { spec: "@/wallet-core/derivation.js", file: "src/pages/Stealth.jsx" },
+      { spec: "@/wallet-core/coldkey/psbt.js", file: "src/api/sign.js" },
     ];
     for (const { spec, file } of cases) {
       const messages = lint(`import x from '${spec}';\nexport default x;`, file);
@@ -99,6 +109,14 @@ describe("ring-import-lint: R0/R1 crypto-core ring boundary", () => {
       "@/components/ui/button",
       "../utils/format.js",
       "@vaultish/not-real", // similar spelling, not a crypto-core alias
+      // The pre-sign gate is a PURE decision facade (no keys); the UI is meant
+      // to call it. It must NOT be flagged as an R0/R1 boundary crossing.
+      "@/sign-gate/presign.js",
+      "@/sign-gate/compose.js",
+      // Non-secret wallet-core metadata the UI legitimately imports.
+      "@/wallet-core/assets.js",
+      "@/wallet-core/netUrl.js",
+      "@/wallet-core/evm/walletconnect/projectId.js",
     ];
     for (const spec of cases) {
       const messages = lint(
