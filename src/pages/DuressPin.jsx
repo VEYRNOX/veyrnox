@@ -322,6 +322,33 @@ export default function DuressPin() {
         </div>
       </div>
 
+      {/* D-02 (2026-07-05 internal audit, ACCEPTED RESIDUAL) — honest timing
+          disclosure. Rendered UNCONDITIONALLY (like the removal card above) so
+          its presence never becomes an "is duress configured?" oracle. Calm,
+          muted-foreground tone — this is a known, accepted trade-off, not an
+          active alarm. See src/wallet-core/deniabilityUnlock.js:72-79 (VULN-17). */}
+      <div
+        data-testid="duress-timing-disclosure"
+        className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2"
+      >
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          <span className="font-medium text-foreground">Timing note.</span>{' '}
+          Unlocking your real wallet does a small amount less cryptographic work
+          than unlocking with an Emergency PIN, so it can complete slightly
+          faster. Someone watching your <span className="font-mono">network traffic</span>{' '}
+          during unlock could potentially use that timing difference to guess
+          which PIN you typed.
+        </p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          The Emergency PIN protects you from someone standing over you and
+          forcing you to unlock your phone — it is <span className="font-medium text-foreground">not</span>{' '}
+          designed to protect against a remote attacker who is monitoring your
+          network connection while you unlock. For stronger protection if your
+          device is seized while powered off, pair the Emergency PIN with{' '}
+          <span className="font-mono">Hardware KEK</span> (Settings).
+        </p>
+      </div>
+
       {/* Plausibility model — be honest about what makes a decoy convincing */}
       <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
         <div className="flex items-center gap-2">

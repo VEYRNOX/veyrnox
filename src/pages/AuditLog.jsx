@@ -103,6 +103,29 @@ export default function AuditLog() {
               aria-label="Enable audit log"
             />
           </div>
+
+          {/* AL-06 (2026-07-05 internal audit) — honest disclosure of the
+              primary-session-only design. Rendered whenever the toggle is on,
+              regardless of whether entries exist yet. Calm, muted-foreground
+              tone — an accepted design limitation, not an active alarm. See
+              src/wallet-core/auditLog.js:145 (auditSecretForSession → null in
+              decoy/hidden sessions). */}
+          {auditLogEnabled && (
+            <p
+              data-testid="audit-log-deniability-disclosure"
+              className="text-xs text-muted-foreground leading-relaxed mt-4 pt-4 border-t border-border"
+            >
+              <span className="font-medium text-foreground">Deniability note.</span>{' '}
+              This log only records activity in your primary wallet session. If you
+              ever open a decoy or hidden wallet, nothing is logged for that
+              session — by design, so a hidden session never leaves a record of what
+              you did in it. However, someone examining your device could notice
+              that <span className="font-mono">no log exists</span> for a session
+              and use that absence as a clue that a decoy or hidden wallet was in
+              use. If you&apos;re concerned about forensic examination of this device,
+              a panic wipe removes the log along with everything else.
+            </p>
+          )}
         </CardContent>
       </Card>
 

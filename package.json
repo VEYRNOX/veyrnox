@@ -9,6 +9,7 @@
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
+    "lint:rings": "eslint src --quiet",
     "typecheck": "tsc -p ./jsconfig.json",
     "typecheck:core": "tsc -p ./jsconfig.wallet-core.json",
     "preview": "vite preview",
