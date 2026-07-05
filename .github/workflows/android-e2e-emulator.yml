@@ -18,7 +18,7 @@ env:
 
 jobs:
   e2e-emulator-tests:
-    runs-on: macos-13  # macOS has faster Android emulator support
+    runs-on: ubuntu-latest  # Linux runners available now; macOS testing scheduled for later in week
     timeout-minutes: 120
 
     strategy:
