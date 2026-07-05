@@ -588,8 +588,16 @@ export default function SendCrypto() {
   // I3: detect()/degrade() are pure functions of the ENVIRONMENT only — no
   // walletSet handle. I4: a RASP crash fails closed to the strongest BLOCK.
   let raspArtifact = null;
+  // RASP-A1 (2026-07-05 internal audit, HIGH): browserProbeSource re-samples the
+  // environment FRESH on every property read (its `available`/`signals` are getters),
+  // so a debugger / WebDriver flag attached AFTER module-load is still caught. This
+  // runs on every render, and the signer chokepoint re-derives the gate too.
   try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
-  const raspTier = raspArtifact?.tier ?? TIER.ALLOW;
+  // I4 FAIL CLOSED (RASP-A2, 2026-07-05 internal audit, HIGH): if the RASP artifact
+  // is missing a tier (a crash, or degrade() shape drift), fall back to the strongest
+  // BLOCK — NEVER ALLOW. A fail-open fallback here would let a hostile runtime sign
+  // the moment the detector itself misbehaves. Absence of a clean signal is not clean.
+  const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
 
   // The COMPOSITE pre-sign decision (RASP env plane ⊕ tx-risk plane), set-blind by
   // construction (presignGate takes no wallet-set handle). The signer path

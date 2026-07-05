@@ -282,8 +282,19 @@ describe('stealth / hidden wallets', () => {
     await moveWalletToHidden(first, 'shared-secret-cccc');
     // A different wallet under the same secret must be refused, not silently
     // overwrite the first (which would destroy it).
-    await expect(moveWalletToHidden(second, 'shared-secret-cccc'))
-      .rejects.toThrow(/already in use/i);
+    // SW-01: the message must be GENERIC — it must NOT confirm a real hidden
+    // wallet (vs chaff) occupies the slot, or a caller could distinguish real
+    // from chaff by the error text.
+    let caught;
+    try {
+      await moveWalletToHidden(second, 'shared-secret-cccc');
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect(caught.message).toBe('Could not store hidden wallet — check your recovery phrase and try again');
+    expect(caught.message).not.toMatch(/already in use/i);
+    expect(caught.message).not.toMatch(/another hidden wallet/i);
     // The first wallet is intact.
     expect(revealedMnemonic(await tryRevealHidden('shared-secret-cccc'))).toBe(first);
   });

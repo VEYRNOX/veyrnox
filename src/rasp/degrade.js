@@ -40,14 +40,13 @@ import { CONDITION, TIER } from './conditions.js';
 // (brief §7: seed reveal / export / import are the highest-danger moments).
 const SENSITIVE = Object.freeze(['sign', 'seed-reveal', 'export', 'import']);
 
-// Specs are pure data. Each carries the SAME five fields so every artifact has an
+// Specs are pure data. Each carries the SAME fields so every artifact has an
 // identical shape (a precondition for the §5 structural-identity assertion).
 const SPECS = Object.freeze({
   [CONDITION.CLEAN]: {
     tier: TIER.ALLOW,
     sentence: null,
     blockedActions: [],
-    permitsTestnet: true,
     requiresBiometric: false,
   },
   [CONDITION.ROOTED]: {
@@ -59,7 +58,6 @@ const SPECS = Object.freeze({
     sentence:
       'This device looks modified (rooted or jailbroken), which can weaken its protections — continue only if you trust it.',
     blockedActions: [],
-    permitsTestnet: true,
     requiresBiometric: true,
   },
   [CONDITION.INTEGRITY_UNAVAILABLE]: {
@@ -69,18 +67,17 @@ const SPECS = Object.freeze({
     sentence:
       "We couldn't confirm this device's integrity just now — continue with extra caution.",
     blockedActions: [],
-    permitsTestnet: true,
     requiresBiometric: true,
   },
   [CONDITION.EMULATOR]: {
-    // Production sign blocked. `permitsTestnet: true` is a TARGET carve-out that
-    // is NOT currently consumed by the live gate: compose.js maps BLOCK →
-    // signerReachable:false for EVERY send, including testnet. So emulator
-    // currently blocks all sends, and the copy must not promise testnet.
+    // Production sign blocked. RASP-A4 (2026-07-05 internal audit): the former
+    // `permitsTestnet: true` carve-out was a DEAD field — compose.js maps BLOCK →
+    // signerReachable:false for EVERY send, testnet included, so nothing ever
+    // consumed it. Removed to avoid misleading future callers. Emulator blocks all
+    // sends, and the copy does not promise testnet.
     tier: TIER.BLOCK,
     sentence: 'Signing is turned off in emulated environments.',
     blockedActions: ['sign'],
-    permitsTestnet: true,
     requiresBiometric: false,
   },
   [CONDITION.INTEGRITY_FAIL]: {
@@ -88,7 +85,6 @@ const SPECS = Object.freeze({
     sentence:
       'This device failed an integrity check, so signing and key access are turned off.',
     blockedActions: [...SENSITIVE],
-    permitsTestnet: false,
     requiresBiometric: false,
   },
   [CONDITION.HOOKED]: {
@@ -96,7 +92,6 @@ const SPECS = Object.freeze({
     sentence:
       'Another program appears to be inspecting this app, so signing and key access are turned off until it stops.',
     blockedActions: [...SENSITIVE],
-    permitsTestnet: false,
     requiresBiometric: false,
   },
   [CONDITION.TAMPERED]: {
@@ -104,18 +99,16 @@ const SPECS = Object.freeze({
     sentence:
       'This app appears to have been altered, so signing and key access are turned off.',
     blockedActions: [...SENSITIVE],
-    permitsTestnet: false,
     requiresBiometric: false,
   },
 });
 
-// The fail-closed default (I4): strongest BLOCK, no testnet, sensitive paths
-// refused. Used for ANY unrecognised condition.
+// The fail-closed default (I4): strongest BLOCK, sensitive paths refused. Used for
+// ANY unrecognised condition.
 const FAIL_CLOSED = Object.freeze({
   tier: TIER.BLOCK,
   sentence: "We couldn't safely evaluate this device, so signing and key access are turned off.",
   blockedActions: [...SENSITIVE],
-  permitsTestnet: false,
   requiresBiometric: false,
 });
 
@@ -130,9 +123,12 @@ const FAIL_CLOSED = Object.freeze({
  *   tier: string,                 // TIER.ALLOW | TIER.WARN | TIER.BLOCK
  *   sentence: string|null,        // the one plain-language sentence (null when ALLOW)
  *   blockedActions: string[],     // actions refused at this tier (fresh array)
- *   permitsTestnet: boolean,      // TARGET testnet carve-out — NOT consumed by the live gate yet
  *   requiresBiometric: boolean,   // TARGET WARN biometric re-confirm — NOT consumed by the live gate yet
  * }}
+ *
+ * NOTE (RASP-A4): the former `permitsTestnet` field was removed — it had zero live
+ * consumers (compose.js maps BLOCK → signerReachable:false for every send, testnet
+ * included). A dead API field in a security module misleads callers, so it is gone.
  */
 export function degrade(condition) {
   const spec = Object.prototype.hasOwnProperty.call(SPECS, condition) ? SPECS[condition] : FAIL_CLOSED;
@@ -142,7 +138,6 @@ export function degrade(condition) {
     tier: spec.tier,
     sentence: spec.sentence,
     blockedActions: [...spec.blockedActions],
-    permitsTestnet: spec.permitsTestnet,
     requiresBiometric: spec.requiresBiometric,
   };
 }

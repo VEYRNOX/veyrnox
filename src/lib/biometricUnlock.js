@@ -223,8 +223,20 @@ export async function storeUnlockSecret(password) {
  * precondition (throws on cancel/failure; the item is never read on a failed
  * match), so the secret is unreleasable without a fresh biometric match enforced
  * by the OS — not just app-layer convention. In demo the caller shows the
- * clearly-labelled SIMULATED prompt (unchanged); this returns the localStorage
- * copy. Plain web caches nothing → null.
+ * clearly-labelled SIMULATED prompt (unchanged); this returns the in-memory
+ * demo cache directly. Plain web caches nothing → null.
+ *
+ * @remarks
+ * **DEMO-MODE CALLER CONTRACT:** In demo mode (`DEMO === true`) this function
+ * returns the cached demo password immediately with NO authentication gate.
+ * There is no OS prompt and no internal simulation — the gate is entirely the
+ * caller's responsibility. CALLERS MUST show a simulated biometric prompt
+ * (e.g. via `biometricPreview()` / BiometricPrompt.jsx) BEFORE calling this
+ * function in demo mode. A future caller that skips the prompt will silently
+ * bypass the simulated authentication gate and release the cached password with
+ * no user interaction. Add a `if (DEMO)` guard in the caller, confirm the
+ * prompt was shown, then call this function.
+ *
  * @returns {Promise<string|null>}
  * @throws on native biometric cancel/failure/lockout (a BiometryError).
  */

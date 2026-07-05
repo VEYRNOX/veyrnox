@@ -243,6 +243,7 @@ describe('panic wipe', () => {
       'veyrnox-passkey-cred',
       'veyrnox-2fa-passkey',
       'veyrnox-biometric-unlock',
+      'veyrnox-2fa-biometric',        // BIO-05: biometric.js TWOFACTOR_BIOMETRIC_KEY (biometric-2FA tell)
       'veyrnox-pin-attempts',
       'veyrnox-pin-backoff-until',
       'veyrnox-prf-cred-id',          // WebAuthn PRF credential ID — web.js CRED_KEY (I3/I4)
@@ -289,6 +290,58 @@ describe('panic wipe', () => {
     // so every named row is gone.
     expect(await appDataGet('Wallet')).toBeNull();
     expect(await appDataGet('Transaction')).toBeNull();
+  });
+
+  it('BIO-05: panic wipe clears the biometric-2FA tell (veyrnox-2fa-biometric)', async () => {
+    localStorage.setItem('veyrnox-2fa-biometric', '1');
+    // inspection sees it as residue before the wipe
+    const before = await inspectKeyMaterial();
+    expect(before.localStorageResidue).toContain('veyrnox-2fa-biometric');
+    const report = await panicWipeLocal();
+    expect(localStorage.getItem('veyrnox-2fa-biometric')).toBeNull();
+    expect(report.localStorageResidue).toEqual([]);
+    expect(report.clean).toBe(true);
+  });
+
+  it('PW-02: panic wipe clears the sidebar_state cookie', async () => {
+    let written = [];
+    const orig = Object.getOwnPropertyDescriptor(globalThis.document ?? {}, 'cookie');
+    // Mock document.cookie to capture writes.
+    const store = { value: 'sidebar_state=true' };
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get() { return store.value; },
+      set(v) { written.push(v); },
+    });
+    try {
+      await panicWipeLocal();
+    } finally {
+      if (orig) Object.defineProperty(document, 'cookie', orig);
+      else delete document.cookie;
+    }
+    expect(written.some((w) => /^sidebar_state=/.test(w) && /max-age=0/.test(w))).toBe(true);
+  });
+
+  it('PW-05: deleteAppDataDatabase still resolves when blocked, after attempting to break the blocker', async () => {
+    // Hold the appdata DB open so deleteDatabase() fires onblocked. panicWipeLocal
+    // must still resolve (it did before) AND the code must attempt to close the
+    // blocking connection (req.result?.close?.() on blocked) so deletion can proceed.
+    const held = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('veyrnox-appdata', 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('entities')) db.createObjectStore('entities');
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    let closeAttempted = false;
+    const origClose = held.close.bind(held);
+    held.close = () => { closeAttempted = true; return origClose(); };
+    // Should resolve without hanging even though a connection is open.
+    const report = await panicWipeLocal();
+    expect(report.clean).toBe(true);
+    try { held.close(); } catch { /* noop */ }
   });
 
   // ── H2 part B: deniability uniformity — FIXED_LEN padding of the panic marker ──

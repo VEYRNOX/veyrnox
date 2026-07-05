@@ -31,9 +31,10 @@
 // no key access, no egress. Returns byte-identical results across primary and
 // decoy sessions.
 //
-// TIMING. Signals are sampled once at module-load time (a static snapshot of
-// the launch environment). An attacker who clears webdriver AFTER load cannot
-// retroactively un-trip the probe.
+// TIMING (RASP-A1, 2026-07-05 internal audit, HIGH). Signals are sampled FRESH on
+// EVERY read of `browserProbeSource` — NOT frozen at module-load. A debugger,
+// Frida, or WebDriver flag attached AFTER import must still trip the probe, so the
+// sign-time read is what counts. Reading the export runs sampleSignals() again.
 
 function sampleSignals() {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
@@ -73,20 +74,43 @@ function sampleSignals() {
   };
 }
 
-const _signals = sampleSignals();
-
 /**
  * Browser-level probe source for detect().
  *
- * In a browser: available=true. Signals include `hooked=true` when WebDriver
- * automation is detected, false otherwise. Other signal fields (tampered,
- * emulator, rooted) are always false — the browser cannot assess them.
+ * RASP-A1 (2026-07-05 internal audit, HIGH): `available` and `signals` are GETTERS
+ * that re-sample the environment FRESH on EVERY read — NOT a module-load snapshot.
+ * detect(browserProbeSource) reads these properties at sign time, so a WebDriver
+ * flag / debugger / Frida hook attached AFTER import is still caught. Callers use it
+ * exactly as before (`detect(browserProbeSource)`); only the timing changed.
  *
- * In Node / Vitest (window absent): available=false, so detect() returns
- * INTEGRITY_UNAVAILABLE (fail-closed safe default).
+ * In a browser: `available` is true, `signals.hooked` is true when WebDriver
+ * automation is detected (false otherwise). Other signal fields (tampered, emulator,
+ * rooted) are always false — the browser cannot assess them.
+ *
+ * In Node / Vitest (window absent): `available` is false, `signals` is undefined, so
+ * detect() returns INTEGRITY_UNAVAILABLE (fail-closed safe default).
+ *
+ * Each read of `signals` returns a FRESH object (no shared frozen reference).
  *
  * @type {{ available: boolean, signals?: import('./detect.js').ProbeSignals }}
  */
-export const browserProbeSource = _signals !== null
-  ? { available: true, signals: _signals }
-  : { available: false };
+export const browserProbeSource = Object.freeze(
+  Object.defineProperties(
+    {},
+    {
+      available: {
+        enumerable: true,
+        get() {
+          return sampleSignals() !== null;
+        },
+      },
+      signals: {
+        enumerable: true,
+        get() {
+          // Fresh sample per read; undefined when not a browser (available:false).
+          return sampleSignals() ?? undefined;
+        },
+      },
+    },
+  ),
+);

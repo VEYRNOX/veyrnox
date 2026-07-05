@@ -284,7 +284,9 @@ async function readEntries(db, auditSecret) {
   if (!blob) return [];
   const json = await decryptVault(blob, auditSecret); // throws on wrong secret
   try {
-    const parsed = JSON.parse(json);
+    // AL-02: strip the null-byte padding added before encryption so JSON.parse
+    // sees only the serialised array.
+    const parsed = JSON.parse(json.replace(/\0+$/, ''));
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -322,7 +324,13 @@ export async function recordAuditEvent(type, auditSecret) {
     entries.push({ type, ts: Date.now() });
     // Ring buffer: keep only the most recent MAX_ENTRIES, oldest dropped.
     const trimmed = entries.slice(-MAX_ENTRIES);
-    const blob = await encryptVault(JSON.stringify(trimmed), auditSecret);
+    // AL-02: AES-GCM ciphertext length grows linearly with entry count, so a
+    // raw blob leaks exactly how many events were logged (an activity oracle).
+    // Pad the plaintext to the nearest 512-byte block with null bytes so blobs
+    // of different entry counts share a size class. Trimmed back on decrypt.
+    const raw = JSON.stringify(trimmed);
+    const padded = raw.padEnd(Math.ceil(raw.length / 512) * 512, '\0');
+    const blob = await encryptVault(padded, auditSecret);
     // Mirror vaultStore/panic's guard: refuse anything that is not an encrypted
     // blob (so a future change to encryptVault cannot silently store plaintext).
     if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {

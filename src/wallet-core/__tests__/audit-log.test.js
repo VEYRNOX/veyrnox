@@ -290,6 +290,29 @@ describe('local audit log (S4)', () => {
     expect(await webKeyStore.hasVault()).toBe(true);
   });
 
+  // ---- AL-02: ciphertext length must NOT leak entry count (activity oracle) ----
+
+  it('AL-02: 1-entry and 5-entry logs produce the SAME padded-block ciphertext size', async () => {
+    // Blob 1: a single event.
+    await freshStore();
+    setAuditLogEnabled(true);
+    await recordAuditEvent('settings_changed', REAL_PW);
+    const oneEntry = (await dumpVaultStore())[AUDIT_KEY];
+    expect(await readAuditLog(REAL_PW)).toHaveLength(1); // round-trip still works
+
+    // Blob 2: five events (all under the small-count size class).
+    await freshStore();
+    setAuditLogEnabled(true);
+    for (let i = 0; i < 5; i++) await recordAuditEvent('send_completed', REAL_PW);
+    const fiveEntries = (await dumpVaultStore())[AUDIT_KEY];
+    expect(await readAuditLog(REAL_PW)).toHaveLength(5); // round-trip still works
+
+    // The base64 ciphertext length is the observable an adversary reads from the
+    // blob. With 512-byte padding, both small logs land in the same size class,
+    // so entry count is not inferable from the blob length.
+    expect(oneEntry.ct.length).toBe(fiveEntries.ct.length);
+  });
+
   // ---- THE security-critical one: panic wipe destroys the audit blob ----
 
   it('panic wipe destroys the audit blob (it is just another vault entry)', async () => {
