@@ -78,7 +78,6 @@ import {
 import {
   setPanicVault,
   clearPanicVault,
-  hasPanicVault,
   panicWipeLocal,
   inspectKeyMaterial,
   readWipeMarker,
@@ -1896,7 +1895,8 @@ export function WalletProvider({ children }) {
 
   // PANIC WIPE management (S3 — see wallet-core/panic.js + panicWipe above).
   // setPanicPin stores the panic-PIN marker; removePanicPin clears just that
-  // marker (wiping nothing else); hasPanicPin is the raw store check;
+  // marker (wiping nothing else). Deliberately NO configured-state accessor
+  // (deniability v2) — internal plumbing uses wallet-core's hasPanicVault.
   // inspectKeyMaterial is the NON-destructive "what local key material exists?"
   // probe used to PROVE a wipe left nothing recoverable. setPanicPin must differ
   // from the primary/duress/stealth secrets (the page warns — we never hold those
@@ -2076,8 +2076,9 @@ export function WalletProvider({ children }) {
     removeAllHiddenWallets,
     // PANIC WIPE (S3 — Direction-C). wasWiped: did a panic wipe destroy local key
     // material this session? panicWipe(): the destructive action (returns a
-    // post-wipe report). set/remove/hasPanicPin manage the panic PIN; the panic
-    // PIN also fires panicWipe automatically when entered at the unlock prompt.
+    // post-wipe report). set/removePanicPin manage the panic PIN (no
+    // configured-state accessor — deniability v2); the panic PIN also fires
+    // panicWipe automatically when entered at the unlock prompt.
     // inspectKeyMaterial(): non-destructive proof of what local key material exists.
     wasWiped,
     // acknowledgeWipe(): clear the persisted wipe marker + in-memory flag once the
@@ -2098,7 +2099,6 @@ export function WalletProvider({ children }) {
     // when chaff provisioning fails mid-creation (lib/pinOnboarding.js). Setup
     // rollback, not a panic wipe (no wasWiped). Wired by WalletEntry's orchestrators.
     discardIncompleteWallet,
-    hasPanicPin: hasPanicVault,
     setPanicPin,
     removePanicPin,
     inspectKeyMaterial,
