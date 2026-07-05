@@ -1,4 +1,17 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+
+// CORS (native): the WebView origin (https://localhost) is blocked by CryptoCompare's
+// CORS policy, so on native platforms getJson must route through CapacitorHttp (an
+// OS-level request, no CORS preflight) and fall back to fetch() on web. Mock the
+// plugin surface with a controllable platform flag; the DEFAULT is web (false) so the
+// pre-existing fetch()-based tests exercise the unchanged web path.
+let nativePlatform = false;
+const capHttpGet = vi.fn();
+vi.mock('@capacitor/core', () => ({
+  Capacitor: { isNativePlatform: () => nativePlatform },
+  CapacitorHttp: { get: (...a) => capHttpGet(...a) },
+}));
+
 import {
   PORTFOLIO_SYMBOLS, MARKET_SYMBOLS,
   fetchPortfolioPricesUsd, fetchMarketPricesUsd, fetchMarketPricesFiat, fetchMarketChanges24h,
@@ -57,5 +70,38 @@ describe('cryptoCompare — holdings-agnostic by construction', () => {
   it('throws on a non-OK HTTP response', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503, json: async () => ({}) })));
     await expect(fetchMarketPricesUsd()).rejects.toThrow();
+  });
+});
+
+describe('cryptoCompare — native CORS routing via CapacitorHttp', () => {
+  beforeEach(() => { nativePlatform = true; capHttpGet.mockReset(); });
+  afterEach(() => { nativePlatform = false; });
+
+  it('routes through CapacitorHttp.get on native (never fetch)', async () => {
+    const f = vi.fn();
+    vi.stubGlobal('fetch', f);
+    capHttpGet.mockResolvedValue({
+      status: 200,
+      data: Object.fromEntries(MARKET_SYMBOLS.map((s) => [s, { USD: 7 }])),
+    });
+    const out = await fetchMarketPricesUsd();
+    expect(capHttpGet).toHaveBeenCalledTimes(1);
+    expect(capHttpGet.mock.calls[0][0].url).toContain('/pricemulti?');
+    expect(f).not.toHaveBeenCalled();
+    expect(out.BTC).toBe(7);
+  });
+
+  it('parses a STRING data payload (CapacitorHttp may return raw text)', async () => {
+    capHttpGet.mockResolvedValue({
+      status: 200,
+      data: JSON.stringify(Object.fromEntries(MARKET_SYMBOLS.map((s) => [s, { USD: 4 }]))),
+    });
+    const out = await fetchMarketPricesUsd();
+    expect(out.ETH).toBe(4);
+  });
+
+  it('throws on a non-2xx CapacitorHttp status (fail honest, no silent empty result)', async () => {
+    capHttpGet.mockResolvedValue({ status: 503, data: '' });
+    await expect(fetchMarketPricesUsd()).rejects.toThrow(/503/);
   });
 });
