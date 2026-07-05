@@ -1,12 +1,12 @@
 // src/risk/index.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // Public surface of the on-device pre-sign risk module. Pure functions only; this
 // module imports NO signer, NO seed, NO vault.js derivation, and NO network
 // client. It is called by the send flow BETWEEN tx construction and signing.
 //
-// Status: merges as UNAUDITED-PROVISIONAL. The signal logic (S2/S4/S5 in
+// Status: merges as PROVISIONAL (ECC independent audit complete 2026-06-23). The signal logic (S2/S4/S5 in
 // particular) must be reviewed by the independent audit before the caveat drops.
 // Code-ready ≠ verified: a signal is only "verified" once exercised against a
 // real malicious-pattern tx on testnet, not just unit fixtures.

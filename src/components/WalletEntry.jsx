@@ -37,7 +37,10 @@
 // panic credentials are personalized later in-app (Security); stealth/hidden likewise
 // remains an in-app, post-onboarding feature.
 //
-// ── v2 PIN AUTH (UNAUDITED-PROVISIONAL) ──────────────────────────────────────
+// ── v2 PIN AUTH ──────────────────────────────────────────────────────────────
+// PROVISIONAL — independent audit complete (ECC 2026-06-23, §24; PIN/Argon2id
+// path reviewed — no findings; hardware-KEK gap remains native work). Still
+// BUILT, not 'verified'.
 // THREAT MODEL (owner-directed model change 2026-06-22 — supersedes the v1
 // "Option-A no-oracle" design; pending internal-audit review):
 //   - Real 8-digit PIN  -> the REAL wallet. The real wallet is HIDDEN: nothing in
@@ -85,7 +88,7 @@ import {
 } from "@/lib/biometric";
 import { hasStoredUnlockSecret, clearUnlockSecret } from "@/lib/biometricUnlock";
 import PinPad from "@/components/security/PinPad";
-import { getAuthModel, setAuthModel } from "@/lib/authModel";
+import { getAuthModel, setAuthModel, shouldAutoCacheTypedPin } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { checkPinStrength } from "@/lib/pinStrength";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
@@ -338,6 +341,14 @@ export default function WalletEntry() {
   // start on 'unlock'; "Forgot password?" switches to 'import' (seed recovery).
   const [view, setView] = useState("choose");
 
+  // VAULT/SETTINGS DESYNC: a stale on-device vault exists but the auth-model marker
+  // is missing. The user must explicitly choose Restore or a confirmed Wipe; we NEVER
+  // clearVault() silently (I4). desyncConfirmWipe gates the destructive action behind
+  // a typed "WIPE" confirmation. desyncWiping shows progress during the wipe.
+  const [desyncConfirmWipe, setDesyncConfirmWipe] = useState(false);
+  const [desyncWipeInput, setDesyncWipeInput] = useState("");
+  const [desyncWiping, setDesyncWiping] = useState(false);
+
   const [unlockPassword, setUnlockPassword] = useState("");
   const [genPassword, setGenPassword] = useState("");
   const [importPhrase, setImportPhrase] = useState("");
@@ -446,16 +457,21 @@ export default function WalletEntry() {
       .then(async v => {
         if (!active) return;
 
-        // NATIVE FRESH-INSTALL GUARD: iOS Keychain persists across app deletes so a
-        // reinstall can find a stale vault (Keychain) with no auth-model marker
-        // (localStorage cleared). Detect this and wipe the stale Keychain vault so the
-        // user lands on fresh PIN onboarding instead of a password unlock screen.
+        // NATIVE VAULT/SETTINGS DESYNC: iOS Keychain persists across app deletes so a
+        // reinstall (or a corrupted/partially-cleared localStorage) can find a stale
+        // vault (Keychain) with no auth-model marker (localStorage cleared). The OLD
+        // behaviour SILENTLY wiped the Keychain vault on cold mount — destroying key
+        // material with no user sign-off. That violates I4 (fail honest, never silently
+        // destroy keys): if the missing marker is a transient/partial wipe rather than
+        // a true reinstall, a recoverable wallet is gone with no warning. We now route
+        // to an honest desync-detection screen instead, where the user explicitly
+        // chooses Restore or a confirmed Wipe. clearVault() is NEVER called silently.
         if (Capacitor.isNativePlatform() && v && !localStorage.getItem('veyrnox-auth-model')) {
-          try {
-            const { getKeyStore } = await import('@/wallet-core/keystore');
-            await getKeyStore().clearVault();
-          } catch { /* best-effort; if it fails, onboarding still routes to pin-create */ }
-          v = false;
+          setVaultExists(v);
+          setAuthModelState(getAuthModel());
+          setView('vault-desync');
+          setBioReady(false);
+          return;
         }
 
         setVaultExists(v);
@@ -600,21 +616,30 @@ export default function WalletEntry() {
     if (!pin) { setError("Enter your PIN."); return; }
     setError(""); setBusy(true);
     try {
-      // Cache the PIN behind Face ID only if the user explicitly enabled biometric unlock
-      // AND no secret is cached yet (e.g. enabled in Settings after onboarding).
-      // NOTE: on native, Face ID may be configured to open the DECOY wallet instead
-      // (set in Duress PIN screen) — in that case the decoy PIN is cached, not the real
-      // PIN. Never overwrite an existing cache on every unlock.
+      await unlock(pin, { pinModel: true });
+      setUnlockPin("");
+      // Success (real / duress unlocks return without throwing; the panic PIN throws
+      // the isPanicWipe sentinel and never reaches here) — reset the streak.
+      clearPinAttempts();
+      // CRITICAL (I3/I4): the convenience cache write happens ONLY AFTER a successful
+      // unlock (a MIS-TYPED PIN is never cached — the old pre-unlock write cached
+      // garbage and popped a spurious OS enroll sheet on a wrong PIN), and ONLY when
+      // shouldAutoCacheTypedPin allows it. With NO duress vault this caches the typed
+      // (real) PIN — the sanctioned primary Face-ID flow (see removeDuressPin's
+      // re-enable path). Once a DURESS vault exists it never caches: the decoy cache
+      // is provisioned explicitly in the Duress PIN screen (enableDecoyBiometricUnlock),
+      // never here — auto-caching the typed REAL PIN would make one-tap Face ID open
+      // the REAL wallet, defeating Face-ID-to-decoy. We never overwrite an existing
+      // cache, and duress-presence-unknown FAILS CLOSED (treated as duress present).
       if (isBiometricUnlockEnabled()) {
-        const alreadyCached = await hasStoredUnlockSecret().catch(() => false);
-        if (!alreadyCached) {
+        const [alreadyCached, duressConfigured] = await Promise.all([
+          hasStoredUnlockSecret().catch(() => false),
+          import('@/wallet-core/duress').then(m => m.hasDuressVault()).catch(() => true),
+        ]);
+        if (shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached, duressConfigured })) {
           try { await enableBiometricUnlock(pin); } catch { /* best-effort; non-fatal */ }
         }
       }
-      await unlock(pin, { pinModel: true });
-      setUnlockPin("");
-      // Success (real / duress / panic all return without throwing) — reset the streak.
-      clearPinAttempts();
       // Notify user if decoy wallet was unlocked.
       if (isUnlocked && isDecoy) {
         toast.success("Decoy mode active", { duration: 2000 });
@@ -976,6 +1001,106 @@ export default function WalletEntry() {
           setView("pin-create");
         }}
       />
+    );
+  }
+
+  // ---- View: Vault/settings desync ----
+  // A stale on-device vault was found but the unlock settings (auth-model marker) are
+  // missing — typically an iOS reinstall (Keychain survives the app delete) or a
+  // partially-cleared localStorage. We do NOT silently clearVault() (I4: never destroy
+  // keys without sign-off). Restore re-imports the seed; Wipe is gated behind a typed
+  // "WIPE" confirmation before any destructive call.
+  if (view === "vault-desync") {
+    const doDesyncWipe = async () => {
+      setError(""); setDesyncWiping(true);
+      try {
+        const { getKeyStore } = await import('@/wallet-core/keystore');
+        await getKeyStore().clearVault();
+        setVaultExists(false);
+        setDesyncConfirmWipe(false);
+        setDesyncWipeInput("");
+        setRealPin(""); setRealPinConfirm(""); setPinStep("real");
+        setView("pin-create");
+      } catch (e) {
+        // Fail closed: surface the failure honestly; do not pretend the wipe happened.
+        setError(e?.message || "Could not wipe the existing wallet data on this device. Try again.");
+      } finally { setDesyncWiping(false); }
+    };
+    return (
+      <EntryShell error={error}>
+        <div className="p-5 rounded-xl border border-caution/40 bg-caution/10 space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-caution" />
+            <h1 className="text-base font-semibold">Wallet found, settings missing</h1>
+          </div>
+          <p className="text-sm text-foreground/90">
+            An existing wallet was found on this device, but your unlock settings are
+            missing. This can happen after reinstalling the app. Restore it with your
+            recovery phrase, or wipe this device's data to start fresh.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Your funds are safe as long as you have your recovery phrase — Veyrnox holds
+            nothing on a server. Wiping is permanent and cannot be undone.
+          </p>
+
+          {!desyncConfirmWipe ? (
+            <div className="space-y-2">
+              <Button
+                className="w-full gap-2"
+                disabled={desyncWiping}
+                onClick={() => {
+                  setError(""); setRecovering(true);
+                  setRecoverySeed(""); setRealPin(""); setRealPinConfirm("");
+                  setPinStep("seed"); setView("pin-recover");
+                }}
+              >
+                <Download className="h-4 w-4" /> Restore from recovery phrase
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+                disabled={desyncWiping}
+                onClick={() => { setError(""); setDesyncWipeInput(""); setDesyncConfirmWipe(true); }}
+              >
+                <AlertOctagon className="h-4 w-4" /> Wipe and start fresh
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 pt-1 border-t border-destructive/30">
+              <p className="text-xs text-destructive">
+                This permanently destroys the wallet data on this device. To confirm, type
+                <b> WIPE</b> below. You can only recover with your recovery phrase.
+              </p>
+              <Input
+                value={desyncWipeInput}
+                onChange={e => setDesyncWipeInput(e.target.value)}
+                placeholder="Type WIPE to confirm"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                aria-label="Type WIPE to confirm"
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={desyncWipeInput.trim() !== "WIPE" || desyncWiping}
+                  onClick={doDesyncWipe}
+                >
+                  {desyncWiping ? <RefreshCw className="h-4 w-4 animate-spin" /> : <AlertOctagon className="h-4 w-4" />} Permanently wipe
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  disabled={desyncWiping}
+                  onClick={() => { setDesyncConfirmWipe(false); setDesyncWipeInput(""); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </EntryShell>
     );
   }
 
