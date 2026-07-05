@@ -9,6 +9,13 @@
       "autoPort": true
     },
     {
+      "name": "veyrnox-dev-5199",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5199", "--strictPort"],
+      "port": 5199,
+      "autoPort": false
+    },
+    {
       "name": "veyrnox-4173",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "C:\\Users\\aljob\\Downloads\\Veyrnox", "run", "preview", "--", "--port", "4173", "--strictPort"],
