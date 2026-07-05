@@ -25,6 +25,7 @@ import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
+import { LEVEL } from '@/risk/levels';
 import { detect, degrade, browserProbeSource } from '@/rasp';
 
 // audit-H8: pure address validator for personal_sign. Exported for unit tests.
@@ -177,15 +178,42 @@ export function resolveSessionCaip2(session, requestCaip2) {
   return approved.length === 1 ? approved[0] : null;
 }
 
+// RASP-A3 (2026-07-05 internal audit, MEDIUM): the WalletConnect signing path has
+// NO interactive UI surface to render a WARN friction dialog. The Send UI's RASP-3
+// fix lets WARN/CONFIRM proceed ONLY with the user's explicit "sign anyway" tap;
+// there is no such tap here. Previously this passed acknowledged=true unconditionally
+// to presignGate, which made WARN and CONFIRM auto-proceed — silently bypassing the
+// friction the RASP-3 fix requires. Fail closed (I4): the WC path NEVER trusts an
+// acknowledgement. Only a clean ALLOW tier proceeds; every non-ALLOW tier (WARN,
+// CONFIRM, BLOCK) rejects the request before the key is touched.
+//
+// Returns { proceedAllowed, rejectCode }. rejectCode is the code the caller passes to
+// rejectRequest when proceedAllowed is false: RASP_BLOCK for a hard BLOCK, else
+// RASP_WARN_REJECTED (WARN/CONFIRM cannot be acknowledged on this surface).
 function presignGateOrReject() {
   const { tier } = degrade(detect(browserProbeSource));
-  return presignGate(tier, null, true);
+  // txLevel = LEVEL.OK: the WalletConnect signing path has NO in-app tx-risk score
+  // feeding this gate (its tx-safety controls — H7 chain binding, H8 address
+  // binding, M9 gas cap — are enforced separately in the handlers). Passing OK is
+  // honest (the tx plane genuinely has no signal here), so RASP's environment tier
+  // is the sole determinant. Previously this passed txLevel=null (→ CONFIRM) and
+  // masked it with acknowledged=true, which also swallowed WARN (RASP-A3).
+  //
+  // acknowledged=false: the WC path has no interactive surface to obtain a real
+  // "sign anyway" tap, so it must never present one. Only a clean ALLOW passes;
+  // WARN/CONFIRM/BLOCK do not (fail closed, I4).
+  const gate = presignGate(tier, LEVEL.OK, false);
+  if (gate.proceedAllowed) return { proceedAllowed: true, rejectCode: null };
+  // A hard BLOCK (signer unreachable) reports RASP_BLOCK; a WARN/CONFIRM that could
+  // only proceed with an (unavailable) acknowledgement reports RASP_WARN_REJECTED.
+  const rejectCode = gate.signerReachable ? 'RASP_WARN_REJECTED' : 'RASP_BLOCK';
+  return { proceedAllowed: false, rejectCode };
 }
 
 export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic, id, params) {
   const gate = presignGateOrReject();
   if (!gate.proceedAllowed) {
-    await rejectRequest(topic, id, 'RASP_BLOCK').catch(() => {});
+    await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
   const arr = Array.isArray(params) ? params : [];
@@ -222,7 +250,7 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
 export async function _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2) {
   const gate = presignGateOrReject();
   if (!gate.proceedAllowed) {
-    await rejectRequest(topic, id, 'RASP_BLOCK').catch(() => {});
+    await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
   const typedDataJson = params[1] ?? params[0];
@@ -267,7 +295,7 @@ export async function _handleSignTypedData({ withPrivateKey }, topic, id, params
 export async function _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId) {
   const gate = presignGateOrReject();
   if (!gate.proceedAllowed) {
-    await rejectRequest(topic, id, 'RASP_BLOCK').catch(() => {});
+    await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
   const txParams = params[0];

@@ -114,6 +114,13 @@ import {
   getBiometricStatus,
   BiometricGateError,
 } from '@/lib/biometric';
+// D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
+// let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
+// it to retract the shared veyrnox-biometric-unlock pref, so removing the duress PIN
+// leaves no lingering biometric-unlock tell that a decoy ever existed. It is NOT set
+// when the primary wallet had biometric unlock on independently — that pref is left
+// untouched. Best-effort (a preference, never key material).
+const DECOY_BIOMETRIC_MARKER_KEY = 'veyrnox-decoy-biometric';
 // BIOMETRIC ONE-TAP UNLOCK CACHE (convenience over the existing vault). Stores
 // the vault password behind the biometric gate so a returning user can unlock
 // with Face ID instead of re-typing it. The password remains THE secret and the
@@ -1707,7 +1714,17 @@ export function WalletProvider({ children }) {
   // this caches only the decoy secret.
   const enableDecoyBiometricUnlock = useCallback(async (duressPin) => {
     if (getAuthModel() !== 'pin') return false; // PIN-cohort feature; honest-disabled elsewhere
-    return enableBiometricUnlock(duressPin);     // caches the DURESS pin + flips the preference
+    // D-05: snapshot whether biometric unlock was ALREADY on (the primary configured
+    // it independently) BEFORE this decoy opt-in flips it on.
+    const wasOnBeforeDecoy = isBiometricUnlockEnabled();
+    const ok = await enableBiometricUnlock(duressPin); // caches the DURESS pin + flips the preference
+    // Mark that the biometric pref was flipped ON *because of the decoy*, so
+    // removeDuressPin can retract it (and not leave a lingering veyrnox-biometric-unlock
+    // forensic tell) — but ONLY when the primary didn't independently enable it.
+    if (ok && !wasOnBeforeDecoy) {
+      try { localStorage.setItem(DECOY_BIOMETRIC_MARKER_KEY, '1'); } catch { /* best-effort */ }
+    }
+    return ok;
   }, [enableBiometricUnlock]);
 
   // unlockWithBiometric(): the one-tap returning-user path. Satisfy the biometric
@@ -1845,6 +1862,18 @@ export function WalletProvider({ children }) {
     // Next FaceID attempt will fail gracefully because cache is empty, then they can
     // re-authenticate in Settings with their real PIN if they want biometric back.
     try { await clearUnlockSecret(); } catch { /* best-effort */ }
+    // D-05: if biometric unlock was enabled ONLY to open the decoy, clear both the
+    // shared pref and the marker — the cached duress secret has just been wiped, so
+    // biometric-for-decoy no longer works and a lingering veyrnox-biometric-unlock = "1"
+    // would be a forensic tell that a decoy once existed. If the PRIMARY wallet
+    // configured biometric unlock independently, no marker was set → the pref is left
+    // untouched.
+    try {
+      if (localStorage.getItem(DECOY_BIOMETRIC_MARKER_KEY) === '1') {
+        setBiometricUnlockEnabled(false);
+        localStorage.removeItem(DECOY_BIOMETRIC_MARKER_KEY);
+      }
+    } catch { /* best-effort — a preference, never key material */ }
   }, []);
 
   // STEALTH / HIDDEN WALLETS management (S3). Create a hidden wallet revealed by

@@ -14,7 +14,11 @@ import { CONDITION, TIER } from '../conditions.js';
 
 // Every artifact carries the SAME fixed key set, whatever the condition — a
 // uniform shape is what lets the I3 test assert structural identity across sets.
-const ARTIFACT_KEYS = ['tier', 'sentence', 'blockedActions', 'permitsTestnet', 'requiresBiometric'];
+// RASP-A4 (2026-07-05 internal audit, MEDIUM): `permitsTestnet` was a DEAD field
+// with zero live consumers (compose.js maps BLOCK → signerReachable:false for every
+// send, testnet included), so it was removed entirely — a dead API field in a
+// security module is a maintenance hazard. The artifact shape no longer carries it.
+const ARTIFACT_KEYS = ['tier', 'sentence', 'blockedActions', 'requiresBiometric'];
 
 describe('degrade — §4 degradation ladder (condition → tier)', () => {
   it('CLEAN → allow: no banner, no blocks, normal sign', () => {
@@ -22,8 +26,8 @@ describe('degrade — §4 degradation ladder (condition → tier)', () => {
     expect(a.tier).toBe(TIER.ALLOW);
     expect(a.sentence).toBeNull();
     expect(a.blockedActions).toEqual([]);
-    expect(a.permitsTestnet).toBe(true);
     expect(a.requiresBiometric).toBe(false);
+    expect(a).not.toHaveProperty('permitsTestnet'); // RASP-A4: dead field removed
   });
 
   it('ROOTED → warn-before-sign: one sentence + biometric re-confirm, no blocks', () => {
@@ -33,7 +37,6 @@ describe('degrade — §4 degradation ladder (condition → tier)', () => {
     expect(a.sentence.length).toBeGreaterThan(0);
     expect(a.blockedActions).toEqual([]);
     expect(a.requiresBiometric).toBe(true);
-    expect(a.permitsTestnet).toBe(true);
   });
 
   it('INTEGRITY_UNAVAILABLE → warn (cautious tier per §2/I4), honest copy', () => {
@@ -44,20 +47,22 @@ describe('degrade — §4 degradation ladder (condition → tier)', () => {
     expect(a.blockedActions).toEqual([]);
   });
 
-  it('EMULATOR → block-signing, but testnet permitted (dev/QA affordance)', () => {
+  it('EMULATOR → block-signing (no testnet carve-out; dead field removed)', () => {
     const a = degrade(CONDITION.EMULATOR);
     expect(a.tier).toBe(TIER.BLOCK);
     expect(a.blockedActions).toContain('sign');
-    expect(a.permitsTestnet).toBe(true);
+    // RASP-A4: `permitsTestnet` was never enforced (compose.js blocks every send
+    // at BLOCK, testnet included), so the dead field is gone entirely.
+    expect(a).not.toHaveProperty('permitsTestnet');
     // No destructive override on environment risk: cannot biometric your way past.
     expect(a.requiresBiometric).toBe(false);
   });
 
-  it('INTEGRITY_FAIL → block-signing, testnet NOT permitted (attested hostile)', () => {
+  it('INTEGRITY_FAIL → block-signing (attested hostile)', () => {
     const a = degrade(CONDITION.INTEGRITY_FAIL);
     expect(a.tier).toBe(TIER.BLOCK);
     expect(a.blockedActions).toContain('sign');
-    expect(a.permitsTestnet).toBe(false);
+    expect(a).not.toHaveProperty('permitsTestnet');
   });
 
   it('HOOKED → block-signing: refuse sign AND sensitive paths', () => {
@@ -66,7 +71,6 @@ describe('degrade — §4 degradation ladder (condition → tier)', () => {
     for (const action of ['sign', 'seed-reveal', 'export', 'import']) {
       expect(a.blockedActions).toContain(action);
     }
-    expect(a.permitsTestnet).toBe(false);
     expect(a.requiresBiometric).toBe(false);
   });
 
@@ -76,7 +80,6 @@ describe('degrade — §4 degradation ladder (condition → tier)', () => {
     for (const action of ['sign', 'seed-reveal', 'export', 'import']) {
       expect(a.blockedActions).toContain(action);
     }
-    expect(a.permitsTestnet).toBe(false);
   });
 });
 
@@ -113,15 +116,15 @@ describe('degrade — I4 fail closed', () => {
   it('an unknown condition blocks (never allows)', () => {
     const a = degrade('something-we-never-defined');
     expect(a.tier).toBe(TIER.BLOCK);
-    expect(a.permitsTestnet).toBe(false);
     expect(a.blockedActions).toContain('sign');
+    expect(a).not.toHaveProperty('permitsTestnet');
   });
 
   it('undefined / null condition blocks (never allows)', () => {
     for (const bad of [undefined, null]) {
       const a = degrade(bad);
       expect(a.tier).toBe(TIER.BLOCK);
-      expect(a.permitsTestnet).toBe(false);
+      expect(a.blockedActions).toContain('sign');
     }
   });
 

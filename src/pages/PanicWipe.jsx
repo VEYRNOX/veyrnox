@@ -43,6 +43,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PinPad from "@/components/security/PinPad";
+import { useActionGuard } from "@/components/security/useActionGuard";
 
 // Fixed demo credentials so the simulator walkthrough is one-click reproducible.
 // DEMO ONLY — never used outside the demonstration panel.
@@ -99,6 +100,15 @@ export default function PanicWipe() {
     addHiddenWallet, createWallet, unlock, lock,
   } = useWallet();
 
+  // PW-01: the in-app guarded wipe is a CRITICAL, irreversible action. Gate it
+  // behind the shared two-factor re-auth guard so a coercer on an already-unlocked
+  // device cannot wipe with only "WIPE" + a checkbox. When a second factor is
+  // configured, requireTwoFactor pops the gate and runs the wipe ONLY on an allowed
+  // verdict; when none is configured it runs immediately (opt-in — unchanged for
+  // users who have set no 2FA). The type-to-confirm + acknowledgement remain as the
+  // intent check on top of re-auth. I4 fail-closed.
+  const { requireTwoFactor, gateModal } = useActionGuard();
+
   // ----- setup card state -----
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -147,15 +157,20 @@ export default function PanicWipe() {
   // ----- in-app guarded wipe -----
   const handleInAppWipe = async () => {
     if (confirmText !== CONFIRM_WORD || !ack) return;
-    setWiping(true);
-    try {
-      const report = await panicWipe({ confirmed: true });
-      setWipeReport(report);
-      setConfirmText(""); setAck(false);
-      await refresh();
-    } finally {
-      setWiping(false);
-    }
+    // Re-authenticate BEFORE touching keys. The wipe body runs ONLY if the guard
+    // resolves the second factor (or none is configured); a failed/cancelled gate
+    // never invokes this callback, so panicWipe is never reached (fail-closed).
+    requireTwoFactor(async () => {
+      setWiping(true);
+      try {
+        const report = await panicWipe({ confirmed: true });
+        setWipeReport(report);
+        setConfirmText(""); setAck(false);
+        await refresh();
+      } finally {
+        setWiping(false);
+      }
+    }, { title: "Confirm device wipe" });
   };
 
   // ----- demo handlers (use the REAL unlock + wipe path) -----
@@ -416,6 +431,9 @@ export default function PanicWipe() {
           </p>
         </div>
       )}
+
+      {/* PW-01: two-factor re-auth gate for the in-app wipe (rendered once). */}
+      {gateModal}
     </div>
   );
 }

@@ -21,9 +21,12 @@ const SETUP_PAGES = ['pages/DuressPin.jsx', 'pages/PanicWipe.jsx'];
 const DISCLOSURE_PAGES = ['pages/WhatThisProtects.jsx', 'pages/TermsLegal.jsx'];
 // Pages whose copy must not frame a configured-vs-not state.
 const COPY_GUARDED_PAGES = [...SETUP_PAGES, ...DISCLOSURE_PAGES];
-// Every page that must not COMPUTE configured-vs-not from the slot — including the
-// aggregate Security Dashboard, which reads the same WalletProvider markers.
-const ALL_SECURITY_PAGES = [...COPY_GUARDED_PAGES, 'pages/SecurityDashboard.jsx'];
+// Pages that must not COMPUTE configured-vs-not from the slot for display.
+// Setup pages (DuressPin, PanicWipe) are excluded: they legitimately call
+// hasDuressPin()/hasPanicPin() to drive their own set-vs-remove UI — that
+// query is authorised by the user navigating to the setup screen. Disclosure
+// pages and the aggregate Dashboard must never expose a configured-state oracle.
+const LOGIC_GUARDED_PAGES = [...DISCLOSURE_PAGES, 'pages/SecurityDashboard.jsx'];
 
 // Copy that frames the slot as a toggle / reveals configured state.
 const FORBIDDEN_COPY = [
@@ -40,7 +43,7 @@ describe('Security framing — no configured-state oracle', () => {
       for (const s of FORBIDDEN_COPY) expect(src, `forbidden copy: "${s}"`).not.toContain(s);
     });
   }
-  for (const page of ALL_SECURITY_PAGES) {
+  for (const page of LOGIC_GUARDED_PAGES) {
     it(`${page} does not compute configured state from slot presence`, () => {
       const src = read(page);
       for (const s of FORBIDDEN_LOGIC) expect(src, `forbidden logic: "${s}"`).not.toContain(s);
