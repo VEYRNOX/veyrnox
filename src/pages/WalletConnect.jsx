@@ -7,6 +7,7 @@ import { RequestApprovalModal } from '@/components/walletconnect/RequestApproval
 import { ActiveSessions } from '@/components/walletconnect/ActiveSessions.jsx';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { WALLETCONNECT_PROJECT_ID } from '@/wallet-core/evm/walletconnect/projectId.js';
+import { DEMO } from '@/api/demoClient';
 
 // Committed public default in projectId.js keeps this true on every build (worktree,
 // fresh clone, CI) so the connector is never accidentally honest-disabled after an
@@ -99,10 +100,18 @@ function WalletConnectInner() {
   }
 
   if (!isUnlocked) {
+    // Demo tours never unlock the real WalletProvider, so demo always lands here.
+    // No fake pairing (no-fake-security): say honestly that connections are off,
+    // and keep the network-silent PopularDapps grid so the page is not blank.
     return (
       <div className={styles.page}>
         <h1 className={styles.heading}>dApp Connector</h1>
-        <p className={styles.locked}>Unlock your wallet to connect to dApps.</p>
+        <p className={styles.locked}>
+          {DEMO
+            ? 'dApp connections are disabled in demo — no real signing.'
+            : 'Unlock your wallet to connect to dApps.'}
+        </p>
+        <PopularDapps />
       </div>
     );
   }

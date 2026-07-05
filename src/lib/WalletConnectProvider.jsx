@@ -24,6 +24,7 @@ import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
+import { DEMO } from '@/api/demoClient';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
 import { detect, degrade, browserProbeSource } from '@/rasp';
@@ -374,7 +375,10 @@ export function WalletConnectProvider({ children }) {
   useEffect(() => {
     // I3: deniability sessions must make zero backend calls — WC relay WebSocket
     // must not open for decoy or hidden sessions (violates I3 if it does).
-    if (!isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
+    // DEMO: demo tours must also stay relay-silent (M-6 class). Demo is already
+    // locked, but that is incidental — the explicit gate survives isUnlocked
+    // semantic changes.
+    if (!isUnlocked || isDecoy || isHidden || DEMO || !isWalletConnectConfigured()) return;
     let cancelled = false;
     // I2-WC-RELAY: WC relay opens at unlock time, not pairing. Lazy-init is a TODO (see audit-2026-07-04-internal.md).
     initWalletConnect()
