@@ -1,5 +1,5 @@
 # Crypto Implementation Verification Report
-**Date**: 2026-07-05 (KDF params updated 2026-07-05, post-verification — see note below)
+**Date**: 2026-07-05 (KDF params updated 2026-07-05, post-verification; 192 MiB latency measured on-device later the same day — see notes below)
 **Scope**: Vault seed encryption (Argon2id + cipher choice)  
 **Status**: BUILT, not independently audited
 
@@ -24,6 +24,20 @@
 > 2. The "biometric mitigates the latency" premise is a real-device UX claim that is
 >    **unmeasured at time of writing** — device UX timing measurement is in progress
 >    separately, not complete. Do not read this note as confirming the mitigation works.
+>
+> **MEASURED (2026-07-05, later the same day):** the device timing work referenced in
+> caveat 2 has produced its first real-device datapoint — Pixel 10 Pro XL (Android 16,
+> `com.veyrnox.app.debug`), production argon2 worker in the installed APK, driven via
+> CDP: 192 MiB warm-worker median **603 ms** (582–617 ms, n=5), cold-worker median
+> **668 ms** (657–678 ms, n=3); 64 MiB warm median **182 ms** (177–208 ms, n=5). The
+> PR #465 "4-8 s" figure — and the ~6-8 s estimate in caveat 1 above — did NOT
+> reproduce on this device. Full report: PR #604 comment `issuecomment-4887451367`.
+> Caveats 1 and 2 above are preserved as written (history, not rewritten); what changes
+> is their measurement status only — the non-biometric cohort's password-KDF cost is
+> ~0.6-0.7 s on this one flagship device. Honest remaining caveats: single flagship
+> datapoint (mid/low-end Android NOT cleared, could be materially slower), pure KDF
+> cost not full unlock UX, iOS/web/Safari-fallback unmeasured, INTERNAL evidence —
+> not independently audited.
 >
 > The body of this report below (written when the default was 64 MiB) is left as the
 > point-in-time record of that verification pass; the parameter table and OWASP
@@ -67,7 +81,7 @@ their own recorded params, with lazy migration to 192 MiB on next unlock/passwor
 | Time (t) | 3 | 2 | ✅ 1.5× stronger |
 | Parallelism (p) | 1 | — | ✅ Standard |
 
-**Verdict**: Veyrnox uses parameters that **exceed** OWASP's minimum recommendations on both axes, now by a wider margin on memory cost than the 64 MiB interim default. This is intentional — the project raised the memory cost back to 192 MiB on 2026-07-05 (reversing the 2026-06-28 PR #465 reduction to 64 MiB), on the premise that Face ID / biometric unlock now gives enrolled users a fast path around the slow password KDF. **Honest caveat**: users without biometric enrollment — including the Safari password-only web fallback — still pay the full ~6-8 second 192 MiB unlock latency that PR #465 was originally written to avoid, and the "biometric mitigates this" premise is itself an unmeasured real-device UX claim at time of writing (device UX timing work is in progress separately, not complete).
+**Verdict**: Veyrnox uses parameters that **exceed** OWASP's minimum recommendations on both axes, now by a wider margin on memory cost than the 64 MiB interim default. This is intentional — the project raised the memory cost back to 192 MiB on 2026-07-05 (reversing the 2026-06-28 PR #465 reduction to 64 MiB), on the premise that Face ID / biometric unlock now gives enrolled users a fast path around the slow password KDF. **Honest caveat**: users without biometric enrollment — including the Safari password-only web fallback — still pay the full 192 MiB password-KDF cost on every unlock. That cost is now MEASURED on one flagship Android device (2026-07-05, Pixel 10 Pro XL, production worker in the installed APK — see the MEASURED note above): ~0.6-0.7 s median at 192 MiB, and the PR #465 4-8 s figure did NOT reproduce there. Remaining unmeasured/uncleared: mid/low-end Android, full unlock UX (the measurement is pure KDF cost), iOS, web, and the Safari fallback path itself. INTERNAL evidence, not independently audited.
 
 ### Cipher: AES-256-GCM via WebCrypto
 
