@@ -48,7 +48,7 @@ jobs:
           npm install --legacy-peer-deps
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           # Capacitor 8 / the Android Gradle build target Java 21 (matches ci.yml).
