@@ -298,16 +298,71 @@ export const webKeyStore = {
     }
   },
 
-  // Web has no hardware KEK at rest, so re-persisting vault CONTENT is always a
-  // plain bare write — identical to createVault. Present so the cross-platform
-  // facade can call one method for content re-persist; the `opts` (getHardwareFactor)
-  // is ignored here (no KEK to preserve). Keeps parity with native.saveVaultContents,
-  // which DOES preserve the kek-dek wrap on enrolled devices.
-  async saveVaultContents(secret, password /* , opts */) {
+  // Re-persist NEW vault CONTENT (a mutated multi-seed container) while PRESERVING
+  // the current at-rest format (KEK DOWNGRADE FIX, I4 fail-closed). WalletProvider
+  // routes seed add/remove/import/rename and unlock-time container migrations here.
+  //
+  // A PRF-enrolled WEB vault DOES have a KEK at rest (kekWrap/kekSalt) — the earlier
+  // "web has no KEK to preserve" assumption was WRONG once WebAuthn PRF is enrolled,
+  // and made this method silently rewrite an enrolled vault BARE on every content
+  // mutation, dropping the wrap so the vault became unlockable by password ALONE with
+  // no PRF assertion (the web sibling of the Android "bug 3"; a Phase-1 offline-seizure
+  // regression). So we mirror native.saveVaultContents exactly:
+  //
+  //   - BARE vault (no kekWrap): behaves exactly like createVault — encrypt the new
+  //     secret under the password (argon2id) and persist. getHardwareFactor is NEVER
+  //     called on a bare vault (no PRF prompt).
+  //   - KEK-enrolled vault (kekWrap present): recover the DEK with H (opts.getHardwareFactor
+  //     → one PRF assertion) + PIN-derived C, then re-encrypt the NEW plaintext under
+  //     that SAME DEK via encryptVaultWithDek, preserving kekWrap/kekSalt and kdf:'kek-dek'.
+  //     Only iv/ct (the content ciphertext) change; the DEK is unchanged.
+  //
+  // FAIL-CLOSED (I4): on a KEK-enrolled vault, if the hardware factor is missing or DEK
+  // recovery fails we THROW and leave the vault untouched — we NEVER silently rewrite it
+  // bare (that silent downgrade WAS the defect). H, C, KEK and DEK are zeroed on every
+  // path (H-NEW-4), mirroring unlock/enrollKek/changePassword.
+  async saveVaultContents(secret, password, opts = {}) {
     assertNotNativePlatform(); // fail closed BEFORE any crypto/storage (I4)
     validateWebVaultPassword(password);
-    const blob = await encryptVault(secret, password);
-    await saveVault(blob);
+    const blob = await loadVault();
+
+    // Bare (or first-write) vault: identical to createVault — plain argon2id, no KEK.
+    if (!blob || !blob.kekWrap) {
+      const bare = await encryptVault(secret, password);
+      await saveVault(bare);
+      return;
+    }
+
+    // KEK-enrolled: re-encrypt the new content under the EXISTING DEK, preserving wrap.
+    const getHF = opts && opts.getHardwareFactor;
+    if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → KEK_ERR.MALFORMED_VAULT
+    // Web derives H from a FIXED PRF salt (see PRF_FIXED_SALT / getHardwareFactor), so —
+    // unlike native's v3 per-enrollment salt binding — getHF() takes no kekSalt argument.
+    const H = await getHF(); // one WebAuthn PRF assertion for this content write
+    let C;
+    let kek;
+    let dek;
+    // H-NEW-4: wrap the KEK + DEK lifetime in try/finally so H, C, the derived KEK, and
+    // the recovered DEK are wiped on EVERY path — including when unwrapDek throws (wrong
+    // PIN/device). None may linger in the JS heap until GC (I4), mirroring unlock().
+    try {
+      C = await deriveKekC(password, saltBytes);
+      kek = await combineKek(H, C);
+      // combineKek zeroes H/C internally; wipe again at the call site so the guarantee
+      // survives any refactor of combineKek (defense in depth, I4).
+      H.fill(0);
+      C.fill(0);
+      dek = await unwrapDek(kek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
+      const { iv, ct } = await encryptVaultWithDek(secret, dek);
+      // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv change.
+      await saveVault({ ...blob, iv, ct, kdf: 'kek-dek' });
+    } finally {
+      if (H) H.fill(0);
+      if (C) C.fill(0);
+      if (kek) kek.fill(0);
+      if (dek) dek.fill(0);
+    }
   },
 
   // Retrieve the WebAuthn PRF-derived 32-byte hardware factor H. This is the
