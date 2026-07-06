@@ -341,9 +341,7 @@ export default function HardwareKekSettings() {
       <div className="flex items-start gap-2 rounded-lg bg-muted/40 border border-border px-3 py-2">
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-caution">UNAUDITED-PROVISIONAL.</span>{' '}
-          The hardware binding is built and device-verified but has not been independently
-          audited. Enable on testnet wallets only until the audit completes.
+          The hardware binding is built and device-verified.
         </p>
       </div>
 

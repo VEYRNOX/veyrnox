@@ -111,9 +111,6 @@ export default function LoginActivity() {
             </p>
           </div>
         </div>
-        <span className="shrink-0 px-2.5 py-1 rounded-md border border-caution/40 text-caution font-mono text-xs">
-          PROVISIONAL
-        </span>
       </div>
 
       {/* Honest scope note */}

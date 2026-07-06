@@ -245,9 +245,8 @@ export default function PanicWipe() {
       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
         <AlertOctagon className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet), independent audit complete (2026-06-23) · destructive ·
-          safety-critical.</b> A panic wipe permanently destroys the local copy of
-          your keys — no undo. Flagged for specific security-audit scrutiny.
+          <b>Destructive · safety-critical.</b> A panic wipe permanently destroys the local copy of
+          your keys — no undo.
         </span>
       </div>
 

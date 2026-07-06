@@ -74,7 +74,7 @@ export default function BiometricAuth() {
       <div className="flex items-start gap-2 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5">
         <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          This adds a genuine <span className="font-medium text-foreground">possession factor</span> on top of your PIN — not a replacement for it. It stores no keys: losing it never costs funds, and your password still works on its own. Provisional / unaudited.
+          This adds a genuine <span className="font-medium text-foreground">possession factor</span> on top of your PIN — not a replacement for it. It stores no keys: losing it never costs funds, and your password still works on its own.
         </p>
       </div>
 

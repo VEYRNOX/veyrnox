@@ -20,7 +20,7 @@
 // DuressPin / StealthWallets / PanicWipe screens — it does not replace them;
 // decision-point honesty stays where the user acts.
 
-import { Scale, FileText, AlertTriangle, ShieldAlert, EyeOff } from "lucide-react";
+import { Scale, FileText, AlertTriangle, EyeOff } from "lucide-react";
 import BackButton from "@/components/BackButton";
 
 // A normal content section: prose in the default (Schibsted Grotesk) face,
@@ -100,18 +100,6 @@ export default function TermsLegal() {
             <b>not financial advice</b> and not a liability waiver.
           </p>
         </PlaceholderSection>
-
-        {/* §C — Provisional status & security audits (reuse existing honest language) */}
-        <Section icon={ShieldAlert} title="Provisional status &amp; security audits">
-          <p>
-            <strong>VEYRNOX</strong> is a self-custody, coercion-resistant crypto wallet in <b>testnet beta</b> —{" "}
-            <b>testnet funds only</b>. Its security features are <b>provisional</b>. An internal
-            security audit was completed 2026-06-17 and an independent third-party audit was
-            completed 2026-06-23 (all findings remediated). Audits reduce risk; they are{" "}
-            <b>not a guarantee</b>. Your private keys never leave your device, and the app holds
-            none of them server-side.
-          </p>
-        </Section>
 
         {/* §D — Honest limits of the coercion features (condensed reference copy) */}
         <Section icon={EyeOff} title="Honest limits of the coercion features">
