@@ -86,6 +86,42 @@ describe('evaluateTwoFactor — the PIN + Action Password critical-action gate',
     }
   });
 
+  // I3 DENIABILITY PARITY (H2): the gate must behave IDENTICALLY across primary,
+  // decoy and hidden sessions. It deliberately has NO isDecoy/isHidden parameter:
+  // session type is invisible to it, so a decoy session can never betray itself by
+  // skipping the Action-Password prompt. Deniability is enforced upstream by
+  // actionPasswordConfigured reading the ACTIVE set's OWN per-set record (each set
+  // carries its own second factor). A "bypass in decoy" shortcut would REINTRODUCE
+  // the very tell H2 removed — these tests pin that it stays out.
+  it('I3: rejects any decoy/hidden bypass flag — extra session-type keys never short-circuit the gate', () => {
+    // a not-configured set stays NOT_CONFIGURED no matter what session-type flags are passed
+    const decoyish = evaluateTwoFactor({
+      pinOk: true, passwordOk: true, actionPasswordConfigured: false,
+      isDecoy: true, isHidden: true, bypassed: 'deniability-pin-only',
+    });
+    expect(decoyish.allowed).toBe(false);
+    expect(decoyish.code).toBe(TWO_FACTOR.NOT_CONFIGURED);
+    expect(decoyish).not.toHaveProperty('gatePassed');
+    expect(decoyish).not.toHaveProperty('bypassed');
+
+    // and a configured set with a wrong factor still blocks WRONG regardless of flags
+    const decoyWrong = evaluateTwoFactor({
+      pinOk: false, passwordOk: true, actionPasswordConfigured: true,
+      isDecoy: true, isHidden: true,
+    });
+    expect(decoyWrong.allowed).toBe(false);
+    expect(decoyWrong.code).toBe(TWO_FACTOR.WRONG);
+  });
+
+  it('I3: verdict is byte-identical whether or not isDecoy/isHidden are supplied (no session tell)', () => {
+    const plain = evaluateTwoFactor({ pinOk: true, passwordOk: true, actionPasswordConfigured: true });
+    const withFlags = evaluateTwoFactor({
+      pinOk: true, passwordOk: true, actionPasswordConfigured: true,
+      isDecoy: true, isHidden: true,
+    });
+    expect(withFlags).toEqual(plain);
+  });
+
   it('is a pure function of its inputs (no hidden state across calls)', () => {
     const a = evaluateTwoFactor({ pinOk: true, passwordOk: true, actionPasswordConfigured: true });
     const b = evaluateTwoFactor({ pinOk: true, passwordOk: true, actionPasswordConfigured: true });
