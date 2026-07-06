@@ -45,6 +45,16 @@ const block = (code, message) => ({ allowed: false, code, message });
  *                                               (M-G: default FALSE — fail closed. A caller
  *                                               that omits this is treated as not-configured
  *                                               and gets NOT_CONFIGURED, never a silent proceed)
+ * I3 DENIABILITY — DELIBERATELY PIN-AWARE-ONLY, NO SESSION-TYPE INPUT: this gate
+ * takes NO isDecoy/isHidden argument and must NEVER grow one. A "bypass 2FA in a
+ * decoy/hidden session" shortcut would be a deniability TELL — an observer who has
+ * seen the Action-Password prompt could distinguish a decoy (which skipped it) from
+ * the real wallet. Parity is achieved the honest way instead: each set (primary,
+ * decoy, hidden) carries its OWN per-set Action-Password record, so the caller passes
+ * an `actionPasswordConfigured` that already reflects the ACTIVE set (see
+ * WalletProvider.hasActionPassword / H2 "decoy/hidden 2FA parity"). The gate then
+ * fires identically across every session type. Do not add an isDecoy/isHidden bypass.
+ *
  * @returns {{ allowed: boolean, code: string, message: (string|null) }}
  */
 export function evaluateTwoFactor({
