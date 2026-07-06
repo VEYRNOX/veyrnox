@@ -33,9 +33,9 @@ const SECTIONS = [
     nav: "FINANCE",
     icon: TrendingUp,
     features: [
-      { name: "Portfolio Risk Score", summary: "Concentration, leverage and volatility scoring across your holdings", route: "/risk-scoring" },
-      { name: "Advanced Analytics", summary: "Sharpe ratio, correlation matrix, volatility analysis", route: "/analytics" },
-      { name: "On-Chain Analytics", summary: "Address-level transaction activity and insights", route: "/on-chain" },
+      { name: "Portfolio Risk Score", summary: "Concentration, leverage and volatility scoring across your holdings", route: "/risk-score" },
+      { name: "Advanced Analytics", summary: "Sharpe ratio, correlation matrix, volatility analysis", route: "/advanced-analytics" },
+      { name: "On-Chain Analytics", summary: "Address-level transaction activity and insights", route: "/onchain" },
       { name: "Price Charts, Alerts & Watchlist", summary: "Real OHLCV data with threshold alerts and a saved watchlist", route: "/price-charts" },
       { name: "Recurring Payments", summary: "Scheduled payment reminders with built-in Send flow", route: "/recurring" },
     ],
