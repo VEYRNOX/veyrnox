@@ -124,4 +124,30 @@ describe('WalletEntry — web cohort must persist authModel=password (lockout fi
     ));
     expect(ctx.createWalletFromPendingPin).not.toHaveBeenCalled();
   });
+
+  it('reload regression: returning web password-cohort user gets a password Input, not a numeric PinPad, and it actually unlocks', async () => {
+    // Simulates a SPA remount (reload) on a device that already has a vault and
+    // whose persisted cohort marker is 'password' — the exact state a web user is
+    // in after completing "Import an existing seed" in a prior session. Before the
+    // fix, the view==="unlock" fallback branched on Capacitor.isNativePlatform()
+    // instead of authModel, so this cohort got a numeric-only PinPad and could
+    // never type in their real (long, alphanumeric) password — permanent lockout.
+    authModelValue = 'password';
+    const ctx = makeCtx({ hasVault: vi.fn(async () => true), unlock: vi.fn(async () => ({})) });
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+
+    // The real password Input must render (mirrors the native pin-cohort's Input) —
+    // a numeric PinPad cannot accept this credential at all.
+    const pwInput = await screen.findByPlaceholderText(/enter your vault password/i);
+    expect(screen.queryByRole('group', { name: /PIN entry/i })).toBeNull();
+
+    fireEvent.change(pwInput, { target: { value: WEB_PASSWORD } });
+    fireEvent.click(screen.getByRole('button', { name: /^unlock$/i }));
+
+    // Unlock must actually be invoked with the typed password — asserting the
+    // screen "looks right" is not enough; this is the gap that let the bug regress.
+    await waitFor(() => expect(ctx.unlock).toHaveBeenCalledWith(WEB_PASSWORD, expect.anything()));
+  });
 });
