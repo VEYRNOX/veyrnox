@@ -235,7 +235,10 @@ async function authenticateOrThrow() {
 //     getHardwareFactor's opts, and hardware.js sent kekSalt as raw bytes the Capacitor
 //     bridge could not carry) meant v2 wraps were ACTUALLY made under the fixed v1 salt.
 //     So a v2 blob MUST unlock with the fixed salt (C-1 regression 2026-07-05; treated as
-//     fixed-salt), then lazily upgrade to a real v3 wrap (see _upgradeV2ToV3).
+//     fixed-salt). The v2→v3 salt-binding upgrade happens on changePassword (a genuine
+//     re-enroll), NOT on unlock — re-deriving H under a fresh salt would need a second
+//     biometric prompt per unlock (see _unlockInner). A v2 vault stays v2 until its next
+//     PIN/password change.
 //   - v1 (no hardwareKekVersion) → undefined (legacy fixed-salt wrap).
 // Returns undefined (call getHF() with no args) or { kekSalt: Uint8Array } for v3.
 export function hfOptsForBlob(blob, saltBytes) {
@@ -243,65 +246,6 @@ export function hfOptsForBlob(blob, saltBytes) {
     return { kekSalt: saltBytes.slice() };
   }
   return undefined;
-}
-
-// C-1 lazy migration (2026-07-05): re-wrap a just-unlocked v2 vault's DEK under a
-// GENUINELY salt-bound v3 KEK. Called from _unlockInner AFTER a successful v2 unlock,
-// with the recovered DEK still live.
-//
-// BRICKLESS CONTRACT (I4 fail-safe on the migration path):
-//   - Only acts on a v2 KEK vault (blob.hardwareKekVersion === 2 && blob.kekWrap). Any
-//     other version is a no-op.
-//   - Generates a FRESH per-enrollment kekSalt, derives H bound to it (one extra biometric
-//     prompt), derives C, combines the new KEK, re-wraps the SAME DEK (seed ct/iv
-//     UNCHANGED), and persists atomically via safeWriteVault, stamping hardwareKekVersion:3.
-//   - If ANY step throws, the v2 blob is left byte-for-byte untouched and this function
-//     SWALLOWS the error (returns without rethrowing) — the vault must remain unlockable
-//     exactly as before (never brick on the convenience upgrade). safeWriteVault's own
-//     read-back-verify means a failed persist throws before the v2 blob is replaced.
-//   - New key material (H2, newC, newKek) is zeroed on every path. The DEK is owned and
-//     zeroed by the caller (_unlockInner's finally) — we never zero it here.
-async function _upgradeV2ToV3(blob, dek, password, opts) {
-  if (!blob || blob.hardwareKekVersion !== 2 || !blob.kekWrap) return;
-  const getHF = opts && opts.getHardwareFactor;
-  if (typeof getHF !== 'function') return; // no way to derive the new H — leave v2 as-is
-  // We need C to combine the new KEK; C = Argon2id(password, newSalt). Without the same
-  // password just used to unlock we cannot re-derive C — leave the v2 blob untouched
-  // (fail-safe status quo).
-  if (typeof password !== 'string') return;
-
-  const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
-  const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
-  let H2;
-  let newC;
-  let newKek;
-  try {
-    H2 = await getHF({ kekSalt: newSaltBytes.slice() }); // one-time extra biometric prompt
-    newC = await deriveKekC(password, newSaltBytes);
-    newKek = await combineKek(H2, newC);
-    if (H2 && H2.fill) H2.fill(0);
-    if (newC) newC.fill(0);
-    const newKekWrap = await wrapDek(newKek, dek); // re-wrap the SAME DEK — seed ct/iv unchanged
-    // Persist atomically. safeWriteVault does set → read-back → verify byte-equal → throw
-    // on mismatch, so a failed write throws here and the v2 blob is NOT left corrupted:
-    // on throw we restore the original v2 bytes below.
-    await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
-  } catch {
-    // BRICKLESS: any failure (biometric cancel, wrap error, persist-verify mismatch) must
-    // leave the vault exactly as it was. Restore the original v2 blob best-effort so a
-    // partially-written store value can never shadow the good v2 wrap, and swallow — unlock
-    // already succeeded and must not fail because the convenience upgrade did (fail-safe).
-    try {
-      await safeWriteVault(blob);
-    } catch {
-      /* best-effort restore; the original v2 value may already be intact in the store */
-    }
-  } finally {
-    if (H2 && H2.fill) H2.fill(0);
-    if (newC) newC.fill(0);
-    if (newKek) newKek.fill(0);
-    newSaltBytes.fill(0);
-  }
 }
 
 async function _unlockInner(password, opts = {}) {
@@ -339,12 +283,16 @@ async function _unlockInner(password, opts = {}) {
       if (C) C.fill(0);
       dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
       const plaintext = await decryptVaultWithDek(blob, dek);
-      // C-1 lazy migration: a v2 blob was wrapped under the inert fixed salt. Now that
-      // unlock has SUCCEEDED and the DEK is in hand, upgrade it to a genuinely salt-bound
-      // v3 wrap. This is BEST-EFFORT and fail-SAFE: any failure inside _upgradeV2ToV3
-      // leaves the v2 blob byte-for-byte untouched and never throws, so unlock still
-      // returns the seed (never brick). One extra one-time biometric prompt on success.
-      await _upgradeV2ToV3(blob, dek, password, opts);
+      // C-1 (v2→v3): the v2→v3 salt-binding upgrade deliberately does NOT run on the
+      // unlock hot path. Re-deriving H under a fresh salt requires a SECOND biometric
+      // prompt, which (on top of the biometricUnlock cache-gate + this unlock's own H
+      // decrypt) made a KEK-enrolled v2 unlock spawn three OS biometric sheets — and a
+      // failed migration write would re-prompt on every future unlock and never converge.
+      // The v2→v3 upgrade now happens on changePassword (see below), which re-enrolls under
+      // a genuine v3 wrap with a fresh per-enrollment kekSalt and a fail-closed
+      // safeWriteVault. Unlock is therefore a single-prompt, read-only operation w.r.t. the
+      // version stamp. Tradeoff: a v2 vault whose PIN is never changed stays v2 (retains
+      // the C-1 fixed-salt weakness) until the next PIN/password change.
       return plaintext;
     } finally {
       if (H && H.fill) H.fill(0);

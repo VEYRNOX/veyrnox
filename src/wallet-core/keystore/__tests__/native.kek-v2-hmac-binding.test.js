@@ -166,8 +166,14 @@ describe('(2) _unlockInner — v3 blob: reads blob.kekSalt and passes it to getH
   });
 });
 
-describe('(2b) _unlockInner — v2 blob: unlocks with the FIXED salt (inert stamp), then lazily upgrades', () => {
-  it('first getHF has NO kekSalt (fixed salt); a second getHF re-wraps under a fresh v3 salt', async () => {
+describe('(2b) _unlockInner — v2 blob: unlocks with the FIXED salt and does NOT migrate on unlock', () => {
+  // RE-POINTED (2026-07-06): this section previously asserted unlock LAZILY UPGRADED a v2
+  // vault to v3 (a second getHF re-wrap). That lazy upgrade was removed from the unlock hot
+  // path because it forced a second biometric prompt per unlock (the cross-platform 3-prompt
+  // bug). The salt-binding upgrade now lives on changePassword — see (4b) below, which still
+  // proves the v2→v3 fresh-salt re-wrap. The security-meaningful assertion here is now the
+  // NEW invariant: unlock is single-prompt and leaves the v2 blob untouched.
+  it('unlock calls getHF exactly ONCE (fixed salt) and leaves the v2 blob at v2', async () => {
     setVault(JSON.stringify({
       v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
       kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 2,
@@ -176,14 +182,13 @@ describe('(2b) _unlockInner — v2 blob: unlocks with the FIXED salt (inert stam
 
     await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
 
-    // Unlock side uses the fixed salt (no kekSalt); upgrade side binds a fresh salt.
-    expect(getHF).toHaveBeenCalledTimes(2);
+    // Single biometric prompt; v2 → fixed salt (no kekSalt).
+    expect(getHF).toHaveBeenCalledTimes(1);
     expect(getHF.mock.calls[0][0]).toBeUndefined();
+    // Unlock does NOT migrate: the stored blob stays v2 with its original salt.
     const written = JSON.parse(store.get(VAULT_KEY));
-    expect(written.hardwareKekVersion).toBe(3);
-    const upgradeArg = getHF.mock.calls[1][0];
-    expect(upgradeArg.kekSalt).toBeInstanceOf(Uint8Array);
-    expect(Array.from(upgradeArg.kekSalt)).toEqual(Array.from(saltBytesOf(written.kekSalt)));
+    expect(written.hardwareKekVersion).toBe(2);
+    expect(written.kekSalt).toBe(kekSalt);
   });
 });
 
