@@ -1379,7 +1379,17 @@ export function WalletProvider({ children }) {
   // the password in plaintext, so the caller passes the current password through
   // for verification (defence in depth alongside the unlocked session).
   const changePassword = useCallback(async (currentPassword, newPassword) => {
-    await keyStore.changePassword(currentPassword, newPassword);
+    // KEK-enrolled vaults (native Secure Enclave/StrongBox OR web WebAuthn PRF)
+    // re-wrap the DEK under a new KEK derived from the new PIN — that requires the
+    // SAME hardware factor H the vault was enrolled with. Forward getHardwareFactor
+    // exactly like decryptPrimaryContainer/persistPrimaryContents/enrollKek do.
+    // Missing it on an enrolled vault throws KEK_NO_HARDWARE_FACTOR (I4/I6,
+    // fail-closed) — which broke Change PIN on exactly the vault type it targets.
+    // On a bare (non-enrolled) vault it is never called; web password cohort is
+    // unaffected (its changePassword KEK branch only runs when kekWrap is present).
+    await keyStore.changePassword(currentPassword, newPassword, {
+      getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
+    });
     // If biometric one-tap unlock is on, the cached password just went stale —
     // re-cache the NEW one so Face ID keeps working. (Best-effort; if it fails
     // the user still has the new password as the fallback.)
