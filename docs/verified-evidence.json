@@ -76,6 +76,31 @@
     "caveats": "(1) The KEK gates UNLOCK (H+C unwrap DEK → decrypt seed → sign tx), not per-signature. (2) INTERNAL verification — not independently audited. (3) iOS v2 equivalent (kekSalt binding via ECIES) is a separate design and remains unverified. (4) C-1 v2 PR #529 is merged (commit 732f9676); no open PRs for C-1 Android.",
     "date": "2026-07-02"
   },
+  "_android_hardware_kek_c1_v3_device_verification": {
+    "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. Records that C-1 CRITICAL (Android HMAC fixed input) v3 salt-binding fix was end-to-end device-verified: a vault enrolled under v3 (hardwareKekVersion:3, per-enrollment salt binding confirmed via logcat bridge call) gated a real on-chain Sepolia send on a Pixel 10 Pro XL. Android C-1 is FIXED / device-verified (v3, 2026-07-05). Outstanding: salt-tamper test, v2→v3 lazy migration device-exercise, multi-enrollment salt distinctness, independent audit.",
+    "finding": "C-1 CRITICAL (Android HMAC fixed input) — FIXED v3, device-verified 2026-07-05. Closes regression found same day (per-enrollment salt binding cryptographically inert in v2 due to facade arg-drop + JSON.stringify silently reverting to v1 fixed salt). v3 fix: facade argument forwarding + base64 STRING encoding closes both bugs; Kotlin plugin fails closed on malformed salt; vault stamps hardwareKekVersion:3.",
+    "chain": "sepolia",
+    "txid": "0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3",
+    "explorer": "https://sepolia.etherscan.io/tx/0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3",
+    "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
+    "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "amount": "0.001 ETH",
+    "block": 11206686,
+    "nonce": 34,
+    "verified_onchain": "eth_getTransactionByHash + eth_getTransactionReceipt, chainId 11155111 (Sepolia), type 0x2 (EIP-1559), status SUCCESS, 2026-07-05.",
+    "vault_state_at_send": {
+      "kdf": "kek-dek",
+      "hardwareKekVersion": 3,
+      "hasKekSalt": true,
+      "kekSaltLength": 44,
+      "hasKekWrap": true,
+      "hardwareKekTier": "STRONGBOX"
+    },
+    "device_evidence": "Pixel 10 Pro XL (Android 16/API 36) logcat capture (2026-07-05 07:19:35-07:40:03): fresh v3 enrollment logged 'enroll: key stored — tier=STRONGBOX (securityLevel=2)'; getHardwareFactor bridge call at 07:19:37 carried kekSalt as intact 44-char base64 STRING (logged 'salt-source: v2-bound'), not {} or null; cold restart (07:37:46) + unlock (07:40:00-03) repeated same kekSalt retrieval with SAME stored salt, confirming salt-bound unlock; send broadcast from this vault resulted in this Sepolia txid.",
+    "what_was_verified": "C-1 v3 end-to-end: fresh enrollment generated 32-byte per-enrollment kekSalt, facade forwarded it as base64 STRING to Kotlin plugin, plugin HMAC-derived H per-enrollment (not global fixed PRF_EVAL_SALT), stored salt in vault (kekSaltLength:44), unlock retrieved and used same stored salt, unlock succeeded without silent fallback, send broadcast and confirmed on-chain.",
+    "caveats": "(1) The KEK gates UNLOCK; the send then signs with the in-memory DEK. (2) INTERNAL device-verification — not independently audited. (3) Still outstanding: (a) salt-tamper negative test (vault in encrypted SecureStorage, non-invasive tamper infeasible on this device — the logcat 'salt-source: v2-bound' branch attestation is operative evidence of binding); (b) v2→v3 lazy migration device-exercise (unit-tested 11 tests, device execution pending — test device had only v3 fresh enroll, no pre-v3 vault); (c) per-enrollment salt distinctness on device (unit-proven only, one enrollment observed); (d) independent audit. (4) Depends on PR #568 (2026-07-05, commit e2a6d452) — facade argument forwarding + hardware.js base64 STRING encoding.",
+    "date": "2026-07-05"
+  },
   "_android_hardware_kek_device_verification": {
     "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — it does NOT promote any catalogue feature to 'verified'. Android Hardware KEK (H-NEW-D / StrongBox) stays BUILT / device-verified (PARTIAL). Moved here from 'evidence' per the ECC KEK audit 2026-07-01 (finding L6) so it mirrors _ios_hardware_kek_device_verification and cannot become a latent promotion trap. Records that the StrongBox KEK gated a real on-chain Sepolia send on a Pixel 10 Pro XL, honest that this gates UNLOCK (not per-signature), StrongBox tier is observed not enforced, and biometric re-enrollment invalidation + independent audit are outstanding.",
     "chain": "sepolia",
