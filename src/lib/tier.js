@@ -1,19 +1,21 @@
 // lib/tier.js
 //
-// SUBSCRIPTION / TIER DISPLAY SCAFFOLD (non-functional).
+// SUBSCRIPTION / TIER DISPLAY CATALOGUE.
 //
-// This is a DISPLAY-ONLY model of subscription tiers. There is NO subscription
-// system wired up: no payment, no in-app-purchase, no entitlement check, no
-// persistence. getCurrentTier() always returns "free".
+// This file is the presentation model for the tier UI (TIERS, FREE_FEATURES,
+// SAFETY_PLUS_FEATURES — consumed by the Plans and Safety Plus screens). It does
+// NOT resolve entitlement.
 //
-// FUTURE: real entitlement will come from a VERIFIED in-app-purchase receipt
-// (App Store / Play Billing) resolved at launch. When that exists it REPLACES
-// the hard-coded "free" below — the tier must never be inferred from anything
-// the client can forge, and a paid feature must never be unlocked by this file.
-// Until then every user is "free" and the Safety Plus card is preview only.
+// Real in-app-purchase billing IS wired up (App Store / Play Billing via
+// RevenueCat): the live, verified, fail-closed tier is resolved by
+// lib/entitlement.js `resolveTier()` and exposed through lib/TierProvider.jsx
+// `useTier()`, which is what lib/… route gating (components/FeatureGate.jsx)
+// actually reads. BUILT / unit-tested only — NOT device-verified. See
+// docs/Feature-Status.md §11 and docs/superpowers/plans/2026-07-06-iap-subscription-stitching.md.
 
-// The user's current tier. Hard-coded to "free" because no billing exists yet.
-// A real implementation reads a verified IAP receipt; this stub does NOT.
+// Legacy display-only stub, retained for the tier catalogue tests. It always
+// returns "free" and is NOT used for gating — never infer entitlement from this
+// (the client can forge it). The real, forge-resistant source is resolveTier().
 export function getCurrentTier() {
   return 'free';
 }
@@ -21,7 +23,8 @@ export function getCurrentTier() {
 // Two tiers: Free (the complete wallet) and Safety Plus (pre-sign intelligence
 // layer + advanced analytics). Life-safety features (duress PIN, panic wipe,
 // stealth wallets) are FREE on principle — physical safety must not be paywalled.
-// Prices are confirmed. No payment system exists yet; these cards are preview only.
+// Display catalogue only — real purchasing/entitlement lives in the billing layer
+// above; these cards drive the Plans UI.
 export const TIERS = [
   {
     id: 'free',

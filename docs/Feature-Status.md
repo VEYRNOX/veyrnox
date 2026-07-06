@@ -439,6 +439,49 @@ its commits were already on main).
     `/tax` page removal). **BUILT / unit-tested only — the CORS-bypass premise is only
     provable on a real Android device and is NOT device-verified**, NOT independently
     audited, no on-chain txid involved.
+- **In-app subscription billing (Safety Plus tier, $5.99/mo) — ✅ BUILT, unit-tested
+  only — NOT device-verified, NOT independently audited, no on-chain txid (a
+  subscription entitlement, not an asset).** Branch `claude/vigilant-stonebraker-b60102`
+  (12 commits) wires real Apple App Store / Google Play billing via RevenueCat's
+  Capacitor SDK (`@revenuecat/purchases-capacitor@13.2.1`), replacing the prior
+  inert display-only stub (`tier.js` `getCurrentTier()` was a hardcoded `return
+  'free'`; the upgrade button was permanently disabled). What's built: `src/lib/purchases.js`
+  (native-only RevenueCat wrapper, safe no-ops on web); `src/lib/entitlement.js`
+  `resolveTier()` — resolves the tier from RevenueCat's customer-info, **fail-closed
+  to `'free'` on any error or missing entitlement (I4)**; web always resolves `'free'`
+  without touching the SDK. `src/lib/TierProvider.jsx` is now async — configures the
+  SDK on mount, resolves the real tier, and subscribes to live customer-info updates
+  so purchase/renewal/expiry update the tier without an app restart.
+  `src/lib/safetyPlusRoutes.js` is the canonical list of the 16 Safety Plus routes;
+  `src/components/FeatureGate.jsx` enforces the paywall at the route level (classification
+  checks run first, then the tier check, with a loading state handled before either);
+  `src/components/TierLockedPage.jsx` is the honest paywall notice. `src/pages/Subscription.jsx`
+  drives a real purchase/restore flow on native (shows the store-localized `product.priceString`);
+  web shows an honest "mobile-only / testing-only" notice with a disabled button. Also
+  fixed 3 pre-existing broken `SafetyPlus.jsx` hub nav links (`/risk-scoring`→`/risk-score`,
+  `/analytics`→`/advanced-analytics`, `/on-chain`→`/onchain`). Android: RevenueCat plugin
+  registered in `android/capacitor.settings.gradle` + `android/app/capacitor.build.gradle`.
+  `.env.example` gained `VITE_REVENUECAT_APPLE_API_KEY` / `VITE_REVENUECAT_GOOGLE_API_KEY`
+  public-key placeholders (client-exposed by design, not secret). **Security posture:**
+  fail-closed throughout — a paid tier is only ever returned when RevenueCat positively
+  confirms an active entitlement; the client never self-reports its tier; a whole-branch
+  internal review found no path that lets a free/unverified user reach a Safety Plus
+  feature. INTERNAL review only. **Tests:** full suite 2440 passing + 2 pre-existing
+  expected-fails after this branch; new unit tests cover the purchases wrapper, the
+  entitlement fail-closed matrix, TierProvider (incl. SDK-configured-on-mount and
+  fail-closed-on-config-reject), the route list, the gate, the paywall, and the
+  purchase/restore flows. Tests green is not verification (per the repo's
+  verify-don't-assert rule). **Explicitly NOT done** (required before this is sellable
+  or live): Phase A external setup — no App Store Connect subscription product, no
+  Google Play Console subscription product, and no RevenueCat dashboard configuration
+  (entitlement id `safety_plus`, product id `safety_plus_monthly`, offering `default`,
+  package `$rc_monthly`) exists yet; the iOS Xcode In-App Purchase capability + StoreKit
+  config is not done (needs a Mac); **no real sandbox/license-tester purchase, restore,
+  or expiry has been exercised on any physical iOS or Android device** — this is the
+  gate that would move it beyond BUILT; not independently audited. Pricing (`$5.99/mo`)
+  is drawn from the existing unvalidated pricing hypothesis in `docs/Tiers.pricing.md`
+  (Pro ~$5–8/mo) — still "model to validate," not proven willingness-to-pay. Full plan:
+  `docs/superpowers/plans/2026-07-06-iap-subscription-stitching.md`.
 - Android E2E test infrastructure — ✅ BUILT (INTERNAL CI evidence, UI E2E only — no
   on-chain claims). Appium (UiAutomator2 + WebdriverIO) suite in `tests/android/`;
   GitHub Actions emulator workflow per push; BrowserStack App Automate real-device
