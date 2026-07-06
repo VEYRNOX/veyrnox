@@ -5,6 +5,7 @@ import { fetchMarketPricesUsdCG as fetchMarketPricesUsd } from "@/lib/coinGecko.
 import { MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
 import { isLivePricesEnabled } from "@/lib/priceFeed";
 import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,11 +24,16 @@ export default function PriceAlerts() {
   const queryClient = useQueryClient();
   // I3 guard: live prices default ON, so navigating here in a decoy/hidden
   // session would poll CoinGecko. Also gate the price query on the deniability
-  // flags so a deniable session makes zero egress (I3); the ticker then falls
-  // back to its existing "Live prices off" static state — no network, no tell.
+  // flags so a deniable session makes zero egress (I3). DEMO suppression: the
+  // live-prices pref is device-global, NOT demo-scoped, so a browser that once
+  // opted in would poll CoinGecko the moment this page opens in a demo tour
+  // (isDecoy/isHidden are both false in demo) — so also fold !DEMO in (ECC audit
+  // M-6 pattern). This gates BOTH the ticker useQuery and the checkNow on-demand
+  // fetch (both key off pricesEnabled); the ticker then falls back to its existing
+  // "Live prices off" static state — no network, no tell.
   // (The PriceAlert.list query is local storage, not network egress — left as-is.)
   const { isDecoy, isHidden } = useWallet();
-  const pricesEnabled = isLivePricesEnabled() && !isDecoy && !isHidden;
+  const pricesEnabled = isLivePricesEnabled() && !isDecoy && !isHidden && !DEMO;
   const [open, setOpen] = useState(false);
   const [currency, setCurrency] = useState("BTC");
   const [direction, setDirection] = useState("above");

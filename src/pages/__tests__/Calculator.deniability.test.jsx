@@ -34,6 +34,28 @@ describe('Calculator — I3 deniability structural guards (source scan)', () => 
   });
 });
 
+// DEMO egress suppression (M-6 class, PR #617): the veyrnox-live-prices opt-in is
+// device-global, not demo-scoped — a browser that once opted in would fetch
+// CoinGecko inside a demo tour (isDecoy/isHidden are both false in demo). The
+// enabled condition must also fold in !DEMO.
+describe('Calculator — DEMO egress suppression (source scan)', () => {
+  it('imports DEMO from @/api/demoClient', () => {
+    expect(code).toMatch(/import\s*\{\s*DEMO\s*\}\s*from\s*['"]@\/api\/demoClient['"]/);
+  });
+
+  it('folds !DEMO into the price-query enabled condition', () => {
+    expect(code).toMatch(
+      /isLivePricesEnabled\(\)\s*&&\s*!isDecoy\s*&&\s*!isHidden\s*&&\s*!DEMO/
+    );
+  });
+
+  it('the DEMO gate precedes the price query definition', () => {
+    const guard = code.search(/!isHidden\s*&&\s*!DEMO/);
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(code.indexOf('queryFn: fetchPrices'));
+  });
+});
+
 // --- behavioral: refetch() trigger must not be reachable in deniability ---
 
 if (!window.matchMedia) {
