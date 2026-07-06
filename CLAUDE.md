@@ -73,7 +73,9 @@ identity; the app never holds keys server-side.
   logs) — the originally reported bug ("WebAuthn native plugins not working") is FIXED /
   device-exercised for enrollment; the "passkey" WebAuthn path on native remains
   honest-disabled by design. Remaining open besides C-1: native/device-gated findings
-  (iOS-F5, iOS-F3, H-2/iOS-F11 iOS half, iOS-F9 evidence gap).
+  (iOS-F5, iOS-F3, H-2/iOS-F11 iOS half, iOS-F9 evidence gap). (2026-07-05, separately:
+  a duress-aware biometric PIN-cache guard landed — PR #613, see the "2026-07-05
+  re-applied orphaned fixes" section below.)
   H-NEW-D CLOSED (SE ECIES confirmed in ObjC at `HardwareKekPlugin.m:78`).
   INTERNAL pass — not independent. See `docs/audit-2026-07-01-kek-internal.md`.
 - **Verify, don't assert.** An asset/feature is "verified" ONLY after a real on-chain
@@ -246,6 +248,37 @@ identity; the app never holds keys server-side.
   catalogue-`verified`), and neither are the new Android v3 txids — this update records a
   device-verified fix, not a catalogue "verified" promotion (that bar remains the strict
   per-asset explorer-txid rule and does not apply to an unlock-gate feature).
+
+## 2026-07-05 re-applied orphaned fixes (PRs #613–#616)
+
+Six stale remote branches (never merged) carried fixes that never reached `main`. On
+2026-07-05 each was re-validated against current main, re-applied via strict TDD (RED
+confirmed, then GREEN), honest-reviewed (LAND-READY), CI-verified (full suite), and
+squash-merged; the six source branches were then deleted from origin. All four items
+below are **BUILT / unit-tested only — NOT device-verified, NOT independently audited,
+no on-chain txid involved.**
+
+- **PR #613 (5a6aab70)** — duress-aware biometric PIN-cache guard + honest vault-desync
+  screen. `shouldAutoCacheTypedPin()` (`src/lib/authModel.js`) auto-caches the typed PIN
+  behind biometric ONLY when biometric is ON + nothing cached + no duress vault exists;
+  once a duress PIN exists, Face ID opens the decoy only. Duress-presence-unknown fails
+  closed (no cache). `WalletEntry` now writes the PIN cache only after a successful
+  unlock. The native stale-vault cold-mount path no longer silently `clearVault()`s (a
+  prior I4 violation) — it now shows an explicit Restore-from-seed / typed-"WIPE" screen.
+  Outstanding: real-device pass of the Face-ID-to-decoy guard and the desync screen.
+- **PR #614 (c2012713)** — hides `CryptoNewsFeed`/Calculator refetch() header buttons
+  in decoy/hidden sessions (react-query v5 `refetch()` bypasses `enabled`; was a live I3
+  egress vector).
+- **PR #615 (956234c1)** — `WalletPortfolioPage.jsx` count-string leak ("N wallets not
+  backed up" — a wallet-cardinality tell) replaced with count-blind "Wallet backup
+  incomplete."; `copySecret.js` gained a third clipboard-wipe trigger on the app-lock
+  event; new CI gate `scripts/check-deniability-strings.mjs` (`check:deniability-strings`)
+  flags count/plural/raw-seed-clipboard patterns going forward.
+- **PR #616 (60b47846, 2926cdbd)** — `src/lib/cryptoCompare.js` routes native fetches
+  through `CapacitorHttp` to bypass Android CORS (web unchanged); also removes the
+  owner-requested "open tax report" voice command. CORS premise not device-verified.
+
+See `docs/Feature-Status.md` §6, §8b, and §11 for the per-item BUILT entries with PR numbers.
 
 ## Security invariants
 
