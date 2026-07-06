@@ -8,8 +8,14 @@
 
 import { Capacitor } from '@capacitor/core';
 import { getCustomerInfo, SAFETY_PLUS_ENTITLEMENT } from './purchases';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 
 export async function resolveTier() {
+  // I3 (deniability = ZERO backend calls): a decoy/hidden session must never make
+  // a RevenueCat customer-info request. This is the single egress chokepoint for
+  // getCustomerInfo — fail closed to 'free' BEFORE any network call so no coerced
+  // decoy/hidden session can leak an IAP request or surface a paid tier.
+  if (isDeniabilitySessionActive()) return 'free';
   if (!Capacitor.isNativePlatform()) return 'free';
   try {
     const customerInfo = await getCustomerInfo();

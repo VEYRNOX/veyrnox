@@ -16,6 +16,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { resolveTier } from '@/lib/entitlement';
 import { configurePurchases, addCustomerInfoUpdateListener, SAFETY_PLUS_ENTITLEMENT } from '@/lib/purchases';
 import { TIERS } from '@/lib/tier';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 
 const TierCtx = createContext(null);
 
@@ -24,6 +25,8 @@ export function TierProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const refreshTier = useCallback(async () => {
+    // resolveTier() is the I3 chokepoint (returns 'free' + no egress in a
+    // deniability session), so refresh is safe to call unconditionally.
     const tier = await resolveTier();
     setCurrentTier(tier);
     return tier;
@@ -32,6 +35,17 @@ export function TierProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
     let unsubscribe = () => {};
+
+    // I3 (deniability = ZERO backend calls): a decoy/hidden session must make no
+    // RevenueCat egress at all. Do NOT configure the SDK and do NOT register a
+    // customer-info listener while a deniability session is active — fail closed
+    // to 'free'. (resolveTier() also guards independently as the single egress
+    // chokepoint, but we must not even initialize the SDK or open a listener.)
+    if (isDeniabilitySessionActive()) {
+      setCurrentTier('free');
+      setLoading(false);
+      return () => { cancelled = true; };
+    }
 
     // Initialize the RevenueCat SDK once, before any entitlement/offering read.
     // No-op on web; fails closed — a rejection (e.g. missing key) is swallowed
@@ -55,6 +69,14 @@ export function TierProvider({ children }) {
       // (e.g. SDK unavailable) leaves the tier at its fail-closed resolve value.
       try {
         const unsub = await addCustomerInfoUpdateListener((customerInfo) => {
+          // I3: a listener registered in the primary session survives INTO a
+          // later decoy/hidden session. Gate the callback itself so it delivers
+          // NO customer-info (and never a paid tier) once a deniability session
+          // is active — force 'free' instead. Fail closed.
+          if (isDeniabilitySessionActive()) {
+            setCurrentTier('free');
+            return;
+          }
           const active = customerInfo?.entitlements?.active ?? {};
           setCurrentTier(SAFETY_PLUS_ENTITLEMENT in active ? 'safety_plus' : 'free');
         });
