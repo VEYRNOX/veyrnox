@@ -53,7 +53,13 @@ export default function Subscription() {
           ?? null;
         setPlusPackage(pkg);
       })
-      .catch(() => {});
+      .catch((err) => {
+        // Leave the upgrade button disabled (no package to buy). Surface the
+        // reason for on-device debugging — a failed fetch here usually means the
+        // SDK isn't configured or the RevenueCat offering isn't set up, which
+        // otherwise presents as an unexplained permanently-disabled button.
+        console.warn("Safety Plus offerings unavailable:", err);
+      });
     return () => { cancelled = true; };
   }, [isNative]);
 

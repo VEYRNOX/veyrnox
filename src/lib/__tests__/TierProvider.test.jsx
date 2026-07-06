@@ -8,8 +8,10 @@ vi.mock('../entitlement', () => ({ resolveTier: () => resolveTier() }));
 
 let capturedListener = null;
 const unsubscribe = vi.fn();
+const configurePurchases = vi.fn(async () => {});
 vi.mock('../purchases', () => ({
   SAFETY_PLUS_ENTITLEMENT: 'safety_plus',
+  configurePurchases: (...a) => configurePurchases(...a),
   addCustomerInfoUpdateListener: async (cb) => {
     capturedListener = cb;
     return unsubscribe;
@@ -32,9 +34,38 @@ function Probe() {
 beforeEach(() => {
   vi.clearAllMocks();
   capturedListener = null;
+  // Re-establish the default resolved impl each test (clearAllMocks keeps the
+  // initial vi.fn impl, but a per-test mockReturnValue override would leak).
+  configurePurchases.mockImplementation(async () => {});
 });
 
 describe('TierProvider', () => {
+  it('configures the purchases SDK on mount', async () => {
+    resolveTier.mockResolvedValue('free');
+    render(<TierProvider><Probe /></TierProvider>);
+    await waitFor(() => expect(configurePurchases).toHaveBeenCalled());
+  });
+
+  it('awaits SDK configuration before the first tier resolve', async () => {
+    let releaseConfigure;
+    configurePurchases.mockReturnValue(new Promise((r) => { releaseConfigure = r; }));
+    resolveTier.mockResolvedValue('free');
+    render(<TierProvider><Probe /></TierProvider>);
+    // configure has been called, but resolveTier must NOT run until it resolves.
+    await waitFor(() => expect(configurePurchases).toHaveBeenCalled());
+    expect(resolveTier).not.toHaveBeenCalled();
+    releaseConfigure();
+    await waitFor(() => expect(resolveTier).toHaveBeenCalled());
+  });
+
+  it('still resolves the tier (fail-closed) when SDK configuration rejects', async () => {
+    configurePurchases.mockRejectedValue(new Error('REVENUECAT_API_KEY_MISSING'));
+    resolveTier.mockResolvedValue('free');
+    render(<TierProvider><Probe /></TierProvider>);
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('tier').textContent).toBe('free');
+  });
+
   it('starts loading=true, free, then resolves to the real tier', async () => {
     resolveTier.mockResolvedValue('safety_plus');
     render(<TierProvider><Probe /></TierProvider>);
