@@ -37,7 +37,7 @@ export const config = {
       platformName: 'iOS',
       'appium:automationName': 'XCUITest',
       'appium:app': process.env.BROWSERSTACK_APP_URL,
-      'appium:bundleId': 'com.veyrnox.app',
+      'appium:bundleId': process.env.VEYRNOX_IOS_BUNDLE_ID || 'com.veyrnox.app',
       'bstack:options': {
         deviceName: process.env.BROWSERSTACK_DEVICE || 'iPhone 17 Pro',
         osVersion: process.env.BROWSERSTACK_OS_VERSION || '18.0',
