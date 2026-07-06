@@ -400,7 +400,7 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     await expect(page.getByRole('heading', { name: 'Hardware Protection' })).toBeVisible({ timeout: 15000 });
   }
 
-  test('B: settings card is honest on a bare vault (OFF, provisional disclosure, no protection claim)', async ({ page }) => {
+  test('B: settings card is honest on a bare vault (OFF, built/device-verified disclosure, no protection claim)', async ({ page }) => {
     await seedVault(page, { enroll: false });
     const pw = await reloadToUnlockScreen(page);
     await pw.fill(PASSWORD);
@@ -408,7 +408,13 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     await expect(page.getByRole('link', { name: /^Send$/i })).toBeVisible({ timeout: 60000 });
 
     await gotoSettingsInApp(page);
-    await expect(page.getByText('UNAUDITED-PROVISIONAL')).toBeVisible();
+    // The card carries an honest disclosure notice. PR #667 (owner-directed
+    // override of I4 provisional friction) removed the "UNAUDITED-PROVISIONAL"
+    // prefix + "not independently audited" caveat, shortening the same notice to
+    // the plain built/device-verified statement — assert the current wording.
+    await expect(
+      page.getByText(/hardware binding is built and device-verified/i)
+    ).toBeVisible();
     // I4: the "WebAuthn Protected" badge is EARNED by enrollment, never shown
     // structurally on a bare vault.
     await expect(page.getByText('WebAuthn Protected')).toHaveCount(0);
