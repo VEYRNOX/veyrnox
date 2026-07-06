@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Veyrnox — Feature Status Widget</title>
+<style>
+  :root{
+    --bg:#050608; --surface:#0B0F14; --surface2:#12171F; --line:#1D222B;
+    --ink:#E8ECF1; --muted:#8A94A3; --faint:#5B6675;
+    --teal:#4ADAC2;            /* verified / built */
+    --amber:#E7B450;           /* provisional / partial */
+    --coral:#F06A5C;           /* device-gated / not built */
+    --violet:#9B8CFF;          /* planned / idea */
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:radial-gradient(1200px 600px at 70% -10%,#12171F 0%,var(--bg) 60%);
+    color:var(--ink);
+    font-family:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5;padding:32px 20px 64px;
+  }
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 18px;margin-bottom:4px}
+  h1{font-size:22px;font-weight:600;margin:0;letter-spacing:-0.01em}
+  .sub{color:var(--muted);font-size:13px}
+  .asof{color:var(--faint);font-size:12px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:18px 0 22px;font-size:12px;color:var(--muted)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .d-teal{background:var(--teal)} .d-amber{background:var(--amber)}
+  .d-coral{background:var(--coral)} .d-violet{background:var(--violet)}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:26px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .kpi .n{font-size:26px;font-weight:600;letter-spacing:-0.02em}
+  .kpi .l{font-size:11.5px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+
+  .cols{columns:2;column-gap:16px}
+  @media(max-width:720px){.cols{columns:1}}
+  section{break-inside:avoid;background:var(--surface);border:1px solid var(--line);
+    border-radius:12px;padding:16px 16px 8px;margin:0 0 16px;display:inline-block;width:100%}
+  section h2{font-size:13px;font-weight:600;margin:0 0 12px;color:var(--ink);
+    display:flex;align-items:center;gap:8px;letter-spacing:.01em}
+  section h2 .tag{margin-left:auto;font-size:10.5px;color:var(--faint);font-weight:500;
+    text-transform:uppercase;letter-spacing:.05em}
+  ul{list-style:none;margin:0 0 8px;padding:0}
+  li{display:flex;gap:9px;padding:5px 0;font-size:13px;border-top:1px solid rgba(255,255,255,.03)}
+  li:first-child{border-top:0}
+  li .mk{flex:0 0 auto;width:8px;height:8px;border-radius:50%;margin-top:6px}
+  li .txt{flex:1}
+  li .note{color:var(--faint);font-size:11.5px;display:block}
+  .m-teal{background:var(--teal)} .m-amber{background:var(--amber)}
+  .m-coral{background:var(--coral)} .m-violet{background:var(--violet)}
+
+  .banner{border-radius:12px;padding:14px 16px;margin:0 0 22px;font-size:13px;
+    border:1px solid;line-height:1.55}
+  .banner.warn{background:rgba(231,180,80,.06);border-color:rgba(231,180,80,.35);color:#F1DDB0}
+  .banner b{color:#fff}
+  .foot{color:var(--faint);font-size:11.5px;margin-top:26px;line-height:1.6}
+  .foot code{color:var(--muted)}
+  a{color:var(--teal);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Veyrnox — Feature Status</h1>
+    <span class="sub">what's built · what's still unaudited / provisional</span>
+    <span class="asof mono">source: docs/Feature-Status.md · as of 2026-07-06</span>
+  </header>
+
+  <div class="legend">
+    <span><span class="dot d-teal"></span>Built — verified on-chain / shipping-approved</span>
+    <span><span class="dot d-amber"></span>Built — internal / unit-tested, <b>unaudited-provisional</b></span>
+    <span><span class="dot d-coral"></span>Device-gated / not built — what's left</span>
+    <span><span class="dot d-violet"></span>Planned / idea-stage</span>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="n" style="color:var(--teal)">10 / 10</div><div class="l">Assets live on-chain</div></div>
+    <div class="kpi"><div class="n" style="color:var(--teal)">2</div><div class="l">Audits complete (internal + ECC)</div></div>
+    <div class="kpi"><div class="n" style="color:var(--amber)">0</div><div class="l">Independent audits of KEK / native</div></div>
+    <div class="kpi"><div class="n">~2300</div><div class="l">Tests green (INTERNAL only)</div></div>
+  </div>
+
+  <div class="banner warn">
+    <b>The honesty line.</b> "Both audits complete" = the internal mainnet-gate audit (2026-06-17)
+    + the independent ECC third-party audit (2026-06-23, resolved in PR&nbsp;#340). Everything since —
+    the Hardware KEK stack, deniability re-applied fixes, KDF changes, LOG-1 remediation — is
+    <b>INTERNAL, not independently audited</b>. A feature is only catalogue-<b>"verified"</b> with a
+    real explorer-confirmed txid; device-verified KEK unlock txids are recorded as
+    <b>non-promoting</b> evidence, not a "verified" flip.
+  </div>
+
+  <div class="cols">
+
+    <!-- WALLET CORE -->
+    <section>
+      <h2>Wallet core &amp; chains <span class="tag">built</span></h2>
+      <ul>
+        <li><span class="mk m-teal"></span><span class="txt">HD wallet gen / import (BIP-39), multi-account derivation</span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Encrypted vault — Argon2id + AES-256-GCM<span class="note">KDF 192 MiB / t=3 (PR #604); bidirectional 64↔192 migration. Latency measured on one flagship only</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">All 10 assets LIVE — send verified on-chain (full UI path)<span class="note">ETH, USDC✓mainnet, USDT✓mainnet, MATIC, ARB, OP, AVAX, BNB, BTC, SOL</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Receive + QR, balances, tx history, per-chain fee control</span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Backup / reveal seed, change password + seed recovery (non-custodial)</span></li>
+      </ul>
+    </section>
+
+    <!-- S2 TX SAFETY -->
+    <section>
+      <h2>S2 — transaction safety <span class="tag">built</span></h2>
+      <ul>
+        <li><span class="mk m-teal"></span><span class="txt">Token approvals view + revoke; address-poison &amp; spam filters</span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Calldata decode / unlimited-allowance warning; recipient validation</span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Local tx simulation (drainer defense) + anomaly heuristics<span class="note">warns-not-blocks, never claims "safe", no third-party scoring</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">OFAC / suspicious-address screening (on-device, single illustrative entry)<span class="note">live SDN feed = roadmap, legal-review gated</span></span></li>
+        <li><span class="mk m-amber"></span><span class="txt">Composite pre-sign RISK verdict + gate<span class="note">BUILT; render-verified DEMO-mode only, no build:release eyeball yet</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Send-time step-up re-auth; 2FA at critical points (PIN + password / passkey)<span class="note">passkey path confirmed on-chain (soft authenticator) + Face-ID 2FA on iPhone</span></span></li>
+      </ul>
+    </section>
+
+    <!-- S3 DENIABILITY -->
+    <section>
+      <h2>S3 — deniability stack <span class="tag">built · internal-audited</span></h2>
+      <ul>
+        <li><span class="mk m-amber"></span><span class="txt">Duress PIN / decoy wallet routing<span class="note">BUILT, unaudited-provisional; not device-verified on real iPhone</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Duress-aware biometric PIN-cache guard (PR #613)<span class="note">Face-ID-to-decoy guard device-verified on Pixel 10 Pro XL 2026-07-06; vault-desync screen NOT device-verified</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Stealth / hidden wallets (256-slot chaff pool); panic wipe</span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Constant-KDF unlock timing; I3 egress fixes (PR #478, #614)</span></li>
+        <li><span class="mk m-amber"></span><span class="txt">Device-global 2FA suppression in decoy/hidden sessions<span class="note">BUILT unit-tested; no on-device decoy-send egress trace yet</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Hardware wallet (Trezor) EVM/BTC/SOL signing<span class="note">BUILT; no physical-device txid</span></span></li>
+      </ul>
+    </section>
+
+    <!-- S4 HARDENING -->
+    <section>
+      <h2>S4 — hardening <span class="tag">3 of 5 built</span></h2>
+      <ul>
+        <li><span class="mk m-teal"></span><span class="txt">Risk / spend limits; audit log (opt-in, deniability-safe, surfaced)</span></li>
+        <li><span class="mk m-amber"></span><span class="txt">RASP policy lane + browser-level detection (always-on)<span class="note">OS-level probes = native + real-device gated (Phase 4)</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Encrypted cloud backup — LOCAL export/import (ciphertext-only)</span></li>
+        <li><span class="mk m-coral"></span><span class="txt">Backend-escrow cloud backup<span class="note">not built — needs backend + fresh audit of that design</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">RASP native probes + remote attestation (Play Integrity / App Attest)<span class="note">not buildable in JS — real rooted/Frida device gated</span></span></li>
+      </ul>
+    </section>
+
+    <!-- WALLETCONNECT -->
+    <section>
+      <h2>WalletConnect / dApp <span class="tag">built · shipping-approved</span></h2>
+      <ul>
+        <li><span class="mk m-teal"></span><span class="txt">WC v2 pairing + full signing surface, security-hardened (§8a)</span></li>
+        <li><span class="mk m-teal"></span><span class="txt">C3 RASP pre-sign gate; M11 session-expiry; H-NEW-B step-up re-auth</span></li>
+        <li><span class="mk m-teal"></span><span class="txt">H7 EIP-712 chain binding; H8 personal_sign address binding; M9 1M gas cap</span></li>
+      </ul>
+    </section>
+
+    <!-- HARDWARE KEK -->
+    <section>
+      <h2>Hardware KEK — the live front <span class="tag">unaudited</span></h2>
+      <ul>
+        <li><span class="mk m-amber"></span><span class="txt">Web — WebAuthn PRF KEK — <b>testing-only</b><span class="note">Not a shipping product path: web is testing infrastructure only (2026-07-06 clarification, #637), unified onto the native 8-digit PIN. PIN-cohort migration still in flux (open PR #651). BUILT + unit-tested; browser UAT + testnet txids PENDING; KEK-downgrade-on-repersist bug fixed unit-tested only (#631)</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Android — StrongBox KEK<span class="note">end-to-end device-verified on Pixel 10 Pro XL; C-1 salt-binding FIXED v3 (PR #568) after a same-day regress→fix. txid 0xecd684…</span></span></li>
+        <li><span class="mk m-amber"></span><span class="txt">iOS — Secure Enclave ECIES KEK<span class="note">device-verified PARTIAL; iOS-F9 SE-unlock app-trace still OPEN, re-enroll test device-blocked</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">Independent audit of the whole KEK stack<span class="note">NONE — all evidence is INTERNAL</span></span></li>
+      </ul>
+    </section>
+
+    <!-- WHATS LEFT / OPEN -->
+    <section>
+      <h2>What's left — device-gated / open <span class="tag">not done</span></h2>
+      <ul>
+        <li><span class="mk m-coral"></span><span class="txt">Independent security audit (S1–S4 + crypto + vault cipher path)<span class="note">the one hard remaining gate; standalone crypto engagement DECLINED, folded into this</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">iOS: SE-unlock log trace (iOS-F9), biometric re-enroll invalidation, F5/F3 ObjC edits<span class="note">code-complete, NOT compiled — need Mac + Xcode + unrestricted iPhone</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">Android C-1 residuals: salt-tamper negative test, v2→v3 migration device-exercise, multi-enroll salt distinctness</span></li>
+        <li><span class="mk m-coral"></span><span class="txt">M2c/M2d OS-enforced ACL binding (biometryCurrentSet / StrongBox)<span class="note">app-layer today; needs custom native plugin + real device</span></span></li>
+        <li><span class="mk m-amber"></span><span class="txt">LOG-1 — debug logcat leaked H + vault blob<span class="note">remediation BUILT (PR #572); release-build spot-check PENDING</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">Legal entity + Track-B legal review; per-asset mainnet send verifications</span></li>
+      </ul>
+    </section>
+
+    <!-- PLANNED / REMOVED -->
+    <section>
+      <h2>Planned &amp; out of scope <span class="tag">idea / removed</span></h2>
+      <ul>
+        <li><span class="mk m-violet"></span><span class="txt">AI advisory (tx explanation, phishing, portfolio Q&amp;A) — none built</span></li>
+        <li><span class="mk m-violet"></span><span class="txt">Per-set passkey/biometric enablement (TARGET, audit-gated, owner-deferred)</span></li>
+        <li><span class="mk m-violet"></span><span class="txt">More chains/tokens, no-telemetry/Tor routing — idea-stage</span></li>
+        <li><span class="mk m-coral"></span><span class="txt">Removed on principle: Rebalance/auto-debit, Multi-Sig, Social Recovery, Crypto Will, custodial/regulated cluster</span></li>
+      </ul>
+    </section>
+
+  </div>
+
+  <div class="foot">
+    Buckets mirror <code>docs/Feature-Status.md</code> (the single source of truth — it wins over other docs).
+    "Verified" is the strict on-chain-txid bar; "BUILT" caps at code-on-main + green tests.
+    Internal ≠ independent throughout. Full evidence &amp; PR trail in Feature-Status.md §1–§12 and
+    <code>docs/audit-2026-07-01-kek-internal.md</code>.
+  </div>
+</div>
+</body>
+</html>
