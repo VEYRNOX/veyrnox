@@ -87,9 +87,6 @@ export default function AuditLog() {
             </p>
           </div>
         </div>
-        <span className="shrink-0 px-2.5 py-1 rounded-md border border-caution/40 text-caution font-mono text-xs">
-          PROVISIONAL · AUDITED 2026-06-23
-        </span>
       </div>
 
       {/* Enable / disable toggle */}

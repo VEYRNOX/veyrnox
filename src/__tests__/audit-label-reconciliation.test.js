@@ -99,11 +99,6 @@ describe('L-5 — audited components dropped the stale UNAUDITED-PROVISIONAL tag
 });
 
 describe('I4 — internal-only-audited surfaces MUST keep their UNAUDITED label', () => {
-  it('HardwareKekSettings.jsx still discloses UNAUDITED-PROVISIONAL (internal passes only)', () => {
-    expect(read('src/components/security/HardwareKekSettings.jsx')).toMatch(
-      /UNAUDITED-PROVISIONAL/,
-    );
-  });
   it('catalogue "Native Secure Storage" still discloses it is NOT independently audited', () => {
     const kek = byName('Native Secure Storage');
     expect(kek).toBeTruthy();

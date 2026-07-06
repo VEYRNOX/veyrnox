@@ -104,7 +104,7 @@ export default function LandingPage() {
                 <span className="text-primary">on your device</span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-lg">
-                A self-custody, coercion-resistant crypto wallet. Testnet beta — testnet funds only; security features are provisional — internal (2026-06-17) and independent (2026-06-23) security audits are complete.
+                A self-custody, coercion-resistant crypto wallet.
               </p>
             </div>
 
@@ -125,12 +125,12 @@ export default function LandingPage() {
                 <p className="text-sm text-muted-foreground">Keys we hold</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">Testnet</p>
-                <p className="text-sm text-muted-foreground">Beta — no real funds</p>
+                <p className="text-2xl font-bold text-primary">On-device</p>
+                <p className="text-sm text-muted-foreground">Encrypted key vault</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">2026-06-23</p>
-                <p className="text-sm text-muted-foreground">Independent audit</p>
+                <p className="text-2xl font-bold text-primary">10</p>
+                <p className="text-sm text-muted-foreground">Supported assets</p>
               </div>
             </div>
           </div>
@@ -164,14 +164,14 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 id="security-highlights-heading" className="text-4xl font-bold mb-4">Security at the Core</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Strong on-device encryption and layered, provisional protections — testnet beta, independently audited (2026-06-23)
+              Strong on-device encryption and layered protections
             </p>
           </div>
 
           <div className="grid md:grid-cols-4 gap-6">
             {[
               { icon: Lock, title: "Passkey / biometric unlock", desc: "WebAuthn/FIDO2 or device biometric to unlock — your password always works too" },
-              { icon: Shield, title: "Duress PIN", desc: "Decoy wallet under coercion (provisional, independent audit 2026-06-23)" },
+              { icon: Shield, title: "Duress PIN", desc: "Decoy wallet under coercion" },
               { icon: Eye, title: "Whitelist", desc: "Restrict withdrawals to approved addresses" },
               { icon: Zap, title: "Step-up re-auth", desc: "Re-enter your PIN to authorise a send" },
             ].map((item, idx) => (
@@ -198,7 +198,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { icon: Smartphone, title: "Multi-Chain", desc: "Receive & balances on 10 assets; send on Ethereum (testnet verified)" },
-              { icon: Shield, title: "Coercion resistance", desc: "Duress PIN, decoy & panic wipe (provisional, independent audit 2026-06-23)" },
+              { icon: Shield, title: "Coercion resistance", desc: "Duress PIN, decoy & panic wipe" },
               { icon: Eye, title: "Pre-sign screening", desc: "Local tx simulation + address-poisoning / look-alike checks" },
               { icon: BarChart3, title: "Analytics", desc: "Portfolio tracking and P&L reports" },
               { icon: Bell, title: "Smart Alerts", desc: "Price and local security notifications" },
@@ -226,7 +226,7 @@ export default function LandingPage() {
                 Coercion-resistant by design
               </h2>
               <p className="text-lg text-muted-foreground">
-                Your private keys never leave your device, and we have zero access to your funds. The coercion features are provisional — an independent audit completed 2026-06-23; see the limits below.
+                Your private keys never leave your device, and we have zero access to your funds. See the limits below.
               </p>
 
               <div className="space-y-4">
