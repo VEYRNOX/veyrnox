@@ -16,7 +16,7 @@ vi.mock('@/lib/featureRegistry', async () => {
   };
 });
 vi.mock('@/lib/safetyPlusRoutes', () => ({
-  isSafetyPlusRoute: (path) => path === '/hardware-wallet',
+  isSafetyPlusRoute: (path) => path === '/risk-score',
 }));
 
 const useTierMock = vi.fn();
@@ -47,20 +47,20 @@ describe('FeatureGate — Safety Plus tier check', () => {
 
   it('renders a loading state for a Safety Plus route while tier is resolving', () => {
     useTierMock.mockReturnValue({ currentTier: 'free', loading: true });
-    renderAt('/hardware-wallet');
+    renderAt('/risk-score');
     expect(screen.queryByTestId('page')).toBeNull();
   });
 
   it('renders TierLockedPage for a Safety Plus route when the user is free', () => {
     useTierMock.mockReturnValue({ currentTier: 'free', loading: false });
-    renderAt('/hardware-wallet');
+    renderAt('/risk-score');
     expect(screen.queryByTestId('page')).toBeNull();
     expect(screen.getByText(/Safety Plus feature/)).toBeTruthy();
   });
 
   it('renders the real page for a Safety Plus route when the user is subscribed', () => {
     useTierMock.mockReturnValue({ currentTier: 'safety_plus', loading: false });
-    renderAt('/hardware-wallet');
+    renderAt('/risk-score');
     expect(screen.getByTestId('page')).toBeTruthy();
   });
 

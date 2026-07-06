@@ -5,22 +5,11 @@
 // first when a Safety Plus feature moves or a new one ships.
 
 export const SAFETY_PLUS_ROUTES = [
-  '/hardware-wallet',
-  '/risk',
-  '/security',
-  '/token-approvals',
-  '/address-checker',
-  '/fraud',
-  '/security-dashboard',
-  '/cloud-backup',
-  '/spam-filter',
-  '/audit-log',
   '/risk-score',
   '/advanced-analytics',
   '/onchain',
   '/price-charts',
   '/recurring',
-  '/crypto-signing',
 ];
 
 export function isSafetyPlusRoute(path) {
