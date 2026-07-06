@@ -837,6 +837,7 @@ export function WalletProvider({ children }) {
     clearAllPortfolios();
     clearAuthModel();   // drop any 'pin' cohort marker (matters for the recovery rollback case)
     lock();             // drop the in-memory secret + reset session flags (isUnlocked -> false)
+    setVaultExists(false); // the vault createWallet/importWallet flagged present is gone again
     // Deliberately NO setWasWiped(true): this is a setup-failure rollback, not a panic wipe.
   }, [lock]);
 
@@ -857,6 +858,12 @@ export function WalletProvider({ children }) {
     activeIdRef.current = walletId;
     ensureWalletMeta(walletId, { name: 'Wallet 1', backedUp: false });
     persistActiveWalletId(walletId);
+    // A vault now genuinely exists — the mount-time VAULT-EXISTENCE PROBE (line ~609)
+    // resolved this to `false` before onboarding ran and never updates itself. Without
+    // this, that stale `false` survives for the rest of the session and any same-session
+    // consumer of vaultExists (e.g. SendCrypto's cold-load/deep-link guard) fail-closes
+    // as if no vault were present, bouncing the user back to `/`.
+    setVaultExists(true);
     setUnlocked(true);
     setIsDecoy(false);
     setIsHidden(false);
@@ -908,6 +915,10 @@ export function WalletProvider({ children }) {
     activeIdRef.current = walletId;
     ensureWalletMeta(walletId, { name: 'Wallet 1', backedUp: true });
     persistActiveWalletId(walletId);
+    // See createWallet above: refresh the mount-time vaultExists probe now that a
+    // real vault exists, so same-session consumers (e.g. SendCrypto's cold-load
+    // guard) don't fail-close on a stale pre-onboarding `false`.
+    setVaultExists(true);
     setUnlocked(true);
     setIsDecoy(false);
     setIsHidden(false);
