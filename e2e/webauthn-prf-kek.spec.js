@@ -334,12 +334,12 @@ test.describe('Web KEK PRF — keystore boundary (fail-closed matrix)', () => {
     expect(meta.hasKekWrap).toBe(true); // preserved (was false pre-#631 — gap reopened)
   });
 
-  test('H-A: web vault password under 12 chars rejected before any ciphertext exists', async ({ page }) => {
+  test('H-A: web vault PIN under 8 digits rejected before any ciphertext exists', async ({ page }) => {
     await freshState(page);
     const r = await ksCall(
       page,
       'createVault',
-      { secret: SECRET, password: 'short-pw-11' }, // 11 chars
+      { secret: SECRET, password: '1234567' }, // 7 digits
     );
     expect(r.ok).toBe(false);
     expect(`${r.code} ${r.message}`).toContain('WEB_VAULT_PASSWORD_TOO_SHORT');
