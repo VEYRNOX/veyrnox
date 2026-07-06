@@ -9,6 +9,12 @@
 // - Manual blockchain verification (automated via RPC)
 // - User-supplied txid (captured + verified programmatically)
 //
+// NOT part of the default/CI suite (see playwright.config.ts testIgnore) — the seed
+// below is the well-known public Hardhat/Ganache default test mnemonic. It holds no
+// real funds (anything ever sent to it is swept by bots), so the on-chain send step
+// cannot complete unless you substitute a real funded Sepolia testnet seed before
+// running. Supervised/manual use only.
+//
 // Run:
 //   npm i -D @playwright/test && npx playwright install chromium
 //   RUN_SUPERVISED_E2E=1 npx playwright test e2e/webauthn-prf-sepolia-verified.spec.js --headed --workers=1
