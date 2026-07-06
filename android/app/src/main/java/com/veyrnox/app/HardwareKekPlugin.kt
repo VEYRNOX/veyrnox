@@ -56,9 +56,10 @@ class HardwareKekPlugin : Plugin() {
     //
     // C-1 (CRITICAL): this is the LEGACY v1 MAC input — a GLOBAL FIXED constant, so
     // HMAC(key, PRF_EVAL_SALT) yielded an identical H for every vault on the same device.
-    // v2 binds the MAC input to the per-enrollment kekSalt passed from JS (see
-    // getHardwareFactor). This constant is now ONLY the fallback for legacy v1 vaults
-    // enrolled before the fix; it MUST NOT change (doing so bricks existing v1 wraps).
+    // v3 binds the MAC input to the per-enrollment kekSalt passed from JS (v2 was the
+    // earlier, INERT stamp — its salt never crossed the bridge; see getHardwareFactor).
+    // This constant is now ONLY the fallback for legacy v1 vaults enrolled before the fix;
+    // it MUST NOT change (doing so bricks existing v1 wraps).
     private val PRF_EVAL_SALT = byteArrayOf(
         0x56,0x65,0x79,0x72,0x6e,0x6f,0x78,0x2d,
         0x70,0x72,0x66,0x2d,0x76,0x31,0x2d,0x6b,
@@ -251,11 +252,20 @@ class HardwareKekPlugin : Plugin() {
      * getHardwareFactor() — Present BiometricPrompt, compute HMAC-SHA256(key, MAC_INPUT),
      * return base64(result) as { h: string }.
      *
-     * C-1 (v2 protocol): MAC_INPUT is the per-enrollment kekSalt when the JS call supplies
+     * C-1 (v3 protocol): MAC_INPUT is the per-enrollment kekSalt when the JS call supplies
      * it (base64 "kekSalt" argument), so each vault derives a UNIQUE H. When "kekSalt" is
-     * absent (legacy v1 calls) we fall back to the global PRF_EVAL_SALT for backwards
-     * compatibility with vaults enrolled before this fix. A present-but-empty kekSalt is
-     * rejected (fail closed) rather than silently reverting to the fixed salt.
+     * absent (legacy v1 vaults, and the earlier INERT v2 stamp) we fall back to the global
+     * PRF_EVAL_SALT for backwards compatibility with vaults enrolled before this fix. A
+     * present-but-empty kekSalt is rejected (fail closed) rather than silently reverting to
+     * the fixed salt.
+     *
+     * LABEL NOTE: the debug log below emits "salt-source: v2-bound" / "v1-fixed". These are
+     * LEGACY BRANCH labels, NOT the vault's hardwareKekVersion stamp — "v2-bound" means "a
+     * per-enrollment kekSalt was supplied and used" (the genuine binding: a v3 vault, or a
+     * changePassword re-wrap), and "v1-fixed" means "no salt supplied, fixed PRF_EVAL_SALT"
+     * (v1/v2 vaults). The strings are kept verbatim because the on-device runbooks
+     * (docs/runbook-android-kek-residuals.md) attest on them. See
+     * docs/audit-triage/independent-audit-2026-07-06-android-kek-suite.md (F2.1/F2.2).
      *
      * NEVER fabricates H (I4 — fail honest, fail closed).
      * Per-use auth: every call requires biometric.
