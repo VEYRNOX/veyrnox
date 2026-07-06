@@ -1177,12 +1177,15 @@ export default function WalletEntry() {
           )}
 
           <div className="flex items-center gap-2 text-sm font-medium">
-            <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? "Enter your PIN" : "Unlock your wallet"}
+            <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? (authModel === "password" ? "Enter your vault password" : "Enter your PIN") : "Unlock your wallet"}
           </div>
-          {/* Web mirrors native: always use 8-digit PIN, never password field */}
-          {!Capacitor.isNativePlatform() ? (
-            <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
-          ) : (
+          {/* This branch is reached only when authModel !== "pin" (the pin-cohort
+              case is handled above). That's the web/legacy PASSWORD cohort — its
+              real credential is a free-text vault password (see finishPinSetup),
+              never a numeric PIN, so it must render a password Input here too
+              (mirroring the native pin-cohort's Input) or those users are locked
+              out on reload (they cannot type their password into a PinPad). */}
+          {authModel === "password" ? (
             <>
               <Label>Vault Password</Label>
               <Input
@@ -1197,6 +1200,8 @@ export default function WalletEntry() {
                 {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
               </Button>
             </>
+          ) : (
+            <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
           )}
 
           {passkeyFailed && (

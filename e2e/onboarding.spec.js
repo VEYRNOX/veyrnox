@@ -81,6 +81,20 @@ async function createWalletThroughBackup(page) {
   await page.getByRole('button', { name: /I've backed it up/i }).click();
 }
 
+// Throwaway BIP-39 UAT fixture seed (TESTNET-ONLY, never real value — see project
+// memory "throwaway-testnet-seed"). Used here purely to exercise the import branch;
+// no funds, no chain interaction.
+const IMPORT_SEED = 'bamboo lyrics harvest potato seat carry equip nation slam begin admit pet';
+
+// Phase 2 (import variant): choose view → "Import an existing seed" → paste phrase →
+// Restore / Import. No seed-backup screen (the user supplied the seed) — imports
+// land straight on the authed shell.
+async function importWalletThroughRestore(page, seed = IMPORT_SEED) {
+  await page.getByRole('button', { name: /Import an existing seed/i }).click();
+  await page.getByLabel('Recovery seed phrase').fill(seed);
+  await page.getByRole('button', { name: /Restore \/ Import/i }).click();
+}
+
 test.describe('onboarding state machine — authoritative order (web password cohort)', () => {
   test('fresh open shows the welcome hero, NOT a dashboard and NOT a credential prompt', async ({ page }) => {
     await freshLocalBuild(page);
@@ -131,7 +145,7 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible();
   });
 
-  test('reload AFTER wallet creation returns to the unlock gate, never straight to an authed view', async ({ page }) => {
+  test('reload AFTER wallet creation returns to the unlock gate, and the original password actually unlocks it', async ({ page }) => {
     await freshLocalBuild(page);
     await completePasswordSetup(page);
     await leaveExploreToChoose(page);
@@ -139,9 +153,38 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
 
     await page.reload();
-    // Returning user: the vault PIN unlock gate must own the screen on reload (web mirrors native).
-    await expect(page.getByRole('group', { name: /PIN entry/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Send', exact: true })).toHaveCount(0);
+    // Returning web password-cohort user: the gate must render a real password
+    // Input, NOT a numeric PinPad — the password cannot be typed into a PIN pad
+    // at all, so asserting a PIN-labelled group is visible is NOT sufficient (that
+    // gap previously let a full lockout regress silently — see onboarding-lockout
+    // regression below). Assert the actual credential surface, then that it unlocks.
+    await expect(page.getByPlaceholder('Enter your vault password')).toBeVisible();
+    await page.getByPlaceholder('Enter your vault password').fill(VAULT_PASSWORD);
+    await page.getByRole('button', { name: /^Unlock$/ }).click();
+    await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
+  });
+
+  test('onboarding-lockout regression: reload after IMPORTING a seed still unlocks with the original vault password (not a numeric PIN pad)', async ({ page }) => {
+    // Regression coverage for the web onboarding lockout bug: importing a seed (as
+    // opposed to Create Wallet) also lands the device in the web PASSWORD cohort,
+    // and a prior regression made the post-reload unlock gate render a numeric-only
+    // PinPad regardless of cohort — the long alphanumeric vault password literally
+    // cannot be typed into it, permanently locking out every returning web user.
+    await freshLocalBuild(page);
+    await completePasswordSetup(page);
+    await leaveExploreToChoose(page);
+    await importWalletThroughRestore(page);
+    await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
+
+    await page.reload();
+    // The credential surface must be a real password field — a PIN pad here means
+    // the user is locked out (their credential is a 12+ char password, not digits).
+    await expect(page.getByPlaceholder('Enter your vault password')).toBeVisible();
+    await expect(page.getByRole('group', { name: /PIN entry/i })).toHaveCount(0);
+
+    await page.getByPlaceholder('Enter your vault password').fill(VAULT_PASSWORD);
+    await page.getByRole('button', { name: /^Unlock$/ }).click();
+    await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
   });
 });
 
