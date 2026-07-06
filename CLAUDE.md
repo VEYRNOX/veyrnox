@@ -295,6 +295,60 @@ no on-chain txid involved.**
 
 See `docs/Feature-Status.md` §6, §8b, and §11 for the per-item BUILT entries with PR numbers.
 
+## 2026-07-06 web PIN-lockout regression-and-fix + automated e2e verification pass
+
+**Web onboarding PIN-lockout: regression (PR #637) → fix (PR #645) → full unification
+(PR #651, commit `d04562c88`).** PR #637 ("unify to native 8-digit PIN") migrated the web
+UNLOCK screen to a numeric-only `PinPad` but left vault CREATION on the old ≥12-char
+free-text password `Input` — a half-finished migration. Net effect: a returning web
+password-cohort user who set a real alphanumeric ≥12-char password (H-A minimum) was
+shown a numeric keypad on reload that could never accept their real credential — a full
+lockout, with the only escape being "Restore from seed phrase" (a full re-import). Repro:
+"Get Started → set password → Import an existing seed → reload." **PR #645** (commit
+`b3b87c8f4`) fixed the immediate lockout by branching `WalletEntry.jsx`'s `view ===
+"unlock"` fallback on `authModel === "password"` (rendering the real password `Input`,
+mirroring the native branch) instead of `Capacitor.isNativePlatform()`; added a unit
+regression test and tightened `e2e/onboarding.spec.js`'s reload assertion (previously it
+only asserted SOME PIN-labelled group rendered, never that unlock actually worked — the
+exact gap that let the bug regress silently). **PR #651** went further and closed the
+whole bug class instead of maintaining two divergent cohorts: web now shares native's
+single PIN cohort end-to-end (create, confirm, unlock, recover) — there is no separate
+web "password" cohort left to diverge from unlock again, consistent with web being a
+testing-only surface, never production (native is the real product). Regression coverage:
+`src/components/__tests__/WalletEntry.web-authmodel.test.jsx`, rewritten
+`e2e/onboarding.spec.js`. **Known residual (not fixed this pass, flagged for the owner):**
+a legacy `authModel==='password'` code path still exists (the "Forgot password? Restore
+from seed phrase" recovery link, reachable only from a pre-existing password-cohort
+vault) and its unlock fallback still renders a numeric-only `PinPad` with no
+`numericOnly={false}` override — the same bug class would resurface if that path were
+ever exercised. Very likely dead/vestigial code today (no live path creates a new
+password-cohort vault post-#651), but not verified unreachable.
+
+**PR #644 (commit `dc63c8ec9`)** — app icon restored to the hexagon + teal V brand logo
+(cosmetic), plus four new automated Playwright e2e specs under `e2e/`, each closing an
+app-layer (non-hardware) verification gap: `duress-decoy-routing.spec.js` (real
+password → real wallet, Emergency PIN → a different decoy wallet, wrong password →
+explicit error), `i3-deniability-egress.spec.js` (decoy session makes zero requests to
+gated third-party hosts — proves "decoy = 0" but not the full "real > 0" contrast, since
+the harness must run under demo mode), `rasp-automation-detection.spec.js` (Playwright's
+own `navigator.webdriver` flag genuinely trips RASP's browser-level HOOKED→BLOCK path,
+unconditionally, regardless of acknowledgement), and `passkey-clone-replay.spec.js` (CDP
+dual virtual-authenticator clone/replay proves M-K's cloned-authenticator rejection with
+real crypto — a software clone, not a physical hardware authenticator). Also added:
+`scripts/ios-sim-duress-faceid.sh`, a partially-scripted iOS Simulator harness for
+app-layer duress routing only — it explicitly cannot and does not close iOS-F9,
+H-2/iOS-F11, iOS-F5, or iOS-F3 (the Simulator has no Secure Enclave). None of the four
+specs or the script touch or close any Secure Enclave/StrongBox hardware-KEK item; none
+involve an on-chain txid. See `docs/Feature-Status.md` §8c for the full per-spec detail.
+
+**PR #646** gated `e2e/webauthn-prf-sepolia-verified.spec.js` (hardcodes the funds-less
+public Hardhat/Ganache test mnemonic, so it could never complete a real send) behind
+`RUN_SUPERVISED_E2E=1` in `playwright.config.ts` — CI-hygiene only, no status change.
+**PR #650** added two regression tests pinning that `evaluateTwoFactor()`
+(`src/lib/twoFactorGate.js`) is genuinely session-blind — no `isDecoy`/`isHidden`
+parameter exists or should ever be added — pure test-coverage addition for an
+already-correct invariant.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
