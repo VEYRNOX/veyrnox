@@ -395,6 +395,131 @@ export const nativeKeyStore = {
     return blob.hardwareKekTier ?? null;
   },
 
+  // Read the persisted hardware KEK protocol version from the vault blob.
+  // No biometric prompt, no secret read — metadata only (mirrors getVaultKekTier).
+  // Returns:
+  //   - null when there is no vault, the blob is corrupt, or the vault is NOT KEK-wrapped;
+  //   - blob.hardwareKekVersion ?? 1 for a kekWrap vault (a KEK-wrapped vault with no
+  //     version field is a LEGACY v1 wrap — the fixed-salt binding pre-dates the stamp).
+  // The UI reads this (against getVaultKekVersion() < 3) to decide whether to OFFER the
+  // explicit "Upgrade protection" action (upgradeKekToV3). A benign swallow of a corrupt
+  // blob → null is the ONLY swallow here — a read-only presence check that never touches
+  // key material, exactly like getVaultKekTier / hasVaultKekWrap.
+  async getVaultKekVersion() {
+    await init();
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) return null;
+    let blob;
+    try {
+      blob = parseVaultBlob(raw);
+    } catch {
+      return null;
+    }
+    if (!blob.kekWrap) return null;
+    return blob.hardwareKekVersion ?? 1;
+  },
+
+  // EXPLICIT, USER-CONSENTED, FAIL-CLOSED upgrade of a pre-#568 v2 (or legacy v1) KEK
+  // vault to a GENUINELY salt-bound v3 wrap. This is the on-demand replacement for the
+  // silent v2→v3 lazy migration that was removed from the unlock hot path (PR #662)
+  // because it fired a 3rd biometric prompt per unlock and, on failure, swallowed the
+  // error and looped forever.
+  //
+  // Contract:
+  //   - IDEMPOTENT: an already-v3 vault returns { upgraded:false, version:3 } WITHOUT any
+  //     biometric prompt (getHardwareFactor is never called) and WITHOUT a write.
+  //   - NOT-ENROLLED: a bare (non-KEK) vault throws KEK_ERR.NOT_ENROLLED BEFORE any getHF,
+  //     so it fires ZERO biometric prompts.
+  //   - v1/v2 → v3: re-wrap identically to changePassword's KEK branch with
+  //     currentPassword === newPassword === password. The seed ciphertext (blob.iv/ct) is
+  //     UNCHANGED — only the DEK wrap and kekSalt rotate (§3 property); hardwareKekTier is
+  //     preserved via the ...blob spread. This deliberately fires TWO biometric prompts
+  //     (unwrap H on the old side + re-wrap H2 on the new salt) — correct and acceptable
+  //     for a one-time, explicitly consented action (unlike the per-unlock prompt we removed).
+  //   - FAIL-CLOSED (I4): do NOT catch/swallow. Any throw (missing/failed H, wrong-PIN
+  //     unwrap, write-verify mismatch) PROPAGATES; safeWriteVault's set→read-back→verify
+  //     leaves the stored blob byte-for-byte unchanged, so a failed upgrade never
+  //     downgrades or half-writes the vault. The UI surfaces the error.
+  //
+  // @param {string} password the current PIN/password (used for BOTH unwrap and re-wrap)
+  // @param {{ getHardwareFactor?: Function }} opts
+  // @returns {Promise<{ upgraded: boolean, version: number }>}
+  async upgradeKekToV3(password, opts) {
+    await init();
+    return withLockSuppressed(async () => {
+      // Read the vault FIRST and short-circuit the two no-op cases (bare vault, already-v3)
+      // BEFORE any authentication or hardware factor, so a no-op upgrade fires ZERO
+      // biometric prompts. Both cases read only metadata already exposed auth-free via
+      // getVaultKekVersion()/hasVaultKekWrap(), so this leaks nothing new.
+      const raw = await SecureStorage.get(VAULT_KEY, false);
+      if (raw === null || raw === undefined) {
+        throw new Error('No wallet found on this device');
+      }
+      const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
+
+      // Not KEK-enrolled: nothing to upgrade. Fail closed with no prompt.
+      if (!blob.kekWrap) {
+        throw Object.assign(new Error(KEK_ERR.NOT_ENROLLED), { code: KEK_ERR.NOT_ENROLLED });
+      }
+
+      // IDEMPOTENT: an already-v3 vault is genuinely salt-bound — nothing to do. Return
+      // WITHOUT any biometric prompt (neither the app-layer gate nor getHardwareFactor
+      // runs) and WITHOUT writing.
+      if (blob.hardwareKekVersion === 3) {
+        return { upgraded: false, version: 3 };
+      }
+
+      // v1/v2 kekWrap → a genuine upgrade. Gate on the app-layer biometric (same as
+      // changePassword/enrollKek), then re-wrap under a FRESH per-enrollment salt and stamp
+      // v3. Identical to changePassword's KEK branch with currentPassword === newPassword.
+      await authenticateOrThrow(); // throws on cancel/failure/lockout
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
+      const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+      const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+      let H;
+      let H2;
+      let oldC;
+      let newC;
+      let oldKek;
+      let newKek;
+      let dek;
+      // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so H, H2, both
+      // derived KEKs, and the recovered DEK are wiped on EVERY path (I4).
+      try {
+        // Old side: whatever the stored blob binds to (v2/v1 → fixed salt via hfOptsForBlob).
+        H = await getHF(hfOptsForBlob(blob, oldSaltBytes));
+        // New side: the re-enrolled vault is always v3 — bind the new H to the new salt.
+        H2 = await getHF({ kekSalt: newSaltBytes.slice() });
+        oldC = await deriveKekC(password, oldSaltBytes);
+        oldKek = await combineKek(H, oldC);
+        if (H && H.fill) H.fill(0);
+        if (oldC) oldC.fill(0);
+        dek = await unwrapDek(oldKek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
+        newC = await deriveKekC(password, newSaltBytes);
+        newKek = await combineKek(H2, newC);
+        if (H2 && H2.fill) H2.fill(0);
+        if (newC) newC.fill(0);
+        const newKekWrap = await wrapDek(newKek, dek);
+        // ...blob spread preserves hardwareKekTier and the seed's iv/ct (seed CT UNCHANGED
+        // — only the wrap and salt rotate; §3). safeWriteVault verifies the write (I4).
+        await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
+      } finally {
+        if (H && H.fill) H.fill(0);
+        if (H2 && H2.fill) H2.fill(0);
+        if (oldC) oldC.fill(0);
+        if (newC) newC.fill(0);
+        if (oldKek) oldKek.fill(0);
+        if (newKek) newKek.fill(0);
+        if (dek) dek.fill(0);
+        oldSaltBytes.fill(0);
+        newSaltBytes.fill(0);
+      }
+      return { upgraded: true, version: 3 };
+    });
+  },
+
   // Encrypt with the SAME audited crypto as web, then persist CIPHERTEXT ONLY to
   // the platform secure store (iOS Keychain / Android Keystore). The live secret never touches IndexedDB/
   // localStorage and is not retained here after this call returns.

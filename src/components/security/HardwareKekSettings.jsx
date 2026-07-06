@@ -19,7 +19,7 @@
 
 import { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { HardDrive, ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
+import { HardDrive, ShieldCheck, ShieldAlert, Loader2, ArrowUpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWallet } from '@/lib/WalletProvider';
 import { getKeyStore } from '@/wallet-core/keystore';
@@ -36,6 +36,8 @@ const NO_HARDWARE_MSG =
   'Couldn’t reach this device’s hardware security. Try again, or use a different device.';
 const MALFORMED_MSG =
   'Your stored wallet data couldn’t be read on this device.';
+const NOT_ENROLLED_MSG =
+  'Hardware protection isn’t enabled on this vault, so there’s nothing to upgrade.';
 const GENERIC_MSG = 'Something went wrong. Please try again.';
 
 function classifyKekError(e) {
@@ -48,6 +50,8 @@ function classifyKekError(e) {
       return NO_HARDWARE_MSG;
     case KEK_ERR.MALFORMED_VAULT:
       return MALFORMED_MSG;
+    case KEK_ERR.NOT_ENROLLED:
+      return NOT_ENROLLED_MSG;
     default:
       return GENERIC_MSG;
   }
@@ -86,6 +90,11 @@ export default function HardwareKekSettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [removing, setRemoving] = useState(false);
+  // Persisted hardware-KEK protocol version (native only): null = unknown/not read,
+  // 1/2 = legacy wrap (H bound to a shared fixed salt), 3 = per-enrollment salt-bound.
+  // A value < 3 surfaces the one-time consented "Upgrade protection" re-enroll (C-1).
+  const [kekVersion, setKekVersion] = useState(null);
+  const [upgrading, setUpgrading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -114,6 +123,14 @@ export default function HardwareKekSettings() {
                 const tier = await ks.getVaultKekTier();
                 setKekTier(tier);
               } catch { /* best-effort — falls back to generic badge */ }
+            }
+            // Read the persisted KEK protocol version so a legacy (< v3) vault can
+            // surface the one-time consented upgrade. Metadata-only (no prompt).
+            if (isEnrolled && typeof ks.getVaultKekVersion === 'function') {
+              try {
+                const ver = await ks.getVaultKekVersion();
+                if (active) setKekVersion(ver);
+              } catch { /* best-effort — the upgrade prompt just won't show */ }
             }
           }
         } catch {
@@ -170,6 +187,9 @@ export default function HardwareKekSettings() {
         await webKeyStore.enrollKek(pinToUse, { getHardwareFactor: () => webKeyStore.getHardwareFactor() });
       }
       setEnrolled(true);
+      // A fresh enrollment always writes a genuinely salt-bound v3 wrap, so the
+      // upgrade prompt must never appear right after enabling.
+      setKekVersion(3);
       setPin('');
       recordAudit('settings_changed');
       toast.success('Hardware protection enabled — your vault now requires this device to unlock.');
@@ -222,6 +242,42 @@ export default function HardwareKekSettings() {
     } catch (e) {
       // Classify by STABLE machine CODE (UNWRAP_FAILED = wrong PIN/device). Vault
       // decrypt sentinels also map to wrong-PIN guidance; everything else is generic.
+      if (isWrongPinVaultError(e)) {
+        setError(WRONG_PIN_MSG);
+      } else {
+        setError(classifyKekError(e));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // One-time, user-consented re-enroll of a legacy (< v3) KEK vault to a genuinely
+  // per-enrollment salt-bound v3 wrap (C-1). Native only — on web this is a no-op and
+  // getVaultKekVersion() returns null, so the section never renders. Deliberately fires
+  // TWO biometric prompts (unwrap the old wrap + create the new one); acceptable for a
+  // one-off consented action. FAIL-CLOSED in the keystore: on any failure the vault is
+  // left byte-for-byte unchanged, so a cancelled/failed upgrade is safe to retry.
+  const handleUpgrade = async (testPin) => {
+    const pinToUse = testPin || pin;
+    if (!pinToUse) { setError('Enter your vault PIN to upgrade.'); return; }
+    setError('');
+    setBusy(true);
+    try {
+      const { getHardwareFactor } = await import('@/wallet-core/keystore/hardware.js');
+      await getKeyStore().upgradeKekToV3(pinToUse, { getHardwareFactor });
+      // Refresh the persisted version + tier from the vault blob (metadata-only, no prompt).
+      try {
+        const ks = getKeyStore();
+        if (typeof ks.getVaultKekVersion === 'function') setKekVersion(await ks.getVaultKekVersion());
+        if (typeof ks.getVaultKekTier === 'function') setKekTier(await ks.getVaultKekTier());
+      } catch { setKekVersion(3); }
+      setPin('');
+      setUpgrading(false);
+      recordAudit('settings_changed');
+      toast.success('Hardware protection upgraded — your vault is now bound with a unique per-device key.');
+    } catch (e) {
+      // Same STABLE-code classification as enroll/remove; never render raw thrown text (I4).
       if (isWrongPinVaultError(e)) {
         setError(WRONG_PIN_MSG);
       } else {
@@ -320,13 +376,74 @@ export default function HardwareKekSettings() {
             </div>
           </div>
 
+          {/* Upgrade available — legacy (< v3) KEK wrap, native only. One-time consented
+              re-enroll to a per-enrollment salt-bound v3 wrap (C-1). Hidden while the
+              remove flow is open to avoid two competing PIN entries. */}
+          {isNative && kekVersion !== null && kekVersion < 3 && !removing && (
+            <div className="space-y-2 rounded-lg bg-muted/40 border border-border px-3 py-2">
+              <div className="flex items-start gap-2">
+                <ArrowUpCircle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold">Upgrade available</p>
+                  <p className="text-xs text-muted-foreground">
+                    This vault was secured with an earlier hardware key that wasn’t uniquely
+                    bound to this device. Upgrade to re-secure it with a per-device unique key.
+                    It happens once and asks you to authenticate twice.
+                  </p>
+                </div>
+              </div>
+              {!upgrading ? (
+                <button
+                  className="text-xs text-primary underline"
+                  onClick={() => { setUpgrading(true); setPin(''); setError(''); }}
+                >
+                  Upgrade hardware protection
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
+                  {busy
+                    ? (
+                      <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Upgrading — approve both prompts…
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          Enter your vault PIN. You’ll authenticate twice to re-secure the vault.
+                        </p>
+                        <PinPad
+                          value={pin}
+                          onChange={v => { setPin(v); setError(''); }}
+                          onComplete={handleUpgrade}
+                          disabled={busy}
+                          length={8}
+                          submitLabel="Upgrade hardware protection"
+                          numericOnly
+                        />
+                        <button
+                          className="text-xs text-muted-foreground underline"
+                          onClick={() => { setUpgrading(false); setPin(''); setError(''); }}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )
+                  }
+                </div>
+              )}
+            </div>
+          )}
+
           {!removing ? (
-            <button
-              className="text-xs text-destructive underline"
-              onClick={() => { setRemoving(true); setPin(''); setError(''); }}
-            >
-              Remove hardware protection
-            </button>
+            !upgrading && (
+              <button
+                className="text-xs text-destructive underline"
+                onClick={() => { setRemoving(true); setPin(''); setError(''); }}
+              >
+                Remove hardware protection
+              </button>
+            )
           ) : (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
