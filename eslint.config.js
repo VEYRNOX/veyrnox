@@ -142,9 +142,10 @@ export default [
     // Applied across the ENTIRE source tree (not just the React blocks above)
     // so the boundary holds wherever an import lives. The rule itself is a
     // no-op unless the importing file is in a forbidden outer-ring layer
-    // (src/ui, src/pages, src/routes, src/backend, src/api, src/state), so a
-    // broad glob is safe. Severity is "error": a violation FAILS CI and blocks
-    // the merge — the crypto-core must stay unreachable from UI/backend rings.
+    // (src/ui, src/pages, src/routes, src/backend, src/api, src/state,
+    // src/components), so a broad glob is safe. Severity is "error": a
+    // violation FAILS CI and blocks the merge — the crypto-core must stay
+    // unreachable from UI/backend rings.
     files: ["src/**/*.{js,mjs,cjs,jsx}"],
     plugins: {
       ring: pluginRing,
@@ -178,11 +179,52 @@ export default [
     //   src/pages/ColdSign.jsx        -> @/wallet-core/coldkey/* (unsigned tx / psbt / qr)
     //   src/pages/PriceAlerts.jsx     -> @/wallet-core/keystore (getKeyStore)
     //   src/pages/StealthWallets.jsx  -> @/wallet-core/derivation (deriveEvmAccount)
+    //   src/components/security/HardwareKekSettings.jsx
+    //                                 -> @/wallet-core/keystore (getKeyStore, KEK_ERR, tierBadge)
+    //   src/components/WalletEntry.jsx -> @/wallet-core/mnemonic (validateMnemonic),
+    //                                     @/wallet-core/keystore/web (WEB_VAULT_ERR)
+    //   src/components/PasskeySetup.jsx -> @/wallet-core/keystore/native.js
+    //                                     (dynamic import; suppressLock during biometric dialog)
     files: [
       "src/pages/CloudBackup.jsx",
       "src/pages/ColdSign.jsx",
       "src/pages/PriceAlerts.jsx",
       "src/pages/StealthWallets.jsx",
+      "src/components/security/HardwareKekSettings.jsx",
+      "src/components/WalletEntry.jsx",
+      "src/components/PasskeySetup.jsx",
+    ],
+    rules: {
+      "ring/ring-import-lint": "off",
+    },
+  },
+  {
+    // PERMANENT EXEMPTION — src/components/ui/** (design-system primitives).
+    // Pure presentational primitives (buttons, dialogs, inputs) with no wallet
+    // logic; the react block above already excludes them from app linting.
+    // Unlike the HONEST-DISABLE baseline above, this is NOT burn-down debt —
+    // it is the architectural decision documented in
+    // eslint/rules/ring-import-lint.js (FORBIDDEN_LAYERS note). The raw rule
+    // still reports these files (test-pinned in ring-boundary-enforcement
+    // .test.js) so the exemption lives HERE, visible and auditable. If a ui/
+    // primitive ever needs wallet data, it must take props or move out of ui/ —
+    // do NOT import crypto-core here.
+    files: ["src/components/ui/**/*"],
+    rules: {
+      "ring/ring-import-lint": "off",
+    },
+  },
+  {
+    // PERMANENT EXEMPTION — test scaffolding. Tests exercise crypto-core
+    // directly BY DESIGN (error contracts, mocks, the ring rule's own contract
+    // test). The ring boundary guards SHIPPED runtime reachability; test files
+    // are not shipped, so this is principled, not baselined debt. Kept as a
+    // rules-off block (NOT an `ignores` on the enforcement block above) so test
+    // files retain that block's JSX parser settings — src/lib/__tests__/*.jsx
+    // has no other config block supplying them.
+    files: [
+      "src/**/*.{test,spec}.{js,jsx}",
+      "src/**/__tests__/**",
     ],
     rules: {
       "ring/ring-import-lint": "off",

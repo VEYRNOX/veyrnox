@@ -62,6 +62,11 @@ const CRYPTO_CORE_SEGMENTS = [
 /**
  * Outer-ring layers that must never import crypto-core directly. Matched
  * against the importing file's path (normalized to forward slashes).
+ *
+ * NOTE: `src/components/ui` is EXCLUDED from the forbidden list below
+ * (see the baseline exceptions section in eslint.config.js) because it
+ * contains pure UI primitives with no wallet logic. All other components
+ * (security/, hw/, etc.) are forbidden and must route through R2 facades.
  */
 const FORBIDDEN_LAYERS = [
   "src/ui",
@@ -70,6 +75,7 @@ const FORBIDDEN_LAYERS = [
   "src/backend",
   "src/api",
   "src/state",
+  "src/components", // UI components (exception: src/components/ui)
 ];
 
 const MESSAGE =
