@@ -1,6 +1,6 @@
 // src/risk/signals/s2-unlimited-approval.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL. AUDIT-PRIORITY SIGNAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23). AUDIT-PRIORITY SIGNAL.
 //
 // S2 — unlimited approval. The classic token-drainer vector: a victim signs
 // approve(spender, value) where value is effectively infinite, handing the

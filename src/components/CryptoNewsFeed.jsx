@@ -111,16 +111,21 @@ export default function CryptoNewsFeed() {
           <Newspaper className="h-4 w-4 text-primary" />
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Market News</p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          aria-label="Refresh market news"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
+        {/* I3: refetch() bypasses the `enabled` gate in react-query v5, so in a
+            decoy/hidden session tapping this would call api.rss2json.com — live
+            egress. Hide the trigger entirely when the query is gated off. */}
+        {i3Active && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            aria-label="Refresh market news"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+        )}
       </div>
 
       {!i3Active ? (

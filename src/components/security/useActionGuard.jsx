@@ -26,7 +26,9 @@
 // Honest scope: the 'password' method enforces on the ACTIVE set (primary);
 // decoy/hidden sessions carry no per-set record this phase (the flagged decoy-parity
 // follow-up). The 'passkey' method is device-global, so it applies in any session on
-// this device. UNAUDITED-PROVISIONAL.
+// this device. PROVISIONAL — independent audit complete (ECC 2026-06-23, §24;
+// H-1 passkey-bypass found and fixed — PR #340, resolveSend2faMethod). Still
+// BUILT, not 'verified'.
 
 import { useState, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';

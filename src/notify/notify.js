@@ -1,6 +1,8 @@
 // src/notify/notify.js
 //
-// In-app Notifications v1 (transient, Path A) — UNAUDITED-PROVISIONAL.
+// In-app Notifications v1 (transient, Path A) — PROVISIONAL — independent audit
+// complete (ECC 2026-06-23, §24; M-3/M-5/M-6/L-2 found and fixed, PR #340).
+// Still BUILT, not 'verified'.
 // Build brief §3 (pure mapper) + §4 (event set) + §5 (one object per event).
 //
 // PURE: event in, notification object out. No I/O, no network, no storage, no

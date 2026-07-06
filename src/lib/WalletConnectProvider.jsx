@@ -24,10 +24,10 @@ import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
-import { DEMO } from '@/api/demoClient';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
 import { detect, degrade, browserProbeSource } from '@/rasp';
+import { DEMO } from '@/api/demoClient';
 
 // audit-H8: pure address validator for personal_sign. Exported for unit tests.
 // personal_sign params are [hexMessage, address]; some legacy dApps reverse the
@@ -375,10 +375,12 @@ export function WalletConnectProvider({ children }) {
   useEffect(() => {
     // I3: deniability sessions must make zero backend calls — WC relay WebSocket
     // must not open for decoy or hidden sessions (violates I3 if it does).
-    // DEMO: demo tours must also stay relay-silent (M-6 class). Demo is already
-    // locked, but that is incidental — the explicit gate survives isUnlocked
-    // semantic changes.
-    if (!isUnlocked || isDecoy || isHidden || DEMO || !isWalletConnectConfigured()) return;
+    // DEMO: a stale persisted `veyrnox-demo=1` can coexist with a REAL unlocked,
+    // non-decoy vault (the known localStorage trap). Demo presents fake data and
+    // simulates sends elsewhere, so the WC relay must NOT open here — otherwise a
+    // demo facade would front a live relay socket and real dApp signing/broadcast
+    // (I2/I3 violation). Fail closed (I4): treat demo like a deniability session.
+    if (DEMO || !isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
     let cancelled = false;
     // I2-WC-RELAY: WC relay opens at unlock time, not pairing. Lazy-init is a TODO (see audit-2026-07-04-internal.md).
     initWalletConnect()
@@ -415,8 +417,11 @@ export function WalletConnectProvider({ children }) {
   }, [isUnlocked, isDecoy, isHidden, refreshSessions]);
 
   // Destroy client when wallet locks or transitions into a deniability session (I3).
+  // DEMO is treated exactly like a deniability transition: if a live client somehow
+  // survives into a demo session (e.g. demo flag flipped after unlock), tear it down
+  // so no relay socket or real dApp signing lingers behind the demo facade (I4).
   useEffect(() => {
-    if (!isUnlocked || isDecoy || isHidden) {
+    if (DEMO || !isUnlocked || isDecoy || isHidden) {
       destroyWalletConnect();
       setInitialized(false);
       setPendingProposals([]);

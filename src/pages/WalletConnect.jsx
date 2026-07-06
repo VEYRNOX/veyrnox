@@ -78,6 +78,31 @@ function WalletConnectInner() {
     if (!activeRequest && pendingRequests.length) setActiveRequest(pendingRequests[0]);
   }, [pendingRequests, activeRequest]);
 
+  // Demo is a backend-less walkthrough with no unlocked vault. dApp sessions are
+  // deliberately never simulated (the old fake WC session pages were deleted as
+  // fake-security CRITICALs), so this must win over both the "not configured" and
+  // "locked" messages below rather than falling through to a confusing generic
+  // "Unlock your wallet" line. DEMO is a static, session-type-independent constant
+  // (not isDecoy/isHidden or any per-session state), so this branch stays I3-safe.
+  if (DEMO) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.heading}>dApp Connector</h1>
+        <div className={styles.setupCard} data-testid="wc-demo-notice">
+          <p className={styles.setupTitle}>Disabled in demo mode</p>
+          <p className={styles.setupBody}>
+            Demo is a walkthrough — dApp sessions are never simulated, and pairing or
+            signing only ever operate on a real, unlocked wallet.
+          </p>
+          <p className={styles.setupBody}>
+            Leave demo (open <code>/?demo=0</code>) to use the dApp Connector.
+          </p>
+        </div>
+        <PopularDapps />
+      </div>
+    );
+  }
+
   if (!CONFIGURED) {
     return (
       <div className={styles.page}>
@@ -100,17 +125,10 @@ function WalletConnectInner() {
   }
 
   if (!isUnlocked) {
-    // Demo tours never unlock the real WalletProvider, so demo always lands here.
-    // No fake pairing (no-fake-security): say honestly that connections are off,
-    // and keep the network-silent PopularDapps grid so the page is not blank.
     return (
       <div className={styles.page}>
         <h1 className={styles.heading}>dApp Connector</h1>
-        <p className={styles.locked}>
-          {DEMO
-            ? 'dApp connections are disabled in demo — no real signing.'
-            : 'Unlock your wallet to connect to dApps.'}
-        </p>
+        <p className={styles.locked}>Unlock your wallet to connect to dApps.</p>
         <PopularDapps />
       </div>
     );

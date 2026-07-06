@@ -1,6 +1,6 @@
 // src/risk/signals/s4-address-poisoning.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL. AUDIT-PRIORITY SIGNAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23). AUDIT-PRIORITY SIGNAL.
 //
 // S4 — address poisoning / lookalike. Flags a recipient that resembles a real
 // counterparty from THIS wallet-set's history (I3: active-set-scoped only) but

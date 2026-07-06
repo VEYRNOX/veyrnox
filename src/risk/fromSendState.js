@@ -1,6 +1,6 @@
 // src/risk/fromSendState.js
 //
-// Risk Scoring v1 — UNAUDITED-PROVISIONAL.
+// Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
 //
 // Pure adapter: maps SendCrypto's live local state to the three inputs score()
 // expects — (unsignedTx, activeSetLocalState, chainData). NO network, NO signer,

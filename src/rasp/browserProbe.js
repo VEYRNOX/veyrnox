@@ -1,7 +1,7 @@
 // src/rasp/browserProbe.js
 //
 // Browser-level RASP probe source (Phase 2a, web leg).
-// BUILT · UNAUDITED-PROVISIONAL · NO EGRESS
+// BUILT · PROVISIONAL (ECC independent audit complete 2026-06-23) · NO EGRESS
 //
 // Fills the ProbeSource seam that detect() exposes for non-native builds.
 // This is a real probe — not a native Capacitor plugin, but a genuine

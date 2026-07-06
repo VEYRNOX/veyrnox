@@ -1,6 +1,9 @@
 // src/sign-gate/__tests__/presign.test.js
 //
-// RASP §7 live wiring — UNAUDITED-PROVISIONAL. Roadmap Phase 3.
+// RASP §7 live wiring — PROVISIONAL — independent audit complete (ECC
+// 2026-06-23, §24; sign-gate confirmed genuinely blocking at the wired
+// call-site, no egress; M-4 stale-comment fix). presignGate is WIRED and LIVE
+// in SendCrypto. Still BUILT, not 'verified'.
 //
 // presignGate is the PURE pre-sign decision the chokepoint enforces: it composes
 // the two planes (via composeGate) and adds the proceed/refuse rule the signer
