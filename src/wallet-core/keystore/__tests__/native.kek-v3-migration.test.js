@@ -10,9 +10,17 @@
 //   - hfOptsForBlob: v3 → { kekSalt }; v2 → undefined (inert binding, treat as fixed-salt);
 //     v1 → undefined;
 //   - stamp NEW enrollments v3 (per-enrollment random kekSalt);
-//   - LAZY-UPGRADE a v2 blob on successful unlock: fresh salt → getHardwareFactor({kekSalt})
-//     → re-wrap DEK → persist atomically → stamp v3. If ANY upgrade step fails, the v2 blob
-//     is left byte-for-byte untouched (never brick).
+//   - UPGRADE a v2 blob to v3 on changePassword (NOT on unlock — see 2026-07-06 below):
+//     a genuine re-enroll with a fresh salt → getHardwareFactor({kekSalt}) → re-wrap the
+//     SAME DEK → persist via fail-closed safeWriteVault → stamp v3.
+//
+// 2026-07-06 UPDATE (single-biometric-per-unlock fix): the v2→v3 upgrade was REMOVED from
+// the unlock hot path — re-deriving H under a fresh salt on unlock forced a SECOND biometric
+// prompt every unlock (the cross-platform 3-prompt bug) and could re-prompt forever on a
+// failed write. Sections (C)/(D) below were re-pointed from the (removed) lazy-unlock
+// migration to the changePassword upgrade path, preserving their security assertions; the
+// changePassword path is fail-CLOSED (throws), unlike the old best-effort/brickless unlock
+// path. See native.unlock-single-biometric.test.js for the single-prompt invariant.
 //
 // Mocking pattern mirrors native.kek-v2-hmac-binding.test.js / native.kek-preserving-repersist.
 
@@ -139,51 +147,57 @@ describe('(B) enrollKek — stamps v3 with a per-enrollment random kekSalt', () 
   });
 });
 
-describe('(C) migration happy path — v2 unlock lazily upgrades to v3', () => {
-  it('unlocking a v2 vault re-wraps the SAME DEK and stamps v3', async () => {
+// RE-POINTED (2026-07-06): the v2→v3 upgrade was REMOVED from the unlock hot path (it forced
+// a second biometric prompt per unlock — the cross-platform 3-prompt bug). The salt-binding
+// upgrade now happens on changePassword, which re-enrolls under a genuine v3 wrap with a
+// fresh per-enrollment kekSalt and a FAIL-CLOSED safeWriteVault (throws on write failure —
+// no swallow). Sections (C)/(D) below preserve the ORIGINAL security-meaningful assertions
+// (fresh salt binding, SAME DEK preserved, v3 stamp, seed ct/iv unchanged, key-material
+// zeroing, fail-closed) — re-pointed from unlock to that changePassword path.
+describe('(C) v2→v3 upgrade happens on changePassword — re-wraps the SAME DEK and stamps v3', () => {
+  it('changePassword on a v2 vault re-wraps the SAME DEK, rotates the salt, and stamps v3', async () => {
     setVault(JSON.stringify({
       v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
       kekWrap: { v: 1, iv: 'wrapiv', ct: 'wrapct' }, kekSalt, hardwareKekVersion: 2,
     }));
-    // First getHF: v2 unlock (fixed salt → no kekSalt). Second getHF: v3 re-wrap (fresh salt).
+    // First getHF: OLD side unlock (v2 → fixed salt, no kekSalt). Second getHF: NEW v3 re-wrap
+    // (fresh salt). The DEK recovered on the old side must be the DEK re-wrapped for v3.
     const getHF = vi.fn(async () => newHF());
-    // The DEK recovered on unlock must be the DEK re-wrapped for v3.
     const dek = new Uint8Array(32).fill(4);
     kekMock.unwrapDek.mockResolvedValue(dek);
 
-    const secret = await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
-    expect(secret).toBe('seed'); // unlock still returns the decrypted seed
+    await nativeKeyStore.changePassword('old', 'new', { getHardwareFactor: getHF });
 
     const written = JSON.parse(store.get(VAULT_KEY));
     expect(written.hardwareKekVersion).toBe(3);
-    expect(written.kekSalt).not.toBe(kekSalt); // fresh salt
+    expect(written.kekSalt).not.toBe(kekSalt); // salt rotated (fresh per-enrollment)
     expect(written.kekWrap).toEqual({ v: 1, iv: 'reiv', ct: 'rect' }); // re-wrapped
-    // The seed ciphertext (iv/ct) is preserved — only the KEK wrap rotates.
+    // The seed ciphertext (iv/ct) is preserved — only the KEK wrap rotates (§3 property).
     expect(written.iv).toBe('oldiv');
     expect(written.ct).toBe('oldct');
 
-    // getHF called twice: once for v2 unlock (no kekSalt), once for v3 re-wrap (fresh salt).
+    // getHF called twice: once for the v2 unlock side (no kekSalt), once for the v3 re-wrap.
     expect(getHF).toHaveBeenCalledTimes(2);
-    expect(getHF.mock.calls[0][0]).toBeUndefined(); // v2 unlock: fixed salt
+    expect(getHF.mock.calls[0][0]).toBeUndefined(); // v2 unlock side: fixed salt
     const rewrapArg = getHF.mock.calls[1][0];
     expect(rewrapArg.kekSalt).toBeInstanceOf(Uint8Array);
     expect(Array.from(rewrapArg.kekSalt)).toEqual(Array.from(saltBytesOf(written.kekSalt)));
-    // The DEK re-wrapped is the SAME DEK recovered on unlock (unchanged seed protection).
+    // The DEK re-wrapped is the SAME DEK recovered on the old side (unchanged seed protection).
     expect(kekMock.wrapDek).toHaveBeenCalledWith(expect.any(Uint8Array), dek);
   });
 
-  it('after upgrade the vault unlocks on the v3 path (kekSalt bound)', async () => {
+  it('after the changePassword upgrade the vault unlocks on the v3 path in a SINGLE prompt', async () => {
     setVault(JSON.stringify({
       v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
       kekWrap: { v: 1 }, kekSalt, hardwareKekVersion: 2,
     }));
-    await nativeKeyStore.unlock('pw', { getHardwareFactor: vi.fn(async () => newHF()) });
+    await nativeKeyStore.changePassword('old', 'new', { getHardwareFactor: vi.fn(async () => newHF()) });
 
-    // Now the stored blob is v3 — a fresh unlock must pass { kekSalt } (v3 binding).
+    // Now the stored blob is v3 — a fresh unlock passes { kekSalt } (v3 binding) exactly ONCE.
     const getHF2 = vi.fn(async () => newHF());
-    await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF2 });
+    await nativeKeyStore.unlock('new', { getHardwareFactor: getHF2 });
     const v3blob = JSON.parse(store.get(VAULT_KEY));
-    // On a v3 blob the (single) unlock getHF call carries the bound kekSalt.
+    expect(getHF2).toHaveBeenCalledTimes(1); // single prompt on the upgraded vault
     const arg = getHF2.mock.calls[0][0];
     expect(arg).toBeTruthy();
     expect(arg.kekSalt).toBeInstanceOf(Uint8Array);
@@ -191,62 +205,51 @@ describe('(C) migration happy path — v2 unlock lazily upgrades to v3', () => {
   });
 });
 
-describe('(D) migration is BRICKLESS — any upgrade-step failure leaves the v2 blob intact', () => {
+describe('(D) changePassword v2→v3 upgrade is FAIL-CLOSED — a failed re-wrap/persist throws (never swallowed)', () => {
+  // On the unlock path the removed lazy upgrade was best-effort/brickless (it swallowed).
+  // changePassword is DIFFERENT and STRONGER: any failure THROWS (I4 fail-closed), and the
+  // stored blob is left at the pre-change v2 state (the failing write never replaces it).
   const v2blob = () => JSON.stringify({
     v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
     kekWrap: { v: 1, iv: 'wrapiv', ct: 'wrapct' }, kekSalt, hardwareKekVersion: 2,
   });
 
-  it('re-wrap H (second getHardwareFactor) fails → v2 blob unchanged, unlock still succeeds', async () => {
+  it('re-wrap H (the v3 getHardwareFactor) fails → changePassword THROWS, v2 blob unchanged', async () => {
     setVault(v2blob());
-    // First getHF (unlock) OK; second getHF (re-wrap) throws.
+    // First getHF (old-side unlock) OK; second getHF (new v3 re-wrap) throws.
     const getHF = vi.fn()
       .mockResolvedValueOnce(newHF())
       .mockRejectedValueOnce(new Error('biometric cancelled during upgrade'));
 
-    const secret = await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
-    expect(secret).toBe('seed'); // unlock MUST still succeed — upgrade is best-effort
+    await expect(
+      nativeKeyStore.changePassword('old', 'new', { getHardwareFactor: getHF }),
+    ).rejects.toThrow('biometric cancelled during upgrade');
 
     const still = JSON.parse(store.get(VAULT_KEY));
-    expect(still.hardwareKekVersion).toBe(2); // untouched
+    expect(still.hardwareKekVersion).toBe(2); // untouched — no partial upgrade
     expect(still.kekSalt).toBe(kekSalt);
     expect(still.kekWrap).toEqual({ v: 1, iv: 'wrapiv', ct: 'wrapct' });
   });
 
-  it('re-wrap (wrapDek) fails → v2 blob unchanged, unlock still succeeds', async () => {
+  it('re-wrap (wrapDek) fails → changePassword THROWS, v2 blob unchanged', async () => {
     setVault(v2blob());
     kekMock.wrapDek.mockRejectedValueOnce(new Error('wrap failed'));
-    const secret = await nativeKeyStore.unlock('pw', { getHardwareFactor: vi.fn(async () => newHF()) });
-    expect(secret).toBe('seed');
+    await expect(
+      nativeKeyStore.changePassword('old', 'new', { getHardwareFactor: vi.fn(async () => newHF()) }),
+    ).rejects.toThrow('wrap failed');
     const still = JSON.parse(store.get(VAULT_KEY));
     expect(still.hardwareKekVersion).toBe(2);
     expect(still.kekSalt).toBe(kekSalt);
   });
 
-  it('persist (safeWriteVault read-back) fails → v2 blob restored, unlock still succeeds', async () => {
+  it('missing hardware factor → changePassword FAILS CLOSED (NO_HARDWARE_FACTOR), v2 blob unchanged', async () => {
     setVault(v2blob());
-    // Make the read-back after the v3 write return a mismatching value ONCE so
-    // safeWriteVault throws VAULT_WRITE_VERIFY_FAILED, then keep the store readable.
-    let writes = 0;
-    secureStoreMock.set.mockImplementation(async (key, data) => {
-      writes++;
-      // Corrupt only the v3 upgrade write's persistence (the write whose blob is v3).
-      if (typeof data === 'string' && data.includes('"hardwareKekVersion":3')) {
-        store.set(key, 'CORRUPTED_DIFFERENT_VALUE');
-      } else {
-        store.set(key, data);
-      }
-    });
-
-    const secret = await nativeKeyStore.unlock('pw', { getHardwareFactor: vi.fn(async () => newHF()) });
-    expect(secret).toBe('seed'); // unlock succeeds despite the failed upgrade
-
-    // The v2 blob must remain unlockable — the corrupted v3 write must not be left in place.
-    const still = store.get(VAULT_KEY);
-    expect(still).not.toBe('CORRUPTED_DIFFERENT_VALUE');
-    const parsed = JSON.parse(still);
-    expect(parsed.hardwareKekVersion).toBe(2);
-    expect(parsed.kekSalt).toBe(kekSalt);
+    await expect(
+      nativeKeyStore.changePassword('old', 'new', {}),
+    ).rejects.toThrow('NO_HARDWARE_FACTOR');
+    const still = JSON.parse(store.get(VAULT_KEY));
+    expect(still.hardwareKekVersion).toBe(2);
+    expect(still.kekSalt).toBe(kekSalt);
   });
 });
 
