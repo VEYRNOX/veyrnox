@@ -1,5 +1,7 @@
 # Dependencies
-node_modules/
+# No trailing slash: also ignores a stray `node_modules` symlink (an absolute
+# self-referential one was accidentally committed in #667 and untracked here).
+node_modules
 
 # Per-branch worktrees (see scripts/worktree.ps1 and docs/worktrees.md)
 .worktrees/
