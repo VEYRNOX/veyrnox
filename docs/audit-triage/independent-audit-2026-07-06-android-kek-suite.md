@@ -6,11 +6,14 @@
 > code, tests, patches, Capacitor config, and evidence docs that are actually in the
 > tree, cross-checks them against the internal status table, and reconciles claims.
 >
-> **PROVENANCE — INTERNAL, AI-drafted, owner-to-decide.** Drafted by a Claude Code
-> session on 2026-07-06 against repo HEAD. This is a **code-honesty and correctness
-> audit**, one tier below the live-device + formal-cryptography third-party audit the
-> code itself still asks for (`UNAUDITED-PROVISIONAL`). Recommendations are advisory;
-> status-doc edits are the owner's call. **Nothing in this PR changes source or tests.**
+> **PROVENANCE — INDEPENDENT REVIEW (of the implementation), AI-conducted, owner-directed.**
+> Performed by a separate Claude Code session on 2026-07-06 against repo HEAD — independent
+> *of the code's authors* (a distinct reviewer, not the implementer). This is a
+> **code-honesty and correctness review**. It is explicitly **one tier below, and does NOT
+> satisfy, the external live-device + formal-cryptography third-party audit** (§24) the code
+> itself still asks for (`UNAUDITED-PROVISIONAL`) — "independent" here means independent of
+> the implementer, NOT an external human-cryptographer engagement. Recommendations are
+> advisory; status-doc edits are the owner's call. **Nothing in this PR changes source or tests.**
 
 ## Scope and method
 
