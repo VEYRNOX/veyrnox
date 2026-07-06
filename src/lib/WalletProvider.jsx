@@ -943,25 +943,28 @@ export function WalletProvider({ children }) {
     // only when biometric unlock is enabled, else PIN/password-only.
     const plaintext = await keyStore.unlock(password, {
       requireBiometric: isBiometricUnlockEnabled(),
-      // KEK-enrolled vaults (native only): forward the hardware factor so
-      // native.js can derive H and unwrap the DEK — same as the main unlock flow
-      // and persistPrimaryContents. On web keyStore, getHardwareFactor is undefined
-      // and the opt is ignored; on a non-enrolled vault it is never called. Missing
-      // it on an enrolled vault throws KEK_NO_HARDWARE_FACTOR (I4/I6, fail-closed),
-      // which broke add/import/remove wallet on enrolled vaults.
+      // KEK-enrolled vaults (native Secure Enclave/StrongBox OR web WebAuthn PRF):
+      // forward the hardware factor so the keystore can derive H and unwrap the DEK —
+      // same as the main unlock flow and persistPrimaryContents. webKeyStore.getHardwareFactor
+      // is a real method (WebAuthn PRF), NOT undefined — on a PRF-enrolled web vault it IS
+      // used; on a non-enrolled vault (native or web) it is never called. Missing it on an
+      // enrolled vault throws KEK_NO_HARDWARE_FACTOR (I4/I6, fail-closed), which broke
+      // add/import/remove wallet on enrolled vaults.
       getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
     }); // generic throw on wrong pw / no vault
     return mv.parseVault(plaintext).container;
   }, []);
 
   // Persist NEW primary-vault CONTENT while PRESERVING the at-rest format (KEK
-  // downgrade fix, I4). On a KEK-enrolled (kek-dek) native vault this re-encrypts the
-  // new plaintext under the EXISTING DEK and keeps kekWrap/kekSalt — it does NOT
-  // rewrite bare (the device-confirmed bug that flipped the badge OFF). On a bare
-  // vault (and always on web, which has no KEK at rest) it writes bare exactly like
-  // createVault. `getHardwareFactor` is the SAME factor used at unlock; on web it is
-  // undefined and ignored. Fail-closed: on an enrolled vault a missing/failed hardware
-  // factor THROWS inside saveVaultContents rather than downgrading protection.
+  // downgrade fix, I4). On a KEK-enrolled (kek-dek) vault — native Secure Enclave/
+  // StrongBox OR web WebAuthn PRF — this re-encrypts the new plaintext under the
+  // EXISTING DEK and keeps kekWrap/kekSalt — it does NOT rewrite bare (the device-
+  // confirmed native bug that flipped the badge OFF, and its web sibling found
+  // 2026-07-06 that silently dropped the PRF wrap). On a bare vault it writes bare
+  // exactly like createVault. `getHardwareFactor` is the SAME factor used at unlock;
+  // web enrolls a real WebAuthn PRF factor, so it is NOT undefined on web and IS used
+  // when the vault is enrolled. Fail-closed: on an enrolled vault a missing/failed
+  // hardware factor THROWS inside saveVaultContents rather than downgrading protection.
   const persistPrimaryContents = useCallback(async (serialized, password) => {
     await keyStore.saveVaultContents(serialized, password, {
       getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
@@ -1448,10 +1451,11 @@ export function WalletProvider({ children }) {
       // failure can no longer be misread below as a wrong password (→ empty decoy).
       mnemonic = await keyStore.unlock(password, {
         requireBiometric: isBiometricUnlockEnabled() && !opts.skipBiometric,
-        // KEK-enrolled vaults (native only): pass the hardware factor so
-        // native.js can derive H and unwrap the DEK. On web keyStore, getHardwareFactor
-        // is undefined and the opt is ignored. If not enrolled (no kekWrap in blob),
-        // getHardwareFactor is never called inside native.js unlock.
+        // KEK-enrolled vaults (native Secure Enclave/StrongBox OR web WebAuthn PRF):
+        // pass the hardware factor so the keystore can derive H and unwrap the DEK.
+        // webKeyStore.getHardwareFactor is a real WebAuthn PRF method, NOT undefined —
+        // on a PRF-enrolled web vault it IS used. If not enrolled (no kekWrap in blob),
+        // getHardwareFactor is never called inside unlock (native or web).
         getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
       });
       // VULN-17 fix: equalize timing between primary success (1 KDF) and all
@@ -1575,11 +1579,13 @@ export function WalletProvider({ children }) {
       // KEK DOWNGRADE FIX (I4): any CONTENT re-persist of the primary vault must go
       // through the KEK-PRESERVING path so a KEK-enrolled (kek-dek) vault is NOT
       // silently rewritten bare (which clobbered kekWrap and flipped the badge OFF on
-      // every unlock). On a bare vault saveVaultContents writes bare exactly like
-      // createVault. `getHardwareFactor` is the SAME factor unlock just used; on web
-      // it is undefined and ignored (no KEK at rest). The migration branches actually
-      // change content, so the one hardware prompt they may cost is acceptable (they
-      // are one-time and idempotent). The pure lastUnlockAt stamp does NOT re-wrap.
+      // every unlock, and its web sibling that silently dropped the WebAuthn PRF wrap).
+      // On a bare vault saveVaultContents writes bare exactly like createVault.
+      // `getHardwareFactor` is the SAME factor unlock just used; web enrolls a real
+      // WebAuthn PRF factor, so on a PRF-enrolled web vault it IS used (it is NOT
+      // undefined on web). The migration branches actually change content, so the one
+      // hardware prompt they may cost is acceptable (they are one-time and idempotent).
+      // The pure lastUnlockAt stamp does NOT re-wrap.
       const repersistOpts = { getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore) };
       if (migrated) {
         const firstId = mv.listWalletIds(stamped)[0];
