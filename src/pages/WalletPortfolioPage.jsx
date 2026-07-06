@@ -476,7 +476,13 @@ export default function WalletPortfolioPage() {
     const isActive = w.id === activeWalletId;
     return (
       <div key={w.id} className="rounded-2xl border border-border bg-card overflow-hidden">
-        <button onClick={() => switchWallet(w.id)} className="w-full text-left flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => switchWallet(w.id)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); switchWallet(w.id); } }}
+          className="w-full text-left flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40 active:bg-secondary/60 transition-colors cursor-pointer"
+        >
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               {isActive && <Star className="h-3 w-3 text-primary fill-primary shrink-0" />}
@@ -492,17 +498,19 @@ export default function WalletPortfolioPage() {
             </p>
           </div>
           {canManage && (
-            <button
-              type="button"
-              aria-label={`Options for ${w.name}`}
-              aria-haspopup="menu"
-              aria-expanded={menuFor === w.id}
-              onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === w.id ? null : w.id); }}
-              className="relative flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground"
-            >
-              <MoreVertical className="h-4 w-4" />
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                aria-label={`Options for ${w.name}`}
+                aria-haspopup="menu"
+                aria-expanded={menuFor === w.id}
+                onClick={() => setMenuFor(menuFor === w.id ? null : w.id)}
+                className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
               {menuFor === w.id && (
-                <div className="absolute right-0 top-6 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
+                <div className="absolute right-0 top-11 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> Manage assets</button>
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> Rename</button>
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> Move to portfolio</button>
@@ -510,9 +518,9 @@ export default function WalletPortfolioPage() {
                   <button className="w-full text-left px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> Remove</button>
                 </div>
               )}
-            </button>
+            </div>
           )}
-        </button>
+        </div>
         <div className="divide-y divide-border">
           {(w.enabledAssets || []).length === 0 ? (
             <p className="px-4 py-4 text-xs text-muted-foreground text-center">No assets shown. Use “Manage assets”.</p>
