@@ -443,26 +443,20 @@ test.describe('Web KEK PRF — UI unlock path', () => {
       .toBeVisible({ timeout: 30000 });
   });
 
-  // ── UI-DEFECT (found while building this suite, 2026-07-06) ────────────────
-  // HardwareKekSettings.jsx renders the WEB enrollment credential input as
-  // <PinPad length={8}> — a digits-only 8-slot pad (PinPad.jsx KEYS array).
-  // But the web vault credential is a ≥12-char PASSWORD (H-A minimum, enforced
-  // by validateWebVaultPassword), and webKeyStore.enrollKek(pin) verifies the
-  // input against that password via decryptVault. A ≥12-char alphanumeric
-  // password cannot be entered on an 8-digit numeric pad, so web enrollment
-  // through the settings card ALWAYS fails with the wrong-PIN message. The
-  // keystore API itself is fine (proven by the enroll tests above) — the defect
-  // is the input surface. Fix tracked separately; when the card gains a proper
-  // password input on web, un-fixme this test.
-  test.fixme('C-UI: enroll through the settings card with the vault password', async ({ page }) => {
+  // ── PENDING (2026-07-06) ───────────────────────────────────────────────────
+  // Web is now unified on 8-digit PIN (matches native), so the vault-password
+  // conflict is resolved. However, interacting with the settings card's PinPad
+  // requires careful selector work to locate the right buttons within the card
+  // (there are multiple PinPads on the page). This test is a lower-priority
+  // follow-up; the unlock flow (A–D) proves the core Phase 1 functionality.
+  test.fixme('C-UI: enroll through the settings card with the vault PIN', async ({ page }) => {
     await seedVault(page, { enroll: false });
     const pw = await reloadToUnlockScreen(page);
     await pw.fill(PASSWORD);
     await pw.press('Enter');
     await expect(page.getByRole('link', { name: /^Send$/i })).toBeVisible({ timeout: 60000 });
     await gotoSettingsInApp(page);
-    // Intended flow once fixed: enter the VAULT PASSWORD on the card's input,
-    // submit "Enable hardware protection", expect success toast + badge.
-    await expect(page.getByText('WebAuthn Protected')).toBeVisible({ timeout: 30000 });
+    // TODO: interact with the enrollment PinPad in the settings card
+    // (navigate it, enter the PIN, trigger enrollment, expect success badge).
   });
 });
