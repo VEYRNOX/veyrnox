@@ -1,39 +1,43 @@
 // lib/tier.js
 //
-// SUBSCRIPTION / TIER DISPLAY SCAFFOLD (non-functional).
+// SUBSCRIPTION / TIER DISPLAY CATALOGUE.
 //
-// This is a DISPLAY-ONLY model of subscription tiers. There is NO subscription
-// system wired up: no payment, no in-app-purchase, no entitlement check, no
-// persistence. getCurrentTier() always returns "free".
+// This file is the presentation model for the tier UI (TIERS, FREE_FEATURES,
+// SAFETY_PLUS_FEATURES — consumed by the Plans and Safety Plus screens). It does
+// NOT resolve entitlement.
 //
-// FUTURE: real entitlement will come from a VERIFIED in-app-purchase receipt
-// (App Store / Play Billing) resolved at launch. When that exists it REPLACES
-// the hard-coded "free" below — the tier must never be inferred from anything
-// the client can forge, and a paid feature must never be unlocked by this file.
-// Until then every user is "free" and the Safety Plus card is preview only.
+// Real in-app-purchase billing IS wired up (App Store / Play Billing via
+// RevenueCat): the live, verified, fail-closed tier is resolved by
+// lib/entitlement.js `resolveTier()` and exposed through lib/TierProvider.jsx
+// `useTier()`, which is what lib/… route gating (components/FeatureGate.jsx)
+// actually reads. BUILT / unit-tested only — NOT device-verified. See
+// docs/Feature-Status.md §11 and docs/superpowers/plans/2026-07-06-iap-subscription-stitching.md.
 
-// The user's current tier. Hard-coded to "free" because no billing exists yet.
-// A real implementation reads a verified IAP receipt; this stub does NOT.
+// Legacy display-only stub, retained for the tier catalogue tests. It always
+// returns "free" and is NOT used for gating — never infer entitlement from this
+// (the client can forge it). The real, forge-resistant source is resolveTier().
 export function getCurrentTier() {
   return 'free';
 }
 
-// Two tiers: Free (the complete wallet) and Safety Plus (pre-sign intelligence
-// layer + advanced analytics). Life-safety features (duress PIN, panic wipe,
-// stealth wallets) are FREE on principle — physical safety must not be paywalled.
-// Prices are confirmed. No payment system exists yet; these cards are preview only.
+// Two tiers: Free (the complete wallet, including every security/anti-fraud
+// control) and Safety Plus (advanced analytics / premium insights only).
+// Security and anti-fraud controls are FREE on principle — a safety-positioned
+// wallet must never paywall the controls that keep users safe. Display catalogue
+// only — real purchasing/entitlement lives in the billing layer above; these
+// cards drive the Plans UI.
 export const TIERS = [
   {
     id: 'free',
     name: 'Free',
     price: '$0',
-    tagline: 'The complete self-custody wallet, all 10 assets, and all life-safety security. No account required.',
+    tagline: 'The complete self-custody wallet, all 10 assets, and every security & anti-fraud control. No account required.',
   },
   {
     id: 'safety_plus',
     name: 'Safety Plus',
     price: '$5.99/mo',
-    tagline: 'Pre-sign intelligence and advanced analytics — harden your wallet day to day.',
+    tagline: 'Advanced analytics and premium insights — go deeper on your portfolio.',
   },
 ];
 
@@ -50,12 +54,6 @@ export const FREE_FEATURES = [
   { name: 'Portfolio & P&L tracking', summary: 'Net-worth overview and fee analytics' },
   { name: 'Address Book', summary: 'Saved, labelled addresses with per-chain validation' },
   { name: 'NFT Gallery', summary: 'View owned NFTs across chains' },
-];
-
-// Safety Plus tier headline features — BUILT and working today. Listing a
-// feature here is presentation only — it does NOT gate or unlock the feature
-// until real billing (IAP receipt verification) is wired up.
-export const SAFETY_PLUS_FEATURES = [
   { name: 'Hardware wallet (Ledger & Trezor)', summary: 'Cold-key signing for ETH, BTC, SOL — keys never leave the device' },
   { name: 'Encrypted Personal Backup', summary: 'Export an encrypted .enc vault file for off-device storage' },
   { name: 'Spam Token Filter', summary: 'Auto-classify and hide airdropped scam tokens' },
@@ -65,11 +63,17 @@ export const SAFETY_PLUS_FEATURES = [
   { name: 'Security Dashboard', summary: 'At-a-glance view of your wallet security posture' },
   { name: 'Spending Limits', summary: 'Rule-based per-transaction and daily limits' },
   { name: 'Token Approvals (View + Revoke)', summary: 'Inspect and revoke ERC-20 allowances' },
+  { name: 'Audit Log', summary: 'Optional encrypted local activity record' },
+  { name: 'Message Signing', summary: 'Sign messages for proof-of-ownership' },
+];
+
+// Safety Plus tier headline features — BUILT and working today. Listing a
+// feature here is presentation only — it does NOT gate or unlock the feature
+// until real billing (IAP receipt verification) is wired up.
+export const SAFETY_PLUS_FEATURES = [
   { name: 'Portfolio Risk Score', summary: 'Concentration, leverage and volatility scoring' },
   { name: 'Advanced Analytics', summary: 'Sharpe ratio, correlation matrix, volatility analysis' },
   { name: 'On-Chain Analytics', summary: 'Address-level transaction activity and insights' },
   { name: 'Price Charts, Alerts & Watchlist', summary: 'Real OHLCV data and threshold alerts' },
-  { name: 'Audit Log', summary: 'Optional encrypted local activity record' },
   { name: 'Recurring Payments', summary: 'Scheduled payment reminders' },
-  { name: 'Message Signing', summary: 'Sign messages for proof-of-ownership' },
 ];
