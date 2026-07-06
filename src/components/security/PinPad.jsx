@@ -1,5 +1,10 @@
-// components/security/PinPad.jsx — the v1 8-digit PIN entry surface.
+// components/security/PinPad.jsx — the unified PIN/password entry surface.
 //
+// Modes:
+//   - Numeric PIN (native, `numericOnly=true`): 0-9 buttons, 8-digit max, numeric-only keyboard.
+//   - Password (web, `numericOnly=false`): Text input accepting ≥12 chars (any characters).
+//
+// Numeric mode:
 // Structurally identical regardless of which credential slots exist (spec §5):
 // it only collects eight digits and hands them up. The "Re-enter" (clear) control is
 // ALWAYS present and set-existence-independent — it leaks nothing about whether a
@@ -12,6 +17,10 @@
 // keyboard-only user can type their PIN directly (report A11Y-PIN-1) — scoped to
 // when the pad is mounted/focused, not a global window listener. Digits are never
 // rendered: keyboard entry stays as shoulder-surf-safe as the buttons.
+//
+// Password mode:
+// Text input field for alphanumeric credentials (web ≥12-char password). Accepts
+// any characters via keyboard input.
 //
 // FIX A — completion is EXPLICIT (deniability-critical, KEK spec §7 / §9 line-item 5).
 // `length` controls ONLY the dot count and the buffer cap; it does NOT decide when to
@@ -29,7 +38,7 @@ import { pinPadReduce, keyToPinAction } from "@/lib/pinPadReducer";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];
 
-export default function PinPad({ value = "", onChange, onComplete, disabled = false, length = 8, submitLabel = "Continue", "aria-label": ariaLabel = "PIN entry" }) {
+export default function PinPad({ value = "", onChange, onComplete, disabled = false, length = 8, submitLabel = "Continue", "aria-label": ariaLabel = "PIN entry", numericOnly = true }) {
   // Single dispatch for both button presses and physical keys: the reducer is the
   // only place the cap / numeric-only / explicit-submit rules live.
   const dispatch = (action) => {
@@ -51,6 +60,35 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
     dispatch(action);
   };
 
+  // Password mode: text input for ≥12-char web password
+  if (!numericOnly) {
+    return (
+      <div className="space-y-3">
+        <input
+          type="password"
+          placeholder="Enter your vault password"
+          value={value}
+          onChange={e => { onChange(e.target.value); }}
+          onKeyDown={e => { if (e.key === 'Enter' && value.length >= length) onComplete?.(value); }}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          maxLength={length > 8 ? undefined : length}
+          className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+        />
+        <button
+          type="button"
+          onClick={() => onComplete?.(value)}
+          disabled={disabled || value.length < length}
+          aria-label={submitLabel}
+          className="w-full px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitLabel}
+        </button>
+      </div>
+    );
+  }
+
+  // Numeric PIN mode: traditional PIN pad with buttons
   return (
     <div
       className="space-y-5 outline-none"
