@@ -25,6 +25,10 @@
 
 ## Phase A — External account setup (no code; do this first, in order)
 
+> 📋 **Standalone checklist:** `docs/iap-safety-plus-setup-checklist.md` extracts these three
+> tasks (plus the exact-identifier table) as a self-contained, top-level checklist — use that
+> when actually doing the setup.
+
 These three tasks configure Apple/Google/RevenueCat to use the exact identifiers the code in Phase B references. No plan task in Phase B can be meaningfully tested end-to-end (past unit tests with mocks) until these exist, but the code itself can be written and unit-tested in parallel.
 
 ### Task 1: App Store Connect — create the Safety Plus subscription product
