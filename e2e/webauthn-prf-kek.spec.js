@@ -425,26 +425,29 @@ test.describe('Web KEK PRF — UI unlock path', () => {
       .toBeVisible({ timeout: 30000 });
   });
 
-  // ── UI-DEFECT (found while building this suite, 2026-07-06) ────────────────
-  // HardwareKekSettings.jsx renders the WEB enrollment credential input as
-  // <PinPad length={8}> — a digits-only 8-slot pad (PinPad.jsx KEYS array).
-  // But the web vault credential is a ≥12-char PASSWORD (H-A minimum, enforced
-  // by validateWebVaultPassword), and webKeyStore.enrollKek(pin) verifies the
-  // input against that password via decryptVault. A ≥12-char alphanumeric
-  // password cannot be entered on an 8-digit numeric pad, so web enrollment
-  // through the settings card ALWAYS fails with the wrong-PIN message. The
-  // keystore API itself is fine (proven by the enroll tests above) — the defect
-  // is the input surface. Fix tracked separately; when the card gains a proper
-  // password input on web, un-fixme this test.
-  test.fixme('C-UI: enroll through the settings card with the vault password', async ({ page }) => {
+  // ── UI-DEFECT (found while building this suite, 2026-07-06 — FIXED) ─────────
+  // HardwareKekSettings.jsx used to render the WEB enrollment credential input as
+  // <PinPad length={8}> — a digits-only 8-slot pad (PinPad.jsx KEYS array). But the
+  // web vault credential is a ≥12-char PASSWORD (H-A minimum, enforced by
+  // validateWebVaultPassword), and webKeyStore.enrollKek(pw) verifies the input
+  // against that password via decryptVault. A ≥12-char alphanumeric password cannot
+  // be entered on an 8-digit numeric pad, so web enrollment through the settings card
+  // ALWAYS failed with the wrong-credential message. FIXED: the card now renders a
+  // real password <Input> + submit <Button> on web (native keeps the PinPad), so
+  // enrollment can be driven end-to-end through the settings UI. Un-`fixme`d.
+  test('C-UI: enroll through the settings card with the vault password', async ({ page }) => {
     await seedVault(page, { enroll: false });
     const pw = await reloadToUnlockScreen(page);
     await pw.fill(PASSWORD);
     await pw.press('Enter');
     await expect(page.getByRole('link', { name: /^Send$/i })).toBeVisible({ timeout: 60000 });
     await gotoSettingsInApp(page);
-    // Intended flow once fixed: enter the VAULT PASSWORD on the card's input,
-    // submit "Enable hardware protection", expect success toast + badge.
+    // Enter the VAULT PASSWORD on the card's password field (aria-label "Vault
+    // password") and submit. The CDP virtual authenticator added in seedVault
+    // auto-approves the PRF create/get, so enrollment completes and the card must
+    // then show the EARNED "WebAuthn Protected" badge (never shown structurally).
+    await page.getByLabel('Vault password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Enable hardware protection' }).click();
     await expect(page.getByText('WebAuthn Protected')).toBeVisible({ timeout: 30000 });
   });
 });

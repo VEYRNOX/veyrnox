@@ -25,13 +25,67 @@ import { useWallet } from '@/lib/WalletProvider';
 import { getKeyStore } from '@/wallet-core/keystore';
 import { KEK_ERR } from '@/wallet-core/keystore/kek.js';
 import PinPad from '@/components/security/PinPad';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { tierToBadge } from '@/wallet-core/keystore/tierBadge.js';
+
+// Platform detection lives at module scope so both the copy constants below and the
+// CredentialEntry surface can branch on it. Native = numeric PIN; web = ≥12-char
+// password (H-A minimum, verified by decryptVault inside enrollKek/unenrollKek).
+const isNative = (() => {
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
+})();
+
+// The credential noun differs by platform (a numeric PIN on native, a password on web).
+// Used for both the on-screen copy and the guard/error messages so a web user is never
+// told to "enter your PIN" for a field that actually takes their vault password.
+const CRED_NOUN = isNative ? 'PIN' : 'password';
+
+// C-UI: the WEB enrollment/removal credential is a ≥12-char PASSWORD, not a numeric PIN,
+// so on web we render a real password field (design-system <Input>) + submit <Button>,
+// mirroring TwoFactorSettings' password model. On native we keep the 8-digit <PinPad>.
+// The keystore call (enrollKek/unenrollKek) is unchanged — only the input surface differs.
+function CredentialEntry({ value, onChange, onSubmit, disabled, submitLabel }) {
+  if (isNative) {
+    return (
+      <PinPad
+        value={value}
+        onChange={onChange}
+        onComplete={onSubmit}
+        disabled={disabled}
+        length={8}
+        submitLabel={submitLabel}
+      />
+    );
+  }
+  const submit = () => onSubmit(value);
+  return (
+    <div className="space-y-3">
+      <Input
+        type="password"
+        autoComplete="current-password"
+        aria-label="Vault password"
+        placeholder="Your vault password"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
+        disabled={disabled}
+        className="mono-value"
+      />
+      <Button type="button" className="w-full" onClick={submit} disabled={disabled}>
+        {submitLabel}
+      </Button>
+    </div>
+  );
+}
 
 // Classify a thrown error by its STABLE machine CODE (not prose — copy is not a
 // contract and a raw message can leak internals). Returns the plain-language string
 // to show. The final fallback is deliberately GENERIC: we never render the raw
 // thrown text (I4 — fail honest, and no internal-detail leak to the UI).
-const WRONG_PIN_MSG = 'Wrong PIN — enter the PIN you use to unlock your wallet.';
+const WRONG_PIN_MSG = isNative
+  ? 'Wrong PIN — enter the PIN you use to unlock your wallet.'
+  : 'Wrong password — enter the password you use to unlock your wallet.';
 const NO_HARDWARE_MSG =
   'Couldn’t reach this device’s hardware security. Try again, or use a different device.';
 const MALFORMED_MSG =
@@ -67,10 +121,6 @@ function isWrongPinVaultError(e) {
   const msg = e?.message || '';
   return msg.startsWith('Decryption failed') || msg.startsWith('No wallet');
 }
-
-const isNative = (() => {
-  try { return Capacitor.isNativePlatform(); } catch { return false; }
-})();
 
 export default function HardwareKekSettings() {
   const { isDecoy, isHidden, recordAudit } = useWallet();
@@ -139,7 +189,7 @@ export default function HardwareKekSettings() {
 
   const handleEnroll = async (testPin) => {
     const pinToUse = testPin || pin;
-    if (!pinToUse) { setError('Enter your vault PIN first.'); return; }
+    if (!pinToUse) { setError(`Enter your vault ${CRED_NOUN} first.`); return; }
     setError('');
     setBusy(true);
     try {
@@ -202,7 +252,7 @@ export default function HardwareKekSettings() {
   };
 
   const handleUnenroll = async () => {
-    if (!pin) { setError('Enter your vault PIN to confirm removal.'); return; }
+    if (!pin) { setError(`Enter your vault ${CRED_NOUN} to confirm removal.`); return; }
     setError('');
     setBusy(true);
     try {
@@ -330,7 +380,7 @@ export default function HardwareKekSettings() {
           ) : (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
-                Enter your vault PIN to confirm removal.
+                Enter your vault {CRED_NOUN} to confirm removal.
                 {isNative
                   ? ' You will be asked to authenticate with biometric.'
                   : ' You will be asked to authenticate with your passkey.'}
@@ -343,12 +393,11 @@ export default function HardwareKekSettings() {
                   </p>
                 ) : (
                   <>
-                    <PinPad
+                    <CredentialEntry
                       value={pin}
                       onChange={v => { setPin(v); setError(''); }}
-                      onComplete={handleUnenroll}
+                      onSubmit={handleUnenroll}
                       disabled={busy}
-                      length={8}
                       submitLabel="Remove hardware protection"
                     />
                     <button
@@ -378,12 +427,11 @@ export default function HardwareKekSettings() {
                 <Loader2 className="h-4 w-4 animate-spin" /> Enrolling — approve the biometric prompt…
               </p>
             ) : (
-              <PinPad
+              <CredentialEntry
                 value={pin}
                 onChange={v => { setPin(v); setError(''); }}
-                onComplete={handleEnroll}
+                onSubmit={handleEnroll}
                 disabled={busy}
-                length={8}
                 submitLabel="Enable hardware protection"
               />
             )
@@ -399,7 +447,7 @@ export default function HardwareKekSettings() {
       {!isNative && webPrfAvailable && enrolled === false && !blocked && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Enter your vault PIN to enable hardware protection. A browser passkey will be
+            Enter your vault password to enable hardware protection. A browser passkey will be
             created to bind your vault to this device.
           </p>
 
@@ -411,12 +459,11 @@ export default function HardwareKekSettings() {
                 <Loader2 className="h-4 w-4 animate-spin" /> Enrolling — approve the passkey prompt…
               </p>
             ) : (
-              <PinPad
+              <CredentialEntry
                 value={pin}
                 onChange={v => { setPin(v); setError(''); }}
-                onComplete={handleEnroll}
+                onSubmit={handleEnroll}
                 disabled={busy}
-                length={8}
                 submitLabel="Enable hardware protection"
               />
             )

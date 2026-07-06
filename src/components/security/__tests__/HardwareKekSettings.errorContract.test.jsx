@@ -40,20 +40,24 @@ const webKeyStoreMock = {
 };
 vi.mock('@/wallet-core/keystore/web.js', () => ({ webKeyStore: webKeyStoreMock }));
 
-// PinPad: minimal stub exposing a submit button that calls onComplete(value).
-vi.mock('@/components/security/PinPad', () => ({
-  default: ({ onComplete, submitLabel }) => (
-    <button onClick={() => onComplete('123456789012')}>{submitLabel}</button>
-  ),
-}));
-
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const { KEK_ERR } = await import('@/wallet-core/keystore/kek.js');
 const HardwareKekSettings = (await import('@/components/security/HardwareKekSettings')).default;
 
+const WEB_PW = '123456789012'; // ≥12 chars (H-A web minimum)
+
 async function renderSettled() {
   await act(async () => { render(<HardwareKekSettings />); });
+}
+
+// On web the credential surface is a password <Input> (C-UI fix): type the vault
+// password before submitting so the enroll/unenroll call is actually reached and its
+// error classification is exercised (an empty submit fails the up-front guard instead).
+async function typeWebPassword() {
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText(/vault password/i), { target: { value: WEB_PW } });
+  });
 }
 
 function codeErr(code) {
@@ -67,6 +71,7 @@ describe('error classification by code (not prose)', () => {
   it('NO_HARDWARE_FACTOR code → hardware-specific message, not the raw internal text', async () => {
     enrollKekFn.mockRejectedValueOnce(codeErr(KEK_ERR.NO_HARDWARE_FACTOR));
     await renderSettled();
+    await typeWebPassword();
     await act(async () => { fireEvent.click(screen.getByText('Enable hardware protection')); });
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toMatch(/hardware/i);
@@ -77,16 +82,20 @@ describe('error classification by code (not prose)', () => {
     webKeyStoreMock.isHardwareEnrolled.mockResolvedValue(true);
     unenrollKekFn.mockRejectedValueOnce(codeErr(KEK_ERR.UNWRAP_FAILED));
     await renderSettled();
-    await act(async () => { fireEvent.click(screen.getByText('Remove hardware protection')); });
-    await act(async () => { fireEvent.click(screen.getByText('Remove hardware protection')); });
+    await act(async () => { fireEvent.click(screen.getByText('Remove hardware protection')); }); // enter remove flow
+    await typeWebPassword();
+    await act(async () => { fireEvent.click(screen.getByText('Remove hardware protection')); }); // submit
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toMatch(/PIN/i);
+    // Web wrong-credential guidance says "password" (C-UI copy fix); the point is it is
+    // classified guidance, never the raw internal text.
+    expect(alert.textContent).toMatch(/password/i);
     expect(alert.textContent).not.toMatch(/internal detail/i);
   });
 
   it('an unclassified error renders a GENERIC message, never the raw thrown text', async () => {
     enrollKekFn.mockRejectedValueOnce(new Error('RAW_SECRET_LEAKING_INTERNAL_XYZ'));
     await renderSettled();
+    await typeWebPassword();
     await act(async () => { fireEvent.click(screen.getByText('Enable hardware protection')); });
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).not.toMatch(/RAW_SECRET_LEAKING_INTERNAL_XYZ/);
@@ -98,6 +107,7 @@ describe('a11y — screen-reader announcements', () => {
   it('the error node has role="alert"', async () => {
     enrollKekFn.mockRejectedValueOnce(new Error('boom'));
     await renderSettled();
+    await typeWebPassword();
     await act(async () => { fireEvent.click(screen.getByText('Enable hardware protection')); });
     expect(await screen.findByRole('alert')).toBeTruthy();
   });
@@ -106,6 +116,7 @@ describe('a11y — screen-reader announcements', () => {
     let resolveEnroll;
     enrollKekFn.mockImplementationOnce(() => new Promise(r => { resolveEnroll = r; }));
     await renderSettled();
+    await typeWebPassword();
     await act(async () => { fireEvent.click(screen.getByText('Enable hardware protection')); });
     expect(await screen.findByRole('status')).toBeTruthy();
     await act(async () => { resolveEnroll(); });
