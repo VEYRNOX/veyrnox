@@ -89,6 +89,25 @@ describe("ring-import-lint: R0/R1 crypto-core ring boundary", () => {
     }
   });
 
+  it("catches crypto-core imports from the components layer (src/components)", () => {
+    const cases = [
+      { spec: "@/wallet-core/keystore/kek.js", file: "src/components/security/PinPad.jsx" },
+      { spec: "@/wallet-core/mnemonic.js", file: "src/components/SeedEntry.jsx" },
+      { spec: "@vault/deserialize", file: "src/components/hw/LedgerPanel.jsx" },
+      // src/components/ui is exempted at CONFIG level (eslint.config.js), not
+      // inside the rule — the raw rule still reports it. Pinned here so the
+      // exemption stays visible and auditable in config rather than silently
+      // baked into the rule.
+      { spec: "@/wallet-core/vault.js", file: "src/components/ui/button.jsx" },
+    ];
+    for (const { spec, file } of cases) {
+      const messages = lint(`import x from '${spec}';\nexport default x;`, file);
+      const violation = messages.find((m) => m.ruleId === RULE_ID);
+      expect(violation, `expected violation for ${spec} in ${file}`).toBeTruthy();
+      expect(violation.messageId).toBe("ringBoundary");
+    }
+  });
+
   it("does NOT flag crypto-core imports from allowed layers (context/hooks facade, or inside crypto-core)", () => {
     const allowed = [
       { spec: "@vault/deserialize", file: "src/context/WalletProvider.jsx" },
