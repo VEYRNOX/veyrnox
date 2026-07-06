@@ -352,8 +352,8 @@ test.describe('Web KEK PRF — keystore boundary (fail-closed matrix)', () => {
 // real vault is persisted until a separate Create-Wallet step, so these seed the
 // vault directly at the keystore boundary (the SAME API onboarding ultimately
 // calls) and then drive the REAL unlock screen — which is the surface under test.
-// authModel defaults to 'password' on web (authModel.js), so reload lands on the
-// password unlock branch.
+// Web now shares native's 8-digit PIN cohort (#637/#645/#651), so reload lands on
+// the numeric PinPad unlock branch (WalletEntry.jsx), not the legacy password Input.
 test.describe('Web KEK PRF — UI unlock path', () => {
   async function seedVault(page, { enroll }) {
     await freshState(page);
@@ -368,19 +368,25 @@ test.describe('Web KEK PRF — UI unlock path', () => {
 
   async function reloadToUnlockScreen(page) {
     await page.goto(`${BASE}/?demo=0`);
-    // authModel defaults to 'password' on web (authModel.js) whenever it was
-    // never explicitly persisted as 'pin' — these tests seed the vault directly
-    // at the keystore boundary, so that's always the case here. Reload must land
-    // on the real password Input (WalletEntry.jsx unlock branch), never a
-    // numeric PinPad — the onboarding-lockout regression fix (see WalletEntry.jsx)
-    // made this the actual, correct app behavior.
-    const pwInput = page.getByPlaceholder('Enter your vault password');
-    await expect(pwInput).toBeVisible({ timeout: 20000 });
+    // Web now shares native's 8-digit PIN cohort (#637/#645/#651), so reload lands
+    // on the numeric PinPad unlock surface (WalletEntry.jsx unlock branch), never
+    // the legacy password Input. Scope to the PinPad's own "PIN entry" group so its
+    // digit buttons never collide with same-named buttons elsewhere on the page.
+    // The submit button's aria-label is "Submit PIN" (NOT its visible "Unlock" text;
+    // ARIA accessible-name resolution prefers aria-label), and PinPad never
+    // auto-submits on the last digit (a deliberate anti-length-oracle choice — see
+    // PinPad.jsx), so the digits and the submit are two distinct steps.
+    const pad = page.getByRole('group', { name: /PIN entry/i });
+    await expect(pad.getByRole('button', { name: '1', exact: true })).toBeVisible({ timeout: 20000 });
     return {
-      fill: async (pw) => { await pwInput.fill(pw); },
+      fill: async (pin) => {
+        for (const digit of pin) {
+          await pad.getByRole('button', { name: digit, exact: true }).click();
+        }
+      },
       press: async (key) => {
         if (key === 'Enter') {
-          await page.getByRole('button', { name: /^Unlock$/i }).first().click();
+          await pad.getByRole('button', { name: 'Submit PIN' }).click();
         }
       },
     };
@@ -408,7 +414,7 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     await expect(page.getByText('WebAuthn Protected')).toHaveCount(0);
   });
 
-  test('D1-UI: KEK vault unlocks through the real unlock screen (password submit drives the PRF assertion)', async ({ page }) => {
+  test('D1-UI: KEK vault unlocks through the real unlock screen (PIN submit drives the PRF assertion)', async ({ page }) => {
     await seedVault(page, { enroll: true });
     const pw = await reloadToUnlockScreen(page);
     // WalletProvider.unlock passes getHardwareFactor on web, so this submit must
