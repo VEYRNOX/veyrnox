@@ -12,7 +12,7 @@ export default function TierLockedPage() {
     <div className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-primary/30 bg-primary/5 flex items-start gap-3">
       <Sparkles className="h-6 w-6 text-primary shrink-0 mt-0.5" />
       <div className="text-sm min-w-0">
-        <p className="font-semibold text-foreground">Premium feature</p>
+        <p className="font-semibold text-foreground">Safety Plus feature</p>
         <p className="text-muted-foreground mt-1">
           This feature is part of Safety Plus ($5.99/mo). Upgrade to unlock it.
         </p>

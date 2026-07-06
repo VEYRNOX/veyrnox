@@ -11,7 +11,10 @@ describe('TierLockedPage', () => {
         <TierLockedPage />
       </MemoryRouter>
     );
-    expect(screen.getByText(/Safety Plus/)).toBeTruthy();
+    expect(screen.getByText('Safety Plus feature')).toBeTruthy();
+    expect(
+      screen.getByText(/This feature is part of Safety Plus/)
+    ).toBeTruthy();
     const link = screen.getByRole('link', { name: /view plans/i });
     expect(link.getAttribute('href')).toBe('/plans');
   });
