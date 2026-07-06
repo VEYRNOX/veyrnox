@@ -362,6 +362,12 @@ default (never show wallet count/list), plain-language risk before signing.
 ## Working pattern
 
 - Reconnaissance before changes; report root cause before fixing.
+- **Fetch main before diagnosing.** Main moves 10+ commits/day and worktrees are cut
+  from stale snapshots. Before diagnosing any user-visible bug, run
+  `git fetch origin main && git log origin/main --oneline -15` and scan the titles for
+  the symptom — it may already be fixed (retro 2026-07-06: the "blank dApp Connector in
+  demo" was fixed on main in PR #607 before the session ever saw it; diagnosing against
+  the stale worktree cost ~40 min of duplicate work and a 4-conflict merge).
 - Pure helpers + unit tests where logic can be extracted (the codebase pattern).
 - One moving part at a time. Don't mark anything verified without the user's on-chain txid.
 
