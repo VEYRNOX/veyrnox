@@ -295,7 +295,7 @@ export default function DuressPin() {
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (test network), independent audit complete (2026-06-23).</b> Your real PIN opens
+          Your real PIN opens
           the hidden real wallet; your Emergency PIN opens the hidden wallet; any other PIN shows
           an explicit "Incorrect PIN" error (the no-oracle property was dropped by
           design). 10 wrong PINs permanently delete all wallet data from this device, so the error can&apos;t

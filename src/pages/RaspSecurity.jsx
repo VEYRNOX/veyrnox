@@ -90,7 +90,7 @@ export default function RaspSecurity() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6" data-testid="rasp-surface">
-      {/* Header + undroppable provisional tag */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           <div className="p-2.5 rounded-xl border border-border bg-card">
@@ -103,9 +103,6 @@ export default function RaspSecurity() {
             </p>
           </div>
         </div>
-        <span className="shrink-0 px-2.5 py-1 rounded-md border border-caution/40 text-caution font-mono text-xs">
-          PROVISIONAL · AUDITED 2026-06-23
-        </span>
       </div>
 
       {/* Status banner — derived from catalogue status (honesty-lock) */}

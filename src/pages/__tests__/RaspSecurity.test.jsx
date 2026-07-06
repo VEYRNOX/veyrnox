@@ -6,7 +6,7 @@
 //     built     → 'browser-active' (browser probes are now wired)
 //     verified  → 'live' (evidenced native probes, not yet reached)
 //     roadmap   → 'pending'
-//   - Render: amber banner, 4 stat tiles, ladder, "PROVISIONAL · AUDITED 2026-06-23" tag, footer.
+//   - Render: amber banner, 4 stat tiles, ladder, footer.
 //   - Honest omissions (§2): no "active monitoring", no event counts, no scan.
 //   - Deniability parity (§3, D2/D4): byte-identical under real vs decoy.
 //
@@ -88,10 +88,6 @@ describe('RaspSecurity — honest current-state render', () => {
     expect(t).toMatch(/allow/i);
     expect(t).toMatch(/warn/i);
     expect(t).toMatch(/block/i);
-  });
-
-  it('displays the undroppable "PROVISIONAL · AUDITED 2026-06-23" tag', () => {
-    expect(t).toMatch(/PROVISIONAL · AUDITED 2026-06-23/);
   });
 
   it('states the deliberate omissions in the footer', () => {

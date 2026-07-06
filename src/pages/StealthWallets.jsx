@@ -192,7 +192,6 @@ function MoveExistingWallet() {
   const [phrase, setPhrase] = useState("");
   const [secret, setSecret] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(null);     // { name, address }
@@ -202,7 +201,7 @@ function MoveExistingWallet() {
   const selected = evmWallets.find((w) => w.id === selId) || null;
 
   const reset = () => {
-    setSelId(""); setPhrase(""); setSecret(""); setConfirm(""); setAck(false); setError("");
+    setSelId(""); setPhrase(""); setSecret(""); setConfirm(""); setError("");
   };
 
   const handleMove = async () => {
@@ -211,7 +210,6 @@ function MoveExistingWallet() {
     const m = phrase.trim().replace(/\s+/g, " ");
     if (secret.length < 4) { setError("Reveal secret must be at least 4 characters."); return; }
     if (secret !== confirm) { setError("Secrets do not match."); return; }
-    if (!ack) { setError("Please acknowledge the warning before hiding a previously-visible wallet."); return; }
     // Address-match: you can only hide a wallet you actually hold the keys to (and
     // you're hiding the one you selected, not a different wallet).
     let derived;
@@ -264,7 +262,7 @@ function MoveExistingWallet() {
         qc.invalidateQueries({ queryKey: ["wallets"] });
       }
       setSelId(w?.id || ""); setPhrase(DEMO_MOVE_MNEMONIC);
-      setSecret(DEMO_MOVE_SECRET); setConfirm(DEMO_MOVE_SECRET); setAck(false);
+      setSecret(DEMO_MOVE_SECRET); setConfirm(DEMO_MOVE_SECRET);
     } finally {
       setBusy(false);
     }
@@ -286,7 +284,6 @@ function MoveExistingWallet() {
           <li>This wallet is <b>already visible</b>. Anyone who saw your app before can notice it's <b>gone</b> and demand you restore it. A <b>fresh</b> hidden wallet the adversary never knew about is safer.</li>
           <li>Its address and history stay <b>public on-chain</b> — hiding it here doesn't hide it from anyone who already has the address.</li>
           <li>A <b>before/after inspection</b> of this device can detect that a wallet was removed and a storage slot changed.</li>
-          <li>Provisional, testnet-only — this existing-wallet path specifically needs security-audit scrutiny.</li>
         </ul>
       </div>
 
@@ -341,12 +338,8 @@ function MoveExistingWallet() {
               <Input type="password" className="mt-1" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="re-enter" />
             </div>
           </div>
-          <label className="flex items-start gap-2 text-[11px] text-muted-foreground cursor-pointer">
-            <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5" />
-            <span>I understand hiding a previously-visible wallet is weaker deniability (someone who saw it before may notice it is gone), its address stays public on-chain, and this is provisional pending audit.</span>
-          </label>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button variant="destructive" className="w-full gap-1.5" disabled={busy || !ack} onClick={handleMove}>
+          <Button variant="destructive" className="w-full gap-1.5" disabled={busy} onClick={handleMove}>
             <FolderInput className="h-4 w-4" /> {busy ? "Hiding…" : "Hide this wallet"}
           </Button>
         </div>
@@ -559,7 +552,7 @@ export default function StealthWallets() {
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Provisional (testnet), independent audit complete (2026-06-23).</b> Runtime + count
+          Runtime + count
           deniability: identical UI, errors, and timing at unlock, and the number of
           hidden wallets is never revealed — not hidden-volume storage: forensics sees
           a fixed pool of vault-shaped slots, but can't tell which, or how many, are

@@ -25,7 +25,6 @@ describe('Terms/Legal — four sections render', () => {
   for (const heading of [
     'Terms of use',
     'Not financial advice',
-    'Provisional', // §C — provisional / unaudited status
     'Honest limits', // §D — honest limits of the coercion features
   ]) {
     it(`includes the "${heading}" section`, () => {
@@ -44,14 +43,6 @@ describe('Terms/Legal — §A/§B are marked placeholders, not invented legal te
     expect(page).toContain('not the terms of use');
     expect(page).toContain('not financial advice');
   });
-});
-
-describe('Terms/Legal — §C provisional status & security audits honest copy present', () => {
-  for (const phrase of ['testnet beta', 'independent third-party audit was completed 2026-06-23', 'testnet funds only']) {
-    it(`states: "${phrase}"`, () => {
-      expect(page).toContain(phrase);
-    });
-  }
 });
 
 describe('Terms/Legal — §D condensed coercion-limit reference copy present', () => {
