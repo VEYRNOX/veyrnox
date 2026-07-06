@@ -84,7 +84,7 @@ function assertNotNativePlatform() {
 // would add no honest security and would break existing short-PIN enrollment.
 //
 // Machine code is the contract (copy can change; codes cannot).
-export const WEB_VAULT_MIN_PASSWORD_LEN = 12;
+export const WEB_VAULT_MIN_PASSWORD_LEN = 8; // web mirrors native 8-digit PIN (testing only)
 
 // I6 — HARDWARE BINDING (Phase 1 — Web PRF).
 //

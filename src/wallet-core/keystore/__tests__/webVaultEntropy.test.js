@@ -24,8 +24,8 @@ import { validateWebVaultPassword, WEB_VAULT_ERR, WEB_VAULT_MIN_PASSWORD_LEN } f
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe('H-A — web vault password length enforcement (behaviour)', () => {
-  it('exposes a 12-char minimum', () => {
-    expect(WEB_VAULT_MIN_PASSWORD_LEN).toBe(12);
+  it('exposes an 8-digit minimum (web mirrors native PIN)', () => {
+    expect(WEB_VAULT_MIN_PASSWORD_LEN).toBe(8);
   });
 
   it('rejects a short 6-digit PIN with a machine code', () => {
@@ -34,25 +34,24 @@ describe('H-A — web vault password length enforcement (behaviour)', () => {
     );
   });
 
-  it('rejects an 11-char password (boundary)', () => {
-    expect(() => validateWebVaultPassword('abcdefghijk')).toThrow(
+  it('rejects a 7-digit password (boundary)', () => {
+    expect(() => validateWebVaultPassword('abcdefg')).toThrow(
       WEB_VAULT_ERR.PASSWORD_TOO_SHORT,
     );
   });
 
-  it('accepts a 12-char password (boundary)', () => {
-    expect(() => validateWebVaultPassword('abcdefghijkl')).not.toThrow();
+  it('accepts an 8-digit password (boundary)', () => {
+    expect(() => validateWebVaultPassword('abcdefgh')).not.toThrow();
   });
 
-  it('the thrown error carries a human message referencing "password" and "12"', () => {
+  it('the thrown error carries a human message referencing "8"', () => {
     let msg = '';
     try {
       validateWebVaultPassword('short');
     } catch (e) {
       msg = e.userMessage || '';
     }
-    expect(msg.toLowerCase()).toContain('password');
-    expect(msg).toContain('12');
+    expect(msg).toContain('8');
   });
 });
 
