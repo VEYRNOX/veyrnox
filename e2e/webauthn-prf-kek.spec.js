@@ -23,11 +23,11 @@
 //   - UI tests drive the real unlock screen (vault seeded at the keystore
 //     boundary, since onboarding leaves an unpersisted "explore mode" shell).
 //
-// TWO DEFECTS SURFACED WHILE BUILDING THIS SUITE (both marked `fixme`, both
-// tracked as findings — see the inline notes at each test):
-//   1. KEK-DOWNGRADE (HIGH): webKeyStore.saveVaultContents drops the kek-dek
+// TWO DEFECTS SURFACED WHILE BUILDING THIS SUITE (see the inline notes at each test):
+//   1. KEK-DOWNGRADE (HIGH): webKeyStore.saveVaultContents dropped the kek-dek
 //      wrap on web, silently downgrading an enrolled vault to bare on any content
 //      re-persist. Phase-1 offline-seizure regression; web sibling of Android bug 3.
+//      FIXED in PR #631 — the regression test below is now active (no longer `fixme`).
 //   2. UI-DEFECT (MED): the settings enrollment card renders an 8-digit PinPad for
 //      the web credential, but the web credential is a ≥12-char password, so web
 //      enrollment through the card can never succeed.
@@ -312,10 +312,11 @@ test.describe('Web KEK PRF — keystore boundary (fail-closed matrix)', () => {
   // downgrades it to a bare vault, unlockable by password ALONE with no PRF — the
   // web sibling of the Android "bug 3" and a Phase-1 offline-seizure regression.
   // Verified at the keystore boundary (this call passes getHardwareFactor, exactly
-  // as WalletProvider does, and the wrap is STILL dropped). This test asserts the
-  // CORRECT behavior and is `fixme` until saveVaultContents preserves the wrap on
-  // web (re-encrypt content under the existing DEK, keep kekWrap/kekSalt).
-  test.fixme('KEK-DOWNGRADE: saveVaultContents must preserve the kek-dek wrap on an enrolled web vault', async ({ page }) => {
+  // as WalletProvider does). FIXED in PR #631 (commit 03db846d): saveVaultContents
+  // now re-encrypts content under the existing DEK and preserves kekWrap/kekSalt on
+  // web (fail-closed on a missing/failed factor). This regression test is now active
+  // and pins the fix; a re-persist of an enrolled web vault must stay kek-dek.
+  test('KEK-DOWNGRADE: saveVaultContents must preserve the kek-dek wrap on an enrolled web vault', async ({ page }) => {
     await freshState(page);
     await addAuthenticator(page);
     await createAndEnroll(page);
@@ -329,8 +330,8 @@ test.describe('Web KEK PRF — keystore boundary (fail-closed matrix)', () => {
     expect(r).toBe(true);
 
     const meta = await readVaultMeta(page);
-    expect(meta.kdf).toBe('kek-dek'); // currently 'argon2id' (bare) — the bug
-    expect(meta.hasKekWrap).toBe(true); // currently false — offline-seizure gap reopened
+    expect(meta.kdf).toBe('kek-dek'); // preserved (was 'argon2id' bare pre-#631)
+    expect(meta.hasKekWrap).toBe(true); // preserved (was false pre-#631 — gap reopened)
   });
 
   test('H-A: web vault password under 12 chars rejected before any ciphertext exists', async ({ page }) => {
