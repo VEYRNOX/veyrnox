@@ -94,6 +94,14 @@ here (needs a Mac)"). The relevant plugin source is `ios/App/App/HardwareKekPlug
     success entry correlated in time (within the same `log stream` session) to a new
     KEK-gated Sepolia send. The txid of that send, supplied by the owner, is added to
     `docs/verified-evidence.json` and advances iOS from PARTIAL to full device-verified.
+  - Test harness ready (PR #653, merged 2026-07-06 — does NOT close this item): the WDIO
+    spec `tests/ios/specs/hardware-kek-e2e.spec.js` (`npm run ios:test:hardware-kek`)
+    drives the KEK-gated send under `SUPERVISED_SEND=1` and prints the exact Mac-side
+    `log stream` command above; it also runs a SE-factor/vault-blob leak canary over
+    Appium-reachable logs. The harness is a SCAFFOLD — never device-run — and cannot
+    itself capture the `os_log` line (iOS-26 NSLog is not Appium-streamable); the Mac-side
+    `log stream` remains the authoritative capture. Still blocked on a Mac + real iPhone +
+    `os_log(public)` debug build.
 
 ---
 
@@ -127,6 +135,13 @@ H-2/iOS-F11 entry.)
     (or equivalent fail-closed error); PIN fallback successfully decrypts the vault. Log
     the device model, iOS version, and test date. Record as a META key in
     `docs/verified-evidence.json` (mirrors `_hardware_kek_biometric_reenroll_invalidation`).
+  - Test harness ready (PR #653, merged 2026-07-06 — does NOT close this item): the WDIO
+    spec `tests/ios/specs/biometric-reenroll-e2e.spec.js`
+    (`npm run ios:test:biometric-reenroll`) asserts the fail-closed notice + PIN recovery
+    behind the `REENROLL_DONE=1` gate (run after the manual Settings re-enroll steps 1–3).
+    It cannot perform the iOS-Settings Face ID re-enrollment itself (out of XCUITest scope
+    for a third-party app). SCAFFOLD — never device-run; still blocked on an unrestricted
+    iPhone.
 
 - [ ] **iOS KEK-gated Sepolia send — promote iOS from PARTIAL to full device-verified**
   - Description: iOS currently holds BUILT / device-verified (PARTIAL). The two prior
@@ -139,6 +154,11 @@ H-2/iOS-F11 entry.)
     to `docs/verified-evidence.json` under `evidence` (not a META key) to advance iOS
     to full device-verified. The status in `docs/Feature-Status.md` §4 may then be updated
     from "PARTIAL" to device-verified.
+  - Test harness ready (PR #653, merged 2026-07-06 — does NOT close this item): the same
+    `tests/ios/specs/hardware-kek-e2e.spec.js` (and `tests/ios/specs/send.spec.js` for the
+    plain in-app send) drives the supervised send under `SUPERVISED_SEND=1`, reads back the
+    txid, and hard-fails if demo mode is on. SCAFFOLD — never device-run; the owner-supplied
+    on-chain txid + paired `os_log` trace remain the promoting evidence.
 
 ---
 
@@ -221,6 +241,10 @@ KEK Phase 1/2 was not in that scope.
     - `android/app/src/main/java/…/HardwareKekPlugin.kt` — Phase 2 Android surface.
     - `src/wallet-core/keystore/native.js` — JS-layer KEK orchestration for both
       mobile platforms.
+    - `tests/ios/` — iOS Appium/XCUITest E2E harness (PR #653, SCAFFOLD — never
+      device-run) covering the KEK-gated send + iOS-F9 `os_log` capture procedure and the
+      H-2/iOS-F11 re-enroll test; sibling to the device-verified Android suite in
+      `tests/android/`. The auditor can witness or drive these once on a Mac + iPhone.
   - Already remediated at audit start (do not re-raise as new findings):
     - C-1 (CRITICAL Android HMAC fixed input): RESOLVED / device-verified 2026-07-02,
       PR #529 (commit 732f9676), Sepolia txid `0xeb71a5d…`, block 11185289, v2 protocol
