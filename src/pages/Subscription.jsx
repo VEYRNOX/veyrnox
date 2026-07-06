@@ -119,6 +119,18 @@ export default function Subscription() {
         </div>
       )}
 
+      {isNative && (
+        <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
+          <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">
+            Checking or purchasing a subscription contacts our in-app-purchase provider
+            (RevenueCat) and the App Store / Google Play over the network to verify your
+            entitlement. No wallet address, balance, or key material is ever sent, and this
+            check is suppressed entirely in decoy/hidden sessions.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card className={currentTier === "free" ? "border-primary/50" : undefined}>
           <CardHeader>
