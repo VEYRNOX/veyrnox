@@ -4,8 +4,11 @@
 // each feature lives. Free users see every feature with a lock badge;
 // Safety Plus subscribers get live navigation links.
 //
-// DISPLAY ONLY — no payment system active. getCurrentTier() always returns
-// "free" until IAP receipt verification is wired up (see lib/tier.js).
+// The tier here comes from the real, verified, fail-closed entitlement via
+// useTier() (lib/TierProvider -> lib/entitlement resolveTier). In-app purchase
+// (App Store / Play Billing via RevenueCat) is wired end to end — BUILT /
+// unit-tested only, NOT device-verified. Route access is enforced by the tier
+// gate in components/FeatureGate, not by this display component.
 
 import { Link } from "react-router-dom";
 import { ShieldCheck, TrendingUp, Plug, Lock, Sparkles, ArrowRight, Check } from "lucide-react";

@@ -345,11 +345,11 @@ export const CLASSIFICATION = {
   },
   '/plans': {
     verdict: 'live', dataSource: 'static',
-    note: 'Display-only tier cards rendered from TierProvider (currentTier always "free") using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). The upgrade button is permanently disabled with an honest disclosure. Preview disclosure notes IAP is coming at launch. No fabricated capabilities listed as currently available.',
+    note: 'Tier cards rendered from TierProvider (real, verified, fail-closed tier via resolveTier) using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). On native the upgrade + restore buttons run a real RevenueCat purchase flow showing the real store price; on web they are disabled with an honest mobile-only disclosure. In-app purchase is BUILT / unit-tested only, NOT device-verified. No fabricated capabilities listed as currently available.',
   },
   '/safety-plus': {
     verdict: 'live', dataSource: 'static',
-    note: 'Safety Plus feature hub. Display-only — lists 16 Safety Plus features grouped by nav section (SECURITY, FINANCE, CONNECT) with lock badges for Free users and live links for Safety Plus subscribers. No payment system active; getCurrentTier() always returns "free". Honest about gating requiring IAP receipt verification at launch.',
+    note: 'Safety Plus feature hub. Lists 16 Safety Plus features grouped by nav section (SECURITY, FINANCE, CONNECT) with lock badges for Free users and live links for Safety Plus subscribers. Tier comes from the real, verified, fail-closed entitlement (useTier -> resolveTier); the 16 routes are enforced by the tier gate in components/FeatureGate. In-app purchase is BUILT / unit-tested only, NOT device-verified.',
   },
   '/referrals': {
     verdict: 'live', dataSource: 'on-device',
