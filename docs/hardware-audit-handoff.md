@@ -41,6 +41,20 @@ here (needs a Mac)"). The relevant plugin source is `ios/App/App/HardwareKekPlug
     Debugger or `leaks` tool that no decrypted key material lingers after unlock. The
     zeroing is the fix; the confirming evidence is the absence of the buffer in the heap
     dump after unlock.
+  - ⚠️ **HONEST SCOPE — the fix is a PARTIAL mitigation, not full heap zeroing** (source
+    review 2026-07-02, `HardwareKekPlugin.m:282–298`): the merged code zeros the
+    `NSMutableData h` buffer (`resetBytesInRange`, line 294), BUT the same H is first
+    base64-encoded into `hB64`, an **immutable `NSString`** (line 291), which is then
+    handed to the Capacitor bridge (`[call resolve:@{@"h": hB64}]`, line 298) and copied
+    again into the JS-side string. `NSString` and the JS string **cannot be zeroed** — so
+    a base64 form of H persists in memory until GC/overwrite regardless of the
+    `NSMutableData` wipe. This is inherent to the bridge architecture (best-effort native
+    wipe only), NOT a bug to fix. Do NOT document iOS-F5 as "H fully zeroed from the heap";
+    the honest claim is "the native mutable plaintext buffer is zeroed; the base64 bridge
+    string and JS-side value are architecturally unzeroable." The `leaks`/Instruments
+    check above should expect the base64 residue and verify only that the raw `NSMutableData`
+    plaintext buffer is gone. Severity: LOW–MEDIUM (inherent, best-effort), tracked as a
+    scope-honesty note, not an open code defect.
 
 - [ ] **iOS-F3 — Replace deprecated kSecUseOperationPrompt with LAContext**
   - Finding ID: iOS-F3 (MEDIUM, `docs/audit-2026-07-01-kek-internal.md`)
