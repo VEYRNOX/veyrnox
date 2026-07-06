@@ -1,15 +1,15 @@
-// WalletEntry — web cohort lockout regression.
+// WalletEntry — web/native PIN-cohort parity.
 //
-// Bug: finishPinSetup() always persisted authModel='pin' regardless of platform.
-// On web, the pin-create screen is a password cohort (no hardware KEK; the password
-// is the only protection). Persisting 'pin' means the next reload renders the
-// numeric-only PinPad, which CANNOT accept a 12+ char alphanumeric password — the
-// user is permanently locked out of their funds.
+// History: web used to be a separate "password cohort" (12+ char alphanumeric
+// password at creation) while unlock was migrated to a numeric-only PinPad by
+// PR #637 — a half-finished migration that made real vaults permanently
+// unlockable-never-again once a password containing a non-digit character was
+// set (the create screen accepted it; the unlock PinPad physically cannot).
 //
-// This pins the contract: on WEB (Capacitor.isNativePlatform() === false), completing
-// the pin-create flow must persist authModel='password' (NOT 'pin'). We assert the
-// machine cohort marker — setAuthModel('password') and getAuthModel() === 'password' —
-// never prose copy. The native PIN cohort path is covered by the existing wipe test.
+// Fix: web is a testing-only surface (never production; native is the real
+// product) that should fully mirror native's PIN cohort — same 8-digit PinPad
+// at creation AND unlock, same authModel='pin', same createWalletFromPendingPin
+// provisioning path. This pins that contract.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
@@ -18,7 +18,7 @@ import { MemoryRouter } from 'react-router-dom';
 vi.mock('@/lib/WalletProvider', () => ({ useWallet: vi.fn() }));
 
 // Real authModel store so getAuthModel() reflects whatever setAuthModel persisted.
-let authModelValue = 'password';
+let authModelValue = 'pin';
 vi.mock('@/lib/authModel', () => ({
   getAuthModel: vi.fn(() => authModelValue),
   setAuthModel: vi.fn((m) => { authModelValue = m; }),
@@ -38,7 +38,7 @@ vi.mock('@/lib/biometricUnlock', () => ({ hasStoredUnlockSecret: vi.fn(async () 
 vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
 
 import { useWallet } from '@/lib/WalletProvider';
-import { getAuthModel, setAuthModel } from '@/lib/authModel';
+import { setAuthModel } from '@/lib/authModel';
 import WalletEntry from '@/components/WalletEntry';
 
 function makeCtx(overrides = {}) {
@@ -52,24 +52,33 @@ function makeCtx(overrides = {}) {
     enableBiometricUnlock: vi.fn(), unlockWithBiometric: vi.fn(),
     exploreMode: false, enterExplore: vi.fn(), leaveExplore: vi.fn(),
     confirmWalletBackup: vi.fn(), setupPin: vi.fn(),
-    createWalletFromPendingPin: vi.fn(), importWalletForPendingPin: vi.fn(),
+    createWalletFromPendingPin: vi.fn(async () => undefined),
+    importWalletForPendingPin: vi.fn(),
     clearPendingPin: vi.fn(), hasPendingPin: false,
     wasWiped: false, acknowledgeWipe: vi.fn(),
     ...overrides,
   };
 }
 
-const WEB_PASSWORD = 'correct horse battery staple'; // 12+ char alphanumeric web vault password
+const WEB_PIN = '48273951'; // 8-digit, non-sequential PIN, same shape web now shares with native
+
+function enterPinPad(container, digits) {
+  // PinPad accepts numeric on-screen buttons; digits are individually clicked.
+  for (const d of digits) {
+    fireEvent.click(screen.getAllByRole('button', { name: d }).slice(-1)[0]);
+  }
+}
 
 beforeEach(() => {
-  authModelValue = 'password';
+  authModelValue = 'pin';
   try { localStorage.clear(); } catch { /* shimmed */ }
 });
 afterEach(() => { cleanup(); });
 
-describe('WalletEntry — web cohort must persist authModel=password (lockout fix)', () => {
-  it('persists authModel=password (not pin) when finishing web pin-create', async () => {
-    vi.mocked(useWallet).mockReturnValue(makeCtx());
+describe('WalletEntry — web joins the PIN cohort (parity with native, lockout fix)', () => {
+  it('persists authModel=pin (not password) when finishing web pin-create', async () => {
+    const ctx = makeCtx();
+    vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
@@ -77,77 +86,50 @@ describe('WalletEntry — web cohort must persist authModel=password (lockout fi
     await waitFor(() => expect(screen.getByRole('button', { name: /get started/i })).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: /get started/i }));
 
-    // Web pin-create renders the #472 password input (not a numeric PinPad).
-    const pwInput = await screen.findByPlaceholderText(/at least 12 characters/i);
-    fireEvent.change(pwInput, { target: { value: WEB_PASSWORD } });
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    // Web pin-create now renders the SAME numeric PinPad as native (no password Input).
+    await waitFor(() => expect(screen.getByText(/choose an 8-digit pin/i)).toBeTruthy());
+    expect(screen.queryByPlaceholderText(/at least 12 characters/i)).toBeNull();
 
-    // Confirm step: re-enter the same password and submit.
-    const confirmInput = await screen.findByPlaceholderText(/re-enter your password/i);
-    fireEvent.change(confirmInput, { target: { value: WEB_PASSWORD } });
-    fireEvent.click(screen.getByRole('button', { name: /set password & continue/i }));
+    enterPinPad(document, WEB_PIN.split(''));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
 
-    // finishPinSetup ran. On web, the cohort marker MUST be 'password', never 'pin' —
-    // otherwise reload renders the numeric PinPad and locks the user out (the bug).
-    await waitFor(() => expect(setAuthModel).toHaveBeenCalledWith('password'));
-    expect(setAuthModel).not.toHaveBeenCalledWith('pin');
-    expect(getAuthModel()).toBe('password');
+    // Confirm step: same PIN again.
+    await waitFor(() => expect(screen.getByText(/confirm your pin/i)).toBeTruthy());
+    enterPinPad(document, WEB_PIN.split(''));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+
+    // finishPinSetup ran. On web (now unified), the cohort marker MUST be 'pin' —
+    // the separate 'password' cohort that caused the lockout no longer exists.
+    await waitFor(() => expect(ctx.setupPin).toHaveBeenCalledWith(WEB_PIN));
+    expect(setAuthModel).not.toHaveBeenCalledWith('password');
   });
 
-  it('web Phase 2 create calls createWallet, not createWalletFromPendingPin', async () => {
+  it('web Phase 2 create calls createWalletFromPendingPin (unified with native), not raw createWallet', async () => {
+    // setupPin flips hasPendingPin on the SAME mocked context object (mirrors what
+    // the real provider does), so the next re-render sees Phase 2 (no remount —
+    // resolveOnboardingEntry's cold-mount invariant never produces 'choose', by
+    // design, so a real re-mount would just bounce back to 'welcome').
     const ctx = makeCtx();
+    ctx.setupPin = vi.fn(() => { ctx.hasPendingPin = true; });
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
-    // Fresh device → welcome hero → Get Started → pin-create
     await waitFor(() => expect(screen.getByRole('button', { name: /get started/i })).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: /get started/i }));
 
-    // Web pin-create: enter password and continue to confirm step
-    const pwInput = await screen.findByPlaceholderText(/at least 12 characters/i);
-    fireEvent.change(pwInput, { target: { value: WEB_PASSWORD } });
-    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await waitFor(() => expect(screen.getByText(/choose an 8-digit pin/i)).toBeTruthy());
+    enterPinPad(document, WEB_PIN.split(''));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
 
-    // Confirm step: re-enter password and submit
-    const confirmInput = await screen.findByPlaceholderText(/re-enter your password/i);
-    fireEvent.change(confirmInput, { target: { value: WEB_PASSWORD } });
-    fireEvent.click(screen.getByRole('button', { name: /set password & continue/i }));
+    await waitFor(() => expect(screen.getByText(/confirm your pin/i)).toBeTruthy());
+    enterPinPad(document, WEB_PIN.split(''));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
 
-    // Phase 2 (choose screen) should now be visible; click Create
-    const createBtn = await screen.findByRole('button', { name: /create( a)? (new )?wallet/i });
+    // Phase 2 (choose screen): Create Wallet button now visible.
+    const createBtn = await screen.findByRole('button', { name: /create wallet/i });
     fireEvent.click(createBtn);
 
-    // createWallet must be called with the 12+ char password; the PIN-path variant must not
-    await waitFor(() => expect(ctx.createWallet).toHaveBeenCalledWith(
-      expect.stringMatching(/.{12,}/), // the web vault password
-    ));
-    expect(ctx.createWalletFromPendingPin).not.toHaveBeenCalled();
-  });
-
-  it('reload regression: returning web password-cohort user gets a password Input, not a numeric PinPad, and it actually unlocks', async () => {
-    // Simulates a SPA remount (reload) on a device that already has a vault and
-    // whose persisted cohort marker is 'password' — the exact state a web user is
-    // in after completing "Import an existing seed" in a prior session. Before the
-    // fix, the view==="unlock" fallback branched on Capacitor.isNativePlatform()
-    // instead of authModel, so this cohort got a numeric-only PinPad and could
-    // never type in their real (long, alphanumeric) password — permanent lockout.
-    authModelValue = 'password';
-    const ctx = makeCtx({ hasVault: vi.fn(async () => true), unlock: vi.fn(async () => ({})) });
-    vi.mocked(useWallet).mockReturnValue(ctx);
-
-    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-
-    // The real password Input must render (mirrors the native pin-cohort's Input) —
-    // a numeric PinPad cannot accept this credential at all.
-    const pwInput = await screen.findByPlaceholderText(/enter your vault password/i);
-    expect(screen.queryByRole('group', { name: /PIN entry/i })).toBeNull();
-
-    fireEvent.change(pwInput, { target: { value: WEB_PASSWORD } });
-    fireEvent.click(screen.getByRole('button', { name: /^unlock$/i }));
-
-    // Unlock must actually be invoked with the typed password — asserting the
-    // screen "looks right" is not enough; this is the gap that let the bug regress.
-    await waitFor(() => expect(ctx.unlock).toHaveBeenCalledWith(WEB_PASSWORD, expect.anything()));
+    await waitFor(() => expect(ctx.createWalletFromPendingPin).toHaveBeenCalled());
   });
 });

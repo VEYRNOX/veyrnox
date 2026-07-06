@@ -7,7 +7,7 @@
 //
 // Test Sequence:
 //   1. Start onboarding (Get Started)
-//   2. Set vault password (web: 12+ chars) or PIN (native: 8 digits)
+//   2. Choose an 8-digit PIN (web and native share the same PIN cohort)
 //   3. Enroll WebAuthn PRF hardware factor
 //   4. Create wallet
 //   5. Navigate to Send screen
@@ -26,10 +26,8 @@
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
-// Try 8-digit PIN format for debugging - but web vaults require 12+ chars
-// If this is native, it will use the PIN; if web, it must be 12+
-const TEST_PASSWORD = '12345678abcd'; // 12 chars minimum for web vault
-const TEST_PIN = '12345678'; // 8 digits for native (fallback)
+// Web now shares native's PIN cohort (lockout-bug fix — see onboarding.spec.js header).
+const TEST_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejects patterns)
 // Throwaway Sepolia test recipient — 40-char EVM address (original was 39 chars, invalid).
 // Replace with a real funded recipient address before running live UAT.
 const SEPOLIA_RECIPIENT = '0x000000000000000000000000000000000000dEaD';
@@ -62,11 +60,16 @@ async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
 }
 
-// Helper: enter PIN by clicking digit buttons (native only)
+// Helper: enter an 8-digit PIN via PinPad's on-screen digit buttons, then submit.
+// Scoped to the PinPad's own group so it never collides with same-named buttons
+// elsewhere on the page. "Submit PIN" is the button's aria-label — NOT its visible
+// "Continue" text; ARIA accessible-name resolution prefers aria-label.
 async function enterPin(page, digits) {
+  const pad = page.getByRole('group', { name: /PIN entry/i });
   for (const d of digits) {
-    await page.getByRole('button', { name: d, exact: true }).click();
+    await pad.getByRole('button', { name: d, exact: true }).click();
   }
+  await pad.getByRole('button', { name: 'Submit PIN' }).click();
 }
 
 test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send', () => {
@@ -89,27 +92,16 @@ test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send'
     console.log('✓ Started onboarding');
     await page.waitForTimeout(500); // transition
 
-    // ── STEP 2: Web vault password entry (12+ chars) ──────────────────────────
-    // The test is running on web, so it shows "Set a vault password", not "Choose an 8-digit PIN"
-    await expect(page.getByText('Set a vault password')).toBeVisible({ timeout: 10000 });
-    const passwordInput = page.locator('input[type="password"]').first();
-    await passwordInput.fill(TEST_PASSWORD);
-    console.log('✓ Vault password set (20 chars)');
+    // ── STEP 2: Choose an 8-digit PIN (web now shares native's PIN cohort — see
+    // onboarding.spec.js header for the lockout-bug history) ──────────────────
+    await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible({ timeout: 10000 });
+    await enterPin(page, TEST_PIN);
+    console.log('✓ Vault PIN set (8 digits)');
 
-    // Continue
-    await page.getByRole('button', { name: 'Continue' }).click();
-
-    // ── STEP 3: Confirm vault password ─────────────────────────────────────────
-    await expect(page.getByText('Confirm your password')).toBeVisible({ timeout: 5000 });
-    const confirmInput = page.locator('input[type="password"]').last();
-    await confirmInput.fill(TEST_PASSWORD);
-    console.log('✓ Vault password confirmed');
-
-    // Continue (this triggers finishPinSetup → setView("choose"))
-    const setPasswordBtn = page.getByRole('button', { name: /Set Password & Continue/i });
-    await expect(setPasswordBtn).toBeEnabled({ timeout: 5000 });
-    await setPasswordBtn.click();
-    console.log('✓ Clicked Set Password & Continue button');
+    // ── STEP 3: Confirm PIN ─────────────────────────────────────────
+    await expect(page.getByText('Confirm your PIN')).toBeVisible({ timeout: 5000 });
+    await enterPin(page, TEST_PIN);
+    console.log('✓ Vault PIN confirmed (this triggers finishPinSetup → setView("choose"))');
 
     // Wait and check what's on the page
     await page.waitForTimeout(2000);
@@ -221,18 +213,18 @@ test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send'
     await expect(confirmBtn).toBeVisible({ timeout: 10000 });
     await confirmBtn.click();
 
-    // If a password re-auth prompt appears (step-up), we enter the password here
-    const passwordPrompt = page.getByText(/Enter your password|Confirm your password/i);
-    if (await passwordPrompt.isVisible({ timeout: 3000 }).catch(() => false)) {
-      console.log('✓ Step-up re-auth password prompt detected');
-      const stepUpInput = page.locator('input[type="password"]').first();
-      await stepUpInput.fill(TEST_PASSWORD);
-      // Hit Enter or click button
-      const authBtn = page.getByRole('button', { name: /Unlock|Authorise|Confirm/i });
+    // If a step-up re-auth prompt appears (TwoFactorGate), it now renders the SAME
+    // PinPad as onboarding — TwoFactorGate.jsx gates on getAuthModel() === 'pin',
+    // not platform, so web joining the PIN cohort means this picks it up automatically.
+    const stepUpPinPad = page.getByRole('group', { name: /8-digit PIN/i });
+    if (await stepUpPinPad.isVisible({ timeout: 3000 }).catch(() => false)) {
+      console.log('✓ Step-up re-auth PIN pad detected');
+      for (const d of TEST_PIN) {
+        await stepUpPinPad.getByRole('button', { name: d, exact: true }).click();
+      }
+      const authBtn = page.getByRole('button', { name: /Verify|Unlock|Authorise|Confirm/i });
       if (await authBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await authBtn.click();
-      } else {
-        await stepUpInput.press('Enter');
       }
     }
 
@@ -263,8 +255,8 @@ test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send'
       `\n${'='.repeat(80)}\n` +
       `✅ TIER 2 TEST PASSED — WebAuthn PRF Unlock + Sepolia Send\n` +
       `${'='.repeat(80)}\n` +
-      `   Vault:     Web (password-protected)\n` +
-      `   Password:  ${TEST_PASSWORD.substring(0, 5)}… (20 chars)\n` +
+      `   Vault:     Web (PIN-protected, same cohort as native)\n` +
+      `   PIN:       ${TEST_PIN} (8 digits)\n` +
       `   PRF Flow:  Enrolled → Unlocked → Re-authed for send\n` +
       `   Amount:    ${SEND_AMOUNT} Sepolia ETH\n` +
       `   Recipient: ${SEPOLIA_RECIPIENT}\n` +

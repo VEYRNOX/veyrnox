@@ -72,7 +72,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Shield, Wallet, Lock, Unlock, KeyRound, Download, RefreshCw,
+  Shield, Wallet, Lock, KeyRound, Download, RefreshCw,
   Eye, EyeOff, Copy, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -388,15 +388,6 @@ export default function WalletEntry() {
   // ref (not state) so it is never copied into a render snapshot.
   const createdPasswordRef = useRef(null);
 
-  // WEB COHORT bridge (the analogue of the provider's pendingPin for native PIN):
-  // on web there is no PIN cohort and no hardware KEK — the vault-creation screen
-  // collects a ≥12-char PASSWORD, and Phase 2 must encrypt under it via the plain
-  // createWallet/importWallet path (NOT createWalletFromPendingPin, which forces the
-  // 'pin' cohort). Holding it in a ref (not state) keeps the secret out of render
-  // snapshots. Non-null signals "web Phase 2 uses this password" to doCreateWallet/
-  // doImportWallet; wiped on success or teardown.
-  const webVaultPasswordRef = useRef(null);
-
   // v1 PIN cohort. authModel is read once the vault-existence probe resolves.
   const [authModel, setAuthModelState] = useState("password");
   // PIN onboarding sub-steps: 'real' -> 'real-confirm' -> Dashboard. Returning PIN
@@ -415,10 +406,6 @@ export default function WalletEntry() {
   // block. The PIN is the credential here — there is NO vault-password field.
   const [importPhrasePin, setImportPhrasePin] = useState("");
   const [choosePinImport, setChoosePinImport] = useState(false);
-  // WEB cohort analogue of the provider's hasPendingPin: true once finishPinSetup has
-  // bridged a web vault password into webVaultPasswordRef, so the post-Phase-1 'choose'
-  // view renders the Create/Import options instead of the "set a PIN first" CTA.
-  const [webVaultPending, setWebVaultPending] = useState(false);
   const [referralInput, setReferralInput] = useState("");
   // True while a PIN wallet is being ATOMICALLY provisioned (create + both chaff
   // slots + cohort + salt). Holds the dashboard back until everything is committed;
@@ -495,10 +482,6 @@ export default function WalletEntry() {
       .catch(() => { if (active) { setVaultExists(false); setView("pin-create"); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setBioReady(false); } });
     return () => { active = false; };
   }, [hasVault, isUnlocked]);
-
-  // Zero the web vault password ref on unmount so it cannot be read from memory
-  // if the component is torn down mid-flow (navigation away, error boundary, crash).
-  useEffect(() => () => { webVaultPasswordRef.current = null; }, []);
 
   const copySeed = async () => {
     await copySecret(generatedSeed);
@@ -688,24 +671,15 @@ export default function WalletEntry() {
   // PHASE 1: PIN setup writes credential markers only (provider.setupPin) and enters
   // the empty dashboard. NO wallet is created here — that's Phase 2 (a separate
   // dashboard action). pendingPin (in the provider) bridges the two.
+  //
+  // Web and native share ONE PIN cohort (no separate web "password" cohort — that
+  // split was the half-finished PR #637 migration that caused the lockout bug: web
+  // could CREATE a 12+ char alphanumeric vault password but could only UNLOCK via a
+  // numeric-only PinPad, which cannot accept it). Web is a testing-only surface —
+  // never production — so full parity with native's PIN cohort is correct here.
   const finishPinSetup = () => {
-    if (Capacitor.isNativePlatform()) {
-      // NATIVE: PIN cohort. setupPin bridges the in-memory pendingPin + flips the
-      // 'pin' cohort marker; Phase 2 (doCreateWallet/doImportWallet) consumes it via
-      // createWalletFromPendingPin/importWalletForPendingPin.
-      setupPin(realPin);               // authModel='pin' + salt + pendingPin + enter explore
-      setAuthModelState("pin");
-    } else {
-      // WEB: password cohort. There is no PIN and no hardware KEK — realPin here is a
-      // ≥12-char vault PASSWORD. Persist the 'password' marker NOW so a reload renders
-      // the password unlock surface, never the numeric PinPad (the lockout bug). Bridge
-      // the password in a ref for Phase 2 to encrypt under via createWallet/importWallet.
-      webVaultPasswordRef.current = realPin;
-      setWebVaultPending(true);
-      setAuthModel("password");
-      setAuthModelState("password");
-      enterExplore();                  // mirror setupPin's explore entry (no pendingPin on web)
-    }
+    setupPin(realPin);               // authModel='pin' + salt + pendingPin + enter explore
+    setAuthModelState("pin");
     setRealPin(""); setRealPinConfirm(""); setError(""); setPinStep("real");
     setView("choose");                 // post-Phase-1: leaving explore lands on the create/import choice
     setChoosePinImport(false);         // reset the Phase-2 import sub-toggle
@@ -716,37 +690,6 @@ export default function WalletEntry() {
   // fail-closed). The provisioning gate below holds the dashboard back until it commits.
   const doCreateWallet = async () => {
     setBusy(true); setProvisioning(true); setError("");
-    // WEB cohort: encrypt the new seed under the bridged vault PASSWORD via the plain
-    // createWallet path (NOT createWalletFromPendingPin, which forces the 'pin' cohort
-    // and would re-lock the user out). authModel='password' was already persisted in
-    // finishPinSetup. We surface the one-time seed via the existing backup screen.
-    if (!Capacitor.isNativePlatform() && webVaultPasswordRef.current) {
-      try {
-        const pw = webVaultPasswordRef.current;
-        createdPasswordRef.current = pw;
-        const seed = await createWallet(pw); // returns mnemonic ONCE for backup; unlocks
-        webVaultPasswordRef.current = null;
-        setWebVaultPending(false);
-        setProvisioning(false);
-        setGeneratedSeed(seed);          // hold on the seed-backup screen (handleGenerate parity)
-        setShowSeed(false);
-        setBioEnabled(false);
-        // Route to the 'generate' view, which OWNS the seed-backup screen. Without
-        // this the render falls through to view==='choose' with webVaultPending now
-        // false → the dead-end "Set a PIN to continue" card, and the one-time seed
-        // is never shown (handleGenerate never needs this because it already runs
-        // inside the 'generate' view).
-        setView("generate");
-      } catch (e) {
-        createdPasswordRef.current = null;
-        setProvisioning(false);
-        const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
-          ? (e.userMessage || "Web vault PIN must be at least 8 digits.")
-          : (e?.message || "Wallet setup couldn't finish securely, so nothing was saved.");
-        setError(msg); toast.error(msg);
-      } finally { setBusy(false); }
-      return;
-    }
     try { await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
       setProvisioning(false);
@@ -773,30 +716,6 @@ export default function WalletEntry() {
     const phrase = importPhrasePin.trim().replace(/\s+/g, " ");
     if (!phrase) return;
     setBusy(true); setProvisioning(true); setError("");
-    // WEB cohort: import under the bridged vault PASSWORD via the plain importWallet
-    // path (NOT importWalletForPendingPin, which forces the 'pin' cohort). authModel=
-    // 'password' was already persisted in finishPinSetup. importWallet validates BIP-39
-    // + unlocks; no seed-backup screen (the user supplied the seed).
-    if (!Capacitor.isNativePlatform() && webVaultPasswordRef.current) {
-      try {
-        await importWallet(phrase, webVaultPasswordRef.current);
-        webVaultPasswordRef.current = null;
-        setWebVaultPending(false);
-        setImportPhrasePin("");
-        setProvisioning(false);
-      } catch (e) {
-        setProvisioning(false);
-        if (isRecoverableSeedInputError(e)) {
-          setError("That doesn't look like a valid recovery phrase. Check the words and try again.");
-          return;
-        }
-        const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
-          ? (e.userMessage || "Web vault PIN must be at least 8 digits.")
-          : (e?.message || "Wallet setup couldn't finish securely, so nothing was saved.");
-        setError(msg); toast.error(msg);
-      } finally { setBusy(false); }
-      return;
-    }
     try { await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
     catch (e) {
       setProvisioning(false);
@@ -1177,32 +1096,9 @@ export default function WalletEntry() {
           )}
 
           <div className="flex items-center gap-2 text-sm font-medium">
-            <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? (authModel === "password" ? "Enter your vault password" : "Enter your PIN") : "Unlock your wallet"}
+            <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? "Enter your PIN" : "Unlock your wallet"}
           </div>
-          {/* This branch is reached only when authModel !== "pin" (the pin-cohort
-              case is handled above). That's the web/legacy PASSWORD cohort — its
-              real credential is a free-text vault password (see finishPinSetup),
-              never a numeric PIN, so it must render a password Input here too
-              (mirroring the native pin-cohort's Input) or those users are locked
-              out on reload (they cannot type their password into a PinPad). */}
-          {authModel === "password" ? (
-            <>
-              <Label>Vault Password</Label>
-              <Input
-                type="password"
-                value={unlockPassword}
-                onChange={e => setUnlockPassword(e.target.value)}
-                placeholder="Enter your vault password"
-                onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
-                autoFocus={!biometricEnabled || biometricFailed}
-              />
-              <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
-                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
-              </Button>
-            </>
-          ) : (
-            <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
-          )}
+          <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
 
           {passkeyFailed && (
             <div className="pt-2 border-t border-border space-y-2">
@@ -1253,10 +1149,9 @@ export default function WalletEntry() {
   //   • No PIN yet → a single CTA into PIN-create (Phase 1); both create and import
   //     require a PIN first.
   if (view === "choose") {
-    // hasPendingPin = native PIN cohort Phase-1 done; webVaultPending = web password
-    // cohort Phase-1 done. Either one means the credential is set and the user is at
-    // the Phase-2 Create/Import choice.
-    if (hasPendingPin || webVaultPending) {
+    // hasPendingPin = PIN cohort Phase-1 done (web and native share this cohort now).
+    // Means the credential is set and the user is at the Phase-2 Create/Import choice.
+    if (hasPendingPin) {
       return (
         <EntryShell error={error}>
           <div className="p-6 rounded-xl border border-dashed border-border bg-card space-y-4">
@@ -1341,23 +1236,7 @@ export default function WalletEntry() {
               only reachable AFTER the PIN is set. */}
           <button type="button" onClick={() => { setError(""); clearPendingPin(); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
 
-          {pinStep === "real" && !Capacitor.isNativePlatform() && (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-center">Set a vault password</p>
-              <div className="p-3 rounded-xl border border-border bg-secondary/30 text-xs text-muted-foreground flex items-start gap-2">
-                <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <span>Web vault: your password is the only protection for your seed. Use a strong passphrase of at least 12 characters. The native app adds a hardware layer.</span>
-              </div>
-              <div>
-                <Label>Vault Password</Label>
-                <Input type="password" className="mt-1.5" value={realPin} onChange={e => { setRealPin(e.target.value); if (error) setError(""); }} placeholder="At least 12 characters" onKeyDown={e => { if (e.key === "Enter" && realPin.length >= 12) { setRealPinConfirm(""); setPinStep("real-confirm"); } }} />
-                <p className="text-xs text-muted-foreground mt-1">At least 12 characters · any characters allowed.</p>
-              </div>
-              <Button className="w-full" disabled={realPin.length < 12} onClick={() => { setError(""); setRealPinConfirm(""); setPinStep("real-confirm"); }}>Continue</Button>
-            </div>
-          )}
-
-          {pinStep === "real" && Capacitor.isNativePlatform() && (
+          {pinStep === "real" && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Choose an 8-digit PIN</p>
               <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN. Always guard your device.</p>
@@ -1369,18 +1248,7 @@ export default function WalletEntry() {
             </div>
           )}
 
-          {pinStep === "real-confirm" && !Capacitor.isNativePlatform() && (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-center">Confirm your password</p>
-              <div>
-                <Label>Confirm Vault Password</Label>
-                <Input type="password" className="mt-1.5" value={realPinConfirm} onChange={e => { setRealPinConfirm(e.target.value); if (error) setError(""); }} placeholder="Re-enter your password" onKeyDown={e => { if (e.key === "Enter" && realPinConfirm.length >= 12) { if (!pinsEqual(realPinConfirm, realPin)) { setError("Passwords didn't match. Try again."); setRealPinConfirm(""); return; } finishPinSetup(); } }} />
-              </div>
-              <Button className="w-full" disabled={realPinConfirm.length < 12} onClick={() => { if (!pinsEqual(realPinConfirm, realPin)) { setError("Passwords didn't match. Try again."); setRealPinConfirm(""); return; } finishPinSetup(); }}>Set Password & Continue</Button>
-            </div>
-          )}
-
-          {pinStep === "real-confirm" && Capacitor.isNativePlatform() && (
+          {pinStep === "real-confirm" && (
             <div className="space-y-3 text-center">
               <p className="text-sm font-medium">Confirm your PIN</p>
               <PinPad value={realPinConfirm} onChange={(v) => { setRealPinConfirm(v); if (error) setError(""); }} onComplete={(p) => {

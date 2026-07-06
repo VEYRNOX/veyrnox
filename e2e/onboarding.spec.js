@@ -8,36 +8,36 @@
 // dev server, so they cannot run in that gate. This file is placed in /e2e (outside
 // src/) precisely so vitest never tries to import @playwright/test.
 //
-// 2026-07-05 REWRITE — WEB AUTH MODEL CHANGED, OLD SELECTORS WERE STALE.
-// The original spec drove a 6-digit PIN pad ("Choose a 6-digit PIN", digit buttons,
-// role=status dots). The WEB build no longer renders any of that: web onboarding is a
-// ≥12-char VAULT PASSWORD (H-A minimum; WalletEntry.jsx pin-create branches on
-// Capacitor.isNativePlatform()), and the "in this portfolio" dashboard copy was
-// deliberately REMOVED for deniability (deniability-wallet-count.test.js asserts its
-// absence). In CI every PIN-selector test timed out and retried ×3 — see run
-// 28734031084 / web-e2e-results artifact. This rewrite drives the CURRENT web flow.
+// 2026-07-06 REWRITE #2 — WEB JOINED THE PIN COHORT (lockout-bug fix).
+// PR #637 ("unify to native 8-digit PIN") migrated the UNLOCK screen to a numeric
+// PinPad but left vault CREATION on the old ≥12-char password Input — a half
+// migration meaning any real alphanumeric password could be set but never re-entered
+// (PinPad accepts digits only). The fix completes the migration: web now shares
+// native's PIN cohort end to end (create, confirm, unlock, recover), authModel is
+// always 'pin' on web too, and Phase 2 creation runs through the same
+// createWalletFromPendingPin() path as native — which means no seed-backup
+// interstitial during onboarding either (native never had one; see WalletEntry.jsx
+// finishPinSetup / doCreateWallet).
 //
-// SELECTOR PROVENANCE (DISCOVER, NEVER INVENT) — all read from src/ on 2026-07-05:
-//   * "Get Started"                    — WalletEntry.jsx:244 (WelcomeHero CTA).
-//   * "Set a vault password"           — WalletEntry.jsx:1203 (web pin-create, step 1).
-//   * password Input ≥12 chars + "Continue" — WalletEntry.jsx:1210-1213.
-//   * "Confirm your password" / "Set Password & Continue" — WalletEntry.jsx:1231-1236.
-//   * "Passwords didn't match. Try again." — WalletEntry.jsx:1234/1236 (stays on confirm).
+// SELECTOR PROVENANCE (DISCOVER, NEVER INVENT) — all read from src/ on 2026-07-06:
+//   * "Get Started"                    — WalletEntry.jsx (WelcomeHero CTA).
+//   * "Choose an 8-digit PIN" + PinPad  — WalletEntry.jsx pin-create, step 1 (unified).
+//   * "Submit PIN" (PinPad's aria-label — NOT its visible "Continue" text; ARIA
+//     accessible-name resolution prefers aria-label) — components/security/PinPad.jsx.
+//   * "Confirm your PIN" — WalletEntry.jsx pin-create, step 2 (unified).
+//   * "PINs didn't match. Choose again." — WalletEntry.jsx (stays on confirm).
 //   * "Exploring — view only" + "Create or import" CTA — WalletEntry.jsx ExploreShell
 //     (post-Phase-1 landing: real app view-only behind a persistent bottom bar).
-//   * "Create Wallet" / "Import an existing seed" — WalletEntry.jsx:1129/1132 (choose).
-//   * "Your Seed Phrase (shown once)"  — WalletEntry.jsx:1346 (one-time backup screen).
-//   * "I've backed it up — Enter Wallet" — WalletEntry.jsx:1376 (finishCreate).
-//   * Authed-shell marker: nav link "Send" — Layout.jsx:64 ({ path: "/send", label: "Send" }).
+//   * "Create Wallet" / "Import an existing seed" — WalletEntry.jsx (choose view).
+//   * Authed-shell marker: nav link "Send" — Layout.jsx ({ path: "/send", label: "Send" }).
 //     ("in this portfolio" no longer exists — deniability.)
-//   * Unlock gate (web password cohort): "Unlock your wallet" + placeholder
-//     "Enter your vault password" — WalletEntry.jsx:1049-1056.
+//   * Unlock gate (PIN cohort): role="group" name /PIN entry/i — WalletEntry.jsx.
 //   * Send recipient placeholder "0x... or vitalik.eth or wallet.sol" — SendCrypto.jsx.
 
 import { test, expect } from '@playwright/test';
 
 const BASE = 'http://localhost:5173';
-const VAULT_PASSWORD = 'e2e-vault-password-01'; // ≥12 chars (H-A web minimum)
+const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejects patterns)
 
 // Clear the silently-persisting demo flag (CLAUDE.md known trap) so we exercise the
 // REAL local build (the onboarding gate), not the pre-seeded demo pass-through.
@@ -51,18 +51,27 @@ async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
 }
 
-// Phase 1 (web cohort): Get Started → set vault password → confirm → choose view.
-async function completePasswordSetup(page, password = VAULT_PASSWORD) {
-  await page.getByRole('button', { name: 'Get Started' }).click();
-  await expect(page.getByText('Set a vault password')).toBeVisible();
-  await page.locator('input[type="password"]').first().fill(password);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByText('Confirm your password')).toBeVisible();
-  await page.locator('input[type="password"]').first().fill(password);
-  await page.getByRole('button', { name: 'Set Password & Continue' }).click();
+// Enter an 8-digit PIN via PinPad's on-screen digit buttons, then submit. Scoped to
+// a PinPad's own "N of 8 digits entered" status region so it never collides with
+// unrelated same-named buttons elsewhere on the page.
+async function enterPin(page, pin) {
+  const pad = page.getByRole('group', { name: /PIN entry/i });
+  for (const digit of pin) {
+    await pad.getByRole('button', { name: digit, exact: true }).click();
+  }
+  await pad.getByRole('button', { name: 'Submit PIN' }).click();
 }
 
-// Phase 1.5: password setup lands in the EXPLORE shell (real app, view-only, no
+// Phase 1 (unified PIN cohort): Get Started → choose PIN → confirm → choose view.
+async function completePasswordSetup(page, pin = VAULT_PIN) {
+  await page.getByRole('button', { name: 'Get Started' }).click();
+  await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible();
+  await enterPin(page, pin);
+  await expect(page.getByText('Confirm your PIN')).toBeVisible();
+  await enterPin(page, pin);
+}
+
+// Phase 1.5: PIN setup lands in the EXPLORE shell (real app, view-only, no
 // vault) behind a persistent bottom-bar CTA (WalletEntry.jsx ExploreShell). Leaving
 // explore via that CTA is what reaches the Phase-2 create/import choice. exact:true
 // — the portfolio page has a sibling "Create or import a wallet" button.
@@ -73,12 +82,13 @@ async function leaveExploreToChoose(page) {
   await page.getByRole('button', { name: 'Create or import', exact: true }).click();
 }
 
-// Phase 2: choose view → Create Wallet → one-time seed backup → Enter Wallet.
-// Vault creation runs real crypto (seed gen + KDF) — allow a generous window.
+// Phase 2: choose view → Create Wallet → authed shell. Unified with native: creation
+// runs through createWalletFromPendingPin, which does NOT show a seed-backup
+// interstitial during onboarding (native never has — see WalletEntry.jsx). Vault
+// creation runs real crypto (seed gen + KDF) — allow a generous window.
 async function createWalletThroughBackup(page) {
   await page.getByRole('button', { name: /Create Wallet/i }).click();
-  await expect(page.getByText('Your Seed Phrase (shown once)')).toBeVisible({ timeout: 30000 });
-  await page.getByRole('button', { name: /I've backed it up/i }).click();
+  await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 30000 });
 }
 
 // Throwaway BIP-39 UAT fixture seed (TESTNET-ONLY, never real value — see project
@@ -95,7 +105,7 @@ async function importWalletThroughRestore(page, seed = IMPORT_SEED) {
   await page.getByRole('button', { name: /Restore \/ Import/i }).click();
 }
 
-test.describe('onboarding state machine — authoritative order (web password cohort)', () => {
+test.describe('onboarding state machine — authoritative order (PIN cohort, web/native unified)', () => {
   test('fresh open shows the welcome hero, NOT a dashboard and NOT a credential prompt', async ({ page }) => {
     await freshLocalBuild(page);
     await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible();
@@ -103,7 +113,7 @@ test.describe('onboarding state machine — authoritative order (web password co
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toHaveCount(0);
   });
 
-  test('Get Started → vault password → confirm → explore → Create Wallet → seed backup → authed shell', async ({ page }) => {
+  test('Get Started → choose PIN → confirm → explore → Create Wallet → authed shell', async ({ page }) => {
     await freshLocalBuild(page);
     await completePasswordSetup(page);
     await leaveExploreToChoose(page);
@@ -123,15 +133,14 @@ test.describe('onboarding state machine — authoritative order (web password co
   test('confirm-mismatch shows an error and does NOT provision a vault', async ({ page }) => {
     await freshLocalBuild(page);
     await page.getByRole('button', { name: 'Get Started' }).click();
-    await expect(page.getByText('Set a vault password')).toBeVisible();
-    await page.locator('input[type="password"]').first().fill(VAULT_PASSWORD);
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
-    await expect(page.getByText('Confirm your password')).toBeVisible();
-    await page.locator('input[type="password"]').first().fill('different-password-99');
-    await page.getByRole('button', { name: 'Set Password & Continue' }).click();
-    await expect(page.getByText(/Passwords didn't match/i)).toBeVisible();
-    // Still on the confirm step, still unauthed — nothing was provisioned.
-    await expect(page.getByText('Confirm your password')).toBeVisible();
+    await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible();
+    await enterPin(page, VAULT_PIN);
+    await expect(page.getByText('Confirm your PIN')).toBeVisible();
+    await enterPin(page, '19283746'); // deliberately different 8-digit PIN
+    await expect(page.getByText(/PINs didn't match/i)).toBeVisible();
+    // Mismatch bounces back to the first PIN step (WalletEntry.jsx resets pinStep to
+    // 'real'), still unauthed — nothing was provisioned.
+    await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toHaveCount(0);
   });
 });
@@ -145,7 +154,7 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible();
   });
 
-  test('reload AFTER wallet creation returns to the unlock gate, and the original password actually unlocks it', async ({ page }) => {
+  test('reload AFTER wallet creation returns to the unlock gate, and the original PIN actually unlocks it', async ({ page }) => {
     await freshLocalBuild(page);
     await completePasswordSetup(page);
     await leaveExploreToChoose(page);
@@ -153,23 +162,25 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
 
     await page.reload();
-    // Returning web password-cohort user: the gate must render a real password
-    // Input, NOT a numeric PinPad — the password cannot be typed into a PIN pad
-    // at all, so asserting a PIN-labelled group is visible is NOT sufficient (that
-    // gap previously let a full lockout regress silently — see onboarding-lockout
-    // regression below). Assert the actual credential surface, then that it unlocks.
-    await expect(page.getByPlaceholder('Enter your vault password')).toBeVisible();
-    await page.getByPlaceholder('Enter your vault password').fill(VAULT_PASSWORD);
-    await page.getByRole('button', { name: /^Unlock$/ }).click();
+    // Returning user: the gate must render the SAME PinPad used at creation (web
+    // and native share one PIN cohort now) — asserting a PIN-labelled group is
+    // visible is NOT sufficient on its own (a mismatched-credential-surface bug
+    // could still hide behind it), so also assert it actually unlocks.
+    await expect(page.getByRole('group', { name: /PIN entry/i })).toBeVisible();
+    await enterPin(page, VAULT_PIN);
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
   });
 
-  test('onboarding-lockout regression: reload after IMPORTING a seed still unlocks with the original vault password (not a numeric PIN pad)', async ({ page }) => {
-    // Regression coverage for the web onboarding lockout bug: importing a seed (as
-    // opposed to Create Wallet) also lands the device in the web PASSWORD cohort,
-    // and a prior regression made the post-reload unlock gate render a numeric-only
-    // PinPad regardless of cohort — the long alphanumeric vault password literally
-    // cannot be typed into it, permanently locking out every returning web user.
+  test('onboarding-lockout regression: reload after IMPORTING a seed still unlocks with the same 8-digit PIN', async ({ page }) => {
+    // Regression coverage for the web onboarding lockout bug. History: PR #637 made
+    // the unlock screen a numeric-only PinPad but left creation on a free-text
+    // password (lockout); PR #645 fixed it by routing on authModel instead, keeping
+    // BOTH cohorts. This fix goes further: web now shares native's single PIN cohort
+    // end to end (create, confirm, unlock, recover) — there is no separate "password
+    // cohort" left to route around, since web is a testing-only surface (never
+    // production) that should fully mirror native. Importing a seed also lands the
+    // device in the PIN cohort, and reload must show the SAME PinPad, not a stale
+    // password field.
     await freshLocalBuild(page);
     await completePasswordSetup(page);
     await leaveExploreToChoose(page);
@@ -177,13 +188,12 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
 
     await page.reload();
-    // The credential surface must be a real password field — a PIN pad here means
-    // the user is locked out (their credential is a 12+ char password, not digits).
-    await expect(page.getByPlaceholder('Enter your vault password')).toBeVisible();
-    await expect(page.getByRole('group', { name: /PIN entry/i })).toHaveCount(0);
+    // The credential surface must be the same PinPad — a real password field here
+    // would mean the reload landed in a stale/mismatched cohort.
+    await expect(page.getByRole('group', { name: /PIN entry/i })).toBeVisible();
+    await expect(page.getByPlaceholder('Enter your vault password')).toHaveCount(0);
 
-    await page.getByPlaceholder('Enter your vault password').fill(VAULT_PASSWORD);
-    await page.getByRole('button', { name: /^Unlock$/ }).click();
+    await enterPin(page, VAULT_PIN);
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
   });
 });

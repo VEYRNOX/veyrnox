@@ -20,13 +20,15 @@
 // the now-real vault; this test deliberately does NOT reload, to isolate the same-session
 // staleness.
 //
-// SELECTOR PROVENANCE (DISCOVER, NEVER INVENT) — read from src/ on 2026-07-06, same
-// vault-password web cohort flow as e2e/onboarding.spec.js:
-//   * "Get Started" / "Set a vault password" / confirm — WalletEntry.jsx (see onboarding.spec.js).
+// SELECTOR PROVENANCE (DISCOVER, NEVER INVENT) — read from src/ on 2026-07-06. Web
+// now shares native's PIN cohort end to end (lockout-bug fix; see onboarding.spec.js
+// header for the full history):
+//   * "Get Started" / "Choose an 8-digit PIN" / "Confirm your PIN" — WalletEntry.jsx
+//     (see onboarding.spec.js for the PinPad-driving helper).
 //   * "Create or import" CTA (leave explore) — WalletEntry.jsx ExploreShell.
-//   * "Import an existing seed" button — WalletEntry.jsx:1270.
-//   * Recovery seed textarea (aria-label "Recovery seed phrase") — WalletEntry.jsx:1298.
-//   * "Restore / Import" button — WalletEntry.jsx:1301.
+//   * "Import an existing seed" button — WalletEntry.jsx (choose view).
+//   * Recovery seed textarea (aria-label "Recovery seed phrase") — WalletEntry.jsx.
+//   * "Restore / Import" button — WalletEntry.jsx.
 //   * Authed-shell marker + sidebar nav link "Send" — Layout.jsx (navGroups, ~line 223).
 //   * Send form recipient field id="send-recipient" (Label "Send to (address or name)") —
 //     SendCrypto.jsx:1029-1037 (placeholder text has since changed from the stale one
@@ -35,7 +37,7 @@
 import { test, expect } from '@playwright/test';
 
 const BASE = 'http://localhost:5173';
-const VAULT_PASSWORD = 'e2e-vault-password-01'; // ≥12 chars (H-A web minimum)
+const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejects patterns)
 // Designated throwaway BIP-39 testnet/faucet fixture seed (never holds real value).
 const THROWAWAY_SEED = 'bamboo lyrics harvest potato seat carry equip nation slam begin admit pet';
 
@@ -48,14 +50,20 @@ async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
 }
 
-async function completePasswordSetup(page, password = VAULT_PASSWORD) {
+async function enterPin(page, pin) {
+  const pad = page.getByRole('group', { name: /PIN entry/i });
+  for (const digit of pin) {
+    await pad.getByRole('button', { name: digit, exact: true }).click();
+  }
+  await pad.getByRole('button', { name: 'Submit PIN' }).click();
+}
+
+async function completePasswordSetup(page, pin = VAULT_PIN) {
   await page.getByRole('button', { name: 'Get Started' }).click();
-  await expect(page.getByText('Set a vault password')).toBeVisible();
-  await page.locator('input[type="password"]').first().fill(password);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByText('Confirm your password')).toBeVisible();
-  await page.locator('input[type="password"]').first().fill(password);
-  await page.getByRole('button', { name: 'Set Password & Continue' }).click();
+  await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible();
+  await enterPin(page, pin);
+  await expect(page.getByText('Confirm your PIN')).toBeVisible();
+  await enterPin(page, pin);
 }
 
 async function leaveExploreToChoose(page) {

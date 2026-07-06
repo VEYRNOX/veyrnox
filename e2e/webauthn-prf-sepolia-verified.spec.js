@@ -25,10 +25,30 @@
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
-const TEST_PASSWORD = 'web-kek-verified-password-2026';
+// Web now shares native's PIN cohort (lockout-bug fix — see onboarding.spec.js header
+// for the full history: PR #637 migrated the unlock screen to a numeric-only PinPad
+// but left vault creation on a ≥12-char password field, a half migration that made
+// unlock impossible for any password with a non-digit character).
+const TEST_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejects patterns)
 const SEPOLIA_RPC = 'https://rpc.sepolia.org'; // or use a configured RPC
 const SEPOLIA_RECIPIENT = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'; // Standard test recipient
-const SEND_AMOUNT = '0.001';
+// The throwaway testnet fixture wallet only holds ~0.00007 Sepolia ETH; this must
+// stay well under that (leaving margin for the network fee) for the real on-chain
+// send to actually succeed rather than hit "Insufficient balance".
+const SEND_AMOUNT = '0.00002';
+
+// Enter an 8-digit PIN via PinPad's on-screen digit buttons, then submit. Scoped to
+// a PinPad's own "PIN entry" group so it never collides with same-named buttons
+// elsewhere on the page. "Submit PIN" is the button's aria-label — NOT its visible
+// text ("Continue"/"Unlock"/"Verify" depending on context); ARIA accessible-name
+// resolution prefers aria-label over visible text content.
+async function enterPin(page, pin, groupName = /PIN entry/i) {
+  const pad = page.getByRole('group', { name: groupName });
+  for (const digit of pin) {
+    await pad.getByRole('button', { name: digit, exact: true }).click();
+  }
+  await pad.getByRole('button', { name: 'Submit PIN' }).click();
+}
 
 // ── Verify txid is confirmed on Sepolia via RPC ──────────────────────────────
 async function verifyTxidOnChain(txid) {
@@ -121,21 +141,19 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     await page.getByRole('button', { name: 'Get Started' }).click();
     console.log('✓ Onboarding started');
 
-    // Password entry (web requires 12+ chars)
-    await expect(page.getByText('Set a vault password')).toBeVisible({
+    // PIN entry (web shares native's 8-digit PIN cohort)
+    await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible({
       timeout: 10000,
     });
-    await page.locator('input[type="password"]').first().fill(TEST_PASSWORD);
-    await page.getByRole('button', { name: 'Continue' }).click();
-    console.log('✓ Password set');
+    await enterPin(page, TEST_PIN);
+    console.log('✓ PIN set');
 
-    // Password confirmation
-    await expect(page.getByText('Confirm your password')).toBeVisible({
+    // PIN confirmation
+    await expect(page.getByText('Confirm your PIN')).toBeVisible({
       timeout: 5000,
     });
-    await page.locator('input[type="password"]').last().fill(TEST_PASSWORD);
-    await page.getByRole('button', { name: /Set Password & Continue/i }).click();
-    console.log('✓ Password confirmed');
+    await enterPin(page, TEST_PIN);
+    console.log('✓ PIN confirmed');
 
     // Create or Import Wallet
     const createWalletBtn = page.getByRole('button', { name: /Create or import/i }).first();
@@ -183,42 +201,29 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     await page.goto(`${BASE}/send`);
     await page.waitForLoadState('networkidle');
 
-    // Check if unlock screen appears
-    const unlockPrompt = page.getByText(/Unlock your wallet/i);
-    if (await unlockPrompt.isVisible({ timeout: 3000 }).catch(() => false)) {
+    // Check if unlock screen appears (PIN cohort — same PinPad as onboarding)
+    const unlockPad = page.getByRole('group', { name: /PIN entry/i });
+    if (await unlockPad.isVisible({ timeout: 3000 }).catch(() => false)) {
       console.log('✓ Unlock screen detected, unlocking...');
-
-      // Try to find password input (might have a "Password" tab)
-      const passwordTab = page.getByRole('button', { name: /Password/i });
-      if (await passwordTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await passwordTab.click();
-      }
-
-      const passwordInput = page.locator('input[type="password"]').first();
-      if (await passwordInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await passwordInput.fill(TEST_PASSWORD);
-        const unlockBtn = page.getByRole('button', { name: /Unlock/i }).first();
-        await unlockBtn.click();
-        console.log('✓ Wallet unlocked with password');
-        await page.waitForTimeout(2000);
-      }
+      await enterPin(page, TEST_PIN);
+      console.log('✓ Wallet unlocked with PIN');
+      await page.waitForTimeout(2000);
     }
 
     console.log('✓ Send page ready');
 
-    // Find and fill recipient field
-    const recipientInput = page.locator('input[placeholder*="0x"], input[placeholder*="Address"], input[type="text"]').first();
-    if (await recipientInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await recipientInput.fill(SEPOLIA_RECIPIENT);
-      console.log(`✓ Recipient entered`);
-    }
+    // Find and fill recipient field (stable id hook — the Input renders no explicit
+    // type attribute, so a CSS [type="text"] selector never matches it).
+    const recipientInput = page.locator('#send-recipient');
+    await expect(recipientInput).toBeVisible({ timeout: 5000 });
+    await recipientInput.fill(SEPOLIA_RECIPIENT);
+    console.log(`✓ Recipient entered`);
 
     // Find and fill amount field
-    const amountInput = page.locator('input[type="number"], input[placeholder*="0.00"], input[placeholder*="Amount"]').first();
-    if (await amountInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await amountInput.fill(SEND_AMOUNT);
-      console.log(`✓ Amount entered: ${SEND_AMOUNT} ETH`);
-    }
+    const amountInput = page.locator('#send-amount');
+    await expect(amountInput).toBeVisible({ timeout: 5000 });
+    await amountInput.fill(SEND_AMOUNT);
+    console.log(`✓ Amount entered: ${SEND_AMOUNT} ETH`);
 
     // ── REVIEW & CONFIRM ─────────────────────────────────────────────────────
     await page.getByRole('button', { name: /^Continue$/ }).click();
@@ -233,15 +238,15 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     });
     await confirmBtn.click();
 
-    // Handle step-up re-auth if present
-    const passwordPrompt = page.getByText(/Enter your password|Confirm your password/i);
-    if (await passwordPrompt.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await page.locator('input[type="password"]').fill(TEST_PASSWORD);
-      const authBtn = page.getByRole('button', { name: /Unlock|Authorise|Confirm/i });
+    // Handle step-up re-auth if present (TwoFactorGate — gates on getAuthModel() ===
+    // 'pin', so web joining the PIN cohort means it renders the same PinPad, with its
+    // own "8-digit PIN" aria-label distinct from onboarding/unlock's "PIN entry").
+    const stepUpPad = page.getByRole('group', { name: /8-digit PIN/i });
+    if (await stepUpPad.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await enterPin(page, TEST_PIN, /8-digit PIN/i);
+      const authBtn = page.getByRole('button', { name: /Verify|Unlock|Authorise|Confirm/i });
       if (await authBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await authBtn.click();
-      } else {
-        await page.locator('input[type="password"]').press('Enter');
       }
       console.log('✓ Step-up re-auth completed');
     }
@@ -275,7 +280,7 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     console.log('━'.repeat(80));
     console.log('✅ TEST PASSED — Web Phase 1 KEK Sepolia Send Verification');
     console.log('━'.repeat(80));
-    console.log(`Vault:       Web (password-protected, ${TEST_PASSWORD.length} chars)`);
+    console.log(`Vault:       Web (PIN-protected, same cohort as native, ${TEST_PIN.length} digits)`);
     console.log(`PRF Enroll:  ✓ Enrolled via CDP virtual authenticator`);
     console.log(`Send Amount: ${SEND_AMOUNT} Sepolia ETH`);
     console.log(`Recipient:   ${SEPOLIA_RECIPIENT}`);
