@@ -449,7 +449,10 @@ tree for `idb` to target by label — screenshot-and-hardcode, same pattern as t
 other UAT tooling). It explicitly CANNOT and does not claim to touch Secure Enclave /
 hardware-KEK verification — the Simulator has no real SE, so this only ever proves
 app-layer routing logic, never the hardware claim. **Does NOT close iOS-F9, H-2/iOS-F11,
-iOS-F5, or iOS-F3** — all remain OPEN, unchanged (see the residual table, §4-adjacent).
+iOS-F5, or iOS-F3** — all remain device-unverified (see the residual table, §4-adjacent).
+Note: iOS-F5's residual row is now a MERGED *partial* heap-zeroing mitigation (native buffer
+zeroed; base64/JS bridge residue architecturally unzeroable) with the device leaks-check still
+outstanding — no longer an untouched OPEN item; iOS-F3 remains code-complete.
 
 **Honest framing (all four specs + the iOS script):** real crypto + real browser-automation
 detection + real CDP-level WebAuthn behavior, zero human interaction required to run them.
