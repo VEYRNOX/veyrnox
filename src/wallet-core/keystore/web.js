@@ -693,6 +693,30 @@ export const webKeyStore = {
     await saveVault(await encryptVault(secret, newPassword));
   },
 
+  // Web parity for the native metadata accessor. The explicit "Upgrade protection"
+  // action (upgradeKekToV3) is Android/native-specific — the C-1 fixed-salt weakness it
+  // fixes does not exist on web, where H is the WebAuthn PRF. The UI gates the upgrade on
+  // native anyway, so web reports null (no upgrade applies). If a future web PRF vault ever
+  // carries a version field, report it honestly rather than fabricating one.
+  async getVaultKekVersion() {
+    try {
+      const blob = await loadVault();
+      if (!blob || !blob.kekWrap) return null;
+      // Web PRF wraps do not carry a hardwareKekVersion today; surface it only if present.
+      return typeof blob.hardwareKekVersion === 'number' ? blob.hardwareKekVersion : null;
+    } catch {
+      return null;
+    }
+  },
+
+  // Web parity for the native upgrade. Web PRF vaults are NOT affected by C-1 (Android
+  // fixed-salt HMAC), so there is nothing to re-enroll. Honest NO-OP (I4): do NOT fabricate
+  // a hardware re-enroll on web and do NOT prompt — return { upgraded:false, version:null }.
+  // eslint-disable-next-line no-unused-vars
+  async upgradeKekToV3(_password, _opts) {
+    return { upgraded: false, version: null };
+  },
+
   // The unlocked secret lives in WalletProvider's in-memory ref on web, so the
   // store holds nothing to clear here. Native (M2b) drops its hardware grant.
   lock() {},

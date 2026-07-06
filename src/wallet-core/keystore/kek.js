@@ -107,6 +107,11 @@ export const KEK_ERR = Object.freeze({
   MALFORMED_VAULT: 'KEK_MALFORMED_VAULT',
   // A degenerate hardware/set factor (e.g. all-zero H) rejected before combine (H-4).
   DEGENERATE_INPUT: 'KEK_DEGENERATE_INPUT',
+  // The requested KEK operation needs an enrolled (kekWrap) vault, but the vault is bare.
+  // Used by upgradeKekToV3 to fail closed BEFORE any biometric prompt when there is
+  // nothing to upgrade (a non-KEK vault). Distinct from MALFORMED_VAULT (structurally
+  // unreadable) — the blob is perfectly valid, it just carries no hardware KEK wrap.
+  NOT_ENROLLED: 'KEK_NOT_ENROLLED',
 });
 
 /**
