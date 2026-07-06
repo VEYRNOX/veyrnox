@@ -171,7 +171,7 @@
       <h2>What's left — device-gated / open <span class="tag">not done</span></h2>
       <ul>
         <li><span class="mk m-coral"></span><span class="txt">Independent security audit (S1–S4 + crypto + vault cipher path)<span class="note">the one hard remaining gate; standalone crypto engagement DECLINED, folded into this</span></span></li>
-        <li><span class="mk m-coral"></span><span class="txt">iOS: SE-unlock log trace (iOS-F9), biometric re-enroll invalidation, F5/F3 ObjC edits<span class="note">code-complete, NOT compiled — need Mac + Xcode + unrestricted iPhone</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">iOS: SE-unlock log trace (iOS-F9), biometric re-enroll invalidation, F5 heap-zeroing device-check, F3 LAContext edit<span class="note">F5 MERGED as a PARTIAL heap-zeroing mitigation (native buffer zeroed; base64/JS bridge residue architecturally unzeroable, residual LOW–MEDIUM); F3 still code-complete. None compiled/device-verified — need Mac + Xcode + unrestricted iPhone</span></span></li>
         <li><span class="mk m-coral"></span><span class="txt">Android C-1 residuals: salt-tamper negative test, v2→v3 migration device-exercise, multi-enroll salt distinctness</span></li>
         <li><span class="mk m-coral"></span><span class="txt">M2c/M2d OS-enforced ACL binding (biometryCurrentSet / StrongBox)<span class="note">app-layer today; needs custom native plugin + real device</span></span></li>
         <li><span class="mk m-amber"></span><span class="txt">LOG-1 — debug logcat leaked H + vault blob<span class="note">remediation BUILT (PR #572); release-build spot-check PENDING</span></span></li>
