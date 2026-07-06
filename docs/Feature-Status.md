@@ -456,6 +456,28 @@ its commits were already on main).
   (covered by `hardware-kek-e2e.spec.js`). Requires `BROWSERSTACK_USERNAME` /
   `BROWSERSTACK_ACCESS_KEY` repo secrets; docs-only pushes skip the device run.
   This is CI infrastructure, not a catalogue status change — no asset is promoted by it.
+- iOS E2E test infrastructure — 🟡 BUILT (SCAFFOLD ONLY — never device-run; no CI
+  evidence, no on-chain claims). Appium (XCUITest + WebdriverIO) suite in `tests/ios/`
+  added in PR #653 (2026-07-06), mirroring the Android suite structure: `helpers/`
+  (`appHelper.js`, `walletHelper.js`), a local Mac + real-iPhone runner `wdio.conf.js`
+  (`IOS_UDID` / `IOS_TEAM_ID`; the iOS Simulator is rejected — no Secure Enclave), the
+  pre-existing `wdio.browserstack.conf.js` (bundle id now env-configurable), and four
+  specs mapped to the open iOS gates in `docs/hardware-audit-handoff.md`:
+  `vault.spec.js` (create/unlock/persistence, ≥12-char min H-A); `send.spec.js` (drives
+  the still-missing iOS in-app send txid — real send gated behind `SUPERVISED_SEND=1`,
+  hard-fails if demo mode is on); `hardware-kek-e2e.spec.js` (iOS-F9 SE-unlock `os_log`
+  trace + PARTIAL→full promotion, prints the Mac-side `log stream` command, plus a
+  SE-factor/vault-blob leak canary — the iOS analogue of the Android LOG-1 canary);
+  `biometric-reenroll-e2e.spec.js` (H-2/iOS-F11 Face ID re-enroll invalidation —
+  fail-closed + PIN recovery asserted, gated on `REENROLL_DONE=1`, needs an unrestricted
+  iPhone). npm scripts `ios:test[:vault|send|hardware-kek|biometric-reenroll]`. **Honest
+  scope:** this is a SCAFFOLD — it has NEVER been executed on a device (iOS automation
+  needs macOS + Xcode + a real iPhone, unavailable on the Windows dev machine), so it
+  closes NO iOS gate and promotes NO status. The specs deliberately assert around what
+  automation cannot do (native Face ID sheet, iOS-Settings re-enroll, `os_log` capture on
+  iOS 26 where NSLog is not Appium-streamable) rather than faking evidence; iOS-F5 / iOS-F3
+  (native ObjC compile/heap items) are out of WDIO scope and are noted, not stubbed.
+  Nothing here is "verified." Not independently audited.
 - Mobile App PWA / Mobile Widget — ❌ removed (PR #48)
 
 ## 12. WalletConnect / dApp connector
