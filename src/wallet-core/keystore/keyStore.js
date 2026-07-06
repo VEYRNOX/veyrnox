@@ -53,6 +53,22 @@
  *   secret read. Returns null when unenrolled or unknown. Used by the Hardware
  *   Protection badge to show the honest tier (H-1), never fabricated.
  *
+ * @property {() => Promise<number|null>} [getVaultKekVersion]
+ *   The hardware KEK protocol version from the stored blob (null / 1 / 2 / 3).
+ *   Metadata-only — no biometric prompt, no secret read. null when unenrolled,
+ *   corrupt, or (web) not applicable; a KEK-wrapped vault with no version field is
+ *   legacy v1. The settings UI reads this to decide whether to offer the explicit
+ *   "Upgrade protection" action (upgradeKekToV3, native only).
+ *
+ * @property {(password: string, opts?: { getHardwareFactor?: (hfOpts?: { kekSalt?: Uint8Array }) => Promise<Uint8Array> }) => Promise<{ upgraded: boolean, version: number|null }>} [upgradeKekToV3]
+ *   Native-only in effect. EXPLICIT, consented, FAIL-CLOSED re-enroll of a non-v3
+ *   KEK vault to a genuinely salt-bound v3 wrap (fixes C-1 fixed-salt binding).
+ *   Idempotent on a v3 vault (returns { upgraded:false, version:3 }, no prompt, no
+ *   write). Fires two biometric prompts (unwrap + re-wrap) for a one-time action;
+ *   propagates any failure (no swallow), leaving the vault byte-for-byte unchanged.
+ *   Web is an honest no-op (returns { upgraded:false, version:null }) — web PRF
+ *   vaults are not affected by the Android fixed-salt weakness.
+ *
  * @property {(secret: string, password: string) => Promise<void>} createVault
  *   Encrypt `secret` under `password` and persist CIPHERTEXT ONLY. The live
  *   secret is never written to storage. (Web: encryptVault + saveVault.)

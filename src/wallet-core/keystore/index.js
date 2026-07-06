@@ -57,6 +57,18 @@ function makeNativeFacade() {
     async getVaultKekTier() {
       return (await load()).nativeKeyStore.getVaultKekTier();
     },
+    // Native-only: metadata-only read of the hardware KEK protocol version
+    // (null / 1 / 2 / 3). The settings UI reads this to decide whether to OFFER the
+    // explicit "Upgrade protection" action. No biometric prompt, no secret read.
+    async getVaultKekVersion() {
+      return (await load()).nativeKeyStore.getVaultKekVersion();
+    },
+    // Native-only: EXPLICIT, consented, FAIL-CLOSED re-enroll of a non-v3 KEK vault to a
+    // genuinely salt-bound v3 wrap. Fires two biometric prompts (unwrap + re-wrap) for a
+    // one-time action; propagates any failure (no swallow). Idempotent on a v3 vault.
+    async upgradeKekToV3(password, opts) {
+      return (await load()).nativeKeyStore.upgradeKekToV3(password, opts);
+    },
     async createVault(secret, password) {
       return (await load()).nativeKeyStore.createVault(secret, password);
     },
