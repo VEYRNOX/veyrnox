@@ -4,12 +4,19 @@ export default defineConfig({
   testDir: './e2e',
   // Supervised / UAT harnesses are NOT part of the automated suite. Harness B is
   // human-in-the-loop (blocks up to 20 min per human step — in CI it just burns the
-  // clock until the job timeout); the WebAuthn tier-2 harness needs .env.local with
-  // VITE_DEV_UNGATE_SEND=1 plus a funded testnet wallet. Run them explicitly with
-  // RUN_SUPERVISED_E2E=1 (headed, per their file headers).
+  // clock until the job timeout); the WebAuthn tier-2 harness and the Sepolia
+  // txid-verification harness both need .env.local with VITE_DEV_UNGATE_SEND=1 plus
+  // a funded testnet wallet (the Sepolia harness's throwaway 'test test ... junk'
+  // mnemonic is a famous public fixture with dust balance only — it was missing from
+  // this gate, which is why it hung/failed unattended in CI; see its file header).
+  // Run them explicitly with RUN_SUPERVISED_E2E=1 (headed, per their file headers).
   testIgnore: process.env.RUN_SUPERVISED_E2E
     ? []
-    : ['**/send-broadcast.harness-b.spec.js', '**/webauthn-prf-tier2-send.spec.js'],
+    : [
+        '**/send-broadcast.harness-b.spec.js',
+        '**/webauthn-prf-tier2-send.spec.js',
+        '**/webauthn-prf-sepolia-verified.spec.js',
+      ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

@@ -9,7 +9,20 @@
 // - Manual blockchain verification (automated via RPC)
 // - User-supplied txid (captured + verified programmatically)
 //
-// Run:
+// SUPERVISED HARNESS — NOT part of the unattended CI suite (playwright.config.ts
+// testIgnore). It sends real Sepolia ETH from the well-known public 'test test
+// ... junk' throwaway mnemonic, whose balance is dust-only (bot-drained, shared
+// by every tool that documents this fixture) — nowhere near the 0.001 ETH this
+// test tries to send, so it cannot pass unattended without funding that address
+// first. It was missing from testIgnore (an oversight vs. its sibling
+// webauthn-prf-tier2-send.spec.js, which has the identical funded-wallet
+// requirement and IS gated), which is why it ran — and consistently failed — in
+// every CI run. A separate bug (now fixed) also made it hang for the full test
+// timeout: a speculative "Password tab" click matched the unrelated "Forgot
+// password? Restore from seed phrase" recovery link by accessible name and
+// navigated away from the unlock screen entirely.
+//
+// Run (after funding the mnemonic's Sepolia address):
 //   npm i -D @playwright/test && npx playwright install chromium
 //   RUN_SUPERVISED_E2E=1 npx playwright test e2e/webauthn-prf-sepolia-verified.spec.js --headed --workers=1
 //
@@ -182,12 +195,14 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     if (await unlockPrompt.isVisible({ timeout: 3000 }).catch(() => false)) {
       console.log('✓ Unlock screen detected, unlocking...');
 
-      // Try to find password input (might have a "Password" tab)
-      const passwordTab = page.getByRole('button', { name: /Password/i });
-      if (await passwordTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await passwordTab.click();
-      }
-
+      // NOTE: there is no "Password tab" toggle on the real unlock screen
+      // (WalletEntry.jsx) — a prior version of this test speculatively looked
+      // for one via getByRole('button', { name: /Password/i }), which instead
+      // matched the "Forgot password? Restore from seed phrase" recovery link
+      // (its accessible name contains "Password" too) and clicked THAT,
+      // navigating away to the seed-recovery screen — which has no "Unlock"
+      // button at all, hanging the next step for the full test timeout. This
+      // was the root cause of this test's persistent CI flake/hang.
       const passwordInput = page.locator('input[type="password"]').first();
       if (await passwordInput.isVisible({ timeout: 2000 }).catch(() => false)) {
         await passwordInput.fill(TEST_PASSWORD);
