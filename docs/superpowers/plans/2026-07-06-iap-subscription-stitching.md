@@ -1450,14 +1450,39 @@ git commit -m "chore(iap): sync Android Gradle for RevenueCat plugin"
 
 ### Task 15: Real sandbox purchase, restore, and expiry checklist
 
-**Files:** none — this is a manual verification checklist, not a code task. Do not mark this feature "verified" anywhere in docs until every item below has actually happened on a real device, per this repo's verify-don't-assert rule.
+**Files:** none — this is a manual verification checklist, not a code task. Do not mark this feature "verified" anywhere in docs until every item below has actually happened on a real device, per this repo's verify-don't-assert rule. A sandbox purchase verifies the IAP *unlock flow*, NOT a per-asset on-chain status — record its evidence as **non-promoting META** (mirroring the hardware-KEK txids), never as a catalogue `verified` promotion.
 
-- [ ] **Step 1 (iOS):** On a physical iPhone (or Simulator with the StoreKit config from Task 13) signed into a **Sandbox Apple ID** (App Store Connect → Users and Access → Sandbox Testers), open the app, go to `/plans`, tap **Upgrade to Safety Plus**, confirm the sandbox purchase sheet, complete it. Confirm: `currentTier` becomes `safety_plus` without an app restart, a previously-locked route (e.g. `/hardware-wallet`) now renders instead of `TierLockedPage`.
-- [ ] **Step 2 (iOS):** Force-quit and relaunch the app. Confirm the tier is still `safety_plus` on cold start (i.e. `resolveTier()` correctly reads the persisted RevenueCat entitlement, not just the live listener event from Step 1).
-- [ ] **Step 3 (iOS):** In App Store Connect sandbox, cancel/expire the sandbox subscription (or wait for its accelerated sandbox renewal cycle to lapse). Confirm the app's tier reverts to `free` and the gated routes lock again — either via the live listener or on next app foreground.
-- [ ] **Step 4 (iOS):** Delete and reinstall the app under the same sandbox Apple ID, then tap **Restore purchases** on `/plans`. Confirm it recovers the `safety_plus` entitlement without a new purchase sheet.
-- [ ] **Step 5 (Android):** On a physical Android device, add the tester account as a **License Tester** in Play Console (Setup → License testing), install the app from an internal-testing-track build, repeat Steps 1-4 using a real (test-card, zero-charge) Play Store purchase instead of StoreKit.
-- [ ] **Step 6:** Record the outcome (device model, OS version, pass/fail per step, any error codes seen) in `docs/Feature-Status.md` under a new Safety Plus IAP entry, using this repo's BUILT / device-verified language exactly as used for the hardware-KEK features — do not write "verified" unless every step above passed on a real device with no workaround.
+#### Step 0 — Pre-flight config-consistency (do this BEFORE touching a device; a mismatch here silently fails the whole session — a purchase can succeed while the tier stays `free`)
+- [ ] **Entitlement identifier is EXACTLY `safety_plus`** in the RevenueCat dashboard. The code checks `entitlements.active['safety_plus']` (`src/lib/purchases.js:10` `SAFETY_PLUS_ENTITLEMENT`, read in `src/lib/entitlement.js`). Any drift (`safety-plus`, `safetyplus`, `safety_plus_monthly`) → purchase succeeds, entitlement never resolves, tier stays `free`. This is the #1 cause of a "purchase worked but nothing unlocked" false failure.
+- [ ] **Product id `safety_plus_monthly`** exists in App Store Connect AND Play Console, is attached to the `safety_plus` entitlement, and is in RevenueCat's **current** offering (the code reads `getOfferings().current` — `purchases.js:34`; a product not on the current offering won't appear to purchase).
+- [ ] **API keys present at build time:** `.env.local` has real `VITE_REVENUECAT_APPLE_API_KEY` / `VITE_REVENUECAT_GOOGLE_API_KEY` (public SDK keys), and the build under test was produced AFTER they were set (Vite inlines `import.meta.env` at build time — a key added after the build is NOT in the binary). Missing key → `REVENUECAT_API_KEY_MISSING` thrown, everyone resolves `free`.
+- [ ] **Bundle / package id is `com.veyrnox.app`** on both stores (matches `capacitor.config.ts`), and the build is signed for the track the tester account can access (iOS: TestFlight/dev build for the Sandbox Apple ID; Android: internal-testing track for the License Tester).
+
+#### Steps 1–5 — Happy path (capture evidence per Step 9 as you go)
+- [ ] **Step 1 (iOS):** On a physical iPhone (or Simulator with the StoreKit config from Task 13) signed into a **Sandbox Apple ID** (App Store Connect → Users and Access → Sandbox Testers), open the app, go to `/plans`, tap **Upgrade to Safety Plus**, confirm the sandbox purchase sheet, complete it. Confirm: `currentTier` becomes `safety_plus` without an app restart, and a previously-locked route (a still-gated ANALYTICS route, e.g. `/advanced-analytics` — NOT `/hardware-wallet`, which is now free per Step 7) now renders instead of `TierLockedPage`.
+- [ ] **Step 2 (iOS):** Force-quit and relaunch. Confirm the tier is still `safety_plus` on cold start (`resolveTier()` reads the persisted RevenueCat entitlement, not just the Step 1 live listener event).
+- [ ] **Step 3 (iOS):** In App Store Connect sandbox, cancel/expire the subscription (or wait out the accelerated sandbox renewal cycle). Confirm the tier reverts to `free` and the analytics routes lock again — via the live listener or on next foreground.
+- [ ] **Step 4 (iOS):** Delete and reinstall under the same sandbox Apple ID, tap **Restore purchases** on `/plans`. Confirm it recovers `safety_plus` without a new purchase sheet.
+- [ ] **Step 5 (Android):** On a physical Android device with the tester account added as a **License Tester** (Play Console → Setup → License testing), install an internal-testing-track build and repeat Steps 1–4 using a real (test-card, zero-charge) Play purchase instead of StoreKit.
+
+#### Step 6 — I3 DENIABILITY (SECURITY-CRITICAL — the #665 guard; do NOT skip this — it is the single most important check for this feature on a coercion-resistant wallet)
+- [ ] With Safety Plus ACTIVE on the primary/real session, and a **network capture running** (iOS: Proxyman/Charles with the device trusting the proxy cert; Android: mitmproxy or `adb logcat` + a proxy), unlock a **decoy (duress-PIN)** session and separately a **hidden (stealth)** session. Confirm **ZERO** requests to `*.revenuecat.com` (or any store/purchase endpoint) fire during the deniable session — `configurePurchases`, `getCustomerInfo`, and the customer-info listener must all be suppressed by `isDeniabilitySessionActive()`. Confirm the tier reads `free` (never `safety_plus`) in the deniable session, and the analytics routes are locked. This is the on-device proof of I3 (deniability = zero backend calls) for the IAP path — the empty capture IS the evidence.
+
+#### Step 7 — Un-paywall check (owner decision, PR #672 — safety controls must be FREE)
+- [ ] As a **FREE** user, confirm the safety/anti-fraud controls all RENDER (never `TierLockedPage`): `/risk` (tx simulation), `/fraud`, `/address-checker`, `/token-approvals`, `/security-dashboard`, `/hardware-wallet`, `/cloud-backup`, `/spam-filter`, `/audit-log`, `/crypto-signing`. Confirm ONLY the analytics routes lock for free users: `/risk-score`, `/advanced-analytics`, `/onchain`, `/price-charts`, `/recurring`. (A regression test pins this, but confirm it on-device.)
+
+#### Step 8 — Fail-closed / offline (I4)
+- [ ] With a previously-active Safety Plus, put the device in airplane mode (or block RevenueCat at the proxy) and cold-start. Confirm the app does NOT present a stale paid tier as authoritative when the entitlement can't be confirmed — `resolveTier()`'s `catch → 'free'` must hold; never grant paid on an unverifiable/erroring entitlement. Also confirm a purchase that does NOT grant `safety_plus` (e.g. a mis-mapped product) leaves the tier `free` (no client-side upgrade).
+
+#### Step 9 — Evidence pack (the "txid-equivalent" — WITHOUT these artifacts it is NOT verified)
+Capture and attach to the record:
+- [ ] The RevenueCat dashboard **transaction record / sandbox transaction id** for the purchase (the closest analogue to an on-chain txid).
+- [ ] The on-device **`customerInfo` JSON** (debug log or the RC dashboard customer view) showing `entitlements.active` contains `safety_plus` with an active period.
+- [ ] **Screenshots:** the store purchase sheet, the unlocked analytics route, and the **decoy session showing `free` alongside the empty network capture** from Step 6.
+- [ ] Device model + OS version + the exact **build git commit**, and pass/fail per step (0–8).
+
+#### Step 10 — Record honestly
+- [ ] Record the outcome in `docs/Feature-Status.md` §11 using this repo's BUILT / device-verified language, EXACTLY as the hardware-KEK entries do, and as **non-promoting META evidence** (a sandbox purchase does not flip any catalogue asset to `verified`). Do NOT write "verified" unless every Step 0–9 passed on a real device **with no workaround**. If any step needed a workaround or failed, record it as **BUILT / device-verified PARTIAL** with the specific gap named (the way iOS-F9 is recorded), not as a blanket "verified".
 
 ---
 
