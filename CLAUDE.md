@@ -265,7 +265,22 @@ no on-chain txid involved.**
   closed (no cache). `WalletEntry` now writes the PIN cache only after a successful
   unlock. The native stale-vault cold-mount path no longer silently `clearVault()`s (a
   prior I4 violation) — it now shows an explicit Restore-from-seed / typed-"WIPE" screen.
-  Outstanding: real-device pass of the Face-ID-to-decoy guard and the desync screen.
+  **Face-ID-to-decoy duress-presence guard: device-verified 2026-07-06** on a Pixel 10
+  Pro XL — the first real-hardware exercise of this guard, surfaced live: this exact
+  device's build predated PR #613's merge (`5a6aab70`, `2026-07-06T00:12:57+01:00`), so
+  pushing latest `main` to the device pulled the guard on for the first time and it
+  immediately tripped on a leftover decoy vault from earlier testing (correctly — not a
+  bug). Verified with on-device evidence, not a UI message alone: (1) with the decoy
+  present, `adb shell run-as com.veyrnox.app.debug cat shared_prefs/
+  WSSecureStorageSharedPreferences.xml` showed no `veyrnox_bio_unlock_secret` key despite
+  repeated correct real-PIN unlocks, and a live Chrome DevTools Protocol query against the
+  app's IndexedDB (`veyrnox-vault` → `vault` store → key `secondary`) returned a present,
+  non-null decoy entry; (2) after removing the duress PIN in-app (Settings → Duress →
+  Remove duress PIN) and one real-PIN unlock, `veyrnox_bio_unlock_secret` reappeared in
+  SecureStorage and the same CDP query confirmed the decoy entry was now `undefined` — a
+  genuine before/after device trace. Outstanding: the vault-desync screen half of PR #613
+  was NOT exercised this session and remains device-unverified. No on-chain txid involved
+  (not applicable to a UX/security-logic check). INTERNAL verification, not independent.
 - **PR #614 (c2012713)** — hides `CryptoNewsFeed`/Calculator refetch() header buttons
   in decoy/hidden sessions (react-query v5 `refetch()` bypasses `enabled`; was a live I3
   egress vector).
