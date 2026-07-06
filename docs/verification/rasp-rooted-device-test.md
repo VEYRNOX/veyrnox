@@ -1,12 +1,12 @@
 # RASP — Rooted/Hooked Device Adversarial Testing: Device Verification Package
 
 **Finding ID:** F-09 (open audit finding: "RASP not adversarially tested on rooted/Frida devices")  
-**Status:** OPEN — native RASP OS-level probes not yet written; browser probe BUILT and wired  
+**Status:** OPEN (device-verification, not build) — the **Android** native OS-level probe IS written: `android/app/src/main/java/com/veyrnox/app/RaspIntegrityPlugin.kt` (registered in `MainActivity`, JS-wired), implementing root/Magisk/Frida-port(27042)/Xposed/emulator/tamper detection. F-09 is the **adversarial device test** on a real rooted/Frida device — **not yet run**. The **iOS** Swift probe is not written. Browser probe BUILT and wired.  
 **Source files:**  
   `src/rasp/browserProbe.js` — browser automation detection (BUILT, wired to SendCrypto)  
   `src/rasp/detect.js` — `detect()`, `classifyEnvironment()`, BUILT  
   `src/rasp/degrade.js` — `degrade()` policy map, BUILT  
-  `src/rasp/nativeProbe.js` — JS interface layer, BUILT; native Swift/Kotlin plugin NOT written  
+  `src/rasp/nativeProbe.js` — JS interface layer, BUILT; wired to the **Android** `RaspIntegrityPlugin.kt` (BUILT + registered). **iOS** Swift plugin NOT written  
   `src/rasp/raspIntegrityPlugin.js` — Capacitor plugin registration stub, BUILT  
   `src/rasp/conditions.js` — CONDITION/TIER constants, BUILT  
   `src/sign-gate/presign.js` — `presignGate()`, wired in SendCrypto and WalletConnect  
@@ -31,17 +31,16 @@ When `hooked = true`, `detect()` returns `CONDITION.HOOKED`, `degrade()` maps it
 
 `rooted`, `emulator`, and `tampered` are always `false` in the browser probe. The browser cannot access OS-level signals.
 
-**NOT BUILT (native OS probe):**
+**PARTIALLY BUILT (native OS probe) — Android BUILT, iOS not (updated 2026-07-06):**
 
-`src/rasp/nativeProbe.js` is the JS interface that would call a Capacitor native plugin (`RaspIntegrity.checkIntegrity()`). This JS layer exists and is correct. However, `src/rasp/raspIntegrityPlugin.js` says explicitly:
+`src/rasp/nativeProbe.js` is the JS interface that calls the Capacitor native plugin (`RaspIntegrity.checkIntegrity()`), and `src/rasp/raspIntegrityPlugin.js` is a real `registerPlugin('RaspIntegrity')` bridge. (That file's header comment claiming the native code is unwritten is STALE for Android.)
 
-> "The actual detection logic is NATIVE code a mobile dev must still write. iOS (Swift): `ios/App/App/RaspIntegrityPlugin.swift`. Android (Kotlin): `RaspIntegrityPlugin.kt`."
+- **Android — BUILT.** `android/app/src/main/java/com/veyrnox/app/RaspIntegrityPlugin.kt` (PR #383) is written and registered in `MainActivity` (`registerPlugin(RaspIntegrityPlugin.class)`). On a real **Android** device, `checkIntegrity()` returns real `rooted` (su/Magisk/KernelSU paths, system-writable, build-tags), `hookedProcess` (Frida default port 27042 connect-probe, Xposed), `emulator`, and `tampered` signals — so on a rooted Android the probe should **DETECT** (`detect()` maps `rooted` → `CONDITION.ROOTED` → the degrade policy below), **not** `INTEGRITY_UNAVAILABLE`. It is fail-honest: a denied/failed probe never fabricates `rooted=true`. **NOT device-verified — that is exactly what F-09 now gates.**
+- **iOS — NOT built.** No `ios/App/App/RaspIntegrityPlugin.swift` exists, so on **iOS** the bridge rejects, `nativeProbe.js` fails closed to `{ available: false }` → `CONDITION.INTEGRITY_UNAVAILABLE` → `TIER.WARN`. The original absent-plugin path still applies to iOS only.
 
-Neither the Swift nor the Kotlin implementation exists. When `nativeProbeSource()` is called on a real device, the plugin import throws, and it fails closed to `{ available: false }`, which `detect()` maps to `CONDITION.INTEGRITY_UNAVAILABLE`, and `degrade()` maps to `TIER.WARN` — not `TIER.BLOCK`. A rooted device with the current native build will see a WARN, not a BLOCK. Frida injection on a native device: if it does not set `navigator.webdriver`, the browser probe will not detect it.
+**What F-09 actually gates (updated):**
 
-**What F-09 actually gates:**
-
-F-09 is not "verify that the existing detection works on a rooted device." F-09 is: "the native OS-level probes (jailbreak paths, Frida port scan, su detection, etc.) do not exist yet, and the existing code cannot detect root/jailbreak/Frida on a real device." The test must be honest about this.
+F-09 is no longer "the native probes don't exist." For **Android** it is now: *the native probe IS written but has never been run against a real rooted / Frida-hooked device — verify on hardware that it actually detects root/Frida (and still fails honest when a probe can't run).* For **iOS** the "not written → fails-closed to WARN" premise still holds. ⚠️ The step-by-step procedure below was authored 2026-06-30 against the original absent-plugin design — **treat every "the plugin does not exist / not implemented / fails-closed to WARN" statement in the Android sections below as STALE; the Android test must be redesigned to verify real detection.** The iOS sections remain accurate.
 
 ### What degrade() policy says (from source)
 

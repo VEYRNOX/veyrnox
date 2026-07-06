@@ -1,28 +1,24 @@
 // src/rasp/raspIntegrityPlugin.js
 //
 // Capacitor plugin REGISTRATION for the native OS-integrity probe (Phase 2a).
-// BUILT (JS interface only) · NATIVE IMPLEMENTATION NOT WRITTEN · NOT VALIDATED.
+// BUILT: JS bridge (`registerPlugin('RaspIntegrity')`) + Android native probe.
+//   NOT device-validated (F-09) · iOS native NOT written.
 //
-// ┌──────────────────────────────────────────────────────────────────────────┐
-// │ This file ONLY registers the plugin bridge. The actual detection logic is  │
-// │ NATIVE code a mobile dev must still write:                                 │
-// │   • iOS  (Swift): ios/App/App/RaspIntegrityPlugin.swift                     │
-// │       jailbreak (Cydia/Sileo paths, sandbox-escape write test, suspicious   │
-// │       dylibs), Frida/ptrace hook detection, simulator fingerprint.          │
-// │   • Android (Kotlin): RaspIntegrityPlugin.kt                                │
-// │       root (su/Magisk/SuperSU, system write-test, busybox), Frida/Xposed    │
-// │       ports + maps scan, emulator build-prop / sensor fingerprint.          │
-// │                                                                            │
-// │ Each must implement:  checkIntegrity()  ->  Promise<{                       │
-// │     rooted?: boolean, jailbroken?: boolean,                                 │
-// │     hookedProcess?: boolean, emulator?: boolean, tampered?: boolean }>       │
-// │                                                                            │
-// │ Until that native code exists AND is exercised on real hostile devices     │
-// │ (roadmap Phase 4) + passes the independent audit (Phase 5), RASP OS-level   │
-// │ detection stays UNVALIDATED. On a device without the native implementation  │
-// │ the bridge rejects, and nativeProbe.js fails CLOSED to INTEGRITY_UNAVAILABLE│
-// │ — never a fabricated clean. NO EGRESS (I2): purely on-device.               │
-// └──────────────────────────────────────────────────────────────────────────┘
+// This file registers the Capacitor plugin bridge. Native detection logic:
+//   • Android (Kotlin): android/app/src/main/java/com/veyrnox/app/RaspIntegrityPlugin.kt
+//       — WRITTEN + registered (PR #383): root (su/Magisk/KernelSU paths, system
+//       write-test, build-tags), Frida (default port 27042) / Xposed, emulator, tamper.
+//   • iOS (Swift): ios/App/App/RaspIntegrityPlugin.swift — NOT written yet
+//       (jailbreak paths, sandbox-escape write test, Frida/ptrace, simulator fingerprint).
+//
+// Each implements:  checkIntegrity() -> Promise<{
+//     rooted?, jailbroken?, hookedProcess?, emulator?, tampered? : boolean }>
+//
+// STATUS: the Android probe is BUILT but NOT yet exercised on a real rooted/Frida
+// device (F-09, roadmap Phase 4) and NOT independently audited — so RASP OS-level
+// detection stays UNVALIDATED. Where the native plugin is absent (iOS today) the
+// bridge rejects and nativeProbe.js fails CLOSED to INTEGRITY_UNAVAILABLE — never a
+// fabricated clean. NO EGRESS (I2): purely on-device.
 
 import { registerPlugin } from '@capacitor/core';
 
