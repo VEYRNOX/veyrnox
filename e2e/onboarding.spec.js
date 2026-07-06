@@ -139,19 +139,19 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
 
     await page.reload();
-    // Returning user: the vault-password unlock gate must own the screen on reload.
-    await expect(page.getByPlaceholder('Enter your vault password')).toBeVisible();
+    // Returning user: the vault PIN unlock gate must own the screen on reload (web mirrors native).
+    await expect(page.getByRole('group', { name: /PIN entry/i })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toHaveCount(0);
   });
 });
 
-// PIN pad a11y — HONESTLY SKIPPED on web. PinPad renders ONLY under
-// Capacitor.isNativePlatform() (WalletEntry.jsx pin-create native branch); the web
-// build onboards with a password input, so these assertions have no surface to run
-// against in a chromium web run. They must be exercised under the native shell
-// (Appium suite — tests/android/), not silently faked here.
-test.describe('PIN pad a11y / keyboard (native-only surface)', () => {
-  test.skip(true, 'PinPad is native-only: web onboarding uses a vault password. Covered by the Android Appium suite.');
+// PIN pad a11y — HONESTLY SKIPPED on web. PinPad renders on BOTH native and web
+// (WalletEntry.jsx unlock branch). These a11y tests for keyboard interaction with the
+// PinPad must be exercised under the native shell (Appium suite — tests/android/),
+// not faked here on chromium. The underlying PinPad is the same, but the native
+// platform is where biometric+PIN flows and physical-key input are real.
+test.describe('PIN pad a11y / keyboard (native-exercised, not web-faked)', () => {
+  test.skip(true, 'PinPad a11y is tested on the native shell (Appium). Web exercise would be a fake.');
 
   test('the status dots expose a live aria-label that tracks entry length', () => {});
   test('physical number-key press enters a PIN digit (keyboard-only users)', () => {});

@@ -36,7 +36,7 @@
 import { test, expect } from '@playwright/test';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
-const PASSWORD = 'correct-horse-battery-12'; // ≥12 chars (H-A web vault minimum)
+const PASSWORD = '12345678'; // 8-digit PIN (web mirrors native unlock)
 const WRONG_PASSWORD = 'wrong-horse-battery-00';
 const SECRET =
   'test test test test test test test test test test test junk';
@@ -334,12 +334,12 @@ test.describe('Web KEK PRF — keystore boundary (fail-closed matrix)', () => {
     expect(meta.hasKekWrap).toBe(true); // preserved (was false pre-#631 — gap reopened)
   });
 
-  test('H-A: web vault password under 12 chars rejected before any ciphertext exists', async ({ page }) => {
+  test('H-A: web vault PIN under 8 digits rejected before any ciphertext exists', async ({ page }) => {
     await freshState(page);
     const r = await ksCall(
       page,
       'createVault',
-      { secret: SECRET, password: 'short-pw-11' }, // 11 chars
+      { secret: SECRET, password: '1234567' }, // 7 digits
     );
     expect(r.ok).toBe(false);
     expect(`${r.code} ${r.message}`).toContain('WEB_VAULT_PASSWORD_TOO_SHORT');
@@ -368,9 +368,27 @@ test.describe('Web KEK PRF — UI unlock path', () => {
 
   async function reloadToUnlockScreen(page) {
     await page.goto(`${BASE}/?demo=0`);
-    const pw = page.locator('input[type="password"]').first();
-    await expect(pw).toBeVisible({ timeout: 20000 });
-    return pw;
+    // Web now renders an 8-digit PinPad (unified with native). Wait for it.
+    const pinPad = page.getByRole('group', { name: /PIN entry/i });
+    await expect(pinPad).toBeVisible({ timeout: 20000 });
+    return {
+      fill: async (pin) => {
+        // Enter each digit by clicking the corresponding button
+        for (const digit of pin.split('')) {
+          await page.getByRole('button', { name: digit, exact: true }).click();
+        }
+      },
+      press: async (key) => {
+        if (key === 'Enter') {
+          // PIN auto-submits when full (8 digits); pressing Enter is a no-op on PinPad
+          // But some tests may call it, so we can optionally click a Continue/Submit button
+          // if one exists, or just return silently.
+          const submitBtn = page.getByRole('button', { name: /Continue|Unlock|Submit/i }).first();
+          const visible = await submitBtn.isVisible().catch(() => false);
+          if (visible) await submitBtn.click();
+        }
+      },
+    };
   }
 
   // Navigate to Settings via IN-APP SPA routing (a hard page.goto reload re-locks

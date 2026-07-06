@@ -741,7 +741,7 @@ export default function WalletEntry() {
         createdPasswordRef.current = null;
         setProvisioning(false);
         const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
-          ? (e.userMessage || "Web vaults require a password of at least 12 characters.")
+          ? (e.userMessage || "Web vault PIN must be at least 8 digits.")
           : (e?.message || "Wallet setup couldn't finish securely, so nothing was saved.");
         setError(msg); toast.error(msg);
       } finally { setBusy(false); }
@@ -754,7 +754,7 @@ export default function WalletEntry() {
         // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
         // Web mainnet vaults require a ≥12-char password; the user needs to go back
         // and restart onboarding with a full password instead of a PIN.
-        const msg = e.userMessage || "Web vaults require a password of at least 12 characters. Go back and restart setup using a password instead of a PIN.";
+        const msg = e.userMessage || "Web vault PIN must be at least 8 digits.";
         setError(msg);
         toast.error(msg);
         return;
@@ -791,7 +791,7 @@ export default function WalletEntry() {
           return;
         }
         const msg = e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT
-          ? (e.userMessage || "Web vaults require a password of at least 12 characters.")
+          ? (e.userMessage || "Web vault PIN must be at least 8 digits.")
           : (e?.message || "Wallet setup couldn't finish securely, so nothing was saved.");
         setError(msg); toast.error(msg);
       } finally { setBusy(false); }
@@ -811,7 +811,7 @@ export default function WalletEntry() {
         // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
         // Web mainnet vaults require a ≥12-char password; the user needs to go back
         // and restart onboarding with a full password instead of a PIN.
-        const msg = e.userMessage || "Web vaults require a password of at least 12 characters. Go back and restart setup using a password instead of a PIN.";
+        const msg = e.userMessage || "Web vault PIN must be at least 8 digits.";
         setError(msg);
         toast.error(msg);
         return;
@@ -1177,20 +1177,27 @@ export default function WalletEntry() {
           )}
 
           <div className="flex items-center gap-2 text-sm font-medium">
-            <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? "Enter your vault password" : "Unlock your wallet"}
+            <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? "Enter your PIN" : "Unlock your wallet"}
           </div>
-          <Label>Vault Password</Label>
-          <Input
-            type="password"
-            value={unlockPassword}
-            onChange={e => setUnlockPassword(e.target.value)}
-            placeholder="Enter your vault password"
-            onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
-            autoFocus={!biometricEnabled || biometricFailed}
-          />
-          <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
-            {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
-          </Button>
+          {/* Web mirrors native: always use 8-digit PIN, never password field */}
+          {!Capacitor.isNativePlatform() ? (
+            <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
+          ) : (
+            <>
+              <Label>Vault Password</Label>
+              <Input
+                type="password"
+                value={unlockPassword}
+                onChange={e => setUnlockPassword(e.target.value)}
+                placeholder="Enter your vault password"
+                onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
+                autoFocus={!biometricEnabled || biometricFailed}
+              />
+              <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
+                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
+              </Button>
+            </>
+          )}
 
           {passkeyFailed && (
             <div className="pt-2 border-t border-border space-y-2">
