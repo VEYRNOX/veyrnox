@@ -345,11 +345,11 @@ export const CLASSIFICATION = {
   },
   '/plans': {
     verdict: 'live', dataSource: 'static',
-    note: 'Tier cards rendered from TierProvider (real, verified, fail-closed tier via resolveTier) using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). On native the upgrade + restore buttons run a real RevenueCat purchase flow showing the real store price; on web they are disabled with an honest mobile-only disclosure. In-app purchase is BUILT / unit-tested only, NOT device-verified. No fabricated capabilities listed as currently available.',
+    note: 'Tier cards rendered from TierProvider (real, fail-closed tier via resolveTier) using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). On native the upgrade + restore buttons run a real RevenueCat purchase flow showing the real store price; on web they are disabled with an honest mobile-only disclosure. In-app purchase is BUILT / unit-tested only, NOT device-verified. No fabricated capabilities listed as currently available.',
   },
   '/safety-plus': {
     verdict: 'live', dataSource: 'static',
-    note: 'Safety Plus feature hub. Lists 16 Safety Plus features grouped by nav section (SECURITY, FINANCE, CONNECT) with lock badges for Free users and live links for Safety Plus subscribers. Tier comes from the real, verified, fail-closed entitlement (useTier -> resolveTier); the 16 routes are enforced by the tier gate in components/FeatureGate. In-app purchase is BUILT / unit-tested only, NOT device-verified.',
+    note: 'Safety Plus feature hub. Lists the Safety Plus analytics features with lock badges for Free users and live links for Safety Plus subscribers. Tier comes from the real, fail-closed entitlement (useTier -> resolveTier); the paid routes are enforced by the tier gate in components/FeatureGate (safety/anti-fraud controls are FREE, not gated). In-app purchase is BUILT / unit-tested only, NOT device-verified.',
   },
   '/referrals': {
     verdict: 'live', dataSource: 'on-device',
