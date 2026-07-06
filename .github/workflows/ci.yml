@@ -97,6 +97,12 @@ jobs:
       # it (optional native dep resolution). Pin npm 11 to match the toolchain.
       - run: npm install -g npm@11
       - run: npm install --legacy-peer-deps
+      # LOG-1 gate (independent-audit F4.1): assert the debug-bridge log-redaction
+      # patch actually applied to node_modules. A patch-package patch is silently
+      # dropped when @capacitor/{android,ios} is bumped past the pinned 8.4.1, which
+      # would re-open the hardware-KEK-H / vault-blob logcat leak with no build error.
+      # Dedicated required step (same rationale as check:rng / check:strays below).
+      - run: npm run check:log-redaction
       # Supply-chain gate: fail CI on any NEW critical advisory. Known/deferred
       # criticals are allowlisted with a reason in scripts/audit-gate.mjs;
       # highs/moderates are triaged for reachability in docs/SAST_FINDINGS.md.
