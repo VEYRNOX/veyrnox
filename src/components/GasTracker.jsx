@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
 import { Zap, RefreshCw, TrendingDown, TrendingUp, Minus } from "lucide-react";
 
 // Solana does NOT use the EVM gwei/gas-limit model, so it can't be forced into
@@ -158,20 +159,29 @@ function SolFeeRow({ baseLamports, priorityMicroLamports }) {
 }
 
 export default function GasTracker() {
-  // I3 guard (VULN-15 fix): GasTracker polls 3 external services every 30 s.
-  // In a decoy or hidden session that would produce detectable timed network
-  // bursts, violating I3 (deniable sessions make zero backend calls). Disable
-  // all fetching in those sessions — the component renders a blank / loading
-  // state, which is preferable to leaking session activity to a network observer.
+  // I3 guard (VULN-15 fix): GasTracker polls 3 external services every 30 s
+  // (mempool.space, api.etherscan.io, api.devnet.solana.com). In a decoy or
+  // hidden session that would produce detectable timed network bursts, violating
+  // I3 (deniable sessions make zero backend calls). Disable all fetching in those
+  // sessions — the component renders a blank / loading state, which is preferable
+  // to leaking session activity to a network observer.
+  //
+  // DEMO suppression (M-6 class, mirrors src/notify/useReceiveDetector.js): a
+  // demo tour (veyrnox-demo=1, no unlocked vault) is NOT a decoy/hidden session,
+  // so isDecoy/isHidden are both false and the I3 gate alone lets these live
+  // fetches through. DEMO is a module-load-time constant boolean; folding !DEMO
+  // into the egress gate makes a demo tour fire ZERO real backend calls. The
+  // disabled state renders the same network-silent UI — NO mock/fake fee data.
   const { isDecoy, isHidden } = useWallet();
   const i3Active = !isDecoy && !isHidden;
+  const egressAllowed = i3Active && !DEMO;
 
   const { data: fees, isLoading, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["gas-fees"],
     queryFn: fetchFees,
-    refetchInterval: i3Active ? 30_000 : false,
+    refetchInterval: egressAllowed ? 30_000 : false,
     staleTime: 20_000,
-    enabled: i3Active,
+    enabled: egressAllowed,
   });
 
   const ethCongestion = getCongestion(fees?.eth?.standard, { low: 20, high: 60 });

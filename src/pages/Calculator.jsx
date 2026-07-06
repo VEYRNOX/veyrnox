@@ -7,6 +7,7 @@ import { MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
 import { fetchMarketPricesFiatCG } from "@/lib/coinGecko.js";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
@@ -36,10 +37,14 @@ export default function Calculator() {
 
   // I3 guard: live prices default ON, so navigating here in a decoy/hidden
   // session would fetch CoinGecko. Also gate on the deniability flags so a
-  // deniable session makes zero egress (I3); the page then shows its existing
-  // "Live prices off" static state — no network call, no error reveal.
+  // deniable session makes zero egress (I3). DEMO suppression: the live-prices
+  // pref is device-global, NOT demo-scoped, so a browser that once opted in would
+  // fetch CoinGecko the moment this page is navigated to inside a demo tour
+  // (isDecoy/isHidden are both false in demo) — so also fold !DEMO in (ECC audit
+  // M-6 pattern). The page then shows its existing "Live prices off" static state
+  // — no network call, no error reveal.
   const { isDecoy, isHidden } = useWallet();
-  const pricesEnabled = isLivePricesEnabled() && !isDecoy && !isHidden;
+  const pricesEnabled = isLivePricesEnabled() && !isDecoy && !isHidden && !DEMO;
 
   const { data: prices, isLoading, isError, error, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["conversion-prices"],

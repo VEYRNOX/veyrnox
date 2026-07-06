@@ -45,6 +45,26 @@ describe('CryptoNewsFeed — I3 deniability structural guards (source scan)', ()
   });
 });
 
+// DEMO egress suppression (M-6 class, PR #617): a demo tour (veyrnox-demo=1, no
+// unlocked vault) fired the two api.rss2json.com fetches for real — isDecoy and
+// isHidden are both false in demo, so the I3 gate alone passes. The enabled gate
+// must also fold in !DEMO.
+describe('CryptoNewsFeed — DEMO egress suppression (source scan)', () => {
+  it('imports DEMO from @/api/demoClient', () => {
+    expect(code).toMatch(/import\s*\{\s*DEMO\s*\}\s*from\s*['"]@\/api\/demoClient['"]/);
+  });
+
+  it('folds !DEMO into the egress gate', () => {
+    expect(code).toMatch(/i3Active\s*&&\s*!DEMO/);
+  });
+
+  it('the DEMO gate precedes the news query definition', () => {
+    const guard = code.search(/i3Active\s*&&\s*!DEMO/);
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(code.indexOf('fetchCryptoNews,'));
+  });
+});
+
 // --- behavioral: refetch() trigger must not be reachable in deniability ---
 
 const walletState = { isDecoy: false, isHidden: false };

@@ -14,6 +14,7 @@ import { fetchPortfolioPricesUsdCG as fetchPortfolioPricesUsd } from '@/lib/coin
 import { PORTFOLIO_SYMBOLS } from '@/lib/cryptoCompare.js';
 import { useWallet } from '@/lib/WalletProvider';
 import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
+import { DEMO } from '@/api/demoClient';
 
 // localStorage opt-in pref. "1" = on / ABSENT = off (mirrors lib/biometric.js,
 // wallet-core/auditLog.js). Absence = off is deliberate: a fresh device makes no
@@ -61,10 +62,14 @@ export async function fetchLivePricesUsd() {
 export function useLivePrices() {
   // I3 guard: live prices default ON, so the localStorage pref alone would let a
   // decoy/hidden session poll CoinGecko. Also gate on the deniability flags so a
-  // deniable session makes zero price egress (I3). Disabled returns null data —
-  // identical to "live prices off", so there is no visual tell.
+  // deniable session makes zero price egress (I3). DEMO suppression: the
+  // live-prices pref is device-global, NOT demo-scoped, so a browser that once
+  // opted in would poll CoinGecko the moment a demo tour opens (isDecoy/isHidden
+  // are both false in demo) — so also fold !DEMO in (ECC audit M-6 pattern).
+  // Disabled returns null data — identical to "live prices off", so there is no
+  // visual tell.
   const { isDecoy, isHidden } = useWallet();
-  const enabled = isLivePricesEnabled() && !isDecoy && !isHidden;
+  const enabled = isLivePricesEnabled() && !isDecoy && !isHidden && !DEMO;
   const q = useQuery({
     queryKey: ['live-prices-usd'],
     queryFn: fetchLivePricesUsd,

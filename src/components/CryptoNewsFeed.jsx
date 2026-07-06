@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, TrendingUp, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
 
 // RSS feeds proxied through rss2json.com (free, no API key, CORS-friendly).
 // Two sources merged and sorted by date for broader coverage.
@@ -84,8 +85,15 @@ export default function CryptoNewsFeed() {
   // backend calls). Disable the fetch in those sessions — the component then
   // renders a neutral placeholder (NOT an error), so a network/screen observer
   // cannot distinguish a deniability session from an ordinary empty/loading state.
+  //
+  // DEMO suppression: a demo tour (veyrnox-demo=1, no unlocked vault) has
+  // isDecoy/isHidden === false, so i3Active alone would still let the fetch fire —
+  // a confirmed live leak. Fold !DEMO into the enabled gate (canonical ECC audit
+  // M-6 pattern, useReceiveDetector.js) so a demo session makes zero egress; the
+  // same neutral placeholder covers it (no fake news items are injected).
   const { isDecoy, isHidden } = useWallet();
   const i3Active = !isDecoy && !isHidden;
+  const egressAllowed = i3Active && !DEMO;
 
   const { data: news = [], isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["crypto-news"],
@@ -93,7 +101,7 @@ export default function CryptoNewsFeed() {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
-    enabled: i3Active,
+    enabled: egressAllowed,
   });
 
   return (

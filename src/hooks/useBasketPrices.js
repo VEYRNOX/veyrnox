@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchMarketChanges24hCG as fetchMarketChanges24h } from "@/lib/coinGecko.js";
 import { isLivePricesEnabled } from "@/lib/priceFeed.js";
 import { useWallet } from "@/lib/WalletProvider";
+import { DEMO } from "@/api/demoClient";
 
 // ── Fixed-basket 24h price-change feed (HOLDINGS-DECOUPLED). ──────────────────
 //
@@ -30,13 +31,17 @@ const CACHE_MS = 10 * 60 * 1000; // constant cadence, not user-triggered
 export function useBasketPrices() {
   // I3 guard: live prices default ON, so the localStorage pref alone would let a
   // decoy/hidden session poll the 24h-change feed. Also gate on the deniability
-  // flags so a deniable session makes zero egress (I3). Disabled returns the same
-  // isLive=false / null-delta shape as "live off", so there is no visual tell.
+  // flags so a deniable session makes zero egress (I3). DEMO suppression: the
+  // live-prices pref is device-global, NOT demo-scoped, so a browser that once
+  // opted in would leak this basket poll the moment a demo tour opens
+  // (isDecoy/isHidden are both false in demo) — so also fold !DEMO in (ECC audit
+  // M-6 pattern). Disabled returns the same isLive=false / null-delta shape as
+  // "live off", so there is no visual tell — no mock data.
   const { isDecoy, isHidden } = useWallet();
   const { data, isError, isSuccess } = useQuery({
     queryKey: ["basket-prices"],
     queryFn: fetchMarketChanges24h,
-    enabled: isLivePricesEnabled() && !isDecoy && !isHidden, // off / deniable ⇒ no egress
+    enabled: isLivePricesEnabled() && !isDecoy && !isHidden && !DEMO, // off / deniable / demo ⇒ no egress
     staleTime: CACHE_MS,
     refetchInterval: CACHE_MS,
     retry: 1,
