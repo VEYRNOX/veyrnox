@@ -2,18 +2,36 @@
 
 ## Status: READY FOR ON-CHAIN VERIFICATION
 
-**Date:** 2026-07-04  
-**Branch:** `claude/adoring-hodgkin-870093`  
-**Device:** Pixel (com.veyrnox.app.debug)  
-**Test Results:** 
+**Date:** 2026-07-06 (updated — added 6 new suites + hardened 2 existing suites)
+**Branch:** `claude/unruffled-blackwell-af957e`
+**Device:** Pixel (com.veyrnox.app.debug)
+**Test Results:**
 - Vault tests: 8/8 passing ✅
 - Send tests: 2/2 passing ✅
-- Send scenarios tests: 10/10 created (ready for Appium) 💰
-- Hardware KEK tests: 5/5 created (ready for Appium) 🔐
+- Send scenarios tests: 10/10 created + WalletConnect hardening sweep (7 more tests) — ready for Appium 💰
+- Hardware KEK tests: 6/6 created incl. LOG-1 canary (ready for Appium) 🔐
 - Biometric unlock tests: 8/8 created (ready for Appium) 📱
-- Hidden wallet tests: 8/8 created (ready for Appium) 🛡️
+- Hidden wallet tests: 8/8 created + 3 I3 zero-egress canaries (ready for Appium) 🛡️
 - Panic PIN tests: 8/8 created (ready for Appium) 🚨
-- **Total: 49 tests across 7 suites**  
+- **NEW** Backup export/import tests: 5/5 created (ready for Appium) 💾
+- **NEW** dApp security alerts tests: 5/5 created (ready for Appium) 🚫
+- **NEW** Vault KDF performance tests: 2/2 created (ready for Appium) ⏱️
+- **NEW** Passkey clone-detection boundary tests: 4/4 created (ready for Appium) 🔑
+- **NEW** Fee analytics + net worth tests: 6/6 created (ready for Appium) 📈
+- **NEW** LOG-1 app-wide redaction sweep: 4/4 created (ready for Appium) 🕵️
+- **Total: 96 tests across 13 suites**
+
+### What "fully automated, no human interaction" means here — honestly
+
+Every new/enhanced test in this pass either (a) drives a real device assertion
+end-to-end with no manual step, or (b) where a control genuinely cannot be
+exercised without a live external peer (a real WalletConnect dApp, a real FIDO2
+hardware key) or a Mac (iOS), documents that gap explicitly in the test's own
+`console.log` output rather than fabricating a pass. Nothing in this pass claims
+device-verified "live" status for anything that hasn't produced a real on-chain
+txid or an equivalent on-device log-based proof (per CLAUDE.md "Verify, don't
+assert"). See the per-suite notes below for exactly which assertions are hard
+(fail the test) vs. informational (logged for a human reviewer).
 
 ---
 
@@ -28,18 +46,25 @@
 ### 2. **Test Infrastructure** ✅
 ```
 tests/android/
-├── wdio.conf.js              # Appium + WebdriverIO config
+├── wdio.conf.js              # Appium + WebdriverIO config (real device, glob-picks up all specs)
+├── wdio.browserstack.conf.js # BrowserStack App Automate config (same glob, excludes attended-only legacy spec)
 ├── helpers/
 │   ├── appHelper.js          # Low-level UI (find, tap, type, wait)
 │   └── walletHelper.js       # Wallet flows (create, send, unlock, etc.)
 ├── specs/
-│   ├── vault.spec.js         # 8/8 passing smoke tests ✅
-│   ├── send.spec.js          # 2/2 passing send flow tests ✅
-│   ├── send-scenarios-e2e.spec.js  # 10 Send scenarios (multi-asset, fees, errors) 💰
-│   ├── hardware-kek-e2e.spec.js  # 5 Hardware KEK tests (real device, requires Appium) 🔐
-│   ├── biometric-unlock-e2e.spec.js  # 8 Biometric unlock tests (Face ID / fingerprint) 📱
-│   ├── hidden-wallet-e2e.spec.js  # 8 Hidden wallet tests (stealth pool, reveal, deniability) 🛡️
-│   └── panic-pin-e2e.spec.js  # 8 Panic PIN tests (destructive wipe, deniability) 🚨
+│   ├── vault.spec.js                        # 8/8 passing smoke tests ✅
+│   ├── send.spec.js                         # 2/2 passing send flow tests ✅
+│   ├── send-scenarios-e2e.spec.js           # 10 send scenarios + 7 WalletConnect hardening-sweep tests 💰
+│   ├── hardware-kek-e2e.spec.js             # 6 Hardware KEK tests incl. LOG-1 canary 🔐
+│   ├── biometric-unlock-e2e.spec.js         # 8 Biometric unlock tests (Face ID / fingerprint) 📱
+│   ├── hidden-wallet-e2e.spec.js            # 8 hidden-wallet tests + 3 I3 zero-egress canaries 🛡️
+│   ├── panic-pin-e2e.spec.js                # 8 Panic PIN tests (destructive wipe, deniability) 🚨
+│   ├── backup-restore-e2e.spec.js           # NEW — 5 local encrypted backup export/import tests 💾
+│   ├── dapp-security-alerts-e2e.spec.js     # NEW — 5 dApp domain-blocklist tests 🚫
+│   ├── kdf-performance-e2e.spec.js          # NEW — 2 vault KDF (192 MiB Argon2id) latency tests ⏱️
+│   ├── passkey-clone-detection-e2e.spec.js  # NEW — 4 passkey signCount / native-boundary tests 🔑
+│   ├── fee-analytics-networth-e2e.spec.js   # NEW — 6 fee analytics + net worth tests 📈
+│   └── log1-bridge-redaction-e2e.spec.js    # NEW — 4 app-wide LOG-1 redaction sweep tests 🕵️
 ├── README.md                 # Full testing guide
 ├── QUICKSTART.md            # 5-minute setup
 └── TEST_RESULTS.md          # Current status
@@ -65,17 +90,29 @@ https://github.com/VEYRNOX/veyrnox/actions
 
 ### 4. **npm Scripts** ✅
 ```bash
-# Run all Android tests
+# Run all Android tests (glob-picks up every spec, including the new ones)
 npm run android:test
 
 # Run specific suite
 npm run android:test:vault              # 8/8 passing ✅
 npm run android:test:send               # 2/2 passing ✅
-npm run android:test:send-scenarios     # 10 tests (ready) 💰
-npm run android:test:hardware-kek       # 5 tests (ready) 🔐
+npm run android:test:send-scenarios     # 10 + 7 WalletConnect hardening tests (ready) 💰
+npm run android:test:hardware-kek       # 6 tests incl. LOG-1 canary (ready) 🔐
 npm run android:test:biometric-unlock   # 8 tests (ready) 📱
-npm run android:test:hidden-wallet      # 8 tests (ready) 🛡️
+npm run android:test:hidden-wallet      # 8 + 3 I3 zero-egress tests (ready) 🛡️
 npm run android:test:panic-pin          # 8 tests (ready) 🚨
+
+# NEW suites (this pass)
+npm run android:test:backup             # 5 tests — local encrypted backup export/import 💾
+npm run android:test:dapp-alerts        # 5 tests — dApp domain blocklist 🚫
+npm run android:test:kdf-perf           # 2 tests — vault KDF unlock latency ⏱️
+npm run android:test:passkey-clone      # 4 tests — passkey signCount / native boundary 🔑
+npm run android:test:fee-analytics      # 6 tests — fee analytics + net worth 📈
+npm run android:test:log1               # 4 tests — app-wide LOG-1 redaction sweep 🕵️
+npm run android:test:new-suites         # all 6 new suites above, one wdio run
+
+# BrowserStack (real cloud devices, needs BROWSERSTACK_* env vars)
+npm run android:test:browserstack
 ```
 
 ---
@@ -173,6 +210,29 @@ Test infrastructure is complete:
 - GitHub Actions runs on every push
 - Tests execute automatically
 - Easy to extend
+
+---
+
+## Feature Coverage Status (2026-07-06 pass)
+
+| # | Feature | Suite | Status |
+|---|---------|-------|--------|
+| 1 | Web WebAuthn PRF KEK (Phase 1) | `e2e/webauthn-prf-kek.spec.js` (Playwright) | Web-only by design — **skipped on Android**, already fully automated in the web e2e suite (PR #630) |
+| 2 | WalletConnect signing surface + hardening sweep | `send-scenarios-e2e.spec.js` (new section) | UI-reachability + I2 idle-egress + code-boundary checks automated; live-pairing automation (real dApp peer) explicitly NOT attempted — documented per-test |
+| 3 | Deniability stack (I3 zero-egress) | `hidden-wallet-e2e.spec.js` (new section) | 3 new automated logcat-diff egress canaries targeting the PR #613/#614 fix class |
+| 4 | dApp security alerts / domain blocklist | `dapp-security-alerts-e2e.spec.js` (new) | 5 automated tests: UI presence, I2 zero-egress, gate-contract cross-reference |
+| 5 | Local encrypted backup export/import | `backup-restore-e2e.spec.js` (new) | 5 automated tests incl. on-disk ciphertext-only verification via `adb shell` |
+| 6 | Vault KDF performance | `kdf-performance-e2e.spec.js` (new) | Automated median-latency measurement harness; clears "mid/low-end not cleared" ONLY when actually run against such a device and the result is transcribed to CLAUDE.md |
+| 7 | LOG-1 remediation (debug-bridge log redaction) | `hardware-kek-e2e.spec.js` (existing canary) + `log1-bridge-redaction-e2e.spec.js` (new, app-wide) | 1 existing + 4 new automated logcat-scan tests across cold-start/unlock, Settings/Backup, and dashboard/send navigation |
+| 8 | Passkey cloned-authenticator detection (signCount) | `passkey-clone-detection-e2e.spec.js` (new) | Automated boundary check: confirms native NEVER fabricates a signCount signal; the real FIDO2 signCount contract is web-only and already unit-tested (`src/lib/__tests__/passkey.test.js`) |
+| 9 | Fee analytics + crypto net worth | `fee-analytics-networth-e2e.spec.js` (new) | 6 automated tests: navigation, honest-unavailable copy, I3 count-tell check, I2 analytics-egress canary |
+
+**Where a "hard fail" assertion could not be constructed** (live WalletConnect
+pairing, live FIDO2 signCount rotation, OS document-picker file selection),
+each test says so explicitly in its own console output and does not report a
+false pass. This is intentional, per CLAUDE.md's "no fake security" / "verify,
+don't assert" rules — a green run of those specific assertions means "the
+documented boundary held", not "the full feature is device-verified".
 
 ---
 

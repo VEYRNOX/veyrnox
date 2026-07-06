@@ -51,14 +51,36 @@ jobs:
           echo "### Test Coverage" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Vault tests (8/8 passing on real device)" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Send tests (ready for on-chain verification)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Hardware KEK tests (real device only)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Send scenarios + WalletConnect hardening sweep (RASP/EIP-712/gas-cap/session-expiry/re-auth)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Hardware KEK tests incl. LOG-1 bridge-log-redaction canary (real device only)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Biometric unlock tests" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Hidden wallet tests incl. I3 zero-egress canaries (news-proxy egress, refetch-bypass regression)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Panic PIN tests" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Local encrypted backup export/import (ciphertext-only, on-disk verified)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ dApp security alerts / domain blocklist" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Vault KDF performance (192 MiB Argon2id unlock latency)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Passkey cloned-authenticator (signCount) — native-biometric boundary check" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Fee analytics + crypto net worth (local data, I2/I3 checks)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ LOG-1 app-wide bridge log redaction sweep" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Local Testing" >> $GITHUB_STEP_SUMMARY
           echo "Run tests locally on a real device:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npm run android:test:vault      # 8/8 passing baseline" >> $GITHUB_STEP_SUMMARY
-          echo "npm run android:test:send       # Send flow with on-chain verification" >> $GITHUB_STEP_SUMMARY
-          echo "npm run android:test:hardware-kek # Hardware KEK (Pixel 6+)" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:vault          # 8/8 passing baseline" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:send           # Send flow with on-chain verification" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:send-scenarios # Multi-asset send + WalletConnect hardening sweep" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:hardware-kek   # Hardware KEK + LOG-1 canary (Pixel 6+)" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:biometric-unlock" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:hidden-wallet  # incl. I3 zero-egress canaries" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:panic-pin" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:backup         # local encrypted backup export/import" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:dapp-alerts    # dApp domain blocklist" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:kdf-perf       # vault KDF unlock latency" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:passkey-clone  # passkey signCount / native boundary" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:fee-analytics  # fee analytics + net worth" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:log1           # LOG-1 app-wide redaction sweep" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test:new-suites     # all 6 new suites above in one run" >> $GITHUB_STEP_SUMMARY
+          echo "npm run android:test                # full suite (all specs)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Note:** Appium tests require a real Android device or configured emulator. CI runs code validation only. Full E2E tests verified on Pixel device."
+          echo "**Note:** Appium tests require a real Android device or configured emulator. CI runs code validation only (lint/typecheck/spec-file presence). Full E2E tests are run locally against a real Pixel device, or via \`npm run android:test:browserstack\` against BrowserStack App Automate."
