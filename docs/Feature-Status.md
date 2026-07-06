@@ -508,6 +508,16 @@ value / mutate balances without a user signature through wallet-core signing).
 
 ## Pending (non-code, gating mainnet)
 - Independent security audit (S1–S4 + crypto stacks) — see `docs/Audit.scope.md`.
+  **Scope addition (2026-07-06, decision on issue #611):** the vault cipher path
+  (Argon2id → AES-256-GCM) is IN SCOPE for this audit. A standalone external
+  crypto engagement (~$15K–25K) was DECLINED with written rationale — the claimed
+  "XChaCha20-Poly1305 design spec divergence" was an unsupported premise (no such
+  spec exists; see `docs/crypto-implementation-verification.md`), and migration
+  would break iOS SE compatibility (`docs/cipher-migration-analysis.md`). Residual
+  items carried into this audit's scope: ECC L-4 (KDF params not in GCM AAD), A-2
+  (pre-M3 KDF-param timing oracle), JS-string heap zeroization, short-PIN offline
+  resistance, per-enrollment salt distinctness. Full record:
+  `docs/audit-triage/vault-cipher-decision-2026-07-06.md`.
 - Legal entity + Track-B legal review (Guardian tier wording, etc.).
 - Hands-on testnet send verifications for every `receive_only` asset
   (EVM chains, USDC/USDT, BTC, SOL) before any flips to `live`.

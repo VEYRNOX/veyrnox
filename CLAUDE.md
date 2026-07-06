@@ -313,6 +313,20 @@ flagship datapoint only; (3) the measurement is pure KDF cost, not full unlock U
 iOS, web, and the Safari fallback path are unmeasured; (5) INTERNAL evidence, not
 independent.
 
+**Vault cipher decision (2026-07-06, issue #611 — CLOSED).** The question "commission a
+standalone external cryptographer review (~$15K–25K) of the vault cipher path?" was
+DECIDED: **no standalone engagement; defer-and-bundle.** AES-256-GCM is formally accepted
+as the vault construction — the "divergence from an XChaCha20-Poly1305 design spec"
+premise (inherited from the mislabeled PR #609 audit) was UNSUPPORTED: no such spec ever
+existed in the repo (`docs/crypto-implementation-verification.md`), and migrating would
+cost 4–6 weeks and drop iOS Secure Enclave compatibility
+(`docs/cipher-migration-analysis.md`). The vault cipher path and residual items (ECC L-4
+AAD binding, A-2 timing oracle, heap zeroization, short-PIN resistance, salt
+distinctness) are folded into the scope of the already-outstanding independent audit.
+Revisit triggers: an audit finding on the vault path, a WebCrypto AES-GCM implementation
+flaw in target runtimes, or the threat model dropping the T6 acceptance. Audit-trail
+record: `docs/audit-triage/vault-cipher-decision-2026-07-06.md`.
+
 ## Demo mode (known trap)
 
 Demo mode triggers on `?demo=1`, `VITE_DEMO_MODE=1`, native dev, OR a persisted
