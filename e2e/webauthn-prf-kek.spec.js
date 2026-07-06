@@ -300,22 +300,24 @@ test.describe('Web KEK PRF — keystore boundary (fail-closed matrix)', () => {
     expect(secondSalt).not.toBe(firstSalt); // per-enrollment salt distinctness (web)
   });
 
-  // ── KEK-DOWNGRADE finding (found while building this suite, 2026-07-06) ─────
-  // webKeyStore.saveVaultContents() does NOT preserve the kek-dek wrap: it always
-  // writes a bare Argon2id vault (web.js saveVaultContents, "always a plain bare
+  // ── KEK-DOWNGRADE finding (found 2026-07-06 building this suite; FIXED #631) ─
+  // webKeyStore.saveVaultContents() used to NOT preserve the kek-dek wrap: it always
+  // wrote a bare Argon2id vault (web.js saveVaultContents, "always a plain bare
   // write"). WalletProvider routes every primary-content re-persist through this
   // method SPECIFICALLY to be KEK-preserving (the native "KEK downgrade fix"), and
-  // its comments assert "on web it is undefined and ignored (no KEK at rest)" —
+  // its comments asserted "on web it is undefined and ignored (no KEK at rest)" —
   // but a PRF-enrolled web vault DOES have a KEK at rest. So any content re-persist
   // of an enrolled web vault (legacy single-seed→container migration on first
   // unlock, padding migration, or any add/import/rename-wallet mutation) silently
-  // downgrades it to a bare vault, unlockable by password ALONE with no PRF — the
+  // downgraded it to a bare vault, unlockable by password ALONE with no PRF — the
   // web sibling of the Android "bug 3" and a Phase-1 offline-seizure regression.
   // Verified at the keystore boundary (this call passes getHardwareFactor, exactly
-  // as WalletProvider does, and the wrap is STILL dropped). This test asserts the
-  // CORRECT behavior and is `fixme` until saveVaultContents preserves the wrap on
-  // web (re-encrypt content under the existing DEK, keep kekWrap/kekSalt).
-  test.fixme('KEK-DOWNGRADE: saveVaultContents must preserve the kek-dek wrap on an enrolled web vault', async ({ page }) => {
+  // as WalletProvider does). FIXED in #631: saveVaultContents now recovers the DEK
+  // via getHardwareFactor + PIN-derived C, re-encrypts the new content under that
+  // SAME DEK, and preserves kekWrap/kekSalt (fail-closed throw on a missing/failed
+  // factor, never a silent bare downgrade) — mirroring native.saveVaultContents.
+  // This test now asserts the CORRECT (fixed) behavior and is un-`fixme`d.
+  test('KEK-DOWNGRADE: saveVaultContents must preserve the kek-dek wrap on an enrolled web vault', async ({ page }) => {
     await freshState(page);
     await addAuthenticator(page);
     await createAndEnroll(page);
@@ -329,8 +331,8 @@ test.describe('Web KEK PRF — keystore boundary (fail-closed matrix)', () => {
     expect(r).toBe(true);
 
     const meta = await readVaultMeta(page);
-    expect(meta.kdf).toBe('kek-dek'); // currently 'argon2id' (bare) — the bug
-    expect(meta.hasKekWrap).toBe(true); // currently false — offline-seizure gap reopened
+    expect(meta.kdf).toBe('kek-dek'); // preserved (was 'argon2id'/bare before #631)
+    expect(meta.hasKekWrap).toBe(true); // wrap kept — offline-seizure gap stays closed
   });
 
   test('H-A: web vault password under 12 chars rejected before any ciphertext exists', async ({ page }) => {
