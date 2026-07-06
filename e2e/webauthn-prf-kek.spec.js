@@ -453,13 +453,12 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     await pw.press('Enter');
     await expect(page.getByRole('link', { name: /^Send$/i })).toBeVisible({ timeout: 60000 });
     await gotoSettingsInApp(page);
-    // Enter the vault PIN on the enrollment card's PinPad and submit.
-    const enrollPad = page.getByRole('group', { name: /PIN entry/i }).last();
+    // Enter the vault PIN on the enrollment card's PinPad (auto-submits on completion).
+    const enrollPadButtons = page.getByRole('group', { name: /PIN entry/i }).last().getByRole('button');
     for (const digit of PASSWORD.split('')) {
-      await page.getByRole('button', { name: digit, exact: true }).last().click();
+      await enrollPadButtons.filter({ hasText: new RegExp(`^${digit}$`) }).first().click();
     }
-    await page.getByRole('button', { name: /Enable hardware protection/i }).click();
-    // Success: the "WebAuthn Protected" badge appears + no error.
+    // Success: the "WebAuthn Protected" badge appears after PIN entry triggers enrollment.
     await expect(page.getByText('WebAuthn Protected')).toBeVisible({ timeout: 30000 });
   });
 });
