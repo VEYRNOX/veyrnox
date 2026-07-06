@@ -122,8 +122,15 @@ identity; the app never holds keys server-side.
   argument forwarding closes Bug A; `hardware.js` base64-encodes `kekSalt` to a STRING
   before the bridge call, closing Bug B; the Kotlin plugin fails closed on a
   malformed/absent salt (no silent v1 fallback); the vault stamps `hardwareKekVersion:3`
-  for genuinely salt-bound wraps, with a lazy brickless v2→v3 upgrade path for previously
-  (falsely) v2-stamped vaults. 11 migration unit tests added. On-device (Pixel 10 Pro XL,
+  for genuinely salt-bound wraps; previously (falsely) v2-stamped vaults are upgraded to a
+  genuine v3 wrap on the next PIN/password change (`changePassword`) — NOT lazily on unlock.
+  (The unlock-hot-path lazy v2→v3 migration was REMOVED 2026-07-06, PR #662, because it
+  fired a second biometric prompt — a triple biometric sheet on unlock — and a failed
+  migration write could re-prompt forever without converging. Consequence: a never-repinned
+  v2 vault retains the C-1 fixed-salt weakness until its next PIN change; see the
+  Feature-Status.md §4 C-1 residual "installed-base v2 upgrade reach". LAND-READY honest
+  review + 250/250 keystore tests; BUILT / unit-tested only, NOT device-verified.)
+  11 migration unit tests added. On-device (Pixel 10 Pro XL,
   Android 16, `com.veyrnox.app.debug`, device-local times): 07:19:35 fresh v3 enrollment
   (`"enroll: key stored — tier=STRONGBOX (securityLevel=2)"`); 07:19:37 `getHardwareFactor`
   bridge call carried `kekSalt` as an intact 44-char base64 STRING (previously `{}`),
