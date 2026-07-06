@@ -149,6 +149,19 @@
 ---
 
 ## Reality check (read first)
+- **⚠️ OWNER OVERRIDE (2026-07-06, PR #667) — provisional/unaudited UI disclosures REMOVED. Do
+  NOT re-add them.** Per an explicit owner decision (a conscious override of the I4
+  honest-disclosure rule for provisional/unaudited *status wording*), all user-facing
+  "provisional / unaudited / Beta / pending-audit / independent-audit-2026-06-23" badges and
+  notices were removed from the UI, along with the StealthWallets "I understand … provisional
+  pending audit" acknowledgment checkbox gate (HardwareKekSettings, AuditLog, BiometricAuth,
+  DuressPin, PanicWipe, StealthWallets, LoginActivity, RaspSecurity, LandingPage, TermsLegal).
+  **Security MECHANISMS were not changed** — no duress/panic/stealth/KEK logic, no
+  `canSend()`/mainnet gate, no RASP/sign-gate/wallet-core; only display wording + one
+  non-security checkbox, and the real validations (PIN length, confirm-match, 2FA) were kept.
+  A future audit-sync / honesty pass must NOT "helpfully" re-introduce these disclosures
+  without fresh owner direction; the underlying features remain BUILT / not-independently-audited
+  regardless of the wording, so the honesty tags in this doc are the record of truth, not the UI.
 - **Test suite:** 220 test files, all green (`npm test`); `check:rng` green. (PR #340 added `send2faMethod.test.js` + typed-data + notifier tests, 2026-06-23; §8a security hardening PRs added webVaultEntropy, kek, WalletConnectProvider, CryptoSigning, mainnetGate tests; count confirmed green 2026-06-27.)
 - **What actually SENDS on-chain today:** **ETH (Sepolia), USDC (Ethereum mainnet ✓ MAINNET),
   USDT (Ethereum mainnet ✓ MAINNET), MATIC (Polygon Amoy), ARB (Arbitrum Sepolia), OP (OP Sepolia),
