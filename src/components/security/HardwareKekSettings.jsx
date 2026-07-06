@@ -330,10 +330,9 @@ export default function HardwareKekSettings() {
           ) : (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
-                Enter your vault PIN to confirm removal.
                 {isNative
-                  ? ' You will be asked to authenticate with biometric.'
-                  : ' You will be asked to authenticate with your passkey.'}
+                  ? 'Enter your vault PIN to confirm removal. You will be asked to authenticate with biometric.'
+                  : 'Enter your vault password (≥12 chars) to confirm removal. You will be asked to authenticate with your passkey.'}
               </p>
               {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
               {busy
@@ -348,8 +347,9 @@ export default function HardwareKekSettings() {
                       onChange={v => { setPin(v); setError(''); }}
                       onComplete={handleUnenroll}
                       disabled={busy}
-                      length={8}
+                      length={isNative ? 8 : 12}
                       submitLabel="Remove hardware protection"
+                      numericOnly={isNative}
                     />
                     <button
                       className="text-xs text-muted-foreground underline"
@@ -399,7 +399,7 @@ export default function HardwareKekSettings() {
       {!isNative && webPrfAvailable && enrolled === false && !blocked && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Enter your vault PIN to enable hardware protection. A browser passkey will be
+            Enter your vault password (≥12 chars) to enable hardware protection. A browser passkey will be
             created to bind your vault to this device.
           </p>
 
@@ -416,8 +416,9 @@ export default function HardwareKekSettings() {
                 onChange={v => { setPin(v); setError(''); }}
                 onComplete={handleEnroll}
                 disabled={busy}
-                length={8}
+                length={12}
                 submitLabel="Enable hardware protection"
+                numericOnly={false}
               />
             )
           }
