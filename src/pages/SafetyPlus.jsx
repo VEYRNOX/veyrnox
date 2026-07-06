@@ -4,47 +4,32 @@
 // each feature lives. Free users see every feature with a lock badge;
 // Safety Plus subscribers get live navigation links.
 //
-// DISPLAY ONLY — no payment system active. getCurrentTier() always returns
-// "free" until IAP receipt verification is wired up (see lib/tier.js).
+// The tier here comes from the real, verified, fail-closed entitlement via
+// useTier() (lib/TierProvider -> lib/entitlement resolveTier). In-app purchase
+// (App Store / Play Billing via RevenueCat) is wired end to end — BUILT /
+// unit-tested only, NOT device-verified. Route access is enforced by the tier
+// gate in components/FeatureGate, not by this display component.
 
 import { Link } from "react-router-dom";
-import { ShieldCheck, TrendingUp, Plug, Lock, Sparkles, ArrowRight, Check } from "lucide-react";
+import { TrendingUp, Lock, Sparkles, ArrowRight, Check } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
 
+// Safety Plus now covers ONLY pure analytics / convenience features. Every
+// security and anti-fraud control (hardware wallet, fraud detection, token
+// approvals, backup, spam filter, audit log, message signing, etc.) is FREE
+// on principle — a safety-positioned wallet must not paywall the controls that
+// keep users safe. The routes below are the SAFETY_PLUS_ROUTES-gated set.
 const SECTIONS = [
-  {
-    nav: "SECURITY",
-    icon: ShieldCheck,
-    features: [
-      { name: "Hardware Wallet", summary: "Cold-key signing with Trezor — keys never leave the device", route: "/hardware-wallet" },
-      { name: "Transaction Simulation", summary: "Pre-sign preview with risk flags before you approve anything", route: "/risk" },
-      { name: "Spending Limits", summary: "Rule-based per-transaction and daily caps", route: "/security" },
-      { name: "Token Approvals (View + Revoke)", summary: "Inspect and revoke ERC-20 allowances", route: "/token-approvals" },
-      { name: "Suspicious-Address Screening", summary: "Local blocklist + sanctioned-address checks on every send", route: "/address-checker" },
-      { name: "Anomaly / Fraud Detection", summary: "Rule-based deviation flags over your own transaction history", route: "/fraud" },
-      { name: "Security Dashboard", summary: "At-a-glance view of your wallet security posture", route: "/security-dashboard" },
-      { name: "Encrypted Personal Backup", summary: "Export an encrypted .enc vault file for off-device storage", route: "/cloud-backup" },
-      { name: "Spam Token Filter", summary: "Auto-classify and hide airdropped scam tokens from your portfolio", route: "/spam-filter" },
-      { name: "Audit Log", summary: "Optional encrypted local activity record — never transmitted", route: "/audit-log" },
-    ],
-  },
   {
     nav: "FINANCE",
     icon: TrendingUp,
     features: [
-      { name: "Portfolio Risk Score", summary: "Concentration, leverage and volatility scoring across your holdings", route: "/risk-scoring" },
-      { name: "Advanced Analytics", summary: "Sharpe ratio, correlation matrix, volatility analysis", route: "/analytics" },
-      { name: "On-Chain Analytics", summary: "Address-level transaction activity and insights", route: "/on-chain" },
+      { name: "Portfolio Risk Score", summary: "Concentration, leverage and volatility scoring across your holdings", route: "/risk-score" },
+      { name: "Advanced Analytics", summary: "Sharpe ratio, correlation matrix, volatility analysis", route: "/advanced-analytics" },
+      { name: "On-Chain Analytics", summary: "Address-level transaction activity and insights", route: "/onchain" },
       { name: "Price Charts, Alerts & Watchlist", summary: "Real OHLCV data with threshold alerts and a saved watchlist", route: "/price-charts" },
       { name: "Recurring Payments", summary: "Scheduled payment reminders with built-in Send flow", route: "/recurring" },
-    ],
-  },
-  {
-    nav: "CONNECT",
-    icon: Plug,
-    features: [
-      { name: "Message Signing", summary: "Sign arbitrary messages for proof-of-ownership without sending funds", route: "/crypto-signing" },
     ],
   },
 ];
@@ -97,7 +82,7 @@ export default function SafetyPlus() {
         <p className="text-sm text-muted-foreground">
           {isUnlocked
             ? "Your Safety Plus features — tap any to open."
-            : "Pre-sign intelligence and advanced analytics. Features below unlock when you upgrade."}
+            : "Advanced analytics and premium insights. Features below unlock when you upgrade."}
         </p>
       </div>
 
