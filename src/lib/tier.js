@@ -20,23 +20,24 @@ export function getCurrentTier() {
   return 'free';
 }
 
-// Two tiers: Free (the complete wallet) and Safety Plus (pre-sign intelligence
-// layer + advanced analytics). Life-safety features (duress PIN, panic wipe,
-// stealth wallets) are FREE on principle — physical safety must not be paywalled.
-// Display catalogue only — real purchasing/entitlement lives in the billing layer
-// above; these cards drive the Plans UI.
+// Two tiers: Free (the complete wallet, including every security/anti-fraud
+// control) and Safety Plus (advanced analytics / premium insights only).
+// Security and anti-fraud controls are FREE on principle — a safety-positioned
+// wallet must never paywall the controls that keep users safe. Display catalogue
+// only — real purchasing/entitlement lives in the billing layer above; these
+// cards drive the Plans UI.
 export const TIERS = [
   {
     id: 'free',
     name: 'Free',
     price: '$0',
-    tagline: 'The complete self-custody wallet, all 10 assets, and all life-safety security. No account required.',
+    tagline: 'The complete self-custody wallet, all 10 assets, and every security & anti-fraud control. No account required.',
   },
   {
     id: 'safety_plus',
     name: 'Safety Plus',
     price: '$5.99/mo',
-    tagline: 'Pre-sign intelligence and advanced analytics — harden your wallet day to day.',
+    tagline: 'Advanced analytics and premium insights — go deeper on your portfolio.',
   },
 ];
 
@@ -53,12 +54,6 @@ export const FREE_FEATURES = [
   { name: 'Portfolio & P&L tracking', summary: 'Net-worth overview and fee analytics' },
   { name: 'Address Book', summary: 'Saved, labelled addresses with per-chain validation' },
   { name: 'NFT Gallery', summary: 'View owned NFTs across chains' },
-];
-
-// Safety Plus tier headline features — BUILT and working today. Listing a
-// feature here is presentation only — it does NOT gate or unlock the feature
-// until real billing (IAP receipt verification) is wired up.
-export const SAFETY_PLUS_FEATURES = [
   { name: 'Hardware wallet (Ledger & Trezor)', summary: 'Cold-key signing for ETH, BTC, SOL — keys never leave the device' },
   { name: 'Encrypted Personal Backup', summary: 'Export an encrypted .enc vault file for off-device storage' },
   { name: 'Spam Token Filter', summary: 'Auto-classify and hide airdropped scam tokens' },
@@ -68,11 +63,17 @@ export const SAFETY_PLUS_FEATURES = [
   { name: 'Security Dashboard', summary: 'At-a-glance view of your wallet security posture' },
   { name: 'Spending Limits', summary: 'Rule-based per-transaction and daily limits' },
   { name: 'Token Approvals (View + Revoke)', summary: 'Inspect and revoke ERC-20 allowances' },
+  { name: 'Audit Log', summary: 'Optional encrypted local activity record' },
+  { name: 'Message Signing', summary: 'Sign messages for proof-of-ownership' },
+];
+
+// Safety Plus tier headline features — BUILT and working today. Listing a
+// feature here is presentation only — it does NOT gate or unlock the feature
+// until real billing (IAP receipt verification) is wired up.
+export const SAFETY_PLUS_FEATURES = [
   { name: 'Portfolio Risk Score', summary: 'Concentration, leverage and volatility scoring' },
   { name: 'Advanced Analytics', summary: 'Sharpe ratio, correlation matrix, volatility analysis' },
   { name: 'On-Chain Analytics', summary: 'Address-level transaction activity and insights' },
   { name: 'Price Charts, Alerts & Watchlist', summary: 'Real OHLCV data and threshold alerts' },
-  { name: 'Audit Log', summary: 'Optional encrypted local activity record' },
   { name: 'Recurring Payments', summary: 'Scheduled payment reminders' },
-  { name: 'Message Signing', summary: 'Sign messages for proof-of-ownership' },
 ];
