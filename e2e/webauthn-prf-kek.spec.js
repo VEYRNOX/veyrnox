@@ -368,24 +368,19 @@ test.describe('Web KEK PRF — UI unlock path', () => {
 
   async function reloadToUnlockScreen(page) {
     await page.goto(`${BASE}/?demo=0`);
-    // Web now renders an 8-digit PinPad (unified with native). Wait for it.
-    const pinPad = page.getByRole('group', { name: /PIN entry/i });
-    await expect(pinPad).toBeVisible({ timeout: 20000 });
+    // authModel defaults to 'password' on web (authModel.js) whenever it was
+    // never explicitly persisted as 'pin' — these tests seed the vault directly
+    // at the keystore boundary, so that's always the case here. Reload must land
+    // on the real password Input (WalletEntry.jsx unlock branch), never a
+    // numeric PinPad — the onboarding-lockout regression fix (see WalletEntry.jsx)
+    // made this the actual, correct app behavior.
+    const pwInput = page.getByPlaceholder('Enter your vault password');
+    await expect(pwInput).toBeVisible({ timeout: 20000 });
     return {
-      fill: async (pin) => {
-        // Enter each digit by clicking the corresponding button
-        for (const digit of pin.split('')) {
-          await page.getByRole('button', { name: digit, exact: true }).click();
-        }
-      },
+      fill: async (pw) => { await pwInput.fill(pw); },
       press: async (key) => {
         if (key === 'Enter') {
-          // PIN auto-submits when full (8 digits); pressing Enter is a no-op on PinPad
-          // But some tests may call it, so we can optionally click a Continue/Submit button
-          // if one exists, or just return silently.
-          const submitBtn = page.getByRole('button', { name: /Continue|Unlock|Submit/i }).first();
-          const visible = await submitBtn.isVisible().catch(() => false);
-          if (visible) await submitBtn.click();
+          await page.getByRole('button', { name: /^Unlock$/i }).first().click();
         }
       },
     };
