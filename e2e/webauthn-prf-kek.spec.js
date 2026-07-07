@@ -362,6 +362,7 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     await addAuthenticator(page);
     const c = await ksCall(page, 'createVault', { secret: SECRET, password: PASSWORD });
     expect(c.ok, `createVault failed: ${c.message}`).toBe(true);
+    await page.evaluate(() => localStorage.setItem('veyrnox-auth-model', 'pin'));
     if (enroll) {
       const e = await ksCall(page, 'enrollKek', PASSWORD);
       expect(e.ok, `enrollKek failed: ${e.message}`).toBe(true);
