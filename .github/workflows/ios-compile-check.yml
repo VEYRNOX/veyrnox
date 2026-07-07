@@ -111,11 +111,15 @@ jobs:
 
       - name: Assert build succeeded (no errors)
         run: |
-          if grep -E "^.*(error:|BUILD FAILED)" /tmp/xcode-build.log | grep -v "warning:" | grep "error:" | head -5; then
-            echo "::error::iOS compile FAILED — errors found in build log"
+          # The authoritative xcodebuild result is the "** BUILD SUCCEEDED **" or
+          # "** BUILD FAILED **" marker line. Grepping for "error:" is too noisy —
+          # xcodebuild verbose output contains "-Werror=..." flags in clang invocations
+          # that match the pattern but are not build errors.
+          if grep -q "\*\* BUILD FAILED \*\*" /tmp/xcode-build.log; then
+            echo "::error::iOS compile FAILED — BUILD FAILED marker found"
             exit 1
           fi
-          if grep "BUILD SUCCEEDED" /tmp/xcode-build.log; then
+          if grep -q "\*\* BUILD SUCCEEDED \*\*" /tmp/xcode-build.log; then
             echo "✓ iOS BUILD SUCCEEDED"
           else
             echo "::warning::BUILD SUCCEEDED marker not found — check log manually"
