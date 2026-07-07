@@ -63,15 +63,16 @@ import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
-import {
-  isHardwareKeyAvailable,
-  createWrappingKey,
-  hwWrap,
-  hwUnwrap,
-  deleteWrappingKey,
-} from '../../plugins/veyrnoxEnclave.js';
-
 // ── M2c (Secure Enclave key-wrap) — F-2 closure scaffold ─────────────────────
+// Lazy-loaded so that registerPlugin() in veyrnoxEnclave.js does NOT execute at
+// module-load time. Tests that import native.js directly mock @capacitor/core
+// without registerPlugin; a top-level import would throw there. All M2c
+// call-sites are async, so a one-time lazy getter is transparent.
+let _enclavePlugin = null;
+async function enclavePlugin() {
+  if (!_enclavePlugin) _enclavePlugin = await import('../../plugins/veyrnoxEnclave.js');
+  return _enclavePlugin;
+}
 // PROVISIONAL — NOT AUDITED-SECURE, NOT DEVICE-VERIFIED. The hardware-wrap path
 // is capability-detected AND gated behind M2C_HARDWARE_WRAP_ENABLED, which stays
 // FALSE until M2c-2 verifies the Enclave path on a physical iPhone (key-gen,
@@ -87,6 +88,7 @@ const WRAP_VERSION_ENCLAVE = 'enclave-v1';
 async function useHardwareWrap() {
   if (!M2C_HARDWARE_WRAP_ENABLED) return false;
   try {
+    const { isHardwareKeyAvailable } = await enclavePlugin();
     const { backing, biometryEnrolled } = await isHardwareKeyAvailable();
     return backing === 'secureEnclave' && biometryEnrolled === true;
   } catch {
@@ -655,6 +657,7 @@ export const nativeKeyStore = {
         // separate app-layer gate. Tag cancel/lockout so the caller fails closed.
         let blobJson;
         try {
+          const { hwUnwrap } = await enclavePlugin();
           blobJson = utf8FromBase64(await hwUnwrap(peekRecord.hw));
         } catch (err) {
           if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
@@ -674,6 +677,7 @@ export const nativeKeyStore = {
         try {
           const raw2 = await SecureStorage.get(VAULT_KEY, false);
           if (raw2 !== null && raw2 !== undefined) {
+            const { createWrappingKey, hwWrap } = await enclavePlugin();
             await createWrappingKey();
             const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
             await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
@@ -887,6 +891,7 @@ export const nativeKeyStore = {
     const record = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (!record || record.wrap !== WRAP_VERSION_ENCLAVE) return; // already M2b
 
+    const { hwUnwrap, deleteWrappingKey } = await enclavePlugin();
     const blobJson = utf8FromBase64(await hwUnwrap(record.hw)); // throws on cancel
     const blob = JSON.parse(blobJson); // validate it parses before overwriting
     await safeWriteVault(blob);
