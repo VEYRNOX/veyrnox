@@ -50,29 +50,25 @@ export function shouldCacheUnlockSecret({ authModel, biometricEnabled }) {
  * Whether the returning-user PIN-unlock screen may AUTO-CACHE the PIN the user just
  * typed behind the biometric gate.
  *
- * COERCION-RESISTANCE GUARD (I3/I4). Design intent: with NO duress PIN configured,
- * Face ID unlocks the REAL wallet, so caching the typed (real) PIN on first biometric
- * unlock is correct (the sanctioned primary flow removeDuressPin's re-enable path
- * documents). But once a DURESS PIN exists, Face ID must open the DECOY only — and
- * that decoy cache is written EXPLICITLY via the Duress screen opt-in
- * (enableDecoyBiometricUnlock). If the returning screen also auto-cached the typed PIN,
- * a user who unlocks with their REAL PIN before/without the opt-in would silently make
- * Face ID open the REAL wallet (on a KEK vault the real PIN's C unwraps the DEK), which
- * defeats the whole Face-ID-to-decoy design. So we auto-cache ONLY when NO duress vault
- * is configured. We also never re-cache when a secret is already present (never clobber
- * a deliberately-set decoy cache), and never cache when biometric unlock is off.
+ * COERCION-RESISTANCE GUARD (I3/I4). The `alreadyCached` check is the operative guard:
+ * if the user opted into Face-ID-opens-the-decoy (enableDecoyBiometricUnlock), the cache
+ * already holds the DURESS PIN. `alreadyCached: true` prevents the auto-cache from
+ * overwriting that decoy secret with the real PIN.
  *
- * Pure for testability; the async duress-presence read is done by the caller and passed
- * in as `duressConfigured`. CALLER CONTRACT (fail closed): if duress presence cannot be
- * determined, pass duressConfigured: true — skipping the convenience cache is safe;
- * caching a real PIN next to an unknown duress state is not.
+ * History: this function previously checked `duressConfigured` via `hasDuressVault()`.
+ * That was broken since the PIN-cohort chaff-provisioning design: every PIN device
+ * provisions a chaff blob into the `secondary` (duress) IndexedDB slot at onboarding
+ * (provisionChaff.js) so that all devices are structurally identical — meaning
+ * `hasDuressVault()` ALWAYS returns true and the auto-cache NEVER fired. The
+ * `alreadyCached` guard is sufficient: chaff never writes a biometric cache, so
+ * `alreadyCached` is false on a fresh device (auto-cache fires correctly); once the
+ * user opts into Face-ID→decoy, `alreadyCached` is true (auto-cache blocked correctly).
  *
- * @param {{biometricEnabled: boolean, alreadyCached: boolean, duressConfigured: boolean}} ctx
+ * @param {{biometricEnabled: boolean, alreadyCached: boolean}} ctx
  * @returns {boolean}
  */
-export function shouldAutoCacheTypedPin({ biometricEnabled, alreadyCached, duressConfigured }) {
+export function shouldAutoCacheTypedPin({ biometricEnabled, alreadyCached }) {
   if (!biometricEnabled) return false;
   if (alreadyCached) return false;
-  if (duressConfigured) return false;
   return true;
 }
