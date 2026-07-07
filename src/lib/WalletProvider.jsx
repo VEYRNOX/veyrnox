@@ -1715,6 +1715,14 @@ export function WalletProvider({ children }) {
   // Turn Face ID unlock back off: clear the persisted preference AND wipe the
   // cached password so it never lingers at rest once the feature is disabled.
   const disableBiometricUnlock = useCallback(async () => {
+    // M2c-2 down-migration (native, opt-in): if the primary vault was Enclave-
+    // wrapped, unwrap it back to a plain M2b record FIRST so a password-only
+    // unlock keeps working once biometric is off. Runs BEFORE the cache is cleared
+    // (the unwrap needs the OS biometric, which the user is present for). No-op on
+    // web / for an already-M2b vault. Best-effort — a cancel here leaves the vault
+    // Enclave-wrapped (still unlockable via the ACL biometric) and must not block
+    // turning the preference off. See docs/M2cd.native-acl-plan.md.
+    try { await keyStore.downgradeFromHardwareWrap?.(); } catch { /* best-effort */ }
     setBiometricUnlockEnabled(false);
     try { await clearUnlockSecret(); } catch { /* best-effort */ }
   }, []);
