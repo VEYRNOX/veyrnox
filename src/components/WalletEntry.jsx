@@ -421,9 +421,16 @@ export default function WalletEntry() {
 
   // Resolve biometric availability once on mount (cheap; used by both the
   // onboarding offer and the returning one-tap button).
+  // On native with available biometrics, default the onboarding offer to ON so
+  // new users get Face ID without hunting through Settings. The checkbox is still
+  // present and can be unchecked; this only changes the default from off to on.
   useEffect(() => {
     let active = true;
-    getBiometricStatus().then(s => { if (active) setBioStatus(s); }).catch(() => { if (active) setBioStatus(null); });
+    getBiometricStatus().then(s => {
+      if (!active) return;
+      setBioStatus(s);
+      if (s?.available && Capacitor.isNativePlatform()) setBioEnabled(true);
+    }).catch(() => { if (active) setBioStatus(null); });
     return () => { active = false; };
   }, []);
 
