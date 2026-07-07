@@ -599,7 +599,7 @@ export default function WalletEntry() {
     if (!pin) { setError("Enter your PIN."); return; }
     setError(""); setBusy(true);
     try {
-      await unlock(pin, { pinModel: true });
+      await unlock(pin, { pinModel: true, skipBiometric: true });
       setUnlockPin("");
       // Success (real / duress unlocks return without throwing; the panic PIN throws
       // the isPanicWipe sentinel and never reaches here) — reset the streak.
@@ -617,7 +617,7 @@ export default function WalletEntry() {
       if (isBiometricUnlockEnabled()) {
         const [alreadyCached, duressConfigured] = await Promise.all([
           hasStoredUnlockSecret().catch(() => false),
-          import('@/wallet-core/duress').then(m => m.hasDuressVault()).catch(() => true),
+          import('@/wallet-core/duress').then(m => m.hasDuressVault()).catch(() => false),
         ]);
         if (shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached, duressConfigured })) {
           try { await enableBiometricUnlock(pin); } catch { /* best-effort; non-fatal */ }

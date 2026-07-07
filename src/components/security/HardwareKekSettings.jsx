@@ -203,6 +203,7 @@ export default function HardwareKekSettings() {
       } else if (isWrongPinVaultError(e)) {
         setError(WRONG_PIN_MSG);
       } else {
+        console.error('[KEK-ENROLL] failed:', e?.code, e?.message, JSON.stringify(e), e);
         setError(classifyKekError(e));
       }
       // Best-effort cleanup of any partially-created credential.
