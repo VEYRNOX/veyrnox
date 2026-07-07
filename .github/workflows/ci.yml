@@ -133,6 +133,11 @@ jobs:
       # string leaks in rendered copy (D1-D3) or raw-seed clipboard writes.
       # Dedicated required step, same rationale as check:rng above.
       - run: npm run check:deniability-strings
+      # Finding-ID drift gate: fails if a user-facing surface (the feature
+      # catalogue) describes a RESOLVED audit finding as still open, or if the
+      # findings registry cites a source doc that does not mention the ID. This
+      # is the tripwire for the 2026-07-06 C-1 mislabel; see docs/findings-registry.json.
+      - run: npm run check:finding-ids
       - run: npm run build
       - run: npm test
 

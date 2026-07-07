@@ -199,7 +199,15 @@ All four multi-asset sends confirmed on real blockchains:
 ### I6 — Hardware Binding (KEK = HKDF(H || C))
 - ✅ H (StrongBox HMAC factor) + C (Argon2id PIN factor) combined correctly
 - ✅ Missing either H or C → unlock fails
-- ✅ KEK v2 protocol (per-enrollment salt) confirmed
+- ✅ Per-enrollment salt-bound KEK path confirmed on-device: the intact `kekSalt` crossed
+  the bridge and the run logged `"salt-source: v2-bound"`. **Clarification (see
+  `docs/audit-triage/independent-audit-2026-07-06-android-kek-suite.md`, F2.1):**
+  `"v2-bound"` is a LEGACY branch label meaning "a per-enrollment salt was supplied" — it
+  is NOT the vault's `hardwareKekVersion` stamp. This on-device run exercised the genuine
+  **v3** salt-bound path (PR #568); it did not exercise the pre-#568 v2 protocol. The
+  vault read back `hardwareKekVersion:3`. This corrects the earlier literal "KEK v2
+  protocol confirmed" wording in this doc, which pre-dated the v2/v3 label clarification
+  and was ambiguous read literally. INTERNAL evidence — not independently audited.
 
 ---
 

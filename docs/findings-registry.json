@@ -1,0 +1,44 @@
+{
+  "_schema": "Curated, machine-readable registry of audit finding IDs that are surfaced in USER-FACING copy (currently src/lib/featureCatalogue.js). Each entry is the canonical current status of that finding, reviewed by a human against the cited `source` audit doc. It exists so a terse user-facing surface can never silently contradict the audit (the 2026-07-06 C-1 drift: the catalogue called a RESOLVED finding an 'open CRITICAL'). scripts/check-finding-id-consistency.mjs enforces two things: (1) no user-facing surface describes a `status != open` finding as open/unresolved; (2) each finding's `source` doc actually contains the ID. This registry is the source of truth for the GATE, not for the audit itself — when an audit doc changes a finding's status, update this file in the same PR. Invariants (I1-I6), roadmap milestones (M2c/M2d), dApp transport steps (D1-D3), and mitigation labels (M-K) are NOT audit findings and are intentionally absent.",
+  "_status_vocabulary": {
+    "open": "unresolved; may legitimately be described as open in user-facing copy",
+    "fixed": "remediated and merged; must NOT be described as open/unresolved/an open finding",
+    "accepted": "documented accepted deviation (won't-fix by decision); must NOT be described as an open finding",
+    "evidence-gap": "code-fixed but a device/on-chain trace is still outstanding; treat like fixed for the openness check"
+  },
+  "findings": {
+    "C-1": {
+      "severity": "CRITICAL",
+      "surface": "android",
+      "status": "fixed",
+      "title": "Android StrongBox KEK derived H from a global fixed HMAC input (missing per-enrollment kekSalt binding)",
+      "resolvedBy": "PR #568 (v3 salt binding, device-verified 2026-07-05)",
+      "source": "docs/audit-2026-07-01-kek-internal.md",
+      "note": "Distinct from the StrongBox tier-ENFORCEMENT gap (reject non-StrongBox devices), which is a TARGET, not a numbered finding. Do not conflate the two — that conflation was the 2026-07-06 drift."
+    },
+    "H-1": {
+      "severity": "HIGH",
+      "surface": "android",
+      "status": "fixed",
+      "title": "Hardware KEK StrongBox tier was not surfaced honestly in the badge/UI",
+      "resolvedBy": "PR #527",
+      "source": "docs/audit-2026-07-01-kek-internal.md"
+    },
+    "M-4": {
+      "severity": "MEDIUM",
+      "surface": "rasp",
+      "status": "fixed",
+      "title": "RASP send-path wiring was present but stale 'NOT WIRED' comments implied otherwise",
+      "resolvedBy": "PR #340",
+      "source": "docs/audit-triage/ecc-independent-audit-2026-06-23.md"
+    },
+    "L-1": {
+      "severity": "LOW",
+      "surface": "encrypted-backup",
+      "status": "fixed",
+      "title": "Encrypted personal backup PIN floor was too low (4 digits); raised to 6",
+      "resolvedBy": "PR #340",
+      "source": "docs/audit-triage/ecc-independent-audit-2026-06-23.md"
+    }
+  }
+}
