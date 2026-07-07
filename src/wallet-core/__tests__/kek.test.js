@@ -276,3 +276,45 @@ describe('KEK error codes are the contract (not prose copy)', () => {
     expect(codes.size).toBe(Object.values(KEK_ERR).length);
   });
 });
+
+// L-1 (#737): importKekAesKey is a PRIVATE helper shared by wrapDek + unwrapDek. A
+// wrong-length/wrong-type kek is NOT a missing biometric — it is a degenerate combined
+// key. It must fail closed with KEK_ERR.DEGENERATE_INPUT, NEVER KEK_ERR.NO_HARDWARE_FACTOR
+// (which would misattribute a bad KEK to an absent hardware factor).
+describe('KEK wrap/unwrap reject a bad (wrong-length) KEK — L-1 (#737)', () => {
+  it('wrapDek with a wrong-length kek throws DEGENERATE_INPUT, not NO_HARDWARE_FACTOR', async () => {
+    const badKek = fixedBytes(0x11, 16); // 16 bytes, not the 32-byte KEK_LEN
+    const dek = randomDek();
+    await expect(wrapDek(badKek, dek)).rejects.toThrow(KEK_ERR.DEGENERATE_INPUT);
+    await expect(wrapDek(badKek, dek)).rejects.not.toThrow(KEK_ERR.NO_HARDWARE_FACTOR);
+  });
+
+  it('unwrapDek with a wrong-length kek throws DEGENERATE_INPUT, not NO_HARDWARE_FACTOR', async () => {
+    const goodKek = await combineKek(H_REAL(), C_REAL());
+    const wrapped = await wrapDek(goodKek, randomDek());
+    const badKek = fixedBytes(0x11, 16); // 16 bytes, not the 32-byte KEK_LEN
+    await expect(unwrapDek(badKek, wrapped)).rejects.toThrow(KEK_ERR.DEGENERATE_INPUT);
+    await expect(unwrapDek(badKek, wrapped)).rejects.not.toThrow(KEK_ERR.NO_HARDWARE_FACTOR);
+  });
+
+  it('the thrown error carries a machine-readable .code for callers that branch on it', async () => {
+    const badKek = fixedBytes(0x11, 16);
+    const err = await wrapDek(badKek, randomDek()).catch((e) => e);
+    expect(err.code).toBe(KEK_ERR.DEGENERATE_INPUT);
+  });
+});
+
+// L-2 (#738): combineKek's length-check throws for H and C were plain `new Error(msg)`
+// with NO `.code` property — a caller doing `err.code === KEK_ERR.NO_HARDWARE_FACTOR`
+// got `undefined`. They must carry `.code` like the DEGENERATE_INPUT throw already does.
+describe('combineKek length-check errors carry .code — L-2 (#738)', () => {
+  it('wrong-length H throws with err.code === NO_HARDWARE_FACTOR', async () => {
+    const err = await combineKek(fixedBytes(0xa1, 16), C_REAL()).catch((e) => e);
+    expect(err.code).toBe(KEK_ERR.NO_HARDWARE_FACTOR);
+  });
+
+  it('wrong-length C throws with err.code === NO_SET_FACTOR', async () => {
+    const err = await combineKek(H_REAL(), fixedBytes(0xc1, 16)).catch((e) => e);
+    expect(err.code).toBe(KEK_ERR.NO_SET_FACTOR);
+  });
+});
