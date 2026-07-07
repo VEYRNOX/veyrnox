@@ -365,6 +365,39 @@ Both were code-complete since PR #526 but had never been compiled on a Mac. CI n
 
 **Remaining hardware-gated items (unchanged, explicitly still open):** iOS-F9 SE-unlock trace (device-verified PARTIAL — F9 log captured 2026-07-02, but full session still needed), H-2/iOS-F11 iOS biometric re-enrollment (device-blocked — needs unrestricted iPhone), Android C-1 residuals (T1/T2/T3 per `docs/runbook-android-kek-residuals.md`), RASP F-09 (real rooted device), independent security audit.
 
+## 2026-07-07/08 INTERNAL KEK stack audit — PRs #723, #735, #743
+
+Code-and-artifact audit of `kek.js` / `native.js` / `web.js` / `hardware.js`. Findings:
+0 CRITICAL / 3 HIGH / 9 MEDIUM / 6 LOW. All 3 HIGH and 6 of 9 MEDIUM resolved; all
+6 LOW resolved. BUILT / unit-tested, INTERNAL — not device-verified, not independently
+audited. No on-chain txid.
+
+- **PR #723** (3 HIGH): `native.js enrollKek` orphaned-credential cleanup + `saltBytes`
+  zero on error (H-1); `web.js unlock()`/`unenrollKek()` `H` zeroed in `finally` on
+  `deriveKekC` throw (H-2); `kek.js decodeKekSalt` 32-byte length guard added, throws
+  `KEK_ERR.MALFORMED_VAULT` on wrong-length input (H-3).
+- **PR #735** (6 MEDIUM resolved): `web.js enrollKek` `saltBytes` zeroed in `finally`
+  (M-1); M2c `downgradeFromHardwareWrap`/`unlock()` peek use `parseVaultBlob` not raw
+  `JSON.parse` (M-2); `clearVault` wraps `clearHardwareCredential()` in best-effort
+  try/catch (M-4); stale password-minimum comment updated to PR #651 8-digit PIN (M-7);
+  `web.js changePassword` enforces minimum on `newPassword` (M-8);
+  `downgradeFromHardwareWrap` wrapped in `withLockSuppressed` (M-9).
+- **PR #743** (6 LOW): `importKekAesKey` throws `DEGENERATE_INPUT` on bad-length kek
+  (L-1); `combineKek` length-check errors carry `.code` (L-2);
+  `docs/device-verification-2026-07-05.md` correction banner prepended (L-3); `native.js`
+  file header updated (L-4); stale lazy-upgrade test comment corrected (L-5);
+  `bufferToB64u`/`b64uToBuffer` extracted to `web-base64url.js` + 17 unit tests (L-6).
+
+**Still open (3 MEDIUM — design decision required before `M2C_HARDWARE_WRAP_ENABLED = true`):**
+- M-3 (#726): M2c up-migration swallows `VAULT_WRITE_VERIFY_FAILED`.
+- M-5 (#728): `VeyrnoxEnclavePlugin` auto-registered with no internal gate.
+- M-6 (#729): iOS-F5 `NSString hB64` bridge copy of H — architectural limitation (accept
+  or bridge-level redaction).
+
+INTERNAL pass — not independent, not a substitute for the outstanding independent
+third-party audit (still required). See `docs/Feature-Status.md` §"2026-07-07/08 INTERNAL
+KEK stack audit" for full per-finding detail.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode

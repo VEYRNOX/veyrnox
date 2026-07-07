@@ -877,6 +877,65 @@ error). **FIXED — PR #685 (merged 2026-07-06)** —
 
 No catalogue status changes: Android KEK remains BUILT + device-verified (StrongBox path), iOS remains device-verified PARTIAL. This finding does not affect release builds or the on-chain evidence already recorded; it closes a debug-build/CI log-hygiene gap.
 
+---
+
+### 2026-07-07/08 INTERNAL KEK stack code-and-artifact audit — findings remediated (PRs #723, #735, #743)
+
+> ⚠️ INTERNAL pass — code-and-artifact only, NOT an independent third-party audit. The
+> independent third-party audit remains outstanding (see "Pending" section below). None of
+> the fixes below are device-verified. Status tags: BUILT / unit-tested, INTERNAL.
+
+**Scope:** a focused code-and-artifact audit of the KEK stack (`kek.js`, `native.js`,
+`web.js`, `hardware.js`) surfaced 0 CRITICAL / 3 HIGH / 9 MEDIUM / 6 LOW findings.
+6 of 9 MEDIUM findings (M-1, M-2, M-4, M-7, M-8, M-9) and all 6 LOW findings (L-1
+through L-6) were remediated in this pass. 3 MEDIUM findings (M-3, M-5, M-6) remain
+open pending a design decision before `M2C_HARDWARE_WRAP_ENABLED = true`.
+
+**PR #723 (merged 2026-07-07) — HIGH findings H-1, H-2, H-3:**
+
+| ID | Severity | Finding | Resolution |
+|---|---|---|---|
+| H-1 | HIGH | `native.js enrollKek` — on a `getHardwareFactor` throw, the orphaned Keystore credential was not cleaned up and `saltBytes` was not zeroed on the error path. | ✅ BUILT (PR #723): orphaned credential cleanup added; `saltBytes` zeroed in error path `finally` block. Unit-tested, INTERNAL. |
+| H-2 | HIGH | `web.js unlock()` / `unenrollKek()` — `H` (hardware factor) was not zeroed in `finally` blocks when `deriveKekC` throws on those paths. | ✅ BUILT (PR #723): `H` now zeroed in the relevant `finally` blocks on both paths. Unit-tested, INTERNAL. |
+| H-3 | HIGH | `kek.js decodeKekSalt` — no 32-byte length guard; a wrong-length `kekSalt` was not caught at decode time, allowing a malformed vault blob to proceed further. | ✅ BUILT (PR #723): 32-byte length guard added; wrong-length `kekSalt` now throws `KEK_ERR.MALFORMED_VAULT`. Unit-tested, INTERNAL. |
+
+**PR #735 (merged 2026-07-07) — MEDIUM findings M-1, M-2, M-4, M-7, M-8, M-9:**
+
+| ID | Severity | Finding | Resolution |
+|---|---|---|---|
+| M-1 | MEDIUM | `web.js enrollKek` `finally` block did not zero `saltBytes` on error. | ✅ BUILT (PR #735): `saltBytes` zeroed in `enrollKek` `finally` block. Unit-tested, INTERNAL. |
+| M-2 | MEDIUM | M2c `downgradeFromHardwareWrap` and `unlock()` peek used raw `JSON.parse` instead of the validated `parseVaultBlob` path. | ✅ BUILT (PR #735): both now use `parseVaultBlob`. Unit-tested, INTERNAL. |
+| M-4 | MEDIUM | `clearVault` did not wrap `clearHardwareCredential()` in a best-effort try/catch; a wipe on a device with no enrolled key would throw and fail. | ✅ BUILT (PR #735): `clearHardwareCredential()` wrapped in best-effort try/catch; wipe no longer fails on an absent key. Unit-tested, INTERNAL. |
+| M-7 | MEDIUM | Stale password-minimum comment in `web.js` referenced the pre-#651 ≥12-char requirement rather than the unified 8-digit PIN. | ✅ BUILT (PR #735): comment updated to reflect the PR #651 8-digit PIN unification. INTERNAL. |
+| M-8 | MEDIUM | `web.js changePassword` enforced the password minimum on the old password but not on `newPassword`. | ✅ BUILT (PR #735): password minimum now enforced on `newPassword` as well. Unit-tested, INTERNAL. |
+| M-9 | MEDIUM | `downgradeFromHardwareWrap` was not wrapped in `withLockSuppressed`, creating a potential biometric-prompt re-entry window during downgrade. | ✅ BUILT (PR #735): `downgradeFromHardwareWrap` wrapped in `withLockSuppressed`. Unit-tested, INTERNAL. |
+
+**PR #743 (merged 2026-07-07) — LOW findings L-1 through L-6:**
+
+| ID | Severity | Finding | Resolution |
+|---|---|---|---|
+| L-1 | LOW | `kek.js importKekAesKey` threw `NO_HARDWARE_FACTOR` (misleading) on a bad-length kek input instead of a more accurate code. | ✅ BUILT (PR #743): now throws `DEGENERATE_INPUT` on bad-length kek. Unit-tested, INTERNAL. |
+| L-2 | LOW | `kek.js combineKek` length-check errors did not carry a `.code` property, making error handling inconsistent with the rest of the KEK error surface. | ✅ BUILT (PR #743): length-check errors now carry `.code` via `Object.assign` pattern. Unit-tested, INTERNAL. |
+| L-3 | LOW | `docs/device-verification-2026-07-05.md` still had a banner-level claim of "KEK v2 protocol confirmed" from the C-1 regression era (the actual session verified v3, not v2). | ✅ BUILT (PR #743): correction banner prepended to the document making the v2 claim context explicit. INTERNAL. |
+| L-4 | LOW | `native.js` file header wording did not reflect that device verification HAS occurred (internal). | ✅ BUILT (PR #743): header updated to accurately record the internal device-verification status. INTERNAL. |
+| L-5 | LOW | `native.kek-v2-hmac-binding.test.js` carried a stale lazy-upgrade comment that was superseded by the PR #662 removal of the unlock-path lazy migration. | ✅ BUILT (PR #743): stale comment corrected. INTERNAL. |
+| L-6 | LOW | `bufferToB64u` / `b64uToBuffer` utilities were duplicated across files instead of extracted to a shared module. | ✅ BUILT (PR #743): extracted to `web-base64url.js` with 17 dedicated unit tests. INTERNAL. |
+
+**Still-open findings — design decision required before `M2C_HARDWARE_WRAP_ENABLED = true`:**
+
+| ID | Severity | Finding | Gate |
+|---|---|---|---|
+| M-3 | MEDIUM | M2c up-migration swallows `VAULT_WRITE_VERIFY_FAILED` — a failed migration write is silently lost rather than surfaced to the caller, risking a silent vault-state divergence. | OPEN — tracked in issue #726. Design decision required on error-surface contract before M2c activation. |
+| M-5 | MEDIUM | `VeyrnoxEnclavePlugin` is auto-registered with no internal gate — the plugin is reachable before the `M2C_HARDWARE_WRAP_ENABLED` flag is checked at the JS layer. | OPEN — tracked in issue #728. Requires a native-layer capability gate or a flag-checked registration path before M2c activation. |
+| M-6 | MEDIUM | iOS-F5 `NSString hB64` carries a base64 copy of H at the ObjC/bridge layer — architecturally inherent to the Capacitor bridge (no-string `NSData` path is not available without a plugin protocol change); a bridge-level redaction approach is one option. | OPEN — tracked in issue #729. Architectural limitation (accept or bridge-level redaction); design decision required before M2c activation. |
+
+**Honest framing:** all fixes in PRs #723, #735, and #743 are BUILT / unit-tested only —
+INTERNAL, NOT device-verified, NOT independently audited, no on-chain txid. The three
+still-open MEDIUM findings (M-3, M-5, M-6) are not resolved and must not be marked
+resolved until the owner confirms a resolution and the gate condition
+(`M2C_HARDWARE_WRAP_ENABLED = true`) is satisfied. The independent third-party audit of
+the KEK stack remains outstanding and is not replaced by this pass.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
