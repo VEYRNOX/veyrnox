@@ -25,7 +25,7 @@
 
 | Severity | Total | Fixed (PRs #520–#522) | Open |
 |----------|-------|-----------------------|------|
-| CRITICAL | 1 | 1 — recorded RESOLVED 2026-07-02, REGRESSED 2026-07-05 (binding-unconfirmed), then **FIXED / device-verified 2026-07-05 (v3, PR #568)** — see annotations below | 0 open (C-1 closed via v3 fix); salt-tamper negative test, v2→v3 migration device-exercise, on-device multi-enrollment salt distinctness, and independent audit remain outstanding — see annotation |
+| CRITICAL | 1 | 1 — recorded RESOLVED 2026-07-02, REGRESSED 2026-07-05 (binding-unconfirmed), then **FIXED / device-verified 2026-07-05 (v3, PR #568)** — see annotations below | 0 open (C-1 closed via v3 fix); salt-tamper ✅ CLOSED 2026-07-07 (T2), salt distinctness ✅ CLOSED 2026-07-07 (T3), v2→v3 migration BLOCKED (T1 PIN cohort divergence), independent audit outstanding — see annotation |
 | HIGH | 9 | 7 (F-01, F-02, H-4, iOS-F6, H-1 PR #527, iOS-F5 device-verified 2026-07-07, iOS-F9 CLOSED 2026-07-07) | 2 (H-2/iOS-F11 — Android half RESOLVED/device-verified PR #516/#518, iOS half deferred/MDM-blocked; H-3 accepted) |
 | MEDIUM | 12 | 6 (F-03, F-05, F-06, M-3, + H-3 accepted deviation, iOS-F3 device-verified 2026-07-07) | 6 (remaining) |
 | LOW | 6 | 1 (F-08) | 5 (native/device) |
@@ -126,19 +126,39 @@
 > - **Corrected status: C-1 FIXED / device-verified (v3 fresh-enroll path, end-to-end incl.
 >   on-chain txid, 2026-07-05).** INTERNAL evidence — not independently audited.
 > - **Still outstanding (explicitly, not swept under "fixed"):**
->   1. **Salt-tamper negative test NOT performed** — the stored vault lives inside encrypted
->      SecureStorage, so a non-invasive tamper is not feasible on this device. The operative
->      evidence that the supplied salt is actually the HMAC input is the salt-bound branch
->      attestation (`"salt-source: v2-bound"` logged only when the intact salt string is
->      received) rather than a direct tamper/fail test.
->   2. **v2→v3 lazy migration path NOT device-exercised** — the test device had no existing
->      v2 vault (this was a fresh enroll). Migration remains unit-tested only (11 tests),
->      not confirmed on a real upgrading device.
->   3. **Per-enrollment salt distinctness on device** — unit-proven only; only one
->      enrollment's salt was observed on this device, so on-device distinctness across
->      multiple enrollments is not yet confirmed.
+>   1. ~~**Salt-tamper negative test NOT performed**~~ — **CLOSED 2026-07-07 (T2, Pixel 10
+>      Pro XL, INTERNAL).** Direct cryptographic proof: `getHardwareFactor` called with the
+>      correct salt returned H `gn2JbH5Z...`; called with a different valid 44-char base64
+>      salt returned H `8B2/sTDZ...` — `match: false`. Both calls logged `salt-source:
+>      v2-bound` (no v1-fixed fallback). This proves the salt is the HMAC input — different
+>      salt → different H → wrong KEK → unwrap fails. Plugin-level probes also confirmed:
+>      empty salt → rejected ("Empty kekSalt — refusing to fall back to fixed salt"), wrong
+>      type (number) → rejected ("KEK_SALT_MALFORMED"). One LOW finding: `!!notb64` was
+>      accepted by Android `Base64.decode` (tolerates junk chars) — produces a wrong H
+>      (unwrap still fails), but not a clean rejection.
+>   2. **v2→v3 migration path NOT device-exercised** — BLOCKED 2026-07-07 (T1). The
+>      APK-swap method (APK-OLD pre-#568 → APK-NEW current main) fails because the PIN
+>      encoding diverged between the two builds: APK-OLD (pre-PR #651) creates a password
+>      cohort vault (≥12 chars), APK-NEW expects an 8-digit PIN cohort. The v2 vault was
+>      correctly detected on APK-NEW (logcat: `salt-source: v1-fixed`, confirming v2
+>      detection works), but unlock fails before migration can run. Migration remains
+>      unit-tested only (11 tests). To device-exercise, would need an APK-OLD build that
+>      also uses the 8-digit PIN cohort, or a purpose-built migration test harness.
+>   3. ~~**Per-enrollment salt distinctness on device**~~ — **CLOSED 2026-07-07 (T3, Pixel 10
+>      Pro XL, INTERNAL).** Two unenroll/re-enroll cycles observed: SALT-A SHA-256
+>      `624412c1927440d2f73fa02b832a3206c126035e2801fa9667c9d720ec9a0270`, SALT-B SHA-256
+>      `760b08f7e5fd2244f384292e171cc4c381d0a35ba799d7f8d6ec058241edbcd0` — pairwise
+>      distinct. Bridge logcat confirmed different base64 salt strings per enrollment.
+>      Entropy source sane in production WebView, not just unit-test shim.
 >   4. **Independent audit** — still outstanding, as for the rest of the Hardware KEK
 >      surface.
+>
+> **✅ 2026-07-07 LOG-1 DEVICE SPOT-CHECK (piggyback on T2/T3 session, Pixel 10 Pro XL,
+> INTERNAL):** Full logcat swept across enroll, unlock, unenroll, re-enroll, and T2 tamper
+> probes. Results: 0 `"h"` field leaks, 17 `[REDACTED sensitive plugin payload]` patches
+> active, 1 benign Cloudflare CSP base64 in console (not sensitive). LOG-1 remediation
+> (PR #572) confirmed working in debug build for this session. Release-build logcat silence
+> remains a separate verification item.
 > - This is INTERNAL evidence, not independent audit. "Device-verified" here means the v3
 >   fresh-enroll path end-to-end, including a real on-chain txid — it is not a claim that
 >   every C-1-adjacent scenario (migration, tamper-resistance, multi-enrollment distinctness)
@@ -192,7 +212,7 @@ This internal pass does NOT satisfy or relax any gate condition. The following r
 
 1. **Real-device verification** — Android ✅ DONE (StrongBox path: KEK-gated Sepolia send `0x9d9ff549…`, block 11180398, with logcat trace). iOS ✅ SE-unlock trace DONE (2026-07-07): 3-line `[VEYRNOX-KEK]` app-trace captured via Console.app on Mac, time-correlated with KEK-gated Sepolia send txid `0x8b8f70e7…` block 11224674. iOS-F5 and iOS-F3 also device-verified (INTERNAL, 2026-07-07). iOS overall remains PARTIAL because H-2/iOS-F11 biometric re-enrollment test is MDM-blocked.
 2. **Biometric re-enrollment invalidation test** — Android ✅ DONE (PR #516/#518, Pixel 10 Pro XL, 2026-07-01: adding a new biometric invalidated the KEK-gated vault, fail-closed, PIN recovery intact). iOS remains outstanding — device-blocked (test iPhone Face ID enrollment restricted); the `kSecAccessControlBiometryCurrentSet` flag is set in code but the runtime invalidation must still be confirmed on an unrestricted iPhone.
-3. **C-1 migration** — per-enrollment `kekSalt` binding for Android HMAC input. A v2 fix was recorded RESOLVED / device-verified 2026-07-02 (PR #529); a 2026-07-05 regression finding showed that fix did not actually bind the salt (see the annotation on the C-1 row above). A v3 fix (PR #568) was then device-verified 2026-07-05 — fresh v3 enrollment, cold-restart unlock, and a KEK-gated Sepolia send all confirmed the salt is genuinely bound (`"salt-source: v2-bound"` logged only when the intact salt crosses the bridge; txid `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`, block 11206686). **This gate condition's core binding claim is now closed** for the fresh-enroll path; the salt-tamper negative test, the v2→v3 migration device-exercise, and on-device multi-enrollment salt distinctness remain open (see the 2026-07-05 resolution annotation on the C-1 row above), and independent audit is still required overall.
+3. **C-1 migration** — per-enrollment `kekSalt` binding for Android HMAC input. A v2 fix was recorded RESOLVED / device-verified 2026-07-02 (PR #529); a 2026-07-05 regression finding showed that fix did not actually bind the salt (see the annotation on the C-1 row above). A v3 fix (PR #568) was then device-verified 2026-07-05 — fresh v3 enrollment, cold-restart unlock, and a KEK-gated Sepolia send all confirmed the salt is genuinely bound (`"salt-source: v2-bound"` logged only when the intact salt crosses the bridge; txid `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`, block 11206686). **This gate condition's core binding claim is now closed** for the fresh-enroll path. **2026-07-07 update:** salt-tamper negative test ✅ CLOSED (T2 — cryptographic proof: different salt → different H, `match: false`); per-enrollment salt distinctness ✅ CLOSED (T3 — two enrollments, two distinct salt SHA-256 digests on-device); LOG-1 redaction device-verified (0 H leaks, 17 redaction patches active). v2→v3 migration device-exercise BLOCKED (T1 — PIN cohort divergence between APK-OLD and APK-NEW; unit-tested only). Independent audit still required overall.
 4. **Independent third-party audit sign-off** — this internal pass does not substitute for an independent human review.
 
 **ALLOW_MAINNET** is unchanged. The existing 10-asset send functionality is unaffected by these KEK-specific open items.
