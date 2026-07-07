@@ -73,10 +73,19 @@ function assertNotNativePlatform() {
 // H-A — WEB VAULT PASSWORD ENTROPY (I4 — fail honest, fail closed).
 //
 // On web, isSecureHardwareAvailable() === false: the seed vault is Argon2id over
-// the PIN ALONE — there is NO hardware second factor. A short numeric PIN (e.g. 6
-// digits) is offline-exhaustible once the ciphertext is copied off the device, so
-// on a LIVE-mainnet web vault the password IS the only protection. We therefore
-// require a minimum password LENGTH at vault creation on the web path.
+// the PIN ALONE — there is NO hardware second factor. Any short PIN is
+// offline-exhaustible once the ciphertext is copied off the device, so on a
+// LIVE-mainnet web vault the password IS the only protection. That was H-A's
+// original intent: enforce a minimum password LENGTH at vault creation on web.
+//
+// The minimum is now 8 (PR #651), NOT the original H-A ≥12: web was unified onto
+// the SAME 8-digit PIN cohort as native (create, confirm, unlock, recover all
+// share one PinPad) so the two surfaces could not diverge and re-introduce the
+// PIN-lockout bug class. This is a DELIBERATE product decision, accepted because
+// web is a TESTING-ONLY surface (never the shipped product); native is the real
+// product, and on native the hardware KEK (factor H) provides the
+// offline-exhaustion defence on enrolled devices — the web ≥8 length check is the
+// residual honest floor for the test surface, not a claim of strong web security.
 //
 // This restriction is deliberately NOT applied on native (keystore/native.js):
 // there the hardware KEK (factor H) is REQUIRED alongside the PIN-derived C, so a
@@ -576,6 +585,10 @@ export const webKeyStore = {
       if (C && C.fill) C.fill(0);
       if (kek) kek.fill(0);
       dek.fill(0);
+      // M-1 (issue #724): saltBytes is the raw per-enrollment KEK salt. It is not
+      // itself secret key material, but it is generated before the try and would
+      // otherwise linger in the JS heap on an error path — wipe it here too (I4).
+      if (saltBytes && saltBytes.fill) saltBytes.fill(0);
     }
   },
 
@@ -635,6 +648,10 @@ export const webKeyStore = {
   // unlock-time M3 migration). The secret is never written anywhere in plaintext.
   async changePassword(currentPassword, newPassword, opts) {
     assertNotNativePlatform(); // fail closed BEFORE any storage read (I4)
+    // M-8 (issue #731): enforce the web password minimum on the NEW password up
+    // front — fail closed BEFORE any vault read or re-wrap — so a rotation can
+    // never downgrade an enrolled vault to a too-short PIN. Mirrors createVault.
+    validateWebVaultPassword(newPassword);
     const blob = await loadVault();
     if (!blob) throw new Error('No wallet found on this device');
 

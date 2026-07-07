@@ -103,6 +103,41 @@ describe('enrollKek — KEK zeroed even on throw', () => {
     expect(kek).toBeDefined();
     expect(isAllZero(kek)).toBe(true);
   });
+
+  it('zeroes saltBytes when getHardwareFactor throws (M-1, issue #724)', async () => {
+    storeMock.loadVault.mockResolvedValue({ iv: 'x', ct: 'y' });
+    vaultMock.decryptVault.mockResolvedValue('seed');
+
+    // saltBytes is crypto.getRandomValues(new Uint8Array(32)) inside enrollKek,
+    // generated BEFORE the try block. Capture that specific instance so we can
+    // assert it is wiped after the finally runs. getHF throws inside the try so
+    // no kekWrap is ever written — the salt must not linger in the heap (I4).
+    let saltBytes;
+    const origGetRandomValues = crypto.getRandomValues.bind(crypto);
+    const spy = vi.spyOn(crypto, 'getRandomValues').mockImplementation((arr) => {
+      const filled = origGetRandomValues(arr);
+      // enrollKek's salt is the first (only) 32-byte Uint8Array it requests.
+      if (!saltBytes && arr instanceof Uint8Array && arr.length === 32) {
+        saltBytes = filled;
+      }
+      return filled;
+    });
+
+    try {
+      await expect(
+        webKeyStore.enrollKek('pw', {
+          getHardwareFactor: async () => {
+            throw new Error('getHF-fail');
+          },
+        }),
+      ).rejects.toThrow('getHF-fail');
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(saltBytes).toBeDefined();
+    expect(isAllZero(saltBytes)).toBe(true);
+  });
 });
 
 describe('changePassword — oldKek/newKek zeroed even on throw', () => {
@@ -116,7 +151,7 @@ describe('changePassword — oldKek/newKek zeroed even on throw', () => {
     kekMock.unwrapDek.mockRejectedValue(new Error('unwrap-fail'));
 
     await expect(
-      webKeyStore.changePassword('old', 'new', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
+      webKeyStore.changePassword('oldpassword', 'newpassword', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
     ).rejects.toThrow('unwrap-fail');
 
     expect(oldKek).toBeDefined();
@@ -135,7 +170,7 @@ describe('changePassword — oldKek/newKek zeroed even on throw', () => {
     kekMock.wrapDek.mockRejectedValue(new Error('rewrap-fail'));
 
     await expect(
-      webKeyStore.changePassword('old', 'new', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
+      webKeyStore.changePassword('oldpassword', 'newpassword', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
     ).rejects.toThrow('rewrap-fail');
 
     expect(newKek).toBeDefined();
@@ -206,7 +241,7 @@ describe('changePassword — H2 hardware-factor copy zeroed on early throw', () 
       .mockRejectedValueOnce(new Error('newC-fail')); // newC throws -> early path
 
     await expect(
-      webKeyStore.changePassword('old', 'new', { getHardwareFactor: async () => hf }),
+      webKeyStore.changePassword('oldpassword', 'newpassword', { getHardwareFactor: async () => hf }),
     ).rejects.toThrow('newC-fail');
 
     expect(H2).toBeDefined();
