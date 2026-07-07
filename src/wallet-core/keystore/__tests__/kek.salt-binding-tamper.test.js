@@ -24,7 +24,49 @@
 // NOTE: combineKek zeroes H and C in place, so every combine is given FRESH factor bytes.
 
 import { describe, it, expect } from 'vitest';
-import { combineKek, wrapDek, unwrapDek, randomDek, KEK_ERR } from '../kek.js';
+import { combineKek, wrapDek, unwrapDek, randomDek, decodeKekSalt, KEK_ERR } from '../kek.js';
+
+// H-3 (issue #722): decodeKekSalt must reject any decoded length that is not exactly 32
+// bytes with the stable KEK_ERR.MALFORMED_VAULT. A short/long salt is structurally
+// malformed for a KEK-enrolled blob (H/C are salt-bound; a wrong-length salt could only
+// come from corruption or tamper) — fail closed (I4), never derive key material from it.
+function b64FromBytes(u8) {
+  let s = '';
+  for (const b of u8) s += String.fromCharCode(b);
+  return btoa(s);
+}
+
+describe('H-3 decodeKekSalt — only an exactly-32-byte decoded salt is accepted (#722)', () => {
+  it('rejects a valid base64 encoding exactly 16 bytes (half length) → MALFORMED_VAULT', () => {
+    const salt16 = b64FromBytes(new Uint8Array(16).fill(0x11));
+    expect(() => decodeKekSalt(salt16)).toThrow(
+      expect.objectContaining({ code: KEK_ERR.MALFORMED_VAULT }),
+    );
+  });
+
+  it('rejects a valid base64 encoding exactly 64 bytes (double length) → MALFORMED_VAULT', () => {
+    const salt64 = b64FromBytes(new Uint8Array(64).fill(0x22));
+    expect(() => decodeKekSalt(salt64)).toThrow(
+      expect.objectContaining({ code: KEK_ERR.MALFORMED_VAULT }),
+    );
+  });
+
+  it('rejects an empty / non-decodable salt → MALFORMED_VAULT (0-byte decoded output)', () => {
+    // The only string that decodes to exactly 0 bytes is '' (any non-empty valid base64
+    // decodes to >=1 byte); '====' is not valid base64 and throws in atob. Both are
+    // pre-existing MALFORMED_VAULT branches (empty-string guard / atob catch) — assert the
+    // stable message contract so the 0-byte / non-decodable rejection stays pinned.
+    expect(() => decodeKekSalt('')).toThrow(KEK_ERR.MALFORMED_VAULT);
+    expect(() => decodeKekSalt('====')).toThrow(KEK_ERR.MALFORMED_VAULT);
+  });
+
+  it('accepts a valid base64 encoding exactly 32 bytes → returns Uint8Array(32)', () => {
+    const salt32 = b64FromBytes(new Uint8Array(32).fill(0x33));
+    const out = decodeKekSalt(salt32);
+    expect(out).toBeInstanceOf(Uint8Array);
+    expect(out.length).toBe(32);
+  });
+});
 
 const enc = new TextEncoder();
 

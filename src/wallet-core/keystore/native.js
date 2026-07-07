@@ -776,8 +776,13 @@ export const nativeKeyStore = {
 
       const saltBytes = crypto.getRandomValues(new Uint8Array(32));
       const kekSalt = btoa(String.fromCharCode(...saltBytes));
-      const H = await getHF({ kekSalt: saltBytes.slice() });
+      // H-1 (#720): getHF materialises the native credential. It lives INSIDE the outer
+      // try so that a throw AFTER the credential exists still reaches the clear-credential
+      // rollback below (fail honest, fail closed — I4). authenticateOrThrow() stays outside
+      // (a biometric cancel there creates no credential, so there is nothing to roll back).
+      let H;
       try {
+        H = await getHF({ kekSalt: saltBytes.slice() });
         let C;
         let kek;
         const dek = randomDek();
@@ -800,6 +805,9 @@ export const nativeKeyStore = {
           saltBytes.fill(0);
         }
       } catch (err) {
+        // Zero the salt on the getHF-throw path too (the inner finally never ran).
+        if (H && H.fill) H.fill(0);
+        saltBytes.fill(0);
         try {
           await clearHardwareCredential();
         } catch {

@@ -135,6 +135,12 @@ export function decodeKekSalt(kekSalt) {
   }
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  // H-3 (#722): a KEK-enrolled salt is fixed at 32 bytes by construction (H and C are both
+  // salt-bound). Any other decoded length is structural corruption/tamper, not a valid salt
+  // — reject fail-closed (I4) before it can seed key derivation.
+  if (out.length !== 32) {
+    throw Object.assign(new Error(KEK_ERR.MALFORMED_VAULT), { code: KEK_ERR.MALFORMED_VAULT });
+  }
   return out;
 }
 
