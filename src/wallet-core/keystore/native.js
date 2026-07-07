@@ -651,7 +651,10 @@ export const nativeKeyStore = {
     const rawPeek = await SecureStorage.get(VAULT_KEY, false);
     if (rawPeek !== null && rawPeek !== undefined) {
       let peekRecord;
-      try { peekRecord = typeof rawPeek === 'string' ? JSON.parse(rawPeek) : rawPeek; } catch { /* fall through */ }
+      // parseVaultBlob gives the stable MALFORMED_VAULT throw on corrupt input; keep the
+      // try/catch so a non-enclave / unparseable record falls through to _unlockInner
+      // (which surfaces the proper error) instead of throwing from the metadata peek.
+      try { peekRecord = parseVaultBlob(rawPeek); } catch { /* fall through */ }
       if (peekRecord && peekRecord.wrap === WRAP_VERSION_ENCLAVE) {
         // OS biometric is enforced by the Enclave key ACL inside hwUnwrap — no
         // separate app-layer gate. Tag cancel/lockout so the caller fails closed.
@@ -877,7 +880,9 @@ export const nativeKeyStore = {
     await SecureStorage.remove(VAULT_KEY);
     // Also drop any leftover legacy journal key so a re-import starts truly fresh.
     await SecureStorage.remove(VAULT_NEXT_KEY);
-    await clearHardwareCredential();
+    // M-4: best-effort — an absent hardware key (or plugin quirk) is not an error during
+    // a wipe; the vault is already gone, so never propagate and abort the clear.
+    try { await clearHardwareCredential(); } catch { /* best-effort — absent key is not an error during wipe */ }
   },
 
   // NATIVE-ONLY: deliver the hardware factor H for an enrolled vault. Exposed so
@@ -894,16 +899,21 @@ export const nativeKeyStore = {
   //   • Atomic-safe: overwrites to M2b ONLY after a successful unwrap+parse.
   async downgradeFromHardwareWrap() {
     await init();
-    const raw = await SecureStorage.get(VAULT_KEY, false);
-    if (raw === null || raw === undefined) return;
-    const record = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (!record || record.wrap !== WRAP_VERSION_ENCLAVE) return; // already M2b
+    // L1/M-9: hwUnwrap opens an OS biometric sheet whose appStateChange pause would
+    // otherwise fire the background lock hook mid-downgrade. Suppress the lock hook for
+    // the whole operation, matching unlock/enrollKek/unenrollKek/changePassword.
+    return withLockSuppressed(async () => {
+      const raw = await SecureStorage.get(VAULT_KEY, false);
+      if (raw === null || raw === undefined) return;
+      const record = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
+      if (!record || record.wrap !== WRAP_VERSION_ENCLAVE) return; // already M2b
 
-    const { hwUnwrap, deleteWrappingKey } = await enclavePlugin();
-    const blobJson = utf8FromBase64(await hwUnwrap(record.hw)); // throws on cancel
-    const blob = JSON.parse(blobJson); // validate it parses before overwriting
-    await safeWriteVault(blob);
-    try { await deleteWrappingKey(); } catch { /* non-fatal */ }
+      const { hwUnwrap, deleteWrappingKey } = await enclavePlugin();
+      const blobJson = utf8FromBase64(await hwUnwrap(record.hw)); // throws on cancel
+      const blob = parseVaultBlob(blobJson); // validate it parses before overwriting
+      await safeWriteVault(blob);
+      try { await deleteWrappingKey(); } catch { /* non-fatal */ }
+    });
   },
 
   // NATIVE-ONLY extension (not on the cross-platform KeyStore type): let the app
