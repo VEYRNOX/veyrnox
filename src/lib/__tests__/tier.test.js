@@ -22,7 +22,7 @@ describe('tier catalogue', () => {
     expect(plus.price).toBe('$5.99/mo');
   });
 
-  it('current tier is still the stubbed free (no billing exists)', () => {
+  it('getCurrentTier is a legacy display stub that always returns free (real tier comes from resolveTier)', () => {
     expect(getCurrentTier()).toBe('free');
   });
 

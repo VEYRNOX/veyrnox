@@ -119,8 +119,9 @@ export default function SafetyPlus() {
       })}
 
       <p className="text-xs text-muted-foreground text-center pt-2">
-        No payment system is active yet. All features shown are BUILT and available on testnet.
-        Gating requires IAP receipt verification at launch.
+        Safety Plus is a paid subscription via Google Play &amp; the App Store (mobile only).
+        These analytics features are BUILT and unit-tested; on-device purchase verification is
+        still pending.
       </p>
     </div>
   );
