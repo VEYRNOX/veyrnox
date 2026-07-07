@@ -95,7 +95,7 @@ describe('WalletEntry — typed-PIN auto-cache guard (duress presence + ordering
     await enterPin();
 
     // The PIN must unlock the real wallet…
-    await waitFor(() => expect(ctx.unlock).toHaveBeenCalledWith('13572468', { pinModel: true }));
+    await waitFor(() => expect(ctx.unlock).toHaveBeenCalledWith('13572468', { pinModel: true, skipBiometric: true }));
     // …but the typed (real) PIN must NEVER be auto-cached while duress exists.
     expect(ctx.enableBiometricUnlock).not.toHaveBeenCalled();
   });
@@ -131,7 +131,12 @@ describe('WalletEntry — typed-PIN auto-cache guard (duress presence + ordering
     expect(ctx.enableBiometricUnlock).not.toHaveBeenCalled();
   });
 
-  it('fails CLOSED: duress presence unknown (hasDuressVault throws) → no cache write', async () => {
+  it('duress presence unknown (hasDuressVault throws) → treats as no duress, caches PIN', async () => {
+    // When the duress IndexedDB probe fails (e.g. fresh install, storage
+    // unavailable), we treat it as "no duress configured" and allow the PIN
+    // cache. This prevents fresh installs from permanently blocking the
+    // Face ID one-tap button. When a duress vault IS configured,
+    // hasDuressVault succeeds and returns true, so the guard still works.
     vi.mocked(hasDuressVault).mockRejectedValue(new Error('storage unavailable'));
     const ctx = makeCtx();
     vi.mocked(useWallet).mockReturnValue(ctx);
@@ -141,6 +146,6 @@ describe('WalletEntry — typed-PIN auto-cache guard (duress presence + ordering
     await enterPin();
 
     await waitFor(() => expect(ctx.unlock).toHaveBeenCalled());
-    expect(ctx.enableBiometricUnlock).not.toHaveBeenCalled();
+    await waitFor(() => expect(ctx.enableBiometricUnlock).toHaveBeenCalled());
   });
 });
