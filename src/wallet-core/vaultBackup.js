@@ -32,6 +32,8 @@
 //     under a new password the user sets → saved via createVault.
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { encryptVault, decryptVault } from './vault.js';
 import { saveVault } from './evm/vaultStore.js';
 import { getKeyStore, withLockSuppressed } from './keystore/index.js';
@@ -280,19 +282,39 @@ export async function verifyBackupEnvelope(envelope, password, pin) {
 export async function downloadBackupFile(envelope) {
   const bytes = encodeBinary(envelope);
   const filename = 'veyrnox.enc';
+  const platform = Capacitor.getPlatform();
 
-  // Native Android: save directly to the public Downloads folder — no picker,
-  // no gestures, no navigation. The user gets a clear confirmation of where
-  // the file landed. A separate "Choose location" path (ACTION_CREATE_DOCUMENT)
-  // is available for users who want Google Drive, Dropbox, etc.
-  const isAndroid = Capacitor.getPlatform() === 'android';
-
-  if (isAndroid) {
+  if (platform === 'android') {
     const FileSaver = registerPlugin('FileSaver');
     const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
     const result = await FileSaver.saveToDownloads({ data: base64, filename });
-    // result.path is e.g. "Download/veyrnox.enc"
     return { saved: true, path: result.path };
+  }
+
+  if (platform === 'ios') {
+    const base64Data = btoa(String.fromCharCode(...new Uint8Array(bytes)));
+    const tempFile = await Filesystem.writeFile({
+      path: filename,
+      data: base64Data,
+      directory: Directory.Cache,
+    });
+    const fileUri = tempFile.uri;
+    try {
+      const result = await withLockSuppressed(() =>
+        Share.share({ title: filename, url: fileUri, dialogTitle: 'Save backup file' })
+      );
+      if (result.activityType) {
+        return { saved: true, path: 'Shared via ' + result.activityType };
+      }
+      return { saved: true, path: 'Saved via share sheet' };
+    } catch (err) {
+      if (err?.message?.includes('cancelled') || err?.message?.includes('dismiss')) {
+        return { saved: false, path: '' };
+      }
+      throw err;
+    } finally {
+      Filesystem.deleteFile({ path: filename, directory: Directory.Cache }).catch(() => {});
+    }
   }
 
   // Web / desktop: standard anchor-click download.
@@ -318,15 +340,21 @@ export async function downloadBackupFile(envelope) {
 export async function downloadBackupFilePicker(envelope) {
   const bytes = encodeBinary(envelope);
   const filename = 'veyrnox.enc';
-  const isAndroid = Capacitor.getPlatform() === 'android';
-  if (isAndroid) {
+  const platform = Capacitor.getPlatform();
+
+  if (platform === 'android') {
     const FileSaver = registerPlugin('FileSaver');
     const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
-    // The picker opens a native Activity, which fires Capacitor's pause event;
-    // suppress the lock hook for the duration so the wallet stays unlocked.
     const result = await withLockSuppressed(() => FileSaver.saveFile({ data: base64, filename }));
     return !result.cancelled;
   }
+
+  if (platform === 'ios') {
+    // On iOS the share sheet IS the picker — same mechanism as downloadBackupFile.
+    const result = await downloadBackupFile(envelope);
+    return result && typeof result === 'object' ? result.saved : !!result;
+  }
+
   // Web fallback (desktop browser)
   const blob = new Blob([bytes], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);

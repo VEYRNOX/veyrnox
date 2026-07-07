@@ -69,6 +69,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
   const [savedPath, setSavedPath] = useState(null);   // set after successful Downloads save
   const [envelope, setEnvelope] = useState(null);     // held so user can re-save without re-encrypting
   const { gateModal } = useActionGuard();
+  const isIos = Capacitor.getPlatform() === "ios";
 
   if (isDecoy || isHidden) {
     return (
@@ -93,9 +94,12 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       if (result && typeof result === "object" && result.saved) {
         setSavedPath(result.path);
         setPassword(""); setPin(""); setPinConfirm("");
+      } else if (result && typeof result === "object" && !result.saved) {
+        // iOS: share sheet was dismissed without saving
+        toast("Backup created but not saved — tap the button to try again.");
       } else {
-        // Web / non-Android: anchor download triggered
-        toast.success("Backup verified ✓ and saved — it opens with this password or PIN.");
+        // Web / desktop: anchor download triggered
+        toast.success("Backup verified and saved — it opens with this password or PIN.");
         setPassword(""); setPin(""); setPinConfirm("");
       }
     } catch (err) {
@@ -129,10 +133,12 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         <div className="p-5 rounded-xl border border-success/30 bg-success/5 flex items-start gap-3">
           <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold">Backup saved to Downloads</p>
+            <p className="text-sm font-semibold">{isIos ? "Backup saved" : "Backup saved to Downloads"}</p>
             <p className="text-xs text-muted-foreground mt-1 font-mono">{savedPath}</p>
             <p className="text-xs text-muted-foreground mt-2">
-              Find it in your <strong>Files app → Downloads</strong>. From there you can copy it to Google Drive, Dropbox, a USB drive, or anywhere you like.
+              {isIos
+                ? "Your backup was shared to the location you chose. You can also save another copy to a different location."
+                : <>Find it in your <strong>Files app → Downloads</strong>. From there you can copy it to Google Drive, Dropbox, a USB drive, or anywhere you like.</>}
             </p>
           </div>
         </div>
@@ -203,12 +209,14 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 transition-opacity"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        {busy ? "Creating & verifying…" : "Save backup to Downloads"}
+        {busy ? "Creating & verifying…" : isIos ? "Save backup" : "Save backup to Downloads"}
       </button>
 
       <p className="text-xs text-muted-foreground text-center">
-        Saves <span className="font-mono">veyrnox.enc</span> to your Downloads folder.
-        Only <strong>VEYRNOX</strong> can open it — and only with the backup password or PIN you chose.
+        {isIos
+          ? <>Saves <span className="font-mono">veyrnox.enc</span> — choose where to store it (Files, iCloud, OneDrive, etc.).</>
+          : <>Saves <span className="font-mono">veyrnox.enc</span> to your Downloads folder.</>}
+        {" "}Only <strong>VEYRNOX</strong> can open it — and only with the backup password or PIN you chose.
       </p>
 
       {gateModal}
@@ -263,19 +271,27 @@ function RestoreTab({ lock, onBack }) {
   // Activity fires Capacitor's pause event, which would otherwise lock the
   // wallet mid-restore.
   const pickFile = async () => {
-    if (Capacitor.getPlatform() !== "android") {
+    const platform = Capacitor.getPlatform();
+    if (platform === "android") {
+      try {
+        const FileSaver = registerPlugin("FileSaver");
+        const result = await withLockSuppressed(() => FileSaver.openFile());
+        if (!result || result.cancelled) return;
+        const bytes = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
+        ingestBytes(bytes.buffer, result.filename || "veyrnox.enc");
+      } catch (err) {
+        toast.error(err?.message || "Could not open the file.");
+      }
+      return;
+    }
+    if (platform === "ios") {
+      // <input type="file"> works in WKWebView on iOS 15+ and opens the
+      // native document picker (Files app). No extra plugin needed.
       fileRef.current?.click();
       return;
     }
-    try {
-      const FileSaver = registerPlugin("FileSaver");
-      const result = await withLockSuppressed(() => FileSaver.openFile());
-      if (!result || result.cancelled) return;
-      const bytes = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
-      ingestBytes(bytes.buffer, result.filename || "veyrnox.enc");
-    } catch (err) {
-      toast.error(err?.message || "Could not open the file.");
-    }
+    // Web / desktop
+    fileRef.current?.click();
   };
 
   const handleUnlock = async () => {
