@@ -98,7 +98,7 @@ describe('changePassword — DEK zeroed even on throw (H-NEW-4b)', () => {
     kekMock.wrapDek.mockRejectedValue(new Error('rewrap-fail'));
 
     await expect(
-      webKeyStore.changePassword('old', 'new', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
+      webKeyStore.changePassword('oldpassword', 'newpassword', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
     ).rejects.toThrow('rewrap-fail');
 
     expect(captured).toBeDefined();

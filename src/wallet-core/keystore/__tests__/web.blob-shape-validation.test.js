@@ -79,7 +79,7 @@ describe('web atob(kekSalt) guard — malformed kekSalt with kekWrap present →
   it('changePassword throws MALFORMED_VAULT when kekSalt is not valid base64', async () => {
     storeMock.loadVault.mockResolvedValue({ iv: 'x', ct: 'y', kekWrap: 'w', kekSalt: '!!!not b64!!!' });
     await expect(
-      webKeyStore.changePassword('old', 'new', { getHardwareFactor: async () => newHF() }),
+      webKeyStore.changePassword('oldpassword', 'newpassword', { getHardwareFactor: async () => newHF() }),
     ).rejects.toThrow(KEK_ERR.MALFORMED_VAULT);
   });
 
