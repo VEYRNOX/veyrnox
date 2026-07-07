@@ -1,0 +1,38 @@
+name: Verify on-chain evidence
+
+# Re-confirms every txid in docs/verified-evidence.json still resolves + succeeded
+# on-chain, so the catalogue's "verified" state can't silently rot (re-org, wrong
+# hash, delisting). Live network job — kept OUT of the hermetic CI suite; runs on a
+# schedule + on demand. The pure logic it relies on is unit-tested in the main suite
+# (src/lib/__tests__/evidenceOnchain.test.js).
+
+on:
+  schedule:
+    # 07:17 UTC daily (off the hour to avoid the cron thundering herd).
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+  # Also run when the evidence file itself changes, to catch a bad txid at PR time.
+  pull_request:
+    paths:
+      - 'docs/verified-evidence.json'
+      - 'scripts/verify-onchain-evidence.mjs'
+      - 'scripts/lib/evidence-onchain.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: onchain-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reconfirm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # --allow-unreachable: a transient public-RPC outage becomes a warning, not a
+      # red build. A genuinely reverted / missing txid still fails hard (exit 1).
+      - run: npm run verify:onchain -- --allow-unreachable
