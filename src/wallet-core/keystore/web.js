@@ -506,6 +506,9 @@ export const webKeyStore = {
       } finally {
         // H-NEW-4: wipe the derived KEK and the recovered DEK — never leave the key
         // that wraps the DEK or the key that decrypts the seed in the heap (I4).
+        // H-2 (issue #721): H is captured before the try; if deriveKekC throws before
+        // the in-try eager H.fill(0), H would otherwise linger — zero it here too (I4).
+        if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
         if (kek) kek.fill(0);
         if (dek) dek.fill(0);
@@ -601,6 +604,9 @@ export const webKeyStore = {
       dek = await unwrapDek(kek, blob.kekWrap);
       secret = await decryptVaultWithDek(blob, dek);
     } finally {
+      // H-2 (issue #721): H is captured before the try; if deriveKekC throws before
+      // the in-try eager H.fill(0), H would otherwise linger — zero it here too (I4).
+      if (H && H.fill) H.fill(0);
       if (C) C.fill(0);
       if (kek) kek.fill(0);
       if (dek) dek.fill(0);

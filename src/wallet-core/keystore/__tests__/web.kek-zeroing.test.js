@@ -143,6 +143,48 @@ describe('changePassword — oldKek/newKek zeroed even on throw', () => {
   });
 });
 
+describe('unlock — H hardware factor zeroed even on early throw (issue #721 / H-2)', () => {
+  it('zeroes H when deriveKekC throws before the in-try eager wipe', async () => {
+    let H;
+    storeMock.loadVault.mockResolvedValue({ iv: 'x', ct: 'y', kekWrap: 'w', kekSalt });
+    // deriveKekC throws immediately — before the eager H.fill(0) inside the try runs.
+    vaultMock.deriveKekC.mockRejectedValue(new Error('deriveC-fail'));
+
+    await expect(
+      webKeyStore.unlock('pw', {
+        getHardwareFactor: async () => {
+          H = new Uint8Array(32).fill(1);
+          return H;
+        },
+      }),
+    ).rejects.toThrow('deriveC-fail');
+
+    expect(H).toBeDefined();
+    expect(isAllZero(H)).toBe(true);
+  });
+});
+
+describe('unenrollKek — H hardware factor zeroed even on early throw (issue #721 / H-2)', () => {
+  it('zeroes H when deriveKekC throws before the in-try eager wipe', async () => {
+    let H;
+    storeMock.loadVault.mockResolvedValue({ iv: 'x', ct: 'y', kekWrap: 'w', kekSalt });
+    // deriveKekC throws immediately — before the eager H.fill(0) inside the try runs.
+    vaultMock.deriveKekC.mockRejectedValue(new Error('deriveC-fail'));
+
+    await expect(
+      webKeyStore.unenrollKek('pw', {
+        getHardwareFactor: async () => {
+          H = new Uint8Array(32).fill(1);
+          return H;
+        },
+      }),
+    ).rejects.toThrow('deriveC-fail');
+
+    expect(H).toBeDefined();
+    expect(isAllZero(H)).toBe(true);
+  });
+});
+
 describe('changePassword — H2 hardware-factor copy zeroed on early throw', () => {
   it('zeroes H2 when deriveKekC (newC) throws before the second combineKek', async () => {
     let H2;
