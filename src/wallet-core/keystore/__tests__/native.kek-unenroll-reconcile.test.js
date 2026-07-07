@@ -135,6 +135,21 @@ describe('Fix A regression — unenrollKek normal path still re-wraps bare AND c
   });
 });
 
+describe('M-4 — clearVault tolerates an absent/failing hardware credential (best-effort wipe)', () => {
+  it('still removes the vault and does not propagate when clearHardwareCredential throws', async () => {
+    setVault(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
+    // An absent Keystore key (or a plugin quirk) must NOT abort the wipe.
+    clearHardwareCredentialMock.mockRejectedValueOnce(new Error('no such key'));
+
+    await expect(nativeKeyStore.clearVault()).resolves.toBeUndefined();
+
+    // The vault blob was removed despite the credential-clear failure.
+    expect(store.has(VAULT_KEY)).toBe(false);
+    expect(secureStoreMock.remove).toHaveBeenCalledWith(VAULT_KEY);
+    expect(clearHardwareCredentialMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('Fix B — hasVaultKekWrap reconciles the enrolled signal (metadata only)', () => {
   it('returns true when the stored vault has a kekWrap', async () => {
     setVault(JSON.stringify({ iv: 'x', ct: 'y', kekWrap: { v: 1 }, kekSalt }));

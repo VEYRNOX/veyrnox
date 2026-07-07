@@ -94,7 +94,7 @@ describe('changePassword — oldC zeroed when first combineKek throws', () => {
     kekMock.combineKek.mockRejectedValue(new Error('combine-fail'));
 
     await expect(
-      webKeyStore.changePassword('old', 'new', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
+      webKeyStore.changePassword('oldpassword', 'newpassword', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
     ).rejects.toThrow('combine-fail');
 
     expect(oldC).toBeDefined();
@@ -119,7 +119,7 @@ describe('changePassword — newC zeroed when second combineKek throws', () => {
     storeMock.loadVault.mockResolvedValue({ iv: 'x', ct: 'y', kekWrap: 'w', kekSalt });
 
     await expect(
-      webKeyStore.changePassword('old', 'new', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
+      webKeyStore.changePassword('oldpassword', 'newpassword', { getHardwareFactor: async () => new Uint8Array(32).fill(1) }),
     ).rejects.toThrow('combine2-fail');
 
     expect(newC).toBeDefined();
