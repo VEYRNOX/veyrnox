@@ -134,13 +134,12 @@ identity; the app never holds keys server-side.
   Sepolia send txid `0x8b8f70e7…` block 11224674 (same Console session); cold-restart
   repeat confirmed; negative check (cancel Face ID) fail-closed. H-2/iOS-F11 (biometric
   factor not bound to enrollment set): Android half RESOLVED / device-verified (PR #516/#518,
-  re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half DEFERRED — the
-  `.biometryCurrentSet` ACL flag is set in code but the runtime re-enroll test could not be
-  run (test iPhone 17 Pro Max is MDM-registered; MDM profile restricts Face ID enrollment
-  changes; confirmed 2026-07-07; needs a different, unrestricted iPhone). Outstanding (iOS):
-  biometric re-enrollment invalidation test (P4, MDM-blocked), heap-dump verification
-  (iOS-F5 residual), independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
-  also affects the overall KEK design context — see Android bullet.
+  re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half RESOLVED / device-verified
+  (2026-07-08, iPhone 8 Plus, iOS 16.7.16, Touch ID, unrestricted — no MDM): enrolled KEK
+  vault + added new fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) →
+  no unlock, no silent bare fallback. Both halves now CLOSED. Outstanding (iOS): heap-dump
+  verification (iOS-F5 residual, LOW-MEDIUM), independent audit. Note: C-1 CRITICAL
+  (Android HMAC fixed input) also affects the overall KEK design context — see Android bullet.
 - Android: AndroidKeyStore HMAC-SHA256 (StrongBox-preferred, TEE-accepted — StrongBox is
   not enforced, a TEE/software-backed key is accepted and honestly surfaced) + biometric-only
   gate (no credential fallback). ✅
@@ -240,8 +239,8 @@ identity; the app never holds keys server-side.
 - Summary: both platforms are BUILT + device-verified on the KEK-gated unlock FLOW,
   INTERNAL only, NOT independently audited. **Android** is end-to-end, including the C-1
   v3 salt-binding fix (see the Android bullet above for the full RESOLVED→REGRESSED→FIXED
-  cycle and its four residual items). **iOS** is device-verified PARTIAL (substantially
-  strengthened 2026-07-07): it now has a LITERAL SE-unlock app-trace (iOS-F9 CLOSED,
+  cycle and its four residual items). **iOS** is device-verified **FULL** (2026-07-08,
+  upgraded from PARTIAL 2026-07-07): it has a LITERAL SE-unlock app-trace (iOS-F9 CLOSED,
   prospective — full 3-line `[VEYRNOX-KEK]` sequence captured via Console.app on Mac,
   time-correlated with KEK-gated Sepolia send txid `0x8b8f70e7…` block 11224674), plus
   the prior KEK-gated Sepolia txids (PR #495) and OS-daemon-corroborated send
