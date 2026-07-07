@@ -58,6 +58,14 @@ jobs:
           npm run build
           npx cap sync ios
 
+      - name: Install CocoaPods (generates App.xcworkspace)
+        working-directory: ios/App
+        run: |
+          # pod install generates App.xcworkspace from the Podfile.
+          # The workspace is not committed to the repo (gitignored); this step
+          # is required before xcodebuild can reference it.
+          pod install --repo-update
+
       - name: Compile iOS — zero-warning check (F3/F5)
         working-directory: ios/App
         run: |
