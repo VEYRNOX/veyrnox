@@ -159,4 +159,53 @@ describe('L2 — enrollKek clears the orphaned hardware credential on failure', 
     // Nothing was enrolled, so nothing to roll back.
     expect(clearHardwareCredentialMock).not.toHaveBeenCalled();
   });
+
+  // H-1 (#720): getHF materialises the native credential. If getHF THROWS after the
+  // credential exists (device error, mid-materialisation failure), the credential is
+  // orphaned. The rollback must still fire — getHF must live inside the enroll body's
+  // failure scope, not outside it.
+  it('clears the credential when getHF throws after credential creation', async () => {
+    setVault(bareVault());
+
+    const throwingHF = vi.fn(async () => {
+      // Credential was created by the native side before this rejection surfaces.
+      throw new Error('getHF boom');
+    });
+
+    await expect(
+      nativeKeyStore.enrollKek('pw', { getHardwareFactor: throwingHF }),
+    ).rejects.toThrow('getHF boom');
+
+    // The orphaned AndroidKeyStore/Keychain credential MUST be cleared on failure.
+    expect(clearHardwareCredentialMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('zeroes saltBytes even when getHF throws after credential creation', async () => {
+    setVault(bareVault());
+
+    // Capture the salt handed to getHF (it is a copy — .slice() — of the real
+    // saltBytes buffer, so we assert on the real one via getRandomValues capture).
+    const salts = [];
+    const realGetRandomValues = crypto.getRandomValues.bind(crypto);
+    const spy = vi.spyOn(crypto, 'getRandomValues').mockImplementation((arr) => {
+      const filled = realGetRandomValues(arr);
+      if (filled && filled.length === 32) salts.push(filled);
+      return filled;
+    });
+
+    const throwingHF = vi.fn(async () => {
+      throw new Error('getHF boom');
+    });
+
+    await expect(
+      nativeKeyStore.enrollKek('pw', { getHardwareFactor: throwingHF }),
+    ).rejects.toThrow('getHF boom');
+
+    spy.mockRestore();
+
+    // The 32-byte saltBytes buffer must be zeroed on the getHF-throw path.
+    expect(salts.length).toBeGreaterThan(0);
+    const saltBytes = salts[0];
+    expect(saltBytes.every((b) => b === 0)).toBe(true);
+  });
 });
