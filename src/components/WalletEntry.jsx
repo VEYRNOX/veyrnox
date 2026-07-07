@@ -1098,7 +1098,28 @@ export default function WalletEntry() {
           <div className="flex items-center gap-2 text-sm font-medium">
             <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? "Enter your PIN" : "Unlock your wallet"}
           </div>
-          <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
+          {/* Password-cohort (handleImport path): render a text input so the user can
+              type their vault password — numeric PinPad buttons cannot accept non-digit
+              passwords and would permanently strand the user. I4: still fails closed via
+              runUnlock if the credential is wrong. */}
+          {authModel === "password" ? (
+            <div className="space-y-2">
+              <input
+                type="password"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                placeholder="Vault password"
+                value={unlockPassword}
+                onChange={e => { setUnlockPassword(e.target.value); setError(""); }}
+                onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
+                disabled={busy}
+              />
+              <Button className="w-full" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
+                {busy ? <RefreshCw className="h-4 w-4 animate-spin mr-1.5" /> : null} Unlock
+              </Button>
+            </div>
+          ) : (
+            <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
+          )}
 
           {passkeyFailed && (
             <div className="pt-2 border-t border-border space-y-2">

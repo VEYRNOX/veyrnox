@@ -133,3 +133,46 @@ describe('WalletEntry — web joins the PIN cohort (parity with native, lockout 
     await waitFor(() => expect(ctx.createWalletFromPendingPin).toHaveBeenCalled());
   });
 });
+
+describe('WalletEntry — password-cohort unlock fallback (post-handleImport regression fix)', () => {
+  // Regression: when a user imports a vault via handleImport (e.g. "Restore from
+  // seed phrase" after forgetting a PIN), authModel is set to "password". On the
+  // next reload, view="unlock" and authModel="password" — without the password-
+  // cohort unlock block the user sees a blank screen (no render branch matches).
+  // This test pins that the password unlock view renders and wires to unlock().
+
+  it('renders a password text input (not PinPad) when authModel=password and vault exists', async () => {
+    authModelValue = 'password';
+    const ctx = makeCtx({ hasVault: vi.fn(async () => true) });
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+
+    // The password unlock view must render — NOT the PIN pad.
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText(/vault password/i)).toBeTruthy()
+    );
+    // No PinPad numeric buttons (those belong to the PIN cohort).
+    expect(screen.queryByRole('group', { name: /PIN entry/i })).toBeNull();
+    // Unlock button is present but disabled while the field is empty.
+    expect(screen.getByRole('button', { name: /unlock/i }).disabled).toBe(true);
+  });
+
+  it('calls unlock() when user enters a password and submits', async () => {
+    authModelValue = 'password';
+    const unlockFn = vi.fn(async () => ({ ok: true }));
+    const ctx = makeCtx({ hasVault: vi.fn(async () => true), unlock: unlockFn });
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+
+    const input = await screen.findByPlaceholderText(/vault password/i);
+    fireEvent.change(input, { target: { value: 'MyVaultPassword123' } });
+
+    const unlockBtn = screen.getByRole('button', { name: /unlock/i });
+    expect(unlockBtn.disabled).toBe(false);
+    fireEvent.click(unlockBtn);
+
+    await waitFor(() => expect(unlockFn).toHaveBeenCalled());
+  });
+});
