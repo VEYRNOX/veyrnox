@@ -81,7 +81,9 @@ identity; the app never holds keys server-side.
   unrestricted iPhone). Outstanding (iOS): SE-unlock log trace capture, biometric re-enrollment
   invalidation test, KEK-gated Sepolia txid, independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
   also affects the overall KEK design context — see Android bullet.
-- Android: StrongBox HMAC-SHA256 + biometric-only gate (no credential fallback). ✅
+- Android: AndroidKeyStore HMAC-SHA256 (StrongBox-preferred, TEE-accepted — StrongBox is
+  not enforced, a TEE/software-backed key is accepted and honestly surfaced) + biometric-only
+  gate (no credential fallback). ✅
   BUILT, end-to-end device-verified 2026-07-01 on a Pixel 10 Pro XL (Android 16/API 36):
   enroll → cold restart → StrongBox-gated unlock → badge stays "Hardware Protection ON".
   Three stacked bugs found and fixed to get here (PRs #497, #499): (1) badge measured
