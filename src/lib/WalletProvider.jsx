@@ -129,6 +129,7 @@ const DECOY_BIOMETRIC_MARKER_KEY = 'veyrnox-decoy-biometric';
 import {
   storeUnlockSecret,
   retrieveUnlockSecret,
+  retrieveUnlockSecretDirect,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
 // PASSKEY UNLOCK GATE (S1). The dual of the biometric gate: an ADDITIONAL
@@ -1604,27 +1605,52 @@ export function WalletProvider({ children }) {
       // On a bare vault saveVaultContents writes bare exactly like createVault.
       // `getHardwareFactor` is the SAME factor unlock just used; web enrolls a real
       // WebAuthn PRF factor, so on a PRF-enrolled web vault it IS used (it is NOT
-      // undefined on web). The migration branches actually change content, so the one
-      // hardware prompt they may cost is acceptable (they are one-time and idempotent).
-      // The pure lastUnlockAt stamp does NOT re-wrap.
+      // undefined on web).
+      //
+      // THIRD-BIOMETRIC-PROMPT FIX (device-confirmed iPhone 17 Pro Max; mirrors #662).
+      // On a KEK-enrolled vault EVERY saveVaultContents call derives a fresh H via
+      // getHardwareFactor — a biometric prompt. The unlock hot path already spends two
+      // prompts (cache-gate retrieveUnlockSecret + the KEK unlock unwrap); a re-persist
+      // here is a THIRD prompt on EVERY unlock, because a legacy/unpadded container
+      // makes `migrated`/`primaryNeedsPadMigration` true and the best-effort write never
+      // converges (swallowed / on-disk payload never reaches FIXED_LEN), so it re-fires.
+      // So we compute the KEK-enrolled state ONCE and, when enrolled, SKIP the disk
+      // re-persist in ALL THREE branches (branch 3 already skipped it for the same
+      // reason). The migrations are NOT abandoned: they occur on the next real content
+      // write — add/import/remove wallet (persistPrimaryContents) or changePassword —
+      // all of which already prompt, so they cost no EXTRA prompt. Deniability tradeoff
+      // (accepted, mirrors branch 3 + #662's deferral philosophy): a KEK-enrolled
+      // legacy/unpadded vault keeps its container-migration / FIXED_LEN padding deferred
+      // until that next content write — i.e. a possible ciphertext-length wallet-count
+      // tell persists until then — which is strictly preferable to a per-unlock prompt.
+      // NON-KEK vaults (web password, bare native) migrate/pad on unlock exactly as
+      // before: those writes cost no biometric prompt.
+      const kekEnrolled = await isVaultKekEnrolledSafe();
       const repersistOpts = { getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore) };
       if (migrated) {
         const firstId = mv.listWalletIds(stamped)[0];
         // The migrated wallet went through mandatory backup at its ORIGINAL
         // creation, so backedUp:true (no spurious nag for existing users), and it
-        // keeps ALL assets visible so nothing the user saw disappears.
+        // keeps ALL assets visible so nothing the user saw disappears. This local
+        // metadata setup runs REGARDLESS of KEK state (session correctness); only the
+        // biometric-prompting DISK write below is deferred on a KEK vault.
         ensureWalletMeta(firstId, { name: 'Wallet 1', backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] });
-        try { await keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts); }
-        catch { /* best-effort; retried next unlock */ }
+        if (!kekEnrolled) {
+          try { await keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts); }
+          catch { /* best-effort; retried next unlock */ }
+        }
       } else if (primaryNeedsPadMigration) {
         // H2: the on-disk payload was an OLD UNPADDED container. Re-encrypt ONCE in
         // the FIXED-LENGTH padded shape (awaited, best-effort) so its ciphertext stops
         // being a length tell. Idempotent: the rewritten payload is exactly FIXED_LEN,
         // so subsequent unlocks take the plain async-stamp branch below. A failed write
-        // never blocks unlock — migration simply retries next unlock.
-        try { await keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts); }
-        catch { /* best-effort; retried next unlock */ }
-      } else if (!(await isVaultKekEnrolledSafe())) {
+        // never blocks unlock — migration simply retries next unlock. DEFERRED on a KEK
+        // vault (would be a per-unlock biometric prompt); re-runs on the next content write.
+        if (!kekEnrolled) {
+          try { await keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts); }
+          catch { /* best-effort; retried next unlock */ }
+        }
+      } else if (!kekEnrolled) {
         // Persist the new last-unlock stamp. Best-effort + async: a failed write
         // never blocks unlock and can only lose a timestamp. SKIPPED entirely on a
         // KEK-enrolled vault: re-wrapping metadata-only would need a fresh hardware
@@ -1780,9 +1806,27 @@ export function WalletProvider({ children }) {
     }
     // native: the OS biometric sheet fires inside retrieveUnlockSecret() (to
     // release the cache) and again inside keyStore.unlock() (to read the vault).
+    //
+    // TRIPLE-PROMPT FIX (device-confirmed iPhone 17 Pro Max / Pixel 10 Pro XL).
+    // On a KEK-enrolled native vault, one-tap unlock fired THREE biometric prompts:
+    // (#1) the app-layer cache-gate here, and (#2/#3) the Secure-Enclave / StrongBox
+    // key-retrieve + decrypt inside keyStore.unlock() (getHardwareFactor). The SE
+    // requires TWO evaluations by design (one per ACL-gated op) and the native plugin
+    // is correct — so we drop the REDUNDANT #1. For a KEK vault the cached PIN is the
+    // C-factor ONLY; the DEK = HKDF(H ‖ C) and H is producible ONLY by passing the
+    // hardware-enforced SE gate below — reading the cached C without H unwraps nothing.
+    // So the app-layer cache-gate cannot strengthen a KEK vault; we read the cached PIN
+    // directly (retrieveUnlockSecretDirect, no BiometricAuth.authenticate) and rely
+    // solely on the unbypassable SE gate. For a NON-KEK vault the cache-gate IS the sole
+    // biometric gate protecting the cached password and MUST be preserved (I4). A
+    // best-effort false negative from isVaultKekEnrolledSafe() keeps the cache-gate on
+    // (fails safe toward MORE protection), never off.
     let password;
     try {
-      password = await retrieveUnlockSecret();
+      const kekEnrolled = Capacitor.isNativePlatform() && await isVaultKekEnrolledSafe();
+      password = kekEnrolled
+        ? await retrieveUnlockSecretDirect()
+        : await retrieveUnlockSecret();
     } catch (err) {
       // A cancelled/failed biometric match on the cache release. Fail closed and
       // route to the password fallback, same as a cancelled demo prompt.

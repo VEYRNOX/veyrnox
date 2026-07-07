@@ -14,6 +14,7 @@ import {
   biometricUnlockSupported,
   storeUnlockSecret,
   retrieveUnlockSecret,
+  retrieveUnlockSecretDirect,
   hasStoredUnlockSecret,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
@@ -46,5 +47,11 @@ describe('biometricUnlock — plain web (no platform biometric)', () => {
     expect(await hasStoredUnlockSecret()).toBe(false);
     // clearing is a safe no-op even when nothing was ever stored
     await expect(clearUnlockSecret()).resolves.toBeUndefined();
+  });
+
+  it('retrieveUnlockSecretDirect also returns null on web (no cached secret to bypass)', async () => {
+    // The KEK-only direct path is unreachable on web (no native KEK vault), and even
+    // if called must never conjure a secret where none is cached.
+    expect(await retrieveUnlockSecretDirect()).toBe(null);
   });
 });
