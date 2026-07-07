@@ -11,6 +11,7 @@ import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWi
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt } from './kek.js';
 import { ALLOW_MAINNET } from '../evm/networks.js';
+import { bufferToB64u, b64uToBuffer } from './web-base64url.js';
 
 // ── FAIL-CLOSED PLATFORM FENCE (I4 — fail honest, fail closed) ────────────────
 //
@@ -180,29 +181,8 @@ async function isPrfSupported() {
   }
 }
 
-/**
- * Utility: encode a Uint8Array to base64url (no padding).
- * Used for the WebAuthn allowCredentials filter.
- */
-function bufferToB64u(buf) {
-  const b = new Uint8Array(buf);
-  let s = '';
-  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-/**
- * Utility: decode a base64url string to Uint8Array.
- * Used to restore credentialId from localStorage for get().
- */
-function b64uToBuffer(s) {
-  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-  const str = atob(b64 + pad);
-  const out = new Uint8Array(str.length);
-  for (let i = 0; i < str.length; i++) out[i] = str.charCodeAt(i);
-  return out;
-}
+// base64url helpers (bufferToB64u / b64uToBuffer) are imported from
+// ./web-base64url.js — extracted for unit-testability (L-6 #742). Logic unchanged.
 
 // localStorage key holding the base64url PRF credential id for this device.
 const PRF_CRED_KEY = 'veyrnox-prf-cred-id';

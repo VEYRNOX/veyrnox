@@ -5,12 +5,19 @@
 // │ This module is the native (iOS/Android) branch of the keyStore contract.  │
 // │ It changes WHERE the vault lives and HOW unlock is gated — it does NOT     │
 // │ touch the audited crypto. The vault format is identical to the audited    │
-// │ web path (Argon2id + AES-256-GCM), but the biometric gating layer         │
-// │ (iOS Keychain / Android Keystore) has NOT been independently verified    │
-// │ on real devices. This must be tested and audited before enabling         │
-// │ biometric unlock in production mobile builds.                             │
-// │ DEFERRED: pending Android build milestone (return to this after Android   │
-// │ testing). See docs/M2.secure-storage.md, "Verification gates".           │
+// │ web path (Argon2id + AES-256-GCM).                                        │
+// │                                                                           │
+// │ Device verification status (INTERNAL, not independent):                  │
+// │   Android — end-to-end device-verified on Pixel 10 Pro XL (PRs #497/    │
+// │             #499/#568; C-1 v3 salt-binding confirmed on-device).         │
+// │   iOS     — device-verified PARTIAL: KEK-gated Sepolia txids confirmed   │
+// │             (PR #495); SE-unlock trace closed (iOS-F9, 2026-07-02);      │
+// │             biometric re-enroll invalidation test deferred (iOS-F11).    │
+// │                                                                           │
+// │ What remains outstanding is the INDEPENDENT THIRD-PARTY audit. Until     │
+// │ that audit is complete this module must not be presented as              │
+// │ independently audited-secure. See docs/M2.secure-storage.md and         │
+// │ docs/audit-2026-07-01-kek-internal.md.                                  │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
 // DESIGN B — implemented as PASSCODE/BIOMETRIC-GATED UNLOCK + PLATFORM-SECURE-

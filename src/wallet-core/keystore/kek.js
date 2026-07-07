@@ -195,8 +195,14 @@ function unb64(str) { const s = atob(str); const u8 = new Uint8Array(s.length); 
  * @returns {Promise<Uint8Array>} 32-byte KEK
  */
 export async function combineKek(H, C) {
-  if (!isExactBytes(H, H_LEN)) throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-  if (!isExactBytes(C, C_LEN)) throw new Error(KEK_ERR.NO_SET_FACTOR);
+  // L-2 (#738): carry a machine-readable .code (matching the DEGENERATE_INPUT throw
+  // below) so callers branching on err.code get the code, not undefined.
+  if (!isExactBytes(H, H_LEN)) {
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), { code: KEK_ERR.NO_HARDWARE_FACTOR });
+  }
+  if (!isExactBytes(C, C_LEN)) {
+    throw Object.assign(new Error(KEK_ERR.NO_SET_FACTOR), { code: KEK_ERR.NO_SET_FACTOR });
+  }
 
   // H-4 / iOS-F8 (defence in depth): reject an all-zero H or C. An all-zero factor is a
   // valid length but contributes no entropy, collapsing the KEK to the other factor
@@ -255,7 +261,12 @@ export function randomDek() {
 }
 
 async function importKekAesKey(kek, usages) {
-  if (!isExactBytes(kek, KEK_LEN)) throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+  // L-1 (#737): a wrong-length/wrong-type combined KEK is a DEGENERATE input, not a
+  // missing hardware factor. Shared by wrapDek + unwrapDek; both fail closed with
+  // DEGENERATE_INPUT (carrying .code) rather than misattributing to NO_HARDWARE_FACTOR.
+  if (!isExactBytes(kek, KEK_LEN)) {
+    throw Object.assign(new Error(KEK_ERR.DEGENERATE_INPUT), { code: KEK_ERR.DEGENERATE_INPUT });
+  }
   return crypto.subtle.importKey('raw', kek, { name: 'AES-GCM' }, false, usages);
 }
 

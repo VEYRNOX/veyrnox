@@ -10,8 +10,11 @@
 // could not carry) meant every v2 wrap was ACTUALLY made under the fixed v1 salt. So the
 // real contract now is:
 //   - hardwareKekVersion:3 = GENUINELY salt-bound wrap → unlock passes { kekSalt }.
-//   - hardwareKekVersion:2 = inert stamp → unlock uses the fixed salt (NO kekSalt), then
-//     LAZILY upgrades to v3 (a second getHardwareFactor call re-wraps under a fresh salt).
+//   - hardwareKekVersion:2 = inert stamp → unlock uses the fixed salt (NO kekSalt).
+//     There is NO lazy on-unlock upgrade: the unlock path fires exactly ONE biometric
+//     prompt (the hardware factor only). The v2→v3 upgrade is done exclusively via
+//     changePassword / upgradeKekToV3 (PR #662 removed the lazy re-wrap because it
+//     fired a second biometric prompt on every unlock and could not converge safely).
 //   - v1 (no hardwareKekVersion) = legacy fixed-salt wrap → unlock uses the fixed salt.
 // New enrollments and password changes stamp v3.
 //
