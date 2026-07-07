@@ -309,7 +309,7 @@ export async function downloadBackupFile(envelope) {
       return { saved: true, path: 'Saved via share sheet' };
     } catch (err) {
       if (err?.message?.includes('cancelled') || err?.message?.includes('dismiss')) {
-        return { saved: false };
+        return { saved: false, path: '' };
       }
       throw err;
     } finally {

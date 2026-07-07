@@ -92,7 +92,7 @@ describe('iOS backup via share sheet', () => {
   it('returns {saved: false} when user dismisses the share sheet', async () => {
     mockShare.mockRejectedValue(new Error('Share cancelled'));
     const result = await downloadBackupFile(ENVELOPE);
-    expect(result).toEqual({ saved: false });
+    expect(result).toEqual({ saved: false, path: '' });
     // Temp file still cleaned up
     expect(mockDeleteFile).toHaveBeenCalledOnce();
   });
@@ -100,7 +100,7 @@ describe('iOS backup via share sheet', () => {
   it('returns {saved: false} on dismiss (alternate wording)', async () => {
     mockShare.mockRejectedValue(new Error('User did dismiss the dialog'));
     const result = await downloadBackupFile(ENVELOPE);
-    expect(result).toEqual({ saved: false });
+    expect(result).toEqual({ saved: false, path: '' });
   });
 
   it('re-throws non-cancel errors', async () => {
