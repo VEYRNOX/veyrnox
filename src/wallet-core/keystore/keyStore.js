@@ -142,6 +142,13 @@
  *   NATIVE-ONLY (optional): run `fn` with the background-lock hook suppressed,
  *   so OS-level dialogs that briefly pause the app do not trigger a re-lock.
  *   Web has no equivalent; callers invoke it optionally (`?.`).
+ *
+ * @property {() => Promise<void>} [downgradeFromHardwareWrap]
+ *   NATIVE-ONLY (optional, M2c-2): if the primary vault is Enclave-wrapped,
+ *   unwrap it (OS biometric enforced by the key ACL) and re-store the SAME
+ *   encrypted blob as a plain M2b record, so a password-only unlock keeps working
+ *   after biometric unlock is disabled. No-op on web / for an already-M2b vault.
+ *   Callers invoke it optionally (`?.`).
  */
 
 export {};
