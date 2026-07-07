@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { FileText, Search, Download, Sparkles } from "lucide-react";
 import { exportCataloguePdf } from "@/lib/pdfExport";
 import { FEATURE_CATEGORIES, STATUS, resolveStatus, verifiedFeatureNames } from "@/lib/featureCatalogue";
+import { useTier } from "@/lib/TierProvider";
 import { toast } from "sonner";
 
 // Three honest states, derived (not re-typed): see src/lib/featureCatalogue.js.
@@ -26,6 +27,8 @@ const STATUS_META = {
 
 export default function Features() {
   const [searchTerm, setSearchTerm] = useState("");
+  const { currentTier } = useTier();
+  const planName = currentTier === "safety_plus" ? "Safety Plus" : "Free";
 
   const featureCategories = FEATURE_CATEGORIES;
   // Resolve once: `verified` is honoured only with a txid evidence entry, so a
@@ -103,11 +106,11 @@ export default function Features() {
         </div>
       </div>
 
-      {/* Current plan (display-only — see pages/Subscription.jsx; tier stays Free) */}
+      {/* Current plan — reflects the real entitlement from TierProvider (useTier). */}
       <Link to="/plans" className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors">
         <div className="flex items-center gap-3">
           <Sparkles className="h-5 w-5 text-primary shrink-0" />
-          <p className="text-sm font-medium">Current plan: Free</p>
+          <p className="text-sm font-medium">Current plan: {planName}</p>
         </div>
         <span className="text-sm text-primary font-medium">View plans</span>
       </Link>
