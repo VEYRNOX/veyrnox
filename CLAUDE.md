@@ -122,9 +122,7 @@ identity; the app never holds keys server-side.
   (PARTIAL) 2026-07-01 on iPhone 17 Pro Max: two real Sepolia sends confirmed on-chain
   from a KEK-enrolled vault (PR #495). 2026-07-01 INTERNAL audit: H-NEW-D CLOSED —
   `kSecAttrTokenIDSecureEnclave` confirmed present in `HardwareKekPlugin.m:78`; SE ECIES
-  design correct at native ObjC layer. Remaining open native items: iOS-F5 (H factor in
-  NSData not zeroed — requires NSMutableData patch + Mac build), iOS-F3 (deprecated
-  kSecUseOperationPrompt — requires LAContext + Mac/Xcode). iOS-F9 evidence gap: SE unlock
+  design correct at native ObjC layer. Remaining open native items: iOS-F5 (H factor in NSData not zeroed — NSMutableData patch MERGED PR #526; compile-verified 2026-07-07 (PR #705, macos-latest/Xcode 26.5); device heap-dump still outstanding), iOS-F3 (deprecated kSecUseOperationPrompt — LAContext fix MERGED PR #526; compile-verified 2026-07-07 (PR #705); runtime biometric prompt test still outstanding). iOS-F9 evidence gap: SE unlock
   log trace not captured for the existing Sepolia sends; iOS device-verified status remains
   PARTIAL. H-2/iOS-F11 (biometric factor not bound to enrollment set): Android half RESOLVED
   / device-verified (PR #516/#518, re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half
@@ -341,6 +339,31 @@ public Hardhat/Ganache test mnemonic, so it could never complete a real send) be
 (`src/lib/twoFactorGate.js`) is genuinely session-blind — no `isDecoy`/`isHidden`
 parameter exists or should ever be added — pure test-coverage addition for an
 already-correct invariant.
+
+## 2026-07-07 automated verification sweep (PRs #699–#705)
+
+Eight amber widget items flipped to green via automated Playwright e2e and CI checks — all INTERNAL, not independently audited, no on-chain txid involved except where noted.
+
+**PRs #699–#701, #702 — new e2e specs and automated checks:**
+- **LOG-1 redaction patch** — `scripts/check-log-redaction-patch.mjs` PASSED: both Android + iOS `native-bridge.js` carry all 3 redaction markers. Debug-build logcat leak closed at source (PR #572); release-build logcat silence remains device-spot-check only.
+- **Web WebAuthn PRF KEK browser UAT** — `e2e/webauthn-prf-kek.spec.js` 13/13 Playwright (CDP virtual authenticator; fail-closed matrix C–F + UI unlock path + C-UI settings card enrollment). Real Sepolia txids from a real platform authenticator remain PENDING.
+- **Duress PIN / decoy routing** — `e2e/duress-decoy-routing.spec.js` 1/1: real password → real wallet, Emergency PIN → separate decoy wallet, real address never exposed. App-layer only.
+- **I3 deniability egress** — `e2e/i3-deniability-egress.spec.js` 1/1: decoy session made zero requests to all gated third-party hosts. Honest caveat: real-vs-decoy contrast inconclusive under demo mode.
+- **RASP browser-level detection** — `e2e/rasp-automation-detection.spec.js` 1/1: `navigator.webdriver=true` trips HOOKED→BLOCK unconditionally; `presignGate` fail-closed; BLOCK not overridable.
+- **Composite pre-sign RISK verdict + gate** — `e2e/presign-risk-verdict.spec.js` 3/3 (module boundary): poison address → RISK (S4 fires, real sentence); safe address → INFO; `presignGate` gate mechanics confirmed. Module boundary required because RASP TIER.BLOCK (always fires in Playwright) outranks tx RISK in the compose lattice.
+- **RevenueCat entitlement fail-closed** — `e2e/revenuecat-entitlement-failclosed.spec.js` 5/5: `web→free`, `getCustomerInfo null on web`, I3 deniability guard, active entitlement→`safety_plus`, paid/free route gate. Device purchase still NOT device-verified.
+
+**PR #703 — HardwareKekSettings PIN unification bug fix + C-UI test:**
+After PR #651 unified web onto the 8-digit PIN cohort, `HardwareKekSettings.jsx` enrollment and removal PinPads still used `length=12 / numericOnly=false` — a web user with an 8-digit vault PIN could never enroll hardware KEK through the settings card. **Fixed:** both PinPads now use `length={8} / numericOnly` (web is testing infrastructure only). Instruction text updated. `e2e/webauthn-prf-kek.spec.js` C-UI test promoted from `test.fixme` → `test` (13/13 total).
+
+**PR #704 — docs update** (`docs/Feature-Status.md`, `e2e/webauthn-prf-kek.spec.js` header): 13/13 count, C-UI completion, HardwareKekSettings follow-up regression documented.
+
+**PR #705 — iOS F3/F5 compile-verification CI** (`.github/workflows/ios-compile-check.yml`, `macos-latest/Xcode 26.5`):
+- **iOS-F3** (`kSecUseOperationPrompt → LAContext`): zero deprecation warnings in xcodebuild — compile-verified.
+- **iOS-F5** (`NSMutableData` zeroing): `HardwareKekPlugin.o` built clean — compile-verified.
+Both were code-complete since PR #526 but had never been compiled on a Mac. CI now runs on every push to `ios/**`. Runtime device checks (biometric prompt rendering, heap dump) remain device-gated per `docs/runbook-ios-kek-session.md` P2/P3.
+
+**Remaining hardware-gated items (unchanged, explicitly still open):** iOS-F9 SE-unlock trace (device-verified PARTIAL — F9 log captured 2026-07-02, but full session still needed), H-2/iOS-F11 iOS biometric re-enrollment (device-blocked — needs unrestricted iPhone), Android C-1 residuals (T1/T2/T3 per `docs/runbook-android-kek-residuals.md`), RASP F-09 (real rooted device), independent security audit.
 
 ## Security invariants
 
