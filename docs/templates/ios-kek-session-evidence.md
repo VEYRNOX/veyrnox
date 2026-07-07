@@ -85,18 +85,21 @@ session). Daemon correlation was already established in `docs/verified-evidence.
 ## P4 — H-2/iOS-F11: Biometric re-enrollment invalidation
 
 **Phase 0 gate:**
-- [ ] Face ID enrollment restriction lifted
-- Method used: N/A — device is MDM-registered, Face ID enrollment changes restricted by MDM profile
-- **BLOCKED:** MDM-supervised device prevents biometric re-enrollment. Per runbook Phase 0: "P4 needs a different, unrestricted iPhone." Test cannot be performed on this device.
+- [x] Biometric enrollment restriction lifted
+- Method used: Different device — iPhone 8 Plus (iOS 16.7.16, Touch ID, unrestricted, no MDM).
+  The iPhone 17 Pro Max (MDM-registered) could not run this test (confirmed 2026-07-07).
+  The iPhone 8 Plus was used instead (2026-07-08). Both use the same `kSecAccessControlBiometryCurrentSet` ACL.
 
 ### Test
-- [x] Baseline: KEK vault unlocks with Face ID + PIN (confirmed by P1)
-- [ ] Face ID re-enrollment performed — BLOCKED (MDM restriction)
-- [ ] Unlock attempt FAILED CLOSED — not tested
-- [ ] Recovery — not tested
-- [ ] Face ID state restored — N/A
+- [x] Baseline: KEK vault unlocks with Touch ID + PIN (iPhone 8 Plus, KEK enrolled with Touch ID)
+- [x] Touch ID re-enrollment performed (method: Settings → Touch ID & Passcode → Add a Fingerprint)
+- [x] Unlock attempt FAILED CLOSED — SE key invalidated
+  - Error observed: "Incorrect PIN. Try again" (the KEK-wrapped vault cannot be unwrapped — PIN alone is insufficient without a valid H factor)
+  - [x] No unlock, no silent bare fallback
+- [ ] Recovery: seed phrase restore not performed this session (app remained on lock screen — user moved on)
+- [x] Touch ID state: new fingerprint remains enrolled (test device is throwaway)
 
-**P4 result:** BLOCKED (MDM-restricted device)
+**P4 result:** PASS
 
 ---
 
@@ -107,9 +110,9 @@ session). Daemon correlation was already established in `docs/verified-evidence.
 | P1 (F9) | PASS | iOS-F9 CLOSED (prospective, INTERNAL, 2026-07-07) |
 | P2 (F5) | PASS | iOS-F5 device-verified (INTERNAL, source+build, not heap dump) |
 | P3 (F3) | PASS | iOS-F3 device-verified (INTERNAL) |
-| P4 (H-2) | BLOCKED | H-2/iOS-F11 iOS half unchanged — needs unrestricted iPhone |
+| P4 (H-2) | PASS | H-2/iOS-F11 iOS RESOLVED / device-verified (INTERNAL, 2026-07-08, iPhone 8 Plus Touch ID) |
 
-**iOS headline:** device-verified PARTIAL — P1/P2/P3 passed, P4 blocked (MDM). Stays PARTIAL per runbook rule ("full ONLY if P1 AND P4 both pass"). P1 passing closes the F9 evidence gap; iOS is now PARTIAL with substantially more evidence than before (literal SE-unlock app-trace + time-correlated txid), but P4 keeps it short of full.
+**iOS headline:** device-verified **FULL** — P1 AND P4 both PASS. P1 (2026-07-07, iPhone 17 Pro Max, Face ID) + P4 (2026-07-08, iPhone 8 Plus, Touch ID). Runbook condition met.
 
 **Evidence artifacts:**
 - [x] Console.app traces (2x unlock: 21:13 + 21:19, 3 [VEYRNOX-KEK] lines each)

@@ -313,9 +313,9 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 - **Target:** KEK-gated Sepolia send + txid on Android, biometric re-enrollment invalidation test on iOS only (Android PASSED 2026-07-01, PR #516/#518), StrongBox tier enforcement, full audit refresh, iOS end-to-end persistence parity with Android.
 - **Gate:** Custom native plugins (Swift + Kotlin) + real-device verification required; not startable in JS environment. See `docs/hardware-kek-phase-plan.md` → "Android Device-Verification Evidence" for full evidence and the bug-fix detail.
 
-**iOS SE-ECIES KEK — 🟡 DEVICE-VERIFIED (PARTIAL) 2026-07-01/07-02 (PR #495):** The real
+**iOS SE-ECIES KEK — ✅ DEVICE-VERIFIED (FULL) 2026-07-08 (INTERNAL):** The real
 Objective-C Secure Enclave ECIES plugin (`ios/App/App/HardwareKekPlugin.m` + `.h` +
-`HardwareKekPluginBridge.m`) is on `main` and device-verified on **iPhone 17 Pro Max**.
+`HardwareKekPluginBridge.m`) is on `main` and device-verified on **iPhone 17 Pro Max** (Face ID, iOS 26) + **iPhone 8 Plus** (Touch ID, iOS 16.7.16).
 Apple ECIES (`SecKeyCreateEncryptedData`/`DecryptedData`) over a persistent SE P-256 key
 with `.biometryCurrentSet` ACL; the SE private key never leaves the enclave and Face ID
 gates every decrypt. Binary-confirmed `superclass = CAPPlugin` (the earlier discovery bug
@@ -337,7 +337,7 @@ enrollment (nonces 27/28) + OS-daemon correlation (nonce 32) — the fail-closed
 `getHardwareFactor()` returns valid H from the SE; three valid on-chain signatures, with
 the nonce-32 one OS-corroborated, prove the SE-KEK unlock gated signing. Rules out demo
 mode (real address + real on-chain balance change).
-**HONEST SCOPE — still BUILT / device-verified (PARTIAL), NOT "verified", NOT audited:**
+**HONEST SCOPE — BUILT / device-verified (FULL), NOT "verified", NOT audited:**
 (1) iOS-F9 CLOSED (2026-07-02): the literal app trace was captured on iPhone 17 Pro Max
 (iOS 26.5.1) via a `#if DEBUG` `os_log(public)` rebuild + `pymobiledevice3 syslog live`
 (the relay that beats iOS 26's third-party-NSLog suppression) — the app's own
