@@ -67,7 +67,7 @@
   <header>
     <h1>Veyrnox — Feature Status</h1>
     <span class="sub">what's built · what's still unaudited / provisional</span>
-    <span class="asof mono">source: docs/Feature-Status.md · as of 2026-07-06</span>
+    <span class="asof mono">source: docs/Feature-Status.md · as of 2026-07-07</span>
   </header>
 
   <div class="legend">
@@ -87,10 +87,11 @@
   <div class="banner warn">
     <b>The honesty line.</b> "Both audits complete" = the internal mainnet-gate audit (2026-06-17)
     + the independent ECC third-party audit (2026-06-23, resolved in PR&nbsp;#340). Everything since —
-    the Hardware KEK stack, deniability re-applied fixes, KDF changes, LOG-1 remediation — is
+    the Hardware KEK stack, deniability re-applied fixes, KDF changes, LOG-1 remediation, IAP — is
     <b>INTERNAL, not independently audited</b>. A feature is only catalogue-<b>"verified"</b> with a
     real explorer-confirmed txid; device-verified KEK unlock txids are recorded as
     <b>non-promoting</b> evidence, not a "verified" flip.
+    Two new CI honesty gates (#693): a <b>finding-ID drift</b> tripwire (prevents mislabeling resolved/open findings) and an <b>on-chain evidence re-confirmation</b> job (continuously re-verifies every txid against live public nodes).
   </div>
 
   <div class="cols">
@@ -138,10 +139,10 @@
       <h2>S4 — hardening <span class="tag">3 of 5 built</span></h2>
       <ul>
         <li><span class="mk m-teal"></span><span class="txt">Risk / spend limits; audit log (opt-in, deniability-safe, surfaced)</span></li>
-        <li><span class="mk m-amber"></span><span class="txt">RASP policy lane + browser-level detection (always-on)<span class="note">OS-level probes = native + real-device gated (Phase 4)</span></span></li>
+        <li><span class="mk m-amber"></span><span class="txt">RASP policy lane + browser-level detection (always-on)<span class="note">Android native probe BUILT (root/Frida/emulator/tamper, PR #383); iOS probe + remote attestation unbuilt. Device-adversarial test (F-09) still pending</span></span></li>
         <li><span class="mk m-teal"></span><span class="txt">Encrypted cloud backup — LOCAL export/import (ciphertext-only)</span></li>
         <li><span class="mk m-coral"></span><span class="txt">Backend-escrow cloud backup<span class="note">not built — needs backend + fresh audit of that design</span></span></li>
-        <li><span class="mk m-coral"></span><span class="txt">RASP native probes + remote attestation (Play Integrity / App Attest)<span class="note">not buildable in JS — real rooted/Frida device gated</span></span></li>
+        <li><span class="mk m-amber"></span><span class="txt">RASP native probes — Android BUILT / device-unverified (F-09)<span class="note">RaspIntegrityPlugin.kt (258 lines, PR #383): root/Magisk/Frida-port/Xposed/emulator/tamper — registered + JS-wired, never run against a real rooted device. iOS Swift probe + remote attestation (Play Integrity / App Attest) genuinely unbuilt</span></span></li>
       </ul>
     </section>
 
@@ -155,13 +156,24 @@
       </ul>
     </section>
 
+    <!-- IN-APP SUBSCRIPTION -->
+    <section>
+      <h2>In-App Subscription (Safety Plus) <span class="tag">built · not device-verified</span></h2>
+      <ul>
+        <li><span class="mk m-amber"></span><span class="txt">RevenueCat Apple/Google IAP — Safety Plus analytics tier<span class="note">BUILT (PR #675); fail-closed entitlement (web→free, error→free, paid only on active RevenueCat entitlement). NOT device-verified — no real sandbox/license-tester purchase yet</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">I3 deniability guard on RevenueCat egress (#665)<span class="note">zero RevenueCat calls + tier forced 'free' in decoy/hidden sessions; mirrors priceFeed I3 pattern</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Safety controls FREE — only analytics gated (#672)<span class="note">owner decision: /risk, /fraud, /address-checker, /token-approvals, /security-dashboard, /hardware-wallet, /cloud-backup, /spam-filter, /audit-log, /crypto-signing all free. Regression test pins them. Only /risk-score, /advanced-analytics, /onchain, /price-charts, /recurring are paid</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Egress disclosed + honest wording (#673)<span class="note">native in-app disclosure of RevenueCat egress (I2); no "verified" overclaim in the catalogue</span></span></li>
+      </ul>
+    </section>
+
     <!-- HARDWARE KEK -->
     <section>
       <h2>Hardware KEK — the live front <span class="tag">unaudited</span></h2>
       <ul>
         <li><span class="mk m-amber"></span><span class="txt">Web — WebAuthn PRF KEK — <b>testing-only</b><span class="note">Not a shipping product path: web is testing infrastructure only (2026-07-06 clarification, #637), unified onto the native 8-digit PIN. PIN-cohort migration still in flux (open PR #651). BUILT + unit-tested; browser UAT + testnet txids PENDING; KEK-downgrade-on-repersist bug fixed unit-tested only (#631)</span></span></li>
-        <li><span class="mk m-teal"></span><span class="txt">Android — StrongBox KEK<span class="note">end-to-end device-verified on Pixel 10 Pro XL; C-1 salt-binding FIXED v3 (PR #568) after a same-day regress→fix. txid 0xecd684…</span></span></li>
-        <li><span class="mk m-amber"></span><span class="txt">iOS — Secure Enclave ECIES KEK<span class="note">device-verified PARTIAL; iOS-F9 SE-unlock app-trace still OPEN, re-enroll test device-blocked</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">Android — StrongBox KEK<span class="note">end-to-end device-verified on Pixel 10 Pro XL; C-1 salt-binding FIXED v3 (PR #568). Change PIN on KEK vaults fixed (#668). v2→v3 upgrade now changePassword-only (#662) with consented "Upgrade protection" UI (#666). KEK unlock reduced to 2 biometric prompts (#694). Salt-tamper negative test added (#685). SOFTWARE tier refused (AUDIT M2); StrongBox enforcement TARGET (decision note #682). txid 0xecd684…</span></span></li>
+        <li><span class="mk m-amber"></span><span class="txt">iOS — Secure Enclave ECIES KEK<span class="note">device-verified PARTIAL; iOS-F9 SE-unlock trace CLOSED (captured 2026-07-02 via os_log + pymobiledevice3). Re-enroll test still device-blocked (needs unrestricted iPhone). v2→v3 upgrade now changePassword-only (#662); KEK unlock reduced to 2 biometric prompts (#694)</span></span></li>
         <li><span class="mk m-coral"></span><span class="txt">Independent audit of the whole KEK stack<span class="note">NONE — all evidence is INTERNAL</span></span></li>
       </ul>
     </section>
@@ -171,9 +183,9 @@
       <h2>What's left — device-gated / open <span class="tag">not done</span></h2>
       <ul>
         <li><span class="mk m-coral"></span><span class="txt">Independent security audit (S1–S4 + crypto + vault cipher path)<span class="note">the one hard remaining gate; standalone crypto engagement DECLINED, folded into this</span></span></li>
-        <li><span class="mk m-coral"></span><span class="txt">iOS: SE-unlock log trace (iOS-F9), biometric re-enroll invalidation, F5 heap-zeroing device-check, F3 LAContext edit<span class="note">F5 MERGED as a PARTIAL heap-zeroing mitigation (native buffer zeroed; base64/JS bridge residue architecturally unzeroable, residual LOW–MEDIUM); F3 still code-complete. None compiled/device-verified — need Mac + Xcode + unrestricted iPhone</span></span></li>
-        <li><span class="mk m-coral"></span><span class="txt">Android C-1 residuals: salt-tamper negative test, v2→v3 migration device-exercise, multi-enroll salt distinctness</span></li>
-        <li><span class="mk m-coral"></span><span class="txt">M2c/M2d OS-enforced ACL binding (biometryCurrentSet / StrongBox)<span class="note">app-layer today; needs custom native plugin + real device</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">iOS: biometric re-enroll invalidation, F5 heap-zeroing device-check, F3 LAContext edit<span class="note">F5 MERGED as a PARTIAL heap-zeroing mitigation (native buffer zeroed; base64/JS bridge residue architecturally unzeroable, residual LOW–MEDIUM); F3 still code-complete. None compiled/device-verified — need Mac + Xcode + unrestricted iPhone</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">Android C-1 residuals: salt-tamper negative test BUILT (#685, unit-tested only), v2→v3 upgrade device-exercise (now via changePassword #662), multi-enroll salt distinctness, installed-base v2 upgrade reach (consented UI #666)</span></li>
+        <li><span class="mk m-coral"></span><span class="txt">M2c iOS Secure Enclave key-wrap — scaffold BUILT (#690, OFF flag), password-fallback gap blocks activation<span class="note">native plugin landed but M2C_HARDWARE_WRAP_ENABLED=false; enclave-v1 unlock has no password-only recovery path — must fix before flag flips (LAND-WITH-FIXES review). StrongBox enforcement: TARGET (decision note #682)</span></span></li>
         <li><span class="mk m-amber"></span><span class="txt">LOG-1 — debug logcat leaked H + vault blob<span class="note">remediation BUILT (PR #572); release-build spot-check PENDING</span></span></li>
         <li><span class="mk m-coral"></span><span class="txt">Legal entity + Track-B legal review; per-asset mainnet send verifications</span></li>
       </ul>
@@ -197,6 +209,7 @@
     "Verified" is the strict on-chain-txid bar; "BUILT" caps at code-on-main + green tests.
     Internal ≠ independent throughout. Full evidence &amp; PR trail in Feature-Status.md §1–§12 and
     <code>docs/audit-2026-07-01-kek-internal.md</code>.
+    <br>Last comprehensive update: 2026-07-07 (PRs #654–#694).
   </div>
 </div>
 </body>
