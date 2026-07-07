@@ -58,24 +58,24 @@ jobs:
           npm run build
           npx cap sync ios
 
-      - name: Install CocoaPods (generates App.xcworkspace)
+      - name: Resolve Swift Package dependencies
         working-directory: ios/App
         run: |
-          # pod install generates App.xcworkspace from the Podfile.
-          # The workspace is not committed to the repo (gitignored); this step
-          # is required before xcodebuild can reference it.
-          pod install --repo-update
+          # SPM project (CapApp-SPM — no Podfile/CocoaPods).
+          # Resolve packages so Capacitor plugins are available before build.
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme App 2>&1 | tail -5
 
       - name: Compile iOS — zero-warning check (F3/F5)
         working-directory: ios/App
         run: |
           set -o pipefail
-          # Build without signing so this runs on a clean runner with no certs.
-          # CODE_SIGN_IDENTITY="" + CODE_SIGNING_REQUIRED=NO = unsigned compile-only.
-          # ONLY_ACTIVE_ARCH=NO ensures the full target compiles (not just the host arch).
-          # -quiet suppresses per-file noise; we redirect to a log and grep for warnings.
+          # SPM project: use -project App.xcodeproj (no standalone xcworkspace).
+          # CODE_SIGNING_REQUIRED=NO — unsigned compile on a clean runner with no certs.
+          # ONLY_ACTIVE_ARCH=NO — compile the full target, not just the host arch.
           xcodebuild \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
