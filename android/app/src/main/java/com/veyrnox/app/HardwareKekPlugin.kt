@@ -292,6 +292,13 @@ class HardwareKekPlugin : Plugin() {
                 return call.reject("KEK_SALT_MALFORMED: kekSalt must be a base64 string")
             }
             val macInput: ByteArray = if (kekSaltB64 != null) {
+                // C-1 hardening (2026-07-07): Android's Base64.decode(NO_WRAP) silently
+                // skips invalid characters instead of throwing, so "!!notb64" decodes to
+                // a (wrong) byte array rather than failing. Validate the string contains
+                // only legal base64 chars BEFORE decoding — reject anything else.
+                if (!kekSaltB64.matches(Regex("^[A-Za-z0-9+/]+=*$"))) {
+                    return call.reject("Invalid kekSalt encoding — not valid base64")
+                }
                 val decoded = try {
                     Base64.decode(kekSaltB64, Base64.NO_WRAP)
                 } catch (e: Exception) {
