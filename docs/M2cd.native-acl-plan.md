@@ -1,10 +1,36 @@
 # M2c / M2d — Plan: OS-enforced biometric ACL + Secure Enclave/StrongBox key-wrap
 
-> **STATUS: PLAN / NOT YET IMPLEMENTED.** Forward-looking design for the next two
-> M2 sub-steps. Closes finding **F-2** (app-layer biometric gate → OS-enforced)
-> from `docs/SECURITY_SELFREVIEW_FINDINGS.md` (Pass 2) and delivers the iOS
-> Secure Enclave path the M2 spec calls for. Builds on the merged M2a/M2b work.
-> Testnet only; mainnet stays gated; no crypto-algorithm change.
+> **STATUS: iOS M2c-1 + M2c-2 code BUILT (behind an OFF flag, NOT device-verified);
+> Android M2d still PLAN.** Closes finding **F-2** (app-layer biometric gate →
+> OS-enforced) from `docs/SECURITY_SELFREVIEW_FINDINGS.md` (Pass 2) and delivers
+> the iOS Secure Enclave path the M2 spec calls for. Builds on the merged M2a/M2b
+> work. Testnet only; mainnet stays gated; no crypto-algorithm change.
+>
+> **What landed (iOS):** the Swift key-wrap plugin
+> (`ios/App/CapApp-SPM/Sources/CapApp-SPM/VeyrnoxEnclavePlugin.swift`,
+> `EnclaveKeyService.swift`, `EnclaveError.swift`), its JS bridge
+> (`src/plugins/veyrnoxEnclave.js`), and the capability-detected
+> `hardwareWrappedStore` branch + one-time legacy→Enclave migration in
+> `src/wallet-core/keystore/native.js`. Verified on a Mac: compiles, 1399 tests
+> green, `vault.js` byte-identical, plugin JS stays out of the web bundle.
+>
+> **Product decision — RESOLVED (owner, 2026-07-06): OPT-IN.** Enclave-wrap is
+> tied to the existing biometric-unlock toggle, NOT mandatory on all Enclave
+> devices — preserving the "password is an independent route, biometric is
+> optional" invariant. Consequences in code (all implemented, behind the OFF
+> flag): `createVault` always stores M2b at creation; the up-migration in
+> `unlock()` is gated on `opts.requireBiometric` (biometric enabled); disabling
+> biometric unlock re-wraps DOWN to M2b via
+> `nativeKeyStore.downgradeFromHardwareWrap()`, wired into
+> `WalletProvider.disableBiometricUnlock` (unwrap → store plain M2b → drop the
+> wrapping key), so a password-only unlock keeps working after disable.
+>
+> **F-2 is NOT closed.** The whole path is gated behind
+> `M2C_HARDWARE_WRAP_ENABLED = false`, so native behaviour is byte-identical to
+> M2b until it is verified on a **physical iPhone** — the Simulator has no Secure
+> Enclave and can confirm none of the guarantees. Run
+> `docs/audit-triage/m2c-enclave-device-test.md`, THEN flip the flag. The plugin
+> also still enters the independent-audit scope.
 >
 > See also: `docs/M2.secure-storage.md` (spec + verification gates),
 > `docs/M2b.native-keystore-notes.md` (what M2b shipped), and the Pass-2 findings.

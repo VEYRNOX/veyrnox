@@ -97,6 +97,12 @@ function makeNativeFacade() {
     async clearVault() {
       return (await load()).nativeKeyStore.clearVault();
     },
+    // Native-only (M2c-2): down-migrate an Enclave-wrapped vault back to M2b when
+    // biometric unlock is disabled. Web's keyStore omits this; callers invoke it
+    // optionally (`?.`) so web is a no-op.
+    async downgradeFromHardwareWrap() {
+      return (await load()).nativeKeyStore.downgradeFromHardwareWrap();
+    },
     // Native-only extension (see native.js). Loading native here also registers
     // the background listeners early. Web's keyStore omits this method.
     setLockHook(cb) {
