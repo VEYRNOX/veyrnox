@@ -28,9 +28,11 @@
 //      wrap on web, silently downgrading an enrolled vault to bare on any content
 //      re-persist. Phase-1 offline-seizure regression; web sibling of Android bug 3.
 //      FIXED in PR #631 — the regression test below is now active (no longer `fixme`).
-//   2. UI-DEFECT (MED): the settings enrollment card renders an 8-digit PinPad for
-//      the web credential, but the web credential is a ≥12-char password, so web
-//      enrollment through the card can never succeed.
+//   2. UI-DEFECT (MED): the settings enrollment card originally used a ≥12-char
+//      password PinPad for web, mismatched with the vault's 8-digit PIN. After
+//      PR #651 PIN unification this became a regression — FIXED in PR #703
+//      (2026-07-07): enrollment PinPad now uses length=8/numericOnly. C-UI test
+//      (test #13) proves the full settings card enrollment path end-to-end.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { test, expect } from '@playwright/test';
