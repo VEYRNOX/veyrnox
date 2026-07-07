@@ -6,6 +6,7 @@ import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
+import { useTier } from "@/lib/TierProvider";
 import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles, Scale, ScrollText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
@@ -21,6 +22,8 @@ import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 export default function Settings() {
   const queryClient = useQueryClient();
   const { lock, recordAudit, getAuditLogEnabled, toggleAuditLog, fetchAuditEntries } = useWallet();
+  const { currentTier } = useTier();
+  const isSafetyPlus = currentTier === "safety_plus";
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -189,15 +192,17 @@ export default function Settings() {
         </div>
       )}
 
-      {/* Current plan (display-only — see pages/Subscription.jsx; tier stays Free) */}
+      {/* Current plan — reflects the real entitlement from TierProvider (useTier). */}
       <Link to="/plans" className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold">Current plan: Free</p>
-            <p className="text-xs text-muted-foreground">Upgrade to Safety Plus — $5.99/mo</p>
+            <p className="text-sm font-semibold">Current plan: {isSafetyPlus ? "Safety Plus" : "Free"}</p>
+            <p className="text-xs text-muted-foreground">
+              {isSafetyPlus ? "Advanced analytics & premium insights" : "Upgrade to Safety Plus — $5.99/mo"}
+            </p>
           </div>
         </div>
         <span className="text-sm text-primary font-medium">View plans</span>

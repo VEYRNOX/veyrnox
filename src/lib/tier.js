@@ -67,9 +67,9 @@ export const FREE_FEATURES = [
   { name: 'Message Signing', summary: 'Sign messages for proof-of-ownership' },
 ];
 
-// Safety Plus tier headline features — BUILT and working today. Listing a
-// feature here is presentation only — it does NOT gate or unlock the feature
-// until real billing (IAP receipt verification) is wired up.
+// Safety Plus tier headline features (analytics / premium insights only) — shown
+// on the Plans card. Presentation only: access is enforced by the tier gate in
+// components/FeatureGate against SAFETY_PLUS_ROUTES, not by this list.
 export const SAFETY_PLUS_FEATURES = [
   { name: 'Portfolio Risk Score', summary: 'Concentration, leverage and volatility scoring' },
   { name: 'Advanced Analytics', summary: 'Sharpe ratio, correlation matrix, volatility analysis' },
