@@ -35,6 +35,58 @@ identity; the app never holds keys server-side.
   evidence gap, H-2/iOS-F11 iOS half). H-NEW-D CLOSED (SE ECIES confirmed in ObjC at
   `HardwareKekPlugin.m:78`). INTERNAL pass — never presented as "independent" (I4 honesty).
   See `docs/audit-2026-07-01-kek-internal.md`.
+  A 2026-07-06 INTERNAL code-and-artifact review of the Android hardware-KEK suite
+  (`docs/audit-triage/independent-audit-2026-07-06-android-kek-suite.md`, PR #683 —
+  merged via admin override, single-collaborator repo) headlined "no security regression
+  found in the C-1 v3 fix." Its filename/PR title use the word "independent," but the
+  document's own provenance line says exactly what it is: AI-drafted, code-and-artifact
+  only, "one tier below the live-device + formal-crypto third-party audit the code still
+  asks for" — it is NOT the independent third-party audit these hard rules still list as
+  outstanding, and must never be cited as such (I4). Findings were documentation-honesty
+  gaps, not vulnerabilities: F1.1 (MED) the "StrongBox HMAC-SHA256" feature title
+  overclaims — StrongBox is preferred by the enroll gate, not enforced, TEE/software
+  fallback accepted (tracked in `docs/audit-triage/strongbox-tier-enforcement-decision-2026-07-06.md`);
+  F2.1 (MED) an evidence contradiction between `docs/device-verification-2026-07-05.md`
+  (still reads "KEK v2 protocol confirmed") and this file's v3 device-verified claim —
+  **PR #686 (merged 2026-07-06)** added a `HardwareKekPlugin.kt` LABEL NOTE clarifying the
+  debug `"salt-source: v2-bound"` string is a legacy branch label, not the vault's
+  `hardwareKekVersion` stamp, but did NOT edit `docs/device-verification-2026-07-05.md`
+  itself — that evidence doc remains stale and still needs its own correction pass, flagged
+  for the owner; F2.2 (LOW-MED) stale "v2" comments in `HardwareKekPlugin.kt` — **FIXED,
+  PR #686** (the same LABEL NOTE + a v2→v3 correction on the `PRF_EVAL_SALT` block comment);
+  `kek.js` was not touched by #686 and may still carry stale wording; F2.3 (LOW) the
+  "v2→v3 lazy migration not device-exercised" residual item is obsolete — confirmed by
+  source check that the lazy on-unlock migration was already removed 2026-07-06 (PR #662)
+  and replaced by the fail-closed `changePassword`/`upgradeKekToV3` path, so the residual
+  wording below is corrected; F2.4 (LOW-MED) no test previously mutated a valid v3
+  `kekSalt` to a different valid 32-byte value and asserted fail-closed — **FIXED, PR #685
+  (merged 2026-07-06)**, which adds `kek.salt-binding-tamper.test.js` covering
+  both-factor/H-only/C-only tamper; F4.1 (LOW-MED) the LOG-1 fix was already in-tree
+  (redaction patches + patch-package) but this file's wording had lagged — residual risk is
+  the redaction name-allowlist's fragility and the patch being version-pinned with no CI
+  check that it actually applied — **FIXED, PR #685 (merged 2026-07-06)**, which adds
+  `scripts/check-log-redaction-patch.mjs` + a CI `verify` step; F3.1 (LOW-MED) the
+  biometric re-enroll invalidation guarantee applies only
+  to KEK-enrolled vaults, not the bare-vault app-layer biometric gate — the two are distinct
+  features this file should not conflate. The audit independently confirmed the full C-1 v3
+  salt-binding chain, fail-closed `changePassword`/`upgradeKekToV3`, key-material zeroing,
+  and all-zero-H rejection as correct, and noted Sepolia block 11206686 exists and is
+  time-consistent (an on-chain tx alone cannot substantiate the client-side KEK gate).
+  Companion **PR #638 (MERGED 2026-07-06)** added 6 new Appium Android E2E specs
+  (backup-restore, dApp security alerts, fee-analytics/net-worth, a KDF-performance
+  measurement harness, a LOG-1 bridge-redaction regression canary, passkey clone-detection)
+  plus hardening of 2 existing specs (send-scenarios, hidden-wallet) — 96 tests across 13
+  suites total. BUILT test-coverage work, NOT a new device-verification or "verified"
+  claim: no new on-chain txid. Honest gaps disclosed in #638 itself: WalletConnect
+  live-pairing still needs a real dApp/scripted peer; KDF perf measured on one flagship
+  device only; the LOG-1 spec is a regression canary for the already-shipped redaction fix,
+  not a new fix; the passkey clone-signCount proof stays web-only, the Android test only
+  proves native doesn't fabricate a value. PR #638 also added a password-entry mode (≥12
+  chars) to `PinPad.jsx`/`HardwareKekSettings.jsx` for web hardware-KEK enrollment; native
+  stays numeric PIN. **PR #686 (MERGED 2026-07-06)** landed the F1.1/F2.1/F2.2/F2.3
+  doc-and-comment sync — the corrections above were reconciled against #686's actual
+  merged diff, not assumed; see the F2.1/F2.2 notes above for exactly what #686 did and
+  did not touch.
 - **Verify, don't assert.** An asset/feature is "verified" ONLY after a real on-chain
   testnet transaction confirms on a block explorer with a txid the user supplies. Passing
   tests, clean review, or a green suite are NOT verification. Never flip an asset `status`
