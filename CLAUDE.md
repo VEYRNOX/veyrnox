@@ -246,8 +246,11 @@ identity; the app never holds keys server-side.
   time-correlated with KEK-gated Sepolia send txid `0x8b8f70e7…` block 11224674), plus
   the prior KEK-gated Sepolia txids (PR #495) and OS-daemon-corroborated send
   (`0x5116e7bc…`, block 11185985, 2026-07-02). iOS-F5 and iOS-F3 are now device-verified
-  (INTERNAL). iOS stays PARTIAL because H-2/iOS-F11 (biometric re-enrollment invalidation)
-  is blocked by MDM on the test device + independent audit remains. All KEK txids (iOS
+  (INTERNAL). **iOS is now device-verified FULL** (2026-07-08): H-2/iOS-F11 CLOSED on
+  iPhone 8 Plus (iOS 16.7.16, Touch ID) — re-enrolled fingerprint → SE key invalidated →
+  fail-closed ("Incorrect PIN"), no unlock, no silent fallback (I4). P1 (F9 trace +
+  correlated txid, 2026-07-07) AND P4 (H-2 biometric re-enrollment, 2026-07-08) both
+  passed — the runbook condition for FULL is met. Independent audit remains. All KEK txids (iOS
   and Android v3) are recorded as non-promoting META evidence: they prove the unlock gate
   but do NOT flip any asset/feature to catalogue-`verified` (that bar is the strict
   per-asset explorer-txid rule and does not apply to an unlock-gate feature). LOG-1
@@ -376,7 +379,7 @@ After PR #651 unified web onto the 8-digit PIN cohort, `HardwareKekSettings.jsx`
 - **iOS-F5** (`NSMutableData` zeroing): `HardwareKekPlugin.o` built clean — compile-verified.
 Both were code-complete since PR #526 but had never been compiled on a Mac. CI now runs on every push to `ios/**`. Runtime device checks (biometric prompt rendering, heap dump) remain device-gated per `docs/runbook-ios-kek-session.md` P2/P3.
 
-**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: H-2/iOS-F11 iOS biometric re-enrollment (MDM-blocked on test device — needs unrestricted iPhone), Android C-1 residual T1 only (v2→v3 migration BLOCKED — PIN cohort divergence; ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07: release-build logcat confirmed silent — 0 H leaks, 0 kekSalt, 0 bridge verbose, only 1 benign `Log.i` enroll tier line), RASP F-09 (real rooted device), ~~F2.1~~ stale doc already corrected, independent security audit.
+**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. RASP F-09 (real rooted device), independent security audit.
 
 ## Security invariants
 
