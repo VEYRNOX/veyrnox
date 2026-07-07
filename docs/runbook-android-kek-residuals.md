@@ -76,11 +76,16 @@ itself a finding — record it, don't paper over it.
 
 ---
 
-## T1 — v2→v3 lazy migration, device-exercised
+## T1 — v2→v3 upgrade via changePassword, device-exercised
 
 Proves: a genuinely v2-stamped vault (created by the buggy build) upgrades brickless to
-a salt-bound v3 wrap on first unlock under the fixed build, per `_upgradeV2ToV3`
-(`src/wallet-core/keystore/native.js:264`).
+a salt-bound v3 wrap via the consented `upgradeKekToV3` / `changePassword` path.
+
+**2026-07-07 correction:** the lazy unlock-hot-path `_upgradeV2ToV3` was **removed in
+PR #662** (caused a triple biometric prompt and could loop forever on a failed migration
+write). The v2→v3 upgrade now runs ONLY via `changePassword` / `upgradeKekToV3`
+(Settings → Security → "Upgrade protection" card, or Change PIN). This test exercises
+that path.
 
 1. `adb uninstall com.veyrnox.app.debug` → install **APK-OLD**.
 2. Create a fresh throwaway wallet (testnet), set PIN, enroll hardware KEK in
@@ -93,21 +98,20 @@ a salt-bound v3 wrap on first unlock under the fixed build, per `_upgradeV2ToV3`
    **SALT-A** (stored but cryptographically inert on this build).
 4. Lock the app. Install **APK-NEW** over it: `adb install -r apk-new.apk`. Confirm app
    data survived (app opens to unlock screen, not onboarding).
-5. **Migration-failure branch first (brickless contract, one moving part):** unlock with
-   PIN + biometric, and when the SECOND biometric prompt appears (the migration's
-   one-time extra prompt), CANCEL it.
-   - Expect: unlock still succeeds (seed visible), no error surfaced.
-   - Expect logcat: one `salt-source: v1-fixed` (the v2 unlock), then the cancelled
-     attempt.
-   - CDP read-back: still `hardwareKekVersion: 2`, kekSalt SHA-256 unchanged
-     (byte-for-byte untouched blob — the fail-safe restore worked).
-6. Lock. Unlock again, this time APPROVING both biometric prompts.
-   - Expect logcat sequence: `salt-source: v1-fixed` (v2 unlock) → `salt-source: v2-bound`
-     (H2 derivation for the new wrap).
+5. **Unlock first (v2 path, no migration):** unlock with PIN + biometric.
+   - Expect logcat: `salt-source: v1-fixed` (the v2 unlock — no auto-migration).
+   - Expect: exactly TWO biometric prompts (not three — PR #694 reduced the count).
+   - CDP read-back: still `hardwareKekVersion: 2`, kekSalt SHA-256 = SALT-A
+     (unchanged — the unlock does NOT upgrade).
+6. **Consented upgrade:** Settings → Security → the "Upgrade protection" card should
+   be visible (shown when `getVaultKekVersion() < 3`). Tap it, enter PIN, approve
+   the two biometric prompts.
+   - Expect logcat sequence: `salt-source: v1-fixed` (v2 unwrap) → `salt-source: v2-bound`
+     (H2 derivation for the new v3 wrap).
    - CDP read-back: `hardwareKekVersion: 3`, `saltLen: 44`, salt SHA-256 **changed**
      (fresh migration salt — record as **SALT-B**).
 7. Cold restart (`adb shell am force-stop com.veyrnox.app.debug`, relaunch). Unlock.
-   - Expect: exactly ONE biometric prompt, logcat `salt-source: v2-bound` only, seed
+   - Expect: exactly TWO biometric prompts, logcat `salt-source: v2-bound` only, seed
      recovered. CDP: still v3, salt SHA-256 = SALT-B.
 
 **Pass:** steps 5–7 all as expected. **Record:** device-local times, the two logcat
