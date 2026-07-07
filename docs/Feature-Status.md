@@ -632,7 +632,15 @@ not flip any asset to "verified" in the strict on-chain-txid sense.
   package `$rc_monthly`) exists yet; the iOS Xcode In-App Purchase capability + StoreKit
   config is not done (needs a Mac); **no real sandbox/license-tester purchase, restore,
   or expiry has been exercised on any physical iOS or Android device** — this is the
-  gate that would move it beyond BUILT; not independently audited. Pricing (`$5.99/mo`)
+  gate that would move it beyond BUILT; not independently audited.
+  **Fail-closed logic e2e PASSED 2026-07-07** (`e2e/revenuecat-entitlement-failclosed.spec.js`
+  5/5, Playwright module boundary, no human): (1) `resolveTier()` returns `'free'` on web
+  (`Capacitor.isNativePlatform()=false`); (2) `getCustomerInfo()` returns null on web —
+  no RevenueCat bridge call; (3) I3 deniability guard fires in decoy session — zero
+  RevenueCat egress; (4) active `safety_plus` entitlement in mocked customerInfo →
+  `'safety_plus'` tier; (5) all paid routes correctly gated, all safety/free routes
+  correctly ungated. Real `src/lib/entitlement.js` + `purchases.js` + `safetyPlusRoutes.js`
+  — no mocks. Device purchase still NOT device-verified. Pricing (`$5.99/mo`)
   is drawn from the existing unvalidated pricing hypothesis in `docs/Tiers.pricing.md`
   (Pro ~$5–8/mo) — still "model to validate," not proven willingness-to-pay. Full plan:
   `docs/superpowers/plans/2026-07-06-iap-subscription-stitching.md`.
