@@ -622,11 +622,8 @@ export default function WalletEntry() {
       // the REAL wallet, defeating Face-ID-to-decoy. We never overwrite an existing
       // cache, and duress-presence-unknown FAILS CLOSED (treated as duress present).
       if (isBiometricUnlockEnabled()) {
-        const [alreadyCached, duressConfigured] = await Promise.all([
-          hasStoredUnlockSecret().catch(() => false),
-          import('@/wallet-core/duress').then(m => m.hasDuressVault()).catch(() => false),
-        ]);
-        if (shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached, duressConfigured })) {
+        const alreadyCached = await hasStoredUnlockSecret().catch(() => false);
+        if (shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached })) {
           try { await enableBiometricUnlock(pin); } catch { /* best-effort; non-fatal */ }
         }
       }

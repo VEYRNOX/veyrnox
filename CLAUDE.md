@@ -122,14 +122,24 @@ identity; the app never holds keys server-side.
   (PARTIAL) 2026-07-01 on iPhone 17 Pro Max: two real Sepolia sends confirmed on-chain
   from a KEK-enrolled vault (PR #495). 2026-07-01 INTERNAL audit: H-NEW-D CLOSED —
   `kSecAttrTokenIDSecureEnclave` confirmed present in `HardwareKekPlugin.m:78`; SE ECIES
-  design correct at native ObjC layer. Remaining open native items: iOS-F5 (H factor in NSData not zeroed — NSMutableData patch MERGED PR #526; compile-verified 2026-07-07 (PR #705, macos-latest/Xcode 26.5); device heap-dump still outstanding), iOS-F3 (deprecated kSecUseOperationPrompt — LAContext fix MERGED PR #526; compile-verified 2026-07-07 (PR #705); runtime biometric prompt test still outstanding). iOS-F9 evidence gap: SE unlock
-  log trace not captured for the existing Sepolia sends; iOS device-verified status remains
-  PARTIAL. H-2/iOS-F11 (biometric factor not bound to enrollment set): Android half RESOLVED
-  / device-verified (PR #516/#518, re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half
-  DEFERRED — the `.biometryCurrentSet` ACL flag is set in code but the runtime re-enroll test
-  is device-blocked (test iPhone 17 Pro Max has Face ID enrollment restricted; needs an
-  unrestricted iPhone). Outstanding (iOS): SE-unlock log trace capture, biometric re-enrollment
-  invalidation test, KEK-gated Sepolia txid, independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
+  design correct at native ObjC layer. **2026-07-07 iOS KEK device session (Mac day):**
+  iOS-F5 DEVICE-VERIFIED (INTERNAL, source+build, not heap dump) — `resetBytesInRange` on
+  all paths confirmed, enroll/unlock cycle works on device (commit `f6e5fee73`); honest
+  scope: base64 bridge residue architecturally unzeroable (LOW-MEDIUM). iOS-F3
+  DEVICE-VERIFIED (INTERNAL) — zero deprecation warnings, Face ID prompt rendered on every
+  unlock, two back-to-back unlocks both prompted (`reuseDuration=0` confirmed), negative
+  check fail-closed. iOS-F9 CLOSED (prospective, INTERNAL) — full 3-line `[VEYRNOX-KEK]`
+  SE-unlock trace captured via Console.app on Mac (`loaded ciphertext` → `SE key retrieved,
+  decrypting` → `SUCCESS — Face ID passed, H recovered`), TIME-CORRELATED with KEK-gated
+  Sepolia send txid `0x8b8f70e7…` block 11224674 (same Console session); cold-restart
+  repeat confirmed; negative check (cancel Face ID) fail-closed. H-2/iOS-F11 (biometric
+  factor not bound to enrollment set): Android half RESOLVED / device-verified (PR #516/#518,
+  re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half DEFERRED — the
+  `.biometryCurrentSet` ACL flag is set in code but the runtime re-enroll test could not be
+  run (test iPhone 17 Pro Max is MDM-registered; MDM profile restricts Face ID enrollment
+  changes; confirmed 2026-07-07; needs a different, unrestricted iPhone). Outstanding (iOS):
+  biometric re-enrollment invalidation test (P4, MDM-blocked), heap-dump verification
+  (iOS-F5 residual), independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
   also affects the overall KEK design context — see Android bullet.
 - Android: AndroidKeyStore HMAC-SHA256 (StrongBox-preferred, TEE-accepted — StrongBox is
   not enforced, a TEE/software-backed key is accepted and honestly surfaced) + biometric-only
@@ -230,15 +240,18 @@ identity; the app never holds keys server-side.
 - Summary: both platforms are BUILT + device-verified on the KEK-gated unlock FLOW,
   INTERNAL only, NOT independently audited. **Android** is end-to-end, including the C-1
   v3 salt-binding fix (see the Android bullet above for the full RESOLVED→REGRESSED→FIXED
-  cycle and its four residual items). **iOS** is device-verified PARTIAL: it has KEK-gated
-  Sepolia txids from a KEK-enrolled vault (PR #495) plus an OS-daemon-corroborated send
-  (`0x5116e7bc…`, block 11185985, 2026-07-02 — coreauthd/ctkd/biometrickitd correlated to
-  the app pid), but no LITERAL SE-unlock app-trace (iOS-F9 open), so it stays PARTIAL, not
-  full. All these KEK txids (iOS and the new Android v3 ones) are recorded as non-promoting
-  META evidence: they prove the unlock gate but do NOT flip any asset/feature to
-  catalogue-`verified` (that bar is the strict per-asset explorer-txid rule and does not
-  apply to an unlock-gate feature). LOG-1 (debug-build logcat leaks H + vault blob) remains
-  open; remediation BUILT PR #572.
+  cycle and its four residual items). **iOS** is device-verified PARTIAL (substantially
+  strengthened 2026-07-07): it now has a LITERAL SE-unlock app-trace (iOS-F9 CLOSED,
+  prospective — full 3-line `[VEYRNOX-KEK]` sequence captured via Console.app on Mac,
+  time-correlated with KEK-gated Sepolia send txid `0x8b8f70e7…` block 11224674), plus
+  the prior KEK-gated Sepolia txids (PR #495) and OS-daemon-corroborated send
+  (`0x5116e7bc…`, block 11185985, 2026-07-02). iOS-F5 and iOS-F3 are now device-verified
+  (INTERNAL). iOS stays PARTIAL because H-2/iOS-F11 (biometric re-enrollment invalidation)
+  is blocked by MDM on the test device + independent audit remains. All KEK txids (iOS
+  and Android v3) are recorded as non-promoting META evidence: they prove the unlock gate
+  but do NOT flip any asset/feature to catalogue-`verified` (that bar is the strict
+  per-asset explorer-txid rule and does not apply to an unlock-gate feature). LOG-1
+  (debug-build logcat leaks H + vault blob) remains open; remediation BUILT PR #572.
 
 ## 2026-07-05 re-applied orphaned fixes (PRs #613–#616)
 
@@ -363,7 +376,7 @@ After PR #651 unified web onto the 8-digit PIN cohort, `HardwareKekSettings.jsx`
 - **iOS-F5** (`NSMutableData` zeroing): `HardwareKekPlugin.o` built clean — compile-verified.
 Both were code-complete since PR #526 but had never been compiled on a Mac. CI now runs on every push to `ios/**`. Runtime device checks (biometric prompt rendering, heap dump) remain device-gated per `docs/runbook-ios-kek-session.md` P2/P3.
 
-**Remaining hardware-gated items (unchanged, explicitly still open):** iOS-F9 SE-unlock trace (device-verified PARTIAL — F9 log captured 2026-07-02, but full session still needed), H-2/iOS-F11 iOS biometric re-enrollment (device-blocked — needs unrestricted iPhone), Android C-1 residuals (T1/T2/T3 per `docs/runbook-android-kek-residuals.md`), RASP F-09 (real rooted device), independent security audit.
+**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: H-2/iOS-F11 iOS biometric re-enrollment (MDM-blocked on test device — needs unrestricted iPhone), Android C-1 residuals (T1/T2/T3 per `docs/runbook-android-kek-residuals.md`), RASP F-09 (real rooted device), independent security audit.
 
 ## Security invariants
 
