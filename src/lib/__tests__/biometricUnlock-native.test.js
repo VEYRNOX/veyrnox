@@ -54,6 +54,7 @@ import {
   biometricUnlockSupported,
   storeUnlockSecret,
   retrieveUnlockSecret,
+  retrieveUnlockSecretDirect,
   hasStoredUnlockSecret,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
@@ -149,5 +150,32 @@ describe('biometricUnlock — NATIVE (OS biometric-gated secure-store cache)', (
     await storeUnlockSecret('old-password');
     await storeUnlockSecret('new-password');
     expect(await retrieveUnlockSecret()).toBe('new-password');
+  });
+});
+
+// retrieveUnlockSecretDirect — the KEK-only path that INTENTIONALLY skips the app-layer
+// cache-gate. Its whole reason to exist is that on a KEK vault the Secure Enclave /
+// StrongBox gate inside keyStore.unlock() is the sole hardware-enforced biometric gate,
+// so the app-layer BiometricAuth.authenticate here is a redundant THIRD prompt. These
+// tests pin: (1) it reads the store WITHOUT authenticate() first, and (2) it still fails
+// safe (null, not a stale/undefined value) when nothing is cached. The security contract
+// — only ever call this on a hasVaultKekWrap()===true vault — is enforced by the CALLER
+// (WalletProvider.unlockWithBiometric), pinned in WalletProvider.kekBiometricCacheGate.test.jsx.
+describe('biometricUnlock — retrieveUnlockSecretDirect (KEK-only, no app-layer cache-gate)', () => {
+  it('releases the cached password WITHOUT calling BiometricAuth.authenticate', async () => {
+    await storeUnlockSecret('kek-cached-pin');
+
+    const pw = await retrieveUnlockSecretDirect();
+    expect(pw).toBe('kek-cached-pin');
+
+    // The invariant that distinguishes it from retrieveUnlockSecret: NO app-layer
+    // biometric prompt fired — the store was read directly.
+    expect(h.calls).not.toContain('authenticate');
+    expect(h.calls).toContain('get');
+  });
+
+  it('returns null (no stale/undefined leak) when nothing is cached', async () => {
+    expect(await retrieveUnlockSecretDirect()).toBe(null);
+    expect(h.calls).not.toContain('authenticate');
   });
 });

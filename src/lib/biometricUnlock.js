@@ -249,6 +249,31 @@ export async function retrieveUnlockSecret() {
   return null;
 }
 
+/**
+ * Retrieve the cached vault password WITHOUT the app-layer OS biometric cache-gate.
+ *
+ * ⚠️ SECURITY CONTRACT — READ THIS. Unlike retrieveUnlockSecret(), this does NOT call
+ * nativeAuthenticateOrThrow() first. It is ONLY safe to call from the KEK-enrolled
+ * native unlock path, where the Secure Enclave / StrongBox hardware gate (fired inside
+ * keyStore.unlock() → getHardwareFactor, one biometric evaluation per ACL-gated SE
+ * operation) is the sole, hardware-enforced biometric protection. On a KEK vault the
+ * cached PIN is the C-factor ONLY; the DEK = HKDF(H ‖ C) and H is producible ONLY by
+ * passing that SE gate — so the cached C alone is useless and the app-layer cache-gate
+ * is redundant (it only added a THIRD biometric prompt per unlock).
+ *
+ * Calling this on a NON-KEK vault (web password vault, bare native vault) would BYPASS
+ * the SOLE biometric gate protecting the cached password — a security downgrade. The
+ * caller (WalletProvider.unlockWithBiometric) MUST gate this behind a confirmed
+ * hasVaultKekWrap() === true check. On web there is no cached secret → null.
+ *
+ * @returns {Promise<string|null>}
+ */
+export async function retrieveUnlockSecretDirect() {
+  if (DEMO) return demoGet();
+  if (Capacitor.isNativePlatform()) return nativeReadSecret();
+  return null;
+}
+
 /** Remove the cached password from every store (called on disable/panic/reset). */
 export async function clearUnlockSecret() {
   demoClear();
