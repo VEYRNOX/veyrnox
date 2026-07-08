@@ -333,16 +333,19 @@ export default function DuressPin() {
         <p className="text-xs text-muted-foreground leading-relaxed">
           <span className="font-medium text-foreground">Good to know.</span>{' '}
           Unlocking with your real PIN can be slightly faster than with your
-          Emergency PIN. Someone monitoring your device closely might notice
-          that difference.
+          Emergency PIN. Someone watching your network traffic during unlock
+          could potentially use that timing difference to guess which PIN you
+          used.
         </p>
         <p className="text-xs text-muted-foreground leading-relaxed">
           The Emergency PIN protects you from someone standing over you and
           forcing you to unlock. It is{' '}
           <span className="font-medium text-foreground">not</span>{' '}
-          designed to stop a remote attacker watching your connection.
-          For stronger protection, pair it with{' '}
-          <span className="font-medium text-foreground">Hardware Protection</span> in Settings.
+          designed to protect against a remote attacker who is monitoring your
+          network connection while you unlock. For stronger protection if your
+          device may be seized, pair it with{' '}
+          <span className="font-medium text-foreground">Hardware KEK</span>{' '}
+          protection in Settings.
         </p>
       </div>
 
