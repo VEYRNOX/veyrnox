@@ -657,20 +657,20 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
   `docs/superpowers/plans/2026-07-06-iap-subscription-stitching.md`.
 - Android E2E test infrastructure — ✅ BUILT (INTERNAL CI evidence, UI E2E only — no
   on-chain claims). Appium (UiAutomator2 + WebdriverIO) suite in `tests/android/`;
-  GitHub Actions emulator workflow per push; BrowserStack App Automate real-device
-  workflow added in PR #571 (2026-07-05) — committed `wdio.browserstack.conf.js`
-  targeting `hub-cloud.browserstack.com`, credential pre-check, Node 22/Java 21;
-  green run on a real BrowserStack Pixel 10 Pro XL (7/7 spec files, 52 tests).
-  Attended-only `hardware-kek.spec.js` is excluded from unattended cloud runs
-  (covered by `hardware-kek-e2e.spec.js`). Requires `BROWSERSTACK_USERNAME` /
-  `BROWSERSTACK_ACCESS_KEY` repo secrets; docs-only pushes skip the device run.
+  GitHub Actions emulator workflow per push. BrowserStack App Automate integration
+  REMOVED (2026-07-08): `wdio.browserstack.conf.js`, both BrowserStack CI workflows,
+  and the `android:test:browserstack` / `ios:test:browserstack` npm scripts were deleted
+  to eliminate third-party server-side retention of device logcat containing the hardware
+  KEK factor H (LOG-1). Historical BrowserStack session logs from pre-PR#572 runs should
+  be purged from the BrowserStack dashboard (owner action — server-side, not in this repo).
+  Real-device testing continues via local Appium + USB-connected device.
   This is CI infrastructure, not a catalogue status change — no asset is promoted by it.
 - iOS E2E test infrastructure — 🟡 BUILT (SCAFFOLD ONLY — never device-run; no CI
   evidence, no on-chain claims). Appium (XCUITest + WebdriverIO) suite in `tests/ios/`
   added in PR #653 (2026-07-06), mirroring the Android suite structure: `helpers/`
   (`appHelper.js`, `walletHelper.js`), a local Mac + real-iPhone runner `wdio.conf.js`
   (`IOS_UDID` / `IOS_TEAM_ID`; the iOS Simulator is rejected — no Secure Enclave), the
-  pre-existing `wdio.browserstack.conf.js` (bundle id now env-configurable), and four
+  `wdio.browserstack.conf.js` (REMOVED 2026-07-08, LOG-1 H exposure risk), and four
   specs mapped to the open iOS gates in `docs/hardware-audit-handoff.md`:
   `vault.spec.js` (create/unlock/persistence, ≥12-char min H-A); `send.spec.js` (drives
   the still-missing iOS in-app send txid — real send gated behind `SUPERVISED_SEND=1`,
@@ -870,7 +870,7 @@ scope of what #686 did and did not change (notably, it did not edit
 |---|---|
 | **Release builds emit no bridge logs** | ✅ Code-verified / 🟡 device spot-check PENDING. Chain: `capacitor.config.ts` had no `loggingBehavior` → Capacitor default `'debug'` → `CapConfig.java` maps it to `loggingEnabled = isDebug`; our release build sets `debuggable false` (`android/app/build.gradle`) → `JSExport.getGlobalJS` injects `isLoggingEnabled: false` → `native-bridge.js` `returnResult` skips `logFromNative`, and `BridgeWebChromeClient.onConsoleMessage` relays through `Logger`, gated by the same flag. Now made EXPLICIT: `loggingBehavior: 'debug'` pinned in `capacitor.config.ts` with a guard test that also fails if anyone flips it to `'production'` (which would enable bridge logs on release). **Spot-check note (owner action, not yet run):** install a release-signed build, enroll KEK, unlock, run `adb logcat -d \| grep -E '"h":\|Capacitor/Console'` — expect zero matches. Until that runs on-device, release silence is code-verified only, per verify-don't-assert. |
 | **Debug-build leak closed at source** | ✅ BUILT + patch verified (2026-07-07). `scripts/check-log-redaction-patch.mjs` PASSED: both `node_modules/@capacitor/android/capacitor/src/main/assets/native-bridge.js` and `node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js` confirmed carrying all 3 redaction markers (`VEYRNOX_SENSITIVE_PLUGINS`, `VEYRNOX_REDACTED`, `veyrnoxSanitizeResult`). `patches/@capacitor+android+8.4.1.patch` + `patches/@capacitor+ios+8.4.1.patch` (patch-package, applied on `postinstall`) redact `HardwareKek` and `SecureStorage` payloads inside the bridge echo logger — both directions (`createLogFromNative` results AND `createLogToNative` call options, since `SecureStorage.set` carries the blob too). Call metadata (pluginId, methodName, callbackId, success) still logs, so debug remains debuggable. Only the LOGGER is patched; the bridge still carries H by design and callers receive full results. Same patch-package caveat as the secure-storage `.commit()` patch: needs a clean plugin recompile (Gradle caches the module output; the stale `node_modules/@capacitor/android/capacitor/build/` dir was deleted to force it). Guard test: `src/__tests__/bridge-log-redaction.test.js` (fails if the patch disappears, stops covering either plugin/direction, or Capacitor is upgraded without regenerating it — patch-package postinstall also fails hard on version mismatch). |
-| **CI artifact exposure** | ✅ Scrub layer added to `.github/workflows/android-e2e-emulator.yml`: redacts any JSON `"h":"<base64>"` value across all collected files (payloads also transit `appium.log` via WebDriver `getLog` responses) and drops ALL `Capacitor/Console` lines from the uploaded `logcat.log` (bridge payload lines carry no plugin name — Capacitor's `isValidMsg` strips the header line — so name-based filtering cannot catch them). Retention reduced 30 → 7 days. Purpose-built native evidence lines (tag `HardwareKek`, `salt-source: …`) are not Console-tagged and are preserved. **Existing GitHub artifacts purged 2026-07-05 (owner-authorized):** the single remaining log-bearing artifact (`android-e2e-results-api31`, run 28734031084, unscrubbed branch) was deleted; older ones had already expired. Deletion does not un-disclose — treat any H from debug-build enrollments as burned. **⚠️ NEW surface — BrowserStack App Automate (PR #571, `android-real-device-ci.yml`):** BrowserStack stores device logcat/Appium logs/video SERVER-SIDE for every session. Any debug APK built WITHOUT the PR #572 bridge patch leaks H into BrowserStack's retained session logs (third-party custody). Owner actions: review/delete existing BrowserStack session logs from pre-patch runs, and ensure all future BrowserStack runs use an APK built after PR #572 (the patch applies at `npm ci` postinstall, so any fresh build includes it). |
+| **CI artifact exposure** | ✅ Scrub layer added to `.github/workflows/android-e2e-emulator.yml`: redacts any JSON `"h":"<base64>"` value across all collected files (payloads also transit `appium.log` via WebDriver `getLog` responses) and drops ALL `Capacitor/Console` lines from the uploaded `logcat.log` (bridge payload lines carry no plugin name — Capacitor's `isValidMsg` strips the header line — so name-based filtering cannot catch them). Retention reduced 30 → 7 days. Purpose-built native evidence lines (tag `HardwareKek`, `salt-source: …`) are not Console-tagged and are preserved. **Existing GitHub artifacts purged 2026-07-05 (owner-authorized):** the single remaining log-bearing artifact (`android-e2e-results-api31`, run 28734031084, unscrubbed branch) was deleted; older ones had already expired. Deletion does not un-disclose — treat any H from debug-build enrollments as burned. **BrowserStack App Automate — DECOMMISSIONED (2026-07-08):** BrowserStack integration removed from the codebase (`wdio.browserstack.conf.js`, both CI workflows, npm scripts deleted) to eliminate future third-party server-side retention of logcat containing H. No new sessions can be created. **Owner action still required:** review/delete existing BrowserStack session logs from pre-PR#572 runs on the BrowserStack dashboard (server-side, outside this repo). |
 | **Evidence trade-off (C-1 v3)** | The C-1 v3 device evidence included the JS-side bridge trace showing `getHardwareFactor` called with an intact `{"kekSalt":"<44-char base64>"}` (Bug-B confirmation). Post-PR #572 that bridge-echo line is REDACTED on sensitive plugins by design. The Kotlin-side `Log.d("HardwareKek", "salt-source: …")` attestation — which is the operative salt-binding evidence and is NOT Console-relayed — survives unchanged and remains the canonical evidence line for future device verifications. If a future verification needs the raw bridge trace, temporarily remove the patch on a throwaway debug build (never on a vault holding real funds). |
 | **Runtime leak canary** | ✅ BUILT. New e2e test in `tests/android/specs/hardware-kek-e2e.spec.js` fails hard if any logcat line matches a base64 `"h"` field or any `Capacitor/Console` line carries a long base64 run; reports counts only (never echoes the matched lines, to avoid re-leaking into CI output). |
 
@@ -946,6 +946,77 @@ still-open MEDIUM findings (M-3, M-5, M-6) are not resolved and must not be mark
 resolved until the owner confirms a resolution and the gate condition
 (`M2C_HARDWARE_WRAP_ENABLED = true`) is satisfied. The independent third-party audit of
 the KEK stack remains outstanding and is not replaced by this pass.
+
+---
+
+### 2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757
+
+> ⚠️ INTERNAL pass — code-and-artifact only. Five parallel agents audited separate
+> domains simultaneously. NOT the outstanding independent third-party audit. NOT
+> device-verified. No on-chain txid. Status tags: BUILT / unit-tested, INTERNAL.
+> Pre-existing `WalletAccessReset.change-pin.test.jsx` failures (5 tests, getByTestId DOM
+> query) are a separate tracked bug on `main` unrelated to this audit.
+
+**Scope:** S1 (seed generation, HD derivation, signing — `mnemonic.js`, `derivation.js`,
+`multiVault.js`, EVM/BTC/SOL chain modules), S2 (send flow — `SendCrypto.jsx`,
+`sendGate.js`, `twoFactorGate.js`, per-chain send modules), S3 (deniability stack —
+`deniabilitySession.js`, `duress.js`, `stealth.js`, `panic.js`, `hiddenBalance.js`,
+`decoyBalance.js`), S4 (RASP + WalletConnect — `rasp/`, `WalletConnectProvider.jsx`,
+`presign.js`, `compose.js`), Crypto (vault cryptography — `vault.js`, `vaultStore.js`,
+`vaultBackup.js`, `argon2.worker.js`).
+
+**Result: 0 CRITICAL / 1 HIGH / 10 MEDIUM / 5 LOW**
+
+**Fixed in PR #757 (merged 2026-07-08):**
+
+| ID | Sev | Finding | Resolution |
+|---|---|---|---|
+| H-1 | HIGH | WC `personal_sign` null-`evmAddress` H8 bypass — when `evmAddress` was null/falsy the handler fell through the `else` branch and continued without rejecting, silently bypassing the address-binding check (I4 violation). | ✅ BUILT (PR #757): `_handlePersonalSign` now rejects with `PERSONAL_SIGN_ADDRESS_MISMATCH` when `evmAddress` is null/falsy; the insecure else-branch is removed. Unit-tested, INTERNAL. |
+| M-3 | MED | Scientific notation passes UI amount form boundary — `parseFloat("1e10")` accepts `1e10` as a valid amount string, allowing a dApp-supplied or pasted `1e10` to bypass the UI "looks wrong" guard and proceed to the send gate. | ✅ BUILT (PR #757): `isFormAmountWellFormed()` strict regex (`/^\d+(\.\d+)?$/`) added at the Continue gate, replacing `parseFloat`. Unit-tested, INTERNAL. |
+| M-6 | MED | `resolveHiddenBalance` missing I3 deniability guard — `hiddenBalance.js` resolved and returned real hidden-wallet balances even in a decoy/deniability session; no `isDeniabilitySessionActive()` call, unlike the mirrored `decoyBalance.js:75` guard. | ✅ BUILT (PR #757): `isDeniabilitySessionActive()` guard added to `resolveHiddenBalance`, mirroring `decoyBalance.js:75`. Unit-tested, INTERNAL. |
+| M-7 | MED | `veyrnox-live-prices` localStorage key survives a panic wipe — `panic.js` `DENIABILITY_RESIDUE_KEYS` did not include this key, so live-price opt-in preference persisted after an emergency wipe (a deniability tell). | ✅ BUILT (PR #757): `veyrnox-live-prices` added to `DENIABILITY_RESIDUE_KEYS` in `panic.js`. Unit-tested, INTERNAL. |
+| L-4 | LOW | Stale `argon2.worker.js` comment referenced the old 64 MiB figure and did not reflect that `opts.memorySize` is dynamically respected. | ✅ BUILT (PR #757): comment updated to reflect 192 MiB default and dynamic `opts.memorySize`. INTERNAL. |
+
+**Key PASS properties confirmed by this audit:**
+
+| Domain | Pass |
+|---|---|
+| Entropy | `crypto.getRandomValues` only; `Math.random` absent from wallet-core |
+| Derivation | EVM m/44'/60', BTC m/84'/0', SOL/Cosmos SLIP-0010 — all spec vectors passing; SLIP-0010 hardened-only enforced for ed25519 |
+| I1 signing isolation | No network call inside any signing function across EVM/BTC/SOL/Cosmos paths |
+| I3 deniability stack | All egress points gated (prices, news, RPC, SDK); M-6 fix closes the last gap in `hiddenBalance.js` |
+| Deniability data separation | Decoy/real seed separation confirmed; wallet-count tells removed (D1/D2/D3) |
+| Panic wipe completeness | All sensitive keys wiped; `veyrnox-live-prices` now included (M-7 fixed) |
+| Stealth pool | 256-slot chaff, all users, FIXED_LEN uniform blob length |
+| WalletConnect controls | C3 RASP pre-sign gate, H7 EIP-712 chain binding, M9 gas cap, M11 session expiry, H-NEW-B step-up re-auth — all confirmed PASS |
+| RASP BLOCK tier | Unconditional; browser probe re-sampled fresh each call; I3/I4 structurally enforced |
+| Vault cipher | AES-256-GCM IV fresh per encryption, no nonce reuse, auth-tag failure returns generic error |
+| Argon2id params | Consistent; blob-stored for migration; backward compat tested |
+
+**Still open (owner decision or architectural gate required):**
+
+| ID | Sev | Finding | Gate | Issue |
+|---|---|---|---|---|
+| M-1 | MED | EVM private key held as a JS `string` — `ethers.v6` signing APIs accept and return strings; strings are immutable and unzeroable in the V8/JSC heap. No available fix — architectural ethers v6 limitation. | Accept / independent audit scope | #746 |
+| M-2 | MED | `hw-send.js` (hardware wallet send module) has zero test coverage — all three chain implementations (EVM/BTC/SOL) are untested; a physical Ledger/Trezor device is required to exercise them. | Physical device required | #747 |
+| M-4 | MED | 2FA retry reaches a dead end after a network failure — the error state has no retry affordance; user must navigate away and re-enter the send flow. UX issue, not a security bypass. | UX fix | #749 |
+| M-5 | MED | `planSolTransfer` accepts non-bigint `amountLamports` without a type guard — a string or float passed directly could produce a silently wrong transaction amount. | Type guard + test | #750 |
+| M-8 | MED | No AAD on base vault blob — GCM auth tag does not cover `kdf`/`salt`/`iterations` metadata in the blob header. `assertSaneKdfParams` partially mitigates the OOM vector (rejects implausible params before the KDF runs), but a malicious-metadata preimage attack is not fully closed. Full AAD binding is in the independent audit scope. | Independent audit | #752 |
+| M-9 | MED | Short-PIN exhaustion time not disclosed to users — an 8-digit numeric PIN has ~100M combinations; offline exhaustion time at real Argon2id cost is not surfaced in UI. Safari users additionally have no hardware factor (PRF not available). Owner decision on disclosure wording required. | Owner decision | #754 |
+| M-10 | MED | Cosmos derivation uses a non-hardened index level — correct per BIP-44 but the xpub at the account level is exposed if the account key is compromised. Documentation gap; code is spec-correct. | Documentation | — |
+| L-1 | LOW | EVM has no address-only derivation variant — full key derivation runs even for receive-address display. | Low priority | — |
+| L-2 | LOW | `setActionPassword` reads the container without requiring re-authentication in a decoy/hidden session. | Low priority | — |
+| L-3 | LOW | `send2faMethod` stale across mid-session credential changes — the cached method is not invalidated if the user changes their 2FA setting during a session. | Low priority | #749 |
+| L-5 | LOW | No `ThisDeviceOnly` / iCloud sync exclusion on IndexedDB (web surface only) — vault ciphertext in IndexedDB may be synced to iCloud by Safari on iOS. Disclosure gap on the web surface only. | Disclosure | — |
+
+**Honest framing:** fixed items (H-1, M-3, M-6, M-7, L-4) are BUILT / unit-tested only —
+INTERNAL, NOT device-verified, NOT independently audited, no on-chain txid. Open items
+(M-1 through M-10, L-1, L-2, L-3, L-5) remain open and must not be marked resolved
+until the owner confirms a resolution. M-1 is an architectural ethers v6 limitation with no
+available fix; M-8's `assertSaneKdfParams` partial mitigation does not close the AAD gap
+and full binding remains in the independent audit scope. The independent third-party audit
+(S1–S4 + crypto, including the vault cipher path) remains outstanding and is not replaced
+by this pass.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses

@@ -32,12 +32,11 @@ Automated E2E suite for the Veyrnox wallet iOS app using **Appium** (XCUITest) a
 
 ## Configuration
 
-Two configs, mirroring Android:
+Local Appium only (BrowserStack removed 2026-07-08 — LOG-1 H exposure risk):
 
 | File | Target | Entry |
 |---|---|---|
 | `wdio.conf.js` | Local Mac + real iPhone via local Appium | `npm run ios:test*` |
-| `wdio.browserstack.conf.js` | BrowserStack App Automate (cloud devices) | `npm run ios:test:browserstack` |
 
 ### Local run env vars (`wdio.conf.js`)
 
@@ -48,11 +47,6 @@ Two configs, mirroring Android:
 | `IOS_APP_PATH` | — | (reuse installed) | Path to a built `.app`/`.ipa` to install |
 | `IOS_PLATFORM_VER` | — | `18.0` | iOS version string |
 | `VEYRNOX_IOS_BUNDLE_ID` | — | `com.veyrnox.app` | Override if the debug scheme suffixes the id |
-
-### BrowserStack env vars (`wdio.browserstack.conf.js`)
-
-`BROWSERSTACK_USERNAME`, `BROWSERSTACK_ACCESS_KEY`, `BROWSERSTACK_APP_URL` (required);
-`BROWSERSTACK_DEVICE`, `BROWSERSTACK_OS_VERSION`, `VEYRNOX_IOS_BUNDLE_ID` (optional).
 
 ## Running
 

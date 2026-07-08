@@ -61,6 +61,23 @@ import { getAuthModel } from "@/lib/authModel";
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
 
+// M-3: form-boundary amount validity. `parseFloat(amount) <= 0` alone ACCEPTS
+// scientific notation ("1e-8" parses to a small positive float) and other
+// malformed inputs (locale commas, multiple dots, "1."), letting them cross the
+// form boundary into the signing path where downstream parsers diverge. This
+// pure predicate mirrors the canonical rule in wallet-core/amount.js
+// (assertDecimalAmount): a positive, well-formed plain decimal string only —
+// no exponent, sign, comma, or trailing dot. Kept exponent/precision-agnostic
+// (no decimals arg) so it can gate the UI form without an asset context.
+export function isFormAmountWellFormed(amountStr) {
+  const s = String(amountStr ?? '').trim();
+  // Plain decimal only: "123", "123.45", ".45" — rejects "", "1e-8", "-1",
+  // "1,5", "1.2.3", "1." (matches assertDecimalAmount's shape rule).
+  if (!/^\d+(\.\d+)?$|^\.\d+$/.test(s)) return false;
+  // Must be strictly positive (rejects "0", "0.0", "0.000").
+  return /[1-9]/.test(s);
+}
+
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
@@ -1261,10 +1278,10 @@ export default function SendCrypto() {
 
         {step === "form" && (
           <Button
-            className={`w-full ${(!toAddress || !amount || parseFloat(amount) <= 0 || !addressFormatValid || (balanceKnown && parseFloat(amount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
+            className={`w-full ${(!toAddress || !isFormAmountWellFormed(amount) || !addressFormatValid || (balanceKnown && parseFloat(amount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
             disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
             onClick={() => {
-              const invalid = !toAddress || !amount || parseFloat(amount) <= 0 || !addressFormatValid
+              const invalid = !toAddress || !isFormAmountWellFormed(amount) || !addressFormatValid
                 || (balanceKnown && parseFloat(amount) > effectiveBalance)
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }

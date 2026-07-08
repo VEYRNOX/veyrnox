@@ -83,4 +83,4 @@ jobs:
           echo "npm run android:test                # full suite (all specs)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Note:** Appium tests require a real Android device or configured emulator. CI runs code validation only (lint/typecheck/spec-file presence). Full E2E tests are run locally against a real Pixel device, or via \`npm run android:test:browserstack\` against BrowserStack App Automate."
+          echo "**Note:** Appium tests require a real Android device or configured emulator. CI runs code validation only (lint/typecheck/spec-file presence). Full E2E tests are run locally against a real Pixel device via \`npm run android:test\`."
