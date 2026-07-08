@@ -490,7 +490,7 @@ const TABS = [
   { id: "restore", label: "Restore", Icon: Upload },
 ];
 
-export default function CloudBackup() {
+export default function PersonalBackup() {
   const { createBackup, lock, isDecoy, isHidden } = useWallet();
   const [tab, setTab] = useState("export");
 

@@ -17,7 +17,7 @@
 // Google Drive, a USB drive, a local folder.
 //
 // HONESTY NOTE on PIN seal: the seal is only as strong as the PIN. The export
-// function accepts 6–12 digits (matching the UI minimum in CloudBackup.jsx canExport),
+// function accepts 6–12 digits (matching the UI minimum in PersonalBackup.jsx canExport),
 // so a real seal carries ~20 bits (6-digit, 10^6) up to
 // ~40 bits (12-digit); an 8-digit PIN is ~27 bits. At 64 MiB Argon2id per attempt,
 // offline brute-force of a 6-digit seal (10^6) is feasible for a well-resourced

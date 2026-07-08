@@ -26,7 +26,7 @@ export const ALL_ROUTE_PATHS = [
   '/correlation', '/session-manager', '/receipt', '/tx-history',
   '/address-checker', '/fee-analytics', '/correlation-timeline',
   '/dashboard-widgets', '/wallet-seed-qr',
-  '/hardware-wallet', '/cloud-backup', '/rasp-security', '/audit-log', '/login-activity', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
+  '/hardware-wallet', '/personal-backup', '/rasp-security', '/audit-log', '/login-activity', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
   '/index-builder', '/voice-commands', '/token-approvals', '/network-manager',
   '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
@@ -233,7 +233,7 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'WebHID Ledger connection via @ledgerhq/hw-transport-webhid. Derives ETH address (m/44\'/60\'/0\'/0/0) from connected device via @ledgerhq/hw-app-eth. Private key never leaves device. Address derivation and transaction signing supported for ETH (EIP-1559), BTC (PSBT), and SOL on Ledger and Trezor; ERC-20 hardware signing and multi-account paths not yet wired. PLATFORM NOTE: WebHID is unavailable in the Capacitor iOS WKWebView — the page fails soft to a "WebHID unavailable" card (guarded dynamic import). Ledger flow works only on desktop Chrome/Edge.',
   },
-  '/cloud-backup': {
+  '/personal-backup': {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Self-custodial encrypted backup (Option A — two sealed copies). Export: serialized vault container encrypted under password AND PIN via Argon2id+AES-GCM (wallet-core/vaultBackup.js). Neither plaintext nor credential is transmitted — the .enc file is downloaded locally, stored wherever the user chooses (device, iCloud, Google Drive, USB). Restore: password path saves the blob directly to IndexedDB; PIN path decrypts and re-encrypts under a new password. Primary-session only export (decoy/hidden gate in WalletProvider.createBackup). Honest PIN-entropy disclaimer shown in UI.',
   },

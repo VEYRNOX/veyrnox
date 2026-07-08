@@ -30,7 +30,7 @@ describe('safetyPlusRoutes', () => {
     expect(isSafetyPlusRoute('/token-approvals')).toBe(false);
     expect(isSafetyPlusRoute('/address-checker')).toBe(false);
     expect(isSafetyPlusRoute('/security-dashboard')).toBe(false);
-    expect(isSafetyPlusRoute('/cloud-backup')).toBe(false);
+    expect(isSafetyPlusRoute('/personal-backup')).toBe(false);
     expect(isSafetyPlusRoute('/spam-filter')).toBe(false);
     expect(isSafetyPlusRoute('/audit-log')).toBe(false);
     expect(isSafetyPlusRoute('/crypto-signing')).toBe(false);
@@ -48,7 +48,7 @@ describe('safetyPlusRoutes', () => {
       '/token-approvals',
       '/security-dashboard',
       '/hardware-wallet',
-      '/cloud-backup',
+      '/personal-backup',
       '/spam-filter',
       '/audit-log',
       '/crypto-signing',

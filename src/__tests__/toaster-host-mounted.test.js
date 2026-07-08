@@ -42,7 +42,7 @@ describe('the mounted Toaster matches the toast system the app uses (guards PR #
 
   it('app code does use sonner toasts (so the host is load-bearing)', () => {
     // Spot-check a known caller so this guard stays meaningful if usage changes.
-    const cloudBackup = read('pages/CloudBackup.jsx');
-    expect(/import\s*\{\s*toast\s*\}\s*from\s*["']sonner["']/.test(cloudBackup)).toBe(true);
+    const personalBackup = read('pages/PersonalBackup.jsx');
+    expect(/import\s*\{\s*toast\s*\}\s*from\s*["']sonner["']/.test(personalBackup)).toBe(true);
   });
 });

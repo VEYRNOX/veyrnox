@@ -237,7 +237,7 @@ export default function Settings() {
             <p className="text-xs text-muted-foreground">View &amp; revoke allowances</p>
           </div>
         </Link>
-        <Link to="/cloud-backup" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+        <Link to="/personal-backup" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <CloudUpload className="h-5 w-5 text-primary shrink-0" />
           <div>
             <p className="text-sm font-medium">Encrypted Personal Backup</p>

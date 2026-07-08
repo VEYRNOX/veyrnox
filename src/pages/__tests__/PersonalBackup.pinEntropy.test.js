@@ -7,7 +7,7 @@ function canExport(password, pin, pinConfirm) {
   return password.length >= 8 && pin.length >= 8 && pin === pinConfirm;
 }
 
-describe('CloudBackup export guard (8-digit floor)', () => {
+describe('PersonalBackup export guard (8-digit floor)', () => {
   it('rejects a 4-digit PIN', () => {
     expect(canExport('strongpass1', '1234', '1234')).toBe(false);
   });
