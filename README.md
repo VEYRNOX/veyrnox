@@ -4,6 +4,12 @@ A self-custody cryptocurrency wallet built for coercion resistance and plausible
 
 **Stack:** Vite · React · Capacitor (iOS & Android) · ethers v6 · @noble/@scure cryptography
 
+## Status
+
+All 10 assets are testnet-verified — each has a real on-chain send confirmed on a block explorer. Throughout this README, **"verified" means a real on-chain testnet transaction, never merely passing tests or a clean review.**
+
+An independent third-party audit (ECC, June 2026) covered the core wallet. The **hardware-KEK layer and native OS-level RASP are internally device-verified only** — independent audit of those areas is still outstanding. Features are marked as one of **BUILT** (in code, testnet/provisional), **TARGET** (designed, not yet confirmed in shipped code), or **roadmap**; nothing below should be read as independently audited unless stated.
+
 ## Features
 
 ### Multi-chain support
@@ -11,11 +17,11 @@ One HD seed derives per-chain accounts. EVM assets share a single secp256k1 addr
 
 | Asset | Derivation | Status |
 |---|---|---|
-| ETH, MATIC, ARB, OP | m/44'/60' (secp256k1)
-| AVAX, BNB | m/44'/60' (shared EVM)
-| USDC, USDT | ERC-20 contract calls
-| BTC | m/84'/0' (SegWit, UTXO/PSBT)
-| SOL | SLIP-0010 (ed25519)
+| ETH, MATIC, ARB, OP | m/44'/60' (secp256k1) | Live · testnet-verified |
+| AVAX, BNB | m/44'/60' (shared EVM) | Live · testnet-verified |
+| USDC, USDT | ERC-20 contract calls on the EVM address | Live · testnet-verified |
+| BTC | m/84'/0' (SegWit, UTXO/PSBT) | Live · testnet-verified |
+| SOL | SLIP-0010 (ed25519) | Live · testnet-verified |
 
 ### Coercion resistance (S3)
 - **Duress PIN** — unlocks a separate decoy wallet with its own seed, balances, and history
@@ -30,6 +36,9 @@ PIN/password-derived factor (Argon2id) is combined with a hardware factor via HK
 |---|---|---|
 | iOS | Secure Enclave ECIES | Face ID / Touch ID (no credential fallback) |
 | Android | AndroidKeyStore HMAC-SHA256 (StrongBox-preferred, TEE-accepted) | Biometric-only (no credential fallback) |
+| Web (Phase 1) | WebAuthn PRF platform authenticator | password-only fallback on Safari |
+
+> **Status:** BUILT and device-verified on real hardware (internal review only — this layer is **not yet independently audited**).
 
 ### Transaction security (S2)
 - **Pre-sign simulation** — local-first dry-run preview (eth_call, UTXO analysis, SOL simulation) with risk flags before signing
@@ -48,7 +57,9 @@ Full dApp signing support with security controls:
 - **Step-up re-auth** — stale auth window = reject before any key operation
 
 ### Runtime integrity (S4 — RASP)
-Runtime probes detect automation, hooking, and rooted/jailbroken environments. BLOCK tier is unconditional — signing is refused, not warned.
+Browser-level automation and hooking detection is live and e2e-proven: an automated or hooked environment trips the **BLOCK** tier, which is unconditional — signing is refused (not warned) and cannot be overridden by acknowledgement.
+
+Native OS-level integrity is partial: the Android root/Frida/emulator/tamper probe is built and wired but **not yet verified on a real rooted/hooked device**; the iOS jailbreak probe and remote attestation (Play Integrity / App Attest) are **roadmap**. Probes fail honest — an unavailable probe degrades to WARN, never a fabricated "clean" result.
 
 ## Security model
 
