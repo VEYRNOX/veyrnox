@@ -132,10 +132,13 @@ export default function HiddenWalletUnlockSettings() {
       <div>
         <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
           <EyeOff className="w-5 h-5" />
-          Hidden Wallet Unlock 2FA
+          Hidden Wallet Extra Step
         </h3>
         <p className="text-sm text-muted-foreground">
-          An extra step before revealing a hidden wallet. Helps prevent someone from forcing you to open it.
+          An optional extra step before opening a hidden wallet. Adds friction against casual or accidental access — not a coercion guarantee.
+        </p>
+        <p className="text-xs text-caution mt-2">
+          In development — the extra step is not available yet. Today a hidden wallet opens with its secret only.
         </p>
       </div>
 
@@ -185,12 +188,12 @@ export default function HiddenWalletUnlockSettings() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900 space-y-2">
-        <p className="font-semibold">How it works</p>
+        <p className="font-semibold">How it will work</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
           <li>You unlock your wallet with your PIN as usual.</li>
-          <li>To open a hidden wallet, you complete an extra step (password, passkey, or biometric).</li>
-          <li>This protects access inside the app. Your transaction history on the blockchain is still visible to anyone with the address.</li>
-          <li>Emergency and hidden wallets are accessed with their own PINs and don't use this setting.</li>
+          <li>To open a hidden wallet, you will complete an extra step (password, passkey, or biometric). Not available yet — coming soon.</li>
+          <li>Honest limit: this protects access inside the app only. On-chain history and addresses stay public to anyone who has the address.</li>
+          <li>Duress wallets open with their own secret and are not affected by this setting.</li>
         </ul>
       </div>
     </div>
