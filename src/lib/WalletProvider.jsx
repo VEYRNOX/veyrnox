@@ -750,7 +750,7 @@ export function WalletProvider({ children }) {
   // Derive the BIP-84 BTC account (PUBLIC address only) from the in-memory
   // mnemonic. Separate from deriveAccounts() so the EVM path is untouched.
   // Defaults to testnet; returns {address, path}. No keys stored here.
-  const deriveBtc = useCallback((networkKey = 'testnet') => {
+  const deriveBtc = useCallback((networkKey = 'mainnet') => {
     const active = getActiveMnemonic();
     if (!active) throw new Error('Wallet is locked');
     const { address, path } = deriveBtcAccount(active, { networkKey });
@@ -762,7 +762,7 @@ export function WalletProvider({ children }) {
   // Derive the Solana account (PUBLIC address only) from the in-memory mnemonic.
   // ed25519 / SLIP-0010 — a different curve from EVM/BTC, separate from both
   // derivation paths. Defaults to devnet; returns {address, path}. No keys stored.
-  const deriveSol = useCallback((networkKey = 'devnet') => {
+  const deriveSol = useCallback((networkKey = 'mainnet') => {
     const active = getActiveMnemonic();
     if (!active) throw new Error('Wallet is locked');
     const { address, path } = deriveSolAccount(active);
@@ -1892,7 +1892,7 @@ export function WalletProvider({ children }) {
   // BTC counterpart: provide the BIP-84 private+public key bytes for the BTC
   // account transiently to a signer (e.g. the send path), WITHOUT storing them.
   // Same contract as withPrivateKey — used immediately, then dropped. Never log.
-  const withBtcPrivateKey = useCallback((fn, networkKey = 'testnet') => {
+  const withBtcPrivateKey = useCallback((fn, networkKey = 'mainnet') => {
     const active = getActiveMnemonic();
     if (!active) throw new Error('Wallet is locked');
     touch();

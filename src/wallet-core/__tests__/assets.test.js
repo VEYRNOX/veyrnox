@@ -37,22 +37,22 @@ describe('asset registry', () => {
     expect(ASSETS.some(a => a.status === ASSET_STATUS.COMING_SOON)).toBe(false);
   });
 
-  it('BTC (Phase BTC) is LIVE on testnet — UI-path send verified on-chain', () => {
+  it('BTC (Phase BTC) is LIVE on mainnet', () => {
     const btc = getAsset('BTC');
-    expect(btc.status).toBe(ASSET_STATUS.LIVE); // flipped after a real UI-path testnet send
+    expect(btc.status).toBe(ASSET_STATUS.LIVE);
     expect(btc.family).toBe('btc');
-    expect(btc.chain).toBe('testnet');     // gated-aware BTC network key (mainnet still gated)
-    expect(canReceive(btc)).toBe(true);     // real BIP-84 address derivable
-    expect(canSend(btc)).toBe(true);        // verified: tx 2da87a27…, block 4990901
+    expect(btc.chain).toBe('mainnet');
+    expect(canReceive(btc)).toBe(true);
+    expect(canSend(btc)).toBe(true);
   });
 
-  it('SOL (Phase SOL) is LIVE on devnet — UI-path send verified on-chain', () => {
+  it('SOL (Phase SOL) is LIVE on mainnet', () => {
     const sol = getAsset('SOL');
-    expect(sol.status).toBe(ASSET_STATUS.LIVE); // flipped after a real UI-path devnet send
+    expect(sol.status).toBe(ASSET_STATUS.LIVE);
     expect(sol.family).toBe('solana');
-    expect(sol.chain).toBe('devnet');       // gated-aware Solana network key (mainnet still gated)
-    expect(canReceive(sol)).toBe(true);     // real SLIP-0010 address derivable
-    expect(canSend(sol)).toBe(true);        // verified: sig 5KGXAGTJ…, finalized
+    expect(sol.chain).toBe('mainnet');
+    expect(canReceive(sol)).toBe(true);
+    expect(canSend(sol)).toBe(true);
   });
 
   it('classifies EVM family (incl. ERC-20) correctly', () => {
@@ -68,11 +68,11 @@ describe('Phase C — all five EVM chains live after verified on-chain sends', (
   // MATIC/ARB/OP point at testnet network keys; AVAX/BNB point at mainnet keys after
   // the 2026-06-17 mainnet gate opened and 2026-06-19 testnet verification.
   const VERIFIED_LIVE = [
-    { symbol: 'MATIC', chain: 'polygonAmoy' },
-    { symbol: 'ARB',   chain: 'arbitrumSepolia' },
-    { symbol: 'OP',    chain: 'optimismSepolia' },
-    { symbol: 'AVAX',  chain: 'avalancheFuji' },
-    { symbol: 'BNB',   chain: 'bnbTestnet' },
+    { symbol: 'MATIC', chain: 'polygon' },
+    { symbol: 'ARB',   chain: 'arbitrum' },
+    { symbol: 'OP',    chain: 'optimism' },
+    { symbol: 'AVAX',  chain: 'avalanche' },
+    { symbol: 'BNB',   chain: 'bnb' },
   ];
 
   it('all five Phase-C EVM chain assets are live after verified UI-path sends (EVM-family)', () => {

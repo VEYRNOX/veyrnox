@@ -65,7 +65,7 @@ export function btcPath(coinType, change = CHAIN_EXTERNAL, index = 0) {
  */
 export function deriveBtcAccount(mnemonic, opts = {}) {
   const {
-    networkKey = 'testnet',
+    networkKey = 'mainnet',
     change = CHAIN_EXTERNAL,
     index = 0,
     passphrase = '',
