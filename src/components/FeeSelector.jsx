@@ -201,7 +201,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <span className="text-xs font-semibold">{t.label}</span>
                   </div>
                   <p className="text-[11px] mono-value font-semibold truncate">{d.nativeText}</p>
-                  {d.fiatText && <p className="text-[10px] text-muted-foreground">{d.fiatText}</p>}
+                  {d.fiatText && <p className="text-[10px] text-muted-foreground mono-value">{d.fiatText}</p>}
                   <p className="text-[10px] text-muted-foreground">{d.eta}</p>
                 </button>
               );
