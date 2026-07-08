@@ -175,7 +175,7 @@ export default [
     // facade) and removed from this list; do NOT add new files here to dodge
     // the gate.
     //
-    //   src/pages/CloudBackup.jsx     -> @/wallet-core/keystore (withLockSuppressed, ...)
+    //   src/pages/PersonalBackup.jsx   -> @/wallet-core/keystore (withLockSuppressed, ...)
     //   src/pages/ColdSign.jsx        -> @/wallet-core/coldkey/* (unsigned tx / psbt / qr)
     //   src/pages/PriceAlerts.jsx     -> @/wallet-core/keystore (getKeyStore)
     //   src/pages/StealthWallets.jsx  -> @/wallet-core/derivation (deriveEvmAccount)
@@ -186,7 +186,7 @@ export default [
     //   src/components/PasskeySetup.jsx -> @/wallet-core/keystore/native.js
     //                                     (dynamic import; suppressLock during biometric dialog)
     files: [
-      "src/pages/CloudBackup.jsx",
+      "src/pages/PersonalBackup.jsx",
       "src/pages/ColdSign.jsx",
       "src/pages/PriceAlerts.jsx",
       "src/pages/StealthWallets.jsx",

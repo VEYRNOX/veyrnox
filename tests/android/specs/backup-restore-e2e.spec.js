@@ -1,6 +1,6 @@
 // Local Encrypted Backup Export / Import — Android E2E
 // Fully automated, no human interaction. Drives the real Settings → Cloud
-// Backup screen (src/pages/CloudBackup.jsx) on-device and verifies the
+// Backup screen (src/pages/PersonalBackup.jsx) on-device and verifies the
 // ciphertext-only property of the exported file directly on the device
 // filesystem via `adb shell` (through driver.execute('mobile: shell', ...)),
 // never by asking a human to eyeball the file.
