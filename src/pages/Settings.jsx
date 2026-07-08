@@ -285,7 +285,7 @@ export default function Settings() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium">Delete Account</p>
-              <p className="text-xs text-muted-foreground">Wipes your account and all saved data for good</p>
+              <p className="text-xs text-muted-foreground">Clears saved data and locks the wallet. Your recovery phrase still controls your funds — use Panic Wipe to erase the keys.</p>
             </div>
             <button
               onClick={() => setShowDelete(true)}
@@ -298,7 +298,7 @@ export default function Settings() {
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-destructive">
-              This action is <strong>permanent and irreversible</strong>. Type <strong>DELETE</strong> to confirm.
+              This clears saved data and locks the wallet. Your recovery phrase still works. Type <strong>DELETE</strong> to confirm.
             </p>
             <input
               className="w-full rounded-lg border border-destructive/40 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive min-h-[44px]"

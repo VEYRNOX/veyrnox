@@ -301,11 +301,11 @@ export default function DuressPin() {
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          Your real PIN opens your real wallet. Your Emergency PIN opens a separate
-          wallet. A wrong PIN shows "Incorrect PIN". After 10 wrong
-          attempts, all wallet data on this device is permanently deleted.
-          Someone with physical access to the device could still discover a second wallet
-          exists. Pair with Hardware Protection for stronger device security.
+          Real PIN opens your real wallet. Emergency PIN opens a different one — for
+          when you&apos;re forced to unlock. Any wrong PIN says &ldquo;Incorrect PIN.&rdquo; After 10
+          wrong tries, this device is wiped for good. Honest limit: someone examining
+          the device might still spot the second wallet. Turn on Hardware Protection
+          for more cover.
         </span>
       </div>
 
@@ -316,12 +316,12 @@ export default function DuressPin() {
           <div>
             <p className="text-sm font-semibold">How it works</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Pick an <b>Emergency PIN</b> different from your real one. Your{" "}
-              <b>real PIN</b> opens your real wallet. Your <b>Emergency PIN</b>{" "}
-              opens a separate wallet with its own address. Your real wallet is
-              never visible during an Emergency PIN session. A wrong PIN shows an
-              error. 10 wrong attempts delete everything on this device. You can
-              also set <b>Face ID to open the Emergency wallet only</b>.
+              Set an <b>Emergency PIN</b> that is different from your real one.
+              Your <b>real PIN</b> opens your real wallet. Your{" "}
+              <b>Emergency PIN</b> opens a separate wallet — the one you hand
+              over under pressure. Wrong PINs show an error. After 10 wrong
+              tries, everything on this device is deleted. You can also{" "}
+              <b>route Face ID to the Emergency wallet only</b>.
             </p>
           </div>
         </div>
@@ -338,20 +338,19 @@ export default function DuressPin() {
       >
         <p className="text-xs text-muted-foreground leading-relaxed">
           <span className="font-medium text-foreground">Good to know.</span>{' '}
-          Unlocking with your real PIN can be slightly faster than with your
-          Emergency PIN. Someone watching your network traffic during unlock
-          could potentially use that timing difference to guess which PIN you
-          used.
+          Your real PIN can unlock slightly faster than your Emergency PIN.
+          Someone watching your network traffic during unlock could potentially
+          use that timing difference to tell which PIN you used.
         </p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          The Emergency PIN protects you from someone standing over you and
-          forcing you to unlock. It is{' '}
+          The Emergency PIN protects you from someone in the room forcing you
+          to unlock. It is{' '}
           <span className="font-medium text-foreground">not</span>{' '}
           designed to protect against a remote attacker who is monitoring your
-          network connection while you unlock. For stronger protection if your
-          device may be seized, pair it with{' '}
-          <span className="font-medium text-foreground">Hardware KEK</span>{' '}
-          protection in Settings.
+          network connection. For stronger cover if this device could be
+          seized, turn on{' '}
+          <span className="font-medium text-foreground">Hardware Protection</span>{' '}
+          in Settings.
         </p>
       </div>
 
@@ -359,16 +358,16 @@ export default function DuressPin() {
       <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
         <div className="flex items-center gap-2">
           <Coins className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">Make the hidden wallet plausible: fund it</p>
+          <p className="text-sm font-semibold">Fund the Emergency wallet to make it believable</p>
         </div>
         <p className="text-xs text-muted-foreground">
-          An <b>empty</b> wallet looks suspicious. Send a small amount you&apos;re
-          willing to lose to the address below. The balance shown here is the
-          real balance from the blockchain, so it can&apos;t be faked.
+          An empty wallet looks suspicious. Send a small amount you&apos;re
+          willing to hand over. The balance comes straight from the blockchain
+          — it can&apos;t be faked in the app.
         </p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>A brand-new wallet has <b>no transaction history</b>, which makes it look less believable.</li>
-          <li>Someone who knows this feature exists, or who inspects the device, may still figure out there&apos;s a second wallet.</li>
+          <li>A fresh wallet has no history, which makes it less convincing.</li>
+          <li>Good to know: someone who examines the device may still find the second wallet.</li>
         </ul>
       </div>
 
@@ -382,7 +381,7 @@ export default function DuressPin() {
             <span className="font-medium">Remove Emergency PIN</span>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
-            Removes the Emergency PIN and its wallet, if one exists.
+            Clears the Emergency PIN and its wallet.
           </p>
           <Button
             variant={duressEnabled ? "destructive" : "outline"}
@@ -447,13 +446,13 @@ export default function DuressPin() {
                 <span className="text-xs">
                   <span className="font-medium inline-flex items-center gap-1.5">
                     <Fingerprint className="h-3.5 w-3.5 text-primary" />
-                    Enable Biometric Unlock (Decoy Wallet)
+                    Use {bioLabel} for the Emergency wallet
                   </span>
                   <span className="block text-muted-foreground mt-1">
-                    When this is on, {bioLabel} will always open the{" "}
-                    <b>Emergency wallet</b>. Your real wallet can only be opened
-                    by typing your <b>real PIN</b>. If someone makes you unlock
-                    with {bioLabel}, they only see the Emergency wallet.
+                    {bioLabel} will always open the <b>Emergency wallet</b>.
+                    Your real wallet still needs your typed <b>real PIN</b>.
+                    Anyone who makes you use {bioLabel} only ever sees the
+                    Emergency wallet.
                   </span>
                 </span>
               </label>
@@ -464,14 +463,14 @@ export default function DuressPin() {
 
         {savedPhrase && (
           <div className="mt-4 p-3 rounded-lg bg-success/10 border border-success/20 text-xs space-y-3">
-            <p className="font-medium text-success">✓ Emergency PIN saved. Hidden wallet created.</p>
+            <p className="font-medium text-success">Emergency PIN saved. Emergency wallet created.</p>
 
             {/* Fund target: the decoy's REAL address + its live balance. */}
             {savedAddr && (
               <div className="space-y-1.5">
                 <p className="text-muted-foreground">
                   Send a small amount of {NET?.symbol || "ETH"} on{" "}
-                  {NET?.name || "the test network"} to make this wallet look real:
+                  {NET?.name || "the test network"} to make it look lived-in:
                 </p>
                 <div className="flex items-center gap-2 p-2 rounded bg-background">
                   <code className="flex-1 break-all text-foreground">{savedAddr}</code>
@@ -480,7 +479,7 @@ export default function DuressPin() {
                   </button>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Hidden wallet balance:</span>
+                  <span className="text-muted-foreground">Emergency wallet balance:</span>
                   <DecoyBalance address={savedAddr} refreshKey={balRefresh} />
                 </div>
                 <div className="flex items-center gap-3">
@@ -499,15 +498,15 @@ export default function DuressPin() {
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Get free test network {NET?.symbol || "ETH"} from a public faucet, then send a little here.
+                  Use a public faucet to get free test {NET?.symbol || "ETH"}, then send some here.
                 </p>
               </div>
             )}
 
             <div>
               <p className="text-muted-foreground">
-                Recovery phrase for the Emergency wallet. Only back this up if you
-                want to access it from another app.
+                Recovery phrase for the Emergency wallet. Only save this if you
+                want to reach it from another app.
               </p>
               <code className="block break-words rounded bg-background p-2 text-foreground mt-1">{savedPhrase}</code>
             </div>
@@ -588,8 +587,7 @@ export default function DuressPin() {
                 </div>
                 {isDecoy ? (
                   <p className="text-xs text-muted-foreground">
-                    You&apos;re seeing the Emergency wallet only. Your real wallet
-                    is completely hidden in this session.
+                    In this session you only see the Emergency wallet.
                   </p>
                 ) : null}
                 {/* DEMO ORACLE — proves the decoy never shows the real address.
@@ -613,10 +611,10 @@ export default function DuressPin() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            To try it out, lock your wallet and unlock with your Emergency PIN.
-            You&apos;ll see the Emergency wallet with its real balance. Never share
-            your Emergency PIN. If you forget it, come back here and remove it
-            while logged in with your normal PIN.
+            Lock your wallet and enter your Emergency PIN to try it. You&apos;ll
+            see the Emergency wallet with its real balance. Never share your
+            Emergency PIN. Forgot it? Come back here and remove it while
+            logged in with your real PIN.
           </p>
         </div>
       )}

@@ -554,9 +554,9 @@ export default function StealthWallets() {
         <span>
           Runtime + count
           deniability: identical UI, errors, and timing at unlock, and the number of
-          hidden wallets is never revealed — not hidden-volume storage: forensics sees
-          a fixed pool of vault-shaped slots, but can't tell which, or how many, are
-          real versus chaff.
+          hidden wallets is never revealed — not hidden-volume storage: anyone examining sees
+          a fixed pool of vault-shaped slots, but can&apos;t easily tell which, or how many, are
+          real versus decoy.
         </span>
       </div>
 
@@ -585,7 +585,7 @@ export default function StealthWallets() {
           <p className="text-sm font-semibold">What this protects — and what it does not</p>
         </div>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Hidden wallets sit in a fixed pool of identical vault-shaped slots — some real, the rest random <b>chaff</b> — so their <b>count</b> is never revealed and a forensic examiner can't tell which slots, if any, are real.</li>
+          <li>Hidden wallets sit in a fixed pool of identical vault-shaped slots — some real, the rest random <b>decoys</b> — so their <b>count</b> is never revealed. It&apos;s built so someone examining the pool can&apos;t easily tell real from decoy.</li>
           <li>The pool is seeded for <b>every</b> wallet on the device, so its presence means "this device has a <strong>VEYRNOX</strong> wallet" — not "this device has hidden wallets".</li>
           <li><b>Stealth hides a wallet in the app, not on-chain.</b> A hidden wallet's Ethereum, Bitcoin and Solana addresses are public — anyone with one can see its balance and history on a block explorer.</li>
           <li>We keep <b>no list</b> of hidden wallets, so a forgotten secret makes that wallet unrecoverable here. Remember each secret.</li>
@@ -650,7 +650,7 @@ export default function StealthWallets() {
         {savedPhrase && (
           <div className="mt-4 p-3 rounded-lg bg-success/10 border border-success/20 text-xs space-y-3">
             <p className="font-medium text-success flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" /> Hidden wallet created. It is invisible until you unlock with its secret.
+              <CheckCircle2 className="h-4 w-4" /> Hidden wallet created. It won&apos;t show up anywhere in the app. It opens only with its secret.
             </p>
 
             {savedIdentity && (
@@ -758,8 +758,7 @@ export default function StealthWallets() {
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    This is the visible wallet a coercer would see. Nothing here lists,
-                    counts, or hints at the hidden wallet.
+                    This is the visible wallet. The app shows no sign in the app that a hidden wallet exists.
                   </p>
                 )}
 

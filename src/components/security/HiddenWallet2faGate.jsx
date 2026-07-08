@@ -111,8 +111,7 @@ export default function HiddenWallet2faGate() {
         />
 
         <p className="text-xs text-muted-foreground text-center mt-4">
-          This is a convenience gate. The hidden wallet's on-chain history and addresses
-          remain public.
+          This step protects access inside the app. Your on-chain history and addresses are still public.
         </p>
       </DialogContent>
     </Dialog>

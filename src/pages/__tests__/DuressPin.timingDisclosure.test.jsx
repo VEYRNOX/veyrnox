@@ -92,10 +92,10 @@ describe('DuressPin — D-02 timing oracle disclosure (visible, not just a code 
     expect(text).toMatch(/remote attacker|network connection/);
   });
 
-  it('recommends Hardware KEK for stronger offline-seizure protection', async () => {
+  it('recommends Hardware Protection for stronger offline-seizure protection', async () => {
     await renderSettled();
     const text = screen.getByTestId('duress-timing-disclosure').textContent;
-    expect(text).toMatch(/Hardware KEK/);
+    expect(text).toMatch(/Hardware Protection/);
   });
 
   it('uses calm muted-foreground styling, not the caution/alert palette', async () => {

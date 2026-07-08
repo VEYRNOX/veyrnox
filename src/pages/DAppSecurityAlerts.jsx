@@ -42,16 +42,16 @@ export default function DAppSecurityAlerts() {
         </div>
         <div>
           <h1 className="text-xl font-bold">dApp Domain Check</h1>
-          <p className="text-sm text-muted-foreground">Check a dApp domain against a local known-bad / phishing list</p>
+          <p className="text-sm text-muted-foreground">Check a dApp domain against a local list of known-bad sites</p>
         </div>
       </div>
 
       <div className="p-3 rounded-xl bg-secondary/50 border border-border flex items-start gap-2">
         <Info className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
         <p className="text-xs text-muted-foreground">
-          <strong>VEYRNOX</strong> does not audit, rate, or verify dApps. This only checks a small, local known-bad list — it can
-          tell you a domain is <span className="font-medium">known bad</span>, but it can never tell you a domain is
-          safe to connect. Absence from the list is not a safety check.
+          <strong>VEYRNOX</strong> does not audit or verify dApps. This checks a small local list — it can flag a
+          domain as <span className="font-medium">known bad</span>, but a clean result is not a safety verdict.
+          Not on the list does not mean safe.
         </p>
       </div>
 
@@ -84,9 +84,8 @@ export default function DAppSecurityAlerts() {
                   <Badge variant="outline" className="text-muted-foreground border-current text-[10px] shrink-0">Not on local list</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Not on the local known-bad list. This is <span className="font-medium">not</span> a safety verdict — the list is
-                  small and local, <strong>VEYRNOX</strong> does not verify dApps, and absence here does not mean the site is safe to connect.
-                  Verify the URL yourself and review every connection request and approval.
+                  Not on the local known-bad list. This is <span className="font-medium">not</span> a safety verdict —
+                  absence here does not mean the site is safe. Check the URL yourself and review every connection request carefully.
                 </p>
               </div>
             )
@@ -107,7 +106,7 @@ export default function DAppSecurityAlerts() {
           <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-caution" />Local known-bad list</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 pt-4">
-          <p className="text-xs text-muted-foreground mb-1">Illustrative local entries — not a live feed and not exhaustive. A real threat feed is on the roadmap.</p>
+          <p className="text-xs text-muted-foreground mb-1">This is a small local list, not a live feed — and not complete.</p>
           {LOCAL_KNOWN_BAD.map((b) => (
             <div key={b.domain} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors">
               <XCircle className="h-4 w-4 text-destructive shrink-0" />

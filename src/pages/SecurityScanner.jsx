@@ -32,10 +32,9 @@ import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import { assessEvmTransaction } from "@/wallet-core/evm/simulate";
 
 const COVERAGE_NOTE =
-  "Decoded and assessed locally on this device — no key was used, nothing was sent to any RPC " +
-  "or third-party scoring service, and no on-chain dry-run (eth_call) was performed here. It flags " +
-  "KNOWN risk patterns in the calldata; it is NOT a guarantee of safety and will not catch every novel " +
-  "threat. The full RPC-backed simulation runs at the verify step inside the real Send flow.";
+  "Checked on your device — no key used, nothing sent to any server, no on-chain simulation run here. " +
+  "It finds KNOWN risk patterns in the calldata. It is not a guarantee of safety and won't catch every threat. " +
+  "A fuller check runs inside the real Send flow before you approve.";
 
 export default function SecurityScanner() {
   const [calldata, setCalldata] = useState("");
@@ -50,8 +49,7 @@ export default function SecurityScanner() {
     const data = calldata.trim();
     if (!data || !isHexString(data) || data.length < 10) {
       setInputError(
-        "Enter valid ERC-20 calldata as a 0x-prefixed hex string (the transaction's `data` field). " +
-          "This page can't analyse a raw signed transaction or a plain address — paste the calldata.",
+        "Paste the transaction's data field as a 0x-prefixed hex string. A plain address or signed transaction won't work — you need the calldata.",
       );
       return;
     }
@@ -86,8 +84,8 @@ export default function SecurityScanner() {
           <ScanSearch className="h-5 w-5 text-violet-500" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">Pre-Sign Transaction Scanner</h1>
-          <p className="text-sm text-muted-foreground">Decode and risk-assess ERC-20 calldata before you sign — locally, with no key and no network</p>
+          <h1 className="text-xl font-bold">Transaction Scanner</h1>
+          <p className="text-sm text-muted-foreground">Check ERC-20 calldata for known risks — on your device, before you sign</p>
         </div>
       </div>
 
@@ -96,11 +94,10 @@ export default function SecurityScanner() {
         <CardContent className="pt-4 space-y-2 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">What this does</p>
           <p>
-            Paste a transaction's <span className="font-mono">data</span> field. It runs the same
-            calldata decode and risk assessment used by the Send flow's pre-sign preview, on your
-            device, and lists any KNOWN risk patterns it finds. It never tells you a transaction is
-            "safe" — absence of a flagged pattern is not a guarantee, and you should review every
-            detail yourself.
+            Paste the <span className="font-mono">data</span> field from a transaction. It checks
+            for known risk patterns — unlimited approvals, look-alike addresses, unrecognised calls
+            — on your device, with no network. It never tells you a transaction is safe. Nothing
+            flagged means nothing detected, not a clean bill of health.
           </p>
         </CardContent>
       </Card>
@@ -109,7 +106,7 @@ export default function SecurityScanner() {
       <Card>
         <CardContent className="pt-4 space-y-3">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">ERC-20 calldata (the tx `data` field, 0x…)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Transaction data field (0x…)</label>
             <textarea
               className="w-full h-24 text-xs font-mono p-2 rounded-lg bg-secondary border border-border resize-none focus:outline-none focus:ring-1 focus:ring-ring"
               placeholder="0xa9059cbb… (transfer) or 0x095ea7b3… (approve)"
@@ -145,10 +142,10 @@ export default function SecurityScanner() {
 
       {/* Live, RPC-backed preview with representative samples (the real Send-flow preview). */}
       <div>
-        <p className="text-sm font-semibold mb-2">Representative pre-sign previews</p>
+        <p className="text-sm font-semibold mb-2">Live examples</p>
         <p className="text-xs text-muted-foreground mb-2">
-          The exact preview you see at the verify step before approving a transaction, across chains
-          and risk patterns. Each runs the real risk logic over real decoded data.
+          Built from the same checks you&apos;ll see before you approve a transaction. Each runs real risk
+          logic across chains and risk patterns.
         </p>
         <TransactionSimulationDemo />
       </div>
