@@ -27,8 +27,14 @@ describe('HDWalletManager — M15: seed copies route through copySecret (wipe ti
     expect(src).toMatch(/if\s*\(sensitive\)/);
   });
 
-  it('seed copy site passes sensitive=true', () => {
-    expect(src).toMatch(/copy\(generatedSeed,\s*["']seed["'],\s*true\)/);
+  // NOTE: the seed-display copy site (copy(generatedSeed, "seed", true)) was
+  // removed when the vault-creating "Generate New" surface was deleted from
+  // HDWalletManager (HIGH silent-overwrite / PIN-lockout hazard, I4). This page
+  // no longer reveals a mnemonic, so there is no sensitive copy site here. The
+  // sensitivity-aware routing in makeCopy is still exercised above and remains
+  // available for any future sensitive copy. Guard that no seed reveal returned.
+  it('no longer copies a generated seed (create surface removed)', () => {
+    expect(src).not.toMatch(/generatedSeed/);
   });
 
   it('address copy sites do not pass sensitive=true (no clipboard wipe for public values)', () => {
