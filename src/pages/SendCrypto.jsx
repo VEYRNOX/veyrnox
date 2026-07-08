@@ -99,7 +99,7 @@ function PoisonWarning({ screen }) {
             <p className="text-[10px] uppercase tracking-wide text-destructive/70">
               Resembles {m.label}{m.date ? ` · ${new Date(m.date).toLocaleDateString()}` : ""}
             </p>
-            <p className="font-mono break-all">{m.address}</p>
+            <p className="mono-value break-all">{m.address}</p>
           </div>
         ))}
       </div>
@@ -1072,7 +1072,7 @@ export default function SendCrypto() {
             toAddress === ensResolved.address ? (
               // Confirmed: the user accepted the resolved address as the recipient.
               <div className="flex items-center gap-1.5 mt-1.5 text-xs text-success">
-                <CheckCircle2 className="h-3 w-3 shrink-0" /> Using {ensResolved.name} → <span className="mono-value truncate">{ensResolved.address}</span>
+                <CheckCircle2 className="h-3 w-3 shrink-0" /> Using {ensResolved.name} → <span className="mono-value break-all">{ensResolved.address}</span>
               </div>
             ) : (
               // M-3: resolved via an untrusted third-party service — require an
@@ -1162,7 +1162,7 @@ export default function SendCrypto() {
         )}
         <div>
           <Label htmlFor="send-amount">Amount</Label>
-          <Input id="send-amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
+          <Input id="send-amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5 mono-value" />
           {amountUsd != null && (
             <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> being sent</p>
           )}
@@ -1192,7 +1192,7 @@ export default function SendCrypto() {
         {selectedWallet && !sendEnabled && !devUngated && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. Only ETH (Ethereum test network) is live in this build; other assets are receive/roadmap only until their crypto path is verified.</p>
+            <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. This asset is receive-only until its crypto path is verified.</p>
           </div>
         )}
         {selectedWallet && !sendEnabled && devUngated && (
@@ -1301,7 +1301,7 @@ export default function SendCrypto() {
               <p className="text-xs text-muted-foreground mb-1">You're sending</p>
               <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
-              <p className="text-xs text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
+              <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
             </div>
 
             {/* AUTHORITATIVE pre-sign verdict — ONE sentence at the chokepoint. The
@@ -1405,7 +1405,7 @@ export default function SendCrypto() {
               />
             ) : (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                <Fuel className="h-3 w-3 shrink-0" /> Network fee is set automatically for {selectedWallet?.currency} ({networkName}) on this test network.
+                <Fuel className="h-3 w-3 shrink-0" /> Network fee is set automatically for {selectedWallet?.currency} ({networkName}).
               </p>
             )}
             {/* The fee's fiat estimate (and the spend-cap previews) convert via

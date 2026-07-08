@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { DEMO } from "@/api/demoClient";
 import { useWallet } from "@/lib/WalletProvider";
 import { summarizeAllowance, buildRevokeCalldata, sendRevoke } from "@/wallet-core/evm/approvals";
-import { getNetworkInfo } from "@/wallet-core/evm/networks";
+import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -106,7 +106,7 @@ export default function TokenApprovals() {
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
-          {DEMO ? "Demo · simulated" : "Testnet"}
+          {DEMO ? "Demo · simulated" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>
 

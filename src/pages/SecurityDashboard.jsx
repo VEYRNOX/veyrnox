@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { DEMO } from "@/api/demoClient";
+import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import {
   summarizeApprovals,
@@ -157,7 +158,7 @@ export default function SecurityDashboard() {
           </div>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
-          {DEMO ? "Demo · simulated" : "Testnet"}
+          {DEMO ? "Demo · simulated" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>
 
