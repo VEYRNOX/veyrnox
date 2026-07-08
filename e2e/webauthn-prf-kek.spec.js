@@ -414,8 +414,9 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     // The "UNAUDITED-PROVISIONAL" disclosure was removed by an explicit owner
     // override (PR #667, 2026-07-06 — see docs/Feature-Status.md line 152 "OWNER
     // OVERRIDE … provisional/unaudited UI disclosures REMOVED. Do NOT re-add
-    // them."). The card now renders the retained honest binding-status line.
-    await expect(page.getByText('The hardware binding is built and device-verified.')).toBeVisible();
+    // them."). The card now renders the retained honest binding-status line,
+    // humanized in PR #759 ("device-verified" → "tested on real hardware").
+    await expect(page.getByText('Device binding is active and tested on real hardware.')).toBeVisible();
     // I4: the "WebAuthn Protected" badge is EARNED by enrollment, never shown
     // structurally on a bare vault.
     await expect(page.getByText('WebAuthn Protected')).toHaveCount(0);
@@ -472,7 +473,7 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     // interactions to the enrollment section div to avoid colliding with other
     // PinPads on the settings page.
     const enrollSection = page.locator('div').filter({
-      has: page.getByText('Enter your 8-digit vault PIN to enable hardware protection'),
+      has: page.getByText('Enter your 8-digit PIN to enable hardware protection'),
     }).last();
     await expect(enrollSection).toBeVisible({ timeout: 30000 });
 
