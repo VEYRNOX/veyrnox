@@ -188,6 +188,8 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   // Its presence reveals live-price egress was enabled on this device, i.e. that a
   // Veyrnox wallet was used here; a wipe must scrub it too (I3/I4).
   'veyrnox-live-prices',
+  'veyrnox-duress-configured',
+  'veyrnox-panic-configured',
 ]);
 
 // NON-SECRET wallet/token METADATA residue (F-06). Unlike the keys above, these do

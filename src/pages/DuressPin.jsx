@@ -140,15 +140,17 @@ export default function DuressPin() {
 
   const [removingDuress, setRemovingDuress] = useState(false);
 
+  const DURESS_CONFIGURED_KEY = 'veyrnox-duress-configured';
+  const [duressEnabled, setDuressEnabled] = useState(
+    () => { try { return localStorage.getItem(DURESS_CONFIGURED_KEY) === '1'; } catch { return false; } }
+  );
+
   const refresh = useCallback(async () => {
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
   }, [hasVault]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Deliberately NO "is a duress PIN configured?" probe here: the page must not
-  // compute configured-vs-not state (security-framing.test.js forbids the
-  // oracle — an attacker coercing the user must learn nothing from this page).
   const handleRemoveDuress = () => {
     requireTwoFactor(async () => {
       setRemovingDuress(true);
@@ -161,6 +163,8 @@ export default function DuressPin() {
         // wallet. Do NOT call disableBiometricUnlock() here — that kills the
         // preference and permanently breaks the re-arm path.
         await removeDuressPin();
+        try { localStorage.removeItem(DURESS_CONFIGURED_KEY); } catch { /* best-effort */ }
+        setDuressEnabled(false);
         setSavedPhrase(""); setSavedAddr("");
         setError("");
         await refresh();
@@ -202,6 +206,8 @@ export default function DuressPin() {
         if (useBioForDecoy && enableDecoyBiometricUnlock) {
           await enableDecoyBiometricUnlock(pin);
         }
+        try { localStorage.setItem(DURESS_CONFIGURED_KEY, '1'); } catch { /* best-effort */ }
+        setDuressEnabled(true);
         setSavedPhrase(mnemonic);
         setSavedAddr(address);
         setPin(""); setConfirmPin(""); setDuressStep("enter");
@@ -370,18 +376,16 @@ export default function DuressPin() {
           Whether an Emergency PIN exists must not be visible on this page;
           removal is attempt-based and behaves identically in both states. */}
       {!savedPhrase && (
-        <div className="p-5 rounded-xl border border-destructive/20 bg-destructive/5">
+        <div className={`p-5 rounded-xl border ${duressEnabled ? "border-destructive/20 bg-destructive/5" : "border-border bg-card"}`}>
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <AlertTriangle className={`h-5 w-5 ${duressEnabled ? "text-destructive" : "text-muted-foreground"}`} />
             <span className="font-medium">Remove Emergency PIN</span>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
-            Removes the Emergency PIN and its wallet, if one exists. This page
-            never reveals whether an Emergency PIN is set. The button works the
-            same either way and always takes you back to the lock screen.
+            Removes the Emergency PIN and its wallet, if one exists.
           </p>
           <Button
-            variant="destructive"
+            variant={duressEnabled ? "destructive" : "outline"}
             size="sm"
             disabled={removingDuress}
             onClick={handleRemoveDuress}

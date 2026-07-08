@@ -136,6 +136,11 @@ export default function PanicWipe() {
   const [removeError, setRemoveError] = useState("");
   const [removed, setRemoved] = useState(false);
 
+  const PANIC_CONFIGURED_KEY = 'veyrnox-panic-configured';
+  const [panicEnabled, setPanicEnabled] = useState(
+    () => { try { return localStorage.getItem(PANIC_CONFIGURED_KEY) === '1'; } catch { return false; } }
+  );
+
   const refresh = useCallback(async () => {
     try { setVaultExists(await hasVault()); } catch { /* noop */ }
   }, [hasVault]);
@@ -150,6 +155,8 @@ export default function PanicWipe() {
     setSaving(true);
     try {
       await setPanicPin(pin);
+      try { localStorage.setItem(PANIC_CONFIGURED_KEY, '1'); } catch { /* best-effort */ }
+      setPanicEnabled(true);
       setSaved(true);
       setPin(""); setConfirmPin(""); setPanicPinStep("enter");
       await refresh();
@@ -185,6 +192,8 @@ export default function PanicWipe() {
     setRemoving(true);
     try {
       await removePanicPin();
+      try { localStorage.removeItem(PANIC_CONFIGURED_KEY); } catch { /* best-effort */ }
+      setPanicEnabled(false);
       setShowRemoveConfirm(false);
       setRemoved(true);
       await refresh();
@@ -357,7 +366,7 @@ export default function PanicWipe() {
 
           {!showRemoveConfirm ? (
             <Button
-              variant="outline"
+              variant={panicEnabled ? "destructive" : "outline"}
               className="w-full"
               onClick={() => setShowRemoveConfirm(true)}
               disabled={removed}
@@ -365,7 +374,7 @@ export default function PanicWipe() {
               <ShieldOff className="h-4 w-4 mr-2" /> Remove panic wipe
             </Button>
           ) : (
-            <div className="space-y-2 p-3 rounded-lg bg-caution/5 border border-caution/30">
+            <div className={`space-y-2 p-3 rounded-lg ${panicEnabled ? "bg-destructive/5 border border-destructive/30" : "bg-caution/5 border border-caution/30"}`}>
               <p className="text-xs font-semibold text-caution">
                 Remove panic wipe?
               </p>
