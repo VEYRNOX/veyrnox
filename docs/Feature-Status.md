@@ -947,6 +947,77 @@ resolved until the owner confirms a resolution and the gate condition
 (`M2C_HARDWARE_WRAP_ENABLED = true`) is satisfied. The independent third-party audit of
 the KEK stack remains outstanding and is not replaced by this pass.
 
+---
+
+### 2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757
+
+> ⚠️ INTERNAL pass — code-and-artifact only. Five parallel agents audited separate
+> domains simultaneously. NOT the outstanding independent third-party audit. NOT
+> device-verified. No on-chain txid. Status tags: BUILT / unit-tested, INTERNAL.
+> Pre-existing `WalletAccessReset.change-pin.test.jsx` failures (5 tests, getByTestId DOM
+> query) are a separate tracked bug on `main` unrelated to this audit.
+
+**Scope:** S1 (seed generation, HD derivation, signing — `mnemonic.js`, `derivation.js`,
+`multiVault.js`, EVM/BTC/SOL chain modules), S2 (send flow — `SendCrypto.jsx`,
+`sendGate.js`, `twoFactorGate.js`, per-chain send modules), S3 (deniability stack —
+`deniabilitySession.js`, `duress.js`, `stealth.js`, `panic.js`, `hiddenBalance.js`,
+`decoyBalance.js`), S4 (RASP + WalletConnect — `rasp/`, `WalletConnectProvider.jsx`,
+`presign.js`, `compose.js`), Crypto (vault cryptography — `vault.js`, `vaultStore.js`,
+`vaultBackup.js`, `argon2.worker.js`).
+
+**Result: 0 CRITICAL / 1 HIGH / 10 MEDIUM / 5 LOW**
+
+**Fixed in PR #757 (merged 2026-07-08):**
+
+| ID | Sev | Finding | Resolution |
+|---|---|---|---|
+| H-1 | HIGH | WC `personal_sign` null-`evmAddress` H8 bypass — when `evmAddress` was null/falsy the handler fell through the `else` branch and continued without rejecting, silently bypassing the address-binding check (I4 violation). | ✅ BUILT (PR #757): `_handlePersonalSign` now rejects with `PERSONAL_SIGN_ADDRESS_MISMATCH` when `evmAddress` is null/falsy; the insecure else-branch is removed. Unit-tested, INTERNAL. |
+| M-3 | MED | Scientific notation passes UI amount form boundary — `parseFloat("1e10")` accepts `1e10` as a valid amount string, allowing a dApp-supplied or pasted `1e10` to bypass the UI "looks wrong" guard and proceed to the send gate. | ✅ BUILT (PR #757): `isFormAmountWellFormed()` strict regex (`/^\d+(\.\d+)?$/`) added at the Continue gate, replacing `parseFloat`. Unit-tested, INTERNAL. |
+| M-6 | MED | `resolveHiddenBalance` missing I3 deniability guard — `hiddenBalance.js` resolved and returned real hidden-wallet balances even in a decoy/deniability session; no `isDeniabilitySessionActive()` call, unlike the mirrored `decoyBalance.js:75` guard. | ✅ BUILT (PR #757): `isDeniabilitySessionActive()` guard added to `resolveHiddenBalance`, mirroring `decoyBalance.js:75`. Unit-tested, INTERNAL. |
+| M-7 | MED | `veyrnox-live-prices` localStorage key survives a panic wipe — `panic.js` `DENIABILITY_RESIDUE_KEYS` did not include this key, so live-price opt-in preference persisted after an emergency wipe (a deniability tell). | ✅ BUILT (PR #757): `veyrnox-live-prices` added to `DENIABILITY_RESIDUE_KEYS` in `panic.js`. Unit-tested, INTERNAL. |
+| L-4 | LOW | Stale `argon2.worker.js` comment referenced the old 64 MiB figure and did not reflect that `opts.memorySize` is dynamically respected. | ✅ BUILT (PR #757): comment updated to reflect 192 MiB default and dynamic `opts.memorySize`. INTERNAL. |
+
+**Key PASS properties confirmed by this audit:**
+
+| Domain | Pass |
+|---|---|
+| Entropy | `crypto.getRandomValues` only; `Math.random` absent from wallet-core |
+| Derivation | EVM m/44'/60', BTC m/84'/0', SOL/Cosmos SLIP-0010 — all spec vectors passing; SLIP-0010 hardened-only enforced for ed25519 |
+| I1 signing isolation | No network call inside any signing function across EVM/BTC/SOL/Cosmos paths |
+| I3 deniability stack | All egress points gated (prices, news, RPC, SDK); M-6 fix closes the last gap in `hiddenBalance.js` |
+| Deniability data separation | Decoy/real seed separation confirmed; wallet-count tells removed (D1/D2/D3) |
+| Panic wipe completeness | All sensitive keys wiped; `veyrnox-live-prices` now included (M-7 fixed) |
+| Stealth pool | 256-slot chaff, all users, FIXED_LEN uniform blob length |
+| WalletConnect controls | C3 RASP pre-sign gate, H7 EIP-712 chain binding, M9 gas cap, M11 session expiry, H-NEW-B step-up re-auth — all confirmed PASS |
+| RASP BLOCK tier | Unconditional; browser probe re-sampled fresh each call; I3/I4 structurally enforced |
+| Vault cipher | AES-256-GCM IV fresh per encryption, no nonce reuse, auth-tag failure returns generic error |
+| Argon2id params | Consistent; blob-stored for migration; backward compat tested |
+
+**Still open (owner decision or architectural gate required):**
+
+| ID | Sev | Finding | Gate | Issue |
+|---|---|---|---|---|
+| M-1 | MED | EVM private key held as a JS `string` — `ethers.v6` signing APIs accept and return strings; strings are immutable and unzeroable in the V8/JSC heap. No available fix — architectural ethers v6 limitation. | Accept / independent audit scope | #746 |
+| M-2 | MED | `hw-send.js` (hardware wallet send module) has zero test coverage — all three chain implementations (EVM/BTC/SOL) are untested; a physical Ledger/Trezor device is required to exercise them. | Physical device required | #747 |
+| M-4 | MED | 2FA retry reaches a dead end after a network failure — the error state has no retry affordance; user must navigate away and re-enter the send flow. UX issue, not a security bypass. | UX fix | #749 |
+| M-5 | MED | `planSolTransfer` accepts non-bigint `amountLamports` without a type guard — a string or float passed directly could produce a silently wrong transaction amount. | Type guard + test | #750 |
+| M-8 | MED | No AAD on base vault blob — GCM auth tag does not cover `kdf`/`salt`/`iterations` metadata in the blob header. `assertSaneKdfParams` partially mitigates the OOM vector (rejects implausible params before the KDF runs), but a malicious-metadata preimage attack is not fully closed. Full AAD binding is in the independent audit scope. | Independent audit | #752 |
+| M-9 | MED | Short-PIN exhaustion time not disclosed to users — an 8-digit numeric PIN has ~100M combinations; offline exhaustion time at real Argon2id cost is not surfaced in UI. Safari users additionally have no hardware factor (PRF not available). Owner decision on disclosure wording required. | Owner decision | #754 |
+| M-10 | MED | Cosmos derivation uses a non-hardened index level — correct per BIP-44 but the xpub at the account level is exposed if the account key is compromised. Documentation gap; code is spec-correct. | Documentation | — |
+| L-1 | LOW | EVM has no address-only derivation variant — full key derivation runs even for receive-address display. | Low priority | — |
+| L-2 | LOW | `setActionPassword` reads the container without requiring re-authentication in a decoy/hidden session. | Low priority | — |
+| L-3 | LOW | `send2faMethod` stale across mid-session credential changes — the cached method is not invalidated if the user changes their 2FA setting during a session. | Low priority | #749 |
+| L-5 | LOW | No `ThisDeviceOnly` / iCloud sync exclusion on IndexedDB (web surface only) — vault ciphertext in IndexedDB may be synced to iCloud by Safari on iOS. Disclosure gap on the web surface only. | Disclosure | — |
+
+**Honest framing:** fixed items (H-1, M-3, M-6, M-7, L-4) are BUILT / unit-tested only —
+INTERNAL, NOT device-verified, NOT independently audited, no on-chain txid. Open items
+(M-1 through M-10, L-1, L-2, L-3, L-5) remain open and must not be marked resolved
+until the owner confirms a resolution. M-1 is an architectural ethers v6 limitation with no
+available fix; M-8's `assertSaneKdfParams` partial mitigation does not close the AAD gap
+and full binding remains in the independent audit scope. The independent third-party audit
+(S1–S4 + crypto, including the vault cipher path) remains outstanding and is not replaced
+by this pass.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split

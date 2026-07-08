@@ -413,6 +413,60 @@ INTERNAL pass — not independent, not a substitute for the outstanding independ
 third-party audit (still required). See `docs/Feature-Status.md` §"2026-07-07/08 INTERNAL
 KEK stack audit" for full per-finding detail.
 
+## 2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757
+
+Code-and-artifact audit across five domains: S1 (seed generation, HD derivation, signing —
+`mnemonic.js`, `derivation.js`, `multiVault.js`, EVM/BTC/SOL chain code), S2 (send flow —
+`SendCrypto.jsx`, `sendGate.js`, `twoFactorGate.js`, per-chain send modules), S3
+(deniability — `deniabilitySession.js`, `duress.js`, `stealth.js`, `panic.js`,
+`hiddenBalance.js`, `decoyBalance.js`), S4 (RASP + WalletConnect — `rasp/`,
+`WalletConnectProvider.jsx`, `presign.js`, `compose.js`), Crypto (vault cryptography —
+`vault.js`, `vaultStore.js`, `vaultBackup.js`, `argon2.worker.js`). Findings:
+0 CRITICAL / 1 HIGH / 10 MEDIUM / 5 LOW. INTERNAL code-and-artifact only — not
+device-verified, not independently audited. No on-chain txid.
+
+**Fixed in PR #757 (merged 2026-07-08) — BUILT / unit-tested, INTERNAL:**
+- H-1: WC `personal_sign` null-`evmAddress` H8 bypass — `_handlePersonalSign` now rejects
+  with `PERSONAL_SIGN_ADDRESS_MISMATCH` when `evmAddress` is null/falsy; insecure else-branch
+  removed (fail-closed, I4).
+- M-3: Scientific notation passes UI amount form boundary — `isFormAmountWellFormed()` strict
+  regex check added; replaces `parseFloat` at the Continue gate.
+- M-6: `resolveHiddenBalance` missing I3 deniability guard — `isDeniabilitySessionActive()`
+  guard added, mirroring `decoyBalance.js:75`.
+- M-7: `veyrnox-live-prices` survives panic wipe — key added to `DENIABILITY_RESIDUE_KEYS`
+  in `panic.js`.
+- L-4: Stale `argon2.worker.js` comment — updated to reflect 192 MiB and dynamic
+  `opts.memorySize`.
+
+**Key PASS properties confirmed:** `crypto.getRandomValues` only (no `Math.random` in
+wallet-core); EVM/BTC/SOL/Cosmos derivation paths correct, all spec vectors passing;
+SLIP-0010 hardened-only enforced for ed25519; I1 signing isolation (no network call inside
+any signing function); I3 deniability stack (all egress points gated — prices, news, RPC,
+SDK; M-6 closed the last gap); decoy/real seed separation; wallet-count tells removed
+(D1/D2/D3); panic wipe completeness (with M-7 fixed); stealth pool chaff (256-slot,
+all users, FIXED_LEN uniform); WalletConnect controls (C3 RASP gate, H7 EIP-712 chain
+binding, M9 gas cap, M11 session expiry, H-NEW-B step-up re-auth) all PASS; RASP BLOCK
+tier unconditional (browser probe); AES-256-GCM IV fresh per encryption, no nonce reuse,
+auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
+
+**Still open (owner-decision or architectural gate required):**
+- M-1 (EVM private key as JS string — architecturally unzeroable; ethers v6 limitation,
+  no available fix; tracked issue #746)
+- M-2 (`hw-send.js` zero test coverage — physical Ledger/Trezor required; issue #747)
+- M-4 (2FA retry dead end after network failure — UX, not a security bypass; issue #749)
+- M-5 (`planSolTransfer` accepts non-bigint `amountLamports` without type guard; issue #750)
+- M-8 (no AAD on base vault blob — `assertSaneKdfParams` partially mitigates the OOM
+  vector; full AAD binding is in the independent audit scope; issue #752)
+- M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
+  owner decision on disclosure wording; issue #754)
+- M-10 (Cosmos non-hardened index level — correct BIP-44 but xpub-risk; documentation gap)
+- L-1, L-2, L-3, L-5 (low-priority; see `docs/Feature-Status.md` §"2026-07-08 INTERNAL
+  S1–S4 + crypto audit")
+
+INTERNAL pass — not independent. The independent third-party audit (S1–S4 + crypto,
+including the vault cipher path) remains outstanding. See `docs/Feature-Status.md`
+§"2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757" for the full per-finding table.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
