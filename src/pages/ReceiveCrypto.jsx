@@ -22,8 +22,7 @@ import { toast } from "sonner";
 // (EVM secp256k1, BTC bech32, SOL base58). We never re-derive or touch wallet-core
 // crypto here — resolveReceive() just maps the asset to the right derived address.
 // While the wallet is locked (or a chain account isn't derived yet) there is no
-// address to show, and we render the locked state. Testnet only; mainnet is gated
-// upstream (assets point at testnet chains, networks.js blocks mainnet).
+// address to show, and we render the locked state.
 export default function ReceiveCrypto() {
   const { isUnlocked, accounts, btcAccount, solAccount } = useWallet();
   const [symbol, setSymbol] = useState("ETH");

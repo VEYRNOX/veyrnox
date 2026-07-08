@@ -17,12 +17,12 @@ const wallet = {
 };
 
 describe('resolveReceive — per-chain address correctness', () => {
-  it('ETH (native EVM) → shared EVM address on Sepolia Testnet', () => {
+  it('ETH (native EVM) → shared EVM address on Ethereum Mainnet', () => {
     const r = resolveReceive('ETH', wallet);
     expect(r.address).toBe(EVM);
     expect(r.family).toBe('evm');
     expect(r.isErc20).toBe(false);
-    expect(r.network.name).toMatch(/Sepolia/i);
+    expect(r.network.name).toMatch(/Ethereum Mainnet/i);
   });
 
   it('every EVM chain shares the SAME EVM address (label differs, address does not)', () => {
@@ -49,7 +49,7 @@ describe('resolveReceive — per-chain address correctness', () => {
     expect(r.address).toBe(BTC);
     expect(r.address).not.toBe(EVM);
     expect(r.family).toBe('btc');
-    expect(r.network.name).toMatch(/Bitcoin Testnet/i);
+    expect(r.network.name).toMatch(/Bitcoin Mainnet/i);
   });
 
   it('SOL → base58 address, NOT the EVM/BTC address', () => {
@@ -58,7 +58,7 @@ describe('resolveReceive — per-chain address correctness', () => {
     expect(r.address).not.toBe(EVM);
     expect(r.address).not.toBe(BTC);
     expect(r.family).toBe('solana');
-    expect(r.network.name).toMatch(/Solana Devnet/i);
+    expect(r.network.name).toMatch(/Solana Mainnet/i);
   });
 
   it('USDT (ERC-20) → SAME EVM address as USDC, flagged as a token, receivable', () => {

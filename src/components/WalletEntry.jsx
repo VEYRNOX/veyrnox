@@ -250,7 +250,7 @@ function WelcomeHero({ onGetStarted }) {
         </motion.div>
 
         <motion.p variants={item} className="mt-6 text-[11px] text-muted-foreground">
-          v1.0 · Testnet beta · keys stay on-device
+          v1.0 · keys stay on-device
         </motion.p>
       </motion.div>
     </div>
