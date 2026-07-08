@@ -117,11 +117,11 @@ export default function BiometricUnlockSettings() {
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-caution">Security trade-off.</span>{' '}
-            One-tap unlock stores your <strong>vault password</strong> in your device&apos;s secure
-            storage, protected by your device passcode and biometrics. If someone extracts your
-            device backup without the physical device, they may be able to decrypt your wallet.
-            Disable this for maximum offline protection.
+            <span className="font-semibold text-caution">Worth knowing.</span>{' '}
+            One-tap unlock saves your <strong>wallet password</strong> on this device,
+            protected by your screen lock and biometrics. If someone gets a copy of your
+            device backup without the physical device, they could access your wallet.
+            Turn this off for the strongest protection.
           </p>
         </div>
       </div>
@@ -134,12 +134,12 @@ export default function BiometricUnlockSettings() {
           data-testid="biometric-app-layer-disclosure"
           className="text-xs text-muted-foreground leading-relaxed"
         >
-          Biometric unlock stores your password in device secure storage using your
-          biometric to protect access. This protection runs at the app level — it does
-          not use the OS hardware-bound keychain ACL.{' '}
-          Hardware-bound biometric security requires{' '}
-          <span className="font-mono">Hardware KEK</span>{' '}
-          (coming in a future update).
+          Biometric unlock saves your password on this device, protected by your
+          fingerprint or face. This runs inside the app, not at the operating system
+          level.{' '}
+          For stronger device-level protection, enable{' '}
+          <span className="font-medium text-foreground">Hardware Protection</span>{' '}
+          (available below).
         </p>
       )}
 
@@ -176,9 +176,9 @@ export default function BiometricUnlockSettings() {
           <div className="flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-caution">Confirm trade-off.</span>{' '}
-              If someone extracts your device backup without the physical device, they may be able
-              to decrypt your wallet. Only enable this if you accept that risk.
+              <span className="font-semibold text-caution">Before you enable this.</span>{' '}
+              If someone gets a copy of your device backup without the physical device, they
+              could access your wallet. Only turn this on if you're OK with that.
             </p>
           </div>
           <div className="flex gap-2">

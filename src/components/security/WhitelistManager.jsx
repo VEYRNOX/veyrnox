@@ -86,14 +86,14 @@ export default function WhitelistManager() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        When you have whitelisted addresses for a currency, the send flow will warn you if the recipient is not on the list.
+        Save addresses you trust. When you send, you'll get a warning if the recipient isn't on this list.
       </p>
 
       {whitelist.length === 0 ? (
         <div className="text-center py-10 space-y-2 border border-dashed border-border rounded-xl">
           <ShieldCheck className="h-8 w-8 text-muted-foreground mx-auto" />
           <p className="text-sm text-muted-foreground">No whitelisted addresses yet</p>
-          <p className="text-xs text-muted-foreground">Add trusted addresses to enhance withdrawal security.</p>
+          <p className="text-xs text-muted-foreground">Add addresses you send to regularly.</p>
         </div>
       ) : (
         <div className="space-y-3">

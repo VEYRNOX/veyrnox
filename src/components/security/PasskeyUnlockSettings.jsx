@@ -132,20 +132,17 @@ export default function PasskeyUnlockSettings() {
         <p className="text-xs text-muted-foreground">
           {nativeBio ? (
             <>
-              Your device biometric (fingerprint or face) runs before unlocking —
-              an <span className="font-medium text-foreground">additional factor</span>,
-              not a replacement for your password. This is the phone&apos;s own
-              biometric check, not a passkey. Your password and recovery phrase
-              still unlock on their own, so losing biometrics never costs funds.
-              No keys are stored in it.
+              Your fingerprint or face is checked before unlocking —
+              an <span className="font-medium text-foreground">extra step</span>,
+              not a replacement for your password. Your password and recovery phrase
+              still work on their own, so losing biometrics never locks you out.
             </>
           ) : (
             <>
-              A passkey (FIDO2 / WebAuthn) adds a quick biometric or security-key tap
-              before unlocking — an <span className="font-medium text-foreground">additional factor</span>,
+              A passkey adds a quick biometric or security-key tap
+              before unlocking — an <span className="font-medium text-foreground">extra step</span>,
               not a replacement for your password. Your password and recovery phrase
-              still unlock on their own, so losing the passkey never costs funds. No
-              keys are stored in it.
+              still work on their own, so losing the passkey never locks you out.
             </>
           )}
         </p>
@@ -165,8 +162,8 @@ export default function PasskeyUnlockSettings() {
           {!simulated && !supported && (
             <p className="text-[11px] text-muted-foreground">
               {nativeBio
-                ? 'Device biometrics are not set up. Add a fingerprint or face unlock in your device settings first — your password still unlocks.'
-                : 'WebAuthn isn\'t available in this browser. Passkey unlock works in the mobile app and modern browsers; use your password here.'}
+                ? 'Device biometrics are not set up. Add a fingerprint or face in your device settings first — your password still works.'
+                : 'Passkey unlock isn\'t available in this browser. It works in the mobile app and modern browsers. Use your password here.'}
             </p>
           )}
         </div>
@@ -202,7 +199,7 @@ export default function PasskeyUnlockSettings() {
                   : 'Ask for your passkey before unlocking (your password still works).'}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Note: this passkey is registered device-wide and applies to all wallet sessions.
+                This applies to all wallet sessions on this device.
               </p>
             </div>
             <Switch

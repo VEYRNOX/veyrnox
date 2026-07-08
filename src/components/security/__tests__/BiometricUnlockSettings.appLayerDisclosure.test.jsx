@@ -104,8 +104,8 @@ describe('BiometricUnlockSettings — BIO-03 app-layer gate disclosure (visible,
     fireEvent.click(getToggle());
 
     const text = screen.getByTestId('biometric-app-layer-disclosure').textContent.toLowerCase();
-    expect(text).toMatch(/app level|app-level/);
-    expect(text).toMatch(/not.*os.*hardware|hardware.*acl/);
+    expect(text).toMatch(/inside the app|app level|app-level/);
+    expect(text).toMatch(/not.*operating system|not.*os.*hardware|hardware.*acl/);
   });
 
   it('points the user at Hardware KEK as the hardware-bound alternative', async () => {
@@ -123,7 +123,7 @@ describe('BiometricUnlockSettings — BIO-03 app-layer gate disclosure (visible,
     fireEvent.click(getToggle());
 
     const text = screen.getByTestId('biometric-app-layer-disclosure').textContent;
-    expect(text).toMatch(/Hardware KEK/);
+    expect(text).toMatch(/Hardware Protection/);
   });
 
   it('uses muted-foreground text (calm disclosure), not the caution/alert palette', async () => {

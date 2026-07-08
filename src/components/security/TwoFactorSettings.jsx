@@ -38,10 +38,10 @@ import { getAuthModel } from '@/lib/authModel';
 // The critical actions the guard gates — shown explicitly so the user knows what the
 // second factor actually protects (matches the useActionGuard call sites).
 const GATED_ACTIONS = [
-  { icon: Send, label: 'Sending funds', desc: 'every send, after the spending checks' },
-  { icon: Eye, label: 'Revealing your recovery phrase', desc: 'the seed backup / QR' },
-  { icon: UserX, label: 'Setting a duress PIN', desc: 'creating the decoy wallet' },
-  { icon: EyeOff, label: 'Creating or hiding a hidden wallet', desc: 'stealth-pool changes' },
+  { icon: Send, label: 'Sending funds', desc: 'every send, after safety checks' },
+  { icon: Eye, label: 'Revealing your recovery phrase', desc: 'viewing or exporting your backup' },
+  { icon: UserX, label: 'Setting an Emergency PIN', desc: 'creating the Emergency wallet' },
+  { icon: EyeOff, label: 'Creating or hiding a wallet', desc: 'hidden wallet changes' },
 ];
 
 export default function TwoFactorSettings() {
@@ -160,7 +160,7 @@ export default function TwoFactorSettings() {
       {/* What it is + WHICH actions it gates (explicit) */}
       <div className="p-4 rounded-xl border border-border bg-card space-y-3">
         <p className="text-sm text-muted-foreground">
-          A second factor required alongside your PIN for sensitive actions — a shoulder-surfed PIN alone no longer authorises them.
+          An extra check on top of your PIN for sensitive actions. Even if someone sees you type your PIN, they still can't do these things without the second step.
         </p>
         <div className="space-y-2">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Actions it protects</p>
@@ -194,7 +194,7 @@ export default function TwoFactorSettings() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">PIN + Action Password {actionPasswordConfigured && <span className="text-primary">· ON</span>}</p>
-            <p className="text-[11px] text-muted-foreground">A second password stored in your encrypted vault, verified at full strength. Two knowledge factors on one device — strong but not hardware 2FA.</p>
+            <p className="text-[11px] text-muted-foreground">A second password saved inside your wallet. Strong, but both passwords live on the same device.</p>
           </div>
         </div>
 
@@ -256,8 +256,8 @@ export default function TwoFactorSettings() {
             </p>
             <p className="text-[11px] text-muted-foreground">
               {isNative
-                ? `Your PIN plus ${biometricLabel} — a genuine OS possession check (not a FIDO2 passkey). Fails closed: action refused if biometrics are unavailable. Losing the device never costs funds.`
-                : 'Your PIN plus a passkey tap — a genuine possession factor. Fails closed: action refused if passkey unavailable. Device-global; losing it never costs funds.'}
+                ? `Your PIN plus ${biometricLabel}. If biometrics aren't available, the action is blocked. Losing your device never loses your funds.`
+                : 'Your PIN plus a passkey tap. If the passkey isn\'t available, the action is blocked. Losing it never loses your funds.'}
             </p>
           </div>
           <Switch

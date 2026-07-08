@@ -85,7 +85,7 @@ export default function Settings() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Security Settings</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Manage passkeys and wallet security
+          Lock, unlock, and protect your wallet
         </p>
       </div>
 
@@ -118,7 +118,7 @@ export default function Settings() {
             </div>
             <div>
               <p className="text-sm font-semibold">Activity log</p>
-              <p className="text-xs text-muted-foreground">Off by default · encrypted on-device only</p>
+              <p className="text-xs text-muted-foreground">Off by default · stored on this device only</p>
             </div>
           </div>
           <Switch
@@ -131,7 +131,7 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Encrypted on-device log of settings changes, sends, and revocations — no amounts or addresses. Wiped by Panic Wipe; cleared when you turn this off.
+          A private log of what you changed, sent, or revoked. No amounts or addresses are recorded. Panic Wipe erases it. Turning this off clears it too.
         </p>
         {auditLog && auditEntries !== null && (
           <div className="mt-3 border-t border-border pt-3">
@@ -285,7 +285,7 @@ export default function Settings() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium">Delete Account</p>
-              <p className="text-xs text-muted-foreground">Permanently remove your account and all data</p>
+              <p className="text-xs text-muted-foreground">Wipes your account and all saved data for good</p>
             </div>
             <button
               onClick={() => setShowDelete(true)}

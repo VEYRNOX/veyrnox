@@ -48,7 +48,7 @@ export default function SessionSettings() {
         <div className="flex-1">
           <p className="text-sm font-semibold">Session &amp; Auto-lock</p>
           <p className="text-xs text-muted-foreground">
-            Clears the in-memory key on idle or when the app is backgrounded
+            Locks your wallet after a period of inactivity or when you leave the app
           </p>
         </div>
         <span
