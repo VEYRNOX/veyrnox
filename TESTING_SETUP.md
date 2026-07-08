@@ -47,7 +47,6 @@ assert"). See the per-suite notes below for exactly which assertions are hard
 ```
 tests/android/
 ├── wdio.conf.js              # Appium + WebdriverIO config (real device, glob-picks up all specs)
-├── wdio.browserstack.conf.js # BrowserStack App Automate config (same glob, excludes attended-only legacy spec)
 ├── helpers/
 │   ├── appHelper.js          # Low-level UI (find, tap, type, wait)
 │   └── walletHelper.js       # Wallet flows (create, send, unlock, etc.)
@@ -111,8 +110,7 @@ npm run android:test:fee-analytics      # 6 tests — fee analytics + net worth 
 npm run android:test:log1               # 4 tests — app-wide LOG-1 redaction sweep 🕵️
 npm run android:test:new-suites         # all 6 new suites above, one wdio run
 
-# BrowserStack (real cloud devices, needs BROWSERSTACK_* env vars)
-npm run android:test:browserstack
+# BrowserStack removed (2026-07-08) — LOG-1 H exposure risk; use local Appium only
 ```
 
 ---

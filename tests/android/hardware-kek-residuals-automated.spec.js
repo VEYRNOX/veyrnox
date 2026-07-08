@@ -8,7 +8,7 @@
 //   T2: Salt-tamper negative test (requires manual ADB — separate)
 //
 // Setup:
-//   - BrowserStack OR local Appium server
+//   - Local Appium server (BrowserStack removed — LOG-1 H exposure risk)
 //   - Real Pixel device (StrongBox support required)
 //   - APK built with VITE_DEV_UNGATE_SEND=1 (testnet asset send enabled)
 //   - Pre-v3 APK binary available for migration test
@@ -24,8 +24,6 @@ const assert = require('assert');
 const crypto = require('crypto');
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const BROWSERSTACK_USER = process.env.BROWSERSTACK_USERNAME;
-const BROWSERSTACK_KEY = process.env.BROWSERSTACK_ACCESS_KEY;
 const BASE_URL = 'http://localhost:5173'; // or https://staging.veyrnox.com
 
 // Test credentials (matching testnet vault)
@@ -65,35 +63,26 @@ describe('Android Hardware KEK — Residual Tests', () => {
   let logcatBuffer = [];
 
   before(async () => {
-    // ── Connect to Appium/BrowserStack ──────────────────────────────────────
-    const browserStackCapabilities = {
-      'bstack:options': {
-        deviceName: 'Google Pixel 10 Pro XL',
-        osVersion: '16.0',
-        appiumVersion: '2.0.0',
-        userName: BROWSERSTACK_USER,
-        accessKey: BROWSERSTACK_KEY,
-      },
+    // ── Connect to local Appium ──────────────────────────────────────────────
+    const capabilities = {
       platformName: 'Android',
-      automationName: 'UiAutomator2',
-      app: process.env.APK_PATH || './android/app/build/outputs/apk/debug/app-debug.apk',
-      appPackage: 'com.veyrnox.app.debug',
-      appActivity: '.MainActivity',
-      noReset: false, // Fresh install for clean state
+      'appium:automationName': 'UiAutomator2',
+      'appium:app': process.env.APK_PATH || './android/app/build/outputs/apk/debug/app-debug.apk',
+      'appium:appPackage': 'com.veyrnox.app.debug',
+      'appium:appActivity': '.MainActivity',
+      'appium:noReset': false,
     };
 
     driver = await remote({
-      hostname: process.env.APPIUM_HOST || 'hub-cloud.browserstack.com',
-      port: process.env.APPIUM_PORT || 443,
-      protocol: 'https',
-      path: '/wd/hub',
-      capabilities: browserStackCapabilities,
+      hostname: process.env.APPIUM_HOST || '127.0.0.1',
+      port: parseInt(process.env.APPIUM_PORT, 10) || 4723,
+      path: '/',
+      capabilities,
     });
 
-    console.log('✓ Connected to Appium / BrowserStack Pixel device');
+    console.log('✓ Connected to local Appium');
 
     // ── Start logcat capture ───────────────────────────────────────────────
-    // Note: In BrowserStack, use Appium's log types; on local Appium, use adb logcat
     try {
       const logTypes = await driver.getLogTypes();
       if (logTypes.includes('logcat')) {
