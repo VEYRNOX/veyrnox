@@ -18,6 +18,7 @@ import { useActionGuard } from "@/components/security/useActionGuard";
 import {
   CloudUpload, Download, Upload, Lock, KeyRound,
   AlertTriangle, Shield, CheckCircle2, Loader2,
+  FileText, RefreshCw, ChevronLeft, FolderOpen,
 } from "lucide-react";
 
 // ── Local helpers ────────────────────────────────────────────────────────────
@@ -57,6 +58,24 @@ function PinField({ label, value, onChange }) {
       />
     </div>
   );
+}
+
+function formatBytes(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatModified(epochSeconds) {
+  const s = Number(epochSeconds);
+  if (!Number.isFinite(s) || s <= 0) return "";
+  try {
+    return new Date(s * 1000).toLocaleString();
+  } catch {
+    return "";
+  }
 }
 
 // ── Export tab ───────────────────────────────────────────────────────────────
@@ -235,9 +254,13 @@ function RestoreTab({ lock, onBack }) {
   const [credential, setCredential] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
-  const [phase, setPhase] = useState("pick"); // pick | unlock | setpw | done
+  const [phase, setPhase] = useState("pick"); // pick | browse | unlock | setpw | done
   const [busy, setBusy] = useState(false);
   const [pinDecryptedJson, setPinDecryptedJson] = useState(null);
+  const [backups, setBackups] = useState([]);   // in-app Downloads list (Android)
+  const [listBusy, setListBusy] = useState(false);
+
+  const isAndroid = Capacitor.getPlatform() === "android";
 
   // Shared: parse already-read bytes into an envelope and advance to unlock.
   const ingestBytes = (bytes, name) => {
@@ -292,6 +315,49 @@ function RestoreTab({ lock, onBack }) {
     }
     // Web / desktop
     fileRef.current?.click();
+  };
+
+  // Load the in-app list of .enc backups from Downloads (Android only) and
+  // move to the 'browse' screen, which renders our own file list with a back
+  // button — instead of dropping the user into the un-exitable system picker.
+  const loadBackupList = async () => {
+    setListBusy(true);
+    try {
+      const FileSaver = registerPlugin("FileSaver");
+      const { files } = await FileSaver.listBackups();
+      setBackups(Array.isArray(files) ? files : []);
+    } catch (err) {
+      toast.error(err?.message || "Could not read your Downloads folder.");
+      setBackups([]);
+    } finally {
+      setListBusy(false);
+    }
+  };
+
+  // Entry point for the "Select backup file" button.
+  const startSelect = () => {
+    if (isAndroid) {
+      setPhase("browse");
+      loadBackupList();
+      return;
+    }
+    // iOS / web use the native <input type="file"> path.
+    pickFile();
+  };
+
+  // Open a file chosen from the in-app Downloads list (by content:// URI).
+  const openListedFile = async (file) => {
+    setBusy(true);
+    try {
+      const FileSaver = registerPlugin("FileSaver");
+      const result = await FileSaver.readFile({ uri: file.uri });
+      const bytes = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
+      ingestBytes(bytes.buffer, result.filename || file.name || "veyrnox.enc");
+    } catch (err) {
+      toast.error(err?.message || "Could not open that file.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleUnlock = async () => {
@@ -384,6 +450,24 @@ function RestoreTab({ lock, onBack }) {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {busy ? "Saving…" : "Save & restore"}
         </button>
+
+        <button
+          onClick={() => {
+            // Return to the file picker; drop the decrypted secret and all
+            // credentials from state so nothing sensitive lingers (I4).
+            setPinDecryptedJson(null);
+            setNewPassword("");
+            setNewPasswordConfirm("");
+            setCredential("");
+            setEnvelope(null);
+            setFileName("");
+            setPhase("pick");
+          }}
+          disabled={busy}
+          className="w-full py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary/40 transition-colors disabled:opacity-50"
+        >
+          ← Back to Select backup file
+        </button>
       </div>
     );
   }
@@ -451,6 +535,75 @@ function RestoreTab({ lock, onBack }) {
     );
   }
 
+  // In-app Downloads file list (Android) — our own screen, with a back button,
+  // in place of the un-exitable system document picker.
+  if (phase === "browse") {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => setPhase("pick")}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back
+        </button>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">Backups in Downloads</span>
+          </div>
+          <button
+            onClick={loadBackupList}
+            disabled={listBusy}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            aria-label="Refresh list"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${listBusy ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+
+        {listBusy ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Reading Downloads…
+          </div>
+        ) : backups.length === 0 ? (
+          <div className="p-4 rounded-xl border border-border bg-card/50 text-xs text-muted-foreground space-y-1">
+            <p className="text-foreground text-sm font-medium">No backup files found</p>
+            <p>No <span className="font-mono">.enc</span> files were found in your Downloads folder. If your backup is somewhere else, use “Browse other location”.</p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {backups.map((f) => (
+              <li key={f.uri}>
+                <button
+                  onClick={() => openListedFile(f)}
+                  disabled={busy}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card/50 hover:bg-secondary/40 text-left transition-colors disabled:opacity-50"
+                >
+                  <FileText className="h-5 w-5 text-primary shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-mono truncate">{f.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatBytes(f.size)} · {formatModified(f.modified)}</p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <button
+          onClick={pickFile}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary/40 transition-colors"
+        >
+          <FolderOpen className="h-4 w-4" />
+          Browse other location…
+        </button>
+      </div>
+    );
+  }
+
   // phase === 'pick'
   return (
     <div className="space-y-4">
@@ -472,7 +625,7 @@ function RestoreTab({ lock, onBack }) {
       </div>
 
       <button
-        onClick={pickFile}
+        onClick={startSelect}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border hover:border-primary/40 bg-card/50 hover:bg-secondary/40 text-sm text-muted-foreground transition-colors"
       >
         <Upload className="h-4 w-4" />
