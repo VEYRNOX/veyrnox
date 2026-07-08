@@ -134,7 +134,7 @@ export default function SecurityCenter() {
     <div className="max-w-lg mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Security Center</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Manage sessions and transaction limits</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Sessions and spend limits</p>
       </div>
 
       <Tabs defaultValue="sessions">
@@ -145,12 +145,12 @@ export default function SecurityCenter() {
 
         {/* ── Sessions Tab ── */}
         <TabsContent value="sessions" className="mt-4 space-y-3">
-          <p className="text-xs text-muted-foreground">Devices currently signed in to your wallet.</p>
+          <p className="text-xs text-muted-foreground">Devices with an active session.</p>
           {errorSessions && (
             <p className="text-xs text-caution">Couldn't load sessions.</p>
           )}
           {sessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No active sessions found</p>
+            <p className="text-sm text-muted-foreground text-center py-8">No active sessions</p>
           ) : (
             sessions.map(s => {
               const isCurrent = s.session_token === currentToken;
@@ -175,9 +175,9 @@ export default function SecurityCenter() {
                       variant="ghost"
                       size="sm"
                       className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
-                      title="Lock this device and require the password again"
+                      title="Lock this device and require your PIN again"
                       onClick={() => {
-                        if (window.confirm("Sign out this device? The wallet will lock and you'll need your password to continue.")) {
+                        if (window.confirm("Sign out this device? The wallet will lock and you'll need your PIN to continue.")) {
                           revokeSession.mutate(s.id);
                         }
                       }}
@@ -205,7 +205,7 @@ export default function SecurityCenter() {
         {/* ── Limits Tab ── */}
         <TabsContent value="limits" className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Cap how much you can send per day or per transaction.</p>
+            <p className="text-xs text-muted-foreground">Cap what you can send per day or per transaction.</p>
             <Button size="sm" onClick={() => setShowAddLimit(true)}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Add Limit
             </Button>
