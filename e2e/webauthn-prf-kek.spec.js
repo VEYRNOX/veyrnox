@@ -473,7 +473,7 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     // interactions to the enrollment section div to avoid colliding with other
     // PinPads on the settings page.
     const enrollSection = page.locator('div').filter({
-      has: page.getByText('Enter your 8-digit vault PIN to enable hardware protection'),
+      has: page.getByText('Enter your 8-digit PIN to enable hardware protection'),
     }).last();
     await expect(enrollSection).toBeVisible({ timeout: 30000 });
 
