@@ -265,7 +265,7 @@ export const CLASSIFICATION = {
   },
   '/spam-filter': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Imports annotateTokens from @/wallet-core/evm/spam and getNetworkInfo from @/wallet-core/evm/networks. Runs the real wallet-core classifier over base44.entities.WalletToken records. User overrides persisted in localStorage. Explicitly discloses filtering is display-only and heuristic-based. Clearly badged "Demo · seeded" vs "Testnet".',
+    note: 'Imports annotateTokens from @/wallet-core/evm/spam and getNetworkInfo from @/wallet-core/evm/networks. Runs the real wallet-core classifier over base44.entities.WalletToken records. User overrides persisted in localStorage. Explicitly discloses filtering is display-only and heuristic-based. Clearly badged "Demo · seeded" vs "Mainnet"/"Testnet" based on ALLOW_MAINNET.',
   },
   '/trust-score': {
     verdict: 'live', dataSource: 'wallet-core',
