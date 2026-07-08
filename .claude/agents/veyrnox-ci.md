@@ -16,7 +16,6 @@ and deployment — never wallet-core, seed, keys, or signing.
 - Handle `package-lock.json` sync, dependency upgrades, and lockfile drift.
 - Manage release flags (`VITE_RELEASE=1`, `mobile:build:release`), version bumps,
   and environment variable wiring in CI.
-- Debug Vercel deployment issues (headers, rewrites, CSP config in `vercel.json`).
 
 ## Hard limits
 - **Never touch** `src/wallet-core/**`, `src/lib/vault*`, `src/lib/keyStore*`,
