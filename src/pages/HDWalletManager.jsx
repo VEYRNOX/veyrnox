@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
+import PinPad from "@/components/security/PinPad";
+import { getAuthModel } from "@/lib/authModel";
 import { isPasskeyGateError } from "@/lib/passkey";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import { isBiometricGateError } from "@/lib/biometric";
@@ -83,6 +85,7 @@ function shortPath(index) {
 
 export default function HDWalletManager() {
   const qc = useQueryClient();
+  const isPin = getAuthModel() === "pin";
   const { isUnlocked, accounts, createWallet, importWallet, unlock, lock, hasVault, deriveAccounts } = useWallet();
 
   const [tab, setTab] = useState("wallets");
@@ -283,11 +286,23 @@ export default function HDWalletManager() {
           {/* Locked + vault present -> unlock form */}
           {!isUnlocked && vaultExists && (
             <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-              <Label htmlFor="hd-unlock-password">Vault Password</Label>
-              <Input id="hd-unlock-password" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
-              <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={handleUnlock}>
-                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
-              </Button>
+              {isPin ? (
+                // PIN cohort (every real vault post-PR #651): the vault credential
+                // is an 8-digit PIN, so unlock via the shared PinPad — a password
+                // box cannot accept it. PinPad carries its own explicit submit.
+                <>
+                  <Label>Vault PIN</Label>
+                  <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={handleUnlock} disabled={busy} submitLabel="Unlock" aria-label="PIN entry" />
+                </>
+              ) : (
+                <>
+                  <Label htmlFor="hd-unlock-password">Vault Password</Label>
+                  <Input id="hd-unlock-password" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
+                  <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={handleUnlock}>
+                    {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
+                  </Button>
+                </>
+              )}
 
               {/* SAST M-3 ESCAPE HATCH. Shown ONLY after the passkey gate has
                   actually FAILED on an attempt — never on the pristine form, so
