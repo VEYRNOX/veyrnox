@@ -143,33 +143,47 @@ const SEEDS = {
   SavingsGoal: [{ id: "sg1", name: "Holiday Fund", target_amount: 5000, current_amount: 2150, currency: "USDC", deadline: iso("2026-12-01") }],
   UserSession: [{ id: "us1", device: "Chrome · Windows", ip: "—", last_active: iso("2026-05-31"), current: true }],
 
-  // ERC-20 allowances (Phase S2 — Token Approvals). Testnet only: every entry is
-  // Sepolia USDC (the one verified-address token), so a revoke decodes/builds for
-  // real and, on a native testnet build, would actually broadcast approve(.,0).
-  // `allowance_raw` is in base units (USDC = 6 decimals). The UNLIMITED rows use
-  // MaxUint256 (2^256-1) so calldata.js flags them exactly as the confirm screen
-  // would. `trusted` only tunes the risk badge — it never relaxes any guard.
+  // ERC-20 allowances (Phase S2 — Token Approvals). Includes both testnet
+  // (Sepolia) and mainnet (Ethereum) entries. `allowance_raw` is in base units
+  // (USDC/USDT = 6 decimals). The UNLIMITED rows use MaxUint256 (2^256-1) so
+  // calldata.js flags them exactly as the confirm screen would. `trusted` only
+  // tunes the risk badge — it never relaxes any guard. On a non-demo build a
+  // revoke signs locally and broadcasts (mainnet or testnet per the network key).
   TokenApproval: [
+    // --- Sepolia (testnet) ---
     { id: "ta1", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "Uniswap V3 Router", spender_address: "0xe592427a0aece92de3edee1f18e0157c05861564", allowance_raw: "115792089237316195423570985008687907853269984665640564039457584007913129639935", trusted: true,  status: "active", last_used: iso("2026-05-20") },
     { id: "ta2", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "Unknown Contract", spender_address: "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad", allowance_raw: "115792089237316195423570985008687907853269984665640564039457584007913129639935", trusted: false, status: "active", last_used: iso("2025-08-20") },
     { id: "ta3", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "Aave V3 Pool",      spender_address: "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2", allowance_raw: "1000000000", trusted: true,  status: "active", last_used: iso("2026-04-12") },
     { id: "ta4", network: "sepolia", token_symbol: "USDC", decimals: 6, token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", spender_name: "OpenSea Seaport",   spender_address: "0x00000000000000adc04c56bf30ac9d3c0aaf14dc", allowance_raw: "0", trusted: true, status: "revoked", last_used: iso("2026-03-01") },
+    // --- Ethereum Mainnet ---
+    { id: "ta5", network: "mainnet", token_symbol: "USDC", decimals: 6, token_contract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", spender_name: "Uniswap V3 Router", spender_address: "0xe592427a0aece92de3edee1f18e0157c05861564", allowance_raw: "115792089237316195423570985008687907853269984665640564039457584007913129639935", trusted: true,  status: "active", last_used: iso("2026-06-28") },
+    { id: "ta6", network: "mainnet", token_symbol: "USDT", decimals: 6, token_contract: "0xdAC17F958D2ee523a2206206994597C13D831ec7", spender_name: "Unknown Contract", spender_address: "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad", allowance_raw: "115792089237316195423570985008687907853269984665640564039457584007913129639935", trusted: false, status: "active", last_used: iso("2026-04-15") },
+    { id: "ta7", network: "mainnet", token_symbol: "USDC", decimals: 6, token_contract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", spender_name: "Aave V3 Pool",      spender_address: "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2", allowance_raw: "500000000", trusted: true,  status: "active", last_used: iso("2026-07-01") },
+    { id: "ta8", network: "mainnet", token_symbol: "USDT", decimals: 6, token_contract: "0xdAC17F958D2ee523a2206206994597C13D831ec7", spender_name: "1inch Router",      spender_address: "0x1111111254eeb25477b68fb85ed929f73a960582", allowance_raw: "0", trusted: true, status: "revoked", last_used: iso("2026-05-10") },
   ],
 
-  // ERC-20 token HOLDINGS (Phase S2 — Spam Token Filter). Testnet/demo display
-  // data only — these are never sent or signed; `token_contract` is for display.
-  // The first two are real, purchased, verified-listed tokens. The rest are the
-  // scam-airdrop patterns the filter catches: a website-link name, "claim/reward"
-  // lure wording, an emoji/homoglyph ticker, a Telegram link — all airdropped
-  // unsolicited and worth $0. `acquired_via` + `verified` + `value_usd` drive
-  // src/wallet-core/evm/spam.js classifyToken(). Hiding is display-only.
+  // ERC-20 token HOLDINGS (Phase S2 — Spam Token Filter). Display data only —
+  // these are never sent or signed; `token_contract` is for display. Includes
+  // both testnet (Sepolia) and mainnet (Ethereum) entries. The first entries per
+  // network are real, purchased, verified-listed tokens. The scam-airdrop entries
+  // demonstrate the patterns the filter catches: website-link names,
+  // "claim/reward" lure wording, emoji/homoglyph tickers, Telegram links — all
+  // airdropped unsolicited and worth $0. `acquired_via` + `verified` + `value_usd`
+  // drive src/wallet-core/evm/spam.js classifyToken(). Hiding is display-only.
   WalletToken: [
+    // --- Sepolia (testnet) ---
     { id: "tok1", network: "sepolia", symbol: "USDC", name: "USD Coin",       token_contract: "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238", balance: 1250,    value_usd: 1250.0, acquired_via: "purchase", verified: true },
     { id: "tok2", network: "sepolia", symbol: "WETH", name: "Wrapped Ether",  token_contract: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14", balance: 0.42,    value_usd: 1344.0, acquired_via: "purchase", verified: true },
     { id: "tok3", network: "sepolia", symbol: "USDC", name: "USDC-Rewards.com", token_contract: "0xdeadbeef00000000000000000000000000000003", balance: 5000,  value_usd: 0.0, acquired_via: "airdrop", verified: false },
     { id: "tok4", network: "sepolia", symbol: "CLAIM", name: "Claim 5,000 USDT Reward", token_contract: "0xdeadbeef00000000000000000000000000000004", balance: 5000, value_usd: 0.0, acquired_via: "airdrop", verified: false },
-    { id: "tok5", network: "sepolia", symbol: "🎁GIFT", name: "Free Gift Token", token_contract: "0xdeadbeef00000000000000000000000000000005", balance: 1000000, value_usd: 0.0, acquired_via: "airdrop", verified: false },
-    { id: "tok6", network: "sepolia", symbol: "AIRDROP", name: "t.me/airdropclaim", token_contract: "0xdeadbeef00000000000000000000000000000006", balance: 250, value_usd: 0.0, acquired_via: "airdrop", verified: false },
+    // --- Ethereum Mainnet ---
+    { id: "tok5", network: "mainnet", symbol: "USDC", name: "USD Coin",       token_contract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", balance: 4820,    value_usd: 4820.0, acquired_via: "purchase", verified: true },
+    { id: "tok6", network: "mainnet", symbol: "USDT", name: "Tether USD",     token_contract: "0xdAC17F958D2ee523a2206206994597C13D831ec7", balance: 2150,    value_usd: 2150.0, acquired_via: "purchase", verified: true },
+    { id: "tok7", network: "mainnet", symbol: "WETH", name: "Wrapped Ether",  token_contract: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", balance: 1.85,    value_usd: 5920.0, acquired_via: "purchase", verified: true },
+    { id: "tok8", network: "mainnet", symbol: "USDC", name: "USDC-Rewards.com", token_contract: "0xdeadbeef00000000000000000000000000000008", balance: 10000, value_usd: 0.0, acquired_via: "airdrop", verified: false },
+    { id: "tok9", network: "mainnet", symbol: "🎁GIFT", name: "Free Gift Token", token_contract: "0xdeadbeef00000000000000000000000000000009", balance: 1000000, value_usd: 0.0, acquired_via: "airdrop", verified: false },
+    { id: "tok10", network: "mainnet", symbol: "CLAIM", name: "Claim 5,000 USDT Reward", token_contract: "0xdeadbeef0000000000000000000000000000000a", balance: 5000, value_usd: 0.0, acquired_via: "airdrop", verified: false },
+    { id: "tok11", network: "mainnet", symbol: "AIRDROP", name: "t.me/airdropclaim", token_contract: "0xdeadbeef0000000000000000000000000000000b", balance: 250, value_usd: 0.0, acquired_via: "airdrop", verified: false },
   ],
 };
 

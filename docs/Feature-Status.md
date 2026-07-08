@@ -385,9 +385,9 @@ Android StrongBox equivalent: see Android entry above (end-to-end device-verifie
 > JS-seam tests (interface contract, capability-gating fallback, no-plaintext-caching) are worth writing WHEN the plugin exists, with the native layer mocked — they verify the code's USE of the hardware, not the hardware guarantee itself.
 
 ## 5. Security — S2 transaction safety
-- Token approvals: view + REVOKE ERC-20 allowances — ✅ (`evm/approvals.js`)
+- Token approvals: view + REVOKE ERC-20 allowances — ✅ MAINNET-ENABLED (`evm/approvals.js`; `ALLOW_MAINNET = true` since 2026-06-17; mainnet revoke broadcasts through the same local-sign path as testnet; demo seeds include mainnet Ethereum USDC/USDT approvals). BUILT — not verified (no mainnet revoke txid on record).
 - Address-poisoning / look-alike warnings — ✅ (`evm/poison.js`, wired into send, informs-not-blocks)
-- Spam-token filter — ✅ (`evm/spam.js`)
+- Spam-token filter — ✅ MAINNET-ENABLED (`evm/spam.js`; display-only, no chain interaction; classification is network-agnostic; demo seeds include mainnet token holdings). BUILT — no on-chain verification applicable (pure display).
 - Calldata decode / approval (unlimited-allowance) warning — ✅ (`evm/calldata.js`)
 - Per-chain recipient address validation — ✅ (`lib/addressValidation.js`; wired into Address Book save + send)
 - Suspicious-address screening (local, pluggable providers) — ✅ (PR #70) on-device blocklist via `evm/suspicious.js`, wired into the send risk assessment, warns-not-blocks, never claims "safe". Scam/drainer categories ship empty pending a maintained feed (no fabricated entries).
