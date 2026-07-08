@@ -97,7 +97,7 @@ export default function LandingPage() {
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="inline-block px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-                <span className="text-sm font-semibold text-primary">🧪 Testnet Beta · Self-Custody</span>
+                <span className="text-sm font-semibold text-primary">Self-Custody · Multi-Chain</span>
               </div>
               <h1 id="hero-heading" className="text-5xl md:text-6xl font-bold text-foreground leading-tight">
                 Your keys,<br />
@@ -197,7 +197,7 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Smartphone, title: "Multi-Chain", desc: "Receive & balances on 10 assets; send on Ethereum (testnet verified)" },
+              { icon: Smartphone, title: "Multi-Chain", desc: "Send & receive across 10 assets on EVM, Bitcoin & Solana" },
               { icon: Shield, title: "Coercion resistance", desc: "Duress PIN, decoy & panic wipe" },
               { icon: Eye, title: "Pre-sign screening", desc: "Local tx simulation + address-poisoning / look-alike checks" },
               { icon: BarChart3, title: "Analytics", desc: "Portfolio tracking and P&L reports" },
@@ -278,8 +278,8 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section aria-labelledby="cta-heading" className="py-20 bg-gradient-to-r from-primary/10 via-info/10 to-primary/10 border-y border-border">
         <div className="max-w-4xl mx-auto px-6 text-center space-y-8">
-          <h2 id="cta-heading" className="text-4xl font-bold">Try the testnet beta</h2>
-          <p className="text-xl text-muted-foreground">Testnet funds only — nothing real at stake. Help us find out what works.</p>
+          <h2 id="cta-heading" className="text-4xl font-bold">Take control of your crypto</h2>
+          <p className="text-xl text-muted-foreground">Self-custody across 10 assets — your keys, your device, your rules.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-lg px-8">
               Start Now
@@ -297,7 +297,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <p className="font-bold text-lg mb-4">VEYRNOX</p>
-              <p className="text-sm text-muted-foreground">A self-custody, coercion-resistant wallet — testnet beta</p>
+              <p className="text-sm text-muted-foreground">A self-custody, coercion-resistant wallet</p>
             </div>
             <div>
               <p className="font-semibold mb-4">Product</p>
