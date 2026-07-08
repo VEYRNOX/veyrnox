@@ -61,4 +61,27 @@ describe('Security framing — no configured-state oracle', () => {
       for (const s of FORBIDDEN_LOGIC) expect(src, `forbidden logic: "${s}"`).not.toContain(s);
     });
   }
+
+  // 2026-07-08 owner decision (PR #762): the DuressPin / PanicWipe SETUP pages
+  // MAY reflect configured-vs-not state VISUALLY (the Remove button's variant)
+  // via `veyrnox-{duress,panic}-configured` localStorage flags — an accepted
+  // UX-over-strict-deniability tradeoff for the setup screens the user navigates
+  // to intentionally. The strict no-oracle guard above still holds for all COPY
+  // (FORBIDDEN_COPY) and for the DISCLOSURE pages + SecurityDashboard
+  // (LOGIC_GUARDED_PAGES). This is a deliberate exception, NOT a test gap.
+  //
+  // The one hard constraint on that accepted live-session tell: it must NOT
+  // survive a panic wipe. A configured-state flag left in localStorage after a
+  // wipe would be an I3 residue oracle (its presence reveals a Veyrnox
+  // duress/panic PIN was configured here). So every configured-state flag a
+  // setup page writes MUST be scrubbed by panic.js.
+  it('configured-state flags written by setup pages are panic-wipe-scrubbed (no residue oracle)', () => {
+    const panic = read('wallet-core/panic.js');
+    const setupSrc = SETUP_PAGES.map((p) => read(p)).join('\n');
+    const keys = [...setupSrc.matchAll(/CONFIGURED_KEY\s*=\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+    expect(keys.length, 'setup pages should declare their configured-state flag keys').toBeGreaterThan(0);
+    for (const k of keys) {
+      expect(panic, `configured-state flag "${k}" must be in panic.js DENIABILITY_RESIDUE_KEYS (else the tell survives a wipe)`).toContain(`'${k}'`);
+    }
+  });
 });
