@@ -108,6 +108,9 @@ export default function Layout() {
   useEffect(() => {
     if (MOBILE_TABS.includes(location.pathname)) {
       setMobileTab(location.pathname);
+    } else {
+      const mainScroll = document.getElementById('main-scroll');
+      if (mainScroll) mainScroll.scrollTop = 0;
     }
   }, [location.pathname]);
 
@@ -287,7 +290,7 @@ export default function Layout() {
           real and decoy sessions (I3 — nothing here branches on the active set). */}
       <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center md:justify-end px-4 pointer-events-none"
            style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}>
-        <div className="w-full max-w-sm pointer-events-auto">
+        <div className={`w-full max-w-sm ${latest ? 'pointer-events-auto' : 'pointer-events-none'}`}>
           <NotificationToast notification={latest} onDismiss={dismiss} />
         </div>
       </div>
