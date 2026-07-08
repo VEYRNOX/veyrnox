@@ -20,7 +20,7 @@
 //
 // SCOPE NOTE: this 12-char floor is for the VAULT password specifically. Two other
 // secrets keep their own 8-char floors BY DESIGN and are out of scope here: the
-// 2FA "action password" (TwoFactorSettings) and the CloudBackup EXPORT password (a
+// 2FA "action password" (TwoFactorSettings) and the PersonalBackup EXPORT password (a
 // transient export-encryption secret, not the at-rest vault key).
 
 export const MIN_PASSWORD_LENGTH = 12;
