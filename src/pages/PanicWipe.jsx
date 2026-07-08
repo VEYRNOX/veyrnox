@@ -229,8 +229,6 @@ export default function PanicWipe() {
     }
   };
 
-  const explorerNote = "Addresses & on-chain history stay public regardless — wipe protects the device, not the chain.";
-
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
@@ -238,15 +236,15 @@ export default function PanicWipe() {
           <Bomb className="h-5 w-5 text-destructive" /> Panic Wipe
         </h1>
         <p className="text-sm text-muted-foreground">
-          Emergency, irreversible destruction of this device's wallet keys.
+          Permanently destroy all wallet data on this device. No undo.
         </p>
       </div>
 
       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
         <AlertOctagon className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Destructive · safety-critical.</b> A panic wipe permanently destroys the local copy of
-          your keys — no undo.
+          <b>This is permanent.</b> A panic wipe deletes all your wallet data from
+          this device. There is no way to undo it.
         </span>
       </div>
 
@@ -258,16 +256,15 @@ export default function PanicWipe() {
             <p className="text-sm font-semibold">How it fires</p>
             <ul className="text-xs text-muted-foreground mt-1 space-y-1.5 list-disc pl-4">
               <li>
-                <b>Panic/wipe PIN at unlock</b> — set one below. Entered at the{" "}
-                <i>normal unlock screen</i>, it destroys your keys instantly with{" "}
-                <b>no confirmation</b>: under duress an "are you sure?" prompt is a
-                liability a coercer could cancel, so it fires silently.
+                <b>Panic PIN at unlock</b> — set one below. Enter it at the
+                normal unlock screen and everything is deleted instantly, with{" "}
+                <b>no confirmation prompt</b>. In an emergency, a confirmation
+                dialog could give you away.
               </li>
               <li>
-                <b>In-app guarded wipe</b> — for calmly retiring or selling a
-                device. Type <code>{CONFIRM_WORD}</code> and tick the
-                acknowledgement; with no coercion to design around, this path{" "}
-                <i>does</i> confirm.
+                <b>Wipe from inside the app</b> — for when you&apos;re selling or
+                retiring a device. Type <code>{CONFIRM_WORD}</code> and tick the
+                checkbox to confirm.
               </li>
             </ul>
           </div>
@@ -280,16 +277,16 @@ export default function PanicWipe() {
           <Trash2 className="h-4 w-4 text-primary" />
           <p className="text-sm font-semibold">What a wipe destroys — and what it can't</p>
         </div>
-        <p className="text-xs font-medium text-foreground">Destroys (local device):</p>
+        <p className="text-xs font-medium text-foreground">What gets deleted:</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Your <b>primary vault</b>, the <b>duress decoy</b>, and the <b>entire stealth / hidden-wallet pool</b> (real + chaff slots).</li>
-          <li>The <b>panic marker</b> and demo address residue — the whole vault store is cleared and the database deleted.</li>
+          <li>Your <b>main wallet</b>, any <b>Emergency wallets</b>, and all <b>hidden wallets</b> on this device.</li>
+          <li>All saved wallet data is cleared and the local database is deleted.</li>
         </ul>
-        <p className="text-xs font-medium text-foreground mt-2">Does NOT destroy:</p>
+        <p className="text-xs font-medium text-foreground mt-2">What stays:</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li><b>A seed backup you hold elsewhere</b> (paper, password manager, another device) — still recovers the wallet. Wipe protects the device, not the seed.</li>
-          <li><b>On-chain state</b> — {explorerNote}</li>
-          <li><b>Flash-media forensics</b> — we delete logical records, not sanitise the medium; only encrypted ciphertext was ever stored.</li>
+          <li><b>Your recovery phrase backup</b> (if you saved one on paper, in a password manager, or on another device). You can always restore from that.</li>
+          <li><b>Your transaction history on the blockchain.</b> The wipe only affects this device, not public records.</li>
+          <li><b>Trace data on the storage hardware.</b> We delete the records, but forensic recovery of the raw storage is outside our control.</li>
         </ul>
       </div>
 
@@ -302,10 +299,11 @@ export default function PanicWipe() {
 
         <div className="space-y-4">
           <p className="text-[11px] text-muted-foreground">
-            ⚠️ Make this PIN <b>different</b> from your real password, any duress PIN,
-            and any hidden-wallet secret — otherwise that path opens at unlock and the
-            wipe never fires. We can't check this for you (we never hold them in
-            plaintext). Entering this PIN at unlock will <b>destroy your keys</b>.
+            ⚠️ This PIN must be <b>different</b> from your real PIN, any Emergency
+            PIN, and any hidden wallet secret. If it matches one of those, that
+            wallet opens instead and the wipe won&apos;t happen. We can&apos;t check
+            this for you. Entering this PIN at unlock will <b>permanently delete
+            your wallet</b>.
           </p>
 
           {panicPinStep === "enter" ? (
@@ -372,7 +370,8 @@ export default function PanicWipe() {
                 Remove panic wipe?
               </p>
               <p className="text-xs text-muted-foreground">
-                This will clear your panic PIN. You'll no longer be able to trigger a wipe via the panic PIN at the unlock screen. This action cannot be undone.
+                This removes your panic PIN. You won&apos;t be able to trigger
+                a wipe from the unlock screen any more.
               </p>
               <div className="flex gap-2">
                 <Button
@@ -407,9 +406,9 @@ export default function PanicWipe() {
           <span className="font-semibold text-destructive">Wipe this device now</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Immediately and irreversibly destroys the local copy of every wallet
-          (primary, decoy, and any hidden wallets) on this device. Use this when
-          decommissioning a device. <b>There is no undo.</b> {wasWiped ? "" : "Make sure you have a seed backup if you ever want this wallet again."}
+          Deletes every wallet on this device right now. Your main wallet,
+          Emergency wallet, and any hidden wallets are all gone for good.{" "}
+          <b>There is no undo.</b> {wasWiped ? "" : "Make sure you've saved your recovery phrase somewhere safe if you ever want this wallet back."}
         </p>
         <div>
           <Label className="text-xs">Type <code>{CONFIRM_WORD}</code> to confirm</Label>
@@ -423,8 +422,8 @@ export default function PanicWipe() {
         <label className="flex items-start gap-2 text-xs text-muted-foreground">
           <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5" />
           <span>
-            I understand this <b>permanently destroys</b> the local keys and that
-            only a seed backup held elsewhere could ever recover this wallet.
+            I understand this <b>permanently deletes</b> all wallets on this
+            device and that only a recovery phrase backup can restore them.
           </span>
         </label>
         <Button
@@ -500,9 +499,9 @@ export default function PanicWipe() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            To use the panic/wipe PIN: lock your wallet, then enter the panic/wipe PIN at the
-            unlock screen — your local keys are destroyed immediately with no
-            prompt. Keep a seed backup elsewhere if you ever want the wallet again.
+            To use it, lock your wallet and enter the panic PIN at the unlock
+            screen. Your wallet data is deleted immediately with no confirmation.
+            Keep your recovery phrase somewhere safe if you ever want your wallet back.
           </p>
         </div>
       )}

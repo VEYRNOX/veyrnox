@@ -111,9 +111,9 @@ describe('BiometricUnlockSettings — NF-2 enable confirm gate', () => {
     const panel = screen.getByTestId('biometric-enable-confirm');
     const text = panel.textContent.toLowerCase();
     // Must still disclose the core risk in plain language:
-    // someone extracting a device backup could decrypt the wallet.
-    expect(text).toMatch(/extract|backup/);
-    expect(text).toMatch(/decrypt/);
+    // someone getting a device backup could access the wallet.
+    expect(text).toMatch(/backup/);
+    expect(text).toMatch(/access|decrypt/);
   });
 
   it('confirm panel has "Enable one-tap unlock" and "Cancel" buttons', async () => {

@@ -31,25 +31,25 @@ const MODES = [
   {
     value: 'none',
     label: 'None (disabled)',
-    description: 'Hidden wallets reveal on PIN unlock only (current behavior)',
+    description: 'Hidden wallets open with your PIN only (current setting)',
     icon: null,
   },
   {
     value: 'password',
     label: 'PIN + Action Password',
-    description: 'Two knowledge factors — same password as critical actions',
+    description: 'Same second password you use for sensitive actions',
     icon: Lock,
   },
   {
     value: 'passkey',
     label: 'PIN + Passkey',
-    description: 'Knowledge + possession factor (device-global passkey)',
+    description: 'Your PIN plus a passkey tap on this device',
     icon: Key,
   },
   {
     value: 'biometric',
     label: 'PIN + Biometric',
-    description: 'Knowledge + OS biometric (Face ID / Touch ID)',
+    description: 'Your PIN plus Face ID or Touch ID',
     icon: Fingerprint,
     nativeOnly: true,
   },
@@ -135,7 +135,7 @@ export default function HiddenWalletUnlockSettings() {
           Hidden Wallet Unlock 2FA
         </h3>
         <p className="text-sm text-muted-foreground">
-          Optional second factor before revealing a hidden wallet. Helps protect against accidental or coerced reveal.
+          An extra step before revealing a hidden wallet. Helps prevent someone from forcing you to open it.
         </p>
       </div>
 
@@ -187,10 +187,10 @@ export default function HiddenWalletUnlockSettings() {
       <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900 space-y-2">
         <p className="font-semibold">How it works</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
-          <li>When you unlock your wallet, you enter your PIN as usual.</li>
-          <li>To reveal a hidden wallet, you then complete the second factor (password, passkey, or biometric).</li>
-          <li>This gate is a CONVENIENCE control, not hardware-backed — the hidden wallet's addresses and history remain public on-chain.</li>
-          <li>Decoy and hidden wallet sets do NOT have this gate (they are accessed via the real PIN or duress PIN).</li>
+          <li>You unlock your wallet with your PIN as usual.</li>
+          <li>To open a hidden wallet, you complete an extra step (password, passkey, or biometric).</li>
+          <li>This protects access inside the app. Your transaction history on the blockchain is still visible to anyone with the address.</li>
+          <li>Emergency and hidden wallets are accessed with their own PINs and don't use this setting.</li>
         </ul>
       </div>
     </div>
