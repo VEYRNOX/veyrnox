@@ -20,6 +20,7 @@ import {
   ExternalLink, Loader2, AlertTriangle, Lock, ShieldCheck, Info,
 } from "lucide-react";
 import { DEMO } from "@/api/demoClient";
+import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
@@ -131,7 +132,7 @@ export default function FeeAnalytics() {
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
-          {DEMO ? "Demo · sample data" : "Testnet"}
+          {DEMO ? "Demo · sample data" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>
 

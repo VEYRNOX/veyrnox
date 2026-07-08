@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { Fuel, Info } from "lucide-react";
 import FeeSelector from "@/components/FeeSelector";
-import { getNetworkInfo } from "@/wallet-core/evm/networks";
+import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
+import { ALLOW_BTC_MAINNET } from "@/wallet-core/btc/networks";
+import { ALLOW_SOL_MAINNET } from "@/wallet-core/sol/networks";
 
 // Per-chain fee control. Each chain has a genuinely different fee model and is
 // shown in its own native units (EIP-1559 gwei for EVM, sat/vByte for BTC,
 // lamports + µlam/CU for SOL) — never one chain's format forced onto another.
-// Estimates are LIVE from the existing wallet-core providers (testnet only;
-// mainnet is gated in the registries). The fee you choose here is the same model
-// the Send screen applies into the actual signing path.
+// Estimates are LIVE from the existing wallet-core providers. The fee you choose
+// here is the same model the Send screen applies into the actual signing path.
 const CHAINS = [
-  { id: "evm", label: "Ethereum", chain: "evm", networkKey: "sepolia",  symbol: "ETH", decimals: 18, usdRate: 3200, badge: "Ethereum test network" },
-  { id: "btc", label: "Bitcoin",  chain: "btc", networkKey: "testnet",  symbol: "BTC", decimals: 8,  usdRate: 68000, badge: "Bitcoin test network" },
-  { id: "sol", label: "Solana",   chain: "sol", networkKey: "devnet",   symbol: "SOL", decimals: 9,  usdRate: 165,   badge: "Solana test network" },
+  { id: "evm", label: "Ethereum", chain: "evm", networkKey: ALLOW_MAINNET ? "mainnet" : "sepolia",         symbol: "ETH", decimals: 18, usdRate: 3200, badge: ALLOW_MAINNET ? "Ethereum" : "Ethereum testnet" },
+  { id: "btc", label: "Bitcoin",  chain: "btc", networkKey: ALLOW_BTC_MAINNET ? "mainnet" : "testnet",     symbol: "BTC", decimals: 8,  usdRate: 68000, badge: ALLOW_BTC_MAINNET ? "Bitcoin" : "Bitcoin testnet" },
+  { id: "sol", label: "Solana",   chain: "sol", networkKey: ALLOW_SOL_MAINNET ? "mainnet" : "devnet",      symbol: "SOL", decimals: 9,  usdRate: 165,   badge: ALLOW_SOL_MAINNET ? "Solana" : "Solana testnet" },
 ];
 
 const MODEL_NOTE = {

@@ -36,7 +36,7 @@ const features = [
     { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "built" },
     { name: "Encrypted Vault", desc: "Strong on-device encryption at rest; plaintext keys never leave device", status: "built" },
     { name: "Backup & Reveal Seed", desc: "Seed phrase + encrypted QR backup behind explicit warnings", status: "built" },
-    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) — each confirmed on a test network or Solana test network with an on-chain txid", status: "built" },
+    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) — each confirmed on-chain with a txid; mainnet unlocked", status: "built" },
     { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "built" },
     { name: "Live Balances", desc: "Read live from chain network connection / explorer providers", status: "built" },
     { name: "Transaction History", desc: "Per-chain read-only history with privacy disclosures", status: "built" },
@@ -45,8 +45,8 @@ const features = [
   ]},
   { category: "Networks & Assets", icon: Coins, items: [
     { name: "Ethereum-compatible Networks", desc: "Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain", status: "built" },
-    { name: "Bitcoin", desc: "Bitcoin address standard (BIP-84) native-segwit stack; test-network-verified (live network unlocked, not yet live-network-verified)", status: "built" },
-    { name: "Solana", desc: "Solana signing key / key derivation standard stack; Solana test network verified (live network unlocked, not yet live-network-verified)", status: "built" },
+    { name: "Bitcoin", desc: "Bitcoin address standard (BIP-84) native-segwit stack; testnet-verified, mainnet unlocked", status: "built" },
+    { name: "Solana", desc: "Solana signing key / key derivation standard stack; testnet-verified, mainnet unlocked", status: "built" },
     { name: "Ethereum Token Standard (ERC-20) Tokens", desc: "USDC and USDT via the shared token path", status: "built" },
   ]},
   { category: "Access & Authentication", icon: KeyRound, items: [
