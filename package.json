@@ -25,8 +25,6 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "android:test": "wdio tests/android/wdio.conf.js",
-    "android:test:browserstack": "wdio tests/android/wdio.browserstack.conf.js",
-    "ios:test:browserstack": "wdio tests/ios/wdio.browserstack.conf.js",
     "ios:test": "wdio tests/ios/wdio.conf.js",
     "ios:test:vault": "wdio tests/ios/wdio.conf.js --spec tests/ios/specs/vault.spec.js",
     "ios:test:send": "wdio tests/ios/wdio.conf.js --spec tests/ios/specs/send.spec.js",
