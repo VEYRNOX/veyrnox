@@ -1005,7 +1005,9 @@ export default function SendCrypto() {
               <SelectValue placeholder="Select wallet">
                 {selectedWalletName ? (
                   <span className="flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
+                      <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
+                    </span>
                     {selectedWalletName}
                   </span>
                 ) : null}
@@ -1015,7 +1017,9 @@ export default function SendCrypto() {
               {wallets.map(w => (
                 <SelectItem key={w.id} value={w.id}>
                   <div className="flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
+                      <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
+                    </span>
                     <span>{w.name}</span>
                   </div>
                 </SelectItem>
@@ -1026,7 +1030,16 @@ export default function SendCrypto() {
         <div>
           <Label id="send-asset-label">Asset</Label>
           <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
-            <SelectTrigger className="mt-1.5" aria-labelledby="send-asset-label"><SelectValue placeholder="Select asset" /></SelectTrigger>
+            <SelectTrigger className="mt-1.5" aria-labelledby="send-asset-label">
+              <SelectValue placeholder="Select asset">
+                {assetSymbol ? (
+                  <span className="flex items-center gap-2">
+                    <CoinLogo symbol={assetSymbol} size={20} />
+                    <span>{getAsset(assetSymbol)?.name || assetSymbol} — {assetSymbol}</span>
+                  </span>
+                ) : null}
+              </SelectValue>
+            </SelectTrigger>
             <SelectContent>
               {enabledAssets.map(sym => {
                 const a = getAsset(sym);
