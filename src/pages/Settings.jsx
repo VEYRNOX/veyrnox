@@ -7,7 +7,8 @@ import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useTier } from "@/lib/TierProvider";
-import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles, Scale, ScrollText } from "lucide-react";
+import { getAuthModel } from "@/lib/authModel";
+import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -248,6 +249,13 @@ export default function Settings() {
           <div>
             <p className="text-sm font-medium">Reveal Seed</p>
             <p className="text-xs text-muted-foreground">Backup phrase QR</p>
+          </div>
+        </Link>
+        <Link to="/wallet-access" data-testid="change-pin-link" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+          <KeyRound className="h-5 w-5 text-primary shrink-0" />
+          <div>
+            <p className="text-sm font-medium">{getAuthModel() === "pin" ? "Change PIN" : "Change vault password"}</p>
+            <p className="text-xs text-muted-foreground">Access &amp; recovery</p>
           </div>
         </Link>
       </div>

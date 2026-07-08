@@ -30,6 +30,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
+import { getAuthModel } from "@/lib/authModel";
+import { checkPinStrength } from "@/lib/pinStrength";
+import PinPad from "@/components/security/PinPad";
 import {
   KeyRound, ShieldCheck, ShieldOff, AlertTriangle, Eye, EyeOff, CheckCircle2,
   Lock, Unlock, RefreshCw, FlaskConical, Info, Download,
@@ -38,6 +41,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+
+// Constant-time-ish PIN equality (mirrors WalletEntry.pinsEqual): compares every
+// character so a mismatch's position is not leaked by early return timing.
+function pinsEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 // Minimum vault-password length — matches the create/import flow (HDWalletManager).
 const MIN_PW = 12;
@@ -57,7 +69,25 @@ export default function WalletAccessReset() {
     changePassword, importWallet, createWallet, unlock, lock, clearVault,
   } = useWallet();
 
+  // Auth cohort: 'pin' devices (every real vault post-PR #651) get a PIN pad;
+  // 'password' is the legacy free-text fallback, kept intact below.
+  const isPin = getAuthModel() === "pin";
+
   const [vaultExists, setVaultExists] = useState(false);
+
+  // ----- change-PIN card (PIN cohort) -----
+  // 3-step machine mirroring WalletEntry pin-recover: current -> new -> confirm.
+  const [pinStep, setPinStep] = useState("current"); // 'current' | 'new' | 'confirm'
+  const [curPin, setCurPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinEntry, setPinEntry] = useState("");
+  const [pinErr, setPinErr] = useState("");
+  const [pinDone, setPinDone] = useState(false);
+  const [pinBusy, setPinBusy] = useState(false);
+
+  // ----- seed-recovery card (PIN cohort) -----
+  const [recPinEntry, setRecPinEntry] = useState("");
 
   // ----- change-password card -----
   const [curPw, setCurPw] = useState("");
@@ -107,6 +137,71 @@ export default function WalletAccessReset() {
       setCpErr(e?.message || "Could not change password");
     } finally {
       setCpBusy(false);
+    }
+  };
+
+  // ----- change PIN (PIN cohort, while unlocked) -----
+  // Step machine: 'current' -> 'new' (strength-gated) -> 'confirm' (match-gated).
+  // Only the final confirm calls changePassword(CUR_PIN, NEW_PIN). Fails closed:
+  // a weak new PIN or a mismatched confirm never touches the vault.
+  const handlePinComplete = async (p) => {
+    setPinErr("");
+    if (pinStep === "current") {
+      setCurPin(p);
+      setPinEntry("");
+      setPinStep("new");
+      return;
+    }
+    if (pinStep === "new") {
+      const s = checkPinStrength(p);
+      if (!s.ok) { setPinErr(s.reason); setPinEntry(""); return; } // stay on 'new'
+      setNewPin(p);
+      setPinEntry("");
+      setPinStep("confirm");
+      return;
+    }
+    if (pinStep === "confirm") {
+      if (!pinsEqual(p, newPin)) {
+        // Bounce back to the new-PIN step; nothing is changed.
+        setPinErr("Those PINs didn't match. Choose your new PIN again.");
+        setNewPin("");
+        setConfirmPin("");
+        setPinEntry("");
+        setPinStep("new");
+        return;
+      }
+      setConfirmPin(p);
+      setPinBusy(true);
+      try {
+        // Verifies the current PIN by decrypting the stored vault, then re-encrypts
+        // the SAME seed under the new PIN. A wrong current PIN throws, changing nothing.
+        await changePassword(curPin, p);
+        setCurPin(""); setNewPin(""); setConfirmPin(""); setPinEntry("");
+        setPinStep("current");
+        setPinDone(true);
+        toast.success("PIN changed. Your old PIN no longer works.");
+      } catch (e) {
+        setPinErr(e?.message || "Could not change PIN");
+        setPinStep("current");
+      } finally {
+        setPinBusy(false);
+      }
+    }
+  };
+
+  // ----- seed recovery (PIN cohort) -> re-import under a new PIN -----
+  const handleRecoverPin = async (p) => {
+    setRecErr("");
+    setRecBusy(true);
+    try {
+      await importWallet(recPhrase.trim(), p);
+      setRecPhrase(""); setRecPinEntry("");
+      await refresh();
+      toast.success("Wallet recovered from your seed phrase. A new PIN is set.");
+    } catch (e) {
+      setRecErr(e?.message || "Could not recover from that seed phrase");
+    } finally {
+      setRecBusy(false);
     }
   };
 
@@ -211,8 +306,69 @@ export default function WalletAccessReset() {
         </div>
       </div>
 
-      {/* CHANGE PASSWORD — while unlocked. */}
-      <div className="p-5 rounded-xl border border-border bg-card space-y-4">
+      {/* CHANGE PIN — PIN cohort, while unlocked. Mirrors WalletEntry pin-recover:
+          a 3-step PinPad flow (current -> new -> confirm). Only a match on confirm
+          calls changePassword; a weak new PIN or a mismatch fails closed (I4). */}
+      {isPin && (
+        <div data-testid="change-credential-card" className="p-5 rounded-xl border border-border bg-card space-y-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-sm font-semibold">Change your PIN</p>
+              <p className="text-xs text-muted-foreground">
+                Re-encrypts your existing vault under a new 8-digit PIN. Your seed and
+                accounts stay exactly the same — only the PIN that unlocks them changes.
+              </p>
+            </div>
+          </div>
+
+          {!isUnlocked ? (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-secondary/40 border border-border text-xs text-muted-foreground">
+              <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                Unlock your wallet first to change its PIN. Changing the PIN requires
+                knowing the current one — that is the point.
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-3 text-center">
+              {pinStep === "current" && (
+                <p className="text-sm font-medium">Enter your current PIN</p>
+              )}
+              {pinStep === "new" && (
+                <p className="text-sm font-medium">Choose a new 8-digit PIN</p>
+              )}
+              {pinStep === "confirm" && (
+                <p className="text-sm font-medium">Confirm your new PIN</p>
+              )}
+              <PinPad
+                key={pinStep}
+                value={pinEntry}
+                disabled={pinBusy}
+                onChange={(v) => { setPinEntry(v); if (pinErr) setPinErr(""); }}
+                onComplete={handlePinComplete}
+                submitLabel={pinStep === "confirm" ? "Change PIN" : "Continue"}
+              />
+              {pinErr && <p className="text-xs text-destructive">{pinErr}</p>}
+              {pinDone && (
+                <p className="text-xs text-success flex items-center justify-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> PIN changed. Use your new PIN
+                  next time you unlock.
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Re-encrypts with the same strong on-device encryption as the original
+                vault. Note: this changes only your <b>primary</b> wallet's PIN; any
+                duress PIN or hidden-wallet secrets are independent and unchanged.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CHANGE PASSWORD — legacy password cohort, while unlocked. */}
+      {!isPin && (
+      <div data-testid="change-credential-card" className="p-5 rounded-xl border border-border bg-card space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-primary" />
           <div>
@@ -302,9 +458,11 @@ export default function WalletAccessReset() {
           </div>
         )}
       </div>
+      )}
 
-      {/* RECOVER ACCESS — forgot password -> re-import seed. */}
-      <div className="p-5 rounded-xl border border-border bg-card space-y-4">
+      {/* RECOVER ACCESS — forgot credential -> re-import seed. Shared card; the
+          new-credential surface below branches on the auth cohort. */}
+      <div data-testid="recover-card" className="p-5 rounded-xl border border-border bg-card space-y-4">
         <div className="flex items-center gap-2">
           <Download className="h-5 w-5 text-primary" />
           <div>
@@ -340,6 +498,30 @@ export default function WalletAccessReset() {
             className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
+        {isPin ? (
+          // PIN cohort: once a seed is present, set a new PIN via the PIN pad.
+          // The PIN pad's own strength/decoy handling runs downstream; the recovery
+          // path re-imports under the new PIN.
+          recPhrase.trim() ? (
+            <div className="space-y-3 text-center">
+              <p className="text-sm font-medium">Set a new 8-digit PIN</p>
+              <p className="text-xs text-muted-foreground">
+                This encrypts your restored wallet on this device.
+              </p>
+              <PinPad
+                value={recPinEntry}
+                disabled={recBusy}
+                onChange={(v) => { setRecPinEntry(v); if (recErr) setRecErr(""); }}
+                onComplete={handleRecoverPin}
+                submitLabel="Recover"
+              />
+              {recErr && <p className="text-xs text-destructive">{recErr}</p>}
+            </div>
+          ) : (
+            recErr ? <p className="text-xs text-destructive">{recErr}</p> : null
+          )
+        ) : (
+        <>
         <div>
           <Label>New vault password</Label>
           <Input
@@ -361,6 +543,8 @@ export default function WalletAccessReset() {
           {recBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Recover &amp; set new password
         </Button>
+        </>
+        )}
         {vaultExists && (
           <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
