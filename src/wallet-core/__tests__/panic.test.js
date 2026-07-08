@@ -247,6 +247,7 @@ describe('panic wipe', () => {
       'veyrnox-pin-attempts',
       'veyrnox-pin-backoff-until',
       'veyrnox-prf-cred-id',          // WebAuthn PRF credential ID — web.js CRED_KEY (I3/I4)
+      'veyrnox-live-prices',          // M-7 (#753): priceFeed.js LIVE_PRICE_PREF_KEY (live-price egress opt-in tell)
       // non-secret wallet/token metadata residue (METADATA_RESIDUE_KEYS) — F-06
       'veyrnox-wallet-meta',
       'veyrnox-active-wallet',
@@ -299,6 +300,20 @@ describe('panic wipe', () => {
     expect(before.localStorageResidue).toContain('veyrnox-2fa-biometric');
     const report = await panicWipeLocal();
     expect(localStorage.getItem('veyrnox-2fa-biometric')).toBeNull();
+    expect(report.localStorageResidue).toEqual([]);
+    expect(report.clean).toBe(true);
+  });
+
+  it('M-7: panic wipe clears the live-prices opt-in tell (veyrnox-live-prices)', async () => {
+    // priceFeed.js LIVE_PRICE_PREF_KEY. Its presence proves live-price egress was
+    // enabled on this device — a coercion-relevant tell that a Veyrnox wallet was
+    // used here. It must be scrubbed by a panic wipe (I3/I4). Issue #753.
+    localStorage.setItem('veyrnox-live-prices', '1');
+    // inspection sees it as residue before the wipe
+    const before = await inspectKeyMaterial();
+    expect(before.localStorageResidue).toContain('veyrnox-live-prices');
+    const report = await panicWipeLocal();
+    expect(localStorage.getItem('veyrnox-live-prices')).toBeNull();
     expect(report.localStorageResidue).toEqual([]);
     expect(report.clean).toBe(true);
   });

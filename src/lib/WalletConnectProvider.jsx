@@ -217,29 +217,38 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
+  // H-1 (#745) — a null/absent wallet address means we CANNOT bind the signing
+  // address to our own wallet, so we must not sign at all. Reject before touching
+  // the key (fail closed, I4), identical to the address-present-but-mismatched
+  // path below. Previously the else branch signed arr[0] with zero verification.
+  if (!evmAddress) {
+    await rejectRequest(topic, id, 'PERSONAL_SIGN_ADDRESS_MISMATCH').catch(() => {});
+    throw new Error(
+      `Rejected personal_sign [PERSONAL_SIGN_ADDRESS_MISMATCH]: no active wallet ` +
+      `address to bind the signature to. ` +
+      `Veyrnox will not sign a message without a verified address.`,
+    );
+  }
+
   const arr = Array.isArray(params) ? params : [];
+  // H8 — resolve which param is the message and bind the address param to our
+  // own wallet (EIP-1474 [message, address] vs MetaMask-legacy [address,
+  // message]). Reject (fail closed, I4) if no param is our own address.
+  const own = evmAddress.toLowerCase();
+  const isOwn = (v) =>
+    typeof v === 'string' && ethers.isAddress(v) && v.toLowerCase() === own;
   let hexMsg;
-  if (evmAddress) {
-    // H8 — resolve which param is the message and bind the address param to our
-    // own wallet (EIP-1474 [message, address] vs MetaMask-legacy [address,
-    // message]). Reject (fail closed, I4) if no param is our own address.
-    const own = evmAddress.toLowerCase();
-    const isOwn = (v) =>
-      typeof v === 'string' && ethers.isAddress(v) && v.toLowerCase() === own;
-    if (isOwn(arr[1])) {
-      hexMsg = arr[0]; // EIP-1474 order [message, ownAddress]
-    } else if (isOwn(arr[0])) {
-      hexMsg = arr[1]; // MetaMask-legacy order [ownAddress, message]
-    } else {
-      await rejectRequest(topic, id, 'PERSONAL_SIGN_ADDRESS_MISMATCH').catch(() => {});
-      throw new Error(
-        `Rejected personal_sign [PERSONAL_SIGN_ADDRESS_MISMATCH]: the signing ` +
-        `address does not match this wallet (address mismatch). ` +
-        `Veyrnox will not sign a message bound to a different address.`,
-      );
-    }
+  if (isOwn(arr[1])) {
+    hexMsg = arr[0]; // EIP-1474 order [message, ownAddress]
+  } else if (isOwn(arr[0])) {
+    hexMsg = arr[1]; // MetaMask-legacy order [ownAddress, message]
   } else {
-    hexMsg = arr[0];
+    await rejectRequest(topic, id, 'PERSONAL_SIGN_ADDRESS_MISMATCH').catch(() => {});
+    throw new Error(
+      `Rejected personal_sign [PERSONAL_SIGN_ADDRESS_MISMATCH]: the signing ` +
+      `address does not match this wallet (address mismatch). ` +
+      `Veyrnox will not sign a message bound to a different address.`,
+    );
   }
   const sig = await withPrivateKey(0, async (pk) => {
     const wallet = new ethers.Wallet(pk);

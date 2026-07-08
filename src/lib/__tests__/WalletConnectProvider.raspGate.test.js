@@ -104,8 +104,16 @@ describe('RASP-A3 — WalletConnect signing path is fail-closed on WARN/CONFIRM'
 
   it('ALLOW tier → WC request proceeds to the signer', async () => {
     raspState.tier = 'allow';
+    // H-1 (#745): the signer is only reached with a valid evmAddress bound to a
+    // param; a null evmAddress now fails closed. Supply a matching address so this
+    // test still exercises the ALLOW-gate → signer path it is about.
+    const WALLET_ADDR = '0xAbCd1234567890AbCd1234567890abCd12345678';
     const { _handlePersonalSign } = await import('../WalletConnectProvider.jsx');
-    await _handlePersonalSign({ withPrivateKey }, 'topicA', 10, ['0xdeadbeef', '0xabc']);
+    await _handlePersonalSign(
+      { withPrivateKey, evmAddress: WALLET_ADDR },
+      'topicA', 10,
+      ['0xdeadbeef', WALLET_ADDR],
+    );
     expect(withPrivateKeySpy).toHaveBeenCalled();
     expect(respondToRequest).toHaveBeenCalled();
     expect(rejectRequest).not.toHaveBeenCalled();
