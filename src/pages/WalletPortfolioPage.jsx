@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PinPad from "@/components/security/PinPad";
+import { getAuthModel } from "@/lib/authModel";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -128,8 +130,9 @@ function AssetPicker({ selected, onToggle }) {
 // ── Add a wallet: create-new (mandatory backup) OR import-seed. SINGLE Dialog
 // whose CONTENT swaps between form → seed-backup, so the backup step is never
 // dismissed by a parent Dialog unmount. ──────────────────────────────────────
-function AddWalletDialog({ onClose }) {
+export function AddWalletDialog({ onClose }) {
   const { addWallet, importAdditionalWallet, confirmWalletBackup } = useWallet();
+  const isPin = getAuthModel() === "pin";
   const [mode, setMode] = useState("create"); // 'create' | 'import'
   const [name, setName] = useState("");
   const [assets, setAssets] = useState([...DEFAULT_ENABLED_ASSETS]);
@@ -205,18 +208,24 @@ function AddWalletDialog({ onClose }) {
                 <AssetPicker selected={assets} onToggle={toggleAsset} />
               </div>
               <div>
-                <Label>Vault password</Label>
-                <Input type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Confirm it’s you to change your vault" />
+                <Label>{isPin ? "Vault PIN" : "Vault password"}</Label>
+                {isPin ? (
+                  <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={mode === "create" ? doCreate : doImport} disabled={busy || (mode === "import" && !phrase.trim())} submitLabel={mode === "create" ? "Create & back up" : "Import wallet"} aria-label="Vault PIN" /></div>
+                ) : (
+                  <Input type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Confirm it’s you to change your vault" />
+                )}
                 <p className="text-xs text-muted-foreground mt-1">Re-entered to authorise a change to your seed vault. Never kept in memory.</p>
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
             </div>
-            <DialogFooter>
-              <Button className="w-full gap-2" disabled={busy || !password || (mode === "import" && !phrase.trim())} onClick={mode === "create" ? doCreate : doImport}>
-                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                {mode === "create" ? "Create & back up" : "Import wallet"}
-              </Button>
-            </DialogFooter>
+            {!isPin && (
+              <DialogFooter>
+                <Button className="w-full gap-2" disabled={busy || !password || (mode === "import" && !phrase.trim())} onClick={mode === "create" ? doCreate : doImport}>
+                  {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {mode === "create" ? "Create & back up" : "Import wallet"}
+                </Button>
+              </DialogFooter>
+            )}
           </>
         )}
       </DialogContent>
@@ -261,8 +270,9 @@ function RenameDialog({ wallet, onClose }) {
   );
 }
 
-function RemoveDialog({ wallet, canRemove, onClose }) {
+export function RemoveDialog({ wallet, canRemove, onClose }) {
   const { removeWallet } = useWallet();
+  const isPin = getAuthModel() === "pin";
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -283,11 +293,18 @@ function RemoveDialog({ wallet, canRemove, onClose }) {
             <div className="p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
               Removes this wallet’s seed from this device. {wallet.backedUp ? "You can restore it from its recovery phrase." : "⚠️ NOT backed up — without its phrase it is gone forever."}
             </div>
-            <div><Label>Vault password</Label><Input type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+            <div>
+              <Label>{isPin ? "Vault PIN" : "Vault password"}</Label>
+              {isPin ? (
+                <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={doRemove} disabled={busy} submitLabel="Remove wallet" aria-label="Vault PIN" /></div>
+              ) : (
+                <Input type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} />
+              )}
+            </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
         )}
-        {canRemove && (
+        {canRemove && !isPin && (
           <DialogFooter>
             <Button variant="destructive" className="w-full gap-2" disabled={busy || !password} onClick={doRemove}>
               {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Remove wallet
