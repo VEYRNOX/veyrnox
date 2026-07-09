@@ -6,6 +6,7 @@ import { TrendingUp, Activity, Target, AlertTriangle, BarChart3, Shield } from "
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "@/lib/recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
+import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 
 const VOLATILITY = { BTC: 0.72, ETH: 0.85, SOL: 1.2, USDC: 0.01, USDT: 0.01 };
 const SHARPE = { BTC: 1.4, ETH: 1.1, SOL: 0.9, USDC: 0.05, USDT: 0.05 };
@@ -118,6 +119,10 @@ export default function AdvancedAnalytics() {
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><BarChart3 className="h-6 w-6 text-primary" /> Advanced Analytics</h1>
         <p className="text-sm text-muted-foreground mt-0.5">In-depth risk analysis and performance metrics</p>
       </div>
+
+      {/* I4 fail-closed: every metric below derives from assetTotals/grandTotal,
+          which EXCLUDE any asset whose balance read failed — flag the incompleteness. */}
+      {portfolio?.indeterminate && <IncompleteBalanceNote />}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {metrics.map(m => (

@@ -9,6 +9,7 @@ import { TrendingUp, TrendingDown, DollarSign, Wallet, BarChart2 } from "lucide-
 import { useWallet } from "@/lib/WalletProvider";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
+import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 
 const RANGES = [
   { label: "7D", days: 7 },
@@ -139,6 +140,11 @@ export default function Analytics() {
         <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Portfolio performance &amp; insights</p>
       </div>
+
+      {/* I4 fail-closed: totals/allocation below derive from grandTotal/assetTotals,
+          which EXCLUDE any asset whose balance read failed. Mark the figures as
+          incomplete rather than presenting a silently-understated view as fact. */}
+      {portfolio?.indeterminate && <IncompleteBalanceNote />}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-2">
