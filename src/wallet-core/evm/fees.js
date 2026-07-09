@@ -22,7 +22,11 @@ import { getNetworkInfo } from './networks.js';
 
 export const MAX_BASE_FEE_GWEI = {
   mainnet:         1_000n,
-  polygon:           200n,
+  // Polygon PoS routinely runs base fees of 30–300+ gwei and spikes higher under
+  // load — a 200 gwei cap false-tripped on the live mainnet base fee (~250 gwei),
+  // throwing "implausible base fee" on every Polygon send. Widened to 5000 (matching
+  // the polygonAmoy testnet cap); still catches a genuinely broken RPC value.
+  polygon:         5_000n,
   arbitrum:          200n,
   optimism:          200n,
   avalanche:         200n,
