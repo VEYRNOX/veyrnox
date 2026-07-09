@@ -88,6 +88,17 @@ vi.mock('../hardware.js', () => ({
   clearHardwareCredential: vi.fn(async () => {}),
 }));
 
+// M2c enclave plugin: hwUnwrap presents the OS biometric prompt (the appStateChange
+// pause source) inside downgradeFromHardwareWrap. Lazy-imported by native.js.
+const enclaveMock = {
+  isHardwareKeyAvailable: vi.fn(async () => ({ backing: 'none', biometryEnrolled: false })),
+  createWrappingKey: vi.fn(async () => {}),
+  hwWrap: vi.fn(async () => 'ct'),
+  hwUnwrap: vi.fn(async () => btoa(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }))),
+  deleteWrappingKey: vi.fn(async () => {}),
+};
+vi.mock('../../../plugins/veyrnoxEnclave.js', () => enclaveMock);
+
 const { nativeKeyStore } = await import('../native.js');
 
 const kekSalt = btoa('s'.repeat(32));
@@ -115,6 +126,8 @@ beforeEach(() => {
   vaultMock.encryptVaultWithDek.mockResolvedValue({ iv: 'newiv', ct: 'newct' });
   kekMock.combineKek.mockResolvedValue(new Uint8Array(32).fill(9));
   kekMock.unwrapDek.mockResolvedValue(new Uint8Array(32).fill(4));
+  enclaveMock.hwUnwrap.mockResolvedValue(btoa(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' })));
+  enclaveMock.deleteWrappingKey.mockResolvedValue(undefined);
 });
 
 describe('L1 — changePassword runs under lock suppression', () => {
@@ -180,6 +193,26 @@ describe('L1 — saveVaultContents runs under lock suppression', () => {
     });
 
     await nativeKeyStore.saveVaultContents('NEW', 'pw', {});
+
+    expect(lockHook).not.toHaveBeenCalled();
+    nativeKeyStore.setLockHook(null);
+  });
+});
+
+describe('M-9 — downgradeFromHardwareWrap runs under lock suppression', () => {
+  it('does NOT fire the lock hook when the app backgrounds mid-downgradeFromHardwareWrap', async () => {
+    // Enclave-wrapped record so downgrade reaches hwUnwrap (the OS biometric prompt).
+    setVault(JSON.stringify({ wrap: 'enclave-v1', hw: 'ciphertext' }));
+    const lockHook = vi.fn();
+    nativeKeyStore.setLockHook(lockHook);
+
+    // Fire the OS background event DURING the biometric-gated unwrap.
+    enclaveMock.hwUnwrap.mockImplementationOnce(async () => {
+      fireAppBackground();
+      return btoa(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'x', ct: 'y' }));
+    });
+
+    await nativeKeyStore.downgradeFromHardwareWrap();
 
     expect(lockHook).not.toHaveBeenCalled();
     nativeKeyStore.setLockHook(null);

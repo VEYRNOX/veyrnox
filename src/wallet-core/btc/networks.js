@@ -117,7 +117,7 @@ export function listEnabledBtcNetworks() {
 // (`networkKey='testnet'`): the wallet derives, reads, and signs on testnet3.
 // This is the single source of truth for "which BTC network is active" so a UI
 // validator can be network-correct WITHOUT re-enabling mainnet or flipping the gate.
-export const ACTIVE_BTC_NETWORK_KEY = 'testnet';
+export const ACTIVE_BTC_NETWORK_KEY = 'mainnet';
 
 /**
  * The @scure/btc-signer params for the ACTIVE BTC network (testnet). Use this when a

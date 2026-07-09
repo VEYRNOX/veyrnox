@@ -61,13 +61,12 @@ describe('Part D — offline-brute-force limit stays disclosed app-wide', () => 
 // them, never through them.
 const HONESTY = {
   'pages/DuressPin.jsx': [
-    'surrendered wallet under coercion',  // what it is (renamed: decoy → hidden/surrendered)
-    'runtime deniability',                // deniability class
-    'forensic',                           // forensic inspection can detect
-    'second wallet',                      // ...a second wallet (renamed from "second vault")
-    'no transaction history',             // freshly-funded hidden-wallet limit
-    'sophisticated attacker',             // may still suspect (renamed from "sophisticated coercer")
-    'block explorer',                     // balance is real / live on-chain
+    'surrendered wallet under coercion',  // what it is (in file header comment)
+    'examining the device might still spot the second wallet', // device-access caveat disclosed (banner)
+    'second wallet',                      // ...a second wallet
+    'no history, which makes it less convincing', // freshly-funded hidden-wallet limit
+    'examines the device may still find the second wallet',    // may figure out there's a second wallet (plausibility bullet)
+    'real balance',                       // balance is real from the blockchain
   ],
   'pages/StealthWallets.jsx': [
     'no list, no count, no indicator',    // not listed/counted/hinted
@@ -83,14 +82,12 @@ const HONESTY = {
   ],
   'pages/PanicWipe.jsx': [
     'irreversible',                       // destructive + irreversible
-    'safety-critical',                    // safety-critical
-    'stealth',                            // wipes primary + decoy + stealth pool...
-    'panic marker',                       // ...+ panic marker
-    'seed backup',                        // backup elsewhere still recovers
-    'protects the device, not the',       // wipe protects device, not seed
-    'on-chain',                           // on-chain history stays public
+    'permanent',                          // permanent deletion disclosed
+    'hidden wallets',                     // wipes all wallets including hidden
+    'recovery phrase',                    // backup elsewhere still recovers
+    'blockchain',                         // on-chain history stays public
     'different',                          // panic PIN must differ...
-    'the wipe never fires',               // ...else that path wins
+    'nothing gets wiped',                 // ...else that path wins and the wipe won't happen
   ],
 };
 

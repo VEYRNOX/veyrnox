@@ -18,6 +18,7 @@ import { useActionGuard } from "@/components/security/useActionGuard";
 import {
   CloudUpload, Download, Upload, Lock, KeyRound,
   AlertTriangle, Shield, CheckCircle2, Loader2,
+  FileText, RefreshCw, ChevronLeft, FolderOpen,
 } from "lucide-react";
 
 // ── Local helpers ────────────────────────────────────────────────────────────
@@ -59,6 +60,24 @@ function PinField({ label, value, onChange }) {
   );
 }
 
+function formatBytes(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatModified(epochSeconds) {
+  const s = Number(epochSeconds);
+  if (!Number.isFinite(s) || s <= 0) return "";
+  try {
+    return new Date(s * 1000).toLocaleString();
+  } catch {
+    return "";
+  }
+}
+
 // ── Export tab ───────────────────────────────────────────────────────────────
 
 function ExportTab({ createBackup, isDecoy, isHidden }) {
@@ -69,6 +88,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
   const [savedPath, setSavedPath] = useState(null);   // set after successful Downloads save
   const [envelope, setEnvelope] = useState(null);     // held so user can re-save without re-encrypting
   const { gateModal } = useActionGuard();
+  const isIos = Capacitor.getPlatform() === "ios";
 
   if (isDecoy || isHidden) {
     return (
@@ -93,9 +113,12 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       if (result && typeof result === "object" && result.saved) {
         setSavedPath(result.path);
         setPassword(""); setPin(""); setPinConfirm("");
+      } else if (result && typeof result === "object" && !result.saved) {
+        // iOS: share sheet was dismissed without saving
+        toast("Backup created but not saved — tap the button to try again.");
       } else {
-        // Web / non-Android: anchor download triggered
-        toast.success("Backup verified ✓ and saved — it opens with this password or PIN.");
+        // Web / desktop: anchor download triggered
+        toast.success("Backup verified and saved — it opens with this password or PIN.");
         setPassword(""); setPin(""); setPinConfirm("");
       }
     } catch (err) {
@@ -129,10 +152,12 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         <div className="p-5 rounded-xl border border-success/30 bg-success/5 flex items-start gap-3">
           <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold">Backup saved to Downloads</p>
+            <p className="text-sm font-semibold">{isIos ? "Backup saved" : "Backup saved to Downloads"}</p>
             <p className="text-xs text-muted-foreground mt-1 font-mono">{savedPath}</p>
             <p className="text-xs text-muted-foreground mt-2">
-              Find it in your <strong>Files app → Downloads</strong>. From there you can copy it to Google Drive, Dropbox, a USB drive, or anywhere you like.
+              {isIos
+                ? "Your backup was shared to the location you chose. You can also save another copy to a different location."
+                : <>Find it in your <strong>Files app → Downloads</strong>. From there you can copy it to Google Drive, Dropbox, a USB drive, or anywhere you like.</>}
             </p>
           </div>
         </div>
@@ -203,12 +228,14 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 transition-opacity"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        {busy ? "Creating & verifying…" : "Save backup to Downloads"}
+        {busy ? "Creating & verifying…" : isIos ? "Save backup" : "Save backup to Downloads"}
       </button>
 
       <p className="text-xs text-muted-foreground text-center">
-        Saves <span className="font-mono">veyrnox.enc</span> to your Downloads folder.
-        Only <strong>VEYRNOX</strong> can open it — and only with the backup password or PIN you chose.
+        {isIos
+          ? <>Saves <span className="font-mono">veyrnox.enc</span> — choose where to store it (Files, iCloud, OneDrive, etc.).</>
+          : <>Saves <span className="font-mono">veyrnox.enc</span> to your Downloads folder.</>}
+        {" "}Only <strong>VEYRNOX</strong> can open it — and only with the backup password or PIN you chose.
       </p>
 
       {gateModal}
@@ -227,9 +254,13 @@ function RestoreTab({ lock, onBack }) {
   const [credential, setCredential] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
-  const [phase, setPhase] = useState("pick"); // pick | unlock | setpw | done
+  const [phase, setPhase] = useState("pick"); // pick | browse | unlock | setpw | done
   const [busy, setBusy] = useState(false);
   const [pinDecryptedJson, setPinDecryptedJson] = useState(null);
+  const [backups, setBackups] = useState([]);   // in-app Downloads list (Android)
+  const [listBusy, setListBusy] = useState(false);
+
+  const isAndroid = Capacitor.getPlatform() === "android";
 
   // Shared: parse already-read bytes into an envelope and advance to unlock.
   const ingestBytes = (bytes, name) => {
@@ -263,18 +294,69 @@ function RestoreTab({ lock, onBack }) {
   // Activity fires Capacitor's pause event, which would otherwise lock the
   // wallet mid-restore.
   const pickFile = async () => {
-    if (Capacitor.getPlatform() !== "android") {
+    const platform = Capacitor.getPlatform();
+    if (platform === "android") {
+      try {
+        const FileSaver = registerPlugin("FileSaver");
+        const result = await withLockSuppressed(() => FileSaver.openFile());
+        if (!result || result.cancelled) return;
+        const bytes = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
+        ingestBytes(bytes.buffer, result.filename || "veyrnox.enc");
+      } catch (err) {
+        toast.error(err?.message || "Could not open the file.");
+      }
+      return;
+    }
+    if (platform === "ios") {
+      // <input type="file"> works in WKWebView on iOS 15+ and opens the
+      // native document picker (Files app). No extra plugin needed.
       fileRef.current?.click();
       return;
     }
+    // Web / desktop
+    fileRef.current?.click();
+  };
+
+  // Load the in-app list of .enc backups from Downloads (Android only) and
+  // move to the 'browse' screen, which renders our own file list with a back
+  // button — instead of dropping the user into the un-exitable system picker.
+  const loadBackupList = async () => {
+    setListBusy(true);
     try {
       const FileSaver = registerPlugin("FileSaver");
-      const result = await withLockSuppressed(() => FileSaver.openFile());
-      if (!result || result.cancelled) return;
-      const bytes = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
-      ingestBytes(bytes.buffer, result.filename || "veyrnox.enc");
+      const { files } = await FileSaver.listBackups();
+      setBackups(Array.isArray(files) ? files : []);
     } catch (err) {
-      toast.error(err?.message || "Could not open the file.");
+      toast.error(err?.message || "Could not read your Downloads folder.");
+      setBackups([]);
+    } finally {
+      setListBusy(false);
+    }
+  };
+
+  // Entry point for the "Select backup file" button.
+  const startSelect = () => {
+    if (isAndroid) {
+      setPhase("browse");
+      loadBackupList();
+      return;
+    }
+    // iOS / web use the native <input type="file"> path.
+    pickFile();
+  };
+
+  // Open a file chosen from the in-app Downloads list (by content:// URI).
+  const openListedFile = async (file) => {
+    setBusy(true);
+    try {
+      const FileSaver = registerPlugin("FileSaver");
+      const result = await FileSaver.readFile({ uri: file.uri });
+      const bytes = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
+      ingestBytes(bytes.buffer, result.filename || file.name || "veyrnox.enc");
+    } catch (err) {
+      toast.error(err?.message || "Could not open that file.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -368,6 +450,24 @@ function RestoreTab({ lock, onBack }) {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {busy ? "Saving…" : "Save & restore"}
         </button>
+
+        <button
+          onClick={() => {
+            // Return to the file picker; drop the decrypted secret and all
+            // credentials from state so nothing sensitive lingers (I4).
+            setPinDecryptedJson(null);
+            setNewPassword("");
+            setNewPasswordConfirm("");
+            setCredential("");
+            setEnvelope(null);
+            setFileName("");
+            setPhase("pick");
+          }}
+          disabled={busy}
+          className="w-full py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary/40 transition-colors disabled:opacity-50"
+        >
+          ← Back to Select backup file
+        </button>
       </div>
     );
   }
@@ -435,6 +535,75 @@ function RestoreTab({ lock, onBack }) {
     );
   }
 
+  // In-app Downloads file list (Android) — our own screen, with a back button,
+  // in place of the un-exitable system document picker.
+  if (phase === "browse") {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => setPhase("pick")}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back
+        </button>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">Backups in Downloads</span>
+          </div>
+          <button
+            onClick={loadBackupList}
+            disabled={listBusy}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            aria-label="Refresh list"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${listBusy ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+
+        {listBusy ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Reading Downloads…
+          </div>
+        ) : backups.length === 0 ? (
+          <div className="p-4 rounded-xl border border-border bg-card/50 text-xs text-muted-foreground space-y-1">
+            <p className="text-foreground text-sm font-medium">No backup files found</p>
+            <p>No <span className="font-mono">.enc</span> files were found in your Downloads folder. If your backup is somewhere else, use “Browse other location”.</p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {backups.map((f) => (
+              <li key={f.uri}>
+                <button
+                  onClick={() => openListedFile(f)}
+                  disabled={busy}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card/50 hover:bg-secondary/40 text-left transition-colors disabled:opacity-50"
+                >
+                  <FileText className="h-5 w-5 text-primary shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-mono truncate">{f.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatBytes(f.size)} · {formatModified(f.modified)}</p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <button
+          onClick={pickFile}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary/40 transition-colors"
+        >
+          <FolderOpen className="h-4 w-4" />
+          Browse other location…
+        </button>
+      </div>
+    );
+  }
+
   // phase === 'pick'
   return (
     <div className="space-y-4">
@@ -456,7 +625,7 @@ function RestoreTab({ lock, onBack }) {
       </div>
 
       <button
-        onClick={pickFile}
+        onClick={startSelect}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border hover:border-primary/40 bg-card/50 hover:bg-secondary/40 text-sm text-muted-foreground transition-colors"
       >
         <Upload className="h-4 w-4" />
@@ -474,7 +643,7 @@ const TABS = [
   { id: "restore", label: "Restore", Icon: Upload },
 ];
 
-export default function CloudBackup() {
+export default function PersonalBackup() {
   const { createBackup, lock, isDecoy, isHidden } = useWallet();
   const [tab, setTab] = useState("export");
 

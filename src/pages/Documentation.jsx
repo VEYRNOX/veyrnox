@@ -36,7 +36,7 @@ const features = [
     { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "built" },
     { name: "Encrypted Vault", desc: "Strong on-device encryption at rest; plaintext keys never leave device", status: "built" },
     { name: "Backup & Reveal Seed", desc: "Seed phrase + encrypted QR backup behind explicit warnings", status: "built" },
-    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) — each confirmed on a test network or Solana test network with an on-chain txid", status: "built" },
+    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) — each confirmed on-chain with a txid; mainnet unlocked", status: "built" },
     { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "built" },
     { name: "Live Balances", desc: "Read live from chain network connection / explorer providers", status: "built" },
     { name: "Transaction History", desc: "Per-chain read-only history with privacy disclosures", status: "built" },
@@ -45,8 +45,8 @@ const features = [
   ]},
   { category: "Networks & Assets", icon: Coins, items: [
     { name: "Ethereum-compatible Networks", desc: "Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain", status: "built" },
-    { name: "Bitcoin", desc: "Bitcoin address standard (BIP-84) native-segwit stack; test-network-verified (live network unlocked, not yet live-network-verified)", status: "built" },
-    { name: "Solana", desc: "Solana signing key / key derivation standard stack; Solana test network verified (live network unlocked, not yet live-network-verified)", status: "built" },
+    { name: "Bitcoin", desc: "Bitcoin address standard (BIP-84) native-segwit stack; testnet-verified, mainnet unlocked", status: "built" },
+    { name: "Solana", desc: "Solana signing key / key derivation standard stack; testnet-verified, mainnet unlocked", status: "built" },
     { name: "Ethereum Token Standard (ERC-20) Tokens", desc: "USDC and USDT via the shared token path", status: "built" },
   ]},
   { category: "Access & Authentication", icon: KeyRound, items: [
@@ -57,7 +57,7 @@ const features = [
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "built" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "built" },
     { name: "Hardware Wallet", desc: "Trezor (WebUSB, Chrome/Edge) — cold-key address derivation and transaction signing for ETH, BTC, and SOL; BTC and SOL send paths wired 2026-06-29. Private key never leaves the hardware device (I1). Decoy/hidden sessions block all Trezor egress (I3). Built, not device-verified.", status: "built" },
-    { name: "Hardware KEK (Secure Enclave / StrongBox)", desc: "Device-bound key-encryption key wrapping the vault key in the iOS Secure Enclave or Android StrongBox. Android: device-verified end-to-end on a Pixel 10 Pro XL — StrongBox-backed key enrolls, persists across a cold restart, and gates unlock (badge stays on); fixed 3 stacked bugs (badge/vault-wrap mismatch, an async-persistence plugin bug, and a silent re-wrap-to-bare-KDF on every unlock). iOS: Secure Enclave ECIES path device-verified with two real Sepolia sends from a KEK-enrolled vault. Neither platform has a fingerprint/Face-ID-gated on-chain send with a captured hardware-unlock log trace, biometric re-enrollment invalidation testing, or an independent audit — built and device-verified, not independently audited, not 'verified' in the on-chain sense.", status: "built" },
+    { name: "Hardware KEK (Android Keystore HMAC-SHA256, StrongBox-preferred, TEE-accepted / iOS Secure Enclave ECIES)", desc: "Device-bound key-encryption key wrapping the vault key in the iOS Secure Enclave or the Android Keystore (StrongBox-preferred; a TEE- or software-backed key is accepted and honestly surfaced — StrongBox enforcement remains a target item, not built). Android: device-verified end-to-end on a Pixel 10 Pro XL — StrongBox-backed key enrolls, persists across a cold restart, and gates unlock (badge stays on); fixed 3 stacked bugs (badge/vault-wrap mismatch, an async-persistence plugin bug, and a silent re-wrap-to-bare-KDF on every unlock). Biometric re-enrollment invalidation for this KEK-enrolled vault is device-verified on Android (Pixel 10 Pro XL, 2026-07-01) — delete/re-enroll fingerprint invalidates the key and fails closed to PIN recovery; the iOS equivalent is deferred (device-blocked, needs an unrestricted iPhone). iOS: Secure Enclave ECIES path device-verified with two real Sepolia sends from a KEK-enrolled vault. Neither platform has a fingerprint/Face-ID-gated on-chain send with a captured hardware-unlock log trace or an independent audit — built and device-verified, not independently audited, not 'verified' in the on-chain sense. This KEK-vault invalidation guarantee is distinct from, and does not extend to, the app-layer Biometric Unlock toggle on a bare (non-KEK) vault above, which is not an OS-enforced per-item ACL.", status: "built" },
   ]},
   { category: "Transaction Safety", icon: ShieldAlert, items: [
     { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke token allowances; flag unlimited", status: "built" },

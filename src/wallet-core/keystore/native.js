@@ -5,12 +5,19 @@
 // │ This module is the native (iOS/Android) branch of the keyStore contract.  │
 // │ It changes WHERE the vault lives and HOW unlock is gated — it does NOT     │
 // │ touch the audited crypto. The vault format is identical to the audited    │
-// │ web path (Argon2id + AES-256-GCM), but the biometric gating layer         │
-// │ (iOS Keychain / Android Keystore) has NOT been independently verified    │
-// │ on real devices. This must be tested and audited before enabling         │
-// │ biometric unlock in production mobile builds.                             │
-// │ DEFERRED: pending Android build milestone (return to this after Android   │
-// │ testing). See docs/M2.secure-storage.md, "Verification gates".           │
+// │ web path (Argon2id + AES-256-GCM).                                        │
+// │                                                                           │
+// │ Device verification status (INTERNAL, not independent):                  │
+// │   Android — end-to-end device-verified on Pixel 10 Pro XL (PRs #497/    │
+// │             #499/#568; C-1 v3 salt-binding confirmed on-device).         │
+// │   iOS     — device-verified PARTIAL: KEK-gated Sepolia txids confirmed   │
+// │             (PR #495); SE-unlock trace closed (iOS-F9, 2026-07-02);      │
+// │             biometric re-enroll invalidation test deferred (iOS-F11).    │
+// │                                                                           │
+// │ What remains outstanding is the INDEPENDENT THIRD-PARTY audit. Until     │
+// │ that audit is complete this module must not be presented as              │
+// │ independently audited-secure. See docs/M2.secure-storage.md and         │
+// │ docs/audit-2026-07-01-kek-internal.md.                                  │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
 // DESIGN B — implemented as PASSCODE/BIOMETRIC-GATED UNLOCK + PLATFORM-SECURE-
@@ -63,6 +70,45 @@ import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
+// ── M2c (Secure Enclave key-wrap) — F-2 closure scaffold ─────────────────────
+// Lazy-loaded so that registerPlugin() in veyrnoxEnclave.js does NOT execute at
+// module-load time. Tests that import native.js directly mock @capacitor/core
+// without registerPlugin; a top-level import would throw there. All M2c
+// call-sites are async, so a one-time lazy getter is transparent.
+let _enclavePlugin = null;
+async function enclavePlugin() {
+  if (!_enclavePlugin) _enclavePlugin = await import('../../plugins/veyrnoxEnclave.js');
+  return _enclavePlugin;
+}
+// PROVISIONAL — NOT AUDITED-SECURE, NOT DEVICE-VERIFIED. The hardware-wrap path
+// is capability-detected AND gated behind M2C_HARDWARE_WRAP_ENABLED, which stays
+// FALSE until M2c-2 verifies the Enclave path on a physical iPhone (key-gen,
+// Face/Touch prompt on unwrap, biometryCurrentSet invalidation) and the product
+// decision on mandatory-biometric-on-Enclave devices is signed off. While false,
+// native behaviour is byte-identical to M2b (fallback path only), so the iOS
+// Simulator and the test suite are unaffected. See docs/M2cd.native-acl-plan.md.
+const M2C_HARDWARE_WRAP_ENABLED = false;
+
+// Stored-record marker. An Enclave-wrapped record is { wrap:'enclave-v1', hw }.
+const WRAP_VERSION_ENCLAVE = 'enclave-v1';
+
+async function useHardwareWrap() {
+  if (!M2C_HARDWARE_WRAP_ENABLED) return false;
+  try {
+    const { isHardwareKeyAvailable } = await enclavePlugin();
+    const { backing, biometryEnrolled } = await isHardwareKeyAvailable();
+    return backing === 'secureEnclave' && biometryEnrolled === true;
+  } catch {
+    return false;
+  }
+}
+
+function base64FromUtf8(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function utf8FromBase64(b64) {
+  return decodeURIComponent(escape(atob(b64)));
+}
 
 // Single-vault slice, mirroring evm/vaultStore.js's web layout (KEY='primary').
 const KEY_PREFIX = 'veyrnox_';
@@ -606,13 +652,50 @@ export const nativeKeyStore = {
   // transiently to the caller; nothing secret is cached here.
   async unlock(password, opts = {}) {
     await init();
-    // Always suppress the lock hook for the duration of unlock — the OS
-    // appStateChange pause event fires when a biometric sheet opens (both the
-    // standard requireBiometric gate and the KEK getHardwareFactor prompt),
-    // which would otherwise navigate the user back to the PIN pad before unlock
-    // completes. Safe: the user initiated unlock; lock is restored immediately
-    // when this call exits (success or error).
-    return withLockSuppressed(() => _unlockInner(password, opts));
+    // M2c: intercept Enclave-wrapped records BEFORE withLockSuppressed/_unlockInner,
+    // which calls parseVaultBlob() and would reject { wrap:'enclave-v1' } as malformed.
+    // Peek at the record shape — metadata-only read, never the secret.
+    const rawPeek = await SecureStorage.get(VAULT_KEY, false);
+    if (rawPeek !== null && rawPeek !== undefined) {
+      let peekRecord;
+      // parseVaultBlob gives the stable MALFORMED_VAULT throw on corrupt input; keep the
+      // try/catch so a non-enclave / unparseable record falls through to _unlockInner
+      // (which surfaces the proper error) instead of throwing from the metadata peek.
+      try { peekRecord = parseVaultBlob(rawPeek); } catch { /* fall through */ }
+      if (peekRecord && peekRecord.wrap === WRAP_VERSION_ENCLAVE) {
+        // OS biometric is enforced by the Enclave key ACL inside hwUnwrap — no
+        // separate app-layer gate. Tag cancel/lockout so the caller fails closed.
+        let blobJson;
+        try {
+          const { hwUnwrap } = await enclavePlugin();
+          blobJson = utf8FromBase64(await hwUnwrap(peekRecord.hw));
+        } catch (err) {
+          if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
+          throw err;
+        }
+        return decryptVault(JSON.parse(blobJson), password); // vault.js unchanged
+      }
+    }
+
+    // Standard M2b / KEK path — suppress lock hook around biometric prompts.
+    return withLockSuppressed(async () => {
+      const secret = await _unlockInner(password, opts);
+      // M2c-2 opt-in up-migration: transparently re-wrap the M2b blob under the
+      // Enclave key after a successful biometric-enabled unlock. Best-effort +
+      // atomic-safe (safeWriteVault). Dormant while M2C_HARDWARE_WRAP_ENABLED=false.
+      if (opts.requireBiometric && (await useHardwareWrap())) {
+        try {
+          const raw2 = await SecureStorage.get(VAULT_KEY, false);
+          if (raw2 !== null && raw2 !== undefined) {
+            const { createWrappingKey, hwWrap } = await enclavePlugin();
+            await createWrappingKey();
+            const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
+            await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
+          }
+        } catch { /* non-fatal — migrate on a later unlock */ }
+      }
+      return secret;
+    });
   },
 
   // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
@@ -643,16 +726,8 @@ export const nativeKeyStore = {
         const getHF = opts && opts.getHardwareFactor;
         if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
         const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
-        // C-1 (v3): the re-wrap uses a FRESH kekSalt, so its H is bound to a DIFFERENT
-        // salt than the unlock side. Generate the new salt up front and derive H TWICE:
-        // once for the UNLOCK side (whatever the stored blob's version binds to — v3 uses
-        // its kekSalt, v2/v1 use the fixed salt via hfOptsForBlob), once bound to the NEW
-        // salt for the re-wrap. The re-wrapped vault is always stamped v3 (genuinely
-        // salt-bound), so H2 is always kekSalt-bound.
         const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
         const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
-        // F-04: both getHF calls are inside the try/finally so H is always zeroed
-        // even if the second call throws (user cancels second biometric prompt).
         let H;
         let H2;
         let oldC;
@@ -660,18 +735,14 @@ export const nativeKeyStore = {
         let oldKek;
         let newKek;
         let dek;
-        // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so H, H2,
-        // both derived KEKs, and the recovered DEK are wiped on EVERY path (I4).
         try {
           H = await getHF(hfOptsForBlob(blob, oldSaltBytes));
-          // The re-enrolled vault is always v3; bind the new H to the new salt.
           H2 = await getHF({ kekSalt: newSaltBytes.slice() });
           oldC = await deriveKekC(currentPassword, oldSaltBytes);
           oldKek = await combineKek(H, oldC);
           if (H && H.fill) H.fill(0);
           if (oldC) oldC.fill(0);
           dek = await unwrapDek(oldKek, blob.kekWrap); // throws if wrong PIN/device
-          // Re-wrap the SAME DEK under a new KEK derived from the new PIN + fresh salt.
           newC = await deriveKekC(newPassword, newSaltBytes);
           newKek = await combineKek(H2, newC);
           if (H2 && H2.fill) H2.fill(0);
@@ -711,47 +782,27 @@ export const nativeKeyStore = {
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (raw === null || raw === undefined) throw new Error('No wallet found on this device');
       const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
-      // F-09: secret is a JS string; cannot be zeroed — known limitation, all TypedArrays are zeroed in finally.
       const secret = await decryptVault(blob, password); // verify password and recover seed
 
-      // L2 (audit): getHF() materialises the hardware credential (AndroidKeyStore /
-      // iOS Keychain). Once it exists, any downstream failure would otherwise ORPHAN
-      // that credential — the old rollback lived only in the UI catch, so a non-UI
-      // caller left a stale credential behind. Guarantee the cleanup here in the
-      // contract: from getHF() onward, wrap the enroll body so ANY throw
-      // (combineKek/wrapDek/encrypt/safeWriteVault) clears the just-created credential
-      // before rethrowing (I4 fail-honest, fail-closed). Only the FAILURE path clears;
-      // the success path (no throw) never touches the credential we just enrolled.
-      // C-1 (v3): generate the per-enrollment kekSalt FIRST, then bind H to it via
-      // getHF({ kekSalt }) so this vault's H is UNIQUE on the device (no longer the
-      // global fixed-salt HMAC). hardwareKekVersion:3 records the GENUINE binding for
-      // unlock (v2 was the earlier, inert stamp — see hfOptsForBlob).
       const saltBytes = crypto.getRandomValues(new Uint8Array(32));
       const kekSalt = btoa(String.fromCharCode(...saltBytes));
-      const H = await getHF({ kekSalt: saltBytes.slice() });
+      // H-1 (#720): getHF materialises the native credential. It lives INSIDE the outer
+      // try so that a throw AFTER the credential exists still reaches the clear-credential
+      // rollback below (fail honest, fail closed — I4). authenticateOrThrow() stays outside
+      // (a biometric cancel there creates no credential, so there is nothing to roll back).
+      let H;
       try {
+        H = await getHF({ kekSalt: saltBytes.slice() });
         let C;
         let kek;
         const dek = randomDek();
-        // H-NEW-6b: wrap the entire KEK + DEK lifetime in try/finally so H, C, the
-        // derived KEK, and the DEK are wiped even if combineKek/wrapDek/encryptVaultWithDek
-        // throws — never leave plaintext key material in the JS heap until GC (I4).
         try {
           C = await deriveKekC(password, saltBytes);
           kek = await combineKek(H, C);
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
           const kekWrap = await wrapDek(kek, dek);
-          // Re-encrypt seed under the DEK so PIN rotation doesn't change the seed CT (§3).
           const { iv, ct } = await encryptVaultWithDek(secret, dek);
-          // Persist the hardware security tier alongside the wrap so the badge can
-          // show the real protection level (STRONGBOX / TEE / SecureEnclave) honestly
-          // rather than a generic "ON" label (H-1 honesty fix). The tier comes from
-          // enrollHardwareCredential() and is passed in via opts.hardwareKekTier.
-          // Omitted when absent (older callers / unenroll path). hardwareKekVersion:3
-          // marks the vault as GENUINELY C-1 salt-bound (per-enrollment kekSalt-bound H).
-          // v3 (not v2): the v2 stamp shipped while two bridge bugs left the binding inert,
-          // so a fresh enrollment is stamped v3 to mean the wrap really is salt-bound.
           const tierEntry = opts && opts.hardwareKekTier
             ? { hardwareKekTier: opts.hardwareKekTier }
             : {};
@@ -764,10 +815,9 @@ export const nativeKeyStore = {
           saltBytes.fill(0);
         }
       } catch (err) {
-        // Enroll failed after the credential was created: roll it back so the
-        // vault (still bare) and the hardware layer stay consistent. clearHardware-
-        // Credential is idempotent (plugin guards on containsAlias). Best-effort —
-        // never mask the original enroll error, and never swallow it (rethrow).
+        // Zero the salt on the getHF-throw path too (the inner finally never ran).
+        if (H && H.fill) H.fill(0);
+        saltBytes.fill(0);
         try {
           await clearHardwareCredential();
         } catch {
@@ -791,41 +841,24 @@ export const nativeKeyStore = {
       if (!raw) throw new Error('No wallet found on this device');
       const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
       if (!blob.kekWrap) {
-        // Already-bare vault: no key material to re-wrap, but a stale Keystore
-        // alias may survive from a prior partial/interrupted unenroll. Clearing
-        // it here is what makes isHardwareEnrolled() honest — otherwise the "ON"
-        // badge sticks with no way to turn it off (I4 fail-honest, fail-closed).
-        // Idempotent: clearCredential guards on containsAlias, so a no-op when
-        // no key exists. A bare vault needs no hardware key.
         await clearHardwareCredential();
         return;
       }
 
-      // Recover DEK: H (hardware factor, biometric) + PIN-derived C
       const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
-      // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
       const H = await getHF(hfOptsForBlob(blob, saltBytes));
       let C;
       let kek;
       let dek;
-      // H-NEW-6b: wrap the KEK + DEK lifetime in try/finally so H, C, the derived KEK,
-      // and the recovered DEK are wiped on EVERY path — including when unwrapDek throws
-      // (wrong PIN/device). None may linger in the JS heap until GC (I4).
       try {
         C = await deriveKekC(password, saltBytes);
         kek = await combineKek(H, C);
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
         dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
-
-        // Decrypt the seed using the recovered DEK
         const secret = await decryptVaultWithDek(blob, dek);
-
-        // Re-encrypt in bare (PIN-only) format — no kekWrap, no kekSalt
         const bareBlob = await encryptVault(secret, password);
         await safeWriteVault(bareBlob);
-
-        // Only delete the Keystore key AFTER the vault is safely re-written
         await clearHardwareCredential();
       } finally {
         if (H && H.fill) H.fill(0);
@@ -854,12 +887,41 @@ export const nativeKeyStore = {
     await SecureStorage.remove(VAULT_KEY);
     // Also drop any leftover legacy journal key so a re-import starts truly fresh.
     await SecureStorage.remove(VAULT_NEXT_KEY);
-    await clearHardwareCredential();
+    // M-4: best-effort — an absent hardware key (or plugin quirk) is not an error during
+    // a wipe; the vault is already gone, so never propagate and abort the clear.
+    try { await clearHardwareCredential(); } catch { /* best-effort — absent key is not an error during wipe */ }
   },
 
   // NATIVE-ONLY: deliver the hardware factor H for an enrolled vault. Exposed so
   // WalletProvider can pass it to unlock() without importing hardware.js directly.
   getHardwareFactor,
+
+  // M2c-2 DOWN-migration (OPT-IN disable path): if the primary vault is currently
+  // Enclave-wrapped, unwrap it (the OS biometric is enforced by the key ACL) and
+  // re-store the SAME encrypted blob as a plain M2b record, so a password-only
+  // unlock keeps working after the user turns biometric unlock OFF. Called from
+  // WalletProvider.disableBiometricUnlock BEFORE the biometric cache is cleared.
+  //   • Keys off the RECORD SHAPE, not M2C_HARDWARE_WRAP_ENABLED — never stranded.
+  //   • No-op when the record is already M2b or absent.
+  //   • Atomic-safe: overwrites to M2b ONLY after a successful unwrap+parse.
+  async downgradeFromHardwareWrap() {
+    await init();
+    // L1/M-9: hwUnwrap opens an OS biometric sheet whose appStateChange pause would
+    // otherwise fire the background lock hook mid-downgrade. Suppress the lock hook for
+    // the whole operation, matching unlock/enrollKek/unenrollKek/changePassword.
+    return withLockSuppressed(async () => {
+      const raw = await SecureStorage.get(VAULT_KEY, false);
+      if (raw === null || raw === undefined) return;
+      const record = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
+      if (!record || record.wrap !== WRAP_VERSION_ENCLAVE) return; // already M2b
+
+      const { hwUnwrap, deleteWrappingKey } = await enclavePlugin();
+      const blobJson = utf8FromBase64(await hwUnwrap(record.hw)); // throws on cancel
+      const blob = parseVaultBlob(blobJson); // validate it parses before overwriting
+      await safeWriteVault(blob);
+      try { await deleteWrappingKey(); } catch { /* non-fatal */ }
+    });
+  },
 
   // NATIVE-ONLY extension (not on the cross-platform KeyStore type): let the app
   // register the function to run when the OS backgrounds the app, so the live

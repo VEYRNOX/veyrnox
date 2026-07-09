@@ -28,9 +28,11 @@
 //      wrap on web, silently downgrading an enrolled vault to bare on any content
 //      re-persist. Phase-1 offline-seizure regression; web sibling of Android bug 3.
 //      FIXED in PR #631 — the regression test below is now active (no longer `fixme`).
-//   2. UI-DEFECT (MED): the settings enrollment card renders an 8-digit PinPad for
-//      the web credential, but the web credential is a ≥12-char password, so web
-//      enrollment through the card can never succeed.
+//   2. UI-DEFECT (MED): the settings enrollment card originally used a ≥12-char
+//      password PinPad for web, mismatched with the vault's 8-digit PIN. After
+//      PR #651 PIN unification this became a regression — FIXED in PR #703
+//      (2026-07-07): enrollment PinPad now uses length=8/numericOnly. C-UI test
+//      (test #13) proves the full settings card enrollment path end-to-end.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { test, expect } from '@playwright/test';
@@ -360,6 +362,7 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     await addAuthenticator(page);
     const c = await ksCall(page, 'createVault', { secret: SECRET, password: PASSWORD });
     expect(c.ok, `createVault failed: ${c.message}`).toBe(true);
+    await page.evaluate(() => localStorage.setItem('veyrnox-auth-model', 'pin'));
     if (enroll) {
       const e = await ksCall(page, 'enrollKek', PASSWORD);
       expect(e.ok, `enrollKek failed: ${e.message}`).toBe(true);
@@ -411,8 +414,9 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     // The "UNAUDITED-PROVISIONAL" disclosure was removed by an explicit owner
     // override (PR #667, 2026-07-06 — see docs/Feature-Status.md line 152 "OWNER
     // OVERRIDE … provisional/unaudited UI disclosures REMOVED. Do NOT re-add
-    // them."). The card now renders the retained honest binding-status line.
-    await expect(page.getByText('The hardware binding is built and device-verified.')).toBeVisible();
+    // them."). The card now renders the retained honest binding-status line,
+    // humanized in PR #759 ("device-verified" → "tested on real hardware").
+    await expect(page.getByText('Device binding is active and tested on real hardware.')).toBeVisible();
     // I4: the "WebAuthn Protected" badge is EARNED by enrollment, never shown
     // structurally on a bare vault.
     await expect(page.getByText('WebAuthn Protected')).toHaveCount(0);
@@ -448,20 +452,44 @@ test.describe('Web KEK PRF — UI unlock path', () => {
       .toBeVisible({ timeout: 30000 });
   });
 
-  // ── PENDING (2026-07-06) ───────────────────────────────────────────────────
-  // Web is now unified on 8-digit PIN (matches native), so the vault-password
-  // conflict is resolved. However, interacting with the settings card's PinPad
-  // requires careful selector work to locate the right buttons within the card
-  // (there are multiple PinPads on the page). This test is a lower-priority
-  // follow-up; the unlock flow (A–D) proves the core Phase 1 functionality.
-  test.fixme('C-UI: enroll through the settings card with the vault PIN', async ({ page }) => {
+  // C-UI: enroll through the settings card with the vault PIN.
+  // Unblocked by HardwareKekSettings.jsx fix (2026-07-07): enrollment PinPad now
+  // uses length=8 + numericOnly (matching the unified 8-digit PIN cohort from #651).
+  // The CDP virtual authenticator added in seedVault() auto-approves the PRF credential
+  // creation, so no human interaction is needed.
+  test('C-UI: enroll through the settings card with the vault PIN', async ({ page }) => {
     await seedVault(page, { enroll: false });
     const pw = await reloadToUnlockScreen(page);
     await pw.fill(PASSWORD);
     await pw.press('Enter');
     await expect(page.getByRole('link', { name: /^Send$/i })).toBeVisible({ timeout: 60000 });
     await gotoSettingsInApp(page);
-    // TODO: interact with the enrollment PinPad in the settings card
-    // (navigate it, enter the PIN, trigger enrollment, expect success badge).
+
+    // The enrollment section only renders after webPrfAvailable resolves (async
+    // isPrfSupported() check inside a useEffect). Wait for the unique enrollment
+    // instruction text — when it's visible, the PinPad is also in the DOM.
+    // NOTE: the numeric PinPad's submit button has aria-label="Submit PIN"
+    // (hardcoded, anti-deniability) — NOT aria-label={submitLabel}. Scope all
+    // interactions to the enrollment section div to avoid colliding with other
+    // PinPads on the settings page.
+    const enrollSection = page.locator('div').filter({
+      has: page.getByText('Enter your 8-digit PIN to enable hardware protection'),
+    }).last();
+    await expect(enrollSection).toBeVisible({ timeout: 30000 });
+
+    // Enter the 8-digit vault PIN via the numeric PinPad inside the enrollment section.
+    const pad = enrollSection.getByRole('group', { name: /PIN entry/i });
+    await expect(pad).toBeVisible({ timeout: 5000 });
+    for (const digit of PASSWORD) {
+      await pad.getByRole('button', { name: digit, exact: true }).click();
+    }
+
+    // Submit — aria-label is hardcoded "Submit PIN" in numeric PinPad (anti-deniability).
+    // This triggers enrollKek() + navigator.credentials.create() (CDP auto-approves).
+    await pad.getByRole('button', { name: 'Submit PIN' }).click();
+
+    // The "WebAuthn Protected" badge is the EARNED signal that enrollment succeeded.
+    await expect(page.getByText('WebAuthn Protected')).toBeVisible({ timeout: 30000 });
+    console.log('✓ C-UI: enrolled through settings card → WebAuthn Protected badge earned');
   });
 });

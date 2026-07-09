@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, TrendingUp, Newspaper } from "lucide-react";
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
@@ -19,11 +20,22 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+async function fetchRssJson(url) {
+  const fullUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`;
+  if (Capacitor.isNativePlatform()) {
+    const res = await CapacitorHttp.get({ url: fullUrl });
+    if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
+    return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+  }
+  const res = await fetch(fullUrl);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 async function fetchCryptoNews() {
   const results = await Promise.allSettled(
     RSS_FEEDS.map(({ url, source }) =>
-      fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`)
-        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      fetchRssJson(url)
         .then(d => (d.items || []).map(item => ({ ...item, _source: source })))
     )
   );

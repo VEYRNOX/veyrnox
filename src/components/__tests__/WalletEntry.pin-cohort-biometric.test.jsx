@@ -1,25 +1,22 @@
 // WalletEntry — the returning PIN screen must never auto-cache a PIN it shouldn't.
 //
 // CRITICAL (I3/I4). runPinUnlock auto-caches the typed PIN behind Face ID when
-// biometric unlock is enabled and nothing is cached yet. Two bugs are pinned here:
+// biometric unlock is enabled and nothing is cached yet. Bugs pinned here:
 //
-//  1. DURESS GUARD: once a duress PIN exists, Face ID must open the DECOY only —
-//     that cache is written explicitly by the Duress screen opt-in
-//     (enableDecoyBiometricUnlock). If the returning screen auto-cached the typed
-//     REAL PIN, one-tap Face ID would silently open the REAL wallet, defeating the
-//     "Face ID = decoy, typed real PIN = real wallet" coercion design. The decision
-//     is the pure shouldAutoCacheTypedPin helper; duress presence comes from
-//     wallet-core hasDuressVault(). With NO duress vault, auto-caching the typed
-//     (real) PIN is the SANCTIONED primary-biometric flow (see removeDuressPin's
-//     re-enable path in WalletProvider) and must keep working.
+//  1. DECOY-CACHE GUARD: if Face ID→decoy was opted into (enableDecoyBiometricUnlock),
+//     the biometric cache already holds the DURESS PIN. The auto-cache must NEVER
+//     overwrite it — that's the `alreadyCached` check in shouldAutoCacheTypedPin.
+//     With NO cached secret, auto-caching the typed (real) PIN is the SANCTIONED
+//     primary-biometric flow.
 //
 //  2. ORDERING: the cache write must happen only AFTER unlock(pin) has SUCCEEDED.
 //     The old code cached BEFORE unlocking, so a MIS-TYPED PIN was cached behind
 //     Face ID (garbage cache + a spurious OS enroll prompt on a wrong PIN).
 //
-//  3. FAIL CLOSED: if duress presence cannot be determined (hasDuressVault throws),
-//     do NOT cache — skipping the convenience cache is safe; caching a real PIN
-//     next to an unknown duress state is not.
+//  3. CHAFF COMPATIBILITY: every PIN-cohort device provisions chaff into the duress
+//     IndexedDB slot at onboarding (provisionChaff.js), so hasDuressVault() ALWAYS
+//     returns true. The auto-cache must NOT be blocked by chaff — it uses
+//     alreadyCached (biometric cache presence), not hasDuressVault (blob presence).
 //
 // We assert STRUCTURE (the enableBiometricUnlock spy), never copy.
 
@@ -45,11 +42,11 @@ vi.mock('@/lib/biometricUnlock', () => ({
   clearUnlockSecret: vi.fn(async () => {}),
 }));
 vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
-// Duress presence — the control under test. Default: none configured.
-vi.mock('@/wallet-core/duress', () => ({ hasDuressVault: vi.fn(async () => false) }));
+// Duress blob always exists (chaff from provisionChaff.js).
+vi.mock('@/wallet-core/duress', () => ({ hasDuressVault: vi.fn(async () => true) }));
 
 import { useWallet } from '@/lib/WalletProvider';
-import { hasDuressVault } from '@/wallet-core/duress';
+import { hasStoredUnlockSecret } from '@/lib/biometricUnlock';
 import WalletEntry from '@/components/WalletEntry';
 
 function makeCtx(overrides = {}) {
@@ -79,28 +76,15 @@ async function waitForPinPad() {
 }
 
 beforeEach(() => {
-  vi.mocked(hasDuressVault).mockReset().mockResolvedValue(false);
+  vi.mocked(hasStoredUnlockSecret).mockReset().mockResolvedValue(false);
   try { localStorage.clear(); } catch { /* shimmed */ }
 });
 afterEach(() => { cleanup(); });
 
-describe('WalletEntry — typed-PIN auto-cache guard (duress presence + ordering)', () => {
-  it('does NOT call enableBiometricUnlock when a DURESS vault is configured', async () => {
-    vi.mocked(hasDuressVault).mockResolvedValue(true);
-    const ctx = makeCtx();
-    vi.mocked(useWallet).mockReturnValue(ctx);
-
-    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
-    await waitForPinPad();
-    await enterPin();
-
-    // The PIN must unlock the real wallet…
-    await waitFor(() => expect(ctx.unlock).toHaveBeenCalledWith('13572468', { pinModel: true }));
-    // …but the typed (real) PIN must NEVER be auto-cached while duress exists.
-    expect(ctx.enableBiometricUnlock).not.toHaveBeenCalled();
-  });
-
-  it('auto-caches the typed PIN AFTER a successful unlock when NO duress vault exists (primary Face ID)', async () => {
+describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)', () => {
+  it('auto-caches the typed PIN AFTER a successful unlock even with chaff duress blob (primary Face ID)', async () => {
+    // hasDuressVault returns true (chaff), but auto-cache must still fire because
+    // the biometric cache is empty (alreadyCached: false). This is the chaff-compat fix.
     const callOrder = [];
     const ctx = makeCtx({
       unlock: vi.fn(async () => { callOrder.push('unlock'); return { ok: true }; }),
@@ -117,23 +101,26 @@ describe('WalletEntry — typed-PIN auto-cache guard (duress presence + ordering
     expect(callOrder).toEqual(['unlock', 'cache']);
   });
 
-  it('does NOT cache a WRONG PIN (unlock throws → no cache write)', async () => {
-    const ctx = makeCtx({
-      unlock: vi.fn(async () => { throw new Error('GCM decrypt failed'); }),
-    });
+  it('does NOT overwrite an existing decoy biometric cache (alreadyCached guard)', async () => {
+    // If the user opted into Face ID→decoy, the cache holds the duress PIN.
+    // Auto-cache must NOT overwrite it with the real PIN.
+    vi.mocked(hasStoredUnlockSecret).mockResolvedValue(true);
+    const ctx = makeCtx();
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
     await enterPin();
 
-    await waitFor(() => expect(ctx.unlock).toHaveBeenCalled());
+    await waitFor(() => expect(ctx.unlock).toHaveBeenCalledWith('13572468', { pinModel: true, skipBiometric: true }));
+    // The typed (real) PIN must NEVER be auto-cached when a secret already exists.
     expect(ctx.enableBiometricUnlock).not.toHaveBeenCalled();
   });
 
-  it('fails CLOSED: duress presence unknown (hasDuressVault throws) → no cache write', async () => {
-    vi.mocked(hasDuressVault).mockRejectedValue(new Error('storage unavailable'));
-    const ctx = makeCtx();
+  it('does NOT cache a WRONG PIN (unlock throws → no cache write)', async () => {
+    const ctx = makeCtx({
+      unlock: vi.fn(async () => { throw new Error('GCM decrypt failed'); }),
+    });
     vi.mocked(useWallet).mockReturnValue(ctx);
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { DEMO } from "@/api/demoClient";
+import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import {
   summarizeApprovals,
@@ -153,11 +154,11 @@ export default function SecurityDashboard() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Security Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Your wallet's security posture, in one place.</p>
+            <p className="text-sm text-muted-foreground">Your security status, all in one place.</p>
           </div>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
-          {DEMO ? "Demo · simulated" : "Testnet"}
+          {DEMO ? "Demo · simulated" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>
 
@@ -171,7 +172,7 @@ export default function SecurityDashboard() {
               : <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />}
           <div className="flex-1 min-w-0">
             {loading ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Reviewing local signals…</p>
+              <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking signals on this device…</p>
             ) : review.length > 0 ? (
               <>
                 <p className="text-sm font-semibold">
@@ -183,7 +184,7 @@ export default function SecurityDashboard() {
                 </p>
               </>
             ) : (
-              <p className="text-sm font-semibold">No KNOWN locally-detectable items to review right now.</p>
+              <p className="text-sm font-semibold">Nothing to flag on this device right now.</p>
             )}
           </div>
         </div>
@@ -247,10 +248,7 @@ export default function SecurityDashboard() {
       <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">
         <ScanSearch className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p>
-          Transaction Simulation runs the same checks (unlimited approvals, look-alike & known-bad
-          recipients, large outflows) <span className="font-medium text-foreground">at the moment you sign</span> —
-          results are computed on-device per transaction and aren't stored. The counts above are the
-          standing signals those same checks would flag today.
+          Transaction Simulation runs these same checks <span className="font-medium text-foreground">at the moment you sign</span> — on-device, per transaction, not stored. The counts above show what those checks would flag today.
         </p>
       </div>
 
@@ -265,7 +263,7 @@ export default function SecurityDashboard() {
               always-provisioned, so showing a configured-vs-not state would be both
               wrong and a coercion oracle (deniability invariant). They remain
               reachable via Settings. */}
-          <FeatureRow icon={Ghost} label="Stealth wallets" on={s3.stealth} detail={s3.stealth ? "Hidden-wallet pool seeded" : "Pool not seeded"} path="/stealth-wallets" gapWhenOff={false} />
+          <FeatureRow icon={Ghost} label="Stealth wallets" on={s3.stealth} detail={s3.stealth ? "Pool ready" : "Not set up"} path="/stealth-wallets" gapWhenOff={false} />
           {errorS3 && (
             <p className="text-xs text-caution">Couldn't load stealth-pool status — this signal may be incomplete.</p>
           )}
@@ -305,10 +303,8 @@ export default function SecurityDashboard() {
       {/* Honest coverage note — KNOWN signals only, never a guarantee. */}
       <div className="p-3 rounded-xl bg-secondary/50 border border-border">
         <p className="text-xs text-muted-foreground">
-          This dashboard surfaces <span className="font-medium text-foreground">known, locally-detectable</span> signals
-          from data already on your device — it makes no external calls and is not a guarantee that your wallet is safe.
-          Absence of a warning means nothing suspicious was detected locally, not that an address, contract, or approval
-          is confirmed safe. Always verify independently before signing.
+          This only shows what <span className="font-medium text-foreground">we can see on this device</span> — no external calls, no guarantee your wallet is safe.
+          No warning just means nothing suspicious was found here. It does not mean an address, contract, or approval is safe. Always check before you sign.
         </p>
       </div>
     </div>

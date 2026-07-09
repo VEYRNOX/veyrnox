@@ -184,6 +184,12 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   // PW-1: session token written by SecurityCenter.jsx / sessionRevocation.js.
   // Correlatable against backend UserSession records — must be wiped (I3/I4).
   'sdw_session_token',
+  // M-7 (#753): priceFeed.js LIVE_PRICE_PREF_KEY — the live-USD-prices opt-in pref.
+  // Its presence reveals live-price egress was enabled on this device, i.e. that a
+  // Veyrnox wallet was used here; a wipe must scrub it too (I3/I4).
+  'veyrnox-live-prices',
+  'veyrnox-duress-configured',
+  'veyrnox-panic-configured',
 ]);
 
 // NON-SECRET wallet/token METADATA residue (F-06). Unlike the keys above, these do

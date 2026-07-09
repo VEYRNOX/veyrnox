@@ -250,7 +250,7 @@ function WelcomeHero({ onGetStarted }) {
         </motion.div>
 
         <motion.p variants={item} className="mt-6 text-[11px] text-muted-foreground">
-          v1.0 · Testnet beta · keys stay on-device
+          v1.0 · keys stay on-device
         </motion.p>
       </motion.div>
     </div>
@@ -421,9 +421,16 @@ export default function WalletEntry() {
 
   // Resolve biometric availability once on mount (cheap; used by both the
   // onboarding offer and the returning one-tap button).
+  // On native with available biometrics, default the onboarding offer to ON so
+  // new users get Face ID without hunting through Settings. The checkbox is still
+  // present and can be unchecked; this only changes the default from off to on.
   useEffect(() => {
     let active = true;
-    getBiometricStatus().then(s => { if (active) setBioStatus(s); }).catch(() => { if (active) setBioStatus(null); });
+    getBiometricStatus().then(s => {
+      if (!active) return;
+      setBioStatus(s);
+      if (s?.available && Capacitor.isNativePlatform()) setBioEnabled(true);
+    }).catch(() => { if (active) setBioStatus(null); });
     return () => { active = false; };
   }, []);
 
@@ -599,7 +606,7 @@ export default function WalletEntry() {
     if (!pin) { setError("Enter your PIN."); return; }
     setError(""); setBusy(true);
     try {
-      await unlock(pin, { pinModel: true });
+      await unlock(pin, { pinModel: true, skipBiometric: true });
       setUnlockPin("");
       // Success (real / duress unlocks return without throwing; the panic PIN throws
       // the isPanicWipe sentinel and never reaches here) — reset the streak.
@@ -615,11 +622,8 @@ export default function WalletEntry() {
       // the REAL wallet, defeating Face-ID-to-decoy. We never overwrite an existing
       // cache, and duress-presence-unknown FAILS CLOSED (treated as duress present).
       if (isBiometricUnlockEnabled()) {
-        const [alreadyCached, duressConfigured] = await Promise.all([
-          hasStoredUnlockSecret().catch(() => false),
-          import('@/wallet-core/duress').then(m => m.hasDuressVault()).catch(() => true),
-        ]);
-        if (shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached, duressConfigured })) {
+        const alreadyCached = await hasStoredUnlockSecret().catch(() => false);
+        if (shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached })) {
           try { await enableBiometricUnlock(pin); } catch { /* best-effort; non-fatal */ }
         }
       }
@@ -1098,7 +1102,28 @@ export default function WalletEntry() {
           <div className="flex items-center gap-2 text-sm font-medium">
             <Lock className="h-4 w-4 text-muted-foreground" /> {biometricEnabled && !biometricFailed ? "Enter your PIN" : "Unlock your wallet"}
           </div>
-          <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
+          {/* Password-cohort (handleImport path): render a text input so the user can
+              type their vault password — numeric PinPad buttons cannot accept non-digit
+              passwords and would permanently strand the user. I4: still fails closed via
+              runUnlock if the credential is wrong. */}
+          {authModel === "password" ? (
+            <div className="space-y-2">
+              <input
+                type="password"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                placeholder="Vault password"
+                value={unlockPassword}
+                onChange={e => { setUnlockPassword(e.target.value); setError(""); }}
+                onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
+                disabled={busy}
+              />
+              <Button className="w-full" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
+                {busy ? <RefreshCw className="h-4 w-4 animate-spin mr-1.5" /> : null} Unlock
+              </Button>
+            </div>
+          ) : (
+            <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
+          )}
 
           {passkeyFailed && (
             <div className="pt-2 border-t border-border space-y-2">

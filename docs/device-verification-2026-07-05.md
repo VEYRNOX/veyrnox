@@ -1,3 +1,16 @@
+> **CORRECTION NOTE (added 2026-07-08, L-3 / issue #739)**
+> This document records the 2026-07-05 device session that was contemporaneously
+> described as confirming "KEK v2 protocol." That description was subsequently found
+> to be inaccurate: the v2 salt-binding fix was cryptographically inert on device
+> (C-1 regression, same day — the facade dropped `getHardwareFactor`'s opts and
+> `hardware.js` sent `kekSalt` as a raw `Uint8Array` the Capacitor bridge silently
+> discarded). This session therefore proved the KEK-gated unlock FLOW but did NOT
+> prove per-enrollment salt binding. The v3 fix (PR #568, txid
+> `0xecd68494e888af742e5166c93c5354536fb6bbe62e93dc795847079d981727e3`,
+> block 11206686) landed later the same day and is the authoritative device-verified
+> record for the C-1 CRITICAL fix. This document is preserved unchanged as evidence
+> of the regression, which is part of the honest audit trail.
+
 # Android Device Verification Evidence — 2026-07-05
 
 **Status:** ✅ COMPLETE (49/49 tests PASSED)  
@@ -199,7 +212,15 @@ All four multi-asset sends confirmed on real blockchains:
 ### I6 — Hardware Binding (KEK = HKDF(H || C))
 - ✅ H (StrongBox HMAC factor) + C (Argon2id PIN factor) combined correctly
 - ✅ Missing either H or C → unlock fails
-- ✅ KEK v2 protocol (per-enrollment salt) confirmed
+- ✅ Per-enrollment salt-bound KEK path confirmed on-device: the intact `kekSalt` crossed
+  the bridge and the run logged `"salt-source: v2-bound"`. **Clarification (see
+  `docs/audit-triage/independent-audit-2026-07-06-android-kek-suite.md`, F2.1):**
+  `"v2-bound"` is a LEGACY branch label meaning "a per-enrollment salt was supplied" — it
+  is NOT the vault's `hardwareKekVersion` stamp. This on-device run exercised the genuine
+  **v3** salt-bound path (PR #568); it did not exercise the pre-#568 v2 protocol. The
+  vault read back `hardwareKekVersion:3`. This corrects the earlier literal "KEK v2
+  protocol confirmed" wording in this doc, which pre-dated the v2/v3 label clarification
+  and was ambiguous read literally. INTERNAL evidence — not independently audited.
 
 ---
 

@@ -25,10 +25,10 @@ describe('navigation respects the feature registry', () => {
   });
 
   it('includes Personal Backup in the Security group', () => {
-    expect(allNavPaths).toContain('/cloud-backup');
-    const entry = navGroups.flatMap((g) => g.items).find((i) => i.path === '/cloud-backup');
+    expect(allNavPaths).toContain('/personal-backup');
+    const entry = navGroups.flatMap((g) => g.items).find((i) => i.path === '/personal-backup');
     expect(entry?.label).toBe('Personal Backup');
-    const secGroup = navGroups.find((g) => g.items.some((i) => i.path === '/cloud-backup'));
+    const secGroup = navGroups.find((g) => g.items.some((i) => i.path === '/personal-backup'));
     expect(secGroup?.label).toBe('Security');
   });
 

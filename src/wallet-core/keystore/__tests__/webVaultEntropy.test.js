@@ -19,7 +19,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { validateWebVaultPassword, WEB_VAULT_ERR, WEB_VAULT_MIN_PASSWORD_LEN } from '../web.js';
+import { validateWebVaultPassword, WEB_VAULT_ERR, WEB_VAULT_MIN_PASSWORD_LEN, webKeyStore } from '../web.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -52,6 +52,17 @@ describe('H-A — web vault password length enforcement (behaviour)', () => {
       msg = e.userMessage || '';
     }
     expect(msg).toContain('8');
+  });
+});
+
+describe('M-8 (issue #731) — changePassword enforces the minimum on newPassword', () => {
+  it('rejects a too-short newPassword with the machine code before touching the vault', async () => {
+    // The minimum must fire on newPassword up front (after assertNotNativePlatform,
+    // before loadVault), so a weak new PIN can never re-wrap the vault — mirroring
+    // createVault. No vault mocks: the throw must happen before any storage read.
+    await expect(
+      webKeyStore.changePassword('current-password-ok', '1'),
+    ).rejects.toThrow(WEB_VAULT_ERR.PASSWORD_TOO_SHORT);
   });
 });
 

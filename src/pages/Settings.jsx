@@ -6,7 +6,9 @@ import WhitelistManager from "../components/security/WhitelistManager";
 import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
-import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, Sparkles, Scale, ScrollText } from "lucide-react";
+import { useTier } from "@/lib/TierProvider";
+import { getAuthModel } from "@/lib/authModel";
+import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -21,6 +23,8 @@ import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 export default function Settings() {
   const queryClient = useQueryClient();
   const { lock, recordAudit, getAuditLogEnabled, toggleAuditLog, fetchAuditEntries } = useWallet();
+  const { currentTier } = useTier();
+  const isSafetyPlus = currentTier === "safety_plus";
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -81,7 +85,7 @@ export default function Settings() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Security Settings</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Manage passkeys and wallet security
+          Lock, unlock, and protect your wallet
         </p>
       </div>
 
@@ -114,7 +118,7 @@ export default function Settings() {
             </div>
             <div>
               <p className="text-sm font-semibold">Activity log</p>
-              <p className="text-xs text-muted-foreground">Off by default · encrypted on-device only</p>
+              <p className="text-xs text-muted-foreground">Off by default · stored on this device only</p>
             </div>
           </div>
           <Switch
@@ -127,7 +131,7 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Encrypted on-device log of settings changes, sends, and revocations — no amounts or addresses. Wiped by Panic Wipe; cleared when you turn this off.
+          A private log of what you changed, sent, or revoked. No amounts or addresses are recorded. Panic Wipe erases it. Turning this off clears it too.
         </p>
         {auditLog && auditEntries !== null && (
           <div className="mt-3 border-t border-border pt-3">
@@ -189,15 +193,17 @@ export default function Settings() {
         </div>
       )}
 
-      {/* Current plan (display-only — see pages/Subscription.jsx; tier stays Free) */}
+      {/* Current plan — reflects the real entitlement from TierProvider (useTier). */}
       <Link to="/plans" className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold">Current plan: Free</p>
-            <p className="text-xs text-muted-foreground">Upgrade to Safety Plus — $5.99/mo</p>
+            <p className="text-sm font-semibold">Current plan: {isSafetyPlus ? "Safety Plus" : "Free"}</p>
+            <p className="text-xs text-muted-foreground">
+              {isSafetyPlus ? "Advanced analytics & premium insights" : "Upgrade to Safety Plus — $5.99/mo"}
+            </p>
           </div>
         </div>
         <span className="text-sm text-primary font-medium">View plans</span>
@@ -231,7 +237,7 @@ export default function Settings() {
             <p className="text-xs text-muted-foreground">View &amp; revoke allowances</p>
           </div>
         </Link>
-        <Link to="/cloud-backup" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+        <Link to="/personal-backup" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
           <CloudUpload className="h-5 w-5 text-primary shrink-0" />
           <div>
             <p className="text-sm font-medium">Encrypted Personal Backup</p>
@@ -243,6 +249,13 @@ export default function Settings() {
           <div>
             <p className="text-sm font-medium">Reveal Seed</p>
             <p className="text-xs text-muted-foreground">Backup phrase QR</p>
+          </div>
+        </Link>
+        <Link to="/wallet-access" data-testid="change-pin-link" className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]">
+          <KeyRound className="h-5 w-5 text-primary shrink-0" />
+          <div>
+            <p className="text-sm font-medium">{getAuthModel() === "pin" ? "Change PIN" : "Change vault password"}</p>
+            <p className="text-xs text-muted-foreground">Access &amp; recovery</p>
           </div>
         </Link>
       </div>
@@ -272,7 +285,7 @@ export default function Settings() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium">Delete Account</p>
-              <p className="text-xs text-muted-foreground">Permanently remove your account and all data</p>
+              <p className="text-xs text-muted-foreground">Clears saved data and locks the wallet. Your recovery phrase still controls your funds — use Panic Wipe to erase the keys.</p>
             </div>
             <button
               onClick={() => setShowDelete(true)}
@@ -285,7 +298,7 @@ export default function Settings() {
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-destructive">
-              This action is <strong>permanent and irreversible</strong>. Type <strong>DELETE</strong> to confirm.
+              This clears saved data and locks the wallet. Your recovery phrase still works. Type <strong>DELETE</strong> to confirm.
             </p>
             <input
               className="w-full rounded-lg border border-destructive/40 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive min-h-[44px]"

@@ -49,7 +49,11 @@ export const NETWORKS = {
     chainId: 1,
     symbol: 'ETH',
     decimals: 18,
-    defaultRpcUrl: 'https://eth.llamarpc.com',
+    // publicnode is the reliable public default used by every other mainnet chain
+    // here; eth.llamarpc.com was returning Cloudflare 521 (server down) + non-JSON,
+    // which broke mainnet gas estimation (getBlock/getFeeData threw). Override via
+    // setRpcUrl()/VITE_EVM_RPC_URL_MAINNET for your own provider in prod.
+    defaultRpcUrl: 'https://ethereum-rpc.publicnode.com',
     explorer: 'https://etherscan.io',
     isTestnet: false,
     enabled: true, // unlocked 2026-06-17 owner sign-off

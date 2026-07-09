@@ -221,15 +221,15 @@ export default function CryptoSigning() {
 
       <div className="flex gap-1 p-1 bg-secondary/30 rounded-xl">
         {[["generate","Generate Wallet"],["import","Import Mnemonic"],["sign","Sign Messages"],["tx","Build Transaction"]].map(([t,l]) => (
-          <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2 rounded-lg text-[11px] font-semibold transition-colors ${tab === t ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{l}</button>
+          <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors ${tab === t ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{l}</button>
         ))}
       </div>
 
-      {error && <div className="p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive flex items-start gap-2"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />{error}</div>}
+      {error && <div className="p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-sm text-destructive flex items-start gap-2"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />{error}</div>}
 
       {tab === "generate" && (
         <div className="space-y-4">
-          <div className="p-3 rounded-xl bg-caution/5 border border-caution/20 text-xs text-caution">
+          <div className="p-3 rounded-xl bg-caution/5 border border-caution/20 text-sm text-caution">
             All keys are generated client-side using ethers.js. Nothing is ever sent to a server. Clear this page to discard keys.
           </div>
           <Button className="w-full gap-2" onClick={generateWallet}><RefreshCw className="h-4 w-4" /> Generate New Random Wallet</Button>
@@ -239,7 +239,7 @@ export default function CryptoSigning() {
               {/* Mnemonic */}
               <div className="p-4 rounded-xl border border-border bg-card">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold">BIP-39 Mnemonic (12 words)</p>
+                  <p className="text-sm font-semibold">BIP-39 Mnemonic (12 words)</p>
                   <div className="flex gap-2">
                     <button onClick={() => setShowPhrase(s => !s)} aria-label={showPhrase ? "Hide recovery phrase" : "Reveal recovery phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showPhrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
                     <button onClick={() => copy(mnemonicRef.current, "mnemonic", { sensitive: true })} aria-label="Copy recovery phrase" className="p-1.5 text-muted-foreground hover:text-foreground">{copied === "mnemonic" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
@@ -248,9 +248,9 @@ export default function CryptoSigning() {
                 {showPhrase ? (
                   <div className="grid grid-cols-3 gap-2">
                     {mnemonicRef.current.split(" ").map((w, i) => (
-                      <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary text-xs">
+                      <div key={i} className="flex items-center gap-1.5 p-2.5 rounded-lg bg-secondary text-sm">
                         <span className="text-muted-foreground w-4 text-right shrink-0">{i+1}.</span>
-                        <span className="font-mono font-semibold">{w}</span>
+                        <span className="mono-value font-semibold">{w}</span>
                       </div>
                     ))}
                   </div>
@@ -259,13 +259,13 @@ export default function CryptoSigning() {
 
               {/* Primary wallet */}
               <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
-                <p className="text-xs font-semibold">Primary Address (m/44'/60'/0'/0/0)</p>
+                <p className="text-sm font-semibold">Primary Address (m/44'/60'/0'/0/0)</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-mono break-all flex-1">{walletAddr}</p>
+                  <p className="text-sm mono-value break-all flex-1">{walletAddr}</p>
                   <button onClick={() => copy(walletAddr, "addr")} aria-label="Copy address">{copied === "addr" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <p className="text-xs font-mono text-muted-foreground flex-1">{showKey ? walletRef.current?.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
+                  <p className="text-sm mono-value text-muted-foreground flex-1">{showKey ? walletRef.current?.privateKey : "••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}</p>
                   <button onClick={() => setShowKey(s => !s)} aria-label={showKey ? "Hide private key" : "Reveal private key"} className="text-muted-foreground">{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
                   {showKey && <button onClick={() => copy(walletRef.current?.privateKey, "pk", { sensitive: true })} aria-label="Copy private key">{copied === "pk" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>}
                 </div>
@@ -273,17 +273,17 @@ export default function CryptoSigning() {
 
               {/* HD derived accounts */}
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground">HD Derived Accounts</p>
+                <p className="text-sm font-semibold text-muted-foreground">HD Derived Accounts</p>
                 {derivedDisplay.map((dw, i) => (
                   <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
                     <button onClick={() => setExpandedPath(expandedPath === i ? null : i)} className="w-full p-3 flex items-center gap-2 text-left">
-                      <span className="text-xs font-mono text-muted-foreground flex-1 truncate">{dw.path}</span>
-                      <span className="text-xs font-mono text-foreground">{dw.address.slice(0,10)}...{dw.address.slice(-6)}</span>
+                      <span className="text-sm mono-value text-muted-foreground flex-1 truncate">{dw.path}</span>
+                      <span className="text-sm mono-value text-foreground">{dw.address.slice(0,10)}...{dw.address.slice(-6)}</span>
                       {expandedPath === i ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                     </button>
                     {expandedPath === i && (
-                      <div className="border-t border-border p-3 bg-secondary/20 text-xs space-y-1">
-                        <div className="flex items-center gap-2"><span className="text-muted-foreground w-12">Address</span><span className="font-mono break-all flex-1">{dw.address}</span><button onClick={() => copy(dw.address, `addr${i}`)} aria-label="Copy address">{copied === `addr${i}` ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3 text-muted-foreground" />}</button></div>
+                      <div className="border-t border-border p-3 bg-secondary/20 text-sm space-y-1">
+                        <div className="flex items-center gap-2"><span className="text-muted-foreground w-12">Address</span><span className="mono-value break-all flex-1">{dw.address}</span><button onClick={() => copy(dw.address, `addr${i}`)} aria-label="Copy address">{copied === `addr${i}` ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3 text-muted-foreground" />}</button></div>
                       </div>
                     )}
                   </div>
@@ -297,15 +297,15 @@ export default function CryptoSigning() {
       {tab === "import" && (
         <div className="space-y-4">
           <div><Label htmlFor="import-mnemonic">BIP-39 Mnemonic Phrase (12 or 24 words)</Label>
-            <textarea id="import-mnemonic" value={importMnemonic} onChange={e => setImportMnemonic(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ..." className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+            <textarea id="import-mnemonic" value={importMnemonic} onChange={e => setImportMnemonic(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ..." className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
           </div>
           <Button className="w-full" onClick={importWallet} disabled={!importMnemonic.trim()}>Import and Derive Wallets</Button>
           {hasWallet && mnemonicReady && (
             <div className="p-4 rounded-xl border border-success/30 bg-success/5 space-y-2">
-              <p className="text-xs font-semibold text-success flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /> Valid BIP-39 Mnemonic Imported</p>
-              <p className="text-xs text-muted-foreground">Primary address derived:</p>
-              <p className="text-sm font-mono break-all">{walletAddr}</p>
-              <p className="text-xs text-muted-foreground">{derivedDisplay.length} HD accounts derived successfully.</p>
+              <p className="text-sm font-semibold text-success flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /> Valid BIP-39 Mnemonic Imported</p>
+              <p className="text-sm text-muted-foreground">Primary address derived:</p>
+              <p className="text-sm mono-value break-all">{walletAddr}</p>
+              <p className="text-sm text-muted-foreground">{derivedDisplay.length} HD accounts derived successfully.</p>
             </div>
           )}
         </div>
@@ -316,26 +316,26 @@ export default function CryptoSigning() {
           {!hasWallet && <div className="p-4 rounded-xl bg-secondary/30 text-sm text-muted-foreground text-center">Generate or import a wallet first.</div>}
           {hasWallet && (
             <>
-              <div className="p-3 rounded-xl border border-border bg-card text-xs">
+              <div className="p-3 rounded-xl border border-border bg-card text-sm">
                 <span className="text-muted-foreground">Signing with: </span>
-                <span className="font-mono">{walletAddr.slice(0,18)}...</span>
+                <span className="mono-value">{walletAddr.slice(0,18)}...</span>
               </div>
               <div><Label htmlFor="sign-message">Message to Sign</Label>
-                <textarea id="sign-message" value={signMessage} onChange={e => setSignMessage(e.target.value)} rows={3} className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                <textarea id="sign-message" value={signMessage} onChange={e => setSignMessage(e.target.value)} rows={3} className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
               </div>
               <Button className="w-full gap-2" onClick={signMsg}><FileSignature className="h-4 w-4" /> Sign Message (EIP-191)</Button>
               {signature && (
                 <div className="p-4 rounded-xl border border-border bg-card space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold">Signature (65 bytes / 130 hex chars)</p>
+                    <p className="text-sm font-semibold">Signature (65 bytes / 130 hex chars)</p>
                     <button onClick={() => copy(signature, "sig")} aria-label="Copy signature">{copied === "sig" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
                   </div>
-                  <p className="text-[10px] font-mono break-all text-muted-foreground">{signature}</p>
-                  <Button size="sm" variant="outline" className="w-full mt-2 text-xs" onClick={verifySignature}>Verify Signature</Button>
+                  <p className="text-xs mono-value break-all text-muted-foreground">{signature}</p>
+                  <Button size="sm" variant="outline" className="w-full mt-2 text-sm" onClick={verifySignature}>Verify Signature</Button>
                   {verifyAddress && (
-                    <div className={`p-2 rounded-lg text-xs ${verifyResult ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                    <div className={`p-2.5 rounded-lg text-sm ${verifyResult ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                       {verifyResult ? "✓ Signature valid — recovered address matches" : "✗ Address mismatch"}
-                      <p className="font-mono mt-0.5">Recovered: {verifyAddress}</p>
+                      <p className="mono-value mt-0.5">Recovered: {verifyAddress}</p>
                     </div>
                   )}
                 </div>
@@ -350,20 +350,20 @@ export default function CryptoSigning() {
           {!hasWallet && <div className="p-4 rounded-xl bg-secondary/30 text-sm text-muted-foreground text-center">Generate or import a wallet first.</div>}
           {hasWallet && (
             <>
-              <div className="p-3 rounded-xl border border-caution/20 bg-caution/5 text-xs text-caution">
+              <div className="p-3 rounded-xl border border-caution/20 bg-caution/5 text-sm text-caution">
                 This builds a signed raw transaction. You can broadcast it via any Ethereum node. Nonce is set to 0 for demo.
               </div>
-              <div><Label htmlFor="tx-recipient">Recipient Address</Label><Input id="tx-recipient" className="mt-1.5 font-mono text-xs" placeholder="0x..." value={txTo} onChange={e => setTxTo(e.target.value)} /></div>
-              <div><Label htmlFor="tx-value">Value (ETH)</Label><Input id="tx-value" type="number" step="0.0001" className="mt-1.5" value={txValue} onChange={e => setTxValue(e.target.value)} /></div>
+              <div><Label htmlFor="tx-recipient">Recipient Address</Label><Input id="tx-recipient" className="mt-1.5 mono-value text-sm" placeholder="0x..." value={txTo} onChange={e => setTxTo(e.target.value)} /></div>
+              <div><Label htmlFor="tx-value">Value (ETH)</Label><Input id="tx-value" type="number" step="0.0001" className="mt-1.5 mono-value" value={txValue} onChange={e => setTxValue(e.target.value)} /></div>
               <Button className="w-full gap-2" onClick={buildSignedTx} disabled={!txTo}><Key className="h-4 w-4" /> Sign Raw Transaction (EIP-1559)</Button>
               {signedTx && (
                 <div className="p-4 rounded-xl border border-border bg-card space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold">Signed Raw Transaction</p>
+                    <p className="text-sm font-semibold">Signed Raw Transaction</p>
                     <button onClick={() => copy(signedTx, "tx")} aria-label="Copy signed transaction">{copied === "tx" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}</button>
                   </div>
-                  <p className="text-[10px] font-mono break-all text-muted-foreground">{signedTx}</p>
-                  <p className="text-[10px] text-muted-foreground">Broadcast via: <span className="font-mono">eth_sendRawTransaction</span> on any Ethereum RPC</p>
+                  <p className="text-xs mono-value break-all text-muted-foreground">{signedTx}</p>
+                  <p className="text-xs text-muted-foreground">Broadcast via: <span className="mono-value">eth_sendRawTransaction</span> on any Ethereum RPC</p>
                 </div>
               )}
             </>

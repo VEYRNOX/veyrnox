@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Wallet, Plus, Eye, EyeOff, Copy, Check, RefreshCw, Download, Shield, ChevronDown, ChevronRight, Key, KeyRound, Lock, Unlock, AlertTriangle, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Wallet, Plus, Copy, Check, RefreshCw, ChevronDown, ChevronRight, Key, KeyRound, Lock, Unlock, AlertTriangle, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
+import PinPad from "@/components/security/PinPad";
+import { getAuthModel } from "@/lib/authModel";
 import { isPasskeyGateError } from "@/lib/passkey";
-import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import { isBiometricGateError } from "@/lib/biometric";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -83,14 +84,9 @@ function shortPath(index) {
 
 export default function HDWalletManager() {
   const qc = useQueryClient();
-  const { isUnlocked, accounts, createWallet, importWallet, unlock, lock, hasVault, deriveAccounts } = useWallet();
+  const isPin = getAuthModel() === "pin";
+  const { isUnlocked, accounts, unlock, lock, hasVault, deriveAccounts } = useWallet();
 
-  const [tab, setTab] = useState("wallets");
-  const [showSeed, setShowSeed] = useState(false);
-  const [generatedSeed, setGeneratedSeed] = useState("");
-  const [genPassword, setGenPassword] = useState("");
-  const [importPhrase, setImportPhrase] = useState("");
-  const [importPassword, setImportPassword] = useState("");
   const [unlockPassword, setUnlockPassword] = useState("");
   // SAST M-3 ESCAPE HATCH: null until the passkey gate has actually FAILED on an
   // unlock attempt; then { reason: 'cancelled'|'error' } so we can offer a
@@ -154,34 +150,6 @@ export default function HDWalletManager() {
   }, [isUnlocked, accounts, hdWallets]);
 
   const copy = makeCopy(setCopied);
-
-  const handleGenerate = async () => {
-    setError("");
-    const pw = checkVaultPasswordStrength(genPassword);
-    if (!pw.ok) { setError(pw.reason); return; }
-    setBusy(true);
-    try {
-      const seed = await createWallet(genPassword); // returns the mnemonic ONCE for backup
-      setGeneratedSeed(seed);
-      setShowSeed(false);
-      setGenPassword("");
-    } catch (e) { setError(e?.message || "Failed to create wallet"); }
-    finally { setBusy(false); }
-  };
-
-  const handleImport = async () => {
-    setError("");
-    const pw = checkVaultPasswordStrength(importPassword);
-    if (!pw.ok) { setError(pw.reason); return; }
-    setBusy(true);
-    try {
-      await importWallet(importPhrase.trim(), importPassword); // validates BIP-39 checksum
-      setImportPhrase("");
-      setImportPassword("");
-      setTab("wallets");
-    } catch (e) { setError(e?.message || "Failed to import wallet"); }
-    finally { setBusy(false); }
-  };
 
   // Unlock the vault. `skipPasskey` is the SAST M-3 escape hatch: only ever set
   // by the explicit "Unlock with password only" button below, which we surface
@@ -263,13 +231,7 @@ export default function HDWalletManager() {
         {isUnlocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
         {isUnlocked
           ? "Vault unlocked. Keys live in memory only and auto-lock after inactivity."
-          : vaultExists ? "Vault locked. Unlock below to view your derived accounts." : "No wallet on this device yet. Generate or import a recovery phrase to begin."}
-      </div>
-
-      <div className="flex gap-1 p-1 bg-secondary/30 rounded-xl">
-        {[["wallets","My Wallets"],["import","Import Recovery Phrase"],["generate","Generate New"]].map(([t, l]) => (
-          <button key={t} onClick={() => { setTab(t); setError(""); }} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${tab === t ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{l}</button>
-        ))}
+          : vaultExists ? "Vault locked. Unlock below to view your derived accounts." : "No wallet on this device yet. Set it up from the main entry screen."}
       </div>
 
       {error && (
@@ -278,16 +240,28 @@ export default function HDWalletManager() {
         </div>
       )}
 
-      {tab === "wallets" && (
+      {(
         <div className="space-y-3">
           {/* Locked + vault present -> unlock form */}
           {!isUnlocked && vaultExists && (
             <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-              <Label htmlFor="hd-unlock-password">Vault Password</Label>
-              <Input id="hd-unlock-password" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
-              <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={handleUnlock}>
-                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
-              </Button>
+              {isPin ? (
+                // PIN cohort (every real vault post-PR #651): the vault credential
+                // is an 8-digit PIN, so unlock via the shared PinPad — a password
+                // box cannot accept it. PinPad carries its own explicit submit.
+                <>
+                  <Label>Vault PIN</Label>
+                  <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={handleUnlock} disabled={busy} submitLabel="Unlock" aria-label="PIN entry" />
+                </>
+              ) : (
+                <>
+                  <Label htmlFor="hd-unlock-password">Vault Password</Label>
+                  <Input id="hd-unlock-password" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
+                  <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={handleUnlock}>
+                    {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
+                  </Button>
+                </>
+              )}
 
               {/* SAST M-3 ESCAPE HATCH. Shown ONLY after the passkey gate has
                   actually FAILED on an attempt — never on the pristine form, so
@@ -337,14 +311,18 @@ export default function HDWalletManager() {
             </div>
           )}
 
-          {/* Locked + no vault -> prompt to create/import */}
+          {/* Locked + no vault -> point to the correct onboarding flow. Creating
+              or importing a vault happens ONLY through onboarding (WalletEntry via
+              provisionPinWallet) or the portfolio add-seed flow (addWallet /
+              importAdditionalWallet), both of which set the auth cohort and
+              provision deniability chaff and guard against silent overwrite. This
+              read-only manager no longer creates vaults directly (I4). */}
           {!isUnlocked && !vaultExists && (
             <div className="p-6 rounded-xl border border-dashed border-border bg-card text-center space-y-3">
               <Wallet className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="text-sm text-muted-foreground">Create a new wallet or import an existing recovery phrase to derive your accounts.</p>
+              <p className="text-sm text-muted-foreground">No wallet on this device yet. Set up or import your recovery phrase from the main entry screen to derive your accounts.</p>
               <div className="flex gap-2 justify-center">
-                <Button variant="outline" onClick={() => setTab("generate")}>Generate New</Button>
-                <Button variant="outline" onClick={() => setTab("import")}>Import Recovery Phrase</Button>
+                <Button variant="outline" onClick={() => { window.location.href = "/"; }}>Set up a wallet</Button>
               </div>
             </div>
           )}
@@ -465,79 +443,6 @@ export default function HDWalletManager() {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {tab === "import" && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 text-xs text-caution">
-            Never share your recovery phrase. It is validated and encrypted locally with your password — it is never sent to a server. Keys never leave this device.
-          </div>
-          <div>
-            <Label htmlFor="hd-import-phrase">12 or 24-word recovery phrase</Label>
-            <textarea id="hd-import-phrase" value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
-          </div>
-          <div>
-            <Label htmlFor="hd-import-password">Vault Password</Label>
-            <Input id="hd-import-password" type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your recovery phrase on this device" />
-            <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 12 characters.</p>
-          </div>
-          <Button className="w-full gap-2" disabled={!importPhrase.trim() || !importPassword || busy} onClick={handleImport}>
-            {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Validate &amp; Import
-          </Button>
-        </div>
-      )}
-
-      {tab === "generate" && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
-            Write down your recovery phrase and store it offline. Anyone with this phrase has full access to your wallets. It is shown ONCE and never stored.
-          </div>
-          {!generatedSeed ? (
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="hd-gen-password">Vault Password</Label>
-                <Input id="hd-gen-password" type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new recovery phrase on this device" />
-                <p className="text-xs text-muted-foreground mt-1">Used to encrypt the vault with strong on-device encryption. Minimum 12 characters.</p>
-              </div>
-              <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
-                {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Create a new recovery phrase
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="p-4 rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold">Your Recovery Phrase (shown once)</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setShowSeed(s => !s)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label={showSeed ? "Hide recovery phrase" : "Show recovery phrase"}>{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                    <button onClick={() => copy(generatedSeed, "seed", true)} className="p-1.5 text-muted-foreground hover:text-foreground" aria-label="Copy recovery phrase">{copied === "seed" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
-                  </div>
-                </div>
-                {showSeed ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {generatedSeed.split(" ").map((w, i) => (
-                      <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary text-xs">
-                        <span className="text-muted-foreground w-4 text-right">{i + 1}.</span>
-                        <span className="font-mono font-semibold">{w}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="h-20 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Tap the eye icon to reveal your recovery phrase</p>
-                  </div>
-                )}
-              </div>
-              <div className="p-3 rounded-xl bg-secondary/30 text-xs text-muted-foreground flex items-start gap-2">
-                <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <span>Your wallet is unlocked and your first account is ready. After backing up your recovery phrase, open My Wallets to view your accounts.</span>
-              </div>
-              <Button className="w-full gap-2" onClick={() => { setGeneratedSeed(""); setShowSeed(false); setTab("wallets"); }}>
-                <Check className="h-4 w-4" /> I've backed it up — View My Wallets
-              </Button>
-            </>
-          )}
         </div>
       )}
 

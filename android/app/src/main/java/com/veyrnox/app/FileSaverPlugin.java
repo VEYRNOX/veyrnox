@@ -1,6 +1,7 @@
 package com.veyrnox.app;
 
 import android.app.Activity;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
@@ -12,6 +13,7 @@ import android.provider.OpenableColumns;
 import android.util.Base64;
 
 import androidx.activity.result.ActivityResult;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -188,6 +190,107 @@ public class FileSaverPlugin extends Plugin {
             JSObject ret = new JSObject();
             ret.put("cancelled", true);
             call.resolve(ret);
+        }
+    }
+
+    /**
+     * List the app's .enc backup files in the public Downloads folder via
+     * MediaStore, so the JS side can render its own in-app file list (with a
+     * proper back button) instead of forcing the un-exitable system picker.
+     * Returns files this app can see — primarily the backups it wrote itself.
+     * The "Browse other location" system picker remains the fallback for
+     * anything not surfaced here.
+     */
+    @PluginMethod
+    public void listBackups(PluginCall call) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            call.reject("Android 10+ required to list Downloads");
+            return;
+        }
+        try {
+            Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+            String[] projection = {
+                    MediaStore.Downloads._ID,
+                    MediaStore.Downloads.DISPLAY_NAME,
+                    MediaStore.Downloads.SIZE,
+                    MediaStore.Downloads.DATE_MODIFIED
+            };
+            String selection = MediaStore.Downloads.DISPLAY_NAME + " LIKE ?";
+            String[] selectionArgs = { "%.enc" };
+            String sortOrder = MediaStore.Downloads.DATE_MODIFIED + " DESC";
+
+            JSArray files = new JSArray();
+            Cursor cursor = getContext().getContentResolver()
+                    .query(collection, projection, selection, selectionArgs, sortOrder);
+            if (cursor != null) {
+                try {
+                    int idIdx = cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID);
+                    int nameIdx = cursor.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME);
+                    int sizeIdx = cursor.getColumnIndexOrThrow(MediaStore.Downloads.SIZE);
+                    int dateIdx = cursor.getColumnIndexOrThrow(MediaStore.Downloads.DATE_MODIFIED);
+                    while (cursor.moveToNext()) {
+                        long id = cursor.getLong(idIdx);
+                        Uri fileUri = ContentUris.withAppendedId(collection, id);
+                        JSObject o = new JSObject();
+                        o.put("uri", fileUri.toString());
+                        o.put("name", cursor.getString(nameIdx));
+                        o.put("size", cursor.getLong(sizeIdx));
+                        o.put("modified", cursor.getLong(dateIdx)); // epoch seconds
+                        files.put(o);
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+
+            JSObject ret = new JSObject();
+            ret.put("files", files);
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("List failed: " + e.getMessage());
+        }
+    }
+
+    /** Read a backup file chosen from the in-app list by its content:// URI. */
+    @PluginMethod
+    public void readFile(PluginCall call) {
+        String uriStr = call.getString("uri");
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("uri is required");
+            return;
+        }
+        try {
+            Uri uri = Uri.parse(uriStr);
+            InputStream in = getContext().getContentResolver().openInputStream(uri);
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            int n;
+            while (in != null && (n = in.read(chunk)) != -1) {
+                buffer.write(chunk, 0, n);
+            }
+            if (in != null) in.close();
+            String base64 = Base64.encodeToString(buffer.toByteArray(), Base64.NO_WRAP);
+
+            String displayName = null;
+            Cursor cursor = getContext().getContentResolver()
+                    .query(uri, null, null, null, null);
+            if (cursor != null) {
+                try {
+                    int nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (nameIdx >= 0 && cursor.moveToFirst()) {
+                        displayName = cursor.getString(nameIdx);
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+
+            JSObject ret = new JSObject();
+            ret.put("data", base64);
+            ret.put("filename", displayName);
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("Read failed: " + e.getMessage());
         }
     }
 }

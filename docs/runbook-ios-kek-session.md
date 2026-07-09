@@ -19,8 +19,8 @@ which also compiles the merged-but-never-built iOS-F5/F3 patches (#526/#531).
 | # | Item | Current status | This session's bar |
 |---|------|----------------|--------------------|
 | P1 | iOS-F9 (HIGH, evidence gap) — SE-unlock trace never captured | Architectural proof only; iOS device-verified PARTIAL | Contemporaneous `[VEYRNOX-KEK]` unlock trace + coreauthd/ctkd correlation, tied to a KEK-gated send |
-| P2 | iOS-F5 (HIGH) — H in NSData not zeroed | ObjC text edit on main, never compiled | Builds clean + device behavior per handoff §A |
-| P3 | iOS-F3 (MEDIUM) — deprecated kSecUseOperationPrompt → LAContext | Same state as F5 | Same bar |
+| P2 | iOS-F5 (HIGH) — H in NSData not zeroed | ObjC text edit on main; **compile-verified 2026-07-07** (PR #705, macos-latest/Xcode 26.5 CI — `HardwareKekPlugin.o` built clean). Runtime heap-dump not done. | Enroll/unlock/unenroll cycle on device + source sign-off per handoff §A |
+| P3 | iOS-F3 (MEDIUM) — deprecated kSecUseOperationPrompt → LAContext | Same — **compile-verified 2026-07-07** (PR #705, zero `kSecUseOperationPrompt` deprecation warnings). Runtime prompt not observed. | Face ID prompt renders via LAContext on every unlock (no grace-period reuse) |
 | P4 | H-2/iOS-F11 iOS half — biometric re-enroll invalidation | ACL flag in code; runtime test device-blocked (Face ID enrollment restricted) | Re-enroll → key invalidated → fail-closed → recovery, mirroring Android PR #516/#518 |
 
 **Honesty bars, fixed up front:**
@@ -54,6 +54,9 @@ which also compiles the merged-but-never-built iOS-F5/F3 patches (#526/#531).
 2. Open in Xcode. Build must compile `HardwareKekPlugin.m` with ZERO deprecation
    warnings about `kSecUseOperationPrompt` (P3 acceptance starts at compile time) and
    with the F5 `NSMutableData` zeroing present (`34289591` + `b1b4a715` fixups).
+   **2026-07-07 note:** PR #705 already proved this compiles clean on macos-latest/Xcode
+   26.5 in CI (`.github/workflows/ios-compile-check.yml`). If the local Xcode version
+   differs, a warning here is a new finding, not an expected failure.
 3. Install to the iPhone over the existing app (same team/bundle — do NOT delete the
    app: Keychain items, including the SE key reference and vault ciphertext, persist
    across reinstall, and keeping the existing enrolled vault gives P1 continuity with
@@ -103,7 +106,7 @@ Work through `docs/hardware-audit-handoff.md` §A verbatim; at minimum:
       fresh biometric prompt on EVERY unlock, no grace-period reuse. Verify two
       back-to-back unlocks both prompt.
 
-**Status language if green:** iOS-F5/F3 move from "code-complete, not compiled" to
+**Status language if green:** iOS-F5/F3 move from "compile-verified (CI)" to
 "device-verified (INTERNAL)". If the build surfaces problems, they become dated
 findings; do not ship a partial fix silently.
 

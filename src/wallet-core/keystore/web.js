@@ -11,6 +11,7 @@ import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWi
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt } from './kek.js';
 import { ALLOW_MAINNET } from '../evm/networks.js';
+import { bufferToB64u, b64uToBuffer } from './web-base64url.js';
 
 // ── FAIL-CLOSED PLATFORM FENCE (I4 — fail honest, fail closed) ────────────────
 //
@@ -73,10 +74,19 @@ function assertNotNativePlatform() {
 // H-A — WEB VAULT PASSWORD ENTROPY (I4 — fail honest, fail closed).
 //
 // On web, isSecureHardwareAvailable() === false: the seed vault is Argon2id over
-// the PIN ALONE — there is NO hardware second factor. A short numeric PIN (e.g. 6
-// digits) is offline-exhaustible once the ciphertext is copied off the device, so
-// on a LIVE-mainnet web vault the password IS the only protection. We therefore
-// require a minimum password LENGTH at vault creation on the web path.
+// the PIN ALONE — there is NO hardware second factor. Any short PIN is
+// offline-exhaustible once the ciphertext is copied off the device, so on a
+// LIVE-mainnet web vault the password IS the only protection. That was H-A's
+// original intent: enforce a minimum password LENGTH at vault creation on web.
+//
+// The minimum is now 8 (PR #651), NOT the original H-A ≥12: web was unified onto
+// the SAME 8-digit PIN cohort as native (create, confirm, unlock, recover all
+// share one PinPad) so the two surfaces could not diverge and re-introduce the
+// PIN-lockout bug class. This is a DELIBERATE product decision, accepted because
+// web is a TESTING-ONLY surface (never the shipped product); native is the real
+// product, and on native the hardware KEK (factor H) provides the
+// offline-exhaustion defence on enrolled devices — the web ≥8 length check is the
+// residual honest floor for the test surface, not a claim of strong web security.
 //
 // This restriction is deliberately NOT applied on native (keystore/native.js):
 // there the hardware KEK (factor H) is REQUIRED alongside the PIN-derived C, so a
@@ -171,29 +181,8 @@ async function isPrfSupported() {
   }
 }
 
-/**
- * Utility: encode a Uint8Array to base64url (no padding).
- * Used for the WebAuthn allowCredentials filter.
- */
-function bufferToB64u(buf) {
-  const b = new Uint8Array(buf);
-  let s = '';
-  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-/**
- * Utility: decode a base64url string to Uint8Array.
- * Used to restore credentialId from localStorage for get().
- */
-function b64uToBuffer(s) {
-  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-  const str = atob(b64 + pad);
-  const out = new Uint8Array(str.length);
-  for (let i = 0; i < str.length; i++) out[i] = str.charCodeAt(i);
-  return out;
-}
+// base64url helpers (bufferToB64u / b64uToBuffer) are imported from
+// ./web-base64url.js — extracted for unit-testability (L-6 #742). Logic unchanged.
 
 // localStorage key holding the base64url PRF credential id for this device.
 const PRF_CRED_KEY = 'veyrnox-prf-cred-id';
@@ -506,6 +495,9 @@ export const webKeyStore = {
       } finally {
         // H-NEW-4: wipe the derived KEK and the recovered DEK — never leave the key
         // that wraps the DEK or the key that decrypts the seed in the heap (I4).
+        // H-2 (issue #721): H is captured before the try; if deriveKekC throws before
+        // the in-try eager H.fill(0), H would otherwise linger — zero it here too (I4).
+        if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
         if (kek) kek.fill(0);
         if (dek) dek.fill(0);
@@ -573,6 +565,10 @@ export const webKeyStore = {
       if (C && C.fill) C.fill(0);
       if (kek) kek.fill(0);
       dek.fill(0);
+      // M-1 (issue #724): saltBytes is the raw per-enrollment KEK salt. It is not
+      // itself secret key material, but it is generated before the try and would
+      // otherwise linger in the JS heap on an error path — wipe it here too (I4).
+      if (saltBytes && saltBytes.fill) saltBytes.fill(0);
     }
   },
 
@@ -601,6 +597,9 @@ export const webKeyStore = {
       dek = await unwrapDek(kek, blob.kekWrap);
       secret = await decryptVaultWithDek(blob, dek);
     } finally {
+      // H-2 (issue #721): H is captured before the try; if deriveKekC throws before
+      // the in-try eager H.fill(0), H would otherwise linger — zero it here too (I4).
+      if (H && H.fill) H.fill(0);
       if (C) C.fill(0);
       if (kek) kek.fill(0);
       if (dek) dek.fill(0);
@@ -629,6 +628,10 @@ export const webKeyStore = {
   // unlock-time M3 migration). The secret is never written anywhere in plaintext.
   async changePassword(currentPassword, newPassword, opts) {
     assertNotNativePlatform(); // fail closed BEFORE any storage read (I4)
+    // M-8 (issue #731): enforce the web password minimum on the NEW password up
+    // front — fail closed BEFORE any vault read or re-wrap — so a rotation can
+    // never downgrade an enrolled vault to a too-short PIN. Mirrors createVault.
+    validateWebVaultPassword(newPassword);
     const blob = await loadVault();
     if (!blob) throw new Error('No wallet found on this device');
 

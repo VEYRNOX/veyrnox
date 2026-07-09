@@ -35,6 +35,58 @@ identity; the app never holds keys server-side.
   evidence gap, H-2/iOS-F11 iOS half). H-NEW-D CLOSED (SE ECIES confirmed in ObjC at
   `HardwareKekPlugin.m:78`). INTERNAL pass — never presented as "independent" (I4 honesty).
   See `docs/audit-2026-07-01-kek-internal.md`.
+  A 2026-07-06 INTERNAL code-and-artifact review of the Android hardware-KEK suite
+  (`docs/audit-triage/independent-audit-2026-07-06-android-kek-suite.md`, PR #683 —
+  merged via admin override, single-collaborator repo) headlined "no security regression
+  found in the C-1 v3 fix." Its filename/PR title use the word "independent," but the
+  document's own provenance line says exactly what it is: AI-drafted, code-and-artifact
+  only, "one tier below the live-device + formal-crypto third-party audit the code still
+  asks for" — it is NOT the independent third-party audit these hard rules still list as
+  outstanding, and must never be cited as such (I4). Findings were documentation-honesty
+  gaps, not vulnerabilities: F1.1 (MED) the "StrongBox HMAC-SHA256" feature title
+  overclaims — StrongBox is preferred by the enroll gate, not enforced, TEE/software
+  fallback accepted (tracked in `docs/audit-triage/strongbox-tier-enforcement-decision-2026-07-06.md`);
+  F2.1 (MED) an evidence contradiction between `docs/device-verification-2026-07-05.md`
+  (still reads "KEK v2 protocol confirmed") and this file's v3 device-verified claim —
+  **PR #686 (merged 2026-07-06)** added a `HardwareKekPlugin.kt` LABEL NOTE clarifying the
+  debug `"salt-source: v2-bound"` string is a legacy branch label, not the vault's
+  `hardwareKekVersion` stamp, but did NOT edit `docs/device-verification-2026-07-05.md`
+  itself — that evidence doc remains stale and still needs its own correction pass, flagged
+  for the owner; F2.2 (LOW-MED) stale "v2" comments in `HardwareKekPlugin.kt` — **FIXED,
+  PR #686** (the same LABEL NOTE + a v2→v3 correction on the `PRF_EVAL_SALT` block comment);
+  `kek.js` was not touched by #686 and may still carry stale wording; F2.3 (LOW) the
+  "v2→v3 lazy migration not device-exercised" residual item is obsolete — confirmed by
+  source check that the lazy on-unlock migration was already removed 2026-07-06 (PR #662)
+  and replaced by the fail-closed `changePassword`/`upgradeKekToV3` path, so the residual
+  wording below is corrected; F2.4 (LOW-MED) no test previously mutated a valid v3
+  `kekSalt` to a different valid 32-byte value and asserted fail-closed — **FIXED, PR #685
+  (merged 2026-07-06)**, which adds `kek.salt-binding-tamper.test.js` covering
+  both-factor/H-only/C-only tamper; F4.1 (LOW-MED) the LOG-1 fix was already in-tree
+  (redaction patches + patch-package) but this file's wording had lagged — residual risk is
+  the redaction name-allowlist's fragility and the patch being version-pinned with no CI
+  check that it actually applied — **FIXED, PR #685 (merged 2026-07-06)**, which adds
+  `scripts/check-log-redaction-patch.mjs` + a CI `verify` step; F3.1 (LOW-MED) the
+  biometric re-enroll invalidation guarantee applies only
+  to KEK-enrolled vaults, not the bare-vault app-layer biometric gate — the two are distinct
+  features this file should not conflate. The audit independently confirmed the full C-1 v3
+  salt-binding chain, fail-closed `changePassword`/`upgradeKekToV3`, key-material zeroing,
+  and all-zero-H rejection as correct, and noted Sepolia block 11206686 exists and is
+  time-consistent (an on-chain tx alone cannot substantiate the client-side KEK gate).
+  Companion **PR #638 (MERGED 2026-07-06)** added 6 new Appium Android E2E specs
+  (backup-restore, dApp security alerts, fee-analytics/net-worth, a KDF-performance
+  measurement harness, a LOG-1 bridge-redaction regression canary, passkey clone-detection)
+  plus hardening of 2 existing specs (send-scenarios, hidden-wallet) — 96 tests across 13
+  suites total. BUILT test-coverage work, NOT a new device-verification or "verified"
+  claim: no new on-chain txid. Honest gaps disclosed in #638 itself: WalletConnect
+  live-pairing still needs a real dApp/scripted peer; KDF perf measured on one flagship
+  device only; the LOG-1 spec is a regression canary for the already-shipped redaction fix,
+  not a new fix; the passkey clone-signCount proof stays web-only, the Android test only
+  proves native doesn't fabricate a value. PR #638 also added a password-entry mode (≥12
+  chars) to `PinPad.jsx`/`HardwareKekSettings.jsx` for web hardware-KEK enrollment; native
+  stays numeric PIN. **PR #686 (MERGED 2026-07-06)** landed the F1.1/F2.1/F2.2/F2.3
+  doc-and-comment sync — the corrections above were reconciled against #686's actual
+  merged diff, not assumed; see the F2.1/F2.2 notes above for exactly what #686 did and
+  did not touch.
 - **Verify, don't assert.** An asset/feature is "verified" ONLY after a real on-chain
   testnet transaction confirms on a block explorer with a txid the user supplies. Passing
   tests, clean review, or a green suite are NOT verification. Never flip an asset `status`
@@ -70,18 +122,27 @@ identity; the app never holds keys server-side.
   (PARTIAL) 2026-07-01 on iPhone 17 Pro Max: two real Sepolia sends confirmed on-chain
   from a KEK-enrolled vault (PR #495). 2026-07-01 INTERNAL audit: H-NEW-D CLOSED —
   `kSecAttrTokenIDSecureEnclave` confirmed present in `HardwareKekPlugin.m:78`; SE ECIES
-  design correct at native ObjC layer. Remaining open native items: iOS-F5 (H factor in
-  NSData not zeroed — requires NSMutableData patch + Mac build), iOS-F3 (deprecated
-  kSecUseOperationPrompt — requires LAContext + Mac/Xcode). iOS-F9 evidence gap: SE unlock
-  log trace not captured for the existing Sepolia sends; iOS device-verified status remains
-  PARTIAL. H-2/iOS-F11 (biometric factor not bound to enrollment set): Android half RESOLVED
-  / device-verified (PR #516/#518, re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half
-  DEFERRED — the `.biometryCurrentSet` ACL flag is set in code but the runtime re-enroll test
-  is device-blocked (test iPhone 17 Pro Max has Face ID enrollment restricted; needs an
-  unrestricted iPhone). Outstanding (iOS): SE-unlock log trace capture, biometric re-enrollment
-  invalidation test, KEK-gated Sepolia txid, independent audit. Note: C-1 CRITICAL (Android HMAC fixed input)
-  also affects the overall KEK design context — see Android bullet.
-- Android: StrongBox HMAC-SHA256 + biometric-only gate (no credential fallback). ✅
+  design correct at native ObjC layer. **2026-07-07 iOS KEK device session (Mac day):**
+  iOS-F5 DEVICE-VERIFIED (INTERNAL, source+build, not heap dump) — `resetBytesInRange` on
+  all paths confirmed, enroll/unlock cycle works on device (commit `f6e5fee73`); honest
+  scope: base64 bridge residue architecturally unzeroable (LOW-MEDIUM). iOS-F3
+  DEVICE-VERIFIED (INTERNAL) — zero deprecation warnings, Face ID prompt rendered on every
+  unlock, two back-to-back unlocks both prompted (`reuseDuration=0` confirmed), negative
+  check fail-closed. iOS-F9 CLOSED (prospective, INTERNAL) — full 3-line `[VEYRNOX-KEK]`
+  SE-unlock trace captured via Console.app on Mac (`loaded ciphertext` → `SE key retrieved,
+  decrypting` → `SUCCESS — Face ID passed, H recovered`), TIME-CORRELATED with KEK-gated
+  Sepolia send txid `0x8b8f70e7…` block 11224674 (same Console session); cold-restart
+  repeat confirmed; negative check (cancel Face ID) fail-closed. H-2/iOS-F11 (biometric
+  factor not bound to enrollment set): Android half RESOLVED / device-verified (PR #516/#518,
+  re-enroll invalidation PASSED on Pixel 10 Pro XL); iOS half RESOLVED / device-verified
+  (2026-07-08, iPhone 8 Plus, iOS 16.7.16, Touch ID, unrestricted — no MDM): enrolled KEK
+  vault + added new fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) →
+  no unlock, no silent bare fallback. Both halves now CLOSED. Outstanding (iOS): heap-dump
+  verification (iOS-F5 residual, LOW-MEDIUM), independent audit. Note: C-1 CRITICAL
+  (Android HMAC fixed input) also affects the overall KEK design context — see Android bullet.
+- Android: AndroidKeyStore HMAC-SHA256 (StrongBox-preferred, TEE-accepted — StrongBox is
+  not enforced, a TEE/software-backed key is accepted and honestly surfaced) + biometric-only
+  gate (no credential fallback). ✅
   BUILT, end-to-end device-verified 2026-07-01 on a Pixel 10 Pro XL (Android 16/API 36):
   enroll → cold restart → StrongBox-gated unlock → badge stays "Hardware Protection ON".
   Three stacked bugs found and fixed to get here (PRs #497, #499): (1) badge measured
@@ -178,15 +239,21 @@ identity; the app never holds keys server-side.
 - Summary: both platforms are BUILT + device-verified on the KEK-gated unlock FLOW,
   INTERNAL only, NOT independently audited. **Android** is end-to-end, including the C-1
   v3 salt-binding fix (see the Android bullet above for the full RESOLVED→REGRESSED→FIXED
-  cycle and its four residual items). **iOS** is device-verified PARTIAL: it has KEK-gated
-  Sepolia txids from a KEK-enrolled vault (PR #495) plus an OS-daemon-corroborated send
-  (`0x5116e7bc…`, block 11185985, 2026-07-02 — coreauthd/ctkd/biometrickitd correlated to
-  the app pid), but no LITERAL SE-unlock app-trace (iOS-F9 open), so it stays PARTIAL, not
-  full. All these KEK txids (iOS and the new Android v3 ones) are recorded as non-promoting
-  META evidence: they prove the unlock gate but do NOT flip any asset/feature to
-  catalogue-`verified` (that bar is the strict per-asset explorer-txid rule and does not
-  apply to an unlock-gate feature). LOG-1 (debug-build logcat leaks H + vault blob) remains
-  open; remediation BUILT PR #572.
+  cycle and its four residual items). **iOS** is device-verified **FULL** (2026-07-08,
+  upgraded from PARTIAL 2026-07-07): it has a LITERAL SE-unlock app-trace (iOS-F9 CLOSED,
+  prospective — full 3-line `[VEYRNOX-KEK]` sequence captured via Console.app on Mac,
+  time-correlated with KEK-gated Sepolia send txid `0x8b8f70e7…` block 11224674), plus
+  the prior KEK-gated Sepolia txids (PR #495) and OS-daemon-corroborated send
+  (`0x5116e7bc…`, block 11185985, 2026-07-02). iOS-F5 and iOS-F3 are now device-verified
+  (INTERNAL). **iOS is now device-verified FULL** (2026-07-08): H-2/iOS-F11 CLOSED on
+  iPhone 8 Plus (iOS 16.7.16, Touch ID) — re-enrolled fingerprint → SE key invalidated →
+  fail-closed ("Incorrect PIN"), no unlock, no silent fallback (I4). P1 (F9 trace +
+  correlated txid, 2026-07-07) AND P4 (H-2 biometric re-enrollment, 2026-07-08) both
+  passed — the runbook condition for FULL is met. Independent audit remains. All KEK txids (iOS
+  and Android v3) are recorded as non-promoting META evidence: they prove the unlock gate
+  but do NOT flip any asset/feature to catalogue-`verified` (that bar is the strict
+  per-asset explorer-txid rule and does not apply to an unlock-gate feature). LOG-1
+  (debug-build logcat leaks H + vault blob) remains open; remediation BUILT PR #572.
 
 ## 2026-07-05 re-applied orphaned fixes (PRs #613–#616)
 
@@ -287,6 +354,118 @@ public Hardhat/Ganache test mnemonic, so it could never complete a real send) be
 (`src/lib/twoFactorGate.js`) is genuinely session-blind — no `isDecoy`/`isHidden`
 parameter exists or should ever be added — pure test-coverage addition for an
 already-correct invariant.
+
+## 2026-07-07 automated verification sweep (PRs #699–#705)
+
+Eight amber widget items flipped to green via automated Playwright e2e and CI checks — all INTERNAL, not independently audited, no on-chain txid involved except where noted.
+
+**PRs #699–#701, #702 — new e2e specs and automated checks:**
+- **LOG-1 redaction patch** — `scripts/check-log-redaction-patch.mjs` PASSED: both Android + iOS `native-bridge.js` carry all 3 redaction markers. Debug-build logcat leak closed at source (PR #572); release-build logcat silence remains device-spot-check only.
+- **Web WebAuthn PRF KEK browser UAT** — `e2e/webauthn-prf-kek.spec.js` 13/13 Playwright (CDP virtual authenticator; fail-closed matrix C–F + UI unlock path + C-UI settings card enrollment). Real Sepolia txids from a real platform authenticator remain PENDING.
+- **Duress PIN / decoy routing** — `e2e/duress-decoy-routing.spec.js` 1/1: real password → real wallet, Emergency PIN → separate decoy wallet, real address never exposed. App-layer only.
+- **I3 deniability egress** — `e2e/i3-deniability-egress.spec.js` 1/1: decoy session made zero requests to all gated third-party hosts. Honest caveat: real-vs-decoy contrast inconclusive under demo mode.
+- **RASP browser-level detection** — `e2e/rasp-automation-detection.spec.js` 1/1: `navigator.webdriver=true` trips HOOKED→BLOCK unconditionally; `presignGate` fail-closed; BLOCK not overridable.
+- **Composite pre-sign RISK verdict + gate** — `e2e/presign-risk-verdict.spec.js` 3/3 (module boundary): poison address → RISK (S4 fires, real sentence); safe address → INFO; `presignGate` gate mechanics confirmed. Module boundary required because RASP TIER.BLOCK (always fires in Playwright) outranks tx RISK in the compose lattice.
+- **RevenueCat entitlement fail-closed** — `e2e/revenuecat-entitlement-failclosed.spec.js` 5/5: `web→free`, `getCustomerInfo null on web`, I3 deniability guard, active entitlement→`safety_plus`, paid/free route gate. Device purchase still NOT device-verified.
+
+**PR #703 — HardwareKekSettings PIN unification bug fix + C-UI test:**
+After PR #651 unified web onto the 8-digit PIN cohort, `HardwareKekSettings.jsx` enrollment and removal PinPads still used `length=12 / numericOnly=false` — a web user with an 8-digit vault PIN could never enroll hardware KEK through the settings card. **Fixed:** both PinPads now use `length={8} / numericOnly` (web is testing infrastructure only). Instruction text updated. `e2e/webauthn-prf-kek.spec.js` C-UI test promoted from `test.fixme` → `test` (13/13 total).
+
+**PR #704 — docs update** (`docs/Feature-Status.md`, `e2e/webauthn-prf-kek.spec.js` header): 13/13 count, C-UI completion, HardwareKekSettings follow-up regression documented.
+
+**PR #705 — iOS F3/F5 compile-verification CI** (`.github/workflows/ios-compile-check.yml`, `macos-latest/Xcode 26.5`):
+- **iOS-F3** (`kSecUseOperationPrompt → LAContext`): zero deprecation warnings in xcodebuild — compile-verified.
+- **iOS-F5** (`NSMutableData` zeroing): `HardwareKekPlugin.o` built clean — compile-verified.
+Both were code-complete since PR #526 but had never been compiled on a Mac. CI now runs on every push to `ios/**`. Runtime device checks (biometric prompt rendering, heap dump) remain device-gated per `docs/runbook-ios-kek-session.md` P2/P3.
+
+**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. RASP F-09 (real rooted device), independent security audit.
+
+## 2026-07-07/08 INTERNAL KEK stack audit — PRs #723, #735, #743
+
+Code-and-artifact audit of `kek.js` / `native.js` / `web.js` / `hardware.js`. Findings:
+0 CRITICAL / 3 HIGH / 9 MEDIUM / 6 LOW. All 3 HIGH and 6 of 9 MEDIUM resolved; all
+6 LOW resolved. BUILT / unit-tested, INTERNAL — not device-verified, not independently
+audited. No on-chain txid.
+
+- **PR #723** (3 HIGH): `native.js enrollKek` orphaned-credential cleanup + `saltBytes`
+  zero on error (H-1); `web.js unlock()`/`unenrollKek()` `H` zeroed in `finally` on
+  `deriveKekC` throw (H-2); `kek.js decodeKekSalt` 32-byte length guard added, throws
+  `KEK_ERR.MALFORMED_VAULT` on wrong-length input (H-3).
+- **PR #735** (6 MEDIUM resolved): `web.js enrollKek` `saltBytes` zeroed in `finally`
+  (M-1); M2c `downgradeFromHardwareWrap`/`unlock()` peek use `parseVaultBlob` not raw
+  `JSON.parse` (M-2); `clearVault` wraps `clearHardwareCredential()` in best-effort
+  try/catch (M-4); stale password-minimum comment updated to PR #651 8-digit PIN (M-7);
+  `web.js changePassword` enforces minimum on `newPassword` (M-8);
+  `downgradeFromHardwareWrap` wrapped in `withLockSuppressed` (M-9).
+- **PR #743** (6 LOW): `importKekAesKey` throws `DEGENERATE_INPUT` on bad-length kek
+  (L-1); `combineKek` length-check errors carry `.code` (L-2);
+  `docs/device-verification-2026-07-05.md` correction banner prepended (L-3); `native.js`
+  file header updated (L-4); stale lazy-upgrade test comment corrected (L-5);
+  `bufferToB64u`/`b64uToBuffer` extracted to `web-base64url.js` + 17 unit tests (L-6).
+
+**Still open (3 MEDIUM — design decision required before `M2C_HARDWARE_WRAP_ENABLED = true`):**
+- M-3 (#726): M2c up-migration swallows `VAULT_WRITE_VERIFY_FAILED`.
+- M-5 (#728): `VeyrnoxEnclavePlugin` auto-registered with no internal gate.
+- M-6 (#729): iOS-F5 `NSString hB64` bridge copy of H — architectural limitation (accept
+  or bridge-level redaction).
+
+INTERNAL pass — not independent, not a substitute for the outstanding independent
+third-party audit (still required). See `docs/Feature-Status.md` §"2026-07-07/08 INTERNAL
+KEK stack audit" for full per-finding detail.
+
+## 2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757
+
+Code-and-artifact audit across five domains: S1 (seed generation, HD derivation, signing —
+`mnemonic.js`, `derivation.js`, `multiVault.js`, EVM/BTC/SOL chain code), S2 (send flow —
+`SendCrypto.jsx`, `sendGate.js`, `twoFactorGate.js`, per-chain send modules), S3
+(deniability — `deniabilitySession.js`, `duress.js`, `stealth.js`, `panic.js`,
+`hiddenBalance.js`, `decoyBalance.js`), S4 (RASP + WalletConnect — `rasp/`,
+`WalletConnectProvider.jsx`, `presign.js`, `compose.js`), Crypto (vault cryptography —
+`vault.js`, `vaultStore.js`, `vaultBackup.js`, `argon2.worker.js`). Findings:
+0 CRITICAL / 1 HIGH / 10 MEDIUM / 5 LOW. INTERNAL code-and-artifact only — not
+device-verified, not independently audited. No on-chain txid.
+
+**Fixed in PR #757 (merged 2026-07-08) — BUILT / unit-tested, INTERNAL:**
+- H-1: WC `personal_sign` null-`evmAddress` H8 bypass — `_handlePersonalSign` now rejects
+  with `PERSONAL_SIGN_ADDRESS_MISMATCH` when `evmAddress` is null/falsy; insecure else-branch
+  removed (fail-closed, I4).
+- M-3: Scientific notation passes UI amount form boundary — `isFormAmountWellFormed()` strict
+  regex check added; replaces `parseFloat` at the Continue gate.
+- M-6: `resolveHiddenBalance` missing I3 deniability guard — `isDeniabilitySessionActive()`
+  guard added, mirroring `decoyBalance.js:75`.
+- M-7: `veyrnox-live-prices` survives panic wipe — key added to `DENIABILITY_RESIDUE_KEYS`
+  in `panic.js`.
+- L-4: Stale `argon2.worker.js` comment — updated to reflect 192 MiB and dynamic
+  `opts.memorySize`.
+
+**Key PASS properties confirmed:** `crypto.getRandomValues` only (no `Math.random` in
+wallet-core); EVM/BTC/SOL/Cosmos derivation paths correct, all spec vectors passing;
+SLIP-0010 hardened-only enforced for ed25519; I1 signing isolation (no network call inside
+any signing function); I3 deniability stack (all egress points gated — prices, news, RPC,
+SDK; M-6 closed the last gap); decoy/real seed separation; wallet-count tells removed
+(D1/D2/D3); panic wipe completeness (with M-7 fixed); stealth pool chaff (256-slot,
+all users, FIXED_LEN uniform); WalletConnect controls (C3 RASP gate, H7 EIP-712 chain
+binding, M9 gas cap, M11 session expiry, H-NEW-B step-up re-auth) all PASS; RASP BLOCK
+tier unconditional (browser probe); AES-256-GCM IV fresh per encryption, no nonce reuse,
+auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
+
+**Still open (owner-decision or architectural gate required):**
+- M-1 (EVM private key as JS string — architecturally unzeroable; ethers v6 limitation,
+  no available fix; tracked issue #746)
+- M-2 (`hw-send.js` zero test coverage — physical Ledger/Trezor required; issue #747)
+- M-4 (2FA retry dead end after network failure — UX, not a security bypass; issue #749)
+- M-5 (`planSolTransfer` accepts non-bigint `amountLamports` without type guard; issue #750)
+- M-8 (no AAD on base vault blob — `assertSaneKdfParams` partially mitigates the OOM
+  vector; full AAD binding is in the independent audit scope; issue #752)
+- M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
+  owner decision on disclosure wording; issue #754)
+- M-10 (Cosmos non-hardened index level — correct BIP-44 but xpub-risk; documentation gap)
+- L-1, L-2, L-3, L-5 (low-priority; see `docs/Feature-Status.md` §"2026-07-08 INTERNAL
+  S1–S4 + crypto audit")
+
+INTERNAL pass — not independent. The independent third-party audit (S1–S4 + crypto,
+including the vault cipher path) remains outstanding. See `docs/Feature-Status.md`
+§"2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757" for the full per-finding table.
 
 ## Security invariants
 

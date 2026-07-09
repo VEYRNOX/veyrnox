@@ -159,9 +159,19 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
   // ---- handlePersonalSign ---------------------------------------------------
 
   describe('handlePersonalSign', () => {
+    // H8 — personal_sign param order normalization and address validation.
+    // H-1 (#745): a valid evmAddress is now REQUIRED for the signer to be reached;
+    // a null evmAddress fails closed, so the gate-allow test must supply one.
+    const WALLET_ADDR = '0xAbCd1234567890AbCd1234567890abCd12345678';
+    const OTHER_ADDR  = '0x1111222233334444555566667777888899990000';
+
     it('A — calls presignGate before withPrivateKey when gate allows', async () => {
       const { _handlePersonalSign } = await import('../WalletConnectProvider.jsx');
-      await _handlePersonalSign({ withPrivateKey }, 'topic1', 1, ['0xdeadbeef', '0xabc']);
+      await _handlePersonalSign(
+        { withPrivateKey, evmAddress: WALLET_ADDR },
+        'topic1', 1,
+        ['0xdeadbeef', WALLET_ADDR],
+      );
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).toHaveBeenCalled();
       expect(respondToRequest).toHaveBeenCalled();
@@ -170,15 +180,15 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
     it('B — calls rejectRequest with RASP_BLOCK and does NOT call withPrivateKey when gate blocks', async () => {
       presignGate.mockReturnValue({ proceedAllowed: false, signerReachable: false, decision: 'block', owner: 'rasp' });
       const { _handlePersonalSign } = await import('../WalletConnectProvider.jsx');
-      await _handlePersonalSign({ withPrivateKey }, 'topic1', 1, ['0xdeadbeef', '0xabc']);
+      await _handlePersonalSign(
+        { withPrivateKey, evmAddress: WALLET_ADDR },
+        'topic1', 1,
+        ['0xdeadbeef', WALLET_ADDR],
+      );
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
       expect(rejectRequest).toHaveBeenCalledWith('topic1', 1, 'RASP_BLOCK');
     });
-
-    // H8 — personal_sign param order normalization and address validation
-    const WALLET_ADDR = '0xAbCd1234567890AbCd1234567890abCd12345678';
-    const OTHER_ADDR  = '0x1111222233334444555566667777888899990000';
 
     it('C — standard order [message, address]: uses params[0] as message (H8)', async () => {
       const { _handlePersonalSign } = await import('../WalletConnectProvider.jsx');

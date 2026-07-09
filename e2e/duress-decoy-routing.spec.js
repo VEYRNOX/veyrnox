@@ -89,7 +89,7 @@ test.describe('Duress PIN / decoy-wallet routing (throwaway real vault, app-laye
     await page.getByRole('button', { name: /^Lock$/ }).click();
     await page.locator('#duress-try-pw').fill('totally-wrong-password-guess');
     await page.getByRole('button', { name: 'Unlock', exact: true }).click();
-    await expect(page.getByText(/wrong PIN errors explicitly/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/wrong PINs show an error/i)).toBeVisible({ timeout: 10000 });
     console.log('✓ Wrong password surfaced an explicit error (v2 no-silent-decoy model)');
   });
 });

@@ -61,6 +61,23 @@ import { getAuthModel } from "@/lib/authModel";
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
 
+// M-3: form-boundary amount validity. `parseFloat(amount) <= 0` alone ACCEPTS
+// scientific notation ("1e-8" parses to a small positive float) and other
+// malformed inputs (locale commas, multiple dots, "1."), letting them cross the
+// form boundary into the signing path where downstream parsers diverge. This
+// pure predicate mirrors the canonical rule in wallet-core/amount.js
+// (assertDecimalAmount): a positive, well-formed plain decimal string only —
+// no exponent, sign, comma, or trailing dot. Kept exponent/precision-agnostic
+// (no decimals arg) so it can gate the UI form without an asset context.
+export function isFormAmountWellFormed(amountStr) {
+  const s = String(amountStr ?? '').trim();
+  // Plain decimal only: "123", "123.45", ".45" — rejects "", "1e-8", "-1",
+  // "1,5", "1.2.3", "1." (matches assertDecimalAmount's shape rule).
+  if (!/^\d+(\.\d+)?$|^\.\d+$/.test(s)) return false;
+  // Must be strictly positive (rejects "0", "0.0", "0.000").
+  return /[1-9]/.test(s);
+}
+
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
@@ -82,7 +99,7 @@ function PoisonWarning({ screen }) {
             <p className="text-[10px] uppercase tracking-wide text-destructive/70">
               Resembles {m.label}{m.date ? ` · ${new Date(m.date).toLocaleDateString()}` : ""}
             </p>
-            <p className="font-mono break-all">{m.address}</p>
+            <p className="mono-value break-all">{m.address}</p>
           </div>
         ))}
       </div>
@@ -988,7 +1005,9 @@ export default function SendCrypto() {
               <SelectValue placeholder="Select wallet">
                 {selectedWalletName ? (
                   <span className="flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
+                      <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
+                    </span>
                     {selectedWalletName}
                   </span>
                 ) : null}
@@ -998,7 +1017,9 @@ export default function SendCrypto() {
               {wallets.map(w => (
                 <SelectItem key={w.id} value={w.id}>
                   <div className="flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
+                      <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
+                    </span>
                     <span>{w.name}</span>
                   </div>
                 </SelectItem>
@@ -1009,7 +1030,16 @@ export default function SendCrypto() {
         <div>
           <Label id="send-asset-label">Asset</Label>
           <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
-            <SelectTrigger className="mt-1.5" aria-labelledby="send-asset-label"><SelectValue placeholder="Select asset" /></SelectTrigger>
+            <SelectTrigger className="mt-1.5" aria-labelledby="send-asset-label">
+              <SelectValue placeholder="Select asset">
+                {assetSymbol ? (
+                  <span className="flex items-center gap-2">
+                    <CoinLogo symbol={assetSymbol} size={20} />
+                    <span>{getAsset(assetSymbol)?.name || assetSymbol} — {assetSymbol}</span>
+                  </span>
+                ) : null}
+              </SelectValue>
+            </SelectTrigger>
             <SelectContent>
               {enabledAssets.map(sym => {
                 const a = getAsset(sym);
@@ -1055,7 +1085,7 @@ export default function SendCrypto() {
             toAddress === ensResolved.address ? (
               // Confirmed: the user accepted the resolved address as the recipient.
               <div className="flex items-center gap-1.5 mt-1.5 text-xs text-success">
-                <CheckCircle2 className="h-3 w-3 shrink-0" /> Using {ensResolved.name} → <span className="mono-value truncate">{ensResolved.address}</span>
+                <CheckCircle2 className="h-3 w-3 shrink-0" /> Using {ensResolved.name} → <span className="mono-value break-all">{ensResolved.address}</span>
               </div>
             ) : (
               // M-3: resolved via an untrusted third-party service — require an
@@ -1145,7 +1175,7 @@ export default function SendCrypto() {
         )}
         <div>
           <Label htmlFor="send-amount">Amount</Label>
-          <Input id="send-amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5" />
+          <Input id="send-amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5 mono-value" />
           {amountUsd != null && (
             <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> being sent</p>
           )}
@@ -1175,7 +1205,7 @@ export default function SendCrypto() {
         {selectedWallet && !sendEnabled && !devUngated && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. Only ETH (Ethereum test network) is live in this build; other assets are receive/roadmap only until their crypto path is verified.</p>
+            <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. This asset is receive-only until its crypto path is verified.</p>
           </div>
         )}
         {selectedWallet && !sendEnabled && devUngated && (
@@ -1261,10 +1291,10 @@ export default function SendCrypto() {
 
         {step === "form" && (
           <Button
-            className={`w-full ${(!toAddress || !amount || parseFloat(amount) <= 0 || !addressFormatValid || (balanceKnown && parseFloat(amount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
+            className={`w-full ${(!toAddress || !isFormAmountWellFormed(amount) || !addressFormatValid || (balanceKnown && parseFloat(amount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
             disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
             onClick={() => {
-              const invalid = !toAddress || !amount || parseFloat(amount) <= 0 || !addressFormatValid
+              const invalid = !toAddress || !isFormAmountWellFormed(amount) || !addressFormatValid
                 || (balanceKnown && parseFloat(amount) > effectiveBalance)
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }
@@ -1284,7 +1314,7 @@ export default function SendCrypto() {
               <p className="text-xs text-muted-foreground mb-1">You're sending</p>
               <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
-              <p className="text-xs text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
+              <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
             </div>
 
             {/* AUTHORITATIVE pre-sign verdict — ONE sentence at the chokepoint. The
@@ -1388,7 +1418,7 @@ export default function SendCrypto() {
               />
             ) : (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                <Fuel className="h-3 w-3 shrink-0" /> Network fee is set automatically for {selectedWallet?.currency} ({networkName}) on this test network.
+                <Fuel className="h-3 w-3 shrink-0" /> Network fee is set automatically for {selectedWallet?.currency} ({networkName}).
               </p>
             )}
             {/* The fee's fiat estimate (and the spend-cap previews) convert via

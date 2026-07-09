@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { DEMO } from "@/api/demoClient";
 import { annotateTokens } from "@/wallet-core/evm/spam";
-import { getNetworkInfo } from "@/wallet-core/evm/networks";
+import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { ShieldAlert, Eye, EyeOff, Filter, AlertTriangle, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -103,7 +103,7 @@ export default function SpamTokenFilter() {
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
-          {DEMO ? "Demo · seeded" : "Testnet"}
+          {DEMO ? "Demo · seeded" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>
 

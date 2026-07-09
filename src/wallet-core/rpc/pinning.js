@@ -45,7 +45,7 @@ class PinError extends Error {
 const SPKI_PINS = Object.freeze({
   // ---- EVM (publicnode + chain defaults) ----
   'ethereum-sepolia-rpc.publicnode.com': ['sha256/PLACEHOLDER_PUBLICNODE_REPLACE_ON_DEVICE='],
-  'eth.llamarpc.com': ['sha256/PLACEHOLDER_LLAMARPC_REPLACE_ON_DEVICE='],
+  'ethereum-rpc.publicnode.com': ['sha256/PLACEHOLDER_PUBLICNODE_REPLACE_ON_DEVICE='],
   'rpc-amoy.polygon.technology': ['sha256/PLACEHOLDER_POLYGON_REPLACE_ON_DEVICE='],
   'polygon-bor-rpc.publicnode.com': ['sha256/PLACEHOLDER_PUBLICNODE_REPLACE_ON_DEVICE='],
   'sepolia-rollup.arbitrum.io': ['sha256/PLACEHOLDER_ARBITRUM_REPLACE_ON_DEVICE='],

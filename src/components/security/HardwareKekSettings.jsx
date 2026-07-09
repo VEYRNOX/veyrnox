@@ -203,6 +203,7 @@ export default function HardwareKekSettings() {
       } else if (isWrongPinVaultError(e)) {
         setError(WRONG_PIN_MSG);
       } else {
+        console.error('[KEK-ENROLL] failed:', e?.code, e?.message, JSON.stringify(e), e);
         setError(classifyKekError(e));
       }
       // Best-effort cleanup of any partially-created credential.
@@ -326,22 +327,18 @@ export default function HardwareKekSettings() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Binds your vault to this physical device using the{' '}
-        {isNative
-          ? 'iOS Keychain / Android Keystore'
-          : 'browser WebAuthn passkey (PRF extension)'}{' '}
-        (device-bound, biometric-gated). After enabling, your wallet can only decrypt on{' '}
-        <strong>this device</strong> — a stolen vault file without the device is useless,
-        even with your PIN.
+        Locks your wallet to this physical device. After enabling, your wallet can only
+        be opened on <strong>this device</strong>. A stolen backup file is useless without
+        the device itself, even with your PIN.
         {!isNative && (
-          <> Supported on Chrome ≥99 and Firefox ≥108. Safari is not supported.</>
+          <> Works on Chrome 99+ and Firefox 108+. Safari is not supported.</>
         )}
       </p>
 
       <div className="flex items-start gap-2 rounded-lg bg-muted/40 border border-border px-3 py-2">
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          The hardware binding is built and device-verified.
+          Device binding is active and tested on real hardware.
         </p>
       </div>
 
@@ -356,7 +353,7 @@ export default function HardwareKekSettings() {
       {!isNative && enrolled !== null && !webPrfAvailable && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-          WebAuthn PRF is not supported on this browser. Use Chrome ≥99 or Firefox ≥108,
+          Hardware protection isn't available on this browser. Use Chrome 99+ or Firefox 108+,
           or use the iOS or Android app.
         </p>
       )}
@@ -384,9 +381,9 @@ export default function HardwareKekSettings() {
                 <div className="space-y-0.5">
                   <p className="text-xs font-semibold">Upgrade available</p>
                   <p className="text-xs text-muted-foreground">
-                    This vault was secured with an earlier hardware key that wasn’t uniquely
-                    bound to this device. Upgrade to re-secure it with a per-device unique key.
-                    It happens once and asks you to authenticate twice.
+                    Your wallet was protected with an older version that shared a key across
+                    devices. Upgrade to lock it to this device only.
+                    This happens once and asks you to verify twice.
                   </p>
                 </div>
               </div>
@@ -446,8 +443,8 @@ export default function HardwareKekSettings() {
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
                 {isNative
-                  ? 'Enter your vault PIN to confirm removal. You will be asked to authenticate with biometric.'
-                  : 'Enter your vault password (≥12 chars) to confirm removal. You will be asked to authenticate with your passkey.'}
+                  ? 'Enter your PIN to confirm. You\'ll need to verify with your fingerprint or face.'
+                  : 'Enter your password to confirm. You\'ll need to verify with your passkey.'}
               </p>
               {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
               {busy
@@ -462,9 +459,9 @@ export default function HardwareKekSettings() {
                       onChange={v => { setPin(v); setError(''); }}
                       onComplete={handleUnenroll}
                       disabled={busy}
-                      length={isNative ? 8 : 12}
+                      length={8}
                       submitLabel="Remove hardware protection"
-                      numericOnly={isNative}
+                      numericOnly
                     />
                     <button
                       className="text-xs text-muted-foreground underline"
@@ -514,8 +511,8 @@ export default function HardwareKekSettings() {
       {!isNative && webPrfAvailable && enrolled === false && !blocked && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Enter your vault password (≥12 chars) to enable hardware protection. A browser passkey will be
-            created to bind your vault to this device.
+            Enter your 8-digit PIN to enable hardware protection. Your browser will create a
+            passkey to lock your wallet to this device.
           </p>
 
           {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
@@ -531,9 +528,9 @@ export default function HardwareKekSettings() {
                 onChange={v => { setPin(v); setError(''); }}
                 onComplete={handleEnroll}
                 disabled={busy}
-                length={12}
+                length={8}
                 submitLabel="Enable hardware protection"
-                numericOnly={false}
+                numericOnly
               />
             )
           }
