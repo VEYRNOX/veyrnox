@@ -9,19 +9,24 @@ import { DEMO } from "@/api/demoClient";
 
 let _localNotifId = 1;
 
-async function sendNotification(title, body) {
+async function sendNotification(title, body, deepLink = "/") {
   if (Capacitor.isNativePlatform()) {
     try {
       await LocalNotifications.schedule({
-        notifications: [{ title, body, id: _localNotifId++ }],
+        notifications: [{ title, body, id: _localNotifId++, extra: { deepLink } }],
       });
     } catch {}
     return;
   }
-  // Web fallback
+  // Web: tap the notification to focus the tab and navigate to deepLink.
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   try {
-    new Notification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
+    const n = new Notification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
+    n.onclick = (e) => {
+      e.preventDefault();
+      window.focus();
+      window.location.href = deepLink;
+    };
   } catch {}
 }
 
