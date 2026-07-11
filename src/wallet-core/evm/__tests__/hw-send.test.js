@@ -4,9 +4,9 @@
 // with ZERO unit coverage. The single highest-risk operation in evm/hw-send.js
 // is SIGNATURE RECONSTRUCTION: the device returns only {v, r, s}, and the module
 // rebuilds a broadcastable EIP-1559 (type-2) tx from those three values. A wrong
-// `v` (recovery id) silently produces a tx that recovers to the WRONG sender —
-// it still broadcasts, but from an address the user does not control, so funds
-// move from nowhere / the tx is rejected by the network, with no local error.
+// `v` (recovery id) would otherwise silently produce a tx that recovers to the
+// WRONG sender. The module now guards this: it recovers the sender from the
+// reconstructed signature and throws HW_SIGNER_MISMATCH before broadcast (I4).
 //
 // WHAT THIS PROVES (network-free): given a device {v, r, s} over the exact
 // unsigned bytes the module built, the reconstructed tx (a) round-trips through
@@ -135,30 +135,31 @@ describe('evm/hw-send — Ledger signature reconstruction (M-2 / #746)', () => {
     });
   }
 
-  // FRAGILITY NOTE (not a defect the module must fix, but worth pinning): the
-  // module performs NO post-reconstruction recovery check. If a device (or a
-  // future transport bug) returned the WRONG recovery id, the tx still serialises
-  // and broadcasts — it simply recovers to a DIFFERENT address. This test proves
-  // that a flipped `v` is silently accepted, documenting the missing belt-and-
-  // suspenders assertion (a recover-equals-fromAddress guard would fail closed).
-  it('does NOT catch a flipped recovery id — reconstructs a tx that recovers to a different address', async () => {
+  // BELT-AND-SUSPENDERS GUARD (M-2 / #746): the module recovers the sender from
+  // the reconstructed signature and asserts it equals the expected fromAddress
+  // BEFORE broadcast. A device (or transport bug) returning the WRONG recovery
+  // id would otherwise yield a broadcastable tx that silently recovers to a
+  // DIFFERENT address. This test pins the guard: flipped `v` → throw with
+  // code HW_SIGNER_MISMATCH, and the raw tx never reaches the provider (I4).
+  it('fail-closed (I4): flipped recovery id trips the recovered-sender guard — throws, nothing broadcast', async () => {
     const capture = {};
-    getProvider.mockReturnValue(makeFakeProvider(capture));
+    const provider = makeFakeProvider(capture);
+    const broadcastSpy = vi.spyOn(provider, 'broadcastTransaction');
+    getProvider.mockReturnValue(provider);
     h.ledgerSign = async (_path, rawTxHex) => {
       const { sig, v } = deviceSign(rawTxHex, 'yParity');
       const flipped = (parseInt(v, 16) ^ 1).toString(16); // wrong yParity
       return { v: flipped, r: sig.r.slice(2), s: sig.s.slice(2) };
     };
 
-    await signAndBroadcastEvmLedger({
+    await expect(signAndBroadcastEvmLedger({
       transport: {}, networkKey: NETWORK, fromAddress: FROM,
       to: TO, amountEth: '0.01', fee: FEE,
-    });
+    })).rejects.toMatchObject({ code: 'HW_SIGNER_MISMATCH' });
 
-    const tx = Transaction.from(capture.raw);
-    // A broadcastable tx was produced, but it recovers to the WRONG signer and
-    // the module raised no error — the exact silent-mis-sign hazard M-2 flags.
-    expect(getAddress(tx.from)).not.toBe(getAddress(FROM));
+    // Fail-closed means fail BEFORE egress: no broadcast attempt, no raw tx out.
+    expect(broadcastSpy).not.toHaveBeenCalled();
+    expect(capture.raw).toBeUndefined();
   });
 });
 
@@ -199,6 +200,36 @@ describe('evm/hw-send — Trezor signature reconstruction (M-2 / #746)', () => {
     expect(tx.maxFeePerGas).toBe(BigInt(FEE.maxFeePerGasWei));
     expect(getAddress(tx.from)).toBe(getAddress(FROM));
     expect(res.hash).toBe(tx.hash);
+  });
+
+  it('fail-closed (I4): flipped recovery id trips the recovered-sender guard — throws, nothing broadcast', async () => {
+    const capture = {};
+    const provider = makeFakeProvider(capture);
+    const broadcastSpy = vi.spyOn(provider, 'broadcastTransaction');
+    getProvider.mockReturnValue(provider);
+    h.trezorSign = async ({ transaction }) => {
+      const unsigned = Transaction.from({
+        to: transaction.to,
+        value: BigInt(transaction.value),
+        chainId: Number(transaction.chainId),
+        nonce: Number(transaction.nonce),
+        type: 2,
+        data: '0x',
+        gasLimit: BigInt(transaction.gasLimit),
+        maxFeePerGas: BigInt(transaction.maxFeePerGas),
+        maxPriorityFeePerGas: BigInt(transaction.maxPriorityFeePerGas),
+      });
+      const sig = wallet.signingKey.sign(unsigned.unsignedHash);
+      const flipped = (sig.yParity ^ 1).toString(16); // wrong yParity
+      return { success: true, payload: { v: flipped, r: sig.r, s: sig.s } };
+    };
+
+    await expect(signAndBroadcastEvmTrezor({
+      networkKey: NETWORK, fromAddress: FROM, to: TO, amountEth: '0.01', fee: FEE,
+    })).rejects.toMatchObject({ code: 'HW_SIGNER_MISMATCH' });
+
+    expect(broadcastSpy).not.toHaveBeenCalled();
+    expect(capture.raw).toBeUndefined();
   });
 
   it('throws when the device reports failure (fail-closed, I4)', async () => {

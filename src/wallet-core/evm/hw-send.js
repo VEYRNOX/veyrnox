@@ -12,7 +12,7 @@
 //
 // No private key ever touches this module. I1 preserved.
 
-import { Transaction, parseEther, Signature, isAddress } from 'ethers';
+import { Transaction, parseEther, Signature, isAddress, getAddress } from 'ethers';
 import Eth from '@ledgerhq/hw-app-eth';
 import TrezorConnect from '@trezor/connect-web';
 import { getProvider } from './provider.js';
@@ -22,6 +22,26 @@ import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
 import { assertDecimalAmount } from '../amount.js';
 
 const EVM_PATH = "44'/60'/0'/0/0";
+
+/**
+ * Belt-and-suspenders recovery check (M-2 / #746): the device returns only
+ * {v, r, s}, so a wrong recovery id from a buggy/malicious device yields a
+ * broadcastable tx that recovers to a DIFFERENT sender — silently. Recover the
+ * sender from the reconstructed signature and refuse to broadcast on mismatch
+ * (fail-closed, I4). Returns the serialized tx only when the recovered sender
+ * equals the expected one.
+ */
+function serializeCheckedSignedTx(txFields, signature, fromAddress) {
+  const signed = Transaction.from({ ...txFields, signature });
+  if (getAddress(signed.from) !== getAddress(fromAddress)) {
+    const err = new Error(
+      `Hardware signature recovered to ${signed.from}, expected ${fromAddress} — refusing to broadcast`,
+    );
+    err.code = 'HW_SIGNER_MISMATCH';
+    throw err;
+  }
+  return signed.serialized;
+}
 
 /**
  * Build a fully-populated unsigned EIP-1559 tx (type 2), including nonce,
@@ -70,14 +90,11 @@ export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAdd
   // Strip 0x prefix — Ledger expects raw hex
   const sig = await eth.signTransaction(EVM_PATH, unsigned.unsignedSerialized.slice(2), null);
 
-  const signed = Transaction.from({
-    ...txFields,
-    signature: Signature.from({
-      v: parseInt(sig.v, 16),
-      r: '0x' + sig.r,
-      s: '0x' + sig.s,
-    }),
-  }).serialized;
+  const signed = serializeCheckedSignedTx(txFields, Signature.from({
+    v: parseInt(sig.v, 16),
+    r: '0x' + sig.r,
+    s: '0x' + sig.s,
+  }), fromAddress);
 
   const txResponse = await provider.broadcastTransaction(signed);
   return {
@@ -115,10 +132,11 @@ export async function signAndBroadcastEvmTrezor({ networkKey, fromAddress, to, a
   if (!result.success) throw new Error((result.payload && 'error' in result.payload ? result.payload.error : null) ?? 'Trezor signing failed');
 
   const { v, r, s } = result.payload;
-  const signed = Transaction.from({
-    ...txFields,
-    signature: Signature.from({ v: parseInt(v, 16), r, s }),
-  }).serialized;
+  const signed = serializeCheckedSignedTx(
+    txFields,
+    Signature.from({ v: parseInt(v, 16), r, s }),
+    fromAddress,
+  );
 
   const txResponse = await provider.broadcastTransaction(signed);
   return {
