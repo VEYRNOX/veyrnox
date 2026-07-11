@@ -42,6 +42,7 @@ const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejec
 // Sourced from the git-ignored .env.test (VITE_TEST_THROWAWAY_SEED), loaded via
 // dotenv in playwright.config.ts.
 const THROWAWAY_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
+if (!THROWAWAY_SEED) throw new Error('VITE_TEST_THROWAWAY_SEED not set — see .env.test (loaded via dotenv in playwright.config.ts).');
 
 async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);

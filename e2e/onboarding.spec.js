@@ -96,6 +96,7 @@ async function createWalletThroughBackup(page) {
 // (VITE_TEST_THROWAWAY_SEED), loaded via dotenv in playwright.config.ts. Used here
 // purely to exercise the import branch; no funds, no chain interaction.
 const IMPORT_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
+if (!IMPORT_SEED) throw new Error('VITE_TEST_THROWAWAY_SEED not set — see .env.test (loaded via dotenv in playwright.config.ts).');
 
 // Phase 2 (import variant): choose view → "Import an existing seed" → paste phrase →
 // Restore / Import. No seed-backup screen (the user supplied the seed) — imports
