@@ -81,7 +81,7 @@ import { Label } from "@/components/ui/label";
 import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
-import { KEK_ERR } from "@/wallet-core/keystore/kek.js";
+import { KEK_UI_ERR } from "@/lib/vaultErrors";
 import {
   isBiometricGateError,
   isBiometricUnlockEnabled,
@@ -648,7 +648,7 @@ export default function WalletEntry() {
       // removed → KeyPermanentlyInvalidatedException). This is NOT a wrong PIN — counting
       // it toward the wipe destroys funds after 10 retries (the data-loss bug). The ONLY
       // recovery is seed restore, so surface the path automatically (I4). Do NOT increment.
-      if (e?.code === KEK_ERR.KEY_PERMANENTLY_INVALIDATED) {
+      if (e?.code === KEK_UI_ERR.KEY_PERMANENTLY_INVALIDATED) {
         setError(
           'Your fingerprints changed — hardware protection was invalidated. ' +
           'Restore your wallet from your seed phrase to regain access.'
@@ -663,14 +663,14 @@ export default function WalletEntry() {
       // retry or go to Settings.
       // HARDWARE_FACTOR_DEGENERATE (all-zero H) is the same class: a hardware-output
       // failure, never a wrong PIN (Codex P1 follow-up, same wipe-counter leak).
-      if (e?.code === KEK_ERR.NO_HARDWARE_FACTOR || e?.code === 'HARDWARE_FACTOR_DEGENERATE') {
+      if (e?.code === KEK_UI_ERR.NO_HARDWARE_FACTOR || e?.code === KEK_UI_ERR.HARDWARE_FACTOR_DEGENERATE) {
         setError("Hardware protection is unavailable right now. Try again, or manage it in Settings.");
         return;
       }
       // User CANCELLED the per-use biometric sheet. This is user-initiated, NOT a wrong
       // PIN — a correct-PIN user who cancels the prompt N times must never march toward
       // the panic wipe (data-loss bug). Do NOT increment; stay on the unlock screen (I4).
-      if (e?.code === KEK_ERR.USER_CANCELLED) {
+      if (e?.code === KEK_UI_ERR.USER_CANCELLED) {
         setError("Unlock cancelled — try again when ready.");
         return;
       }
