@@ -322,47 +322,54 @@ export async function simulateEvmTransaction({
     ? describeErc20Call({ data, tokenSymbol, decimals: tokenDecimals })
     : { kind: 'native' };
 
-  // Is the tx target a contract? (eth_getCode) Capture the raw code too so
-  // downstream consumers (risk S7) can reuse this already-fetched read instead of
-  // issuing a second eth_getCode (I2: no new network call).
+  // Run all independent RPC reads in parallel so total wall-clock time is
+  // max(individual latencies) rather than their sum. A 10-second timeout wraps
+  // every call so an unresponsive node can never hang the verify step indefinitely
+  // — each timed-out call degrades gracefully to null/false (I4 fail-closed).
+  const RPC_TIMEOUT_MS = 5_000;
+  const withTimeout = (p) => Promise.race([
+    p,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('rpc-timeout')), RPC_TIMEOUT_MS)),
+  ]);
+
+  const isApproveWithSpender = decoded.kind === 'approve' && isAddress(decoded.spender);
+  const [codeRes, balanceRes, callRes, spenderRes] = await Promise.allSettled([
+    withTimeout(provider.getCode(to)),
+    withTimeout(provider.getBalance(from)),
+    withTimeout(provider.call({ from, to, value: toBig(valueWei), data: hasData ? data : undefined })),
+    isApproveWithSpender ? withTimeout(provider.getCode(decoded.spender)) : Promise.resolve(null),
+  ]);
+
+  // eth_getCode(to) — is the recipient a contract?
   let targetIsContract = false;
   let recipientCode = null;
-  try {
-    const code = await provider.getCode(to);
+  if (codeRes.status === 'fulfilled' && codeRes.value != null) {
     queries.push('eth_getCode');
-    recipientCode = code;
-    targetIsContract = !!code && code !== '0x';
-  } catch { /* RPC unreachable — degrade, never block */ }
-
-  // For approve, also probe the spender (the party gaining spending power).
-  let spenderIsContract = null;
-  if (decoded.kind === 'approve' && isAddress(decoded.spender)) {
-    try {
-      const c = await provider.getCode(decoded.spender);
-      if (!queries.includes('eth_getCode')) queries.push('eth_getCode');
-      spenderIsContract = !!c && c !== '0x';
-    } catch { /* degrade */ }
+    recipientCode = codeRes.value;
+    targetIsContract = !!codeRes.value && codeRes.value !== '0x';
   }
 
-  // Sender native balance (eth_getBalance) — for the large-outflow ratio.
-  let nativeBalanceWei = null;
-  try {
-    nativeBalanceWei = (await provider.getBalance(from)).toString();
-    queries.push('eth_getBalance');
-  } catch { /* degrade */ }
+  // eth_getCode(spender) — for ERC-20 approve: is the spender a contract?
+  let spenderIsContract = null;
+  if (isApproveWithSpender && spenderRes.status === 'fulfilled' && spenderRes.value != null) {
+    if (!queries.includes('eth_getCode')) queries.push('eth_getCode');
+    spenderIsContract = !!spenderRes.value && spenderRes.value !== '0x';
+  }
 
-  // DRY-RUN: eth_call executes the tx against CURRENT state and reverts if it
-  // would fail. This is the real "simulation" — a predicted revert means signing
-  // would waste gas / not do what the user expects.
+  // eth_getBalance(from) — sender native balance for large-outflow ratio.
+  let nativeBalanceWei = null;
+  if (balanceRes.status === 'fulfilled' && balanceRes.value != null) {
+    nativeBalanceWei = balanceRes.value.toString();
+    queries.push('eth_getBalance');
+  }
+
+  // eth_call dry-run — a predicted revert means signing would waste gas.
   let willRevert = false;
   let revertReason = null;
-  try {
-    await provider.call({ from, to, value: toBig(valueWei), data: hasData ? data : undefined });
-    queries.push('eth_call');
-  } catch (e) {
+  queries.push('eth_call');
+  if (callRes.status === 'rejected') {
     willRevert = true;
-    revertReason = extractRevertReason(e);
-    queries.push('eth_call');
+    revertReason = extractRevertReason(callRes.reason);
   }
 
   const assessment = assessEvmTransaction({

@@ -1513,6 +1513,20 @@ export default function SendCrypto() {
               <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
             )}
 
+            {/* Hint: one-tap escape while the risk check is still running. */}
+            {riskPending && simEnabled && (
+              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-dashed border-border bg-card">
+                <p className="text-[11px] text-muted-foreground">Taking too long?</p>
+                <button
+                  type="button"
+                  onClick={() => toggleSim(false)}
+                  className="text-[11px] font-medium text-primary underline underline-offset-2 whitespace-nowrap"
+                >
+                  Turn off simulation
+                </button>
+              </div>
+            )}
+
             {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
                 KNOWN risk flags, dry-run against your own RPC before you confirm.
                 Local-only; warns, never blocks; never claims "safe". */}
