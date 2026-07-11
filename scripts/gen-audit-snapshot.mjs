@@ -32,5 +32,5 @@ const out = {
   vulnerabilities: parsed.vulnerabilities ?? {},
 };
 
-writeFileSync(outPath, JSON.stringify(out, null, 2));
+writeFileSync(outPath, JSON.stringify(out, null, 2) + '\n');
 console.log('audit-snapshot.json written to', outPath);
