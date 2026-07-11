@@ -35,6 +35,7 @@ import { resolveAssetRow, PARTIAL_TOTAL_NOTE } from "@/lib/balanceDisplay";
 import { ASSETS, getAsset } from "@/wallet-core/assets.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
+import { defaultAssetSymbol } from "@/lib/sendWalletSource";
 import { formatFiat } from "@/components/FiatCurrencySelector";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import CoinLogo from "@/components/CoinLogo";
@@ -762,7 +763,7 @@ export default function WalletPortfolioPage() {
 
       {/* Actions */}
       <div className="grid grid-cols-3 gap-2">
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/send")}><Send className="h-5 w-5" /><span className="text-xs">Send</span></Button>
+        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => { const asset = defaultAssetSymbol(activeWallet?.enabledAssets ?? ["ETH"], ""); navigate(`/send?asset=${asset || "ETH"}`); }}><Send className="h-5 w-5" /><span className="text-xs">Send</span></Button>
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/receive")}><Download className="h-5 w-5" /><span className="text-xs">Receive</span></Button>
         <Button variant="secondary" className="flex-col h-16 gap-1" disabled={!canManage} onClick={() => setAddOpen(true)}><Plus className="h-5 w-5" /><span className="text-xs">Add wallet</span></Button>
       </div>
