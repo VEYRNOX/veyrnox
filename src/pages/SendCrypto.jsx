@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet } from "lucide-react";
+import { ArrowUpRight, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
@@ -1189,6 +1189,42 @@ export default function SendCrypto() {
             sends gated) this shows the same preview for representative samples on
             every chain, including the high-risk patterns it flags. */}
         {DEMO && step === "form" && <TransactionSimulationDemo />}
+
+        {/* MAINNET: static "what will be checked" teaser shown on the form step.
+            No RPC call — purely informational. The live simulation runs at the
+            verify step once address + amount are known. */}
+        {!DEMO && step === "form" && (
+          <div className="space-y-2.5 p-3 rounded-xl border border-dashed border-primary/30 bg-primary/5">
+            <p className="text-xs font-medium flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5 text-primary" />
+              Transaction Simulation
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Before you sign, we'll run a local pre-flight check — no third-party
+              services, no data leaves your device.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                "Address risk (poison / lookalike)",
+                "Contract decode",
+                "Unlimited approval flag",
+                "Revert prediction",
+                "Anomaly vs your history",
+                "Large outflow warning",
+              ].map((label) => (
+                <span
+                  key={label}
+                  className="text-[11px] px-2 py-1 rounded-md border border-border text-muted-foreground"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Results appear at the next step once you enter an address and amount.
+            </p>
+          </div>
+        )}
 
         {showScanner && (
           <QRScanner
