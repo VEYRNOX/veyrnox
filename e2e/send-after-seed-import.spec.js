@@ -39,7 +39,9 @@ import { test, expect } from '@playwright/test';
 const BASE = 'http://localhost:5173';
 const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejects patterns)
 // Designated throwaway BIP-39 testnet/faucet fixture seed (never holds real value).
-const THROWAWAY_SEED = 'bamboo lyrics harvest potato seat carry equip nation slam begin admit pet';
+// Sourced from the git-ignored .env.test (VITE_TEST_THROWAWAY_SEED), loaded via
+// dotenv in playwright.config.ts.
+const THROWAWAY_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
 
 async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
