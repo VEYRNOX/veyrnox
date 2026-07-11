@@ -5,7 +5,7 @@ import {
   Tooltip, CartesianGrid, ReferenceLine,
 } from "@/lib/recharts";
 import { fetchOHLCVCG as fetchOHLCV } from "@/lib/coinGecko";
-import { isLivePricesEnabled } from "@/lib/priceFeed";
+import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import { PERIOD_PARAMS } from "@/lib/chartPeriods";
 
 const CandlestickBar = (props) => {
@@ -89,9 +89,15 @@ export default function CandlestickChart({ symbol, period }) {
   return (
     <div data-testid="candlestick-chart" className="p-4 rounded-xl border border-border bg-card">
       {!livePricesOn && (
-        <p className="text-xs text-muted-foreground text-center py-6">
-          Enable live prices to view chart data.
-        </p>
+        <div className="flex flex-col items-center gap-3 py-8">
+          <p className="text-xs text-muted-foreground text-center">Live prices are disabled — enable them to view the chart.</p>
+          <button
+            onClick={() => { setLivePricesEnabled(true); window.location.reload(); }}
+            className="rounded-lg bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+          >
+            Enable live prices
+          </button>
+        </div>
       )}
       {livePricesOn && isLoading && (
         <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
