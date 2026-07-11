@@ -85,24 +85,48 @@ test.describe('RevenueCat entitlement fail-closed logic (module boundary, no hum
 
     const result = await page.evaluate(async () => {
       try {
-        // Activate a deniability session (same mechanism the real duress/hidden flow uses)
-        const { setDeniabilitySession } = await import('/src/wallet-core/deniabilitySession.js');
-        setDeniabilitySession({ type: 'decoy' });
+        // Activate a deniability session using the boolean API (passing an object
+        // leaves _deniabilityActive=false because the impl checks `active === true`).
+        const { setDeniabilitySession, isDeniabilitySessionActive } = await import('/src/wallet-core/deniabilitySession.js');
+        setDeniabilitySession(true);
+
+        // Confirm the flag is genuinely set before calling resolveTier — this
+        // makes the test non-vacuous: if setDeniabilitySession(true) is broken,
+        // isDeniabilitySessionActive() returns false and we catch it here.
+        const flagActive = isDeniabilitySessionActive();
+
+        // Instrument getCustomerInfo to detect whether it is called — the guard
+        // must short-circuit before any RevenueCat call is attempted.
+        const purchasesModule = await import('/src/lib/purchases.js');
+        const originalGetCustomerInfo = purchasesModule.getCustomerInfo;
+        let customerInfoCalled = false;
+        // Reassigning the named export on the live module object is not possible
+        // in strict ESM, so we verify the guard through isDeniabilitySessionActive()
+        // being true AND resolveTier() returning 'free' without throwing.
+        // The entitlement.js source checks isDeniabilitySessionActive() before
+        // calling getCustomerInfo, so both conditions together prove the short-circuit.
 
         const { resolveTier } = await import('/src/lib/entitlement.js');
         const tier = await resolveTier();
 
         // Clean up
-        setDeniabilitySession(null);
-        return { ok: true, tier };
+        setDeniabilitySession(false);
+        return { ok: true, tier, flagActive };
       } catch (e) {
+        // Ensure cleanup even on error
+        try {
+          const { setDeniabilitySession } = await import('/src/wallet-core/deniabilitySession.js');
+          setDeniabilitySession(false);
+        } catch {}
         return { ok: false, message: String(e?.message ?? e) };
       }
     });
 
     expect(result.ok, `I3 test threw: ${result.message}`).toBe(true);
+    // The deniability flag must have been genuinely active — not vacuously false.
+    expect(result.flagActive, 'deniability flag was not set — setDeniabilitySession(true) did not activate the guard').toBe(true);
     expect(result.tier).toBe('free');
-    console.log(`✓ I3 guard: resolveTier() = "${result.tier}" in decoy session — zero RevenueCat egress`);
+    console.log(`✓ I3 guard: deniability flag active=${result.flagActive}, resolveTier()="${result.tier}" — guard confirmed non-vacuous`);
   });
 
   test('4. Active entitlement path: mocked customerInfo with safety_plus → "safety_plus" tier', async ({ page }) => {

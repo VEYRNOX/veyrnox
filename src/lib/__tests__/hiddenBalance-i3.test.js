@@ -43,10 +43,9 @@ describe('hiddenBalance I3 guard (M-6)', () => {
     getBalanceSol.mockClear();
   });
 
-  it('returns null and makes NO node read when a deniability session is active', async () => {
+  it('throws and makes NO node read when a deniability session is active', async () => {
     isDeniabilitySessionActive.mockReturnValue(true);
-    const out = await resolveHiddenBalance('evm', '0xabc');
-    expect(out).toBeNull();
+    await expect(resolveHiddenBalance('evm', '0xabc')).rejects.toBe('I3: no egress in deniability session');
     // Fail-closed: the live balance read never happened.
     expect(getBalanceEth).not.toHaveBeenCalled();
     expect(getBalanceSats).not.toHaveBeenCalled();

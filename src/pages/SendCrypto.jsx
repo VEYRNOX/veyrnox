@@ -49,6 +49,7 @@ import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
 import { resolveSend2faMethod, SEND_2FA } from "@/lib/send2faMethod";
+import { resolveMaxPriorityFeePerGas } from "@/lib/WalletConnectProvider";
 import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from "@/lib/passkey";
 import { is2faBiometricEnabled, verifyBiometric2fa } from "@/lib/biometric";
 import { Capacitor } from "@capacitor/core";
@@ -58,6 +59,7 @@ import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet,
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
+import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession.js";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -369,7 +371,8 @@ export default function SendCrypto() {
       : getBalanceEth(networkKey, selectedWallet.address),
     // EVM-family only: getBalanceEth / getTokenBalance are EVM reads, so a BTC/SOL
     // selection must NOT issue a wrong-network balance request.
-    enabled: !demoActive && !!selectedWallet?.address && canReceive(selectedAsset) && (isEvmFamily(selectedAsset) || isErc20),
+    // I3: never issue live balance RPC in a decoy/hidden (deniability) session.
+    enabled: !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && !!selectedWallet?.address && canReceive(selectedAsset) && (isEvmFamily(selectedAsset) || isErc20),
     refetchInterval: 15000,
   });
 
@@ -532,7 +535,8 @@ export default function SendCrypto() {
         nativeSymbol, knownAddresses, priorSends, knownCounterparties,
       });
     },
-    enabled: simEnabled && step === "verify" && !DEMO && (isEvmFamily(selectedAsset) || isErc20)
+    // I3: never issue simulation RPC in a decoy/hidden (deniability) session.
+    enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
@@ -554,7 +558,8 @@ export default function SendCrypto() {
       const { plan } = await estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats });
       return describeBtcPlan({ plan, fromAddress });
     },
-    enabled: simEnabled && step === "verify" && !DEMO && isBtc
+    // I3: never issue Esplora estimate RPC in a decoy/hidden (deniability) session.
+    enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
@@ -856,7 +861,13 @@ export default function SendCrypto() {
             ? maxFeePerGasCap
             : rawMaxFeePerGas;
           const maxFeePerGas = cappedMaxFeePerGas;
-          const maxPriorityFeePerGas = fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n;
+          // L-2 (I5: RPC untrusted): clamp the priority fee against the already-
+          // capped maxFeePerGas via the shared pure helper, so a misreporting
+          // provider can't pin an implausibly large tip on a hardware signer.
+          const maxPriorityFeePerGas = resolveMaxPriorityFeePerGas(
+            fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n,
+            cappedMaxFeePerGas,
+          );
           let signedHex;
           if (isErc20) {
             const { data, contract: contractAddr } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });

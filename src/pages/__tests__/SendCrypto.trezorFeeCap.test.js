@@ -25,4 +25,12 @@ describe('SendCrypto — F-08-TREZOR maxFeePerGas ceiling', () => {
     expect(src).toMatch(/MAX_BASE_FEE_GWEI\[[^\]]*\]/);
     expect(src).toMatch(/cappedMaxFeePerGas|maxFeePerGasCap|1_000_000_000n|1000000000n/);
   });
+
+  it('caps the Trezor maxPriorityFeePerGas against the capped maxFeePerGas (L-2)', () => {
+    // The priority fee must not be passed uncapped: it is clamped against
+    // cappedMaxFeePerGas via the shared resolveMaxPriorityFeePerGas helper so a
+    // hostile/misreporting RPC (I5) can't pin an implausibly large tip.
+    expect(src).toMatch(/resolveMaxPriorityFeePerGas/);
+    expect(src).toMatch(/resolveMaxPriorityFeePerGas\([^)]*cappedMaxFeePerGas\s*,?\s*\)/s);
+  });
 });

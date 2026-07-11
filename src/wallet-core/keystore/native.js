@@ -673,7 +673,7 @@ export const nativeKeyStore = {
           if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
           throw err;
         }
-        return decryptVault(JSON.parse(blobJson), password); // vault.js unchanged
+        return decryptVault(parseVaultBlob(blobJson), password); // vault.js unchanged
       }
     }
 
