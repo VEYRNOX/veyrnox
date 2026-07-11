@@ -1507,10 +1507,37 @@ export default function SendCrypto() {
             {presign?.owner === 'rasp' && raspArtifact?.sentence ? (
               <div className={`flex items-start gap-2 p-3 rounded-lg border ${presign.decision === 'block' ? 'bg-risk/10 border-risk/40 text-risk' : 'bg-caution/10 border-caution/30 text-caution'}`}>
                 <ShieldAlert aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5" />
-                <p className="text-xs font-medium">{raspArtifact.sentence}</p>
+                <div className="text-xs space-y-1.5 min-w-0 font-medium">
+                  <p>{raspArtifact.sentence}</p>
+                  {presign.decision !== 'block' && (
+                    <label className="flex items-start gap-2 cursor-pointer pt-0.5">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={riskAck}
+                        onChange={(e) => setRiskAck(e.target.checked)}
+                      />
+                      <span>I understand and want to proceed anyway.</span>
+                    </label>
+                  )}
+                </div>
               </div>
             ) : (
               <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
+            )}
+
+            {/* Hint: one-tap escape while the risk check is still running. */}
+            {riskPending && simEnabled && (
+              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-dashed border-border bg-card">
+                <p className="text-[11px] text-muted-foreground">Taking too long?</p>
+                <button
+                  type="button"
+                  onClick={() => toggleSim(false)}
+                  className="text-[11px] font-medium text-primary underline underline-offset-2 whitespace-nowrap"
+                >
+                  Turn off simulation
+                </button>
+              </div>
             )}
 
             {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
