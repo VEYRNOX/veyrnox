@@ -2,27 +2,28 @@
 //
 // Capacitor plugin REGISTRATION for the native OS-integrity probe (Phase 2a).
 // BUILT: JS bridge (`registerPlugin('RaspIntegrity')`) + Android + iOS native probes.
-//   NOT device-validated (F-09).
+//   Device-verified (PARTIAL) 2026-07-11, INTERNAL — see nativeProbe.js header.
 //
 // This file registers the Capacitor plugin bridge. Native detection logic:
 //   • Android (Kotlin): android/app/src/main/java/com/veyrnox/app/RaspIntegrityPlugin.kt
-//       — WRITTEN + registered (PR #383): root (su/Magisk/KernelSU paths, system
+//       — BUILT + registered (PR #383): root (su/Magisk/KernelSU paths, system
 //       write-test, build-tags), Frida (default port 27042) / Xposed, emulator, tamper.
 //   • iOS (ObjC): ios/App/App/RaspIntegrityPlugin.m (+ .h + RaspIntegrityPluginBridge.m,
-//       CAP_PLUGIN registration) — WRITTEN; added to the Xcode App build target
+//       CAP_PLUGIN registration) — BUILT; added to the Xcode App build target
 //       2026-07-11 (#826): jailbreak paths (Cydia/Sileo/MobileSubstrate), sandbox-escape
-//       write test, Frida port 27042, dyld image scan, simulator fingerprint. It is ObjC,
-//       not Swift. BUILT-UNVALIDATED — no on-device (jailbroken/Frida) test yet.
+//       write test, Frida port 27042, dyld image scan, simulator fingerprint.
+//       Registered as "RaspIntegrity". NOT device-tested on iOS (Mac required).
 //
 // Each implements:  checkIntegrity() -> Promise<{
 //     rooted?, jailbroken?, hookedProcess?, emulator?, tampered? : boolean }>
 //
-// STATUS: both native probes are BUILT but NOT yet exercised on a real rooted/jailbroken/
-// Frida device (F-09, roadmap Phase 4) and NOT independently audited — so RASP OS-level
-// detection stays UNVALIDATED. Where the native plugin is absent — a build that predates
-// the iOS target wiring, a platform without the plugin, or a bridge throw — the bridge
-// rejects and nativeProbe.js fails CLOSED to INTEGRITY_UNAVAILABLE, never a fabricated
-// clean. NO EGRESS (I2): purely on-device.
+// STATUS: BUILT on both platforms; device-verified (PARTIAL) 2026-07-11 on Android
+// (Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7 — plugin registered, StrongBox KEK
+// + biometric unlock confirmed; checkIntegrity() rooted-signal and Send-WARN NOT
+// captured). iOS device test not performed (Mac required). Frida-hooked device test not
+// performed on either platform. NOT independently audited (F-09 open, roadmap Phase 4).
+// Where the native plugin call fails the bridge, nativeProbe.js fails CLOSED to
+// INTEGRITY_UNAVAILABLE — never a fabricated clean. NO EGRESS (I2): purely on-device.
 
 import { registerPlugin } from '@capacitor/core';
 
