@@ -549,7 +549,7 @@ export default function WalletPortfolioPage() {
             // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
             const row = resolveAssetRow(data.assets, symbol);
             return (
-              <div key={symbol} className="flex items-center gap-3 px-4 py-2.5">
+              <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-left flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{symbol}</p>
@@ -573,7 +573,7 @@ export default function WalletPortfolioPage() {
                   {/* indeterminate read → "—", not a misleading $0.00 */}
                   <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : formatFiat(row.usd, "USD")}</p>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
