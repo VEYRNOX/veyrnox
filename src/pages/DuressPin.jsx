@@ -329,7 +329,7 @@ export default function DuressPin() {
         className="p-4 rounded-xl border border-border bg-secondary/30"
       >
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Your real PIN unlocks faster than the decoy. Someone on your network could tell them apart. This protects you from someone in the room, not someone remote. Also: examining the device might still spot the second wallet via forensic tools.
+          Your real PIN unlocks faster than the decoy. Someone on your network could tell them apart. This protects you from someone in the room, not someone remote.
         </p>
       </div>
 
