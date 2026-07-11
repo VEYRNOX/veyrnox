@@ -36,6 +36,7 @@ export const ALL_ROUTE_PATHS = [
   '/referrals',
   '/walletconnect',
   '/asset/:symbol',
+  '/app-health',
 ];
 
 export const CLASSIFICATION = {
@@ -374,9 +375,11 @@ export const CLASSIFICATION = {
   '/ai-rebalancer':     { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'AI rebalancer cut: autonomous value movement, off-wedge.' },
   '/erc20-discovery':   { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'ERC-20 discovery cut: third-party token indexer dependency, off-wedge.' },
   '/products':          { verdict: 'cut', reason: 'off-wedge', dataSource: 'invented', note: 'Products page cut: marketing page, off-wedge.' },
-  '/asset/:symbol':     { verdict: 'live', dataSource: 'external', note: 'CryptoDetailPage — tap-an-asset detail view (PR #784). Displays candlestick price chart and Send/Receive shortcuts for the selected asset. Price data from useBasketPrices (external price feed). No key material accessed; read-only display. Deniability guard: inherits Layout-level FeatureGate; no direct deniability egress path (prices already gated upstream in TierProvider).' },
+  // (duplicate '/asset/:symbol' entry removed 2026-07-11 — PR #784/#788 merge
+  // artifact; the surviving entry below was the one winning at runtime.)
   '/walletconnect':     { verdict: 'live', dataSource: 'on-device', note: 'WalletConnect v2 transport + signing (D1+D2). Pairing + session management via WC relay; signing via on-device key derivation (withPrivateKey). CORRECTION (factual): eth_sendTransaction is NOT display-only — WalletConnectProvider.handleSendTransaction builds new ethers.Wallet(pk, provider) and calls wallet.sendTransaction(tx), a REAL on-chain sign + broadcast (the UI warns "Approving sends a real on-chain transaction"). It is mainnet-capable: the target chain comes from the WC session namespace (getNetworkByChainId on the CAIP-2 chainId), not restricted to testnet. STATUS: BUILT, UNVERIFIED — no on-chain testnet txid has been supplied/confirmed on an explorer, so this is not "verified". Guards present: gas capped at 1M and an eth_chainId match check (VULN-19) before broadcast.' },
   '/asset/:symbol':     { verdict: 'live', dataSource: 'on-device', note: 'CryptoDetailPage — candlestick chart + period selector for a single asset. Price data from useBasketPrices (live market feed, same source as portfolio). Balance strip shows real on-device balance via usePortfolio. Send/Receive deep-links pre-select the asset via ?asset= query param. BUILT, UI-complete.' },
+  '/app-health':        { verdict: 'live', dataSource: 'external', note: 'AppHealthPage (PR #813) — runtime dependency probes (RPC reachability, price feed, RevenueCat, RASP browser tier) plus the local /audit-snapshot.json npm-audit summary and device capability reads. External probes are reachability checks only (no wallet data sent); the widget skips ALL probes when isDeniabilitySessionActive() (I3). BUILT, not independently audited.' },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
