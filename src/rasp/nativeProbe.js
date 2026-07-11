@@ -10,22 +10,21 @@
 // nativeProbeSource() where the web build passes browserProbeSource.
 //
 // ┌──────────────────────────────────────────────────────────────────────────┐
-// │ TODO (mobile dev) — the NATIVE plugin itself is NOT written yet.           │
-// │ This module imports `@/rasp/raspIntegrityPlugin`, which must export a      │
-// │ Capacitor plugin `RaspIntegrity` with:                                     │
-// │     checkIntegrity(): Promise<{                                            │
-// │       rooted?: boolean,        // su/Magisk/SuperSU, write-test, busybox    │
-// │       jailbroken?: boolean,    // Cydia/Sileo paths, sandbox escape (iOS)   │
-// │       hookedProcess?: boolean, // Frida/Xposed ports, ptrace, dylib inject  │
-// │       emulator?: boolean,      // build props / sensors / known FP          │
-// │     }>                                                                      │
-// │ iOS (Swift) + Android (Kotlin) native implementations are out of scope of  │
-// │ this JS layer and require real-device verification before RASP is trusted. │
-// │ Binary-tamper detection is a separate probe (bundle signature/checksum)    │
-// │ and is intentionally left to the native layer; until the plugin reports it │
-// │ we keep `tampered: false` (honest scope — never a fabricated clean claim,  │
-// │ because the absence of a tamper signal is NOT the same as fail-closed; the │
-// │ whole source still fails closed when the plugin cannot run at all).         │
+// │ Native plugin status (2026-07-11):                                         │
+// │   Android — RaspIntegrityPlugin.kt BUILT (Kotlin, su/Magisk/Frida/emu).   │
+// │   iOS     — RaspIntegrityPlugin.m  BUILT (ObjC, Cydia/sandbox/dyld/Frida).│
+// │ Both are BUILT-UNVALIDATED: the logic is present but NOT exercised on a   │
+// │ real rooted/jailbroken device. F-09 device verification is still required │
+// │ before the status can advance. Real-device confirmation → close F-09.     │
+// │                                                                            │
+// │ checkIntegrity() contract (both platforms):                               │
+// │     Promise<{                                                              │
+// │       rooted?: boolean,        // su/Magisk/SuperSU, write-test (Android)  │
+// │       jailbroken?: boolean,    // Cydia/Sileo/sandbox escape (iOS)         │
+// │       hookedProcess?: boolean, // Frida port / dyld / Xposed               │
+// │       emulator?: boolean,      // build props / simulator env              │
+// │       tampered?: boolean,      // re-sign / cert fingerprint mismatch      │
+// │     }>                                                                     │
 // └──────────────────────────────────────────────────────────────────────────┘
 //
 // I4 — FAIL CLOSED. Off a non-native platform, when the plugin module is absent,

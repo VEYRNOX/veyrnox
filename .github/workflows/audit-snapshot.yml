@@ -1,0 +1,26 @@
+name: Update audit snapshot
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  audit-snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: node scripts/gen-audit-snapshot.mjs
+      - name: Commit updated snapshot (main only)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet public/audit-snapshot.json || (git add public/audit-snapshot.json && git commit -m "chore(ci): update npm audit snapshot")
+          git push
