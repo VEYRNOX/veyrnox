@@ -56,7 +56,6 @@ Thumbs.db
 
 # Claude Code tool artifacts — local only
 .claire/
-.claude-flow/
 .clone/
 .gstack/
 .claude/agents/browser/
