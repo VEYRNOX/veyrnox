@@ -111,13 +111,21 @@ describe('stealth / hidden wallets', () => {
   });
 
   it('reveals only the wallet whose secret is given, with the right address', async () => {
-    const a = await createHiddenWallet('alpha-secret-1');
-    const b = await createHiddenWallet('beta-secret-2');
+    const secretA = 'alpha-secret-1';
+    const a = await createHiddenWallet(secretA);
+    // Pick a second secret whose HKDF slot doesn't collide with secretA's under
+    // the random per-run device salt (collision probability ~1/256 with pool=256).
+    // slotForSecret is safe to call here: the salt was provisioned by createHiddenWallet above.
+    let secretB = 'beta-secret-2';
+    for (let i = 2; slotForSecret(secretB) === slotForSecret(secretA); i++) {
+      secretB = `beta-secret-${i}`;
+    }
+    const b = await createHiddenWallet(secretB);
 
     expect(a.address).not.toBe(b.address);
 
-    const revealedA = revealedMnemonic(await tryRevealHidden('alpha-secret-1'));
-    const revealedB = revealedMnemonic(await tryRevealHidden('beta-secret-2'));
+    const revealedA = revealedMnemonic(await tryRevealHidden(secretA));
+    const revealedB = revealedMnemonic(await tryRevealHidden(secretB));
     expect(revealedA).not.toBeNull();
     expect(revealedB).not.toBeNull();
     expect(deriveEvmAccount(revealedA, 0).address).toBe(a.address);
