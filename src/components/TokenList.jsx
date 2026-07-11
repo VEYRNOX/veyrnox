@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { USD_RATES } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
 import { useBasketPrices } from "@/hooks/useBasketPrices";
@@ -21,6 +22,7 @@ function ChangeChip({ change }) {
 }
 
 export default function TokenList({ wallets, onSelect, selectedId }) {
+  const navigate = useNavigate();
   const { changeFor } = useBasketPrices();
   return (
     <div className="space-y-1">
@@ -31,7 +33,7 @@ export default function TokenList({ wallets, onSelect, selectedId }) {
         return (
           <button
             key={wallet.id}
-            onClick={() => onSelect(wallet)}
+            onClick={() => { onSelect(wallet); navigate(`/asset/${wallet.currency}`); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
               isSelected ? "bg-primary/10 border border-primary/30" : "hover:bg-secondary border border-transparent"
             }`}
