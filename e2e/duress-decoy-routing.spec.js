@@ -73,7 +73,16 @@ test.describe('Duress PIN / decoy-wallet routing (throwaway real vault, app-laye
 
     // ── Emergency PIN -> HIDDEN (decoy) WALLET, a DIFFERENT address ──────────
     await page.getByRole('button', { name: /Unlock with EMERGENCY PIN/i }).click();
-    await expect(page.getByText('HIDDEN WALLET', { exact: true })).toBeVisible({ timeout: 10000 });
+    // The Emergency PIN is NOT the primary password, so this unlock takes the
+    // honest failure->deniability path: a primary attempt (1 KDF) + the 2000 ms
+    // timing equalizer + resolveDeniabilityUnlock's constant 3 KDFs + verifier
+    // capture (1 KDF) = ~4-5 Argon2id KDFs at 192 MiB/t=3. Measured end-to-end
+    // wall clock for THIS unlock is ~8.7-10.0 s in browser WASM, which sits right
+    // on a 10 s ceiling and flakes (see F-002). Give headroom over the measured
+    // worst case — this is legitimate crypto cost, not a slow test. (Primary-
+    // success unlocks like REAL WALLET short-circuit after 1 KDF and stay well
+    // under 10 s, so their timeouts are left unchanged.)
+    await expect(page.getByText('HIDDEN WALLET', { exact: true })).toBeVisible({ timeout: 30000 });
     const decoyAddrText = await page.locator('p.font-mono.text-xs', { hasText: 'Address:' }).innerText();
     console.log(`✓ Emergency PIN opened HIDDEN WALLET (${decoyAddrText})`);
 
