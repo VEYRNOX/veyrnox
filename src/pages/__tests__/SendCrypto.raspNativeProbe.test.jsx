@@ -1,19 +1,24 @@
 // F-09 — wire the NATIVE RASP probe into the Send page so OS-level root/jailbreak
 // detection actually fires on device (not just the browser-level WebDriver probe).
 //
-// Two layers are pinned here, matching the codebase pattern (a pure helper carries
-// the combining logic + a source-pin proves SendCrypto.jsx wires it fail-closed —
-// a full render of SendCrypto requires the entire send stack, so it is pinned by
-// source per SendCrypto.confirmation.test.js / SendCrypto.deniability.test.jsx):
+// C-01 (internal-audit-2026-07-11, CRITICAL) UPDATE: the original F-09 wiring used
+// resolveProbeSource(nativeProbe, browserProbeSource), which falls back to the BROWSER
+// leg when the native leg did not run. On a native WebView the browser leg is CLEAN
+// (available:true, rooted:false) — so that fallback was fail-OPEN: a rooted device signed
+// with no friction. The pre-sign gate now uses selectPresignProbeSource(isNative, …),
+// which on native consumes the OS leg ONLY and fails CLOSED to WARN when it did not run.
 //
-//  (1) resolveProbeSource(nativeSource, browserSource) — the pure chooser. Uses the
-//      native ProbeSource ONLY when it genuinely ran (available === true), else it
-//      falls back to the browser source. It NEVER fabricates a clean source (I4).
-//
+// Two layers are pinned here:
+//  (1) selectPresignProbeSource — the pure, platform-aware chooser (fail-closed on
+//      native). Its full behaviour matrix lives in
+//      src/rasp/__tests__/selectPresignProbeSource.test.js.
 //  (2) SendCrypto.jsx wiring — nativeProbeSource() is sampled once at mount behind a
-//      Capacitor.isNativePlatform() gate inside a try/catch (fail-closed to browser),
-//      cached in state (RASP-A1: the OS verdict does not change during a session),
-//      and the chosen source is passed to detect() on every render.
+//      Capacitor.isNativePlatform() gate inside a try/catch, cached in state (RASP-A1:
+//      the OS verdict does not change during a session), and the chosen source is passed
+//      to detect() on every render.
+//
+// resolveProbeSource (the legacy chooser) still exists and is unit-tested below, but is
+// no longer wired into the pre-sign gate — it is superseded by selectPresignProbeSource.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -24,7 +29,9 @@ import { detect, degrade, TIER, resolveProbeSource } from '@/rasp';
 const dir = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(dir, '../SendCrypto.jsx'), 'utf8');
 
-describe('resolveProbeSource — the pure native/browser chooser (I4 fail-closed)', () => {
+// Legacy helper — retained and tested, but superseded by selectPresignProbeSource for the
+// pre-sign gate (its browser fallback is fail-open on native; see C-01).
+describe('resolveProbeSource — legacy native/browser chooser (superseded for the gate)', () => {
   it('a rooted native probe drives the RASP tier to WARN', () => {
     const nativeSource = { available: true, signals: { rooted: true } };
     const browserSource = { available: true, signals: {} }; // browser sees nothing
@@ -52,10 +59,10 @@ describe('resolveProbeSource — the pure native/browser chooser (I4 fail-closed
   });
 });
 
-describe('SendCrypto.jsx — the native RASP probe is wired fail-closed (F-09)', () => {
-  it('imports nativeProbeSource and resolveProbeSource from @/rasp', () => {
+describe('SendCrypto.jsx — the native RASP probe is wired fail-closed (F-09 + C-01)', () => {
+  it('imports nativeProbeSource and selectPresignProbeSource from @/rasp', () => {
     expect(src).toMatch(/nativeProbeSource/);
-    expect(src).toMatch(/resolveProbeSource/);
+    expect(src).toMatch(/selectPresignProbeSource/);
   });
 
   it('samples nativeProbeSource() inside a Capacitor.isNativePlatform()-gated useEffect', () => {
@@ -75,9 +82,10 @@ describe('SendCrypto.jsx — the native RASP probe is wired fail-closed (F-09)',
     expect(effectRegion).toMatch(/catch/);
   });
 
-  it('passes the resolved (native-or-browser) source into detect(), not raw browserProbeSource', () => {
-    // The live detect() call must consume the chosen source. Pin that resolveProbeSource
-    // feeds detect().
-    expect(src).toMatch(/detect\(\s*resolveProbeSource\(/);
+  it('passes the platform-aware chosen source into detect(), not raw browserProbeSource and not the fail-open resolveProbeSource', () => {
+    // The live detect() call must consume selectPresignProbeSource(isNative, native, browser)
+    // — which fails closed on native — NOT resolveProbeSource (fail-open browser fallback).
+    expect(src).toMatch(/detect\(\s*selectPresignProbeSource\(\s*Capacitor\.isNativePlatform\(\)/);
+    expect(src).not.toMatch(/detect\(\s*resolveProbeSource\(/);
   });
 });
