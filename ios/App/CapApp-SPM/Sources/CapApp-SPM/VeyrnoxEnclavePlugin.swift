@@ -25,6 +25,21 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
 
     private let service = EnclaveKeyService()
 
+    // #729 (M-5): the plugin is auto-registered by Capacitor, so its methods are
+    // reachable from ANY in-page JS even though the M2c hardware-wrap path is gated
+    // OFF. Fail closed at the native layer too — the key-minting / key-touching
+    // methods (createWrappingKey/wrap/unwrap) reject with M2C_DISABLED while this is
+    // false, so an injected script cannot mint an orphaned Secure Enclave key.
+    //
+    // MUST be flipped to true TOGETHER WITH M2C_HARDWARE_WRAP_ENABLED in
+    // src/wallet-core/keystore/native.js (and M2C_ENABLED in
+    // src/plugins/veyrnoxEnclave.js) once the Enclave path is device-verified —
+    // keep all three in lockstep.
+    private static let m2cEnabled = false
+
+    // isHardwareKeyAvailable (read-only probe) and deleteWrappingKey (cleanup —
+    // deleting a key cannot leak material, and clearVault relies on it) are
+    // intentionally NOT gated.
     @objc func isHardwareKeyAvailable(_ call: CAPPluginCall) {
         let capability = service.capability()
         call.resolve([
@@ -34,6 +49,10 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func createWrappingKey(_ call: CAPPluginCall) {
+        if !Self.m2cEnabled {
+            call.reject("M2c hardware wrap is disabled", "M2C_DISABLED")
+            return
+        }
         do {
             try service.createWrappingKey()
             call.resolve()
@@ -45,6 +64,10 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func wrap(_ call: CAPPluginCall) {
+        if !Self.m2cEnabled {
+            call.reject("M2c hardware wrap is disabled", "M2C_DISABLED")
+            return
+        }
         guard let blob = call.getString("blob") else {
             call.reject("Missing 'blob' parameter", "INVALID_PARAM")
             return
@@ -60,6 +83,10 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func unwrap(_ call: CAPPluginCall) {
+        if !Self.m2cEnabled {
+            call.reject("M2c hardware wrap is disabled", "M2C_DISABLED")
+            return
+        }
         guard let ciphertext = call.getString("ciphertext") else {
             call.reject("Missing 'ciphertext' parameter", "INVALID_PARAM")
             return

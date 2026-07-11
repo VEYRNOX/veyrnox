@@ -370,6 +370,22 @@ async function _unlockInner(password, opts = {}) {
 // foregrounded. See keystore/index.js for the cross-platform facade.
 export { withLockSuppressed };
 
+// #725 (M-3): the M2c up-migration in unlock() is best-effort — it MUST NOT fail
+// the unlock (the secret has already been recovered). But it also must not SWALLOW
+// the failure silently: a persistent VAULT_WRITE_VERIFY_FAILED (or any repeated
+// migration error) needs to be visible so it can be diagnosed. This handler logs
+// ONLY the error's code (or, absent a code, its message) — NEVER the error object,
+// the vault blob, the ciphertext, or any key material (LOG-1). Extracted as a pure
+// helper because the M2c branch itself is dormant (M2C_HARDWARE_WRAP_ENABLED=false),
+// so the handler's contract is pinned by a direct unit test.
+export function logM2cMigrationFailure(e) {
+  // Coerce to a primitive string first: passing the raw error object to
+  // console.error could serialise attached fields (hw/kekWrap/ct) in some logger
+  // configs. Only a plain string crosses the boundary.
+  const detail = (e && (e.code || e.message)) || 'unknown error';
+  console.error('[keystore] M2c up-migration failed:', String(detail));
+}
+
 /** @type {import('./keyStore.js').KeyStore} */
 export const nativeKeyStore = {
   // True when a device credential (passcode/biometrics) is set, which is the
@@ -692,7 +708,12 @@ export const nativeKeyStore = {
             const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
             await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
           }
-        } catch { /* non-fatal — migrate on a later unlock */ }
+        } catch (e) {
+          // Non-fatal: the secret is already recovered, so unlock still succeeds and
+          // migration is retried on a later unlock. But log the failure (code/message
+          // only, never key material — #725/LOG-1) instead of swallowing it silently.
+          logM2cMigrationFailure(e);
+        }
       }
       return secret;
     });

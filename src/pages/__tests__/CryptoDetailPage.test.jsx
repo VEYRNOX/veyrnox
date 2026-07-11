@@ -13,7 +13,12 @@ vi.mock("@/hooks/useBasketPrices", () => ({
 vi.mock("@/components/CandlestickChart", () => ({
   default: ({ symbol, period }) => <div data-testid="chart">{symbol}-{period}</div>,
 }));
-vi.mock("@/lib/priceFeed", () => ({ isLivePricesEnabled: () => false }));
+vi.mock("@/lib/priceFeed", () => ({
+  isLivePricesEnabled: () => false,
+  // usePortfolio (via portfolioBalances) pulls useLivePrices from this module;
+  // live prices are off in this test, so return the disabled-state shape.
+  useLivePrices: () => ({ prices: null, isLoading: false, isError: false, updatedAt: null, refetch: () => {} }),
+}));
 
 import CryptoDetailPage from "../CryptoDetailPage";
 

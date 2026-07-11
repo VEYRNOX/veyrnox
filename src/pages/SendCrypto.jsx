@@ -431,7 +431,7 @@ export default function SendCrypto() {
   const effectiveBalance = demoActive
     ? (demoBalance ?? 0)
     : (flowSendEnabled && nativeLiveBalance != null
-        ? parseFloat(nativeLiveBalance)
+        ? parseFloat(String(nativeLiveBalance))
         : (selectedWallet?.balance || 0));
 
   // USD conversions for the Send screen (DISPLAY ONLY — derived from the static
