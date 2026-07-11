@@ -38,7 +38,7 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
-import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, resolveProbeSource } from "@/rasp";
+import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, selectPresignProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
@@ -662,10 +662,13 @@ export default function SendCrypto() {
   // F-09 — NATIVE OS probe. nativeProbeSource() is a Capacitor bridge call (async), so
   // it cannot run on the synchronous render path. We sample it ONCE at mount behind an
   // isNativePlatform() gate (RASP-A1: the OS verdict does not change during a session)
-  // and cache it in state. resolveProbeSource() then picks the native leg when it
-  // genuinely ran (available === true), else falls back to the browser leg — never a
-  // fabricated clean source (I4). On web / a native-bridge throw the state stays null
-  // and detect() reads browserProbeSource exactly as before.
+  // and cache it in state. selectPresignProbeSource() then, on native, consumes the OS leg
+  // ONLY and NEVER falls back to the browser leg's CLEAN — the browser leg reports CLEAN on
+  // a native WebView (it cannot see root/jailbreak), so a native fallback to it was
+  // fail-OPEN (C-01, internal-audit-2026-07-11, CRITICAL). Until the native leg genuinely
+  // ran we fail CLOSED (INTEGRITY_UNAVAILABLE → WARN, never ALLOW): this covers iOS (no
+  // plugin yet), a plugin-absent/throwing verdict, and the not-yet-resolved async window.
+  // On web the gate reads browserProbeSource exactly as before.
   const [nativeProbe, setNativeProbe] = useState(null);
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -675,9 +678,9 @@ export default function SendCrypto() {
         const source = await nativeProbeSource();
         if (!cancelled) setNativeProbe(source);
       } catch {
-        // I4 FAIL CLOSED: a native-bridge throw leaves state null → resolveProbeSource
-        // falls back to the browser leg (which is itself fail-closed), never to clean.
-        if (!cancelled) setNativeProbe(null);
+        // I4 FAIL CLOSED: a native-bridge throw leaves state null → on native
+        // selectPresignProbeSource returns the UNAVAILABLE source (WARN), never clean.
+        if (!cancelled) setNativeProbe({ available: false });
       }
     })();
     return () => { cancelled = true; };
@@ -687,9 +690,9 @@ export default function SendCrypto() {
   // RASP-A1 (2026-07-05 internal audit, HIGH): browserProbeSource re-samples the
   // environment FRESH on every property read (its `available`/`signals` are getters),
   // so a debugger / WebDriver flag attached AFTER module-load is still caught. This
-  // runs on every render, and the signer chokepoint re-derives the gate too. The
-  // native OS leg (cached in `nativeProbe`) is preferred when it genuinely ran.
-  try { raspArtifact = degrade(detect(resolveProbeSource(nativeProbe, browserProbeSource))); } catch { raspArtifact = degrade(undefined); }
+  // runs on every render, and the signer chokepoint re-derives the gate too. On native an
+  // unavailable OS leg fails CLOSED — it does NOT fall back to the browser CLEAN (C-01).
+  try { raspArtifact = degrade(detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource))); } catch { raspArtifact = degrade(undefined); }
   // I4 FAIL CLOSED (RASP-A2, 2026-07-05 internal audit, HIGH): if the RASP artifact
   // is missing a tier (a crash, or degrade() shape drift), fall back to the strongest
   // BLOCK — NEVER ALLOW. A fail-open fallback here would let a hostile runtime sign

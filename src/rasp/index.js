@@ -44,3 +44,4 @@ export { detect, classifyEnvironment } from './detect.js';
 export { browserProbeSource } from './browserProbe.js';
 export { nativeProbeSource } from './nativeProbe.js';
 export { resolveProbeSource } from './resolveProbeSource.js';
+export { selectPresignProbeSource } from './selectPresignProbeSource.js';
