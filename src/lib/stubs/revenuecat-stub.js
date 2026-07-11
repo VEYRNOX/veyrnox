@@ -1,7 +1,10 @@
-// Stub for @revenuecat/purchases-capacitor — web/test environments only.
-// The real package is only available on native (iOS/Android) builds.
-// All methods in purchases.js guard with isNative() === true before use,
-// so this stub is never called at runtime on web.
+// Stub for @revenuecat/purchases-capacitor — Vite DEV SERVER / E2E only.
+// The real package IS installed (package.json); its JS bridge must reach every
+// `vite build` output (native builds bundle their web assets via vite build),
+// so vite.config.js aliases this stub ONLY for `command === 'serve'` (F-001).
+// All methods in purchases.js guard with isNative() === true before use, so
+// this stub is never exercised at runtime on web dev either — it exists so the
+// dev server resolves the import.
 export const Purchases = {
   configure: () => Promise.resolve(),
   getOfferings: () => Promise.resolve({ current: null }),

@@ -91,10 +91,17 @@ export default defineConfig(({ command }) => {
         // hits the stub and yields `undefined`. See src/main.jsx for the full
         // rationale. Browser-safe; no signer/serializer bytes change.
         buffer: 'buffer',
-        // @revenuecat/purchases-capacitor is a native-only package (iOS/Android).
-        // It is not installed for web builds. purchases.js guards all calls with
-        // isNative(), so a no-op stub here is safe for dev/E2E runs.
-        '@revenuecat/purchases-capacitor': fileURLToPath(new URL('./src/lib/stubs/revenuecat-stub.js', import.meta.url)),
+        // DEV/E2E ONLY: stub @revenuecat/purchases-capacitor so the Vite dev
+        // server (and the 18 Playwright specs that boot it) run without the
+        // native RevenueCat runtime (F-001). The package IS installed
+        // (package.json) and its real JS bridge MUST reach native builds —
+        // `mobile:build:*` runs `vite build`, so an unconditional alias here
+        // would silently disconnect the native purchases SDK (configure()
+        // no-ops, entitlements fail-closed to free) while looking configured.
+        // Scoped to `serve` so every `vite build` output keeps the real bridge.
+        ...(command === 'serve'
+          ? { '@revenuecat/purchases-capacitor': fileURLToPath(new URL('./src/lib/stubs/revenuecat-stub.js', import.meta.url)) }
+          : {}),
       },
     },
     plugins: [
