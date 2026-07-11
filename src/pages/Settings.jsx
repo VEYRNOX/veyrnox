@@ -120,6 +120,7 @@ export default function Settings() {
           <Switch
             checked={isDark}
             onCheckedChange={(checked) => { setTheme(checked ? 'dark' : 'light'); recordAudit('settings_changed'); }}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           />
         </div>
       </div>
@@ -139,6 +140,7 @@ export default function Settings() {
           </div>
           <Switch
             checked={auditLog}
+            aria-label={auditLog ? 'Disable activity log' : 'Enable activity log'}
             onCheckedChange={async (checked) => {
               await toggleAuditLog(checked);
               setAuditLog(checked);

@@ -92,9 +92,13 @@ async function createWalletThroughBackup(page) {
 }
 
 // Throwaway BIP-39 UAT fixture seed (TESTNET-ONLY, never real value — see project
-// memory "throwaway-testnet-seed"). Used here purely to exercise the import branch;
-// no funds, no chain interaction.
-const IMPORT_SEED = 'bamboo lyrics harvest potato seat carry equip nation slam begin admit pet';
+// memory "throwaway-testnet-seed"). Sourced from the git-ignored .env.test
+// (VITE_TEST_THROWAWAY_SEED), loaded via dotenv in playwright.config.ts. Used here
+// purely to exercise the import branch; no funds, no chain interaction.
+const IMPORT_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
+// Seed-dependent tests skip explicitly (visible, not a silent pass) when the fixture
+// seed is unavailable — e.g. CI, where the git-ignored .env.test does not exist.
+// Non-seed tests in this file still run. Local runs with .env.test exercise everything.
 
 // Phase 2 (import variant): choose view → "Import an existing seed" → paste phrase →
 // Restore / Import. No seed-backup screen (the user supplied the seed) — imports
@@ -172,6 +176,7 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
   });
 
   test('onboarding-lockout regression: reload after IMPORTING a seed still unlocks with the same 8-digit PIN', async ({ page }) => {
+    test.skip(!IMPORT_SEED, 'requires VITE_TEST_THROWAWAY_SEED — see .env.test (git-ignored; unset in CI)');
     // Regression coverage for the web onboarding lockout bug. History: PR #637 made
     // the unlock screen a numeric-only PinPad but left creation on a free-text
     // password (lockout); PR #645 fixed it by routing on authModel instead, keeping

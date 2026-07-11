@@ -1,4 +1,8 @@
+import { config } from 'dotenv';
 import { defineConfig, devices } from '@playwright/test';
+
+// Load .env.test at the very top before any tests run
+config({ path: '.env.test' });
 
 export default defineConfig({
   testDir: './e2e',

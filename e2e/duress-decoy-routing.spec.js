@@ -10,8 +10,7 @@
 //   - wrong password -> explicit "Incorrect PIN"-class error, no silent decoy
 //
 // CORRECTION (found while making this runnable): the plan was to import the
-// documented throwaway BIP-39 UAT seed
-//   ("bamboo lyrics harvest potato seat carry equip nation slam begin admit pet")
+// documented throwaway BIP-39 UAT seed (VITE_TEST_THROWAWAY_SEED from .env.test)
 // via the normal onboarding flow, THEN flip on demo mode to reach DuressPin's
 // built-in "Live demonstration" panel. That combination is impossible:
 // `?demo=1` does not layer on top of a real vault — it replaces onboarding
@@ -25,8 +24,8 @@
 // the same class of throwaway, disposable, no-real-value wallet as the
 // documented UAT seed, using the exact harness the app's own authors built
 // for this purpose (DuressPin.jsx: "Exercises the REAL unlock flow"). It does
-// not literally use the "bamboo lyrics…" phrase — that phrase cannot survive
-// contact with demo mode's onboarding bypass.
+// not literally use the documented VITE_TEST_THROWAWAY_SEED phrase — that phrase
+// cannot survive contact with demo mode's onboarding bypass.
 //
 // Honest scope: this is app-layer routing proof (real crypto, real vault code,
 // real IndexedDB), NOT a hardware-KEK / Secure Enclave verification, and it
@@ -73,7 +72,16 @@ test.describe('Duress PIN / decoy-wallet routing (throwaway real vault, app-laye
 
     // ── Emergency PIN -> HIDDEN (decoy) WALLET, a DIFFERENT address ──────────
     await page.getByRole('button', { name: /Unlock with EMERGENCY PIN/i }).click();
-    await expect(page.getByText('HIDDEN WALLET', { exact: true })).toBeVisible({ timeout: 10000 });
+    // The Emergency PIN is NOT the primary password, so this unlock takes the
+    // honest failure->deniability path: a primary attempt (1 KDF) + the 2000 ms
+    // timing equalizer + resolveDeniabilityUnlock's constant 3 KDFs + verifier
+    // capture (1 KDF) = ~4-5 Argon2id KDFs at 192 MiB/t=3. Measured end-to-end
+    // wall clock for THIS unlock is ~8.7-10.0 s in browser WASM, which sits right
+    // on a 10 s ceiling and flakes (see F-002). Give headroom over the measured
+    // worst case — this is legitimate crypto cost, not a slow test. (Primary-
+    // success unlocks like REAL WALLET short-circuit after 1 KDF and stay well
+    // under 10 s, so their timeouts are left unchanged.)
+    await expect(page.getByText('HIDDEN WALLET', { exact: true })).toBeVisible({ timeout: 30000 });
     const decoyAddrText = await page.locator('p.font-mono.text-xs', { hasText: 'Address:' }).innerText();
     console.log(`✓ Emergency PIN opened HIDDEN WALLET (${decoyAddrText})`);
 
