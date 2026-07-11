@@ -1234,60 +1234,56 @@ export default function SendCrypto() {
             </div>
           </div>
         )}
-        {/* DEMO: the pre-sign Transaction Simulation preview. The real preview
-            appears at the verify step against a live RPC; in demo (no live RPC,
-            sends gated) this shows the same preview for representative samples on
-            every chain, including the high-risk patterns it flags. */}
-        {DEMO && step === "form" && <TransactionSimulationDemo />}
-
-        {/* MAINNET: simulation teaser + on/off toggle on the form step.
-            No RPC call here — purely informational. The live simulation runs at
-            the verify step once address + amount are known. Toggle persisted to
-            localStorage so the choice survives navigation. */}
-        {!DEMO && step === "form" && (
+        {/* Transaction Simulation / Screening — toggle visible in both demo and
+            live mode. In demo the panel body shows representative risk samples;
+            in live mode it shows the feature teaser (real sim runs at verify). */}
+        {step === "form" && (
           <div className={`space-y-2.5 p-3 rounded-xl border border-dashed ${simEnabled ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium flex items-center gap-1.5">
                 <Activity className={`h-3.5 w-3.5 ${simEnabled ? "text-primary" : "text-muted-foreground"}`} />
-                Transaction Screening
+                Transaction Simulation
               </p>
               <Switch
                 id="sim-toggle"
                 checked={simEnabled}
                 onCheckedChange={toggleSim}
-                aria-label="Toggle transaction screening"
+                aria-label="Toggle transaction simulation"
               />
             </div>
-            {simEnabled ? (
-              <>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Before you sign, we run a local pre-flight check — no third-party
-                  services, no data leaves your device.
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    "Address risk (poison / lookalike)",
-                    "Contract decode",
-                    "Unlimited approval flag",
-                    "Revert prediction",
-                    "Anomaly vs your history",
-                    "Large outflow warning",
-                  ].map((label) => (
-                    <span
-                      key={label}
-                      className="text-[11px] px-2 py-1 rounded-md border border-border text-muted-foreground"
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Results appear at the next step once you enter an address and amount.
-                </p>
-              </>
-            ) : (
+            {simEnabled && (
+              DEMO ? <TransactionSimulationDemo /> : (
+                <>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Before you sign, we run a local pre-flight check — no third-party
+                    services, no data leaves your device.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "Address risk (poison / lookalike)",
+                      "Contract decode",
+                      "Unlimited approval flag",
+                      "Revert prediction",
+                      "Anomaly vs your history",
+                      "Large outflow warning",
+                    ].map((label) => (
+                      <span
+                        key={label}
+                        className="text-[11px] px-2 py-1 rounded-md border border-border text-muted-foreground"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Results appear at the next step once you enter an address and amount.
+                  </p>
+                </>
+              )
+            )}
+            {!simEnabled && (
               <p className="text-[11px] text-muted-foreground">
-                Screening is off — no pre-flight check will run before signing.
+                Simulation is off — no pre-flight check will run before signing.
               </p>
             )}
           </div>
