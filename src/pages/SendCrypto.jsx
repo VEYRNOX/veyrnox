@@ -20,7 +20,7 @@ import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import { toast } from "sonner";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { MAX_BASE_FEE_GWEI } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -110,6 +110,7 @@ function PoisonWarning({ screen }) {
 export default function SendCrypto() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
 
   // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
@@ -140,7 +141,7 @@ export default function SendCrypto() {
     }
   }, [vaultChecking, vaultExists, navigate]);
   const [walletId, setWalletId] = useState("");
-  const [assetSymbol, setAssetSymbol] = useState("");
+  const [assetSymbol, setAssetSymbol] = useState(searchParams.get("asset") ?? "");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
