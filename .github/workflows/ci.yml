@@ -2,37 +2,187 @@ name: CI
 
 on:
   pull_request:
-    branches: [ main ]
   push:
-    branches: [ main ]
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
-  pull-requests: read
+
+# WalletConnect (Reown) project ID — a PUBLIC client identifier (it ships in the
+# bundle; not a secret), stored as a repo Actions variable. Injected here at the
+# workflow level so every `npm run build` (verify + android-release) bakes it in,
+# otherwise CI / release APKs ship with the dApp Connector "Project ID required".
+env:
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
 
 jobs:
-  test:
-    name: Test, lint and build
+  # Diff-based mainnet activation flag change gate (Critical Blocker #3,
+  # Option A). Mainnet is already live and audited (2026-06-17) — this job
+  # does NOT gate "is mainnet on", it gates "did this PR CHANGE a mainnet
+  # activation flag". See docs/MAINNET_GATE_DESIGN.md and
+  # docs/MAINNET_ACTIVATION.md.
+  #
+  # PROCEDURAL, not cryptographic: this job labels + comments so a human sees
+  # it before merge. It does NOT fail the build and does NOT block merge by
+  # itself — branch protection / required-reviewer policy is what actually
+  # gates the merge, same as any other PR review.
+  mainnet-flag-gate:
     runs-on: ubuntu-latest
-
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
         with:
-          node-version: 20
+          # Full history so `git diff <base>...HEAD` can find the merge-base;
+          # a shallow checkout would make every PR look like it changed
+          # everything (or fail the diff outright).
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Detect mainnet flag changes
+        id: detect
+        run: |
+          node scripts/detect-mainnet-flag-changes.js --base "origin/${{ github.base_ref }}" > mainnet-flag-report.json
+          cat mainnet-flag-report.json
+          HAS_CHANGES=$(node -e "console.log(JSON.parse(require('fs').readFileSync('mainnet-flag-report.json','utf8')).hasMainnetChanges)")
+          echo "has_changes=$HAS_CHANGES" >> "$GITHUB_OUTPUT"
+      - name: Label + comment on flagged PR
+        if: steps.detect.outputs.has_changes == 'true'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('mainnet-flag-report.json', 'utf8'));
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number,
+              labels: ['mainnet-gate-required'],
+            });
+
+            const changeList = report.changes
+              .map(c => `- \`${c.flag}\` in \`${c.file}:${c.lineNumber}\` — \`${c.oldValue}\` → \`${c.newValue}\``)
+              .join('\n');
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number,
+              body: [
+                '⚠️ This PR modifies mainnet activation flags. This requires explicit review by the wallet owner before merge.',
+                '',
+                changeList,
+                '',
+                'See `docs/MAINNET_ACTIVATION.md` for the activation process and `docs/MAINNET_GATE_DESIGN.md` for why this is a procedural (not automatic-block) gate.',
+              ].join('\n'),
+            });
+
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
           cache: npm
+      # The lockfile is authored with npm 11; Node 22 ships npm 10, which rejects
+      # it (optional native dep resolution). Pin npm 11 to match the toolchain.
+      - run: npm install -g npm@11
+      - run: npm install --legacy-peer-deps
+      # LOG-1 gate (independent-audit F4.1): assert the debug-bridge log-redaction
+      # patch actually applied to node_modules. A patch-package patch is silently
+      # dropped when @capacitor/{android,ios} is bumped past the pinned 8.4.1, which
+      # would re-open the hardware-KEK-H / vault-blob logcat leak with no build error.
+      # Dedicated required step (same rationale as check:rng / check:strays below).
+      - run: npm run check:log-redaction
+      # Supply-chain gate: fail CI on any NEW critical advisory. Known/deferred
+      # criticals are allowlisted with a reason in scripts/audit-gate.mjs;
+      # highs/moderates are triaged for reachability in docs/SAST_FINDINGS.md.
+      - run: node scripts/audit-gate.mjs
+      - run: npm run lint
+      # Critical Blocker #1 — R0/R1 crypto-core ring-boundary gate as a
+      # DEDICATED required step (not only transitively via `npm run lint`), so it
+      # can't silently drop if the lint script's scope changes — same pattern as
+      # check:rng below. Fails CI (blocks merge) if any UI/backend-layer file
+      # imports a key-touching crypto-core module (keystore / vault / mnemonic /
+      # derivation / coldkey, or the @vault/@signing/@keys aliases). The four
+      # known pre-existing crossings are an explicit labelled baseline in
+      # eslint.config.js; anything NEW fails here.
+      - run: npm run lint:rings
+      # Whole-tree type gate. `pretest` only runs typecheck:core (the fast,
+      # security-critical wallet-core slice); CI additionally holds the ENTIRE
+      # tree at zero checkJs errors so UI-layer types can't silently drift.
+      - run: npm run typecheck
+      # F5: run the CSPRNG guard as a dedicated required step, not only
+      # transitively via the test `pretest` hook (so it can't silently drop if
+      # the test script changes).
+      - run: npm run check:rng
+      # Stray-artifact gate: fail if the index contains zero-byte files or
+      # shell-fragment filenames (accidental redirection artifacts — three
+      # reached main before this gate existed: `per-page`, `false))`, `!(r.topic`).
+      - run: npm run check:strays
+      # Brief A — deniability-string scanner: fails on new wallet/set-count
+      # string leaks in rendered copy (D1-D3) or raw-seed clipboard writes.
+      # Dedicated required step, same rationale as check:rng above.
+      - run: npm run check:deniability-strings
+      # Finding-ID drift gate: fails if a user-facing surface (the feature
+      # catalogue) describes a RESOLVED audit finding as still open, or if the
+      # findings registry cites a source doc that does not mention the ID. This
+      # is the tripwire for the 2026-07-06 C-1 mislabel; see docs/findings-registry.json.
+      - run: npm run check:finding-ids
+      - run: npm run build
+      - run: npm test
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint --if-present
-
-      - name: Unit tests
-        run: npm run test --if-present
-
-      - name: Build
-        run: npm run build --if-present
+  android-release:
+    runs-on: ubuntu-latest
+    # Only build the release APK on main-branch pushes (not every PR).
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: verify
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install -g npm@11
+      - run: npm install --legacy-peer-deps
+      - run: npm run build
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          # Capacitor 8 / the Android Gradle build target Java 21; JDK 17 fails the
+          # release build with "invalid source release: 21". (Local APK builds use 21.)
+          java-version: 21
+      - name: Decode keystore
+        # KEYSTORE_BASE64: base64-encoded .jks file stored as a GitHub secret.
+        # If absent the build falls back to debug signing (unsigned release not installable).
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
+            echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> $GITHUB_ENV
+          fi
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: veyrnox-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
