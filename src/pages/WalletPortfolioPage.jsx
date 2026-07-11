@@ -16,7 +16,10 @@ import {
   Wallet, Plus, Send, Download, ShieldAlert, Eye, EyeOff, Copy, Check,
   RefreshCw, MoreVertical, Pencil, Trash2, SlidersHorizontal, Star, FolderPlus,
   Folder, ArrowRightLeft, ChevronDown, ChevronUp,
+  ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle, ExternalLink,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +28,7 @@ import { getAuthModel } from "@/lib/authModel";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
 import { resolveAssetRow, PARTIAL_TOTAL_NOTE } from "@/lib/balanceDisplay";
@@ -39,6 +43,13 @@ import SpendingPatternsCard from "@/components/SpendingPatternsCard";
 import { copySecret } from "@/lib/copySecret";
 import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
+import PortfolioHealthScore from "@/components/PortfolioHealthScore";
+import WatchlistWidget from "@/components/WatchlistWidget";
+import GasTracker from "@/components/GasTracker";
+import CryptoNewsFeed from "@/components/CryptoNewsFeed";
+import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
+import { fetchAssetHistory } from "@/lib/txHistory";
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -92,17 +103,17 @@ function BackupDialog({ walletName, mnemonic = null, reauthPrompt = null, onClos
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Back up “{walletName}”</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Back up "{walletName}"</DialogTitle></DialogHeader>
         {reauthPrompt ? (
           reauthPrompt
         ) : (
           <>
             <div className="p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
-              Anyone with this phrase has full access to THIS wallet’s funds, and it is the only way to recover it.
+              Anyone with this phrase has full access to THIS wallet's funds, and it is the only way to recover it.
             </div>
             <SeedGrid mnemonic={mnemonic} />
             <DialogFooter>
-              <Button className="w-full gap-2" onClick={onConfirm}><Check className="h-4 w-4" /> I’ve written it down — mark backed up</Button>
+              <Button className="w-full gap-2" onClick={onConfirm}><Check className="h-4 w-4" /> I've written it down — mark backed up</Button>
             </DialogFooter>
           </>
         )}
@@ -168,14 +179,14 @@ export function AddWalletDialog({ onClose }) {
       <DialogContent>
         {created ? (
           <>
-            <DialogHeader><DialogTitle>Back up “{name.trim() || "your new wallet"}”</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Back up "{name.trim() || "your new wallet"}"</DialogTitle></DialogHeader>
             <div className="p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
-              This wallet has its OWN recovery phrase — back it up separately. It’s the only way to recover this wallet.
+              This wallet has its OWN recovery phrase — back it up separately. It's the only way to recover this wallet.
             </div>
             <SeedGrid mnemonic={created.mnemonic} />
             <DialogFooter>
               <Button className="w-full gap-2" onClick={() => { confirmWalletBackup(created.walletId); toast.success("Wallet added and backed up."); onClose(); }}>
-                <Check className="h-4 w-4" /> I’ve backed it up — done
+                <Check className="h-4 w-4" /> I've backed it up — done
               </Button>
             </DialogFooter>
           </>
@@ -189,8 +200,8 @@ export function AddWalletDialog({ onClose }) {
             <div className="space-y-3 pt-1">
               <p className="text-xs text-muted-foreground">
                 {mode === "create"
-                  ? "Generates a NEW seed that derives ALL chains (ETH/EVM, BTC, SOL). You’ll back it up before it’s active."
-                  : "Paste an existing 12/24-word seed — all chains are derived automatically (a seed isn’t chain-specific)."}
+                  ? "Generates a NEW seed that derives ALL chains (ETH/EVM, BTC, SOL). You'll back it up before it's active."
+                  : "Paste an existing 12/24-word seed — all chains are derived automatically (a seed isn't chain-specific)."}
               </p>
               {mode === "import" && (
                 <div>
@@ -213,7 +224,7 @@ export function AddWalletDialog({ onClose }) {
                 {isPin ? (
                   <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={mode === "create" ? doCreate : doImport} disabled={busy || (mode === "import" && !phrase.trim())} submitLabel={mode === "create" ? "Create & back up" : "Import wallet"} aria-label="Vault PIN" /></div>
                 ) : (
-                  <Input type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Confirm it’s you to change your vault" />
+                  <Input type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Confirm it's you to change your vault" />
                 )}
                 <p className="text-xs text-muted-foreground mt-1">Re-entered to authorise a change to your seed vault. Never kept in memory.</p>
               </div>
@@ -240,7 +251,7 @@ function ManageAssetsDialog({ wallet, onClose }) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Assets for “{wallet.name}”</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Assets for "{wallet.name}"</DialogTitle></DialogHeader>
         <p className="text-xs text-muted-foreground">Choose which assets show for this wallet. Hidden ones stay out of the way until added.</p>
         <div className="space-y-1.5 pt-1 max-h-80 overflow-y-auto">
           {ASSETS.map((a) => (
@@ -286,13 +297,13 @@ export function RemoveDialog({ wallet, canRemove, onClose }) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Remove “{wallet.name}”?</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Remove "{wallet.name}"?</DialogTitle></DialogHeader>
         {!canRemove ? (
-          <p className="text-sm text-muted-foreground">This is your only wallet — it can’t be removed. Use Panic Wipe in Security to erase everything.</p>
+          <p className="text-sm text-muted-foreground">This is your only wallet — it can't be removed. Use Panic Wipe in Security to erase everything.</p>
         ) : (
           <div className="space-y-3">
             <div className="p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
-              Removes this wallet’s seed from this device. {wallet.backedUp ? "You can restore it from its recovery phrase." : "⚠️ NOT backed up — without its phrase it is gone forever."}
+              Removes this wallet's seed from this device. {wallet.backedUp ? "You can restore it from its recovery phrase." : "⚠️ NOT backed up — without its phrase it is gone forever."}
             </div>
             <div>
               <Label>{isPin ? "Vault PIN" : "Vault password"}</Label>
@@ -323,7 +334,7 @@ function MovePortfolioDialog({ wallet, portfolios, currentId, onClose }) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Move “{wallet.name}” to…</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Move "{wallet.name}" to…</DialogTitle></DialogHeader>
         <div className="space-y-1.5">
           {portfolios.map((p) => (
             <button key={p.id} onClick={() => { assignWalletToPortfolio(wallet.id, p.id); toast.success(`Moved to ${p.name}.`); onClose(); }}
@@ -379,6 +390,86 @@ function ManagePortfoliosDialog({ portfolios, onClose }) {
         <DialogFooter><Button variant="outline" className="w-full" onClick={onClose}>Done</Button></DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const ETH_ASSET = ASSETS.find((a) => a.symbol === "ETH");
+
+const TX_STATUS = {
+  pending:   { Icon: Clock,         cls: "text-caution" },
+  confirmed: { Icon: CheckCircle2,  cls: "text-primary" },
+  failed:    { Icon: XCircle,       cls: "text-destructive" },
+};
+
+function ActivityTabContent({ wallet }) {
+  const address = wallet?.accounts?.[0]?.address || null;
+  const { data: txs, isLoading, isError } = useQuery({
+    queryKey: ["history", "ETH", address],
+    queryFn: () => fetchAssetHistory({ asset: ETH_ASSET, address, demo: DEMO }),
+    enabled: !!address,
+    staleTime: 60_000,
+  });
+
+  if (!wallet) {
+    return <p className="text-sm text-center text-muted-foreground py-10">Unlock your wallet to view activity.</p>;
+  }
+  if (isLoading) {
+    return <p className="text-sm text-center text-muted-foreground py-10">Loading...</p>;
+  }
+  if (isError || !txs?.length) {
+    return (
+      <div className="text-center py-10 space-y-3">
+        <p className="text-sm text-muted-foreground">{isError ? "Could not load activity." : "No transactions yet."}</p>
+        <a href="/tx-history" className="text-xs text-primary hover:underline">View full history &rarr;</a>
+      </div>
+    );
+  }
+
+  const recent = txs.slice(0, 5);
+  return (
+    <div className="space-y-0.5">
+      {recent.map((tx) => {
+        const isSend = tx.type === "send";
+        const isSelf = tx.type === "self";
+        const DirIcon = isSelf ? ArrowRightLeft : isSend ? ArrowUpRight : ArrowDownLeft;
+        const { Icon: StatusIcon, cls: statusCls } = TX_STATUS[tx.status] || TX_STATUS.confirmed;
+        const explorerUrl = `https://etherscan.io/tx/${tx.hash}`;
+        return (
+          <div key={tx.hash} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+              isSelf ? "bg-secondary" : isSend ? "bg-destructive/10" : "bg-primary/10"
+            }`}>
+              <DirIcon className={`h-3.5 w-3.5 ${isSelf ? "text-muted-foreground" : isSend ? "text-destructive" : "text-primary"}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-medium capitalize">{tx.type}</p>
+                <StatusIcon className={`h-3 w-3 ${statusCls}`} />
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate font-mono">
+                {tx.type === "send" ? tx.to : tx.from}
+              </p>
+            </div>
+            <div className="text-right shrink-0 flex items-center gap-1.5">
+              <div>
+                <p className={`text-sm font-semibold ${isSend ? "text-destructive" : "text-primary"}`}>
+                  {isSend ? "-" : "+"}{tx.amount} {tx.currency}
+                </p>
+                <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(tx.time * 1000), { addSuffix: true })}</p>
+              </div>
+              {tx.hash && (
+                <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      <a href="/tx-history" className="block text-center text-xs text-primary hover:underline pt-2">
+        View full history &rarr;
+      </a>
+    </div>
   );
 }
 
@@ -453,11 +544,11 @@ export default function WalletPortfolioPage() {
         <div className="text-center space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Portfolio Value</p>
           <p className="text-4xl font-bold">{formatFiat(0, "USD")}</p>
-          <p className="text-xs text-muted-foreground">You’re exploring — view only. No wallet yet.</p>
+          <p className="text-xs text-muted-foreground">You're exploring — view only. No wallet yet.</p>
         </div>
         <div className="p-6 rounded-2xl border border-dashed border-border bg-card text-center space-y-4">
           <Wallet className="h-8 w-8 text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Look around freely. When you’re ready, create a new self-custody wallet or import an existing seed — keys are generated and encrypted on this device.</p>
+          <p className="text-sm text-muted-foreground">Look around freely. When you're ready, create a new self-custody wallet or import an existing seed — keys are generated and encrypted on this device.</p>
           <Button className="w-full gap-2" onClick={() => requireWallet()}><Plus className="h-4 w-4" /> Create or import a wallet</Button>
         </div>
         <div className="grid grid-cols-3 gap-2 opacity-60 pointer-events-none select-none">
@@ -541,7 +632,7 @@ export default function WalletPortfolioPage() {
         </div>
         <div className="divide-y divide-border">
           {(w.enabledAssets || []).length === 0 ? (
-            <p className="px-4 py-4 text-xs text-muted-foreground text-center">No assets shown. Use “Manage assets”.</p>
+            <p className="px-4 py-4 text-xs text-muted-foreground text-center">No assets shown. Use "Manage assets".</p>
           ) : (w.enabledAssets || []).map((symbol) => {
             const a = getAsset(symbol);
             // A genuinely MISSING row (not yet computed / race) is INDETERMINATE,
@@ -651,14 +742,14 @@ export default function WalletPortfolioPage() {
           <div className="flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">
-              <b>Wallet backup incomplete.</b> Each wallet has its own recovery phrase — without it, that wallet’s funds are unrecoverable. Back up now.
+              <b>Wallet backup incomplete.</b> Each wallet has its own recovery phrase — without it, that wallet's funds are unrecoverable. Back up now.
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {unbacked.map((w) => (
               <button key={w.id} onClick={() => revealWithReauth(w.id)}
                 className="text-[11px] px-2 py-1 rounded-md bg-caution/20 text-caution hover:bg-caution/30">
-                Back up “{w.name}”
+                Back up "{w.name}"
               </button>
             ))}
           </div>
@@ -677,45 +768,66 @@ export default function WalletPortfolioPage() {
         </p>
       )}
 
-      {/* Per-wallet breakdown (active portfolio only) */}
-      {pfWallets.length === 0 ? (
-        <div className="text-center py-10 text-sm text-muted-foreground">
-          No wallets in “{activePortfolioName}”. Add a wallet, or move one here from its menu.
-        </div>
-      ) : isZeroState ? (
-        <div className="space-y-3">
-          {/* Calm "ready to fund" affordance instead of a wall of all-zero rows.
-              The claim below is precise: keys never leave the device (I1). The
-              address itself IS shared with public RPC/explorer nodes to read
-              balances, so we deliberately do NOT claim the address is device-only. */}
-          <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-4">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-              <Download className="h-6 w-6 text-primary" />
+      {/* Portfolio health + watchlist */}
+      <PortfolioHealthScore wallets={wallets} />
+      <WatchlistWidget />
+
+      {/* Tabs: Tokens / Activity */}
+      <Tabs defaultValue="tokens" className="w-full">
+        <TabsList className="w-full bg-secondary">
+          <TabsTrigger value="tokens" className="flex-1">Tokens</TabsTrigger>
+          <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tokens" className="mt-3">
+          {/* Per-wallet breakdown (active portfolio only) */}
+          {pfWallets.length === 0 ? (
+            <div className="text-center py-10 text-sm text-muted-foreground">
+              No wallets in &quot;{activePortfolioName}&quot;. Add a wallet, or move one here from its menu.
             </div>
-            <div className="space-y-1">
-              <p className="text-base font-semibold">Your wallet is ready</p>
-              <p className="text-sm text-muted-foreground">
-                This portfolio has no balance yet. Receive crypto to fund it — your keys never leave this device.
-              </p>
+          ) : isZeroState ? (
+            <div className="space-y-3">
+              {/* Calm "ready to fund" affordance instead of a wall of all-zero rows.
+                  The claim below is precise: keys never leave the device (I1). The
+                  address itself IS shared with public RPC/explorer nodes to read
+                  balances, so we deliberately do NOT claim the address is device-only. */}
+              <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-4">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Download className="h-6 w-6 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-base font-semibold">Your wallet is ready</p>
+                  <p className="text-sm text-muted-foreground">
+                    This portfolio has no balance yet. Receive crypto to fund it — your keys never leave this device.
+                  </p>
+                </div>
+                <Button className="w-full gap-2" onClick={() => navigate("/receive")}>
+                  <Download className="h-4 w-4" /> Receive
+                </Button>
+              </div>
+              {/* Asset-scoped disclosure (no count → cannot be misread as a wallet
+                  count). Reveals the real, all-zero rows on demand. */}
+              <button
+                onClick={() => setShowZeroAssets((s) => !s)}
+                className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                {showZeroAssets ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {showZeroAssets ? "Hide assets" : "Show all assets"}
+              </button>
+              {showZeroAssets && <div className="space-y-4">{walletCards}</div>}
             </div>
-            <Button className="w-full gap-2" onClick={() => navigate("/receive")}>
-              <Download className="h-4 w-4" /> Receive
-            </Button>
-          </div>
-          {/* Asset-scoped disclosure (no count → cannot be misread as a wallet
-              count). Reveals the real, all-zero rows on demand. */}
-          <button
-            onClick={() => setShowZeroAssets((s) => !s)}
-            className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
-          >
-            {showZeroAssets ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            {showZeroAssets ? "Hide assets" : "Show all assets"}
-          </button>
-          {showZeroAssets && <div className="space-y-4">{walletCards}</div>}
-        </div>
-      ) : (
-        walletCards
-      )}
+          ) : (
+            walletCards
+          )}
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-3">
+          <ActivityTabContent wallet={activeWallet} />
+        </TabsContent>
+      </Tabs>
+
+      {/* Gas tracker */}
+      <GasTracker />
 
       {/* Spending patterns — outflow over time, per-asset native units. Reads the
           active wallet's send history ON DEMAND only (collapsed until tapped), so
@@ -724,6 +836,13 @@ export default function WalletPortfolioPage() {
 
       {/* Quick access to genuinely BUILT features (see QuickAccessGrid). */}
       <QuickAccessGrid />
+
+      {/* Crypto news — I3 gated: zero egress in deniability/decoy sessions */}
+      {!isDeniabilitySessionActive() && (
+        <div className="border-t border-border pt-4">
+          <CryptoNewsFeed />
+        </div>
+      )}
 
       {addOpen && <AddWalletDialog onClose={() => setAddOpen(false)} />}
       {manageWallet && <ManageAssetsDialog wallet={manageWallet} onClose={() => setManageWallet(null)} />}
@@ -734,7 +853,7 @@ export default function WalletPortfolioPage() {
       {backupTarget && (
         <BackupDialog walletName={backupTarget.name} mnemonic={backupTarget.mnemonic}
           onClose={() => setBackupTarget(null)}
-          onConfirm={() => { confirmWalletBackup(backupTarget.id); toast.success(`“${backupTarget.name}” marked backed up.`); setBackupTarget(null); }} />
+          onConfirm={() => { confirmWalletBackup(backupTarget.id); toast.success(`"${backupTarget.name}" marked backed up.`); setBackupTarget(null); }} />
       )}
       {/* Session-timeout re-auth — inline "unlock again" prompt (same dialog chrome
           as BackupDialog) instead of a dead-end toast. See useRevealWithReauth. */}
