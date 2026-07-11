@@ -113,17 +113,17 @@ export function listEnabledBtcNetworks() {
 }
 
 // The network key the shipped BTC asset actually runs on. Mirrors assets.js
-// (`{ symbol: 'BTC', chain: 'testnet' }`) and btc/derivation.js's default
-// (`networkKey='testnet'`): the wallet derives, reads, and signs on testnet3.
-// This is the single source of truth for "which BTC network is active" so a UI
-// validator can be network-correct WITHOUT re-enabling mainnet or flipping the gate.
+// (`{ symbol: 'BTC', chain: 'mainnet' }`) and btc/derivation.js's default
+// (`networkKey='mainnet'`): the wallet derives, reads, and signs on mainnet
+// (ALLOW_BTC_MAINNET = true since 2026-06-17).
+// Single source of truth for "which BTC network is active".
 export const ACTIVE_BTC_NETWORK_KEY = 'mainnet';
 
 /**
- * The @scure/btc-signer params for the ACTIVE BTC network (testnet). Use this when a
+ * The @scure/btc-signer params for the ACTIVE BTC network (mainnet). Use this when a
  * caller must validate/encode against the network the wallet is actually on, rather
- * than the broader enabled-network set (which includes mainnet once ALLOW_BTC_MAINNET).
- * This does NOT disable mainnet or touch the gate — it only answers "active params".
+ * than the broader enabled-network set.
+ * This does NOT touch the gate — it only answers "active params".
  */
 export function getActiveBtcParams() {
   return BTC_NETWORKS[ACTIVE_BTC_NETWORK_KEY].params;

@@ -345,15 +345,13 @@ export function WalletProvider({ children }) {
   // the wipe + a relaunch with no vault. acknowledgeWipe() clears both below.
   const [wasWiped, setWasWiped] = useState(() => readWipeMarker());
   const [accounts, setAccounts] = useState([]); // public only: {address, path, index}
-  // Phase BTC: the wallet's BIP-84 testnet account (PUBLIC only: {address, path}).
+  // Phase BTC: the wallet's BIP-84 mainnet account (PUBLIC only: {address, path}).
   // Derived from the SAME in-memory mnemonic alongside the EVM accounts; kept in
-  // separate state so the EVM derivation path is untouched. Default network is
-  // testnet (mainnet gated in btc/networks.js). null while locked.
+  // separate state so the EVM derivation path is untouched. null while locked.
   const [btcAccount, setBtcAccount] = useState(null);
-  // Phase SOL: the wallet's Solana devnet account (PUBLIC only: {address, path}).
+  // Phase SOL: the wallet's Solana mainnet-beta account (PUBLIC only: {address, path}).
   // ed25519 / SLIP-0010 m/44'/501'/0'/0', derived from the SAME in-memory
-  // mnemonic; separate state so the EVM/BTC paths are untouched. Default network
-  // is devnet (mainnet gated in sol/networks.js). null while locked.
+  // mnemonic; separate state so the EVM/BTC paths are untouched. null while locked.
   const [solAccount, setSolAccount] = useState(null);
   const lockTimer = useRef(null);
   // Absolute session ceiling (VULN-18 fix). Even with 'Never' idle timeout, the
@@ -725,7 +723,7 @@ export function WalletProvider({ children }) {
       try {
         map[w.id] = {
           evm: deriveEvmAccount(w.mnemonic, 0).address,
-          btc: deriveBtcAccount(w.mnemonic, { networkKey: 'testnet' }).address,
+          btc: deriveBtcAccount(w.mnemonic, { networkKey: 'mainnet' }).address,
           sol: deriveSolAccount(w.mnemonic).address,
         };
       } catch { /* skip a wallet that fails to derive rather than break the view */ }
@@ -749,7 +747,7 @@ export function WalletProvider({ children }) {
 
   // Derive the BIP-84 BTC account (PUBLIC address only) from the in-memory
   // mnemonic. Separate from deriveAccounts() so the EVM path is untouched.
-  // Defaults to testnet; returns {address, path}. No keys stored here.
+  // Defaults to mainnet; returns {address, path}. No keys stored here.
   const deriveBtc = useCallback((networkKey = 'mainnet') => {
     const active = getActiveMnemonic();
     if (!active) throw new Error('Wallet is locked');
@@ -761,7 +759,7 @@ export function WalletProvider({ children }) {
 
   // Derive the Solana account (PUBLIC address only) from the in-memory mnemonic.
   // ed25519 / SLIP-0010 — a different curve from EVM/BTC, separate from both
-  // derivation paths. Defaults to devnet; returns {address, path}. No keys stored.
+  // derivation paths. Defaults to mainnet; returns {address, path}. No keys stored.
   const deriveSol = useCallback((networkKey = 'mainnet') => {
     const active = getActiveMnemonic();
     if (!active) throw new Error('Wallet is locked');
@@ -2154,13 +2152,13 @@ export function WalletProvider({ children }) {
     // default. Like isDecoy, the normal wallet UI must NOT surface this.
     isHidden,
     accounts,
-    // Phase BTC: public BIP-84 account {address, path, networkKey} (testnet),
+    // Phase BTC: public BIP-84 account {address, path, networkKey} (mainnet),
     // null while locked. deriveBtc() re-derives for a given network;
     // withBtcPrivateKey() hands the transient signing key to the send path.
     btcAccount,
     deriveBtc,
     withBtcPrivateKey,
-    // Phase SOL: public Solana account {address, path, networkKey} (devnet),
+    // Phase SOL: public Solana account {address, path, networkKey} (mainnet-beta),
     // null while locked. deriveSol() re-derives; withSolPrivateKey() hands the
     // transient ed25519 signing key to the send path.
     solAccount,

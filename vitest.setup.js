@@ -1,4 +1,5 @@
 // vitest.setup.js
+import '@testing-library/jest-dom';
 //
 // jsdom installs its OWN realm's typed-array constructors as globals. ethers v6
 // computes hashes via node:crypto (createHash), which returns Node Buffers whose
