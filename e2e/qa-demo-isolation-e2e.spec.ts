@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-// Throwaway testnet address loaded from .env.test — never commit real values here
+// Throwaway testnet address loaded from git-ignored .env.test — never commit real values here.
+// Unset in CI (no .env.test); the address-isolation test skips explicitly in that case
+// rather than asserting against an empty string (which .not.toContain('') would fail vacuously).
 const EXPECTED_EVM = process.env.VITE_TEST_THROWAWAY_EVM ?? '';
 
 test.describe('QA: Demo Mode Isolation', () => {
   test('demo mode does not show real derived address', async ({ page }) => {
+    test.skip(!EXPECTED_EVM, 'requires VITE_TEST_THROWAWAY_EVM — see .env.test (git-ignored; unset in CI)');
     await page.goto('/?demo=1');
     await page.waitForLoadState('networkidle');
     const content = await page.content();
