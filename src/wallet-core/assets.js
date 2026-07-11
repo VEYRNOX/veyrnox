@@ -56,12 +56,9 @@ export const ASSETS = Object.freeze([
   // NOTE: PR #280 first recorded a WRONG txid here (0x3f2fe19a…, which is a USDC
   // transfer); corrected to the real USDT-contract send above on 2026-06-22.
   { symbol: 'USDT',  name: 'Tether',    family: 'erc20',  chain: 'mainnet',   status: ASSET_STATUS.LIVE },
-  // Phase C: five EVM chains added on their TESTNETS, behind the mainnet gate.
-  // Each shares the SAME secp256k1 / m/44'/60'/0'/0/0 address as ETH, so the
-  // address derivation + live per-chain balance reads are wired now (receive_only).
-  // `chain` points at the verified TESTNET network key (mainnets stay gated in
-  // networks.js). SEND stays HARD-gated until a real testnet transfer on THAT
-  // chain is verified on-chain and reviewed — only then does it flip to LIVE.
+  // Phase C: five EVM chains, each sharing the SAME secp256k1 / m/44'/60'/0'/0/0
+  // address as ETH. Address derivation + live per-chain balance reads are wired.
+  // `chain` points at the mainnet network key (ALLOW_MAINNET = true since 2026-06-17).
   // NOTE: gas/native token differs per chain (Polygon=POL, Avalanche=AVAX,
   // BNB=tBNB, but Arbitrum/Optimism=ETH); the UI reads that from networks.js.
   // MATIC: VERIFIED LIVE. Real native transfer through the full in-app UI send path,
@@ -109,12 +106,9 @@ export const ASSETS = Object.freeze([
   // UI-path provenance per session record + owner confirmation.
   // Mainnet stays gated in networks.js.
   { symbol: 'BNB',   name: 'BNB Chain', family: 'evm',    chain: 'bnb',             status: ASSET_STATUS.LIVE },
-  // Phase BTC: real BIP-84 (native SegWit) derivation on Bitcoin TESTNET, behind
-  // the mainnet gate (btc/networks.js). Address derivation + live balance reads
-  // are wired now (receive_only). The SEND path (construct/sign/broadcast) is
-  // built and tested, but stays HARD-gated at receive_only until a real testnet
-  // send is verified on-chain and reviewed — only then does it flip to LIVE.
-  // `chain` points at the verified testnet network key in btc/networks.js.
+  // Phase BTC: BIP-84 (native SegWit) on Bitcoin mainnet (ALLOW_BTC_MAINNET = true
+  // since 2026-06-17). `chain: 'mainnet'` — address derivation, balance reads,
+  // and send path all resolve against btc/networks.js mainnet (mempool.space/api).
   // BTC: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path
   // (BIP-84 P2WPKH, signAndBroadcastBtc), confirmed on-chain:
   //   tx 2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
@@ -122,13 +116,9 @@ export const ASSETS = Object.freeze([
   //   https://mempool.space/testnet/tx/2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
   // Mainnet stays gated in btc/networks.js.
   { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'mainnet',   status: ASSET_STATUS.LIVE },
-  // Phase SOL: real ed25519 / SLIP-0010 derivation on Solana DEVNET, behind the
-  // mainnet gate (sol/networks.js). Address derivation + live balance reads are
-  // wired now (receive_only). The SEND path (build/sign/broadcast, with explicit
-  // blockhash-expiry and rent-exempt handling) is built and tested, but stays
-  // HARD-gated at receive_only until a real devnet send is verified on-chain and
-  // reviewed — only then does it flip to LIVE. `chain` points at the verified
-  // devnet network key in sol/networks.js.
+  // Phase SOL: ed25519 / SLIP-0010 on Solana mainnet-beta (ALLOW_MAINNET = true
+  // since 2026-06-17). `chain: 'mainnet'` — address derivation, balance reads,
+  // and send path all resolve against sol/networks.js mainnet (api.mainnet-beta.solana.com).
   // SOL: VERIFIED LIVE. Real devnet transfer through the full in-app UI send path
   // (ed25519/SLIP-0010, signAndBroadcastSol), confirmed on-chain:
   //   sig 5KGXAGTJTdYj2bQdemNY6CAtFQuBcVra8nsnNSSpnL4YESAfeiMCAzDHAuX7i6s47WonPwhMMkUXocRTcKTWEBVv

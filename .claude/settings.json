@@ -176,6 +176,7 @@
       "Bash(npm run test:e2e)",
       "Bash(npm run test)",
       "mcp__claude-flow__*",
+      "mcp__ruflo__*",
       "mcp__Claude_Preview__preview_snapshot",
       "mcp__Claude_Preview__preview_console_logs",
       "mcp__Claude_Preview__preview_screenshot",

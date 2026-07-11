@@ -20,7 +20,7 @@ import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import { toast } from "sonner";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { MAX_BASE_FEE_GWEI } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -112,6 +112,7 @@ function PoisonWarning({ screen }) {
 export default function SendCrypto() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
 
   // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
@@ -141,8 +142,11 @@ export default function SendCrypto() {
       navigate('/', { replace: true });
     }
   }, [vaultChecking, vaultExists, navigate]);
+  // When navigated from CryptoDetailPage (?asset=ETH), wallet + asset are already
+  // known — hide those pickers and show a simplified address+amount form.
+  const fromDetail = !!searchParams.get("asset");
   const [walletId, setWalletId] = useState("");
-  const [assetSymbol, setAssetSymbol] = useState("");
+  const [assetSymbol, setAssetSymbol] = useState(searchParams.get("asset") ?? "");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -319,9 +323,9 @@ export default function SendCrypto() {
   // likewise relaxes only on devUngated, so the asset's status is never changed.
   const flowSendEnabled = sendEnabled || devUngated;
 
-  // The active chain follows the selected asset. EVM assets carry their own
-  // (testnet) network key (e.g. MATIC -> polygonAmoy); BTC carries 'testnet' and
-  // SOL 'devnet'. Family drives both dispatch and which network registry applies.
+  // The active chain follows the selected asset. EVM assets carry their mainnet
+  // network key (e.g. MATIC -> 'polygon'); BTC carries 'mainnet' and SOL 'mainnet'.
+  // Family drives both dispatch and which network registry applies.
   const family = selectedAsset?.family;
   const isBtc = family === "btc";
   const isSolana = family === "solana";
@@ -1016,63 +1020,75 @@ export default function SendCrypto() {
       </div>
 
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
-        <div>
-          <Label id="send-wallet-label">From Wallet</Label>
-          <Select value={walletId} onValueChange={setWalletId}>
-            <SelectTrigger className="mt-1.5" aria-labelledby="send-wallet-label">
-              <SelectValue placeholder="Select wallet">
-                {selectedWalletName ? (
-                  <span className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
-                      <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
-                    </span>
-                    {selectedWalletName}
-                  </span>
-                ) : null}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {wallets.map(w => (
-                <SelectItem key={w.id} value={w.id}>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
-                      <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
-                    </span>
-                    <span>{w.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label id="send-asset-label">Asset</Label>
-          <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
-            <SelectTrigger className="mt-1.5" aria-labelledby="send-asset-label">
-              <SelectValue placeholder="Select asset">
-                {assetSymbol ? (
-                  <span className="flex items-center gap-2">
-                    <CoinLogo symbol={assetSymbol} size={20} />
-                    <span>{getAsset(assetSymbol)?.name || assetSymbol} — {assetSymbol}</span>
-                  </span>
-                ) : null}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {enabledAssets.map(sym => {
-                const a = getAsset(sym);
-                return (
-                  <SelectItem key={sym} value={sym}>
-                    <div className="flex items-center gap-2">
-                      <CoinLogo symbol={sym} size={20} />
-                      <span>{a?.name || sym} — {sym}</span>
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
+        {fromDetail ? (
+          <div className="flex items-center gap-3 pb-1 border-b border-border">
+            <CoinLogo symbol={assetSymbol} size={28} />
+            <div>
+              <p className="text-sm font-semibold">{getAsset(assetSymbol)?.name || assetSymbol}</p>
+              <p className="text-xs text-muted-foreground">{selectedWalletName || "Wallet"}</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div>
+              <Label id="send-wallet-label">From Wallet</Label>
+              <Select value={walletId} onValueChange={setWalletId}>
+                <SelectTrigger className="mt-1.5" aria-labelledby="send-wallet-label">
+                  <SelectValue placeholder="Select wallet">
+                    {selectedWalletName ? (
+                      <span className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
+                          <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
+                        </span>
+                        {selectedWalletName}
+                      </span>
+                    ) : null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {wallets.map(w => (
+                    <SelectItem key={w.id} value={w.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
+                          <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
+                        </span>
+                        <span>{w.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label id="send-asset-label">Asset</Label>
+              <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
+                <SelectTrigger className="mt-1.5" aria-labelledby="send-asset-label">
+                  <SelectValue placeholder="Select asset">
+                    {assetSymbol ? (
+                      <span className="flex items-center gap-2">
+                        <CoinLogo symbol={assetSymbol} size={20} />
+                        <span>{getAsset(assetSymbol)?.name || assetSymbol} — {assetSymbol}</span>
+                      </span>
+                    ) : null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {enabledAssets.map(sym => {
+                    const a = getAsset(sym);
+                    return (
+                      <SelectItem key={sym} value={sym}>
+                        <div className="flex items-center gap-2">
+                          <CoinLogo symbol={sym} size={20} />
+                          <span>{a?.name || sym} — {sym}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
         <div>
           <Label htmlFor="send-recipient">Send to (address or name)</Label>
           <div className="flex gap-2 mt-1.5">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
 import { resolveReceive } from "@/lib/receiveAddress";
@@ -25,7 +25,8 @@ import { toast } from "sonner";
 // address to show, and we render the locked state.
 export default function ReceiveCrypto() {
   const { isUnlocked, accounts, btcAccount, solAccount } = useWallet();
-  const [symbol, setSymbol] = useState("ETH");
+  const [searchParams] = useSearchParams();
+  const [symbol, setSymbol] = useState(searchParams.get("asset") ?? "ETH");
   const [copied, setCopied] = useState(false);
 
   // DEMO address source. A backend-less walkthrough has no unlocked vault, so the
