@@ -8,6 +8,8 @@ import CoinLogo from "@/components/CoinLogo";
 import CandlestickChart from "@/components/CandlestickChart";
 import { useWallet } from "@/lib/WalletProvider";
 import { useBasketPrices } from "@/hooks/useBasketPrices";
+import { usePortfolio } from "@/lib/portfolioBalances";
+import { resolveAssetRow, fmtIndeterminateAmount } from "@/lib/balanceDisplay";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
 import { PERIODS } from "@/lib/chartPeriods";
 
@@ -15,8 +17,9 @@ export default function CryptoDetailPage() {
   const { symbol } = useParams();
   const navigate = useNavigate();
   const [period, setPeriod] = useState("1D");
-  const { isUnlocked } = useWallet();
+  const { isUnlocked, wallets, walletAddresses } = useWallet();
   const { changeFor } = useBasketPrices();
+  const { data: portfolio } = usePortfolio(wallets, walletAddresses);
 
   const asset = TOP_CRYPTOS.find((c) => c.symbol === symbol);
 
@@ -58,17 +61,23 @@ export default function CryptoDetailPage() {
         </div>
       </div>
 
-      {/* Balance strip — shown when unlocked; balance amount omitted */}
-      {isUnlocked && (
-        <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card">
-          <div>
-            <p className="text-xs text-muted-foreground">Your balance</p>
-            <p className="text-sm mono-value text-muted-foreground mt-0.5">
-              —
-            </p>
+      {/* Balance strip — shown when unlocked */}
+      {isUnlocked && (() => {
+        const firstWallet = wallets?.[0];
+        const assets = firstWallet ? (portfolio?.byWallet?.[firstWallet.id]?.assets ?? []) : [];
+        const row = resolveAssetRow(assets, symbol);
+        const nativeFmt = fmtIndeterminateAmount(row.amount);
+        const usdFmt = row.usd != null ? `$${row.usd.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : null;
+        return (
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card">
+            <div>
+              <p className="text-xs text-muted-foreground">Your balance</p>
+              <p className="text-sm mono-value mt-0.5">{nativeFmt} {nativeFmt !== "—" ? symbol : ""}</p>
+            </div>
+            {usdFmt && <p className="text-sm mono-value text-muted-foreground">{usdFmt}</p>}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Period tabs */}
       <div className="flex gap-1">
