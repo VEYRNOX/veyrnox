@@ -155,9 +155,7 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
       </div>
       <p className="text-[10px] text-muted-foreground flex items-start gap-1.5">
         <Globe className="h-3 w-3 mt-0.5 shrink-0" />
-        Checking a balance contacts that chain's public node — a network query that
-        reveals the address. The wallet has no private/local balance path yet, so
-        this is opt-in and never runs on its own.
+        Checking a balance contacts that chain's public node — it reveals your address. So it's opt-in and never automatic.
       </p>
     </div>
   );
@@ -280,11 +278,7 @@ function MoveExistingWallet() {
         <div className="flex items-center gap-1.5 font-semibold">
           <ShieldAlert className="h-4 w-4" /> Weaker than a fresh hidden wallet — read this
         </div>
-        <ul className="list-disc pl-4 space-y-1 text-destructive/90">
-          <li>This wallet is <b>already visible</b>. Anyone who saw your app before can notice it's <b>gone</b> and demand you restore it. A <b>fresh</b> hidden wallet the adversary never knew about is safer.</li>
-          <li>Its address and history stay <b>public on-chain</b> — hiding it here doesn't hide it from anyone who already has the address.</li>
-          <li>A <b>before/after inspection</b> of this device can detect that a wallet was removed and a storage slot changed.</li>
-        </ul>
+        <p>This wallet is already visible — anyone who saw it before can notice it's gone and demand it back. A new hidden wallet they never knew about is safer.</p>
       </div>
 
       {/* Live visible-wallet list — so the disappearance after a move is visible.
@@ -539,24 +533,14 @@ export default function StealthWallets() {
       >
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-caution">Storage note.</span>{' '}
-          Hidden wallets live in <strong>web IndexedDB</strong>. The primary vault is
-          stored in the platform secure store (iOS Keychain / Android Keystore) on
-          native — passcode-gated, ThisDeviceOnly, but NOT a Secure Enclave / StrongBox
-          key-wrap. Native secure-store placement for hidden wallets is still planned
-          (M2c/M2d). Either way a full device-data extraction can expose the
-          hidden-wallet container — though its contents stay encrypted under your secret.
+          Hidden wallets aren't in the secure vault yet (we're working on it). If someone grabs your phone's data, they see the wallet but can't open it without your secret.
         </p>
       </div>
 
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          Runtime + count
-          deniability: identical UI, errors, and timing at unlock, and the number of
-          hidden wallets is never revealed — not hidden-volume storage: anyone examining sees
-          a fixed pool of vault-shaped slots, but can&apos;t easily tell which, or how many, are
-          real versus decoy.
+          Unlock looks and times the same for every wallet, and the hidden-wallet count is never revealed — an examiner sees a fixed pool of identical slots and can't easily tell real from decoy.
         </span>
       </div>
 
@@ -567,12 +551,7 @@ export default function StealthWallets() {
           <div>
             <p className="text-sm font-semibold">How it works</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Create a hidden wallet with its own <b>reveal secret</b> (different
-              from your main password and any duress PIN). It appears nowhere —{" "}
-              <b>no list, no count, no indicator</b>. Type its secret at the{" "}
-              <b>normal unlock screen</b> and the app opens that hidden wallet — full{" "}
-              <b>Ethereum, Bitcoin and Solana</b> identity — instead of your visible
-              one. Nothing in the unlocked app reveals it exists.
+              Create a hidden wallet with its own reveal secret. It appears nowhere in the app. Enter its secret at the normal unlock screen and the app opens that wallet instead of your visible one.
             </p>
           </div>
         </div>
@@ -585,11 +564,11 @@ export default function StealthWallets() {
           <p className="text-sm font-semibold">What this protects — and what it does not</p>
         </div>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Hidden wallets sit in a fixed pool of identical vault-shaped slots — some real, the rest random <b>decoys</b> — so their <b>count</b> is never revealed. It&apos;s built so someone examining the pool can&apos;t easily tell real from decoy.</li>
-          <li>The pool is seeded for <b>every</b> wallet on the device, so its presence means "this device has a <strong>VEYRNOX</strong> wallet" — not "this device has hidden wallets".</li>
-          <li><b>Stealth hides a wallet in the app, not on-chain.</b> A hidden wallet's Ethereum, Bitcoin and Solana addresses are public — anyone with one can see its balance and history on a block explorer.</li>
-          <li>We keep <b>no list</b> of hidden wallets, so a forgotten secret makes that wallet unrecoverable here. Remember each secret.</li>
-          <li><b>Back up each hidden wallet's recovery phrase right after you create it.</b> Because the pool hides the count, two hidden wallets can rarely land in the same slot, and creating the second silently replaces the first. With the seed backed up it's still recoverable; without it, it's gone.</li>
+          <li>A fixed pool of identical slots — some real, most decoys — never reveals the count.</li>
+          <li>The pool exists for every wallet, so it proves "this device has VEYRNOX", not "hidden wallets".</li>
+          <li>Hidden in the app, not on-chain — addresses and history stay public.</li>
+          <li>No list is kept: a forgotten secret makes that wallet unrecoverable here.</li>
+          <li>Back up each seed immediately — a second hidden wallet can silently replace the first in the same slot.</li>
         </ul>
       </div>
 
@@ -635,10 +614,7 @@ export default function StealthWallets() {
           <div className="p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-[11px] text-caution flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
-              The secret must be <b>different</b> from your main password and any
-              duress PIN — if it matches one, that wallet opens first and the hidden
-              one never will. We can't check this for you: your main password is
-              never held in the clear.
+              Make it different from your main PIN and Emergency PIN — if it matches, that one opens instead.
             </span>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -792,10 +768,7 @@ export default function StealthWallets() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            To open a hidden wallet: lock your wallet, then unlock with that wallet's
-            reveal secret — the app opens it with its full Ethereum, Bitcoin and
-            Solana identity. ⚠️ Never share a reveal secret, and remember it: there
-            is no list of hidden wallets and no reset.
+            Lock your wallet and enter the reveal secret to open the hidden wallet. Never share a reveal secret — there is no list and no reset.
           </p>
         </div>
       )}
