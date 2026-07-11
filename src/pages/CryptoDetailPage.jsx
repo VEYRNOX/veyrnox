@@ -9,8 +9,7 @@ import CandlestickChart from "@/components/CandlestickChart";
 import { useWallet } from "@/lib/WalletProvider";
 import { useBasketPrices } from "@/hooks/useBasketPrices";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
-
-const PERIODS = ["1H", "4H", "1D", "1W", "1M"];
+import { PERIODS } from "@/lib/chartPeriods";
 
 export default function CryptoDetailPage() {
   const { symbol } = useParams();
