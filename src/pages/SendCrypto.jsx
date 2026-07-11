@@ -25,6 +25,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { MAX_BASE_FEE_GWEI } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
+import { getBalanceSats } from "@/wallet-core/btc/provider.js";
+import { getBalanceSol } from "@/wallet-core/sol/provider.js";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { isDevSendUngated } from "@/lib/devSendOverride";
 import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
@@ -36,7 +38,7 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
-import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
+import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, resolveProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
@@ -44,7 +46,7 @@ import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { isSelfSend } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
-import { evaluateSendGate } from "@/lib/sendGate";
+import { evaluateSendGate, SEND_GATE } from "@/lib/sendGate";
 import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
@@ -355,10 +357,8 @@ export default function SendCrypto() {
   const activeNetwork = (isEvmFamily(selectedAsset) || isErc20) ? getNetworkInfo(networkKey) : null;
   const nativeSymbol = activeNetwork?.symbol || selectedWallet?.currency || "ETH";
   const networkName = activeNetwork?.name || networkKey;
-  // Whether we know a live balance for this asset (EVM/ERC-20 read it on-chain).
-  // For BTC/SOL we don't read it this slice, so the UI max-check is skipped and
-  // the send function enforces real funds (coin-selection / rent).
-  const balanceKnown = isEvmFamily(selectedAsset) || isErc20;
+  // Whether we know a live balance for this asset (EVM/ERC-20/BTC/SOL all read live).
+  const balanceKnown = isEvmFamily(selectedAsset) || isErc20 || isBtc || isSolana;
 
   // Chain is the source of truth for balance — read it live, never the DB.
   // Native (ETH) reads via getBalanceEth; ERC-20 reads via the token contract's
@@ -375,6 +375,25 @@ export default function SendCrypto() {
     enabled: !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && !!selectedWallet?.address && canReceive(selectedAsset) && (isEvmFamily(selectedAsset) || isErc20),
     refetchInterval: 15000,
   });
+
+  // BTC live balance (sats → BTC). Enabled for BTC selections only, same I3/demo guards.
+  const { data: btcLiveBalance } = useQuery({
+    queryKey: ["btc-balance", networkKey, selectedWallet?.address],
+    queryFn: async () => Number(await getBalanceSats(networkKey, selectedWallet.address)) / 1e8,
+    enabled: !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && !!selectedWallet?.address && canReceive(selectedAsset) && isBtc,
+    refetchInterval: 30000,
+  });
+
+  // SOL live balance (lamports already converted to SOL by provider). Same guards.
+  const { data: solLiveBalance } = useQuery({
+    queryKey: ["sol-balance", networkKey, selectedWallet?.address],
+    queryFn: async () => Number(await getBalanceSol(networkKey, selectedWallet.address)),
+    enabled: !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && !!selectedWallet?.address && canReceive(selectedAsset) && isSolana,
+    refetchInterval: 30000,
+  });
+
+  // Unified live balance across all families (undefined while loading, null when not applicable).
+  const nativeLiveBalance = isBtc ? btcLiveBalance : isSolana ? solLiveBalance : liveBalance;
 
   // Demo balance for the selected asset (display + the max/limit check). Mirrors the
   // seeded demo portfolio; no live RPC is issued in demo (the query above is disabled).
@@ -411,8 +430,8 @@ export default function SendCrypto() {
   // back to the DB value only for not-yet-live assets (display only).
   const effectiveBalance = demoActive
     ? (demoBalance ?? 0)
-    : (flowSendEnabled && liveBalance != null
-        ? parseFloat(liveBalance)
+    : (flowSendEnabled && nativeLiveBalance != null
+        ? parseFloat(String(nativeLiveBalance))
         : (selectedWallet?.balance || 0));
 
   // USD conversions for the Send screen (DISPLAY ONLY — derived from the static
@@ -426,7 +445,7 @@ export default function SendCrypto() {
   // for it. Suppress the "≈ $X" companion so a failed/pending read is never
   // asserted as "· $0.00" (which the effectiveBalance→0 fallback would produce).
   // I4 fail-closed: never show a $ value we didn't confirm.
-  const balanceIndeterminate = !demoActive && flowSendEnabled && liveBalance == null;
+  const balanceIndeterminate = !demoActive && flowSendEnabled && nativeLiveBalance == null;
   const balanceUsd = !balanceIndeterminate && sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
   const amountNum = parseFloat(amount);
   const amountUsd = sendUsdRate != null && Number.isFinite(amountNum) && amountNum > 0 ? amountNum * sendUsdRate : null;
@@ -634,18 +653,43 @@ export default function SendCrypto() {
   // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
   const riskPending = riskApplicable && !riskReady;
 
-  // RASP §7 — pre-sign ENVIRONMENT gate (Phase 3, browser-level detection active).
-  // detect(browserProbeSource) runs on every render; a normal browser returns
-  // CLEAN → ALLOW (no added friction). Automation/WebDriver → HOOKED → BLOCK.
-  // OS-level probes (root/jailbreak) are not yet available (need native plugin).
+  // RASP §7 — pre-sign ENVIRONMENT gate (Phase 3, browser + native OS detection).
+  // A normal runtime returns CLEAN → ALLOW (no added friction). Automation/WebDriver →
+  // HOOKED → BLOCK (browser leg). Root/jailbreak/hook/emulator → native OS leg (F-09).
   // I3: detect()/degrade() are pure functions of the ENVIRONMENT only — no
   // walletSet handle. I4: a RASP crash fails closed to the strongest BLOCK.
+  //
+  // F-09 — NATIVE OS probe. nativeProbeSource() is a Capacitor bridge call (async), so
+  // it cannot run on the synchronous render path. We sample it ONCE at mount behind an
+  // isNativePlatform() gate (RASP-A1: the OS verdict does not change during a session)
+  // and cache it in state. resolveProbeSource() then picks the native leg when it
+  // genuinely ran (available === true), else falls back to the browser leg — never a
+  // fabricated clean source (I4). On web / a native-bridge throw the state stays null
+  // and detect() reads browserProbeSource exactly as before.
+  const [nativeProbe, setNativeProbe] = useState(null);
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const source = await nativeProbeSource();
+        if (!cancelled) setNativeProbe(source);
+      } catch {
+        // I4 FAIL CLOSED: a native-bridge throw leaves state null → resolveProbeSource
+        // falls back to the browser leg (which is itself fail-closed), never to clean.
+        if (!cancelled) setNativeProbe(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   let raspArtifact = null;
   // RASP-A1 (2026-07-05 internal audit, HIGH): browserProbeSource re-samples the
   // environment FRESH on every property read (its `available`/`signals` are getters),
   // so a debugger / WebDriver flag attached AFTER module-load is still caught. This
-  // runs on every render, and the signer chokepoint re-derives the gate too.
-  try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
+  // runs on every render, and the signer chokepoint re-derives the gate too. The
+  // native OS leg (cached in `nativeProbe`) is preferred when it genuinely ran.
+  try { raspArtifact = degrade(detect(resolveProbeSource(nativeProbe, browserProbeSource))); } catch { raspArtifact = degrade(undefined); }
   // I4 FAIL CLOSED (RASP-A2, 2026-07-05 internal audit, HIGH): if the RASP artifact
   // is missing a tier (a crash, or degrade() shape drift), fall back to the strongest
   // BLOCK — NEVER ALLOW. A fail-open fallback here would let a hostile runtime sign
@@ -746,7 +790,9 @@ export default function SendCrypto() {
         btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
         blockedByApproval,
       });
-      if (!gate.allowed) throw new Error(gate.message);
+      if (!gate.allowed) {
+        throw Object.assign(new Error(gate.message), { code: gate.code });
+      }
 
       // CODE-LEVEL SEND GUARD (Task 7 — audit remediation). Defense-in-depth:
       // even if the gate above was somehow bypassed or a stale UI state persisted,
@@ -961,6 +1007,17 @@ export default function SendCrypto() {
       recordAudit("send_completed"); // opt-in audit log; no-op unless enabled + primary session
     },
     onError: (err) => {
+      // When the network send fails AFTER 2FA was consumed, the gate throws
+      // TWO_FACTOR (twoFactorVerifiedRef was already cleared — one-shot, secure).
+      // Instead of a dead-end toast, re-show the TwoFactorGate so the user can
+      // re-authorise without having to tap Back → Continue manually.
+      // Security: twoFactorVerifiedRef.current is already false at this point
+      // (cleared at line 724 before the gate ran); we are only changing which
+      // UI step is rendered, not relaxing any security check.
+      if (/** @type {Error & {code?: string}} */ (err)?.code === SEND_GATE.TWO_FACTOR) {
+        setStep("verify");
+        return;
+      }
       toast.error(err?.message || "Send failed");
     },
   });
@@ -1306,7 +1363,7 @@ export default function SendCrypto() {
               {demoActive
                 ? <>Balance: <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">(demo)</span></>
                 : flowSendEnabled
-                  ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from network…"} <span className="text-[10px]">(live)</span></>
+                  ? <>Balance: {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : "reading from network…"} <span className="text-[10px]">(live)</span></>
                   : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
               {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
             </p>

@@ -177,22 +177,17 @@ export default [
     //
     //   src/pages/PersonalBackup.jsx   -> @/wallet-core/keystore (withLockSuppressed, ...)
     //   src/pages/ColdSign.jsx        -> @/wallet-core/coldkey/* (unsigned tx / psbt / qr)
-    //   src/pages/PriceAlerts.jsx     -> @/wallet-core/keystore (getKeyStore)
-    //   src/pages/StealthWallets.jsx  -> @/wallet-core/derivation (deriveEvmAccount)
     //   src/components/security/HardwareKekSettings.jsx
     //                                 -> @/wallet-core/keystore (getKeyStore, KEK_ERR, tierBadge)
-    //   src/components/WalletEntry.jsx -> @/wallet-core/mnemonic (validateMnemonic),
-    //                                     @/wallet-core/keystore/web (WEB_VAULT_ERR)
-    //   src/components/PasskeySetup.jsx -> @/wallet-core/keystore/native.js
-    //                                     (dynamic import; suppressLock during biometric dialog)
+    //
+    // BURNED DOWN (issue #627): src/pages/PriceAlerts.jsx and
+    // src/components/PasskeySetup.jsx now route lock-suppression through the R2
+    // WalletProvider facade (useWallet().withLockSuppressed) instead of importing
+    // @/wallet-core/keystore directly — removed from this baseline.
     files: [
       "src/pages/PersonalBackup.jsx",
       "src/pages/ColdSign.jsx",
-      "src/pages/PriceAlerts.jsx",
-      "src/pages/StealthWallets.jsx",
       "src/components/security/HardwareKekSettings.jsx",
-      "src/components/WalletEntry.jsx",
-      "src/components/PasskeySetup.jsx",
     ],
     rules: {
       "ring/ring-import-lint": "off",

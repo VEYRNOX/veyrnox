@@ -10,22 +10,24 @@
 // nativeProbeSource() where the web build passes browserProbeSource.
 //
 // ┌──────────────────────────────────────────────────────────────────────────┐
-// │ TODO (mobile dev) — the NATIVE plugin itself is NOT written yet.           │
-// │ This module imports `@/rasp/raspIntegrityPlugin`, which must export a      │
-// │ Capacitor plugin `RaspIntegrity` with:                                     │
-// │     checkIntegrity(): Promise<{                                            │
-// │       rooted?: boolean,        // su/Magisk/SuperSU, write-test, busybox    │
-// │       jailbroken?: boolean,    // Cydia/Sileo paths, sandbox escape (iOS)   │
-// │       hookedProcess?: boolean, // Frida/Xposed ports, ptrace, dylib inject  │
-// │       emulator?: boolean,      // build props / sensors / known FP          │
-// │     }>                                                                      │
-// │ iOS (Swift) + Android (Kotlin) native implementations are out of scope of  │
-// │ this JS layer and require real-device verification before RASP is trusted. │
-// │ Binary-tamper detection is a separate probe (bundle signature/checksum)    │
-// │ and is intentionally left to the native layer; until the plugin reports it │
-// │ we keep `tampered: false` (honest scope — never a fabricated clean claim,  │
-// │ because the absence of a tamper signal is NOT the same as fail-closed; the │
-// │ whole source still fails closed when the plugin cannot run at all).         │
+// │ BUILT + device-verified (PARTIAL) 2026-07-11, INTERNAL.                   │
+// │   Android — RaspIntegrityPlugin.kt (Kotlin, su/Magisk/Frida/emu/cert).    │
+// │   iOS     — RaspIntegrityPlugin.m  (ObjC, Cydia/sandbox/dyld/Frida).      │
+// │ Registered as Capacitor plugin "RaspIntegrity" on both platforms.         │
+// │ Samsung Galaxy Note 20 5G (SM-N981B), Magisk v30.7: plugin registered in  │
+// │ Veyrnox process; StrongBox KEK + biometric unlock confirmed end-to-end.   │
+// │ checkIntegrity() rooted-signal return and Send-screen WARN NOT captured   │
+// │ (user didn't reach Send during RASP monitoring window). Frida-hooked and  │
+// │ iOS device tests remain outstanding. INTERNAL — not independently audited. │
+// │                                                                            │
+// │ checkIntegrity() contract (both platforms):                               │
+// │     Promise<{                                                              │
+// │       rooted?: boolean,        // su/Magisk/SuperSU, write-test (Android)  │
+// │       jailbroken?: boolean,    // Cydia/Sileo/sandbox escape (iOS)         │
+// │       hookedProcess?: boolean, // Frida port / dyld / Xposed               │
+// │       emulator?: boolean,      // build props / simulator env              │
+// │       tampered?: boolean,      // re-sign / cert fingerprint mismatch      │
+// │     }>                                                                     │
 // └──────────────────────────────────────────────────────────────────────────┘
 //
 // I4 — FAIL CLOSED. Off a non-native platform, when the plugin module is absent,

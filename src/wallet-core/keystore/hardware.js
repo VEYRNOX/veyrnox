@@ -206,24 +206,67 @@ export async function getHardwareFactor(opts) {
   // reverting to the fixed v1 salt (the binding becomes inert). Encode to base64 here;
   // the native plugin base64-decodes it back to the MAC input.
   const pluginOpts = opts && opts.kekSalt ? { kekSalt: uint8ArrayToB64(opts.kekSalt) } : undefined;
-  const { h } = await plugin.getHardwareFactor(pluginOpts);
+  // Classify raw Kotlin bridge rejections into STABLE codes so upstream branches without
+  // parsing prose (I4). The wrong-PIN counter in WalletEntry MUST NOT count a hardware
+  // invalidation or a transient hardware-unavailable as a wrong PIN — that path leads to
+  // an irreversible panic wipe (data-loss bug). The message-prefix strings are the
+  // contract shared with HardwareKekPlugin.kt (see call.reject sites there).
+  let bridgeResult;
+  try {
+    bridgeResult = await plugin.getHardwareFactor(pluginOpts);
+  } catch (err) {
+    const msg = String((err && err.message) ?? err ?? '');
+    if (msg.startsWith('KEK_KEY_PERMANENTLY_INVALIDATED')) {
+      // OS permanently killed the key (biometric enrollment changed / screen lock removed).
+      // Only recovery is seed restore — NEVER a wrong-PIN increment.
+      throw Object.assign(new Error(KEK_ERR.KEY_PERMANENTLY_INVALIDATED), {
+        code: KEK_ERR.KEY_PERMANENTLY_INVALIDATED,
+      });
+    }
+    if (msg === 'User cancelled') {
+      // User-initiated abort of the per-use biometric sheet. A raw re-throw carries NO
+      // .code, so WalletEntry's KEK exemptions miss it and it falls through to the
+      // wrong-PIN counter — a correct-PIN user who cancels the sheet 10 times triggers the
+      // irreversible panic wipe (data-loss bug). Classify to a STABLE code so the caller
+      // branches without prose-parsing and never counts a cancel as a wrong PIN (I4).
+      throw Object.assign(new Error(KEK_ERR.USER_CANCELLED), { code: KEK_ERR.USER_CANCELLED });
+    }
+    // No-enrollment, lockout, HW unavailable, unknown → generic no-hardware-factor.
+    // Fail closed (I4): not a wrong PIN either.
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), {
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  }
+  // Codex P1 #3 (2026-07-11): a null/undefined bridge result would make the destructure
+  // below throw a raw TypeError with no .code — the last uncoded path out of this
+  // function, and the same wipe-counter leak class. Guard before destructuring.
+  if (bridgeResult == null || typeof bridgeResult !== 'object') {
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), {
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  }
+  const { h } = bridgeResult;
   // I/O-boundary validation (fail-closed, I4): the plugin output is UNTRUSTED at the
   // JS bridge. Validate BEFORE decoding — a missing/non-string h must throw the stable
   // KEK_ERR.NO_HARDWARE_FACTOR, never reach atob() (raw InvalidCharacterError/TypeError)
   // and never fabricate/return garbage bytes.
+  // Codex P1 (2026-07-11): these validation throws MUST carry .code, not just the
+  // message — WalletEntry's wrong-PIN-counter exemption matches e.code, so a
+  // message-only throw from a malformed bridge response would be miscounted as a
+  // wrong PIN and burn toward the panic wipe.
   if (typeof h !== 'string' || h.length === 0) {
-    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), { code: KEK_ERR.NO_HARDWARE_FACTOR });
   }
   let result;
   try {
     result = b64ToUint8Array(h);
   } catch {
-    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), { code: KEK_ERR.NO_HARDWARE_FACTOR });
   }
   // The hardware factor is fixed-length by construction (spec §3: 32 bytes). A wrong
   // length is not a usable H — reject with the stable code, never pad or truncate.
   if (result.length !== 32) {
-    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), { code: KEK_ERR.NO_HARDWARE_FACTOR });
   }
   // H-4 / iOS-F8: 32 zero bytes is a valid LENGTH but a degenerate H — it reduces the
   // KEK to a deterministic HKDF of 0^32 || C, i.e. C-only protection, silently voiding

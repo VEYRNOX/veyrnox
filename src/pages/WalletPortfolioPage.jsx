@@ -46,6 +46,8 @@ import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";
 import WatchlistWidget from "@/components/WatchlistWidget";
+import PortfolioChart from "@/components/PortfolioChart";
+import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
 import CryptoNewsFeed from "@/components/CryptoNewsFeed";
 import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
@@ -405,6 +407,22 @@ const TX_STATUS = {
   failed:    { Icon: XCircle,       cls: "text-destructive" },
 };
 
+// Analytics tab crashed with "ReferenceError: txList is not defined" (PR #809):
+// the JSX at the analytics TabsContent referenced txList, which only exists inside
+// ActivityTabContent's scope. Fetch here with the SAME queryKey as ActivityTabContent
+// so react-query shares the cache — no duplicate network call.
+function AnalyticsChartContent({ wallet, currentBalance }) {
+  const address = wallet?.accounts?.[0]?.address || null;
+  const { data: txs } = useQuery({
+    queryKey: ["history", "ETH", address],
+    queryFn: () => fetchAssetHistory({ asset: ETH_ASSET, address, demo: DEMO }),
+    enabled: !!address,
+    staleTime: 60_000,
+  });
+  const txList = txs?.transactions ?? [];
+  return <PortfolioChart transactions={txList} currentBalance={currentBalance} />;
+}
+
 function ActivityTabContent({ wallet }) {
   const address = wallet?.accounts?.[0]?.address || null;
   const { data: txs, isLoading, isError } = useQuery({
@@ -542,6 +560,16 @@ export default function WalletPortfolioPage() {
   }, [portfolio, canManage]);
   const unbacked = canManage ? wallets.filter((w) => !w.backedUp) : [];
 
+  // Transaction list for PortfolioChart (analytics tab). Must be before any early
+  // return — React Hooks must be called unconditionally on every render.
+  const _activeEvmAddress = wallets.find((w) => w.id === activeWalletId)?.accounts?.[0]?.address || null;
+  const { data: _txHistory } = useQuery({
+    queryKey: ["history", "ETH", _activeEvmAddress],
+    queryFn: () => fetchAssetHistory({ asset: ETH_ASSET, address: _activeEvmAddress, demo: DEMO }),
+    enabled: !!_activeEvmAddress && !isDeniabilitySessionActive(),
+    staleTime: 60_000,
+  });
+
   // ── Explore / no-wallet empty state ──
   if (!isUnlocked) {
     return (
@@ -575,6 +603,7 @@ export default function WalletPortfolioPage() {
   const activePortfolioName = portfolios.find((p) => p.id === activePortfolioId)?.name || "Main";
   const activeWallet = wallets.find((w) => w.id === activeWalletId);
   const activeInThisPortfolio = activeWallet && inActive(activeWallet);
+  const txList = _txHistory?.transactions ?? [];
 
   // Genuine $0 zero-state: the portfolio has wallet(s) but no value anywhere, and
   // balances have finished loading (so we don't flash this over a pending fetch).
@@ -777,11 +806,12 @@ export default function WalletPortfolioPage() {
       <PortfolioHealthScore wallets={wallets} />
       <WatchlistWidget />
 
-      {/* Tabs: Tokens / Activity */}
+      {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">
         <TabsList className="w-full bg-secondary">
           <TabsTrigger value="tokens" className="flex-1">Tokens</TabsTrigger>
           <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-1">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tokens" className="mt-3">
@@ -828,6 +858,11 @@ export default function WalletPortfolioPage() {
 
         <TabsContent value="activity" className="mt-3">
           <ActivityTabContent wallet={activeWallet} />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-3 space-y-6">
+          <AnalyticsChartContent wallet={activeWallet} currentBalance={pfTotal} />
+          <AssetDistributionChart wallets={pfWallets} />
         </TabsContent>
       </Tabs>
 

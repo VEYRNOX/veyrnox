@@ -81,6 +81,7 @@ import { Label } from "@/components/ui/label";
 import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
+import { KEK_UI_ERR } from "@/lib/vaultErrors";
 import {
   isBiometricGateError,
   isBiometricUnlockEnabled,
@@ -92,8 +93,7 @@ import { getAuthModel, setAuthModel, shouldAutoCacheTypedPin } from "@/lib/authM
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { checkPinStrength } from "@/lib/pinStrength";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
-import { validateMnemonic } from "@/wallet-core/mnemonic";
-import { WEB_VAULT_ERR } from "@/wallet-core/keystore/web";
+import { WEB_VAULT_ERR } from "@/lib/vaultErrors";
 import { Capacitor } from "@capacitor/core";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import {
@@ -329,6 +329,7 @@ export default function WalletEntry() {
     setupPin, createWalletFromPendingPin, importWalletForPendingPin,
     clearPendingPin, hasPendingPin, panicWipe,
     wasWiped, acknowledgeWipe,
+    clearVault, validateMnemonic,
   } = useWallet();
 
   // null until we know whether a vault exists; drives unlock vs first-run.
@@ -643,6 +644,36 @@ export default function WalletEntry() {
       // Panic-PIN path: provider fired panicWipe() and threw a distinguishable sentinel.
       // Show WipedNotice immediately — no "Incorrect PIN" error message.
       if (e?.isPanicWipe) { setLocalWiped(true); setVaultExists(false); return; }
+      // Hardware KEK permanently invalidated (Android: fingerprints changed / screen lock
+      // removed → KeyPermanentlyInvalidatedException). This is NOT a wrong PIN — counting
+      // it toward the wipe destroys funds after 10 retries (the data-loss bug). The ONLY
+      // recovery is seed restore, so surface the path automatically (I4). Do NOT increment.
+      if (e?.code === KEK_UI_ERR.KEY_PERMANENTLY_INVALIDATED) {
+        setError(
+          'Your fingerprints changed — hardware protection was invalidated. ' +
+          'Restore your wallet from your seed phrase to regain access.'
+        );
+        setPinStep('seed');
+        setView('pin-recover');
+        return;
+      }
+      // Hardware factor transiently/structurally unavailable (no enrollment, lockout, HW
+      // missing). Also NOT a wrong PIN — do NOT increment the wipe counter. Keep the user
+      // on the unlock screen: the hardware may be transiently unavailable and they can
+      // retry or go to Settings.
+      // HARDWARE_FACTOR_DEGENERATE (all-zero H) is the same class: a hardware-output
+      // failure, never a wrong PIN (Codex P1 follow-up, same wipe-counter leak).
+      if (e?.code === KEK_UI_ERR.NO_HARDWARE_FACTOR || e?.code === KEK_UI_ERR.HARDWARE_FACTOR_DEGENERATE) {
+        setError("Hardware protection is unavailable right now. Try again, or manage it in Settings.");
+        return;
+      }
+      // User CANCELLED the per-use biometric sheet. This is user-initiated, NOT a wrong
+      // PIN — a correct-PIN user who cancels the prompt N times must never march toward
+      // the panic wipe (data-loss bug). Do NOT increment; stay on the unlock screen (I4).
+      if (e?.code === KEK_UI_ERR.USER_CANCELLED) {
+        setError("Unlock cancelled — try again when ready.");
+        return;
+      }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
       // decides whether this miss is the wipe trigger and what to warn.
       const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
@@ -937,8 +968,7 @@ export default function WalletEntry() {
     const doDesyncWipe = async () => {
       setError(""); setDesyncWiping(true);
       try {
-        const { getKeyStore } = await import('@/wallet-core/keystore');
-        await getKeyStore().clearVault();
+        await clearVault();
         setVaultExists(false);
         setDesyncConfirmWipe(false);
         setDesyncWipeInput("");
