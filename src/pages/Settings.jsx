@@ -149,7 +149,7 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          A private log of what you changed, sent, or revoked. No amounts or addresses are recorded. Panic Wipe erases it. Turning this off clears it too.
+          Private log: what you changed, sent, revoked. No amounts or addresses. Panic Wipe erases it.
         </p>
         {auditLog && auditEntries !== null && (
           <div className="mt-3 border-t border-border pt-3">
@@ -325,7 +325,7 @@ export default function Settings() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium">Delete Account</p>
-              <p className="text-xs text-muted-foreground">Clears saved data and locks the wallet. Your recovery phrase still controls your funds — use Panic Wipe to erase the keys.</p>
+              <p className="text-xs text-muted-foreground">Clears data, locks wallet. Recovery phrase still works. Use Panic Wipe to erase keys.</p>
             </div>
             <button
               onClick={() => setShowDelete(true)}

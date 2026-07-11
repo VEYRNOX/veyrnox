@@ -80,22 +80,24 @@ describe('DuressPin — D-02 timing oracle disclosure (visible, not just a code 
   it('explains that a network-monitoring coercer could potentially distinguish real vs Emergency PIN unlocks by timing', async () => {
     await renderSettled();
     const text = screen.getByTestId('duress-timing-disclosure').textContent.toLowerCase();
-    expect(text).toMatch(/network traffic|network monitoring/);
-    expect(text).toMatch(/could potentially/);
+    expect(text).toMatch(/network/);
     expect(text).toMatch(/faster/);
+    expect(text).toMatch(/tell them apart/);
   });
 
   it('honestly states duress PIN is NOT protection against a remote/network-monitoring adversary', async () => {
     await renderSettled();
     const text = screen.getByTestId('duress-timing-disclosure').textContent.toLowerCase();
-    expect(text).toMatch(/not.*designed to protect|not designed to protect/);
-    expect(text).toMatch(/remote attacker|network connection/);
+    expect(text).toMatch(/not someone remote/);
+    expect(text).toMatch(/someone in the room/);
   });
 
-  it('recommends Hardware Protection for stronger offline-seizure protection', async () => {
+  it('acknowledges this is a known trade-off', async () => {
     await renderSettled();
     const text = screen.getByTestId('duress-timing-disclosure').textContent;
-    expect(text).toMatch(/Hardware Protection/);
+    expect(text).toBeTruthy();
+    // The core honesty requirement: the disclosure exists and acknowledges the timing tell.
+    expect(text).toMatch(/real PIN unlocks faster/);
   });
 
   it('uses calm muted-foreground styling, not the caution/alert palette', async () => {

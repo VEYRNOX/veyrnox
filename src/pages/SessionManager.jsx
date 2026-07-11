@@ -69,8 +69,7 @@ export default function SessionManager() {
       </div>
 
       <p className="text-xs text-muted-foreground -mt-2">
-        Revoking signs a device out: it locks that device's wallet and requires the password again — immediately
-        for this device, next-open for others (there's no server that can force-close a remote device instantly).
+        Revoking signs out a device: locks wallet, requires password. Takes effect immediately on that device, next open on others.
       </p>
 
       <div className="grid grid-cols-3 gap-3">

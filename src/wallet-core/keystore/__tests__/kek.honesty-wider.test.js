@@ -39,13 +39,10 @@ describe('H14/H15 wider — no SE/hardware-backed overclaims', () => {
     expect(src).not.toContain('Secure Enclave / Android Keystore hardening');
   });
 
-  it('StealthWallets.jsx does not call the primary vault "hardware-backed"', () => {
+  it('StealthWallets.jsx does not call the real vault "hardware-backed"', () => {
     const src = read('src/pages/StealthWallets.jsx');
-    // No "hardware-backed" anywhere near the "primary vault" claim.
-    const idx = src.indexOf('primary vault');
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 200), idx + 200);
-    expect(window).not.toContain('hardware-backed');
+    // No "hardware-backed" anywhere. This guards against honest overclaim.
+    expect(src).not.toContain('hardware-backed');
   });
 
   it('native.js does not claim "Secure Enclave-wrapped Keychain"', () => {

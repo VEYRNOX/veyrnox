@@ -96,9 +96,7 @@ export default function AuditLog() {
             <div className="space-y-1">
               <p className="font-medium">Enable audit log</p>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Off by default. When on, logs up to 100 timestamped events
-                (type + time only — no amounts, addresses, or wallet identity).
-                No-op in decoy / hidden sessions.
+                Off by default. Logs 100 events: type + time only, no amounts or addresses. Disabled in decoy/hidden sessions.
               </p>
             </div>
             <Switch
@@ -120,14 +118,7 @@ export default function AuditLog() {
               className="text-xs text-muted-foreground leading-relaxed mt-4 pt-4 border-t border-border"
             >
               <span className="font-medium text-foreground">Deniability note.</span>{' '}
-              This log only records activity in your primary wallet session. If you
-              ever open a decoy or hidden wallet, nothing is logged for that
-              session — by design, so a hidden session never leaves a record of what
-              you did in it. However, someone examining your device could notice
-              that <span className="font-mono">no log exists</span> for a session
-              and use that absence as a clue that a decoy or hidden wallet was in
-              use. If you&apos;re concerned about forensic examination of this device,
-              a panic wipe removes the log along with everything else.
+              Logs only your primary session. Decoy/hidden sessions aren't logged — by design. But absence of a log could signal a hidden wallet. Panic wipe clears everything.
             </p>
           )}
         </CardContent>
@@ -187,8 +178,8 @@ export default function AuditLog() {
 
       {/* Scope note */}
       <div className="text-xs text-muted-foreground space-y-1 border-t border-border pt-4">
-        <p>Entries contain only {'{type, ts}'} — no amounts, recipients, addresses, or wallet identity.</p>
-        <p>Storage: encrypted blob in the primary vault store. Panic wipe destroys it.</p>
+        <p>Entries: {'{type, ts}'} only, no amounts or addresses.</p>
+        <p>Storage: encrypted in primary vault. Panic wipe clears it.</p>
         <p>Loggable events: settings_changed · approval_revoked · send_completed.</p>
       </div>
     </div>

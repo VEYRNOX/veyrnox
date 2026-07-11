@@ -194,8 +194,7 @@ export default function WalletSeedQR() {
                   <QRCodeDisplay address={mnemonic} size={200} />
                 </div>
                 <p className="text-[11px] text-destructive text-center max-w-[15rem]">
-                  This QR code contains your recovery phrase. Keep it as safe as the words themselves —
-                  never photograph or screenshot it where it could sync or be seen.
+                  Contains your recovery phrase. Treat the QR as carefully as the words — never photograph or screenshot.
                 </p>
               </div>
             </>
