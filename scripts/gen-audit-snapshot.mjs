@@ -12,7 +12,11 @@ try {
   raw = execSync('npm audit --json', { cwd: root, encoding: 'utf8' });
 } catch (err) {
   // npm audit exits non-zero when vulnerabilities exist — capture stdout anyway
-  raw = err.stdout ?? '{}';
+  if (err.stdout == null) {
+    console.error('npm audit failed to run:', err.message);
+    process.exit(1);
+  }
+  raw = err.stdout;
 }
 
 let parsed;
