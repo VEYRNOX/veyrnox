@@ -589,17 +589,6 @@ export default function WalletPortfolioPage() {
   const activeInThisPortfolio = activeWallet && inActive(activeWallet);
   const txList = _txHistory?.transactions ?? [];
 
-  // Transaction list for PortfolioChart (analytics tab). ETH-only; same I3 guards
-  // as ActivityTabContent. Falls back to [] while loading or on error.
-  const activeEvmAddress = activeWallet?.accounts?.[0]?.address || null;
-  const { data: _txHistory } = useQuery({
-    queryKey: ["history", "ETH", activeEvmAddress],
-    queryFn: () => fetchAssetHistory({ asset: ETH_ASSET, address: activeEvmAddress, demo: DEMO }),
-    enabled: !!activeEvmAddress && !isDeniabilitySessionActive(),
-    staleTime: 60_000,
-  });
-  const txList = _txHistory?.transactions ?? [];
-
   // Genuine $0 zero-state: the portfolio has wallet(s) but no value anywhere, and
   // balances have finished loading (so we don't flash this over a pending fetch).
   // Testnet balances are commonly 0, so this is the expected fresh-wallet view.
