@@ -86,7 +86,7 @@ function CongestionBadge({ level }) {
   );
 }
 
-function SkeletonRow({ last }) {
+function SkeletonRow({ last = false }) {
   return (
     <div className={`flex items-center justify-between py-3 ${last ? "" : "border-b border-border"}`}>
       <div className="flex items-center gap-2.5">

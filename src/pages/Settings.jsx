@@ -20,7 +20,7 @@ import HardwareKekSettings from "../components/security/HardwareKekSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 import { probeRuntimeServices, loadAuditSnapshot } from '@/lib/appHealth';
-import { isDeniabilitySessionActive } from '@/lib/deniabilitySession';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession';
 
 export default function Settings() {
   const queryClient = useQueryClient();
