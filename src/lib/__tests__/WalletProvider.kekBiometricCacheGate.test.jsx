@@ -100,6 +100,9 @@ vi.mock('@/wallet-core/keystore', () => ({
     suppressLock: async (fn) => fn(),
   }),
   webKeyStore: {},
+  // WalletProvider imports this module-level facade directly (R2 lock
+  // suppression, issue #627 burn-down) — pass straight through in tests.
+  withLockSuppressed: async (fn) => fn(),
 }));
 
 import { WalletProvider, useWallet } from '@/lib/WalletProvider';
