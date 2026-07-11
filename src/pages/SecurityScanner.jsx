@@ -32,9 +32,8 @@ import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import { assessEvmTransaction } from "@/wallet-core/evm/simulate";
 
 const COVERAGE_NOTE =
-  "Checked on your device — no key used, nothing sent to any server, no on-chain simulation run here. " +
-  "It finds KNOWN risk patterns in the calldata. It is not a guarantee of safety and won't catch every threat. " +
-  "A fuller check runs inside the real Send flow before you approve.";
+  "Checked on your device, no keys or servers involved. Finds known risk patterns — not a guarantee. " +
+  "The real Send flow runs a fuller check before you approve.";
 
 export default function SecurityScanner() {
   const [calldata, setCalldata] = useState("");
@@ -94,10 +93,7 @@ export default function SecurityScanner() {
         <CardContent className="pt-4 space-y-2 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">What this does</p>
           <p>
-            Paste the <span className="font-mono">data</span> field from a transaction. It checks
-            for known risk patterns — unlimited approvals, look-alike addresses, unrecognised calls
-            — on your device, with no network. It never tells you a transaction is safe. Nothing
-            flagged means nothing detected, not a clean bill of health.
+            Paste the <span className="font-mono">data</span> field. Detects known risk patterns — unlimited approvals, spoofed addresses, unrecognised calls — on your device, no network. Never says "safe". Nothing flagged = nothing detected, not a thumbs-up.
           </p>
         </CardContent>
       </Card>
@@ -144,8 +140,7 @@ export default function SecurityScanner() {
       <div>
         <p className="text-sm font-semibold mb-2">Live examples</p>
         <p className="text-xs text-muted-foreground mb-2">
-          Built from the same checks you&apos;ll see before you approve a transaction. Each runs real risk
-          logic across chains and risk patterns.
+          Same checks that run before you approve a real send. Each simulates actual risk patterns across chains.
         </p>
         <TransactionSimulationDemo />
       </div>
