@@ -10,8 +10,7 @@
 //   - wrong password -> explicit "Incorrect PIN"-class error, no silent decoy
 //
 // CORRECTION (found while making this runnable): the plan was to import the
-// documented throwaway BIP-39 UAT seed
-//   ("bamboo lyrics harvest potato seat carry equip nation slam begin admit pet")
+// documented throwaway BIP-39 UAT seed (VITE_TEST_THROWAWAY_SEED from .env.test)
 // via the normal onboarding flow, THEN flip on demo mode to reach DuressPin's
 // built-in "Live demonstration" panel. That combination is impossible:
 // `?demo=1` does not layer on top of a real vault — it replaces onboarding
@@ -25,8 +24,8 @@
 // the same class of throwaway, disposable, no-real-value wallet as the
 // documented UAT seed, using the exact harness the app's own authors built
 // for this purpose (DuressPin.jsx: "Exercises the REAL unlock flow"). It does
-// not literally use the "bamboo lyrics…" phrase — that phrase cannot survive
-// contact with demo mode's onboarding bypass.
+// not literally use the documented VITE_TEST_THROWAWAY_SEED phrase — that phrase
+// cannot survive contact with demo mode's onboarding bypass.
 //
 // Honest scope: this is app-layer routing proof (real crypto, real vault code,
 // real IndexedDB), NOT a hardware-KEK / Secure Enclave verification, and it
