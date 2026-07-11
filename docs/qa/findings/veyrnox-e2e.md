@@ -3,7 +3,7 @@
 **Task**: Task 3 — Playwright E2E QA  
 **Date**: 2026-07-11  
 **Branch**: claude/ecc-qa-skills-2dd7c3  
-**App path**: Veyrnox app repo root
+**App path**: `C:\Users\aljob\Downloads\VEYRNOX-CLONE-ECC`
 
 ---
 
@@ -62,7 +62,7 @@ Tested via `/?demo=1` using Playwright (Chromium, headless).
 
 ## New QA Specs (`e2e/qa-demo-isolation-e2e.spec.ts`)
 
-> **Note**: Spec file is located in the Veyrnox app repo at `e2e/qa-demo-isolation-e2e.spec.ts` (not in the ECC worktree). Renamed from `qa-seed-import-e2e.spec.ts`; throwaway seed moved to `.env.test` (git-ignored).
+> **Note**: Spec file is located in the Veyrnox app repo at `C:\Users\aljob\Downloads\VEYRNOX-CLONE-ECC\e2e\qa-demo-isolation-e2e.spec.ts` (not in the ECC worktree). Renamed from `qa-seed-import-e2e.spec.ts`; throwaway seed moved to `.env.test` (git-ignored).
 
 | Test | Result | Notes |
 |---|---|---|
@@ -78,7 +78,7 @@ Tested via `/?demo=1` using Playwright (Chromium, headless).
 | ID | Severity | Priority | Description | Location | Fixed inline? |
 |---|---|---|---|---|---|
 | F-001 | CRITICAL | P0 | `@revenuecat/purchases-capacitor` not installed. Vite dev server fails to resolve the import in `src/lib/purchases.js`, causing a module transform error that prevents the app from rendering. 18 of 19 E2E failures were caused by this single missing dependency. | `src/lib/purchases.js:8`, `vite.config.js` | YES — added alias to `src/lib/stubs/revenuecat-stub.js` in `vite.config.js`; stub is a no-op safe for web (all methods guard with `isNative()`) |
-| F-002 | ~~HIGH~~ → **LOW** | ~~P1~~ → **P2** | Duress PIN decoy E2E fails intermittently: the assertion `getByText('HIDDEN WALLET', exact)` (spec line 75, 10s timeout) is not satisfied. **DIAGNOSED via live trace 2026-07-11 — root cause = (C-i) test-infra/timing, NOT a regression.** The Emergency-PIN unlock takes **8.7–10.0 s** (measured: run 1 = 9996 ms pass, run 2 = >10000 ms FAIL, run 3 = 8712 ms pass) because the Emergency PIN takes the failure→deniability path = 4–5 Argon2id KDFs at 192 MiB/t=3 (~1.7 s each in WASM) + the 2000 ms equalizer, landing right on the 10 s assertion ceiling and flaking at the margin. Decoy routing is **correct** on every run: `isDecoy` flips (`WalletProvider.jsx:1543-1545`), `HIDDEN WALLET` renders, decoy address differs each run. **(C-ii) swallowed-error and (B) real-regression both ruled out** — no error banner, panel never falls back to `REAL WALLET`. `HIDDEN WALLET` selector confirmed correct at `DuressPin.jsx:581`. | `e2e/duress-decoy-routing.spec.js:75`; `src/lib/WalletProvider.jsx:211,1486-1531,1543-1545` | YES (test-only) — assertion timeout bumped 10 s → 30 s (3× headroom over measured worst case), verified 3/3 stable. Landed on `main` via PR #822 (`eb41102a`); the standalone PR #823 with the identical change was closed as superseded. Selector and all wallet-core/duress logic untouched. |
+| F-002 | ~~HIGH~~ → **LOW** | ~~P1~~ → **P2** | Duress PIN decoy E2E fails intermittently: the assertion `getByText('HIDDEN WALLET', exact)` (spec line 75, 10s timeout) is not satisfied. **DIAGNOSED via live trace 2026-07-11 — root cause = (C-i) test-infra/timing, NOT a regression.** The Emergency-PIN unlock takes **8.7–10.0 s** (measured: run 1 = 9996 ms pass, run 2 = >10000 ms FAIL, run 3 = 8712 ms pass) because the Emergency PIN takes the failure→deniability path = 4–5 Argon2id KDFs at 192 MiB/t=3 (~1.7 s each in WASM) + the 2000 ms equalizer, landing right on the 10 s assertion ceiling and flaking at the margin. Decoy routing is **correct** on every run: `isDecoy` flips (`WalletProvider.jsx:1543-1545`), `HIDDEN WALLET` renders, decoy address differs each run. **(C-ii) swallowed-error and (B) real-regression both ruled out** — no error banner, panel never falls back to `REAL WALLET`. `HIDDEN WALLET` selector confirmed correct at `DuressPin.jsx:581`. | `e2e/duress-decoy-routing.spec.js:75`; `src/lib/WalletProvider.jsx:211,1486-1531,1543-1545` | YES (test-only) — assertion timeout bumped 10 s → 30 s (3× headroom over measured worst case) on branch `fix/f002-e2e-timeout` (`8950cb13`), verified 3/3 stable. Selector and all wallet-core/duress logic untouched. |
 | F-003 | MEDIUM | P2 | `frame-ancestors` CSP directive placed in a `<meta>` element. Browsers silently ignore `frame-ancestors` when delivered via `<meta>` (per spec). Clickjacking protection is not enforced. The directive must be delivered as an HTTP response header (`Content-Security-Policy: frame-ancestors 'none'`). | App HTML `<meta>` CSP, detected via console error in browser | NO — requires server/hosting config change |
 | F-004 | LOW | P2 | Send form address input not reachable at `/send?demo=1` without completing onboarding. No `input[placeholder*="0x"]`, `getByLabel(/address|recipient/i)`, or `input[type="text"]` found. The send route likely redirects or renders an onboarding gate before exposing the form. | `e2e/qa-demo-isolation-e2e.spec.ts:send form test`, `src/` send routing | NO — test uses `test.skip`; send form E2E requires pre-seeded vault state |
 
