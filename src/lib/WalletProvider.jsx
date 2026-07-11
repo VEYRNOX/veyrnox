@@ -725,7 +725,7 @@ export function WalletProvider({ children }) {
       try {
         map[w.id] = {
           evm: deriveEvmAccount(w.mnemonic, 0).address,
-          btc: deriveBtcAccount(w.mnemonic, { networkKey: 'testnet' }).address,
+          btc: deriveBtcAccount(w.mnemonic, { networkKey: 'mainnet' }).address,
           sol: deriveSolAccount(w.mnemonic).address,
         };
       } catch { /* skip a wallet that fails to derive rather than break the view */ }
