@@ -2,6 +2,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { Zap } from "lucide-react";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from "@/lib/recharts";
+import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 
 const VOLATILITY = { BTC: 0.65, ETH: 0.75, SOL: 0.85, USDC: 0.01, USDT: 0.01 };
 
@@ -68,9 +69,16 @@ export default function PortfolioRiskScore() {
           <h1 className="text-xl font-bold">Portfolio Risk Score</h1>
           <p className="text-sm text-muted-foreground">Heuristic risk score from your current holdings and fixed per-asset volatility coefficients — not a real-time market model.</p>
         </div>
-        <div className="p-6 rounded-xl border border-border bg-card text-center">
-          <p className="text-sm text-muted-foreground">No holdings to score yet — add assets to see a risk estimate.</p>
-        </div>
+        {/* I4 fail-closed: a $0 total may be a genuinely empty portfolio OR one
+            whose balance reads FAILED — never assert "no holdings" for a read we
+            couldn't complete. When indeterminate, say so instead. */}
+        {portfolio?.indeterminate ? (
+          <IncompleteBalanceNote />
+        ) : (
+          <div className="p-6 rounded-xl border border-border bg-card text-center">
+            <p className="text-sm text-muted-foreground">No holdings to score yet — add assets to see a risk estimate.</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -81,6 +89,10 @@ export default function PortfolioRiskScore() {
         <h1 className="text-xl font-bold">Portfolio Risk Score</h1>
         <p className="text-sm text-muted-foreground">Heuristic risk score from your current holdings and fixed per-asset volatility coefficients — not a real-time market model.</p>
       </div>
+
+      {/* I4 fail-closed: the score derives from assetTotals, which EXCLUDE any
+          asset whose balance read failed — flag that the score may be incomplete. */}
+      {portfolio?.indeterminate && <IncompleteBalanceNote />}
 
       {/* Score card */}
       <div className="p-6 rounded-xl border border-border bg-card text-center">

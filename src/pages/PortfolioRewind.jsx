@@ -5,6 +5,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/lib/recharts";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
+import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 
 const PERIODS = [
   { label: "30 Days Ago", key: "30d", days: 30 },
@@ -111,6 +112,10 @@ export default function PortfolioRewind() {
           <span>History incomplete — some chains couldn't be read; this replay may be understated.</span>
         </div>
       )}
+
+      {/* I4 fail-closed: the "Now" value is grandTotal, which EXCLUDES any asset
+          whose CURRENT balance read failed (distinct from history above). Flag it. */}
+      {portfolio?.indeterminate && <IncompleteBalanceNote />}
 
       {/* Summary */}
       <div className="p-5 rounded-xl border border-border bg-card text-center space-y-1">
