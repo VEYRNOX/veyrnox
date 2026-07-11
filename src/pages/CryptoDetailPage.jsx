@@ -9,7 +9,6 @@ import CandlestickChart from "@/components/CandlestickChart";
 import { useWallet } from "@/lib/WalletProvider";
 import { useBasketPrices } from "@/hooks/useBasketPrices";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
-import { resolveReceive } from "@/lib/receiveAddress";
 
 const PERIODS = ["1H", "4H", "1D", "1W", "1M"];
 
@@ -17,7 +16,7 @@ export default function CryptoDetailPage() {
   const { symbol } = useParams();
   const navigate = useNavigate();
   const [period, setPeriod] = useState("1D");
-  const { isUnlocked, accounts, btcAccount, solAccount } = useWallet();
+  const { isUnlocked } = useWallet();
   const { changeFor } = useBasketPrices();
 
   const asset = TOP_CRYPTOS.find((c) => c.symbol === symbol);
@@ -33,13 +32,6 @@ export default function CryptoDetailPage() {
 
   const change = changeFor(symbol);
   const isUp = change == null ? null : change >= 0;
-
-  const receive = isUnlocked
-    ? resolveReceive(symbol, { accounts, btcAccount, solAccount })
-    : null;
-
-  // resolveReceive does not return a balance field — omit balance amount display
-  const balanceAmount = null;
 
   return (
     <div className="max-w-lg mx-auto space-y-5 pt-1">
@@ -67,13 +59,13 @@ export default function CryptoDetailPage() {
         </div>
       </div>
 
-      {/* Balance strip — shown when unlocked; balance amount omitted (resolveReceive has no balance field) */}
+      {/* Balance strip — shown when unlocked; balance amount omitted */}
       {isUnlocked && (
         <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card">
           <div>
             <p className="text-xs text-muted-foreground">Your balance</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Balance available after receiving funds
+            <p className="text-sm mono-value text-muted-foreground mt-0.5">
+              —
             </p>
           </div>
         </div>
