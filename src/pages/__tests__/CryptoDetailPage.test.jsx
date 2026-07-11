@@ -2,7 +2,7 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import { vi } from "vitest";
+import { test, expect, vi } from "vitest";
 
 vi.mock("@/lib/WalletProvider", () => ({
   useWallet: () => ({ isUnlocked: false, accounts: [], btcAccount: null, solAccount: null }),

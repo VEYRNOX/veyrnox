@@ -25,7 +25,13 @@ const CandlestickBar = (props) => {
   );
 };
 
-const CustomTooltip = ({ active, payload }) => {
+/**
+ * Recharts injects `{ active, payload }` at runtime when this is passed as
+ * `<Tooltip content={<CustomTooltip />} />`, so the props are optional at the
+ * type level — otherwise the propless usage site fails typecheck (TS2739).
+ * @param {{ active?: boolean, payload?: any[] }} [props]
+ */
+const CustomTooltip = ({ active, payload } = {}) => {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
