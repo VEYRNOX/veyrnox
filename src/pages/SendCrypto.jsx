@@ -600,7 +600,9 @@ export default function SendCrypto() {
   // RISK gate. Pure + local: maps the SAME local state the existing warnings read
   // into score()'s inputs (no new fetch, no signer/seed). recipientCode (S7) is
   // reused from the simulation's already-fetched eth_getCode (I2).
-  const riskReady = DEMO || !!txSim.data || txSim.isError;
+  // Also ready when simulation is disabled — the score runs without recipientCode
+  // (S7 escalates to CAUTION, which now requires confirmation per score.js).
+  const riskReady = DEMO || !!txSim.data || txSim.isError || !simEnabled;
 
   // SINGLE source of truth for the verdict: maps the live send state → score().
   // BOTH the displayed banner and the hard pre-sign gate call this, so the
