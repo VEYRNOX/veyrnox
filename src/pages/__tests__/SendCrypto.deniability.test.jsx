@@ -64,15 +64,18 @@ describe('SendCrypto I3 — the three live-RPC useQuery blocks gate on the denia
     // Collect only the single-line `enabled:` clauses that drive a live RPC read
     // (they reference demoActive / DEMO plus an EVM/BTC family predicate). Line-based
     // scan — no multiline regex (a greedy one backtracks catastrophically on this file).
-    const guard = /!isDecoy\s*&&\s*!isHidden|!isDeniabilitySessionActive\(\)/;
     const rpcEnabledLines = src
       .split('\n')
       .filter((l) => l.trimStart().startsWith('enabled:'))
       .filter((l) => /isEvmFamily|isBtc|canReceive/.test(l));
     // liveBalance (canReceive+isEvmFamily), txSim (isEvmFamily), btcSim (isBtc).
     expect(rpcEnabledLines.length).toBeGreaterThanOrEqual(3);
+    // Each enabled clause MUST contain !isDeniabilitySessionActive() specifically.
+    // Using an OR with !isDecoy&&!isHidden would make this vacuous (those are always
+    // present); we require the H-1 addition independently so the test fails if it is
+    // removed even if the older predicates remain.
     for (const line of rpcEnabledLines) {
-      expect(line).toMatch(guard);
+      expect(line).toMatch(/!isDeniabilitySessionActive\(\)/);
     }
   });
 });

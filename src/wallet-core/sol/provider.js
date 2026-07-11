@@ -21,6 +21,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { getSolNetwork, getSolNetworkInfo } from './networks.js';
 import { assertSafeRpcUrl } from '../netUrl.js';
+import { isDeniabilitySessionActive } from '../deniabilitySession.js';
 
 export { LAMPORTS_PER_SOL };
 
@@ -124,6 +125,7 @@ export async function getBalanceLamports(networkKey, address) {
 
 /** Convenience: confirmed balance as a SOL number (display only). */
 export async function getBalanceSol(networkKey, address) {
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   return Number(await getBalanceLamports(networkKey, address)) / LAMPORTS_PER_SOL;
 }
 
@@ -220,6 +222,7 @@ export async function getRecentPrioritizationFee(networkKey) {
  *   parsed = ParsedTransactionWithMeta or null if the RPC dropped it.
  */
 export async function getAddressHistory(networkKey, address, { limit = 25 } = {}) {
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   const conn = getConnection(networkKey);
   const pubkey = new PublicKey(address);
   const sigs = await conn.getSignaturesForAddress(pubkey, { limit });

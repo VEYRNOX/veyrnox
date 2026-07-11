@@ -48,6 +48,7 @@ import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
 import { resolveSend2faMethod, SEND_2FA } from "@/lib/send2faMethod";
+import { resolveMaxPriorityFeePerGas } from "@/lib/WalletConnectProvider";
 import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from "@/lib/passkey";
 import { is2faBiometricEnabled, verifyBiometric2fa } from "@/lib/biometric";
 import { Capacitor } from "@capacitor/core";
@@ -836,7 +837,13 @@ export default function SendCrypto() {
             ? maxFeePerGasCap
             : rawMaxFeePerGas;
           const maxFeePerGas = cappedMaxFeePerGas;
-          const maxPriorityFeePerGas = fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n;
+          // L-2 (I5: RPC untrusted): clamp the priority fee against the already-
+          // capped maxFeePerGas via the shared pure helper, so a misreporting
+          // provider can't pin an implausibly large tip on a hardware signer.
+          const maxPriorityFeePerGas = resolveMaxPriorityFeePerGas(
+            fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n,
+            cappedMaxFeePerGas,
+          );
           let signedHex;
           if (isErc20) {
             const { data, contract: contractAddr } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });

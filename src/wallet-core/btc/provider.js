@@ -90,6 +90,7 @@ export async function getUtxos(networkKey, address) {
  * @returns {Promise<Array<object>>} raw Esplora tx objects
  */
 export async function getAddressTxs(networkKey, address) {
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   const raw = await getJson(`${baseUrl(networkKey)}/address/${address}/txs`);
   if (!Array.isArray(raw)) throw new Error('Indexer returned a non-array tx list');
   return raw;
