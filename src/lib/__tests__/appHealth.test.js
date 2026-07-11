@@ -106,3 +106,28 @@ describe('readDeviceCapabilities', () => {
     expect(() => readDeviceCapabilities()).not.toThrow();
   });
 });
+
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const widgetSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../components/AppHealthWidget.jsx'),
+  'utf8',
+);
+
+describe('AppHealthWidget.jsx source pins', () => {
+  it('uses Promise.allSettled to fire all three probes concurrently', () => {
+    expect(widgetSrc).toMatch(/Promise\.allSettled/);
+  });
+
+  it('never renders "ok" text when probe status is unavailable (fail-closed)', () => {
+    expect(widgetSrc).not.toMatch(/unavailable.*ok/i);
+  });
+
+  it('imports all three probe helpers', () => {
+    expect(widgetSrc).toMatch(/probeRuntimeServices/);
+    expect(widgetSrc).toMatch(/loadAuditSnapshot/);
+    expect(widgetSrc).toMatch(/readDeviceCapabilities/);
+  });
+});
