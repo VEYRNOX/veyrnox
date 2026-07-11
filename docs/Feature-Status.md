@@ -774,7 +774,7 @@ RASP gates. None affect ALLOW_MAINNET.
 |---|---|---|---|
 | H-NEW-D | iOS + Android native / KEK | **CLOSED (native-layer SE ECIES confirmed)** — 2026-07-01 INTERNAL static-analysis pass confirmed `kSecAttrTokenIDSecureEnclave` is present in `HardwareKekPlugin.m:78`. The SE ECIES design is correctly implemented at the native ObjC layer. iOS device-verified status remains BUILT/device-verified (PARTIAL): two Sepolia sends confirmed on-chain from KEK-enrolled vault (PR #495), the live SE-unlock app trace was subsequently CAPTURED 2026-07-02 (iOS-F9 CLOSED — `_ios_f9_se_unlock_trace_captured`; DEBUG-only, not additionally same-session-bound to a send). Android is BUILT/end-to-end device-verified on the StrongBox-gated unlock FLOW (Pixel 10 Pro XL, PRs #497 #499) with a KEK-gated Sepolia send confirmed on-chain (txid `0x9d9ff549…`, block 11180398) and its biometric re-enrollment invalidation test PASSED (PR #516/#518). Outstanding: biometric re-enrollment invalidation test on iOS only (device-blocked); independent audit (iOS-F9 SE-unlock trace CLOSED 2026-07-02). Android additionally: C-1 CRITICAL (HMAC fixed input) — recorded RESOLVED / device-verified 2026-07-02 (PR #529), REGRESSED 2026-07-05 (per-enrollment `kekSalt` binding cryptographically unconfirmed on-device — facade arg-drop + bridge JSON.stringify silently reverted enroll+unlock to the fixed v1 salt), then **FIXED / device-verified 2026-07-05 (v3, PR #568)** the same day — see the C-1 row below and `docs/audit-2026-07-01-kek-internal.md` for the full history. H-1 (StrongBox tier surfacing) FIXED PR #527. | H-NEW-D native-layer gap CLOSED; iOS-F9 SE-unlock trace CLOSED 2026-07-02; remaining gates: biometric re-enrollment test (iOS only — Android PASSED PR #516/#518) + independent audit. Android KEK-gated unlock-FLOW on-chain txid DONE (`0x9d9ff549…`); Android C-1 salt-binding FIXED / device-verified 2026-07-05 (v3, PR #568, txid `0xecd68494…` block 11206686) with salt-tamper/migration/distinctness/audit items still open (see C-1 row) |
 | F-01 / F-02 | Mobile / biometric | Biometric cache not OS-ACL bound (M2c/M2d plan) — app-layer gate, not hardware-enforced ACL. H-2/iOS-F11 (below) is the specific finding from the 2026-07-01 pass; F-01/F-02 remain the broader M2c/M2d plan items. | 🟡 iOS M2c scaffold BUILT (PRs #690/#695, 2026-07-07) — behind `M2C_HARDWARE_WRAP_ENABLED=false`; byte-identical to M2b until device-verified. Android M2d: native plugin + real device still required. F-2 not closed. |
-| F-09 | RASP | RASP not adversarially tested on rooted/Frida devices — OS-level probes unverified on live targets | Phase 4 — native RASP OS-level probes + real rooted/Frida device |
+| F-09 | RASP | RASP not adversarially tested on rooted/Frida devices — OS-level probes unverified on live targets. **JS wiring layer BUILT (PR #811, 2026-07-11):** `src/rasp/nativeProbe.js` exports `nativeProbeSource` and the `resolveProbeSource` chooser (returns `nativeSource` when `available === true`, else `browserSource`); `SendCrypto.jsx` samples `nativeProbeSource()` at mount via `useEffect`, stores in `nativeProbe` state, passes to `resolveProbeSource` for the final probe fed to `detect()`. 7 unit tests. The underlying native plugin (`RaspIntegrityPlugin.kt`/`.m`) was already BUILT-UNVALIDATED. **Real-device verification on a rooted/jailbroken device is still required to close F-09.** | 🟡 JS wiring BUILT (PR #811, 2026-07-11); native plugin BUILT-UNVALIDATED; adversarial rooted/Frida device test still required — F-09 remains OPEN |
 | M-K | Web-App / passkey | **BUILT (2026-06-30)**: WebAuthn signCount persistence + cloned authenticator detection. Extracts signCount from assertion response, compares to stored value, rejects replays (signCount must increase). Stored in localStorage (best-effort, no backend). Tests passing ✓. **e2e-proven 2026-07-06 (PR #644):** `e2e/passkey-clone-replay.spec.js` drives `src/lib/passkey.js` directly via two Chrome DevTools Protocol virtual WebAuthn authenticators — one registers and asserts legitimately (signCount persisted), its credential is then exported and imported onto a second authenticator with signCount rolled back to 0 (a cloned/exported soft authenticator), the first is removed, and the clone's assertion attempt is confirmed to throw `PasskeyClonedError` AND leave the persisted signCount unchanged (fail-closed, I4). This is real crypto + a real CDP-level WebAuthn clone/replay — not a mock. **PR #638 (MERGED 2026-07-06)** added `tests/android/specs/passkey-clone-detection-e2e.spec.js` — an Android-side companion test; it only proves native doesn't fabricate/skip a signCount value, it does NOT reproduce the web CDP dual-authenticator clone/replay proof on Android (the clone-signCount proof itself stays web-only). | e2e CDP software-clone/replay test DONE (2026-07-06, PR #644); Android non-fabrication check DONE (2026-07-06, PR #638). **Still outstanding:** a literal physical second hardware authenticator clone attempt has not been performed on either platform — this closes the "unit-tested only" gap, not a hardware-device-verification bar. |
 
 ### From the 2026-07-01 INTERNAL static-analysis pass (Hardware KEK focus)
@@ -1018,6 +1018,31 @@ available fix; M-8's `assertSaneKdfParams` partial mitigation does not close the
 and full binding remains in the independent audit scope. The independent third-party audit
 (S1–S4 + crypto, including the vault cipher path) remains outstanding and is not replaced
 by this pass.
+
+## PR #811 — App Health widget + RASP native probe wiring + CI npm audit snapshot (2026-07-11)
+
+> ⚠️ All items BUILT · unit-tested · INTERNAL — NOT device-verified, NOT independently audited. No on-chain txid.
+
+### RASP F-09 native probe JS wiring
+
+BUILT (PR #811, 2026-07-11). `src/rasp/nativeProbe.js` (`nativeProbeSource`, `resolveProbeSource`): pure chooser returns `nativeSource` when `available === true`, else `browserSource`; fail-closed. `SendCrypto.jsx` samples `nativeProbeSource()` at mount, stores in `nativeProbe` state, passes to `resolveProbeSource` for the probe used by `detect()`. 7 unit tests (`src/rasp/__tests__/nativeProbe.test.js`). The underlying native plugin (`RaspIntegrityPlugin.kt`/`.m`) was already BUILT-UNVALIDATED. **F-09 remains OPEN — real-device verification on a rooted/jailbroken device is still required to close it.** See the F-09 row in the open-items table above.
+
+### App Health widget
+
+BUILT (PR #811, 2026-07-11).
+
+| Component | File | Notes |
+|---|---|---|
+| `appHealth.js` probe helpers | `src/lib/appHealth.js` | `probeRuntimeServices()` (RPC, price feed, RevenueCat, RASP browser-level — each `withTimeout`, I4 fail-closed); `loadAuditSnapshot()` (fetches `/audit-snapshot.json`); `readDeviceCapabilities()` (sync: platform, KEK tier, RASP availability, mainnet gate). I3-guarded: callers must check `isDeniabilitySessionActive()` before any network call. 13 unit tests (`src/lib/__tests__/appHealth.test.js`). |
+| `AppHealthWidget.jsx` | `src/components/AppHealthWidget.jsx` | Three-panel card: Runtime services / Package security / Device capabilities. I3-guarded `useEffect`. |
+| `AppHealthPage.jsx` + `/app-health` route | `src/pages/AppHealthPage.jsx`, `src/App.jsx` | Lazy-loaded route with back button. |
+| Settings row | `src/pages/Settings.jsx` | "App health" nav entry after Terms & Legal; warning dot badge when `issueCount > 0`. I3-guarded `useEffect`. |
+
+Test count: 13 (`appHealth.test.js`) + 4 pin-related (`AppHealthPage.pins.test.js`) = 17 tests total.
+
+### CI npm audit snapshot
+
+BUILT (PR #811, 2026-07-11). `scripts/gen-audit-snapshot.mjs` runs `npm audit --json` and writes `public/audit-snapshot.json`. `.github/workflows/audit-snapshot.yml` runs on push to main and on PRs, auto-commits the updated snapshot. I2-compliant: audit data is a static file never fetched from an external host on device — `AppHealthWidget.jsx` reads `/audit-snapshot.json` from the same origin.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
