@@ -266,9 +266,12 @@ export default function SendCrypto() {
 
   // Default/clamp the asset to one this wallet actually shows (prefer ETH, the one
   // sendable asset). Re-runs when the wallet (and thus its asset list) changes.
+  // When arriving from a detail page (?asset=BNB), honour the URL param and do not
+  // override it — the user explicitly chose that asset.
   useEffect(() => {
+    if (fromDetail) return;
     setAssetSymbol((cur) => defaultAssetSymbol(enabledAssets, cur));
-  }, [walletId, enabledAssets.join(",")]);
+  }, [walletId, enabledAssets.join(","), fromDetail]);
 
   const { data: whitelist = [] } = useQuery({
     queryKey: ["whitelisted-addresses"],
