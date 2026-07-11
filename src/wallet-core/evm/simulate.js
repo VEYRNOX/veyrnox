@@ -326,7 +326,7 @@ export async function simulateEvmTransaction({
   // max(individual latencies) rather than their sum. A 10-second timeout wraps
   // every call so an unresponsive node can never hang the verify step indefinitely
   // — each timed-out call degrades gracefully to null/false (I4 fail-closed).
-  const RPC_TIMEOUT_MS = 10_000;
+  const RPC_TIMEOUT_MS = 5_000;
   const withTimeout = (p) => Promise.race([
     p,
     new Promise((_, rej) => setTimeout(() => rej(new Error('rpc-timeout')), RPC_TIMEOUT_MS)),
