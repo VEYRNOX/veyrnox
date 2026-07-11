@@ -237,6 +237,14 @@ export async function getHardwareFactor(opts) {
       code: KEK_ERR.NO_HARDWARE_FACTOR,
     });
   }
+  // Codex P1 #3 (2026-07-11): a null/undefined bridge result would make the destructure
+  // below throw a raw TypeError with no .code — the last uncoded path out of this
+  // function, and the same wipe-counter leak class. Guard before destructuring.
+  if (bridgeResult == null || typeof bridgeResult !== 'object') {
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), {
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  }
   const { h } = bridgeResult;
   // I/O-boundary validation (fail-closed, I4): the plugin output is UNTRUSTED at the
   // JS bridge. Validate BEFORE decoding — a missing/non-string h must throw the stable

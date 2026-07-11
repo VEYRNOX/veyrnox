@@ -91,4 +91,20 @@ describe('getHardwareFactor — malformed bridge output carries .code (never cou
       code: KEK_ERR.NO_HARDWARE_FACTOR,
     });
   });
+
+  // Codex P1 #3: a null/undefined bridge RESULT (not a rejection) previously threw a raw
+  // TypeError at the destructure — the last uncoded path out of getHardwareFactor.
+  it('null bridge result → .code === NO_HARDWARE_FACTOR (never a raw TypeError)', async () => {
+    getHFFn.mockResolvedValueOnce(null);
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  });
+
+  it('undefined bridge result → .code === NO_HARDWARE_FACTOR', async () => {
+    getHFFn.mockResolvedValueOnce(undefined);
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  });
 });
