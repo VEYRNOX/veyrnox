@@ -92,8 +92,7 @@ import { getAuthModel, setAuthModel, shouldAutoCacheTypedPin } from "@/lib/authM
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { checkPinStrength } from "@/lib/pinStrength";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
-import { validateMnemonic } from "@/wallet-core/mnemonic";
-import { WEB_VAULT_ERR } from "@/wallet-core/keystore/web";
+import { WEB_VAULT_ERR } from "@/lib/vaultErrors";
 import { Capacitor } from "@capacitor/core";
 import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import {
@@ -329,6 +328,7 @@ export default function WalletEntry() {
     setupPin, createWalletFromPendingPin, importWalletForPendingPin,
     clearPendingPin, hasPendingPin, panicWipe,
     wasWiped, acknowledgeWipe,
+    clearVault, validateMnemonic,
   } = useWallet();
 
   // null until we know whether a vault exists; drives unlock vs first-run.
@@ -937,8 +937,7 @@ export default function WalletEntry() {
     const doDesyncWipe = async () => {
       setError(""); setDesyncWiping(true);
       try {
-        const { getKeyStore } = await import('@/wallet-core/keystore');
-        await getKeyStore().clearVault();
+        await clearVault();
         setVaultExists(false);
         setDesyncConfirmWipe(false);
         setDesyncWipeInput("");
