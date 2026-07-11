@@ -42,7 +42,9 @@ const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejec
 // Sourced from the git-ignored .env.test (VITE_TEST_THROWAWAY_SEED), loaded via
 // dotenv in playwright.config.ts.
 const THROWAWAY_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
-if (!THROWAWAY_SEED) throw new Error('VITE_TEST_THROWAWAY_SEED not set — see .env.test (loaded via dotenv in playwright.config.ts).');
+// Every test here imports the fixture seed, so skip the whole suite explicitly
+// (visible, not a silent pass) when it is unavailable — e.g. CI, where the
+// git-ignored .env.test does not exist. Local runs with .env.test run normally.
 
 async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
@@ -82,6 +84,7 @@ async function importSeedThroughChoose(page, seed = THROWAWAY_SEED) {
 }
 
 test.describe('Send after same-session seed import (no reload)', () => {
+  test.skip(!THROWAWAY_SEED, 'requires VITE_TEST_THROWAWAY_SEED — see .env.test (git-ignored; unset in CI)');
   test('Send link navigates to /send and the Send form stays rendered (no bounce to /)', async ({ page }) => {
     await freshLocalBuild(page);
     await completePasswordSetup(page);
