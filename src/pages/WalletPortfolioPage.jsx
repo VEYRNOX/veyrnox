@@ -176,7 +176,7 @@ export function AddWalletDialog({ onClose }) {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) { if (created) confirmWalletBackup(created.walletId); onClose(); } }}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         {created ? (
           <>
             <DialogHeader><DialogTitle>Back up "{name.trim() || "your new wallet"}"</DialogTitle></DialogHeader>
@@ -230,14 +230,17 @@ export function AddWalletDialog({ onClose }) {
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
             </div>
-            {!isPin && (
-              <DialogFooter>
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              {!isPin && (
                 <Button className="w-full gap-2" disabled={busy || !password || (mode === "import" && !phrase.trim())} onClick={mode === "create" ? doCreate : doImport}>
                   {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   {mode === "create" ? "Create & back up" : "Import wallet"}
                 </Button>
-              </DialogFooter>
-            )}
+              )}
+              <Button variant="ghost" className="w-full" onClick={onClose} disabled={busy}>
+                Cancel
+              </Button>
+            </DialogFooter>
           </>
         )}
       </DialogContent>
