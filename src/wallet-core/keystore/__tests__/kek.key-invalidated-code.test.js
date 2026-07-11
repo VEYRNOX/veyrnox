@@ -13,3 +13,9 @@ describe('KEK_ERR.KEY_PERMANENTLY_INVALIDATED', () => {
     expect(KEK_ERR.KEY_PERMANENTLY_INVALIDATED).toBe('KEK_KEY_PERMANENTLY_INVALIDATED');
   });
 });
+
+describe('KEK_ERR.USER_CANCELLED', () => {
+  it('is the stable code KEK_USER_CANCELLED', () => {
+    expect(KEK_ERR.USER_CANCELLED).toBe('KEK_USER_CANCELLED');
+  });
+});

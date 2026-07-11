@@ -107,6 +107,24 @@ describe('WalletEntry — hardware-KEK errors are exempt from the wrong-PIN wipe
     expect(ctx.panicWipe).not.toHaveBeenCalled();
   });
 
+  it('USER_CANCELLED: does NOT increment the counter, does NOT wipe, stays on the unlock screen', async () => {
+    const err = Object.assign(new Error('x'), { code: KEK_ERR.USER_CANCELLED });
+    const ctx = makeCtx({ unlock: vi.fn(async () => { throw err; }) });
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitForPinPad();
+    await enterPin();
+
+    await waitFor(() => expect(ctx.unlock).toHaveBeenCalled());
+    // Still on the unlock screen (not routed to seed recovery).
+    expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy();
+    expect(screen.queryByText(/Restore from your seed phrase/i)).toBeNull();
+    // Counter never touched → a repeated cancel cannot reach the panic wipe.
+    expect(localStorage.getItem(PIN_ATTEMPTS_KEY)).toBeNull();
+    expect(ctx.panicWipe).not.toHaveBeenCalled();
+  });
+
   it('a genuine wrong PIN STILL increments the counter (surgical exemption)', async () => {
     const ctx = makeCtx({ unlock: vi.fn(async () => { throw new Error('GCM decrypt failed'); }) });
     vi.mocked(useWallet).mockReturnValue(ctx);

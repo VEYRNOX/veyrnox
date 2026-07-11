@@ -118,6 +118,12 @@ export const KEK_ERR = Object.freeze({
   // ONLY recovery is seed restore. This is NOT a wrong PIN — callers MUST NOT count it
   // toward the wrong-PIN wipe limit, and MUST route the user to seed recovery (I4).
   KEY_PERMANENTLY_INVALIDATED: 'KEK_KEY_PERMANENTLY_INVALIDATED',
+  // The user CANCELLED the per-use biometric sheet (Android/iOS). This is user-initiated
+  // and NOT a wrong PIN — a correct-PIN user who cancels the biometric prompt N times must
+  // never march toward the panic wipe. Callers MUST treat it as a neutral "try again",
+  // not a failed unlock. Distinct stable code so it survives the bridge boundary without
+  // prose-parsing (the Kotlin plugin's "User cancelled" string is the contract input).
+  USER_CANCELLED: 'KEK_USER_CANCELLED',
 });
 
 /**

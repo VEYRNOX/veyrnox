@@ -665,6 +665,13 @@ export default function WalletEntry() {
         setError("Hardware protection is unavailable right now. Try again, or manage it in Settings.");
         return;
       }
+      // User CANCELLED the per-use biometric sheet. This is user-initiated, NOT a wrong
+      // PIN — a correct-PIN user who cancels the prompt N times must never march toward
+      // the panic wipe (data-loss bug). Do NOT increment; stay on the unlock screen (I4).
+      if (e?.code === KEK_ERR.USER_CANCELLED) {
+        setError("Unlock cancelled — try again when ready.");
+        return;
+      }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
       // decides whether this miss is the wipe trigger and what to warn.
       const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());

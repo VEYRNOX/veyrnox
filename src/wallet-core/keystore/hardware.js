@@ -224,9 +224,12 @@ export async function getHardwareFactor(opts) {
       });
     }
     if (msg === 'User cancelled') {
-      // User-initiated abort — re-throw unchanged so callers treat it as a cancel, not a
-      // failed unlock and not a wrong PIN.
-      throw err;
+      // User-initiated abort of the per-use biometric sheet. A raw re-throw carries NO
+      // .code, so WalletEntry's KEK exemptions miss it and it falls through to the
+      // wrong-PIN counter — a correct-PIN user who cancels the sheet 10 times triggers the
+      // irreversible panic wipe (data-loss bug). Classify to a STABLE code so the caller
+      // branches without prose-parsing and never counts a cancel as a wrong PIN (I4).
+      throw Object.assign(new Error(KEK_ERR.USER_CANCELLED), { code: KEK_ERR.USER_CANCELLED });
     }
     // No-enrollment, lockout, HW unavailable, unknown → generic no-hardware-factor.
     // Fail closed (I4): not a wrong PIN either.

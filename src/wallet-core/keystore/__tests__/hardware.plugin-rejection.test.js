@@ -3,7 +3,7 @@
 // Step 2 — getHardwareFactor() must classify raw Kotlin bridge rejections into STABLE
 // machine codes so upstream (WalletEntry) can branch WITHOUT parsing prose:
 //   - "KEK_KEY_PERMANENTLY_INVALIDATED: ..." → .code === KEY_PERMANENTLY_INVALIDATED
-//   - "User cancelled"                       → re-thrown unchanged (user-initiated)
+//   - "User cancelled"                       → .code === USER_CANCELLED (user-initiated)
 //   - anything else                          → .code === NO_HARDWARE_FACTOR (fail-closed)
 //
 // Root cause: line 209's `await plugin.getHardwareFactor(pluginOpts)` had NO try/catch,
@@ -41,12 +41,13 @@ describe('getHardwareFactor — bridge rejection classification (fail-closed, st
     });
   });
 
-  it('re-throws a "User cancelled" rejection unchanged (user-initiated)', async () => {
-    const cancel = new Error('User cancelled');
-    getHFFn.mockRejectedValueOnce(cancel);
-    const err = await getHardwareFactor().catch((e) => e);
-    expect(err).toBe(cancel); // same object, re-thrown unchanged
-    expect(err.code).toBeUndefined(); // NOT reclassified to a KEK code
+  it('maps a "User cancelled" rejection to the stable USER_CANCELLED code (NOT a wrong PIN)', async () => {
+    // A raw re-throw carries no .code, so WalletEntry's KEK exemptions miss it and the
+    // cancel falls through to the wrong-PIN counter → panic wipe. Classify it instead.
+    getHFFn.mockRejectedValueOnce(new Error('User cancelled'));
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.USER_CANCELLED,
+    });
   });
 
   it('maps any other bridge rejection to NO_HARDWARE_FACTOR (fail-closed)', async () => {
