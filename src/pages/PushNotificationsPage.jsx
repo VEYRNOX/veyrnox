@@ -44,10 +44,11 @@ export default function PushNotificationsPage() {
 
   const sendTestNotification = () => {
     if (permission !== "granted") { toast.error("Enable notifications first"); return; }
-    new Notification("VEYRNOX Test", {
-      body: "Push notifications are working correctly! 🎉",
+    const n = new Notification("VEYRNOX Test", {
+      body: "Push notifications are working correctly! 🎉 Tap to open your dashboard.",
       icon: "/favicon.ico",
     });
+    n.onclick = (e) => { e.preventDefault(); window.focus(); window.location.href = "/"; };
     toast.success("Test notification sent");
   };
 

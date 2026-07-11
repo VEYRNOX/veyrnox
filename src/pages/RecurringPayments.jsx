@@ -84,11 +84,12 @@ export default function RecurringPayments() {
     if (notifPerm !== "granted" || payments.length === 0) return;
     const due = payments.filter(p => p.status === "active" && p.next_run_at && isBefore(new Date(p.next_run_at), new Date()));
     for (const p of due) {
-      new Notification(`Recurring payment due: ${p.label}`, {
-        body: `${p.amount} ${p.currency} to ${p.to_address.slice(0, 10)}… — open VEYRNOX to sign`,
+      const rn = new Notification(`Recurring payment due: ${p.label}`, {
+        body: `${p.amount} ${p.currency} to ${p.to_address.slice(0, 10)}… — tap to open VEYRNOX`,
         tag: `recurring-${p.id}`, // deduplicate per payment
         icon: "/icon-192.png",
       });
+      rn.onclick = (e) => { e.preventDefault(); window.focus(); window.location.href = "/"; };
     }
   // Only re-fire when the payments list or permission changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
