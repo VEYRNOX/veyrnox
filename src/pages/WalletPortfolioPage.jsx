@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
+import { resolveAssetRow, PARTIAL_TOTAL_NOTE } from "@/lib/balanceDisplay";
 import { ASSETS, getAsset } from "@/wallet-core/assets.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
@@ -543,7 +544,10 @@ export default function WalletPortfolioPage() {
             <p className="px-4 py-4 text-xs text-muted-foreground text-center">No assets shown. Use “Manage assets”.</p>
           ) : (w.enabledAssets || []).map((symbol) => {
             const a = getAsset(symbol);
-            const row = data.assets.find((x) => x.symbol === symbol) || { amount: 0, usd: 0 };
+            // A genuinely MISSING row (not yet computed / race) is INDETERMINATE,
+            // not a confident "0" — resolveAssetRow fails closed to amount:null so
+            // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
+            const row = resolveAssetRow(data.assets, symbol);
             return (
               <div key={symbol} className="flex items-center gap-3 px-4 py-2.5">
                 <CoinLogo symbol={symbol} size={36} />
@@ -605,9 +609,7 @@ export default function WalletPortfolioPage() {
             say so rather than presenting a silently-understated figure as fact.
             Same copy in decoy and real sessions (no isDecoy branch). */}
         {pfIncomplete && (
-          <p className="text-xs text-caution mt-1">
-            Some balances couldn’t be loaded — this total may be incomplete.
-          </p>
+          <p className="text-xs text-caution mt-1">{PARTIAL_TOTAL_NOTE}</p>
         )}
         <div className="mt-1 flex justify-center">
           {priceBasis === "live" ? (

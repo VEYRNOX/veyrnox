@@ -393,7 +393,14 @@ export default function SendCrypto() {
   // `null` for an asset we have no reference price for (e.g. MATIC/AVAX) so we render
   // the crypto amount alone rather than a misleading ≈$0.
   const sendUsdRate = selectedWallet?.currency ? (USD_RATES[selectedWallet.currency] ?? null) : null;
-  const balanceUsd = sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
+  // A live-read asset whose on-chain balance we could NOT read yet is
+  // INDETERMINATE (react-query keeps `data` undefined while the read is pending
+  // OR after it throws) — the amount line already shows "reading from network…"
+  // for it. Suppress the "≈ $X" companion so a failed/pending read is never
+  // asserted as "· $0.00" (which the effectiveBalance→0 fallback would produce).
+  // I4 fail-closed: never show a $ value we didn't confirm.
+  const balanceIndeterminate = !demoActive && flowSendEnabled && liveBalance == null;
+  const balanceUsd = !balanceIndeterminate && sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
   const amountNum = parseFloat(amount);
   const amountUsd = sendUsdRate != null && Number.isFinite(amountNum) && amountNum > 0 ? amountNum * sendUsdRate : null;
 
