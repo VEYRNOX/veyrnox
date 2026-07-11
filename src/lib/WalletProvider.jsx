@@ -198,13 +198,17 @@ async function isVaultKekEnrolledSafe() {
 // INVARIANT (two-sided): must be >= the wall-clock cost of ONE Argon2id KDF at
 // the CURRENT KDF_PARAMS, but also NOT much larger than the worst-case path
 // (<= 4 KDFs) — over-padding turns the fast path into a SLOWER-than-miss oracle.
-// At the current 64 MiB / t=3 params one KDF is ~500 ms (commit 1226085e lowered
-// memory 192 → 64 MiB). The legacy 2500 ms was calibrated for the old ~1.7 s
-// 192 MiB KDF and now over-pads (success ≈ 1 KDF + 2500 ms vs miss ≈ 4 × 500 ms
-// = 2 s → success ~1 s SLOWER). 1500 ms (≈ 3 × one 64 MiB KDF) keeps the padded
-// success path level with the 4-KDF worst case. See primaryUnlockEqualizer.test.js
-// for the two-sided bound derived from KDF_PARAMS.memorySize.
-export const PRIMARY_UNLOCK_EQUALIZER_MS = 1500;
+// At the current 192 MiB / t=3 params one KDF is ~1440 ms on mobile WebView
+// (400 MB/s throughput, 192 MiB × 3 iterations = 576 MiB processed). The miss
+// path runs 3 KDFs via resolveDeniabilityUnlock. 2000 ms (slightly above one
+// measured KDF in the Node.js/WASM test env at ~1720 ms) keeps the padded
+// success path within the 4-KDF worst-case window. History: 1500 ms was
+// calibrated for the short-lived 64 MiB params (commit 1226085e); when KDF
+// params were reverted to 192 MiB (SAST M3) this constant was not updated,
+// causing deniability-timing.test.js to fail (VU-06). See
+// primaryUnlockEqualizer.test.js for the two-sided bound derived from
+// KDF_PARAMS.memorySize.
+export const PRIMARY_UNLOCK_EQUALIZER_MS = 2000;
 
 // M6: re-export so callers/tests pin the reveal window against the same constant.
 export { REAUTH_WINDOW_MS };
