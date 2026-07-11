@@ -16,7 +16,7 @@ identity; the app never holds keys server-side.
   is never to be presented as "independent" (I4 honesty).
   A 2026-06-28 internal static-analysis pass (0C/4H/11M/8L) fixed 10 of 11 actionable
   findings (PRs #433, #440–#443); H-NEW-D (iOS SE) + F-01/F-02 (biometric OS-ACL) +
-  F-09 (RASP device) + M-K (passkey counter) remain open, all native/device-gated.
+  ~~F-09 (RASP device)~~ device-verified (PARTIAL) 2026-07-11 — Samsung Galaxy Note 20 5G (SM-N981B), Magisk v30.7, `RaspIntegrityPlugin` registered + StrongBox KEK + biometric unlock confirmed; `checkIntegrity()` rooted-signal not captured on Send screen (PARTIAL). M-K (passkey counter) remains open, native/device-gated.
   INTERNAL pass — not independent. (See `docs/Audit.scope.md`.)
   A 2026-07-01 internal static-analysis audit (Hardware KEK — WebAuthn PRF, iOS SE,
   Android StrongBox) found 1C/9H/12M/6L; 10 remediable findings fixed (PRs #520–#522).
@@ -378,7 +378,7 @@ After PR #651 unified web onto the 8-digit PIN cohort, `HardwareKekSettings.jsx`
 - **iOS-F5** (`NSMutableData` zeroing): `HardwareKekPlugin.o` built clean — compile-verified.
 Both were code-complete since PR #526 but had never been compiled on a Mac. CI now runs on every push to `ios/**`. Runtime device checks (biometric prompt rendering, heap dump) remain device-gated per `docs/runbook-ios-kek-session.md` P2/P3.
 
-**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. RASP F-09 (real rooted device), independent security audit.
+**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. ~~RASP F-09~~ device-verified (PARTIAL) 2026-07-11 — Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7, plugin registered + StrongBox KEK + biometric unlock on rooted device; `checkIntegrity()` rooted-signal/Send-WARN not captured (PARTIAL, see Feature-Status.md F-09 row). Independent security audit.
 
 ## 2026-07-07/08 INTERNAL KEK stack audit — PRs #723, #735, #743
 
