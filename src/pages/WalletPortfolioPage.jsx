@@ -416,7 +416,8 @@ function ActivityTabContent({ wallet }) {
   if (isLoading) {
     return <p className="text-sm text-center text-muted-foreground py-10">Loading...</p>;
   }
-  if (isError || !txs?.length) {
+  const txList = txs?.transactions ?? [];
+  if (isError || !txList.length) {
     return (
       <div className="text-center py-10 space-y-3">
         <p className="text-sm text-muted-foreground">{isError ? "Could not load activity." : "No transactions yet."}</p>
@@ -425,7 +426,7 @@ function ActivityTabContent({ wallet }) {
     );
   }
 
-  const recent = txs.slice(0, 5);
+  const recent = txList.slice(0, 5);
   return (
     <div className="space-y-0.5">
       {recent.map((tx) => {
