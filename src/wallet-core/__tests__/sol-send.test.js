@@ -117,4 +117,38 @@ describe('planSolTransfer — rent + fee safety', () => {
       destBalanceLamports: RENT_MIN,
     })).toThrow(/positive/i);
   });
+
+  // TYPE GUARD (issue #754): a float or string amount must be REJECTED, never
+  // silently coerced via BigInt(...). A non-bigint amount bypasses the caller's
+  // decimal-amount validation, so the planner fails closed on it (I4).
+  it('rejects a FLOAT amount (silent-coercion guard)', () => {
+    expect(() => planSolTransfer({
+      balanceLamports: 1_000_000_000n,
+      amountLamports: 1.5,                     // float — must not be coerced
+      feeLamports: FEE,
+      rentExemptMinLamports: RENT_MIN,
+      destBalanceLamports: RENT_MIN,
+    })).toThrow(/must be a bigint/i);
+  });
+
+  it('rejects a STRING amount (silent-coercion guard)', () => {
+    expect(() => planSolTransfer({
+      balanceLamports: 1_000_000_000n,
+      amountLamports: '1000',                  // string — must not be coerced
+      feeLamports: FEE,
+      rentExemptMinLamports: RENT_MIN,
+      destBalanceLamports: RENT_MIN,
+    })).toThrow(/must be a bigint/i);
+  });
+
+  it('ACCEPTS a bigint amount (happy path unchanged)', () => {
+    const plan = planSolTransfer({
+      balanceLamports: 1_000_000_000n,
+      amountLamports: 100_000_000n,
+      feeLamports: FEE,
+      rentExemptMinLamports: RENT_MIN,
+      destBalanceLamports: RENT_MIN,
+    });
+    expect(plan.amountLamports).toBe(100_000_000n);
+  });
 });

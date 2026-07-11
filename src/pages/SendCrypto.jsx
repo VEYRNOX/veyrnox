@@ -44,7 +44,7 @@ import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { isSelfSend } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
-import { evaluateSendGate } from "@/lib/sendGate";
+import { evaluateSendGate, SEND_GATE } from "@/lib/sendGate";
 import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
@@ -746,7 +746,11 @@ export default function SendCrypto() {
         btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
         blockedByApproval,
       });
-      if (!gate.allowed) throw new Error(gate.message);
+      if (!gate.allowed) {
+        const err = new Error(gate.message);
+        err.code = gate.code;
+        throw err;
+      }
 
       // CODE-LEVEL SEND GUARD (Task 7 — audit remediation). Defense-in-depth:
       // even if the gate above was somehow bypassed or a stale UI state persisted,
@@ -961,6 +965,17 @@ export default function SendCrypto() {
       recordAudit("send_completed"); // opt-in audit log; no-op unless enabled + primary session
     },
     onError: (err) => {
+      // When the network send fails AFTER 2FA was consumed, the gate throws
+      // TWO_FACTOR (twoFactorVerifiedRef was already cleared — one-shot, secure).
+      // Instead of a dead-end toast, re-show the TwoFactorGate so the user can
+      // re-authorise without having to tap Back → Continue manually.
+      // Security: twoFactorVerifiedRef.current is already false at this point
+      // (cleared at line 724 before the gate ran); we are only changing which
+      // UI step is rendered, not relaxing any security check.
+      if (err?.code === SEND_GATE.TWO_FACTOR) {
+        setStep("verify");
+        return;
+      }
       toast.error(err?.message || "Send failed");
     },
   });

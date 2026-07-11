@@ -35,9 +35,11 @@ vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
 vi.mock('@/wallet-core/duress', () => ({ hasDuressVault: vi.fn(async () => false) }));
 // NATIVE platform — the desync guard only applies where the Keychain outlives the app.
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true } }));
-// The keystore under the destructive call. clearVault is the spy the contract rides on.
+// The destructive call now rides the WalletProvider R2 facade (context clearVault),
+// not a direct wallet-core keystore import — WalletEntry no longer reaches into
+// @/wallet-core/keystore (ring-import burndown, issue #627). The spy is injected
+// through the mocked useWallet context in makeCtx below.
 const clearVault = vi.fn(async () => {});
-vi.mock('@/wallet-core/keystore', () => ({ getKeyStore: () => ({ clearVault }) }));
 
 import { useWallet } from '@/lib/WalletProvider';
 import WalletEntry from '@/components/WalletEntry';
@@ -55,6 +57,7 @@ function makeCtx(overrides = {}) {
     createWalletFromPendingPin: vi.fn(), importWalletForPendingPin: vi.fn(),
     clearPendingPin: vi.fn(), hasPendingPin: false,
     wasWiped: false, acknowledgeWipe: vi.fn(),
+    clearVault, validateMnemonic: vi.fn(() => true),
     ...overrides,
   };
 }

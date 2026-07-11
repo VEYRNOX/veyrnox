@@ -43,7 +43,7 @@ import { base44 } from "@/api/base44Client";
 import {
   HIDDEN_CHAINS, resolveHiddenBalance, seedDemoHiddenBalance,
 } from "@/lib/hiddenBalance";
-import { deriveEvmAccount } from "@/wallet-core/derivation";
+import { deriveAddressFromMnemonic } from "@/hooks/useDeriveAddress";
 import {
   EyeOff, Eye, Shield, CheckCircle2, AlertTriangle, Lock, Unlock, FlaskConical,
   Copy, Check, Coins, ExternalLink, Ghost, Globe, Wifi,
@@ -213,7 +213,7 @@ function MoveExistingWallet() {
     // Address-match: you can only hide a wallet you actually hold the keys to (and
     // you're hiding the one you selected, not a different wallet).
     let derived;
-    try { derived = deriveEvmAccount(m, 0).address; }
+    try { derived = deriveAddressFromMnemonic(m, 0).address; }
     catch { setError("Enter the valid recovery phrase for this wallet."); return; }
     if (derived.toLowerCase() !== (selected.address || "").toLowerCase()) {
       setError("That recovery phrase does not derive this wallet's address. You can only hide a wallet you control.");
@@ -253,7 +253,7 @@ function MoveExistingWallet() {
   const demoSetup = async () => {
     setBusy(true); setError(""); setDone(null); setPeek(null);
     try {
-      const address = deriveEvmAccount(DEMO_MOVE_MNEMONIC, 0).address;
+      const address = deriveAddressFromMnemonic(DEMO_MOVE_MNEMONIC, 0).address;
       const list = await base44.entities.Wallet.list();
       let w = list.find((x) => (x.address || "").toLowerCase() === address.toLowerCase());
       if (!w) {
