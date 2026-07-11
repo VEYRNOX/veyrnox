@@ -266,12 +266,17 @@ export default function SendCrypto() {
 
   // Default/clamp the asset to one this wallet actually shows (prefer ETH, the one
   // sendable asset). Re-runs when the wallet (and thus its asset list) changes.
-  // When arriving from a detail page (?asset=BNB), honour the URL param and do not
-  // override it — the user explicitly chose that asset.
+  // When arriving from a detail page (?asset=BNB), honour the URL param — even if
+  // the Send page was previously open showing a different asset (e.g. ETH), we must
+  // overwrite state with the param symbol on every navigation that carries one.
   useEffect(() => {
-    if (fromDetail) return;
+    if (fromDetail) {
+      const paramSymbol = searchParams.get("asset");
+      if (paramSymbol) setAssetSymbol(paramSymbol);
+      return;
+    }
     setAssetSymbol((cur) => defaultAssetSymbol(enabledAssets, cur));
-  }, [walletId, enabledAssets.join(","), fromDetail]);
+  }, [walletId, enabledAssets.join(","), fromDetail, searchParams]);
 
   const { data: whitelist = [] } = useQuery({
     queryKey: ["whitelisted-addresses"],
@@ -1025,11 +1030,30 @@ export default function SendCrypto() {
 
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
         {fromDetail ? (
-          <div className="flex items-center gap-3 pb-1 border-b border-border">
-            <CoinLogo symbol={assetSymbol} size={28} />
-            <div>
+          <div className="flex items-center gap-3 pb-3 border-b border-border">
+            <CoinLogo symbol={assetSymbol} size={36} />
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">{getAsset(assetSymbol)?.name || assetSymbol}</p>
               <p className="text-xs text-muted-foreground">{selectedWalletName || "Wallet"}</p>
+            </div>
+            <div className="text-right shrink-0">
+              {demoActive ? (
+                <>
+                  <p className="text-sm font-semibold mono-value">{demoBalance ?? "—"} {assetSymbol}</p>
+                  {sendUsdRate && demoBalance != null && (
+                    <p className="text-xs text-muted-foreground">${(demoBalance * sendUsdRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  )}
+                </>
+              ) : liveBalance != null ? (
+                <>
+                  <p className="text-sm font-semibold mono-value">{liveBalance} {assetSymbol}</p>
+                  {sendUsdRate && (
+                    <p className="text-xs text-muted-foreground">${(parseFloat(liveBalance) * sendUsdRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">reading…</p>
+              )}
             </div>
           </div>
         ) : (
