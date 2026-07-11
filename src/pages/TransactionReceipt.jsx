@@ -97,7 +97,7 @@ export default function TransactionReceipt() {
 
       <div className="grid md:grid-cols-2 gap-3">
         {/* TX List */}
-        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1" tabIndex={0}>
           {isLoading ? <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div> : isError ? (
             <div className="text-center py-8 text-destructive text-sm">Couldn't load transactions. Please try again.</div>
           ) : filtered.length === 0 ? (

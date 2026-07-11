@@ -154,6 +154,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@capacitor/cli": "^8.4.1",
     "@eslint/js": "^9.19.0",
     "@playwright/test": "^1.61.1",
@@ -173,6 +174,7 @@
     "autoprefixer": "^10.5.2",
     "baseline-browser-mapping": "^2.10.42",
     "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^7.1.1",
