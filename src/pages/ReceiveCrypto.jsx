@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
@@ -26,8 +26,17 @@ import { toast } from "sonner";
 export default function ReceiveCrypto() {
   const { isUnlocked, accounts, btcAccount, solAccount } = useWallet();
   const [searchParams] = useSearchParams();
-  const [symbol, setSymbol] = useState(searchParams.get("asset") ?? "ETH");
+  const urlAsset = searchParams.get("asset") ?? "ETH";
+  const [symbol, setSymbol] = useState(urlAsset);
   const [copied, setCopied] = useState(false);
+
+  // Re-sync with URL when the user navigates here with a different ?asset= param.
+  // useState only reads its initializer once at mount, so without this effect a
+  // navigation from /asset/BTC → /receive?asset=BTC would still show ETH.
+  useEffect(() => {
+    setSymbol(urlAsset);
+    setCopied(false);
+  }, [urlAsset]);
 
   // DEMO address source. A backend-less walkthrough has no unlocked vault, so the
   // derived accounts are empty and EVERY asset would render the locked "unlock to
