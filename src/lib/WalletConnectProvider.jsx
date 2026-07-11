@@ -85,6 +85,24 @@ export function resolveMaxFeePerGas(rawMaxFee, networkKey) {
   return requested > cap ? cap : requested;
 }
 
+// L-2 — clamp the dApp-supplied maxPriorityFeePerGas so it can never exceed the
+// already-capped maxFeePerGas. Under EIP-1559 a priority fee greater than the max
+// fee is an invalid transaction; a dApp could also use an uncapped priority fee to
+// pin an implausibly large tip. Given the raw dApp value and the resolved (capped)
+// max fee, return min(parsed, resolvedMaxFee). Fail closed (I4): an absent, negative
+// or unparseable value becomes 0n (the EIP-1559 default), never larger than the cap.
+// Pure; exported for unit tests.
+export function resolveMaxPriorityFeePerGas(rawPriorityFee, resolvedMaxFee) {
+  let parsed;
+  try {
+    parsed = BigInt(rawPriorityFee ?? 0);
+  } catch {
+    parsed = 0n;
+  }
+  if (parsed < 0n) parsed = 0n;
+  return parsed > resolvedMaxFee ? resolvedMaxFee : parsed;
+}
+
 // H8 — resolve which personal_sign param is the message and bind the address
 // param to the wallet's own EVM address. EIP-1474 specifies [message, address]
 // but MetaMask-legacy dApps send [address, message] (reversed). If we blindly
@@ -332,7 +350,12 @@ export async function _handleSendTransaction({ withPrivateKey }, topic, id, para
       const cappedMaxFee = resolveMaxFeePerGas(txParams.maxFeePerGas, net.key);
       if (cappedMaxFee != null) {
         tx.maxFeePerGas = cappedMaxFee;
-        tx.maxPriorityFeePerGas = BigInt(txParams.maxPriorityFeePerGas ?? 0);
+        // L-2 — clamp the priority fee to the capped max fee so it can never
+        // exceed it (an invalid EIP-1559 tx / uncapped tip otherwise).
+        tx.maxPriorityFeePerGas = resolveMaxPriorityFeePerGas(
+          txParams.maxPriorityFeePerGas,
+          cappedMaxFee,
+        );
         tx.type = 2;
       }
     } else if (txParams.gasPrice) {
@@ -532,7 +555,22 @@ export function WalletConnectProvider({ children }) {
       await rejectRequest(topic, id, 'STEP_UP_REQUIRED').catch(() => {});
       throw new Error('Signing rejected [STEP_UP_REQUIRED]: re-authentication required before signing.');
     }
-    await _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId);
+    // L-1 + F-07-WC — the requested chain MUST be one this session actually
+    // approved. Resolve it EXCLUSIVELY from the live session store (never a
+    // caller-supplied prop), mirroring the typed-data path. A chain the session
+    // did not approve yields null → reject with SESSION_CHAINID_INVALID before
+    // the key is touched (fail closed, I4) — an unbound chain must not broadcast.
+    const session = getActiveSessions().find((s) => s.topic === topic);
+    const boundCaip2 = resolveSessionCaip2(session, caip2ChainId);
+    if (boundCaip2 == null) {
+      await rejectRequest(topic, id, 'SESSION_CHAINID_INVALID').catch(() => {});
+      throw new Error(
+        `Rejected transaction [SESSION_CHAINID_INVALID]: this connection did not ` +
+        `approve the requested chain (${caip2ChainId ?? '(none)'}). ` +
+        `Veyrnox will not broadcast a transaction on an unapproved chain.`,
+      );
+    }
+    await _handleSendTransaction({ withPrivateKey }, topic, id, params, boundCaip2);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
   }, [withPrivateKey, assertSessionLive, isSendReauthRequired]);
 

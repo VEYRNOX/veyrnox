@@ -26,6 +26,7 @@
 
 import { getBtcNetwork, getBtcNetworkInfo } from './networks.js';
 import { assertSafeRpcUrl } from '../netUrl.js';
+import { isDeniabilitySessionActive } from '../deniabilitySession.js';
 
 const _overrides = {}; // networkKey -> esploraUrl
 
@@ -55,6 +56,11 @@ async function getJson(url) {
  * @returns {Promise<Array<{ txid:string, vout:number, value:bigint, confirmed:boolean }>>}
  */
 export async function getUtxos(networkKey, address) {
+  // I3: a live Esplora indexer read (UTXO set). It must never run inside a
+  // deniability (decoy/hidden) session — fail closed on the exported function
+  // itself so a future caller can't leak egress. estimateBtcSend/getBalanceSats
+  // both route through here, so this one guard closes the BTC read surface.
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   const raw = await getJson(`${baseUrl(networkKey)}/address/${address}/utxo`);
   if (!Array.isArray(raw)) throw new Error('Indexer returned a non-array UTXO set');
   return raw.map(u => ({

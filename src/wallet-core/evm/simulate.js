@@ -34,6 +34,7 @@
 
 import { formatEther, isAddress } from 'ethers';
 import { getProvider } from './provider.js';
+import { isDeniabilitySessionActive } from '../deniabilitySession.js';
 import { describeErc20Call } from './calldata.js';
 import { TOKENS } from './tokens.js';
 import { screenRecipient, isLocallyFlagged } from './poison.js';
@@ -308,6 +309,10 @@ export async function simulateEvmTransaction({
   priorSends = [],
   knownCounterparties = [],
 }) {
+  // I3: this issues live read-only RPC calls (eth_estimateGas / eth_call etc). It
+  // must never run inside a deniability (decoy/hidden) session — fail closed on the
+  // exported function itself so a future caller can't leak egress.
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   if (!isAddress(to)) throw new Error('Invalid recipient/target address');
   const provider = getProvider(networkKey); // existing RPC; throws if mainnet gated
   const queries = []; // record the read-only methods we used (for the UI disclosure)
