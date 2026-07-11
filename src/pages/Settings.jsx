@@ -20,6 +20,7 @@ import HardwareKekSettings from "../components/security/HardwareKekSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 import { probeRuntimeServices, loadAuditSnapshot } from '@/lib/appHealth';
+import { isDeniabilitySessionActive } from '@/lib/deniabilitySession';
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -28,6 +29,7 @@ export default function Settings() {
   const isSafetyPlus = currentTier === "safety_plus";
   const [issueCount, setIssueCount] = useState(0);
   useEffect(() => {
+    if (isDeniabilitySessionActive()) return;
     Promise.allSettled([probeRuntimeServices(), loadAuditSnapshot()]).then(([svcResult, auditResult]) => {
       let count = 0;
       if (svcResult.status === 'fulfilled') {

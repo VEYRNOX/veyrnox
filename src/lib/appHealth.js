@@ -62,7 +62,7 @@ function probeRasp() {
     const artifact = degrade(detect(resolveProbeSource(null, browserProbeSource)));
     const tier = artifact?.tier ?? 'BLOCK';
     const status = tier === 'ALLOW' ? 'ok' : tier === 'WARN' ? 'degraded' : 'unreachable';
-    return { name: 'RASP', status };
+    return { name: 'RASP (browser)', status };
   } catch {
     return { name: 'RASP', status: 'unreachable' };
   }
@@ -72,7 +72,7 @@ export async function probeRuntimeServices() {
   const results = await Promise.allSettled([probeRpc(), probePriceFeed(), probeRevenueCat(), Promise.resolve(probeRasp())]);
   return results.map((r, i) => {
     if (r.status === 'fulfilled') return r.value;
-    const names = ['RPC endpoint', 'Price feed', 'RevenueCat', 'RASP'];
+    const names = ['RPC endpoint', 'Price feed', 'RevenueCat', 'RASP (browser)'];
     return { name: names[i], status: 'unreachable' };
   });
 }
@@ -87,12 +87,13 @@ export async function loadAuditSnapshot() {
     const high = vuln.high ?? 0;
     const moderate = vuln.moderate ?? 0;
     const low = vuln.low ?? 0;
-    const total = critical + high + moderate + low;
+    const info = vuln.info ?? 0;
+    const total = critical + high + moderate + low + info;
     const findings = Object.entries(data?.vulnerabilities ?? {}).map(([name, v]) => ({
       name,
       severity: v.severity ?? 'unknown',
     }));
-    return { total, critical, high, moderate, low, findings };
+    return { total, critical, high, moderate, low, info, findings };
   } catch {
     return { unavailable: true };
   }

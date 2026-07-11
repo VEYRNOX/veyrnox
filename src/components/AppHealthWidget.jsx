@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { probeRuntimeServices, loadAuditSnapshot, readDeviceCapabilities } from '@/lib/appHealth';
+import { isDeniabilitySessionActive } from '@/lib/deniabilitySession';
 
 const STATUS_COLOR = {
   ok: 'text-success',
@@ -49,6 +50,7 @@ export default function AppHealthWidget() {
   const caps = readDeviceCapabilities();
 
   useEffect(() => {
+    if (isDeniabilitySessionActive()) return;
     Promise.allSettled([
       probeRuntimeServices().then(setServices),
       loadAuditSnapshot().then(setAudit),
