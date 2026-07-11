@@ -537,9 +537,9 @@ export default function WalletAccessReset() {
         </>
         )}
         {vaultExists && (
-          <p className=”text-[11px] text-muted-foreground flex items-start gap-1.5”>
-            <Info className=”h-3.5 w-3.5 mt-0.5 shrink-0” />
-            A wallet already exists here. Recovering will <b>overwrite</b> it. If you remember your password, use “Change vault password” instead.
+          <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            A wallet already exists here. Recovering will <b>overwrite</b> it. If you remember your password, use "Change vault password" instead.
           </p>
         )}
       </div>
@@ -550,7 +550,7 @@ export default function WalletAccessReset() {
           <ShieldOff className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold">What VEYRNOX cannot do</p>
         </div>
-        <ul className=”text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5”>
+        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
           <li>No password reset — we never see it.</li>
           <li>No email/SMS recovery link. We have nothing on our servers to recover.</li>
           <li>No key escrow. Support cannot restore access.</li>
