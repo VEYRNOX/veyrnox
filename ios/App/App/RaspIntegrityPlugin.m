@@ -20,6 +20,10 @@
 #import <dlfcn.h>
 #import <sys/stat.h>
 #import <unistd.h>
+// mach-o/dyld.h declares _dyld_image_count/_dyld_get_image_name (dyld image
+// scan for Frida/Substrate libraries). Missing until #826 put this file in the
+// build target — first real compile surfaced the implicit declarations.
+#import <mach-o/dyld.h>
 
 // CFNetwork for port probe
 #import <CFNetwork/CFNetwork.h>
