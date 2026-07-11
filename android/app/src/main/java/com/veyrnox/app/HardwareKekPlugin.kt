@@ -336,7 +336,12 @@ class HardwareKekPlugin : Plugin() {
                     val ks2 = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
                     if (ks2.containsAlias(KEY_ALIAS)) ks2.deleteEntry(KEY_ALIAS)
                 } catch (ignored: Exception) { /* best-effort cleanup */ }
-                return call.reject("Hardware key invalidated — re-enrollment required")
+                // STABLE machine-code prefix (contract with hardware.js getHardwareFactor's
+                // catch): the JS layer matches on "KEK_KEY_PERMANENTLY_INVALIDATED" and maps
+                // it to KEK_ERR.KEY_PERMANENTLY_INVALIDATED, which WalletEntry exempts from
+                // the wrong-PIN wipe counter and routes to seed recovery. Never a bare prose
+                // string — that fell through to the counter → irreversible wipe (data loss).
+                return call.reject("KEK_KEY_PERMANENTLY_INVALIDATED: Hardware key invalidated — biometric enrollment changed")
             }
 
             val cryptoObject = BiometricPrompt.CryptoObject(mac)
@@ -364,7 +369,10 @@ class HardwareKekPlugin : Plugin() {
                         errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
                         call.reject("User cancelled")
                     } else {
-                        call.reject(errString.toString())
+                        // Prefixed so the JS layer classifies it (non-permanent hardware
+                        // error → KEK_ERR.NO_HARDWARE_FACTOR, also exempt from the wrong-PIN
+                        // counter). Never a bare prose string.
+                        call.reject("KEK_BIOMETRIC_ERROR:${errorCode}: ${errString}")
                     }
                 }
 

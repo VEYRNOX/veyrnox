@@ -407,6 +407,22 @@ const TX_STATUS = {
   failed:    { Icon: XCircle,       cls: "text-destructive" },
 };
 
+// Analytics tab crashed with "ReferenceError: txList is not defined" (PR #809):
+// the JSX at the analytics TabsContent referenced txList, which only exists inside
+// ActivityTabContent's scope. Fetch here with the SAME queryKey as ActivityTabContent
+// so react-query shares the cache — no duplicate network call.
+function AnalyticsChartContent({ wallet, currentBalance }) {
+  const address = wallet?.accounts?.[0]?.address || null;
+  const { data: txs } = useQuery({
+    queryKey: ["history", "ETH", address],
+    queryFn: () => fetchAssetHistory({ asset: ETH_ASSET, address, demo: DEMO }),
+    enabled: !!address,
+    staleTime: 60_000,
+  });
+  const txList = txs?.transactions ?? [];
+  return <PortfolioChart transactions={txList} currentBalance={currentBalance} />;
+}
+
 function ActivityTabContent({ wallet }) {
   const address = wallet?.accounts?.[0]?.address || null;
   const { data: txs, isLoading, isError } = useQuery({
@@ -834,7 +850,7 @@ export default function WalletPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-3 space-y-6">
-          <PortfolioChart transactions={txList} currentBalance={pfTotal} />
+          <AnalyticsChartContent wallet={activeWallet} currentBalance={pfTotal} />
           <AssetDistributionChart wallets={pfWallets} />
         </TabsContent>
       </Tabs>

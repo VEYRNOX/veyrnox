@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { probeRuntimeServices, loadAuditSnapshot, readDeviceCapabilities } from '@/lib/appHealth';
-import { isDeniabilitySessionActive } from '@/lib/deniabilitySession';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession';
 
 const STATUS_COLOR = {
   ok: 'text-success',

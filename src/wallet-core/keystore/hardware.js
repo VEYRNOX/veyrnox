@@ -206,7 +206,35 @@ export async function getHardwareFactor(opts) {
   // reverting to the fixed v1 salt (the binding becomes inert). Encode to base64 here;
   // the native plugin base64-decodes it back to the MAC input.
   const pluginOpts = opts && opts.kekSalt ? { kekSalt: uint8ArrayToB64(opts.kekSalt) } : undefined;
-  const { h } = await plugin.getHardwareFactor(pluginOpts);
+  // Classify raw Kotlin bridge rejections into STABLE codes so upstream branches without
+  // parsing prose (I4). The wrong-PIN counter in WalletEntry MUST NOT count a hardware
+  // invalidation or a transient hardware-unavailable as a wrong PIN — that path leads to
+  // an irreversible panic wipe (data-loss bug). The message-prefix strings are the
+  // contract shared with HardwareKekPlugin.kt (see call.reject sites there).
+  let bridgeResult;
+  try {
+    bridgeResult = await plugin.getHardwareFactor(pluginOpts);
+  } catch (err) {
+    const msg = String((err && err.message) ?? err ?? '');
+    if (msg.startsWith('KEK_KEY_PERMANENTLY_INVALIDATED')) {
+      // OS permanently killed the key (biometric enrollment changed / screen lock removed).
+      // Only recovery is seed restore — NEVER a wrong-PIN increment.
+      throw Object.assign(new Error(KEK_ERR.KEY_PERMANENTLY_INVALIDATED), {
+        code: KEK_ERR.KEY_PERMANENTLY_INVALIDATED,
+      });
+    }
+    if (msg === 'User cancelled') {
+      // User-initiated abort — re-throw unchanged so callers treat it as a cancel, not a
+      // failed unlock and not a wrong PIN.
+      throw err;
+    }
+    // No-enrollment, lockout, HW unavailable, unknown → generic no-hardware-factor.
+    // Fail closed (I4): not a wrong PIN either.
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), {
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  }
+  const { h } = bridgeResult;
   // I/O-boundary validation (fail-closed, I4): the plugin output is UNTRUSTED at the
   // JS bridge. Validate BEFORE decoding — a missing/non-string h must throw the stable
   // KEK_ERR.NO_HARDWARE_FACTOR, never reach atob() (raw InvalidCharacterError/TypeError)

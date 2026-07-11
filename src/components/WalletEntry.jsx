@@ -81,6 +81,7 @@ import { Label } from "@/components/ui/label";
 import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
+import { KEK_ERR } from "@/wallet-core/keystore/kek.js";
 import {
   isBiometricGateError,
   isBiometricUnlockEnabled,
@@ -643,6 +644,27 @@ export default function WalletEntry() {
       // Panic-PIN path: provider fired panicWipe() and threw a distinguishable sentinel.
       // Show WipedNotice immediately — no "Incorrect PIN" error message.
       if (e?.isPanicWipe) { setLocalWiped(true); setVaultExists(false); return; }
+      // Hardware KEK permanently invalidated (Android: fingerprints changed / screen lock
+      // removed → KeyPermanentlyInvalidatedException). This is NOT a wrong PIN — counting
+      // it toward the wipe destroys funds after 10 retries (the data-loss bug). The ONLY
+      // recovery is seed restore, so surface the path automatically (I4). Do NOT increment.
+      if (e?.code === KEK_ERR.KEY_PERMANENTLY_INVALIDATED) {
+        setError(
+          'Your fingerprints changed — hardware protection was invalidated. ' +
+          'Restore your wallet from your seed phrase to regain access.'
+        );
+        setPinStep('seed');
+        setView('pin-recover');
+        return;
+      }
+      // Hardware factor transiently/structurally unavailable (no enrollment, lockout, HW
+      // missing). Also NOT a wrong PIN — do NOT increment the wipe counter. Keep the user
+      // on the unlock screen: the hardware may be transiently unavailable and they can
+      // retry or go to Settings.
+      if (e?.code === KEK_ERR.NO_HARDWARE_FACTOR) {
+        setError("Hardware protection is unavailable right now. Try again, or manage it in Settings.");
+        return;
+      }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
       // decides whether this miss is the wipe trigger and what to warn.
       const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
