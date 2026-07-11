@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: vi.fn(() => false) } }));
 vi.mock('@/rasp', () => ({
@@ -37,6 +37,25 @@ describe('probeRuntimeServices', () => {
     results.forEach(r => {
       expect(['ok', 'degraded', 'unreachable']).toContain(r.status);
     });
+  });
+});
+
+describe('probeRevenueCat timeout → unreachable', () => {
+  afterEach(() => { vi.useRealTimers(); vi.resetModules(); });
+
+  it('returns unreachable when RevenueCat getCustomerInfo never resolves (timeout path)', async () => {
+    vi.useFakeTimers();
+    // Mock @revenuecat/purchases-capacitor so getCustomerInfo hangs forever
+    vi.doMock('@revenuecat/purchases-capacitor', () => ({
+      Purchases: { getCustomerInfo: () => new Promise(() => {}) },
+    }));
+    const { probeRuntimeServices } = await import('../appHealth');
+    const racePromise = probeRuntimeServices();
+    // Advance past PROBE_TIMEOUT_MS (5000 ms) to trigger withTimeout rejection
+    await vi.advanceTimersByTimeAsync(6000);
+    const results = await racePromise;
+    const rc = results.find(r => r.name === 'RevenueCat');
+    expect(rc?.status).toBe('unreachable');
   });
 });
 

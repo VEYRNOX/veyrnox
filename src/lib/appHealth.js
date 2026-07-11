@@ -1,14 +1,15 @@
 import { Capacitor } from '@capacitor/core';
 import { ALLOW_MAINNET } from '@/wallet-core/evm/networks';
-import { degrade, detect, browserProbeSource, nativeProbeSource, resolveProbeSource } from '@/rasp';
+import { degrade, detect, browserProbeSource, resolveProbeSource } from '@/rasp';
 
 const PROBE_TIMEOUT_MS = 5000;
 
 function withTimeout(promise, ms) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
-  ]);
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('timeout')), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 async function probeRpc() {
@@ -51,7 +52,7 @@ async function probeRevenueCat() {
     await withTimeout(Purchases.getCustomerInfo(), PROBE_TIMEOUT_MS);
     return { name: 'RevenueCat', status: 'ok' };
   } catch (err) {
-    if (err?.message === 'timeout') return { name: 'RevenueCat', status: 'degraded' };
+    if (err?.message === 'timeout') return { name: 'RevenueCat', status: 'unreachable' };
     return { name: 'RevenueCat', status: 'unreachable' };
   }
 }
