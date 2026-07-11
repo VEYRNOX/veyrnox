@@ -19,12 +19,26 @@ import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import HardwareKekSettings from "../components/security/HardwareKekSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
+import { probeRuntimeServices, loadAuditSnapshot } from '@/lib/appHealth';
 
 export default function Settings() {
   const queryClient = useQueryClient();
   const { lock, recordAudit, getAuditLogEnabled, toggleAuditLog, fetchAuditEntries } = useWallet();
   const { currentTier } = useTier();
   const isSafetyPlus = currentTier === "safety_plus";
+  const [issueCount, setIssueCount] = useState(0);
+  useEffect(() => {
+    Promise.allSettled([probeRuntimeServices(), loadAuditSnapshot()]).then(([svcResult, auditResult]) => {
+      let count = 0;
+      if (svcResult.status === 'fulfilled') {
+        count += svcResult.value.filter(s => s.status !== 'ok').length;
+      }
+      if (auditResult.status === 'fulfilled' && !auditResult.value.unavailable) {
+        count += auditResult.value.critical + auditResult.value.high;
+      }
+      setIssueCount(count);
+    });
+  }, []);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -273,6 +287,28 @@ export default function Settings() {
           </div>
         </div>
         <span className="text-sm text-primary font-medium">View</span>
+      </Link>
+
+      {/* App health — nav row with warning dot when services/CVEs are degraded */}
+      <Link
+        to="/app-health"
+        className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <i className="ti ti-topology-star text-primary" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">App health</p>
+            <p className="text-xs text-muted-foreground">Services, packages &amp; device status</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {issueCount > 0 && (
+            <span className="w-2 h-2 rounded-full bg-caution inline-block" aria-label={`${issueCount} issues`} />
+          )}
+          <i className="ti ti-chevron-right text-muted-foreground text-sm" aria-hidden="true" />
+        </div>
       </Link>
 
       {/* Danger Zone */}
