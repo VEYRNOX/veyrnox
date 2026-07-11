@@ -29,7 +29,7 @@ import { deriveSolAccount } from '@/wallet-core/sol/derivation';
 import { captureVerifierSafe, verifyCredential, verifyCredentialDetailed, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
 import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
-import { getKeyStore } from '@/wallet-core/keystore';
+import { getKeyStore, withLockSuppressed } from '@/wallet-core/keystore';
 import { Capacitor } from '@capacitor/core';
 // MULTI-SEED VAULT (feat/multi-wallet-portfolio). ⚠️ AUDIT-CRITICAL container
 // layer that holds N independent seeds INSIDE the one encrypted blob. It does no
@@ -2225,6 +2225,9 @@ export function WalletProvider({ children }) {
     deriveAccounts,
     withPrivateKey,
     clearVault: keyStore.clearVault,
+    // BIP-39 mnemonic validation facade (R2). Re-exposed so UI (WalletEntry seed-
+    // recovery input) can validate a phrase without importing wallet-core directly.
+    validateMnemonic,
     biometricPreview,
     // BIOMETRIC ONE-TAP UNLOCK (convenience over the vault; password stays the
     // fallback). enableBiometricUnlock(password) caches the password behind the
@@ -2260,6 +2263,12 @@ export function WalletProvider({ children }) {
     // Last successful unlock (previous primary unlock; null in decoy/hidden/first
     // open). Shown read-only on the Security Dashboard as a tamper signal.
     lastUnlockAt,
+    // R2 lock-suppression facade (issue #627). Suppresses the native
+    // background-lock hook while a non-security OS dialog (biometric prompt,
+    // file/notification permission) is open. Web is a transparent pass-through.
+    // Exposed here so R3 UI files call it via useWallet() instead of importing
+    // @/wallet-core/keystore directly (ring-boundary burn-down).
+    withLockSuppressed,
   };
 
   return (

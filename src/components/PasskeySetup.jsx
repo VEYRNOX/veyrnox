@@ -3,6 +3,7 @@ import { Shield, ShieldCheck, Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { isWebAuthnSupported } from "@/lib/passkey";
+import { useWallet } from "@/lib/WalletProvider";
 import { Capacitor } from "@capacitor/core";
 
 function generateChallenge() {
@@ -26,6 +27,7 @@ export default function PasskeySetup({ wallet, onRegistered }) {
   const [verified, setVerified] = useState(false);
   // null = checking, true = available, false = unavailable
   const [nativeBiometryAvailable, setNativeBiometryAvailable] = useState(null);
+  const { withLockSuppressed } = useWallet();
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -46,11 +48,12 @@ export default function PasskeySetup({ wallet, onRegistered }) {
     setLoading(true);
     try {
       const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
-      const { nativeKeyStore } = await import("@/wallet-core/keystore/native.js");
-      // suppressLock prevents the app's background-lock hook from firing while
-      // the OS biometric dialog is open (the dialog briefly pauses the app which
-      // would otherwise redirect to the PIN unlock screen mid-flow).
-      await nativeKeyStore.suppressLock(async () => {
+      // withLockSuppressed prevents the app's background-lock hook from firing
+      // while the OS biometric dialog is open (the dialog briefly pauses the app
+      // which would otherwise redirect to the PIN unlock screen mid-flow). Routed
+      // through the R2 WalletProvider facade (issue #627) rather than importing
+      // wallet-core/keystore directly from this R3 UI component.
+      await withLockSuppressed(async () => {
         await BiometricAuth.authenticate({
           reason: "Register a passkey for this wallet",
           androidTitle: "Register Wallet Passkey",

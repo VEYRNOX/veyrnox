@@ -312,7 +312,7 @@ export const CLASSIFICATION = {
   },
   '/solana': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Address derived on-device via ed25519 SLIP-0010 (m/44\'/501\'/0\'/0\', same as Phantom) from useWallet().solAccount. Balance fetched live from Solana devnet RPC via getBalanceSol("devnet", address) from wallet-core/sol/provider — no hardcoded constants. Receive address shown with copy + devnet explorer link. Send not yet wired (labeled "Coming soon"); devnet-only until Solana send signing is audited.',
+    note: 'Address derived on-device via ed25519 SLIP-0010 (m/44\'/501\'/0\'/0\', same as Phantom) from useWallet().solAccount. Balance fetched live from Solana mainnet RPC via getBalanceSol(NETWORK_KEY, address) — network switches on ALLOW_SOL_MAINNET (true). Receive address shown with copy + mainnet explorer link. Send routes to /send (SOL asset in the main Send flow). Devnet faucet link hidden on mainnet.',
   },
   '/price-charts': {
     verdict: 'live', dataSource: 'external',

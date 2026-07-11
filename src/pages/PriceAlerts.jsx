@@ -16,7 +16,6 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { getKeyStore } from "@/wallet-core/keystore";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -32,7 +31,7 @@ export default function PriceAlerts() {
   // fetch (both key off pricesEnabled); the ticker then falls back to its existing
   // "Live prices off" static state — no network, no tell.
   // (The PriceAlert.list query is local storage, not network egress — left as-is.)
-  const { isDecoy, isHidden } = useWallet();
+  const { isDecoy, isHidden, withLockSuppressed } = useWallet();
   const pricesEnabled = isLivePricesEnabled() && !isDecoy && !isHidden && !DEMO;
   const [open, setOpen] = useState(false);
   const [currency, setCurrency] = useState("BTC");
@@ -58,10 +57,7 @@ export default function PriceAlerts() {
       // Suppress the background-lock hook while the OS permission dialog is open.
       // The OS briefly pauses the app to show the dialog, which would otherwise
       // trigger an immediate lock() and demand re-auth when the user returns.
-      const ks = getKeyStore();
-      const { display } = await (ks.suppressLock
-        ? ks.suppressLock(() => LocalNotifications.requestPermissions())
-        : LocalNotifications.requestPermissions());
+      const { display } = await withLockSuppressed(() => LocalNotifications.requestPermissions());
       const perm = display === "granted" ? "granted" : display === "denied" ? "denied" : "default";
       setNotifPermission(perm);
       if (perm === "denied") {

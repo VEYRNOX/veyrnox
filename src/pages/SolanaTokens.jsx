@@ -1,23 +1,28 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/lib/WalletProvider";
 import { getBalanceSol } from "@/wallet-core/sol/provider";
+import { ALLOW_SOL_MAINNET, solExplorerUrl } from "@/wallet-core/sol/networks";
 import { Copy, RefreshCw, ExternalLink, ShieldCheck, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-const DEVNET_EXPLORER = (addr) =>
-  `https://explorer.solana.com/address/${addr}?cluster=devnet`;
-const DEVNET_FAUCET = "https://faucet.solana.com";
+const NETWORK_KEY = ALLOW_SOL_MAINNET ? "mainnet" : "devnet";
+const NETWORK_LABEL = ALLOW_SOL_MAINNET ? "Mainnet" : "Devnet";
+const FAUCET_URL = "https://faucet.solana.com";
 
 export default function SolanaTokens() {
   const { solAccount, deriveSol, isLocked } = useWallet();
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   // Derive the SOL account as soon as the wallet is unlocked.
   useEffect(() => {
-    if (!isLocked && !solAccount) deriveSol("devnet");
+    if (!isLocked && !solAccount) {
+      try { deriveSol(NETWORK_KEY); } catch { /* wallet locked or demo mode */ }
+    }
   }, [isLocked, solAccount, deriveSol]);
 
   const fetchBalance = async () => {
@@ -25,7 +30,7 @@ export default function SolanaTokens() {
     setLoading(true);
     setError(null);
     try {
-      const sol = await getBalanceSol("devnet", solAccount.address);
+      const sol = await getBalanceSol(NETWORK_KEY, solAccount.address);
       setBalance(sol);
     } catch (e) {
       setError(`RPC unavailable — ${e?.message || String(e)}`);
@@ -44,13 +49,17 @@ export default function SolanaTokens() {
     toast.success("Address copied");
   };
 
+  const explorerUrl = solAccount?.address
+    ? solExplorerUrl(NETWORK_KEY, "address", solAccount.address)
+    : "";
+
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center text-lg font-bold text-purple-400">◎</div>
         <div>
           <h1 className="text-xl font-bold">Solana Wallet</h1>
-          <p className="text-sm text-muted-foreground">Devnet · ed25519 / SLIP-0010</p>
+          <p className="text-sm text-muted-foreground">{NETWORK_LABEL} · ed25519 / SLIP-0010</p>
         </div>
       </div>
 
@@ -66,7 +75,7 @@ export default function SolanaTokens() {
         <>
           {/* Balance */}
           <div className="p-5 rounded-xl border border-border bg-card space-y-1">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest">SOL Balance (devnet)</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest">SOL Balance ({NETWORK_LABEL})</p>
             <div className="flex items-end gap-3">
               {balance !== null
                 ? <p className="text-3xl font-bold">{balance.toFixed(6)} <span className="text-lg text-muted-foreground">SOL</span></p>
@@ -91,30 +100,37 @@ export default function SolanaTokens() {
             </div>
             <p className="text-[10px] text-muted-foreground">Derivation path: {solAccount.path}</p>
             <div className="flex gap-2 pt-1">
-              <a href={DEVNET_EXPLORER(solAccount.address)} target="_blank" rel="noopener noreferrer">
+              <a href={explorerUrl} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
                   <ExternalLink className="h-3 w-3" /> Explorer
                 </Button>
               </a>
-              <a href={DEVNET_FAUCET} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
-                  Devnet Faucet
-                </Button>
-              </a>
+              {!ALLOW_SOL_MAINNET && (
+                <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
+                    Devnet Faucet
+                  </Button>
+                </a>
+              )}
             </div>
           </div>
 
-          {/* Send — not yet wired */}
-          <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
+          {/* Send */}
+          <div className="p-4 rounded-xl border border-border bg-card space-y-2">
             <div className="flex items-center gap-2">
-              <Send className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm font-semibold text-muted-foreground">Send SOL</p>
-              <span className="text-[10px] bg-caution/10 text-caution px-1.5 py-0.5 rounded-full">Coming soon</span>
+              <Send className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">Send SOL</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              SOL send is not yet wired into the signing path. The Send page currently handles EVM only.
-              Solana send dispatch (sign with ed25519 key → broadcast via devnet RPC) will be added in a future release.
+              Use the Send page to transfer SOL — select SOL from the asset selector.
             </p>
+            <Button
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => navigate("/send")}
+            >
+              <Send className="h-3 w-3" /> Go to Send
+            </Button>
           </div>
         </>
       )}
@@ -127,9 +143,9 @@ export default function SolanaTokens() {
         </div>
         <ul className="text-xs text-muted-foreground space-y-1">
           <li>✓ Address derived on-device from your seed (ed25519 SLIP-0010, same as Phantom)</li>
-          <li>✓ Balance fetched live from Solana devnet RPC — no constants</li>
+          <li>✓ Balance fetched live from Solana {NETWORK_LABEL.toLowerCase()} RPC — no constants</li>
           <li>✓ Derivation pinned against published SLIP-0010 test vectors</li>
-          <li>○ Send not yet built — devnet only until audit + send verified</li>
+          <li>✓ Send wired via the main Send page (SOL asset)</li>
         </ul>
       </div>
     </div>

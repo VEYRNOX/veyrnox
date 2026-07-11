@@ -109,7 +109,13 @@ export function planSolTransfer({
     amount = balance - fee; // empties the account
   } else {
     if (amountLamports == null) throw new Error('amountLamports is required unless sendMax is set.');
-    amount = BigInt(amountLamports);
+    // TYPE GUARD (issue #754): reject non-bigint amounts (float / string) rather
+    // than silently coercing via BigInt(...). A coerced amount bypasses the
+    // caller's decimal-amount validation; fail closed instead (I4).
+    if (typeof amountLamports !== 'bigint') {
+      throw new Error('amountLamports must be a bigint (lamports); received ' + typeof amountLamports + '.');
+    }
+    amount = amountLamports;
   }
   if (amount <= 0n) throw new Error('Send amount must be positive.');
 
