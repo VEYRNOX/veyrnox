@@ -317,9 +317,9 @@ export default function SendCrypto() {
   // likewise relaxes only on devUngated, so the asset's status is never changed.
   const flowSendEnabled = sendEnabled || devUngated;
 
-  // The active chain follows the selected asset. EVM assets carry their own
-  // (testnet) network key (e.g. MATIC -> polygonAmoy); BTC carries 'testnet' and
-  // SOL 'devnet'. Family drives both dispatch and which network registry applies.
+  // The active chain follows the selected asset. EVM assets carry their mainnet
+  // network key (e.g. MATIC -> 'polygon'); BTC carries 'mainnet' and SOL 'mainnet'.
+  // Family drives both dispatch and which network registry applies.
   const family = selectedAsset?.family;
   const isBtc = family === "btc";
   const isSolana = family === "solana";
