@@ -467,6 +467,63 @@ INTERNAL pass — not independent. The independent third-party audit (S1–S4 + 
 including the vault cipher path) remains outstanding. See `docs/Feature-Status.md`
 §"2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757" for the full per-finding table.
 
+## 2026-07-11 Codex security review — PR #783
+
+Claude Code first-pass + independent Codex second-pass review across the Send page,
+WalletConnect, vault/keystore, deniability stack, and chain providers. All 10 findings
+fixed; all fixes use strict TDD (RED confirmed before each GREEN). BUILT / unit-tested,
+INTERNAL — not device-verified, not independently audited, no on-chain txid.
+
+**H-1 (HIGH — FIXED, PR #783):** I3 violation — Send page fired live RPC reads in
+deniability sessions. `liveBalance`, `txSim`, `btcSim` `useQuery` enabled clauses now
+gate on `!isDeniabilitySessionActive()`. Belt-and-suspenders: `getBalanceEth`,
+`simulateEvmTransaction`, `getUtxos` throw at the provider level. Tests:
+`SendCrypto.deniability.test.jsx` (6 tests, 3 behavioural + 3 structural).
+
+**M-1 (MEDIUM — FIXED, PR #783):** Vacuous RevenueCat e2e I3 guard.
+`setDeniabilitySession({type:'decoy'})` left flag false (object ≠ `=== true`); test
+passed vacuously. Fixed to `setDeniabilitySession(true)` + explicit `flagActive`
+pre-assertion.
+
+**M-2 (MEDIUM — FIXED, PR #783):** SOL + BTC history providers unguarded (I3).
+`getBalanceSol`, `getAddressHistory`, `getAddressTxs` had no deniability guard — a
+tx-history view reachable in a decoy session would leak a real address to a third-party
+host. Guards added matching EVM pattern. Tests: `sol-btc-provider-i3.test.js` (3 tests).
+
+**L-1 (LOW — FIXED, PR #783):** WC `eth_sendTransaction` chain not validated against
+approved session. `handleSendTransaction` now calls `resolveSessionCaip2()`, rejecting
+unapproved chains with `SESSION_CHAINID_INVALID` — mirrors typed-data path.
+
+**L-2 (LOW — FIXED, PR #783):** WC `maxPriorityFeePerGas` uncapped. New
+`resolveMaxPriorityFeePerGas()` helper clamps tip to `min(parsed, resolvedMaxFee)`.
+Prevents invalid EIP-1559 tx when dApp sends priority > maxFee.
+
+**L-3 (LOW — FIXED, PR #783):** `hiddenBalance` returned `null` on I3 violation;
+`decoyBalance` threw. Unified to throw — caller (`StealthWallets.jsx`) wraps in
+try/catch, fail-closed maintained.
+
+**L-4 (LOW — FIXED, PR #783):** Raw `JSON.parse` on dormant M2c enclave path in
+`keystore/native.js`. Changed to `parseVaultBlob()` — `MALFORMED_VAULT` fail-closed
+guard consistent with every other blob-read path.
+
+**L-5 (LOW — FIXED, PR #783):** `deriveKekC` did not zero encoded password bytes.
+Hoisted to local `pw`, zeroed in `finally` — mirrors `deriveKey()` pattern.
+
+**L-6 (LOW — FIXED, PR #783):** Structural deniability test partially vacuous. Regex
+OR allowed `!isDeniabilitySessionActive()` to be satisfied by pre-existing
+`!isDecoy && !isHidden`. Tightened to require `!isDeniabilitySessionActive()`
+specifically.
+
+**L-7 (LOW — FIXED, PR #783):** Trezor EVM path: `maxPriorityFeePerGas` uncapped.
+Same class as L-2 — Trezor branch in `SendCrypto.jsx` now applies
+`resolveMaxPriorityFeePerGas(priority, cappedMaxFeePerGas)`.
+
+Three merge-time fixes also landed (main drift from PRs #784–#790): `/asset/:symbol`
+added to `featureClassification.js` (PR #784/788 drift); `SendCrypto.jsx` conflict
+resolved keeping both `simEnabled` (PR #790) and `!isDeniabilitySessionActive()`;
+`WalletPortfolioPage.jsx` `fetchAssetHistory` return-type unwrap (TS2339 fix). All in
+PR #783 squash commit `028c8b37`.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
