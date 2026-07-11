@@ -95,7 +95,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3">
         <AlertTriangle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
-          Backup is only available in the primary session. Switch to your primary wallet to create a backup.
+          Backup only works in the main wallet. Switch to your primary wallet to back it up.
         </p>
       </div>
     );
@@ -187,19 +187,17 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
   return (
     <div className="space-y-4">
       <div className="p-4 rounded-xl border border-border bg-card/50 space-y-1 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground text-sm">What the backup file contains</p>
+        <p className="font-medium text-foreground text-sm">What's in the backup</p>
         <ul className="list-disc list-inside space-y-0.5 mt-1">
-          <li>Your encrypted wallet container — no seed is ever stored in plaintext.</li>
-          <li>Two sealed copies: open it later with the backup password OR the backup PIN you choose below.</li>
-          <li>No wallet addresses, no transaction history, no personal data.</li>
+          <li>Your encrypted wallet — no seed in plaintext.</li>
+          <li>Two ways to open it: backup password OR backup PIN (your choice).</li>
+          <li>No addresses, no transaction history, no personal data.</li>
         </ul>
         <p className="mt-2 text-caution font-medium">
-          Choose a backup password and PIN now — they are not your app unlock PIN, and they are not stored in the file.
-          If you forget both, there is no recovery — this is self-custody.
+          Choose a backup password and PIN now — different from your app unlock PIN, not stored in the file. Forget both = funds gone forever.
         </p>
         <p className="mt-1">
-          The PIN-sealed copy uses a deliberately slow, memory-hard key derivation — strong, but a short PIN has limited entropy.
-          Use the backup password for the highest-security recovery path.
+          Use the password for highest security. A short PIN has weaker entropy but works in a pinch.
         </p>
       </div>
 
@@ -233,9 +231,9 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 
       <p className="text-xs text-muted-foreground text-center">
         {isIos
-          ? <>Saves <span className="font-mono">veyrnox.enc</span> — choose where to store it (Files, iCloud, OneDrive, etc.).</>
-          : <>Saves <span className="font-mono">veyrnox.enc</span> to your Downloads folder.</>}
-        {" "}Only <strong>VEYRNOX</strong> can open it — and only with the backup password or PIN you chose.
+          ? <>Saves <span className="font-mono">veyrnox.enc</span> where you choose (Files, iCloud, OneDrive, etc.)</>
+          : <>Saves <span className="font-mono">veyrnox.enc</span> to Downloads.</>}
+        {" "}Only VEYRNOX can open it — only with the password or PIN you just chose.
       </p>
 
       {gateModal}
@@ -483,8 +481,7 @@ function RestoreTab({ lock, onBack }) {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Enter the <b>backup password</b> or <b>backup PIN you chose when you created this file</b> —
-          not your app unlock PIN.
+          Enter the <b>backup password or PIN you created with this file</b> — not your app unlock PIN.
         </p>
 
         {/* Method toggle */}
@@ -615,12 +612,12 @@ function RestoreTab({ lock, onBack }) {
         Back to Create backup
       </button>
       <div className="p-4 rounded-xl border border-border bg-card/50 space-y-1 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground text-sm">Restoring from a backup</p>
+        <p className="font-medium text-foreground text-sm">Restoring from backup</p>
         <ul className="list-disc list-inside space-y-0.5 mt-1">
-          <li>Choose the <span className="font-mono">.enc</span> backup file you saved earlier.</li>
-          <li>Open it with your password or PIN from when it was created.</li>
-          <li>If you use your PIN, you will be asked to set a new password for this device.</li>
-          <li>This replaces whatever wallet is currently on this device.</li>
+          <li>Pick your <span className="font-mono">.enc</span> backup file.</li>
+          <li>Open with its password or PIN.</li>
+          <li>If using PIN, set a new app password next.</li>
+          <li>Replaces the current wallet on this device.</li>
         </ul>
       </div>
 

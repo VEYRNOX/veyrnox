@@ -67,14 +67,14 @@ export default function BiometricAuth() {
     <div className="max-w-lg mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold">Biometric Re-Auth</h1>
-        <p className="text-sm text-muted-foreground">Require a {native ? "fingerprint / Face" : "passkey / Face ID / fingerprint"} check alongside your PIN before sensitive wallet actions</p>
+        <p className="text-sm text-muted-foreground">Require {native ? "your fingerprint / Face" : "a passkey / Face ID"} before sensitive actions</p>
       </div>
 
       {/* Honest scope banner: a factor, never key custody. */}
       <div className="flex items-start gap-2 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5">
         <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          This adds a genuine <span className="font-medium text-foreground">possession factor</span> on top of your PIN — not a replacement for it. It stores no keys: losing it never costs funds, and your password still works on its own.
+          A second factor on top of your PIN, not a replacement. Stores no keys — losing it won't cost funds. Your PIN always works alone.
         </p>
       </div>
 
@@ -302,9 +302,9 @@ function WebPasskeySection() {
         <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-caution shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium">Passkeys Not Available Here</p>
+            <p className="text-sm font-medium">Passkeys Not Supported</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              This browser doesn't support WebAuthn passkeys. Use PIN + Action Password (Security Settings), or try the mobile app / a modern browser.
+              This browser doesn't support WebAuthn. Use PIN + Action Password, or try the mobile app.
             </p>
           </div>
         </div>
@@ -336,10 +336,10 @@ function WebPasskeySection() {
         {!active && supported && (
           <p className="text-[11px] text-muted-foreground mt-2">
             {!registered
-              ? "The switch stays off until a passkey exists — register one below, then flip it on. It can't require a factor you haven't set up yet."
+              ? "Register a passkey first, then flip the switch."
               : (!simulated && !available)
-                ? "No usable passkey on this device right now (no Face ID / Touch ID / Windows Hello detected). Re-register, or use PIN + Action Password."
-                : "Flip the switch to require your passkey at the actions listed below."}
+                ? "No Face ID / Touch ID / Windows Hello on this device. Re-register or use PIN + Action Password."
+                : "Flip the switch to require your passkey for sensitive actions."}
           </p>
         )}
 
@@ -351,7 +351,7 @@ function WebPasskeySection() {
             </Button>
             {!simulated && !available && (
               <p className="text-[11px] text-muted-foreground mt-2">
-                To register, set up device biometrics (Face ID / Touch ID / Windows Hello) first, or use <span className="font-medium text-foreground">PIN + Action Password</span> in Security Settings.
+                Set up device biometrics first, or use <span className="font-medium text-foreground">PIN + Action Password</span> in Security Settings.
               </p>
             )}
           </>

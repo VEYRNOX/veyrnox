@@ -42,16 +42,14 @@ export default function DAppSecurityAlerts() {
         </div>
         <div>
           <h1 className="text-xl font-bold">dApp Domain Check</h1>
-          <p className="text-sm text-muted-foreground">Check a dApp domain against a local list of known-bad sites</p>
+          <p className="text-sm text-muted-foreground">Check for known-bad dApp domains</p>
         </div>
       </div>
 
       <div className="p-3 rounded-xl bg-secondary/50 border border-border flex items-start gap-2">
         <Info className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
         <p className="text-xs text-muted-foreground">
-          <strong>VEYRNOX</strong> does not audit or verify dApps. This checks a small local list — it can flag a
-          domain as <span className="font-medium">known bad</span>, but a clean result is not a safety verdict.
-          Not on the list does not mean safe.
+          We don't audit dApps. This checks a small local list — flagged = known bad. Not on the list ≠ safe. Always verify the URL yourself.
         </p>
       </div>
 
@@ -84,8 +82,7 @@ export default function DAppSecurityAlerts() {
                   <Badge variant="outline" className="text-muted-foreground border-current text-[10px] shrink-0">Not on local list</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Not on the local known-bad list. This is <span className="font-medium">not</span> a safety verdict —
-                  absence here does not mean the site is safe. Check the URL yourself and review every connection request carefully.
+                  Not flagged. This is <span className="font-medium">not</span> a safety verdict. Verify the URL, review permission requests.
                 </p>
               </div>
             )
@@ -106,7 +103,7 @@ export default function DAppSecurityAlerts() {
           <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-caution" />Local known-bad list</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 pt-4">
-          <p className="text-xs text-muted-foreground mb-1">This is a small local list, not a live feed — and not complete.</p>
+          <p className="text-xs text-muted-foreground mb-1">Small local list, not live-fed or complete.</p>
           {LOCAL_KNOWN_BAD.map((b) => (
             <div key={b.domain} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors">
               <XCircle className="h-4 w-4 text-destructive shrink-0" />

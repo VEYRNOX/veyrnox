@@ -30,9 +30,6 @@ export default function ReceiveCrypto() {
   const [symbol, setSymbol] = useState(urlAsset);
   const [copied, setCopied] = useState(false);
 
-  // Re-sync with URL when the user navigates here with a different ?asset= param.
-  // useState only reads its initializer once at mount, so without this effect a
-  // navigation from /asset/BTC → /receive?asset=BTC would still show ETH.
   useEffect(() => {
     setSymbol(urlAsset);
     setCopied(false);
