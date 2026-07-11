@@ -1101,11 +1101,11 @@ export default function SendCrypto() {
             <div>
               <Label id="send-asset-label">Asset</Label>
               <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
-                <SelectTrigger className="mt-1.5 [&>span]:flex [&>span]:items-center [&>span]:gap-2" aria-labelledby="send-asset-label">
+                <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="send-asset-label">
                   <SelectValue placeholder="Select asset">
                     {assetSymbol ? (
                       <>
-                        <CoinLogo symbol={assetSymbol} size={20} />
+                        <CoinLogo symbol={assetSymbol} size={32} />
                         <span>{getAsset(assetSymbol)?.name || assetSymbol} — {assetSymbol}</span>
                       </>
                     ) : null}
