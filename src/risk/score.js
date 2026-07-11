@@ -99,7 +99,7 @@ export function score(unsignedTx, activeSetLocalState, chainData, signals = /** 
     sentence: winner ? winner.evidence.reason : null,
     evidence: winner ? winner.evidence : null,
     signalId: winner ? winner.id : null,
-    requiresConfirmation: level === LEVEL.RISK,
+    requiresConfirmation: level === LEVEL.RISK || level === LEVEL.CAUTION,
     signals: evaluated,
   };
 }
