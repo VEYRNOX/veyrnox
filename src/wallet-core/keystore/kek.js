@@ -112,6 +112,18 @@ export const KEK_ERR = Object.freeze({
   // nothing to upgrade (a non-KEK vault). Distinct from MALFORMED_VAULT (structurally
   // unreadable) — the blob is perfectly valid, it just carries no hardware KEK wrap.
   NOT_ENROLLED: 'KEK_NOT_ENROLLED',
+  // The hardware key was PERMANENTLY invalidated by the OS (Android: biometric
+  // enrollment changed / screen lock removed → setInvalidatedByBiometricEnrollment
+  // fires KeyPermanentlyInvalidatedException). The key can NEVER produce H again; the
+  // ONLY recovery is seed restore. This is NOT a wrong PIN — callers MUST NOT count it
+  // toward the wrong-PIN wipe limit, and MUST route the user to seed recovery (I4).
+  KEY_PERMANENTLY_INVALIDATED: 'KEK_KEY_PERMANENTLY_INVALIDATED',
+  // The user CANCELLED the per-use biometric sheet (Android/iOS). This is user-initiated
+  // and NOT a wrong PIN — a correct-PIN user who cancels the biometric prompt N times must
+  // never march toward the panic wipe. Callers MUST treat it as a neutral "try again",
+  // not a failed unlock. Distinct stable code so it survives the bridge boundary without
+  // prose-parsing (the Kotlin plugin's "User cancelled" string is the contract input).
+  USER_CANCELLED: 'KEK_USER_CANCELLED',
 });
 
 /**

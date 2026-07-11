@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { ALLOW_MAINNET } from '@/wallet-core/evm/networks';
-import { degrade, detect, browserProbeSource, resolveProbeSource } from '@/rasp';
+import { degrade, detect, browserProbeSource } from '@/rasp';
 
 const PROBE_TIMEOUT_MS = 5000;
 
@@ -59,7 +59,7 @@ async function probeRevenueCat() {
 
 function probeRasp() {
   try {
-    const artifact = degrade(detect(resolveProbeSource(null, browserProbeSource)));
+    const artifact = degrade(detect(browserProbeSource));
     const tier = artifact?.tier ?? 'BLOCK';
     const status = tier === 'ALLOW' ? 'ok' : tier === 'WARN' ? 'degraded' : 'unreachable';
     return { name: 'RASP (browser)', status };

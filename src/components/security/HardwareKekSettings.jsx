@@ -39,6 +39,8 @@ const MALFORMED_MSG =
 const NOT_ENROLLED_MSG =
   'Hardware protection isn’t enabled on this vault, so there’s nothing to upgrade.';
 const GENERIC_MSG = 'Something went wrong. Please try again.';
+const KEY_INVALIDATED_MSG =
+  'Your fingerprints changed — hardware protection was invalidated. Disable and re-enable hardware protection, or restore from your seed phrase.';
 
 function classifyKekError(e) {
   const code = e?.code || e?.message;
@@ -52,6 +54,8 @@ function classifyKekError(e) {
       return MALFORMED_MSG;
     case KEK_ERR.NOT_ENROLLED:
       return NOT_ENROLLED_MSG;
+    case KEK_ERR.KEY_PERMANENTLY_INVALIDATED:
+      return KEY_INVALIDATED_MSG;
     default:
       return GENERIC_MSG;
   }

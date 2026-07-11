@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { probeRuntimeServices, loadAuditSnapshot, readDeviceCapabilities } from '@/lib/appHealth';
-import { isDeniabilitySessionActive } from '@/lib/deniabilitySession';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession';
 
 const STATUS_COLOR = {
   ok: 'text-success',
@@ -21,7 +21,7 @@ function SectionLabel({ children }) {
   );
 }
 
-function Row({ icon, label, right, status }) {
+function Row({ icon = null, label, right, status }) {
   return (
     <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
       <div className="flex items-center gap-2 text-sm text-foreground">
