@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
-import { Zap, RefreshCw, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { Zap, RefreshCw } from "lucide-react";
 
 // Solana does NOT use the EVM gwei/gas-limit model, so it can't be forced into
 // the SLOW/AVG/FAST tiers the other chains use. A Solana fee is a FIXED base
@@ -64,18 +64,6 @@ function formatFee(val) {
   return val < 0.01 ? val.toFixed(6) : val.toLocaleString();
 }
 
-function congestionColor(level) {
-  if (level === "low") return "text-success";
-  if (level === "high") return "text-destructive";
-  return "text-caution";
-}
-
-function congestionIcon(level) {
-  if (level === "low") return <TrendingDown className="h-3 w-3 text-success" />;
-  if (level === "high") return <TrendingUp className="h-3 w-3 text-destructive" />;
-  return <Minus className="h-3 w-3 text-caution" />;
-}
-
 function getCongestion(standard, thresholds) {
   if (standard == null) return "medium";
   if (standard <= thresholds.low) return "low";
@@ -83,34 +71,77 @@ function getCongestion(standard, thresholds) {
   return "medium";
 }
 
-const CONGESTION_LABELS = { low: "Low", medium: "Average", high: "Congested" };
-
-function FeeRow({ icon, name, slow, standard, fast, unit, congestion }) {
+function CongestionBadge({ level }) {
+  const styles =
+    level === "low"
+      ? "bg-success/10 text-success border-success/20"
+      : level === "high"
+      ? "bg-destructive/10 text-destructive border-destructive/20"
+      : "bg-caution/10 text-caution border-caution/20";
+  const label = level === "low" ? "Low" : level === "high" ? "High" : "Avg";
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-border last:border-0">
-      <div className="flex items-center gap-2 w-16 shrink-0">
-        <span className="text-base">{icon}</span>
-        <span className="text-xs font-semibold">{name}</span>
+    <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-px rounded border ${styles}`}>
+      {label}
+    </span>
+  );
+}
+
+function SkeletonRow({ last }) {
+  return (
+    <div className={`flex items-center justify-between py-3 ${last ? "" : "border-b border-border"}`}>
+      <div className="flex items-center gap-2.5">
+        <div className="w-6 h-5 rounded bg-muted animate-pulse" />
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <div className="w-8 h-3.5 rounded bg-muted animate-pulse" />
+            <div className="w-9 h-4 rounded-full bg-muted animate-pulse" />
+          </div>
+          <div className="w-24 h-2.5 rounded bg-muted animate-pulse" />
+        </div>
       </div>
-      <div className="flex items-center gap-1 w-20 shrink-0">
-        {congestionIcon(congestion)}
-        <span className={`text-xs font-medium ${congestionColor(congestion)}`}>
-          {CONGESTION_LABELS[congestion]}
+      <div className="space-y-1.5">
+        <div className="w-16 h-2.5 rounded bg-muted animate-pulse ml-auto" />
+        <div className="w-20 h-4 rounded bg-muted animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+function FeeRow({ glyph, name, slow, standard, fast, unit, congestion }) {
+  const recommended = formatFee(standard);
+  const slowFmt = formatFee(slow);
+  const fastFmt = formatFee(fast);
+  const hasTierDetail = slowFmt != null || fastFmt != null;
+
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-base leading-none shrink-0 w-6 text-center font-mono" aria-hidden="true">
+          {glyph}
         </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold">{name}</span>
+            <CongestionBadge level={congestion} />
+          </div>
+          {hasTierDetail && (
+            <p className="text-[10px] text-muted-foreground font-mono mt-0.5 tabular-nums">
+              {slowFmt != null ? `${slowFmt} slow` : null}
+              {slowFmt != null && fastFmt != null ? " · " : null}
+              {fastFmt != null ? `${fastFmt} fast` : null}
+              {" "}{unit}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="flex-1 max-w-52 grid grid-cols-3 gap-2 text-right">
-        {[["Slow", slow], ["Avg", standard], ["Fast", fast]].map(([label, val]) => {
-          const display = formatFee(val);
-          return (
-            <div key={label}>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{label}</p>
-              <p className="text-xs font-mono font-semibold">
-                {display != null ? display : "—"}
-                {display != null && <span className="text-[9px] text-muted-foreground ml-0.5">{unit}</span>}
-              </p>
-            </div>
-          );
-        })}
+      <div className="text-right shrink-0 pl-4">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Recommended</p>
+        <p className="text-sm font-mono font-semibold tabular-nums">
+          {recommended ?? "—"}
+          {recommended != null && (
+            <span className="text-[10px] text-muted-foreground font-normal ml-1">{unit}</span>
+          )}
+        </p>
       </div>
     </div>
   );
@@ -121,38 +152,35 @@ function FeeRow({ icon, name, slow, standard, fast, unit, congestion }) {
 function SolFeeRow({ baseLamports, priorityMicroLamports }) {
   const baseSol = baseLamports != null ? (baseLamports / 1e9).toFixed(6) : null;
   const priorityKnown = priorityMicroLamports != null;
-  // Congestion is driven by the real priority rate: idle testnet (~0) reads low.
   const congestion = !priorityKnown ? "medium" : priorityMicroLamports > 0 ? "medium" : "low";
+  const hasPriority = priorityKnown && priorityMicroLamports > 0;
+
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-border last:border-0">
-      <div className="flex items-center gap-2 w-16 shrink-0">
-        <span className="text-base">◎</span>
-        <span className="text-xs font-semibold">SOL</span>
-      </div>
-      <div className="flex items-center gap-1 w-20 shrink-0">
-        {congestionIcon(congestion)}
-        <span className={`text-xs font-medium ${congestionColor(congestion)}`}>
-          {CONGESTION_LABELS[congestion]}
+    <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-base leading-none shrink-0 w-6 text-center font-mono" aria-hidden="true">
+          ◎
         </span>
-      </div>
-      <div className="flex-1 max-w-52 grid grid-cols-2 gap-2 text-right">
-        <div>
-          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Base / sig</p>
-          <p className="text-xs font-mono font-semibold">
-            {baseLamports != null ? baseLamports.toLocaleString() : "—"}
-            <span className="text-[9px] text-muted-foreground ml-0.5">lamports</span>
-          </p>
-          {baseSol != null && (
-            <p className="text-[8px] text-muted-foreground font-mono">≈ {baseSol} SOL</p>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold">SOL</span>
+            <CongestionBadge level={congestion} />
+          </div>
+          {hasPriority && (
+            <p className="text-[10px] text-muted-foreground font-mono mt-0.5 tabular-nums">
+              +{priorityMicroLamports.toLocaleString()} µlam/CU priority
+            </p>
           )}
         </div>
-        <div>
-          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Priority</p>
-          <p className="text-xs font-mono font-semibold">
-            {priorityKnown ? priorityMicroLamports.toLocaleString() : "—"}
-            <span className="text-[9px] text-muted-foreground ml-0.5">µlam/CU</span>
-          </p>
-        </div>
+      </div>
+      <div className="text-right shrink-0 pl-4">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Per tx</p>
+        <p className="text-sm font-mono font-semibold tabular-nums">
+          {baseSol ?? "—"}
+          {baseSol != null && (
+            <span className="text-[10px] text-muted-foreground font-normal ml-1">SOL</span>
+          )}
+        </p>
       </div>
     </div>
   );
@@ -212,13 +240,15 @@ export default function GasTracker() {
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow last />
         </div>
       ) : (
         <div>
           <FeeRow
-            icon="₿"
+            glyph="₿"
             name="BTC"
             slow={fees?.btc?.slow}
             standard={fees?.btc?.standard}
@@ -227,7 +257,7 @@ export default function GasTracker() {
             congestion={btcCongestion}
           />
           <FeeRow
-            icon="Ξ"
+            glyph="Ξ"
             name="ETH"
             slow={fees?.eth?.slow}
             standard={fees?.eth?.standard}
