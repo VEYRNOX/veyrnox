@@ -1,5 +1,5 @@
 // src/components/__tests__/CandlestickChart.test.jsx
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { vi } from "vitest";
 
@@ -21,16 +21,30 @@ vi.mock("@/lib/recharts", () => ({
 }));
 
 import CandlestickChart from "../CandlestickChart";
+import { fetchOHLCVCG } from "@/lib/coinGecko";
+import { isLivePricesEnabled } from "@/lib/priceFeed";
 
-const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-const wrap = (ui) => render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+const makeQc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const wrap = (ui, qc) => render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
 
 test("renders chart container for a known symbol", () => {
-  wrap(<CandlestickChart symbol="BTC" period="1D" />);
+  const qc = makeQc();
+  wrap(<CandlestickChart symbol="BTC" period="1D" />, qc);
   expect(screen.getByTestId("candlestick-chart")).toBeInTheDocument();
 });
 
 test("renders chart container for any string symbol", () => {
-  wrap(<CandlestickChart symbol="ETH" period="1W" />);
+  const qc = makeQc();
+  wrap(<CandlestickChart symbol="ETH" period="1W" />, qc);
   expect(screen.getByTestId("candlestick-chart")).toBeInTheDocument();
+});
+
+test("shows 'Chart unavailable' when fetchOHLCVCG rejects", async () => {
+  isLivePricesEnabled.mockReturnValue(true);
+  fetchOHLCVCG.mockRejectedValue(new Error("network error"));
+  const qc = makeQc();
+  wrap(<CandlestickChart symbol="BTC" period="1D" />, qc);
+  await waitFor(() => {
+    expect(screen.getByText(/Chart unavailable/i)).toBeInTheDocument();
+  });
 });

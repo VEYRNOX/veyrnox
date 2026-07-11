@@ -6,14 +6,7 @@ import {
 } from "@/lib/recharts";
 import { fetchOHLCVCG as fetchOHLCV } from "@/lib/coinGecko";
 import { isLivePricesEnabled } from "@/lib/priceFeed";
-
-const PERIOD_PARAMS = {
-  "1H": { resolution: "minute", limit: 60 },
-  "4H": { resolution: "minute", limit: 240 },
-  "1D": { resolution: "hour",   limit: 24 },
-  "1W": { resolution: "hour",   limit: 168 },
-  "1M": { resolution: "day",    limit: 30 },
-};
+import { PERIOD_PARAMS } from "@/lib/chartPeriods";
 
 const CandlestickBar = (props) => {
   const { x, width, open, close, high, low, chartHeight, yMin, yRange } = props;

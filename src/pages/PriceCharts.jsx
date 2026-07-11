@@ -6,23 +6,11 @@ import { TOP_CRYPTOS } from "@/lib/cryptos";
 import { fetchOHLCVCG as fetchOHLCV } from "@/lib/coinGecko";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import CandlestickChart from "@/components/CandlestickChart";
+import { PERIOD_PARAMS, PERIODS } from "@/lib/chartPeriods";
 
-// Top 10 by market cap, derived from the canonical source so every feature
-// stays in sync. `price` mirrors the canonical reference `usd`.
 const ASSETS = TOP_CRYPTOS.map((c) => ({
   symbol: c.symbol, name: c.name, price: c.usd, change24h: c.change24h, color: c.color, mcap: c.mcap,
 }));
-
-const PERIODS = ["1H", "4H", "1D", "1W", "1M"];
-
-// Period → { resolution, limit } mapping for CryptoCompare histoX endpoints
-const PERIOD_PARAMS = {
-  "1H": { resolution: "minute", limit: 60 },
-  "4H": { resolution: "minute", limit: 240 },
-  "1D": { resolution: "hour",   limit: 24 },
-  "1W": { resolution: "hour",   limit: 168 },
-  "1M": { resolution: "day",    limit: 30 },
-};
 
 export default function PriceCharts() {
   const [selected, setSelected] = useState("BTC");
@@ -47,6 +35,7 @@ export default function PriceCharts() {
     time: new Date(d.time * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
   }));
 
+  const prices = data.map((d) => d.price);
   const firstPrice = data[0]?.price;
   const lastPrice = data[data.length - 1]?.price;
   const change = firstPrice && lastPrice ? ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2) : "0.00";
@@ -59,7 +48,6 @@ export default function PriceCharts() {
         <p className="text-sm text-muted-foreground">Candlestick charts for major assets</p>
       </div>
 
-      {/* Live prices off banner */}
       {!livePricesOn && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-caution/30 bg-caution/10 px-4 py-3 text-sm">
           <span className="text-muted-foreground">Live prices are disabled. Enable them to view real chart data.</span>
@@ -72,7 +60,6 @@ export default function PriceCharts() {
         </div>
       )}
 
-      {/* Asset selector */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {ASSETS.map((a) => (
           <button key={a.symbol} onClick={() => livePricesOn && setSelected(a.symbol)}
@@ -87,7 +74,6 @@ export default function PriceCharts() {
         ))}
       </div>
 
-      {/* Price header */}
       <div className="flex items-end justify-between">
         <div>
           <p className="text-3xl font-bold">${lastPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? "—"}</p>
@@ -102,7 +88,6 @@ export default function PriceCharts() {
         </div>
       </div>
 
-      {/* Period selector */}
       <div className="flex gap-1">
         {PERIODS.map((p) => (
           <button key={p} onClick={() => setPeriod(p)} disabled={!livePricesOn}
