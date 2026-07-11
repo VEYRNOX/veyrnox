@@ -67,7 +67,7 @@ describe('AuditLog — AL-06 deniability-absence disclosure (visible, not just a
     const { default: AuditLog } = await import('@/pages/AuditLog');
     render(<AuditLog />);
     const text = (await screen.findByTestId('audit-log-deniability-disclosure')).textContent.toLowerCase();
-    expect(text).toMatch(/decoy or hidden/);
+    expect(text).toMatch(/decoy.*hidden/);
     expect(text).toMatch(/nothing is logged/);
   });
 
@@ -76,7 +76,7 @@ describe('AuditLog — AL-06 deniability-absence disclosure (visible, not just a
     const { default: AuditLog } = await import('@/pages/AuditLog');
     render(<AuditLog />);
     const text = (await screen.findByTestId('audit-log-deniability-disclosure')).textContent.toLowerCase();
-    expect(text).toMatch(/examining your device|forensic/);
+    expect(text).toMatch(/examining your device/);
     expect(text).toMatch(/no log exists/);
   });
 
