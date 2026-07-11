@@ -134,4 +134,14 @@ describe('buildRiskInputs — integrates with score()', () => {
     expect(verdict.level).toBe(LEVEL.RISK);
     expect(verdict.signalId).toBe('S5');
   });
+
+  it('CAUTION verdict requires confirmation so the presign gate can be cleared', () => {
+    // A CAUTION verdict must set requiresConfirmation=true so RiskVerdictBanner
+    // renders the acknowledge checkbox. Without it the presign gate (WARN tier)
+    // blocks the send with no UI affordance to unblock it.
+    const cautionSignal = [{ id: 'T1', fn: () => ({ level: LEVEL.CAUTION, evidence: { reason: 'test caution' } }) }];
+    const verdict = score({}, {}, {}, cautionSignal);
+    expect(verdict.level).toBe(LEVEL.CAUTION);
+    expect(verdict.requiresConfirmation).toBe(true);
+  });
 });
