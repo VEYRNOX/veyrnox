@@ -48,7 +48,7 @@ test.describe('QA: Demo Mode Isolation', () => {
       !e.includes('googletagmanager') &&
       !e.includes('favicon') &&
       // Browsers silently ignore frame-ancestors in <meta> CSP — it's a security
-      // finding (F-004) but not an app crash. Filter here; recorded in findings.
+      // finding (F-003) but not an app crash. Filter here; recorded in findings.
       !e.includes("frame-ancestors")
     );
     expect(realErrors).toHaveLength(0);
