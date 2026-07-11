@@ -7,8 +7,8 @@ tools: Bash, Read, Grep, Glob
 # veyrnox-codex — the second developer protocol
 
 Codex is the second developer on Veyrnox. It has a different threat model and different
-blind spots from Claude. The value is the separate reasoning pass — neither agent has seen
-the other's reasoning before reviewing.
+blind spots from Claude. The value is the independence — neither agent has seen the
+other's reasoning before reviewing.
 
 ## Division of labour
 

@@ -6,13 +6,9 @@ import { toast } from "sonner";
 
 const NOTIFICATION_TYPES = [
   { key: "price_alerts", label: "Price Alerts", desc: "Notify when price targets are hit" },
-  { key: "transaction_confirmed", label: "Transaction Confirmed", desc: "Notify when a tx is confirmed" },
-  { key: "low_balance", label: "Low Balance Warning", desc: "Notify when wallet balance is low" },
-  { key: "staking_rewards", label: "Staking Rewards", desc: "Notify when rewards are available" },
-  { key: "security_events", label: "Security Events", desc: "Login attempts and suspicious activity" },
-  { key: "dca_execution", label: "DCA Execution", desc: "Notify when DCA purchases run" },
-  { key: "rebalancing", label: "Rebalancing Drift", desc: "Notify when portfolio drifts" },
-  { key: "smart_alerts", label: "Smart Alerts", desc: "Custom portfolio event notifications" },
+  { key: "transaction_confirmed", label: "Transaction Confirmed", desc: "Notify when a transaction is confirmed on-chain" },
+  { key: "low_balance", label: "Low Balance Warning", desc: "Notify when wallet balance falls below a threshold" },
+  { key: "security_events", label: "Security Events", desc: "Suspicious activity and failed unlock attempts" },
 ];
 
 export default function PushNotificationsPage() {
