@@ -682,7 +682,7 @@ independent. The team is committed to the repo, so every session has it:
 ### Codex — second developer (security reviewer, regression-test writer, CI-fix helper)
 
 Codex (OpenAI Codex CLI, `codex` binary) is treated as a second developer on the team. It
-runs independently so its review is not biased by Claude's implementation reasoning.
+runs as a separate reasoning pass so its review is not biased by Claude's implementation reasoning.
 
 **Hard rules for the two-developer model:**
 - **Codex never edits files.** Every Codex invocation is read-only (`codex review` or
