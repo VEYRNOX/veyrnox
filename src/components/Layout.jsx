@@ -115,6 +115,12 @@ export default function Layout() {
   }, [location.pathname]);
 
   const handleMobileTabClick = useCallback((path) => {
+    // Send always navigates fresh — clears ?asset= param and resets the form.
+    if (path === '/send') {
+      setMobileTab('/send');
+      navigate('/send', { replace: true });
+      return;
+    }
     if (mobileTab === path && MOBILE_TABS.includes(location.pathname)) {
       const mainScroll = document.getElementById('main-scroll');
       if (mainScroll) {
