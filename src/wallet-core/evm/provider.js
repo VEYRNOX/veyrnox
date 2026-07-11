@@ -10,6 +10,7 @@
 import { JsonRpcProvider, formatEther } from 'ethers';
 import { getNetwork } from './networks.js';
 import { assertSafeRpcUrl } from '../netUrl.js';
+import { isDeniabilitySessionActive } from '../deniabilitySession.js';
 
 const _overrides = {}; // networkKey -> rpcUrl
 const _cache = {};      // networkKey -> JsonRpcProvider
@@ -58,6 +59,10 @@ export async function broadcastSigned(networkKey, signedRawTx) {
 
 /** Read native balance (in ETH, as a string) from the chain — source of truth. */
 export async function getBalanceEth(networkKey, address) {
+  // I3: a live eth_getBalance RPC read. It must never run inside a deniability
+  // (decoy/hidden) session — fail closed on the exported function itself, not just
+  // on some callers, so a future caller can't leak egress (mirrors decoyBalance.js).
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   const provider = getProvider(networkKey);
   const wei = await provider.getBalance(address);
   return formatEther(wei);

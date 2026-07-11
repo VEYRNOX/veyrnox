@@ -148,7 +148,7 @@ export async function resolveHiddenBalance(chainKey, address) {
   // run inside a deniability session — fail closed on the exported function
   // itself (return null), not just on some callers, so a future caller can't
   // leak egress. Mirrors decoyBalance.js's guard.
-  if (isDeniabilitySessionActive()) return null;
+  if (isDeniabilitySessionActive()) throw 'I3: no egress in deniability session';
   const chain = getHiddenChain(chainKey);
   if (!chain) throw new Error(`Unknown chain: ${chainKey}`);
   if (!address) return { amount: 0, unit: chain.unit, source: DEMO ? 'demo-seed' : 'chain' };

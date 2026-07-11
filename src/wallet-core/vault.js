@@ -362,15 +362,21 @@ export async function decryptVaultWithDek(vault, dek) {
  */
 export async function deriveKekC(password, salt) {
   const { argon2id: _argon2id } = await import('hash-wasm');
-  const raw = await _argon2id({
-    password: enc.encode(password.normalize('NFKC')),
-    salt,
-    parallelism: KDF_PARAMS.parallelism,
-    iterations: KDF_PARAMS.iterations,
-    memorySize: KDF_PARAMS.memorySize,
-    hashLength: KDF_PARAMS.hashLength,
-    outputType: 'binary',
-  });
+  const pw = enc.encode(password.normalize('NFKC'));
+  let raw;
+  try {
+    raw = await _argon2id({
+      password: pw,
+      salt,
+      parallelism: KDF_PARAMS.parallelism,
+      iterations: KDF_PARAMS.iterations,
+      memorySize: KDF_PARAMS.memorySize,
+      hashLength: KDF_PARAMS.hashLength,
+      outputType: 'binary',
+    });
+  } finally {
+    zero(pw); // wipe encoded password bytes, mirroring deriveKey()
+  }
   await new Promise((resolve) => setTimeout(resolve, 0));
   const result = new Uint8Array(raw);
   // M-J: zero the raw Argon2id output once copied, matching deriveKey()'s zero(raw).
