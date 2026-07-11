@@ -17,7 +17,7 @@ export default function CryptoDetailPage() {
   const { symbol } = useParams();
   const navigate = useNavigate();
   const [period, setPeriod] = useState("1D");
-  const { isUnlocked, wallets, walletAddresses } = useWallet();
+  const { isUnlocked, wallets, walletAddresses, activeWalletId } = useWallet();
   const { changeFor } = useBasketPrices();
   const { data: portfolio } = usePortfolio(wallets, walletAddresses);
 
@@ -63,8 +63,8 @@ export default function CryptoDetailPage() {
 
       {/* Balance strip — shown when unlocked */}
       {isUnlocked && (() => {
-        const firstWallet = wallets?.[0];
-        const assets = firstWallet ? (portfolio?.byWallet?.[firstWallet.id]?.assets ?? []) : [];
+        const activeWallet = wallets?.find((w) => w.id === activeWalletId) ?? wallets?.[0];
+        const assets = activeWallet ? (portfolio?.byWallet?.[activeWallet.id]?.assets ?? []) : [];
         const row = resolveAssetRow(assets, symbol);
         const nativeFmt = fmtIndeterminateAmount(row.amount);
         const usdFmt = row.usd != null ? `$${row.usd.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : null;
