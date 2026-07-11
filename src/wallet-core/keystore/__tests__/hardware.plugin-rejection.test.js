@@ -57,3 +57,38 @@ describe('getHardwareFactor — bridge rejection classification (fail-closed, st
     });
   });
 });
+
+// Codex P1 (2026-07-11, second finding): malformed SUCCESS responses (bad h) must ALSO
+// carry .code — WalletEntry's counter exemption matches e.code, and a message-only throw
+// from a bridge/plugin output regression would be miscounted as a wrong PIN (panic-wipe
+// leak, same class as the cancel bug).
+describe('getHardwareFactor — malformed bridge output carries .code (never counts as wrong PIN)', () => {
+  it('missing h → .code === NO_HARDWARE_FACTOR', async () => {
+    getHFFn.mockResolvedValueOnce({});
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  });
+
+  it('non-string h → .code === NO_HARDWARE_FACTOR', async () => {
+    getHFFn.mockResolvedValueOnce({ h: 12345 });
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  });
+
+  it('invalid base64 h → .code === NO_HARDWARE_FACTOR', async () => {
+    getHFFn.mockResolvedValueOnce({ h: '!!!not-base64!!!' });
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  });
+
+  it('wrong-length h → .code === NO_HARDWARE_FACTOR', async () => {
+    // 8 bytes, valid base64 — fails the 32-byte length gate.
+    getHFFn.mockResolvedValueOnce({ h: 'AAAAAAAAAAE=' });
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  });
+});

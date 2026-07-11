@@ -242,19 +242,23 @@ export async function getHardwareFactor(opts) {
   // JS bridge. Validate BEFORE decoding — a missing/non-string h must throw the stable
   // KEK_ERR.NO_HARDWARE_FACTOR, never reach atob() (raw InvalidCharacterError/TypeError)
   // and never fabricate/return garbage bytes.
+  // Codex P1 (2026-07-11): these validation throws MUST carry .code, not just the
+  // message — WalletEntry's wrong-PIN-counter exemption matches e.code, so a
+  // message-only throw from a malformed bridge response would be miscounted as a
+  // wrong PIN and burn toward the panic wipe.
   if (typeof h !== 'string' || h.length === 0) {
-    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), { code: KEK_ERR.NO_HARDWARE_FACTOR });
   }
   let result;
   try {
     result = b64ToUint8Array(h);
   } catch {
-    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), { code: KEK_ERR.NO_HARDWARE_FACTOR });
   }
   // The hardware factor is fixed-length by construction (spec §3: 32 bytes). A wrong
   // length is not a usable H — reject with the stable code, never pad or truncate.
   if (result.length !== 32) {
-    throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), { code: KEK_ERR.NO_HARDWARE_FACTOR });
   }
   // H-4 / iOS-F8: 32 zero bytes is a valid LENGTH but a degenerate H — it reduces the
   // KEK to a deterministic HKDF of 0^32 || C, i.e. C-only protection, silently voiding

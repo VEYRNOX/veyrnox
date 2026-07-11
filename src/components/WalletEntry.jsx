@@ -661,7 +661,9 @@ export default function WalletEntry() {
       // missing). Also NOT a wrong PIN — do NOT increment the wipe counter. Keep the user
       // on the unlock screen: the hardware may be transiently unavailable and they can
       // retry or go to Settings.
-      if (e?.code === KEK_ERR.NO_HARDWARE_FACTOR) {
+      // HARDWARE_FACTOR_DEGENERATE (all-zero H) is the same class: a hardware-output
+      // failure, never a wrong PIN (Codex P1 follow-up, same wipe-counter leak).
+      if (e?.code === KEK_ERR.NO_HARDWARE_FACTOR || e?.code === 'HARDWARE_FACTOR_DEGENERATE') {
         setError("Hardware protection is unavailable right now. Try again, or manage it in Settings.");
         return;
       }
