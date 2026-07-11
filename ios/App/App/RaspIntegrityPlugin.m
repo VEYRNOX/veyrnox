@@ -1,8 +1,10 @@
 // RaspIntegrityPlugin.m — iOS RASP integrity probe
 //
-// STATUS: BUILT-UNVALIDATED — logic is present but has NOT been exercised on a
-// real jailbroken / Frida-hooked device. Requires on-device hostile testing and
-// the independent audit before the status can advance (F-09).
+// STATUS: BUILT-UNVALIDATED — logic is present and, as of 2026-07-11 (#826), this
+// file + RaspIntegrityPluginBridge.m are in the Xcode App build target (so CAP_PLUGIN
+// actually registers at runtime). It has NOT been exercised on a real jailbroken /
+// Frida-hooked device. Requires on-device hostile testing and the independent audit
+// before the status can advance (F-09).
 //
 // FAIL CLOSED (I4): every detection block catches exceptions. On any error the
 // signal is false (not detected). A total plugin failure → the JS side receives
