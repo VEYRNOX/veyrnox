@@ -25,6 +25,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { MAX_BASE_FEE_GWEI } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
+import { getBalanceSats } from "@/wallet-core/btc/provider.js";
+import { getBalanceSol } from "@/wallet-core/sol/provider.js";
 import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { isDevSendUngated } from "@/lib/devSendOverride";
 import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
@@ -355,10 +357,8 @@ export default function SendCrypto() {
   const activeNetwork = (isEvmFamily(selectedAsset) || isErc20) ? getNetworkInfo(networkKey) : null;
   const nativeSymbol = activeNetwork?.symbol || selectedWallet?.currency || "ETH";
   const networkName = activeNetwork?.name || networkKey;
-  // Whether we know a live balance for this asset (EVM/ERC-20 read it on-chain).
-  // For BTC/SOL we don't read it this slice, so the UI max-check is skipped and
-  // the send function enforces real funds (coin-selection / rent).
-  const balanceKnown = isEvmFamily(selectedAsset) || isErc20;
+  // Whether we know a live balance for this asset (EVM/ERC-20/BTC/SOL all read live).
+  const balanceKnown = isEvmFamily(selectedAsset) || isErc20 || isBtc || isSolana;
 
   // Chain is the source of truth for balance — read it live, never the DB.
   // Native (ETH) reads via getBalanceEth; ERC-20 reads via the token contract's
@@ -375,6 +375,25 @@ export default function SendCrypto() {
     enabled: !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && !!selectedWallet?.address && canReceive(selectedAsset) && (isEvmFamily(selectedAsset) || isErc20),
     refetchInterval: 15000,
   });
+
+  // BTC live balance (sats → BTC). Enabled for BTC selections only, same I3/demo guards.
+  const { data: btcLiveBalance } = useQuery({
+    queryKey: ["btc-balance", networkKey, selectedWallet?.address],
+    queryFn: async () => Number(await getBalanceSats(networkKey, selectedWallet.address)) / 1e8,
+    enabled: !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && !!selectedWallet?.address && canReceive(selectedAsset) && isBtc,
+    refetchInterval: 30000,
+  });
+
+  // SOL live balance (lamports already converted to SOL by provider). Same guards.
+  const { data: solLiveBalance } = useQuery({
+    queryKey: ["sol-balance", networkKey, selectedWallet?.address],
+    queryFn: async () => Number(await getBalanceSol(networkKey, selectedWallet.address)),
+    enabled: !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && !!selectedWallet?.address && canReceive(selectedAsset) && isSolana,
+    refetchInterval: 30000,
+  });
+
+  // Unified live balance across all families (undefined while loading, null when not applicable).
+  const nativeLiveBalance = isBtc ? btcLiveBalance : isSolana ? solLiveBalance : liveBalance;
 
   // Demo balance for the selected asset (display + the max/limit check). Mirrors the
   // seeded demo portfolio; no live RPC is issued in demo (the query above is disabled).
@@ -411,8 +430,8 @@ export default function SendCrypto() {
   // back to the DB value only for not-yet-live assets (display only).
   const effectiveBalance = demoActive
     ? (demoBalance ?? 0)
-    : (flowSendEnabled && liveBalance != null
-        ? parseFloat(liveBalance)
+    : (flowSendEnabled && nativeLiveBalance != null
+        ? parseFloat(nativeLiveBalance)
         : (selectedWallet?.balance || 0));
 
   // USD conversions for the Send screen (DISPLAY ONLY — derived from the static
@@ -426,7 +445,7 @@ export default function SendCrypto() {
   // for it. Suppress the "≈ $X" companion so a failed/pending read is never
   // asserted as "· $0.00" (which the effectiveBalance→0 fallback would produce).
   // I4 fail-closed: never show a $ value we didn't confirm.
-  const balanceIndeterminate = !demoActive && flowSendEnabled && liveBalance == null;
+  const balanceIndeterminate = !demoActive && flowSendEnabled && nativeLiveBalance == null;
   const balanceUsd = !balanceIndeterminate && sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
   const amountNum = parseFloat(amount);
   const amountUsd = sendUsdRate != null && Number.isFinite(amountNum) && amountNum > 0 ? amountNum * sendUsdRate : null;
@@ -1346,7 +1365,7 @@ export default function SendCrypto() {
               {demoActive
                 ? <>Balance: <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">(demo)</span></>
                 : flowSendEnabled
-                  ? <>Balance: {liveBalance != null ? <span className="mono-value">{liveBalance} {selectedWallet.currency}</span> : "reading from network…"} <span className="text-[10px]">(live)</span></>
+                  ? <>Balance: {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : "reading from network…"} <span className="text-[10px]">(live)</span></>
                   : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
               {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
             </p>
