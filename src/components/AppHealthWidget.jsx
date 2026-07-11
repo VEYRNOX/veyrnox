@@ -21,7 +21,7 @@ function SectionLabel({ children }) {
   );
 }
 
-function Row({ icon, label, right, status }) {
+function Row({ icon = null, label, right, status }) {
   return (
     <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
       <div className="flex items-center gap-2 text-sm text-foreground">

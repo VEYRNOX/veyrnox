@@ -747,9 +747,7 @@ export default function SendCrypto() {
         blockedByApproval,
       });
       if (!gate.allowed) {
-        const err = new Error(gate.message);
-        err.code = gate.code;
-        throw err;
+        throw Object.assign(new Error(gate.message), { code: gate.code });
       }
 
       // CODE-LEVEL SEND GUARD (Task 7 — audit remediation). Defense-in-depth:
@@ -972,7 +970,7 @@ export default function SendCrypto() {
       // Security: twoFactorVerifiedRef.current is already false at this point
       // (cleared at line 724 before the gate ran); we are only changing which
       // UI step is rendered, not relaxing any security check.
-      if (err?.code === SEND_GATE.TWO_FACTOR) {
+      if (/** @type {Error & {code?: string}} */ (err)?.code === SEND_GATE.TWO_FACTOR) {
         setStep("verify");
         return;
       }
