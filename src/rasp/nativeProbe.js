@@ -13,7 +13,7 @@
 // │ BUILT + device-verified (PARTIAL) 2026-07-11, INTERNAL.                   │
 // │   Android — RaspIntegrityPlugin.kt (Kotlin, su/Magisk/Frida/emu/cert).    │
 // │   iOS     — RaspIntegrityPlugin.m  (ObjC, Cydia/sandbox/dyld/Frida).      │
-// │ Registered as Capacitor plugin "RaspIntegrity" on both platforms.         │
+// │ Registered ("RaspIntegrity") both platforms; iOS→Xcode target #826, UNVAL. │
 // │ Samsung Galaxy Note 20 5G (SM-N981B), Magisk v30.7: plugin registered in  │
 // │ Veyrnox process; StrongBox KEK + biometric unlock confirmed end-to-end.   │
 // │ checkIntegrity() rooted-signal return and Send-screen WARN NOT captured   │
