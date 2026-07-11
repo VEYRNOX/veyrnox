@@ -10,12 +10,15 @@
 // nativeProbeSource() where the web build passes browserProbeSource.
 //
 // ┌──────────────────────────────────────────────────────────────────────────┐
-// │ Native plugin status (2026-07-11):                                         │
-// │   Android — RaspIntegrityPlugin.kt BUILT (Kotlin, su/Magisk/Frida/emu).   │
-// │   iOS     — RaspIntegrityPlugin.m  BUILT (ObjC, Cydia/sandbox/dyld/Frida).│
-// │ Both are BUILT-UNVALIDATED: the logic is present but NOT exercised on a   │
-// │ real rooted/jailbroken device. F-09 device verification is still required │
-// │ before the status can advance. Real-device confirmation → close F-09.     │
+// │ BUILT + device-verified (PARTIAL) 2026-07-11, INTERNAL.                   │
+// │   Android — RaspIntegrityPlugin.kt (Kotlin, su/Magisk/Frida/emu/cert).    │
+// │   iOS     — RaspIntegrityPlugin.m  (ObjC, Cydia/sandbox/dyld/Frida).      │
+// │ Registered as Capacitor plugin "RaspIntegrity" on both platforms.         │
+// │ Samsung Galaxy Note 20 5G (SM-N981B), Magisk v30.7: plugin registered in  │
+// │ Veyrnox process; StrongBox KEK + biometric unlock confirmed end-to-end.   │
+// │ checkIntegrity() rooted-signal return and Send-screen WARN NOT captured   │
+// │ (user didn't reach Send during RASP monitoring window). Frida-hooked and  │
+// │ iOS device tests remain outstanding. INTERNAL — not independently audited. │
 // │                                                                            │
 // │ checkIntegrity() contract (both platforms):                               │
 // │     Promise<{                                                              │

@@ -36,7 +36,7 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
-import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
+import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, resolveProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
@@ -634,18 +634,43 @@ export default function SendCrypto() {
   // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
   const riskPending = riskApplicable && !riskReady;
 
-  // RASP §7 — pre-sign ENVIRONMENT gate (Phase 3, browser-level detection active).
-  // detect(browserProbeSource) runs on every render; a normal browser returns
-  // CLEAN → ALLOW (no added friction). Automation/WebDriver → HOOKED → BLOCK.
-  // OS-level probes (root/jailbreak) are not yet available (need native plugin).
+  // RASP §7 — pre-sign ENVIRONMENT gate (Phase 3, browser + native OS detection).
+  // A normal runtime returns CLEAN → ALLOW (no added friction). Automation/WebDriver →
+  // HOOKED → BLOCK (browser leg). Root/jailbreak/hook/emulator → native OS leg (F-09).
   // I3: detect()/degrade() are pure functions of the ENVIRONMENT only — no
   // walletSet handle. I4: a RASP crash fails closed to the strongest BLOCK.
+  //
+  // F-09 — NATIVE OS probe. nativeProbeSource() is a Capacitor bridge call (async), so
+  // it cannot run on the synchronous render path. We sample it ONCE at mount behind an
+  // isNativePlatform() gate (RASP-A1: the OS verdict does not change during a session)
+  // and cache it in state. resolveProbeSource() then picks the native leg when it
+  // genuinely ran (available === true), else falls back to the browser leg — never a
+  // fabricated clean source (I4). On web / a native-bridge throw the state stays null
+  // and detect() reads browserProbeSource exactly as before.
+  const [nativeProbe, setNativeProbe] = useState(null);
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const source = await nativeProbeSource();
+        if (!cancelled) setNativeProbe(source);
+      } catch {
+        // I4 FAIL CLOSED: a native-bridge throw leaves state null → resolveProbeSource
+        // falls back to the browser leg (which is itself fail-closed), never to clean.
+        if (!cancelled) setNativeProbe(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   let raspArtifact = null;
   // RASP-A1 (2026-07-05 internal audit, HIGH): browserProbeSource re-samples the
   // environment FRESH on every property read (its `available`/`signals` are getters),
   // so a debugger / WebDriver flag attached AFTER module-load is still caught. This
-  // runs on every render, and the signer chokepoint re-derives the gate too.
-  try { raspArtifact = degrade(detect(browserProbeSource)); } catch { raspArtifact = degrade(undefined); }
+  // runs on every render, and the signer chokepoint re-derives the gate too. The
+  // native OS leg (cached in `nativeProbe`) is preferred when it genuinely ran.
+  try { raspArtifact = degrade(detect(resolveProbeSource(nativeProbe, browserProbeSource))); } catch { raspArtifact = degrade(undefined); }
   // I4 FAIL CLOSED (RASP-A2, 2026-07-05 internal audit, HIGH): if the RASP artifact
   // is missing a tier (a crash, or degrade() shape drift), fall back to the strongest
   // BLOCK — NEVER ALLOW. A fail-open fallback here would let a hostile runtime sign
