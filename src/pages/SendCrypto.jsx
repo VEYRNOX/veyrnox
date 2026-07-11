@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { ArrowUpRight, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import FeeSelector from "@/components/FeeSelector";
@@ -302,6 +303,17 @@ export default function SendCrypto() {
     try { localStorage.setItem("veyrnox-remote-screen", v ? "1" : "0"); } catch { /* ignore */ }
   };
 
+  // User-controlled simulation toggle. On by default; persisted so the choice
+  // survives navigation. When off: the teaser box is hidden, both simulation
+  // queries are disabled, and the verify step shows no pre-flight result.
+  const [simEnabled, setSimEnabled] = useState(() => {
+    try { return localStorage.getItem("veyrnox-sim-enabled") !== "0"; } catch { return true; }
+  });
+  const toggleSim = (v) => {
+    setSimEnabled(v);
+    try { localStorage.setItem("veyrnox-sim-enabled", v ? "1" : "0"); } catch { /* ignore */ }
+  };
+
   // Synthesise the per-(wallet, asset) record the rest of this screen expects
   // (.currency/.address/.balance) from the live source, so downstream send / limit /
   // screening logic is unchanged. Address comes from the active wallet's derived
@@ -512,7 +524,7 @@ export default function SendCrypto() {
         nativeSymbol, knownAddresses, priorSends, knownCounterparties,
       });
     },
-    enabled: step === "verify" && !DEMO && (isEvmFamily(selectedAsset) || isErc20)
+    enabled: simEnabled && step === "verify" && !DEMO && (isEvmFamily(selectedAsset) || isErc20)
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
@@ -534,7 +546,7 @@ export default function SendCrypto() {
       const { plan } = await estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats });
       return describeBtcPlan({ plan, fromAddress });
     },
-    enabled: step === "verify" && !DEMO && isBtc
+    enabled: simEnabled && step === "verify" && !DEMO && isBtc
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
@@ -1190,39 +1202,56 @@ export default function SendCrypto() {
             every chain, including the high-risk patterns it flags. */}
         {DEMO && step === "form" && <TransactionSimulationDemo />}
 
-        {/* MAINNET: static "what will be checked" teaser shown on the form step.
-            No RPC call — purely informational. The live simulation runs at the
-            verify step once address + amount are known. */}
+        {/* MAINNET: simulation teaser + on/off toggle on the form step.
+            No RPC call here — purely informational. The live simulation runs at
+            the verify step once address + amount are known. Toggle persisted to
+            localStorage so the choice survives navigation. */}
         {!DEMO && step === "form" && (
-          <div className="space-y-2.5 p-3 rounded-xl border border-dashed border-primary/30 bg-primary/5">
-            <p className="text-xs font-medium flex items-center gap-1.5">
-              <Activity className="h-3.5 w-3.5 text-primary" />
-              Transaction Simulation
-            </p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Before you sign, we'll run a local pre-flight check — no third-party
-              services, no data leaves your device.
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                "Address risk (poison / lookalike)",
-                "Contract decode",
-                "Unlimited approval flag",
-                "Revert prediction",
-                "Anomaly vs your history",
-                "Large outflow warning",
-              ].map((label) => (
-                <span
-                  key={label}
-                  className="text-[11px] px-2 py-1 rounded-md border border-border text-muted-foreground"
-                >
-                  {label}
-                </span>
-              ))}
+          <div className={`space-y-2.5 p-3 rounded-xl border border-dashed ${simEnabled ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium flex items-center gap-1.5">
+                <Activity className={`h-3.5 w-3.5 ${simEnabled ? "text-primary" : "text-muted-foreground"}`} />
+                Transaction Screening
+              </p>
+              <Switch
+                id="sim-toggle"
+                checked={simEnabled}
+                onCheckedChange={toggleSim}
+                aria-label="Toggle transaction screening"
+              />
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Results appear at the next step once you enter an address and amount.
-            </p>
+            {simEnabled ? (
+              <>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Before you sign, we run a local pre-flight check — no third-party
+                  services, no data leaves your device.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    "Address risk (poison / lookalike)",
+                    "Contract decode",
+                    "Unlimited approval flag",
+                    "Revert prediction",
+                    "Anomaly vs your history",
+                    "Large outflow warning",
+                  ].map((label) => (
+                    <span
+                      key={label}
+                      className="text-[11px] px-2 py-1 rounded-md border border-border text-muted-foreground"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Results appear at the next step once you enter an address and amount.
+                </p>
+              </>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Screening is off — no pre-flight check will run before signing.
+              </p>
+            )}
           </div>
         )}
 
