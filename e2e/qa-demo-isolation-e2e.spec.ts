@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-// THROWAWAY SEED — testnet only, no real funds
-const THROWAWAY_SEED = 'bamboo lyrics harvest potato seat carry equip nation slam begin admit pet';
-const EXPECTED_EVM = '0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729';
+// Throwaway testnet address loaded from .env.test — never commit real values here
+const EXPECTED_EVM = process.env.VITE_TEST_THROWAWAY_EVM ?? '';
 
-test.describe('QA: Seed Import — Throwaway Testnet Wallet', () => {
+test.describe('QA: Demo Mode Isolation', () => {
   test('demo mode does not show real derived address', async ({ page }) => {
     await page.goto('/?demo=1');
     await page.waitForLoadState('networkidle');
@@ -21,8 +20,7 @@ test.describe('QA: Seed Import — Throwaway Testnet Wallet', () => {
       .or(page.locator('input[type="text"]').first());
 
     if (await addrInput.count() === 0) {
-      // Mark as inconclusive if send form not found
-      console.log('INCONCLUSIVE: send form address input not found at /send?demo=1');
+      test.skip(true, 'Send form address input not found at /send?demo=1 without vault state — see F-004');
       return;
     }
 
