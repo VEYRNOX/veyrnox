@@ -679,6 +679,33 @@ independent. The team is committed to the repo, so every session has it:
   review the current branch vs main across correctness / security-honesty / design-system /
   a11y, with each finding adversarially verified before it is reported.
 
+### Codex — second developer (security reviewer, regression-test writer, CI-fix helper)
+
+Codex (OpenAI Codex CLI, `codex` binary) is treated as a second developer on the team. It
+runs independently so its review is not biased by Claude's implementation reasoning.
+
+**Hard rules for the two-developer model:**
+- **Codex never edits files.** Every Codex invocation is read-only (`codex review` or
+  `codex exec -s read-only`). Claude reads the report, then decides what to implement.
+- **No shared branch.** Claude works on `claude/<slug>` worktrees. Codex reviews the
+  current branch's diff. Never run a Codex review while Claude has uncommitted changes
+  on that same working tree — commit or stash first.
+- **Codex output is INTERNAL.** A Codex pass is a second opinion, not an independent
+  third-party audit. Never cite it as the outstanding independent audit.
+
+**When to invoke Codex:**
+1. After any security-sensitive Claude branch — before merging, run `/codex-security-review`.
+   It gates on `[P1]` findings; a branch with open P1s must not merge.
+2. When a CI check is failing and Claude is stuck after 2 attempts — hand off to Codex for
+   root-cause analysis. Claude reads the answer and implements.
+3. When writing regression tests for a closed audit finding — ask Codex to draft the test,
+   Claude reviews and commits.
+
+**Commands:**
+- `/codex-security-review` — full security pass on the current branch diff (`.claude/commands/codex-security-review.md`)
+- `/codex-security-review focus on <area>` — same, with a specific focus (e.g. "key derivation", "deniability egress")
+- Agent spec: `.claude/agents/veyrnox-codex.md` — full division-of-labour table and invocation guide
+
 ### Orchestration pattern — pick one automatically, every session
 
 Before starting any substantial task, choose the orchestration pattern that fits. Do not ask
