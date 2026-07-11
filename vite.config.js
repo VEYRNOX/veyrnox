@@ -91,6 +91,10 @@ export default defineConfig(({ command }) => {
         // hits the stub and yields `undefined`. See src/main.jsx for the full
         // rationale. Browser-safe; no signer/serializer bytes change.
         buffer: 'buffer',
+        // @revenuecat/purchases-capacitor is a native-only package (iOS/Android).
+        // It is not installed for web builds. purchases.js guards all calls with
+        // isNative(), so a no-op stub here is safe for dev/E2E runs.
+        '@revenuecat/purchases-capacitor': fileURLToPath(new URL('./src/lib/stubs/revenuecat-stub.js', import.meta.url)),
       },
     },
     plugins: [
