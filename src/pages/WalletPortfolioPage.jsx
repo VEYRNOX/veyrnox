@@ -46,6 +46,8 @@ import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";
 import WatchlistWidget from "@/components/WatchlistWidget";
+import PortfolioChart from "@/components/PortfolioChart";
+import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
 import CryptoNewsFeed from "@/components/CryptoNewsFeed";
 import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
@@ -777,11 +779,12 @@ export default function WalletPortfolioPage() {
       <PortfolioHealthScore wallets={wallets} />
       <WatchlistWidget />
 
-      {/* Tabs: Tokens / Activity */}
+      {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">
         <TabsList className="w-full bg-secondary">
           <TabsTrigger value="tokens" className="flex-1">Tokens</TabsTrigger>
           <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-1">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tokens" className="mt-3">
@@ -828,6 +831,11 @@ export default function WalletPortfolioPage() {
 
         <TabsContent value="activity" className="mt-3">
           <ActivityTabContent wallet={activeWallet} />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-3 space-y-6">
+          <PortfolioChart transactions={txList} currentBalance={pfTotal} />
+          <AssetDistributionChart wallets={pfWallets} />
         </TabsContent>
       </Tabs>
 

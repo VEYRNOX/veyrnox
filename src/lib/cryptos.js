@@ -17,16 +17,24 @@
 // (e.g. PriceAlerts) still fetch real quotes from their price API.
 
 export const TOP_CRYPTOS = Object.freeze([
-  { symbol: "BTC",  name: "Bitcoin",  chain: "Bitcoin",     color: "#F7931A", glyph: "₿", usd: 68000,  change24h:  2.3,  mcap: "1.34T" },
-  { symbol: "ETH",  name: "Ethereum", chain: "Ethereum",    color: "#627EEA", glyph: "Ξ", usd: 3200,   change24h: -1.1,  mcap: "386B"  },
-  { symbol: "USDT", name: "Tether",   chain: "Ethereum",    color: "#26A17B", glyph: "₮", usd: 1,      change24h:  0.0,  mcap: "112B"  },
-  { symbol: "BNB",  name: "BNB",      chain: "BNB Chain",   color: "#F3BA2F", glyph: "◈", usd: 590,    change24h:  0.8,  mcap: "86B"   },
-  { symbol: "SOL",  name: "Solana",   chain: "Solana",      color: "#9945FF", glyph: "◎", usd: 165,    change24h:  4.7,  mcap: "78B"   },
-  { symbol: "USDC", name: "USD Coin", chain: "Ethereum",    color: "#2775CA", glyph: "$", usd: 1,      change24h:  0.0,  mcap: "34B"   },
-  { symbol: "XRP",  name: "XRP",      chain: "XRP Ledger",  color: "#0085C0", glyph: "✕", usd: 0.52,   change24h: -0.6,  mcap: "29B"   },
-  { symbol: "DOGE", name: "Dogecoin", chain: "Dogecoin",    color: "#C2A633", glyph: "Ð", usd: 0.16,   change24h:  3.1,  mcap: "23B"   },
-  { symbol: "ADA",  name: "Cardano",  chain: "Cardano",     color: "#0033AD", glyph: "₳", usd: 0.45,   change24h: -1.8,  mcap: "16B"   },
-  { symbol: "TRX",  name: "TRON",     chain: "Tron",        color: "#EB0029", glyph: "T", usd: 0.13,   change24h:  0.4,  mcap: "11B"   },
+  { symbol: "BTC",  name: "Bitcoin",        chain: "Bitcoin",     color: "#F7931A", glyph: "₿", usd: 68000,  change24h:  2.3,  mcap: "1.34T" },
+  { symbol: "ETH",  name: "Ethereum",       chain: "Ethereum",    color: "#627EEA", glyph: "Ξ", usd: 3200,   change24h: -1.1,  mcap: "386B"  },
+  { symbol: "USDT", name: "Tether",         chain: "Ethereum",    color: "#26A17B", glyph: "₮", usd: 1,      change24h:  0.0,  mcap: "112B"  },
+  { symbol: "BNB",  name: "BNB",            chain: "BNB Chain",   color: "#F3BA2F", glyph: "◈", usd: 590,    change24h:  0.8,  mcap: "86B"   },
+  { symbol: "SOL",  name: "Solana",         chain: "Solana",      color: "#9945FF", glyph: "◎", usd: 165,    change24h:  4.7,  mcap: "78B"   },
+  { symbol: "USDC", name: "USD Coin",       chain: "Ethereum",    color: "#2775CA", glyph: "$", usd: 1,      change24h:  0.0,  mcap: "34B"   },
+  { symbol: "XRP",  name: "XRP",            chain: "XRP Ledger",  color: "#0085C0", glyph: "✕", usd: 0.52,   change24h: -0.6,  mcap: "29B"   },
+  { symbol: "DOGE", name: "Dogecoin",       chain: "Dogecoin",    color: "#C2A633", glyph: "Ð", usd: 0.16,   change24h:  3.1,  mcap: "23B"   },
+  { symbol: "ADA",  name: "Cardano",        chain: "Cardano",     color: "#0033AD", glyph: "₳", usd: 0.45,   change24h: -1.8,  mcap: "16B"   },
+  { symbol: "TRX",  name: "TRON",           chain: "Tron",        color: "#EB0029", glyph: "T", usd: 0.13,   change24h:  0.4,  mcap: "11B"   },
+  // Veyrnox live EVM assets — added so CryptoDetailPage resolves chart + Send/Receive.
+  // ARB/OP: rollup gas token IS ETH, so reference price = ETH rate (not governance token).
+  // MATIC: Polygon native gas token (POL rebrand), ~$0.40.
+  // AVAX: Avalanche C-Chain native, ~$25.
+  { symbol: "MATIC", name: "Polygon",       chain: "Polygon",     color: "#8247E5", glyph: "⬡", usd: 0.40,   change24h:  0.0,  mcap: "4B"    },
+  { symbol: "ARB",   name: "Arbitrum",      chain: "Arbitrum",    color: "#28A0F0", glyph: "A", usd: 3200,   change24h: -1.1,  mcap: "3B"    },
+  { symbol: "OP",    name: "Optimism",      chain: "Optimism",    color: "#FF0420", glyph: "Ø", usd: 3200,   change24h: -1.1,  mcap: "2B"    },
+  { symbol: "AVAX",  name: "Avalanche",     chain: "Avalanche",   color: "#E84142", glyph: "A", usd: 25,     change24h:  0.0,  mcap: "10B"   },
 ]);
 
 /** Ordered list of the 10 ticker symbols. */
@@ -54,10 +62,9 @@ const byKey = (key) =>
  * treatment when/if it is verified and flipped.
  */
 const _usd = byKey("usd");
-// AVAX is not in the top-10 display list but needs a rate for spend-cap USD
-// conversion once it flips to live (same treatment as MATIC). BNB is already
-// priced via _usd.BNB from TOP_CRYPTOS.
-export const USD_RATES = Object.freeze({ ..._usd, ARB: _usd.ETH, OP: _usd.ETH, MATIC: 0.4, AVAX: 25 });
+// ARB/OP price at the ETH rate (rollup gas token = ETH); MATIC/AVAX have
+// explicit entries in TOP_CRYPTOS now so _usd already carries their values.
+export const USD_RATES = Object.freeze({ ..._usd, ARB: _usd.ETH, OP: _usd.ETH });
 /**
  * Canonical human-facing disclosure for ANY figure derived from USD_RATES. These
  * are STATIC reference prices, not a live feed, so anything converted through them
