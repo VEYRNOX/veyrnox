@@ -35,9 +35,7 @@ function serializeCheckedSignedTx(txFields, signature, fromAddress) {
   const signed = Transaction.from({ ...txFields, signature });
   if (getAddress(signed.from) !== getAddress(fromAddress)) {
     throw Object.assign(
-      new Error(
-        `Hardware signature recovered to ${signed.from}, expected ${fromAddress} — refusing to broadcast`,
-      ),
+      new Error(`Hardware signature recovered to ${signed.from}, expected ${fromAddress} — refusing to broadcast`),
       { code: 'HW_SIGNER_MISMATCH' },
     );
   }
