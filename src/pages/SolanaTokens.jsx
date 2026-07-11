@@ -122,14 +122,14 @@ export default function SolanaTokens() {
               <p className="text-sm font-semibold">Send SOL</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Use the Send page to transfer SOL — select SOL from the asset selector.
+              Tap below to open the Send page with SOL pre-selected.
             </p>
             <Button
               size="sm"
               className="gap-1.5 text-xs"
-              onClick={() => navigate("/send")}
+              onClick={() => navigate("/send?asset=SOL")}
             >
-              <Send className="h-3 w-3" /> Go to Send
+              <Send className="h-3 w-3" /> Send SOL
             </Button>
           </div>
         </>
