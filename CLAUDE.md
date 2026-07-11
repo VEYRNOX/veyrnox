@@ -403,9 +403,11 @@ audited. No on-chain txid.
   file header updated (L-4); stale lazy-upgrade test comment corrected (L-5);
   `bufferToB64u`/`b64uToBuffer` extracted to `web-base64url.js` + 17 unit tests (L-6).
 
-**Still open (3 MEDIUM — design decision required before `M2C_HARDWARE_WRAP_ENABLED = true`):**
-- M-3 (#726): M2c up-migration swallows `VAULT_WRITE_VERIFY_FAILED`.
-- M-5 (#728): `VeyrnoxEnclavePlugin` auto-registered with no internal gate.
+**Resolved (PR #821, 2026-07-11):**
+- ~~M-3 (#726): M2c up-migration swallows `VAULT_WRITE_VERIFY_FAILED`.~~ **FIXED (PR #821):** `logM2cMigrationFailure` exported from `native.js` — migration remains non-fatal (unlock returns the secret) but failures are now logged (`code`/`message` only, no key material — LOG-1 safe). Unit-tested (`native.m2c-migration-log.test.js`). BUILT / INTERNAL.
+- ~~M-5 (#728): `VeyrnoxEnclavePlugin` auto-registered with no internal gate.~~ **FIXED (PR #821):** `src/plugins/veyrnoxEnclave.js` `M2C_ENABLED = false` flag; all key-touching exports throw `M2C_DISABLED` while disabled (fail-closed, I4); `deleteWrappingKey` ungated (cleanup must not be blocked). Unit-tested (`veyrnoxEnclave.m2c-gate.test.js`). BUILT / INTERNAL.
+
+**Still open (1 MEDIUM — design decision required before `M2C_HARDWARE_WRAP_ENABLED = true`):**
 - M-6 (#729): iOS-F5 `NSString hB64` bridge copy of H — architectural limitation (accept
   or bridge-level redaction).
 
@@ -449,16 +451,18 @@ binding, M9 gas cap, M11 session expiry, H-NEW-B step-up re-auth) all PASS; RASP
 tier unconditional (browser probe); AES-256-GCM IV fresh per encryption, no nonce reuse,
 auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
 
+**Resolved (PRs #806 and #821, 2026-07-11):**
+- ~~M-2 (`hw-send.js` zero test coverage; issue #747)~~ **BUILT (PR #821):** stub-based unit tests for EVM/BTC/SOL `hw-send.js` added (`src/wallet-core/{evm,btc,sol}/__tests__/hw-send.test.js`). Software-signer mock covers signature reconstruction and `HW_SIGNER_MISMATCH` fail-closed guard. Honest scope: stub-level only — physical Ledger/Trezor device still required for the catalogue "verified" bar. INTERNAL.
+- ~~M-5 (`planSolTransfer` accepts non-bigint `amountLamports`; issue #750)~~ **BUILT (PR #806):** `typeof amountLamports !== 'bigint'` guard added in `src/wallet-core/sol/send.js:115` — throws on non-bigint input. Unit-tested. INTERNAL.
+
 **Still open (owner-decision or architectural gate required):**
 - M-1 (EVM private key as JS string — architecturally unzeroable; ethers v6 limitation,
   no available fix; tracked issue #746)
-- M-2 (`hw-send.js` zero test coverage — physical Ledger/Trezor required; issue #747)
 - M-4 (2FA retry dead end after network failure — UX, not a security bypass; issue #749)
-- M-5 (`planSolTransfer` accepts non-bigint `amountLamports` without type guard; issue #750)
 - M-8 (no AAD on base vault blob — `assertSaneKdfParams` partially mitigates the OOM
   vector; full AAD binding is in the independent audit scope; issue #752)
 - M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
-  owner decision on disclosure wording; issue #754)
+  owner decision on disclosure wording; issue #754; docs disclosure BUILT #753)
 - M-10 (Cosmos non-hardened index level — correct BIP-44 but xpub-risk; documentation gap)
 - L-1, L-2, L-3, L-5 (low-priority; see `docs/Feature-Status.md` §"2026-07-08 INTERNAL
   S1–S4 + crypto audit")
@@ -523,6 +527,27 @@ added to `featureClassification.js` (PR #784/788 drift); `SendCrypto.jsx` confli
 resolved keeping both `simEnabled` (PR #790) and `!isDeniabilitySessionActive()`;
 `WalletPortfolioPage.jsx` `fetchAssetHistory` return-type unwrap (TS2339 fix). All in
 PR #783 squash commit `028c8b37`.
+
+## 2026-07-11 RASP pre-sign gate — fail-closed on native (C-01, PR #825)
+
+**C-01 (CRITICAL, internal-audit-2026-07-11) — FIXED (PR #825). BUILT / unit-tested,
+INTERNAL — NOT device-verified, NOT independently audited, no on-chain txid.**
+
+The Send pre-sign gate previously used `resolveProbeSource(nativeProbe, browserProbeSource)`,
+which fell back to the browser leg whenever the native leg did not run (available !== true /
+null / threw). On a real native Capacitor WebView the browser leg is always `available:true`
+and always `CLEAN`, so a rooted/jailbroken device whose OS probe was absent, threw, or had
+not yet been sampled would pass `detect() → TIER.ALLOW` with zero friction — fail-OPEN.
+
+**Fix:** `src/rasp/selectPresignProbeSource.js` (pure, no egress, no wallet-set handle —
+I3). On native (`isNative === true`), trusts the OS leg ONLY when `nativeSource.available
+=== true`; absent/null/false/threw → `UNAVAILABLE_PROBE_SOURCE` → `detect() →
+INTEGRITY_UNAVAILABLE → degrade() → WARN` — NEVER the browser leg's CLEAN. On web,
+browser leg unchanged. `SendCrypto.jsx` imports and calls
+`selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource)`.
+Unit-tested (`src/rasp/__tests__/selectPresignProbeSource.test.js`;
+`src/pages/__tests__/SendCrypto.raspNativeProbe.test.jsx`). See
+`docs/Feature-Status.md` §7 for the RASP pre-sign gate entry.
 
 ## Security invariants
 

@@ -301,11 +301,7 @@ export default function DuressPin() {
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          Real PIN opens your real wallet. Emergency PIN opens a different one — for
-          when you&apos;re forced to unlock. Any wrong PIN says &ldquo;Incorrect PIN.&rdquo; After 10
-          wrong tries, this device is wiped for good. Honest limit: someone examining
-          the device might still spot the second wallet. Turn on Hardware Protection
-          for more cover.
+          Your PIN opens your wallet. The Emergency PIN opens a decoy. Get it wrong 10 times and this phone wipes.
         </span>
       </div>
 
@@ -316,12 +312,7 @@ export default function DuressPin() {
           <div>
             <p className="text-sm font-semibold">How it works</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Set an <b>Emergency PIN</b> that is different from your real one.
-              Your <b>real PIN</b> opens your real wallet. Your{" "}
-              <b>Emergency PIN</b> opens a separate wallet — the one you hand
-              over under pressure. Wrong PINs show an error. After 10 wrong
-              tries, everything on this device is deleted. You can also{" "}
-              <b>route Face ID to the Emergency wallet only</b>.
+              Set an <b>Emergency PIN</b> different from your real one. Face ID can open the decoy if you want.
             </p>
           </div>
         </div>
@@ -334,23 +325,10 @@ export default function DuressPin() {
           active alarm. See src/wallet-core/deniabilityUnlock.js:72-79 (VULN-17). */}
       <div
         data-testid="duress-timing-disclosure"
-        className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2"
+        className="p-4 rounded-xl border border-border bg-secondary/30"
       >
         <p className="text-xs text-muted-foreground leading-relaxed">
-          <span className="font-medium text-foreground">Good to know.</span>{' '}
-          Your real PIN can unlock slightly faster than your Emergency PIN.
-          Someone watching your network traffic during unlock could potentially
-          use that timing difference to tell which PIN you used.
-        </p>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          The Emergency PIN protects you from someone in the room forcing you
-          to unlock. It is{' '}
-          <span className="font-medium text-foreground">not</span>{' '}
-          designed to protect against a remote attacker who is monitoring your
-          network connection. For stronger cover if this device could be
-          seized, turn on{' '}
-          <span className="font-medium text-foreground">Hardware Protection</span>{' '}
-          in Settings.
+          Your real PIN unlocks faster than the decoy. Someone on your network could tell them apart. This protects you from someone in the room, not someone remote.
         </p>
       </div>
 
@@ -449,10 +427,7 @@ export default function DuressPin() {
                     Use {bioLabel} for the Emergency wallet
                   </span>
                   <span className="block text-muted-foreground mt-1">
-                    {bioLabel} will always open the <b>Emergency wallet</b>.
-                    Your real wallet still needs your typed <b>real PIN</b>.
-                    Anyone who makes you use {bioLabel} only ever sees the
-                    Emergency wallet.
+                    {bioLabel} always opens the decoy. Your real wallet still needs your typed PIN. Anyone forcing you to use {bioLabel} only ever sees the decoy.
                   </span>
                 </span>
               </label>
@@ -611,10 +586,7 @@ export default function DuressPin() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            Lock your wallet and enter your Emergency PIN to try it. You&apos;ll
-            see the Emergency wallet with its real balance. Never share your
-            Emergency PIN. Forgot it? Come back here and remove it while
-            logged in with your real PIN.
+            Lock your wallet and enter the Emergency PIN to try it. Never share it. Forgot it? Remove it here while unlocked with your real PIN.
           </p>
         </div>
       )}
