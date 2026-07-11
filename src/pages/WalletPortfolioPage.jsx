@@ -544,6 +544,16 @@ export default function WalletPortfolioPage() {
   }, [portfolio, canManage]);
   const unbacked = canManage ? wallets.filter((w) => !w.backedUp) : [];
 
+  // Transaction list for PortfolioChart (analytics tab). Must be before any early
+  // return — React Hooks must be called unconditionally on every render.
+  const _activeEvmAddress = wallets.find((w) => w.id === activeWalletId)?.accounts?.[0]?.address || null;
+  const { data: _txHistory } = useQuery({
+    queryKey: ["history", "ETH", _activeEvmAddress],
+    queryFn: () => fetchAssetHistory({ asset: ETH_ASSET, address: _activeEvmAddress, demo: DEMO }),
+    enabled: !!_activeEvmAddress && !isDeniabilitySessionActive(),
+    staleTime: 60_000,
+  });
+
   // ── Explore / no-wallet empty state ──
   if (!isUnlocked) {
     return (
@@ -577,6 +587,7 @@ export default function WalletPortfolioPage() {
   const activePortfolioName = portfolios.find((p) => p.id === activePortfolioId)?.name || "Main";
   const activeWallet = wallets.find((w) => w.id === activeWalletId);
   const activeInThisPortfolio = activeWallet && inActive(activeWallet);
+  const txList = _txHistory?.transactions ?? [];
 
   // Transaction list for PortfolioChart (analytics tab). ETH-only; same I3 guards
   // as ActivityTabContent. Falls back to [] while loading or on error.
