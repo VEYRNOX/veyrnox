@@ -10,22 +10,21 @@
 // nativeProbeSource() where the web build passes browserProbeSource.
 //
 // ┌──────────────────────────────────────────────────────────────────────────┐
-// │ TODO (mobile dev) — the NATIVE plugin itself is NOT written yet.           │
-// │ This module imports `@/rasp/raspIntegrityPlugin`, which must export a      │
-// │ Capacitor plugin `RaspIntegrity` with:                                     │
-// │     checkIntegrity(): Promise<{                                            │
-// │       rooted?: boolean,        // su/Magisk/SuperSU, write-test, busybox    │
-// │       jailbroken?: boolean,    // Cydia/Sileo paths, sandbox escape (iOS)   │
-// │       hookedProcess?: boolean, // Frida/Xposed ports, ptrace, dylib inject  │
-// │       emulator?: boolean,      // build props / sensors / known FP          │
-// │     }>                                                                      │
-// │ iOS (Swift) + Android (Kotlin) native implementations are out of scope of  │
-// │ this JS layer and require real-device verification before RASP is trusted. │
-// │ Binary-tamper detection is a separate probe (bundle signature/checksum)    │
-// │ and is intentionally left to the native layer; until the plugin reports it │
-// │ we keep `tampered: false` (honest scope — never a fabricated clean claim,  │
-// │ because the absence of a tamper signal is NOT the same as fail-closed; the │
-// │ whole source still fails closed when the plugin cannot run at all).         │
+// │ BUILT 2026-07-11. Both native plugins are written:                        │
+// │   Android: RaspIntegrityPlugin.kt (su/Magisk paths, Frida port 27042,     │
+// │     Xposed packages, /proc/self/maps, emulator build props, APK cert)     │
+// │   iOS:     RaspIntegrityPlugin.m  (Cydia/Sileo paths, sandbox escape,     │
+// │     Frida port 27042, dyld image scan, MobileSubstrate/cycript)           │
+// │ Registered as Capacitor plugin "RaspIntegrity" on both platforms.         │
+// │ Device-verified (PARTIAL) 2026-07-11 on Samsung Galaxy Note 20 5G         │
+// │ (SM-N981B, Magisk v30.7): plugin registered in Veyrnox process; StrongBox │
+// │ KEK + biometric unlock confirmed end-to-end on rooted device. The         │
+// │ checkIntegrity() rooted-signal return and Send-screen RASP WARN were NOT  │
+// │ captured in that session (user did not navigate to Send during the RASP   │
+// │ monitoring window). Frida-hooked device test and iOS device test remain   │
+// │ outstanding. INTERNAL — not independently audited.                         │
+// │ Binary-tamper detection (`tampered`) is reported by the native layer;      │
+// │ until positively set, it is treated as "not observed" (not fabricated).   │
 // └──────────────────────────────────────────────────────────────────────────┘
 //
 // I4 — FAIL CLOSED. Off a non-native platform, when the plugin module is absent,
