@@ -10,21 +10,24 @@
 // nativeProbeSource() where the web build passes browserProbeSource.
 //
 // ┌──────────────────────────────────────────────────────────────────────────┐
-// │ BUILT 2026-07-11. Both native plugins are written:                        │
-// │   Android: RaspIntegrityPlugin.kt (su/Magisk paths, Frida port 27042,     │
-// │     Xposed packages, /proc/self/maps, emulator build props, APK cert)     │
-// │   iOS:     RaspIntegrityPlugin.m  (Cydia/Sileo paths, sandbox escape,     │
-// │     Frida port 27042, dyld image scan, MobileSubstrate/cycript)           │
+// │ BUILT + device-verified (PARTIAL) 2026-07-11, INTERNAL.                   │
+// │   Android — RaspIntegrityPlugin.kt (Kotlin, su/Magisk/Frida/emu/cert).    │
+// │   iOS     — RaspIntegrityPlugin.m  (ObjC, Cydia/sandbox/dyld/Frida).      │
 // │ Registered as Capacitor plugin "RaspIntegrity" on both platforms.         │
-// │ Device-verified (PARTIAL) 2026-07-11 on Samsung Galaxy Note 20 5G         │
-// │ (SM-N981B, Magisk v30.7): plugin registered in Veyrnox process; StrongBox │
-// │ KEK + biometric unlock confirmed end-to-end on rooted device. The         │
-// │ checkIntegrity() rooted-signal return and Send-screen RASP WARN were NOT  │
-// │ captured in that session (user did not navigate to Send during the RASP   │
-// │ monitoring window). Frida-hooked device test and iOS device test remain   │
-// │ outstanding. INTERNAL — not independently audited.                         │
-// │ Binary-tamper detection (`tampered`) is reported by the native layer;      │
-// │ until positively set, it is treated as "not observed" (not fabricated).   │
+// │ Samsung Galaxy Note 20 5G (SM-N981B), Magisk v30.7: plugin registered in  │
+// │ Veyrnox process; StrongBox KEK + biometric unlock confirmed end-to-end.   │
+// │ checkIntegrity() rooted-signal return and Send-screen WARN NOT captured   │
+// │ (user didn't reach Send during RASP monitoring window). Frida-hooked and  │
+// │ iOS device tests remain outstanding. INTERNAL — not independently audited. │
+// │                                                                            │
+// │ checkIntegrity() contract (both platforms):                               │
+// │     Promise<{                                                              │
+// │       rooted?: boolean,        // su/Magisk/SuperSU, write-test (Android)  │
+// │       jailbroken?: boolean,    // Cydia/Sileo/sandbox escape (iOS)         │
+// │       hookedProcess?: boolean, // Frida port / dyld / Xposed               │
+// │       emulator?: boolean,      // build props / simulator env              │
+// │       tampered?: boolean,      // re-sign / cert fingerprint mismatch      │
+// │     }>                                                                     │
 // └──────────────────────────────────────────────────────────────────────────┘
 //
 // I4 — FAIL CLOSED. Off a non-native platform, when the plugin module is absent,
