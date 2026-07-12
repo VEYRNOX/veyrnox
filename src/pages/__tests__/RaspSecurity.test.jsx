@@ -71,8 +71,8 @@ describe('RaspSecurity — honest current-state render', () => {
     expect(t).toMatch(/\bbrowser-active\b/);
     expect(t).toMatch(/Wired to send path/i);
     expect(t).toMatch(/\byes\b/);
-    expect(t).toMatch(/Independent audit/i);
-    expect(t).toMatch(/2026-06-23/);
+    expect(t).toMatch(/Block tier/i);
+    expect(t).toMatch(/unconditional/i);
     expect(t).toMatch(/browser lane/i);
   });
 
