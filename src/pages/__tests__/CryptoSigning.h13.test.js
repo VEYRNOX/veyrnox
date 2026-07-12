@@ -1,15 +1,14 @@
 // Structural regression guard for audit finding H13 in CryptoSigning.jsx.
 //
-// H13 has two parts:
-//  (1) Secrets (BIP-39 mnemonic, private key) were copied to the OS clipboard via
-//      a bare navigator.clipboard.writeText(), bypassing copySecret()'s 30s wipe.
-//      On Android the clipboard/keyboard history retains secrets indefinitely.
-//  (2) The signing operations (signMessage / signTransaction) ran with NO RASP
-//      pre-sign gate — automation/WebDriver could drive signing unchecked.
+// After the real-wallet rewrite, H13 part (1) is moot in the STRONGEST way: the
+// page copies NO secret at all (no mnemonic, no private key), so there is no
+// clipboard-leak surface to wipe. What remains to pin:
+//  (1) No secret is ever copied — makeCopy only handles PUBLIC values (address,
+//      signature), and no mnemonic/privateKey copy call exists.
+//  (2) The signing operation still runs behind a RASP pre-sign gate —
+//      automation/WebDriver must not drive signing unchecked.
 //
-// This codebase pins send-flow / signing-path wiring STRUCTURALLY (it reads the
-// page source) rather than mounting the full signer stack — see
-// SendCrypto.confirmation.test.js. We follow that established pattern here.
+// Structural source-scan, matching SendCrypto.confirmation.test.js.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -19,27 +18,22 @@ import { dirname, join } from 'node:path';
 const dir = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(dir, '../CryptoSigning.jsx'), 'utf8');
 
-describe('CryptoSigning — H13: secrets use the wiping copySecret(), never a bare clipboard write', () => {
-  it('imports copySecret from lib/copySecret', () => {
-    expect(src).toMatch(/import\s*\{\s*copySecret\s*\}\s*from\s*["']@\/lib\/copySecret["']/);
+describe('CryptoSigning — H13: no secret is ever copied to the clipboard', () => {
+  it('does not import or call the wiping copySecret (no secret to wipe)', () => {
+    // The module path @/lib/copySecret is fine; what must be absent is the
+    // copySecret binding itself (named import + any call).
+    expect(src).not.toMatch(/\{\s*copySecret\b/);
+    expect(src).not.toMatch(/\bcopySecret\s*\(/);
+  });
+
+  it('makes no mnemonic or private-key copy call', () => {
+    expect(src).not.toMatch(/mnemonicRef/);
+    expect(src).not.toMatch(/walletRef/);
+    expect(src).not.toMatch(/privateKey/);
   });
 
   it('does not write to the clipboard directly (no bare navigator.clipboard.writeText)', () => {
-    // makeCopy routes sensitive values through copySecret; the navigator.clipboard
-    // call is only in the non-sensitive branch of makeCopy. Verify that secret
-    // values (mnemonic, private key) are never passed directly to writeText.
-    expect(src).not.toMatch(/navigator\.clipboard\.writeText\s*\(\s*mnemonicRef/);
-    expect(src).not.toMatch(/navigator\.clipboard\.writeText\s*\(\s*walletRef/);
-  });
-
-  it('routes the mnemonic copy through copySecret', () => {
-    // copy(mnemonicRef.current, ..., { sensitive: true }) → makeCopy → copySecret
-    expect(src).toMatch(/copy\s*\(\s*mnemonicRef\.current[^)]*sensitive[^)]*true/s);
-  });
-
-  it('routes the private key copy through copySecret', () => {
-    // copy(walletRef.current?.privateKey, ..., { sensitive: true }) → makeCopy → copySecret
-    expect(src).toMatch(/copy\s*\(\s*walletRef\.current\?\.privateKey[^)]*sensitive[^)]*true/s);
+    expect(src).not.toMatch(/navigator\.clipboard\.writeText/);
   });
 });
 
