@@ -110,6 +110,7 @@ async function solRpcPost(url, method, params) {
  * @returns {Promise<bigint>}
  */
 export async function getBalanceLamports(networkKey, address) {
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   const candidates = rpcUrlCandidates(networkKey);
   let lastErr;
   for (const url of candidates) {
