@@ -82,6 +82,21 @@ These three tasks configure Apple/Google/RevenueCat to use the exact identifiers
 > exist in **App Store Connect** (Task 1) / Play Console (Task 2). Then redo this same
 > entitlement/product/package wiring against the **App Store** product (identical identifiers).
 > Device sandbox purchase (Task 15) remains the only thing that proves the tier unlocks.
+>
+> **Entity decision — 2026-07-12 (blocks the Apple side, not the code).** App Store Connect
+> setup was begun on an **Individual** developer account (`Al Jobson`), but Veyrnox is a
+> registered company and should be the public **seller name from day one**. Apple does not
+> allow converting Individual → Organization in-place (the entity Type field is locked), so
+> the plan is to enrol a **new Organization** membership for Veyrnox and rebuild the Apple
+> side there. A **D-U-N-S** number request has been submitted (the long pole — days to ~2
+> weeks). Consequences: the App Store Connect **app record + `safety_plus_monthly`
+> subscription** created on the Individual account will be **rebuilt on the Org account**
+> (identical identifiers — `com.veyrnox.app`, `safety_plus_monthly`, `$5.99`), and the
+> RevenueCat **App Store app connection + `appl_…` key** will target the Org account. What
+> is **account-agnostic and does NOT change**: all repo code, `Configuration.storekit`, the
+> `$5.99` pricing, the preflight, and the RevenueCat project's entitlement/offering/package
+> structure. Apple-side work is **paused pending D-U-N-S**; app-layer + test-store work
+> continues meanwhile.
 
 - [ ] **Step 1:** Create a free [RevenueCat](https://app.revenuecat.com) account and a new project named `Veyrnox`.
 - [ ] **Step 2:** Add two Apps under the project:
