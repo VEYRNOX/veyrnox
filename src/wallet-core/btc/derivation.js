@@ -55,7 +55,7 @@ export function btcPath(coinType, change = CHAIN_EXTERNAL, index = 0) {
  *
  * @param {string} mnemonic               - BIP-39 mnemonic (shared seed).
  * @param {object} opts
- * @param {string} [opts.networkKey='testnet'] - 'testnet' | 'signet' | 'mainnet'.
+ * @param {string} [opts.networkKey='mainnet'] - 'mainnet' | 'testnet' | 'signet'.
  * @param {0|1}    [opts.change=0]         - external/receive (0) or change (1) chain.
  * @param {number} [opts.index=0]          - address index.
  * @param {string} [opts.passphrase='']    - optional BIP-39 passphrase.
