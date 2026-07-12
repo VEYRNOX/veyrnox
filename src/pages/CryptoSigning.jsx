@@ -211,10 +211,10 @@ export default function CryptoSigning() {
       </div>
 
       {/* H-B: Persistent ephemeral-key warning — not dismissible, safety-critical */}
-      <div role="alert" aria-live="polite" className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm">
-        <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
-        <p className="text-amber-200 leading-snug">
-          <strong className="font-semibold text-amber-100">Keys on this page are temporary.</strong>{" "}
+      <div role="alert" aria-live="polite" className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/50 bg-amber-500/10 text-sm">
+        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+        <p className="text-amber-900 dark:text-amber-200 leading-snug">
+          <strong className="font-semibold text-amber-950 dark:text-amber-100">Keys on this page are temporary.</strong>{" "}
           They are not saved to your wallet. If you send funds to an address shown here without first exporting and saving the private key, those funds cannot be recovered.
         </p>
       </div>
