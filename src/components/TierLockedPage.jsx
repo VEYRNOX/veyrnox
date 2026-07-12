@@ -14,7 +14,7 @@ export default function TierLockedPage() {
       <div className="text-sm min-w-0">
         <p className="font-semibold text-foreground">Safety Plus feature</p>
         <p className="text-muted-foreground mt-1">
-          This feature is part of Safety Plus ($5.98/mo). Upgrade to unlock it.
+          This feature is part of Safety Plus ($5.99/mo). Upgrade to unlock it.
         </p>
         <Link
           to="/plans"

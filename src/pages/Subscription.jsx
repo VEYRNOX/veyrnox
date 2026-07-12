@@ -63,7 +63,7 @@ export default function Subscription() {
     return () => { cancelled = true; };
   }, [isNative]);
 
-  const priceString = plusPackage?.product?.priceString ?? "$5.98/mo";
+  const priceString = plusPackage?.product?.priceString ?? "$5.99/mo";
 
   async function handleUpgrade() {
     if (!plusPackage) return;

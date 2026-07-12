@@ -37,7 +37,7 @@ export const TIERS = [
   {
     id: 'safety_plus',
     name: 'Safety Plus',
-    price: '$5.98/mo',
+    price: '$5.99/mo',
     tagline: 'Everything in Free, plus deeper security controls and advanced analytics.',
   },
 ];

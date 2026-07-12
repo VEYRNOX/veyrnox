@@ -114,7 +114,7 @@ export default function SafetyPlus() {
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary/30 bg-primary/5">
           <div>
             <p className="text-sm font-semibold">Upgrade to Safety Plus</p>
-            <p className="text-xs text-muted-foreground mt-0.5">$5.98/mo · via Google Play &amp; App Store at launch</p>
+            <p className="text-xs text-muted-foreground mt-0.5">$5.99/mo · via Google Play &amp; App Store at launch</p>
           </div>
           <Link
             to="/plans"
