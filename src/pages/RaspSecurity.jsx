@@ -166,7 +166,7 @@ export default function RaspSecurity() {
 
       {/* Footer */}
       <p className="text-xs text-muted-foreground border-t border-border pt-4">
-        No fake event counts or scan buttons — only real detections shown.
+        No fabricated event counts, no scan buttons — only real detections shown.
       </p>
     </div>
   );
