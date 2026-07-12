@@ -89,13 +89,37 @@ export function VoiceProvider({ children }) {
     if (!plugin) { setError("Speech plugin not ready"); return; }
     setError(null);
 
+    // Graceful degradation: re-verify the engine is actually available on this
+    // device/OS before touching any privacy API. On iOS a device with no speech
+    // recognizer (or a build missing the NSSpeechRecognition/NSMicrophone usage
+    // descriptions) must fail honest here, not push forward into start() and
+    // crash. available() itself never requests permission, so it is safe to call.
+    try {
+      const { available } = await plugin.available();
+      if (!available) {
+        setSupported(false);
+        setError("Voice recognition isn't available on this device.");
+        return;
+      }
+    } catch {
+      setSupported(false);
+      setError("Voice recognition isn't available on this device.");
+      return;
+    }
+
+    // Request mic + speech-recognition permission. Unlike the Android-only "already
+    // granted" fast-path, a rejection or a non-granted status must stop us before
+    // start() — otherwise a denied/restricted device falls through and errors mid-loop.
     try {
       const status = await plugin.requestPermissions();
       if (status?.speechRecognition !== "granted") {
-        setError("Microphone permission denied. Go to Android Settings → Apps → Veyrnox → Permissions → Microphone.");
+        setError("Microphone or speech-recognition permission denied. Enable it in Settings → Veyrnox → Microphone & Speech Recognition.");
         return;
       }
-    } catch { /* already granted */ }
+    } catch (e) {
+      setError(e?.message || "Couldn't obtain microphone permission.");
+      return;
+    }
 
     keepListeningRef.current = true;
     setListening(true);
