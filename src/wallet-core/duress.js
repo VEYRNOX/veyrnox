@@ -159,7 +159,13 @@ export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswo
  */
 export async function tryDuressUnlock(password) {
   const blob = await loadDecoy();
-  if (!blob) return null;
+  if (!blob) {
+    // Constant-time guard: run one full Argon2id KDF pass so the absence of a
+    // duress vault is timing-indistinguishable from a wrong-password miss.
+    // Mirrors stealth.js:tryRevealHidden's dummy decryptVault on no-salt path.
+    await encryptVault('__duress_timing_chaff__', password).catch(() => {});
+    return null;
+  }
   try {
     return await decryptVault(blob, password); // throws on wrong password
   } catch {
