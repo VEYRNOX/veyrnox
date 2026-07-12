@@ -224,22 +224,27 @@ async function remoteChecks(secret, projectId) {
   }
 
   // 5. Package `$rc_monthly` is on the offering, pointing at `safety_plus_monthly`.
+  //    v2 has NO /offerings/{id}/packages/{id}/products sub-resource (it 404s). Instead we
+  //    request the packages list with ?expand=items.product, which inlines each package's
+  //    attached products as `package.products.items[].product.store_identifier` — one call,
+  //    verified against the live API shape. A package can carry the RIGHT lookup_key while
+  //    pointing at the WRONG product (e.g. a leftover test-store `monthly`), so this is a
+  //    hard PASS/FAIL, not a warn — a wrong product here silently buys the wrong thing.
   if (offering) {
     try {
-      const packages = await rcList(secret, `${base}/offerings/${offering.id}/packages?limit=50`);
+      const packages = await rcList(secret, `${base}/offerings/${offering.id}/packages?limit=50&expand=items.product`);
       const pkg = packages.find((p) => p.lookup_key === EXPECT.package) ?? null;
       if (!pkg) {
         fail('rc: package exists', `offering '${EXPECT.offering}' has no package with lookup_key '${EXPECT.package}'`);
       } else {
         pass('rc: package exists', `package '${EXPECT.package}' found on offering '${EXPECT.offering}'`);
-        // Best-effort: confirm the package points at the expected product.
-        try {
-          const pkgProducts = await rcList(secret, `${base}/offerings/${offering.id}/packages/${pkg.id}/products?limit=50`);
-          const hit = pkgProducts.some((p) => p.store_identifier === EXPECT.product || p.product?.store_identifier === EXPECT.product);
-          if (hit) pass('rc: package ↔ product', `'${EXPECT.package}' points at '${EXPECT.product}'`);
-          else warn('rc: package ↔ product', `could not confirm '${EXPECT.package}' points at '${EXPECT.product}' — confirm in the dashboard`);
-        } catch (e) {
-          warn('rc: package ↔ product', `could not auto-verify package→product via API (${e.message}) — confirm manually`);
+        const attached = (pkg.products?.items ?? [])
+          .map((it) => it?.product?.store_identifier)
+          .filter(Boolean);
+        if (attached.includes(EXPECT.product)) {
+          pass('rc: package ↔ product', `'${EXPECT.package}' points at '${EXPECT.product}'`);
+        } else {
+          fail('rc: package ↔ product', `'${EXPECT.package}' points at [${attached.join(', ') || 'nothing'}], not '${EXPECT.product}' — the monthly purchase would buy the wrong product`);
         }
       }
     } catch (e) {
