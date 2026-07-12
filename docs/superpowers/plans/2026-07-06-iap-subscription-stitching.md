@@ -13,7 +13,7 @@
 - Entitlement identifier: exactly `safety_plus` (must match the RevenueCat dashboard entitlement id byte-for-byte — this is the string the code checks).
 - Subscription product identifier: exactly `safety_plus_monthly` (must be configured as the product ID in BOTH App Store Connect and Google Play Console).
 - RevenueCat offering identifier: `default`; package identifier: `$rc_monthly` (RevenueCat's standard monthly-package identifier).
-- Displayed price must come from the store via `product.priceString` — never hard-code `"$5.98/mo"` in a code path that can actually purchase (Apple/Google require the real, localized store price; the existing hard-coded `$5.98/mo` stays only in `tier.js`'s display-only catalogue).
+- Displayed price must come from the store via `product.priceString` — never hard-code `"$5.99/mo"` in a code path that can actually purchase (Apple/Google require the real, localized store price; the existing hard-coded `$5.99/mo` stays only in `tier.js`'s display-only catalogue).
 - Fail-closed (I4): any entitlement-resolution error, timeout, or missing data must resolve to `'free'` — a paid tier is only ever returned when RevenueCat positively confirms an active entitlement.
 - Web is out of scope for purchasing (matches existing "web is testing only" convention — see git history `ca904e5b`). Web always resolves `'free'` without calling into the RevenueCat SDK at all.
 - Secrets/keys go in `.env.local` (git-ignored), never inline shell vars — Windows/PowerShell compatibility (per CLAUDE.md). RevenueCat's public SDK API keys are client-exposed, NOT secrets (same class as the existing `VITE_WALLETCONNECT_PROJECT_ID` / `VITE_CRYPTOCOMPARE_API_KEY` pattern in `.env.example`).
@@ -41,7 +41,7 @@ These three tasks configure Apple/Google/RevenueCat to use the exact identifiers
   - Product ID: `safety_plus_monthly` (must match exactly — this is a hard-coded constant in the code, see Global Constraints).
   - Reference name: `Safety Plus Monthly`.
   - Duration: 1 month.
-  - Price: $5.98 USD (Apple auto-generates the localized price tiers for other storefronts).
+  - Price: $5.99 USD (Apple auto-generates the localized price tiers for other storefronts).
   - Add at least one localization (English) with a display name (`Safety Plus`) and description (use the `tagline` from `src/lib/tier.js:36`: "Pre-sign intelligence and advanced analytics — harden your wallet day to day.").
 - [ ] **Step 4:** Submit the subscription for review readiness (it can stay in "Ready to Submit" / "Missing Metadata" state during development — it does not need to be live to work in sandbox testing).
 - [ ] **Step 5:** Note the **Shared Secret** is NOT needed for this integration (RevenueCat handles server-to-server receipt validation using its own App Store Connect API key, configured in Task 3) — do not put an Apple shared secret anywhere in this repo.
@@ -54,7 +54,7 @@ These three tasks configure Apple/Google/RevenueCat to use the exact identifiers
 - [ ] **Step 2:** Under **Monetize → Products → Subscriptions**, create a new subscription:
   - Product ID: `safety_plus_monthly` (must match exactly, same identifier as Task 1).
   - Name: `Safety Plus Monthly`.
-- [ ] **Step 3:** Add a **Base plan**: auto-renewing, billing period 1 month, price $5.98 USD (Google auto-generates other-currency prices, or set them manually to match Apple's tiers).
+- [ ] **Step 3:** Add a **Base plan**: auto-renewing, billing period 1 month, price $5.99 USD (Google auto-generates other-currency prices, or set them manually to match Apple's tiers).
 - [ ] **Step 4:** Activate the base plan (can stay in internal/closed testing track during development).
 - [ ] **Step 5:** Under **Setup → API access**, link the Play Console project to a Google Cloud project and grant RevenueCat's service account access (RevenueCat's dashboard, configured in Task 3, will give you the exact service-account email and required permissions — **Financial data**, **Manage orders and subscriptions**).
 
@@ -822,7 +822,7 @@ export default function TierLockedPage() {
       <div className="text-sm min-w-0">
         <p className="font-semibold text-foreground">Safety Plus feature</p>
         <p className="text-muted-foreground mt-1">
-          This feature is part of Safety Plus ($5.98/mo). Upgrade to unlock it.
+          This feature is part of Safety Plus ($5.99/mo). Upgrade to unlock it.
         </p>
         <Link
           to="/plans"
@@ -1232,7 +1232,7 @@ export default function Subscription() {
     return () => { cancelled = true; };
   }, [isNative]);
 
-  const priceString = plusPackage?.product?.priceString ?? "$5.98/mo";
+  const priceString = plusPackage?.product?.priceString ?? "$5.99/mo";
 
   async function handleUpgrade() {
     if (!plusPackage) return;
@@ -1415,7 +1415,7 @@ git commit -m "feat(iap): wire real RevenueCat purchase/restore flow into Plans 
   "type": "RecurringSubscription",
   "subscriptionGroupID": "safety_plus_group",
   "recurringSubscriptionPeriod": "P1M",
-  "displayPrice": "5.98",
+  "displayPrice": "5.99",
   "familyShareable": false,
   "localizations": [
     {
