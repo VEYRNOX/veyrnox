@@ -266,8 +266,8 @@ export default function LandingPage() {
                   <p className="font-bold text-lg">Encrypted Vault</p>
                 </div>
                 <div className="p-4 rounded-lg bg-background/50">
-                  <p className="text-sm text-muted-foreground">Audits</p>
-                  <p className="font-bold text-lg">Internal + independent</p>
+                  <p className="text-sm text-muted-foreground">Key custody</p>
+                  <p className="font-bold text-lg">Non-custodial</p>
                 </div>
               </div>
             </div>

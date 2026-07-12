@@ -95,7 +95,7 @@ export default function LiveBalances() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2"><Wifi className="h-5 w-5 text-primary" /> Live RPC Balances</h1>
-        <p className="text-sm text-muted-foreground">Real on-chain reads via the wallet's own public RPC providers — testnet only (mainnet is gated until audit).</p>
+        <p className="text-sm text-muted-foreground">Real on-chain reads via the wallet's own public RPC providers — testnet only.</p>
       </div>
 
       {/* Status indicators — honest about what this actually queries. */}
