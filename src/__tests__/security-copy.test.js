@@ -72,7 +72,7 @@ const HONESTY = {
     'normal unlock screen',               // revealed via secret at normal prompt
     'no list',                            // no list of hidden wallets kept
     'every wallet',                       // chaff seeded for every device...
-    'not "hidden wallets"',               // proves "VEYRNOX", not "hidden wallets"
+    'not "this device has hidden wallets"', // proves "VEYRNOX", not "this device has hidden wallets"
     'not on-chain',                       // hides in app, not on-chain
     'public',                             // addresses public on explorer
     'unrecoverable',                      // forgotten secret = unrecoverable
