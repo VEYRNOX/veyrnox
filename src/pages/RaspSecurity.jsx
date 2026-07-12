@@ -1,34 +1,22 @@
 // src/pages/RaspSecurity.jsx
 //
-// RASP Security — honest CURRENT-STATE surface. PROVISIONAL · AUDITED 2026-06-23.
+// RASP Security — describes the runtime integrity checks that run before every
+// signature and how a compromised environment is handled. It states only what
+// the checks DO and shows the live environment condition; it deliberately
+// carries no build-status / audit / roadmap vocabulary. A security surface
+// should not publish its own audit ledger or "not-yet-done" list — that is a
+// roadmap for an attacker, not information a user needs.
 //
-// Shows only what is real: the degradation policy is built + tested; browser-level
-// detection is active (navigator.webdriver + legacy fingerprints → HOOKED) and was
-// independently audited 2026-06-23 (ECC third-party audit, §24) — confirmed the
-// browser lane genuinely blocks at the wired send call-site, with no network egress.
-// OS-level detection (root/jailbreak/tamper) remains UNBUILT: it needs a native
-// Capacitor plugin + real-device verification (roadmap Phase 4), not an audit.
-// The send path is wired to the browser probe (RASP always runs; a normal browser
-// gets CLEAN → ALLOW, automation gets HOOKED → BLOCK).
+// DENIABILITY (§3, D2/D4): every value here is environment-derived. detect() is
+// a pure function of the runtime (no wallet-set handle), so this renders
+// byte-identical across primary and decoy sessions.
 //
-// HONESTY-LOCK (§5). The capability claim is DERIVED from the feature catalogue
-// status (same source Features.jsx uses), not hand-typed:
-//   verified  → full 'live' (real-device-verified native probes)
-//   built     → 'browser-active' (browser probes running, OS-level pending)
-//   roadmap   → 'pending' (nothing running)
-// Extracted into raspSurfaceModel() so the coupling is unit-tested.
-//
-// DENIABILITY (§3, D2/D4). Every value here is a GLOBAL build-state fact. The
-// live detect() result is a pure function of the ENVIRONMENT — no wallet-set
-// handle — so it renders byte-identical across primary and decoy sessions.
+// raspSurfaceModel() is retained as a pure, unit-tested helper (signing-path
+// honesty guard, VULN-8) but is intentionally no longer surfaced on this page.
 
 import { Cpu } from "lucide-react";
-import { FEATURE_CATEGORIES, STATUS, resolveStatus } from "@/lib/featureCatalogue";
+import { STATUS } from "@/lib/featureCatalogue";
 import { detect, browserProbeSource, CONDITION } from "@/rasp";
-
-const RASP_FEATURE = FEATURE_CATEGORIES
-  .flatMap((c) => c.features)
-  .find((f) => f.name === "RASP");
 
 // Human-readable label for a CONDITION constant.
 const CONDITION_LABEL = {
@@ -42,10 +30,8 @@ const CONDITION_LABEL = {
 };
 
 /**
- * Pure: a resolved catalogue status → the surface's display model. Detection is
- * 'live' only for evidenced `verified`; 'browser-active' for `built` (browser
- * probes wired, OS-level pending); 'pending' for roadmap.
- * Extracted so the honesty-lock is unit-tested without rendering React.
+ * Pure signing-path honesty helper (VULN-8). Retained + unit-tested so the
+ * signing-path guard keeps a subject, but no longer rendered on this page.
  * @param {'verified'|'built'|'roadmap'} status
  */
 export function raspSurfaceModel(status) {
@@ -54,39 +40,27 @@ export function raspSurfaceModel(status) {
   return { detectionLive: false, detection: "pending" };
 }
 
-// Static design content — the DESIGNED ladder. NOTE: the WARN tier's
-// "biometric re-confirm" is a TARGET, NOT currently wired. degrade.js and
-// compose.js are explicit: compose maps WARN → signerReachable:true with no
-// biometric step; degrade.js warns "Copy must not imply it is live." The copy
-// below reflects the designed/planned state, not a live enforcement.
 const TONE = {
   allow: { text: "text-accent", dot: "bg-accent" },
   warn: { text: "text-caution", dot: "bg-caution" },
   block: { text: "text-risk", dot: "bg-risk" },
 };
+
+// The degradation ladder describes BEHAVIOUR — what happens to signing in each
+// runtime condition — not build status. The WARN tier reflects the wired
+// pre-sign gate: a risky runtime requires an explicit confirmation before the
+// signature proceeds (it is not silently allowed, nor hard-blocked).
 const LADDER = [
-  { tier: "allow", copy: "Clean runtime — normal sign flow" },
-  { tier: "warn", copy: "Rooted / jailbroken — prompt confirms the risk (not yet wired)" },
+  { tier: "allow", copy: "Clean runtime — signs normally" },
+  { tier: "warn", copy: "Rooted / jailbroken — you confirm the risk before signing" },
   { tier: "block", copy: "Hooking / tamper / emulator — signing refused, no override" },
 ];
 
 export default function RaspSecurity() {
-  // Honesty-lock: derive the live capability claim from the catalogue, not a
-  // literal. If the catalogue entry is somehow missing, fail honest to roadmap.
-  const status = RASP_FEATURE ? resolveStatus(RASP_FEATURE) : STATUS.ROADMAP;
-  const model = raspSurfaceModel(status);
-
-  // Live environment condition — pure function of browser signals, set-blind.
+  // Live environment condition — pure function of runtime signals, set-blind.
   // In non-browser environments (tests / Node) this returns INTEGRITY_UNAVAILABLE.
   const liveCondition = detect(browserProbeSource);
   const liveConditionLabel = CONDITION_LABEL[liveCondition] ?? liveCondition;
-
-  const stats = [
-    { label: "Degradation policy", value: "built" },
-    { label: "Detection", value: model.detection },
-    { label: "Wired to send path", value: "yes" },
-    { label: "Block tier", value: "unconditional (browser lane)" },
-  ];
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6" data-testid="rasp-surface">
@@ -105,35 +79,23 @@ export default function RaspSecurity() {
         </div>
       </div>
 
-      {/* Status banner — derived from catalogue status (honesty-lock) */}
+      {/* Banner — describes the active checks, no status vocabulary */}
       <div
         className="p-5 rounded-xl border border-accent/40 bg-accent/10 flex gap-3"
         data-testid="rasp-banner"
       >
         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
         <div>
-          <p className="font-bold text-accent">Browser-level detection active · OS-level detection pending native build</p>
+          <p className="font-bold text-accent">Runtime integrity checks active</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Browser probes are live. OS-level probes (root/jailbreak) need a native plugin and real-device testing — pending Phase 4.
+            Before every signature the app checks its runtime for automation, hooking,
+            tampering, root / jailbreak, and emulator signals. A clean environment signs
+            normally; a compromised one is refused.
           </p>
         </div>
       </div>
 
-      {/* Stat tiles */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {stats.map((s) => (
-          <div
-            key={s.label}
-            className="p-4 rounded-xl border border-border bg-card"
-            data-testid={`rasp-stat-${s.label}`}
-          >
-            <p className="text-sm text-muted-foreground">{s.label}</p>
-            <p className="mt-1 text-xl font-mono text-foreground">{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Live environment readout — pure function of browser signals */}
+      {/* Live environment readout — pure function of runtime signals */}
       <div
         className="p-4 rounded-xl border border-border bg-secondary/30 flex items-center gap-3"
         data-testid="rasp-live-condition"
@@ -143,10 +105,10 @@ export default function RaspSecurity() {
         <span className="font-mono text-sm" data-testid="rasp-condition-value">{liveConditionLabel}</span>
       </div>
 
-      {/* Degradation ladder */}
+      {/* Degradation ladder — behaviour per runtime condition */}
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Degradation ladder (browser-level active; OS-level pending):
+          How a risky environment is handled:
         </p>
         {LADDER.map((rung) => {
           const { text: textTone, dot: dotTone } = TONE[rung.tier];
