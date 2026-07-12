@@ -45,13 +45,14 @@ import {
 } from "@/lib/hiddenBalance";
 import { deriveAddressFromMnemonic } from "@/hooks/useDeriveAddress";
 import {
-  EyeOff, Eye, Shield, CheckCircle2, AlertTriangle, Lock, Unlock, FlaskConical,
+  EyeOff, Shield, CheckCircle2, Lock, Unlock, FlaskConical,
   Copy, Check, Coins, ExternalLink, Ghost, Globe, Wifi,
   FolderInput, ShieldAlert, Wallet as WalletIcon, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PinPad from "@/components/security/PinPad";
 
 // Fixed demo credentials so the simulator walkthrough is one-click reproducible.
 // DEMO ONLY — never used outside the demonstration panel.
@@ -396,9 +397,10 @@ export default function StealthWallets() {
   const { requireTwoFactor, gateModal } = useActionGuard();
 
   // ----- create card state -----
+  const [stealthEnabled, setStealthEnabled] = useState(false);
+  const [createStep, setCreateStep] = useState("enter"); // "enter" | "confirm"
   const [secret, setSecret] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [showSecret, setShowSecret] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedPhrase, setSavedPhrase] = useState("");      // hidden mnemonic (once)
@@ -427,7 +429,7 @@ export default function StealthWallets() {
   // ----- create handler -----
   const handleCreate = async () => {
     setError(""); setSavedPhrase(""); setSavedIdentity(null);
-    if (secret.length < 4) { setError("Reveal secret must be at least 4 characters"); return; }
+    if (secret.length < 8) { setError("Reveal PIN must be 8 digits"); return; }
     if (secret !== confirm) { setError("Secrets do not match"); return; }
     // CRITICAL: creating a hidden wallet is gated behind the second factor when one
     // is set (no-op otherwise). Runs after local validation.
@@ -437,7 +439,7 @@ export default function StealthWallets() {
         const { mnemonic, evm, btc, sol } = await addHiddenWallet(secret);
         setSavedPhrase(mnemonic);
         setSavedIdentity({ evm: evm.address, btc: btc.address, sol: sol.address });
-        setSecret(""); setConfirm("");
+        setSecret(""); setConfirm(""); setCreateStep("enter");
         await refresh();
       } catch (e) {
         setError(e?.message || "Could not create hidden wallet");
@@ -527,22 +529,6 @@ export default function StealthWallets() {
       </div>
 
       {/* VULN-4 storage isolation disclosure */}
-      <div
-        data-testid="stealth-storage-disclosure"
-        className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2"
-      >
-        <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground">
-          Hidden wallets aren't in the secure vault yet (we're working on it). If someone grabs your phone's data, they see the wallet but can't open it without your secret.
-        </p>
-      </div>
-
-      <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-        <span>
-          Unlock looks and times the same for every wallet, and the hidden-wallet count is never revealed — an examiner sees a fixed pool of identical slots and can't easily tell real from decoy.
-        </span>
-      </div>
 
       {/* How it works */}
       <div className="p-5 rounded-xl border border-border bg-card space-y-3">
@@ -580,47 +566,58 @@ export default function StealthWallets() {
         </div>
 
         <div className="space-y-4">
-          <div>
-            <Label>Reveal secret</Label>
-            <div className="relative mt-1.5">
-              <Input
-                type={showSecret ? "text" : "password"}
-                maxLength={64}
-                placeholder="At least 4 characters — different from your main password"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                className="pr-10 tracking-widest text-lg"
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowSecret((s) => !s)}
-              >
-                {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-          <div>
-            <Label>Confirm reveal secret</Label>
-            <Input
-              type={showSecret ? "text" : "password"}
-              maxLength={64}
-              placeholder="Re-enter secret"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              className="mt-1.5 tracking-widest text-lg"
+          {/* Enable toggle */}
+          <label className="flex items-center justify-between cursor-pointer">
+            <span className="text-sm font-medium">Hidden wallets</span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={stealthEnabled}
+              onChange={(e) => {
+                setStealthEnabled(e.target.checked);
+                setSecret(""); setConfirm(""); setCreateStep("enter"); setError("");
+              }}
             />
-          </div>
-          <div className="p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-[11px] text-caution flex items-start gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>
-              Make it different from your main PIN and Emergency PIN — if it matches, that one opens instead.
-            </span>
-          </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button className="w-full" disabled={!secret || !confirm || saving} onClick={handleCreate}>
-            {saving ? "Creating…" : "Create hidden wallet"}
-          </Button>
+          </label>
+
+          {stealthEnabled && (
+            <>
+              <p className="text-[11px] text-muted-foreground">
+                Your reveal PIN must be <b>different</b> from your main PIN, Emergency PIN, and Wipe PIN — if it matches, that wallet opens instead and yours may not.
+              </p>
+
+              <p className="text-[11px] text-muted-foreground">
+                An 8-digit PIN has lower entropy than a passphrase. Choose digits not guessable from your birthday, phone number, or contacts.
+              </p>
+
+              {createStep === "enter" ? (
+                <div className="space-y-2">
+                  <Label>Reveal PIN (8 digits)</Label>
+                  <PinPad
+                    value={secret}
+                    onChange={setSecret}
+                    onComplete={() => setCreateStep("confirm")}
+                    length={8}
+                    submitLabel="Continue"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Confirm reveal PIN</Label>
+                  <PinPad
+                    value={confirm}
+                    onChange={setConfirm}
+                    onComplete={handleCreate}
+                    length={8}
+                    submitLabel="Create hidden wallet"
+                    disabled={saving}
+                  />
+                </div>
+              )}
+
+              {error && <p className="text-xs text-destructive">{error}</p>}
+            </>
+          )}
         </div>
 
         {savedPhrase && (
