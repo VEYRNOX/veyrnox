@@ -31,12 +31,12 @@ import { is2faPasskeyEnabled, isPasskeyRegistered, PASSKEY_REGISTRATION_EVENT } 
 export const SEND_2FA_CHANGED_EVENT = 'veyrnox:2fa-changed';
 
 /**
- * @param {object}  args
- * @param {boolean} args.demo
- * @param {boolean} args.isNative
- * @param {boolean} args.actionPasswordConfigured
- * @param {boolean} args.isDecoy
- * @param {boolean} args.isHidden
+ * @param {object}  [args]
+ * @param {boolean} [args.demo]
+ * @param {boolean} [args.isNative]
+ * @param {boolean} [args.actionPasswordConfigured]
+ * @param {boolean} [args.isDecoy]
+ * @param {boolean} [args.isHidden]
  * @returns {'biometric'|'passkey'|'password'|'none'}
  */
 export function useSend2faMethod({

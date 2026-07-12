@@ -527,22 +527,6 @@ export default function StealthWallets() {
       </div>
 
       {/* VULN-4 storage isolation disclosure */}
-      <div
-        data-testid="stealth-storage-disclosure"
-        className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2"
-      >
-        <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground">
-          Hidden wallets aren't in the secure vault yet (we're working on it). If someone grabs your phone's data, they see the wallet but can't open it without your secret.
-        </p>
-      </div>
-
-      <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-        <span>
-          Unlock looks and times the same for every wallet, and the hidden-wallet count is never revealed — an examiner sees a fixed pool of identical slots and can't easily tell real from decoy.
-        </span>
-      </div>
 
       {/* How it works */}
       <div className="p-5 rounded-xl border border-border bg-card space-y-3">

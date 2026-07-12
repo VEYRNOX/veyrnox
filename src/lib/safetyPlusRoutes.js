@@ -8,7 +8,6 @@ export const SAFETY_PLUS_ROUTES = [
   '/risk-score',
   '/advanced-analytics',
   '/onchain',
-  '/price-charts',
   '/recurring',
 ];
 

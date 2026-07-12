@@ -2,12 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { SAFETY_PLUS_ROUTES, isSafetyPlusRoute } from '../safetyPlusRoutes';
 
 describe('safetyPlusRoutes', () => {
-  it('lists exactly the 5 pure-analytics Safety Plus feature routes', () => {
+  it('lists exactly the 4 pure-analytics Safety Plus feature routes', () => {
     expect(SAFETY_PLUS_ROUTES).toEqual([
       '/risk-score',
       '/advanced-analytics',
       '/onchain',
-      '/price-charts',
       '/recurring',
     ]);
   });
@@ -53,6 +52,7 @@ describe('safetyPlusRoutes', () => {
       '/audit-log',
       '/crypto-signing',
       '/security',
+      '/price-charts',
     ];
     for (const route of MUST_STAY_FREE) {
       expect(SAFETY_PLUS_ROUTES, `${route} must stay FREE`).not.toContain(route);

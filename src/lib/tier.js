@@ -65,6 +65,7 @@ export const FREE_FEATURES = [
   { name: 'Token Approvals (View + Revoke)', summary: 'Inspect and revoke ERC-20 allowances' },
   { name: 'Audit Log', summary: 'Optional encrypted local activity record' },
   { name: 'Message Signing', summary: 'Sign messages for proof-of-ownership' },
+  { name: 'Price Charts, Alerts & Watchlist', summary: 'Real OHLCV data and threshold alerts' },
 ];
 
 // Safety Plus tier headline features (analytics / premium insights only) — shown
@@ -74,6 +75,5 @@ export const SAFETY_PLUS_FEATURES = [
   { name: 'Portfolio Risk Score', summary: 'Concentration, leverage and volatility scoring' },
   { name: 'Advanced Analytics', summary: 'Sharpe ratio, correlation matrix, volatility analysis' },
   { name: 'On-Chain Analytics', summary: 'Address-level transaction activity and insights' },
-  { name: 'Price Charts, Alerts & Watchlist', summary: 'Real OHLCV data and threshold alerts' },
   { name: 'Recurring Payments', summary: 'Scheduled payment reminders' },
 ];
