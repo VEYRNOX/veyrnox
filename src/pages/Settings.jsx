@@ -8,7 +8,8 @@ import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useTier } from "@/lib/TierProvider";
 import { getAuthModel } from "@/lib/authModel";
-import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText } from "lucide-react";
+import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature } from "lucide-react";
+import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -46,6 +47,7 @@ export default function Settings() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [auditLog, setAuditLog] = useState(() => getAuditLogEnabled());
   const [auditEntries, setAuditEntries] = useState(null);
+  const [messageSigning, setMessageSigning] = useState(() => isMessageSigningEnabled());
 
   useEffect(() => {
     if (!auditLog) { setAuditEntries(null); return; }
@@ -167,6 +169,37 @@ export default function Settings() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Message signing (opt-in, OFF by default — fail-closed, I4).
+          Lets the /crypto-signing page sign arbitrary text with the wallet key.
+          A wallet that never blind-signs arbitrary messages is safer against
+          signature-phishing, so the capability is present only when the user
+          explicitly enables it. */}
+      <div className="p-5 rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FileSignature className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Message signing</p>
+              <p className="text-xs text-muted-foreground">Off by default · stored on this device only</p>
+            </div>
+          </div>
+          <Switch
+            checked={messageSigning}
+            aria-label={messageSigning ? 'Disable message signing' : 'Enable message signing'}
+            onCheckedChange={(checked) => {
+              setMessageSigningEnabled(checked);
+              setMessageSigning(checked);
+              recordAudit('settings_changed');
+            }}
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Off by default. Lets you sign arbitrary text messages with your wallet key. Only enable if a dApp or service asks you to sign a message.
+        </p>
       </div>
 
       {/* Security settings — shown on all platforms.
