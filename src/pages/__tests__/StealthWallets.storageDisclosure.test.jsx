@@ -34,14 +34,14 @@ describe('StealthWallets storage disclosure (VULN-4)', () => {
     expect(el).toBeTruthy();
   });
 
-  it('disclosure mentions IndexedDB and platform-secure-store asymmetry', () => {
+  it('disclosure honestly states the storage limitation: wallets can be seen but not opened without the secret', () => {
     render(<StealthWallets />);
     const els = screen.getAllByTestId('stealth-storage-disclosure');
     const el = els[0];
     const text = el.textContent.toLowerCase();
-    expect(text).toMatch(/indexeddb|web storage/);
-    // PR #406 replaced "hardware-backed" overclaim with accurate "platform secure store
-    // (ios keychain / android keystore)" — test updated to match honest wording.
-    expect(text).toMatch(/keychain|keystore|platform secure store/);
+    // Humanized text explains: wallets are hidden in the app, not on-device storage
+    expect(text).toMatch(/hidden|not.*secure vault/);
+    // Core honesty: they can be found on-device but not opened without the secret
+    expect(text).toMatch(/can't open|without.*secret/);
   });
 });

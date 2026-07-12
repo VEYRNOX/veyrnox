@@ -19,7 +19,7 @@
 
 import { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { HardDrive, ShieldCheck, ShieldAlert, Loader2, ArrowUpCircle } from 'lucide-react';
+import { HardDrive, ShieldCheck, ShieldAlert, Loader2, ArrowUpCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWallet } from '@/lib/WalletProvider';
 import { getKeyStore } from '@/wallet-core/keystore';
@@ -79,6 +79,62 @@ function isWrongPinVaultError(e) {
 const isNative = (() => {
   try { return Capacitor.isNativePlatform(); } catch { return false; }
 })();
+
+// PIN strength disclosure — informational only, no logic change.
+// An 8-digit numeric PIN has ~100 M combinations. Argon2id raises offline exhaustion
+// to ~1.9 years single-threaded, potentially days on a GPU cluster. The hardware factor
+// (biometric / WebAuthn PRF) makes offline attacks infeasible because each unlock
+// requires the bound device. Without a hardware factor (Safari / no PRF) Argon2id is
+// the sole protection, so a longer password is strongly recommended.
+function PinStrengthNotice({ variant }) {
+  if (variant === 'hardware') {
+    return (
+      <div
+        className="flex items-start gap-2 rounded-lg bg-success/10 border border-success/30 px-3 py-2"
+        data-testid="pin-strength-hardware"
+      >
+        <ShieldCheck className="h-4 w-4 text-success shrink-0 mt-0.5" aria-hidden="true" />
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold text-success">Hardware-protected.</span>{' '}
+          Your PIN combined with Face ID, fingerprint, or passkey makes offline attacks
+          infeasible — an attacker would need both your PIN and this physical device.
+        </p>
+      </div>
+    );
+  }
+  if (variant === 'no-hardware') {
+    return (
+      <div
+        className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2"
+        data-testid="pin-strength-no-hardware"
+      >
+        <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" aria-hidden="true" />
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold text-caution">No hardware factor available in this browser.</span>{' '}
+          Your 8-digit PIN (~100 M combinations) is protected only by Argon2id — a dedicated
+          attacker could exhaust it offline in days to weeks. Use a password of 12+ characters,
+          or switch to Chrome/Firefox to enable hardware protection.
+        </p>
+      </div>
+    );
+  }
+  // variant === 'pre-enroll' (native or web with PRF, not yet enrolled)
+  return (
+    <div
+      className="flex items-start gap-2 rounded-lg bg-muted/40 border border-border px-3 py-2"
+      data-testid="pin-strength-pre-enroll"
+    >
+      <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+      <p className="text-xs text-muted-foreground">
+        <span className="font-semibold">PIN strength.</span>{' '}
+        An 8-digit PIN has ~100 M combinations. Argon2id slows offline attacks to roughly
+        1–2 years single-threaded — but a GPU cluster could cut that to days.
+        Enabling Face ID, fingerprint, or passkey above makes offline attacks infeasible
+        by requiring this device for every unlock.
+      </p>
+    </div>
+  );
+}
 
 export default function HardwareKekSettings() {
   const { isDecoy, isHidden, recordAudit } = useWallet();
@@ -355,11 +411,14 @@ export default function HardwareKekSettings() {
 
       {/* Web — PRF not supported */}
       {!isNative && enrolled !== null && !webPrfAvailable && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-          Hardware protection isn't available on this browser. Use Chrome 99+ or Firefox 108+,
-          or use the iOS or Android app.
-        </p>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Hardware protection isn&apos;t available on this browser. Use Chrome 99+ or Firefox 108+,
+            or use the iOS or Android app.
+          </p>
+          <PinStrengthNotice variant="no-hardware" />
+        </div>
       )}
 
       {/* Enrolled (native or web) */}
@@ -374,6 +433,8 @@ export default function HardwareKekSettings() {
               </p>
             </div>
           </div>
+
+          <PinStrengthNotice variant="hardware" />
 
           {/* Upgrade available — legacy (< v3) KEK wrap, native only. One-time consented
               re-enroll to a per-enrollment salt-bound v3 wrap (C-1). Hidden while the
@@ -486,6 +547,8 @@ export default function HardwareKekSettings() {
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">Enter your vault PIN to enable hardware protection.</p>
 
+          <PinStrengthNotice variant="pre-enroll" />
+
           {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
 
           {busy
@@ -518,6 +581,8 @@ export default function HardwareKekSettings() {
             Enter your 8-digit PIN to enable hardware protection. Your browser will create a
             passkey to lock your wallet to this device.
           </p>
+
+          <PinStrengthNotice variant="pre-enroll" />
 
           {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
 

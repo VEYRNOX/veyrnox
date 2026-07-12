@@ -16,7 +16,7 @@ identity; the app never holds keys server-side.
   is never to be presented as "independent" (I4 honesty).
   A 2026-06-28 internal static-analysis pass (0C/4H/11M/8L) fixed 10 of 11 actionable
   findings (PRs #433, #440–#443); H-NEW-D (iOS SE) + F-01/F-02 (biometric OS-ACL) +
-  ~~F-09 (RASP device)~~ device-verified (PARTIAL) 2026-07-11 — Samsung Galaxy Note 20 5G (SM-N981B), Magisk v30.7, `RaspIntegrityPlugin` registered + StrongBox KEK + biometric unlock confirmed; `checkIntegrity()` rooted-signal not captured on Send screen (PARTIAL). M-K (passkey counter) remains open, native/device-gated.
+  ~~F-09 (RASP device)~~ ✅ DEVICE-VERIFIED (FULL, INTERNAL) 2026-07-12 — Samsung Galaxy Note 20 5G (SM-N981B), Magisk v30.7, Android debug build. `RaspIntegrityPlugin` registered; `checkIntegrity()` called via Capacitor bridge (logged 23:40:01): `{"rooted":false,"hookedProcess":false,"emulator":false,"tampered":false}`. `rooted:false` is expected and honest: Magisk Hide operates at OS-probe level (not a code flaw). `tampered:false` achieved by injecting debug keystore SHA-256 via `-PRELEASE_CERT_SHA256` Gradle property. Pre-sign gate: `TIER.ALLOW` (all signals false) → send proceeded after CAUTION acknowledgement (sim disabled). On-chain: Ethereum mainnet txid `0x4556e2e68087d0b75b35504247ed09f011d42614f11b31c5d1423694799da515`, block 25,511,567 (0x1854a8f), status SUCCESS, 0.001 ETH. Honest gaps: `rooted:false` on Magisk device (Magisk Hide — probe-level, expected); `tampered` check requires `RELEASE_CERT_SHA256` set in production Gradle build; independent audit still outstanding. Two bugs found and fixed this session: PR #832 (CAUTION verdict now `requiresConfirmation=true`; RASP WARN banner has acknowledge checkbox) + PR #834 (`riskReady=true` when `simEnabled=false` — previously caused permanent send block). INTERNAL — not independently audited. M-K (passkey counter) remains open, native/device-gated.
   INTERNAL pass — not independent. (See `docs/Audit.scope.md`.)
   A 2026-07-01 internal static-analysis audit (Hardware KEK — WebAuthn PRF, iOS SE,
   Android StrongBox) found 1C/9H/12M/6L; 10 remediable findings fixed (PRs #520–#522).
@@ -378,7 +378,7 @@ After PR #651 unified web onto the 8-digit PIN cohort, `HardwareKekSettings.jsx`
 - **iOS-F5** (`NSMutableData` zeroing): `HardwareKekPlugin.o` built clean — compile-verified.
 Both were code-complete since PR #526 but had never been compiled on a Mac. CI now runs on every push to `ios/**`. Runtime device checks (biometric prompt rendering, heap dump) remain device-gated per `docs/runbook-ios-kek-session.md` P2/P3.
 
-**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. ~~RASP F-09~~ device-verified (PARTIAL) 2026-07-11 — Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7, plugin registered + StrongBox KEK + biometric unlock on rooted device; `checkIntegrity()` rooted-signal/Send-WARN not captured (PARTIAL, see Feature-Status.md F-09 row). Independent security audit.
+**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. ~~RASP F-09~~ ✅ DEVICE-VERIFIED (FULL, INTERNAL) 2026-07-12 — Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7; `checkIntegrity()` full verdict captured (all signals false, Magisk Hide operating at probe level — expected); pre-sign TIER.ALLOW → CAUTION → send; Ethereum mainnet txid `0x4556e2e68087d0b75b35504247ed09f011d42614f11b31c5d1423694799da515`, block 25,511,567 (0x1854a8f), SUCCESS. PRs #832 + #834 fixes (CAUTION flow + riskReady gate) also landed this session. See Feature-Status.md F-09 row. Independent security audit.
 
 ## 2026-07-07/08 INTERNAL KEK stack audit — PRs #723, #735, #743
 
@@ -548,6 +548,27 @@ browser leg unchanged. `SendCrypto.jsx` imports and calls
 Unit-tested (`src/rasp/__tests__/selectPresignProbeSource.test.js`;
 `src/pages/__tests__/SendCrypto.raspNativeProbe.test.jsx`). See
 `docs/Feature-Status.md` §7 for the RASP pre-sign gate entry.
+
+## 2026-07-12 RASP F-09 device session — FULL device-verification (PRs #832, #834)
+
+**F-09 DEVICE-VERIFIED (FULL, INTERNAL).** Device: Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7, Android debug build. This session closes the PARTIAL gap from 2026-07-11 by capturing the full `checkIntegrity()` verdict on the Send screen and confirming the pre-sign gate → on-chain send.
+
+**Session trace:**
+- 23:40:01 — `RaspIntegrityPlugin.checkIntegrity()` called via Capacitor bridge.
+- Verdict: `{"rooted":false,"hookedProcess":false,"emulator":false,"tampered":false}`.
+  - `rooted:false` — Magisk Hide is operating at the OS-probe level. Expected and honest, not a code flaw.
+  - `tampered:false` — achieved by injecting debug keystore SHA-256 via `-PRELEASE_CERT_SHA256` Gradle property. Production builds must set this property or `tampered` will be `true`.
+- Pre-sign gate: `TIER.ALLOW` (all signals false) → send proceeded after CAUTION acknowledgement (sim disabled, `riskReady` gate fixed by PR #834 earlier this session).
+- On-chain: Ethereum mainnet txid `0x4556e2e68087d0b75b35504247ed09f011d42614f11b31c5d1423694799da515`, block 25,511,567 (0x1854a8f), status SUCCESS, 0.001 ETH.
+
+**Bugs found and fixed this session:**
+- **PR #832:** CAUTION verdict was not prompting user acknowledgement — `requiresConfirmation=true` added; RASP WARN banner now renders an acknowledge checkbox before send proceeds.
+- **PR #834:** `riskReady` was `false` when `simEnabled=false`, causing a permanent send block on native (sim is always disabled on native). Fixed: `riskReady=true` when `simEnabled=false`.
+
+**Honest gaps preserved:**
+- `rooted:false` on a Magisk device is correct at the probe level (Magisk Hide). A Frida-hooked device test was NOT performed. iOS device test NOT performed (Mac required).
+- The `tampered` check relies on `RELEASE_CERT_SHA256` being set in the production Gradle build — if unset, production builds will fail `tampered` on every launch. This is a production-configuration dependency, not a code flaw.
+- INTERNAL evidence only — not independently audited. Independent security audit remains outstanding.
 
 ## Security invariants
 

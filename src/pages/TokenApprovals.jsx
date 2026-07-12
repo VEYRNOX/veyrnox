@@ -102,7 +102,7 @@ export default function TokenApprovals() {
         <div>
           <h1 className="text-xl font-bold">Token Approvals</h1>
           <p className="text-sm text-muted-foreground">
-            Review the spending permissions you've granted to apps and contracts, and revoke the risky ones.
+            Review spending permissions you've granted. Revoke the risky ones.
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
@@ -113,8 +113,8 @@ export default function TokenApprovals() {
       <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">
         <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p>
-          Unlimited permissions are a common way wallets get drained. Revoking removes the app's permission to spend your tokens. The revoke is signed locally on your device.{" "}
-          {DEMO ? "In demo mode the revoke is simulated — no transaction is broadcast." : "Mainnet stays gated; revokes run on testnet only."}
+          Unlimited approvals are a common drain vector. Revoking removes the permission — signed on your device.{" "}
+          {DEMO ? "In demo, the revoke is simulated — no broadcast." : "Mainnet is gated; revokes run on testnet."}
         </p>
       </div>
 
@@ -126,7 +126,7 @@ export default function TokenApprovals() {
               {activeHigh} high-risk approval{activeHigh > 1 ? "s" : ""} detected
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              These grant unlimited spend to an untrusted contract. Revoke them.
+              Unlimited spend to risky contracts. Revoke now.
             </p>
           </div>
         </div>
@@ -230,8 +230,7 @@ export default function TokenApprovals() {
               </p>
               {result.simulated && (
                 <p className="text-xs text-muted-foreground">
-                  Demo mode — no transaction was broadcast. This is the transaction data a native
-                  testnet build would sign locally and send:
+                  Demo mode — no broadcast. Here's what a native build would sign and send:
                 </p>
               )}
               <div className="rounded-lg border border-border bg-secondary/40 p-3">
