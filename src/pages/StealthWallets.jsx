@@ -47,7 +47,7 @@ import { deriveAddressFromMnemonic } from "@/hooks/useDeriveAddress";
 import {
   EyeOff, Shield, CheckCircle2, Lock, Unlock, FlaskConical,
   Copy, Check, Coins, ExternalLink, Ghost, Globe, Wifi,
-  FolderInput, ShieldAlert, Wallet as WalletIcon, Trash2,
+  FolderInput, ShieldAlert, AlertTriangle, Wallet as WalletIcon, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
