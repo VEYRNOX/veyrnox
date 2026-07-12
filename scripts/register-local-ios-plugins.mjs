@@ -16,7 +16,18 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 // Local (non-npm) native iOS plugin classes that must be in packageClassList.
-const LOCAL_IOS_PLUGIN_CLASSES = ['HardwareKekPlugin'];
+// VeyrnoxSpeechRecognitionPlugin is our vendored Voice Commands plugin — it serves
+// the JS plugin name "SpeechRecognition" on iOS because @capacitor-community/
+// speech-recognition (Cap 7, podspec-only) cannot link into this SPM-based Cap 8
+// app. See ios/App/App/VeyrnoxSpeechRecognitionPlugin.swift for the full rationale.
+const LOCAL_IOS_PLUGIN_CLASSES = ['HardwareKekPlugin', 'VeyrnoxSpeechRecognitionPlugin'];
+
+// Class names `cap sync` may regenerate into packageClassList but that are NOT
+// actually linked into the iOS binary. "SpeechRecognition" is the npm plugin's ObjC
+// class; it never links on iOS (no SPM support), so leaving it in packageClassList
+// makes Capacitor attempt NSClassFromString on a missing class. Our vendored
+// VeyrnoxSpeechRecognitionPlugin provides the "SpeechRecognition" JS name instead.
+const STALE_IOS_PLUGIN_CLASSES = ['SpeechRecognition'];
 
 const cfgPath = 'ios/App/App/capacitor.config.json';
 
@@ -36,9 +47,19 @@ for (const cls of LOCAL_IOS_PLUGIN_CLASSES) {
   }
 }
 
-if (added.length) {
+const removed = [];
+for (const cls of STALE_IOS_PLUGIN_CLASSES) {
+  const i = cfg.packageClassList.indexOf(cls);
+  if (i !== -1) {
+    cfg.packageClassList.splice(i, 1);
+    removed.push(cls);
+  }
+}
+
+if (added.length || removed.length) {
   writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n');
-  console.log(`[register-local-ios-plugins] added to packageClassList: ${added.join(', ')}`);
+  if (added.length) console.log(`[register-local-ios-plugins] added to packageClassList: ${added.join(', ')}`);
+  if (removed.length) console.log(`[register-local-ios-plugins] removed stale (unlinked) classes: ${removed.join(', ')}`);
 } else {
   console.log('[register-local-ios-plugins] local iOS plugins already registered ✓');
 }

@@ -14,6 +14,8 @@
 		BBCCDD041FED79650016851F /* HardwareKekPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */; };
 		BBCCDD111FED79650016851F /* RaspIntegrityPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */; };
 		BBCCDD141FED79650016851F /* RaspIntegrityPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD131FED79650016851F /* RaspIntegrityPluginBridge.m */; };
+		BBCCDD211FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */; };
+		BBCCDD231FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
@@ -31,6 +33,8 @@
 		BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RaspIntegrityPlugin.m; sourceTree = "<group>"; };
 		BBCCDD121FED79650016851F /* RaspIntegrityPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RaspIntegrityPlugin.h; sourceTree = "<group>"; };
 		BBCCDD131FED79650016851F /* RaspIntegrityPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RaspIntegrityPluginBridge.m; sourceTree = "<group>"; };
+		BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VeyrnoxSpeechRecognitionPlugin.swift; sourceTree = "<group>"; };
+		BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VeyrnoxSpeechRecognitionPluginBridge.m; sourceTree = "<group>"; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -79,6 +83,8 @@
 				BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */,
 				BBCCDD121FED79650016851F /* RaspIntegrityPlugin.h */,
 				BBCCDD131FED79650016851F /* RaspIntegrityPluginBridge.m */,
+				BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */,
+				BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
@@ -175,6 +181,8 @@
 				BBCCDD041FED79650016851F /* HardwareKekPluginBridge.m in Sources */,
 				BBCCDD111FED79650016851F /* RaspIntegrityPlugin.m in Sources */,
 				BBCCDD141FED79650016851F /* RaspIntegrityPluginBridge.m in Sources */,
+				BBCCDD211FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift in Sources */,
+				BBCCDD231FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

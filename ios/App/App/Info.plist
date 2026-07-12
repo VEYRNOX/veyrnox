@@ -49,5 +49,9 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Authenticate with Face ID to unlock your wallet</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Veyrnox uses speech recognition so you can navigate the app hands-free. Your speech is sent to Apple's speech service for transcription; it is never used to unlock your wallet or access keys.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Veyrnox needs the microphone only while Voice Commands are switched on, to hear navigation commands.</string>
 </dict>
 </plist>

@@ -1022,30 +1022,19 @@ M-1 is an architectural ethers v6 limitation with no available fix; M-8's
 remains in the independent audit scope. The independent third-party audit (S1–S4 + crypto,
 including the vault cipher path) remains outstanding and is not replaced by this pass.
 
-## PR #811 — App Health widget + RASP native probe wiring + CI npm audit snapshot (2026-07-11)
+## PR #811 — RASP native probe wiring (2026-07-11)
 
 > ⚠️ All items BUILT · unit-tested · INTERNAL — NOT device-verified, NOT independently audited. No on-chain txid.
+
+> **Removed 2026-07-12 (owner request):** the App Health widget, its `/app-health`
+> page/route, the `appHealth.js` probe lib + tests, and the CI npm-audit-snapshot infra
+> (`scripts/gen-audit-snapshot.mjs`, `.github/workflows/audit-snapshot.yml`,
+> `public/audit-snapshot.json`) — all originally shipped in this PR — were deleted. Only
+> the RASP F-09 native-probe wiring below remains.
 
 ### RASP F-09 native probe JS wiring
 
 BUILT (PR #811, 2026-07-11). `src/rasp/nativeProbe.js` (`nativeProbeSource`, `resolveProbeSource`): pure chooser returns `nativeSource` when `available === true`, else `browserSource`; fail-closed. `SendCrypto.jsx` samples `nativeProbeSource()` at mount, stores in `nativeProbe` state, passes to `resolveProbeSource` for the probe used by `detect()`. 7 unit tests (`src/rasp/__tests__/nativeProbe.test.js`). The underlying native plugin (`RaspIntegrityPlugin.kt`/`.m`) was already BUILT-UNVALIDATED. **F-09 CLOSED — DEVICE-VERIFIED (FULL, INTERNAL) 2026-07-12** on Samsung Galaxy Note 20 5G (SM-N981B), Magisk v30.7 — full `checkIntegrity()` verdict captured on Send screen, pre-sign gate exercised, Ethereum mainnet on-chain txid confirmed. PRs #832 + #834 also fixed CAUTION-flow and riskReady gate bugs found during this session. See the F-09 row in the open-items table above.
-
-### App Health widget
-
-BUILT (PR #811, 2026-07-11).
-
-| Component | File | Notes |
-|---|---|---|
-| `appHealth.js` probe helpers | `src/lib/appHealth.js` | `probeRuntimeServices()` (RPC, price feed, RevenueCat, RASP browser-level — each `withTimeout`, I4 fail-closed); `loadAuditSnapshot()` (fetches `/audit-snapshot.json`); `readDeviceCapabilities()` (sync: platform, KEK tier, RASP availability, mainnet gate). I3-guarded: callers must check `isDeniabilitySessionActive()` before any network call. 13 unit tests (`src/lib/__tests__/appHealth.test.js`). |
-| `AppHealthWidget.jsx` | `src/components/AppHealthWidget.jsx` | Three-panel card: Runtime services / Package security / Device capabilities. I3-guarded `useEffect`. |
-| `AppHealthPage.jsx` + `/app-health` route | `src/pages/AppHealthPage.jsx`, `src/App.jsx` | Lazy-loaded route with back button. |
-| Settings row | `src/pages/Settings.jsx` | "App health" nav entry after Terms & Legal; warning dot badge when `issueCount > 0`. I3-guarded `useEffect`. |
-
-Test count: 13 (`appHealth.test.js`) + 4 pin-related (`AppHealthPage.pins.test.js`) = 17 tests total.
-
-### CI npm audit snapshot
-
-BUILT (PR #811, 2026-07-11). `scripts/gen-audit-snapshot.mjs` runs `npm audit --json` and writes `public/audit-snapshot.json`. `.github/workflows/audit-snapshot.yml` runs on push to main and on PRs, auto-commits the updated snapshot. I2-compliant: audit data is a static file never fetched from an external host on device — `AppHealthWidget.jsx` reads `/audit-snapshot.json` from the same origin.
 
 ## PR #858 — LiveBalances / Deniability (I3) audit + H1/H2 fixes (2026-07-12)
 
