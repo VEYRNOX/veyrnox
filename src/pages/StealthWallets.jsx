@@ -592,6 +592,10 @@ export default function StealthWallets() {
                 Your reveal PIN must be <b>different</b> from your main PIN, Emergency PIN, and Wipe PIN — if it matches, that wallet opens instead and yours may not.
               </p>
 
+              <p className="text-[11px] text-muted-foreground">
+                An 8-digit PIN has lower entropy than a passphrase. Choose digits not guessable from your birthday, phone number, or contacts.
+              </p>
+
               {createStep === "enter" ? (
                 <div className="space-y-2">
                   <Label>Reveal PIN (8 digits)</Label>
