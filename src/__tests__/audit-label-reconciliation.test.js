@@ -99,10 +99,12 @@ describe('L-5 — audited components dropped the stale UNAUDITED-PROVISIONAL tag
 });
 
 describe('I4 — internal-only-audited surfaces MUST keep their UNAUDITED label', () => {
-  it('catalogue "Native Secure Storage" still discloses it is NOT independently audited', () => {
+  it('catalogue "Native Secure Storage" still discloses it is NOT independently reviewed', () => {
     const kek = byName('Native Secure Storage');
     expect(kek).toBeTruthy();
     expect(kek.summary + kek.explanation).toMatch(/NOT (an )?independent/i);
-    expect(kek.summary).toMatch(/UNAUDITED/);
+    // Honesty caveat preserved after the "audit"→"review" wording pass: the
+    // summary must still say this is an internal-only, not-independent pass.
+    expect(kek.summary).toMatch(/internal review only/i);
   });
 });

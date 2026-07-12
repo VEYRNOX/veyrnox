@@ -85,7 +85,7 @@ export default function RaspSecurity() {
     { label: "Degradation policy", value: "built" },
     { label: "Detection", value: model.detection },
     { label: "Wired to send path", value: "yes" },
-    { label: "Independent audit", value: "2026-06-23 (browser lane)" },
+    { label: "Block tier", value: "unconditional (browser lane)" },
   ];
 
   return (
