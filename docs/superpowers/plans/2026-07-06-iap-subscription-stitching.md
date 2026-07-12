@@ -62,6 +62,27 @@ These three tasks configure Apple/Google/RevenueCat to use the exact identifiers
 
 **Files:** `.env.local` (git-ignored — created in this task, not committed).
 
+> **Progress note — 2026-07-12 (TEST STORE only; NOT production, NOT device-verified).**
+> The RevenueCat project `Veyrnox Wallet` (`proj82381f44`) is created and its **test-store**
+> catalogue is now wired to match the code, verified by `npm run check:iap-preflight`
+> reading the live v2 API (**13/13 green**, incl. the two wiring checks):
+> - **Entitlement** `safety_plus` (`entlf563332478`) — the test store had auto-scaffolded a
+>   mis-keyed entitlement (`lookup_key: "Safety Plus"` ≠ `safety_plus`); it was deleted
+>   (lookup_key is immutable) and recreated correctly via the v2 API.
+> - **Product** `safety_plus_monthly` (`prodd4a36abf71`) — created, attached to the entitlement.
+> - **Offering** `default` (`ofrng5ede4a7a69`, current) → **Package** `$rc_monthly`
+>   (`pkge1c6d2c8adf`) — re-pointed off the leftover test `monthly` product onto
+>   `safety_plus_monthly`.
+> - `.env.local` holds the **test-store** public key (`test_…`), so Steps 3–4 are effectively
+>   satisfied against the test store only.
+>
+> **Still OPEN for production (this note does NOT close Task 3):** Step 2 — connect the real
+> **iOS** (and Android) store app in RevenueCat to get the real `appl_…`/`goog_…` public keys
+> (replacing the `test_…` key), which also requires the `safety_plus_monthly` subscription to
+> exist in **App Store Connect** (Task 1) / Play Console (Task 2). Then redo this same
+> entitlement/product/package wiring against the **App Store** product (identical identifiers).
+> Device sandbox purchase (Task 15) remains the only thing that proves the tier unlocks.
+
 - [ ] **Step 1:** Create a free [RevenueCat](https://app.revenuecat.com) account and a new project named `Veyrnox`.
 - [ ] **Step 2:** Add two Apps under the project:
   - iOS app: bundle id `com.veyrnox.app`, upload the App Store Connect API key (RevenueCat's setup wizard walks through generating this in App Store Connect → Users and Access → Integrations → App Store Connect API).
