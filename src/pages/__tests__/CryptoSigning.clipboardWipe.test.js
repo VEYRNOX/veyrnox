@@ -1,63 +1,47 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Real-wallet rewrite: the CryptoSigning page no longer holds or copies any
+// SECRET (no mnemonic, no private key) — signing is scoped inside
+// withPrivateKey and the only copyable values are PUBLIC (the wallet address and
+// the signature). makeCopy therefore has NO sensitive branch: every copy is a
+// plain copy (copyPlain) with no clipboard-wipe timer. This test pins that:
+// nothing schedules a 30 s wipe, because nothing sensitive is ever copied here.
+
+// Spy on the copy helpers so we can assert makeCopy routes to copyPlain, never
+// copySecret (which is the wiping path). vi.hoisted so the spies exist when the
+// hoisted vi.mock factory runs.
+const { copyPlain, copySecret } = vi.hoisted(() => ({ copyPlain: vi.fn(), copySecret: vi.fn() }));
+vi.mock('@/lib/copySecret', () => ({ copyPlain, copySecret }));
+
 import { makeCopy } from '@/pages/CryptoSigning';
 
-// M15: sensitive copies (private key, mnemonic) on the CryptoSigning page must
-// schedule a 30 s clipboard wipe. Non-sensitive copies (address, signature,
-// signed tx) must NOT — wiping a public value the user pasted is just a bug.
-// We test the page's pure copy router (makeCopy) independent of React rendering.
-//
-// We patch only navigator.clipboard.writeText (not the whole navigator object),
-// so react-dom's userAgent sniffing at import time is left intact.
-
-describe('CryptoSigning clipboard wipe (M15)', () => {
-  let writtenTexts;
-
-  let writeText;
-
+describe('CryptoSigning clipboard — public-only, no secret wipe path', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    writtenTexts = [];
-    writeText = vi.fn((t) => { writtenTexts.push(t); return Promise.resolve(); });
-    // jsdom has no navigator.clipboard; define it without replacing navigator
-    // (so react-dom's userAgent sniffing at import time stays intact).
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText },
-      configurable: true,
-    });
+    copyPlain.mockClear();
+    copySecret.mockClear();
   });
+  afterEach(() => vi.clearAllTimers());
 
-  afterEach(() => {
-    vi.useRealTimers();
-    delete navigator.clipboard;
-  });
-
-  // H-NEW-3: the wipe overwrites the clipboard with a NON-EMPTY replacement,
-  // not '' — an empty write is treated as a fresh history entry by some
-  // clipboard managers (Samsung, Gboard), leaving the secret in history.
-  // What we pin is that a wipe happened and it replaced the secret, not the
-  // exact replacement glyphs.
-  const WIPE_REPLACEMENT = '•'.repeat(24);
-
-  it('schedules a wipe after copying the mnemonic (sensitive)', async () => {
-    const copy = makeCopy(() => {});
-    copy('abandon abandon about', 'mnemonic', { sensitive: true });
-    await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(WIPE_REPLACEMENT);
-    expect(writtenTexts.at(-1)).not.toBe('abandon abandon about'); // secret was overwritten
-  });
-
-  it('schedules a wipe after copying a private key (sensitive)', async () => {
-    const copy = makeCopy(() => {});
-    copy('0xdeadbeef', 'pk', { sensitive: true });
-    await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(WIPE_REPLACEMENT);
-  });
-
-  it('does NOT schedule a wipe for an address (non-sensitive)', async () => {
+  it('copies the address via copyPlain (no wipe)', () => {
     const copy = makeCopy(() => {});
     copy('0xAddress', 'addr');
-    await vi.advanceTimersByTimeAsync(30_000);
-    expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
-    expect(writtenTexts).toEqual(['0xAddress']);
+    expect(copyPlain).toHaveBeenCalledWith('0xAddress');
+    expect(copySecret).not.toHaveBeenCalled();
+  });
+
+  it('copies the signature via copyPlain (no wipe)', () => {
+    const copy = makeCopy(() => {});
+    copy('0xSignature', 'sig');
+    expect(copyPlain).toHaveBeenCalledWith('0xSignature');
+    expect(copySecret).not.toHaveBeenCalled();
+  });
+
+  it('never routes any copy through the wiping copySecret path', () => {
+    const copy = makeCopy(() => {});
+    // Even a would-be "sensitive" 3rd arg has no effect — there is no secret
+    // branch anymore; makeCopy ignores extra args and always copies plainly.
+    copy('anything', 'k', { sensitive: true });
+    expect(copySecret).not.toHaveBeenCalled();
+    expect(copyPlain).toHaveBeenCalledWith('anything');
   });
 });
