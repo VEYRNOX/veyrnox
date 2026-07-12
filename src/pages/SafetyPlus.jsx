@@ -11,24 +11,49 @@
 // gate in components/FeatureGate, not by this display component.
 
 import { Link } from "react-router-dom";
-import { TrendingUp, Lock, Sparkles, ArrowRight, Check } from "lucide-react";
+import { ShieldCheck, TrendingUp, Link2, Lock, Sparkles, ArrowRight, Check } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
 
-// Safety Plus now covers ONLY pure analytics / convenience features. Every
-// security and anti-fraud control (hardware wallet, fraud detection, token
-// approvals, backup, spam filter, audit log, message signing, etc.) is FREE
-// on principle — a safety-positioned wallet must not paywall the controls that
-// keep users safe. The routes below are the SAFETY_PLUS_ROUTES-gated set.
+// Safety Plus hub, grouped by nav section to mirror the public plans page at
+// https://veyrnox.com/plans. Every route below is in the SAFETY_PLUS_ROUTES
+// gated set (the SafetyPlus.routes test enforces that). Three plans-page
+// Safety-Plus items — Calldata decode, Address-poisoning warnings and
+// Transaction simulation — are embedded in the Send flow (not standalone
+// routes) and so are not listed here; see SAFETY_PLUS_ROUTES.
 const SECTIONS = [
+  {
+    nav: "SECURITY",
+    icon: ShieldCheck,
+    features: [
+      { name: "Duress PIN", summary: "Decoy wallet under coercion", route: "/duress-pin" },
+      { name: "Stealth / Hidden Wallets", summary: "Deniable hidden-wallet pool", route: "/stealth-wallets" },
+      { name: "Panic Wipe", summary: "Irreversible local key destruction", route: "/panic-wipe" },
+      { name: "Risk Scoring (Pre-Sign Gate)", summary: "Rule-based gate wired into Send", route: "/risk" },
+      { name: "Hardware Wallet (Trezor)", summary: "Cold-key signing — keys never leave the device", route: "/hardware-wallet" },
+      { name: "Anomaly / Fraud Detection", summary: "Rule-based deviation flags over your own history", route: "/anomaly-detection" },
+      { name: "Suspicious-Address Screening", summary: "Local blocklist + sanctioned-address checks", route: "/address-checker" },
+      { name: "Token Approvals (View + Revoke)", summary: "Inspect and revoke ERC-20 allowances", route: "/token-approvals" },
+      { name: "Spending Limits", summary: "Per-transaction and daily caps", route: "/budget" },
+      { name: "Spam Token Filter", summary: "Auto-hide airdropped scam tokens", route: "/spam-filter" },
+      { name: "Encrypted Personal Backup", summary: "Export an encrypted .enc vault file off-device", route: "/personal-backup" },
+      { name: "Audit Log", summary: "Encrypted local activity record", route: "/audit-log" },
+    ],
+  },
   {
     nav: "FINANCE",
     icon: TrendingUp,
     features: [
-      { name: "Portfolio Risk Score", summary: "Concentration, leverage and volatility scoring across your holdings", route: "/risk-score" },
       { name: "Advanced Analytics", summary: "Sharpe ratio, correlation matrix, volatility analysis", route: "/advanced-analytics" },
       { name: "On-Chain Analytics", summary: "Address-level transaction activity and insights", route: "/onchain" },
       { name: "Recurring Payments", summary: "Scheduled payment reminders with built-in Send flow", route: "/recurring" },
+    ],
+  },
+  {
+    nav: "CONNECT",
+    icon: Link2,
+    features: [
+      { name: "Message Signing", summary: "Proof-of-ownership without sending funds", route: "/crypto-signing" },
     ],
   },
 ];
@@ -81,7 +106,7 @@ export default function SafetyPlus() {
         <p className="text-sm text-muted-foreground">
           {isUnlocked
             ? "Your Safety Plus features — tap any to open."
-            : "Advanced analytics and premium insights. Features below unlock when you upgrade."}
+            : "Deeper security controls and advanced analytics. Features below unlock when you upgrade."}
         </p>
       </div>
 
@@ -89,7 +114,7 @@ export default function SafetyPlus() {
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary/30 bg-primary/5">
           <div>
             <p className="text-sm font-semibold">Upgrade to Safety Plus</p>
-            <p className="text-xs text-muted-foreground mt-0.5">$5.99/mo · via Google Play &amp; App Store at launch</p>
+            <p className="text-xs text-muted-foreground mt-0.5">$5.98/mo · via Google Play &amp; App Store at launch</p>
           </div>
           <Link
             to="/plans"
@@ -119,7 +144,7 @@ export default function SafetyPlus() {
 
       <p className="text-xs text-muted-foreground text-center pt-2">
         Safety Plus is a paid subscription via Google Play &amp; the App Store (mobile only).
-        These analytics features are BUILT and unit-tested; on-device purchase verification is
+        These features are BUILT and unit-tested; on-device purchase verification is
         still pending.
       </p>
     </div>

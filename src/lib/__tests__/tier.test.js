@@ -15,11 +15,11 @@ describe('tier catalogue', () => {
     }
   });
 
-  it('Free tier is $0 and Safety Plus is $5.99/mo', () => {
+  it('Free tier is $0 and Safety Plus is $5.98/mo (mirrors veyrnox.com/plans)', () => {
     const free = TIERS.find((t) => t.id === 'free');
     const plus = TIERS.find((t) => t.id === 'safety_plus');
     expect(free.price).toBe('$0');
-    expect(plus.price).toBe('$5.99/mo');
+    expect(plus.price).toBe('$5.98/mo');
   });
 
   it('getCurrentTier is a legacy display stub that always returns free (real tier comes from resolveTier)', () => {

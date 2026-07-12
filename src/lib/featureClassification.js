@@ -346,7 +346,7 @@ export const CLASSIFICATION = {
   },
   '/plans': {
     verdict: 'live', dataSource: 'static',
-    note: 'Tier cards rendered from TierProvider (real, fail-closed tier via resolveTier) using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). On native the upgrade + restore buttons run a real RevenueCat purchase flow showing the real store price; on web they are disabled with an honest mobile-only disclosure. In-app purchase is BUILT / unit-tested only, NOT device-verified. No fabricated capabilities listed as currently available.',
+    note: 'Tier cards rendered from TierProvider (real, fail-closed tier via resolveTier) using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.98/mo), mirroring the public plans page at https://veyrnox.com/plans. Safety Plus gates the security + analytics feature set listed in SAFETY_PLUS_ROUTES. On native the upgrade + restore buttons run a real RevenueCat purchase flow showing the real store price; on web they are disabled with an honest mobile-only disclosure. In-app purchase is BUILT / unit-tested only, NOT device-verified. No fabricated capabilities listed as currently available.',
   },
   '/safety-plus': {
     verdict: 'live', dataSource: 'static',
