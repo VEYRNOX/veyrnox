@@ -42,6 +42,22 @@
     background: #ffffff;
     border-color: #e0e0e0;
   }
+  /* Dark surface inside the white modal */
+  .dappInfo {
+    background: #f4f5f7;
+  }
+  .optionalSection {
+    background: #f4f5f7;
+    border-color: #d0d5dd;
+  }
+  /* Reject button: white text on white modal is invisible */
+  .rejectBtn {
+    color: #1a1a1a;
+    border-color: #d0d5dd;
+  }
+  .rejectBtn:hover:not(:disabled) {
+    background: #f0f2f5;
+  }
 }
 
 .dappInfo {

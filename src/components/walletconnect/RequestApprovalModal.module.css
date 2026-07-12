@@ -42,6 +42,43 @@
     background: #ffffff;
     border-color: #e0e0e0;
   }
+  /* Surfaces that use hardcoded dark bg — flip to near-white in light mode */
+  .messageBox {
+    background: #f4f5f7;
+    border-color: #d0d5dd;
+    color: #1a1a1a;
+  }
+  .field {
+    background: #f4f5f7;
+  }
+  .txBox {
+    background: #f4f5f7;
+    border-color: #d0d5dd;
+  }
+  .txRow span:first-child {
+    color: #4a5568;
+  }
+  /* Method badge: dark chip on white modal needs a toned surface */
+  .methodBadge {
+    background: #e8eaed;
+    color: #4a5568;
+  }
+  /* Reject button: white text on white modal is invisible */
+  .rejectBtn {
+    color: #1a1a1a;
+    border-color: #d0d5dd;
+  }
+  .rejectBtn:hover:not(:disabled) {
+    background: #f0f2f5;
+  }
+  /* Sim button */
+  .simBtn {
+    background: #f4f5f7;
+    border-color: #d0d5dd;
+  }
+  .simResult {
+    background: rgba(74, 218, 194, 0.12);
+  }
 }
 .methodBadge {
   background: #1D222B;
