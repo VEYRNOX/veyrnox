@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Bell, CheckCircle2, AlertTriangle, TestTube2 } from "lucide-react";
+import { Bell, CheckCircle2, AlertTriangle, TestTube2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
 
 const NOTIFICATION_TYPES = [
   { key: "price_alerts", label: "Price Alerts", desc: "Notify when price targets are hit" },
@@ -12,6 +13,7 @@ const NOTIFICATION_TYPES = [
 ];
 
 export default function PushNotificationsPage() {
+  const native = Capacitor.isNativePlatform();
   const [permission, setPermission] = useState(typeof Notification !== "undefined" ? Notification.permission : "default");
   const [requesting, setRequesting] = useState(false);
   const [prefs, setPrefs] = useState(() => Object.fromEntries(NOTIFICATION_TYPES.map(t => [t.key, true])));
@@ -59,78 +61,92 @@ export default function PushNotificationsPage() {
         <p className="text-sm text-muted-foreground mt-0.5">Stay informed about your portfolio activity</p>
       </div>
 
-      {/* Status banner */}
-      <div className={`p-4 rounded-xl border flex items-start gap-3 ${!isSupported ? "border-border bg-card" : isGranted ? "border-success/30 bg-success/5" : isDenied ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
-        {!isSupported ? <AlertTriangle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-          : isGranted ? <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
-          : isDenied ? <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-          : <Bell className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
-        <div className="flex-1">
-          <p className="text-sm font-semibold">
-            {!isSupported ? "Notifications Not Available"
-              : isGranted ? "Notifications Enabled"
-              : isDenied ? "Notifications Blocked"
-              : "Notifications Not Enabled"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {!isSupported
-              ? "Push notifications aren't supported in this app or browser on this device."
-              : isGranted ? "You'll receive push notifications for your selected events."
-              : isDenied ? "Notifications are blocked by your browser. Go to site settings and allow notifications to re-enable."
-              : "Enable push notifications to stay informed about your wallet activity."}
-          </p>
+      {!native && (
+        <div className="p-4 rounded-xl border border-caution/30 bg-caution/10 flex items-start gap-3">
+          <Lock className="h-5 w-5 text-caution shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-caution">Web version disabled</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Push notifications are only available in the native app. Use VEYRNOX on iOS or Android for this feature.</p>
+          </div>
         </div>
-        {!isGranted && !isDenied && isSupported && (
-          <Button size="sm" onClick={requestPermission} disabled={requesting}>
-            {requesting ? "Requesting…" : "Enable"}
-          </Button>
-        )}
-      </div>
+      )}
 
-      {/* Notification types */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Notification Types</p>
-          {isGranted && (
-            <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={sendTestNotification}>
-              <TestTube2 className="h-3.5 w-3.5" /> Test
-            </Button>
-          )}
-        </div>
-        <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-          {NOTIFICATION_TYPES.map(t => (
-            <div key={t.key} className="px-4 py-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium">{t.label}</p>
-                <p className="text-xs text-muted-foreground">{t.desc}</p>
-              </div>
-              <Switch
-                checked={prefs[t.key] ?? true}
-                disabled={!isGranted}
-                onCheckedChange={v => savePrefs({ ...prefs, [t.key]: v })}
-              />
+      {native && (
+        <>
+          {/* Status banner */}
+          <div className={`p-4 rounded-xl border flex items-start gap-3 ${!isSupported ? "border-border bg-card" : isGranted ? "border-success/30 bg-success/5" : isDenied ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
+            {!isSupported ? <AlertTriangle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              : isGranted ? <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
+              : isDenied ? <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              : <Bell className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
+            <div className="flex-1">
+              <p className="text-sm font-semibold">
+                {!isSupported ? "Notifications Not Available"
+                  : isGranted ? "Notifications Enabled"
+                  : isDenied ? "Notifications Blocked"
+                  : "Notifications Not Enabled"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {!isSupported
+                  ? "Push notifications aren't supported in this app or browser on this device."
+                  : isGranted ? "You'll receive push notifications for your selected events."
+                  : isDenied ? "Notifications are blocked by your browser. Go to site settings and allow notifications to re-enable."
+                  : "Enable push notifications to stay informed about your wallet activity."}
+              </p>
             </div>
-          ))}
-        </div>
-      </div>
+            {!isGranted && !isDenied && isSupported && (
+              <Button size="sm" onClick={requestPermission} disabled={requesting}>
+                {requesting ? "Requesting…" : "Enable"}
+              </Button>
+            )}
+          </div>
 
-      {/* Info card */}
-      <div className="p-4 rounded-xl border border-border bg-card space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">How it works</p>
-        <ul className="space-y-1.5">
-          {[
-            "Notifications appear even when VEYRNOX is in the background",
-            "Your notification preferences are saved locally on this device",
-            "You can revoke permissions at any time in your browser settings",
-            "No personal data is shared with third-party notification services",
-          ].map((item, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-              <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
+          {/* Notification types */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest">Notification Types</p>
+              {isGranted && (
+                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={sendTestNotification}>
+                  <TestTube2 className="h-3.5 w-3.5" /> Test
+                </Button>
+              )}
+            </div>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+              {NOTIFICATION_TYPES.map(t => (
+                <div key={t.key} className="px-4 py-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{t.label}</p>
+                    <p className="text-xs text-muted-foreground">{t.desc}</p>
+                  </div>
+                  <Switch
+                    checked={prefs[t.key] ?? true}
+                    disabled={!isGranted}
+                    onCheckedChange={v => savePrefs({ ...prefs, [t.key]: v })}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Info card */}
+          <div className="p-4 rounded-xl border border-border bg-card space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">How it works</p>
+            <ul className="space-y-1.5">
+              {[
+                "Notifications appear even when VEYRNOX is in the background",
+                "Your notification preferences are saved locally on this device",
+                "You can revoke permissions at any time in your browser settings",
+                "No personal data is shared with third-party notification services",
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
     </div>
   );
 }

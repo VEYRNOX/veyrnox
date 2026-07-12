@@ -59,7 +59,7 @@ describe('AuditLog — AL-06 deniability-absence disclosure (visible, not just a
     const { default: AuditLog } = await import('@/pages/AuditLog');
     render(<AuditLog />);
     const text = (await screen.findByTestId('audit-log-deniability-disclosure')).textContent.toLowerCase();
-    expect(text).toMatch(/primary wallet session/);
+    expect(text).toMatch(/primary session/);
   });
 
   it('explains no log is written in decoy/hidden sessions, by design', async () => {
@@ -68,7 +68,7 @@ describe('AuditLog — AL-06 deniability-absence disclosure (visible, not just a
     render(<AuditLog />);
     const text = (await screen.findByTestId('audit-log-deniability-disclosure')).textContent.toLowerCase();
     expect(text).toMatch(/decoy.*hidden/);
-    expect(text).toMatch(/nothing is logged/);
+    expect(text).toMatch(/aren't logged/);
   });
 
   it('warns that forensic examination could detect the absence of a log and infer a deniability session', async () => {
@@ -76,8 +76,8 @@ describe('AuditLog — AL-06 deniability-absence disclosure (visible, not just a
     const { default: AuditLog } = await import('@/pages/AuditLog');
     render(<AuditLog />);
     const text = (await screen.findByTestId('audit-log-deniability-disclosure')).textContent.toLowerCase();
-    expect(text).toMatch(/examining your device/);
-    expect(text).toMatch(/no log exists/);
+    expect(text).toMatch(/absence.*log/);
+    expect(text).toMatch(/hidden wallet/);
   });
 
   it('recommends panic wipe if concerned about forensic evidence', async () => {
