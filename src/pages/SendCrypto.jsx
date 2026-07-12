@@ -1,3 +1,4 @@
+import BackButton from "@/components/BackButton";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
 import { trezorSignEvmTx, trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
@@ -1099,6 +1100,7 @@ export default function SendCrypto() {
 
   return (
     <div className="max-w-md mx-auto space-y-6">
+      {fromDetail && <BackButton />}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Send Crypto</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Transfer funds securely</p>
