@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import BackButton from "@/components/BackButton";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
 import { resolveReceive } from "@/lib/receiveAddress";
@@ -79,6 +80,7 @@ export default function ReceiveCrypto() {
 
   return (
     <div className="max-w-md mx-auto space-y-6">
+      {searchParams.get("asset") && <BackButton />}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Receive Crypto</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Show a wallet address to receive funds</p>
