@@ -50,10 +50,11 @@ import { evaluateSendGate, SEND_GATE } from "@/lib/sendGate";
 import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
-import { resolveSend2faMethod, SEND_2FA } from "@/lib/send2faMethod";
+import { SEND_2FA } from "@/lib/send2faMethod";
+import { useSend2faMethod } from "@/lib/useSend2faMethod";
 import { resolveMaxPriorityFeePerGas } from "@/lib/WalletConnectProvider";
-import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from "@/lib/passkey";
-import { is2faBiometricEnabled, verifyBiometric2fa } from "@/lib/biometric";
+import { verifyPasskeyAssertion } from "@/lib/passkey";
+import { verifyBiometric2fa } from "@/lib/biometric";
 import { Capacitor } from "@capacitor/core";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
@@ -123,15 +124,17 @@ export default function SendCrypto() {
   // alone silently skipped a PASSKEY-only second factor. is2faPasskeyEnabled/isPasskeyRegistered
   // are synchronous localStorage reads, so this is a plain computed value. 'none' means opt-in
   // was not configured — the send proceeds via the baseline windowed PIN step-up, unchanged.
-  const send2faMethod = resolveSend2faMethod({
+  // L-3: reactive — re-reads the device-global biometric/passkey prefs (localStorage)
+  // on a same-tab 2FA-pref change (SEND_2FA_CHANGED_EVENT), a passkey
+  // registration/clear, or a cross-tab `storage` change, so a Send screen left mounted
+  // while the user toggles 2FA in Settings does NOT keep a stale factor. The security
+  // decision is unchanged — the hook delegates to the same pure resolveSend2faMethod.
+  // I3: the resolver suppresses device-global factors in decoy/hidden sessions
+  // (per-set Action Password still applies) — see lib/send2faMethod.js.
+  const send2faMethod = useSend2faMethod({
     demo: DEMO,
     isNative: Capacitor.isNativePlatform(),
-    biometric2faEnabled: is2faBiometricEnabled(),
-    passkey2faEnabled: is2faPasskeyEnabled(),
-    passkeyRegistered: isPasskeyRegistered(),
     actionPasswordConfigured,
-    // I3: suppress device-global passkey/biometric factors in decoy/hidden sessions
-    // (per-set Action Password still applies) — see lib/send2faMethod.js.
     isDecoy,
     isHidden,
   });
@@ -600,7 +603,9 @@ export default function SendCrypto() {
   // RISK gate. Pure + local: maps the SAME local state the existing warnings read
   // into score()'s inputs (no new fetch, no signer/seed). recipientCode (S7) is
   // reused from the simulation's already-fetched eth_getCode (I2).
-  const riskReady = DEMO || !!txSim.data || txSim.isError;
+  // Also ready when simulation is disabled — the score runs without recipientCode
+  // (S7 escalates to CAUTION, which now requires confirmation per score.js).
+  const riskReady = DEMO || !!txSim.data || txSim.isError || !simEnabled;
 
   // SINGLE source of truth for the verdict: maps the live send state → score().
   // BOTH the displayed banner and the hard pre-sign gate call this, so the

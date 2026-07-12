@@ -30,9 +30,6 @@ export default function ReceiveCrypto() {
   const [symbol, setSymbol] = useState(urlAsset);
   const [copied, setCopied] = useState(false);
 
-  // Re-sync with URL when the user navigates here with a different ?asset= param.
-  // useState only reads its initializer once at mount, so without this effect a
-  // navigation from /asset/BTC → /receive?asset=BTC would still show ETH.
   useEffect(() => {
     setSymbol(urlAsset);
     setCopied(false);
@@ -91,7 +88,16 @@ export default function ReceiveCrypto() {
         <div>
           <Label id="receive-asset-label">Asset</Label>
           <Select value={symbol} onValueChange={(v) => { setSymbol(v); setCopied(false); }}>
-            <SelectTrigger className="mt-1.5" aria-labelledby="receive-asset-label"><SelectValue placeholder="Choose asset" /></SelectTrigger>
+            <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="receive-asset-label">
+              <SelectValue placeholder="Choose asset">
+                {symbol ? (
+                  <>
+                    <CoinLogo symbol={symbol} size={32} />
+                    <span>{ASSETS.find(a => a.symbol === symbol)?.name || symbol} — {symbol}</span>
+                  </>
+                ) : null}
+              </SelectValue>
+            </SelectTrigger>
             <SelectContent>
               {ASSETS.map((a) => (
                 <SelectItem key={a.symbol} value={a.symbol}>

@@ -1119,10 +1119,28 @@ export function WalletProvider({ children }) {
 
   const setActionPassword = useCallback(async (password, actionPassword) => {
     if (!actionPassword) throw new Error('Action Password cannot be empty.');
-    // H2: removed the isDecoy/isHidden guards — every set manages its OWN second
-    // factor. `password` is the ACTIVE set's credential (vault password / duress
-    // password / reveal secret), used both to re-auth and to re-encrypt below.
-    const current = isDecoy || isHidden ? containerRef.current : await decryptPrimaryContainer(password);
+    // H2: every set manages its OWN second factor. `password` is the ACTIVE set's
+    // credential (vault password / duress password / reveal secret), used both to
+    // re-auth and to re-encrypt below.
+    //
+    // L-2 (INTERNAL S1–S4 audit, 2026-07-08): the decoy/hidden branch previously
+    // read containerRef.current with NO credential re-auth, letting an already-open
+    // decoy/hidden session INSTALL a new Action Password without proving knowledge
+    // of the duress/reveal secret. Mirror clearActionPassword: verify the supplied
+    // credential against the ACTIVE set FIRST (tryDuressUnlock / tryRevealHidden),
+    // and fail closed (I4) — a wrong credential throws and mutates nothing.
+    let current;
+    if (isDecoy) {
+      const opened = await tryDuressUnlock(password);
+      if (opened == null) throw new Error('Decryption failed: wrong password or corrupted vault');
+      current = containerRef.current;
+    } else if (isHidden) {
+      const revealed = await tryRevealHidden(password);
+      if (revealed == null) throw new Error('Decryption failed: wrong password or corrupted vault');
+      current = containerRef.current;
+    } else {
+      current = await decryptPrimaryContainer(password);
+    }
     const verifier = await createCredentialVerifier(actionPassword); // full vault Argon2id cost
     const container = mv.withActionPasswordRecord(current, serializeActionPasswordRecord(verifier));
     await persistActiveSetContainer(password, container);

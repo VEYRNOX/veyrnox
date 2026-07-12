@@ -176,11 +176,11 @@ test.describe('RevenueCat entitlement fail-closed logic (module boundary, no hum
         const { isSafetyPlusRoute } = await import('/src/lib/safetyPlusRoutes.js');
 
         // Paid routes (should be gated)
-        const paidRoutes = ['/risk-score', '/advanced-analytics', '/onchain', '/price-charts', '/recurring'];
+        const paidRoutes = ['/risk-score', '/advanced-analytics', '/onchain', '/recurring'];
         // Free routes (must never be gated — safety controls are free per owner decision)
         const freeRoutes = ['/risk', '/fraud', '/address-checker', '/token-approvals',
                             '/security-dashboard', '/hardware-wallet', '/personal-backup',
-                            '/spam-filter', '/audit-log', '/crypto-signing'];
+                            '/spam-filter', '/audit-log', '/crypto-signing', '/price-charts'];
 
         const paidResults  = paidRoutes.map(r => ({ route: r, gated: isSafetyPlusRoute(r) }));
         const freeResults  = freeRoutes.map(r => ({ route: r, gated: isSafetyPlusRoute(r) }));

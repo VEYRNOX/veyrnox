@@ -66,7 +66,7 @@ const TONE = {
 };
 const LADDER = [
   { tier: "allow", copy: "Clean runtime — normal sign flow" },
-  { tier: "warn", copy: "Rooted / jailbroken — one sentence, planned biometric re-confirm (not yet wired)" },
+  { tier: "warn", copy: "Rooted / jailbroken — prompt confirms the risk (not yet wired)" },
   { tier: "block", copy: "Hooking / tamper / emulator — signing refused, no override" },
 ];
 
@@ -114,9 +114,7 @@ export default function RaspSecurity() {
         <div>
           <p className="font-bold text-accent">Browser-level detection active · OS-level detection pending native build</p>
           <p className="text-sm text-muted-foreground mt-1">
-            The degradation policy is built and tested, and browser probes (automation detection) are active.
-            OS-level probes (root / jailbreak / tamper) need a native plugin and real-device verification
-            (roadmap Phase 4) — the completed source-level audits could not exercise on-device probes.
+            Browser probes are live. OS-level probes (root/jailbreak) need a native plugin and real-device testing — pending Phase 4.
           </p>
         </div>
       </div>
@@ -148,7 +146,7 @@ export default function RaspSecurity() {
       {/* Degradation ladder */}
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Degradation ladder — browser-level detection active; OS-level detection pending native build:
+          Degradation ladder (browser-level active; OS-level pending):
         </p>
         {LADDER.map((rung) => {
           const { text: textTone, dot: dotTone } = TONE[rung.tier];
@@ -168,8 +166,7 @@ export default function RaspSecurity() {
 
       {/* Footer */}
       <p className="text-xs text-muted-foreground border-t border-border pt-4">
-        No fabricated event counts, no &quot;active monitoring&quot; claim, no scan button — RASP shows
-        only what is real.
+        No fake event counts or scan buttons — only real detections shown.
       </p>
     </div>
   );

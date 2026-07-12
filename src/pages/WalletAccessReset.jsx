@@ -297,11 +297,7 @@ export default function WalletAccessReset() {
         <div className="flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            <b>We cannot reset your password or recover your wallet for you.</b> <strong>VEYRNOX</strong>
-            is non-custodial — we never hold your keys, so there is nothing on a
-            server to restore. Your <b>seed phrase is the only recovery path</b>.
-            If you lose <b>both</b> your password <b>and</b> your seed phrase, your
-            funds are <b>unrecoverable</b>. That is what self-custody means.
+            <b>No password reset here.</b> We never hold your keys. Your seed phrase is your only way back in. Lose both the password and seed = funds gone forever.
           </span>
         </div>
       </div>
@@ -326,8 +322,7 @@ export default function WalletAccessReset() {
             <div className="flex items-start gap-2 p-3 rounded-lg bg-secondary/40 border border-border text-xs text-muted-foreground">
               <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span>
-                Unlock your wallet first to change its PIN. Changing the PIN requires
-                knowing the current one — that is the point.
+                Unlock your wallet first. Changing the PIN requires the current one to verify you own it.
               </span>
             </div>
           ) : (
@@ -385,9 +380,7 @@ export default function WalletAccessReset() {
           <div className="flex items-start gap-2 p-3 rounded-lg bg-secondary/40 border border-border text-xs text-muted-foreground">
             <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
-              Unlock your wallet first to change its password. Open the{" "}
-              <b>HD Wallet Manager</b> and unlock, then return here. (Changing the
-              password requires knowing the current one — that is the point.)
+              Unlock your wallet first to verify you own the current password. Then return here to set a new one.
             </span>
           </div>
         ) : (
@@ -478,9 +471,7 @@ export default function WalletAccessReset() {
         <div className="flex items-start gap-2 p-3 rounded-lg border border-caution/30 bg-caution/5 text-xs text-caution">
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>
-            Never type your seed phrase anywhere you don't trust. It is validated and
-            encrypted locally — it never leaves this device. Anyone with this phrase
-            has full access to your funds.
+            Type your seed phrase only on devices you trust. It's encrypted locally, never leaves this phone, but anyone with it has full access to your funds.
           </span>
         </div>
 
@@ -548,9 +539,7 @@ export default function WalletAccessReset() {
         {vaultExists && (
           <p className="text-[11px] text-muted-foreground flex items-start gap-1.5">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            A wallet already exists on this device. Recovering will <b>overwrite</b>{" "}
-            the local vault with the seed you enter. If you still know your current
-            password, use “Change vault password” above instead.
+            A wallet already exists here. Recovering will <b>overwrite</b> it. If you remember your password, use "Change vault password" instead.
           </p>
         )}
       </div>
@@ -562,11 +551,11 @@ export default function WalletAccessReset() {
           <p className="text-sm font-semibold">What VEYRNOX cannot do</p>
         </div>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>We cannot reset or recover your vault password — we never see it.</li>
-          <li>We cannot email or text you a link to recover your wallet. There is nothing on our servers to recover; we hold only ciphertext we cannot decrypt.</li>
-          <li>We have no key escrow and no “master key”. Support cannot restore access.</li>
-          <li>If you lose both your password and your seed phrase, your funds are gone permanently.</li>
-          <li>We do <b>not</b> offer guardian or social-recovery restoration of your wallet.</li>
+          <li>No password reset — we never see it.</li>
+          <li>No email/SMS recovery link. We have nothing on our servers to recover.</li>
+          <li>No key escrow. Support cannot restore access.</li>
+          <li>Lose both password and seed = funds gone permanently.</li>
+          <li>No guardian or social recovery.</li>
         </ul>
       </div>
 
@@ -620,10 +609,7 @@ export default function WalletAccessReset() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            To change your password: unlock your wallet, enter your current password
-            and a new one above. To recover after forgetting your password: paste
-            your seed phrase and choose a new password — there is no other way in,
-            because only you hold the seed.
+            <b>Change password:</b> unlock, enter current password + new one. <b>Forgot it?</b> Paste your seed phrase and set a new password — that's the only way back.
           </p>
         </div>
       )}
