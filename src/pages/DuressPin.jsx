@@ -328,7 +328,7 @@ export default function DuressPin() {
         className="p-4 rounded-xl border border-border bg-secondary/30"
       >
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Your real PIN unlocks faster than the decoy. Someone on your network could tell them apart. This protects you from someone in the room, not someone remote.
+          Your real PIN unlocks faster than the decoy. Someone on your network could tell them apart. This protects you from someone in the room, not someone remote. Also: examining the device might still spot the second wallet via forensic tools.
         </p>
       </div>
 
@@ -340,7 +340,7 @@ export default function DuressPin() {
         </div>
         <p className="text-xs text-muted-foreground">
           An empty wallet looks suspicious. Send a small amount you&apos;re
-          willing to hand over. The balance comes straight from the blockchain
+          willing to hand over. The real balance comes straight from the blockchain
           — it can&apos;t be faked in the app.
         </p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
