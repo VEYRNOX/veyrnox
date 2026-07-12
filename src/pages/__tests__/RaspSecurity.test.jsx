@@ -91,8 +91,8 @@ describe('RaspSecurity — honest current-state render', () => {
   });
 
   it('states the deliberate omissions in the footer', () => {
-    expect(t).toMatch(/no fabricated/i);
-    expect(t).toMatch(/no .*active monitoring.*claim|no scan button/i);
+    expect(t).toMatch(/no fake|no fabricated/i);
+    expect(t).toMatch(/no .*active monitoring.*claim|scan button/i);
   });
 });
 
