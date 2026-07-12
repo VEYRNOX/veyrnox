@@ -570,6 +570,31 @@ Unit-tested (`src/rasp/__tests__/selectPresignProbeSource.test.js`;
 - The `tampered` check relies on `RELEASE_CERT_SHA256` being set in the production Gradle build — if unset, production builds will fail `tampered` on every launch. This is a production-configuration dependency, not a code flaw.
 - INTERNAL evidence only — not independently audited. Independent security audit remains outstanding.
 
+## 2026-07-12 LiveBalances / deniability (I3) audit — PR #858
+
+INTERNAL audit of live-balance read paths for I3 (zero-egress) compliance. Codex second
+pass FAILED both attempts (transient network/websocket outage, no report produced); HIGH
+findings were instead independently re-verified by direct code inspection — still a
+single-signal INTERNAL pass, NOT the outstanding independent third-party audit.
+
+**H1 (HIGH) — FIXED (PR #858).** `sol/provider.js` `getBalanceLamports` had no
+`isDeniabilitySessionActive()` guard; `sol/send.js`/`sol/hw-send.js` called it directly,
+so a hidden/stealth SOL send fired live RPC during a deniability session. Fixed at the
+primitive (choke-point) so all callers fail closed; zero-egress test added.
+
+**H2 (HIGH) — FIXED (PR #858).** `/live-balances` rendered the raw `"I3: no egress in
+deniability session"` guard string verbatim — a plain-English deniability tell. Fixed
+via `sanitizeBalanceError()` rewrapping to a generic RPC-failure message.
+
+**Open (not fixed in PR #858):** L1 (LOW) — `computePortfolio`/`usePortfolio` has no I3
+gate of its own, inherits safety from provider-layer guards only; M1 (LOW) —
+`hiddenBalance.js:151` throws a raw string, not `new Error(...)`. Also flagged, not
+closed: no device/runtime trace yet proves `WalletProvider.unlock()` never leaks a real
+address into a decoy/hidden render.
+
+BUILT / unit-tested, INTERNAL — not device-verified, no on-chain txid. See
+`docs/qa/findings/livebalances-audit-2026-07-12.md` and `docs/Feature-Status.md`.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode

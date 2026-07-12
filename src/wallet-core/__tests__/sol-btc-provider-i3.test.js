@@ -21,7 +21,7 @@ const fetchSpy = vi.fn(async () => {
 });
 vi.stubGlobal('fetch', fetchSpy);
 
-import { getBalanceSol, getAddressHistory } from '../sol/provider.js';
+import { getBalanceSol, getAddressHistory, getBalanceLamports } from '../sol/provider.js';
 import { getAddressTxs } from '../btc/provider.js';
 
 describe('SOL + BTC provider I3 guards (Finding 1)', () => {
@@ -36,6 +36,31 @@ describe('SOL + BTC provider I3 guards (Finding 1)', () => {
       'I3: no egress in deniability session'
     );
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  // H1: getBalanceLamports is the raw primitive called DIRECTLY by sol/send.js
+  // and sol/hw-send.js, bypassing the getBalanceSol wrapper guard entirely.
+  // The guard must live on the primitive itself (choke-point), not just the
+  // wrapper, or a hidden-wallet SOL send during a deniability session leaks
+  // live RPC egress.
+  it('getBalanceLamports throws and makes NO egress in a deniability session', async () => {
+    isDeniabilitySessionActive.mockReturnValue(true);
+    await expect(getBalanceLamports('devnet', 'addr')).rejects.toThrow(
+      'I3: no egress in deniability session'
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('getBalanceLamports is a no-op guard and still reads in a NORMAL session', async () => {
+    isDeniabilitySessionActive.mockReturnValue(false);
+    fetchSpy.mockImplementation(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { value: 123 } }),
+    }));
+    const result = await getBalanceLamports('devnet', 'addr');
+    expect(result).toBe(123n);
+    expect(fetchSpy).toHaveBeenCalled();
   });
 
   it('getAddressHistory throws and makes NO egress in a deniability session', async () => {

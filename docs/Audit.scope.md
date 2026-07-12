@@ -273,3 +273,22 @@ conflate "audited + in the store" with "mainnet on."
   audit was always the hard gate, and remains so. "Independently audited" is now an
   honest claim against this completed pass; "internal" must still never be presented
   as "independent."
+
+## 2026-07-12 LiveBalances / deniability (I3) INTERNAL audit (PR #858)
+
+A further INTERNAL pass (not part of the independent ECC audit above, and not the
+outstanding independent third-party audit still scoped by this document) reviewed the
+live-balance read paths for I3 (zero-egress deniability) compliance:
+`sol/provider.js`, `sol/send.js`, `sol/hw-send.js`, `btc/provider.js`, `evm/provider.js`,
+`portfolioBalances.js`, `hiddenBalance.js`, `decoyBalance.js`, `priceFeed.js`,
+`LiveBalances.jsx`, `SendCrypto.jsx`, `WalletPortfolioPage.jsx`. Two HIGH findings were
+confirmed and fixed (H1 — SOL send-path balance primitive bypassed the I3 guard; H2 —
+`/live-balances` surfaced the raw I3 guard-error string as a deniability tell); one LOW
+(L1 — `computePortfolio` has no I3 gate of its own) and one LOW (M1 — raw-string throw in
+`hiddenBalance.js`) remain open. The intended Codex second-opinion pass failed both
+attempts on a transient network outage and produced no report, so this pass is a
+single-reviewer-plus-direct-code-re-verification INTERNAL audit only — it does **not**
+satisfy the outstanding independent third-party audit scoped in this document. Full
+findings and fix detail: `docs/qa/findings/livebalances-audit-2026-07-12.md` and
+`docs/Feature-Status.md` §"PR #858 — LiveBalances / Deniability (I3) audit + H1/H2
+fixes (2026-07-12)".

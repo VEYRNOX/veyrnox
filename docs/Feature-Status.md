@@ -1047,6 +1047,51 @@ Test count: 13 (`appHealth.test.js`) + 4 pin-related (`AppHealthPage.pins.test.j
 
 BUILT (PR #811, 2026-07-11). `scripts/gen-audit-snapshot.mjs` runs `npm audit --json` and writes `public/audit-snapshot.json`. `.github/workflows/audit-snapshot.yml` runs on push to main and on PRs, auto-commits the updated snapshot. I2-compliant: audit data is a static file never fetched from an external host on device — `AppHealthWidget.jsx` reads `/audit-snapshot.json` from the same origin.
 
+## PR #858 — LiveBalances / Deniability (I3) audit + H1/H2 fixes (2026-07-12)
+
+> ⚠️ BUILT · unit-tested · INTERNAL — NOT device-verified, NOT independently audited. No on-chain txid.
+
+A 2026-07-12 INTERNAL LiveBalances/deniability (I3) audit was performed (honest-reviewer
+pass + direct code re-verification of each HIGH finding). The intended Codex second pass
+FAILED both attempts on a transient network/websocket outage (`No such host is known` →
+`stream disconnected before completion`) and produced no report — this remains a
+single-reviewer-plus-code-re-verify INTERNAL audit, **NOT** the outstanding independent
+third-party audit. Full findings: `docs/qa/findings/livebalances-audit-2026-07-12.md`.
+
+- **H1 (HIGH) — FIXED (PR #858, commit 161ca9f0). BUILT / unit-tested, INTERNAL.**
+  `src/wallet-core/sol/provider.js` `getBalanceLamports` (the raw SOL balance RPC
+  primitive) had no `isDeniabilitySessionActive()` guard — only its display wrappers
+  `getBalanceSol`/`estimateSolSend` did. `sol/send.js` (`signAndBroadcastSol`) and
+  `sol/hw-send.js` call the raw primitive directly, and the Send handler
+  (`SendCrypto.jsx`) had no `isDecoy/isHidden` gate on the SOL signer path — so a
+  hidden/stealth-wallet SOL send fired live `getBalance` RPC during an active
+  deniability session (real I3 egress), asymmetric with BTC's already-guarded
+  `getUtxos`. Fix: guarded the primitive itself (choke-point), so all callers fail
+  closed; wrapper guards kept as defense-in-depth. Zero-egress test added
+  (`sol-btc-provider-i3.test.js`).
+- **H2 (HIGH) — FIXED (PR #858, commit 341ff6dd). BUILT / unit-tested, INTERNAL.**
+  `/live-balances` (`src/pages/LiveBalances.jsx`) surfaced `getBalanceEth`'s raw
+  `"I3: no egress in deniability session"` error verbatim in its error box — a
+  plain-English deniability tell. Fix: `sanitizeBalanceError()` rewraps the I3 guard
+  error into a generic RPC-failure message (decoy session now indistinguishable from a
+  real network failure); genuine RPC errors keep their own message. Pure helper + unit
+  test (`LiveBalances.i3-tell.test.js`).
+- **M1 (LOW) — open.** `hiddenBalance.js:151` throws a raw string, not `new
+  Error(...)`, inconsistent with sibling guards. Code-quality only, not a break; not
+  fixed in PR #858.
+- **L1 (LOW) — open.** `computePortfolio`/`usePortfolio` (`portfolioBalances.js`) has
+  no I3 gate of its own; its safety is inherited entirely from provider-layer guards
+  (which H1 just proved can diverge). Recommend an explicit
+  `isDeniabilitySessionActive()` short-circuit as a second independent layer plus a
+  portfolio-layer zero-egress test. Not fixed in PR #858.
+- **Not verifiable by static analysis (flagged, not closed):** full runtime/device
+  proof that `WalletProvider.unlock()` never leaks a real-wallet address into a
+  decoy/hidden render — static review only so far, no device trace performed.
+
+INTERNAL pass — not independent, and does not satisfy the outstanding independent
+third-party audit. See `docs/qa/findings/livebalances-audit-2026-07-12.md` for the full
+findings table and honesty note.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
