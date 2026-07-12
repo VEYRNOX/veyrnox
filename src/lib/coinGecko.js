@@ -99,6 +99,28 @@ export async function fetchMarketPricesFiatCG(fiats) {
 }
 
 /**
+ * Multi-fiat price matrix for the portfolio (holdable) assets only.
+ * Returns { [TICKER]: { [FIAT]: number } }.
+ */
+export async function fetchPortfolioPricesFiatCG(fiats) {
+  const vsCurrencies = fiats.map(f => f.toLowerCase()).join(',');
+  const url = `${CG_BASE}/simple/price?ids=${PORTFOLIO_CG_IDS.join(',')}&vs_currencies=${vsCurrencies}`;
+  const raw = await cgGet(url);
+  const out = {};
+  for (const ticker of PORTFOLIO_TICKERS) {
+    const cgId   = TICKER_TO_CG[ticker];
+    const cgData = raw[cgId];
+    if (!cgData) continue;
+    out[ticker] = {};
+    for (const fiat of fiats) {
+      const val = cgData[fiat.toLowerCase()];
+      if (typeof val === 'number' && Number.isFinite(val)) out[ticker][fiat] = val;
+    }
+  }
+  return out;
+}
+
+/**
  * 24h % change for the market basket → { [sym]: { change24h: number|null } }.
  * Replaces fetchMarketChanges24h.
  */

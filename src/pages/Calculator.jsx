@@ -3,19 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { ArrowLeftRight, RefreshCw, TrendingUp, AlertTriangle } from "lucide-react";
-import { MARKET_SYMBOLS } from "@/lib/cryptoCompare.js";
-import { fetchMarketPricesFiatCG } from "@/lib/coinGecko.js";
+import { PORTFOLIO_SYMBOLS } from "@/lib/cryptoCompare.js";
+import { fetchPortfolioPricesFiatCG } from "@/lib/coinGecko.js";
+import { CURRENCY_SYMBOLS, CURRENCY_COLORS } from "@/lib/cryptos.js";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
-const CRYPTO_ICONS = { BTC: "₿", ETH: "Ξ", SOL: "◎", USDC: "Ⓢ", USDT: "₮" };
 const FIAT_FLAGS = { USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "🇯🇵", CAD: "🇨🇦", AUD: "🇦🇺", CHF: "🇨🇭", CNY: "🇨🇳" };
-const CRYPTO_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
-const fetchPrices = () => fetchMarketPricesFiatCG(FIATS);
+const fetchPrices = () => fetchPortfolioPricesFiatCG(FIATS);
 
 function formatNumber(value, fiat) {
   if (value == null || isNaN(value)) return "—";
@@ -156,10 +155,10 @@ export default function Calculator() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {MARKET_SYMBOLS.map(c => (
+                {PORTFOLIO_SYMBOLS.map(c => (
                   <SelectItem key={c} value={c}>
                     <div className="flex items-center gap-2">
-                      <span style={{ color: CRYPTO_COLORS[c] }} className="font-bold text-sm">{CRYPTO_ICONS[c]}</span>
+                      <span style={{ color: CURRENCY_COLORS[c] }} className="font-bold text-sm">{CURRENCY_SYMBOLS[c]}</span>
                       {c}
                     </div>
                   </SelectItem>
@@ -295,7 +294,7 @@ export default function Calculator() {
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <p className="text-sm font-semibold">Cross-Crypto in {toFiat}</p>
         <div className="divide-y divide-border">
-          {MARKET_SYMBOLS.map(c => {
+          {PORTFOLIO_SYMBOLS.map(c => {
             const r = prices?.[c]?.[toFiat];
             const isSelected = c === fromCrypto;
             return (
@@ -308,8 +307,8 @@ export default function Calculator() {
               >
                 <div className="flex items-center gap-2">
                   <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ background: `${CRYPTO_COLORS[c]}22` }}>
-                    <span className="text-xs font-bold" style={{ color: CRYPTO_COLORS[c] }}>{CRYPTO_ICONS[c]}</span>
+                    style={{ background: `${CURRENCY_COLORS[c]}22` }}>
+                    <span className="text-xs font-bold" style={{ color: CURRENCY_COLORS[c] }}>{CURRENCY_SYMBOLS[c]}</span>
                   </div>
                   <span className="text-sm font-semibold text-foreground">{c}</span>
                   {isSelected && <span className="text-[10px] text-primary font-medium uppercase tracking-wide">selected</span>}
