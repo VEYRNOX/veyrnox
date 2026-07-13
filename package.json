@@ -45,6 +45,7 @@
     "android:test:passkey-clone": "wdio tests/android/wdio.conf.js --spec tests/android/specs/passkey-clone-detection-e2e.spec.js",
     "android:test:fee-analytics": "wdio tests/android/wdio.conf.js --spec tests/android/specs/fee-analytics-networth-e2e.spec.js",
     "android:test:log1": "wdio tests/android/wdio.conf.js --spec tests/android/specs/log1-bridge-redaction-e2e.spec.js",
+    "android:test:flag-secure": "wdio tests/android/wdio.conf.js --spec tests/android/specs/flag-secure-screenshot-e2e.spec.js",
     "android:test:new-suites": "wdio tests/android/wdio.conf.js --spec tests/android/specs/backup-restore-e2e.spec.js --spec tests/android/specs/dapp-security-alerts-e2e.spec.js --spec tests/android/specs/kdf-performance-e2e.spec.js --spec tests/android/specs/passkey-clone-detection-e2e.spec.js --spec tests/android/specs/fee-analytics-networth-e2e.spec.js --spec tests/android/specs/log1-bridge-redaction-e2e.spec.js",
     "analyze:build": "npm run build -- --mode analyze",
     "analyze:deps": "npm ls --depth=0",

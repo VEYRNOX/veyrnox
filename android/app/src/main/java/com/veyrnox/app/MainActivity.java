@@ -22,8 +22,9 @@ public class MainActivity extends BridgeActivity {
         // includes a seized device, so sensitive screens (seed reveal/QR, balances,
         // decoy/duress) must not be capturable. Applied window-wide as the safer
         // default for a self-custody wallet.
-        // TARGET: verify on a real device that this covers the Capacitor WebView and
-        // the seed/decoy screens before treating this control as "done".
+        // BUILT. M13 gap: not yet confirmed on a real device that FLAG_SECURE
+        // propagates into the Capacitor WebView surface (not just the native window
+        // chrome). Verify with: DEVICE_VERIFY=1 npm run android:test:flag-secure
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
