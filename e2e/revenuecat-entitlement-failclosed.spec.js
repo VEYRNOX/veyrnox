@@ -175,12 +175,21 @@ test.describe('RevenueCat entitlement fail-closed logic (module boundary, no hum
       try {
         const { isSafetyPlusRoute } = await import('/src/lib/safetyPlusRoutes.js');
 
-        // Paid routes (should be gated)
-        const paidRoutes = ['/risk-score', '/advanced-analytics', '/onchain', '/recurring'];
-        // Free routes (must never be gated — safety controls are free per owner decision)
-        const freeRoutes = ['/risk', '/fraud', '/address-checker', '/token-approvals',
-                            '/security-dashboard', '/hardware-wallet', '/personal-backup',
-                            '/spam-filter', '/audit-log', '/crypto-signing', '/price-charts'];
+        // Paid routes (should be gated) — mirrors the SAFETY PLUS column of
+        // https://veyrnox.com/plans (owner decision: full-match the plans page).
+        const paidRoutes = ['/advanced-analytics', '/onchain', '/recurring', '/risk',
+                            '/duress-pin', '/panic-wipe', '/stealth-wallets',
+                            '/hardware-wallet', '/fraud', '/anomaly-detection',
+                            '/address-checker', '/token-approvals', '/budget',
+                            '/spam-filter', '/personal-backup', '/audit-log',
+                            '/crypto-signing'];
+        // Free routes (marked FREE on the plans page — must never be gated).
+        // NOTE: Portfolio Risk Score (/risk-score) is FREE; the pre-sign Risk
+        // Scoring gate (/risk) is paid — do not conflate the two.
+        const freeRoutes = ['/risk-score', '/rasp-security', '/security-dashboard',
+                            '/price-charts', '/net-worth', '/pl', '/fee-analytics',
+                            '/network-manager', '/address-book', '/nft', '/notifications',
+                            '/walletconnect'];
 
         const paidResults  = paidRoutes.map(r => ({ route: r, gated: isSafetyPlusRoute(r) }));
         const freeResults  = freeRoutes.map(r => ({ route: r, gated: isSafetyPlusRoute(r) }));

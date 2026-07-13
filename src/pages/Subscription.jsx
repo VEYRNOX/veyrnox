@@ -142,7 +142,7 @@ export default function Subscription() {
             </div>
             <p className="text-2xl font-bold mt-1">$0</p>
             <CardDescription>
-              The complete self-custody wallet plus all life-safety security. No account required.
+              Everything you need to hold, send and secure your crypto — free forever. No account required.
             </CardDescription>
           </CardHeader>
           <CardContent>

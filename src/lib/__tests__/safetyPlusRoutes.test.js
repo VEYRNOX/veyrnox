@@ -1,58 +1,75 @@
 import { describe, it, expect } from 'vitest';
 import { SAFETY_PLUS_ROUTES, isSafetyPlusRoute } from '../safetyPlusRoutes';
 
+// This set mirrors the SAFETY PLUS column of the public plans page at
+// https://veyrnox.com/plans (owner decision: full-match the plans page). The
+// three plans-page Safety-Plus items that are embedded in the Send flow rather
+// than standalone routes — Calldata decode, Address-poisoning warnings and
+// Transaction simulation — are intentionally NOT in this list (no route to
+// gate); they are tracked as Send-flow follow-up.
+const EXPECTED_GATED = [
+  // SECURITY
+  '/duress-pin',
+  '/stealth-wallets',
+  '/panic-wipe',
+  '/risk',
+  '/hardware-wallet',
+  '/anomaly-detection',
+  '/fraud',
+  '/address-checker',
+  '/token-approvals',
+  '/budget',
+  '/spam-filter',
+  '/personal-backup',
+  '/audit-log',
+  // FINANCE
+  '/advanced-analytics',
+  '/onchain',
+  '/recurring',
+  // CONNECT
+  '/crypto-signing',
+];
+
 describe('safetyPlusRoutes', () => {
-  it('lists exactly the 4 pure-analytics Safety Plus feature routes', () => {
-    expect(SAFETY_PLUS_ROUTES).toEqual([
-      '/risk-score',
-      '/advanced-analytics',
-      '/onchain',
-      '/recurring',
-    ]);
+  it('gates exactly the Safety Plus routes from the plans page', () => {
+    expect(SAFETY_PLUS_ROUTES).toEqual(EXPECTED_GATED);
   });
 
-  it('isSafetyPlusRoute is true for a gated (analytics) route', () => {
-    expect(isSafetyPlusRoute('/risk-score')).toBe(true);
+  it('isSafetyPlusRoute is true for each gated route', () => {
+    for (const route of EXPECTED_GATED) {
+      expect(isSafetyPlusRoute(route), `${route} must be gated`).toBe(true);
+    }
   });
 
   it('isSafetyPlusRoute is false for a free route', () => {
     expect(isSafetyPlusRoute('/dashboard')).toBe(false);
   });
 
-  // The 11 routes below were de-paywalled by owner decision: security and
-  // anti-fraud controls must be FREE on a safety-positioned wallet. They are
-  // no longer gated.
-  it('isSafetyPlusRoute is false for each of the 11 de-paywalled safety routes', () => {
-    expect(isSafetyPlusRoute('/hardware-wallet')).toBe(false);
-    expect(isSafetyPlusRoute('/fraud')).toBe(false);
-    expect(isSafetyPlusRoute('/security')).toBe(false);
-    expect(isSafetyPlusRoute('/token-approvals')).toBe(false);
-    expect(isSafetyPlusRoute('/address-checker')).toBe(false);
-    expect(isSafetyPlusRoute('/security-dashboard')).toBe(false);
-    expect(isSafetyPlusRoute('/personal-backup')).toBe(false);
-    expect(isSafetyPlusRoute('/spam-filter')).toBe(false);
-    expect(isSafetyPlusRoute('/audit-log')).toBe(false);
-    expect(isSafetyPlusRoute('/crypto-signing')).toBe(false);
-    expect(isSafetyPlusRoute('/risk')).toBe(false);
+  // Portfolio Risk Score (/risk-score) is FREE on the plans page — distinct from
+  // the pre-sign Risk Scoring gate (/risk), which is Safety Plus. Guard against
+  // conflating the two.
+  it('Portfolio Risk Score (/risk-score) is FREE; pre-sign Risk Scoring (/risk) is gated', () => {
+    expect(isSafetyPlusRoute('/risk-score')).toBe(false);
+    expect(isSafetyPlusRoute('/risk')).toBe(true);
   });
 
-  // Regression pin: this owner decision must not be silently reverted. If a
-  // future change re-adds any of these safety/anti-fraud/recovery controls to
+  // These features are marked FREE on https://veyrnox.com/plans and must not be
+  // gated. Regression pin: if a future change moves any of them into
   // SAFETY_PLUS_ROUTES, this test fails loudly.
-  it('regression: safety/anti-fraud controls are FREE (never in SAFETY_PLUS_ROUTES)', () => {
+  it('regression: plans-page FREE features are never gated', () => {
     const MUST_STAY_FREE = [
-      '/risk',
-      '/fraud',
-      '/address-checker',
-      '/token-approvals',
-      '/security-dashboard',
-      '/hardware-wallet',
-      '/personal-backup',
-      '/spam-filter',
-      '/audit-log',
-      '/crypto-signing',
-      '/security',
-      '/price-charts',
+      '/risk-score',          // Portfolio risk score (FREE)
+      '/rasp-security',       // RASP (FREE)
+      '/security-dashboard',  // Security dashboard (FREE)
+      '/net-worth',           // Portfolio dashboard & net-worth (FREE)
+      '/pl',                  // P&L tracking (FREE)
+      '/fee-analytics',       // Fee analytics (FREE)
+      '/price-charts',        // Price charts, alerts & watchlist (FREE)
+      '/network-manager',     // Network Manager (FREE)
+      '/address-book',        // Address book (FREE)
+      '/nft',                 // NFT gallery (FREE)
+      '/notifications',       // Notifications & push (FREE)
+      '/walletconnect',       // WalletConnect / dApp connector (FREE)
     ];
     for (const route of MUST_STAY_FREE) {
       expect(SAFETY_PLUS_ROUTES, `${route} must stay FREE`).not.toContain(route);
