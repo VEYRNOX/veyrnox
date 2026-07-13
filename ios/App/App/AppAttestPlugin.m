@@ -29,6 +29,7 @@
 #import <Foundation/Foundation.h>
 #import <DeviceCheck/DeviceCheck.h>
 #import <CommonCrypto/CommonCrypto.h>
+#import <Capacitor/CAPBridgedJSTypes.h>
 
 // NSUserDefaults key for the persisted App Attest key identifier. App Attest keys
 // are generated once per install and reused; the keyId (not the key itself, which
