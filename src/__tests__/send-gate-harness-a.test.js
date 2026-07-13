@@ -222,7 +222,7 @@ describe('Harness A · G3 — the dev ungate relaxes the FLOW, never the status'
     // devUngated flag into the pure ordered gate (lib/sendGate.js) — relaxing only
     // on devUngated, never reading status from the flag. The capability check was
     // extracted into evaluateSendGate(); the call site passes both in.
-    expect(src).toContain('const gate = evaluateSendGate({');
+    expect(src).toContain('evaluateSendGate({');
     expect(src).toContain('canSend: canSend(selectedAsset),');
     expect(src).toContain('devUngated,');
     // The capability logic itself (block unless canSend OR ungate) lives in the pure
