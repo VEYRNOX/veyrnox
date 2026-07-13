@@ -135,6 +135,18 @@ section('B4f-rules — ProGuard rules file exists (proguard-rules.pro)');
     fail('proguard-rules.pro exists but is empty — no keep rules means Capacitor bridge will be stripped');
 }
 
+section('B4g — filterTouchesWhenObscured on Capacitor WebView (MainActivity.java)');
+{
+  const src = read('android/app/src/main/java/com/veyrnox/app/MainActivity.java');
+  if (src) {
+    const hasCall = /getBridge\(\)\.getWebView\(\)\.setFilterTouchesWhenObscured\s*\(\s*true\s*\)/.test(src);
+    if (hasCall)
+      pass('setFilterTouchesWhenObscured(true) applied to Capacitor WebView — overlay-phishing tap events refused');
+    else
+      fail('setFilterTouchesWhenObscured(true) not found — the Capacitor WebView will accept tap events routed through an overlay window (tapjacking risk)');
+  }
+}
+
 // ── summary ───────────────────────────────────────────────────────────────────
 
 console.log('');
