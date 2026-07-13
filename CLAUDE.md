@@ -602,6 +602,28 @@ Unit-tested (`src/rasp/__tests__/selectPresignProbeSource.test.js`;
 
 - **Argon2id 192 MiB OOM on A11 hardware (iPhone 8 Plus):** 3× 192 MiB Argon2id runs out of memory or times out in WKWebView on an A11 device with 3 GB RAM. The 192 MiB KDF cost was originally measured only on a Pixel 10 Pro XL (flagship Android, 12 GB RAM); iOS and older hardware are unmeasured. Workaround for the test session: KDF reduced to 1 MiB locally. **Open device compatibility gap** — 192 MiB is too aggressive for A11-class (and likely other older) devices. The test-build KDF reduction was reverted by linter and is NOT in production code. No code change proposed; flagged for owner decision on older-device support policy. INTERNAL, not independently audited.
 
+## 2026-07-13/14 G3 Frida Gadget detection + Android Magisk Hide bypass — PRs #948, #949
+
+**G3 — Frida Gadget detection (PR #948, 2026-07-13). BUILT / unit-tested, INTERNAL. NOT device-verified.**
+
+Frida Gadget embeds as a renamed shared library rather than running a server — port 27042 and a simple `"frida"` `/proc/self/maps` scan miss it. Three new signals added to `detectHook()` in `RaspIntegrityPlugin.kt`:
+
+1. **`checkGadgetThreads()`** — scans `/proc/self/task/*/comm` for `gum-js-loop`, `gmain`, `gdbus`, `pool-frida`. Frida's GLib runtime spawns these thread names regardless of the `.so` filename.
+2. **`checkFridaPipes()`** — scans `/proc/self/fd/*` symlinks; Frida creates named pipes/sockets whose resolved paths contain `"frida"`.
+3. **Expanded `checkProcMapsForHook()` markers** — adds `frida-agent`, `frida-gadget`, `linjector` alongside existing markers.
+
+Each check is independently exception-guarded (fail-open on `SecurityException`/permission denial). 13 new structural pin tests (`src/rasp/__tests__/g3-frida-gadget.test.js`); 29/29 total G3 tests. Hostile-device run (actual Frida Gadget injection) still required before G3 can be VALIDATED. **NOT device-verified. INTERNAL — not independently audited.**
+
+**Android Magisk Hide bypass vectors (PR #949, merged 2026-07-14). DEVICE-VERIFIED (INTERNAL, 2026-07-14) on SM-N981B (Samsung Galaxy Note 20 5G, Magisk v30.7).**
+
+Three detection vectors that Magisk Hide cannot mask:
+
+1. **`checkProcNetUnix()`** — kernel `/proc/net/unix` socket scan for Magisk/KSU IPC socket names (`@magisk_`, `magiskd`, `@ksu_`, `zygisk`, `@lspd`, `apatchd`). Magisk Hide operates at the mount-namespace level and cannot hide kernel-level IPC sockets.
+2. **`checkSuFromRuntime()`** — `which su` via `Runtime.exec`; fails closed on SELinux denial (returns false, not exception).
+3. **`checkDangerousProps()`** — reads `ro.boot.verifiedbootstate` / `ro.boot.flash.locked` via `android.os.SystemProperties` reflection. NOTE: `Runtime.exec("getprop ...")` is SELinux-denied for `untrusted_app` on Android 10+ — device-verified 2026-07-14 on SM-N981B: `verifiedbootstate=orange` and `flash.locked=0` were present but `Runtime.exec` produced no output. Fix: in-process `SystemProperties.get()` via reflection (no exec, no SELinux denial).
+
+**Device-verified 2026-07-14 on SM-N981B (Magisk v30.7, Android debug build):** verdict `{"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}` — `rooted:true` fired via `checkDangerousProps` (`verifiedbootstate=orange`, unlocked bootloader). `checkProcNetUnix` did NOT fire (Magisk v30.7 uses different socket names than the current marker list). `checkSuFromRuntime` did NOT fire (Magisk Hide covers `su` in PATH for this app). `tampered:true` expected (debug build, `RELEASE_CERT_SHA256` not set, fail-closed I4). Extended path lists cover KernelSU, Apatch, LSPosed, newer Magisk artifacts. `checkXposed` + `checkProcMapsForHook` extended with LSPosed/Zygisk markers. **INTERNAL — not independently audited.** Frida Gadget hostile-device test still outstanding.
+
 ## 2026-07-12 LiveBalances / deniability (I3) audit — PR #858
 
 INTERNAL audit of live-balance read paths for I3 (zero-egress) compliance. Codex second
