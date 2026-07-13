@@ -34,6 +34,7 @@
     "ios:test:biometric-reenroll": "wdio tests/ios/wdio.conf.js --spec tests/ios/specs/biometric-reenroll-e2e.spec.js",
     "android:test:vault": "wdio tests/android/wdio.conf.js --spec tests/android/specs/vault.spec.js",
     "android:test:send": "wdio tests/android/wdio.conf.js --spec tests/android/specs/send.spec.js",
+    "android:test:frida": "wdio tests/android/wdio.conf.js --spec tests/android/specs/frida-hook-detection-e2e.spec.js",
     "android:test:send-scenarios": "wdio tests/android/wdio.conf.js --spec tests/android/specs/send-scenarios-e2e.spec.js",
     "android:test:hardware-kek": "wdio tests/android/wdio.conf.js --spec tests/android/specs/hardware-kek-e2e.spec.js",
     "android:test:biometric-unlock": "wdio tests/android/wdio.conf.js --spec tests/android/specs/biometric-unlock-e2e.spec.js",
