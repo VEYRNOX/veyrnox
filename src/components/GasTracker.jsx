@@ -241,8 +241,8 @@ export default function GasTracker() {
 
       {isLoading ? (
         <div>
-          <SkeletonRow />
-          <SkeletonRow />
+          <SkeletonRow last={false} />
+          <SkeletonRow last={false} />
           <SkeletonRow last />
         </div>
       ) : (

@@ -23,7 +23,10 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 // RaspIntegrityPlugin is the iOS RASP probe (ObjC, ios/App/App/RaspIntegrityPlugin.m +
 // RaspIntegrityPluginBridge.m) — added to the Xcode target in PR #826 but cap sync
 // drops it on every run because it is not an npm package.
-const LOCAL_IOS_PLUGIN_CLASSES = ['HardwareKekPlugin', 'VeyrnoxSpeechRecognitionPlugin', 'RaspIntegrityPlugin'];
+// AppAttestPlugin is the iOS remote-attestation probe (ObjC, ios/App/App/AppAttestPlugin.m +
+// AppAttestPluginBridge.m) — RASP Phase 2b. Same cap-sync drop hazard as the other
+// local plugins: it is not an npm package, so it must be re-added here every run.
+const LOCAL_IOS_PLUGIN_CLASSES = ['HardwareKekPlugin', 'VeyrnoxSpeechRecognitionPlugin', 'RaspIntegrityPlugin', 'AppAttestPlugin'];
 
 // Class names `cap sync` may regenerate into packageClassList but that are NOT
 // actually linked into the iOS binary. "SpeechRecognition" is the npm plugin's ObjC
