@@ -29,6 +29,7 @@
 #import <Foundation/Foundation.h>
 #import <DeviceCheck/DeviceCheck.h>
 #import <CommonCrypto/CommonCrypto.h>
+#import <Capacitor/CAPBridgedJSTypes.h>
 
 // NSUserDefaults key for the persisted App Attest key identifier. App Attest keys
 // are generated once per install and reused; the keyId (not the key itself, which
@@ -51,7 +52,7 @@ static NSString * const APPATTEST_KEY_ID_DEFAULT = @"veyrnox_appattest_key_id";
 
         // The nonce binds this attestation to this specific request. Absent → we
         // cannot build a trustworthy clientDataHash → fail closed.
-        NSString *nonce = [call getString:@"nonce"];
+        NSString *nonce = [call getString:@"nonce" defaultValue:nil];
         if (nonce == nil || nonce.length < 16) {
             [call resolve:@{ @"available": @(NO) }];
             return;

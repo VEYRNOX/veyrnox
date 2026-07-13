@@ -171,7 +171,11 @@ function init() {
     // never leave this device, never migrate via backup. (Android ignores this;
     // its store is Keystore-backed regardless.)
     await SecureStorage.setDefaultKeychainAccess(
-      KeychainAccess.whenPasscodeSetThisDeviceOnly,
+      // whenPasscodeSetThisDeviceOnly requires securityd to verify a passcode is SET —
+      // fails with errSecNotAvailable (-25291) on palera1n (jailbreak patches securityd).
+      // whenUnlockedThisDeviceOnly keeps the ThisDeviceOnly property (no iCloud/backup
+      // migration) and unlocks only when the device is unlocked, without the passcode check.
+      KeychainAccess.whenUnlockedThisDeviceOnly,
     );
 
     // One-time cleanup: drop any leftover legacy journal key (vault_v1.next) from a

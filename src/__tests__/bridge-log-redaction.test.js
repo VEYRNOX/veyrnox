@@ -70,14 +70,14 @@ describe.each([
   });
 });
 
-describe('capacitor.config.ts logging policy', () => {
-  const config = readFileSync(resolve(root, 'capacitor.config.ts'), 'utf8');
+describe('capacitor.config.json logging policy', () => {
+  const config = JSON.parse(readFileSync(resolve(root, 'capacitor.config.json'), 'utf8'));
 
   it("pins loggingBehavior explicitly to 'debug'", () => {
-    expect(config).toMatch(/loggingBehavior:\s*'debug'/);
+    expect(config.loggingBehavior).toBe('debug');
   });
 
   it("never sets loggingBehavior 'production' (would enable bridge logs on release builds)", () => {
-    expect(config).not.toMatch(/loggingBehavior:\s*'production'/);
+    expect(config.loggingBehavior).not.toBe('production');
   });
 });

@@ -384,7 +384,7 @@ After PR #651 unified web onto the 8-digit PIN cohort, `HardwareKekSettings.jsx`
 - **iOS-F5** (`NSMutableData` zeroing): `HardwareKekPlugin.o` built clean — compile-verified.
 Both were code-complete since PR #526 but had never been compiled on a Mac. CI now runs on every push to `ios/**`. Runtime device checks (biometric prompt rendering, heap dump) remain device-gated per `docs/runbook-ios-kek-session.md` P2/P3.
 
-**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. ~~RASP F-09~~ ✅ DEVICE-VERIFIED (FULL, INTERNAL) 2026-07-12 — Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7; `checkIntegrity()` full verdict captured (all signals false, Magisk Hide operating at probe level — expected); pre-sign TIER.ALLOW → CAUTION → send; Ethereum mainnet txid `0x4556e2e68087d0b75b35504247ed09f011d42614f11b31c5d1423694799da515`, block 25,511,567 (0x1854a8f), SUCCESS. PRs #832 + #834 fixes (CAUTION flow + riskReady gate) also landed this session. See Feature-Status.md F-09 row. Independent security audit.
+**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. ~~RASP F-09~~ ✅ DEVICE-VERIFIED (FULL, INTERNAL) 2026-07-12 — Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7; `checkIntegrity()` full verdict captured (all signals false, Magisk Hide operating at probe level — expected); pre-sign TIER.ALLOW → CAUTION → send; Ethereum mainnet txid `0x4556e2e68087d0b75b35504247ed09f011d42614f11b31c5d1423694799da515`, block 25,511,567 (0x1854a8f), SUCCESS. PRs #832 + #834 fixes (CAUTION flow + riskReady gate) also landed this session. See Feature-Status.md F-09 row. **iOS RASP F-09 (2026-07-13):** false negative on palera1n rootful (iPhone 8 Plus, iOS 16.7.16) — `checkIntegrity()` returned all signals false; `RaspIntegrityPlugin.m` updated with palera1n-specific path list, C `stat()` syscall check, and `fork()` check, but NOT yet re-tested on device; status BUILT-UNVALIDATED. See §2026-07-13 iOS RASP below. Independent security audit.
 
 ## 2026-07-07/08 INTERNAL KEK stack audit — PRs #723, #735, #743
 
@@ -577,6 +577,29 @@ Unit-tested (`src/rasp/__tests__/selectPresignProbeSource.test.js`;
 - `rooted:false` on a Magisk device is correct at the probe level (Magisk Hide). A Frida-hooked device test was NOT performed. iOS device test NOT performed (Mac required).
 - The `tampered` check relies on `RELEASE_CERT_SHA256` being set in the production Gradle build — if unset, production builds will fail `tampered` on every launch. This is a production-configuration dependency, not a code flaw.
 - INTERNAL evidence only — not independently audited. Independent security audit remains outstanding.
+
+## 2026-07-13 iOS RASP — palera1n false negative + detection updates
+
+**F-09 iOS: NOT device-verified. FALSE NEGATIVE found 2026-07-13.** Device: iPhone 8 Plus (A11, iOS 16.7.16, palera1n rootful jailbreak). `RaspIntegrityPlugin.checkIntegrity()` returned `{"rooted":false,"hookedProcess":false,"emulator":false,"tampered":false}` — palera1n was NOT detected. The Android F-09 verification (2026-07-12, Samsung Galaxy Note 20 5G) stands independently; iOS is a separate, still-open gap.
+
+**Root cause — three structural misses in the original iOS checks:**
+1. **Path checks** — palera1n does not install Cydia/Sileo by default; the app sandbox (enforced at kernel level even on palera1n rootful) prevents `NSFileManager fileExistsAtPath:` from seeing jailbreak artifacts like `/bin/bash`.
+2. **Sandbox escape** — kernel-enforced even on palera1n rootful; write to `/private` still denied.
+3. **Dyld image scan** — palera1n does not inject Substrate/Frida into the Veyrnox process.
+
+**Detection updates applied to `RaspIntegrityPlugin.m` (same session):**
+- Extended path list with palera1n-specific paths: `/var/jb/`, `/private/preboot/.installed_palera1n`, `/Library/dpkg`, `/usr/sbin/sshd`, `/var/lib/dpkg`.
+- `checkJailbreakPathsCstat` — uses C `stat()` syscall directly; bypasses `NSFileManager`'s sandbox filter and can see `/bin/bash` etc. on palera1n rootful.
+- `checkFork` — `fork()` succeeds on palera1n (Apple sandbox blocks it on non-jailbroken devices); most reliable check for palera1n rootful.
+- `detectJailbreak` updated to call all four methods (original two + two new).
+
+**Status: BUILT-UNVALIDATED.** Code compiled. NOT yet re-tested on a palera1n device — a new build, deploy, and re-run is required before this can move to BUILT. Not independently audited.
+
+**Side findings from this session (both BUILT / INTERNAL, no production code change):**
+
+- **Keychain `whenPasscodeSetThisDeviceOnly` fails on palera1n (`errSecNotAvailable` -25291):** `securityd` is patched by palera1n, causing wallet creation to fail. Fixed in the test build by changing `native.js` and `biometricUnlock.js` to use `whenUnlockedThisDeviceOnly`. **Test-build-only workaround** — production builds must retain `whenPasscodeSetThisDeviceOnly` (stronger ACL that requires a passcode to be set; the failure only manifests on jailbroken devices where `securityd` is patched). Not production-patched; documented here for honesty.
+
+- **Argon2id 192 MiB OOM on A11 hardware (iPhone 8 Plus):** 3× 192 MiB Argon2id runs out of memory or times out in WKWebView on an A11 device with 3 GB RAM. The 192 MiB KDF cost was originally measured only on a Pixel 10 Pro XL (flagship Android, 12 GB RAM); iOS and older hardware are unmeasured. Workaround for the test session: KDF reduced to 1 MiB locally. **Open device compatibility gap** — 192 MiB is too aggressive for A11-class (and likely other older) devices. The test-build KDF reduction was reverted by linter and is NOT in production code. No code change proposed; flagged for owner decision on older-device support policy. INTERNAL, not independently audited.
 
 ## 2026-07-12 LiveBalances / deniability (I3) audit — PR #858
 
