@@ -161,7 +161,7 @@
         <li><span class="mk m-teal"></span><span class="txt">Web — WebAuthn PRF KEK (testing-only, 13/13 e2e PASSED)</span></li>
         <li><span class="mk m-teal"></span><span class="txt">Android — StrongBox KEK<span class="note">end-to-end device-verified Pixel. C-1 FIXED v3. T2 CLOSED, T3 CLOSED, T1 integration-tested (PR #719). LOG-1 release VERIFIED (PR #718)</span></span></li>
         <li><span class="mk m-teal"></span><span class="txt">iOS — Secure Enclave ECIES KEK — <b>FULL</b><span class="note">DEVICE-VERIFIED FULL (PR #736). F9 CLOSED, F3 VERIFIED, F5 VERIFIED, H-2/iOS-F11 CLOSED (PR #733). All evidence recorded</span></span></li>
-        <li><span class="mk m-teal"></span><span class="txt">KEK audit findings — ALL CLOSED<span class="note">H-1→H-3 (#723), M-1/M-2/M-4/M-7/M-8/M-9 (#735), L-1→L-6 (#743). 3 MEDIUM design-decision-gated: M-3, M-5, M-6</span></span></li>
+        <li><span class="mk m-teal"></span><span class="txt">KEK audit findings — ALL CLOSED<span class="note">H-1→H-3 (#723), M-1/M-2/M-4/M-7/M-8/M-9 (#735), L-1→L-6 (#743). M-3 + M-5 FIXED (#821). 1 MEDIUM design-decision-gated: M-6</span></span></li>
         <li><span class="mk m-coral"></span><span class="txt">Independent audit of the whole KEK stack<span class="note">NONE — all evidence is INTERNAL</span></span></li>
       </ul>
     </section>
@@ -191,9 +191,9 @@
       <ul>
         <li><span class="mk m-coral"></span><span class="txt">Independent security audit (S1–S4 + crypto + KEK)<span class="note">the one hard remaining gate — all internal evidence is complete</span></span></li>
         <li><span class="mk m-amber"></span><span class="txt">C-1 T1: v2→v3 migration device-exercise<span class="note">integration-tested (PR #719); on-device blocked by PIN cohort divergence</span></span></li>
-        <li><span class="mk m-coral"></span><span class="txt">RASP F-09 — native probes never tested on rooted/Frida device<span class="note">Android probe BUILT; iOS probe + attestation unbuilt · <a href="rasp-vs-commercial-shielding.md">gap analysis &amp; roadmap →</a></span></span></li>
-        <li><span class="mk m-coral"></span><span class="txt">M2c iOS SE key-wrap — scaffold BUILT (#690, OFF flag)<span class="note">password-fallback gap blocks activation</span></span></li>
-        <li><span class="mk m-amber"></span><span class="txt">KEK audit: 3 MEDIUM design-decision-gated (M-3, M-5, M-6)<span class="note">M-3: M2c swallows VAULT_WRITE_VERIFY_FAILED. M-5: VeyrnoxEnclavePlugin auto-registered. M-6: iOS NSString hB64 bridge copy — architectural</span></span></li>
+        <li><span class="mk m-amber"></span><span class="txt">RASP F-09 — Android native probe DEVICE-VERIFIED FULL (INTERNAL, 2026-07-12)<span class="note">SM-N981B/Magisk; on-chain mainnet txid (PRs #832/#834/#835). Frida-hooked test not run; iOS probe + attestation still unbuilt · <a href="rasp-vs-commercial-shielding.md">gap analysis &amp; roadmap →</a></span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">M2c iOS SE key-wrap — scaffold BUILT (#690, OFF flag)<span class="note">plugin now fail-closed M2C_ENABLED=false (#821); activation still blocked on M-6 design decision + device test</span></span></li>
+        <li><span class="mk m-amber"></span><span class="txt">KEK audit: 1 MEDIUM design-decision-gated (M-6)<span class="note">M-3 (migration logging) + M-5 (enclave gate) FIXED PR #821. M-6: iOS NSString hB64 bridge copy — architectural</span></span></li>
         <li><span class="mk m-coral"></span><span class="txt">Legal entity + Track-B legal review</span></li>
       </ul>
     </section>
@@ -216,7 +216,7 @@
   <div class="foot">
     Buckets mirror <code>docs/Feature-Status.md</code> (the single source of truth).
     "Verified" = on-chain txid. "BUILT" = code-on-main + green tests. Internal &ne; independent.
-    <br>Last update: 2026-07-08 (PRs #654–#744). iOS KEK FULL. All internal KEK audit findings CLOSED.
+    <br>Last update: 2026-07-13 (PRs #654–#870). iOS KEK FULL. RASP F-09 Android device-verified FULL (2026-07-12). KEK audit: M-3/M-5 FIXED (#821), M-6 design-gated.
   </div>
 </div>
 </body>
