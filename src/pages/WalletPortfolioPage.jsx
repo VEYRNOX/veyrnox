@@ -864,7 +864,7 @@ export default function WalletPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-3 space-y-6">
-          <AnalyticsChartContent wallet={activeWallet} currentBalance={pfTotal} />
+          <PortfolioChart transactions={txList} currentBalance={pfTotal} />
           <AssetDistributionChart wallets={pfWallets} />
         </TabsContent>
       </Tabs>
