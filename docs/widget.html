@@ -192,7 +192,7 @@
         <li><span class="mk m-coral"></span><span class="txt">Independent security audit (S1–S4 + crypto + KEK)<span class="note">the one hard remaining gate — all internal evidence is complete</span></span></li>
         <li><span class="mk m-amber"></span><span class="txt">C-1 T1: v2→v3 migration device-exercise<span class="note">integration-tested (PR #719); on-device blocked by PIN cohort divergence</span></span></li>
         <li><span class="mk m-amber"></span><span class="txt">RASP F-09 — Android native probe DEVICE-VERIFIED FULL (INTERNAL, 2026-07-12)<span class="note">SM-N981B/Magisk; on-chain mainnet txid (PRs #832/#834/#835). Frida-hooked test not run; iOS probe + attestation still unbuilt · <a href="rasp-vs-commercial-shielding.md">gap analysis &amp; roadmap →</a></span></span></li>
-        <li><span class="mk m-coral"></span><span class="txt">M2c iOS SE key-wrap — scaffold BUILT (#690, OFF flag)<span class="note">plugin now fail-closed M2C_ENABLED=false (#821); activation still blocked on M-6 design decision + device test</span></span></li>
+        <li><span class="mk m-coral"></span><span class="txt">M2c iOS SE key-wrap — scaffold BUILT (#690, OFF flag)<span class="note">M-3 (migration logging) + M-5 (enclave gate, M2C_ENABLED=false fail-closed) FIXED #821; activation still blocked on M-6 design decision + device test</span></span></li>
         <li><span class="mk m-amber"></span><span class="txt">KEK audit: 1 MEDIUM design-decision-gated (M-6)<span class="note">M-3 (migration logging) + M-5 (enclave gate) FIXED PR #821. M-6: iOS NSString hB64 bridge copy — architectural</span></span></li>
         <li><span class="mk m-coral"></span><span class="txt">Legal entity + Track-B legal review</span></li>
       </ul>
