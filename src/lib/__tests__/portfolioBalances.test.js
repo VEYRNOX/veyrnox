@@ -183,16 +183,17 @@ describe('I3 zero-egress — ERC-20 balanceOf must not fire in a deniability ses
 });
 
 describe('I3 zero-egress — computePortfolio makes zero provider calls in a deniability session', () => {
-  it('returns an empty object per wallet without calling any balance provider', async () => {
+  afterEach(() => isDeniabilitySessionActive.mockReturnValue(false));
+
+  it('returns null without calling any balance provider', async () => {
     isDeniabilitySessionActive.mockReturnValue(true);
     getBalanceEth.mockResolvedValue(9);
     const out = await computePortfolio(
       [{ id: 'w1', enabledAssets: ['ETH'] }, { id: 'w2', enabledAssets: ['ETH', 'USDC'] }],
       { w1: { evm: '0xabc' }, w2: { evm: '0xdef' } },
     );
-    expect(out).toEqual([{}, {}]);
+    expect(out).toBeNull();
     expect(getBalanceEth).not.toHaveBeenCalled();
-    isDeniabilitySessionActive.mockReturnValue(false);
   });
 });
 

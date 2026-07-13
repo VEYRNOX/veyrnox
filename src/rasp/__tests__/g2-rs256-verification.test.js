@@ -66,14 +66,9 @@ describe('G2 RS256 — signature verification structural pins', () => {
   });
 
   it('signed data covers header AND payload (header.payload byte string)', () => {
-    // The RS256 signature is over base64url(header) + "." + base64url(payload)
-    expect(kt).toContain('parts[0]');
-    expect(kt).toContain('parts[1]');
-    // Both segments must appear together in the signed-data construction
-    const signedDataIdx = kt.indexOf('parts[0]');
-    const part1Idx = kt.lastIndexOf('parts[1]');
-    // They must be within 200 chars of each other (the signed-data line)
-    expect(Math.abs(signedDataIdx - part1Idx)).toBeLessThan(200);
+    // The RS256 signature is over base64url(header) + "." + base64url(payload).
+    // Check the signed-data construction string is present verbatim in the source.
+    expect(kt).toContain('"${parts[0]}.${parts[1]}"');
   });
 
   it('JWS requires exactly 3 parts (header.payload.signature)', () => {

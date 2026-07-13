@@ -113,7 +113,7 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
   // shape per wallet (callers render 0 balances) instead of relying solely on
   // every downstream provider carrying its own guard — an explicit first line so
   // a future unguarded provider can never silently leak.
-  if (isDeniabilitySessionActive()) return (wallets || []).map(() => ({}));
+  if (isDeniabilitySessionActive()) return null;
   const byWallet = {};
   const assetTotals = {};
   let grandTotal = 0;
