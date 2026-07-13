@@ -34,8 +34,13 @@ describe('G2 RS256 — signature verification structural pins', () => {
     expect(verifyIdx).toBeLessThan(payloadIdx);
   });
 
-  it('only RS256 algorithm is accepted (alg check)', () => {
-    expect(kt).toContain('"RS256"');
+  it('RS256 and ES256 are the only accepted algorithms; unknown alg returns false (fail-closed)', () => {
+    // Both RS256 (RSA PKCS#1 v1.5) and ES256 (ECDSA P-256) are accepted.
+    // The `alg` header field dispatches to the correct Signature instance; any other
+    // value hits `else -> return false` (I4 fail-closed).
+    expect(kt).toContain('"RS256" -> "SHA256withRSA"');
+    expect(kt).toContain('"ES256" -> "SHA256withECDSA"');
+    expect(kt).toContain('else -> return false');
   });
 
   it('x5c certificate chain is extracted from JWS header', () => {
@@ -47,8 +52,9 @@ describe('G2 RS256 — signature verification structural pins', () => {
     expect(kt).toContain('X509Certificate');
   });
 
-  it('SHA256withRSA signature algorithm is used for verification', () => {
+  it('SHA256withRSA and SHA256withECDSA are the Java algorithm names used for RS256/ES256', () => {
     expect(kt).toContain('SHA256withRSA');
+    expect(kt).toContain('SHA256withECDSA');
   });
 
   it('Signature.getInstance is used to verify', () => {

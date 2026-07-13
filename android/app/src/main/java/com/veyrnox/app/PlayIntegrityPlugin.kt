@@ -21,14 +21,22 @@ package com.veyrnox.app
 // ── HONEST LIMITATION (must not be overstated) ─────────────────────────────
 // The Play Integrity token is a JWS signed with Google's RS256 key.
 //
-// UPDATE (G2 RS256, 2026-07-13): on-device RS256 signature verification is now
-// implemented via verifyJwsSignature() — the JWS signature is verified against the
-// leaf certificate in the x5c header claim, and the issuer is checked for "Google".
-// RESIDUAL GAP: the x5c chain is not yet verified against a bundled Google root
-// certificate — that requires capturing a real production token to obtain the root
-// DER. Until root-cert pinning lands, treat results as PROVISIONAL (an attacker
-// with IPC access who can forge a "Google"-issuer cert could pass the check, but
-// the Play Services delivery channel does not expose this surface in practice).
+// UPDATE (G2 x5c chain-walk, 2026-07-13): on-device JWS signature verification is
+// implemented via verifyJwsSignature() — the full x5c chain is walked (each cert
+// verified by the next cert's key), the root cert issuer is checked for "Google",
+// and the JWS RS256/ES256 signature is verified with the leaf cert's public key.
+//
+// ALGORITHM AMBIGUITY (2026-07-13): Google's Play Integrity documentation cites
+// ES256 (ECDSA P-256 / SHA-256); the predecessor SafetyNet API used RS256 (RSA
+// PKCS#1 v1.5 / SHA-256). Both are accepted: the `alg` field in the JWS header
+// selects the correct Signature instance. This cannot be confirmed without a real
+// production token from a properly registered Play Console app.
+//
+// RESIDUAL GAP — ROOT CERT PINNING (G2-ROOTCERT-PIN): the root cert is still
+// checked only via issuer.contains("Google") — a weak check. Replacing it with a
+// SHA-256 fingerprint requires either capturing a real production token on-device,
+// or Google publishing the root CA fingerprint (currently not documented). Until
+// pinning lands, treat attestation results as PROVISIONAL.
 //
 // I4 — FAIL CLOSED. A missing/short nonce, absent Play Services, a token request
 // failure, or ANY parse exception resolves with { available:false }, which the JS
@@ -178,16 +186,26 @@ class PlayIntegrityPlugin : Plugin() {
      * root-cert SHA-256 fingerprint pinning (G2-ROOTCERT-PIN: requires capturing a
      * real production token on-device to extract the root DER, then replacing the
      * issuer check with a fingerprint comparison).
+     *
+     * ALGORITHM: Google's Play Integrity documentation cites ES256; the predecessor
+     * SafetyNet API used RS256. Both are accepted (the `alg` field dispatches the
+     * correct Signature instance). Algorithm selection cannot be confirmed without a
+     * real production token. Any unknown alg returns false (fail-closed, I4).
      */
     private fun verifyJwsSignature(token: String): Boolean {
         return try {
             val parts = token.split(".")
             if (parts.size != 3) return false
 
-            // 1. Parse JWS header
+            // 1. Parse JWS header — accept RS256 (RSA) or ES256 (ECDSA); any other
+            //    alg is rejected fail-closed (I4). See ALGORITHM note in the file header.
             val headerJson = String(base64UrlDecode(parts[0]), Charsets.UTF_8)
             val header = JSONObject(headerJson)
-            if (header.optString("alg") != "RS256") return false
+            val javaAlg = when (header.optString("alg")) {
+                "RS256" -> "SHA256withRSA"
+                "ES256" -> "SHA256withECDSA"
+                else -> return false
+            }
 
             // 2. Build cert chain from x5c array
             val x5c = header.optJSONArray("x5c") ?: return false
@@ -215,10 +233,12 @@ class PlayIntegrityPlugin : Plugin() {
             val rootIssuer = chain[chainLen - 1].subjectX500Principal.name
             if (!rootIssuer.contains("Google", ignoreCase = true)) return false
 
-            // 5. Verify SHA256withRSA over header.payload (RFC 7515 signed data)
+            // 5. Verify JWS signature over header.payload (RFC 7515 signed data).
+            //    Algorithm dispatched from the `alg` header field (RS256 → SHA256withRSA,
+            //    ES256 → SHA256withECDSA). Public key from the verified leaf cert (x5c[0]).
             val signedData = "${parts[0]}.${parts[1]}".toByteArray(Charsets.UTF_8)
             val signatureBytes = base64UrlDecode(parts[2])
-            val sig = Signature.getInstance("SHA256withRSA")
+            val sig = Signature.getInstance(javaAlg)
             sig.initVerify(chain[0].publicKey)
             sig.update(signedData)
             sig.verify(signatureBytes)
