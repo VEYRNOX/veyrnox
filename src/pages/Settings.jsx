@@ -237,7 +237,7 @@ export default function Settings() {
           <div>
             <p className="text-sm font-semibold">Current plan: {isSafetyPlus ? "Safety Plus" : "Free"}</p>
             <p className="text-xs text-muted-foreground">
-              {isSafetyPlus ? "Advanced analytics & premium insights" : "Upgrade to Safety Plus — $5.99/mo"}
+              {isSafetyPlus ? "Deeper security controls & advanced analytics" : "Upgrade to Safety Plus — $5.99/mo"}
             </p>
           </div>
         </div>

@@ -19,6 +19,7 @@
     "check:log-redaction": "node scripts/check-log-redaction-patch.mjs",
     "check:release-hygiene": "node scripts/check-release-hygiene.mjs",
     "check:finding-ids": "node scripts/check-finding-id-consistency.mjs",
+    "check:iap-preflight": "node scripts/preflight-iap-config.mjs",
     "verify:onchain": "node scripts/verify-onchain-evidence.mjs",
     "pretest": "node scripts/check-crypto-rng.mjs && node scripts/check-deniability-strings.mjs && node scripts/check-finding-id-consistency.mjs && npm run typecheck:core",
     "test": "vitest run",

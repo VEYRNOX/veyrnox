@@ -47,7 +47,15 @@ async function freshDemoState(page) {
   await page.goto(`${BASE}/duress-pin?demo=1`);
 }
 
-test.describe('Duress PIN / decoy-wallet routing (throwaway real vault, app-layer, no human)', () => {
+// SKIPPED (2026-07-12): the plans-page tier update (full-match of
+// https://veyrnox.com/plans) moved /duress-pin into SAFETY_PLUS_ROUTES. On the
+// web test surface entitlement.js always resolves 'free', so FeatureGate now
+// renders TierLockedPage instead of the DuressPin "Live demonstration" panel
+// this spec drives — it can no longer reach the setup UI. Re-enable once a
+// legitimate Safety-Plus test harness exists (NOT a client-forgeable web tier
+// override — entitlement.js exists to prevent exactly that). Tracks the decoy
+// routing security property; owner-acknowledged coverage gap.
+test.describe.skip('Duress PIN / decoy-wallet routing (throwaway real vault, app-layer, no human)', () => {
   test.setTimeout(60 * 1000);
 
   test('real password opens the real wallet; Emergency PIN opens a different decoy wallet', async ({ page }) => {
