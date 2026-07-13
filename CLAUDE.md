@@ -323,13 +323,18 @@ single PIN cohort end-to-end (create, confirm, unlock, recover) — there is no 
 web "password" cohort left to diverge from unlock again, consistent with web being a
 testing-only surface, never production (native is the real product). Regression coverage:
 `src/components/__tests__/WalletEntry.web-authmodel.test.jsx`, rewritten
-`e2e/onboarding.spec.js`. **Known residual (not fixed this pass, flagged for the owner):**
-a legacy `authModel==='password'` code path still exists (the "Forgot password? Restore
-from seed phrase" recovery link, reachable only from a pre-existing password-cohort
-vault) and its unlock fallback still renders a numeric-only `PinPad` with no
-`numericOnly={false}` override — the same bug class would resurface if that path were
-ever exercised. Very likely dead/vestigial code today (no live path creates a new
-password-cohort vault post-#651), but not verified unreachable.
+`e2e/onboarding.spec.js`. **Known residual (verified 2026-07-13):**
+a legacy `authModel==='password'` code path still exists for pre-PR-#651 users (the
+"Forgot password? Restore from seed phrase" recovery link at `WalletEntry.jsx:1204`,
+reachable only from a pre-existing password-cohort vault). The unlock surface is correct
+— `WalletEntry.jsx:1156` renders a free-text `<input type="password">` for
+`authModel === "password"`, not a numeric PinPad (that fix landed in PR #645 and is
+present in current code). Fresh-install users cannot reach this path: no `setView("generate")`
+call exists anywhere, and all new-user flows write `setAuthModel('pin')`. The path is
+live for legacy users and works correctly; it is unreachable for any new user post-#651.
+One design gap: legacy users who recover via this path skip `provisionDeniabilityChaff()`
+— duress/stealth/panic are not provisioned in onboarding (by design, noted in
+`WalletEntry.jsx:31–38`; advanced security is set up in-app later).
 
 **PR #644 (commit `dc63c8ec9`)** — app icon restored to the hexagon + teal V brand logo
 (cosmetic), plus four new automated Playwright e2e specs under `e2e/`, each closing an
