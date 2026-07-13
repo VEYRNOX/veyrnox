@@ -724,6 +724,7 @@ sweep. Key controls now on main:
   on-chain txid, live relay gap SUPERVISED (not CI-automated), not independently audited.
   **PR #933 (2026-07-13):** CLAUDE.md + `docs/Feature-Status.md` sync for all PR #931 changes
   (H7/H8 pre-modal, supervised spec, honest-gaps paragraph).
+  **PR #934 (2026-07-13):** CLAUDE.md update recording PR #933 docs sync.
 
 ## Per-chain gotchas
 
