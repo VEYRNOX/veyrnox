@@ -42,6 +42,7 @@ import CoinLogo from "@/components/CoinLogo";
 import QuickAccessGrid from "@/components/QuickAccessGrid";
 import SpendingPatternsCard from "@/components/SpendingPatternsCard";
 import { copySecret } from "@/lib/copySecret";
+import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";
@@ -67,6 +68,7 @@ const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { 
 function SeedGrid({ mnemonic }) {
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
+  const raspArtifact = useRaspArtifact();
   const words = (mnemonic || "").split(" ");
   return (
     <div className="p-3 rounded-xl border border-border bg-card">
@@ -76,7 +78,7 @@ function SeedGrid({ mnemonic }) {
           <button onClick={() => setShow((s) => !s)} aria-label={show ? "Hide recovery phrase" : "Show recovery phrase"} className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
-          <button onClick={async () => { await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
+          <button onClick={async () => { const gate = sensitiveGate(raspArtifact, 'seed-reveal'); if (gate.blocked) { toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.'); return; } await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
             {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
