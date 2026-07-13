@@ -1590,6 +1590,7 @@ export default function SendCrypto() {
               </button>
             )}
 
+
             {/* Hint: one-tap escape while the risk check is still running. */}
             {riskPending && simEnabled && (
               <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-dashed border-border bg-card">
