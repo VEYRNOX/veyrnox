@@ -469,7 +469,7 @@ auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
   vector; full AAD binding is in the independent audit scope; issue #752)
 - M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
   owner decision on disclosure wording; issue #754; docs disclosure BUILT #753)
-- M-10 (Cosmos non-hardened index level — correct BIP-44 but xpub-risk; documentation gap)
+- ~~M-10~~ BUILT (2026-07-12): Cosmos non-hardened index level — correct BIP-44, matches Keplr/Cosmostation; xpub-risk disclosure added as source comment in `cosmos/derivation.js:40–46`; Veyrnox does not export the account xpub so risk is theoretical; flagged for any future xpub-export feature
 - L-1, L-2, L-3, L-5 (low-priority; see `docs/Feature-Status.md` §"2026-07-08 INTERNAL
   S1–S4 + crypto audit")
 
