@@ -418,11 +418,12 @@ export function parseBackupFile(data) {
  */
 export async function restoreWithPassword(envelope, password) {
   if (!isValidBackup(envelope)) throw new Error('Invalid backup');
+  const env = /** @type {any} */ (envelope);
   // Verify the password is correct by decrypting (throws on wrong credential).
-  await decryptVault(envelope.seals.password, password);
+  await decryptVault(env.seals.password, password);
   // The blob is correct — save it as the local primary vault. The user can now
   // unlock with their original password through the normal flow.
-  await saveVault(envelope.seals.password);
+  await saveVault(env.seals.password);
 }
 
 /**
@@ -437,7 +438,8 @@ export async function restoreWithPassword(envelope, password) {
  */
 export async function decryptPinSeal(envelope, pin) {
   if (!isValidBackup(envelope)) throw new Error('Invalid backup');
-  return await decryptVault(envelope.seals.pin, pin);
+  const env = /** @type {any} */ (envelope);
+  return await decryptVault(env.seals.pin, pin);
 }
 
 /**
