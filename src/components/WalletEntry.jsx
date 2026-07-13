@@ -980,6 +980,12 @@ export default function WalletEntry() {
       setError(""); setDesyncWiping(true);
       try {
         await clearVault();
+        // I4 (fail honest): the vault was destroyed — raise the SAME loud, persistent
+        // acknowledgement the panic-wipe path shows (setLocalWiped mirrors that flow),
+        // so the user gets an unmistakable notice their keys are gone rather than a
+        // silent drop into onboarding. The WipedNotice gate (wasWiped||localWiped &&
+        // vaultExists===false) renders before the pin-create view below.
+        setLocalWiped(true);
         setVaultExists(false);
         setDesyncConfirmWipe(false);
         setDesyncWipeInput("");
