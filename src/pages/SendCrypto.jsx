@@ -118,7 +118,7 @@ export default function SendCrypto() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = /** @type {any} */ (useWallet());
 
   // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
   // see lib/send2faMethod.js). Audit H-1: keying the send gate off actionPasswordConfigured
@@ -160,8 +160,8 @@ export default function SendCrypto() {
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const [txResult, setTxResult] = useState(null); // { hash, explorerUrl } from a real broadcast
-  const [selectedFee, setSelectedFee] = useState(null); // user-chosen EIP-1559 fee (FeeSelector)
+  const [txResult, setTxResult] = useState(/** @type {any} */ (null)); // { hash, explorerUrl } from a real broadcast
+  const [selectedFee, setSelectedFee] = useState(/** @type {any} */ (null)); // user-chosen EIP-1559 fee (FeeSelector)
 
   // TREZOR hardware-wallet signing mode
   const { connected: trezorConnected, platform: trezorPlatform, evmAddress: trezorEvmAddress, btcAddress: trezorBtcAddress, solAddress: trezorSolAddress } = useTrezor();
@@ -176,7 +176,7 @@ export default function SendCrypto() {
   const [, setReauthTick] = useState(0); // bump to force a re-render so the window check re-evaluates
   const [ensName, setEnsName] = useState("");
   const [ensResolving, setEnsResolving] = useState(false);
-  const [ensResolved, setEnsResolved] = useState(null);
+  const [ensResolved, setEnsResolved] = useState(/** @type {any} */ (null));
 
   const resolveENS = async (name) => {
     if (!name || (!name.endsWith(".eth") && !name.endsWith(".sol"))) return;
@@ -291,17 +291,17 @@ export default function SendCrypto() {
     queryFn: () => base44.entities.WhitelistedAddress.list(),
   });
 
-  const { data: txLimits = [] } = useQuery({
+  const { data: txLimits = [] } = /** @type {{ data: any[] }} */ (useQuery({
     queryKey: ["tx-limits"],
     queryFn: () => base44.entities.TransactionLimit.list(),
-  });
+  }));
 
   // Sources for LOCAL address-poisoning screening: the addresses the user has
   // actually interacted with. All read client-side; nothing is sent anywhere.
-  const { data: history = [] } = useQuery({
+  const { data: history = [] } = /** @type {{ data: any[] }} */ (useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
-  });
+  }));
   const { data: addressBook = [] } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list(),
@@ -334,12 +334,12 @@ export default function SendCrypto() {
   // (.currency/.address/.balance) from the live source, so downstream send / limit /
   // screening logic is unchanged. Address comes from the active wallet's derived
   // accounts (EVM shared / BTC / SOL) via resolveReceive.
-  const selectedWallet = buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount });
+  const selectedWallet = /** @type {any} */ (buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount }));
 
   // Capability gate: only assets whose status is `live` may move funds. ETH is
   // live (Phase A); ERC-20 tokens (Phase B) are receive_only until a testnet
   // transfer is verified, so they read balances but cannot yet send.
-  const selectedAsset = getAsset(selectedWallet?.currency);
+  const selectedAsset = /** @type {any} */ (getAsset(selectedWallet?.currency));
   const sendEnabled = canSend(selectedAsset);
   const isErc20 = selectedAsset?.family === "erc20";
 
@@ -406,7 +406,7 @@ export default function SendCrypto() {
   // Decode EXACTLY what an ERC-20 send will sign, for display on the confirm
   // screen BEFORE any signature (the anti-blind-signing control). Transfers show
   // recipient/amount/token; an unlimited `approve` would surface a red warning.
-  const tokenCalldata = useMemo(() => {
+  const tokenCalldata = /** @type {any} */ (useMemo(() => {
     if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
     try {
       const { data } = buildTokenTransfer({ networkKey: networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
@@ -414,7 +414,7 @@ export default function SendCrypto() {
     } catch {
       return null; // unconfigured token / invalid input — UI shows nothing to decode
     }
-  }, [isErc20, selectedAsset, toAddress, amount]);
+  }, [isErc20, selectedAsset, toAddress, amount]));
 
   // Unlimited-approval extra confirmation. Send flows are transfer-only, so this
   // stays false in normal use; it hard-gates the action only if an unlimited
@@ -505,8 +505,8 @@ export default function SendCrypto() {
       amount,
       currency: selectedWallet?.currency,
       usdRates: USD_RATES,
-      history,
-      limits: txLimits,
+      history: /** @type {any} */ (history),
+      limits: /** @type {any} */ (txLimits),
       now: new Date(),
     }),
     [amount, selectedWallet, history, txLimits]
@@ -539,7 +539,7 @@ export default function SendCrypto() {
   // Disabled in DEMO (no live RPC) — the demo harness renders sample previews
   // instead. Errors are surfaced as a degraded "couldn't simulate" note, not a
   // block. Keys are never involved (simulation needs only the sender address).
-  const txSim = useQuery({
+  const txSim = /** @type {any} */ (useQuery({
     queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, amount, selectedAsset?.symbol, isErc20],
     queryFn: async () => {
       const from = selectedWallet.address;
@@ -549,7 +549,7 @@ export default function SendCrypto() {
         return simulateEvmTransaction({
           networkKey, from, to: t.address, data, valueWei: 0n,
           nativeSymbol, tokenSymbol: selectedAsset.symbol, tokenDecimals: t.decimals,
-          tokenBalance: liveBalance != null ? String(liveBalance) : null, knownAddresses,
+          tokenBalance: liveBalance != null ? String(liveBalance) : /** @type {any} */ (null), knownAddresses,
           priorSends, knownCounterparties,
         });
       }
@@ -563,7 +563,7 @@ export default function SendCrypto() {
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
-  });
+  }));
 
   // BTC PRE-SIGN PREVIEW (internal audit H-1/M-2). Bitcoin has no programmable
   // execution to dry-run, so this is an HONEST decode of the EXACT transaction the
@@ -573,7 +573,7 @@ export default function SendCrypto() {
   // in btc/provider.js) flowed straight into a signed tx. This surfaces the fee +
   // plan + decode-only risk flags (entire_balance / large_outflow) BEFORE signing.
   // LOCAL: only the existing Esplora indexer; no third-party scorer; no keys.
-  const btcSim = useQuery({
+  const btcSim = /** @type {any} */ (useQuery({
     queryKey: ["btc-sim", networkKey, selectedWallet?.address, toAddress, amount],
     queryFn: async () => {
       const fromAddress = selectedWallet.address;
@@ -586,7 +586,7 @@ export default function SendCrypto() {
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
-  });
+  }));
 
   // Raw calldata for the risk scorer (S2/S3/S7 read tx.data). Distinct from
   // tokenCalldata above, which is the human-readable DECODE. Native sends have no
@@ -682,7 +682,7 @@ export default function SendCrypto() {
   // ran we fail CLOSED (INTEGRITY_UNAVAILABLE → WARN, never ALLOW): this covers iOS (no
   // plugin yet), a plugin-absent/throwing verdict, and the not-yet-resolved async window.
   // On web the gate reads browserProbeSource exactly as before.
-  const [nativeProbe, setNativeProbe] = useState(null);
+  const [nativeProbe, setNativeProbe] = useState(/** @type {any} */ (null));
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let cancelled = false;
@@ -699,13 +699,13 @@ export default function SendCrypto() {
     return () => { cancelled = true; };
   }, []);
 
-  let raspArtifact = null;
+  let raspArtifact = /** @type {any} */ (null);
   // RASP-A1 (2026-07-05 internal audit, HIGH): browserProbeSource re-samples the
   // environment FRESH on every property read (its `available`/`signals` are getters),
   // so a debugger / WebDriver flag attached AFTER module-load is still caught. This
   // runs on every render, and the signer chokepoint re-derives the gate too. On native an
   // unavailable OS leg fails CLOSED — it does NOT fall back to the browser CLEAN (C-01).
-  try { raspArtifact = degrade(detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource))); } catch { raspArtifact = degrade(undefined); }
+  try { raspArtifact = degrade(detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource))); } catch { raspArtifact = degrade(/** @type {any} */ (undefined)); }
   // I4 FAIL CLOSED (RASP-A2, 2026-07-05 internal audit, HIGH): if the RASP artifact
   // is missing a tier (a crash, or degrade() shape drift), fall back to the strongest
   // BLOCK — NEVER ALLOW. A fail-open fallback here would let a hostile runtime sign
@@ -758,8 +758,8 @@ export default function SendCrypto() {
         amount,
         currency: selectedWallet.currency,
         usdRates: USD_RATES,
-        history,
-        limits: txLimits,
+        history: /** @type {any} */ (history),
+        limits: /** @type {any} */ (txLimits),
         now: new Date(),
       });
 
@@ -775,7 +775,7 @@ export default function SendCrypto() {
       }
 
       let riskScoreFailed = false;
-      let presignAtSign = null;
+      let presignAtSign = /** @type {any} */ (null);
       try {
         const freshScore = scoreCurrentSend();
         presignAtSign = presignGate(raspTier, freshScore.level, riskAck);
@@ -808,7 +808,7 @@ export default function SendCrypto() {
       const twoFactorVerified = twoFactorVerifiedRef.current;
       twoFactorVerifiedRef.current = false;
 
-      const gate = evaluateSendGate({
+      const gate = /** @type {any} */ (evaluateSendGate({
         canSend: canSend(selectedAsset),
         devUngated,
         currency: selectedWallet?.currency,
@@ -830,7 +830,7 @@ export default function SendCrypto() {
         // verdict is recomputed above.
         btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
         blockedByApproval,
-      });
+      }));
       if (!gate.allowed) {
         throw Object.assign(new Error(gate.message), { code: gate.code });
       }
@@ -1199,7 +1199,7 @@ export default function SendCrypto() {
             </div>
             <div>
               <Label id="send-asset-label">Asset</Label>
-              <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
+              <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={/** @type {any} */ (!walletId)}>
                 <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="send-asset-label">
                   <SelectValue placeholder="Select asset">
                     {assetSymbol ? (
@@ -1559,30 +1559,34 @@ export default function SendCrypto() {
                       <span>I understand and want to proceed anyway.</span>
                     </label>
                   )}
-                  {/* B5 — biometric re-confirm on native WARN (ROOTED / INTEGRITY_UNAVAILABLE).
-                      Only shown after the checkbox ack and only while bio has not yet cleared.
-                      Fail-closed: bio cancel/error leaves raspWarnBioOk false. */}
-                  {riskAck && raspNeedsBio && !raspWarnBioOk && (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 text-xs underline underline-offset-2 font-medium mt-1"
-                      onClick={async () => {
-                        try {
-                          const ok = await verifyBiometric2fa();
-                          if (ok) setRaspWarnBioOk(true);
-                        } catch {
-                          // bio unavailable or cancelled — remain blocked (I4 fail-closed)
-                        }
-                      }}
-                    >
-                      <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
-                      Verify with biometrics to proceed
-                    </button>
-                  )}
                 </div>
               </div>
             ) : (
               <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
+            )}
+
+            {/* B5 — biometric re-confirm on native WARN (ROOTED / INTEGRITY_UNAVAILABLE).
+                Rendered OUTSIDE the owner-branch ternary so it appears regardless of which
+                banner plane (rasp or tx) owns the copy. Without this, the WARN+RISK compose
+                case (owner='tx', decision='confirm') would permanently block the send button
+                with no reachable affordance to clear raspWarnBioOk — the same dead-end class
+                as PR #834. Fail-closed: bio cancel/error leaves raspWarnBioOk false (I4). */}
+            {riskAck && raspNeedsBio && !raspWarnBioOk && (
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-xs underline underline-offset-2 font-medium mt-1 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                onClick={async () => {
+                  try {
+                    const ok = await verifyBiometric2fa();
+                    if (ok) setRaspWarnBioOk(true);
+                  } catch {
+                    // bio unavailable or cancelled — remain blocked (I4 fail-closed)
+                  }
+                }}
+              >
+                <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
+                Verify with biometrics to proceed
+              </button>
             )}
 
             {/* Hint: one-tap escape while the risk check is still running. */}
