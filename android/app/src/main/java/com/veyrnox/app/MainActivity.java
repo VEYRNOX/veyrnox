@@ -29,6 +29,13 @@ public class MainActivity extends BridgeActivity {
             WindowManager.LayoutParams.FLAG_SECURE
         );
 
+        // filterTouchesWhenObscured — refuse tap events on the Capacitor WebView when
+        // another app's TYPE_APPLICATION_OVERLAY window is above it. Blocks overlay-
+        // phishing attacks that draw a fake "Confirm" button over the real PIN pad or
+        // Send button and harvest the tap. Called after super.onCreate() so the Bridge
+        // and its WebView are already initialised.
+        getBridge().getWebView().setFilterTouchesWhenObscured(true);
+
         // Disable remote WebView debugging in release builds so an attacker with ADB
         // access cannot attach Chrome DevTools to read in-memory JS state or drive the
         // UI. Debug builds keep it on for development.
