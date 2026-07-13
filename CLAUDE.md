@@ -716,6 +716,12 @@ sweep. Key controls now on main:
   software-layer controls; `isSecureHardwareAvailable()` is the honest gate.
 - **H-C — mainnet gate consolidation:** `SendCrypto.jsx` imports compile-time
   `ALLOW_MAINNET` from `networks.js` (not a runtime env var). Dead-code-eliminated in prod.
+- **Supervised WC e2e specs** (`e2e/walletconnect-live-pairing.spec.js`, PR #931,
+  2026-07-13, `RUN_SUPERVISED_E2E=1`) — 4 Playwright tests against real
+  relay.walletconnect.com: H8 happy path (own address → valid 65-byte sig), H8 mismatch
+  (foreign address → pre-modal reject), M11 (disconnected session → SDK-level reject),
+  H7 (domain.chainId=1 on Sepolia session → pre-modal reject). BUILT / INTERNAL — no
+  on-chain txid, live relay gap SUPERVISED (not CI-automated), not independently audited.
 
 ## Per-chain gotchas
 
