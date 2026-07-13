@@ -731,6 +731,7 @@ sweep. Key controls now on main:
   (H7/H8 pre-modal, supervised spec, honest-gaps paragraph).
   **PR #934 (2026-07-13):** CLAUDE.md update recording PR #933 docs sync.
   **PR #935 (2026-07-13):** CLAUDE.md update recording PR #934 docs sync.
+  **PR #937 (2026-07-13):** CLAUDE.md update recording PR #935 docs sync.
 
 ## Per-chain gotchas
 
