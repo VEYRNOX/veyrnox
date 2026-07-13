@@ -47,11 +47,11 @@ export async function saveVault(vaultBlob) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }
   const db = await openDb();
-  await new Promise((res, rej) => {
+  await /** @type {Promise<void>} */ (new Promise((res, rej) => {
     const r = tx(db, 'readwrite').put(vaultBlob, KEY);
     r.onsuccess = () => res();
     r.onerror = () => rej(r.error);
-  });
+  }));
   db.close();
 }
 
@@ -72,10 +72,10 @@ export async function hasVault() {
 
 export async function clearVault() {
   const db = await openDb();
-  await new Promise((res, rej) => {
+  await /** @type {Promise<void>} */ (new Promise((res, rej) => {
     const r = tx(db, 'readwrite').delete(KEY);
     r.onsuccess = () => res();
     r.onerror = () => rej(r.error);
-  });
+  }));
   db.close();
 }
