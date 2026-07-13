@@ -1,6 +1,11 @@
 // One-off helper: capture the /plans Safety Plus paywall as a PNG for the
 // App Store Connect subscription "Review Information" screenshot.
 // Requires the dev server running (npm run dev / preview on :5199).
+//
+// The window/document/PopStateEvent references below live inside Playwright
+// page.evaluate() callbacks, which execute in the browser context — declare
+// them as globals so the Node-env ESLint pass does not flag no-undef.
+/* global window, document, PopStateEvent */
 import { chromium } from 'playwright';
 
 const URL = process.env.CAP_URL || 'http://localhost:5199';
