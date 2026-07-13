@@ -51,7 +51,7 @@ static NSString * const APPATTEST_KEY_ID_DEFAULT = @"veyrnox_appattest_key_id";
 
         // The nonce binds this attestation to this specific request. Absent → we
         // cannot build a trustworthy clientDataHash → fail closed.
-        NSString *nonce = [call getString:@"nonce"];
+        NSString *nonce = [call getString:@"nonce" defaultValue:nil];
         if (nonce == nil || nonce.length < 16) {
             [call resolve:@{ @"available": @(NO) }];
             return;
