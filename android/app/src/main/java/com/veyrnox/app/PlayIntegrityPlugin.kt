@@ -161,21 +161,23 @@ class PlayIntegrityPlugin : Plugin() {
      *
      * Steps:
      *  1. Decode the JWS header; assert alg == "RS256".
-     *  2. Extract the leaf certificate from x5c[0] (base64-encoded DER).
-     *  3. Assert the issuer name contains "Google" (weak binding — tighten to root-cert
-     *     pinning once a real production token is captured and the root DER is known).
-     *  4. Verify SHA256withRSA over signedData = base64url(header).base64url(payload).
+     *  2. Build the cert chain from x5c (x5c[0]=leaf, x5c[last]=root).
+     *  3. Walk the chain: verify each cert[i] is signed by cert[i+1]. This ensures
+     *     the x5c array contains a valid PKI chain, not injected unrelated certs.
+     *  4. Assert the root cert issuer contains "Google" (weak — pending full pinning;
+     *     see G2-ROOTCERT-PIN below).
+     *  5. Verify SHA256withRSA over signedData using the leaf cert's public key.
      *
      * Returns false on ANY anomaly — caller maps false → unavailable() (fail-closed, I4).
      *
-     * HONEST LIMITATION: we verify that the JWS signature was made with the key in the
-     * x5c claim, and that the leaf certificate claims a Google issuer. We do NOT yet
-     * verify the x5c chain against a bundled Google root certificate — that requires
-     * capturing a real production token to obtain the root DER bytes. Until that step,
-     * an attacker who can supply their own x5c with a "Google" issuer string could pass
-     * this check. In the Play Services delivery channel this attack surface does not
-     * exist (the token comes via IPC, not an open network endpoint), but it should be
-     * closed with root-cert pinning before the feature reaches VALIDATED status.
+     * HONEST LIMITATION: the chain walk (step 3) closes the "injected random cert"
+     * attack by proving the x5c array is a cryptographically valid chain. However, the
+     * root cert is still only checked with issuer.contains("Google") — an attacker who
+     * can forge a Google-issuer self-signed root can still pass. In the Play Services
+     * IPC delivery channel this surface doesn't exist, but it should be closed with
+     * root-cert SHA-256 fingerprint pinning (G2-ROOTCERT-PIN: requires capturing a
+     * real production token on-device to extract the root DER, then replacing the
+     * issuer check with a fingerprint comparison).
      */
     private fun verifyJwsSignature(token: String): Boolean {
         return try {
@@ -183,30 +185,45 @@ class PlayIntegrityPlugin : Plugin() {
             if (parts.size != 3) return false
 
             // 1. Parse JWS header
-            val headerJson = String(base64UrlDecode(parts.first()), Charsets.UTF_8)
+            val headerJson = String(base64UrlDecode(parts[0]), Charsets.UTF_8)
             val header = JSONObject(headerJson)
             if (header.optString("alg") != "RS256") return false
 
-            // 2. Extract leaf certificate from x5c[0]
+            // 2. Build cert chain from x5c array
             val x5c = header.optJSONArray("x5c") ?: return false
-            if (x5c.length() == 0) return false
-            val leafCertDer = Base64.decode(x5c.getString(0), Base64.DEFAULT)
+            val chainLen = x5c.length()
+            if (chainLen == 0) return false
             val certFactory = CertificateFactory.getInstance("X.509")
-            val leafCert = certFactory.generateCertificate(leafCertDer.inputStream()) as X509Certificate
+            val chain: List<X509Certificate> = (0 until chainLen).map { i ->
+                val der = Base64.decode(x5c.getString(i), Base64.DEFAULT)
+                certFactory.generateCertificate(der.inputStream()) as X509Certificate
+            }
 
-            // 3. Weak issuer constraint — tighten to root-cert pinning in a future cycle
-            val issuer = leafCert.issuerX500Principal.name
-            if (!issuer.contains("Google", ignoreCase = true)) return false
+            // 3. Walk chain: every cert must be signed by the next cert's key.
+            // This prevents an attacker from supplying an arbitrary leaf cert alongside
+            // an unrelated Google root — the whole chain must be cryptographically linked.
+            for (i in 0 until chainLen - 1) {
+                try {
+                    chain[i].verify(chain[i + 1].publicKey)
+                } catch (e: Exception) {
+                    return false
+                }
+            }
 
-            // 4. Verify SHA256withRSA over header.payload (the signed data per RFC 7515)
+            // 4. Root cert issuer check (weak — G2-ROOTCERT-PIN: replace with SHA-256
+            // fingerprint of the actual Google root DER once captured on-device).
+            val rootIssuer = chain[chainLen - 1].subjectX500Principal.name
+            if (!rootIssuer.contains("Google", ignoreCase = true)) return false
+
+            // 5. Verify SHA256withRSA over header.payload (RFC 7515 signed data)
             val signedData = "${parts[0]}.${parts[1]}".toByteArray(Charsets.UTF_8)
             val signatureBytes = base64UrlDecode(parts[2])
             val sig = Signature.getInstance("SHA256withRSA")
-            sig.initVerify(leafCert.publicKey)
+            sig.initVerify(chain[0].publicKey)
             sig.update(signedData)
             sig.verify(signatureBytes)
         } catch (e: Exception) {
-            // Any exception (malformed cert, wrong key type, bad signature, etc.) → false
+            // Any exception → false → unavailable() → INTEGRITY_UNAVAILABLE → WARN (I4)
             false
         }
     }
