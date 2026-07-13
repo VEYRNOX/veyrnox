@@ -434,6 +434,39 @@ export function WalletConnectProvider({ children }) {
               ? 'wallet_switchEthereumChain is not supported — chain switching is not yet implemented.'
             : `"${method}" is not permitted by Veyrnox.`;
           toast.error(reason);
+        } else if (method === 'personal_sign') {
+          // H8 pre-modal: reject before showing the approval modal if the requested
+          // signer doesn't match the active wallet address. Fail closed (I4) — the user
+          // must never be asked to approve signing for a foreign address.
+          const reqParams = data.params?.request?.params ?? [];
+          const check = resolvePersonalSignMessage(reqParams, evmAddress);
+          if (!check.ok) {
+            rejectRequest(data.topic, data.id, check.code).catch(() => {});
+          } else {
+            setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
+          }
+        } else if (method === 'eth_signTypedData_v4') {
+          // H7 pre-modal: reject before showing the modal if domain.chainId mismatches
+          // the session chain. Mirrors _handleSignTypedData's chain-binding check.
+          let rejected = false;
+          try {
+            const reqParams = data.params?.request?.params ?? [];
+            const typedDataJson = reqParams[1] ?? reqParams[0];
+            const parsed = JSON.parse(typedDataJson);
+            const domainChainId = parsed?.domain?.chainId != null
+              ? Number(parsed.domain.chainId) : null;
+            const sessionChainRaw = (data.params?.chainId ?? '').split(':')[1];
+            const sessionChainId = sessionChainRaw ? Number(sessionChainRaw) : null;
+            if (domainChainId == null || sessionChainId == null || domainChainId !== sessionChainId) {
+              rejectRequest(data.topic, data.id, 'CHAIN_ID_MISMATCH').catch(() => {});
+              rejected = true;
+            }
+          } catch {
+            // Malformed typed data — let _handleSignTypedData reject with the real error.
+          }
+          if (!rejected) {
+            setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
+          }
         } else {
           setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
         }
