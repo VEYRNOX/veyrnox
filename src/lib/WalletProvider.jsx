@@ -25,6 +25,7 @@ import React, { createContext, useContext, useRef, useState, useCallback, useEff
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
+import { ACTIVE_BTC_NETWORK_KEY } from '@/wallet-core/btc/networks';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
 import { captureVerifierSafe, verifyCredential, verifyCredentialDetailed, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
 import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
@@ -727,7 +728,12 @@ export function WalletProvider({ children }) {
       try {
         map[w.id] = {
           evm: deriveEvmAccount(w.mnemonic, 0).address,
-          btc: deriveBtcAccount(w.mnemonic, { networkKey: 'mainnet' }).address,
+          // Portfolio/analytics BTC address MUST match the network the balance is
+          // read on: portfolioBalances.js reads getBalanceSats(asset.chain, addr.btc),
+          // where the BTC asset's chain is ACTIVE_BTC_NETWORK_KEY. Deriving on a
+          // different network yields a tb1… address the mainnet indexer can't
+          // resolve → BTC always reads 0. Bind to the single source of truth.
+          btc: deriveBtcAccount(w.mnemonic, { networkKey: ACTIVE_BTC_NETWORK_KEY }).address,
           sol: deriveSolAccount(w.mnemonic).address,
         };
       } catch { /* skip a wallet that fails to derive rather than break the view */ }
