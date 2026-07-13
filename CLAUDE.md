@@ -722,6 +722,8 @@ sweep. Key controls now on main:
   (foreign address → pre-modal reject), M11 (disconnected session → SDK-level reject),
   H7 (domain.chainId=1 on Sepolia session → pre-modal reject). BUILT / INTERNAL — no
   on-chain txid, live relay gap SUPERVISED (not CI-automated), not independently audited.
+  **PR #933 (2026-07-13):** CLAUDE.md + `docs/Feature-Status.md` sync for all PR #931 changes
+  (H7/H8 pre-modal, supervised spec, honest-gaps paragraph).
 
 ## Per-chain gotchas
 
