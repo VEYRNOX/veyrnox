@@ -30,9 +30,10 @@
 // NO DESTRUCTIVE OVERRIDE on environment risk (§4). Unlike a tx-level "sign
 // anyway", a hostile runtime is not something the user can confirm past: the
 // confirmation itself can be hooked. So BLOCK artifacts carry no biometric/
-// override affordance. A WARN biometric re-confirm is a TARGET (the
-// `requiresBiometric` field), NOT currently enforced — compose.js treats WARN
-// as proceed-allowed with no biometric step. Copy must not imply it is live.
+// override affordance. WARN carries `requiresBiometric: true` — enforced in
+// SendCrypto.jsx (B5, 2026-07-13): on native, a WARN verdict requires biometric
+// re-confirm after the checkbox ack before the signer is reachable. The copy
+// does NOT mention "biometric" — the sentence must not promise a specific gate.
 
 import { CONDITION, TIER } from './conditions.js';
 
@@ -50,10 +51,9 @@ const SPECS = Object.freeze({
     requiresBiometric: false,
   },
   [CONDITION.ROOTED]: {
-    // `requiresBiometric: true` is a TARGET signal NOT currently wired to gate
-    // enforcement: compose.js treats WARN as proceed-allowed with no biometric
-    // step (the WARN biometric re-confirm is unbuilt). So the copy warns and
-    // advises caution WITHOUT claiming an enforced biometric re-confirm.
+    // `requiresBiometric: true` — enforced by SendCrypto.jsx B5 (2026-07-13) on
+    // native: biometric verify required after checkbox ack before sign proceeds.
+    // The copy warns without naming the specific gate (the gate itself enforces it).
     tier: TIER.WARN,
     sentence:
       'This device looks modified (rooted or jailbroken), which can weaken its protections — continue only if you trust it.',
@@ -61,8 +61,8 @@ const SPECS = Object.freeze({
     requiresBiometric: true,
   },
   [CONDITION.INTEGRITY_UNAVAILABLE]: {
-    // requiresBiometric is TARGET only (see ROOTED note): no enforced biometric
-    // re-confirm exists, so the copy must not promise one.
+    // requiresBiometric: true — same B5 enforcement as ROOTED (native only;
+    // web stays checkbox-only since verifyBiometric2fa() throws on web).
     tier: TIER.WARN,
     sentence:
       "We couldn't confirm this device's integrity just now — continue with extra caution.",
@@ -123,7 +123,7 @@ const FAIL_CLOSED = Object.freeze({
  *   tier: string,                 // TIER.ALLOW | TIER.WARN | TIER.BLOCK
  *   sentence: string|null,        // the one plain-language sentence (null when ALLOW)
  *   blockedActions: string[],     // actions refused at this tier (fresh array)
- *   requiresBiometric: boolean,   // TARGET WARN biometric re-confirm — NOT consumed by the live gate yet
+ *   requiresBiometric: boolean,   // WARN biometric re-confirm gate — enforced in SendCrypto.jsx B5 (native only)
  * }}
  *
  * NOTE (RASP-A4): the former `permitsTestnet` field was removed — it had zero live

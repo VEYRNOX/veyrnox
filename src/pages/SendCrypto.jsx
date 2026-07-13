@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowUpRight, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
+import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
@@ -654,6 +654,13 @@ export default function SendCrypto() {
   // (same freshness discipline as limitAck above).
   const [riskAck, setRiskAck] = useState(false);
   useEffect(() => { setRiskAck(false); }, [amount, selectedWallet?.currency, toAddress]);
+
+  // B5 — RASP WARN biometric re-confirm. On a WARN-tier native environment (rooted or
+  // integrity-unavailable), the user must pass a biometric verify AFTER the checkbox ack
+  // before the send button activates. State resets whenever inputs change (same freshness
+  // discipline as riskAck) so a cleared bio can't carry into a changed send.
+  const [raspWarnBioOk, setRaspWarnBioOk] = useState(false);
+  useEffect(() => { setRaspWarnBioOk(false); }, [amount, selectedWallet?.currency, toAddress]);
   // While the score is still computing (simulation in flight) the verdict is
   // unknown — block the verify buttons rather than letting the user proceed into
   // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
@@ -711,6 +718,15 @@ export default function SendCrypto() {
   const presign = riskVerdict ? presignGate(raspTier, riskVerdict.level, riskAck) : null;
   const blockedByRisk = riskPending || (presign ? !presign.proceedAllowed : false);
 
+  // B5 — biometric gate for WARN environments. `requiresBiometric` is set by degrade()
+  // for ROOTED and INTEGRITY_UNAVAILABLE. Only enforced on native: verifyBiometric2fa()
+  // throws immediately on web (no native platform), and ROOTED is only reachable via the
+  // native OS probe. BLOCK overrides bio (the signer is already unreachable).
+  const raspNeedsBio = raspArtifact?.requiresBiometric === true
+    && Capacitor.isNativePlatform()
+    && presign?.decision !== 'block';
+  const blockedByRaspBio = raspNeedsBio && !raspWarnBioOk;
+
   // BTC pre-sign risk gate (internal audit M-2). BTC isn't EVM-shaped, so it has no
   // `presign` verdict — instead its honest decode (btcSim → describeBtcPlan) raises
   // high-severity flags (e.g. entire_balance). A high flag requires the same explicit
@@ -767,6 +783,22 @@ export default function SendCrypto() {
         notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
       } catch {
         riskScoreFailed = true;
+      }
+
+      // B5 — RASP WARN biometric enforcement chokepoint (I4 fail-closed).
+      // Defense-in-depth: re-assert the bio gate at sign time so UI state cannot be
+      // bypassed. `raspNeedsBio` is re-derived here (not from closure) to avoid any
+      // stale render state. `presignAtSign` may be null if scoreCurrentSend threw
+      // (riskScoreFailed), in which case the gate is effectively BLOCK already via
+      // evaluateSendGate below — but we still enforce bio here to be safe.
+      const raspNeedsBioAtSign = raspArtifact?.requiresBiometric === true
+        && Capacitor.isNativePlatform()
+        && presignAtSign?.decision !== 'block';
+      if (raspNeedsBioAtSign && !raspWarnBioOk) {
+        throw Object.assign(
+          new Error('Biometric confirmation required before signing on a modified device.'),
+          { code: 'RASP_BIO_REQUIRED' }
+        );
       }
 
       // The single ordered verdict (capability → unlock → re-auth → limits → risk →
@@ -1527,6 +1559,26 @@ export default function SendCrypto() {
                       <span>I understand and want to proceed anyway.</span>
                     </label>
                   )}
+                  {/* B5 — biometric re-confirm on native WARN (ROOTED / INTEGRITY_UNAVAILABLE).
+                      Only shown after the checkbox ack and only while bio has not yet cleared.
+                      Fail-closed: bio cancel/error leaves raspWarnBioOk false. */}
+                  {riskAck && raspNeedsBio && !raspWarnBioOk && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-xs underline underline-offset-2 font-medium mt-1"
+                      onClick={async () => {
+                        try {
+                          const ok = await verifyBiometric2fa();
+                          if (ok) setRaspWarnBioOk(true);
+                        } catch {
+                          // bio unavailable or cancelled — remain blocked (I4 fail-closed)
+                        }
+                      }}
+                    >
+                      <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
+                      Verify with biometrics to proceed
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -1701,7 +1753,7 @@ export default function SendCrypto() {
                 return (
                   <Button
                     className="w-full gap-2"
-                    disabled={blockedByApproval || blockedByRisk || blockedByBtcRisk || sendTx.isPending}
+                    disabled={blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk || sendTx.isPending}
                     onClick={() => {
                       // Re-check freshness at click time (isSendReauthRequired reads a ref, always
                       // current). If the window lapsed while idle on this screen, force a re-render so
@@ -1727,7 +1779,7 @@ export default function SendCrypto() {
                       value={reauthValue}
                       onChange={setReauthValue}
                       onComplete={submitReauth}
-                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByBtcRisk}
+                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                       submitLabel="Authorise"
                     />
                   ) : (
@@ -1743,7 +1795,7 @@ export default function SendCrypto() {
                       />
                       <Button
                         className="w-full gap-2"
-                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByBtcRisk}
+                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                         onClick={() => submitReauth(reauthValue)}
                       >
                         {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
