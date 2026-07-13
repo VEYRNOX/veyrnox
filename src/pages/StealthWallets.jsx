@@ -49,9 +49,15 @@ import {
   Copy, Check, Coins, ExternalLink, Ghost, Globe, Wifi,
   FolderInput, ShieldAlert, Wallet as WalletIcon, Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button as ButtonBase } from "@/components/ui/button";
+import { Input as InputBase } from "@/components/ui/input";
+import { Label as LabelBase } from "@/components/ui/label";
+/** @type {React.ComponentType<any>} */
+const Button = ButtonBase;
+/** @type {React.ComponentType<any>} */
+const Input = InputBase;
+/** @type {React.ComponentType<any>} */
+const Label = LabelBase;
 
 // Fixed demo credentials so the simulator walkthrough is one-click reproducible.
 // DEMO ONLY — never used outside the demonstration panel.
@@ -69,7 +75,7 @@ function short(addr) {
 // check is a phone-home to a public node — see lib/hiddenBalance.js). `addresses`
 // is a { evm, btc, sol } map of address strings.
 function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
-  const [balances, setBalances] = useState(null); // null = not checked yet
+  const [balances, setBalances] = useState(/** @type {Record<string, any>|null} */(null)); // null = not checked yet
   const [checking, setChecking] = useState(false);
 
   const rows = HIDDEN_CHAINS
@@ -87,7 +93,7 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
       const out = {};
       for (const { c, address } of rows) {
         try { out[c.key] = await resolveHiddenBalance(c.key, address); }
-        catch (e) { out[c.key] = { error: e?.message || "read failed" }; }
+        catch (/** @type {any} */ e) { out[c.key] = { error: e?.message || "read failed" }; }
       }
       setBalances(out);
     } finally {
@@ -117,7 +123,7 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
                 {copied === `${idPrefix}-${c.key}` ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
               {c.explorer(address) && (
-                <a href={c.explorer(address)} target="_blank" rel="noreferrer" title="View on explorer" aria-label={`View ${c.label} address on explorer`} className="shrink-0">
+                <a href={c.explorer(address) ?? undefined} target="_blank" rel="noreferrer" title="View on explorer" aria-label={`View ${c.label} address on explorer`} className="shrink-0">
                   <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                 </a>
               )}
@@ -175,7 +181,7 @@ const DEMO_MOVE_LABEL = "Spare ETH (movable demo)";
 // that before proceeding, then (only after the wallet is safely hidden + verified)
 // purges its visible record so no leftover label/address/balance remains in-app.
 function MoveExistingWallet() {
-  const { moveWalletToHidden, peekHiddenWallet } = useWallet();
+  const { moveWalletToHidden, peekHiddenWallet } = /** @type {any} */(useWallet());
   const { requireTwoFactor, gateModal } = useActionGuard();
   const qc = useQueryClient();
   const { data: wallets = [] } = useQuery({
@@ -192,8 +198,8 @@ function MoveExistingWallet() {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState(null);     // { name, address }
-  const [peek, setPeek] = useState(null);      // reveal-verification result
+  const [done, setDone] = useState(/** @type {{name: string, address: string|null|undefined}|null} */(null));     // { name, address }
+  const [peek, setPeek] = useState(/** @type {{loading: boolean, address?: string|null}|null} */(null));      // reveal-verification result
   const [verifySecret, setVerifySecret] = useState("");
 
   const selected = evmWallets.find((w) => w.id === selId) || null;
@@ -232,7 +238,7 @@ function MoveExistingWallet() {
         qc.invalidateQueries({ queryKey: ["hd-wallets"] });
         setDone({ name: selected.name, address: selected.address });
         reset();
-      } catch (e) {
+      } catch (/** @type {any} */ e) {
         setError(e?.message || "Could not hide the wallet.");
       } finally {
         setBusy(false);
@@ -387,7 +393,7 @@ function MoveExistingWallet() {
 }
 
 export default function StealthWallets() {
-  const wallet = useWallet();
+  const wallet = /** @type {any} */(useWallet());
   const {
     isUnlocked, isHidden, isDecoy, accounts, btcAccount, solAccount,
     hasVault, addHiddenWallet, initStealthPool, removeAllHiddenWallets,
@@ -402,7 +408,7 @@ export default function StealthWallets() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedPhrase, setSavedPhrase] = useState("");      // hidden mnemonic (once)
-  const [savedIdentity, setSavedIdentity] = useState(null); // { evm, btc, sol } addresses
+  const [savedIdentity, setSavedIdentity] = useState(/** @type {{evm: string, btc: string, sol: string}|null} */(null)); // { evm, btc, sol } addresses
   const [copied, setCopied] = useState("");
 
   // ----- live demo state -----
@@ -439,7 +445,7 @@ export default function StealthWallets() {
         setSavedIdentity({ evm: evm.address, btc: btc.address, sol: sol.address });
         setSecret(""); setConfirm("");
         await refresh();
-      } catch (e) {
+      } catch (/** @type {any} */ e) {
         setError(e?.message || "Could not create hidden wallet");
       } finally {
         setSaving(false);
@@ -466,7 +472,7 @@ export default function StealthWallets() {
       seedDemoHiddenBalance("sol", sol.address, DEMO_AMOUNTS.sol);
       lock();
       await refresh();
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       setTryErr(e?.message || "Demo setup failed");
     } finally {
       setBusy("");
@@ -477,7 +483,7 @@ export default function StealthWallets() {
     setTryErr(""); setBusy("Unlocking…");
     try {
       await unlock(pw);
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       // SAME generic error whether or not a hidden wallet exists — no tell.
       setTryErr(e?.message || "Unlock failed");
     } finally {
