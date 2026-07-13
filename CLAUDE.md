@@ -470,8 +470,10 @@ auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
 - M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
   owner decision on disclosure wording; issue #754; docs disclosure BUILT #753)
 - ~~M-10~~ BUILT (2026-07-12): Cosmos non-hardened index level — correct BIP-44, matches Keplr/Cosmostation; xpub-risk disclosure added as source comment in `cosmos/derivation.js:40–46`; Veyrnox does not export the account xpub so risk is theoretical; flagged for any future xpub-export feature
-- L-1, L-2, L-3, L-5 (low-priority; see `docs/Feature-Status.md` §"2026-07-08 INTERNAL
-  S1–S4 + crypto audit")
+- L-1 (open, low-priority): EVM has no address-only derivation variant — `deriveEvmAccount` runs full key derivation even for receive-address display; performance concern only, no security impact
+- ~~L-2~~ BUILT (`WalletProvider.jsx:1133–1148`): `setActionPassword` decoy/hidden re-auth guard added; wrong credential throws and mutates nothing (fail-closed, I4)
+- ~~L-3~~ BUILT (`src/lib/useSend2faMethod.js`): reactive hook re-reads on `storage` / `SEND_2FA_CHANGED_EVENT` / `PASSKEY_REGISTRATION_EVENT` — mid-session 2FA pref changes propagate live to mounted Send screen
+- ~~L-5~~ BUILT (2026-07-12): iCloud IndexedDB sync disclosure added to `evm/vaultStore.js`; vault is AES-256-GCM ciphertext so possession alone does not break the cipher
 
 INTERNAL pass — not independent. The independent third-party audit (S1–S4 + crypto,
 including the vault cipher path) remains outstanding. See `docs/Feature-Status.md`
