@@ -494,6 +494,11 @@ export default function WalletEntry() {
   }, [hasVault, isUnlocked]);
 
   const copySeed = async () => {
+    const gate = sensitiveGate(raspArtifact, 'seed-reveal');
+    if (gate.blocked) {
+      toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.');
+      return;
+    }
     await copySecret(generatedSeed);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);

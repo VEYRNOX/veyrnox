@@ -19,14 +19,20 @@ import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { getTokenBalance } from "@/wallet-core/evm/token-send";
 import { copySecret } from "@/lib/copySecret";
+import { useRaspArtifact, sensitiveGate } from "@/rasp";
 
 // M15: build the clipboard-copy handler. The recovery phrase ("seed") is
 // sensitive and routes through copySecret, which schedules a 30 s best-effort
 // clipboard wipe. Public addresses copy plainly — wiping a value the user
 // pasted would be a bug. Pure factory so the routing is unit-testable.
-export function makeCopy(setCopied) {
+export function makeCopy(setCopied, raspArtifact = null) {
   return (text, id, sensitive = false) => {
     if (sensitive) {
+      const gate = sensitiveGate(raspArtifact, 'seed-reveal');
+      if (gate.blocked) {
+        toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.');
+        return;
+      }
       copySecret(text);
     } else {
       navigator.clipboard.writeText(text);
@@ -96,6 +102,7 @@ export default function HDWalletManager() {
   // Biometric escape hatch (dual of passkeyFailed) — see WalletEntry / unlock().
   const [biometricFailed, setBiometricFailed] = useState(false);
   const [copied, setCopied] = useState(null);
+  const raspArtifact = useRaspArtifact();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [vaultExists, setVaultExists] = useState(false);
@@ -149,7 +156,7 @@ export default function HDWalletManager() {
      
   }, [isUnlocked, accounts, hdWallets]);
 
-  const copy = makeCopy(setCopied);
+  const copy = makeCopy(setCopied, raspArtifact);
 
   // Unlock the vault. `skipPasskey` is the SAST M-3 escape hatch: only ever set
   // by the explicit "Unlock with password only" button below, which we surface
