@@ -1,32 +1,45 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// I3 no-egress proof for a decoy session — fully automated, no human interaction.
+// I3 no-egress proof for a decoy/hidden session — fully automated, no human.
 //
-// CLAUDE.md I3: "deniability mode makes zero backend calls." PR #478 gated
-// CryptoNewsFeed / priceFeed / useBasketPrices / Calculator / PriceAlerts behind
-// `!isDecoy && !isHidden`. docs/Feature-Status.md §6 records the follow-on
-// (device-global 2FA factor suppression in decoy/hidden sessions, 2026-07-02)
-// as "unit-tested, NOT device-verified" — this closes the missing on-device-style
-// egress trace using Playwright network capture instead of a physical device,
-// which is possible here because the claim under test ("zero HTTP calls to
-// known third-party hosts while a decoy session is active") doesn't require a
-// hardware guarantee, just observation of real network traffic.
+// CLAUDE.md I3: "deniability mode makes zero backend calls." This asserts that
+// while a real decoy/hidden (deniability) session is active, the app makes ZERO
+// HTTP requests to ANY of the known third-party egress hosts — not just the news
+// hosts, but the chain RPC endpoints, the BTC Esplora host, the SOL RPC, and the
+// price feed. Playwright network capture stands in for an on-device egress trace.
 //
-// Setup note (see duress-decoy-routing.spec.js for the full story): `?demo=1`
-// replaces onboarding with a canned dashboard, so a real onboarding + seed
-// import cannot be combined with it. This reuses DuressPin.jsx's own
-// DEMO-gated "Live demonstration" panel, which creates a REAL vault (real
-// wallet-core crypto, real IndexedDB) with a throwaway generated mnemonic —
-// same class of disposable test wallet as the documented UAT seed.
+// ── HOW THE DECOY SESSION IS TRIGGERED (honest note) ──────────────────────────
+// The previous version drove DuressPin.jsx's demo "Live demonstration" panel to
+// reach a real decoy unlock. That panel is now UNREACHABLE on the web test
+// surface: the 2026-07-12 plans-tier update moved /duress-pin into
+// SAFETY_PLUS_ROUTES, and web entitlement.js always resolves 'free' (web is
+// testing-only), so FeatureGate renders TierLockedPage instead of the panel.
+// Forging a paid web tier is explicitly off-limits (entitlement.js exists to
+// prevent exactly that self-report).
 //
-// IMPORTANT: unlock state lives only in React memory (WalletProvider), not
-// localStorage — a `page.goto()` is a full document reload and would re-lock
-// the SPA, defeating the point. Post-unlock navigation MUST go through the
-// in-app client-side router (the bottom-nav "Home" link, src/components/
-// Layout.jsx:63), never `page.goto`.
+// Instead we activate the REAL deniability marker directly. The e2e webServer is
+// the Vite DEV server (see playwright.config.ts), which serves ESM modules
+// individually and keeps ONE module instance per graph node. So a
+// `page.evaluate(import('/src/wallet-core/deniabilitySession.js'))` resolves to
+// the SAME module singleton WalletProvider and every wallet-core egress gate
+// read from — calling `setDeniabilitySession(true)` flips the genuine in-memory
+// flag the production guards check. This is NOT a mock and NOT a forged control:
+// the real `isDeniabilitySessionActive()` guard runs against real state. Only the
+// TRIGGER differs (a test hook vs. a duress-PIN unlock), which is what this note
+// discloses.
 //
-// Known egress hosts gated by isDecoy/isHidden (src/components/CryptoNewsFeed.jsx
-// per CLAUDE.md's "I3 egress deniability fixes" entry):
-//   cointelegraph.com, decrypt.co, api.rss2json.com
+// ── HONEST LIMITATION: this proves "decoy = 0", NOT "real > 0, decoy = 0" ─────
+// The harness runs under `?demo=1` (the only way to reach an unlocked wallet on
+// web without full onboarding). Demo mode folds `!DEMO` into several `enabled`
+// gates, so a REAL (non-decoy) demo session ALSO makes zero calls to some of
+// these hosts. The real-vs-decoy CONTRAST therefore cannot be established here.
+// We assert ONLY the decoy-session zero-egress invariant, across the EXPANDED
+// host list — we do not pretend to prove the full contrast. Closing the contrast
+// needs a non-demo run driven through the real PinPad unlock, out of scope here.
+//
+// IMPORTANT: unlock/session state lives only in React memory + the module
+// singleton, never localStorage — a `page.goto()` is a document reload that
+// re-locks the SPA AND resets the module flag. After activating the flag,
+// navigate ONLY via the in-app client-side router (nav links), never page.goto.
 //
 // Run:
 //   npx playwright test e2e/i3-deniability-egress.spec.js
@@ -36,101 +49,76 @@ import { test, expect } from '@playwright/test';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
 
-const EGRESS_HOST_PATTERN = /cointelegraph\.com|decrypt\.co|api\.rss2json\.com/i;
+// Expanded gated-host list: news feeds + price feed + all chain egress endpoints.
+// A decoy/hidden session must reach NONE of these.
+//   - news:   cointelegraph.com, decrypt.co, api.rss2json.com
+//   - price:  api.coingecko.com, coincap / cryptocompare price feeds
+//   - EVM RPC: ethereum-rpc.publicnode.com + any sepolia/publicnode RPC
+//   - BTC:    mempool.space / blockstream esplora
+//   - SOL:    *.solana.com RPC
+const EGRESS_HOST_PATTERN =
+  /cointelegraph\.com|decrypt\.co|api\.rss2json\.com|coingecko\.com|coincap\.io|cryptocompare\.com|publicnode\.com|infura\.io|alchemy\.com|mempool\.space|blockstream\.info|solana\.com|ankr\.com/i;
 
-async function freshDemoState(page) {
-  await page.goto(`${BASE}/duress-pin?demo=1`);
-  await page.evaluate(() => {
-    try { localStorage.clear(); indexedDB.deleteDatabase('veyrnox'); } catch { /* best-effort */ }
-  });
-  await page.goto(`${BASE}/duress-pin?demo=1`);
-}
-
-// SKIPPED (2026-07-12): the plans-page tier update (full-match of
-// https://veyrnox.com/plans) moved /duress-pin into SAFETY_PLUS_ROUTES. On the
-// web test surface entitlement.js always resolves 'free', so FeatureGate now
-// renders TierLockedPage instead of the DuressPin "Live demonstration" panel
-// this spec drives — it can no longer reach the setup UI. Re-enable once a
-// legitimate Safety-Plus test harness exists (NOT a client-forgeable web tier
-// override — entitlement.js exists to prevent exactly that). Tracks the I3
-// zero-egress security property; owner-acknowledged coverage gap.
-test.describe.skip('I3 deniability — zero egress in a decoy session (no human)', () => {
+test.describe('I3 deniability — zero egress in a decoy/hidden session (no human)', () => {
   test.setTimeout(60 * 1000);
 
-  test('real session calls third-party news hosts; decoy session calls NONE of them', async ({ page }) => {
-    // Layout.jsx renders two nav variants: a desktop sidebar (`hidden md:flex`)
-    // and a mobile bottom nav (`md:hidden fixed bottom-0`). Forcing a mobile
-    // viewport was tried and discarded — it triggers an unrelated redirect
-    // (a fresh `/duress-pin?demo=1` deep-link bounces to `/` only at mobile
-    // widths, confirmed by isolated repro; a pre-existing responsive-routing
-    // quirk, not something this test should paper over or rely on). Staying at
-    // the default desktop viewport avoids it; the sidebar's Home link is
-    // targeted by href rather than visible text so it works whether the
-    // sidebar is collapsed (icon-only) or expanded.
-    await freshDemoState(page);
-    await expect(page.getByText('Live demonstration (demo mode)')).toBeVisible({ timeout: 15000 });
-    await page.getByRole('button', { name: /Set up real \+ funded hidden wallet/i }).click();
-    await expect(page.getByText(/Locked\. Unlock above/i)).toBeVisible({ timeout: 15000 });
+  test('a decoy session makes ZERO requests to any gated third-party host', async ({ page }) => {
+    // Land on the seeded demo dashboard (unlocked wallet, real UI, no onboarding).
+    await page.goto(`${BASE}/?demo=1`);
+    await page.evaluate(() => {
+      try { localStorage.setItem('veyrnox-demo', '1'); } catch { /* best-effort */ }
+    });
+    await page.goto(`${BASE}/?demo=1`);
 
-    // ── Baseline: prove the egress-capable UI actually egresses in a REAL
-    // session (otherwise "zero calls in decoy" would be meaningless — it could
-    // just mean the feature never calls out at all). ──────────────────────────
-    await page.getByRole('button', { name: /Unlock with REAL PIN/i }).click();
-    await expect(page.getByText('REAL WALLET', { exact: true })).toBeVisible({ timeout: 10000 });
+    // Activate the REAL deniability marker via the app's own module singleton
+    // (Vite dev serves one instance — see header note). Not a mock, not a forged
+    // tier: the genuine isDeniabilitySessionActive() guard now returns true.
+    const flagSet = await page.evaluate(async () => {
+      const m = await import('/src/wallet-core/deniabilitySession.js');
+      m.setDeniabilitySession(true);
+      return m.isDeniabilitySessionActive();
+    });
+    expect(flagSet, 'the real deniability marker must be active before the egress capture').toBe(true);
 
-    const realSessionRequests = [];
-    page.on('request', (req) => realSessionRequests.push(req.url()));
-    // Client-side nav to Dashboard ("/"), which hosts CryptoNewsFeed — a
-    // page.goto() here would force a document reload and re-lock the vault.
-    await page.locator('a[href="/"]').first().click();
+    // Begin capturing every outbound request from this point.
+    const requests = [];
+    page.on('request', (req) => requests.push(req.url()));
+
+    // Dwell on the dashboard (CryptoNewsFeed + price widgets live here) so any
+    // background fetch would have fired, then client-side navigate to the
+    // history + fee-analytics views this session's fixes gate (each would
+    // otherwise disclose address -> indexer). Client-side nav only — a goto
+    // would reload and clear the module flag.
     await page.waitForTimeout(3000);
-    const realSessionEgress = realSessionRequests.filter((u) => EGRESS_HOST_PATTERN.test(u));
-    console.log(`Real session: ${realSessionEgress.length} matching third-party request(s) observed`);
-    page.removeAllListeners('request');
+    for (const href of ['/transaction-history', '/fee-analytics', '/']) {
+      const link = page.locator(`a[href="${href}"]`).first();
+      if (await link.count()) {
+        await link.click();
+        await page.waitForTimeout(1500);
+        // Re-assert the flag survived the client-side navigation.
+        const still = await page.evaluate(async () => {
+          const m = await import('/src/wallet-core/deniabilitySession.js');
+          return m.isDeniabilitySessionActive();
+        });
+        expect(still, `deniability flag must stay active across nav to ${href}`).toBe(true);
+      }
+    }
 
-    // ── Now the actual claim under test: decoy session, zero egress ─────────
-    // Only ONE hard navigation happened (the initial goto to /duress-pin); the
-    // Home click above was client-side, so goBack() is also client-side.
-    await page.goBack();
-    await expect(page.getByText('Live demonstration (demo mode)')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /^Lock$/ }).click();
-    await expect(page.getByText(/Locked\. Unlock above/i)).toBeVisible({ timeout: 10000 });
-
-    await page.getByRole('button', { name: /Unlock with EMERGENCY PIN/i }).click();
-    await expect(page.getByText('HIDDEN WALLET', { exact: true })).toBeVisible({ timeout: 10000 });
-
-    const decoySessionRequests = [];
-    page.on('request', (req) => decoySessionRequests.push(req.url()));
-
-    await page.locator('a[href="/"]').first().click();
-    await page.waitForTimeout(3000);
-
-    const decoySessionEgress = decoySessionRequests.filter((u) => EGRESS_HOST_PATTERN.test(u));
-    if (decoySessionEgress.length > 0) {
-      console.log('❌ EGRESS IN DECOY SESSION:', decoySessionEgress);
+    const egress = requests.filter((u) => EGRESS_HOST_PATTERN.test(u));
+    if (egress.length > 0) {
+      console.log('❌ EGRESS IN DECOY SESSION:', egress);
     } else {
-      console.log('✓ Decoy session made zero requests to any gated third-party host');
+      console.log('✓ Decoy session made zero requests to any gated third-party host (news/price/RPC/BTC/SOL)');
     }
-    expect(decoySessionEgress).toEqual([]);
+    expect(egress).toEqual([]);
 
-    // Honest note, ROOT-CAUSED (not a timing guess): CryptoNewsFeed.jsx folds
-    // `!DEMO` into its useQuery `enabled` gate ("I3 guard... Fold !DEMO into
-    // the enabled gate" per its own comment) — so under `?demo=1` the fetch is
-    // OFF for every session, real or decoy, for a reason unrelated to isDecoy.
-    // That means THIS harness (which must run under demo mode — see the header
-    // note on why real onboarding can't combine with the DuressPin demo panel)
-    // can only ever prove "decoy = 0", never the intended "real > 0, decoy = 0"
-    // contrast for this specific fetch. The decoy-session zero-egress assertion
-    // above is still real and still held; closing the contrast fully would
-    // require a non-demo run driven through the real PinPad unlock screen
-    // instead of the demo panel — out of scope for this harness.
-    if (realSessionEgress.length === 0) {
-      console.warn(
-        '⚠️  Baseline (real session) also observed 0 matching requests — expected ' +
-        'under demo mode (CryptoNewsFeed gates its fetch on `!DEMO`, not just ' +
-        '`!isDecoy`), so the real-vs-decoy CONTRAST is inconclusive here; the ' +
-        'decoy-session zero-egress assertion itself still held.'
-      );
-    }
+    // Honest limitation restated in-run: demo mode also suppresses egress for a
+    // real session, so this is a decoy-side-only assertion, not the full
+    // "real > 0, decoy = 0" contrast (see header note).
+    console.warn(
+      'ℹ️  decoy = 0 asserted across the expanded host list; the real-vs-decoy ' +
+      'CONTRAST is out of scope under demo mode (demo suppresses egress for all ' +
+      'sessions).'
+    );
   });
 });
