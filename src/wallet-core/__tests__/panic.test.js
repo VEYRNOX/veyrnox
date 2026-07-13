@@ -249,11 +249,27 @@ describe('panic wipe', () => {
       'veyrnox-prf-cred-id',          // WebAuthn PRF credential ID — web.js CRED_KEY (I3/I4)
       'veyrnox-live-prices',          // M-7 (#753): priceFeed.js LIVE_PRICE_PREF_KEY (live-price egress opt-in tell)
       // non-secret wallet/token metadata residue (METADATA_RESIDUE_KEYS) — F-06
+      // session/config tells that describe vault usage (METADATA_RESIDUE_KEYS, GAP-4)
+      'sdw_session_token',
+      'veyrnox-duress-configured',
+      'veyrnox-panic-configured',
+      'veyrnox-passkey-signcount',    // GAP-1
+      'veyrnox-decoy-biometric',      // GAP-2
       'veyrnox-wallet-meta',
       'veyrnox-active-wallet',
       'veyrnox-portfolios',
       'veyrnox-active-portfolio',
       'veyrnox-spam-overrides',
+      // GAP-4 LOW metadata tells
+      'veyrnox-autolock-timeout',
+      'veyrnox-message-signing-enabled',
+      'veyrnox-referral',
+      'veyrnox-referral-pending',
+      'veyrnox-remote-screen',
+      'veyrnox-sim-enabled',
+      'dashboard-widgets',
+      'notification_prefs',
+      'veyrnox-demo',
     ];
     await populateDevice();
     for (const k of TELLS) localStorage.setItem(k, 'x');
@@ -441,5 +457,41 @@ describe('panic wipe', () => {
     clearWipeMarker();
     expect(readWipeMarker()).toBe(false);
     expect(localStorage.getItem('veyrnox-wiped')).toBeNull();
+  });
+
+  it('GAP-1: panic wipe clears veyrnox-passkey-signcount (passkey clone-detection tell)', async () => {
+    localStorage.setItem('veyrnox-passkey-signcount', '42');
+    const before = await inspectKeyMaterial();
+    expect(before.localStorageResidue).toContain('veyrnox-passkey-signcount');
+    const report = await panicWipeLocal();
+    expect(localStorage.getItem('veyrnox-passkey-signcount')).toBeNull();
+    expect(report.localStorageResidue).toEqual([]);
+    expect(report.clean).toBe(true);
+  });
+
+  it('GAP-2: panic wipe clears veyrnox-decoy-biometric (decoy-vault biometric marker)', async () => {
+    localStorage.setItem('veyrnox-decoy-biometric', '1');
+    const before = await inspectKeyMaterial();
+    expect(before.localStorageResidue).toContain('veyrnox-decoy-biometric');
+    const report = await panicWipeLocal();
+    expect(localStorage.getItem('veyrnox-decoy-biometric')).toBeNull();
+    expect(report.localStorageResidue).toEqual([]);
+    expect(report.clean).toBe(true);
+  });
+
+  it('GAP-3: panic wipe removes veyrnox-snapshots-<fingerprint> wildcard keys', async () => {
+    // Exact key names aren't known at build time (fingerprint is runtime-derived).
+    localStorage.setItem('veyrnox-snapshots-abc123', 'snap-data-1');
+    localStorage.setItem('veyrnox-snapshots-def456', 'snap-data-2');
+    localStorage.setItem('veyrnox-not-a-snapshot', 'should-stay');
+    const before = await inspectKeyMaterial();
+    expect(before.localStorageResidue).toContain('veyrnox-snapshots-abc123');
+    expect(before.localStorageResidue).toContain('veyrnox-snapshots-def456');
+    const report = await panicWipeLocal();
+    expect(localStorage.getItem('veyrnox-snapshots-abc123')).toBeNull();
+    expect(localStorage.getItem('veyrnox-snapshots-def456')).toBeNull();
+    expect(localStorage.getItem('veyrnox-not-a-snapshot')).toBe('should-stay');
+    expect(report.localStorageResidue).toEqual([]);
+    expect(report.clean).toBe(true);
   });
 });
