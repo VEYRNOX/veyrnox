@@ -580,47 +580,58 @@ export default function StealthWallets() {
         </div>
 
         <div className="space-y-4">
-          <div>
-            <Label>Reveal secret</Label>
-            <div className="relative mt-1.5">
-              <Input
-                type={showSecret ? "text" : "password"}
-                maxLength={64}
-                placeholder="At least 4 characters — different from your main password"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                className="pr-10 tracking-widest text-lg"
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowSecret((s) => !s)}
-              >
-                {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-          <div>
-            <Label>Confirm reveal secret</Label>
-            <Input
-              type={showSecret ? "text" : "password"}
-              maxLength={64}
-              placeholder="Re-enter secret"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              className="mt-1.5 tracking-widest text-lg"
+          {/* Enable toggle */}
+          <label className="flex items-center justify-between cursor-pointer">
+            <span className="text-sm font-medium">Hidden wallets</span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={stealthEnabled}
+              onChange={(e) => {
+                setStealthEnabled(e.target.checked);
+                setSecret(""); setConfirm(""); setCreateStep("enter"); setError("");
+              }}
             />
-          </div>
-          <div className="p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-[11px] text-caution flex items-start gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>
-              Make it different from your main PIN and Emergency PIN — if it matches, that one opens instead.
-            </span>
-          </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button className="w-full" disabled={!secret || !confirm || saving} onClick={handleCreate}>
-            {saving ? "Creating…" : "Create hidden wallet"}
-          </Button>
+          </label>
+
+          {stealthEnabled && (
+            <>
+              <p className="text-[11px] text-muted-foreground">
+                Your reveal PIN must be <b>different</b> from your main PIN, Emergency PIN, and Wipe PIN — if it matches, that wallet opens instead and yours may not.
+              </p>
+
+              <p className="text-[11px] text-muted-foreground">
+                An 8-digit PIN has lower entropy than a passphrase. Choose digits not guessable from your birthday, phone number, or contacts.
+              </p>
+
+              {createStep === "enter" ? (
+                <div className="space-y-2">
+                  <Label>Reveal PIN (8 digits)</Label>
+                  <PinPad
+                    value={secret}
+                    onChange={setSecret}
+                    onComplete={() => setCreateStep("confirm")}
+                    length={8}
+                    submitLabel="Continue"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Confirm reveal PIN</Label>
+                  <PinPad
+                    value={confirm}
+                    onChange={setConfirm}
+                    onComplete={handleCreate}
+                    length={8}
+                    submitLabel="Create hidden wallet"
+                    disabled={saving}
+                  />
+                </div>
+              )}
+
+              {error && <p className="text-xs text-destructive">{error}</p>}
+            </>
+          )}
         </div>
 
         {savedPhrase && (
