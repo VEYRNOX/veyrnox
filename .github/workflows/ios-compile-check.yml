@@ -109,6 +109,21 @@ jobs:
           fi
           echo "✓ iOS-F5 PASSED — HardwareKekPlugin.o compiled at: $OBJ"
 
+      - name: Assert G5 — RaspIntegrityPlugin compiled successfully
+        run: |
+          # Confirm the RASP probe ObjC file compiled. Parallel evidence to F5's
+          # HardwareKekPlugin.o check — proves ios/App/App/RaspIntegrityPlugin.m
+          # and RaspIntegrityPluginBridge.m built clean.
+          OBJ=$(find /tmp -name "RaspIntegrityPlugin.o" 2>/dev/null | head -1)
+          if [ -z "$OBJ" ]; then
+            OBJ=$(find ~/Library/Developer/Xcode/DerivedData -name "RaspIntegrityPlugin.o" 2>/dev/null | head -1)
+          fi
+          if [ -z "$OBJ" ]; then
+            echo "::error::G5 FAILED — RaspIntegrityPlugin.o not found; RASP probe plugin did not compile"
+            exit 1
+          fi
+          echo "✓ G5 PASSED — RaspIntegrityPlugin.o compiled at: $OBJ"
+
       - name: Assert build succeeded (no errors)
         run: |
           # The authoritative xcodebuild result is the "** BUILD SUCCEEDED **" or

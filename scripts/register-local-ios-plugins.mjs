@@ -20,7 +20,10 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 // the JS plugin name "SpeechRecognition" on iOS because @capacitor-community/
 // speech-recognition (Cap 7, podspec-only) cannot link into this SPM-based Cap 8
 // app. See ios/App/App/VeyrnoxSpeechRecognitionPlugin.swift for the full rationale.
-const LOCAL_IOS_PLUGIN_CLASSES = ['HardwareKekPlugin', 'VeyrnoxSpeechRecognitionPlugin'];
+// RaspIntegrityPlugin is the iOS RASP probe (ObjC, ios/App/App/RaspIntegrityPlugin.m +
+// RaspIntegrityPluginBridge.m) — added to the Xcode target in PR #826 but cap sync
+// drops it on every run because it is not an npm package.
+const LOCAL_IOS_PLUGIN_CLASSES = ['HardwareKekPlugin', 'VeyrnoxSpeechRecognitionPlugin', 'RaspIntegrityPlugin'];
 
 // Class names `cap sync` may regenerate into packageClassList but that are NOT
 // actually linked into the iOS binary. "SpeechRecognition" is the npm plugin's ObjC
