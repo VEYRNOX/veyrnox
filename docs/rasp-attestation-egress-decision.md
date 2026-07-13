@@ -1,6 +1,6 @@
 # RASP attestation — I2 egress-disclosure decision
 
-**Status:** **DECIDED · Option B signed off 2026-07-13** · Phase 2b module + native plugin layer BUILT (`src/rasp/attestation.js`, `src/plugins/attestation.js`, `PlayIntegrityPlugin.kt`, `AppAttestPlugin.m`) · UNAUDITED-PROVISIONAL, NOT device-verified, NOT independently audited · wiring into the pre-sign gate is a follow-on PR
+**Status:** **DECIDED · Option B signed off 2026-07-13** · Phase 2b module + native plugin layer BUILT (`src/rasp/attestation.js`, `src/plugins/attestation.js`, `PlayIntegrityPlugin.kt`, `AppAttestPlugin.m`) · pre-sign gate wiring BUILT (`SendCrypto.jsx`, `useRaspArtifact.js`) · UNAUDITED-PROVISIONAL, NOT device-verified, NOT independently audited · **RS256 on-device JWS signature verification absent** (no Google root cert bundled — `PlayIntegrityPlugin.kt:113`; treat attestation result as PROVISIONAL until root-cert pinning lands)
 **Phase:** Validation roadmap Phase 1 — the documented prerequisite (a) for the attested detection leg.
 **Scope:** decides *whether and how* RASP may use **remote device attestation** (a network egress), separately from the **on-device self-attested probes** (no egress, Phase 2a). Pure analysis — no code, touches no detector/signer/key.
 **Related:** `docs/rasp-validation-roadmap.md`, `src/rasp/index.js` (§8a build seam), `docs/audit-log-login-activity-deniability-decision.md` (same posture), invariants I1–I5.

@@ -1,8 +1,8 @@
 # Veyrnox RASP vs. commercial app shielding (Promon SHIELD) — gap analysis & roadmap
 
-**Status:** ANALYSIS · current Veyrnox RASP state **BUILT (policy) / detection BUILT-UNVALIDATED / attested leg PARKED**
+**Status:** ANALYSIS · current Veyrnox RASP state **BUILT (policy) / detection BUILT-UNVALIDATED / G1 obfuscation BUILT-partial (PR #917) / attested leg BUILT-PROVISIONAL (PR #922 RS256 absent) / G3 structural pins BUILT (PR #915)**
 **Owner:** —
-**Date:** 2026-07-12
+**Date:** 2026-07-13
 **Related:** `src/rasp/` (implementation), `docs/rasp-validation-roadmap.md` (the *validate-what-exists* axis), `docs/audit-triage/rasp-attestation-egress-decision.md`, CLAUDE.md §24 (audit gate), invariants I1–I5.
 
 > **Two different roadmaps, do not conflate them.**
@@ -30,18 +30,18 @@ Legend: ✅ present/strong · ⚠️ present but weak/evadable/unvalidated · �
 | Capability | Promon SHIELD | Veyrnox RASP | Veyrnox source |
 |---|---|---|---|
 | Root / jailbreak detection | ✅ extensive, anti-hider, continuously updated | ⚠️ path/binary/build-tag checks; **Magisk Hide defeats it** (disclosed 2026-07-12) | `RaspIntegrityPlugin.kt:59` |
-| Hook / Frida / Xposed detection | ✅ deep, anti-evasion | ⚠️ Frida port 27042 + `/proc/self/maps` + Xposed pkg list; evadable (non-default port, renamed lib); **never tested vs real Frida** | `RaspIntegrityPlugin.kt:113` |
+| Hook / Frida / Xposed detection | ✅ deep, anti-evasion | ⚠️ Frida port 27042 + `/proc/self/maps` + Xposed pkg list; evadable (non-default port, renamed lib); **never tested vs real Frida**; **G3 BUILT (PR #915):** 16 structural regression pins lock the full detection chain in CI (`g3-frida-chain.test.js`); device-hostile exercise still pending | `RaspIntegrityPlugin.kt:113` |
 | Emulator detection | ✅ | ⚠️ build-props + qemu files | `RaspIntegrityPlugin.kt:165` |
 | Repackaging / re-sign detection | ✅ binary integrity | ⚠️ signing-cert SHA-256 compare; depends on `RELEASE_CERT_SHA256` Gradle prop | `RaspIntegrityPlugin.kt:220` |
 | Anti-debugging (prevent attach) | ✅ actively blocks/crashes | ❌ can only *notice*, then refuse to sign | — |
-| Code obfuscation | ✅ core feature | ❌ none — JS bundle ships readable in APK/IPA assets | `android/app/src/main/assets/public/assets/RaspSecurity-*.js` |
+| Code obfuscation | ✅ core feature | ⚠️ **G1b BUILT (PR #917)** — `veyrnoxObfuscatorPlugin` string-array+base64 encoding under `VITE_RELEASE=1`; G1a ProGuard `-repackageclasses`/`-allowaccessmodification` on Android; chunk filenames still visible (unrenameable Rollup cross-chunk specifiers); object-key mangling off (Capacitor bridge safety); commercial shielding (Promon/Guardsquare) remains TARGET | `vite.config.js`, `android/app/proguard-rules.pro` |
 | Anti-decompilation / packing | ✅ | ❌ `jadx`/`apktool`/reading the web bundle all work | — |
 | White-box cryptography | ✅ protects keys in use | ❌ — but uses **hardware-backed keys** (SE/StrongBox/WebAuthn) instead, a legitimate alternative | `src/wallet-core/keystore/` |
 | Overlay / tapjacking defense | ✅ | ❌ not in scope | — |
 | Screen-capture / screenshot block | ✅ | ❌ not in scope | — |
 | Keylogger / IME protection | ✅ | ❌ not in scope | — |
 | Memory / anti-dump protection | ✅ | ❌ attacker can hook the JS that reads the verdict; heap residue is a known open item (iOS-F5) | — |
-| Remote attestation (Play Integrity / App Attest) | ✅ integrated | 🚧 **parked** — Phase 2b, behind the audit + I2/I3 egress decision | `src/rasp/detect.js:5`, `docs/audit-triage/rasp-attestation-egress-decision.md` |
+| Remote attestation (Play Integrity / App Attest) | ✅ integrated | ⚠️ **BUILT-PROVISIONAL** — Phase 2b egress leg landed (Option B signed off 2026-07-13): `src/rasp/attestation.js` + `PlayIntegrityPlugin.kt`; I3 deniability guard enforced; fail-closed (I4); RS256 on-device JWS signature verification **absent** (no bundled Google root cert — `PlayIntegrityPlugin.kt:113`); iOS App Attest entitlement not yet present; NOT device-verified | `src/rasp/attestation.js`, `PlayIntegrityPlugin.kt`, `docs/rasp-attestation-egress-decision.md` |
 | Continuous runtime coverage | ✅ whole lifecycle, reactive callbacks | ❌ sampled at **sign time only** (fresh per read, but only pre-sign) | `src/rasp/browserProbe.js:34` |
 | Protecting the protection (self-defense) | ✅ | ❌ RASP JS is unshielded and hookable | — |
 | Independent audit / maturity | ✅ commercial, banking-grade, threat-intel updates | ❌ **BUILT / INTERNAL**, not independently audited; iOS never device-tested | CLAUDE.md §24 |
@@ -65,30 +65,32 @@ Legend: ✅ present/strong · ⚠️ present but weak/evadable/unvalidated · �
 
 Ranked by **leverage** (impact ÷ effort). Each item is a *capability* gap; closing it means BUILT at most until it walks `docs/rasp-validation-roadmap.md`.
 
-### G1 — Production-build obfuscation + anti-tamper on the JS/native bundle  · **HIGHEST LEVERAGE · PLANNED**
-The single largest missing category. Today the entire app logic (RASP included) ships as readable JS in the APK/IPA assets; a static scanner reads everything, and the RASP verdict-reading code is trivially locatable and hookable.
-- [ ] Evaluate a JS obfuscation/minification-hardening pass in the Vite/Capacitor production build (control-flow flattening, string encryption, dead-code injection) — measure bundle-size and startup-latency cost.
-- [ ] Android: enable R8/ProGuard full mode + resource shrinking on the native shell; confirm it does not strip the Capacitor plugin registration (`packageClassList` — see the local-plugin registration note in project memory).
-- [ ] Decide **build vs buy**: a hardened obfuscator (or a commercial shield like Promon/Guardsquare/Appdome) vs. in-house tooling. In-house obfuscation is a known arms-race sink; a commercial shield wrapping the compiled binary is the pragmatic path for a small team.
-- [ ] Honesty guard: obfuscation is *raise-the-cost*, never *prevent*. Do not let any status copy imply the code is unreadable.
-- **Effort:** medium (tooling) → high (if in-house hardening). **Impact:** high — closes the "no protection against code scanning" gap entirely.
+### G1 — Production-build obfuscation + anti-tamper on the JS/native bundle  · **BUILT (partial, PR #917) · commercial shielding still TARGET**
+**Status as of 2026-07-13:** G1a (ProGuard) and G1b (JS string-array obfuscation) are BUILT / structural-pin-tested (12 unit tests). Commercial-grade shielding (Promon/Guardsquare) remains TARGET.
+- [x] **BUILT (PR #917, G1b):** `veyrnoxObfuscatorPlugin` in `vite.config.js` — `javascript-obfuscator` string-array + base64 encoding on every JS chunk under `VITE_RELEASE=1`. Conservative settings: no control-flow flattening (mobile perf), no property mangling (`transformObjectKeys: false` for Capacitor bridge safety), no self-defending, no dead-code injection. 12 structural-pin unit tests in `src/rasp/__tests__/g1-obfuscation-config.test.js`. NOT device-verified, NOT independently audited.
+- [x] **BUILT (PR #917, G1a):** Android ProGuard hardening — `-repackageclasses ''` + `-allowaccessmodification` added to `android/app/proguard-rules.pro`. Moves non-kept classes to the root namespace; permits R8 to widen access for inlining. All `@CapacitorPlugin`-annotated classes remain fully kept by the existing annotation-driven rule. NOT device-verified.
+- [ ] **Decide build vs buy:** a commercial shield (Promon/Guardsquare/Appdome) vs. in-house tooling. In-house obfuscation is a known arms-race sink; a commercial shield wrapping the compiled binary is the pragmatic path for a small team. **Still TARGET.**
+- [x] **Honesty guard enforced:** `selfDefending: false`; `renameGlobals: false`; Rollup chunk filenames are structurally unrenameable (cross-chunk import specifiers); object keys with `transformObjectKeys: false` may survive sub-threshold. Obfuscation is *raise-the-cost*, never *prevent*. Status copy must not imply the code is unreadable.
+- **Effort (remaining):** high (if pursuing commercial shielding). **Impact:** high — G1a/G1b raise the bar; a commercial shield closes the gap entirely.
 
-### G2 — Remote attestation (Play Integrity / App Attest)  · **PARKED, ready to unpark · TARGET**
-Already scoped as Phase 2b in the validation roadmap and blocked only on the I2/I3 egress decision.
-- [ ] Land the signed-off `rasp-attestation-egress-decision.md` (what is transmitted, to whom, disclosure surface, and **no attestation egress under decoy/duress** per I3).
-- [ ] Android Play Integrity verdict client → `INTEGRITY_FAIL` / `INTEGRITY_UNAVAILABLE`.
-- [ ] iOS App Attest / DeviceCheck → same conditions.
-- [ ] Fail-closed when the verdict is unreachable (never silently clean).
-- **Effort:** medium. **Impact:** high — this is the check Magisk Hide / re-sign cannot easily fool, because the verdict is Google/Apple-signed off-device.
-- **Cross-ref:** `docs/rasp-validation-roadmap.md` Phase 1 + 2b.
+### G2 — Remote attestation (Play Integrity / App Attest)  · **BUILT-PROVISIONAL (egress leg) · RS256 root-cert pinning outstanding · TARGET**
+**Status as of 2026-07-13:** Option B (disclosed, deniability-gated attestation at pre-sign only) signed off and egress leg BUILT. RS256 on-device JWS signature verification is absent; iOS App Attest entitlement not yet present. NOT device-verified.
+- [x] **DONE (2026-07-13):** `docs/rasp-attestation-egress-decision.md` signed off — Option B accepted, I3/I4/I5 hard constraints enforced in code.
+- [x] **BUILT (Android):** `PlayIntegrityPlugin.kt` — requests Play Integrity verdict, decodes JWS payload on-device, maps to `INTEGRITY_FAIL` / `INTEGRITY_UNAVAILABLE`. Fail-closed (I4). I3 deniability guard: attestation never fires under decoy/hidden session. **Honest limitation: RS256 on-device JWS signature verification absent** — no Google root cert bundled; `PlayIntegrityPlugin.kt:113` confirms this gap explicitly; treat result as PROVISIONAL.
+- [ ] **Open:** iOS App Attest / DeviceCheck → requires `com.apple.developer.devicecheck.appattest-environment` entitlement + DeviceCheck framework linkage; code-present but `available:false` until entitlement lands and is device-exercised.
+- [x] **BUILT:** Fail-closed when verdict unreachable — absent Play Services, quota, network failure, or any parse exception → `{ available:false }` → `INTEGRITY_UNAVAILABLE` → WARN (I4).
+- [ ] **Open:** RS256 root-cert pinning — bundle Google's public key and verify the JWS `SHA256withRSA` signature on-device before trusting the payload. Until this lands, attestation result is PROVISIONAL.
+- **Effort (remaining):** medium (iOS entitlement + RS256 key bundle). **Impact:** high — a Google/Apple-signed verdict is the check Magisk Hide / re-sign cannot easily fool.
+- **Cross-ref:** `docs/rasp-attestation-egress-decision.md`, `docs/rasp-validation-roadmap.md` Phase 1 + 2b.
 
-### G3 — Evasion-hardening + real hostile-device testing of the existing probes  · **BUILT-UNVALIDATED · TARGET**
-The current probes are honest but weak. Before trusting them, harden and *actually attack* them.
-- [ ] Root: add mount-namespace / `/proc/mounts` inspection, native-layer `stat` (not just `File.exists()`, which Magisk Hide intercepts at the Java layer), and defeat-the-hider techniques where feasible. Accept that Magisk Hide + Zygisk is a losing battle at the JS/Java layer — this is *why* G2 (attestation) matters more.
+### G3 — Evasion-hardening + real hostile-device testing of the existing probes  · **STRUCTURAL PINS BUILT (PR #915) · device-hostile exercise pending · TARGET**
+**Status as of 2026-07-13:** 16 structural regression pins land in CI (PR #915), locking the full Frida→BLOCK detection chain. Device-hostile exercise (real Frida server attached) has NOT been performed. The broader evasion-hardening (non-default port, renamed libs, ptrace) remains TARGET.
+- [x] **BUILT (PR #915):** `src/rasp/__tests__/g3-frida-chain.test.js` — 16 structural regression pins locking: Android `checkFridaPort`/port 27042/`/proc/self/maps` scan (`"frida"`, `"xposed"`)/`de.robv.android.xposed.installer` Xposed package list/`hookedProcess` mapping; iOS `checkFridaPort`/27042/`_dyld_get_image_name`/`"frida"` dyld scan; JS `hooked: verdict.hookedProcess === true` mapping; functional chain `classifyEnvironment({hooked:true})` → `CONDITION.HOOKED` → `TIER.BLOCK`, sentence "inspecting", `blockedActions` includes "sign". Device-gated Appium spec: `tests/android/specs/frida-hook-detection-e2e.spec.js` (run with `DEVICE_VERIFY=1 FRIDA_ATTACHED=1 npm run android:test:frida`).
+- [ ] Root: add mount-namespace / `/proc/mounts` inspection, native-layer `stat` (Magisk Hide intercepts `File.exists()` at the Java layer), and defeat-the-hider techniques. Accept that Magisk Hide + Zygisk is a losing battle at the JS/Java layer — this is *why* G2 (attestation) matters more.
 - [ ] Frida: scan beyond the default port; check for `frida-agent` maps under renamed libs, thread names, and named pipes; add a native ptrace-self anti-debug.
-- [ ] Run the **Phase 4 scenario matrix** (`rasp-validation-roadmap.md`): real rooted device, real Frida attach, repackaged APK, on both platforms — capture evidence per scenario.
-- [ ] **False-positive sweep** across clean devices/OS versions — RASP must not brick legitimate users.
-- **Effort:** high (needs physical hostile devices; iOS needs a Mac). **Impact:** medium — raises the bar on the existing legs but does not beat a determined attacker without G1/G2.
+- [ ] Run the **Phase 4 scenario matrix** (`rasp-validation-roadmap.md`): real rooted device, real Frida attach, repackaged APK, on both platforms — capture evidence per scenario. The G3 Appium spec (`frida-hook-detection-e2e.spec.js`) is the harness for this exercise.
+- [ ] **False-positive sweep** across clean devices/OS versions — RASP must not block legitimate users.
+- **Effort (remaining):** high (physical hostile devices; iOS needs a Mac). **Impact:** medium — structural pins prove the chain holds in CI; real hostile-device runs prove it holds on-device.
 
 ### G4 — Broaden runtime coverage beyond the pre-sign moment  · **PLANNED**
 RASP only guards signing. High-value moments — seed reveal, export, clipboard, unlock — are outside its window.
@@ -110,7 +112,7 @@ For a small team, **do not try to out-build Promon in-house.** The pragmatic spl
 
 1. **License a commercial shield** (Promon SHIELD / Guardsquare / Appdome) for the **shielding layer** Veyrnox structurally lacks — obfuscation, anti-tamper, anti-debug, memory protection, overlay/screen-capture defense (G1 + parts of G4). These wrap the compiled binary and need no source changes, which suits a Capacitor app.
 2. **Keep the home-grown RASP** as the **deniability-safe, fail-closed send-gate policy** on top (`conditions.js` / `degrade.js` / `compose.js`). This is the part Promon *cannot* give you, because it does not know about I3 deniability or the wallet's coercion-resistance model.
-3. **Land G2 (attestation) regardless** — it is already scoped, and a Google/Apple-signed verdict is the most cost-effective answer to the root/re-sign evasions that the local probes (and even a shield) struggle with.
+3. **G2 (attestation) egress leg is BUILT (PROVISIONAL)** — Android Play Integrity module landed; RS256 root-cert pinning and iOS App Attest entitlement are still open. A Google/Apple-signed verdict remains the most cost-effective answer to the root/re-sign evasions that the local probes (and even a shield) struggle with.
 
 The two approaches are layers, not alternatives: a commercial shield hardens the *binary*, Veyrnox RASP governs the *signing decision*, and attestation corroborates the *device* — defense in depth.
 
