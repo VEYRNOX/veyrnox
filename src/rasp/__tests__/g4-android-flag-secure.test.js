@@ -51,4 +51,22 @@ describe('G4 — Android FLAG_SECURE (MainActivity.java regression pin)', () => 
     const match = src.match(/setFlags\s*\([^)]*FLAG_SECURE[^)]*FLAG_SECURE[^)]*\)/s);
     expect(match).not.toBeNull();
   });
+
+  it('setFilterTouchesWhenObscured(true) is called on the WebView', () => {
+    // Blocks overlay-phishing: refuses tap events when another app's
+    // TYPE_APPLICATION_OVERLAY window is above the Capacitor WebView.
+    expect(src).toContain('setFilterTouchesWhenObscured(true)');
+  });
+
+  it('setFilterTouchesWhenObscured is called on getBridge().getWebView() — not a no-op Activity call', () => {
+    // Must be applied to the WebView, not Activity.setFilterTouchesWhenObscured()
+    // (which only guards the Activity root view, not the embedded WebView).
+    const match = src.match(/getWebView\s*\(\s*\)\s*\.\s*setFilterTouchesWhenObscured\s*\(\s*true\s*\)/);
+    expect(match).not.toBeNull();
+  });
+
+  it('WebView CDP debugging is disabled in release builds', () => {
+    expect(src).toContain('setWebContentsDebuggingEnabled(false)');
+    expect(src).toContain('if (!BuildConfig.DEBUG)');
+  });
 });
