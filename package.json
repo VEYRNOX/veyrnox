@@ -144,7 +144,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-day-picker": "^8.10.1",
-    "react-dom": "^18.2.0",
+    "react-dom": "^19.2.7",
     "react-hook-form": "^7.81.0",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.7",
@@ -167,8 +167,8 @@
     "@testing-library/react": "^16.3.2",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
-    "@types/react-dom": "^18.2.22",
-    "@vitejs/plugin-react": "^6.0.3",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "@wdio/cli": "^9.29.1",
     "@wdio/local-runner": "^9.29.1",
     "@wdio/mocha-framework": "^9.29.1",
@@ -196,9 +196,9 @@
     "esbuild": "^0.28.0"
   },
   "//overrides-audit-notes": [
-    "serialize-javascript: HIGH (GHSA RCE via RegExp.flags) — forced to ^7.0.0 via override; only affects @wdio/mocha-framework (devDep test runner, not production wallet code). Fixed 2026-07-05.",
-    "elliptic: LOW — forced to ^6.6.1; mitigates transitive ECDSA risky-primitive advisory across WalletConnect/Ledger/Trezor sub-trees.",
-    "@stablelib/ed25519 (WalletConnect moderate chain): no upstream fix without regressive downgrade of web3wallet (1.16.1→1.13.0). Acknowledged 2026-07-05. Wallet key signing uses @noble/curves — unaffected. Revisit when @walletconnect/relay-auth ships a patched 1.x release."
+    "serialize-javascript: HIGH (GHSA RCE via RegExp.flags) \u2014 forced to ^7.0.0 via override; only affects @wdio/mocha-framework (devDep test runner, not production wallet code). Fixed 2026-07-05.",
+    "elliptic: LOW \u2014 forced to ^6.6.1; mitigates transitive ECDSA risky-primitive advisory across WalletConnect/Ledger/Trezor sub-trees.",
+    "@stablelib/ed25519 (WalletConnect moderate chain): no upstream fix without regressive downgrade of web3wallet (1.16.1\u21921.13.0). Acknowledged 2026-07-05. Wallet key signing uses @noble/curves \u2014 unaffected. Revisit when @walletconnect/relay-auth ships a patched 1.x release."
   ],
   "overrides": {
     "serialize-javascript": "^7.0.0",
