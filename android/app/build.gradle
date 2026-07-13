@@ -54,6 +54,10 @@ android {
             def ksPath = System.getenv("KEYSTORE_PATH")
             signingConfig ksPath ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
+            // Remove unused resources (layouts, drawables, strings, etc.) from the
+            // release APK. Reduces attack surface and APK size. Requires minifyEnabled
+            // true (R8 drives the reachability analysis that shrinkResources depends on).
+            shrinkResources true
             // Explicitly non-debuggable in release (defense-in-depth alongside the
             // MainActivity setWebContentsDebuggingEnabled(false) guard).
             debuggable false

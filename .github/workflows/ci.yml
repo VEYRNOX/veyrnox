@@ -103,6 +103,12 @@ jobs:
       # would re-open the hardware-KEK-H / vault-blob logcat leak with no build error.
       # Dedicated required step (same rationale as check:rng / check:strays below).
       - run: npm run check:log-redaction
+      # RASP B4 — Android release-build hygiene gate. Asserts that the release
+      # buildType in build.gradle retains the hardening properties that can silently
+      # regress via merge conflicts or cap-sync rewrites: setWebContentsDebuggingEnabled
+      # (gated on !BuildConfig.DEBUG), FLAG_SECURE, minifyEnabled true,
+      # shrinkResources true, debuggable false, proguardFiles referenced.
+      - run: npm run check:release-hygiene
       # Supply-chain gate: fail CI on any NEW critical advisory. Known/deferred
       # criticals are allowlisted with a reason in scripts/audit-gate.mjs;
       # highs/moderates are triaged for reachability in docs/SAST_FINDINGS.md.

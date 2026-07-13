@@ -13,7 +13,17 @@
 }
 
 # ── Veyrnox native plugins ────────────────────────────────────────────────────
--keep class com.veyrnox.app.** { *; }
+# Narrowed from `-keep class com.veyrnox.app.** { *; }` (which kept ALL members,
+# including private, of every Veyrnox class — reducing R8's ability to obfuscate
+# internal details). The annotation-driven rules above (`@CapacitorPlugin` +
+# `@PluginMethod public *`) already cover Capacitor plugin dispatch. This rule
+# additionally preserves the class *names* so Capacitor's `registerPlugin` call
+# (which references them by name) can still resolve them, while allowing R8 to
+# obfuscate private fields and internal helpers.
+-keepnames class com.veyrnox.app.**
+-keepclassmembers class com.veyrnox.app.** {
+    public *;
+}
 
 # ── AndroidX / Biometric (used by HardwareKekPlugin) ─────────────────────────
 -keep class androidx.biometric.** { *; }
