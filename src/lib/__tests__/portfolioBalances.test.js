@@ -19,8 +19,12 @@ vi.mock('@/wallet-core/evm/tokens.js', () => ({
 }));
 vi.mock('@/wallet-core/btc/provider.js', () => ({ getBalanceSats: vi.fn() }));
 vi.mock('@/wallet-core/sol/provider.js', () => ({ getBalanceSol: vi.fn() }));
+vi.mock('@/wallet-core/deniabilitySession.js', () => ({
+  isDeniabilitySessionActive: vi.fn(() => false),
+}));
 
-import { getBalanceEth } from '@/wallet-core/evm/provider.js';
+import { getBalanceEth, getProvider } from '@/wallet-core/evm/provider.js';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 import { getBalanceSats } from '@/wallet-core/btc/provider.js';
 import { getBalanceSol } from '@/wallet-core/sol/provider.js';
 import {
@@ -155,6 +159,40 @@ describe('computePortfolio — I3 seal (Finding 1)', () => {
     expect(queried).toEqual(['0xDECOYONLY']);
     // No real-set address is reachable: the only address source is the argument.
     expect(queried.every((a) => a === '0xDECOYONLY')).toBe(true);
+  });
+});
+
+describe('I3 zero-egress — ERC-20 balanceOf must not fire in a deniability session', () => {
+  it('fetchAssetAmount throws (with I3 in the message) and never builds the RPC Contract', async () => {
+    isDeniabilitySessionActive.mockReturnValue(true);
+    getProvider.mockClear();
+    // getProvider(asset.chain) is the choke-point the erc20 branch calls to build
+    // the ethers Contract before balanceOf — if the guard throws first it is never reached.
+    const USDC = { symbol: 'USDC', family: 'erc20', chain: 'sepolia' };
+    let threw = null;
+    try {
+      await fetchAssetAmount(USDC, { evm: '0xabc' });
+    } catch (e) {
+      threw = e;
+    }
+    expect(threw, 'erc20 balance read must THROW in a deniability session, not return 0/null').toBeTruthy();
+    expect(String(threw?.message)).toMatch(/I3/);
+    expect(getProvider).not.toHaveBeenCalled();
+    isDeniabilitySessionActive.mockReturnValue(false);
+  });
+});
+
+describe('I3 zero-egress — computePortfolio makes zero provider calls in a deniability session', () => {
+  it('returns an empty object per wallet without calling any balance provider', async () => {
+    isDeniabilitySessionActive.mockReturnValue(true);
+    getBalanceEth.mockResolvedValue(9);
+    const out = await computePortfolio(
+      [{ id: 'w1', enabledAssets: ['ETH'] }, { id: 'w2', enabledAssets: ['ETH', 'USDC'] }],
+      { w1: { evm: '0xabc' }, w2: { evm: '0xdef' } },
+    );
+    expect(out).toEqual([{}, {}]);
+    expect(getBalanceEth).not.toHaveBeenCalled();
+    isDeniabilitySessionActive.mockReturnValue(false);
   });
 });
 
