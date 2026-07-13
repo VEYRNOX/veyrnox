@@ -11,8 +11,8 @@ android {
         applicationId "com.veyrnox.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // RELEASE_CERT_SHA256: SHA-256 fingerprint of the release signing certificate for
         // RASP APK tamper detection (RaspIntegrityPlugin.detectTamper).
