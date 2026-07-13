@@ -191,6 +191,12 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   'veyrnox-live-prices',
   'veyrnox-duress-configured',
   'veyrnox-panic-configured',
+  // GAP-1: passkey clone-detection signCount. lib/passkey.js PASSKEY_SIGNCOUNT_KEY.
+  // Proves passkey unlock was exercised on this device; must be erased on panic.
+  'veyrnox-passkey-signcount',
+  // GAP-2: decoy-vault biometric secret marker. lib/WalletProvider.jsx
+  // DECOY_BIOMETRIC_MARKER_KEY. Reveals a duress/decoy vault existed; must be erased.
+  'veyrnox-decoy-biometric',
 ]);
 
 // NON-SECRET wallet/token METADATA residue (F-06). Unlike the keys above, these do
@@ -220,6 +226,17 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-portfolios',
   'veyrnox-active-portfolio',
   'veyrnox-spam-overrides',
+  // GAP-4 (LOW): app-usage tells that describe how the primary vault was configured.
+  // Not deniability secrets, but each ties this device to a Veyrnox installation.
+  'veyrnox-autolock-timeout',       // lib/session.js AUTO_LOCK_PREF_KEY
+  'veyrnox-message-signing-enabled', // lib/messageSigning.js MESSAGE_SIGNING_KEY
+  'veyrnox-referral',               // lib/referral.js STORAGE_KEY
+  'veyrnox-referral-pending',       // lib/referral.js PENDING_KEY
+  'veyrnox-remote-screen',          // pages/SendCrypto.jsx remote-screen toggle
+  'veyrnox-sim-enabled',            // pages/SendCrypto.jsx tx-simulation toggle
+  'dashboard-widgets',              // pages/Dashboard.jsx widget layout
+  'notification_prefs',             // pages/PushNotificationsPage.jsx
+  'veyrnox-demo',                   // api/demoClient.js demo-mode persistence
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
@@ -228,6 +245,24 @@ const ALL_RESIDUE_KEYS = Object.freeze([
   ...DENIABILITY_RESIDUE_KEYS,
   ...METADATA_RESIDUE_KEYS,
 ]);
+
+// GAP-3: wildcard-prefix keys whose exact names are not known at build time.
+// lib/snapshotStore.js writes 'veyrnox-snapshots-<fingerprint>'; the fingerprint
+// is derived at runtime so we can't list the exact key — we scan by prefix.
+const RESIDUE_KEY_PREFIXES = Object.freeze(['veyrnox-snapshots-']);
+
+// Enumerate all localStorage keys matching RESIDUE_KEY_PREFIXES at runtime.
+function readPrefixedResidueKeys() {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const matched = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k != null && RESIDUE_KEY_PREFIXES.some((p) => k.startsWith(p))) matched.push(k);
+    }
+    return matched;
+  } catch { return []; }
+}
 
 // NEXT-OPEN WIPE MARKER (loud post-wipe acknowledgment; owner-approved 2026-06-22).
 // After any local wipe we persist this presence-only marker so the NEXT app open can
@@ -406,6 +441,8 @@ function clearLocalAddressResidue() {
   try {
     if (typeof localStorage === 'undefined') return;
     for (const k of ALL_RESIDUE_KEYS) localStorage.removeItem(k);
+    // GAP-3: remove wildcard-prefix keys (e.g. veyrnox-snapshots-<fingerprint>)
+    for (const k of readPrefixedResidueKeys()) localStorage.removeItem(k);
   } catch { /* storage may be unavailable; not key material */ }
 }
 
@@ -414,7 +451,8 @@ function clearLocalAddressResidue() {
 function readLocalAddressResidue() {
   try {
     if (typeof localStorage === 'undefined') return [];
-    return ALL_RESIDUE_KEYS.filter((k) => localStorage.getItem(k) != null);
+    const exact = ALL_RESIDUE_KEYS.filter((k) => localStorage.getItem(k) != null);
+    return [...exact, ...readPrefixedResidueKeys()];
   } catch {
     return [];
   }
