@@ -177,18 +177,21 @@ class RaspIntegrityPlugin : Plugin() {
         }.getOrDefault(false)
     }
 
-    // Read system properties via getprop to detect an unlocked bootloader.
+    // Read system properties to detect an unlocked bootloader.
     // ro.boot.verifiedbootstate == "green" on a locked, unmodified device.
     // "orange" = unlocked bootloader (prerequisite for most Android root methods).
     // "red" = verification failed (boot image modified / custom kernel).
     // ro.boot.flash.locked == "0" = bootloader unlocked.
-    // Magisk Hide does not intercept getprop — these properties come directly
-    // from the bootloader and are baked into the kernel command line.
+    //
+    // Uses android.os.SystemProperties via reflection (in-process) rather than
+    // Runtime.exec("getprop ...") — SELinux denies exec() for untrusted_app on
+    // Android 10+ so the exec path silently returns empty and the check fires false.
+    // Reflection calls SystemProperties.get() directly without spawning a process.
     private fun checkDangerousProps(): Boolean {
         return runCatching {
-            val verifiedBootState = readSystemProp("ro.boot.verifiedbootstate")
-            val flashLocked       = readSystemProp("ro.boot.flash.locked")
-            val secureBootState   = readSystemProp("ro.boot.secureboot")
+            val verifiedBootState = readSystemPropReflect("ro.boot.verifiedbootstate")
+            val flashLocked       = readSystemPropReflect("ro.boot.flash.locked")
+            val secureBootState   = readSystemPropReflect("ro.boot.secureboot")
 
             verifiedBootState == "orange"
                 || verifiedBootState == "red"
@@ -197,13 +200,12 @@ class RaspIntegrityPlugin : Plugin() {
         }.getOrDefault(false)
     }
 
-    private fun readSystemProp(key: String): String {
+    @Suppress("PrivateApi")
+    private fun readSystemPropReflect(key: String): String {
         return runCatching {
-            val proc = Runtime.getRuntime().exec(arrayOf("getprop", key))
-            val value = proc.inputStream.bufferedReader().readText().trim()
-            proc.waitFor()
-            proc.destroy()
-            value.lowercase()
+            val cls = Class.forName("android.os.SystemProperties")
+            val get = cls.getMethod("get", String::class.java, String::class.java)
+            (get.invoke(null, key, "") as? String ?: "").trim().lowercase()
         }.getOrElse { "" }
     }
 
