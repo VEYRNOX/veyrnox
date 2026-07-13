@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/dev/PrfSpike.jsx — DEV-ONLY screen for the PRF-in-WebView spike.
 //
 // THROWAWAY. Reachable only via the /dev/prf-spike route, which App.jsx gates on

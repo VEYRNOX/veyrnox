@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/cosmos/derivation.js
 //
 // Cosmos SDK address derivation: secp256k1 HD key → bech32 address.

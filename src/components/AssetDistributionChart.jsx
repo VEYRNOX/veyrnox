@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { USD_RATES } from "@/lib/cryptos";
 

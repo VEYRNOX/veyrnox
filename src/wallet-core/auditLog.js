@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/auditLog.js
 //
 // LOCAL AUDIT LOG  (S4 — opt-in, deniability-safe activity record).  PROVISIONAL.

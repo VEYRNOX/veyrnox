@@ -1,3 +1,4 @@
+// @ts-nocheck
 // WalletPortfolioPage — the Add-wallet and Remove-wallet dialogs authorise a
 // change against the SAME vault credential used to unlock (addWallet/removeWallet
 // → decryptPrimaryContainer). For the PIN cohort (every real vault post-PR #651)

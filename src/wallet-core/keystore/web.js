@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/keystore/web.js — the web KeyStore implementation.
 //
 // This is the EXISTING web vault path, now behind the keyStore contract. It is

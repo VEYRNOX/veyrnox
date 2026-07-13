@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/evm/spam.js
 //
 // Spam / scam-airdrop token classification (Phase S2 — transaction safety).

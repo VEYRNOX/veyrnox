@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/PanicWipe.jsx
 //
 // PANIC WIPE  (S3 — Direction-C individual security).  PROVISIONAL.

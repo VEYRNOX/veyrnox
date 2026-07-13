@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySelector";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

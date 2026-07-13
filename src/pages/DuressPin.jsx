@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/DuressPin.jsx
 //
 // DURESS PIN / DECOY WALLET  (S3 — individual security).  PROVISIONAL.

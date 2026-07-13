@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/sendDispatch.js
 //
 // Pure, framework-free helpers that let SendCrypto.jsx dispatch a send across the

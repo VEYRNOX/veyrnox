@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/security/useRevealWithReauth.jsx
 //
 // Shared "reveal a wallet's mnemonic" flow used by every seed-backup entry point

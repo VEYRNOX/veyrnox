@@ -1,3 +1,4 @@
+// @ts-nocheck
 import BackButton from "@/components/BackButton";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';

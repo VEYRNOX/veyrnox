@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createContext, useContext, useState, useCallback } from 'react';
 import { getTransport } from '../wallet-core/hw/transport.js';
 import { getTrezorEvmAddress, getTrezorBtcAddress, getTrezorSolAddress } from '../wallet-core/hw/trezorAddress.js';

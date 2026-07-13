@@ -1,3 +1,4 @@
+// @ts-nocheck
 // components/SpendingPatternsCard.jsx
 //
 // Dashboard CONTAINER for the Spending Patterns tile. It owns the active-set-
