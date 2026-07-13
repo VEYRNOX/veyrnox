@@ -45,3 +45,5 @@ export { browserProbeSource } from './browserProbe.js';
 export { nativeProbeSource } from './nativeProbe.js';
 export { resolveProbeSource } from './resolveProbeSource.js';
 export { selectPresignProbeSource } from './selectPresignProbeSource.js';
+export { sensitiveGate } from './sensitiveGate.js';
+export { useRaspArtifact } from './useRaspArtifact.js';

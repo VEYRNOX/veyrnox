@@ -102,6 +102,7 @@ import {
 } from "@/lib/pinAttemptGuard";
 import { setPendingReferral } from "@/lib/referral";
 import { copySecret } from "@/lib/copySecret";
+import { useRaspArtifact, sensitiveGate } from "@/rasp";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
 // Both operands are local strings with no remote attacker; this is a codebase
@@ -382,6 +383,7 @@ export default function WalletEntry() {
 
   // Check biometric preference fresh every render (not cached), so preference changes take effect immediately
   const biometricEnabled = vaultExists && isBiometricUnlockEnabled() && bioReady;
+  const raspArtifact = useRaspArtifact();
 
   // Transiently holds the just-set vault password between "Generate" and the
   // "Enable Face ID" decision on the SAME screen, so we can cache it for biometric
@@ -790,6 +792,8 @@ export default function WalletEntry() {
   // Fail-closed: a bad phrase throws inside the import, leaving the existing vault
   // untouched; we clear the bridged pendingPin so no stale PIN lingers.
   const finishPinRecover = async () => {
+    const gate = sensitiveGate(raspArtifact, 'import');
+    if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setBusy(true); setProvisioning(true); setError("");
     try {
       setupPin(realPin);               // bridge the new PIN as pendingPin (markers + salt)
@@ -850,6 +854,8 @@ export default function WalletEntry() {
 
   // ---- Import an existing seed (vault password mandatory) ----
   const handleImport = async () => {
+    const gate = sensitiveGate(raspArtifact, 'import');
+    if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setError("");
     const pw = checkVaultPasswordStrength(importPassword);
     if (!pw.ok) { setError(pw.reason); return; }
