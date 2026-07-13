@@ -34,7 +34,8 @@ vi.mock('@/lib/biometricUnlock', () => ({
 vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
 vi.mock('@/wallet-core/duress', () => ({ hasDuressVault: vi.fn(async () => false) }));
 // NATIVE platform — the desync guard only applies where the Keychain outlives the app.
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true } }));
+// vi.fn so a single test can flip it to web (false) and pin the native-only guard.
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: vi.fn(() => true) } }));
 // The destructive call now rides the WalletProvider R2 facade (context clearVault),
 // not a direct wallet-core keystore import — WalletEntry no longer reaches into
 // @/wallet-core/keystore (ring-import burndown, issue #627). The spy is injected
@@ -42,6 +43,7 @@ vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true } 
 const clearVault = vi.fn(async () => {});
 
 import { useWallet } from '@/lib/WalletProvider';
+import { Capacitor } from '@capacitor/core';
 import WalletEntry from '@/components/WalletEntry';
 
 function makeCtx(overrides = {}) {
@@ -64,6 +66,7 @@ function makeCtx(overrides = {}) {
 
 beforeEach(() => {
   clearVault.mockClear();
+  vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true); // native by default
   try { localStorage.clear(); } catch { /* shimmed */ } // no 'veyrnox-auth-model' → desync
 });
 afterEach(() => { cleanup(); });
@@ -116,5 +119,65 @@ describe('WalletEntry — native vault/settings desync (I4: no silent key destru
     fireEvent.click(screen.getByRole('button', { name: /permanently wipe/i }));
 
     await waitFor(() => expect(clearVault).toHaveBeenCalledTimes(1));
+  });
+
+  // Task 1 — after a SUCCESSFUL desync wipe, the loud "device was wiped" notice must
+  // render (I4: fail honest). The user's vault was destroyed (silently, by the platform
+  // Keychain persistence, then confirmed here) — they get the same unmistakable notice
+  // the panic-wipe path shows, not a quiet drop into onboarding.
+  it('shows the loud wiped notice after a successful desync wipe (I4: fail honest)', async () => {
+    vi.mocked(useWallet).mockReturnValue(makeCtx());
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /wipe and start fresh/i })).toBeTruthy()
+    );
+    fireEvent.click(screen.getByRole('button', { name: /wipe and start fresh/i }));
+    fireEvent.change(await screen.findByLabelText(/type wipe to confirm/i), { target: { value: 'WIPE' } });
+    fireEvent.click(screen.getByRole('button', { name: /permanently wipe/i }));
+
+    await waitFor(() => expect(clearVault).toHaveBeenCalledTimes(1));
+    // The loud, persistent acknowledgement — same as the panic path.
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /this device was wiped/i })).toBeTruthy()
+    );
+  });
+
+  // Task 2A — error path: if clearVault throws, we must fail closed. Stay on the desync
+  // screen, surface the error, and NEVER signal a completed wipe (no loud notice) — a
+  // partial/failed wipe must not look like a successful one.
+  it('fails closed when clearVault throws: stays on desync, shows error, no wiped notice', async () => {
+    const boom = vi.fn(async () => { throw new Error('keystore locked'); });
+    vi.mocked(useWallet).mockReturnValue(makeCtx({ clearVault: boom }));
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /wipe and start fresh/i })).toBeTruthy()
+    );
+    fireEvent.click(screen.getByRole('button', { name: /wipe and start fresh/i }));
+    fireEvent.change(await screen.findByLabelText(/type wipe to confirm/i), { target: { value: 'WIPE' } });
+    fireEvent.click(screen.getByRole('button', { name: /permanently wipe/i }));
+
+    await waitFor(() => expect(boom).toHaveBeenCalledTimes(1));
+    // The error surfaces AND we remain on the desync confirmation (destructive button present)…
+    await waitFor(() => expect(screen.getByText(/keystore locked/i)).toBeTruthy());
+    expect(screen.getByRole('button', { name: /permanently wipe/i })).toBeTruthy();
+    // …and NO completed-wipe signal was raised.
+    expect(screen.queryByRole('heading', { name: /this device was wiped/i })).toBeNull();
+  });
+
+  // Task 2B — web negative: the desync guard is native-only (the Keychain-outlives-app
+  // hazard does not exist on web). Even with a stale vault present and no auth-model
+  // marker, the desync screen must NOT render on web.
+  it('does NOT render the desync screen on web (native-only guard)', async () => {
+    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
+    vi.mocked(useWallet).mockReturnValue(makeCtx());
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+
+    // Give the mount effect a chance to run, then assert the desync UI never appeared.
+    await waitFor(() => expect(screen.queryByRole('button', { name: /wipe and start fresh/i })).toBeNull());
+    expect(screen.queryByRole('button', { name: /restore from recovery phrase/i })).toBeNull();
+    expect(clearVault).not.toHaveBeenCalled();
   });
 });
