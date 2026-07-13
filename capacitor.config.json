@@ -1,0 +1,18 @@
+{
+  "appId": "com.veyrnox.app",
+  "appName": "Veyrnox",
+  "webDir": "dist",
+  "server": {
+    "allowNavigation": []
+  },
+  "loggingBehavior": "debug",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_launcher_foreground",
+      "iconColor": "#4ADAC2"
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
