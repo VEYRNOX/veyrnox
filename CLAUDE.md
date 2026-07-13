@@ -78,7 +78,7 @@ identity; the app never holds keys server-side.
   plus hardening of 2 existing specs (send-scenarios, hidden-wallet) — 96 tests across 13
   suites total. BUILT test-coverage work, NOT a new device-verification or "verified"
   claim: no new on-chain txid. Honest gaps disclosed in #638 itself: WalletConnect
-  live-pairing: supervised E2E spec added (PR #919, 2026-07-13, `e2e/walletconnect-live-pairing.spec.js`, 4 tests H7/H8/M11, gated `RUN_SUPERVISED_E2E=1`; 4 vacuous Appium stubs replaced with source-structure pins); live relay gap remains SUPERVISED (not CI-automated); KDF perf measured on one flagship
+  live-pairing: supervised E2E spec added (PR #919, 2026-07-13, `e2e/walletconnect-live-pairing.spec.js`, 4 tests H7/H8/M11, gated `RUN_SUPERVISED_E2E=1`; 4 vacuous Appium stubs replaced with source-structure pins); **live relay gap CLOSED (PR #931, 2026-07-13)** — all 4 tests now pass against real `relay.walletconnect.com` (H8 happy path, H8 mismatch pre-modal, M11 disconnect, H7 chain-mismatch pre-modal; 27s, BUILT/INTERNAL, no on-chain txid); KDF perf measured on one flagship
   device only; the LOG-1 spec is a regression canary for the already-shipped redaction fix,
   not a new fix; the passkey clone-signCount proof stays web-only, the Android test only
   proves native doesn't fabricate a value. PR #638 also added a password-entry mode (≥12
@@ -694,8 +694,14 @@ sweep. Key controls now on main:
 - **H7 — EIP-712 chain binding:** `eth_signTypedData_v4` validates `domain.chainId` vs
   WC session CAIP-2 chain; mismatch → `CHAIN_ID_MISMATCH` reject (fail-closed).
   No-chainId domain is also rejected (fail-closed; supersedes earlier backwards-compat).
+  **PR #931 (2026-07-13):** H7 now also enforced pre-modal — `domain.chainId` is parsed
+  at `session_request` arrival in the event handler; mismatch → `rejectRequest` before
+  `pendingRequests` / approval modal (dual-layer: handler + sign-time).
 - **H8 — personal_sign address binding:** resolves EIP-1474 vs MetaMask-legacy param
   order; rejects if neither param is the wallet's own address (I4).
+  **PR #931 (2026-07-13):** H8 now also enforced pre-modal — `resolvePersonalSignMessage()`
+  called at `session_request` arrival; mismatch → `rejectRequest` before the approval
+  modal is shown (dual-layer: handler + sign-time).
 - **M9 — 1M gas cap:** dApp-supplied gas is clamped to 1,000,000; estimates are also
   capped.
 - **M11 — session expiry:** `assertSessionLive` runs before any key operation;
