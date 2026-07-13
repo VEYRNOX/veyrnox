@@ -118,7 +118,7 @@ async function sendSolHw({ networkKey, fromAddress, toAddress, amountLamports, s
         attempts: attempt + 1,
       };
     } catch (err) {
-      const msg = err?.message ?? '';
+      const msg = err instanceof Error ? err.message : '';
       if (msg.toLowerCase().includes('expired') || msg.toLowerCase().includes('blockhash')) {
         lastError = err;
         continue; // fetch new blockhash and retry
