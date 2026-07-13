@@ -62,8 +62,14 @@ describe('G2 RS256 — x5c chain-walk (PlayIntegrityPlugin.kt regression pin)', 
     expect(src).not.toContain('debugExtractTokenHeader');
   });
 
-  it('alg is checked to be RS256 before any cert processing', () => {
-    expect(src).toContain('if (header.optString("alg") != "RS256") return false');
+  it('only RS256 and ES256 alg values are accepted; all others return false (fail-closed)', () => {
+    // The alg field dispatches to the correct Signature instance; any unknown alg
+    // hits the `else -> return false` branch (I4 fail-closed). Google's Play Integrity
+    // documentation cites ES256; the predecessor SafetyNet API used RS256; both are
+    // accepted until a real production token confirms which is in use.
+    expect(src).toContain('"RS256" -> "SHA256withRSA"');
+    expect(src).toContain('"ES256" -> "SHA256withECDSA"');
+    expect(src).toContain('else -> return false');
   });
 
   it('JWS must have exactly 3 parts (header.payload.signature)', () => {
