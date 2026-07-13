@@ -26,6 +26,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 import { computeFeeAnalytics } from "@/analytics/feeAnalytics";
+import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
 
 // Fee analytics mirrors the wallet's receivable assets (an asset needs a derived
 // address to have history). ETH is first/default — and is also the canonical
@@ -108,6 +109,9 @@ export default function FeeAnalytics() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["fee-analytics", asset.symbol, address, DEMO],
     queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
+    // I3 zero-egress: disable entirely in a deniability (decoy/hidden) session so
+    // the address->indexer disclosure is never even attempted.
+    enabled: !isDeniabilitySessionActive(),
     // Like the history view, this is a snapshot the user explicitly opens — no
     // background refetch (that would repeat the address->indexer disclosure).
     refetchOnWindowFocus: false,

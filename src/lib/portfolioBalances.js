@@ -29,6 +29,7 @@ import { getToken, ERC20_ABI } from '@/wallet-core/evm/tokens.js';
 import { getBalanceSats } from '@/wallet-core/btc/provider.js';
 import { getBalanceSol } from '@/wallet-core/sol/provider.js';
 import { useLivePrices } from '@/lib/priceFeed.js';
+import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 
 /** USD price for a symbol. Uses livePrices map when given and finite, else falls
  * back to USD_RATES (mock rates, display only). Stablecoins ≈ 1. The optional
@@ -51,6 +52,15 @@ export function usdRate(symbol, livePrices) {
  * @returns {Promise<number|null>} amount, or null when indeterminate
  */
 export async function fetchAssetAmount(asset, addr) {
+  // I3 zero-egress: an ERC-20 balance is read through a raw ethers Contract that
+  // does NOT route through getBalanceEth's own deniability guard. Gate it here,
+  // BEFORE the try/catch — so it THROWS (fail-closed) rather than being folded
+  // into the catch's silent `null`. A decoy/hidden session must know there was no
+  // real balance check, not read a fabricated 0. (evm/btc/sol keep their own
+  // provider-level guards.)
+  if (asset && asset.family === 'erc20' && isDeniabilitySessionActive()) {
+    throw new Error('I3: no egress in deniability session');
+  }
   try {
     if (!asset || !addr) return 0;
     if (asset.family === 'evm') {
@@ -98,6 +108,12 @@ export async function fetchAssetAmount(asset, addr) {
  * @param {Object.<string,{evm:any,btc:any,sol:any}>} walletAddresses
  */
 export async function computePortfolio(wallets, walletAddresses, livePrices) {
+  // I3 zero-egress choke-point: in a deniability (decoy/hidden) session the whole
+  // portfolio aggregation must make ZERO backend calls. Return a clean empty
+  // shape per wallet (callers render 0 balances) instead of relying solely on
+  // every downstream provider carrying its own guard — an explicit first line so
+  // a future unguarded provider can never silently leak.
+  if (isDeniabilitySessionActive()) return (wallets || []).map(() => ({}));
   const byWallet = {};
   const assetTotals = {};
   let grandTotal = 0;
