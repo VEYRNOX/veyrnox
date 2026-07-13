@@ -36,8 +36,16 @@
 //   * onboarding helpers mirror e2e/onboarding.spec.js (unified PIN cohort).
 
 import { test, expect } from '@playwright/test';
-import SignClient from '@walletconnect/sign-client';
+import { SignClient } from '@walletconnect/sign-client';
 import { ethers } from 'ethers';
+
+// The dApp Connector relies on relay.walletconnect.com (WebSocket) and
+// pulse.walletconnect.org (telemetry), which are not in the meta CSP — the CSP
+// is defence-in-depth for the web build; WC lives on native (Capacitor).  For
+// this supervised E2E test we bypass the meta CSP so the SignClient can connect
+// to the real relay.  This does NOT change the app's security posture: the
+// invariants (I1-I6, RASP) are enforced by code, not by the meta CSP tag.
+test.use({ bypassCSP: true });
 
 const BASE = 'http://localhost:5173';
 const PROJECT_ID = 'f9d8b6cc36e18684ac1d2a76cdf54bea'; // baked-in public id (projectId.js)
@@ -130,23 +138,52 @@ async function unlockWallet(page) {
 
 /** Navigate to the dApp Connector screen and paste + pair a URI. */
 async function pairWallet(page, uri) {
-  await page.goto(`${BASE}/walletconnect?demo=0`);
+  // Use client-side history push to avoid a full page reload (which would lose the
+  // in-memory WalletProvider unlock state). The /walletconnect nav link is gated
+  // behind a feature flag and may not appear in the DOM for a fresh wallet.
+  await page.evaluate(() => {
+    window.history.pushState({}, '', '/walletconnect');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+  });
   const input = page.locator('input[placeholder="wc:..."]');
   await expect(input).toBeVisible({ timeout: 15000 });
+  // Wait for WalletKit to finish initialising before entering the URI.
+  // Without this, the component's Suspense-resolution remount resets the `uri`
+  // React state to '' even after the DOM input is filled via the native setter.
+  // The page shows role="status" "Initialising dApp Connector…" while !initialized.
+  await expect(page.locator('[role="status"]', { hasText: /Initialising/i })).toHaveCount(0, { timeout: 30000 });
+  // React controlled input: use Playwright's fill() to focus + type, which triggers
+  // React's synthetic onChange reliably.
   await input.fill(uri);
-  await page.getByRole('button', { name: /^Pair(ing…)?$/ }).click();
+  // Wait for React to commit the update (setUri -> re-render -> button enabled).
+  const pairBtn = page.getByRole('button', { name: /^Pair(ing…)?$/ });
+  await expect(pairBtn).toBeEnabled({ timeout: 5000 });
+  // The button cycles enabled/disabled during React's init effect cycle. Use the input's
+  // onKeyDown Enter handler (fires handlePair() when the input is focused + uri set)
+  // as a more reliable trigger than clicking the cycling button. The input has:
+  //   onKeyDown={(e) => e.key === 'Enter' && handlePair()}
+  // and is enabled when initialized=true (same condition as button, minus uri check).
+  await input.press('Enter');
 }
 
-/** Approve the incoming session proposal modal ("Connect" in .approveBtn). */
+/** Approve the incoming session proposal modal ("Connect" button). */
 async function approveSession(page) {
-  const connect = page.locator('button.approveBtn', { hasText: /Connect/ });
-  await expect(connect).toBeVisible({ timeout: 20000 });
-  await connect.click();
+  // CSS module class names are mangled by Vite — use role + text instead.
+  // The sidebar nav has a "Connect" section-header button (group label), so we scope
+  // to the session proposal modal via its unique heading "Connect to dApp?", then
+  // click the "Connect" button within that heading's container. Using .last() as a
+  // fallback: the modal renders inside the page content area which comes after the
+  // sidebar in the DOM, so the modal's "Connect" is always the last match.
+  await expect(page.getByRole('heading', { name: 'Connect to dApp?' })).toBeVisible({ timeout: 20000 });
+  await page.getByRole('button', { name: 'Connect', exact: true }).last().click();
 }
 
 /** Assert NO request-approval modal ever appears within `ms` (fail-closed reject). */
 async function expectNoApprovalModal(page, ms = 8000) {
-  const approve = page.locator('button.approveBtn', { hasText: /Approve|Signing/ });
+  // "Approve" is the normal RequestApprovalModal label. "Signing…" / "Sending…" are
+  // the busy-state labels. We check that NONE of these are ever visible — the wallet
+  // must fail-closed without surfacing the UI (H8 mismatch, M11 expired session, H7).
+  const approve = page.getByRole('button', { name: /^(Approve|Signing…|Sending…|Re-authenticate)$/ });
   await expect(approve).toHaveCount(0, { timeout: ms });
 }
 
@@ -156,161 +193,155 @@ test.describe('WalletConnect live pairing — security controls (SUPERVISED)', (
   test.skip(!process.env.RUN_SUPERVISED_E2E, SKIP_REASON);
   test.describe.configure({ mode: 'serial' });
 
-  test('H8: personal_sign with the wallet\'s own address returns a valid recoverable signature', async ({ page }) => {
-    let dapp;
+  // ONE SignClient for all four tests.  SignClient uses a global Core singleton keyed
+  // on projectId — calling init() twice in the same Node.js process reuses the Core and
+  // can corrupt crypto state (seen as "No matching key" / "Pending session not found").
+  // Keeping a single client avoids the singleton collision: each test just calls
+  // dapp.connect() which creates a fresh pairing topic + symmetric key on the live Core.
+  let dapp = null;
+
+  test.beforeAll(async () => {
     try {
       dapp = await createDApp();
-    } catch (e) {
-      test.skip(true, `Relay unreachable (${e.message}) — ${SKIP_REASON}`);
-      return;
+    } catch {
+      dapp = null; // tests will skip() on null dapp
     }
-    try {
-      await unlockWallet(page);
-      const { uri, approval } = await proposeConnection(dapp);
-      await pairWallet(page, uri);
-      await approveSession(page);
+  });
 
-      const session = await approval();
-      const walletAddress = walletAddressFromSession(session);
+  test.afterAll(async () => {
+    await dapp?.core?.relayer?.transportClose?.().catch(() => {});
+    dapp = null;
+  });
 
-      // Fire personal_sign with the wallet's OWN address as the signer (H8 happy path).
-      const message = 'Veyrnox WC E2E — H8 happy path';
-      const hexMsg = ethers.hexlify(ethers.toUtf8Bytes(message));
-      const requestP = dapp.request({
-        topic: session.topic,
-        chainId: CHAIN_ID,
-        request: { method: 'personal_sign', params: [hexMsg, walletAddress] },
-      });
+  // Spoof navigator.webdriver=false so RASP's browser probe doesn't detect Playwright.
+  // Without this, navigator.webdriver=true → HOOKED → BLOCK → presignGate auto-rejects
+  // every WC signing request before the wallet shows the approval modal (I4 fail-closed).
+  // RASP detection is separately tested in e2e/rasp-automation-detection.spec.js.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false, configurable: true });
+    });
+  });
 
-      // Approve in the wallet UI.
-      const approveBtn = page.locator('button.approveBtn', { hasText: /Approve|Signing/ });
-      await expect(approveBtn).toBeVisible({ timeout: 20000 });
-      await approveBtn.click();
+  test('H8: personal_sign with the wallet\'s own address returns a valid recoverable signature', async ({ page }) => {
+    if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
 
-      const signature = await requestP;
-      expect(typeof signature).toBe('string');
-      expect(signature.startsWith('0x')).toBe(true);
-      // 65-byte sig = 132 hex chars incl. 0x.
-      expect(signature.length).toBe(132);
-      const recovered = ethers.verifyMessage(message, signature);
-      expect(recovered.toLowerCase()).toBe(walletAddress.toLowerCase());
-    } finally {
-      await dapp?.core?.relayer?.transportClose?.().catch(() => {});
-    }
+    await unlockWallet(page);
+    const { uri, approval } = await proposeConnection(dapp);
+    await pairWallet(page, uri);
+    await approveSession(page);
+
+    const session = await approval();
+    const walletAddress = walletAddressFromSession(session);
+
+    // Fire personal_sign with the wallet's OWN address as the signer (H8 happy path).
+    const message = 'Veyrnox WC E2E — H8 happy path';
+    const hexMsg = ethers.hexlify(ethers.toUtf8Bytes(message));
+    const requestP = dapp.request({
+      topic: session.topic,
+      chainId: CHAIN_ID,
+      request: { method: 'personal_sign', params: [hexMsg, walletAddress] },
+    });
+
+    // Approve in the wallet UI (RequestApprovalModal — "Approve" button).
+    const approveBtn = page.getByRole('button', { name: 'Approve' });
+    await expect(approveBtn).toBeVisible({ timeout: 20000 });
+    await approveBtn.click();
+
+    const signature = await requestP;
+    expect(typeof signature).toBe('string');
+    expect(signature.startsWith('0x')).toBe(true);
+    // 65-byte sig = 132 hex chars incl. 0x.
+    expect(signature.length).toBe(132);
+    const recovered = ethers.verifyMessage(message, signature);
+    expect(recovered.toLowerCase()).toBe(walletAddress.toLowerCase());
   });
 
   test('H8: personal_sign with a mismatched signer address is rejected (no approval modal)', async ({ page }) => {
-    let dapp;
-    try {
-      dapp = await createDApp();
-    } catch (e) {
-      test.skip(true, `Relay unreachable (${e.message}) — ${SKIP_REASON}`);
-      return;
-    }
-    try {
-      await unlockWallet(page);
-      const { uri, approval } = await proposeConnection(dapp);
-      await pairWallet(page, uri);
-      await approveSession(page);
-      const session = await approval();
+    if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
 
-      const message = 'Veyrnox WC E2E — H8 mismatch';
-      const hexMsg = ethers.hexlify(ethers.toUtf8Bytes(message));
-      const requestP = dapp.request({
-        topic: session.topic,
-        chainId: CHAIN_ID,
-        request: { method: 'personal_sign', params: [hexMsg, FOREIGN_ADDRESS] },
-      }).then(() => ({ resolved: true }), (err) => ({ resolved: false, err }));
+    await unlockWallet(page);
+    const { uri, approval } = await proposeConnection(dapp);
+    await pairWallet(page, uri);
+    await approveSession(page);
+    const session = await approval();
 
-      // Fail-closed: the wallet must NOT surface an approval modal for a foreign signer.
-      await expectNoApprovalModal(page);
-      const outcome = await requestP;
-      expect(outcome.resolved).toBe(false);
-      expect(String(outcome.err?.message || outcome.err)).toMatch(/PERSONAL_SIGN_ADDRESS_MISMATCH|reject|error/i);
-    } finally {
-      await dapp?.core?.relayer?.transportClose?.().catch(() => {});
-    }
+    const message = 'Veyrnox WC E2E — H8 mismatch';
+    const hexMsg = ethers.hexlify(ethers.toUtf8Bytes(message));
+    const requestP = dapp.request({
+      topic: session.topic,
+      chainId: CHAIN_ID,
+      request: { method: 'personal_sign', params: [hexMsg, FOREIGN_ADDRESS] },
+    }).then(() => ({ resolved: true }), (err) => ({ resolved: false, err }));
+
+    // Fail-closed: the wallet must NOT surface an approval modal for a foreign signer.
+    await expectNoApprovalModal(page);
+    const outcome = await requestP;
+    expect(outcome.resolved).toBe(false);
+    expect(String(outcome.err?.message || outcome.err)).toMatch(/PERSONAL_SIGN_ADDRESS_MISMATCH|reject|error/i);
   });
 
   test('M11: a request on a disconnected/expired session is rejected (no approval modal)', async ({ page }) => {
-    let dapp;
-    try {
-      dapp = await createDApp();
-    } catch (e) {
-      test.skip(true, `Relay unreachable (${e.message}) — ${SKIP_REASON}`);
-      return;
-    }
-    try {
-      await unlockWallet(page);
-      const { uri, approval } = await proposeConnection(dapp);
-      await pairWallet(page, uri);
-      await approveSession(page);
-      const session = await approval();
+    if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
 
-      // Tear the session down from the dApp side, then try to sign on it.
-      await dapp.disconnect({
-        topic: session.topic,
-        reason: { code: 6000, message: 'E2E: forced disconnect to exercise M11' },
-      });
+    await unlockWallet(page);
+    const { uri, approval } = await proposeConnection(dapp);
+    await pairWallet(page, uri);
+    await approveSession(page);
+    const session = await approval();
 
-      const message = 'Veyrnox WC E2E — M11 expired';
-      const hexMsg = ethers.hexlify(ethers.toUtf8Bytes(message));
-      const requestP = dapp.request({
-        topic: session.topic,
-        chainId: CHAIN_ID,
-        request: { method: 'personal_sign', params: [hexMsg, FOREIGN_ADDRESS] },
-      }).then(() => ({ resolved: true }), (err) => ({ resolved: false, err }));
+    // Tear the session down from the dApp side, then try to sign on it.
+    await dapp.disconnect({
+      topic: session.topic,
+      reason: { code: 6000, message: 'E2E: forced disconnect to exercise M11' },
+    });
 
-      await expectNoApprovalModal(page);
-      const outcome = await requestP;
-      expect(outcome.resolved).toBe(false);
-    } finally {
-      await dapp?.core?.relayer?.transportClose?.().catch(() => {});
-    }
+    const message = 'Veyrnox WC E2E — M11 expired';
+    const hexMsg = ethers.hexlify(ethers.toUtf8Bytes(message));
+    const requestP = dapp.request({
+      topic: session.topic,
+      chainId: CHAIN_ID,
+      request: { method: 'personal_sign', params: [hexMsg, FOREIGN_ADDRESS] },
+    }).then(() => ({ resolved: true }), (err) => ({ resolved: false, err }));
+
+    await expectNoApprovalModal(page);
+    const outcome = await requestP;
+    expect(outcome.resolved).toBe(false);
   });
 
   test('H7: eth_signTypedData_v4 whose domain.chainId mismatches the session chain is rejected', async ({ page }) => {
-    let dapp;
-    try {
-      dapp = await createDApp();
-    } catch (e) {
-      test.skip(true, `Relay unreachable (${e.message}) — ${SKIP_REASON}`);
-      return;
-    }
-    try {
-      await unlockWallet(page);
-      const { uri, approval } = await proposeConnection(dapp);
-      await pairWallet(page, uri);
-      await approveSession(page);
-      const session = await approval();
-      const walletAddress = walletAddressFromSession(session);
+    if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
 
-      // Session is on Sepolia (11155111) but the typed-data domain claims mainnet (1).
-      const typedData = {
-        types: {
-          EIP712Domain: [
-            { name: 'name', type: 'string' },
-            { name: 'version', type: 'string' },
-            { name: 'chainId', type: 'uint256' },
-          ],
-          Mail: [{ name: 'contents', type: 'string' }],
-        },
-        primaryType: 'Mail',
-        domain: { name: 'Veyrnox E2E', version: '1', chainId: 1 }, // mismatch → H7
-        message: { contents: 'chain-mismatch probe' },
-      };
-      const requestP = dapp.request({
-        topic: session.topic,
-        chainId: CHAIN_ID,
-        request: { method: 'eth_signTypedData_v4', params: [walletAddress, JSON.stringify(typedData)] },
-      }).then(() => ({ resolved: true }), (err) => ({ resolved: false, err }));
+    await unlockWallet(page);
+    const { uri, approval } = await proposeConnection(dapp);
+    await pairWallet(page, uri);
+    await approveSession(page);
+    const session = await approval();
+    const walletAddress = walletAddressFromSession(session);
 
-      await expectNoApprovalModal(page);
-      const outcome = await requestP;
-      expect(outcome.resolved).toBe(false);
-      expect(String(outcome.err?.message || outcome.err)).toMatch(/CHAIN_ID_MISMATCH|reject|error/i);
-    } finally {
-      await dapp?.core?.relayer?.transportClose?.().catch(() => {});
-    }
+    // Session is on Sepolia (11155111) but the typed-data domain claims mainnet (1).
+    const typedData = {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+        ],
+        Mail: [{ name: 'contents', type: 'string' }],
+      },
+      primaryType: 'Mail',
+      domain: { name: 'Veyrnox E2E', version: '1', chainId: 1 }, // mismatch → H7
+      message: { contents: 'chain-mismatch probe' },
+    };
+    const requestP = dapp.request({
+      topic: session.topic,
+      chainId: CHAIN_ID,
+      request: { method: 'eth_signTypedData_v4', params: [walletAddress, JSON.stringify(typedData)] },
+    }).then(() => ({ resolved: true }), (err) => ({ resolved: false, err }));
+
+    await expectNoApprovalModal(page);
+    const outcome = await requestP;
+    expect(outcome.resolved).toBe(false);
+    expect(String(outcome.err?.message || outcome.err)).toMatch(/CHAIN_ID_MISMATCH|reject|error/i);
   });
 });
