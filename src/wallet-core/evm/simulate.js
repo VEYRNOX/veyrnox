@@ -319,9 +319,9 @@ export async function simulateEvmTransaction({
   const queries = []; // record the read-only methods we used (for the UI disclosure)
 
   const hasData = !!data && data !== '0x';
-  const decoded = hasData
+  const decoded = /** @type {any} */ (hasData
     ? describeErc20Call({ data, tokenSymbol, decimals: tokenDecimals })
-    : { kind: 'native' };
+    : { kind: 'native' });
 
   // Run all independent RPC reads in parallel so total wall-clock time is
   // max(individual latencies) rather than their sum. A 10-second timeout wraps

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // wallet-core/vault.js
 //
 // Encrypted key vault: the heart of self-custody.
@@ -94,7 +93,7 @@ const MIN_KDF_PARAMS = Object.freeze({
  * with out-of-range params is malformed/tampered/malicious, not a credential signal,
  * so this leaks no oracle. Called by paramsFromVault before any argon2id derivation.
  * @param {{parallelism:number,iterations:number,memorySize:number,hashLength:number}} p
- * @returns {p}
+ * @returns {typeof p}
  */
 export function assertSaneKdfParams(p) {
   for (const name of ['parallelism', 'iterations', 'memorySize', 'hashLength']) {
@@ -123,7 +122,7 @@ function randomBytes(n) {
 // error, or timeout), so unlock can never break (I4, fail closed). The worker runs
 // the SAME hash-wasm argon2id with the SAME opts -> byte-identical key. Identical
 // for every set (params unchanged), so it adds no deniability/timing tell (I3).
-let _kdfWorker = null;
+let _kdfWorker = /** @type {Worker | null} */ (null);
 let _kdfWorkerState = 'idle'; // 'idle' | 'ready' | 'broken'
 let _kdfReqId = 0;
 const _kdfPending = new Map();

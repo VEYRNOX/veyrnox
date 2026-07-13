@@ -137,11 +137,11 @@ export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswo
   }
   const db = await openDb();
   try {
-    await new Promise((res, rej) => {
+    await /** @type {Promise<void>} */ (new Promise((res, rej) => {
       const r = store(db, 'readwrite').put(blob, DECOY_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
-    });
+    }));
   } finally {
     db.close();
   }
@@ -178,11 +178,11 @@ export async function tryDuressUnlock(password) {
 export async function clearDuressVault() {
   const db = await openDb();
   try {
-    await new Promise((res, rej) => {
+    await /** @type {Promise<void>} */ (new Promise((res, rej) => {
       const r = store(db, 'readwrite').delete(DECOY_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
-    });
+    }));
   } finally {
     db.close();
   }

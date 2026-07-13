@@ -28,29 +28,31 @@ import { Transaction, p2wpkh } from '@scure/btc-signer';
  * @returns {{ psbtBase64: string, psbtHex: string, inputCount: number, outputCount: number }}
  */
 export function buildUnsignedPsbt({ plan, publicKey, params }) {
-  if (!plan || !Array.isArray(plan.inputs) || !Array.isArray(plan.outputs)) {
+  const p = /** @type {any} */ (plan);
+  const net = /** @type {any} */ (params);
+  if (!p || !Array.isArray(p.inputs) || !Array.isArray(p.outputs)) {
     throw new Error('buildUnsignedPsbt: invalid plan');
   }
   // All UTXOs are controlled by this single key, so every input's prevout script is
   // this key's P2WPKH script — identical to the in-app signing path.
-  const owner = p2wpkh(publicKey, params);
+  const owner = p2wpkh(publicKey, net);
   const tx = new Transaction();
-  for (const input of plan.inputs) {
+  for (const input of p.inputs) {
     tx.addInput({
       txid: hex.decode(input.txid), // display-order; lib stores little-endian
       index: input.vout,
       witnessUtxo: { script: owner.script, amount: BigInt(input.value) },
     });
   }
-  for (const out of plan.outputs) {
-    tx.addOutputAddress(out.address, BigInt(out.value), params);
+  for (const out of p.outputs) {
+    tx.addOutputAddress(out.address, BigInt(out.value), net);
   }
   // DELIBERATELY NOT signing/finalizing — that happens on the external signer.
   const psbtBytes = tx.toPSBT();
   return {
     psbtBase64: base64.encode(psbtBytes),
     psbtHex: hex.encode(psbtBytes),
-    inputCount: plan.inputs.length,
-    outputCount: plan.outputs.length,
+    inputCount: p.inputs.length,
+    outputCount: p.outputs.length,
   };
 }

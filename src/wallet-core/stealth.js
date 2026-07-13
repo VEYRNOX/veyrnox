@@ -205,6 +205,7 @@ function getKey(db, key) {
   });
 }
 
+/** @returns {Promise<void>} */
 function putKey(db, key, value) {
   return new Promise((res, rej) => {
     const r = store(db, 'readwrite').put(value, key);
@@ -566,7 +567,8 @@ async function revealHiddenMnemonic(secret) {
   if (payload == null) return null;
   try {
     const { container } = parseVault(payload);
-    const w = container.wallets[0];
+    const c = /** @type {any} */ (container);
+    const w = c.wallets[0];
     return w ? w.mnemonic : null;
   } catch {
     return null;
@@ -654,11 +656,11 @@ export async function wipeStealthPool() {
   const db = await openDb();
   try {
     for (const key of SLOT_KEYS) {
-      await new Promise((res, rej) => {
+      await /** @type {Promise<void>} */ (new Promise((res, rej) => {
         const r = store(db, 'readwrite').delete(key);
         r.onsuccess = () => res();
         r.onerror = () => rej(r.error);
-      });
+      }));
     }
   } finally {
     db.close();

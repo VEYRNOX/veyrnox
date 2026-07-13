@@ -57,7 +57,7 @@ export function encodeApprove(spender, value) {
  */
 export function buildRevokeCalldata({ spender, tokenSymbol, decimals = 18 }) {
   const data = encodeApprove(spender, 0n);
-  const summary = describeErc20Call({ data, tokenSymbol, decimals });
+  const summary = /** @type {any} */ (describeErc20Call({ data, tokenSymbol, decimals }));
   if (summary.kind !== 'approve' || summary.unlimited || Number(summary.amount) !== 0) {
     // Defense-in-depth: never sign something that doesn't decode to a 0 approve.
     throw new Error('Revoke calldata self-check failed (not a zero-allowance approve)');

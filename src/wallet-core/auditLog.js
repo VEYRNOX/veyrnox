@@ -213,6 +213,7 @@ function getKey(db, key) {
   });
 }
 
+/** @returns {Promise<void>} */
 function putKey(db, key, value) {
   return new Promise((res, rej) => {
     const r = store(db, 'readwrite').put(value, key);
@@ -370,11 +371,11 @@ export async function readAuditLog(auditSecret) {
 export async function clearAuditLog() {
   const db = await openDb();
   try {
-    await new Promise((res, rej) => {
+    await /** @type {Promise<void>} */ (new Promise((res, rej) => {
       const r = store(db, 'readwrite').delete(AUDIT_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
-    });
+    }));
   } finally {
     db.close();
   }

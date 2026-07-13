@@ -338,11 +338,11 @@ export async function setPanicVault(panicPassword) {
   }
   const db = await openDb();
   try {
-    await new Promise((res, rej) => {
+    await /** @type {Promise<void>} */ (new Promise((res, rej) => {
       const r = store(db, 'readwrite').put(blob, PANIC_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
-    });
+    }));
   } finally {
     db.close();
   }
@@ -352,11 +352,11 @@ export async function setPanicVault(panicPassword) {
 export async function clearPanicVault() {
   const db = await openDb();
   try {
-    await new Promise((res, rej) => {
+    await /** @type {Promise<void>} */ (new Promise((res, rej) => {
       const r = store(db, 'readwrite').delete(PANIC_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
-    });
+    }));
   } finally {
     db.close();
   }
@@ -443,11 +443,11 @@ function clearBrowserCookies() {
 async function clearVaultStore() {
   const db = await openDb();
   try {
-    await new Promise((res, rej) => {
+    await /** @type {Promise<void>} */ (new Promise((res, rej) => {
       const r = store(db, 'readwrite').clear();
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
-    });
+    }));
   } finally {
     db.close();
   }
@@ -456,6 +456,7 @@ async function clearVaultStore() {
 // Best-effort: delete the whole database so even the empty store structure is
 // gone. Resolves on success, error, OR blocked — a lingering connection must not
 // hang the wipe, and the store was already cleared above regardless.
+/** @returns {Promise<void>} */
 function deleteVaultDatabase() {
   return new Promise((resolve) => {
     let settled = false;
@@ -484,6 +485,7 @@ function deleteVaultDatabase() {
 // blocked, so a lingering localClient connection (its module-level db handle) can
 // pend the delete without hanging the wipe (it completes once that handle closes,
 // e.g. on the post-wipe reload). F-06 residue sweep.
+/** @returns {Promise<void>} */
 function deleteAppDataDatabase() {
   return new Promise((resolve) => {
     let settled = false;
