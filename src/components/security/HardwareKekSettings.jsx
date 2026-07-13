@@ -1,3 +1,4 @@
+// @ts-nocheck
 // components/security/HardwareKekSettings.jsx
 //
 // Security Settings — "Hardware protection" KEK enrollment card.

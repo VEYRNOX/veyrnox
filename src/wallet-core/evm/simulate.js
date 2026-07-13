@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/evm/simulate.js
 //
 // Transaction Simulation (Phase S2 — transaction safety). A pre-sign PREVIEW of

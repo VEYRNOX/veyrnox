@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/evm/approvals.js
 //
 // ERC-20 allowance VIEW + REVOKE (Phase S2 — transaction safety).

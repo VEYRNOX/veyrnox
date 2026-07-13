@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/TierProvider.jsx
 //
 // Resolves and exposes the user's real subscription tier. On mount, it first

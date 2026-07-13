@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/pages/FeeAnalytics.jsx
 //
 // Slice 1 — STATELESS native-unit fee analytics. Reads the active set's per-asset

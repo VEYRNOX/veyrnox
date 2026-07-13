@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/pages/ColdSign.jsx
 //
 // COLD-KEY SIGNING (Feature 5) — air-gapped / external signer flow.

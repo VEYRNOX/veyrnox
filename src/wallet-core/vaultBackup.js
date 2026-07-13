@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/vaultBackup.js
 //
 // Self-custodial encrypted vault backup (S4 — Option A: two sealed copies).

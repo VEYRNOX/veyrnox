@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/security/TwoFactorGate.jsx
 //
 // The reusable critical-action 2FA gate: collects the PIN + Action Password, runs

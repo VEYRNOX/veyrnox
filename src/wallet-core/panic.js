@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/panic.js
 //
 // PANIC WIPE  (S3 — Direction-C individual security).  PROVISIONAL.

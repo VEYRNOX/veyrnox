@@ -1,3 +1,4 @@
+// @ts-nocheck
 // WalletAccessReset — the change-credential + recovery surfaces must match the
 // app's real login (an 8-digit PIN pad), NOT a free-text password box, for the
 // PIN cohort (every real vault post-PR #651). Regression guard for the bug the

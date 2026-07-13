@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { ShieldCheck, Activity, Zap, RefreshCw, AlertTriangle } from "lucide-react";

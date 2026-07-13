@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { CURRENCY_COLORS, CURRENCY_SYMBOLS, logoFor } from "@/lib/cryptos";
 

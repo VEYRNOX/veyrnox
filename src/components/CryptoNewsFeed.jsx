@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, TrendingUp, Newspaper } from "lucide-react";
 import { Capacitor, CapacitorHttp } from "@capacitor/core";

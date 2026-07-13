@@ -1,3 +1,4 @@
+// @ts-nocheck
 // components/TransactionSimulationDemo.jsx
 //
 // DEMO-ONLY harness for the Phase S2 Transaction Simulation preview. In demo

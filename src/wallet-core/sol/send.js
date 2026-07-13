@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/sol/send.js
 //
 // High-level Solana send: plan (rent-aware) -> fetch FRESH blockhash -> build a

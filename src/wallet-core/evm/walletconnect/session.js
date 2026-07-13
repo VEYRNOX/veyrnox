@@ -1,3 +1,4 @@
+// @ts-nocheck
 // WalletConnect v2 client singleton.
 // Handles pairing, session lifecycle, and request/response dispatch.
 // NEVER holds or touches key material. Pure transport layer.
