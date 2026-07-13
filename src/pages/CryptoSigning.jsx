@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { copyPlain } from "@/lib/copySecret";
 import { useWallet } from "@/lib/WalletProvider";
 import { useMessageSigningEnabled } from "@/lib/useMessageSigningEnabled";
+import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession.js";
 import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { LEVEL } from "@/risk/levels";
@@ -58,6 +59,12 @@ export default function CryptoSigning() {
     setVerifyAddress("");
     setVerifyResult(null);
     if (!isUnlocked || !address) return;
+    // I3: deniability session — signing produces a verifiable signature tied to
+    // an identity the user is actively denying. Fail closed (I4).
+    if (isDeniabilitySessionActive()) {
+      setError("Message signing is not available in this session.");
+      return;
+    }
     // H13: RASP pre-sign gate. Refuse to sign in a hostile runtime (automation /
     // WebDriver). Fail closed — no signature is produced if the gate blocks.
     if (!raspGuardAllowsSigning()) {
@@ -123,6 +130,15 @@ export default function CryptoSigning() {
         <div role="status" className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card text-sm">
           <Lock className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-muted-foreground">No wallet account is available to sign with.</p>
+        </div>
+      ) : isDeniabilitySessionActive() ? (
+        /* C4 (I3/I4): deniability session — signing is fail-closed. A signature
+           is a verifiable commitment to an identity the user is actively denying;
+           producing one here would undermine plausible deniability. No session
+           type or identity is disclosed in the copy. */
+        <div role="status" className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card text-sm">
+          <Lock className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-muted-foreground">Message signing is not available in this session.</p>
         </div>
       ) : (
         <div className="space-y-4">
