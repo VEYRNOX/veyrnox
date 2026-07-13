@@ -108,12 +108,19 @@ class RaspIntegrityPlugin : Plugin() {
     }
 
     // ── Hook / instrumentation detection ─────────────────────────────────────
-    // Frida default port 27042; Xposed installer presence; /proc/self/maps scan.
+    // Frida default port 27042; Xposed installer presence; /proc/self/maps scan;
+    // Frida Gadget thread-name scan; Frida pipe/socket fd scan.
+    //
+    // Gadget mode embeds as a shared library (often renamed) rather than running
+    // a server — port 27042 and a simple "frida" maps string do not catch it.
+    // The thread-name and fd-pipe checks close that gap.
 
     private fun detectHook(): Boolean {
         return checkFridaPort()
             || checkXposed()
             || checkProcMapsForHook()
+            || checkGadgetThreads()
+            || checkFridaPipes()
     }
 
     private fun checkFridaPort(): Boolean {
@@ -146,6 +153,9 @@ class RaspIntegrityPlugin : Plugin() {
     private fun checkProcMapsForHook(): Boolean {
         val hookMarkers = listOf(
             "frida",
+            "frida-agent",
+            "frida-gadget",
+            "linjector",
             "xposed",
             "substrate",
             "magisk",
@@ -157,6 +167,35 @@ class RaspIntegrityPlugin : Plugin() {
                     hookMarkers.any { lower.contains(it) }
                 }
             }
+        }.getOrDefault(false)
+    }
+
+    // Frida Gadget spawns known thread names regardless of whether the .so file
+    // was renamed. Read each thread's comm file (/proc/self/task/<tid>/comm) and
+    // check for names that only appear when Gadget (or its GLib runtime) is active.
+    private fun checkGadgetThreads(): Boolean {
+        val gadgetThreads = listOf("gum-js-loop", "gmain", "gdbus", "pool-frida")
+        return runCatching {
+            val taskDir = File("/proc/self/task")
+            taskDir.listFiles()?.any { tidDir ->
+                runCatching {
+                    val comm = File(tidDir, "comm").readText().trim()
+                    gadgetThreads.any { comm.contains(it) }
+                }.getOrDefault(false)
+            } ?: false
+        }.getOrDefault(false)
+    }
+
+    // Frida creates named pipes / Unix domain sockets that appear as symlinks
+    // under /proc/self/fd. Their resolved paths contain "frida".
+    private fun checkFridaPipes(): Boolean {
+        return runCatching {
+            val fdDir = File("/proc/self/fd")
+            fdDir.listFiles()?.any { fd ->
+                runCatching {
+                    fd.canonicalPath.contains("frida", ignoreCase = true)
+                }.getOrDefault(false)
+            } ?: false
         }.getOrDefault(false)
     }
 
