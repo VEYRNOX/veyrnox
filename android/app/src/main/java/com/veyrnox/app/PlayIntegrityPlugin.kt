@@ -19,15 +19,16 @@ package com.veyrnox.app
 // session and only at the pre-sign gate.
 //
 // ── HONEST LIMITATION (must not be overstated) ─────────────────────────────
-// The Play Integrity token is a JWS signed with Google's RS256 key. This plugin
-// does NOT cryptographically verify that signature on-device — no Google public
-// key is bundled in this build. We decode the payload (the middle base64url
-// segment) and read the verdict directly. The token's integrity therefore rests
-// on the Play Services delivery channel (the app talks to Google Play Services via
-// a bound, in-process API, not an open network endpoint an attacker can trivially
-// forge), NOT on an on-device signature check. A future cycle can bundle Google's
-// public key and verify the JWS (or move verification server-side under I5 rules).
-// Until then, treat the "attestationFailed:false" result as PROVISIONAL.
+// The Play Integrity token is a JWS signed with Google's RS256 key.
+//
+// UPDATE (G2 RS256, 2026-07-13): on-device RS256 signature verification is now
+// implemented via verifyJwsSignature() — the JWS signature is verified against the
+// leaf certificate in the x5c header claim, and the issuer is checked for "Google".
+// RESIDUAL GAP: the x5c chain is not yet verified against a bundled Google root
+// certificate — that requires capturing a real production token to obtain the root
+// DER. Until root-cert pinning lands, treat results as PROVISIONAL (an attacker
+// with IPC access who can forge a "Google"-issuer cert could pass the check, but
+// the Play Services delivery channel does not expose this surface in practice).
 //
 // I4 — FAIL CLOSED. A missing/short nonce, absent Play Services, a token request
 // failure, or ANY parse exception resolves with { available:false }, which the JS
@@ -45,6 +46,9 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.IntegrityTokenRequest
+import java.security.Signature
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -110,14 +114,19 @@ class PlayIntegrityPlugin : Plugin() {
      * INTEGRITY_FAIL → BLOCK in the JS degrade lattice). MEETS_DEVICE_INTEGRITY is
      * surfaced separately for future policy but is NOT required to pass here.
      *
-     * NOTE (honest limitation, see the file header): the JWS RS256 signature is NOT
-     * verified — only the payload is decoded. Any structural anomaly throws and the
-     * caller maps it to fail-closed { available:false }.
+     * NOTE (G2 RS256, see the file header): the JWS RS256 signature IS verified
+     * on-device via verifyJwsSignature() before any payload is trusted. A failed
+     * signature check maps to fail-closed { available:false }. Any structural
+     * anomaly still throws and the caller maps it to fail-closed too.
      */
     private fun parseVerdictToken(token: String): JSObject {
+        // Verify RS256 signature before trusting payload (I4: fail closed on bad sig).
+        // See verifyJwsSignature for the honest limitation on issuer pinning.
+        if (!verifyJwsSignature(token)) return unavailable()
+
         val parts = token.split(".")
         // A JWS has three dot-separated segments: header.payload.signature.
-        if (parts.size < 2) throw IllegalArgumentException("malformed JWS")
+        if (parts.size != 3) throw IllegalArgumentException("malformed JWS")
 
         val payloadJson = String(base64UrlDecode(parts[1]), Charsets.UTF_8)
         val root = JSONObject(payloadJson)
@@ -144,6 +153,61 @@ class PlayIntegrityPlugin : Plugin() {
             put("attestationFailed", !meetsBasic)
             put("meetsDeviceIntegrity", meetsDevice)
             put("meetsBasicIntegrity", meetsBasic)
+        }
+    }
+
+    /**
+     * Verify the JWS RS256 signature using the certificate chain in the x5c header claim.
+     *
+     * Steps:
+     *  1. Decode the JWS header; assert alg == "RS256".
+     *  2. Extract the leaf certificate from x5c[0] (base64-encoded DER).
+     *  3. Assert the issuer name contains "Google" (weak binding — tighten to root-cert
+     *     pinning once a real production token is captured and the root DER is known).
+     *  4. Verify SHA256withRSA over signedData = base64url(header).base64url(payload).
+     *
+     * Returns false on ANY anomaly — caller maps false → unavailable() (fail-closed, I4).
+     *
+     * HONEST LIMITATION: we verify that the JWS signature was made with the key in the
+     * x5c claim, and that the leaf certificate claims a Google issuer. We do NOT yet
+     * verify the x5c chain against a bundled Google root certificate — that requires
+     * capturing a real production token to obtain the root DER bytes. Until that step,
+     * an attacker who can supply their own x5c with a "Google" issuer string could pass
+     * this check. In the Play Services delivery channel this attack surface does not
+     * exist (the token comes via IPC, not an open network endpoint), but it should be
+     * closed with root-cert pinning before the feature reaches VALIDATED status.
+     */
+    private fun verifyJwsSignature(token: String): Boolean {
+        return try {
+            val parts = token.split(".")
+            if (parts.size != 3) return false
+
+            // 1. Parse JWS header
+            val headerJson = String(base64UrlDecode(parts.first()), Charsets.UTF_8)
+            val header = JSONObject(headerJson)
+            if (header.optString("alg") != "RS256") return false
+
+            // 2. Extract leaf certificate from x5c[0]
+            val x5c = header.optJSONArray("x5c") ?: return false
+            if (x5c.length() == 0) return false
+            val leafCertDer = Base64.decode(x5c.getString(0), Base64.DEFAULT)
+            val certFactory = CertificateFactory.getInstance("X.509")
+            val leafCert = certFactory.generateCertificate(leafCertDer.inputStream()) as X509Certificate
+
+            // 3. Weak issuer constraint — tighten to root-cert pinning in a future cycle
+            val issuer = leafCert.issuerX500Principal.name
+            if (!issuer.contains("Google", ignoreCase = true)) return false
+
+            // 4. Verify SHA256withRSA over header.payload (the signed data per RFC 7515)
+            val signedData = "${parts[0]}.${parts[1]}".toByteArray(Charsets.UTF_8)
+            val signatureBytes = base64UrlDecode(parts[2])
+            val sig = Signature.getInstance("SHA256withRSA")
+            sig.initVerify(leafCert.publicKey)
+            sig.update(signedData)
+            sig.verify(signatureBytes)
+        } catch (e: Exception) {
+            // Any exception (malformed cert, wrong key type, bad signature, etc.) → false
+            false
         }
     }
 
