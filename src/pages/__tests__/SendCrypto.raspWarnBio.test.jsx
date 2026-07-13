@@ -7,36 +7,34 @@
 // button becomes active. `sendTx.mutate()` re-asserts the same condition at the
 // enforcement chokepoint (fail-closed, I4).
 //
-// Web caveat: `verifyBiometric2fa()` throws immediately on web (no native platform).
-// INTEGRITY_UNAVAILABLE can occur on web (no native plugin), but ROOTED cannot.
-// `raspNeedsBio` is therefore gated on `Capacitor.isNativePlatform()` — on web,
-// WARN stays checkbox-only, which is the honest posture (no bio available).
-//
-// I3: `raspArtifact.requiresBiometric` is a pure environment signal with no
-// wallet-set handle. `verifyBiometric2fa()` yields no secret. Safe to fire in any
-// session type; the WARN condition and the bio gate are symmetric across real/decoy.
+// Structural pins (source-text) are used only for invariants that cannot be tested
+// behaviourally without rendering the full Send stack. Behavioural assertions drive
+// the real compose-gate + degrade modules so regressions in logic (not just naming)
+// are caught.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { composeGate, DECISION } from '@/sign-gate/compose.js';
+import { degrade } from '@/rasp/degrade.js';
+import { CONDITION, TIER } from '@/rasp/conditions.js';
+import { LEVEL } from '@/risk/levels.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(dir, '../SendCrypto.jsx'), 'utf8');
 
-describe('SendCrypto.jsx — B5 RASP WARN biometric re-confirm', () => {
+// ── Structural pins ─────────────────────────────────────────────────────────
+
+describe('SendCrypto.jsx — B5 structural pins', () => {
   it('tracks biometric confirmation state for RASP WARN (raspWarnBioOk)', () => {
     expect(src).toMatch(/raspWarnBioOk/);
   });
 
   it('derives raspNeedsBio from requiresBiometric AND isNativePlatform (no bio on web)', () => {
-    // Must gate on both requiresBiometric AND isNativePlatform so web WARN stays
-    // checkbox-only (verifyBiometric2fa() throws on web — no native platform).
     expect(src).toMatch(/raspNeedsBio/);
     expect(src).toMatch(/requiresBiometric/);
-    // The raspNeedsBio derivation must include an isNativePlatform guard.
     const bioIdx = src.indexOf('raspNeedsBio');
-    expect(bioIdx).toBeGreaterThan(-1);
     const bioRegion = src.slice(bioIdx, bioIdx + 300);
     expect(bioRegion).toMatch(/isNativePlatform/);
   });
@@ -50,33 +48,33 @@ describe('SendCrypto.jsx — B5 RASP WARN biometric re-confirm', () => {
   });
 
   it('threads blockedByRaspBio into the Confirm & Send button disabled prop', () => {
-    // The primary send button must be gated on the biometric block so it cannot be
-    // clicked on a WARN-environment device before bio verify.
     const buttonIdx = src.indexOf('Confirm &amp; Send');
     expect(buttonIdx).toBeGreaterThan(-1);
-    // The disabled prop is > 400 chars before the button text (long onClick handler in between).
     const buttonRegion = src.slice(Math.max(0, buttonIdx - 800), buttonIdx);
     expect(buttonRegion).toMatch(/blockedByRaspBio/);
   });
 
-  it('calls verifyBiometric2fa() inside the WARN banner branch', () => {
-    // The bio verify must be triggered from the WARN banner (inside the presign.owner
-    // === "rasp" block), not from the main 2FA flow which is a separate path.
-    const raspBannerIdx = src.indexOf("presign?.owner === 'rasp'");
-    expect(raspBannerIdx).toBeGreaterThan(-1);
-    // The bio button is ~25 JSX lines / ~1500 chars into the banner block.
-    const raspBannerRegion = src.slice(raspBannerIdx, raspBannerIdx + 2000);
-    expect(raspBannerRegion).toMatch(/verifyBiometric2fa/);
+  it('renders the bio-verify button OUTSIDE the presign.owner branch (C-1 fix)', () => {
+    // The bio button must be a sibling of the banner ternary, not nested inside
+    // the owner==='rasp' branch. If it were inside, the WARN+RISK compose case
+    // (owner='tx') would permanently block the send with no affordance to clear it.
+    const bannerTernaryEnd = src.indexOf('<RiskVerdictBanner');
+    expect(bannerTernaryEnd).toBeGreaterThan(-1);
+    // The bio button (verifyBiometric2fa call) must appear AFTER RiskVerdictBanner
+    const bioCallIdx = src.indexOf('await verifyBiometric2fa()');
+    expect(bioCallIdx).toBeGreaterThan(bannerTernaryEnd);
+  });
+
+  it('bio button carries focus-visible outline (A-1 fix)', () => {
+    const bioCallIdx = src.indexOf('await verifyBiometric2fa()');
+    const buttonOpen = src.lastIndexOf('<button', bioCallIdx);
+    const buttonRegion = src.slice(buttonOpen, bioCallIdx);
+    expect(buttonRegion).toMatch(/focus-visible:/);
   });
 
   it('sets raspWarnBioOk(true) only on bio success (fail-closed: error/cancel stays false)', () => {
-    // The biometric call must be in a try/catch; only `ok === true` sets the flag.
-    // Search for `await verifyBiometric2fa()` so we skip any comments that
-    // mention the function name without calling it.
-    const bioCallIdx = src.indexOf('await verifyBiometric2fa()', src.indexOf("presign?.owner === 'rasp'"));
+    const bioCallIdx = src.indexOf('await verifyBiometric2fa()');
     expect(bioCallIdx).toBeGreaterThan(-1);
-    // Use a wide window — the className prop and onClick preamble push `try {`
-    // more than 100 chars before the actual call.
     const bioRegion = src.slice(Math.max(0, bioCallIdx - 300), bioCallIdx + 300);
     expect(bioRegion).toMatch(/try/);
     expect(bioRegion).toMatch(/catch/);
@@ -84,15 +82,62 @@ describe('SendCrypto.jsx — B5 RASP WARN biometric re-confirm', () => {
   });
 
   it('has a mutationFn enforcement check for RASP_BIO_REQUIRED (fail-closed at sign time)', () => {
-    // Defense-in-depth: the signer chokepoint must also assert the bio was cleared,
-    // not rely on UI state alone. A hostile environment may try to bypass UI gates.
     expect(src).toMatch(/RASP_BIO_REQUIRED/);
   });
 
   it('resets raspWarnBioOk when send inputs change (stale ack must not carry)', () => {
-    // If the user changes the send amount or recipient, the RASP WARN bio verify
-    // must reset (parallel discipline to riskAck and limitAck resets).
     const resetIdx = src.indexOf('setRaspWarnBioOk(false)');
     expect(resetIdx).toBeGreaterThan(-1);
+  });
+});
+
+// ── Behavioural: compose-gate WARN+RISK produces owner='tx' (C-1 root cause) ─
+
+describe('composeGate — WARN+RISK lattice case (owner=tx, C-1 root cause)', () => {
+  it('WARN+RISK yields decision=confirm, owner=tx, signerReachable=true', () => {
+    const result = composeGate(TIER.WARN, LEVEL.RISK);
+    expect(result.decision).toBe(DECISION.CONFIRM);
+    expect(result.owner).toBe('tx');
+    expect(result.signerReachable).toBe(true);
+  });
+
+  it('WARN+RISK is NOT a block — raspNeedsBio must stay active (presign.decision !== block)', () => {
+    // raspNeedsBio is gated on decision !== 'block'. If this lattice case ever
+    // returned BLOCK the bio gate would silently drop — verify it stays CONFIRM.
+    const result = composeGate(TIER.WARN, LEVEL.RISK);
+    expect(result.decision).not.toBe(DECISION.BLOCK);
+  });
+
+  it('WARN+OK and WARN+INFO yield owner=rasp (bio button appears in RASP banner path)', () => {
+    expect(composeGate(TIER.WARN, LEVEL.OK).owner).toBe('rasp');
+    expect(composeGate(TIER.WARN, LEVEL.INFO).owner).toBe('rasp');
+  });
+});
+
+// ── Behavioural: degrade() sets requiresBiometric on WARN-tier artifacts ────
+
+describe('degrade() — requiresBiometric is set on WARN tiers that trigger B5', () => {
+  it('ROOTED condition yields WARN and requiresBiometric: true', () => {
+    const artifact = degrade(CONDITION.ROOTED);
+    expect(artifact.tier).toBe(TIER.WARN);
+    expect(artifact.requiresBiometric).toBe(true);
+  });
+
+  it('INTEGRITY_UNAVAILABLE condition yields WARN and requiresBiometric: true', () => {
+    const artifact = degrade(CONDITION.INTEGRITY_UNAVAILABLE);
+    expect(artifact.tier).toBe(TIER.WARN);
+    expect(artifact.requiresBiometric).toBe(true);
+  });
+
+  it('CLEAN condition does NOT set requiresBiometric', () => {
+    const artifact = degrade(CONDITION.CLEAN);
+    expect(artifact.tier).toBe(TIER.ALLOW);
+    expect(artifact.requiresBiometric).toBeFalsy();
+  });
+
+  it('HOOKED condition yields BLOCK and does NOT set requiresBiometric (block overrides bio gate)', () => {
+    const artifact = degrade(CONDITION.HOOKED);
+    expect(artifact.tier).toBe(TIER.BLOCK);
+    expect(artifact.requiresBiometric).toBeFalsy();
   });
 });
