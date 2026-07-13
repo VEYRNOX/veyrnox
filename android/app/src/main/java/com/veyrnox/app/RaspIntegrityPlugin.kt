@@ -182,11 +182,16 @@ class RaspIntegrityPlugin : Plugin() {
     // "orange" = unlocked bootloader (prerequisite for most Android root methods).
     // "red" = verification failed (boot image modified / custom kernel).
     // ro.boot.flash.locked == "0" = bootloader unlocked.
+    // These values come from the bootloader and are baked into the kernel
+    // command line — Magisk Hide does not intercept system property reads.
     //
-    // Uses android.os.SystemProperties via reflection (in-process) rather than
-    // Runtime.exec("getprop ...") — SELinux denies exec() for untrusted_app on
-    // Android 10+ so the exec path silently returns empty and the check fires false.
-    // Reflection calls SystemProperties.get() directly without spawning a process.
+    // IMPLEMENTATION NOTE (device-verified 2026-07-13):
+    // Runtime.exec("getprop ...") is blocked by SELinux for untrusted_app
+    // domain on Android 10+ — the runCatching silently swallows the denial
+    // and returns "" → false. Device testing confirmed: verifiedbootstate=orange
+    // and flash.locked=0 ARE present on the SM-N981B (Magisk v30.7) but
+    // Runtime.exec produced no output. Fix: use android.os.SystemProperties
+    // via reflection — an in-process prop read, no exec, no SELinux denial.
     private fun checkDangerousProps(): Boolean {
         return runCatching {
             val verifiedBootState = readSystemPropReflect("ro.boot.verifiedbootstate")
@@ -200,6 +205,10 @@ class RaspIntegrityPlugin : Plugin() {
         }.getOrDefault(false)
     }
 
+    // Read a system property via android.os.SystemProperties reflection.
+    // This is an in-process call — no exec, no SELinux exec denial.
+    // android.os.SystemProperties is a hidden API; reflection is the standard
+    // approach used by security tools and root checkers on Android.
     @Suppress("PrivateApi")
     private fun readSystemPropReflect(key: String): String {
         return runCatching {
