@@ -23,9 +23,11 @@ package com.veyrnox.app
 //     via getprop. An unlocked bootloader (orange/red) is a reliable root indicator
 //     that Magisk Hide does not touch.
 // Extended path lists cover KernelSU, Apatch, and modern Magisk artifacts.
-// STATUS: BUILT-UNVALIDATED — new checks not yet re-exercised on the Magisk
-// device; the original three checks remain unchanged. A rebuild → deploy → re-run
-// on the SM-N981B is required before status can advance.
+// STATUS: DEVICE-VERIFIED (INTERNAL, 2026-07-14) — re-deployed to SM-N981B;
+// checkDangerousProps fired (ro.boot.verifiedbootstate=orange) via
+// readSystemPropReflect (SystemProperties reflection, not Runtime.exec).
+// Verdict: {"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}.
+// checkProcNetUnix and checkSuFromRuntime did NOT fire on Magisk v30.7.
 //
 // FAIL CLOSED (I4): every detection block catches exceptions independently and
 // returns false (clean/unknown) rather than propagating — a crash or permission
