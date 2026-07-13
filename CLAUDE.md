@@ -78,7 +78,7 @@ identity; the app never holds keys server-side.
   plus hardening of 2 existing specs (send-scenarios, hidden-wallet) — 96 tests across 13
   suites total. BUILT test-coverage work, NOT a new device-verification or "verified"
   claim: no new on-chain txid. Honest gaps disclosed in #638 itself: WalletConnect
-  live-pairing still needs a real dApp/scripted peer; KDF perf measured on one flagship
+  live-pairing: supervised E2E spec added (PR #919, 2026-07-13, `e2e/walletconnect-live-pairing.spec.js`, 4 tests H7/H8/M11, gated `RUN_SUPERVISED_E2E=1`; 4 vacuous Appium stubs replaced with source-structure pins); live relay gap remains SUPERVISED (not CI-automated); KDF perf measured on one flagship
   device only; the LOG-1 spec is a regression canary for the already-shipped redaction fix,
   not a new fix; the passkey clone-signCount proof stays web-only, the Android test only
   proves native doesn't fabricate a value. PR #638 also added a password-entry mode (≥12
@@ -284,9 +284,10 @@ no on-chain txid involved.**
   non-null decoy entry; (2) after removing the duress PIN in-app (Settings → Duress →
   Remove duress PIN) and one real-PIN unlock, `veyrnox_bio_unlock_secret` reappeared in
   SecureStorage and the same CDP query confirmed the decoy entry was now `undefined` — a
-  genuine before/after device trace. Outstanding: the vault-desync screen half of PR #613
-  was NOT exercised this session and remains device-unverified. No on-chain txid involved
-  (not applicable to a UX/security-logic check). INTERNAL verification, not independent.
+  genuine before/after device trace. The vault-desync screen I4 gap was CLOSED by PR #920
+  (2026-07-13): `doDesyncWipe()` now calls `setLocalWiped(true)` after `clearVault()` —
+  users are no longer silently dropped onto onboarding; `e2e/vault-desync-screen.spec.js`
+  4/4. BUILT / unit-tested + e2e. NOT device-verified on real native hardware, INTERNAL.
 - **PR #614 (c2012713)** — hides `CryptoNewsFeed`/Calculator refetch() header buttons
   in decoy/hidden sessions (react-query v5 `refetch()` bypasses `enabled`; was a live I3
   egress vector).
@@ -445,7 +446,7 @@ wallet-core); EVM/BTC/SOL/Cosmos derivation paths correct, all spec vectors pass
 SLIP-0010 hardened-only enforced for ed25519; I1 signing isolation (no network call inside
 any signing function); I3 deniability stack (all egress points gated — prices, news, RPC,
 SDK; M-6 closed the last gap); decoy/real seed separation; wallet-count tells removed
-(D1/D2/D3); panic wipe completeness (with M-7 fixed); stealth pool chaff (256-slot,
+(D1/D2/D3); panic wipe completeness (with M-7 fixed; residue GAP-1/2/3/4 CLOSED PR #918, 2026-07-13 — `veyrnox-passkey-signcount`, `veyrnox-decoy-biometric`, `RESIDUE_KEY_PREFIXES` wildcard sweep, 9 metadata tells; 23/23 tests, INTERNAL); stealth pool chaff (256-slot,
 all users, FIXED_LEN uniform); WalletConnect controls (C3 RASP gate, H7 EIP-712 chain
 binding, M9 gas cap, M11 session expiry, H-NEW-B step-up re-auth) all PASS; RASP BLOCK
 tier unconditional (browser probe); AES-256-GCM IV fresh per encryption, no nonce reuse,
@@ -586,11 +587,20 @@ primitive (choke-point) so all callers fail closed; zero-egress test added.
 deniability session"` guard string verbatim — a plain-English deniability tell. Fixed
 via `sanitizeBalanceError()` rewrapping to a generic RPC-failure message.
 
-**Open (not fixed in PR #858):** L1 (LOW) — `computePortfolio`/`usePortfolio` has no I3
-gate of its own, inherits safety from provider-layer guards only; M1 (LOW) —
+**Open (not fixed in PR #858):** ~~L1 (LOW)~~ ✅ CLOSED (PR #921, 2026-07-13) —
+`computePortfolio`/`usePortfolio` now has an explicit `isDeniabilitySessionActive()` guard;
+ERC-20 `balanceOf()` I3 bypass also fixed (see PR #921 below). M1 (LOW) —
 `hiddenBalance.js:151` throws a raw string, not `new Error(...)`. Also flagged, not
 closed: no device/runtime trace yet proves `WalletProvider.unlock()` never leaks a real
 address into a decoy/hidden render.
+
+**PR #921 (2026-07-13) — I3 ERC-20 egress gaps CLOSED:** GAP-1 (HIGH) ERC-20
+`Contract.balanceOf()` in `portfolioBalances.js` bypassed `isDeniabilitySessionActive()`
+guard — fixed fail-closed; GAP-2 `computePortfolio` now has its own explicit I3 guard
+(closes L1); GAP-3 `TransactionHistory`/`FeeAnalytics`/`useAnalytics` `enabled` gates
+updated; GAP-4 `e2e/i3-deniability-egress.spec.js` re-enabled + host list expanded.
+21 new unit tests + e2e re-enabled. BUILT / unit-tested, INTERNAL — NOT device-verified,
+NOT independently audited, no on-chain txid.
 
 BUILT / unit-tested, INTERNAL — not device-verified, no on-chain txid. See
 `docs/qa/findings/livebalances-audit-2026-07-12.md` and `docs/Feature-Status.md`.
