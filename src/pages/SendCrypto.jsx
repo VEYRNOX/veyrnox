@@ -40,7 +40,7 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
-import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, selectPresignProbeSource } from "@/rasp";
+import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, selectPresignProbeSource, ATTESTATION_ENABLED, attestationProbeSource, detectAttestation, composeConditions } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
@@ -700,13 +700,42 @@ export default function SendCrypto() {
     return () => { cancelled = true; };
   }, []);
 
+  // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
+  // gated inside attestationProbeSource). SEPARATE effect from the OS-probe effect
+  // above (one leg per effect). BUILT · NOT device-verified (Play Integrity JWS RS256
+  // not verified on-device; iOS appattest entitlement not yet present).
+  const [attestationResult, setAttestationResult] = useState(/** @type {any} */ (null));
+  useEffect(() => {
+    if (!ATTESTATION_ENABLED) return;
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await attestationProbeSource();
+        if (!cancelled) setAttestationResult(r);
+      } catch {
+        // I4 FAIL CLOSED: bridge throw → unavailable, never fabricated clean.
+        if (!cancelled) setAttestationResult({ available: false });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   let raspArtifact = /** @type {any} */ (null);
   // RASP-A1 (2026-07-05 internal audit, HIGH): browserProbeSource re-samples the
   // environment FRESH on every property read (its `available`/`signals` are getters),
   // so a debugger / WebDriver flag attached AFTER module-load is still caught. This
   // runs on every render, and the signer chokepoint re-derives the gate too. On native an
   // unavailable OS leg fails CLOSED — it does NOT fall back to the browser CLEAN (C-01).
-  try { raspArtifact = degrade(detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource))); } catch { raspArtifact = degrade(/** @type {any} */ (undefined)); }
+  // The remote-attestation condition is composed in (the more dangerous leg wins): during
+  // the async window detectAttestation(null) → INTEGRITY_UNAVAILABLE (WARN), fail-closed.
+  try {
+    const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));
+    const _attestCondition = detectAttestation(attestationResult);
+    raspArtifact = degrade(composeConditions(_osCondition, _attestCondition));
+  } catch {
+    raspArtifact = degrade(/** @type {any} */ (undefined));
+  }
   // I4 FAIL CLOSED (RASP-A2, 2026-07-05 internal audit, HIGH): if the RASP artifact
   // is missing a tier (a crash, or degrade() shape drift), fall back to the strongest
   // BLOCK — NEVER ALLOW. A fail-open fallback here would let a hostile runtime sign

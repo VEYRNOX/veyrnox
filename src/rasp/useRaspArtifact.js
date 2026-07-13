@@ -23,10 +23,14 @@ import { detect } from './detect.js';
 import { nativeProbeSource } from './nativeProbe.js';
 import { browserProbeSource } from './browserProbe.js';
 import { selectPresignProbeSource } from './selectPresignProbeSource.js';
+import { ATTESTATION_ENABLED, attestationProbeSource, detectAttestation, composeConditions } from './attestation.js';
 
 export function useRaspArtifact() {
   const [nativeProbe, setNativeProbe] = useState(null);
+  const [attestationResult, setAttestationResult] = useState(null);
 
+  // OS on-device probe leg (Phase 2a — NO egress). Separate effect from the
+  // attestation leg below by design (one leg per effect).
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let cancelled = false;
@@ -42,8 +46,29 @@ export function useRaspArtifact() {
     return () => { cancelled = true; };
   }, []);
 
+  // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
+  // gated inside attestationProbeSource). BUILT · NOT device-verified (Play Integrity
+  // JWS RS256 not verified on-device; iOS appattest entitlement not yet present).
+  useEffect(() => {
+    if (!ATTESTATION_ENABLED) return;
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await attestationProbeSource();
+        if (!cancelled) setAttestationResult(r);
+      } catch {
+        // I4 FAIL CLOSED: bridge throw → unavailable, never fabricated clean.
+        if (!cancelled) setAttestationResult({ available: false });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   try {
-    return degrade(detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource)));
+    const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));
+    const _attestCondition = detectAttestation(attestationResult);
+    return degrade(composeConditions(_osCondition, _attestCondition));
   } catch {
     return degrade(undefined); // fail-closed (BLOCK) if detection throws
   }
