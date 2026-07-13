@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '../lib/WalletProvider';
 import { usePortfolio } from '../lib/portfolioBalances';

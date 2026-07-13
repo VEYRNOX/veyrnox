@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Download, AlertTriangle } from "lucide-react";

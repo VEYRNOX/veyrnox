@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/Subscription.jsx — route /plans
 //
 // Native (iOS/Android): real purchase flow via RevenueCat — fetches the

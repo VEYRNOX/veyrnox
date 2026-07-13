@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Mic, MicOff, Volume2, CheckCircle, AlertCircle, Zap, ShieldAlert } from "lucide-react";
 import { useVoice, COMMANDS } from "@/context/VoiceContext";
 

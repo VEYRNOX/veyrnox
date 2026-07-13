@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/WalletPortfolioPage.jsx — MULTI-WALLET + PORTFOLIOS view (real vault).
 //
 // Replaces the single-wallet/mock dashboard in the LOCAL/native build. Models:

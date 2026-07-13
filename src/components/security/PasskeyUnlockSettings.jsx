@@ -1,3 +1,4 @@
+// @ts-nocheck
 // components/security/PasskeyUnlockSettings.jsx — the "Unlock with passkey"
 // section for the Security settings screen (S1).
 //

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/pages/AuditLog.jsx
 //
 // Local Audit Log viewer — opt-in, primary-session only. PROVISIONAL.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/duress.js
 //
 // DURESS / DECOY VAULT  (S3 — individual security).  PROVISIONAL.

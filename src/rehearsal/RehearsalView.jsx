@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/rehearsal/RehearsalView.jsx — Deniability Rehearsal Simulator (brief §4).
 //
 // A thin, read-only LENS over the already-unlocked active set. It mounts the

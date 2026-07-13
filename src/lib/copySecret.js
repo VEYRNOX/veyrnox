@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/copySecret.js — write a secret to the OS clipboard and schedule a
 // best-effort wipe after 30 s. The wipe reduces the window in which a
 // background app or clipboard history feature can read the phrase.

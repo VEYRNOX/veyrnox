@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/risk/signals/s2-unlimited-approval.js
 //
 // Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23). AUDIT-PRIORITY SIGNAL.

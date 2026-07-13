@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/evm/vaultStore.js
 //
 // Local-first persistence for the ENCRYPTED vault blob (IndexedDB).

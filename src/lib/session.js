@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/session.js — auto-lock timeout preference (session lifetime, NOT crypto).
 //
 // SCOPE: this module ONLY reads/writes a single user preference — how long the

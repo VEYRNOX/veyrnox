@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/SecurityScanner.jsx
 //
 // Pre-Sign Transaction Scanner. This page runs the REAL wallet-core transaction

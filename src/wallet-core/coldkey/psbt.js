@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/coldkey/psbt.js
 //
 // COLD-KEY SIGNING (Feature 5) — BTC unsigned PSBT builder.

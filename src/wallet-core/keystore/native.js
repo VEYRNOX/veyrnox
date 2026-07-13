@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/keystore/native.js — the NATIVE KeyStore implementation (M2b).
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐

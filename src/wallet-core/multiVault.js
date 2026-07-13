@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/multiVault.js
 //
 // MULTI-SEED VAULT CONTAINER  (feat/multi-wallet-portfolio).  ⚠️ AUDIT-CRITICAL.

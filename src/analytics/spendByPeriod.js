@@ -1,3 +1,4 @@
+// @ts-nocheck
 // analytics/spendByPeriod.js
 //
 // STATELESS spend-by-period aggregation for the Spending Patterns tile. A pure

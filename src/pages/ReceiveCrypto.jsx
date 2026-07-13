@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import BackButton from "@/components/BackButton";

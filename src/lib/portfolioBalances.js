@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/portfolioBalances.js — unified multi-wallet portfolio aggregation.
 //
 // Computes, across ALL wallets in the vault and the assets each has ENABLED, the

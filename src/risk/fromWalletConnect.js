@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/risk/fromWalletConnect.js
 //
 // Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).

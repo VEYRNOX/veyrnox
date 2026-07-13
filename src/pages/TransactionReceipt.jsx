@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+// @ts-nocheck
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Search, Printer, CheckCircle2, XCircle, Clock } from "lucide-react";

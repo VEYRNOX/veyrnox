@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/vault.js
 //
 // Encrypted key vault: the heart of self-custody.

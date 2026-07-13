@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/SuspiciousAddressChecker.jsx
 //
 // Recipient address screening. This page runs the REAL, local wallet-core

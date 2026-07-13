@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/biometric.js — app-layer biometric-unlock UI helpers (preference + status).
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐

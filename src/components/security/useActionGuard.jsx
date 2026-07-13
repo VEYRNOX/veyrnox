@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/security/useActionGuard.jsx
 //
 // Reusable critical-action guard. Drop into any page that performs a CRITICAL

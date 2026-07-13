@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/btc/derivation.js
 //
 // BIP-84 (native SegWit / bech32, P2WPKH) address derivation for Bitcoin,

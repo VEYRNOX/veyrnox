@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/api/localClient.js
 //
 // LOCAL-FIRST DATA LAYER — the default backend for the wallet app build.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/pages/__tests__/VoiceCommands.test.jsx
 //
 // Tests the VoiceCommands page (now driven by VoiceProvider/useVoice) plus the

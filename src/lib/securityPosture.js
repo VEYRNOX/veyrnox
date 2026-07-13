@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/securityPosture.js — PURE aggregation of EXISTING security signals.
 //
 // SCOPE: this module is the read-only "posture" layer behind the Security

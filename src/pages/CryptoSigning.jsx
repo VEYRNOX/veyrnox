@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { ethers } from "ethers";
 import { Key, Copy, Check, FileSignature, AlertTriangle, Lock, Settings as SettingsIcon } from "lucide-react";

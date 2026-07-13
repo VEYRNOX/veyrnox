@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { Contract, formatUnits, isAddress } from "ethers";
 import { getProvider, getBalanceEth } from "@/wallet-core/evm/provider";

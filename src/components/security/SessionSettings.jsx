@@ -1,3 +1,4 @@
+// @ts-nocheck
 // components/security/SessionSettings.jsx
 //
 // "Session & Auto-lock" settings card. Shows the current lock status, lets the

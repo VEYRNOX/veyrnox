@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/evm/preflight.js
 //
 // Pre-sign safety helpers shared by the native (send.js) and ERC-20

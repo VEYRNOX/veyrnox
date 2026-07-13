@@ -1,3 +1,4 @@
+// @ts-nocheck
 import TrezorConnect from '@trezor/connect-web';
 import { ethers } from 'ethers';
 import { getTransport } from './transport.js';

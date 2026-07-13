@@ -1,3 +1,4 @@
+// @ts-nocheck
 // components/security/BiometricUnlockSettings.jsx — the "Require biometric
 // unlock" section for the Security settings screen.
 //

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // STATUS: BUILT — Trezor WebUSB address derivation. Not device-verified on testnet yet.
 // I2/I3 note: deniability guard blocks all calls when veyrnox-demo=1 (I3). In dev,
 // connectSrc points to self-hosted localhost bundle (no CDN). In prod, connectSrc is

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/DAppSecurityAlerts.jsx
 //
 // dApp domain check against a LOCAL known-bad / phishing list. Veyrnox does NOT

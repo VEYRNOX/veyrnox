@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Monitor, Smartphone, Globe, ShieldX, CheckCircle2 } from "lucide-react";

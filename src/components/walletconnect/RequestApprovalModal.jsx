@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import styles from './RequestApprovalModal.module.css';

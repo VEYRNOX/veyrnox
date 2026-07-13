@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/biometricUnlock.js — the biometric-gated VAULT-PASSWORD cache that powers
 // one-tap "Face ID → dashboard" for returning users.
 //

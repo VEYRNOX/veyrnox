@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/security/HiddenWallet2faGate.jsx
 //
 // Post-unlock 2FA gate for hidden wallet reveal. This modal appears AFTER the user

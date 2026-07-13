@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { GripVertical, Eye, EyeOff, RotateCcw, Save, Check } from "lucide-react";

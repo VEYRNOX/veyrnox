@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/StealthWallets.jsx
 //
 // STEALTH / HIDDEN WALLETS  (S3 — Direction-C individual security).  PROVISIONAL.

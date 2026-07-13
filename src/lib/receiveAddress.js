@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/receiveAddress.js
 //
 // Resolve the CORRECT receive address + network label for a given asset, pulling

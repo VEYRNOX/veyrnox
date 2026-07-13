@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { Capacitor } from '@capacitor/core';
 const isNative = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();

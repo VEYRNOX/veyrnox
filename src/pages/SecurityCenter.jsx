@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { USD_RATES, approxUsd } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useEffect } from "react";

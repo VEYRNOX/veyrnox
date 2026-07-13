@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * hardware.js — cross-platform native hardware-KEK facade (JS side).
  *

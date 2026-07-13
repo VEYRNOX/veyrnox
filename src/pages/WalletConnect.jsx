@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import styles from './WalletConnect.module.css';

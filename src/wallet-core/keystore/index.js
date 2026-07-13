@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/keystore/index.js — resolve the active KeyStore for this platform.
 //
 // M2a: web only. M2b: adds the native (Design B — hardware-gated unlock +

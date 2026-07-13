@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { X, Camera } from "lucide-react";

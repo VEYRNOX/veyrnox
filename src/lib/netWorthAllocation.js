@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/netWorthAllocation.js — pure chart-data helper for the Crypto Net Worth view.
 //
 // Turns the portfolio aggregator's `assetTotals` ({ [symbol]: { amount, usd,

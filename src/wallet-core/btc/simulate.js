@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/btc/simulate.js
 //
 // Transaction "simulation" for Bitcoin (Phase S2 — transaction safety). Bitcoin

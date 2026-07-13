@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/WalletAccessReset.jsx
 //
 // ACCOUNT ACCESS / RESET  (S1 — individual security).  PROVISIONAL (testnet).

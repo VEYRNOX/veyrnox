@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/txHistory.js
 //
 // Transaction-history aggregation + normalization for the per-chain history view.

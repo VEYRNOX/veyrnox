@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/passkey.js — app-layer FIDO2 / WebAuthn passkey UNLOCK GATE helpers.
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐

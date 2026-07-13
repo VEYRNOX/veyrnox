@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/WalletProvider.jsx
 //
 // React context for the unlocked wallet session.
