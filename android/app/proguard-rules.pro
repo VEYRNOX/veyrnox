@@ -38,6 +38,11 @@
 -keep class kotlinx.coroutines.** { *; }
 -dontwarn kotlinx.coroutines.**
 
+# G1a — repackage non-kept classes to the root namespace (harder to navigate in jadx)
+-repackageclasses ''
+# G1a — allow R8 to widen access modifiers for inlining; kept classes are unaffected
+-allowaccessmodification
+
 # ── Debugging: preserve line numbers in stack traces ─────────────────────────
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
 import inject from '@rollup/plugin-inject'
+import JavaScriptObfuscator from 'javascript-obfuscator'
 
 // logLevel 'error' suppresses Vite's startup banner too, so the
 // "Local: http://localhost:5173/" line never prints. This tiny plugin restores
@@ -53,6 +54,41 @@ const printUrls = () => ({
 // A runtime belt-and-suspenders assertion lives in src/api/demoClient.js.
 const RELEASE_BUILD = process.env.VITE_RELEASE === '1';
 const DEMO_BUILD = process.env.VITE_DEMO_MODE === '1';
+
+// G1b — production JS obfuscation plugin (string-array encoding, release-builds only).
+// Raises cost of static analysis on the APK's assets/ JS bundle.
+// Conservative settings: no control-flow flattening (mobile perf), no self-defending,
+// no property mangling (Capacitor bridge safety). Transparent at runtime — string array
+// decode restores originals before any bridge call.
+function veyrnoxObfuscatorPlugin() {
+  return {
+    name: 'veyrnox-obfuscator',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      if (process.env.VITE_RELEASE !== '1') return;
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue;
+        const result = JavaScriptObfuscator.obfuscate(chunk.code, {
+          stringArray: true,
+          stringArrayEncoding: ['base64'],
+          stringArrayCallsTransform: true,
+          stringArrayCallsTransformThreshold: 0.75,
+          stringArrayThreshold: 0.75,
+          renameGlobals: false,
+          selfDefending: false,
+          controlFlowFlattening: false,
+          deadCodeInjection: false,
+          transformObjectKeys: false,
+          disableConsoleOutput: false,
+          compact: true,
+          identifierNamesGenerator: 'hexadecimal',
+          seed: 0,
+        });
+        chunk.code = result.getObfuscatedCode();
+      }
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => {
@@ -108,6 +144,7 @@ export default defineConfig(({ command }) => {
       react(),
       printUrls(),
       inject({ Buffer: ['buffer', 'Buffer'], include: ['src/**'] }),
+      veyrnoxObfuscatorPlugin(),
     ],
     // Pre-bundle the wallet-core's crypto deps so Vite doesn't discover them
     // mid-session and trigger an optimize + forced full-reload (which can flash a
