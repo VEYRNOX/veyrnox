@@ -173,6 +173,7 @@ jobs:
         timeout-minutes: 20
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:5173
+          VITE_TEST_THROWAWAY_SEED: ${{ secrets.VITE_TEST_THROWAWAY_SEED }}
 
       - name: Upload Web Test Results
         if: always()
