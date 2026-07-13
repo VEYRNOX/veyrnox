@@ -1,6 +1,6 @@
 # Veyrnox RASP vs. commercial app shielding (Promon SHIELD) — gap analysis & roadmap
 
-**Status:** ANALYSIS · current Veyrnox RASP state **BUILT (policy) / detection BUILT-UNVALIDATED / G1 obfuscation BUILT-partial (PR #917) / attested leg BUILT-PROVISIONAL (PR #922 RS256 absent) / G3 structural pins BUILT (PR #915)**
+**Status:** ANALYSIS · current Veyrnox RASP state **BUILT (policy) / detection BUILT-UNVALIDATED / G1 obfuscation BUILT-partial (PR #917) / attested leg BUILT-PROVISIONAL (PR #928 RS256/ES256 dual-alg dispatch BUILT, PR #943; root-cert pinning BLOCKED — Play Console registration required) / G3 structural pins BUILT (PR #915)**
 **Owner:** —
 **Date:** 2026-07-13
 **Related:** `src/rasp/` (implementation), `docs/rasp-validation-roadmap.md` (the *validate-what-exists* axis), `docs/audit-triage/rasp-attestation-egress-decision.md`, CLAUDE.md §24 (audit gate), invariants I1–I5.
@@ -37,8 +37,8 @@ Legend: ✅ present/strong · ⚠️ present but weak/evadable/unvalidated · �
 | Code obfuscation | ✅ core feature | ⚠️ **G1b BUILT (PR #917)** — `veyrnoxObfuscatorPlugin` string-array+base64 encoding under `VITE_RELEASE=1`; G1a ProGuard `-repackageclasses`/`-allowaccessmodification` on Android; chunk filenames still visible (unrenameable Rollup cross-chunk specifiers); object-key mangling off (Capacitor bridge safety); commercial shielding (Promon/Guardsquare) remains TARGET | `vite.config.js`, `android/app/proguard-rules.pro` |
 | Anti-decompilation / packing | ✅ | ❌ `jadx`/`apktool`/reading the web bundle all work | — |
 | White-box cryptography | ✅ protects keys in use | ❌ — but uses **hardware-backed keys** (SE/StrongBox/WebAuthn) instead, a legitimate alternative | `src/wallet-core/keystore/` |
-| Overlay / tapjacking defense | ✅ | ❌ not in scope | — |
-| Screen-capture / screenshot block | ✅ | ❌ not in scope | — |
+| Overlay / tapjacking defense | ✅ | ⚠️ **BUILT (Android):** `filterTouchesWhenObscured` on the Capacitor WebView in `MainActivity.java` — NOT device-verified, iOS absent | `android/app/src/main/java/com/veyrnox/app/MainActivity.java` |
+| Screen-capture / screenshot block | ✅ | ⚠️ **BUILT (Android):** `FLAG_SECURE` window-wide in `MainActivity.java` — NOT device-verified (WebView propagation unconfirmed); iOS `UIScreen.isCaptured` absent | `android/app/src/main/java/com/veyrnox/app/MainActivity.java` |
 | Keylogger / IME protection | ✅ | ❌ not in scope | — |
 | Memory / anti-dump protection | ✅ | ❌ attacker can hook the JS that reads the verdict; heap residue is a known open item (iOS-F5) | — |
 | Remote attestation (Play Integrity / App Attest) | ✅ integrated | ⚠️ **BUILT-PROVISIONAL** — Phase 2b egress leg landed (Option B signed off 2026-07-13): `src/rasp/attestation.js` + `PlayIntegrityPlugin.kt`; I3 deniability guard enforced; fail-closed (I4); RS256 on-device JWS signature verification **absent** (no bundled Google root cert — `PlayIntegrityPlugin.kt:113`); iOS App Attest entitlement not yet present; NOT device-verified | `src/rasp/attestation.js`, `PlayIntegrityPlugin.kt`, `docs/rasp-attestation-egress-decision.md` |
@@ -73,14 +73,15 @@ Ranked by **leverage** (impact ÷ effort). Each item is a *capability* gap; clos
 - [x] **Honesty guard enforced:** `selfDefending: false`; `renameGlobals: false`; Rollup chunk filenames are structurally unrenameable (cross-chunk import specifiers); object keys with `transformObjectKeys: false` may survive sub-threshold. Obfuscation is *raise-the-cost*, never *prevent*. Status copy must not imply the code is unreadable.
 - **Effort (remaining):** high (if pursuing commercial shielding). **Impact:** high — G1a/G1b raise the bar; a commercial shield closes the gap entirely.
 
-### G2 — Remote attestation (Play Integrity / App Attest)  · **BUILT-PROVISIONAL (egress leg) · RS256 root-cert pinning outstanding · TARGET**
-**Status as of 2026-07-13:** Option B (disclosed, deniability-gated attestation at pre-sign only) signed off and egress leg BUILT. RS256 on-device JWS signature verification is absent; iOS App Attest entitlement not yet present. NOT device-verified.
+### G2 — Remote attestation (Play Integrity / App Attest)  · **BUILT-PROVISIONAL (egress leg + RS256/ES256 dual-alg dispatch) · root-cert pinning BLOCKED (Play Console registration required) · TARGET**
+**Status as of 2026-07-13:** Option B (disclosed, deniability-gated attestation at pre-sign only) signed off and egress leg BUILT. RS256/ES256 dual-algorithm JWS signature verification BUILT (PR #928 + PR #943, 2026-07-13); root-cert SHA-256 fingerprint pinning BLOCKED (requires Play Console registration before a real production token is obtainable). iOS App Attest entitlement not yet present. NOT device-verified.
 - [x] **DONE (2026-07-13):** `docs/rasp-attestation-egress-decision.md` signed off — Option B accepted, I3/I4/I5 hard constraints enforced in code.
-- [x] **BUILT (Android):** `PlayIntegrityPlugin.kt` — requests Play Integrity verdict, decodes JWS payload on-device, maps to `INTEGRITY_FAIL` / `INTEGRITY_UNAVAILABLE`. Fail-closed (I4). I3 deniability guard: attestation never fires under decoy/hidden session. **Honest limitation: RS256 on-device JWS signature verification absent** — no Google root cert bundled; `PlayIntegrityPlugin.kt:113` confirms this gap explicitly; treat result as PROVISIONAL.
+- [x] **BUILT (Android):** `PlayIntegrityPlugin.kt` — requests Play Integrity verdict, decodes JWS payload on-device, maps to `INTEGRITY_FAIL` / `INTEGRITY_UNAVAILABLE`. Fail-closed (I4). I3 deniability guard: attestation never fires under decoy/hidden session.
+- [x] **BUILT (PR #928 + PR #943, 2026-07-13):** RS256/ES256 dual-algorithm JWS signature verification — `verifyJwsSignature()` accepts `alg` of `"RS256"` (→ SHA256withRSA) or `"ES256"` (→ SHA256withECDSA); any other alg returns false (I4 fail-closed). Full x5c chain walk (each cert verified by the next cert's key — closes the "injected unrelated cert alongside a Google root" attack). Leaf cert (`chain[0].publicKey`) used for signature verification. **Honest algorithm note:** Google's Play Integrity documentation specifies ES256 (ECDSA P-256); the predecessor SafetyNet API used RS256. Both are accepted. The algorithm actually in use cannot be confirmed without a real production token from a Play Console-registered app — verification remains blocked on Play Console registration.
 - [ ] **Open:** iOS App Attest / DeviceCheck → requires `com.apple.developer.devicecheck.appattest-environment` entitlement + DeviceCheck framework linkage; code-present but `available:false` until entitlement lands and is device-exercised.
 - [x] **BUILT:** Fail-closed when verdict unreachable — absent Play Services, quota, network failure, or any parse exception → `{ available:false }` → `INTEGRITY_UNAVAILABLE` → WARN (I4).
-- [ ] **Open:** RS256 root-cert pinning — bundle Google's public key and verify the JWS `SHA256withRSA` signature on-device before trusting the payload. Until this lands, attestation result is PROVISIONAL.
-- **Effort (remaining):** medium (iOS entitlement + RS256 key bundle). **Impact:** high — a Google/Apple-signed verdict is the check Magisk Hide / re-sign cannot easily fool.
+- [ ] **Open (BLOCKED):** Root-cert SHA-256 fingerprint pinning — bundle Google's public key and pin the root cert's SHA-256 fingerprint after the chain walk. BLOCKED: obtaining a real production token requires Play Console registration (`com.veyrnox.app` must be registered and the device must not be a sideloaded debug APK). A sideloaded debug APK receives HTTP 404 from Google's Play Integrity backend. Until pinning lands and is confirmed against a real token, the root check is a subject-name string match (`subjectX500Principal.name.contains("Google")`), not a pinned value.
+- **Effort (remaining):** medium (iOS entitlement + Play Console registration + root-cert pin capture). **Impact:** high — a Google/Apple-signed verdict is the check Magisk Hide / re-sign cannot easily fool.
 - **Cross-ref:** `docs/rasp-attestation-egress-decision.md`, `docs/rasp-validation-roadmap.md` Phase 1 + 2b.
 
 ### G3 — Evasion-hardening + real hostile-device testing of the existing probes  · **STRUCTURAL PINS BUILT (PR #915) · device-hostile exercise pending · TARGET**
@@ -92,11 +93,18 @@ Ranked by **leverage** (impact ÷ effort). Each item is a *capability* gap; clos
 - [ ] **False-positive sweep** across clean devices/OS versions — RASP must not block legitimate users.
 - **Effort (remaining):** high (physical hostile devices; iOS needs a Mac). **Impact:** medium — structural pins prove the chain holds in CI; real hostile-device runs prove it holds on-device.
 
-### G4 — Broaden runtime coverage beyond the pre-sign moment  · **PLANNED**
+### G4 — Broaden runtime coverage beyond the pre-sign moment  · **PARTIAL — FLAG_SECURE + filterTouchesWhenObscured BUILT (Android) · remaining items PLANNED**
 RASP only guards signing. High-value moments — seed reveal, export, clipboard, unlock — are outside its window.
 - [ ] Extend the `detect → degrade` chokepoint to seed-reveal / export / import entry (the `SENSITIVE` set already exists in `degrade.js:41` but is only consulted for the strongest tiers).
-- [ ] Consider overlay/tapjacking protection (Android `FLAG_SECURE`, `filterTouchesWhenObscured`) and screenshot-block on seed-reveal screens — cheap, high-signal, and independent of the RASP detector.
-- **Effort:** low–medium. **Impact:** medium — `FLAG_SECURE` on seed-reveal is a quick win with disproportionate value.
+- [x] **BUILT (Android — `android/app/src/main/java/com/veyrnox/app/MainActivity.java`):**
+  - `FLAG_SECURE` (`WindowManager.LayoutParams.FLAG_SECURE`) — blocks screenshots, screen recording, and the recents/app-switcher thumbnail for the whole window. Applied window-wide as the safer default for a self-custody wallet. **Honest limitation:** propagation into the Capacitor WebView surface is NOT device-verified; a real device test (`DEVICE_VERIFY=1 npm run android:test:flag-secure`) is required to confirm FLAG_SECURE applies to the in-WebView content, not just the native window chrome.
+  - `filterTouchesWhenObscured` (`getBridge().getWebView().setFilterTouchesWhenObscured(true)`) — refuses tap events on the Capacitor WebView when another app's overlay window is above it, blocking overlay-phishing/tapjacking attacks. **Honest limitation:** propagation into the Capacitor WebView surface is NOT device-verified on a real overlay-phishing device.
+  - Both are BUILT / NOT device-verified, INTERNAL — not independently audited.
+- [ ] **Remaining PLANNED items:**
+  - Seed-reveal screen-specific `FLAG_SECURE` enable/disable on iOS (`UIScreen.isCaptured` equivalent, `UIApplication.beginIgnoringInteractionEvents`).
+  - `UIScreen.isCaptured` on iOS (detect screen mirroring / AirPlay capture).
+  - Overlay/tapjacking defense on iOS.
+- **Effort:** low–medium (Android FLAG_SECURE/filterTouchesWhenObscured done; iOS items remain). **Impact:** medium — FLAG_SECURE window-wide is already a real protection; device-verification and iOS parity are the open actions.
 
 ### G5 — Independent audit of the RASP path  · **OUTSTANDING · gates VALIDATED**
 Per CLAUDE.md §24, RASP is a device-attestation-adjacent control and must not be trusted until externally reviewed.
@@ -112,7 +120,7 @@ For a small team, **do not try to out-build Promon in-house.** The pragmatic spl
 
 1. **License a commercial shield** (Promon SHIELD / Guardsquare / Appdome) for the **shielding layer** Veyrnox structurally lacks — obfuscation, anti-tamper, anti-debug, memory protection, overlay/screen-capture defense (G1 + parts of G4). These wrap the compiled binary and need no source changes, which suits a Capacitor app.
 2. **Keep the home-grown RASP** as the **deniability-safe, fail-closed send-gate policy** on top (`conditions.js` / `degrade.js` / `compose.js`). This is the part Promon *cannot* give you, because it does not know about I3 deniability or the wallet's coercion-resistance model.
-3. **G2 (attestation) egress leg is BUILT (PROVISIONAL)** — Android Play Integrity module landed; RS256 root-cert pinning and iOS App Attest entitlement are still open. A Google/Apple-signed verdict remains the most cost-effective answer to the root/re-sign evasions that the local probes (and even a shield) struggle with.
+3. **G2 (attestation) egress leg + RS256/ES256 dual-algorithm dispatch are BUILT (PROVISIONAL)** — Android Play Integrity module landed (PR #928 + PR #943, 2026-07-13); root-cert SHA-256 fingerprint pinning is BLOCKED pending Play Console registration; iOS App Attest entitlement is still open. A Google/Apple-signed verdict remains the most cost-effective answer to the root/re-sign evasions that the local probes (and even a shield) struggle with.
 
 The two approaches are layers, not alternatives: a commercial shield hardens the *binary*, Veyrnox RASP governs the *signing decision*, and attestation corroborates the *device* — defense in depth.
 
