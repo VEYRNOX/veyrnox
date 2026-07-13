@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Veyrnox — Competitor Feature Comparison</title>
+<style>
+  :root{
+    --bg:#050608; --surface:#0B0F14; --surface2:#12171F; --line:#1D222B;
+    --ink:#E8ECF1; --muted:#8A94A3; --faint:#5B6675;
+    --teal:#4ADAC2; --amber:#E7B450; --coral:#F06A5C; --violet:#9B8CFF;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:radial-gradient(1200px 600px at 70% -10%,#12171F 0%,var(--bg) 60%);
+    color:var(--ink);
+    font-family:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5;padding:32px 20px 64px;
+  }
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  .wrap{max-width:1180px;margin:0 auto}
+  header{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 18px;margin-bottom:4px}
+  h1{font-size:22px;font-weight:600;margin:0;letter-spacing:-0.01em}
+  .sub{color:var(--muted);font-size:13px}
+  .asof{color:var(--faint);font-size:12px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:18px 0 20px;font-size:12.5px;color:var(--muted)}
+  .legend .sym{font-weight:700;margin-right:6px;font-size:14px}
+  .s-yes{color:var(--teal)} .s-part{color:var(--amber)} .s-no{color:var(--faint)}
+
+  .banner{border-radius:12px;padding:14px 16px;margin:0 0 22px;font-size:13px;
+    border:1px solid;line-height:1.55}
+  .banner.warn{background:rgba(231,180,80,.06);border-color:rgba(231,180,80,.35);color:#F1DDB0}
+  .banner b{color:#fff}
+
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+  table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px;min-width:940px}
+  thead th{position:sticky;top:0;z-index:3;background:var(--surface2);
+    font-weight:600;font-size:11px;color:var(--muted);padding:12px 6px;
+    text-align:center;border-bottom:1px solid var(--line);white-space:nowrap;
+    text-transform:uppercase;letter-spacing:.03em}
+  thead th:first-child{text-align:left;z-index:5;left:0;padding-left:16px;min-width:230px}
+  th.vx{color:var(--teal)}
+  tbody th{position:sticky;left:0;z-index:2;background:var(--surface);
+    text-align:left;font-weight:500;color:var(--ink);padding:9px 12px 9px 16px;
+    border-bottom:1px solid rgba(255,255,255,.03);min-width:230px;font-size:12.5px}
+  tbody th .n{display:block;color:var(--faint);font-size:10.5px;font-weight:400;margin-top:1px}
+  td{text-align:center;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.03);
+    font-size:15px;font-weight:700;min-width:64px}
+  td.yes{color:var(--teal)} td.part{color:var(--amber)} td.no{color:var(--faint)}
+  /* Veyrnox column highlight */
+  col.vxcol{background:rgba(74,218,194,.05)}
+  td.vxcell{background:rgba(74,218,194,.05)}
+  thead th.vx{background:#10201d}
+  .grp td{background:var(--surface2);color:var(--muted);text-align:left;
+    font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+    padding:8px 16px}
+  .grp th{background:var(--surface2)}
+  tbody tr:hover td:not(.vxcell){background:rgba(255,255,255,.02)}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:22px 0 6px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .card h3{margin:0 0 6px;font-size:12.5px;color:var(--teal);font-weight:600}
+  .card p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+  .foot{color:var(--faint);font-size:11.5px;margin-top:24px;line-height:1.6}
+  .foot code{color:var(--muted)}
+  a{color:var(--teal);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Veyrnox vs. the top&nbsp;10 crypto wallets</h1>
+    <span class="sub">feature matrix — where the coercion-resistant model diverges</span>
+    <span class="asof mono">public info, early 2026 · Veyrnox = internal Feature-Status</span>
+  </header>
+
+  <div class="legend">
+    <span><span class="sym s-yes">●</span>Full / native support</span>
+    <span><span class="sym s-part">◐</span>Partial, indirect, or caveated</span>
+    <span><span class="sym s-no">○</span>Not offered</span>
+  </div>
+
+  <div class="banner warn">
+    <b>Read this before the checkmarks.</b> Competitor cells are best-effort from public docs
+    in <b>early 2026</b> and shift constantly — verify before quoting. Veyrnox cells reflect its own
+    <code>docs/Feature-Status.md</code>: <b>BUILT / internal</b>, not independently audited beyond the
+    2026-06-23 ECC core audit. A <span class="s-yes">●</span> for Veyrnox means "built + unit/e2e tested",
+    <b>not</b> "catalogue-verified" (that bar is a real on-chain txid). Veyrnox is a <b>software</b> wallet:
+    it is not itself a cold-storage device, and it intentionally omits swap / on-ramp / staking / NFT.
+  </div>
+
+  <div class="scroll">
+    <table>
+      <colgroup>
+        <col/><col class="vxcol"/><col/><col/><col/><col/><col/><col/><col/><col/><col/><col/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th class="vx">Veyrnox</th>
+          <th>Meta&shy;Mask</th>
+          <th>Trust</th>
+          <th>Coinbase</th>
+          <th>Ledger&nbsp;Live</th>
+          <th>Trezor&nbsp;Suite</th>
+          <th>Phantom</th>
+          <th>Rabby</th>
+          <th>Exodus</th>
+          <th>Rainbow</th>
+          <th>Zengo</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr class="grp"><th>Custody &amp; chains</th><td colspan="11"></td></tr>
+        <tr><th>Non-custodial (keys on device)</th>
+          <td class="yes vxcell">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td></tr>
+        <tr><th>BTC + EVM + Solana in one app</th>
+          <td class="yes vxcell">●</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="no">○</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td></tr>
+        <tr><th>Open source<span class="n">client code publicly auditable</span></th>
+          <td class="no vxcell">○</td><td class="yes">●</td><td class="part">◐</td><td class="part">◐</td><td class="part">◐</td><td class="yes">●</td><td class="no">○</td><td class="yes">●</td><td class="no">○</td><td class="yes">●</td><td class="no">○</td></tr>
+
+        <tr class="grp"><th>Coercion resistance &amp; deniability</th><td colspan="11"></td></tr>
+        <tr><th>Duress / decoy PIN → fake wallet
+          <span class="n">wrong-under-duress PIN opens a plausible decoy</span></th>
+          <td class="yes vxcell">●</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="part">◐</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td></tr>
+        <tr><th>Hidden / stealth wallets
+          <span class="n">count-hiding; existence is deniable</span></th>
+          <td class="yes vxcell">●</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="part">◐</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td></tr>
+        <tr><th>Panic wipe<span class="n">irreversible local key destruction</span></th>
+          <td class="yes vxcell">●</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td></tr>
+        <tr><th>Zero-egress deniability mode
+          <span class="n">decoy session makes no backend calls (I3)</span></th>
+          <td class="yes vxcell">●</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td></tr>
+        <tr><th>RASP — root / jailbreak detection
+          <span class="n">runtime tamper checks before signing · <a href="rasp-vs-commercial-shielding.md">gap analysis vs Promon →</a></span></th>
+          <td class="part vxcell">◐</td><td class="no">○</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="part">◐</td></tr>
+
+        <tr class="grp"><th>Key protection &amp; auth</th><td colspan="11"></td></tr>
+        <tr><th>Hardware-bound key encryption
+          <span class="n">Secure Enclave / StrongBox wraps the vault</span></th>
+          <td class="yes vxcell">●</td><td class="no">○</td><td class="part">◐</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="part">◐</td><td class="part">◐</td></tr>
+        <tr><th>Hardware wallet support
+          <span class="n">Ledger / Trezor signing</span></th>
+          <td class="part vxcell">◐</td><td class="yes">●</td><td class="no">○</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="no">○</td></tr>
+        <tr><th>MPC / no-seed-phrase model</th>
+          <td class="no vxcell">○</td><td class="no">○</td><td class="no">○</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="yes">●</td></tr>
+        <tr><th>Passkey / WebAuthn unlock</th>
+          <td class="yes vxcell">●</td><td class="no">○</td><td class="no">○</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td><td class="no">○</td></tr>
+        <tr><th>Biometric unlock (Face ID / fingerprint)</th>
+          <td class="yes vxcell">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td></tr>
+
+        <tr class="grp"><th>Transaction safety</th><td colspan="11"></td></tr>
+        <tr><th>Pre-sign transaction simulation</th>
+          <td class="yes vxcell">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="no">○</td><td class="yes">●</td><td class="yes">●</td><td class="no">○</td><td class="yes">●</td><td class="part">◐</td></tr>
+        <tr><th>Address-poisoning / spam filtering</th>
+          <td class="yes vxcell">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="yes">●</td><td class="yes">●</td><td class="no">○</td><td class="part">◐</td><td class="part">◐</td></tr>
+        <tr><th>Token-approval review &amp; revoke</th>
+          <td class="yes vxcell">●</td><td class="yes">●</td><td class="part">◐</td><td class="part">◐</td><td class="no">○</td><td class="no">○</td><td class="part">◐</td><td class="yes">●</td><td class="no">○</td><td class="part">◐</td><td class="no">○</td></tr>
+        <tr><th>WalletConnect / dApp browser</th>
+          <td class="yes vxcell">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="part">◐</td></tr>
+
+        <tr class="grp"><th>Assurance</th><td colspan="11"></td></tr>
+        <tr><th>Independent third-party audit
+          <span class="n">Veyrnox: ECC core done; KEK/native internal only</span></th>
+          <td class="part vxcell">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td></tr>
+
+        <tr class="grp"><th>Convenience &amp; DeFi <span style="font-weight:400;text-transform:none;letter-spacing:0">(Veyrnox omits by design)</span></th><td colspan="11"></td></tr>
+        <tr><th>Built-in swap / bridge</th>
+          <td class="no vxcell">○</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td></tr>
+        <tr><th>Fiat on-ramp (buy crypto)</th>
+          <td class="no vxcell">○</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td></tr>
+        <tr><th>Staking</th>
+          <td class="no vxcell">○</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="no">○</td><td class="yes">●</td><td class="part">◐</td><td class="part">◐</td></tr>
+        <tr><th>NFT gallery</th>
+          <td class="no vxcell">○</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="part">◐</td><td class="yes">●</td><td class="yes">●</td><td class="part">◐</td></tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Where Veyrnox is alone</h3>
+      <p>Zero-egress decoy sessions, decoy-PIN routing, hidden/stealth wallets and panic
+      wipe as a coherent <b>coercion-resistance</b> stack. Ledger &amp; Trezor get partial
+      credit only via BIP-39 passphrase "hidden wallets" — a side-effect, not a duress model.</p>
+    </div>
+    <div class="card">
+      <h3>Where it's competitive</h3>
+      <p>Multi-chain send (10 assets, on-chain verified), pre-sign simulation, address-poison
+      &amp; approval controls, WalletConnect hardening, and Secure-Enclave / StrongBox
+      key-wrapping match or beat the mainstream field.</p>
+    </div>
+    <div class="card">
+      <h3>Where it deliberately steps back</h3>
+      <p>No swap, on-ramp, staking, or NFT gallery — these are attack surface / egress the
+      threat model rejects. Not open-source-public, and not a cold-storage device of its own.</p>
+    </div>
+    <div class="card">
+      <h3>The honest gap</h3>
+      <p>Only the ECC core audit (2026-06-23) is independent. The Hardware KEK, RASP native
+      probes, and deniability stack are <b>internal / device-verified at most</b> — the
+      one hard gate still open versus every audited incumbent. RASP is also a <b>detector,
+      not a shield</b> — no code obfuscation / anti-tamper today; see the full
+      <a href="rasp-vs-commercial-shielding.md">RASP vs Promon SHIELD gap analysis &amp; roadmap</a>.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    Veyrnox column sourced from <code>docs/Feature-Status.md</code> + <code>CLAUDE.md</code> (single source of truth).
+    Competitor columns are a point-in-time reading of public documentation and app behavior in early 2026 — they are
+    <b>not</b> audited by Veyrnox and will drift; treat them as directional, not authoritative.
+    <b>●</b>=full · <b>◐</b>=partial/indirect · <b>○</b>=none. "Internal ≠ independent."
+    <br>Top-10 set: MetaMask, Trust Wallet, Coinbase Wallet, Ledger Live, Trezor Suite, Phantom, Rabby, Exodus, Rainbow, Zengo.
+  </div>
+</div>
+</body>
+</html>
