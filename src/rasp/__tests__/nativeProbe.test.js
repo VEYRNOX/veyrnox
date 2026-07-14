@@ -162,3 +162,48 @@ describe('nativeProbeSource — I3 deniability (no wallet-set oracle)', () => {
     expect(nativeProbeSource.length).toBe(0);
   });
 });
+
+// ── Item 13 — debuggerAttached folded into the hooked signal ─────────────────
+// Item 12 added debuggerAttached to the iOS plugin verdict. nativeProbeSource
+// must fold it into signals.hooked so the JS presignGate sees HOOKED → BLOCK
+// rather than silently treating an attached debugger as a clean signal.
+describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
+  it('debuggerAttached:true maps to signals.hooked true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      hookedProcess: false,
+      debuggerAttached: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.hooked).toBe(true);
+  });
+
+  it('debuggerAttached:true drives detect() to HOOKED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ debuggerAttached: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.HOOKED);
+  });
+
+  it('hookedProcess:false + debuggerAttached:false → hooked false (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      hookedProcess: false,
+      debuggerAttached: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.hooked).toBe(false);
+  });
+
+  it('hookedProcess:true OR debuggerAttached:true is sufficient for hooked', async () => {
+    h.isNative = true;
+    // hookedProcess fires, debuggerAttached absent (older plugin version)
+    h.checkIntegrity = vi.fn(async () => ({ hookedProcess: true }));
+    const srcA = await nativeProbeSource();
+    expect(srcA.signals.hooked).toBe(true);
+    // debuggerAttached fires, hookedProcess absent (iOS-specific signal)
+    h.checkIntegrity = vi.fn(async () => ({ debuggerAttached: true }));
+    const srcB = await nativeProbeSource();
+    expect(srcB.signals.hooked).toBe(true);
+  });
+});

@@ -97,7 +97,9 @@ export async function nativeProbeSource() {
   // (false), exactly as classifyEnvironment() treats absent fields.
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true,
-    hooked: verdict.hookedProcess === true,
+    // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
+    // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
+    hooked: verdict.hookedProcess === true || verdict.debuggerAttached === true,
     emulator: verdict.emulator === true,
     // Binary-tamper is a separate native probe not yet wired (see TODO). Until the
     // plugin reports it, it is not observed.
