@@ -52,7 +52,7 @@ import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
-import { isSelfSend } from "@/lib/selfSend";
+import { isSelfSend, addressesEqualForCurrency } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate, SEND_GATE } from "@/lib/sendGate";
 import { resolveEnsName } from "@/lib/ens";
@@ -193,7 +193,14 @@ export default function SendCrypto() {
     // session makes zero backend calls, and an observer must not see a resolver
     // query tied to a send from a hidden wallet. Fail closed: paste the 0x/base58
     // address directly in these sessions (resolution is a convenience, not a gate).
-    if (isDecoy || isHidden) {
+    // 2026-07-14 audit MEDIUM: mirror the full triple guard used by every other
+    // network-touching call site in this file (balance queries at 381/389/397 and
+    // simulation at 564/587). isDeniabilitySessionActive() is a module-scoped flag
+    // set independently of the WalletProvider flags — a stealth/panic-triggered
+    // deniable state can have the session flag true while isDecoy/isHidden are
+    // still false, and this was the only outlier that would fire resolveEnsName →
+    // getProvider(network) in that window (I3 egress).
+    if (isDecoy || isHidden || isDeniabilitySessionActive()) {
       toast.error("Name resolution is off in this session — paste the address directly.");
       return;
     }
@@ -475,9 +482,13 @@ export default function SendCrypto() {
   const isSelfSendRecipient = isSelfSend(toAddress, selectedWallet?.address, selectedWallet?.currency);
 
   const currencyWhitelist = whitelist.filter(w => w.currency === selectedWallet?.currency);
+  // 2026-07-14 audit LOW: per-currency compare. Previously `.toLowerCase()` on both
+  // sides was semantically wrong for base58 BTC/SOL (case-significant) — two distinct
+  // valid base58 addresses could compare equal and suppress the "not on whitelist"
+  // warning. Reuses the same case-fold rules as isSelfSend.
   const isAddressWhitelisted = currencyWhitelist.length === 0
     ? true
-    : currencyWhitelist.some(w => w.address.toLowerCase() === toAddress.toLowerCase());
+    : currencyWhitelist.some(w => addressesEqualForCurrency(w.address, toAddress, selectedWallet?.currency));
 
   // Addresses the user has interacted with — the corpus the look-alike screen
   // compares against. Each entry carries a human label so the warning can name
@@ -1777,7 +1788,12 @@ export default function SendCrypto() {
               // the existing windowed PIN step-up below is byte-unchanged. Risk/approval
               // gates still come first (the gate is hidden until those pass). The Argon2id
               // checks run SEQUENTIALLY (one-at-a-time — Defect-A safe).
-              if (send2faMethod !== SEND_2FA.NONE && !blockedByApproval && !blockedByRisk && !blockedByBtcRisk) {
+              // 2026-07-14 audit LOW: also gate on !blockedByRaspBio, matching the
+              // parallel Confirm-button (:1828) and PinPad (:1854) branches. Without
+              // this, on native RASP-WARN + 2FA-configured + tx-owner, the user could
+              // complete 2FA only for the signer to throw RASP_BIO_REQUIRED — the UI
+              // contract diverges from enforcement even though security is preserved.
+              if (send2faMethod !== SEND_2FA.NONE && !blockedByApproval && !blockedByRisk && !blockedByBtcRisk && !blockedByRaspBio) {
                 return (
                   <TwoFactorGate
                     mode={send2faMethod}

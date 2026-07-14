@@ -108,6 +108,20 @@ async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee 
 async function trezorSignFieldsAndBroadcast(txFields, fromAddress, networkKey) {
   const net = getNetwork(networkKey);
   const provider = getProvider(networkKey);
+
+  // 2026-07-14 audit LOW: pre-sign device-address parity check (mirrors Ledger).
+  // Both native ETH and ERC-20 token Trezor paths funnel through here, so this
+  // covers both. Without this, a mismatched device completes a full sign round-
+  // trip before serializeCheckedSignedTx throws HW_SIGNER_MISMATCH.
+  const trezAddr = await TrezorConnect.ethereumGetAddress({ path: `m/${EVM_PATH}`, showOnTrezor: false });
+  if (!trezAddr.success || !trezAddr.payload?.address ||
+      getAddress(trezAddr.payload.address) !== getAddress(fromAddress)) {
+    throw Object.assign(
+      new Error(`Trezor address at m/${EVM_PATH} is ${trezAddr?.payload?.address ?? 'null'}, expected ${fromAddress} — refusing to sign`),
+      { code: 'HW_SIGNER_MISMATCH' },
+    );
+  }
+
   const toHex = (n) => '0x' + BigInt(n).toString(16);
 
   const result = await TrezorConnect.ethereumSignTransaction({
@@ -151,8 +165,22 @@ export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAdd
   const provider = getProvider(networkKey);
   const txFields = await buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee });
 
-  const unsigned = Transaction.from(txFields);
   const eth = new Eth(transport);
+  // 2026-07-14 audit LOW: pre-sign check that the device at EVM_PATH derives the
+  // SAME address the caller thinks it does. Without this, a mismatched device
+  // completes a full sign round-trip before serializeCheckedSignedTx (the
+  // recovery-based backstop) throws HW_SIGNER_MISMATCH — a wasted device
+  // interaction. This early throw carries the SAME error code so callers can
+  // uniformly handle mismatch.
+  const devAddr = await eth.getAddress(EVM_PATH);
+  if (!devAddr?.address || getAddress(devAddr.address) !== getAddress(fromAddress)) {
+    throw Object.assign(
+      new Error(`Ledger address at ${EVM_PATH} is ${devAddr?.address ?? 'null'}, expected ${fromAddress} — refusing to sign`),
+      { code: 'HW_SIGNER_MISMATCH' },
+    );
+  }
+
+  const unsigned = Transaction.from(txFields);
   // Strip 0x prefix — Ledger expects raw hex
   const sig = await eth.signTransaction(EVM_PATH, unsigned.unsignedSerialized.slice(2), null);
 
@@ -188,6 +216,8 @@ export async function signAndBroadcastEvmTrezor({ networkKey, fromAddress, to, a
  * (0..1_000_000 — replaces the UI's block-tag "latest" that collided on
  * mempool state), and the M-2/#746 HW_SIGNER_MISMATCH recovery check
  * (fail-closed, I4). All balance/decimal checks live in buildTokenTransfer.
+ * 2026-07-14 audit LOW: the pre-sign device-address parity check inside
+ * trezorSignFieldsAndBroadcast covers this path automatically.
  *
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */

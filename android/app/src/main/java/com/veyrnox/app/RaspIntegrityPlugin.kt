@@ -200,11 +200,30 @@ class RaspIntegrityPlugin : Plugin() {
     // On a rooted device where Magisk Hide is incomplete or not targeting the app,
     // `which su` returns the su binary path. Analogous to the iOS fork() check —
     // a behavioral test that the system blocks on stock but permits when rooted.
+    //
+    // 2026-07-14 audit LOW (honesty-I4): On Android 10+ default SELinux policy,
+    // Runtime.exec of a shell utility from the `untrusted_app` domain is DENIED —
+    // `runCatching` swallows the denial and returns false regardless of whether
+    // `su` exists in PATH. This mirrors the exec restriction that pushed
+    // checkDangerousProps to reflection-based readSystemPropReflect. On Android 10+
+    // this signal is structurally inert; treat any true return as anomalous rather
+    // than authoritative. Honest disclosure — not removed because on older
+    // Android versions the exec still works.
+    //
+    // 2026-07-14 audit LOW (correctness): waitFor() had no timeout. A hostile
+    // rooted-device wrapper `su` / `which` shim that never exits would block the
+    // RASP thread on the JS presignGate hot path (availability, not bypass).
+    // Bounded wait; destroyForcibly on timeout. Matches checkFridaPort's 150 ms
+    // budget elsewhere in this file.
     private fun checkSuFromRuntime(): Boolean {
         return runCatching {
             val proc = Runtime.getRuntime().exec(arrayOf("which", "su"))
+            val finished = proc.waitFor(150, java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (!finished) {
+                proc.destroyForcibly()
+                return@runCatching false
+            }
             val output = proc.inputStream.bufferedReader().readText().trim()
-            proc.waitFor()
             proc.destroy()
             output.isNotEmpty()
         }.getOrDefault(false)
