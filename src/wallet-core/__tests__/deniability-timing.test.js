@@ -166,17 +166,20 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
   });
 });
 
-describe('H-1 — primary-success equalizer spends the SAME KDF count as the failure path', () => {
-  // SUPERSEDES the old H3 magic-sleep bound. The primary-success unlock path runs 3
-  // FEWER Argon2id KDFs than any other outcome (miss/duress/panic/hidden all spend 3
-  // via resolveDeniabilityUnlock). WalletProvider USED to pad that with a hand-tuned
-  // PRIMARY_UNLOCK_EQUALIZER_MS sleep — which only covered ~1.4 of the 3-KDF deficit
-  // (the fast path stayed measurably faster — the H-1 oracle) and drifted whenever
-  // KDF_PARAMS changed. The fix is now STRUCTURAL: the primary-success path calls
-  // spendPrimaryUnlockEqualizerKdfs, which spends the SAME constant KDF count this
-  // resolver spends. We pin that equality here (a count, which auto-tracks KDF_PARAMS),
-  // not a millisecond bound. End-to-end per-outcome equality lives in
-  // src/lib/__tests__/unlockTimingEqualizer.h1.test.jsx.
+describe('H-1 — primary-success equalizer spends the SAME KDF count AND param profile as the failure path', () => {
+  // SUPERSEDES the old H3 magic-sleep bound. The primary-success unlock path runs FEWER
+  // Argon2id KDFs than any other outcome (miss/duress/panic/hidden all run
+  // resolveDeniabilityUnlock). WalletProvider USED to pad that with a hand-tuned
+  // PRIMARY_UNLOCK_EQUALIZER_MS sleep — which only covered ~1.4 of the deficit (the fast
+  // path stayed measurably faster — the H-1 oracle) and drifted whenever KDF_PARAMS
+  // changed. The fix is now STRUCTURAL: the primary-success path calls
+  // spendPrimaryUnlockEqualizerKdfs, which runs the SAME resolveDeniabilityUnlock this
+  // failure path runs and discards the result. So it spends the same KDF count AND the
+  // same param PROFILE by construction — [P1] closed the residual where a count-only
+  // equalizer (dummies at current params) still leaked an oracle on legacy-param
+  // installed-base blobs. We pin count + profile parity here; the legacy-param end-to-end
+  // case lives in src/lib/__tests__/primaryUnlockEqualizer.test.js and
+  // src/lib/__tests__/unlockTimingLegacyParams.p1.test.jsx.
   it('spendPrimaryUnlockEqualizerKdfs count == resolveDeniabilityUnlock count', async () => {
     await ensureStealthPool();
     kdf.count = 0;
@@ -191,12 +194,24 @@ describe('H-1 — primary-success equalizer spends the SAME KDF count as the fai
     expect(equalizerKdfs).toBe(EXPECTED_KDFS); // both are the constant 3
   });
 
-  it('every equalizer KDF derives at the current KDF_PARAMS.memorySize', async () => {
-    kdf.count = 0;
-    kdf.memorySizes = [];
+  it('equalizer memorySize PROFILE equals the resolver profile (not just the count)', async () => {
+    // The [P1] invariant: pin the sorted memorySize MULTISET, not merely the count. A
+    // count-only equalizer would satisfy the count test above yet still diverge in
+    // profile once a legacy-param blob is present. Because the equalizer now IS the
+    // resolver, the profiles match by construction; assert it so a regression to an
+    // independent dummy-KDF pad (which could drift on params) fails loudly.
+    kdf.count = 0; kdf.memorySizes = [];
+    await resolveDeniabilityUnlock(WRONG_PW);
+    const resolverProfile = [...kdf.memorySizes].sort((a, b) => a - b);
+
+    kdf.count = 0; kdf.memorySizes = [];
     await spendPrimaryUnlockEqualizerKdfs('any-primary-password');
-    expect(kdf.memorySizes).toHaveLength(EXPECTED_KDFS);
-    for (const m of kdf.memorySizes) expect(m).toBe(KDF_PARAMS.memorySize);
+    const equalizerProfile = [...kdf.memorySizes].sort((a, b) => a - b);
+
+    expect(equalizerProfile).toEqual(resolverProfile);
+    // With no legacy blobs configured here, every entry is the current param.
+    expect(equalizerProfile).toHaveLength(EXPECTED_KDFS);
+    for (const m of equalizerProfile) expect(m).toBe(KDF_PARAMS.memorySize);
   });
 });
 

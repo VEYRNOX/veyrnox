@@ -16,6 +16,14 @@ describe('deniabilityUnlock H-1 (ex VULN-17) — closed structurally, documented
     expect(src).toContain('NOW CLOSED STRUCTURALLY');
   });
 
+  it('documents the [P1] param-profile closure (not merely count parity)', () => {
+    // The [P1] residual — a count-only equalizer still leaked a legacy-param timing
+    // oracle — is closed by reusing the resolver on success. The source must document
+    // the param-profile parity, so a silent regression to a count-only pad is caught.
+    expect(src).toContain('[P1]');
+    expect(src).toContain('PARAM-PROFILE');
+  });
+
   it('no longer presents the timing gap as an ACCEPTED (open) residual', () => {
     // The old marker survives ONLY inside the "formerly … NOW CLOSED" closure sentence;
     // it must never reappear as a standalone accepted-residual claim. Assert the closure

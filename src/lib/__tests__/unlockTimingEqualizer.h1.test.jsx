@@ -28,14 +28,17 @@ import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 
-// Hoisted KDF counter shared with the hash-wasm mock factory (both are hoisted).
-const kdf = vi.hoisted(() => ({ count: 0 }));
+// Hoisted KDF counter shared with the hash-wasm mock factory (both are hoisted). Also
+// records the REQUESTED memorySize of every call so we can pin the param PROFILE (the
+// [P1] invariant), not merely the count.
+const kdf = vi.hoisted(() => ({ count: 0, memorySizes: [] }));
 vi.mock('hash-wasm', async (importOriginal) => {
   const orig = await importOriginal();
   return {
     ...orig,
     argon2id: (opts, ...rest) => {
       kdf.count += 1;
+      kdf.memorySizes.push(opts && opts.memorySize);
       return orig.argon2id(opts, ...rest);
     },
   };
@@ -124,6 +127,7 @@ async function resetDevice() {
 // total-miss case swallow the re-thrown primary error.
 async function countUnlockKdfs(password, { expectThrow = false } = {}) {
   kdf.count = 0;
+  kdf.memorySizes = [];
   let threw = false;
   await act(async () => {
     try {
@@ -133,7 +137,7 @@ async function countUnlockKdfs(password, { expectThrow = false } = {}) {
     }
   });
   if (expectThrow) expect(threw).toBe(true); else expect(threw).toBe(false);
-  return kdf.count;
+  return { count: kdf.count, profile: [...kdf.memorySizes].sort((a, b) => a - b) };
 }
 
 beforeEach(async () => {
@@ -156,25 +160,34 @@ describe('H-1 — unlock() spends the SAME KDF count on success, duress, and mis
     await renderProvider();
 
     // (a) primary success — correct real PIN
-    const successKdfs = await countUnlockKdfs(PRIMARY_PW);
+    const success = await countUnlockKdfs(PRIMARY_PW);
     expect(ctx.isDecoy).toBe(false);
 
     // (b) duress hit — the decoy opens
-    const duressKdfs = await countUnlockKdfs(DURESS_PW);
+    const duress = await countUnlockKdfs(DURESS_PW);
     expect(ctx.isDecoy).toBe(true);
 
     // (c) total miss — matches nothing, unlock throws
-    const missKdfs = await countUnlockKdfs('totally-wrong-guess-0000', { expectThrow: true });
+    const miss = await countUnlockKdfs('totally-wrong-guess-0000', { expectThrow: true });
 
-    // Surface the observed counts in the failure message (RED evidence).
-    const observed = { successKdfs, duressKdfs, missKdfs };
+    // Surface the observed counts + profiles in the failure message (RED evidence).
+    const observed = {
+      successCount: success.count, duressCount: duress.count, missCount: miss.count,
+      successProfile: success.profile, duressProfile: duress.profile, missProfile: miss.profile,
+    };
+    void observed;
 
-    // THE CONTRACT: every outcome costs the same number of KDFs, so a stopwatch at
-    // the prompt cannot distinguish the real PIN from a duress secret or a wrong guess.
-    expect(observed).toMatchObject({
-      successKdfs: missKdfs,
-      duressKdfs: missKdfs,
-    });
+    // THE CONTRACT (count): every outcome costs the same NUMBER of KDFs.
+    expect(success.count).toBe(miss.count);
+    expect(duress.count).toBe(miss.count);
+
+    // THE CONTRACT ([P1] param profile): every outcome costs the same sorted multiset
+    // of requested memorySize values — so a stopwatch at the prompt cannot distinguish
+    // the real PIN from a duress secret or a wrong guess even when a deniability blob
+    // sits at legacy params. (Here all blobs are current-param, so the profiles are
+    // uniform; the legacy-param case is in unlockTimingLegacyParams.p1.test.jsx.)
+    expect(success.profile).toEqual(miss.profile);
+    expect(duress.profile).toEqual(miss.profile);
   });
 });
 

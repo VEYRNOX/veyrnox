@@ -1501,19 +1501,26 @@ export function WalletProvider({ children }) {
         getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
       });
       // H-1 fix: a correct primary unlock short-circuits BEFORE the deniability
-      // resolver, so it would spend 3 fewer Argon2id KDFs than any failure/duress/
+      // resolver, so it would spend fewer Argon2id KDFs than any failure/duress/
       // hidden outcome — a stopwatch-distinguishable timing oracle at the prompt.
-      // Spend the SAME 3 throwaway KDFs the failure path spends via
-      // resolveDeniabilityUnlock, so every outcome costs an identical unlock(1) +
-      // three-slot(3) + verifier(1) = 5 KDFs. Structural equality — no magic sleep
-      // to drift or over-pad. See unlockTimingEqualizer.h1.test.jsx.
+      // spendPrimaryUnlockEqualizerKdfs runs the SAME resolveDeniabilityUnlock the
+      // failure path runs and DISCARDS the result, so every outcome costs an identical
+      // unlock(1) + resolver(3) + verifier(1) = 5 KDFs — and, because it is literally
+      // the same resolver, the same KDF PARAM PROFILE too (real slots at each stored
+      // blob's own recorded params, incl. legacy 64 MiB installed-base blobs — [P1]).
+      // Structural equality — no magic sleep to drift or over-pad. See
+      // unlockTimingEqualizer.h1.test.jsx and unlockTimingLegacyParams.p1.test.jsx.
       //
-      // FAIL-CLOSED ISOLATION (deniability-critical): the equalizer is a pure
-      // timing pad — its outcome must NEVER affect this already-confirmed-correct
-      // unlock. It is swallowed in its own try/catch so that even if a future
-      // refactor made it throw, the throw can never fall into `catch (primaryErr)`
-      // below and be misread as a primary miss — which, with a duress vault
-      // configured, would silently open the DECOY instead of the real wallet (I4).
+      // FAIL-CLOSED ISOLATION (deniability-critical): the equalizer is a pure timing
+      // pad whose RETURN IS DISCARDED — its outcome must NEVER affect this
+      // already-confirmed-correct unlock. resolveDeniabilityUnlock itself never wipes
+      // or mounts a decoy (the caller does, from its return value — which we throw
+      // away here), so even a degenerate primary secret that also matched a
+      // duress/panic/hidden slot cannot divert the success path. It is additionally
+      // swallowed in its own try/catch so that even if the resolver threw, the throw
+      // can never fall into `catch (primaryErr)` below and be misread as a primary
+      // miss — which, with a duress vault configured, would silently open the DECOY
+      // instead of the real wallet (I4).
       try {
         await spendPrimaryUnlockEqualizerKdfs(password);
       } catch { /* timing pad only — a confirmed unlock must not be diverted */ }
