@@ -15,7 +15,7 @@
 // Tests start RED when the implementation is absent; turn GREEN once the
 // code lands. Do NOT skip — RED = required gate.
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, it, expect } from 'vitest';
@@ -39,6 +39,15 @@ const playKt = readFileSync(
   resolve(root, 'android/app/src/main/java/com/veyrnox/app/PlayIntegrityPlugin.kt'),
   'utf8',
 );
+const appAttestM = readFileSync(
+  resolve(root, 'ios/App/App/AppAttestPlugin.m'),
+  'utf8',
+);
+const pbxproj = readFileSync(
+  resolve(root, 'ios/App/App.xcodeproj/project.pbxproj'),
+  'utf8',
+);
+const entitlementsPath = resolve(root, 'ios/App/App/App.entitlements');
 
 // ── 1. Android: checkTracerPid ────────────────────────────────────────────────
 
@@ -461,5 +470,53 @@ describe('Item 6 — iOS PT_DENY_ATTACH at pre-bridge time', () => {
     expect(denyIdx).toBeGreaterThan(-1);
     expect(detectIdx).toBeGreaterThan(-1);
     expect(denyIdx).toBeLessThan(detectIdx);
+  });
+});
+
+// ── Item 7 — iOS App Attest entitlement ──────────────────────────────────────
+// AppAttestPlugin.m already contains the DCAppAttestService logic, but the
+// com.apple.developer.devicecheck.appattest-environment entitlement was missing.
+// Without it, DCAppAttestService.isSupported returns NO on every device and the
+// plugin always fails closed — the channel is unreachable. These pins verify
+// the entitlements file exists and is wired into the Xcode build settings so
+// a provisioned build can actually exercise the attest API.
+describe('Item 7 — iOS App Attest entitlement', () => {
+  it('ios/App/App/App.entitlements file exists', () => {
+    expect(existsSync(entitlementsPath)).toBe(true);
+  });
+
+  it('App.entitlements contains com.apple.developer.devicecheck.appattest-environment', () => {
+    expect(existsSync(entitlementsPath)).toBe(true);
+    const content = readFileSync(entitlementsPath, 'utf8');
+    expect(content).toContain('com.apple.developer.devicecheck.appattest-environment');
+  });
+
+  it('App.entitlements sets environment to development or production', () => {
+    expect(existsSync(entitlementsPath)).toBe(true);
+    const content = readFileSync(entitlementsPath, 'utf8');
+    const hasDev  = content.includes('<string>development</string>');
+    const hasProd = content.includes('<string>production</string>');
+    expect(hasDev || hasProd).toBe(true);
+  });
+
+  it('project.pbxproj references CODE_SIGN_ENTITLEMENTS for both Debug and Release', () => {
+    // Both build configurations must carry the entitlements path so signing
+    // picks it up in both debug device builds and App Store release builds.
+    const matches = pbxproj.match(/CODE_SIGN_ENTITLEMENTS\s*=\s*App\/App\.entitlements/g);
+    expect(matches).not.toBeNull();
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('AppAttestPlugin.m imports DeviceCheck framework', () => {
+    expect(appAttestM).toContain('#import <DeviceCheck/DeviceCheck.h>');
+  });
+
+  it('AppAttestPlugin.m checks isSupported before any attest call (fail-closed, I4)', () => {
+    expect(appAttestM).toContain('isSupported');
+    // The only exit on isSupported=NO must resolve available:NO — never fabricate PASS.
+    const unsupportedIdx = appAttestM.indexOf('!service.isSupported');
+    expect(unsupportedIdx).toBeGreaterThan(-1);
+    const block = appAttestM.slice(unsupportedIdx, unsupportedIdx + 200);
+    expect(block).toContain('@(NO)');
   });
 });
