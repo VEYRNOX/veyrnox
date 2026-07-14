@@ -567,25 +567,27 @@ describe('evm/hw-send — I3 deniability gate (issue #972, post-#963 hotfix)', (
   // behaviour parity is high-confidence — but a proper unit test needs
   // localStorage stubbing that this file's mock harness doesn't provide today.
 
-  // Codex second-pass finding (issue #972 P2, round 2). If the marker read
-  // itself throws — e.g. localStorage is unavailable or the session module
-  // crashes — assertNotDeniabilitySession must still fail CLOSED (treat as
-  // active) rather than accidentally letting the send through. The wrapper's
-  // try/catch drops to active=true. Even with the session flag INACTIVE, a
-  // throwing marker read must still block signing.
-  it('fails closed when isDeniabilitySessionActive() itself throws (I4 belt-and-braces)', async () => {
-    // Reset: session is INACTIVE in this test; only the marker-read throws.
-    setDeniabilitySession(false);
-    const throwingSpy = vi.spyOn(deniabilityModule, 'isDeniabilitySessionActive')
-      .mockImplementation(() => { throw new Error('marker read failed'); });
+  // Codex second-pass finding (issue #972 P2, round 2). If the deniability
+  // helper itself throws — e.g. localStorage is unavailable or the session
+  // module crashes — assertNotDeniabilitySession must still fail CLOSED (treat
+  // as active) rather than let the send through. Post-round-3, hw-send.js
+  // delegates the whole check to isDeniabilityOrDemoActive which already fails
+  // closed on internal exceptions; we prove the composite still refuses when
+  // the shared helper is forced to throw.
+  it('fails closed when the shared deniability helper throws (I4 belt-and-braces)', async () => {
+    setDeniabilitySession(false);  // baseline session inactive
+    const throwingSpy = vi.spyOn(deniabilityModule, 'isDeniabilityOrDemoActive')
+      .mockImplementation(() => { throw new Error('helper crashed'); });
 
     const providerSpy = { send: vi.fn(), estimateGas: vi.fn(), getTransactionCount: vi.fn(), broadcastTransaction: vi.fn() };
     getProvider.mockReturnValue(providerSpy);
     h.trezorSign = vi.fn();
 
+    // assertNotDeniabilitySession lets the helper's throw propagate; the send
+    // path never reaches the RPC or the device.
     await expect(signAndBroadcastEvmTrezor({
       networkKey: NETWORK, fromAddress: FROM, to: TO, amountEth: '0.01', fee: FEE,
-    })).rejects.toThrow(/TREZOR_DENIABILITY_BLOCKED/);
+    })).rejects.toThrow(/helper crashed/);
 
     expect(providerSpy.send).not.toHaveBeenCalled();
     expect(providerSpy.estimateGas).not.toHaveBeenCalled();

@@ -71,7 +71,7 @@ import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet,
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
-import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession.js";
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -929,7 +929,11 @@ export default function SendCrypto() {
       // deniabilityActive() — a demo build (VITE_DEMO_MODE / veyrnox-demo=1)
       // must never touch a real Trezor device or leak fee/nonce RPC (codex
       // round-2 finding, #972 P1b).
-      if (useTrezorMode && (isDeniabilitySessionActive() || DEMO)) {
+      // Use the LIVE deniability-OR-demo check (round-3 codex finding): the
+      // module-level DEMO constant is a load-time IIFE snapshot, so a
+      // veyrnox-demo=1 flag flipped AFTER import wouldn't fire this gate. The
+      // shared helper reads both signals fresh on every call.
+      if (useTrezorMode && isDeniabilityOrDemoActive()) {
         throw new Error('TREZOR_DENIABILITY_BLOCKED');
       }
 
@@ -1781,7 +1785,7 @@ export default function SendCrypto() {
                 so that unguarded RPC leaks the real address to the fee provider.
                 Skip the selector in that combination — the send-time gate above
                 will refuse anyway, so a fee tier serves no purpose. */}
-            {!isBtc && !isSolana && !(useTrezorMode && (isDeniabilitySessionActive() || DEMO)) ? (
+            {!isBtc && !isSolana && !(useTrezorMode && isDeniabilityOrDemoActive()) ? (
               <FeeSelector
                 chain="evm"
                 networkKey={networkKey}

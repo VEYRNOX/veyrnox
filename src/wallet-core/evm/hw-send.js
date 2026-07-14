@@ -40,36 +40,21 @@ import { evmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
 import { assertDecimalAmount } from '../amount.js';
 import { buildTokenTransfer } from './token-send.js';
-import { isDeniabilitySessionActive } from '../deniabilitySession.js';
+import { isDeniabilityOrDemoActive } from '../deniabilitySession.js';
 
 /**
  * I3 gate (issue #972). Throws TREZOR_DENIABILITY_BLOCKED before any provider
- * or device egress when EITHER signal is active:
+ * or device egress when the shared `isDeniabilityOrDemoActive()` helper (in
+ * deniabilitySession.js) reports either signal active:
  *   1. Real decoy/hidden session (isDeniabilitySessionActive) — coercion case.
  *   2. Persisted demo/tour flag (localStorage `veyrnox-demo`=='1') — demo mode
- *      must not hit connect.trezor.io on a real device (round-2 codex finding).
+ *      must not hit connect.trezor.io on a real device.
  * Matches the OLD hw/trezor.js:deniabilityActive() behaviour verbatim. String
  * preserved exactly ('TREZOR_DENIABILITY_BLOCKED') for consumer catch-compat.
- * Fail-closed (I4): if EITHER marker read throws, refuse.
+ * Fail-closed (I4): the helper returns true on any marker-read exception.
  */
 function assertNotDeniabilitySession() {
-  let active;
-  try {
-    active = isDeniabilitySessionActive();
-  } catch {
-    active = true;
-  }
-  if (!active) {
-    try {
-      active = (
-        typeof localStorage !== 'undefined' &&
-        localStorage.getItem('veyrnox-demo') === '1'
-      );
-    } catch {
-      active = true;
-    }
-  }
-  if (active) throw new Error('TREZOR_DENIABILITY_BLOCKED');
+  if (isDeniabilityOrDemoActive()) throw new Error('TREZOR_DENIABILITY_BLOCKED');
 }
 
 const EVM_PATH = "44'/60'/0'/0/0";
