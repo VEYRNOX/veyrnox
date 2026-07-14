@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -79,6 +79,13 @@ class RaspIntegrityPlugin : Plugin() {
      * indicating Miracast/WFD screen mirroring — a surveillance vector during PIN
      * entry or seed display. nativeProbe.js maps screenCapture:true → signals.hooked
      * (item 16 wiring), so this field flows to BLOCK via the same JS path as iOS.
+     *
+     * overlayActive (item 23): platform-symmetry field mirroring iOS overlayActive
+     * (UIAccessibilityIsAssistiveTouchRunning). True when any accessibility service
+     * with FEEDBACK_ALL_MASK is active — a potential tapjacking vector during PIN
+     * entry. nativeProbe.js maps overlayActive:true → signals.rooted → WARN (item 19
+     * wiring); the send flow is not blocked but the user sees a caution notice.
+     * Honest scope: also fires for legitimate accessibility users (TalkBack etc.).
      */
     @PluginMethod
     fun checkIntegrity(call: PluginCall) {
@@ -89,6 +96,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("tampered",          detectTamper())
         result.put("debuggerAttached",  checkJdwpDebugger())
         result.put("screenCapture",     checkScreenCapture())
+        result.put("overlayActive",     checkOverlay())
         call.resolve(result)
     }
 
@@ -469,6 +477,30 @@ class RaspIntegrityPlugin : Plugin() {
         val dm = context.getSystemService(android.hardware.display.DisplayManager::class.java)
             ?: return@runCatching false
         dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION).isNotEmpty()
+    }.getOrDefault(false)
+
+    // ── Accessibility overlay detection (item 23) ─────────────────────────────
+    // Android analogue of iOS UIAccessibilityIsAssistiveTouchRunning (checkOverlay).
+    // Returns true when any accessibility service is active via FEEDBACK_ALL_MASK.
+    // Active services can intercept touch events and draw overlays — the same
+    // tapjacking risk during PIN entry as iOS AssistiveTouch.
+    //
+    // Honest scope: also fires for legitimate accessibility users (TalkBack, Voice
+    // Access, Switch Access). The WARN tier (nativeProbe.js item 19 maps
+    // overlayActive → signals.rooted → WARN) means the send flow is not blocked
+    // but the user sees a caution notice — consistent with the iOS behaviour.
+    //
+    // NOT added to the early gate: overlayActive is WARN-tier, not BLOCK-tier.
+    // Only BLOCK signals (hook + tamper + screenCapture) gate app launch.
+
+    @JvmSynthetic
+    private fun checkOverlay(): Boolean = runCatching {
+        val am = context.getSystemService(android.view.accessibility.AccessibilityManager::class.java)
+            ?: return@runCatching false
+        if (!am.isEnabled) return@runCatching false
+        am.getEnabledAccessibilityServiceList(
+            android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+        ).isNotEmpty()
     }.getOrDefault(false)
 
     // ── APK tamper detection (signing certificate check) ─────────────────────

@@ -627,6 +627,56 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 23 — Android checkOverlay + overlayActive verdict field ──────────────
+//
+// iOS -checkOverlay (UIAccessibilityIsAssistiveTouchRunning) returns
+// overlayActive:true when an accessibility overlay is active on screen —
+// a tapjacking risk during PIN entry (item 19 wired it to signals.rooted →
+// WARN in nativeProbe.js). Android has no equivalent verdict field.
+//
+// The Android analogue: AccessibilityManager.getEnabledAccessibilityServiceList
+// (FEEDBACK_ALL_MASK) — returns the list of active accessibility services.
+// Non-empty = some visual/touch-intercepting overlay may be present (TalkBack,
+// Voice Access, Switch Access). This mirrors the iOS "any accessibility overlay
+// is a potential tapjacking vector" rationale. Honest scope: fires for
+// legitimate accessibility users; the WARN tier (not BLOCK) means the send
+// flow is not blocked but the user sees a caution notice.
+//
+// nativeProbe.js item 19 already maps verdict.overlayActive:true → signals.rooted
+// → WARN on both platforms with no JS changes required.
+
+describe('Item 23 — Android checkOverlay + overlayActive verdict field', () => {
+  it('checkOverlay() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkOverlay()');
+  });
+
+  it('checkOverlay() uses AccessibilityManager', () => {
+    const start = kt.indexOf('fun checkOverlay()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('AccessibilityManager');
+  });
+
+  it('checkOverlay() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkOverlay()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 450);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("overlayActive") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("overlayActive"');
+  });
+
+  it('file-header verdict example includes overlayActive:false', () => {
+    const start = kt.indexOf('checkIntegrity() verdict:');
+    expect(start).toBeGreaterThan(-1);
+    const window = kt.slice(start, start + 250);
+    expect(window).toContain('"overlayActive":false');
+  });
+});
+
 // ── Item 22 — Android earlyCheckScreenCapture in companion earlyCheck() ──────
 //
 // Item 21 added runtime checkScreenCapture() to detectHook's verdict.
