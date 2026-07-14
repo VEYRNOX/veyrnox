@@ -48,7 +48,10 @@ describe('G2 RS256 — x5c chain-walk (PlayIntegrityPlugin.kt regression pin)', 
   it('root cert subject is checked (not just the leaf)', () => {
     // After the chain walk, the root cert's subject is checked against Google.
     // (Weak issuer check — G2-ROOTCERT-PIN replaces this with fingerprint pinning.)
-    expect(src).toContain('chain[chainLen - 1].subjectX500Principal.name');
+    // G2-ROOTCERT-PIN (item 4) extracted rootCert as a local var so it can be passed
+    // to verifyRootCertFingerprint — the expression is now two lines.
+    expect(src).toContain('chain[chainLen - 1]');
+    expect(src).toContain('.subjectX500Principal.name');
   });
 
   it('leaf cert public key (chain[0]) is used for RS256 verification', () => {

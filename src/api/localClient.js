@@ -39,6 +39,7 @@
 // wallet-core and are unaffected.
 
 import { demoBase44 } from "@/api/demoClient";
+import { invokeLLM, OPENROUTER_AVAILABLE } from "@/api/openrouterClient";
 
 const DB_NAME = "veyrnox-appdata";
 const STORE = "entities"; // one record per entity name, value = array of rows
@@ -145,10 +146,15 @@ const entities = new Proxy(
 export const localBase44 = {
   entities,
   asServiceRole: { entities },
-  // auth / functions / integrations: reuse demoClient's offline no-op stubs for
-  // now. They make no network calls and touch no keys; real replacements are
-  // Phase 2 (auth) and Phase 3 (functions + integrations).
   auth: demoBase44.auth,
   functions: demoBase44.functions,
-  integrations: demoBase44.integrations,
+  integrations: {
+    ...demoBase44.integrations,
+    Core: {
+      ...demoBase44.integrations.Core,
+      InvokeLLM: OPENROUTER_AVAILABLE
+        ? invokeLLM
+        : demoBase44.integrations.Core.InvokeLLM,
+    },
+  },
 };

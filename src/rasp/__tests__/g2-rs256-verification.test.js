@@ -13,10 +13,12 @@
 //       verifier. If the JS mirror matches Node's DER output byte-for-byte AND
 //       Node re-verifies the transcoded signature, the algorithm is correct.
 //
-// HONEST GAP. The Kotlin plugin function itself runs on the Android JVM; a
-// Kotlin JVM harness (`android/app/src/test/`) would be required to prove that
-// the Kotlin transcoder call site is bound the same way. Layer (1) pins the
-// Kotlin source string; the Kotlin JVM binding remains unproved by JS.
+// HONEST GAP — CLOSED (#957). EcdsaDerTranscoder was extracted from
+// PlayIntegrityPlugin into a standalone pure-JVM object so that
+// RawEcdsaDerTranscoderTest.kt can execute the actual Kotlin code on the JVM.
+// Layer (3) below pins both files and the CI step that runs them.
+// The Kotlin call-site binding is now proved by `./gradlew :app:testDebugUnitTest`
+// (android-unit-tests CI job). Device-verified Play Integrity token still outstanding.
 //
 // Issue: #951 (RASP H-2: ES256 verify inert on raw R‖S signatures).
 //
@@ -43,6 +45,15 @@ const kt = readFileSync(
   resolve(root, 'android/app/src/main/java/com/veyrnox/app/PlayIntegrityPlugin.kt'),
   'utf8',
 );
+const transcoderKt = readFileSync(
+  resolve(root, 'android/app/src/main/java/com/veyrnox/app/EcdsaDerTranscoder.kt'),
+  'utf8',
+);
+const transcoderTestKt = readFileSync(
+  resolve(root, 'android/app/src/test/java/com/veyrnox/app/RawEcdsaDerTranscoderTest.kt'),
+  'utf8',
+);
+const ciYml = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer 1 — structural pins (regression guard against silent removal)
@@ -322,5 +333,51 @@ describe('synthetic ES256 JWS with self-signed Google-issuer x5c chain', () => {
     v.update(signingInput);
     v.end();
     expect(v.verify(publicKey, Buffer.from(der))).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Layer 3 — Kotlin JVM harness existence pins (#957)
+//
+// Layer (1) proved the algorithm via source-string grep; Layer (2) via JS mirror.
+// Layer (3) proves that the actual Kotlin code is covered by a JVM test suite
+// that CI executes. These pins prevent silent removal of the harness.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Kotlin JVM test harness — EcdsaDerTranscoder (#957)', () => {
+  it('EcdsaDerTranscoder.kt is a pure-JVM internal object (no Android context)', () => {
+    expect(transcoderKt).toContain('internal object EcdsaDerTranscoder');
+    // Must have no Android framework imports — pure JVM so the JUnit runner works
+    // without an Android emulator or device.
+    expect(transcoderKt).not.toMatch(/import android\./);
+  });
+
+  it('EcdsaDerTranscoder exports rawEcdsaSignatureToDer and derEncodeInteger', () => {
+    expect(transcoderKt).toContain('fun rawEcdsaSignatureToDer(');
+    expect(transcoderKt).toContain('fun derEncodeInteger(');
+  });
+
+  it('RawEcdsaDerTranscoderTest.kt is a JUnit test class', () => {
+    expect(transcoderTestKt).toContain('import org.junit.Test');
+    expect(transcoderTestKt).toContain('class RawEcdsaDerTranscoderTest');
+  });
+
+  it('RawEcdsaDerTranscoderTest exercises round-trip via real JCA EC keypair', () => {
+    // The JVM test must prove the transcoder works against Java's own DER verifier,
+    // not just unit-check the byte layout.
+    expect(transcoderTestKt).toContain('KeyPairGenerator');
+    expect(transcoderTestKt).toContain('Signature.getInstance("SHA256withECDSA")');
+    expect(transcoderTestKt).toContain('verifier.verify(reEncoded)');
+  });
+
+  it('CI android-unit-tests job runs ./gradlew :app:testDebugUnitTest', () => {
+    expect(ciYml).toContain('android-unit-tests');
+    expect(ciYml).toContain('testDebugUnitTest');
+  });
+
+  it('EcdsaDerTranscoder.kt is in the Kotlin src/main tree (compiled into the plugin)', () => {
+    // Not in src/test — the transcoder must ship with the plugin so
+    // PlayIntegrityPlugin can call it at runtime.
+    expect(transcoderKt).toContain('package com.veyrnox.app');
   });
 });

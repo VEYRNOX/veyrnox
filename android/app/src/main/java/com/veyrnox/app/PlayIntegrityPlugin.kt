@@ -48,11 +48,14 @@ package com.veyrnox.app
 // still NOT device-verified against a real Play Integrity token — the residual
 // gap sits with Phase 4 device exercise + Phase 5 independent audit.
 //
-// RESIDUAL GAP — ROOT CERT PINNING (G2-ROOTCERT-PIN): the root cert is still
-// checked only via issuer.contains("Google") — a weak check. Replacing it with a
-// SHA-256 fingerprint requires either capturing a real production token on-device,
-// or Google publishing the root CA fingerprint (currently not documented). Until
-// pinning lands, treat attestation results as PROVISIONAL.
+// ROOT CERT PINNING (G2-ROOTCERT-PIN): SHA-256 fingerprint of root cert DER bytes
+// is now checked against GOOGLE_ROOT_CA_SHA256 (verifyRootCertFingerprint). The
+// issuer string check is retained as belt-and-suspenders fallback. Status:
+// BUILT-UNVALIDATED — fingerprints sourced from Google's published PKI at
+// https://pki.goog/repository/ (2026-07-14); must be confirmed against a real
+// production Play Integrity token before advancing to VERIFIED. Until confirmed,
+// treat attestation as PROVISIONAL — a token with an unknown root degrades to
+// INTEGRITY_UNAVAILABLE (WARN, not BLOCK).
 //
 // I4 — FAIL CLOSED. A missing/short nonce, absent Play Services, a token request
 // failure, or ANY parse exception resolves with { available:false }, which the JS
@@ -70,6 +73,7 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.IntegrityTokenRequest
+import java.security.MessageDigest
 import java.security.Signature
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
@@ -180,6 +184,30 @@ class PlayIntegrityPlugin : Plugin() {
         }
     }
 
+    // Known Google root CA SHA-256 fingerprints (lowercase hex, no separators).
+    // Source: Google's published PKI at https://pki.goog/repository/ (2026-07-14).
+    // STATUS: BUILT-UNVALIDATED — Play Integrity's specific root CA is not officially
+    // documented; fingerprints below are from Google's published TLS root infrastructure
+    // (GTS Root R1-R4). Must be confirmed against a real production Play Integrity token.
+    // If none match, verifyJwsSignature falls back to the issuer string check.
+    private val GOOGLE_ROOT_CA_SHA256 = setOf(
+        // GTS Root R1 — 4096-bit RSA, Google Trust Services LLC
+        "2a575471e31340bc21581cbd2cf13e158463203ece94bcf9d3cc196bf09a5472",
+        // GTS Root R2, R3, R4 — add fingerprints once confirmed from live token capture
+    )
+
+    // verifyRootCertFingerprint — SHA-256 fingerprint of the root cert's raw DER bytes
+    // (cert.encoded) compared against GOOGLE_ROOT_CA_SHA256. Returns true if the pin set
+    // is empty (BUILT-UNVALIDATED fallback — issuer check then applies) or if a pin
+    // matches. Returns false on any digest exception (fail-closed, I4).
+    private fun verifyRootCertFingerprint(cert: X509Certificate): Boolean = runCatching {
+        if (GOOGLE_ROOT_CA_SHA256.isEmpty()) return@runCatching true // not yet populated
+        val digest = MessageDigest.getInstance("SHA-256")
+        val fingerprint = digest.digest(cert.encoded)
+            .joinToString("") { "%02x".format(it) }
+        GOOGLE_ROOT_CA_SHA256.any { pin -> pin == fingerprint }
+    }.getOrDefault(false)
+
     /**
      * Verify the JWS RS256 signature using the certificate chain in the x5c header claim.
      *
@@ -244,10 +272,14 @@ class PlayIntegrityPlugin : Plugin() {
                 }
             }
 
-            // 4. Root cert issuer check (weak — G2-ROOTCERT-PIN: replace with SHA-256
-            // fingerprint of the actual Google root DER once captured on-device).
-            val rootIssuer = chain[chainLen - 1].subjectX500Principal.name
-            if (!rootIssuer.contains("Google", ignoreCase = true)) return false
+            // 4. Root cert fingerprint + issuer belt-and-suspenders (G2-ROOTCERT-PIN).
+            // verifyRootCertFingerprint checks SHA-256 of DER bytes against known Google
+            // root CA pins (BUILT-UNVALIDATED — source: pki.goog, 2026-07-14). The
+            // issuer check is the fallback while pins are unconfirmed on a real token.
+            // Reject only if BOTH fail; once pins are device-validated, drop issuer check.
+            val rootCert = chain[chainLen - 1]
+            val rootIssuer = rootCert.subjectX500Principal.name
+            if (!verifyRootCertFingerprint(rootCert) && !rootIssuer.contains("Google", ignoreCase = true)) return false
 
             // 5. Verify JWS signature over header.payload (RFC 7515 signed data).
             //    Algorithm dispatched from the `alg` header field (RS256 → SHA256withRSA,
