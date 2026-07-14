@@ -512,20 +512,25 @@ export const webKeyStore = {
     // Non-enrolled: existing bare-vault path (unchanged).
     const secret = await decryptVault(blob, password);
     if (vaultNeedsRekey(blob)) {
-      // H-1 residual (web-only, testing surface): keep the at-rest KDF-param rekey OFF
-      // the synchronous unlock path. Awaiting it spent a current-param KDF ONLY after a
-      // CORRECT primary password (a wrong guess never decrypts, so never reaches here) —
-      // a one-time success-vs-miss timing asymmetry on the first post-upgrade unlock of a
-      // legacy-param vault, before the deniability equalizer even runs. Fire-and-forget so
-      // unlock() returns before this KDF runs and the attacker's stopwatch sees no extra
-      // work; the migration is best-effort and idempotently retried on the next unlock.
-      // (`secret`/`password` are immutable strings — decryptVault returns a decoded
-      // string — so holding them past unlock() return is safe from any caller zeroing.)
-      // Native has no unlock-time rekey, so this asymmetry does not exist on the shipped
-      // product; this belt-and-braces closes it on the web test surface too.
-      void encryptVault(secret, password)
-        .then(saveVault)
-        .catch(() => { /* best-effort — rekey retried on next unlock */ });
+      // KNOWN LIMITATION — accepted web-only residual (H-1, internal audit 2026-07-14).
+      // This at-rest KDF-param rekey runs a current-param KDF ONLY after a CORRECT primary
+      // password (a wrong guess never decrypts, so never reaches here), adding a one-time
+      // success-vs-miss timing tell on the FIRST post-upgrade unlock of a legacy-param
+      // vault. It is deliberately NOT closed here:
+      //   * A fire-and-forget defer does NOT move the work off the critical path — the
+      //     shared singleton KDF worker serializes the awaited deniability equalizer behind
+      //     this job (verified in second-review), so the user-visible unlock still includes
+      //     the extra KDF. Only a disproportionate cross-layer change (symmetrize the
+      //     failure path, or run the rekey after the whole unlock flow) would truly close it.
+      //   * It is NON-PRODUCTION: native (native.js — the shipped iOS/Android product) has
+      //     NO unlock-time rekey, so this asymmetry does not exist on the real product; web
+      //     is a testing-only surface. It also self-heals after the first successful unlock.
+      // Kept as the simple awaited best-effort migration; tracked as an accepted residual.
+      try {
+        await saveVault(await encryptVault(secret, password));
+      } catch {
+        /* best-effort */
+      }
     }
     return secret;
   },
