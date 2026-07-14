@@ -43,12 +43,14 @@ export function TierProvider({ children }) {
     // customer-info listener while a deniability session is active — fail closed
     // to 'free'. (resolveTier() also guards independently as the single egress
     // chokepoint, but we must not even initialize the SDK or open a listener.)
-    if (FORCED_TIER) { setLoading(false); return () => { cancelled = true; }; }
     if (isDeniabilitySessionActive()) {
       setCurrentTier('free');
       setLoading(false);
       return () => { cancelled = true; };
     }
+    // DEV override: checked AFTER deniability so a decoy session never surfaces
+    // a forced paid tier — the dev override is honest even in deniability mode.
+    if (FORCED_TIER) { setLoading(false); return () => { cancelled = true; }; }
 
     // Initialize the RevenueCat SDK once, before any entitlement/offering read.
     // No-op on web; fails closed — a rejection (e.g. missing key) is swallowed

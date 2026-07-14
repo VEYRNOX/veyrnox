@@ -15,12 +15,14 @@ import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js'
 const FORCED_TIER = import.meta.env.VITE_FORCE_TIER || null;
 
 export async function resolveTier() {
-  if (FORCED_TIER) return FORCED_TIER;
   // I3 (deniability = ZERO backend calls): a decoy/hidden session must never make
   // a RevenueCat customer-info request. This is the single egress chokepoint for
   // getCustomerInfo — fail closed to 'free' BEFORE any network call so no coerced
   // decoy/hidden session can leak an IAP request or surface a paid tier.
   if (isDeniabilitySessionActive()) return 'free';
+  // DEV override: VITE_FORCE_TIER bypasses RevenueCat for on-device testing.
+  // Checked AFTER deniability so the override is honest even under a decoy session.
+  if (FORCED_TIER) return FORCED_TIER;
   if (!Capacitor.isNativePlatform()) return 'free';
   try {
     const customerInfo = await getCustomerInfo();
