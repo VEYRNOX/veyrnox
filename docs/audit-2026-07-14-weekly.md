@@ -33,6 +33,45 @@ grep of all four call sites confirmed it.
 
 ---
 
+## ⚠️ Reconciliation against `origin/main` (added post-audit, 2026-07-14)
+
+**The audit above ran against branch `claude/samsung-phone-rasp-testing-ece279`, which was
+139 commits behind `origin/main`.** This is the "fetch main before diagnosing" trap
+(CLAUDE.md §Working pattern). Every finding was re-verified against `origin/main` (worktree
+at `280b9f43`, `fix(kek)… (#995)`). Corrected status per finding:
+
+| # | Severity (branch) | Verdict vs `origin/main` | Evidence |
+|---|---|---|---|
+| **C-1** | CRITICAL | ✅ **FIXED** | `ColdSign.jsx:63` + `CryptoSigning.jsx:33` use `useRaspArtifact()`; `WalletConnectProvider.jsx:49-51` imports `nativeProbeSource`+`selectPresignProbeSource`; `RaspSecurity.jsx:87` native-aware. PRs #954 (WC), #960 (ColdSign/CryptoSigning), #966 (test sync), #953 (RaspSecurity). |
+| **H-1** | HIGH | ⚠️ **STILL PRESENT** | `WalletProvider.jsx:215` `PRIMARY_UNLOCK_EQUALIZER_MS=2000`; flow unchanged — primary-success ≈2 KDF+2000 ms vs miss/duress 5 KDF. Equalizer invariant comment (:198-215) still assumes a ~1-KDF gap; M-4 fix only equalized miss-vs-hit, not success-vs-miss. **Caveat:** static call-graph inference; magnitude needs on-device wall-clock. |
+| **M-1** | MEDIUM | ⚠️ **STILL PRESENT** | `HardwareKekPlugin.kt:359-360` — `hmacResult` (plaintext H) base64-encoded, never `.fill(0)`. |
+| **M-2** | MEDIUM | ⚠️ **STILL PRESENT** | `HardwareKekPlugin.m:170` enroll uses immutable `NSData dataWithBytes`; the `NSMutableData`+`resetBytesInRange` fix exists only on the decrypt path (:329-333), not enroll. |
+| **M-3** | MEDIUM | ⚠️ **STILL PRESENT** | `RequestApprovalModal.jsx:140-145` `approveBlocked` excludes `dapp.flagged`/`sessionUnresolved`; `riskBlocks` (:136) covers only SEND risk verdict. |
+| **M-4** | MEDIUM | ⚠️ **STILL PRESENT** (partially mitigated) | `WalletConnectProvider.jsx:325-327` still `rejectRequest(...).catch(()=>{})` with no throw → modal closes with no reason shown. Note: WARN/CONFIRM now **rejected** on the WC surface (:262-264), stricter than at audit time. |
+| **M-5** | MEDIUM | 🟡 **PARTIALLY FIXED** | `requiresBiometric` is no longer dead: `SendCrypto.jsx:793-866,1678-1690` (B5, 2026-07-13) reads it and enforces `verifyBiometric2fa()` on native WARN. Still acknowledge-only on the WC/ColdSign/CryptoSigning WARN paths. |
+| **M-6** | MEDIUM | ⚠️ **STILL PRESENT** (minor under-claim) | `RaspSecurity.jsx:45` still returns `detection: "pending"` despite native plugin BUILT + device-verified-FULL (2026-07-12). Under-claim, not I4. |
+| **M-7** | MEDIUM | ✅ **FIXED** | `RaspSecurity.jsx:87-88` uses `selectPresignProbeSource` (native-aware readout). PR #953. |
+| **M-8** | MEDIUM | ⚠️ **STILL PRESENT** (disclosed/design) | PIN counter still `localStorage`; honestly disclosed (`WalletEntry.jsx:65`), hardware-KEK is the tracked fix. |
+| **L-1** | LOW | ⚠️ STILL PRESENT | `RaspIntegrityPlugin.kt:91` `checkSystemWritable()` — inherent technique limit, OR'd with stronger checks. Not a defect. |
+| **L-2** | LOW | ⚠️ STILL PRESENT | `WalletConnectProvider.jsx:115-118` `resolveGasLimit` still doesn't clamp negative `txGas` (RPC rejects anyway). |
+| **L-3** | LOW | ⚠️ STILL PRESENT | `checkTypedDataChainId` defined (`typed-data.js:43`) but still not called by the provider (inline dup). |
+| **L-4** | LOW | ⚠️ STILL PRESENT | Modal dApp identity still from React `sessions` state, not live store (tied to M-3). |
+| **L-5** | LOW | ⚠️ STILL PRESENT | `hardware.js:227` matches Android's literal `'User cancelled'`; iOS cancel → `NO_HARDWARE_FACTOR`. UX-copy only, verified not data-loss. |
+| **L-6** | LOW | ⚠️ STILL PRESENT | Android salt `ByteArray` not zeroed (same site as M-1). |
+| **L-7** | LOW | ⚠️ STILL PRESENT | `HardwareKekPlugin.kt:396-398` `prompt.authenticate` inside async `runOnUiThread` still outside the enclosing try/catch. |
+| **L-8** | LOW | ⚠️ STILL PRESENT (disclosed) | `copySecret.js:28-30` unconditional overwrite, no read-back sentinel — data-loss nuisance, not secrecy. |
+
+**Corrected posture on `origin/main`:** **0 CRITICAL** (C-1 fixed), **1 HIGH** (H-1, with a
+static-analysis confidence caveat), plus MEDIUM/LOW residuals — most of them defense-in-depth
+zeroing gaps (M-1/M-2/L-6), honest under-claims (M-6), or disclosed/design items (M-8, L-8).
+The single finding worth prioritising on main is **H-1** (primary-unlock timing oracle),
+pending an on-device wall-clock measurement to size the fix. M-1/M-2 (native-bridge H
+residue) are the next tier — same class as the already-tracked open M-6/iOS-F5.
+
+*All original branch-relative findings are preserved verbatim below for the record.*
+
+---
+
 ## Changes since last audit
 
 Recent security-relevant commits on this branch (`git log --oneline`):
