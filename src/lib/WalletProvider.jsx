@@ -117,6 +117,7 @@ import {
   getBiometricStatus,
   BiometricGateError,
 } from '@/lib/biometric';
+import { setLivePricesEnabled } from '@/lib/priceFeed';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
 // let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
 // it to retract the shared veyrnox-biometric-unlock pref, so removing the duress PIN
@@ -875,6 +876,7 @@ export function WalletProvider({ children }) {
     // as if no vault were present, bouncing the user back to `/`.
     setVaultExists(true);
     setUnlocked(true);
+    setLivePricesEnabled(true); // Enable live prices after wallet creation (I2: fresh device now has a real wallet)
     setIsDecoy(false);
     setIsHidden(false);
     setLastUnlockAt(null);
@@ -930,6 +932,7 @@ export function WalletProvider({ children }) {
     // guard) don't fail-close on a stale pre-onboarding `false`.
     setVaultExists(true);
     setUnlocked(true);
+    setLivePricesEnabled(true); // Enable live prices after wallet import (I2: fresh device now has a real wallet)
     setIsDecoy(false);
     setIsHidden(false);
     setLastUnlockAt(null);
@@ -1714,6 +1717,7 @@ export function WalletProvider({ children }) {
     }
 
     setUnlocked(true);
+    setLivePricesEnabled(true); // Enable live prices after unlock (I2: user restored a real wallet, expect live data)
     setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
