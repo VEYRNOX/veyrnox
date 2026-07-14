@@ -412,3 +412,54 @@ describe('Play Integrity root cert SHA-256 pinning (G2-ROOTCERT-PIN)', () => {
     expect(playKt).toContain('.contains("Google"');
   });
 });
+
+// ── Item 6 — iOS PT_DENY_ATTACH at pre-bridge time ───────────────────────────
+// earlyDenyAttach is a class method called at the START of earlyCheck, before
+// any detection runs. This moves the OS-level debugger-attach denial to the
+// earliest possible moment (before the Capacitor WebView loads), rather than
+// waiting for the first checkIntegrity: plugin call from JS.
+// Fail-open: ptrace may be patched on jailbroken devices — this is a hardening
+// action, not a detection gate. The existing dispatch_once in checkIntegrity:
+// is retained as a belt-and-suspenders fallback for non-earlyCheck paths.
+describe('Item 6 — iOS PT_DENY_ATTACH at pre-bridge time', () => {
+  it('+ (void)earlyDenyAttach is declared in RaspIntegrityPlugin.h', () => {
+    expect(iosH).toContain('+ (void)earlyDenyAttach');
+  });
+
+  it('+earlyDenyAttach class method is defined in RaspIntegrityPlugin.m', () => {
+    expect(iosM).toContain('+ (void)earlyDenyAttach');
+  });
+
+  it('+earlyDenyAttach calls ptrace(PT_DENY_ATTACH, 0, 0, 0)', () => {
+    const fnIdx = iosM.indexOf('+ (void)earlyDenyAttach');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const fnBody = iosM.slice(fnIdx, fnIdx + 300);
+    expect(fnBody).toContain('ptrace(PT_DENY_ATTACH, 0, 0, 0)');
+  });
+
+  it('+earlyDenyAttach is wrapped in @try/@catch (fail-open, I4)', () => {
+    const fnIdx = iosM.indexOf('+ (void)earlyDenyAttach');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const fnBody = iosM.slice(fnIdx, fnIdx + 300);
+    expect(fnBody).toContain('@try');
+    expect(fnBody).toContain('@catch');
+  });
+
+  it('+earlyCheck calls [self earlyDenyAttach] before detection', () => {
+    const earlyCheckIdx = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyCheckIdx).toBeGreaterThan(-1);
+    const earlyCheckBody = iosM.slice(earlyCheckIdx, earlyCheckIdx + 300);
+    expect(earlyCheckBody).toContain('[self earlyDenyAttach]');
+  });
+
+  it('+earlyDenyAttach fires before earlyCheckDynamicLibraries in earlyCheck body', () => {
+    const earlyCheckIdx = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyCheckIdx).toBeGreaterThan(-1);
+    const earlyCheckBody = iosM.slice(earlyCheckIdx, earlyCheckIdx + 400);
+    const denyIdx   = earlyCheckBody.indexOf('earlyDenyAttach');
+    const detectIdx = earlyCheckBody.indexOf('earlyCheckDynamicLibraries');
+    expect(denyIdx).toBeGreaterThan(-1);
+    expect(detectIdx).toBeGreaterThan(-1);
+    expect(denyIdx).toBeLessThan(detectIdx);
+  });
+});

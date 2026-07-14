@@ -462,7 +462,21 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
 // presignGate. Fail closed (I4): any exception → NO (not blocked), consistent
 // with other heuristic checks in this file.
 
+// earlyDenyAttach — preventive hardening: call ptrace(PT_DENY_ATTACH) at the
+// earliest possible moment, before the WebView loads. After this call any
+// subsequent debugger-attach attempt (LLDB, Frida server) causes the attacker's
+// process to receive SIGKILL. Fail-open (I4): ptrace may be patched on
+// jailbroken devices — this is a hardening action, not a detection gate. The
+// dispatch_once guard in -checkIntegrity: remains as a belt-and-suspenders
+// fallback for any non-earlyCheck launch path.
++ (void)earlyDenyAttach {
+    @try {
+        ptrace(PT_DENY_ATTACH, 0, 0, 0);
+    } @catch (__unused NSException *e) {}
+}
+
 + (BOOL)earlyCheck {
+    [self earlyDenyAttach];
     // BLOCK-tier: hookedProcess via checkDynamicLibraries dyld scan + tamper via CS_VALID
     return [self earlyCheckDynamicLibraries] || [self earlyDetectTamper];
 }
