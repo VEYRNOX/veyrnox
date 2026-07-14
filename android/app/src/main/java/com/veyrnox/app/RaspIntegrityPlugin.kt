@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -63,7 +63,7 @@ import java.net.Socket
 class RaspIntegrityPlugin : Plugin() {
 
     /**
-     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered, debuggerAttached, screenCapture }
+     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered, debuggerAttached, screenCapture, overlayActive, developerMode, virtualApp }
      *
      * Each field is true only when actively detected. Absence of a true signal
      * means "not detected" — not "definitely clean". The JS layer must treat the
@@ -107,6 +107,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("screenCapture",     checkScreenCapture())
         result.put("overlayActive",     checkOverlay())
         result.put("developerMode",     checkDeveloperMode())
+        result.put("virtualApp",        checkVirtualApp())
         call.resolve(result)
     }
 
@@ -535,6 +536,44 @@ class RaspIntegrityPlugin : Plugin() {
         ) != 0 || android.provider.Settings.Global.getInt(
             cr, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
         ) != 0
+    }.getOrDefault(false)
+
+    // ── Virtual app container detection (item 26) ────────────────────────────
+    // VirtualApp (io.va), Parallel Space (com.lbe.parallel), Island
+    // (com.oasisfeng.island), and similar "dual space" / app-cloning frameworks
+    // install a copy of the target APK under the container host's own data
+    // directory rather than the standard system path (/data/app/…).
+    //
+    // Running inside a virtual container is a trust-boundary violation:
+    //   – The container host can intercept binder calls, fake root/tamper signals,
+    //     and proxy biometric prompts — undermining all other RASP checks.
+    //   – The app's IPC and filesystem boundaries are crossed by the container
+    //     process, so key material and clipboard content are exposed.
+    //
+    // Detection: applicationInfo.sourceDir is the installed APK path. Under a
+    // normal system install this is /data/app/<pkg>/<hash>/base.apk. Inside a
+    // virtual container it resolves to a path under the host's own
+    // /data/data/<container.pkg>/ — a structural tell that cannot be hidden by
+    // standard mount-namespace tricks (the path is populated by PackageManager
+    // from the app's ApplicationInfo, not from the filesystem view).
+    //
+    // WARN tier — same as rooted. NOT added to earlyCheck (WARN only).
+    // JS wiring to signals.rooted is a separate item (27).
+
+    @JvmSynthetic
+    private fun checkVirtualApp(): Boolean = runCatching {
+        val sourceDir = context.applicationInfo.sourceDir ?: return@runCatching false
+        val knownVirtualPaths = listOf(
+            "/data/data/io.va/",
+            "/data/data/com.lbe.parallel",
+            "/data/data/com.excelliance.dualaid",
+            "/data/data/com.bly.dualspace",
+            "/data/data/com.parallel.space",
+            "/data/data/com.ludashi.superboost",
+            "/data/data/io.virtualapp.",
+            "/data/data/com.oasisfeng.island",
+        )
+        knownVirtualPaths.any { sourceDir.startsWith(it) }
     }.getOrDefault(false)
 
     // ── APK tamper detection (signing certificate check) ─────────────────────

@@ -156,6 +156,7 @@ describe('Android RASP — @JvmSynthetic on all private detection methods', () =
     'detectHook', 'checkTracerPid', 'checkFridaPort', 'checkXposed',
     'checkProcMapsForHook', 'checkGadgetThreads', 'checkFridaPipes',
     'detectEmulator', 'checkBuildProps', 'checkEmulatorFiles', 'detectTamper',
+    'checkScreenCapture', 'checkOverlay', 'checkDeveloperMode', 'checkVirtualApp',
   ];
 
   for (const fn of privateFns) {
@@ -626,6 +627,58 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Item 26 — Android checkVirtualApp + virtualApp verdict field ──────────────
+//
+// VirtualApp (io.va), Parallel Space (com.lbe.parallel), Island
+// (com.oasisfeng.island), and similar "dual space" / app-cloning frameworks
+// install a copy of the target APK under the container host's own data directory
+// rather than the standard system path (/data/app/…). Running inside a virtual
+// container means:
+//   – RASP root/tamper signals can be faked by the container host
+//   – Biometric authentication can be proxied or bypassed by the container layer
+//   – The app's IPC and filesystem boundaries are crossed by the container process
+//
+// Detection: applicationInfo.sourceDir is the installed APK path. Under a normal
+// Android system install this is /data/app/<pkg>/<hash>/base.apk. Inside a
+// virtual container it resolves to a path under the container's
+// /data/data/<host.pkg>/ directory — a distinctive structural tell.
+//
+// Signal tier: WARN (same as rooted — trust boundary broken, not definitive
+// compromise). JS wiring to signals.rooted is a separate item (27).
+// NOT added to earlyCheck() — WARN-tier only.
+
+describe('Item 26 — Android checkVirtualApp + virtualApp verdict field', () => {
+  it('checkVirtualApp() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkVirtualApp()');
+  });
+
+  it('checkVirtualApp() inspects applicationInfo.sourceDir', () => {
+    const start = kt.indexOf('fun checkVirtualApp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('applicationInfo.sourceDir');
+  });
+
+  it('checkVirtualApp() includes at least one known virtual container path (io.va)', () => {
+    const start = kt.indexOf('fun checkVirtualApp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('io.va');
+  });
+
+  it('checkVirtualApp() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkVirtualApp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 650);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("virtualApp") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("virtualApp"');
+  });
+});
 
 // ── Item 24 — Android checkDeveloperMode + developerMode verdict field ────────
 //
