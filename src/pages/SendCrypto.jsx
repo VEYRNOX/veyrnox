@@ -71,7 +71,7 @@ import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet,
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
-import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession.js";
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -924,6 +924,30 @@ export default function SendCrypto() {
       // throw "not in the unlocked HD set" for BTC/SOL, whose address is not an EVM
       // account.
 
+      // I3 hardware-send gate (#972 P1, codex round 2). The old hw/trezor.js
+      // module's requireWebUsb() gated ALL three device paths (EVM/BTC/SOL) on
+      // isDeniabilitySessionActive() — throwing TREZOR_DENIABILITY_BLOCKED before
+      // any RPC or device call. My earlier hotfix restored that gate inside
+      // hw-send.js's public entrypoints, but the caller pre-computes a fee-clamp
+      // (getFeeData for EVM) / a UTXO+blockhash preflight (BTC/SOL) BEFORE reaching
+      // those helpers — leaking one RPC round-trip. Under decoy/hidden with a
+      // Trezor connected the device holds the REAL seed regardless of session
+      // type, so any egress here is an I3 violation AND a coercion-exfil vector.
+      // One gate above the family dispatch catches all three Trezor branches;
+      // software-key sends are UNAFFECTED (decoy has its own decoy vault, that
+      // path is legitimate). Error string matches hw-send.js exactly so downstream
+      // catch-by-message keeps working. Demo-mode check mirrors hw/trezor.js's
+      // deniabilityActive() — a demo build (VITE_DEMO_MODE / veyrnox-demo=1)
+      // must never touch a real Trezor device or leak fee/nonce RPC (codex
+      // round-2 finding, #972 P1b).
+      // Use the LIVE deniability-OR-demo check (round-3 codex finding): the
+      // module-level DEMO constant is a load-time IIFE snapshot, so a
+      // veyrnox-demo=1 flag flipped AFTER import wouldn't fire this gate. The
+      // shared helper reads both signals fresh on every call.
+      if (useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) {
+        throw new Error('TREZOR_DENIABILITY_BLOCKED');
+      }
+
       // Sign LOCALLY and broadcast. The signing key is transient and never
       // persisted. Branch on the asset family — each has its own derivation/
       // signing stack and send function; the human-entered `amount` is converted
@@ -1034,6 +1058,14 @@ export default function SendCrypto() {
           // expects (evmFeeOverrides). gasLimit is intentionally omitted — the
           // helper estimates + applies +20% headroom (issue #961: replaces the
           // old hardcoded 21000n/65000n that broke L2 native + USDT transfers).
+          //
+          // TODO(#972 P2a): the confirmation screen's displayed fee is computed
+          // from the tier hint's 21000/65000 gasLimit, but the signed tx uses
+          // estimateGas + 20%. The Trezor device screen shows the actual value
+          // (so a careful user can catch the divergence) but in-app numbers and
+          // signed numbers diverge. Fix requires resolving gasLimit BEFORE the
+          // confirm screen renders and threading it through both the display and
+          // the signed tx. Deferred from the #972 hotfix — see follow-up.
           const clampedFee = (cappedMaxFeePerGas != null)
             ? {
                 maxFeePerGasWei: cappedMaxFeePerGas.toString(),
@@ -1756,8 +1788,15 @@ export default function SendCrypto() {
 
             {/* Per-chain fee control. The EVM send path is EIP-1559; the chosen
                 tier/custom fee is passed into signAndBroadcast/sendToken. BTC/SOL
-                use an automatic fee this slice (no selector). */}
-            {!isBtc && !isSolana ? (
+                use an automatic fee this slice (no selector).
+                I3 hardware gate (#972 round-2 P1a, codex): FeeSelector's
+                react-query fires estimateEvmFeeTiers() → provider.getFeeData() on
+                mount, with no deniability enabled clause. Under useTrezorMode +
+                decoy/hidden/demo the Trezor address is the REAL hardware address,
+                so that unguarded RPC leaks the real address to the fee provider.
+                Skip the selector in that combination — the send-time gate above
+                will refuse anyway, so a fee tier serves no purpose. */}
+            {!isBtc && !isSolana && !(useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) ? (
               <FeeSelector
                 chain="evm"
                 networkKey={networkKey}
