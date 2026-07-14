@@ -32,21 +32,30 @@ describe('degrade — §4 degradation ladder (condition → tier)', () => {
     expect(a).not.toHaveProperty('permitsTestnet'); // RASP-A4: dead field removed
   });
 
-  it('ROOTED → warn-before-sign: one sentence + biometric re-confirm, no blocks', () => {
+  it('ROOTED → warn-before-sign: one sentence + biometric re-confirm, sensitive paths blocked', () => {
     const a = degrade(CONDITION.ROOTED);
     expect(a.tier).toBe(TIER.WARN);
     expect(typeof a.sentence).toBe('string');
     expect(a.sentence.length).toBeGreaterThan(0);
-    expect(a.blockedActions).toEqual([]);
+    // G4 (2026-07-14): seed-reveal/export/import blocked at WARN tier.
+    // 'sign' is NOT blocked here — handled by requiresBiometric B5 flow.
+    for (const action of ['seed-reveal', 'export', 'import']) {
+      expect(a.blockedActions).toContain(action);
+    }
+    expect(a.blockedActions).not.toContain('sign');
     expect(a.requiresBiometric).toBe(true);
   });
 
-  it('INTEGRITY_UNAVAILABLE → warn (cautious tier per §2/I4), honest copy', () => {
+  it('INTEGRITY_UNAVAILABLE → warn (cautious tier per §2/I4), sensitive paths blocked', () => {
     const a = degrade(CONDITION.INTEGRITY_UNAVAILABLE);
     expect(a.tier).toBe(TIER.WARN);
     expect(typeof a.sentence).toBe('string');
     expect(a.requiresBiometric).toBe(true);
-    expect(a.blockedActions).toEqual([]);
+    // G4 (2026-07-14): same seed-reveal/export/import block as ROOTED (I4 fail-closed).
+    for (const action of ['seed-reveal', 'export', 'import']) {
+      expect(a.blockedActions).toContain(action);
+    }
+    expect(a.blockedActions).not.toContain('sign');
   });
 
   it('EMULATOR → block-signing (no testnet carve-out; dead field removed)', () => {

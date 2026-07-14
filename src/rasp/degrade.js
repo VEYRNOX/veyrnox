@@ -54,19 +54,28 @@ const SPECS = Object.freeze({
     // `requiresBiometric: true` — enforced by SendCrypto.jsx B5 (2026-07-13) on
     // native: biometric verify required after checkbox ack before sign proceeds.
     // The copy warns without naming the specific gate (the gate itself enforces it).
+    //
+    // G4 (2026-07-14): seed-reveal / export / import are blocked at WARN tier —
+    // a detected-rooted device must not expose seed material or allow key import.
+    // 'sign' is intentionally NOT in this list: it is handled by the requiresBiometric
+    // re-confirm + CAUTION checkbox in SendCrypto.jsx B5; double-gating it would
+    // conflict with that flow.
     tier: TIER.WARN,
     sentence:
       'This device looks modified (rooted or jailbroken), which can weaken its protections — continue only if you trust it.',
-    blockedActions: [],
+    blockedActions: ['seed-reveal', 'export', 'import'],
     requiresBiometric: true,
   },
   [CONDITION.INTEGRITY_UNAVAILABLE]: {
     // requiresBiometric: true — same B5 enforcement as ROOTED (native only;
     // web stays checkbox-only since verifyBiometric2fa() throws on web).
+    //
+    // G4 (2026-07-14): same seed-reveal / export / import block as ROOTED.
+    // When integrity can't be confirmed, fail closed on key-material access (I4).
     tier: TIER.WARN,
     sentence:
       "We couldn't confirm this device's integrity just now — continue with extra caution.",
-    blockedActions: [],
+    blockedActions: ['seed-reveal', 'export', 'import'],
     requiresBiometric: true,
   },
   [CONDITION.EMULATOR]: {
