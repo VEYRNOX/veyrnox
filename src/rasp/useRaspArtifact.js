@@ -28,10 +28,18 @@ import { nativeProbeSource } from './nativeProbe.js';
 import { browserProbeSource } from './browserProbe.js';
 import { selectPresignProbeSource } from './selectPresignProbeSource.js';
 import { ATTESTATION_ENABLED, attestationProbeSource, detectAttestation, composeConditions } from './attestation.js';
+import { CONDITION } from './conditions.js';
+
+// DEV override: VITE_BYPASS_RASP=1 skips all integrity checks for on-device testing.
+// Dead-code-eliminated in production builds (env var never set in CI/release).
+const BYPASS_RASP = import.meta.env.VITE_BYPASS_RASP === '1';
 
 const HEARTBEAT_MS = 60_000;
 
 export function useRaspArtifact() {
+  // Dev bypass: skip all probe effects and return ALLOW immediately.
+  if (BYPASS_RASP) return degrade(CONDITION.CLEAN);
+
   const [nativeProbe, setNativeProbe] = useState(null);
   const [attestationResult, setAttestationResult] = useState(null);
   // probeKey increments to re-trigger the OS-probe effect on foreground/heartbeat.
