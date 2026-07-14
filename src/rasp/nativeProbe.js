@@ -99,9 +99,14 @@ export async function nativeProbeSource() {
   // rooted → WARN. The plugin comment says "must NOT trigger TIER.BLOCK on its
   // own"; WARN satisfies that constraint. AssistiveTouch is legitimate but an
   // active accessibility overlay is a tapjacking risk during PIN entry.
+  // Item 25: fold developerMode (Android ADB_ENABLED / DEVELOPMENT_SETTINGS_ENABLED,
+  // item 24) into rooted → WARN. USB debugging on = adb-level attack surface
+  // (logcat capture, screenrecord, memory dump). Android-only field; absent on
+  // iOS verdicts and treated as false by the === true guard.
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true
-         || verdict.overlayActive === true,
+         || verdict.overlayActive === true
+         || verdict.developerMode === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
     // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring

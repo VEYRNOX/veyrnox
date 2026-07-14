@@ -208,6 +208,57 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
   });
 });
 
+// ── Item 25 — developerMode folded into the rooted (WARN) signal ─────────────
+// Android checkDeveloperMode() (item 24) returns developerMode:true when
+// Settings.Global.ADB_ENABLED != 0 or DEVELOPMENT_SETTINGS_ENABLED != 0.
+// USB debugging / developer options = adb-level attack surface (logcat,
+// screenrecord, memory dump). Android-only field; no iOS equivalent.
+// Maps to signals.rooted (→ CONDITION.ROOTED → TIER.WARN): same tier as
+// overlayActive and jailbroken — elevated risk, not a definitive compromise.
+describe('nativeProbeSource — item 25: developerMode → rooted (WARN)', () => {
+  it('developerMode:true maps to signals.rooted true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(true);
+  });
+
+  it('developerMode:true drives detect() to ROOTED (WARN), not HOOKED or TAMPERED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ developerMode: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ROOTED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
+  });
+
+  it('developerMode:false alone does not set rooted (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(false);
+  });
+
+  it('any of rooted / jailbroken / overlayActive / developerMode true is sufficient', async () => {
+    h.isNative = true;
+    for (const field of ['rooted', 'jailbroken', 'overlayActive', 'developerMode']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.rooted).toBe(true);
+    }
+  });
+});
+
 // ── Item 19 — overlayActive folded into the rooted (WARN) signal ─────────────
 // iOS checkOverlay() (UIAccessibilityIsAssistiveTouchRunning) returns
 // overlayActive:true when an accessibility overlay is active. AssistiveTouch is
