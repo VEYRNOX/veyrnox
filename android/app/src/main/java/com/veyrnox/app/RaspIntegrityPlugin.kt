@@ -27,7 +27,13 @@ package com.veyrnox.app
 // checkDangerousProps fired (ro.boot.verifiedbootstate=orange) via
 // readSystemPropReflect (SystemProperties reflection, not Runtime.exec).
 // Verdict: {"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}.
-// checkProcNetUnix and checkSuFromRuntime did NOT fire on Magisk v30.7.
+// checkProcNetUnix did NOT fire on Magisk v30.7. Root cause (device-verified
+// 2026-07-14): SELinux denies untrusted_app reading /proc/net/unix on Android
+// 10+ — the check is structurally inert on modern devices regardless of marker
+// names (avc: denied { read } proc_net confirmed in logcat). Marker list was
+// expanded anyway (PR #968) for completeness on older OS / policy changes.
+// checkSuFromRuntime did NOT fire (Magisk Hide covers `su` in PATH — expected).
+// Operative root signal: checkDangerousProps (verifiedbootstate=orange).
 //
 // FAIL CLOSED (I4): every detection block catches exceptions independently and
 // returns false (clean/unknown) rather than propagating — a crash or permission
@@ -139,20 +145,45 @@ class RaspIntegrityPlugin : Plugin() {
 
     // Scan /proc/net/unix for known root framework IPC socket names.
     // Magisk Hide masks file-system paths via mount namespace manipulation but
-    // CANNOT hide its own Unix domain sockets from /proc/net/unix (these are
-    // kernel-level IPC entries, not filesystem objects under Magisk's control).
-    // This is the Android analogue of the iOS C stat() check — accessing
-    // information from a kernel subsystem that the hide mechanism doesn't reach.
+    // CANNOT hide its own Unix domain sockets from /proc/net/unix — these are
+    // kernel-level IPC entries, not filesystem objects under Magisk's control.
+    //
+    // ⚠️  ANDROID 10+ SELinux BLOCK (device-verified 2026-07-14, SM-N981B Android 12):
+    //     The untrusted_app SELinux domain does NOT have read permission for
+    //     proc_net files. On-device logcat confirmed:
+    //       avc: denied { read } for comm="CapacitorPlugin" name="unix"
+    //            scontext=u:r:untrusted_app:s0 tcontext=u:object_r:proc_net:s0
+    //     runCatching{}.getOrDefault(false) swallows the SecurityException and
+    //     returns false — this check is effectively inert on Android 10+ in the
+    //     untrusted_app context. checkDangerousProps is the operative signal.
+    //     A future implementation could use LocalSocket.connect() to attempt a
+    //     connection to known Magisk daemon paths (a behavioral probe that does
+    //     not require proc_net read permission), but that is not yet implemented.
+    //
+    // Marker list is kept current (expanded for Magisk v30.x, 2026-07-14) so
+    // the check is useful if ever run on a pre-Android-10 device or if SELinux
+    // policy changes. Markers cover Zygisk companion sockets, KSU, LSPosed, APatch.
     private fun checkProcNetUnix(): Boolean {
         val socketMarkers = listOf(
-            "@magisk_",         // Magisk daemon socket (e.g. @magisk_XXXXXX)
-            "magiskd",          // Magisk daemon
-            "@ksu_",            // KernelSU daemon socket
+            // --- Magisk daemon (any version) ---
+            "magisk",           // catch-all substring — matches @magisk_XXXX, magiskd,
+                                // magisk_daemon, magisk_client, .magisk.* (v26+ variants)
+            // --- Zygisk companion / loader (Magisk v24+) ---
+            "zygisk_server",    // Zygisk IPC server (source: zygisk/daemon.cpp SOCKET_NAME)
+            "zygisk_ldr",       // Zygisk loader thread socket
+            ".magisk.zygisk",   // MAGISKTMP/zygisk path-based sockets (e.g. /dev/.magisk/zygisk)
+            // --- KernelSU ---
+            "@ksu_",            // KernelSU daemon abstract socket
             "@ksud",
-            "zygote_overlay",   // Zygisk overlay socket
-            "zygisk",           // Zygisk module IPC
+            "ksu_overlayfs",    // KernelSU overlayfs socket (v0.9+)
+            // --- LSPosed / Zygisk module framework ---
             "@lspd",            // LSPosed daemon
+            "lspd_",            // LSPosed companion variant
+            // --- APatch ---
             "apatchd",          // APatch daemon
+            "apd_",             // APatch companion
+            // --- Legacy / belt-and-suspenders ---
+            "zygote_overlay",   // Zygisk overlay socket (older builds)
         )
         return runCatching {
             File("/proc/net/unix").bufferedReader().use { reader ->
