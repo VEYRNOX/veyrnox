@@ -95,8 +95,13 @@ export async function nativeProbeSource() {
   // mean "OS trust boundary broken" → the `rooted` signal (degrade() → WARN).
   // A hooked process → `hooked` (→ BLOCK). Missing fields are "not observed"
   // (false), exactly as classifyEnvironment() treats absent fields.
+  // Item 19: fold overlayActive (iOS UIAccessibilityIsAssistiveTouchRunning) into
+  // rooted → WARN. The plugin comment says "must NOT trigger TIER.BLOCK on its
+  // own"; WARN satisfies that constraint. AssistiveTouch is legitimate but an
+  // active accessibility overlay is a tapjacking risk during PIN entry.
   const signals = {
-    rooted: verdict.rooted === true || verdict.jailbroken === true,
+    rooted: verdict.rooted === true || verdict.jailbroken === true
+         || verdict.overlayActive === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
     // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring

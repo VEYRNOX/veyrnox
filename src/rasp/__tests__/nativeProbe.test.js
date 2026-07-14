@@ -208,6 +208,55 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
   });
 });
 
+// ── Item 19 — overlayActive folded into the rooted (WARN) signal ─────────────
+// iOS checkOverlay() (UIAccessibilityIsAssistiveTouchRunning) returns
+// overlayActive:true when an accessibility overlay is active. AssistiveTouch is
+// legitimate, so the plugin comment explicitly says "must NOT trigger TIER.BLOCK
+// on its own" — but WARN is appropriate (a presign CAUTION, not a block).
+// Mapping to signals.rooted (→ CONDITION.ROOTED → TIER.WARN) satisfies both
+// constraints: the send flow is not blocked and the user sees a caution notice.
+describe('nativeProbeSource — item 19: overlayActive → rooted (WARN)', () => {
+  it('overlayActive:true maps to signals.rooted true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(true);
+  });
+
+  it('overlayActive:true drives detect() to ROOTED (WARN), not HOOKED or TAMPERED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ overlayActive: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ROOTED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
+  });
+
+  it('overlayActive:false alone does not set rooted (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(false);
+  });
+
+  it('any of rooted / jailbroken / overlayActive being true is sufficient', async () => {
+    h.isNative = true;
+    for (const field of ['rooted', 'jailbroken', 'overlayActive']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.rooted).toBe(true);
+    }
+  });
+});
+
 // ── Item 16 — screenCapture folded into the hooked signal ─────────────────────
 // iOS checkScreenCapture (UIScreen.isCaptured) returns screenCapture:true when
 // the screen is being mirrored via AirPlay or captured via iOS screen recording.
