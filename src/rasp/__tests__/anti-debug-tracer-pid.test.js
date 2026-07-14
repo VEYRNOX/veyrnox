@@ -627,6 +627,66 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 17 — iOS +earlyCheckScreenCapture: pre-bridge UIScreen.isCaptured ───
+//
+// checkScreenCapture() (PR #985, -checkScreenCapture instance method) detects
+// AirPlay mirroring / ReplayKit screen recording via UIScreen.isCaptured.
+// It fires only when checkIntegrity() is called — after the bridge is up.
+// Adding +earlyCheckScreenCapture as a class method extends the detection
+// window back to AppDelegate, before any wallet UI is rendered.
+//
+// UIScreen.mainScreen is available from the start of
+// applicationDidFinishLaunchingWithOptions (UIApplication already initialised).
+// isCaptured was introduced iOS 11.0; app targets 14.0+ so no @available guard.
+// Fail-open (I4): @catch returns NO on any UIKit exception so the app still
+// launches if the API is unavailable.
+
+describe('Item 17 — iOS +earlyCheckScreenCapture pre-bridge UIScreen.isCaptured', () => {
+  it('+earlyCheckScreenCapture class method is defined', () => {
+    expect(iosM).toContain('+ (BOOL)earlyCheckScreenCapture');
+  });
+
+  it('+earlyCheckScreenCapture reads UIScreen.mainScreen.isCaptured', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckScreenCapture');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 300);
+    expect(body).toContain('UIScreen');
+    expect(body).toContain('isCaptured');
+  });
+
+  it('+earlyCheckScreenCapture wraps in @try/@catch (fail-open)', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckScreenCapture');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 300);
+    expect(body).toContain('@try');
+    expect(body).toContain('@catch');
+  });
+
+  it('+earlyCheckScreenCapture returns NO in the @catch fallback (fail-open)', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckScreenCapture');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 300);
+    expect(body).toContain('return NO');
+  });
+
+  it('+earlyCheck calls earlyCheckScreenCapture', () => {
+    const earlyStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyStart).toBeGreaterThan(-1);
+    const body = iosM.slice(earlyStart, earlyStart + 600);
+    expect(body).toContain('earlyCheckScreenCapture');
+  });
+
+  it('+earlyCheck ORs earlyCheckScreenCapture into its return expression', () => {
+    const earlyStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyStart).toBeGreaterThan(-1);
+    const body = iosM.slice(earlyStart, earlyStart + 600);
+    const retIdx = body.indexOf('return');
+    expect(retIdx).toBeGreaterThan(-1);
+    const retExpr = body.slice(retIdx, retIdx + 200);
+    expect(retExpr).toContain('earlyCheckScreenCapture');
+  });
+});
+
 // ── Item 15 — iOS +earlyCheckDebugger: pre-bridge sysctl P_TRACED ───────────
 //
 // checkDebugger() (item 12) added instance-method detection of an already-

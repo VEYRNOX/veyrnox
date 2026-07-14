@@ -531,7 +531,9 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
     [self earlyDenyAttach];
     // BLOCK-tier: hookedProcess via checkDynamicLibraries dyld scan + tamper via CS_VALID
     // + debugger already attached via sysctl P_TRACED (item 15)
-    return [self earlyCheckDynamicLibraries] || [self earlyDetectTamper] || [self earlyCheckDebugger];
+    // + active screen mirroring/recording via UIScreen.isCaptured (item 17)
+    return [self earlyCheckDynamicLibraries] || [self earlyDetectTamper]
+        || [self earlyCheckDebugger] || [self earlyCheckScreenCapture];
 }
 
 // earlyDetectTamper — reads the kernel's code-signing status flags via csops().
@@ -588,6 +590,21 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
         size_t size = sizeof(info);
         if (sysctl(mib, 4, &info, &size, NULL, 0) != 0) return NO;
         return (info.kp_proc.p_flag & P_TRACED) != 0;
+    } @catch (__unused NSException *e) {}
+    return NO;
+}
+
+// earlyCheckScreenCapture — pre-bridge UIScreen.isCaptured detection (item 17).
+// Runs the same check as the instance -checkScreenCapture (PR #985) but as a
+// class method callable from AppDelegate before the Capacitor bridge is up.
+// UIScreen.mainScreen is available from applicationDidFinishLaunchingWithOptions
+// (UIApplication is already initialised). isCaptured (iOS 11+) fires when any
+// AirPlay mirror session or ReplayKit screen recording is active — a surveillance
+// vector that could expose PIN entry or seed material to a remote observer.
+// Fail-open (I4): @catch returns NO so the app still launches if UIKit throws.
++ (BOOL)earlyCheckScreenCapture {
+    @try {
+        return [[UIScreen mainScreen] isCaptured];
     } @catch (__unused NSException *e) {}
     return NO;
 }
