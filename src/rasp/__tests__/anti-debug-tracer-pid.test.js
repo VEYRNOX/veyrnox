@@ -55,6 +55,15 @@ const buildGradle = readFileSync(
 const cFilePath     = resolve(root, 'android/app/src/main/cpp/rasp_early.c');
 const cmakePath     = resolve(root, 'android/app/src/main/cpp/CMakeLists.txt');
 const hwKekM        = readFileSync(resolve(root, 'ios/App/App/HardwareKekPlugin.m'), 'utf8');
+const ecdsaTranscoderKt = readFileSync(
+  resolve(root, 'android/app/src/main/java/com/veyrnox/app/EcdsaDerTranscoder.kt'),
+  'utf8',
+);
+const ecdsaTestKt = readFileSync(
+  resolve(root, 'android/app/src/test/java/com/veyrnox/app/RawEcdsaDerTranscoderTest.kt'),
+  'utf8',
+);
+const ciYml = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
 
 // ── 1. Android: checkTracerPid ────────────────────────────────────────────────
 
@@ -629,6 +638,45 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Item 38 — Kotlin JVM test harness for ES256 DER transcoder (#957 original) ─
+//
+// PlayIntegrityPlugin.verifyJwsSignature() transcodes JWS ES256 raw R‖S
+// signatures (RFC 7518 §3.4, 64 bytes) to ASN.1 DER before calling JCA
+// SHA256withECDSA.verify(). The algorithm was extracted into EcdsaDerTranscoder.kt
+// (pure JVM, no Android context) so that RawEcdsaDerTranscoderTest.kt can
+// execute it with real P-256 keypairs on `./gradlew :app:testDebugUnitTest`.
+// The CI job android-unit-tests runs it on every push.
+//
+// These structural pins confirm the three artefacts are all present and wired:
+//   1. EcdsaDerTranscoder.kt — extracted pure-JVM object
+//   2. RawEcdsaDerTranscoderTest.kt — JUnit test class with roundtrip fuzz
+//   3. ci.yml android-unit-tests job — `./gradlew :app:testDebugUnitTest`
+
+describe('Item 38 — Kotlin JVM test harness: EcdsaDerTranscoder + CI gate', () => {
+  it('EcdsaDerTranscoder.kt defines rawEcdsaSignatureToDer', () => {
+    expect(ecdsaTranscoderKt).toContain('fun rawEcdsaSignatureToDer(raw: ByteArray)');
+  });
+
+  it('EcdsaDerTranscoder.kt defines derEncodeInteger', () => {
+    expect(ecdsaTranscoderKt).toContain('fun derEncodeInteger(bytes: ByteArray)');
+  });
+
+  it('RawEcdsaDerTranscoderTest.kt contains a JCA roundtrip test', () => {
+    expect(ecdsaTestKt).toContain('SHA256withECDSA');
+    expect(ecdsaTestKt).toContain('rawEcdsaSignatureToDer');
+  });
+
+  it('RawEcdsaDerTranscoderTest.kt contains a fuzz test over multiple P-256 signatures', () => {
+    expect(ecdsaTestKt).toContain('fuzz');
+    expect(ecdsaTestKt).toContain('secp256r1');
+  });
+
+  it('ci.yml android-unit-tests job runs testDebugUnitTest', () => {
+    expect(ciYml).toContain('android-unit-tests');
+    expect(ciYml).toContain('testDebugUnitTest');
+  });
+});
 
 // ── Item 36 — Android checkAccessibilityService + accessibilityService verdict ─
 //
