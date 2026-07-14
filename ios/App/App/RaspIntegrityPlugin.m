@@ -62,6 +62,12 @@
     BOOL hookedProcess = [self detectHook];
     BOOL emulator      = [self detectSimulator];
     BOOL tampered      = [self detectTamper];
+    // G4 iOS additions (2026-07-14) — additive signals only; the four keys
+    // above keep their exact existing logic. screenCapture/overlayActive are
+    // surfaced for the JS side to grade (screenCapture as a signal, overlay as
+    // low-severity/informational — see notes on the methods below).
+    BOOL screenCapture = [self checkScreenCapture];
+    BOOL overlayActive = [self checkOverlay];
 
     CAPPluginCall *c = call;
     [c resolve:@{
@@ -69,7 +75,60 @@
         @"hookedProcess": @(hookedProcess),
         @"emulator":      @(emulator),
         @"tampered":      @(tampered),
+        @"screenCapture": @(screenCapture),
+        @"overlayActive": @(overlayActive),
     }];
+}
+
+// ── G4 iOS additions (2026-07-14) — BUILT-UNVALIDATED. ──────────────────────
+// Written on Windows; requires Mac + Xcode compilation and device-test to verify.
+// Follows the same pattern as iOS-F3/F5 (coded before Mac compilation session).
+
+// checkScreenCapture — UIScreen.isCaptured.
+// Returns YES when the screen is being mirrored, AirPlayed, or recorded via
+// ReplayKit. It does NOT detect screenshots (those are instantaneous and there
+// is no OS callback we can gate a signing decision on). Purely local (I2), and
+// fails closed to NO on any error path (I4).
+- (BOOL)checkScreenCapture {
+    @try {
+        if (@available(iOS 11.0, *)) {
+            return [[UIScreen mainScreen] isCaptured];
+        }
+    } @catch (__unused NSException *e) {}
+    return NO;
+}
+
+// checkOverlay — AssistiveTouch / accessibility-overlay presence.
+// AssistiveTouch is a legitimate accessibility feature; a hostile app could
+// also use accessibility overlays for tapjacking. This is INFORMATIONAL /
+// low-severity only — the JS side must NOT let it trigger TIER.BLOCK on its
+// own. Local (I2), fails closed to NO on error (I4).
+- (BOOL)checkOverlay {
+    @try {
+        return UIAccessibilityIsAssistiveTouchRunning();
+    } @catch (__unused NSException *e) {}
+    return NO;
+}
+
+// applyScreenshotProtection — HONEST-DISABLED placeholder (I4).
+// This is a hardening hook, NOT a detection method, and it is deliberately NOT
+// called from checkIntegrity. There is no public iOS API equivalent to
+// Android's FLAG_SECURE for a WKWebView: the OS can capture WKWebView content
+// and iOS provides no supported way to block it the way FLAG_SECURE blocks an
+// Android window. UIScreen.isCaptured (checkScreenCapture above) is DETECTION,
+// not prevention. We do not pretend to block capture when we cannot — this
+// method exists to document the gap honestly and to hold a place for a future
+// public API. If/when Apple ships such an API, wire it here.
+- (void)applyScreenshotProtection:(WKWebView *)webView {
+    if (@available(iOS 16.0, *)) {
+        // NOTE: fraudulentWebsiteWarningEnabled is UNRELATED to capture and is a
+        // no-op for this purpose — left here only to mark where an iOS 16+ branch
+        // would live. It intentionally does not touch capture behaviour.
+        (void)webView;
+    }
+    // No FLAG_SECURE equivalent on iOS: HONEST-DISABLED by design. Do not claim
+    // to prevent capture; checkScreenCapture only DETECTS active mirroring.
+    (void)webView;
 }
 
 // ── Jailbreak detection ────────────────────────────────────────────────────
