@@ -627,6 +627,58 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 20 — Android earlyCheckJdwp in earlyDetectHook() ───────────────────
+//
+// checkJdwpDebugger() (item 14) catches JDWP sessions at runtime, called from
+// detectHook() which runs when checkIntegrity() is invoked post-bridge. There
+// is a window between app launch and bridge-up during which an Android Studio /
+// IntelliJ JDWP attach would go undetected — the same gap that iOS item 15
+// (+earlyCheckDebugger) closed for sysctl P_TRACED.
+//
+// earlyCheckJdwp() is a companion-object private fun that calls
+// Debug.isDebuggerConnected() wrapped in runCatching (fail-open). It is added
+// to earlyDetectHook() so a JDWP session active at launch triggers the native
+// block screen before the Capacitor bridge initialises.
+
+describe('Item 20 — Android earlyCheckJdwp in earlyDetectHook()', () => {
+  it('earlyCheckJdwp() companion method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun earlyCheckJdwp()');
+  });
+
+  it('earlyCheckJdwp() calls Debug.isDebuggerConnected()', () => {
+    const start = kt.indexOf('fun earlyCheckJdwp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('isDebuggerConnected');
+  });
+
+  it('earlyCheckJdwp() wraps in runCatching (fail-open, must not block launch)', () => {
+    const start = kt.indexOf('fun earlyCheckJdwp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('runCatching');
+  });
+
+  it('earlyDetectHook() chains earlyCheckJdwp() after existing early checks', () => {
+    const hookStart = kt.indexOf('fun earlyDetectHook()');
+    expect(hookStart).toBeGreaterThan(-1);
+    const hookBody = kt.slice(hookStart, hookStart + 300);
+    expect(hookBody).toContain('earlyCheckJdwp()');
+    // Must still chain the existing early checks
+    expect(hookBody).toContain('earlyPtraceTraceme()');
+    const ptraceIdx = hookBody.indexOf('earlyPtraceTraceme()');
+    const jdwpIdx   = hookBody.indexOf('earlyCheckJdwp()');
+    expect(jdwpIdx).toBeGreaterThan(ptraceIdx);
+  });
+
+  it('earlyCheckJdwp() uses getOrDefault(false) — fail-open on exception', () => {
+    const start = kt.indexOf('fun earlyCheckJdwp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('getOrDefault(false)');
+  });
+});
+
 // ── Item 18 — Android debuggerAttached verdict field (platform symmetry) ──────
 //
 // iOS checkIntegrity() returns debuggerAttached (item 12). Android does not —

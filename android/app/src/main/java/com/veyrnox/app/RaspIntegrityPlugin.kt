@@ -557,6 +557,18 @@ class RaspIntegrityPlugin : Plugin() {
                 || earlyGadgetThreads()
                 || earlyFridaPipes()
                 || earlyPtraceTraceme()
+                || earlyCheckJdwp()
+
+        // earlyCheckJdwp — JDWP debugger detection in the early companion gate
+        // (item 20). Android analogue of iOS +earlyCheckDebugger (item 15).
+        // checkJdwpDebugger() (item 14) runs the same check post-bridge inside
+        // detectHook(); this companion-object mirror closes the pre-bridge window
+        // so an Android Studio / IntelliJ JDWP attach at app launch fires the
+        // native block screen before the Capacitor bridge initialises.
+        // Fail-open (runCatching + getOrDefault(false)): a missing Debug class
+        // or platform restriction must never block a legitimate launch.
+        private fun earlyCheckJdwp(): Boolean =
+            runCatching { Debug.isDebuggerConnected() }.getOrDefault(false)
 
         // earlyPtraceTraceme — calls ptrace(PTRACE_TRACEME) via JNI. Hardening:
         // claims the tracing slot for the parent (Zygote), complementing
