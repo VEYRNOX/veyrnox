@@ -55,6 +55,8 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.io.BufferedReader
+import android.net.LocalSocket
+import android.net.LocalSocketAddress
 import java.io.File
 import java.io.InputStreamReader
 import java.net.InetSocketAddress
@@ -88,9 +90,10 @@ class RaspIntegrityPlugin : Plugin() {
             || checkMagiskPaths()
             || checkSystemWritable()
             || checkBuildTags()
-            || checkProcNetUnix()       // new: Magisk/KSU IPC sockets in /proc/net/unix
-            || checkSuFromRuntime()     // new: behavioral — `which su` via Runtime.exec
-            || checkDangerousProps()    // new: ro.boot.verifiedbootstate orange/red
+            || checkProcNetUnix()           // Magisk/KSU IPC sockets in /proc/net/unix (inert Android 10+ SELinux)
+            || checkLocalSocketConnect()    // behavioral: connect to fixed-name Zygisk/LSPosed/APatch sockets
+            || checkSuFromRuntime()         // behavioral — `which su` via Runtime.exec
+            || checkDangerousProps()        // ro.boot.verifiedbootstate orange/red
     }
 
     private fun checkRootBinaries(): Boolean {
@@ -193,6 +196,47 @@ class RaspIntegrityPlugin : Plugin() {
                 }
             }
         }.getOrDefault(false)
+    }
+
+    // Behavioral probe: attempt LocalSocket.connect() to known fixed-name abstract sockets
+    // used by Zygisk (Magisk v24+), LSPosed, APatch, and KernelSU daemons.
+    //
+    // WHY this instead of /proc/net/unix?
+    //   checkProcNetUnix() is inert on Android 10+ — SELinux denies proc_net reads
+    //   for untrusted_app (device-verified 2026-07-14, SM-N981B). LocalSocket.connect()
+    //   is a connect-only probe and does NOT require proc_net read permission.
+    //
+    // Target sockets (fixed names, not randomised by Magisk Hide):
+    //   "zygisk_server" — Zygisk companion IPC server (SOCKET_NAME, Magisk v24+)
+    //   "lspd_0"        — LSPosed daemon at UID 0 (root)
+    //   "apd"           — APatch companion daemon
+    //   "ksud"          — KernelSU daemon
+    //
+    // SELinux caveat (honest, I4):
+    //   connect() FROM untrusted_app TO an abstract socket requires an allow rule in the
+    //   SELinux policy. On hardened Android 12+ this may be denied; runCatching swallows
+    //   the SecurityException and returns false (fail-open, not fail-closed for this check).
+    //   checkDangerousProps is the primary operative Magisk signal on modern Android.
+    //   This is belt-and-suspenders, most useful on pre-Android-12 or custom ROMs.
+    //
+    // BUILT · structural pins only · NOT device-verified · INTERNAL (2026-07-14).
+    private fun checkLocalSocketConnect(): Boolean {
+        val abstractSockets = listOf(
+            "zygisk_server",    // Zygisk companion IPC server (Magisk v24+)
+            "lspd_0",           // LSPosed daemon (UID 0)
+            "apd",              // APatch companion daemon
+            "ksud",             // KernelSU daemon
+        )
+        return abstractSockets.any { name ->
+            runCatching {
+                LocalSocket().use { sock ->
+                    sock.connect(
+                        LocalSocketAddress(name, LocalSocketAddress.Namespace.ABSTRACT),
+                    )
+                    true    // connect succeeded — daemon socket is present
+                }
+            }.getOrDefault(false)
+        }
     }
 
     // Behavioral root check: try `which su` via Runtime.exec.
