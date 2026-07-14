@@ -1,38 +1,79 @@
-import { describe, it, expect } from 'vitest';
-import { PRIMARY_UNLOCK_EQUALIZER_MS } from '../WalletProvider.jsx';
+// H-1 primary-unlock equalizer — SUPERSEDED STRATEGY.
+//
+// This file previously asserted a two-sided wall-clock bound on the magic constant
+// PRIMARY_UNLOCK_EQUALIZER_MS (a setTimeout pad on the primary-success path). That
+// approach was REPLACED: a hand-tuned sleep only covered ~1.4 of the 3-KDF deficit
+// between a primary success and any failure/duress outcome (leaving the fast path
+// measurably faster — the H-1 oracle), and the constant drifted whenever KDF_PARAMS
+// changed (the VU-06 regression history).
+//
+// The fix is now STRUCTURAL: WalletProvider.unlock()'s primary-success path calls
+// spendPrimaryUnlockEqualizerKdfs (wallet-core/deniabilityUnlock.js), which spends the
+// SAME constant number of Argon2id KDFs that resolveDeniabilityUnlock spends on the
+// failure path. So the invariant to pin is a KDF COUNT (which auto-tracks KDF_PARAMS),
+// not a millisecond bound. The end-to-end per-outcome equality is measured in
+// unlockTimingEqualizer.h1.test.jsx; here we unit-pin the helper's count against the
+// resolver's count so the two can never silently drift apart.
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Count real Argon2id invocations by wrapping hash-wasm's argon2id (the single KDF
+// primitive both the equalizer and the resolver funnel through).
+const kdf = vi.hoisted(() => ({ count: 0, memorySizes: [] }));
+vi.mock('hash-wasm', async (importOriginal) => {
+  const orig = await importOriginal();
+  return {
+    ...orig,
+    argon2id: (opts, ...rest) => {
+      kdf.count += 1;
+      kdf.memorySizes.push(opts && opts.memorySize);
+      return orig.argon2id(opts, ...rest);
+    },
+  };
+});
+
+import {
+  spendPrimaryUnlockEqualizerKdfs,
+  resolveDeniabilityUnlock,
+} from '../../wallet-core/deniabilityUnlock.js';
 import { KDF_PARAMS } from '../../wallet-core/vault.js';
+import { wipeStealthPool, ensureStealthPool } from '../../wallet-core/stealth.js';
+import { clearDuressVault } from '../../wallet-core/duress.js';
+import { clearPanicVault } from '../../wallet-core/panic.js';
 
-// H3 — timing equalizer must cover one Argon2id KDF at the CURRENT KDF_PARAMS,
-// and must NOT exceed the worst-case multi-KDF path.
-//
-// The primary-success unlock path runs ~1 FEWER Argon2id KDF than any other
-// outcome (miss/duress/panic/hidden each spend 3 via resolveDeniabilityUnlock).
-// WalletProvider pads the fast path with PRIMARY_UNLOCK_EQUALIZER_MS so correct
-// password and wrong password cost the same wall-clock time. The bound is
-// TWO-SIDED:
-//   - too short  → primary success is measurably FASTER than a miss (legacy
-//     192-MiB-calibrated oracle, the 300 ms regression).
-//   - too long   → primary success is measurably SLOWER than a miss. After the
-//     64 MiB KDF downgrade (commit 1226085e), a 2500 ms pad that was sized for
-//     ~1.7 s 192 MiB KDFs over-pads the fast path: primary-success ≈ 1 KDF + pad
-//     while a miss ≈ 4 KDFs. At ~0.5 s/KDF that makes success ~1 s SLOWER than a
-//     miss — a fresh distinguisher in the opposite direction.
-//
-// Estimate one KDF from KDF_PARAMS.memorySize so this guard tracks the runtime
-// cost instead of a hardcoded device number. One KDF touches
-// memorySize × iterations of memory; measured mobile-WebView Argon2id
-// throughput is ~400 MB/s, which puts a 64 MiB / t=3 KDF at ~500 ms.
-describe('H3 — PRIMARY_UNLOCK_EQUALIZER_MS two-sided bound', () => {
-  const memMiB = KDF_PARAMS.memorySize / 1024;
-  const totalMiB = memMiB * KDF_PARAMS.iterations; // memory touched per full KDF
-  const THROUGHPUT_MIB_PER_S = 400; // measured mobile-WebView Argon2id ≈ 400 MB/s
-  const oneKdfMs = (totalMiB / THROUGHPUT_MIB_PER_S) * 1000; // ≈ 480 ms at 64 MiB/t3
-
-  it('is at least one KDF (>= oneKdfMs) so the fast path is not the short oracle', () => {
-    expect(PRIMARY_UNLOCK_EQUALIZER_MS).toBeGreaterThanOrEqual(oneKdfMs);
+describe('H-1 — primary-success equalizer spends the same KDF count as the failure path', () => {
+  beforeEach(async () => {
+    try { localStorage.clear(); } catch { /* shimmed */ }
+    await wipeStealthPool();
+    await clearDuressVault();
+    await clearPanicVault();
   });
 
-  it('is at most the worst-case path (<= 4 * oneKdfMs) so it is not the long oracle', () => {
-    expect(PRIMARY_UNLOCK_EQUALIZER_MS).toBeLessThanOrEqual(4 * oneKdfMs);
+  it('spendPrimaryUnlockEqualizerKdfs runs exactly 3 KDFs (matching resolveDeniabilityUnlock)', async () => {
+    await ensureStealthPool();
+    // Baseline: the failure-path resolver's constant KDF count on a wrong guess.
+    kdf.count = 0;
+    await resolveDeniabilityUnlock('a-wrong-guess-for-the-count');
+    const resolverKdfs = kdf.count;
+
+    // The primary-success equalizer must spend the SAME count so unlock latency is
+    // equal across outcomes (no faster fast-path, no over-padded slower fast-path).
+    kdf.count = 0;
+    await spendPrimaryUnlockEqualizerKdfs('any-password');
+    const equalizerKdfs = kdf.count;
+
+    expect(equalizerKdfs).toBe(resolverKdfs);
+    expect(equalizerKdfs).toBe(3); // pins the current constant explicitly
+  });
+
+  it('every equalizer KDF derives at the current KDF_PARAMS.memorySize', async () => {
+    // A dummy pad at stale params would cost differently than a real attempt and
+    // reintroduce a timing tell. Assert the memorySize each call passes to argon2id.
+    kdf.count = 0;
+    kdf.memorySizes = [];
+    await spendPrimaryUnlockEqualizerKdfs('any-password');
+
+    expect(kdf.memorySizes).toHaveLength(3);
+    for (const m of kdf.memorySizes) expect(m).toBe(KDF_PARAMS.memorySize);
   });
 });

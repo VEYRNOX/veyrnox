@@ -69,21 +69,17 @@
 // the oracle now, mitigated by the 10-attempt wipe rather than by silence.
 //
 // RESIDUAL TIMING VARIANCE WE DO NOT (AND CANNOT FULLY) ELIMINATE — for audit:
-// VULN-17 ACCEPTED RESIDUAL: the primary success path is ~1 KDF faster than any
-// other outcome (wrong / duress / hidden / panic). This is intentional: equalizing
-// would 4× every real unlock with no security gain (the timing only reveals "the
-// primary password was correct" — inferable only by someone who already holds it).
-// The residual does NOT leak deniability-feature count; every NON-primary outcome
-// costs a constant 4 KDFs. An equalizer sleep on the primary-success path closes
-// this gap: PRIMARY_UNLOCK_EQUALIZER_MS (1500 ms) is implemented in WalletProvider.jsx
-// and runs after every primary-path success. See docs/Security.roadmap.md.
-//   - A CORRECT PRIMARY unlock returns after 1 KDF (it never enters this path),
-//     so it is faster than any other outcome. This does NOT leak deniability-
-//     feature presence/count — every NON-primary outcome (wrong / duress / hidden
-//     / panic) is an identical 4-KDF cost — it only reveals "the typed secret was
-//     the primary password", which is learnable only by someone who already holds
-//     it (at which point deniability is moot). Equalizing this too would 4x every
-//     legitimate unlock; we deliberately do not.
+// H-1 (formerly VULN-17 ACCEPTED RESIDUAL, NOW CLOSED STRUCTURALLY): the primary
+// success path used to return ~3 KDFs faster than any other outcome (wrong / duress /
+// hidden / panic each spend this module's constant 3, plus the shared unlock + verifier
+// KDFs). The old mitigation was a hand-tuned PRIMARY_UNLOCK_EQUALIZER_MS sleep in
+// WalletProvider.jsx, which (a) only covered ~1.4 of the 3-KDF deficit — leaving the
+// fast path measurably faster (the H-1 oracle) — and (b) was a magic constant that
+// drifted whenever KDF_PARAMS changed. It is REPLACED by spendPrimaryUnlockEqualizerKdfs
+// (below): the primary-success path now spends the SAME 3 throwaway KDFs this resolver
+// spends, so every outcome costs an identical unlock(1) + three-slot(3) + verifier(1)
+// = 5 KDFs. Timing is EQUAL by construction — it no longer reveals even "the primary
+// password was correct". See unlockTimingEqualizer.h1.test.jsx.
 //   - NON-KDF work differs slightly per branch (an extra IndexedDB GET, the
 //     AES-GCM tag check, mnemonic derivation on a hit). These are microseconds
 //     against ~100 ms KDFs — below the measurement floor the KDF cost sets — but
@@ -163,6 +159,33 @@ async function constantDuress(password, configured) {
   if (configured) return tryDuressUnlock(password); // 1 KDF (real)
   await dummyKdf(password);                         // 1 KDF (pad)
   return null;
+}
+
+// H-1 PRIMARY-SUCCESS COST EQUALIZER (supersedes the old PRIMARY_UNLOCK_EQUALIZER_MS
+// magic sleep). A CORRECT primary unlock short-circuits BEFORE resolveDeniabilityUnlock,
+// so it spends 3 FEWER Argon2id KDFs than any failure/duress/hidden outcome (which all
+// run this module's constant 3). The old fix padded that deficit with a wall-clock
+// setTimeout tuned by hand against KDF_PARAMS — a magic number that drifted every time
+// the params changed (the VU-06 / 192-vs-64 MiB regression history) and, worse, only
+// covered ~1.4 of the 3-KDF deficit, leaving the primary-success path measurably FASTER
+// than a miss (the H-1 timing oracle).
+//
+// The structural fix: make the primary-success path spend the SAME 3 throwaway KDFs
+// this resolver spends, so unlock latency is EQUAL across outcomes by construction —
+// no magic constant to drift, and no risk of OVER-padding into a slower-than-miss
+// oracle (the failure path spends exactly these same 3). Each dummy KDF derives at the
+// current KDF_PARAMS (via chaffBlob), matching a real attempt's cost as the params evolve.
+//
+// LOAD-BEARING INVARIANT: this MUST spend exactly the same KDF count as
+// resolveDeniabilityUnlock (currently 3). If that resolver's constant changes, change
+// this in lockstep, or the H-1 oracle reopens. deniability-timing.test.js and
+// unlockTimingEqualizer.h1.test.jsx pin the equality.
+export async function spendPrimaryUnlockEqualizerKdfs(password) {
+  // Three throwaway KDFs — one per resolver slot (panic, duress, hidden). No branching,
+  // no early return: the count is invariant, mirroring resolveDeniabilityUnlock exactly.
+  await dummyKdf(password);
+  await dummyKdf(password);
+  await dummyKdf(password);
 }
 
 /**
