@@ -208,6 +208,61 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
   });
 });
 
+// ── Item 35 — networkProxy folded into the rooted (WARN) signal ──────────────
+// Android checkNetworkProxy() (item 34) returns networkProxy:true when a
+// system proxy (Burp Suite, Charles, mitmproxy) is active — a potential MitM
+// vector during HTTPS traffic. WARN tier. Android-only field; absent on iOS
+// verdicts, treated as false by === true.
+describe('nativeProbeSource — item 35: networkProxy → rooted (WARN)', () => {
+  it('networkProxy:true maps to signals.rooted true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: false,
+      suspiciousPackage: false,
+      thirdPartyKeyboard: false,
+      mockLocation: false,
+      networkProxy: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(true);
+  });
+
+  it('networkProxy:true drives detect() to ROOTED (WARN), not HOOKED or TAMPERED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ networkProxy: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ROOTED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
+  });
+
+  it('networkProxy:false alone does not set rooted (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false, jailbroken: false, overlayActive: false,
+      developerMode: false, virtualApp: false, suspiciousPackage: false,
+      thirdPartyKeyboard: false, mockLocation: false, networkProxy: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(false);
+  });
+
+  it('any of the rooted-tier fields true is sufficient for signals.rooted', async () => {
+    h.isNative = true;
+    for (const field of ['rooted', 'jailbroken', 'overlayActive', 'developerMode',
+                         'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard',
+                         'mockLocation', 'networkProxy']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.rooted).toBe(true);
+    }
+  });
+});
+
 // ── Item 33 — mockLocation folded into the rooted (WARN) signal ──────────────
 // Android checkMockLocation() (item 32) returns mockLocation:true when a
 // non-system package holds OPSTR_MOCK_LOCATION (API 23+) or the legacy
