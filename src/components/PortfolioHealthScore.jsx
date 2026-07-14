@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { Shield, TrendingUp, Layers, ChevronRight } from "lucide-react";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
-import { calculatePortfolioHealth } from "@/lib/portfolioHealthCalc";
+import { calculatePortfolioHealth, calculateSecurityScore, calculateDiversificationScore, calculateGrowthScore } from "@/lib/portfolioHealthCalc";
+export { calculateSecurityScore, calculateDiversificationScore, calculateGrowthScore, calculatePortfolioHealth };
 
 function ScoreRing({ score }) {
   const r = 28;
@@ -56,7 +57,7 @@ export default function PortfolioHealthScore({
             <p className="text-sm font-bold mt-0.5 text-muted-foreground">Unavailable</p>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">Portfolio health score is not available in this session.</p>
+        <p className="text-xs text-muted-foreground">Portfolio health score is unavailable in this session.</p>
       </div>
     );
   }
