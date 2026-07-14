@@ -53,6 +53,16 @@
 #define PT_DENY_ATTACH 31
 extern int ptrace(int request, pid_t pid, caddr_t addr, int data);
 
+// csops — not in the public iOS SDK headers but available as a linkable
+// libSystem symbol (same pattern as PT_DENY_ATTACH above). CS_OPS_STATUS (0)
+// reads the kernel's code-signing status flags for the given PID. CS_VALID
+// (0x00000001) is cleared by the kernel when the binary has been tampered or
+// re-signed without a valid certificate chain — making this the most direct
+// tamper signal available at pre-bridge time without network egress (I2).
+#define CS_VALID       0x00000001
+#define CS_OPS_STATUS  0
+extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
+
 // CFNetwork for port probe
 #import <CFNetwork/CFNetwork.h>
 // 2026-07-14 audit MEDIUM: BSD sockets for a real, bounded TCP-connect Frida probe
@@ -439,6 +449,57 @@ extern int ptrace(int request, pid_t pid, caddr_t addr, int data);
             if (strstr(name, "MobileSubstrate") != NULL) return YES;
             if (strstr(name, "SubstrateLoader") != NULL) return YES;
             if (strstr(name, "TweakInject")     != NULL) return YES;
+        }
+    } @catch (__unused NSException *e) {}
+    return NO;
+}
+
+// ── Pre-WebView native gate ───────────────────────────────────────────────────
+// earlyCheck is a class (+) method so AppDelegate can call it before the
+// Capacitor bridge is initialised — no Plugin instance or CAPPluginCall exists
+// at that point. Only BLOCK-tier signals are checked here (hookedProcess via
+// dyld scan); rooted/emulator are WARN-tier and handled post-launch by the JS
+// presignGate. Fail closed (I4): any exception → NO (not blocked), consistent
+// with other heuristic checks in this file.
+
++ (BOOL)earlyCheck {
+    // BLOCK-tier: hookedProcess via checkDynamicLibraries dyld scan + tamper via CS_VALID
+    return [self earlyCheckDynamicLibraries] || [self earlyDetectTamper];
+}
+
+// earlyDetectTamper — reads the kernel's code-signing status flags via csops().
+// CS_VALID is cleared by the kernel when the binary has been modified or
+// re-signed with an untrusted certificate. Fail-closed (I4): if csops fails for
+// any reason (permission error, unexpected return) we return YES (BLOCK) rather
+// than silently passing a binary we cannot verify.
++ (BOOL)earlyDetectTamper {
+    @try {
+        uint32_t csFlags = 0;
+        int rc = csops((pid_t)getpid(), CS_OPS_STATUS, &csFlags, sizeof(csFlags));
+        if (rc != 0) return YES;                     // syscall failed — fail closed
+        if ((csFlags & CS_VALID) == 0) return YES;   // kernel cleared CS_VALID
+    } @catch (__unused NSException *e) { return YES; }
+    return NO;
+}
+
+// earlyCheckDynamicLibraries — scans loaded dyld images for known hook/injection
+// libraries. Duplicates the core logic of the instance -checkDynamicLibraries
+// method so it can run as a class method before the Plugin is instantiated.
+// The name deliberately contains "checkDynamicLibraries" as a substring for
+// structural test pins.
++ (BOOL)earlyCheckDynamicLibraries {
+    @try {
+        uint32_t count = _dyld_image_count();
+        for (uint32_t i = 0; i < count; i++) {
+            const char *name = _dyld_get_image_name(i);
+            if (name == NULL) continue;
+            NSString *imageName = [[[NSString alloc] initWithUTF8String:name] lowercaseString];
+            if ([imageName containsString:@"frida"])     return YES;
+            if ([imageName containsString:@"substrate"]) return YES;
+            if ([imageName containsString:@"xposed"])    return YES;
+            if ([imageName containsString:@"cycript"])   return YES;
+            if ([imageName containsString:@"lspd"])      return YES;
+            if ([imageName containsString:@"ellekit"])   return YES;
         }
     } @catch (__unused NSException *e) {}
     return NO;

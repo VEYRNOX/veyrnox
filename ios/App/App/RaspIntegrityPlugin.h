@@ -10,6 +10,13 @@
 
 - (void)checkIntegrity:(CAPPluginCall *)call;
 
+/**
+ * earlyCheck — BLOCK-tier class method called from AppDelegate BEFORE the
+ * Capacitor bridge initialises. Checks hookedProcess signals (dyld scan).
+ * Returns YES if BLOCK-tier signals detected (bridge must not start).
+ */
++ (BOOL)earlyCheck;
+
 @end
 
 #endif /* RaspIntegrityPlugin_h */

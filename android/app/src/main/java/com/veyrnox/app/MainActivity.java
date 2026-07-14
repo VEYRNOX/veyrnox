@@ -1,5 +1,6 @@
 package com.veyrnox.app;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.WindowManager;
 import android.webkit.WebView;
@@ -13,6 +14,17 @@ import com.veyrnox.app.PlayIntegrityPlugin;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Pre-WebView RASP gate — must run before plugin registration and
+        // super.onCreate() so the Capacitor bridge never initialises on
+        // BLOCK-tier (hooked/tampered) devices. Calling super.onCreate(null)
+        // in the blocked path satisfies the Activity lifecycle contract and
+        // creates a window for the AlertDialog without loading any plugins.
+        if (RaspIntegrityPlugin.Companion.earlyCheck(this)) {
+            super.onCreate(null);
+            showNativeBlockScreen();
+            return;
+        }
+
         registerPlugin(FileSaverPlugin.class);
         registerPlugin(HardwareKekPlugin.class);
         registerPlugin(RaspIntegrityPlugin.class);
@@ -49,5 +61,20 @@ public class MainActivity extends BridgeActivity {
         if (!BuildConfig.DEBUG) {
             WebView.setWebContentsDebuggingEnabled(false);
         }
+    }
+
+    // showNativeBlockScreen — shown when earlyCheck() returns BLOCK-tier. Uses a
+    // plain AlertDialog with no Capacitor dependency; the WebView was never loaded.
+    // finishAffinity() closes the task stack so there is no way back into the app.
+    private void showNativeBlockScreen() {
+        new AlertDialog.Builder(this)
+            .setTitle("Security Alert")
+            .setMessage(
+                "This device has been modified in a way that cannot be verified as safe. " +
+                "Veyrnox cannot start to protect your assets."
+            )
+            .setCancelable(false)
+            .setPositiveButton("Exit", (dialog, which) -> finishAffinity())
+            .show();
     }
 }

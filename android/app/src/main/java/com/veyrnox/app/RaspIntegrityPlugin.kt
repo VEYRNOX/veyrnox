@@ -573,4 +573,112 @@ class RaspIntegrityPlugin : Plugin() {
         // detectEmulator (heuristics), a failed signing-cert check must not pass silently.
         .getOrElse { true }
     }
+
+    // ── Pre-WebView early gate ────────────────────────────────────────────────
+    // Companion object exposes a static earlyCheck() method that MainActivity
+    // calls BEFORE registerPlugin() and super.onCreate(). This ensures the
+    // Capacitor bridge is never initialised on BLOCK-tier devices, closing the
+    // bridge-gap attack surface: there is no nativePromiseResolve to hook if the
+    // WebView never starts. Only BLOCK-tier signals gate here (hookedProcess +
+    // tampered); root and emulator are WARN-tier and handled post-launch by the
+    // JS presignGate.
+
+    companion object {
+
+        // PR_SET_DUMPABLE = 4 (Linux constant; not exposed in android.system.OsConstants).
+        // Setting dumpable=0 prevents /proc/self/mem reads, ptrace-based memory
+        // inspection, and core-dump leaks — blocks Frida's memory-scanning path
+        // even when hook-thread detection misses a gadget. Fail-open: prctl failure
+        // must never prevent the app from launching.
+        private const val PR_SET_DUMPABLE = 4
+
+        /**
+         * earlyCheck — BLOCK-tier signals only, no Plugin instance required.
+         * Returns true (BLOCK) if a debugger/hook or binary tamper is detected.
+         * earlyAntiDump() always runs first to lock down /proc/self/mem before
+         * any hook/tamper verdict is reached.
+         */
+        @JvmStatic
+        fun earlyCheck(context: android.content.Context): Boolean {
+            earlyAntiDump()
+            return earlyDetectHook() || earlyDetectTamper(context)
+        }
+
+        // earlyAntiDump — sets PR_SET_DUMPABLE to 0 via android.system.Os.prctl.
+        // Fail-open (runCatching, no else): if prctl is denied or unavailable,
+        // the app launches normally; protection is silently absent, not a hard block.
+        private fun earlyAntiDump() = runCatching {
+            android.system.Os.prctl(PR_SET_DUMPABLE, 0L, 0L, 0L, 0L)
+        }
+
+        // FAIL CLOSED (I4): any IO/parse failure → false (not detected, not clean).
+        // The WebView is allowed to start on detection failure; the JS presignGate
+        // independently degrades to WARN on an unavailable native probe.
+
+        private fun earlyDetectHook(): Boolean =
+            earlyTracerPid()
+                || earlyFridaPort()
+                || earlyProcMaps()
+                || earlyGadgetThreads()
+                || earlyFridaPipes()
+
+        private fun earlyTracerPid(): Boolean = runCatching {
+            File("/proc/self/status").readLines()
+                .firstOrNull { it.startsWith("TracerPid:") }
+                ?.removePrefix("TracerPid:")?.trim()?.toIntOrNull()
+                ?.let { it != 0 } ?: false
+        }.getOrDefault(false)
+
+        private fun earlyFridaPort(): Boolean = runCatching {
+            Socket().use { s ->
+                s.connect(InetSocketAddress("127.0.0.1", 27042), 100)
+                true
+            }
+        }.getOrDefault(false)
+
+        private fun earlyProcMaps(): Boolean = runCatching {
+            val markers = listOf("frida", "xposed", "substrate", "lspd", "zygisk")
+            File("/proc/self/maps").readLines()
+                .any { line -> markers.any { m -> line.lowercase().contains(m) } }
+        }.getOrDefault(false)
+
+        private fun earlyGadgetThreads(): Boolean = runCatching {
+            val markers = setOf("gum-js-loop", "gmain", "gdbus", "frida-gadget")
+            File("/proc/self/task").listFiles()?.any { task ->
+                val comm = File(task, "comm")
+                comm.exists() && markers.any { m -> comm.readText().trim().contains(m) }
+            } ?: false
+        }.getOrDefault(false)
+
+        private fun earlyFridaPipes(): Boolean = runCatching {
+            File("/proc/self/fd").listFiles()?.any { fd ->
+                runCatching {
+                    fd.canonicalPath.contains("frida", ignoreCase = true)
+                }.getOrDefault(false)
+            } ?: false
+        }.getOrDefault(false)
+
+        private fun earlyDetectTamper(context: android.content.Context): Boolean = runCatching {
+            val expected = BuildConfig.RELEASE_CERT_SHA256
+            if (expected.isBlank()) return true  // fail-closed (I4)
+            val pm = context.packageManager
+            @Suppress("DEPRECATION")
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            } else {
+                pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
+            }
+            val sigs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.signingInfo?.apkContentsSigners
+            } else {
+                @Suppress("DEPRECATION")
+                info.signatures
+            } ?: return true
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            val actual = sigs.firstOrNull()?.let { sig ->
+                md.digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
+            } ?: return true
+            actual != expected.replace(":", "").lowercase()
+        }.getOrElse { true }
+    }
 }
