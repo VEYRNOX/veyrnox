@@ -194,6 +194,12 @@ async function trezorSignFieldsAndBroadcast(txFields, fromAddress, networkKey) {
  * Sign and broadcast via a connected Ledger. `transport` is the live
  * WebHID transport from HardwareWalletContext.
  *
+ * L-2 (issue #962): this function is BUILT but has no UI caller yet — Ledger EVM
+ * sending is not wired into SendCrypto.jsx. It is exported so it can be wired in
+ * and exercised in tests; until then it is dead app code. Do not delete — the
+ * Ledger flow is a planned feature. Wire it in (analogous to the Trezor path) and
+ * remove this note when the UI path lands.
+ *
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */
 export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAddress, to, amountEth, fee = null }) {

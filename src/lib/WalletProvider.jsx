@@ -1924,7 +1924,12 @@ export function WalletProvider({ children }) {
     if (!active) throw new Error('Wallet is locked');
     touch();
     const { privateKey, publicKey, address } = deriveBtcAccount(active, { networkKey });
-    return fn({ privateKey, publicKey, address });
+    // M-2: zero the Uint8Array key in .finally() so it doesn't outlive the callback
+    // even on an async/throw path. Unlike EVM (JS string, architecturally unzeroable),
+    // BTC keys are Uint8Array — zeroization is both possible and low-cost.
+    return Promise.resolve(fn({ privateKey, publicKey, address })).finally(() => {
+      privateKey.fill(0);
+    });
   }, [touch]);
 
   // SOL counterpart: provide the ed25519 private+public key bytes for the Solana
@@ -1937,7 +1942,10 @@ export function WalletProvider({ children }) {
     if (!active) throw new Error('Wallet is locked');
     touch();
     const { privateKey, publicKey, address } = deriveSolAccount(active);
-    return fn({ privateKey, publicKey, address });
+    // M-2: zero the Uint8Array ed25519 seed in .finally() (mirrors BTC pattern above).
+    return Promise.resolve(fn({ privateKey, publicKey, address })).finally(() => {
+      privateKey.fill(0);
+    });
   }, [touch]);
 
   // DURESS / DECOY management (S3). Configure or remove the decoy vault that the

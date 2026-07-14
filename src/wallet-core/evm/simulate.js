@@ -68,42 +68,62 @@ function extractRevertReason(e) {
   return e?.reason || e?.shortMessage || e?.info?.error?.message || e?.message || null;
 }
 
-// Large-outflow heuristic. Returns a risk object or null. Float ratio is fine for
-// a heuristic — we never move funds based on it, only flag it.
+// Large-outflow heuristic. Returns a risk object or null.
+// M-1 fix: native branch uses BigInt arithmetic to avoid Number precision loss
+// on wei values > 2^53 — noise near the 0.999 / ratio thresholds was enough to
+// misfire at exactly the amounts where the flag matters most.
+// ERC-20 branch stays parseFloat (token amounts are always human-scale decimals).
 /** @returns {{level:'high'|'medium'|'info', code:string, title:string, detail:string} | null} */
 function largeOutflowRisk({ kind, valueWei, nativeBalanceWei, nativeSymbol, decodedAmount, tokenSymbol, tokenBalance, ratio }) {
-  let frac = null;
-  let symbol = null;
   if (kind === 'native') {
     const bal = toBig(nativeBalanceWei);
     if (nativeBalanceWei == null || bal <= 0n) return null;
-    frac = Number(toBig(valueWei)) / Number(bal);
-    symbol = nativeSymbol;
+    const valueBig = toBig(valueWei);
+    // Use BigInt cross-multiplication to avoid Number precision loss at high wei values.
+    // pct1000 = floor(value * 1000 / bal), giving ‰ precision without floats.
+    const pct1000 = valueBig * 1000n / bal;
+    const ratioThreshold = BigInt(Math.round(ratio * 1000));
+    const pctDisplay = Number(valueBig * 100n / bal);
+    if (pct1000 >= 999n) {
+      return {
+        level: 'high',
+        code: 'entire_balance',
+        title: 'Sends almost your entire balance',
+        detail: `This moves ~${pctDisplay}% of your ${nativeSymbol || 'balance'}. Drainers try to empty a wallet in one transaction — confirm this is intended.`,
+      };
+    }
+    if (pct1000 >= ratioThreshold) {
+      return {
+        level: 'medium',
+        code: 'large_outflow',
+        title: 'Unusually large outflow',
+        detail: `This moves ~${pctDisplay}% of your ${nativeSymbol || 'balance'}. Double-check the amount and recipient.`,
+      };
+    }
+    return null;
   } else if (kind === 'transfer') {
     const bal = parseFloat(tokenBalance);
     const amt = parseFloat(decodedAmount);
     if (!Number.isFinite(bal) || bal <= 0 || !Number.isFinite(amt)) return null;
-    frac = amt / bal;
-    symbol = tokenSymbol;
-  } else {
+    const frac = amt / bal;
+    if (!Number.isFinite(frac)) return null;
+    if (frac >= 0.999) {
+      return {
+        level: 'high',
+        code: 'entire_balance',
+        title: 'Sends almost your entire balance',
+        detail: `This moves ~${Math.round(frac * 100)}% of your ${tokenSymbol || 'balance'}. Drainers try to empty a wallet in one transaction — confirm this is intended.`,
+      };
+    }
+    if (frac >= ratio) {
+      return {
+        level: 'medium',
+        code: 'large_outflow',
+        title: 'Unusually large outflow',
+        detail: `This moves ~${Math.round(frac * 100)}% of your ${tokenSymbol || 'balance'}. Double-check the amount and recipient.`,
+      };
+    }
     return null;
-  }
-  if (frac == null || !Number.isFinite(frac)) return null;
-  if (frac >= 0.999) {
-    return {
-      level: 'high',
-      code: 'entire_balance',
-      title: 'Sends almost your entire balance',
-      detail: `This moves ~${Math.round(frac * 100)}% of your ${symbol || 'balance'}. Drainers try to empty a wallet in one transaction — confirm this is intended.`,
-    };
-  }
-  if (frac >= ratio) {
-    return {
-      level: 'medium',
-      code: 'large_outflow',
-      title: 'Unusually large outflow',
-      detail: `This moves ~${Math.round(frac * 100)}% of your ${symbol || 'balance'}. Double-check the amount and recipient.`,
-    };
   }
   return null;
 }
@@ -324,7 +344,7 @@ export async function simulateEvmTransaction({
     : { kind: 'native' });
 
   // Run all independent RPC reads in parallel so total wall-clock time is
-  // max(individual latencies) rather than their sum. A 10-second timeout wraps
+  // max(individual latencies) rather than their sum. A 5-second timeout wraps
   // every call so an unresponsive node can never hang the verify step indefinitely
   // — each timed-out call degrades gracefully to null/false (I4 fail-closed).
   const RPC_TIMEOUT_MS = 5_000;
@@ -365,6 +385,11 @@ export async function simulateEvmTransaction({
   }
 
   // eth_call dry-run — a predicted revert means signing would waste gas.
+  // M-4 (I5 disclosure): this prediction is RPC-attested only. A hostile or
+  // misconfigured RPC can fake either polarity — return success on a would-revert
+  // tx, or inject an inflammatory revertReason on a legitimate one. The risk is
+  // acceptable because Veyrnox supports self-hostable RPCs (I5 untrusted-backend
+  // design), but callers must treat willRevert as advisory, not authoritative.
   let willRevert = false;
   let revertReason = null;
   queries.push('eth_call');
