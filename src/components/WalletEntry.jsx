@@ -104,8 +104,7 @@ import { setPendingReferral } from "@/lib/referral";
 import { copySecret } from "@/lib/copySecret";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
-import { getKeyStore } from "@/wallet-core/keystore";
-import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
 // Both operands are local strings with no remote attacker; this is a codebase
@@ -422,10 +421,10 @@ export default function WalletEntry() {
   // delete+reinstall+seed-restore on a native device, the SE/StrongBox key is gone and
   // the restored vault is bare (PIN-only, no device binding). We hold the app back and
   // present KekEnrollmentGate so the user re-enables hardware protection before landing
-  // in the wallet. This is the single convergence point for ALL import paths.
-  const [kekGatePending, setKekGatePending] = useState(false);
-  // Fire the detection at most once per unlock (reset when the vault re-locks).
-  const kekGateCheckedRef = useRef(false);
+  // in the wallet. Detection + enrollment logic live in useKekEnrollmentGate (src/lib)
+  // to stay within the ring boundary (components cannot import wallet-core directly).
+  const { gateActive: kekGatePending, enroll: kekEnroll, dismiss: kekDismiss } =
+    useKekEnrollmentGate({ isUnlocked });
 
   // Notify user when decoy wallet is unlocked (duress PIN).
   useEffect(() => {
@@ -433,51 +432,6 @@ export default function WalletEntry() {
       toast.success("Decoy mode active", { duration: 2000 });
     }
   }, [isDecoy, isUnlocked]);
-
-  // Detect "restored on a hardware-capable device but not yet KEK-enrolled" and raise
-  // the enrollment hold. Runs once when isUnlocked flips true. Pure LOCAL keystore reads
-  // (I3-safe: no egress, no RPC).
-  //   - Web / non-native  → skip (no native hardware KEK).
-  //   - Decoy/hidden/demo → skip (I3: never touch the keystore/hardware in these sessions).
-  //   - isSecureHardwareAvailable() throws → skip (I4: can't assess the device, fail OPEN
-  //     rather than permanently block the user).
-  //   - No secure hardware (or no passcode) → skip (nothing to enroll).
-  //   - hasVaultKekWrap() throws → treat as NOT enrolled (safer to prompt than to assume
-  //     protected).
-  //   - Already wrapped → skip.
-  useEffect(() => {
-    if (!isUnlocked) { kekGateCheckedRef.current = false; return undefined; }
-    if (kekGateCheckedRef.current) return undefined;
-    kekGateCheckedRef.current = true;
-    let active = true;
-    (async () => {
-      try {
-        if (!Capacitor.isNativePlatform()) return;
-        if (isDeniabilityOrDemoActive()) return;
-        const ks = getKeyStore();
-        let secure;
-        try {
-          secure = await ks.isSecureHardwareAvailable();
-        } catch {
-          return; // I4: device can't be assessed → fail open, don't block.
-        }
-        if (!secure) return; // no secure element / no passcode → nothing to enroll.
-        let wrapped = false;
-        if (typeof ks.hasVaultKekWrap === "function") {
-          try {
-            wrapped = await ks.hasVaultKekWrap();
-          } catch {
-            wrapped = false; // safer to prompt than to assume enrolled.
-          }
-        }
-        if (wrapped) return; // already hardware-protected.
-        if (active) setKekGatePending(true);
-      } catch {
-        /* fail open — never permanently block the user out of their wallet. */
-      }
-    })();
-    return () => { active = false; };
-  }, [isUnlocked]);
 
   // Resolve biometric availability once on mount (cheap; used by both the
   // onboarding offer and the returning one-tap button).
@@ -970,8 +924,12 @@ export default function WalletEntry() {
   if (kekGatePending && isUnlocked && !generatedSeed) {
     return (
       <KekEnrollmentGate
-        onComplete={() => setKekGatePending(false)}
-        onSkip={() => setKekGatePending(false)}
+        onEnroll={async (pin) => {
+          const result = await kekEnroll(pin);
+          if (result.ok) kekDismiss();
+          return result;
+        }}
+        onSkip={kekDismiss}
       />
     );
   }
