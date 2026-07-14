@@ -43,10 +43,15 @@
 // scan for Frida/Substrate libraries). Missing until #826 put this file in the
 // build target — first real compile surfaced the implicit declarations.
 #import <mach-o/dyld.h>
-// PT_DENY_ATTACH: Apple public BSD ptrace constant (value 31 on Darwin).
-// Used in checkIntegrity to block future debugger-attach attempts. Declared
-// in the public iOS SDK headers; used widely in shipping App Store apps.
-#import <sys/ptrace.h>
+// PT_DENY_ATTACH: Apple BSD ptrace constant (value 31 on Darwin). The iOS SDK
+// does not ship <sys/ptrace.h> (confirmed absent from both the device and
+// simulator SDK header search paths) even though ptrace() itself remains a
+// valid, linkable libSystem symbol — the standard workaround, used widely in
+// shipping App Store apps, is to declare the prototype and constant locally
+// instead of importing the missing header.
+#import <sys/types.h>
+#define PT_DENY_ATTACH 31
+extern int ptrace(int request, pid_t pid, caddr_t addr, int data);
 
 // CFNetwork for port probe
 #import <CFNetwork/CFNetwork.h>
@@ -151,9 +156,12 @@
 // ── Jailbreak detection ────────────────────────────────────────────────────
 
 - (BOOL)detectJailbreak {
-    return [self checkJailbreakPaths]
+    // checkFork runs first: fork() succeeds on ALL jailbreaks (palera1n rootful,
+    // unc0ver, Dopamine, Taurine) because the Apple sandbox that blocks it on
+    // stock iOS is patched or bypassed. Path checks follow as belt-and-suspenders.
+    return [self checkFork]
+        || [self checkJailbreakPaths]
         || [self checkJailbreakPathsCstat]
-        || [self checkFork]
         || [self checkSandboxEscape]
         || [self checkDynamicLibraries];
 }

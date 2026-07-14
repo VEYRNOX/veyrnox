@@ -93,7 +93,62 @@ describe('Anti-debug — iOS PT_DENY_ATTACH', () => {
   });
 });
 
-// ── 3. ProGuard: private method renaming enabled ─────────────────────────────
+// ── 3. iOS: checkFork promoted as primary jailbreak signal ───────────────────
+
+describe('iOS RASP — checkFork runs first in detectJailbreak', () => {
+  it('detectJailbreak calls checkFork before path checks', () => {
+    const jbIdx   = iosM.indexOf('- (BOOL)detectJailbreak');
+    const nextMeth = iosM.indexOf('\n- (', jbIdx + 1);
+    const body = iosM.slice(jbIdx, nextMeth > 0 ? nextMeth : undefined);
+    const forkPos = body.indexOf('checkFork');
+    const pathPos = body.indexOf('checkJailbreakPaths');
+    expect(forkPos).toBeGreaterThan(-1);
+    expect(pathPos).toBeGreaterThan(-1);
+    expect(forkPos).toBeLessThan(pathPos);
+  });
+});
+
+// ── 4. Android: checkProcNetUnix gated on API < Q ────────────────────────────
+
+describe('Android RASP — checkProcNetUnix gated on Android 9 and below', () => {
+  it('checkProcNetUnix call is wrapped in a Build.VERSION.SDK_INT < Q check', () => {
+    // Device-verified 2026-07-14: SELinux denies /proc/net/unix reads on Android 10+
+    // (avc: denied { read } proc_net). The check is structurally inert on modern
+    // devices. Gate it to avoid wasted work and false-false confusion in logs.
+    const guard = 'Build.VERSION.SDK_INT < Build.VERSION_CODES.Q';
+    const idx = kt.indexOf(guard);
+    expect(idx).toBeGreaterThan(-1);
+    const line = kt.slice(idx, idx + 100);
+    expect(line).toContain('checkProcNetUnix');
+  });
+});
+
+// ── 5. @JvmSynthetic on all private detection methods ───────────────────────
+
+describe('Android RASP — @JvmSynthetic on all private detection methods', () => {
+  // Every private fun should have @JvmSynthetic directly above it so Frida's
+  // Java API cannot address them by their readable name.
+  const privateFns = [
+    'detectRoot', 'checkRootBinaries', 'checkMagiskPaths', 'checkProcNetUnix',
+    'checkLocalSocketConnect', 'checkSuFromRuntime', 'checkDangerousProps',
+    'readSystemPropReflect', 'checkSystemWritable', 'checkBuildTags',
+    'detectHook', 'checkTracerPid', 'checkFridaPort', 'checkXposed',
+    'checkProcMapsForHook', 'checkGadgetThreads', 'checkFridaPipes',
+    'detectEmulator', 'checkBuildProps', 'checkEmulatorFiles', 'detectTamper',
+  ];
+
+  for (const fn of privateFns) {
+    it(`${fn}() has @JvmSynthetic annotation`, () => {
+      const fnIdx = kt.indexOf(`private fun ${fn}(`);
+      expect(fnIdx).toBeGreaterThan(-1);
+      // Slice a small window before the function signature to find the annotation
+      const window = kt.slice(Math.max(0, fnIdx - 60), fnIdx);
+      expect(window).toContain('@JvmSynthetic');
+    });
+  }
+});
+
+// ── 6. ProGuard: private method renaming enabled ─────────────────────────────
 
 describe('ProGuard — @CapacitorPlugin keep rule allows private method renaming', () => {
   it('-keep @CapacitorPlugin class * does NOT carry { *; } (would freeze all private members)', () => {

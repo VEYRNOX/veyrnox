@@ -84,18 +84,25 @@ class RaspIntegrityPlugin : Plugin() {
     }
 
     // ── Root detection ────────────────────────────────────────────────────────
+    // @JvmSynthetic on every private detection helper makes the method
+    // inaccessible from the Frida Java API: the JVM bridge sees a synthetic
+    // method whose name is mangled with an access$N prefix, so a Frida script
+    // targeting the readable name (e.g. Java.use("...").detectRoot) throws
+    // "no such method". Works alongside R8 renaming (ProGuard) for defence-in-depth.
 
+    @JvmSynthetic
     private fun detectRoot(): Boolean {
         return checkRootBinaries()
             || checkMagiskPaths()
             || checkSystemWritable()
             || checkBuildTags()
-            || checkProcNetUnix()           // Magisk/KSU IPC sockets in /proc/net/unix (inert Android 10+ SELinux)
+            || (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && checkProcNetUnix()) // /proc/net/unix: SELinux-denied Android 10+; active on ≤9
             || checkLocalSocketConnect()    // behavioral: connect to fixed-name Zygisk/LSPosed/APatch sockets
             || checkSuFromRuntime()         // behavioral — `which su` via Runtime.exec
             || checkDangerousProps()        // ro.boot.verifiedbootstate orange/red
     }
 
+    @JvmSynthetic
     private fun checkRootBinaries(): Boolean {
         val paths = listOf(
             // Classic su locations
@@ -124,6 +131,7 @@ class RaspIntegrityPlugin : Plugin() {
         return paths.any { runCatching { File(it).exists() }.getOrDefault(false) }
     }
 
+    @JvmSynthetic
     private fun checkMagiskPaths(): Boolean {
         val paths = listOf(
             // Magisk classic
@@ -166,6 +174,7 @@ class RaspIntegrityPlugin : Plugin() {
     // Marker list is kept current (expanded for Magisk v30.x, 2026-07-14) so
     // the check is useful if ever run on a pre-Android-10 device or if SELinux
     // policy changes. Markers cover Zygisk companion sockets, KSU, LSPosed, APatch.
+    @JvmSynthetic
     private fun checkProcNetUnix(): Boolean {
         val socketMarkers = listOf(
             // --- Magisk daemon (any version) ---
@@ -220,6 +229,7 @@ class RaspIntegrityPlugin : Plugin() {
     //   This is belt-and-suspenders, most useful on pre-Android-12 or custom ROMs.
     //
     // BUILT · structural pins only · NOT device-verified · INTERNAL (2026-07-14).
+    @JvmSynthetic
     private fun checkLocalSocketConnect(): Boolean {
         val abstractSockets = listOf(
             "zygisk_server",    // Zygisk companion IPC server (Magisk v24+)
@@ -259,6 +269,7 @@ class RaspIntegrityPlugin : Plugin() {
     // RASP thread on the JS presignGate hot path (availability, not bypass).
     // Bounded wait; destroyForcibly on timeout. Matches checkFridaPort's 150 ms
     // budget elsewhere in this file.
+    @JvmSynthetic
     private fun checkSuFromRuntime(): Boolean {
         return runCatching {
             val proc = Runtime.getRuntime().exec(arrayOf("which", "su"))
@@ -288,6 +299,7 @@ class RaspIntegrityPlugin : Plugin() {
     // and flash.locked=0 ARE present on the SM-N981B (Magisk v30.7) but
     // Runtime.exec produced no output. Fix: use android.os.SystemProperties
     // via reflection — an in-process prop read, no exec, no SELinux denial.
+    @JvmSynthetic
     private fun checkDangerousProps(): Boolean {
         return runCatching {
             val verifiedBootState = readSystemPropReflect("ro.boot.verifiedbootstate")
@@ -306,6 +318,7 @@ class RaspIntegrityPlugin : Plugin() {
     // android.os.SystemProperties is a hidden API; reflection is the standard
     // approach used by security tools and root checkers on Android.
     @Suppress("PrivateApi")
+    @JvmSynthetic
     private fun readSystemPropReflect(key: String): String {
         return runCatching {
             val cls = Class.forName("android.os.SystemProperties")
@@ -314,6 +327,7 @@ class RaspIntegrityPlugin : Plugin() {
         }.getOrElse { "" }
     }
 
+    @JvmSynthetic
     private fun checkSystemWritable(): Boolean {
         return runCatching {
             val f = File("/system/veyrnox-rasp-probe-${System.nanoTime()}")
@@ -323,6 +337,7 @@ class RaspIntegrityPlugin : Plugin() {
         }.getOrDefault(false)
     }
 
+    @JvmSynthetic
     private fun checkBuildTags(): Boolean {
         return runCatching {
             val tags = Build.TAGS ?: ""
@@ -338,6 +353,7 @@ class RaspIntegrityPlugin : Plugin() {
     // a server — port 27042 and a simple "frida" maps string do not catch it.
     // The thread-name and fd-pipe checks close that gap.
 
+    @JvmSynthetic
     private fun detectHook(): Boolean {
         return checkFridaPort()
             || checkXposed()
@@ -358,6 +374,7 @@ class RaspIntegrityPlugin : Plugin() {
     //
     // FAIL CLOSED (I4): any IO/parse failure → false (not detected, not clean).
     // NO EGRESS (I2): pure proc-fs read, no network.
+    @JvmSynthetic
     private fun checkTracerPid(): Boolean {
         return runCatching {
             File("/proc/self/status").bufferedReader().use { reader ->
@@ -372,6 +389,7 @@ class RaspIntegrityPlugin : Plugin() {
         }.getOrDefault(false)
     }
 
+    @JvmSynthetic
     private fun checkFridaPort(): Boolean {
         return runCatching {
             Socket().use { s ->
@@ -382,6 +400,7 @@ class RaspIntegrityPlugin : Plugin() {
         }.getOrDefault(false)
     }
 
+    @JvmSynthetic
     private fun checkXposed(): Boolean {
         val xposedPkgs = listOf(
             "de.robv.android.xposed.installer",
@@ -401,6 +420,7 @@ class RaspIntegrityPlugin : Plugin() {
         }
     }
 
+    @JvmSynthetic
     private fun checkProcMapsForHook(): Boolean {
         val hookMarkers = listOf(
             "frida",
@@ -426,6 +446,7 @@ class RaspIntegrityPlugin : Plugin() {
     // Frida Gadget spawns known thread names regardless of whether the .so file
     // was renamed. Read each thread's comm file (/proc/self/task/<tid>/comm) and
     // check for names that only appear when Gadget (or its GLib runtime) is active.
+    @JvmSynthetic
     private fun checkGadgetThreads(): Boolean {
         val gadgetThreads = listOf("gum-js-loop", "gmain", "gdbus", "pool-frida")
         return runCatching {
@@ -441,6 +462,7 @@ class RaspIntegrityPlugin : Plugin() {
 
     // Frida creates named pipes / Unix domain sockets that appear as symlinks
     // under /proc/self/fd. Their resolved paths contain "frida".
+    @JvmSynthetic
     private fun checkFridaPipes(): Boolean {
         return runCatching {
             val fdDir = File("/proc/self/fd")
@@ -454,11 +476,13 @@ class RaspIntegrityPlugin : Plugin() {
 
     // ── Emulator detection ────────────────────────────────────────────────────
 
+    @JvmSynthetic
     private fun detectEmulator(): Boolean {
         return checkBuildProps()
             || checkEmulatorFiles()
     }
 
+    @JvmSynthetic
     private fun checkBuildProps(): Boolean {
         return runCatching {
             val fingerprint = Build.FINGERPRINT?.lowercase() ?: ""
@@ -483,6 +507,7 @@ class RaspIntegrityPlugin : Plugin() {
         }.getOrDefault(false)
     }
 
+    @JvmSynthetic
     private fun checkEmulatorFiles(): Boolean {
         val emulatorFiles = listOf(
             "/dev/socket/qemud",
@@ -509,6 +534,7 @@ class RaspIntegrityPlugin : Plugin() {
     // every Kotlin configuration.
     private val EXPECTED_CERT_SHA256: String = BuildConfig.RELEASE_CERT_SHA256
 
+    @JvmSynthetic
     private fun detectTamper(): Boolean {
         if (EXPECTED_CERT_SHA256.isBlank()) {
             android.util.Log.w("RASP", "RELEASE_CERT_SHA256 not set — treating as tampered (fail-closed)")
