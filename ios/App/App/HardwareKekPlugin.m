@@ -66,7 +66,9 @@ static os_log_t VeyrnoxKekLog(void) {
 // bind this @implementation to NSObject. Here the class is a real CAPPlugin.
 
 @interface HardwareKekPlugin (PrivateMethods)
-- (void)storeKeychainItem:(NSString *)label data:(NSData *)data;
+// 2026-07-14 audit MEDIUM: storeKeychainItem returns OSStatus so enroll can
+// reject KEYCHAIN_STORE_FAILED on non-success SecItemAdd (see @implementation).
+- (OSStatus)storeKeychainItem:(NSString *)label data:(NSData *)data;
 - (NSData *)loadKeychainItem:(NSString *)label;
 - (OSStatus)deleteKeychainItem:(NSString *)label;
 - (OSStatus)deleteSecureEnclaveKey;

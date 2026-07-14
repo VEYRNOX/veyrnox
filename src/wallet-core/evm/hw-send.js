@@ -114,10 +114,18 @@ async function trezorSignFieldsAndBroadcast(txFields, fromAddress, networkKey) {
   // covers both. Without this, a mismatched device completes a full sign round-
   // trip before serializeCheckedSignedTx throws HW_SIGNER_MISMATCH.
   const trezAddr = await TrezorConnect.ethereumGetAddress({ path: `m/${EVM_PATH}`, showOnTrezor: false });
-  if (!trezAddr.success || !trezAddr.payload?.address ||
-      getAddress(trezAddr.payload.address) !== getAddress(fromAddress)) {
+  if (!trezAddr.success) {
+    // Error branch of the discriminated union: payload is { error, code? }, no address.
+    const errMsg = (trezAddr.payload && 'error' in trezAddr.payload ? trezAddr.payload.error : null) ?? 'Trezor ethereumGetAddress failed';
     throw Object.assign(
-      new Error(`Trezor address at m/${EVM_PATH} is ${trezAddr?.payload?.address ?? 'null'}, expected ${fromAddress} — refusing to sign`),
+      new Error(`Trezor address at m/${EVM_PATH} unavailable (${errMsg}) — refusing to sign`),
+      { code: 'HW_SIGNER_MISMATCH' },
+    );
+  }
+  const devAddress = trezAddr.payload?.address;
+  if (!devAddress || getAddress(devAddress) !== getAddress(fromAddress)) {
+    throw Object.assign(
+      new Error(`Trezor address at m/${EVM_PATH} is ${devAddress ?? 'null'}, expected ${fromAddress} — refusing to sign`),
       { code: 'HW_SIGNER_MISMATCH' },
     );
   }
