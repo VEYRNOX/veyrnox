@@ -57,9 +57,18 @@ const DEMO_BUILD = process.env.VITE_DEMO_MODE === '1';
 
 // G1b — production JS obfuscation plugin (string-array encoding, release-builds only).
 // Raises cost of static analysis on the APK's assets/ JS bundle.
-// Conservative settings: no control-flow flattening (mobile perf), no self-defending,
-// no property mangling (Capacitor bridge safety). Transparent at runtime — string array
-// decode restores originals before any bridge call.
+// G1 obfuscation settings (VITE_RELEASE=1 only).
+// Safety invariants that must never change:
+//   transformObjectKeys: false — Capacitor bridge passes objects by key name;
+//     mangling would silently break every native plugin call.
+//   renameGlobals: false — window.Capacitor and other globals must stay intact.
+//   selfDefending: false — honest; we don't claim tamper-resistance here.
+//   deadCodeInjection: false — increases bundle size ~2× with low security ROI.
+// G1 upgrade (2026-07-14):
+//   controlFlowFlattening: true (threshold 0.3) — makes RASP/wallet-core logic
+//     opaque to static analysis without excessive perf cost (30% of blocks).
+//   numbersToExpressions: true — numeric constants become arithmetic expressions.
+//   splitStrings: true — strings split into chunks before stringArray encoding.
 function veyrnoxObfuscatorPlugin() {
   return {
     name: 'veyrnox-obfuscator',
@@ -74,10 +83,14 @@ function veyrnoxObfuscatorPlugin() {
           stringArrayCallsTransform: true,
           stringArrayCallsTransformThreshold: 0.75,
           stringArrayThreshold: 0.75,
+          splitStrings: true,
+          splitStringsChunkLength: 10,
+          numbersToExpressions: true,
+          controlFlowFlattening: true,
+          controlFlowFlatteningThreshold: 0.3,
+          deadCodeInjection: false,
           renameGlobals: false,
           selfDefending: false,
-          controlFlowFlattening: false,
-          deadCodeInjection: false,
           transformObjectKeys: false,
           disableConsoleOutput: false,
           compact: true,
