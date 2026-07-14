@@ -268,7 +268,7 @@ class PlayIntegrityPlugin : Plugin() {
                     // malformed → fail closed (I4). rawEcdsaSignatureToDer throws on
                     // wrong length; the outer catch maps that to false.
                     if (rawSignatureBytes.size != 64) return false
-                    rawEcdsaSignatureToDer(rawSignatureBytes)
+                    EcdsaDerTranscoder.rawEcdsaSignatureToDer(rawSignatureBytes)
                 }
                 else -> rawSignatureBytes // RS256: PKCS#1 v1.5 signature is not encoded.
             }
@@ -294,64 +294,16 @@ class PlayIntegrityPlugin : Plugin() {
      * try/catch maps the throw to `return false` → unavailable().
      *
      * The algorithm is executable-tested via the JS mirror at
-     * `src/rasp/__tests__/helpers/rawToDerEcdsa.js` (issue #951). A Kotlin JVM
-     * harness would be required to prove the plugin binding is the same — that
-     * binding is currently only pinned structurally in the JS test file.
+     * `src/rasp/__tests__/helpers/rawToDerEcdsa.js` (issue #951) AND via the
+     * Kotlin JVM test harness `RawEcdsaDerTranscoderTest` against real P-256
+     * keypairs (issue #957). Delegates to EcdsaDerTranscoder.
      */
-    private fun rawEcdsaSignatureToDer(raw: ByteArray): ByteArray {
-        if (raw.size != 64) {
-            throw IllegalArgumentException("ES256 raw signature must be 64 bytes, got ${raw.size}")
-        }
-        val r = raw.copyOfRange(0, 32)
-        val s = raw.copyOfRange(32, 64)
-        val rDer = derEncodeInteger(r)
-        val sDer = derEncodeInteger(s)
-        val contentLen = rDer.size + sDer.size
-        // For P-256, r/s DER INTEGERs are at most 33 bytes each + 2 tag/len bytes,
-        // giving a SEQUENCE content of at most 70 bytes. Always fits short-form.
-        if (contentLen >= 128) {
-            throw IllegalStateException("DER SEQUENCE content too long for short-form length")
-        }
-        val out = ByteArray(2 + contentLen)
-        out[0] = 0x30 // SEQUENCE
-        out[1] = contentLen.toByte()
-        System.arraycopy(rDer, 0, out, 2, rDer.size)
-        System.arraycopy(sDer, 0, out, 2 + rDer.size, sDer.size)
-        return out
-    }
+    // Delegated to EcdsaDerTranscoder (extracted for JVM unit-testability — issue #957).
+    private fun rawEcdsaSignatureToDer(raw: ByteArray): ByteArray =
+        EcdsaDerTranscoder.rawEcdsaSignatureToDer(raw)
 
-    /**
-     * Encode a positive big-endian byte array as a DER INTEGER (tag 0x02).
-     * Strips leading 0x00 bytes but keeps at least one byte; prepends 0x00 when
-     * the resulting most-significant byte has the high bit set so the value
-     * stays a positive INTEGER (DER encoding rule for signed integers).
-     */
-    private fun derEncodeInteger(bytes: ByteArray): ByteArray {
-        if (bytes.isEmpty()) {
-            throw IllegalArgumentException("derEncodeInteger: empty input")
-        }
-        // Strip leading zeros, keep at least one byte.
-        var start = 0
-        while (start < bytes.size - 1 && bytes[start] == 0.toByte()) start += 1
-        val stripped = bytes.copyOfRange(start, bytes.size)
-        // If high bit is set, prepend a 0x00 pad (keeps the INTEGER positive).
-        val content = if ((stripped[0].toInt() and 0x80) != 0) {
-            val padded = ByteArray(stripped.size + 1)
-            padded[0] = 0x00
-            System.arraycopy(stripped, 0, padded, 1, stripped.size)
-            padded
-        } else {
-            stripped
-        }
-        if (content.size >= 128) {
-            throw IllegalStateException("DER INTEGER content too long for short-form length")
-        }
-        val out = ByteArray(2 + content.size)
-        out[0] = 0x02 // INTEGER
-        out[1] = content.size.toByte()
-        System.arraycopy(content, 0, out, 2, content.size)
-        return out
-    }
+    private fun derEncodeInteger(bytes: ByteArray): ByteArray =
+        EcdsaDerTranscoder.derEncodeInteger(bytes)
 
     // Base64URL decode: Play Integrity JWS segments are base64url (- and _, no
     // padding). Convert to standard alphabet and pad to a multiple of 4.
