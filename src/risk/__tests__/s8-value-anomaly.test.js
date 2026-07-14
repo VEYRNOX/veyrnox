@@ -27,7 +27,7 @@ describe('S8 value-vs-history anomaly', () => {
     // Evidence is shown human-readable (ether), NOT raw wei, so the banner row
     // is verifiable rather than an 18-digit integer.
     expect(evidence.values.value).toBe('5.0');
-    expect(evidence.values.typical).toBe('0.0225'); // median of [0.02,0.02,0.025,0.03]
+    expect(evidence.values.typical).toBe('0.025'); // upper-middle of even-length [0.02,0.02,0.025,0.03] (L-3 fix)
   });
 
   it('MISS: value in line with the typical send → OK', () => {
