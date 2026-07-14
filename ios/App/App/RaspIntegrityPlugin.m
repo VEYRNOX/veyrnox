@@ -46,6 +46,9 @@
 // mach/mach.h for task_set_exception_ports + mach_task_self (item 10
 // earlyAntiDump). Distinct from <mach-o/dyld.h> (dyld image scan).
 #import <mach/mach.h>
+// sys/sysctl.h for sysctl(CTL_KERN/KERN_PROC/KERN_PROC_PID) — item 12
+// checkDebugger; pulls in <sys/proc.h> which defines P_TRACED + kinfo_proc.
+#import <sys/sysctl.h>
 // PT_DENY_ATTACH: Apple BSD ptrace constant (value 31 on Darwin). The iOS SDK
 // does not ship <sys/ptrace.h> (confirmed absent from both the device and
 // simulator SDK header search paths) even though ptrace() itself remains a
@@ -93,26 +96,52 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
         ptrace(PT_DENY_ATTACH, 0, 0, 0);
     });
 
-    BOOL jailbroken    = [self detectJailbreak];
-    BOOL hookedProcess = [self detectHook];
-    BOOL emulator      = [self detectSimulator];
-    BOOL tampered      = [self detectTamper];
+    BOOL jailbroken       = [self detectJailbreak];
+    BOOL hookedProcess    = [self detectHook];
+    BOOL emulator         = [self detectSimulator];
+    BOOL tampered         = [self detectTamper];
     // G4 iOS additions (2026-07-14) — additive signals only; the four keys
     // above keep their exact existing logic. screenCapture/overlayActive are
     // surfaced for the JS side to grade (screenCapture as a signal, overlay as
     // low-severity/informational — see notes on the methods below).
-    BOOL screenCapture = [self checkScreenCapture];
-    BOOL overlayActive = [self checkOverlay];
+    BOOL screenCapture    = [self checkScreenCapture];
+    BOOL overlayActive    = [self checkOverlay];
+    // Item 12 (2026-07-14): iOS parity for Android checkTracerPid — detects a
+    // debugger already attached to this process via the kernel P_TRACED flag.
+    // Complements earlyDenyAttach (preventive) with detection: if PT_DENY_ATTACH
+    // was patched the JS presignGate still sees debuggerAttached=YES → HOOKED.
+    BOOL debuggerAttached = [self checkDebugger];
 
     CAPPluginCall *c = call;
     [c resolve:@{
-        @"jailbroken":    @(jailbroken),
-        @"hookedProcess": @(hookedProcess),
-        @"emulator":      @(emulator),
-        @"tampered":      @(tampered),
-        @"screenCapture": @(screenCapture),
-        @"overlayActive": @(overlayActive),
+        @"jailbroken":       @(jailbroken),
+        @"hookedProcess":    @(hookedProcess),
+        @"emulator":         @(emulator),
+        @"tampered":         @(tampered),
+        @"screenCapture":    @(screenCapture),
+        @"overlayActive":    @(overlayActive),
+        @"debuggerAttached": @(debuggerAttached),
     }];
+}
+
+// ── Item 12 (2026-07-14) — BUILT-UNVALIDATED. ────────────────────────────────
+
+// checkDebugger — sysctl(CTL_KERN, KERN_PROC, KERN_PROC_PID) P_TRACED flag.
+// iOS parity for Android checkTracerPid (which reads TracerPid from
+// /proc/self/status). The kernel sets P_TRACED in kinfo_proc.kp_proc.p_flag
+// whenever a debugger is attached to the process — this cannot be faked by
+// user-space code. Purely local (I2), fail-closed to NO on any sysctl error
+// so a failed probe never silently passes as "clean" (I4).
+- (BOOL)checkDebugger {
+    @try {
+        int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, (int)getpid()};
+        struct kinfo_proc info;
+        memset(&info, 0, sizeof(info));
+        size_t size = sizeof(info);
+        if (sysctl(mib, 4, &info, &size, NULL, 0) != 0) return NO;
+        return (info.kp_proc.p_flag & P_TRACED) != 0;
+    } @catch (__unused NSException *e) {}
+    return NO;
 }
 
 // ── G4 iOS additions (2026-07-14) — BUILT-UNVALIDATED. ──────────────────────

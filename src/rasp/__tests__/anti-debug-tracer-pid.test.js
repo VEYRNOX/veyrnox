@@ -627,6 +627,76 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 12 — iOS checkDebugger via sysctl P_TRACED ──────────────────────────
+//
+// Android checkTracerPid() reads /proc/self/status and inspects the TracerPid
+// field to detect a debugger already attached to the process. iOS has no /proc
+// filesystem, but the kernel exposes the same information via sysctl:
+//
+//   int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
+//   struct kinfo_proc info;
+//   sysctl(mib, 4, &info, &size, NULL, 0);
+//   return (info.kp_proc.p_flag & P_TRACED) != 0;
+//
+// P_TRACED is set in the kernel process flags when a debugger is attached.
+// This complements PT_DENY_ATTACH (preventive) with detection: if PT_DENY_ATTACH
+// is patched on a jailbroken device, a debugger could still attach before
+// earlyDenyAttach runs; checkDebugger catches that condition.
+//
+// Surfaced as @"debuggerAttached" in the checkIntegrity result dict so the JS
+// presignGate can fold it into the HOOKED → TIER.BLOCK path.
+// Requires #import <sys/sysctl.h> (P_TRACED via <sys/proc.h>, transitively).
+// Purely local (I2); fail-closed to NO on any sysctl error (I4).
+
+describe('Item 12 — iOS checkDebugger via sysctl P_TRACED', () => {
+  it('sys/sysctl.h imported (provides sysctl, kinfo_proc, P_TRACED)', () => {
+    expect(iosM).toContain('#import <sys/sysctl.h>');
+  });
+
+  it('defines the -checkDebugger instance method', () => {
+    expect(iosM).toMatch(/-\s*\(BOOL\)checkDebugger/);
+  });
+
+  it('checkDebugger uses sysctl with CTL_KERN / KERN_PROC / KERN_PROC_PID', () => {
+    const start = iosM.indexOf('(BOOL)checkDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('CTL_KERN');
+    expect(body).toContain('KERN_PROC');
+    expect(body).toContain('KERN_PROC_PID');
+  });
+
+  it('checkDebugger tests the P_TRACED flag in kp_proc.p_flag', () => {
+    const start = iosM.indexOf('(BOOL)checkDebugger');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('P_TRACED');
+    expect(body).toContain('kp_proc');
+    expect(body).toContain('p_flag');
+  });
+
+  it('checkDebugger wraps in @try/@catch (fail-closed to NO on sysctl error, I4)', () => {
+    const start = iosM.indexOf('(BOOL)checkDebugger');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('@try');
+    expect(body).toContain('@catch');
+  });
+
+  it('adds "debuggerAttached" key to the checkIntegrity result dict', () => {
+    expect(iosM).toContain('@"debuggerAttached"');
+  });
+
+  it('wires [self checkDebugger] into checkIntegrity', () => {
+    expect(iosM).toMatch(/\[self checkDebugger\]/);
+  });
+
+  it('existing result keys are preserved (jailbroken, hookedProcess, emulator, tampered)', () => {
+    expect(iosM).toContain('@"jailbroken"');
+    expect(iosM).toContain('@"hookedProcess"');
+    expect(iosM).toContain('@"emulator"');
+    expect(iosM).toContain('@"tampered"');
+  });
+});
+
 // ── Item 11 — iOS HardwareKekPlugin mlock on H-factor key material ───────────
 //
 // The H factor (decrypted SE HMAC output) lives in an NSMutableData between
