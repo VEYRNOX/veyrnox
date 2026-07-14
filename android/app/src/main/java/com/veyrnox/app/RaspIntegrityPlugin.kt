@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false,"mockLocation":false,"networkProxy":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false,"mockLocation":false,"networkProxy":false,"accessibilityService":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -63,7 +63,7 @@ import java.net.Socket
 class RaspIntegrityPlugin : Plugin() {
 
     /**
-     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered, debuggerAttached, screenCapture, overlayActive, developerMode, virtualApp }
+     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered, debuggerAttached, screenCapture, overlayActive, developerMode, virtualApp, suspiciousPackage, thirdPartyKeyboard, mockLocation, networkProxy, accessibilityService }
      *
      * Each field is true only when actively detected. Absence of a true signal
      * means "not detected" — not "definitely clean". The JS layer must treat the
@@ -112,6 +112,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("thirdPartyKeyboard", checkThirdPartyKeyboard())
         result.put("mockLocation",       checkMockLocation())
         result.put("networkProxy",       checkNetworkProxy())
+        result.put("accessibilityService", checkAccessibilityService())
         call.resolve(result)
     }
 
@@ -540,6 +541,37 @@ class RaspIntegrityPlugin : Plugin() {
         ) != 0 || android.provider.Settings.Global.getInt(
             cr, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
         ) != 0
+    }.getOrDefault(false)
+
+    // ── Accessibility service detection (item 36) ────────────────────────────
+    // A non-system accessibility service has OS-level access to the full UI tree,
+    // can inject touch and key events, and can read text in any field — including
+    // the PIN entry during KEK enrollment. This is a wider attack surface than a
+    // third-party keyboard (item 30) because no user action is required to exfiltrate.
+    //
+    // Detection: AccessibilityManager.getEnabledAccessibilityServiceList() →
+    //   filter to entries whose package lacks FLAG_SYSTEM (user-installed).
+    //   Resolves ResolveInfo → ServiceInfo → getApplicationInfo to check flags.
+    //
+    // Fail-open on any exception. WARN tier. NOT added to earlyCheck.
+    // JS wiring is item 37.
+
+    @JvmSynthetic
+    private fun checkAccessibilityService(): Boolean = runCatching {
+        val am = context.getSystemService(
+            android.view.accessibility.AccessibilityManager::class.java
+        ) ?: return@runCatching false
+        if (!am.isEnabled) return@runCatching false
+        val pm = context.packageManager
+        am.getEnabledAccessibilityServiceList(
+            android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+        ).any { info ->
+            val svcInfo = info.resolveInfo?.serviceInfo ?: return@any false
+            val appInfo = runCatching {
+                pm.getApplicationInfo(svcInfo.packageName, 0)
+            }.getOrNull() ?: return@any false
+            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
+        }
     }.getOrDefault(false)
 
     // ── Network proxy detection (item 34) ────────────────────────────────────

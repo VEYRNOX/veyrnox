@@ -158,7 +158,7 @@ describe('Android RASP — @JvmSynthetic on all private detection methods', () =
     'detectEmulator', 'checkBuildProps', 'checkEmulatorFiles', 'detectTamper',
     'checkScreenCapture', 'checkOverlay', 'checkDeveloperMode', 'checkVirtualApp',
     'checkSuspiciousPackages', 'checkThirdPartyKeyboard', 'checkMockLocation',
-    'checkNetworkProxy',
+    'checkNetworkProxy', 'checkAccessibilityService',
   ];
 
   for (const fn of privateFns) {
@@ -629,6 +629,54 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Item 36 — Android checkAccessibilityService + accessibilityService verdict ─
+//
+// A non-system accessibility service has OS-level access to screen content,
+// can inject touch/key events, and can intercept text typed into any field —
+// including PIN entry during KEK enrollment. This is a wider attack surface
+// than a third-party keyboard (item 30) because it can read the entire UI tree
+// and manufacture input without user interaction.
+//
+// Detection: AccessibilityManager.getEnabledAccessibilityServiceList() →
+//   filter to entries whose package's ApplicationInfo.FLAG_SYSTEM == 0
+//   (user-installed, not pre-loaded by OEM).
+//
+// Fail-open: exception → false. WARN tier. NOT added to earlyCheck.
+// JS wiring is item 37.
+
+describe('Item 36 — Android checkAccessibilityService + accessibilityService verdict field', () => {
+  it('checkAccessibilityService() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkAccessibilityService()');
+  });
+
+  it('checkAccessibilityService() queries AccessibilityManager service list', () => {
+    const start = kt.indexOf('fun checkAccessibilityService()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 500);
+    expect(body).toContain('AccessibilityManager');
+    expect(body).toContain('getEnabledAccessibilityServiceList');
+  });
+
+  it('checkAccessibilityService() filters non-system packages via FLAG_SYSTEM', () => {
+    const start = kt.indexOf('fun checkAccessibilityService()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 800);
+    expect(body).toContain('FLAG_SYSTEM');
+  });
+
+  it('checkAccessibilityService() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkAccessibilityService()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 850);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("accessibilityService") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("accessibilityService"');
+  });
+});
 
 // ── Item 34 — Android checkNetworkProxy + networkProxy verdict field ──────────
 //
