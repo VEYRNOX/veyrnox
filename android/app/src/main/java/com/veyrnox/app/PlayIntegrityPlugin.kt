@@ -19,18 +19,34 @@ package com.veyrnox.app
 // session and only at the pre-sign gate.
 //
 // ── HONEST LIMITATION (must not be overstated) ─────────────────────────────
-// The Play Integrity token is a JWS signed with Google's RS256 key.
+// The Play Integrity token is a JWS signed with Google's RS256 or ES256 key.
 //
 // UPDATE (G2 x5c chain-walk, 2026-07-13): on-device JWS signature verification is
 // implemented via verifyJwsSignature() — the full x5c chain is walked (each cert
 // verified by the next cert's key), the root cert issuer is checked for "Google",
 // and the JWS RS256/ES256 signature is verified with the leaf cert's public key.
+// ES256 raw R‖S signatures are transcoded to ASN.1 DER before JCA verify()
+// (issue #951, 2026-07-14) so the ES256 branch is now algorithmically correct
+// — the raw-bytes-to-JCA mismatch that made ES256 verify silently fail-closed
+// on every real token is fixed. This has NOT yet been device-verified against
+// a real Play Integrity token; a rooted-device negative + genuine-device
+// positive are still required (Phase 4).
 //
 // ALGORITHM AMBIGUITY (2026-07-13): Google's Play Integrity documentation cites
 // ES256 (ECDSA P-256 / SHA-256); the predecessor SafetyNet API used RS256 (RSA
 // PKCS#1 v1.5 / SHA-256). Both are accepted: the `alg` field in the JWS header
 // selects the correct Signature instance. This cannot be confirmed without a real
 // production token from a properly registered Play Console app.
+//
+// UPDATE (issue #951, 2026-07-14): the ES256 branch is now ALGORITHMICALLY
+// CORRECT. JWS ES256 signatures are raw R‖S (RFC 7518 §3.4, 64 bytes for P-256),
+// but JCA `Signature("SHA256withECDSA").verify()` requires ASN.1 DER-encoded
+// ECDSA-Sig-Value (RFC 3279). Before #951 the raw bytes were fed straight to
+// verify(), so every real ES256 token silently failed fail-closed and the
+// attested axis was inert. rawEcdsaSignatureToDer() now transcodes raw → DER
+// before verify() on the ES256 branch. STATUS: algorithmically correct, but
+// still NOT device-verified against a real Play Integrity token — the residual
+// gap sits with Phase 4 device exercise + Phase 5 independent audit.
 //
 // RESIDUAL GAP — ROOT CERT PINNING (G2-ROOTCERT-PIN): the root cert is still
 // checked only via issuer.contains("Google") — a weak check. Replacing it with a
@@ -236,8 +252,26 @@ class PlayIntegrityPlugin : Plugin() {
             // 5. Verify JWS signature over header.payload (RFC 7515 signed data).
             //    Algorithm dispatched from the `alg` header field (RS256 → SHA256withRSA,
             //    ES256 → SHA256withECDSA). Public key from the verified leaf cert (x5c[0]).
+            //
+            //    ES256 encoding fix (issue #951, 2026-07-14): JWS ES256 signatures are
+            //    raw R‖S (RFC 7518 §3.4, exactly 64 bytes for P-256). JCA's
+            //    Signature("SHA256withECDSA").verify() requires ASN.1 DER-encoded
+            //    ECDSA-Sig-Value (RFC 3279). Transcode raw → DER before verify() so
+            //    the ES256 branch actually functions instead of silently fail-closing
+            //    on every real token. RS256 signatures are used as-is (JCA accepts
+            //    them directly).
             val signedData = "${parts[0]}.${parts[1]}".toByteArray(Charsets.UTF_8)
-            val signatureBytes = base64UrlDecode(parts[2])
+            val rawSignatureBytes = base64UrlDecode(parts[2])
+            val signatureBytes = when (javaAlg) {
+                "SHA256withECDSA" -> {
+                    // ES256 raw R‖S is exactly 64 bytes for P-256. Any other length is
+                    // malformed → fail closed (I4). rawEcdsaSignatureToDer throws on
+                    // wrong length; the outer catch maps that to false.
+                    if (rawSignatureBytes.size != 64) return false
+                    rawEcdsaSignatureToDer(rawSignatureBytes)
+                }
+                else -> rawSignatureBytes // RS256: PKCS#1 v1.5 signature is not encoded.
+            }
             val sig = Signature.getInstance(javaAlg)
             sig.initVerify(chain[0].publicKey)
             sig.update(signedData)
@@ -246,6 +280,77 @@ class PlayIntegrityPlugin : Plugin() {
             // Any exception → false → unavailable() → INTEGRITY_UNAVAILABLE → WARN (I4)
             false
         }
+    }
+
+    /**
+     * Transcode a raw JWS ECDSA P-256 signature (R || S, 64 bytes) to ASN.1 DER
+     * ECDSA-Sig-Value { INTEGER r, INTEGER s } as required by JCA
+     * `Signature("SHA256withECDSA").verify()`.
+     *
+     * See RFC 7518 §3.4 (JWS ES256 = raw R‖S 64 bytes) and RFC 3279
+     * (ECDSA-Sig-Value SEQUENCE { INTEGER r, INTEGER s }).
+     *
+     * FAIL CLOSED (I4): throws on any length mismatch. The caller's outer
+     * try/catch maps the throw to `return false` → unavailable().
+     *
+     * The algorithm is executable-tested via the JS mirror at
+     * `src/rasp/__tests__/helpers/rawToDerEcdsa.js` (issue #951). A Kotlin JVM
+     * harness would be required to prove the plugin binding is the same — that
+     * binding is currently only pinned structurally in the JS test file.
+     */
+    private fun rawEcdsaSignatureToDer(raw: ByteArray): ByteArray {
+        if (raw.size != 64) {
+            throw IllegalArgumentException("ES256 raw signature must be 64 bytes, got ${raw.size}")
+        }
+        val r = raw.copyOfRange(0, 32)
+        val s = raw.copyOfRange(32, 64)
+        val rDer = derEncodeInteger(r)
+        val sDer = derEncodeInteger(s)
+        val contentLen = rDer.size + sDer.size
+        // For P-256, r/s DER INTEGERs are at most 33 bytes each + 2 tag/len bytes,
+        // giving a SEQUENCE content of at most 70 bytes. Always fits short-form.
+        if (contentLen >= 128) {
+            throw IllegalStateException("DER SEQUENCE content too long for short-form length")
+        }
+        val out = ByteArray(2 + contentLen)
+        out[0] = 0x30 // SEQUENCE
+        out[1] = contentLen.toByte()
+        System.arraycopy(rDer, 0, out, 2, rDer.size)
+        System.arraycopy(sDer, 0, out, 2 + rDer.size, sDer.size)
+        return out
+    }
+
+    /**
+     * Encode a positive big-endian byte array as a DER INTEGER (tag 0x02).
+     * Strips leading 0x00 bytes but keeps at least one byte; prepends 0x00 when
+     * the resulting most-significant byte has the high bit set so the value
+     * stays a positive INTEGER (DER encoding rule for signed integers).
+     */
+    private fun derEncodeInteger(bytes: ByteArray): ByteArray {
+        if (bytes.isEmpty()) {
+            throw IllegalArgumentException("derEncodeInteger: empty input")
+        }
+        // Strip leading zeros, keep at least one byte.
+        var start = 0
+        while (start < bytes.size - 1 && bytes[start] == 0.toByte()) start += 1
+        val stripped = bytes.copyOfRange(start, bytes.size)
+        // If high bit is set, prepend a 0x00 pad (keeps the INTEGER positive).
+        val content = if ((stripped[0].toInt() and 0x80) != 0) {
+            val padded = ByteArray(stripped.size + 1)
+            padded[0] = 0x00
+            System.arraycopy(stripped, 0, padded, 1, stripped.size)
+            padded
+        } else {
+            stripped
+        }
+        if (content.size >= 128) {
+            throw IllegalStateException("DER INTEGER content too long for short-form length")
+        }
+        val out = ByteArray(2 + content.size)
+        out[0] = 0x02 // INTEGER
+        out[1] = content.size.toByte()
+        System.arraycopy(content, 0, out, 2, content.size)
+        return out
     }
 
     // Base64URL decode: Play Integrity JWS segments are base64url (- and _, no
