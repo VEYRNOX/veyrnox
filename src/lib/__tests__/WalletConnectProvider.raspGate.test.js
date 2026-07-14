@@ -13,12 +13,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // RASP mock — per-test control of the degraded tier. detect/browserProbeSource are
 // inert; degrade() returns the tier the test wants.
+//
+// H-1 (#950): presignGateOrReject now imports selectPresignProbeSource, nativeProbeSource,
+// attestationProbeSource, detectAttestation, composeConditions, ATTESTATION_ENABLED,
+// and TIER from @/rasp. This mock stubs the whole surface so the pipeline reaches
+// degrade() (the per-test tier oracle) without hitting undefined. selectPresignProbeSource
+// returns the browser source (identity for the web-test env), composeConditions passes
+// through the OS condition, and both async probes are unavailable — so degrade()'s mock
+// return controls tier end-to-end.
 const raspState = { tier: 'allow' };
 vi.mock('@/rasp', () => ({
   TIER: { ALLOW: 'allow', WARN: 'warn-before-sign', BLOCK: 'block-signing' },
-  detect: vi.fn(() => ({ condition: 'clean' })),
+  detect: vi.fn(() => 'clean'),
   degrade: vi.fn(() => ({ tier: raspState.tier })),
   browserProbeSource: {},
+  nativeProbeSource: vi.fn(async () => ({ available: false })),
+  selectPresignProbeSource: vi.fn((_isNative, _native, browser) => browser),
+  attestationProbeSource: vi.fn(async () => ({ available: false })),
+  detectAttestation: vi.fn(() => 'clean'),
+  composeConditions: vi.fn((a) => a),
+  ATTESTATION_ENABLED: false,
 }));
 
 // NOTE: presignGate is NOT mocked here — we use the real pure gate so the

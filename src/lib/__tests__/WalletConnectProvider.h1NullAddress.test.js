@@ -19,10 +19,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // RASP gate: force a clean ALLOW so the gate is not what stops the null path.
 const presignGate = vi.fn(() => ({ proceedAllowed: true, signerReachable: true }));
 vi.mock('@/sign-gate/presign', () => ({ presignGate: (...a) => presignGate(...a) }));
+// H-1 (#950): presignGateOrReject now imports the full native-aware surface. Stub
+// every export so the pipeline reaches degrade() (mocked to ALLOW) without hitting
+// undefined. This test's focus is the null evmAddress branch, not the RASP gate.
 vi.mock('@/rasp', () => ({
-  detect: vi.fn(() => ({})),
+  TIER: { ALLOW: 'allow', WARN: 'warn-before-sign', BLOCK: 'block-signing' },
+  detect: vi.fn(() => 'clean'),
   degrade: vi.fn(() => ({ tier: 'allow' })),
   browserProbeSource: {},
+  nativeProbeSource: vi.fn(async () => ({ available: false })),
+  selectPresignProbeSource: vi.fn((_isNative, _native, browser) => browser),
+  attestationProbeSource: vi.fn(async () => ({ available: false })),
+  detectAttestation: vi.fn(() => 'clean'),
+  composeConditions: vi.fn((a) => a),
+  ATTESTATION_ENABLED: false,
 }));
 vi.mock('@/risk/levels', () => ({ LEVEL: { OK: 'ok' } }));
 

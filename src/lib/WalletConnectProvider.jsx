@@ -2,10 +2,26 @@
 // React context for WalletConnect state.
 // Holds pending proposals, pending requests, and active sessions.
 // Routes all signing through WalletProvider's withPrivateKey() — never holds keys.
+//
+// RASP H-1 (issue #950, 2026-07-14). presignGateOrReject() used to read ONLY
+// browserProbeSource, which on a native Capacitor WebView reports
+// rooted/emulator/tampered = false and resolves CLEAN → ALLOW. That was the same
+// fail-open class as C-01 (already fixed on the Send path via
+// selectPresignProbeSource + attestation compose). This handler is invoked by a
+// WC event — not React render — so useRaspArtifact cannot be used. Instead the
+// gate is now ASYNC and awaits both the native OS probe and the remote-attestation
+// probe AT GATE TIME with a bounded fail-closed timeout (RASP_ASYNC_PROBE_TIMEOUT_MS)
+// so an in-flight bridge call cannot silently allow. During the async window
+// (throw / timeout / not-yet-sampled) the source is treated as UNAVAILABLE
+// (INTEGRITY_UNAVAILABLE → WARN → RASP_WARN_REJECTED); the signer is never
+// reached under WARN/BLOCK. I3-preserving: attestationProbeSource() already
+// checks isDeniabilitySessionActive() FIRST inside its own body — no set handle
+// is introduced here (byte-identical real/decoy).
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
 import {
   initWalletConnect,
   onWalletConnectEvent,
@@ -27,8 +43,44 @@ import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
-import { detect, degrade, browserProbeSource } from '@/rasp';
+import {
+  detect,
+  degrade,
+  browserProbeSource,
+  nativeProbeSource,
+  selectPresignProbeSource,
+  attestationProbeSource,
+  detectAttestation,
+  composeConditions,
+  ATTESTATION_ENABLED,
+  TIER,
+} from '@/rasp';
 import { DEMO } from '@/api/demoClient';
+
+// Bounded timeout for the async probe legs so an in-flight bridge call cannot
+// silently allow — on timeout the source resolves to UNAVAILABLE (fail closed,
+// I4). 1500 ms is comfortably above measured native probe latency and short
+// enough that a stuck bridge does not lock the WC handler indefinitely.
+const RASP_ASYNC_PROBE_TIMEOUT_MS = 1500;
+
+const UNAVAILABLE_SOURCE = Object.freeze({ available: false });
+
+// Race a probe promise against a fail-closed timeout. NEVER fabricates a clean
+// result: on throw or timeout the source is UNAVAILABLE, which detect() /
+// detectAttestation() both map to INTEGRITY_UNAVAILABLE (→ WARN via degrade).
+function withFailClosedTimeout(promise, ms) {
+  return new Promise((resolve) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      resolve(UNAVAILABLE_SOURCE);
+    }, ms);
+    Promise.resolve(promise)
+      .then((v) => { if (done) return; done = true; clearTimeout(timer); resolve(v); })
+      .catch(() => { if (done) return; done = true; clearTimeout(timer); resolve(UNAVAILABLE_SOURCE); });
+  });
+}
 
 // audit-H8: pure address validator for personal_sign. Exported for unit tests.
 // personal_sign params are [hexMessage, address]; some legacy dApps reverse the
@@ -210,14 +262,53 @@ export function resolveSessionCaip2(session, requestCaip2) {
 // Returns { proceedAllowed, rejectCode }. rejectCode is the code the caller passes to
 // rejectRequest when proceedAllowed is false: RASP_BLOCK for a hard BLOCK, else
 // RASP_WARN_REJECTED (WARN/CONFIRM cannot be acknowledged on this surface).
-function presignGateOrReject() {
-  const { tier } = degrade(detect(browserProbeSource));
+// RASP H-1 (issue #950): native-aware, async, fail-closed pre-sign gate.
+// On native, awaits the OS-level probe (nativeProbeSource) and the
+// remote-attestation verdict (attestationProbeSource) AT GATE TIME with a
+// bounded timeout. selectPresignProbeSource never falls back to the browser
+// leg's CLEAN on native (C-01), and detectAttestation fails closed to
+// INTEGRITY_UNAVAILABLE on unavailable / thrown / timed-out verdicts. On web
+// the browser leg is used exactly as before.
+async function presignGateOrReject() {
+  let tier;
+  try {
+    const isNative = Capacitor.isNativePlatform();
+    // Kick off both async legs in parallel. Each is fail-closed by construction
+    // (the source functions themselves return {available:false} on throw), and
+    // wrapped in a fail-closed timeout so an in-flight bridge cannot silently
+    // allow. On web the OS/attestation legs are not sampled — the browser leg
+    // is the source of truth off-device.
+    const [nativeSource, attestationResult] = await Promise.all([
+      isNative
+        ? withFailClosedTimeout(nativeProbeSource(), RASP_ASYNC_PROBE_TIMEOUT_MS)
+        : Promise.resolve(null),
+      isNative && ATTESTATION_ENABLED
+        ? withFailClosedTimeout(attestationProbeSource(), RASP_ASYNC_PROBE_TIMEOUT_MS)
+        : Promise.resolve(null),
+    ]);
+    // NATIVE: OS leg only (browser CLEAN is meaningless here — C-01). ATTESTATION
+    // is composed via composeConditions so the STRONGER (more dangerous) leg wins:
+    // e.g. CLEAN native ∘ INTEGRITY_FAIL attestation → INTEGRITY_FAIL (BLOCK).
+    // Attestation is set-blind: attestationProbeSource() checks
+    // isDeniabilitySessionActive() FIRST inside its own body (I3 — decoy makes
+    // zero egress). No wallet-set handle is passed or accepted here.
+    const osCondition = detect(
+      selectPresignProbeSource(isNative, nativeSource, browserProbeSource),
+    );
+    const attestCondition = detectAttestation(attestationResult);
+    const artifact = degrade(composeConditions(osCondition, attestCondition));
+    // I4 fail-closed on shape drift: an artifact with no tier maps to BLOCK, not
+    // ALLOW (RASP-A2 discipline — absence of a clean signal is not a clean signal).
+    tier = artifact?.tier ?? TIER.BLOCK;
+  } catch {
+    // Total failure in the detection chain → strongest BLOCK, signer unreachable.
+    tier = TIER.BLOCK;
+  }
   // txLevel = LEVEL.OK: the WalletConnect signing path has NO in-app tx-risk score
   // feeding this gate (its tx-safety controls — H7 chain binding, H8 address
   // binding, M9 gas cap — are enforced separately in the handlers). Passing OK is
   // honest (the tx plane genuinely has no signal here), so RASP's environment tier
-  // is the sole determinant. Previously this passed txLevel=null (→ CONFIRM) and
-  // masked it with acknowledged=true, which also swallowed WARN (RASP-A3).
+  // is the sole determinant.
   //
   // acknowledged=false: the WC path has no interactive surface to obtain a real
   // "sign anyway" tap, so it must never present one. Only a clean ALLOW passes;
@@ -231,7 +322,7 @@ function presignGateOrReject() {
 }
 
 export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic, id, params) {
-  const gate = presignGateOrReject();
+  const gate = await presignGateOrReject();
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
@@ -277,7 +368,7 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
 }
 
 export async function _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2) {
-  const gate = presignGateOrReject();
+  const gate = await presignGateOrReject();
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
@@ -322,7 +413,7 @@ export async function _handleSignTypedData({ withPrivateKey }, topic, id, params
 }
 
 export async function _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId) {
-  const gate = presignGateOrReject();
+  const gate = await presignGateOrReject();
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
