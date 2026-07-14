@@ -364,7 +364,7 @@ function DemoDashboard() {
               { label: "Address Check", icon: Search,        path: "/address-checker", color: "text-[hsl(var(--chart-5))]", bg: "bg-[hsl(var(--chart-5))]/10" },
               { label: "Analytics",     icon: BarChart2,     path: "/analytics",       color: "text-[hsl(var(--chart-4))]", bg: "bg-[hsl(var(--chart-4))]/10" },
               { label: "Sentiment",     icon: Newspaper,     path: "/news-sentiment",  color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
-              { label: "Risk Score",    icon: ShieldCheck,   path: "/risk",            color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
+              { label: "Risk Score",    icon: ShieldCheck,   path: "/risk-score",      color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
             ].map(item => (
               <button key={item.path} onClick={() => navigate(item.path)}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-center">

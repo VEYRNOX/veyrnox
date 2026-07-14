@@ -19,7 +19,7 @@ export const ALL_ROUTE_PATHS = [
   '/terms-legal', '/nft',
   '/snapshots', '/pl', '/onchain', '/spending',
   '/recurring', '/push', '/advanced-analytics', '/nft-multichain',
-  '/fraud', '/risk', '/news-sentiment', '/notifications',
+  '/fraud', '/news-sentiment', '/notifications',
   '/savings', '/invoices', '/watchlist', '/address-book',
   '/net-worth', '/budget', '/duress-pin',
   '/wallet-access', '/stealth-wallets', '/panic-wipe', '/risk-score',
@@ -133,11 +133,6 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'CURRENT_PRICES removed. Unrealised P&L shows "enter exit price" for open trades. Close action now collects user-supplied exit price inline before writing P&L — no stale market price used. Realised P&L on closed trades uses the user-entered entry/exit prices only.',
   },
-  '/risk': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Derives risk score from real local wallet balances (base44.entities.Wallet) and borrow counts (LendingPosition). Formula uses transparent static coefficients (concentration × 0.5, leverage × 15, volatile-asset count × 5). HEDGING list is generic advice, not presented as user-specific data. No fabrication.',
-  },
-
   // ── Finance group (audit batch 3) ─────────────────────────────────────────
   '/savings': {
     verdict: 'live', dataSource: 'base44-entities',
