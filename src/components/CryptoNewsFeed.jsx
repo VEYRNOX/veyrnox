@@ -126,8 +126,12 @@ export default function CryptoNewsFeed() {
         </div>
         {/* I3: refetch() bypasses the `enabled` gate in react-query v5, so in a
             decoy/hidden session tapping this would call api.rss2json.com — live
-            egress. Hide the trigger entirely when the query is gated off. */}
-        {i3Active && (
+            egress. Hide the trigger entirely when the query is gated off.
+            2026-07-14 audit MEDIUM: also gate on !DEMO — a demo tour has
+            isDecoy/isHidden===false so i3Active alone still rendered the button,
+            and refetch() would leak to rss2json from what is supposed to be an
+            offline demo. Match the useQuery gate (egressAllowed = i3Active && !DEMO). */}
+        {egressAllowed && (
           <Button
             variant="ghost"
             size="icon"
@@ -166,7 +170,11 @@ export default function CryptoNewsFeed() {
         <div className="text-center py-8 text-sm text-muted-foreground flex flex-col items-center gap-2">
           <TrendingUp className="h-8 w-8 text-muted-foreground/40" />
           <p>Could not load news</p>
-          <button onClick={() => refetch()} className="text-primary text-xs underline">Retry</button>
+          {/* 2026-07-14 audit MEDIUM (same class): only render the Retry link when
+              egress is actually allowed; refetch() bypasses enabled. */}
+          {egressAllowed && (
+            <button onClick={() => refetch()} className="text-primary text-xs underline">Retry</button>
+          )}
         </div>
       ) : news.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground flex flex-col items-center gap-2">

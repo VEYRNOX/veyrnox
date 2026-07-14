@@ -32,7 +32,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Wallet, Transaction, parseEther, getAddress } from 'ethers';
 
 // Shared holders the hoisted mocks delegate to. Set per-test.
-const h = vi.hoisted(() => ({ ledgerSign: null, trezorSign: null }));
+const h = vi.hoisted(() => ({
+  ledgerSign: null, trezorSign: null,
+  // 2026-07-14 audit LOW: hw-send now pre-verifies device.getAddress against the
+  // caller-supplied fromAddress (parity with the post-sign recovery guard).
+  ledgerAddress: null, trezorGetAddress: null,
+}));
 
 // Mock the provider so buildUnsignedEvmTx / broadcast never touch the network.
 vi.mock('../provider.js', () => ({ getProvider: vi.fn() }));
@@ -41,15 +46,19 @@ vi.mock('../provider.js', () => ({ getProvider: vi.fn() }));
 vi.mock('@ledgerhq/hw-app-eth', () => ({
   default: class MockEth {
     constructor(transport) { this.transport = transport; }
+    async getAddress(_path) { return { address: h.ledgerAddress ?? null }; }
     async signTransaction(path, rawTxHex, resolution) {
       return h.ledgerSign(path, rawTxHex, resolution);
     }
   },
 }));
 
-// TrezorConnect default export: object with ethereumSignTransaction().
+// TrezorConnect default export: object with ethereumGetAddress() + ethereumSignTransaction().
 vi.mock('@trezor/connect-web', () => ({
-  default: { ethereumSignTransaction: (...args) => h.trezorSign(...args) },
+  default: {
+    ethereumGetAddress: (...args) => h.trezorGetAddress(...args),
+    ethereumSignTransaction: (...args) => h.trezorSign(...args),
+  },
 }));
 
 import { getProvider } from '../provider.js';
@@ -77,7 +86,11 @@ const FEE = {
 function makeFakeProvider(capture) {
   return {
     send: async (method) => (method === 'eth_chainId' ? '0x' + CHAIN_ID.toString(16) : undefined),
-    estimateGas: async () => { throw new Error('no estimate in test — keep override'); },
+    // 2026-07-14 audit LOW: preflight now DELETES overrides.gasLimit on estimateGas
+    // throw (drop the hinted 21000 so ethers re-estimates and surfaces the revert
+    // reason). Provide a small real estimate here so the user-supplied FEE.gasLimit
+    // (21000) wins the max() clamp (estimate 17000 + 20% headroom = 20400 < 21000).
+    estimateGas: async () => 17_000n,
     getTransactionCount: async () => 7,
     broadcastTransaction: async (signedTx) => {
       capture.raw = signedTx;
@@ -101,7 +114,13 @@ function deviceSign(rawTxHexNo0x, vFormat = 'yParity') {
 }
 
 describe('evm/hw-send — Ledger signature reconstruction (M-2 / #746)', () => {
-  beforeEach(() => { vi.clearAllMocks(); h.ledgerSign = null; h.trezorSign = null; });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.ledgerSign = null; h.trezorSign = null;
+    // 2026-07-14 audit LOW: pre-sign getAddress must match fromAddress to reach signFn.
+    h.ledgerAddress = FROM;
+    h.trezorGetAddress = async () => ({ success: true, payload: { address: FROM } });
+  });
 
   for (const vFormat of ['yParity', 'legacy']) {
     it(`recovers to the signer with v encoded as ${vFormat}`, async () => {
@@ -164,7 +183,13 @@ describe('evm/hw-send — Ledger signature reconstruction (M-2 / #746)', () => {
 });
 
 describe('evm/hw-send — Trezor signature reconstruction (M-2 / #746)', () => {
-  beforeEach(() => { vi.clearAllMocks(); h.ledgerSign = null; h.trezorSign = null; });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.ledgerSign = null; h.trezorSign = null;
+    // 2026-07-14 audit LOW: pre-sign getAddress must match fromAddress to reach signFn.
+    h.ledgerAddress = FROM;
+    h.trezorGetAddress = async () => ({ success: true, payload: { address: FROM } });
+  });
 
   it('recovers to the signer and commits to the requested fee/to/value/chainId', async () => {
     const capture = {};

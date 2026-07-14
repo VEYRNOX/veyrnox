@@ -18,11 +18,12 @@
 
 import AppBtc from '@ledgerhq/hw-app-btc';
 import TrezorConnect from '@trezor/connect-web';
-import { Transaction, p2wpkh } from '@scure/btc-signer';
+import { p2wpkh } from '@scure/btc-signer';
 import { hex, bech32 } from '@scure/base';
 import { getBtcNetwork } from './networks.js';
 import { getUtxos, getFeeRate, broadcastTx } from './provider.js';
 import { selectCoins, assertPlanConserves } from './coinselect.js';
+import { btcTxidFromHex } from './send.js';
 
 // BIP-84 P2WPKH paths
 const BTC_PATH_TESTNET = "84'/1'/0'/0/0";
@@ -185,12 +186,16 @@ export async function signAndBroadcastBtcLedger({
     transactionVersion: 2,
   }));
 
-  const txid = await broadcastTx(networkKey, signedHex);
-  const tx   = Transaction.fromRaw(hex.decode(signedHex), { allowUnknownOutputs: true });
+  // 2026-07-14 audit LOW: mirror btc/send.js — derive txid LOCALLY from the signed
+  // bytes rather than trusting the untrusted indexer's POST /tx echo. A hostile /
+  // MITMed indexer could return a fabricated txid that the UI/explorer link would
+  // then follow (delayed detection of the real send).
+  const txid = btcTxidFromHex(signedHex);
+  await broadcastTx(networkKey, signedHex);
 
   return {
-    txid: txid || tx.id,
-    explorerUrl: `${net.explorer}/tx/${txid || tx.id}`,
+    txid,
+    explorerUrl: `${net.explorer}/tx/${txid}`,
     plan,
   };
 }
@@ -260,12 +265,13 @@ export async function signAndBroadcastBtcTrezor({
   if (!result.success) throw new Error((result.payload && 'error' in result.payload ? result.payload.error : null) ?? 'Trezor BTC signing failed');
 
   const { serializedTx } = result.payload;
-  const txid = await broadcastTx(networkKey, serializedTx);
-  const tx   = Transaction.fromRaw(hex.decode(serializedTx), { allowUnknownOutputs: true });
+  // 2026-07-14 audit LOW: local txid derivation (see Ledger branch note above).
+  const txid = btcTxidFromHex(serializedTx);
+  await broadcastTx(networkKey, serializedTx);
 
   return {
-    txid: txid || tx.id,
-    explorerUrl: `${net.explorer}/tx/${txid || tx.id}`,
+    txid,
+    explorerUrl: `${net.explorer}/tx/${txid}`,
     plan,
   };
 }

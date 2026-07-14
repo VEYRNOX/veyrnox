@@ -50,6 +50,10 @@ vi.mock('@ledgerhq/hw-app-btc', () => ({
 
 import { getUtxos, getFeeRate, broadcastTx } from '../provider.js';
 import { signAndBroadcastBtcLedger, signAndBroadcastBtcTrezor } from '../hw-send.js';
+// 2026-07-14 audit LOW: hw-send now derives txid LOCALLY from signed bytes
+// (mirrors btc/send.js — doesn't trust the untrusted indexer echo). Compute the
+// expected txid the same way the module does so the assertion pins on real bytes.
+import { btcTxidFromHex } from '../send.js';
 
 // Fixtures generated from deterministic secp256k1 keys 0x0b.. / 0x16.. via
 // @scure/btc-signer p2wpkh(pubKey, TEST_NETWORK) — see the accompanying scratch
@@ -58,13 +62,20 @@ const PUB_FROM = '02552c630b64b54bf50210c9e253d38bd4949c72e22873500f6285c2bede31
 const FROM = 'tb1qmvlsp4pf7fc48q7vt9p93mq36m09ye5hpdz6rn';
 const TO = 'tb1qdap3mkhdep3lhp3fkl27u70kx0063mp0thrraj';
 const NETWORK = 'testnet';
-const TXID = 'a'.repeat(64); // a valid-looking 64-hex broadcast acknowledgement
+// 2026-07-14 audit LOW: hw-send used to return `txid || tx.id` (indexer echo
+// preferred over local derivation). It now derives locally via btcTxidFromHex, so
+// the indexer's echo is no longer surfaced. Keep BROADCAST_ACK to check the
+// broadcast call still happens, but assertions compare against the LOCAL txid.
+const BROADCAST_ACK = 'a'.repeat(64);
 
-// A minimal, real, parseable raw tx (one input, one P2WPKH output) so the module's
-// `Transaction.fromRaw(serializedTx)` txid-fallback path succeeds.
+// A minimal, real, parseable raw tx (one input, one P2WPKH output) so btcTxidFromHex
+// can compute a deterministic local txid from it.
 const RAW_TX_HEX =
   '0200000001' + '00'.repeat(32) + '00000000' + '00' + 'ffffffff' +
   '01' + 'e803000000000000' + '16' + '0014' + '00'.repeat(20) + '00000000';
+
+// Deterministic expected txid from the same signed bytes the module derives from.
+const LOCAL_TXID = btcTxidFromHex(RAW_TX_HEX);
 
 // A VALID (on-curve) compressed pubkey that is NOT FROM's key — so the guard
 // rejects on the address mismatch, not on a malformed-point error.
@@ -76,7 +87,7 @@ const UTXO = { txid: 'b'.repeat(64), vout: 2, value: 100_000n, confirmed: true }
 function wireProvider() {
   getUtxos.mockResolvedValue([UTXO]);
   getFeeRate.mockResolvedValue(1);
-  broadcastTx.mockResolvedValue(TXID);
+  broadcastTx.mockResolvedValue(BROADCAST_ACK);
 }
 
 describe('btc/hw-send — ownership guard (M-2 / #746)', () => {
@@ -136,8 +147,8 @@ describe('btc/hw-send — Trezor plan→input/output mapping (M-2 / #746)', () =
     const outSum = captured.outputs.reduce((s, o) => s + BigInt(o.amount), 0n);
     expect(outSum).toBe(100_000n - 141n);
 
-    expect(res.txid).toBe(TXID);
-    expect(res.explorerUrl).toContain(TXID);
+    expect(res.txid).toBe(LOCAL_TXID);
+    expect(res.explorerUrl).toContain(LOCAL_TXID);
     expect(res.plan).toBeTruthy();
   });
 
@@ -192,8 +203,8 @@ describe('btc/hw-send — Ledger createPaymentTransaction call shape (M-2 / #746
     expect(typeof arg.outputScriptHex).toBe('string');
     expect((arg.outputScriptHex.match(/0014/g) || []).length).toBe(2);
 
-    expect(res.txid).toBe(TXID);
-    expect(res.explorerUrl).toContain(TXID);
+    expect(res.txid).toBe(LOCAL_TXID);
+    expect(res.explorerUrl).toContain(LOCAL_TXID);
   });
 
   it('Ledger: throws on the ownership guard before any fetch/sign (fail-closed)', async () => {

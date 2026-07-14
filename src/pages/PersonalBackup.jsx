@@ -386,7 +386,12 @@ function RestoreTab({ lock, onBack }) {
   };
 
   const handleSetPassword = async () => {
-    if (newPassword !== newPasswordConfirm || newPassword.length === 0) return;
+    // 2026-07-14 audit LOW: on-screen hint says "At least 12 characters" but the
+    // enforcement floor was length > 0 — a mid-length password would either be
+    // silently accepted on native or fail with a generic "Failed to save" error on
+    // web (validateWebVaultPassword rejection). Gate the button + the handler on
+    // the same ≥12 rule the UI promises (fail-honest, I4).
+    if (newPassword !== newPasswordConfirm || newPassword.length < 12) return;
     setBusy(true);
     try {
       await finalisePinRestore(pinDecryptedJson, newPassword);
@@ -422,7 +427,9 @@ function RestoreTab({ lock, onBack }) {
   }
 
   if (phase === "setpw") {
-    const valid = newPassword.length > 0 && newPassword === newPasswordConfirm;
+    // 2026-07-14 audit LOW: gate must match the ≥12-char on-screen promise and
+    // finalisePinRestore's ≥12 assertion (see handleSetPassword above).
+    const valid = newPassword.length >= 12 && newPassword === newPasswordConfirm;
     return (
       <div className="space-y-4">
         <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">

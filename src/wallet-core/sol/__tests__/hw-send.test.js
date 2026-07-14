@@ -29,7 +29,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Keypair, Transaction, Message } from '@solana/web3.js';
 import { ed25519 } from '@noble/curves/ed25519';
 
-const h = vi.hoisted(() => ({ ledgerSign: null, trezorSign: null }));
+const h = vi.hoisted(() => ({
+  ledgerSign: null, trezorSign: null,
+  ledgerAddress: null, trezorGetAddress: null,
+}));
 
 // Mock the provider surface used by sendSolHw. getSolNetwork/getRentExemptMinimum
 // etc. all resolve through here.
@@ -42,15 +45,23 @@ vi.mock('../provider.js', () => ({
   confirmTx: vi.fn(),
 }));
 
+// 2026-07-14 audit LOW: sendSolHw now calls a pre-sign getPubkeyFn to verify the
+// device's SOL_PATH pubkey matches the caller-supplied fromAddress (parity with
+// sol/send.js's "key controls fromAddress" check). Add getAddress mocks that
+// return the expected fromAddress so tests reach the signFn path.
 vi.mock('@ledgerhq/hw-app-solana', () => ({
   default: class MockAppSolana {
     constructor(transport) { this.transport = transport; }
+    async getAddress(_path) { return { address: h.ledgerAddress ?? null }; }
     async signTransaction(path, msgBuffer) { return h.ledgerSign(path, msgBuffer); }
   },
 }));
 
 vi.mock('@trezor/connect-web', () => ({
-  default: { solanaSignTransaction: (...args) => h.trezorSign(...args) },
+  default: {
+    solanaGetAddress: (...args) => h.trezorGetAddress(...args),
+    solanaSignTransaction: (...args) => h.trezorSign(...args),
+  },
 }));
 
 import {
@@ -84,7 +95,14 @@ function wireUpProvider(capture) {
 }
 
 describe('sol/hw-send — Ledger signature attachment (M-2 / #746)', () => {
-  beforeEach(() => { vi.clearAllMocks(); h.ledgerSign = null; h.trezorSign = null; });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.ledgerSign = null; h.trezorSign = null;
+    // 2026-07-14 audit LOW: pre-sign getPubkeyFn — return the same FROM the tests
+    // pass in so we exercise the signFn path, not the mismatch reject.
+    h.ledgerAddress = FROM;
+    h.trezorGetAddress = async () => ({ success: true, payload: { address: FROM } });
+  });
 
   it('attaches the device signature to the fee-payer and the raw tx verifies', async () => {
     const capture = {};
@@ -153,7 +171,14 @@ describe('sol/hw-send — Ledger signature attachment (M-2 / #746)', () => {
 });
 
 describe('sol/hw-send — Trezor signature attachment (M-2 / #746)', () => {
-  beforeEach(() => { vi.clearAllMocks(); h.ledgerSign = null; h.trezorSign = null; });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.ledgerSign = null; h.trezorSign = null;
+    // 2026-07-14 audit LOW: pre-sign getPubkeyFn — return the same FROM the tests
+    // pass in so we exercise the signFn path, not the mismatch reject.
+    h.ledgerAddress = FROM;
+    h.trezorGetAddress = async () => ({ success: true, payload: { address: FROM } });
+  });
 
   it('converts the hex signature, attaches it, and the raw tx verifies', async () => {
     const capture = {};

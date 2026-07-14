@@ -26,14 +26,27 @@ import { addressChainKind } from "@/lib/addressValidation";
  *   return false (nothing to warn about yet) — this never throws.
  */
 export function isSelfSend(toAddress, fromAddress, currency) {
-  if (!toAddress || !fromAddress) return false;
-  const to = String(toAddress).trim();
-  const from = String(fromAddress).trim();
-  if (!to || !from) return false;
-  // EVM 0x-addresses are case-insensitive; BTC/SOL (and the unknown fallback)
-  // are case-significant, so only EVM gets case-folded before comparison.
+  return addressesEqualForCurrency(toAddress, fromAddress, currency);
+}
+
+/**
+ * Per-currency equality for two addresses — the shared primitive behind isSelfSend
+ * and the whitelist compare in SendCrypto.jsx. Case-folded ONLY for EVM; BTC/SOL
+ * base58 addresses are case-significant and a naive .toLowerCase() would falsely
+ * collide two distinct valid base58 addresses. Empty inputs return false.
+ *
+ * @param {string} a
+ * @param {string} b
+ * @param {string} currency
+ * @returns {boolean}
+ */
+export function addressesEqualForCurrency(a, b, currency) {
+  if (!a || !b) return false;
+  const aa = String(a).trim();
+  const bb = String(b).trim();
+  if (!aa || !bb) return false;
   if (addressChainKind(currency) === "evm") {
-    return to.toLowerCase() === from.toLowerCase();
+    return aa.toLowerCase() === bb.toLowerCase();
   }
-  return to === from;
+  return aa === bb;
 }

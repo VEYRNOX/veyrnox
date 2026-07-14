@@ -538,13 +538,16 @@ function deleteAppDataDatabase() {
     req.onsuccess = finish;
     req.onerror = finish;   // no key material here; deletion is residue hygiene
     // PW-05: on blocked, another connection (localClient.js's module-level handle)
-    // holds the DB open. Resolving straight away would claim success while rows are
-    // still readable. Attempt to close the blocking connection first so the delete
-    // can actually proceed, THEN finish (we still never hang the wipe).
-    req.onblocked = () => {
-      try { req.result?.close?.(); } catch { /* best-effort */ }
-      finish();
-    };
+    // holds the DB open. Resolving straight away would claim success while rows
+    // are still readable. 2026-07-14 audit LOW: per IDB spec, an IDBOpenDBRequest
+    // from deleteDatabase() has `undefined` `result` on all events — the previous
+    // `req.result?.close?.()` was an unconditional no-op that overstated behaviour
+    // in the comment. The blocking connection lives in another execution context
+    // (localClient.js's module-level handle) and is not reachable from here.
+    // Truthful behaviour: just resolve so wipe never hangs; rows remain readable
+    // via the blocking handle until it closes on its own (typically next reload).
+    // No key material lives in this DB (residue hygiene only).
+    req.onblocked = finish;
   });
 }
 
