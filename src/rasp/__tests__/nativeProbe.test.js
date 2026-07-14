@@ -207,3 +207,50 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
     expect(srcB.signals.hooked).toBe(true);
   });
 });
+
+// ── Item 16 — screenCapture folded into the hooked signal ─────────────────────
+// iOS checkScreenCapture (UIScreen.isCaptured) returns screenCapture:true when
+// the screen is being mirrored via AirPlay or captured via iOS screen recording.
+// During PIN entry or seed display this is a surveillance attack vector — the
+// attacker can observe the user's input or recover key material from the video.
+// nativeProbeSource folds screenCapture into signals.hooked so the presignGate
+// sees HOOKED → BLOCK rather than treating active screen capture as clean.
+describe('nativeProbeSource — item 16: screenCapture → hooked', () => {
+  it('screenCapture:true maps to signals.hooked true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      hookedProcess: false,
+      debuggerAttached: false,
+      screenCapture: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.hooked).toBe(true);
+  });
+
+  it('screenCapture:true drives detect() to HOOKED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ screenCapture: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.HOOKED);
+  });
+
+  it('all three false → hooked false (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      hookedProcess: false,
+      debuggerAttached: false,
+      screenCapture: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.hooked).toBe(false);
+  });
+
+  it('any of hookedProcess / debuggerAttached / screenCapture true is sufficient', async () => {
+    h.isNative = true;
+    for (const field of ['hookedProcess', 'debuggerAttached', 'screenCapture']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.hooked).toBe(true);
+    }
+  });
+});
