@@ -627,6 +627,55 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 24 — Android checkDeveloperMode + developerMode verdict field ────────
+//
+// A device with developer options enabled exposes the app to adb-level attack
+// surface: USB debugging (ADB_ENABLED) allows logcat capture (LOG-1 risk),
+// memory dumping via gdb/lldb, screenrecord without the RECORD_AUDIO permission
+// prompt, and APK extraction. DEVELOPMENT_SETTINGS_ENABLED is the parent toggle
+// that unlocks all of the above. There is no iOS equivalent (iOS Developer Mode
+// is user-opt-in for sideloading only and is not checkable from an app).
+//
+// checkDeveloperMode() checks both Settings.Global constants:
+//   - ADB_ENABLED (USB debugging toggle — direct adb/logcat access)
+//   - DEVELOPMENT_SETTINGS_ENABLED (developer options master switch)
+// Either being non-zero → developerMode:true in the verdict.
+//
+// Signal tier: WARN (same as rooted; not a definitive compromise signal, but
+// elevated risk during signing). nativeProbe.js wiring is a separate item.
+
+describe('Item 24 — Android checkDeveloperMode + developerMode verdict field', () => {
+  it('checkDeveloperMode() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkDeveloperMode()');
+  });
+
+  it('checkDeveloperMode() checks ADB_ENABLED via Settings.Global', () => {
+    const start = kt.indexOf('fun checkDeveloperMode()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('ADB_ENABLED');
+  });
+
+  it('checkDeveloperMode() also checks DEVELOPMENT_SETTINGS_ENABLED', () => {
+    const start = kt.indexOf('fun checkDeveloperMode()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('DEVELOPMENT_SETTINGS_ENABLED');
+  });
+
+  it('checkDeveloperMode() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkDeveloperMode()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("developerMode") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("developerMode"');
+  });
+});
+
 // ── Item 23 — Android checkOverlay + overlayActive verdict field ──────────────
 //
 // iOS -checkOverlay (UIAccessibilityIsAssistiveTouchRunning) returns

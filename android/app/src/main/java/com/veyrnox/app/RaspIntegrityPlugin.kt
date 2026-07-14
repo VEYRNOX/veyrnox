@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -86,6 +86,15 @@ class RaspIntegrityPlugin : Plugin() {
      * entry. nativeProbe.js maps overlayActive:true → signals.rooted → WARN (item 19
      * wiring); the send flow is not blocked but the user sees a caution notice.
      * Honest scope: also fires for legitimate accessibility users (TalkBack etc.).
+     *
+     * developerMode (item 24): Android-only field (no iOS equivalent). True when
+     * Settings.Global.ADB_ENABLED != 0 (USB debugging on) OR
+     * Settings.Global.DEVELOPMENT_SETTINGS_ENABLED != 0 (developer options on).
+     * Developer mode exposes the device to adb-level attack surface: logcat capture
+     * (LOG-1 class), memory dumps, screenrecord without user prompt, APK extraction.
+     * nativeProbe.js wiring is a separate item; treated as WARN-tier (elevated risk,
+     * not a definitive compromise signal). Android-only: iOS Developer Mode is an
+     * opt-in sideloading feature not checkable from within an app.
      */
     @PluginMethod
     fun checkIntegrity(call: PluginCall) {
@@ -97,6 +106,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("debuggerAttached",  checkJdwpDebugger())
         result.put("screenCapture",     checkScreenCapture())
         result.put("overlayActive",     checkOverlay())
+        result.put("developerMode",     checkDeveloperMode())
         call.resolve(result)
     }
 
@@ -501,6 +511,30 @@ class RaspIntegrityPlugin : Plugin() {
         am.getEnabledAccessibilityServiceList(
             android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
         ).isNotEmpty()
+    }.getOrDefault(false)
+
+    // ── Developer mode / USB debugging detection (item 24) ───────────────────
+    // Android-only signal with no iOS equivalent. ADB_ENABLED=1 means USB
+    // debugging is on → adb has direct shell + logcat + screenrecord access
+    // (LOG-1 class risk). DEVELOPMENT_SETTINGS_ENABLED=1 is the parent toggle
+    // that unlocks ADB and all other developer options.
+    //
+    // Checking both: a device where developer options is toggled ON but USB
+    // debugging was not explicitly re-enabled (e.g. after a reboot) can still
+    // have developer options active. Either being non-zero → developerMode:true.
+    //
+    // NOT added to the early gate: developerMode is WARN-tier (the device is
+    // exposed, but the app has not been actively compromised). Only BLOCK signals
+    // gate app launch before the bridge.
+
+    @JvmSynthetic
+    private fun checkDeveloperMode(): Boolean = runCatching {
+        val cr = context.contentResolver
+        android.provider.Settings.Global.getInt(
+            cr, android.provider.Settings.Global.ADB_ENABLED, 0
+        ) != 0 || android.provider.Settings.Global.getInt(
+            cr, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
+        ) != 0
     }.getOrDefault(false)
 
     // ── APK tamper detection (signing certificate check) ─────────────────────
