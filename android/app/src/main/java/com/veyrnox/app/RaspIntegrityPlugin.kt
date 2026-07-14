@@ -6,7 +6,8 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false}. `rooted:false` is expected and honest — Magisk
+// "emulator":false,"tampered":false,"debuggerAttached":false}. `rooted:false` is expected
+// and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
 // documented limitation of file-system-level detection against Magisk Hide.
@@ -62,20 +63,25 @@ import java.net.Socket
 class RaspIntegrityPlugin : Plugin() {
 
     /**
-     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered }
+     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered, debuggerAttached }
      *
      * Each field is true only when actively detected. Absence of a true signal
      * means "not detected" — not "definitely clean". The JS layer must treat the
      * full absence of native detections as INTEGRITY_UNAVAILABLE-equivalent
      * (TIER.WARN) rather than verified-clean.
+     *
+     * debuggerAttached (item 18): explicit platform-symmetry field mirroring the
+     * iOS debuggerAttached key (item 12). checkJdwpDebugger() also remains in
+     * detectHook() so hookedProcess fires independently — belt-and-suspenders.
      */
     @PluginMethod
     fun checkIntegrity(call: PluginCall) {
         val result = JSObject()
-        result.put("rooted",        detectRoot())
-        result.put("hookedProcess", detectHook())
-        result.put("emulator",      detectEmulator())
-        result.put("tampered",      detectTamper())
+        result.put("rooted",            detectRoot())
+        result.put("hookedProcess",     detectHook())
+        result.put("emulator",          detectEmulator())
+        result.put("tampered",          detectTamper())
+        result.put("debuggerAttached",  checkJdwpDebugger())
         call.resolve(result)
     }
 

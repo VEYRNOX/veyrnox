@@ -627,6 +627,47 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 18 — Android debuggerAttached verdict field (platform symmetry) ──────
+//
+// iOS checkIntegrity() returns debuggerAttached (item 12). Android does not —
+// JDWP detection fires only via hookedProcess (detectHook → checkJdwpDebugger).
+// nativeProbeSource.js already ORs debuggerAttached into signals.hooked, but
+// on Android that branch is always undefined/false so the OR is dead.
+//
+// Adding result.put("debuggerAttached", checkJdwpDebugger()) to Android
+// checkIntegrity() makes both platforms structurally symmetric. checkJdwpDebugger
+// remains in detectHook() as belt-and-suspenders so hookedProcess still fires too.
+
+describe('Item 18 — Android debuggerAttached verdict field', () => {
+  it('checkIntegrity result includes debuggerAttached key', () => {
+    expect(kt).toContain('result.put("debuggerAttached"');
+  });
+
+  it('debuggerAttached value comes from checkJdwpDebugger()', () => {
+    const idx = kt.indexOf('result.put("debuggerAttached"');
+    expect(idx).toBeGreaterThan(-1);
+    const line = kt.slice(idx, idx + 80);
+    expect(line).toContain('checkJdwpDebugger()');
+  });
+
+  it('checkJdwpDebugger remains in detectHook() for belt-and-suspenders hookedProcess', () => {
+    const hookStart = kt.indexOf('private fun detectHook()');
+    expect(hookStart).toBeGreaterThan(-1);
+    const hookBody = kt.slice(hookStart, hookStart + 300);
+    expect(hookBody).toContain('checkJdwpDebugger()');
+  });
+
+  it('checkIntegrity JSDoc/comment lists debuggerAttached among returned keys', () => {
+    // The JSDoc comment at the top of checkIntegrity must name the key so it
+    // stays in sync with callers.
+    const commentIdx = kt.indexOf('checkIntegrity()');
+    expect(commentIdx).toBeGreaterThan(-1);
+    // Search in the first 300 chars of the function header comment area
+    const ctx = kt.slice(Math.max(0, commentIdx - 10), commentIdx + 300);
+    expect(ctx).toContain('debuggerAttached');
+  });
+});
+
 // ── Item 17 — iOS +earlyCheckScreenCapture: pre-bridge UIScreen.isCaptured ───
 //
 // checkScreenCapture() (PR #985, -checkScreenCapture instance method) detects
