@@ -168,7 +168,7 @@ jobs:
       - name: Run Android JVM unit tests (ES256 DER transcoder + RASP)
         run: |
           chmod +x gradlew
-          ./gradlew :app:test --tests "com.veyrnox.app.*" --info
+          ./gradlew :app:testDebugUnitTest --info
         working-directory: android
 
   android-release:
