@@ -9,7 +9,7 @@ import { copyPlain } from "@/lib/copySecret";
 import { useWallet } from "@/lib/WalletProvider";
 import { useMessageSigningEnabled } from "@/lib/useMessageSigningEnabled";
 import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession.js";
-import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
+import { useRaspArtifact, TIER } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { LEVEL } from "@/risk/levels";
 
@@ -30,6 +30,7 @@ export default function CryptoSigning() {
   const { accounts, isUnlocked, withPrivateKey } = useWallet();
   const signingEnabled = useMessageSigningEnabled();
 
+  const raspArtifact = useRaspArtifact();
   const [copied, setCopied] = useState(null);
   const [signMessage, setSignMessage] = useState("Hello from VEYRNOX!");
   const [signature, setSignature] = useState("");
@@ -48,8 +49,7 @@ export default function CryptoSigning() {
   // to the strongest BLOCK (I4). This page signs an arbitrary message with the
   // user's REAL wallet key, so it is a signing chokepoint and carries the gate.
   const raspGuardAllowsSigning = () => {
-    let tier;
-    try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
+    const tier = raspArtifact?.tier ?? TIER.BLOCK;
     const gate = presignGate(tier, LEVEL.OK, false);
     return gate.proceedAllowed && gate.signerReachable;
   };
