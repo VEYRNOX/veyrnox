@@ -627,6 +627,56 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 22 — Android earlyCheckScreenCapture in companion earlyCheck() ──────
+//
+// Item 21 added runtime checkScreenCapture() to detectHook's verdict.
+// There is still a window between app launch and bridge-up during which a
+// Miracast/WFD connection could be established without detection. The iOS
+// analogue (item 17, +earlyCheckScreenCapture) gates app launch itself —
+// the block screen fires before any Capacitor code loads.
+//
+// earlyCheckScreenCapture(context) is a companion-object private fun that uses
+// DisplayManager.DISPLAY_CATEGORY_PRESENTATION (same signal as item 21) and is
+// chained into earlyCheck() alongside earlyDetectHook() and earlyDetectTamper().
+// It takes context because DisplayManager requires a Context, mirroring how
+// earlyDetectTamper(context) is structured.
+
+describe('Item 22 — Android earlyCheckScreenCapture in companion earlyCheck()', () => {
+  it('earlyCheckScreenCapture( is defined in the companion object', () => {
+    expect(kt).toContain('fun earlyCheckScreenCapture(');
+  });
+
+  it('earlyCheckScreenCapture body uses DISPLAY_CATEGORY_PRESENTATION', () => {
+    const start = kt.indexOf('fun earlyCheckScreenCapture(');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('DISPLAY_CATEGORY_PRESENTATION');
+  });
+
+  it('earlyCheckScreenCapture wraps in runCatching + getOrDefault(false)', () => {
+    const start = kt.indexOf('fun earlyCheckScreenCapture(');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('earlyCheck() chains earlyCheckScreenCapture(context)', () => {
+    const start = kt.indexOf('fun earlyCheck(context');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('earlyCheckScreenCapture(context)');
+  });
+
+  it('earlyCheckScreenCapture is a companion method (placed after earlyCheckJdwp)', () => {
+    const jdwpPos = kt.indexOf('fun earlyCheckJdwp()');
+    const capturePos = kt.indexOf('fun earlyCheckScreenCapture(');
+    expect(jdwpPos).toBeGreaterThan(-1);
+    expect(capturePos).toBeGreaterThan(-1);
+    expect(capturePos).toBeGreaterThan(jdwpPos);
+  });
+});
+
 // ── Item 21 — Android checkScreenCapture + screenCapture verdict field ────────
 //
 // iOS has -checkScreenCapture (UIScreen.isCaptured) which surfaces a

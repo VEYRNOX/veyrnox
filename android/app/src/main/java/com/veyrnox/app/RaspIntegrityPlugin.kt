@@ -564,7 +564,10 @@ class RaspIntegrityPlugin : Plugin() {
         @JvmStatic
         fun earlyCheck(context: android.content.Context): Boolean {
             earlyAntiDump()
+            // BLOCK-tier early checks: hook (debugger/Frida/ptrace) + tamper (cert) +
+            // screen capture (Miracast/WFD mirroring — surveillance vector, item 22).
             return earlyDetectHook() || earlyDetectTamper(context)
+                || earlyCheckScreenCapture(context)
         }
 
         // earlyAntiDump — sets PR_SET_DUMPABLE to 0 via android.system.Os.prctl.
@@ -597,6 +600,21 @@ class RaspIntegrityPlugin : Plugin() {
         // or platform restriction must never block a legitimate launch.
         private fun earlyCheckJdwp(): Boolean =
             runCatching { Debug.isDebuggerConnected() }.getOrDefault(false)
+
+        // earlyCheckScreenCapture — pre-bridge Miracast/WFD screen-mirroring gate
+        // (item 22). Android analogue of iOS +earlyCheckScreenCapture (item 17).
+        // checkScreenCapture() (item 21) runs the same DisplayManager check
+        // post-bridge; this companion-object mirror closes the pre-bridge window
+        // so a screen-casting session active at launch fires the native block screen
+        // before the Capacitor bridge initialises — the same surveillance-vector
+        // rationale as AirPlay blocking on iOS.
+        // Requires context (DisplayManager.getSystemService); mirrors the context
+        // parameter pattern of earlyDetectTamper(context).
+        private fun earlyCheckScreenCapture(context: android.content.Context): Boolean = runCatching {
+            val dm = context.getSystemService(android.hardware.display.DisplayManager::class.java)
+                ?: return@runCatching false
+            dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION).isNotEmpty()
+        }.getOrDefault(false)
 
         // earlyPtraceTraceme — calls ptrace(PTRACE_TRACEME) via JNI. Hardening:
         // claims the tracing slot for the parent (Zygote), complementing
