@@ -46,7 +46,7 @@ import { encodeColdPayload, decodeColdPayload, COLD_KIND } from "@/wallet-core/c
 import { parseEther, parseUnits } from "ethers";
 
 import { presignGate } from "@/sign-gate/presign";
-import { degrade, detect, TIER, browserProbeSource } from "@/rasp";
+import { useRaspArtifact, TIER } from "@/rasp";
 import { LEVEL } from "@/risk/levels";
 
 export default function ColdSign() {
@@ -60,6 +60,7 @@ export default function ColdSign() {
   const [scanned, setScanned] = useState("");           // pasted/scanned signed payload
   const [errorMsg, setErrorMsg] = useState("");
   const [result, setResult] = useState(null);           // { hash, explorerUrl }
+  const raspArtifact = useRaspArtifact();
   const [riskAck, setRiskAck] = useState(false);
 
   // No payload (e.g. deep-linked directly) — fail closed back to Send.
@@ -157,8 +158,7 @@ export default function ColdSign() {
     // so we pass LEVEL.OK for that arg — the RASP tier is what gates here. riskAck
     // is the user's broadcast acknowledgement and is unchanged.
     // NOTE: Never pass a hardcoded tier constant here — real detect() is used below.
-    let tier;
-    try { tier = degrade(detect(browserProbeSource)).tier; } catch { tier = degrade(undefined)?.tier ?? TIER.BLOCK; }
+    const tier = raspArtifact?.tier ?? TIER.BLOCK;
     const gate = presignGate(tier, LEVEL.OK, riskAck);
     if (!gate.proceedAllowed) {
       setErrorMsg("This transaction is blocked by the pre-sign risk gate and cannot be broadcast.");
