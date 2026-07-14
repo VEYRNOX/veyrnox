@@ -829,6 +829,21 @@ class RaspIntegrityPlugin : Plugin() {
                 || earlyCheckScreenCapture(context)
         }
 
+        /**
+         * BLOCK-tier gate for use by other plugins in the same package.
+         * Returns true if ANY BLOCK-tier signal fires (hook / tamper / screen capture).
+         * Fail-closed: any exception → true (blocked). Does NOT run earlyAntiDump()
+         * — that is a one-shot setup call in earlyCheck(), not a per-operation check.
+         *
+         * Called by HardwareKekPlugin.getHardwareFactor() before returning H so that
+         * a JS-level presignGate bypass cannot reach the hardware key operation (I4).
+         */
+        @JvmSynthetic
+        internal fun isBlockTier(context: android.content.Context): Boolean =
+            runCatching {
+                earlyDetectHook() || earlyDetectTamper(context) || earlyCheckScreenCapture(context)
+            }.getOrElse { true }
+
         // earlyAntiDump — sets PR_SET_DUMPABLE to 0 via android.system.Os.prctl.
         // Fail-open (runCatching, no else): if prctl is denied or unavailable,
         // the app launches normally; protection is silently absent, not a hard block.
