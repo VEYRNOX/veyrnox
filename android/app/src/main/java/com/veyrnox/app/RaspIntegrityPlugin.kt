@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false,"mockLocation":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -110,6 +110,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("virtualApp",        checkVirtualApp())
         result.put("suspiciousPackage", checkSuspiciousPackages())
         result.put("thirdPartyKeyboard", checkThirdPartyKeyboard())
+        result.put("mockLocation",       checkMockLocation())
         call.resolve(result)
     }
 
@@ -538,6 +539,41 @@ class RaspIntegrityPlugin : Plugin() {
         ) != 0 || android.provider.Settings.Global.getInt(
             cr, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
         ) != 0
+    }.getOrDefault(false)
+
+    // ── Mock location detection (item 32) ────────────────────────────────────
+    // Mock location providers let an attacker spoof GPS — a device-integrity
+    // signal (enabling mock locations requires developer options or a dedicated
+    // app-op grant). Two paths:
+    //   Pre-API 23: Settings.Secure.ALLOW_MOCK_LOCATION global toggle.
+    //   API 23+   : AppOpsManager.OPSTR_MOCK_LOCATION — any non-system package
+    //               holding MODE_ALLOWED is a mock location provider. System
+    //               packages are skipped to keep the scan bounded.
+    // WARN tier. NOT added to earlyCheck. JS wiring is item 33.
+
+    @JvmSynthetic
+    private fun checkMockLocation(): Boolean = runCatching {
+        @Suppress("DEPRECATION")
+        val legacySetting = android.provider.Settings.Secure.getInt(
+            context.contentResolver,
+            android.provider.Settings.Secure.ALLOW_MOCK_LOCATION, 0
+        ) != 0
+        if (legacySetting) return@runCatching true
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return@runCatching false
+        val appOps = context.getSystemService(android.app.AppOpsManager::class.java)
+            ?: return@runCatching false
+        context.packageManager.getInstalledPackages(0).any { pkg ->
+            val info = pkg.applicationInfo ?: return@any false
+            if ((info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0)
+                return@any false
+            runCatching {
+                appOps.checkOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_MOCK_LOCATION,
+                    info.uid,
+                    pkg.packageName,
+                ) == android.app.AppOpsManager.MODE_ALLOWED
+            }.getOrDefault(false)
+        }
     }.getOrDefault(false)
 
     // ── Third-party keyboard detection (item 30) ─────────────────────────────

@@ -157,7 +157,7 @@ describe('Android RASP — @JvmSynthetic on all private detection methods', () =
     'checkProcMapsForHook', 'checkGadgetThreads', 'checkFridaPipes',
     'detectEmulator', 'checkBuildProps', 'checkEmulatorFiles', 'detectTamper',
     'checkScreenCapture', 'checkOverlay', 'checkDeveloperMode', 'checkVirtualApp',
-    'checkSuspiciousPackages', 'checkThirdPartyKeyboard',
+    'checkSuspiciousPackages', 'checkThirdPartyKeyboard', 'checkMockLocation',
   ];
 
   for (const fn of privateFns) {
@@ -628,6 +628,53 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Item 32 — Android checkMockLocation + mockLocation verdict field ─────────
+//
+// Mock location providers let an attacker spoof GPS coordinates — relevant for
+// geo-fencing controls and as a general device-integrity signal (enabling mock
+// locations requires developer options or a dedicated mock-location app).
+//
+// Two detection paths:
+//   Pre-API 23: Settings.Secure.ALLOW_MOCK_LOCATION global toggle.
+//   API 23+   : AppOpsManager.OPSTR_MOCK_LOCATION — checks whether any
+//               non-system package currently holds the mock-location app-op.
+//               Skips system packages to keep the scan bounded.
+//
+// WARN tier — same as developerMode. NOT added to earlyCheck.
+// JS wiring to signals.rooted is a separate item (33).
+
+describe('Item 32 — Android checkMockLocation + mockLocation verdict field', () => {
+  it('checkMockLocation() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkMockLocation()');
+  });
+
+  it('checkMockLocation() checks ALLOW_MOCK_LOCATION (pre-API 23 path)', () => {
+    const start = kt.indexOf('fun checkMockLocation()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 500);
+    expect(body).toContain('ALLOW_MOCK_LOCATION');
+  });
+
+  it('checkMockLocation() checks OPSTR_MOCK_LOCATION via AppOpsManager (API 23+ path)', () => {
+    const start = kt.indexOf('fun checkMockLocation()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 950);
+    expect(body).toContain('OPSTR_MOCK_LOCATION');
+  });
+
+  it('checkMockLocation() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkMockLocation()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 1100);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("mockLocation") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("mockLocation"');
+  });
+});
 
 // ── Item 30 — Android checkThirdPartyKeyboard + thirdPartyKeyboard verdict ─────
 //
