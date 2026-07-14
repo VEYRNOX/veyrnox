@@ -208,6 +208,59 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
   });
 });
 
+// ── Item 33 — mockLocation folded into the rooted (WARN) signal ──────────────
+// Android checkMockLocation() (item 32) returns mockLocation:true when a
+// non-system package holds OPSTR_MOCK_LOCATION (API 23+) or the legacy
+// ALLOW_MOCK_LOCATION setting is on. Fake GPS on a wallet device is an
+// attack-context signal. WARN tier. Android-only field.
+describe('nativeProbeSource — item 33: mockLocation → rooted (WARN)', () => {
+  it('mockLocation:true maps to signals.rooted true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: false,
+      suspiciousPackage: false,
+      thirdPartyKeyboard: false,
+      mockLocation: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(true);
+  });
+
+  it('mockLocation:true drives detect() to ROOTED (WARN), not HOOKED or TAMPERED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ mockLocation: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ROOTED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
+  });
+
+  it('mockLocation:false alone does not set rooted (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false, jailbroken: false, overlayActive: false,
+      developerMode: false, virtualApp: false, suspiciousPackage: false,
+      thirdPartyKeyboard: false, mockLocation: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(false);
+  });
+
+  it('any of the rooted-tier fields true is sufficient for signals.rooted', async () => {
+    h.isNative = true;
+    for (const field of ['rooted', 'jailbroken', 'overlayActive', 'developerMode',
+                         'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard', 'mockLocation']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.rooted).toBe(true);
+    }
+  });
+});
+
 // ── Item 31 — thirdPartyKeyboard folded into the rooted (WARN) signal ────────
 // Android checkThirdPartyKeyboard() (item 30) returns thirdPartyKeyboard:true
 // when the active IME lacks FLAG_SYSTEM — i.e. it was user-installed and could

@@ -113,13 +113,17 @@ export async function nativeProbeSource() {
   // Item 31: fold thirdPartyKeyboard (Android checkThirdPartyKeyboard, item 30)
   // into rooted → WARN. A non-system IME (FLAG_SYSTEM == 0) could keylog PIN
   // input during KEK enrollment. Android-only field.
+  // Item 33: fold mockLocation (Android checkMockLocation, item 32) into
+  // rooted → WARN. Active mock-location provider = device-integrity signal
+  // (requires developer options or explicit app-op grant). Android-only field.
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true
          || verdict.overlayActive === true
          || verdict.developerMode === true
          || verdict.virtualApp === true
          || verdict.suspiciousPackage === true
-         || verdict.thirdPartyKeyboard === true,
+         || verdict.thirdPartyKeyboard === true
+         || verdict.mockLocation === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
     // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring
