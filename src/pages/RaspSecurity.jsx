@@ -14,9 +14,14 @@
 // raspSurfaceModel() is retained as a pure, unit-tested helper (signing-path
 // honesty guard, VULN-8) but is intentionally no longer surfaced on this page.
 
+import { useState, useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Cpu } from "lucide-react";
 import { STATUS } from "@/lib/featureCatalogue";
-import { detect, browserProbeSource, CONDITION } from "@/rasp";
+import {
+  detect, degrade, browserProbeSource, nativeProbeSource,
+  selectPresignProbeSource, CONDITION, TIER,
+} from "@/rasp";
 
 // Human-readable label for a CONDITION constant.
 const CONDITION_LABEL = {
@@ -56,11 +61,36 @@ const LADDER = [
   { tier: "block", copy: "Hooking / tamper / emulator — signing refused, no override" },
 ];
 
+const DOT_TONE = {
+  [TIER.ALLOW]: "bg-accent",
+  [TIER.WARN]:  "bg-caution",
+  [TIER.BLOCK]: "bg-risk",
+};
+
 export default function RaspSecurity() {
-  // Live environment condition — pure function of runtime signals, set-blind.
-  // In non-browser environments (tests / Node) this returns INTEGRITY_UNAVAILABLE.
-  const liveCondition = detect(browserProbeSource);
+  const [nativeProbe, setNativeProbe] = useState(null);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const src = await nativeProbeSource();
+        if (!cancelled) setNativeProbe(src);
+      } catch {
+        if (!cancelled) setNativeProbe({ available: false });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const probeSource = selectPresignProbeSource(
+    Capacitor.isNativePlatform(), nativeProbe, browserProbeSource,
+  );
+  const liveCondition = detect(probeSource);
+  const liveTier = degrade(liveCondition).tier;
   const liveConditionLabel = CONDITION_LABEL[liveCondition] ?? liveCondition;
+  const dotTone = DOT_TONE[liveTier] ?? "bg-caution";
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6" data-testid="rasp-surface">
@@ -100,7 +130,7 @@ export default function RaspSecurity() {
         className="p-4 rounded-xl border border-border bg-secondary/30 flex items-center gap-3"
         data-testid="rasp-live-condition"
       >
-        <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
+        <span className={`h-2 w-2 shrink-0 rounded-full ${dotTone}`} />
         <span className="text-sm text-muted-foreground">Current environment:</span>
         <span className="font-mono text-sm" data-testid="rasp-condition-value">{liveConditionLabel}</span>
       </div>
