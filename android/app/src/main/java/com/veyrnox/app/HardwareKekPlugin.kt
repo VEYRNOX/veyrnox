@@ -100,18 +100,26 @@ class HardwareKekPlugin : Plugin() {
         if (Build.VERSION.SDK_INT >= 30) {
             enrollApi30(call)
         } else {
-            call.reject("KEK_REQUIRES_ANDROID_11: Hardware KEK requires Android 11+ (API 30)")
+            call.reject("Hardware KEK requires Android 11+ (API 30)", "KEK_REQUIRES_ANDROID_11")
         }
     }
 
     private fun enrollApi30(call: PluginCall) {
         try {
-            // L3: never silently re-key. Refuse to overwrite an existing enrollment;
-            // re-enroll must be explicit (clearCredential first).
+            // L3: never silently re-key. Refuse to overwrite an active enrollment (where
+            // the vault kekWrap is present — guarded in JS before this is called). Stale
+            // aliases survive app uninstall on Android; JS best-effort clearCredential()
+            // may silently fail. If the alias exists here but the JS layer called enroll()
+            // anyway (meaning the vault is bare), force-delete the stale key and proceed —
+            // mirrors the iOS SE pre-clear (L4). This closes the reinstall+restore stuck loop.
             val existing = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
             if (existing.containsAlias(KEY_ALIAS)) {
-                call.reject("KEK_ALREADY_ENROLLED: clearCredential first to re-enroll")
-                return
+                try {
+                    existing.deleteEntry(KEY_ALIAS)
+                } catch (e: Exception) {
+                    call.reject("Cannot remove stale hardware key before re-enrollment: ${e.message}", "KEK_CLEAR_STALE_FAILED")
+                    return
+                }
             }
             // H15: prefer StrongBox; fall back to TEE on devices without it.
             val enrolled = tryEnrollKey(useStrongBox = true)

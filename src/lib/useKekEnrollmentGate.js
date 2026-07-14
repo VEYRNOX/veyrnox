@@ -25,6 +25,10 @@ const NO_HARDWARE_MSG =
   "Couldn’t reach this device’s hardware security. Please try again.";
 const INSECURE_TIER_MSG =
   "This device doesn’t meet the hardware security requirement. You can continue without hardware protection.";
+const STALE_KEY_MSG =
+  "A stale hardware key from a previous install couldn’t be removed. Try again — if it keeps failing, use Skip and re-enable hardware protection from Security settings.";
+const ANDROID_11_MSG =
+  "Hardware protection requires Android 11 or later. You can continue without it.";
 const GENERIC_MSG = 'Something went wrong. Please try again.';
 
 function isWrongPinVaultError(e) {
@@ -34,6 +38,7 @@ function isWrongPinVaultError(e) {
 
 function classifyEnrollError(e) {
   const code = e?.code;
+  const emsg = e?.message || '';
   if (code === 'KEK_ENROLL_INSECURE_TIER') {
     return { msg: INSECURE_TIER_MSG, isInsecureTier: true, isWrongPin: false };
   }
@@ -46,6 +51,21 @@ function classifyEnrollError(e) {
   ) {
     const msg = code === KEK_ERR.NO_HARDWARE_FACTOR ? NO_HARDWARE_MSG : WRONG_PIN_MSG;
     return { msg, isInsecureTier: false, isWrongPin: true };
+  }
+  // Stale hardware key from a previous install — auto-clear failed in the native layer.
+  // Codes: KEK_CLEAR_STALE_FAILED (Android), STALE_CLEAR_FAILED (iOS).
+  // Legacy message fallback: old builds emit KEK_ALREADY_ENROLLED with no .code.
+  if (
+    code === 'KEK_CLEAR_STALE_FAILED' ||
+    code === 'STALE_CLEAR_FAILED' ||
+    emsg.includes('KEK_ALREADY_ENROLLED') ||
+    emsg.includes('STALE_CLEAR_FAILED')
+  ) {
+    return { msg: STALE_KEY_MSG, isInsecureTier: false, isWrongPin: false };
+  }
+  // Android < API 30 (Android 11): hardware KEK not supported.
+  if (code === 'KEK_REQUIRES_ANDROID_11' || emsg.includes('KEK_REQUIRES_ANDROID_11')) {
+    return { msg: ANDROID_11_MSG, isInsecureTier: true, isWrongPin: false };
   }
   return { msg: GENERIC_MSG, isInsecureTier: false, isWrongPin: false };
 }
