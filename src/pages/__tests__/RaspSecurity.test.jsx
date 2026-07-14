@@ -20,7 +20,7 @@ import { describe, it, expect, vi } from 'vitest';
 // Mock hooks so the component can be invoked outside the React reconciler.
 // nativeProbe starts null by design (async bridge call); useEffect is side-effect only.
 vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = /** @type {any} */ (await importOriginal());
   return { ...actual, useState: (init) => [typeof init === 'function' ? init() : init, vi.fn()], useEffect: vi.fn() };
 });
 
