@@ -31,6 +31,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Wallet, Transaction, parseEther, getAddress } from 'ethers';
 import { setDeniabilitySession } from '../../deniabilitySession.js';
+import * as deniabilityModule from '../../deniabilitySession.js';
 
 // Shared holders the hoisted mocks delegate to. Set per-test.
 const h = vi.hoisted(() => ({ ledgerSign: null, trezorSign: null }));
@@ -558,5 +559,34 @@ describe('evm/hw-send — I3 deniability gate (issue #972, post-#963 hotfix)', (
     expect(providerSpy.getTransactionCount).not.toHaveBeenCalled();
     expect(providerSpy.broadcastTransaction).not.toHaveBeenCalled();
     expect(h.ledgerSign).not.toHaveBeenCalled();
+  });
+
+  // Codex second-pass finding (issue #972 P2, round 2). If the marker read
+  // itself throws — e.g. localStorage is unavailable or the session module
+  // crashes — assertNotDeniabilitySession must still fail CLOSED (treat as
+  // active) rather than accidentally letting the send through. The wrapper's
+  // try/catch drops to active=true. Even with the session flag INACTIVE, a
+  // throwing marker read must still block signing.
+  it('fails closed when isDeniabilitySessionActive() itself throws (I4 belt-and-braces)', async () => {
+    // Reset: session is INACTIVE in this test; only the marker-read throws.
+    setDeniabilitySession(false);
+    const throwingSpy = vi.spyOn(deniabilityModule, 'isDeniabilitySessionActive')
+      .mockImplementation(() => { throw new Error('marker read failed'); });
+
+    const providerSpy = { send: vi.fn(), estimateGas: vi.fn(), getTransactionCount: vi.fn(), broadcastTransaction: vi.fn() };
+    getProvider.mockReturnValue(providerSpy);
+    h.trezorSign = vi.fn();
+
+    await expect(signAndBroadcastEvmTrezor({
+      networkKey: NETWORK, fromAddress: FROM, to: TO, amountEth: '0.01', fee: FEE,
+    })).rejects.toThrow(/TREZOR_DENIABILITY_BLOCKED/);
+
+    expect(providerSpy.send).not.toHaveBeenCalled();
+    expect(providerSpy.estimateGas).not.toHaveBeenCalled();
+    expect(providerSpy.getTransactionCount).not.toHaveBeenCalled();
+    expect(providerSpy.broadcastTransaction).not.toHaveBeenCalled();
+    expect(h.trezorSign).not.toHaveBeenCalled();
+
+    throwingSpy.mockRestore();
   });
 });

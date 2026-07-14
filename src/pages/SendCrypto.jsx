@@ -913,6 +913,23 @@ export default function SendCrypto() {
       // throw "not in the unlocked HD set" for BTC/SOL, whose address is not an EVM
       // account.
 
+      // I3 hardware-send gate (#972 P1, codex round 2). The old hw/trezor.js
+      // module's requireWebUsb() gated ALL three device paths (EVM/BTC/SOL) on
+      // isDeniabilitySessionActive() — throwing TREZOR_DENIABILITY_BLOCKED before
+      // any RPC or device call. My earlier hotfix restored that gate inside
+      // hw-send.js's public entrypoints, but the caller pre-computes a fee-clamp
+      // (getFeeData for EVM) / a UTXO+blockhash preflight (BTC/SOL) BEFORE reaching
+      // those helpers — leaking one RPC round-trip. Under decoy/hidden with a
+      // Trezor connected the device holds the REAL seed regardless of session
+      // type, so any egress here is an I3 violation AND a coercion-exfil vector.
+      // One gate above the family dispatch catches all three Trezor branches;
+      // software-key sends are UNAFFECTED (decoy has its own decoy vault, that
+      // path is legitimate). Error string matches hw-send.js exactly so downstream
+      // catch-by-message keeps working.
+      if (useTrezorMode && isDeniabilitySessionActive()) {
+        throw new Error('TREZOR_DENIABILITY_BLOCKED');
+      }
+
       // Sign LOCALLY and broadcast. The signing key is transient and never
       // persisted. Branch on the asset family — each has its own derivation/
       // signing stack and send function; the human-entered `amount` is converted

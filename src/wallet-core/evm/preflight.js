@@ -29,8 +29,16 @@ export async function verifyLiveChainId(provider, expectedChainId) {
 
 /**
  * Resolve the gas limit for THIS chain: estimate + 20% headroom, honoring a
- * larger user-supplied limit; on estimation failure keep whatever the caller's
- * overrides carried (or let ethers auto-fill). Mutates + returns `overrides`.
+ * larger user-supplied limit. Mutates + returns `overrides`.
+ *
+ * Failure contract (issue #972 P2): on estimation failure, if the caller
+ * supplied a `gasLimit` override the override is clamped to `MAX_GAS_ESTIMATE`
+ * and kept; if no override was supplied the function THROWS `GAS_ESTIMATE_FAILED`
+ * (fail-closed, I4). Prior to #972 this branch left `overrides.gasLimit`
+ * undefined and relied on ethers.Wallet auto-fill — which the hw-send path does
+ * not have, causing a downstream `toHex(undefined)` crash. Callers that need
+ * an auto-fill (`send.js`, `token-send.js` when the caller omits gasLimit) are
+ * unaffected because they always supply `fee.gasLimit` via evmFeeOverrides.
  *
  * Why it must run for BOTH native and token sends: a fee tier's `gasLimit` is
  * only a 21000 L1 simple-transfer DISPLAY hint. L2s need more intrinsic gas, and
