@@ -42,6 +42,7 @@ vi.mock('@/lib/useMessageSigningEnabled', () => ({
 
 // --- mock the RASP pre-sign gate to ALLOW so signing can proceed ------------
 vi.mock('@/rasp', () => ({
+  useRaspArtifact: () => ({ tier: 'ALLOW' }),
   degrade: () => ({ tier: 'ALLOW' }),
   detect: () => ({}),
   TIER: { BLOCK: 'BLOCK', ALLOW: 'ALLOW' },
