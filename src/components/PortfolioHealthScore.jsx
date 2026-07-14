@@ -50,7 +50,13 @@ export default function PortfolioHealthScore({
   if (health.isDeniability) {
     return (
       <div className="rounded-2xl border border-border bg-card p-4">
-        <p className="text-xs text-muted-foreground">Portfolio health unavailable in this session</p>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Portfolio Health</p>
+            <p className="text-sm font-bold mt-0.5 text-muted-foreground">Unavailable</p>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">Portfolio health score is not available in this session.</p>
       </div>
     );
   }
@@ -58,6 +64,12 @@ export default function PortfolioHealthScore({
   if (health.isIncomplete) {
     return (
       <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Portfolio Health</p>
+            <p className="text-sm font-bold mt-0.5 text-destructive">Incomplete Data</p>
+          </div>
+        </div>
         <IncompleteBalanceNote />
       </div>
     );
