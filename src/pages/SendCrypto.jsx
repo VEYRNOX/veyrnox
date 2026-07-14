@@ -933,7 +933,7 @@ export default function SendCrypto() {
       // module-level DEMO constant is a load-time IIFE snapshot, so a
       // veyrnox-demo=1 flag flipped AFTER import wouldn't fire this gate. The
       // shared helper reads both signals fresh on every call.
-      if (useTrezorMode && isDeniabilityOrDemoActive()) {
+      if (useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) {
         throw new Error('TREZOR_DENIABILITY_BLOCKED');
       }
 
@@ -1785,7 +1785,7 @@ export default function SendCrypto() {
                 so that unguarded RPC leaks the real address to the fee provider.
                 Skip the selector in that combination — the send-time gate above
                 will refuse anyway, so a fee tier serves no purpose. */}
-            {!isBtc && !isSolana && !(useTrezorMode && isDeniabilityOrDemoActive()) ? (
+            {!isBtc && !isSolana && !(useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) ? (
               <FeeSelector
                 chain="evm"
                 networkKey={networkKey}
