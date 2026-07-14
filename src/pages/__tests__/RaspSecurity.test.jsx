@@ -14,7 +14,16 @@
 // window is absent so browserProbeSource.available=false → detect() returns
 // INTEGRITY_UNAVAILABLE ('unavailable'). Tests below account for this.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// RaspSecurity is called as a plain function (no RTL) to walk the element tree.
+// Mock hooks so the component can be invoked outside the React reconciler.
+// nativeProbe starts null by design (async bridge call); useEffect is side-effect only.
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, useState: (init) => [typeof init === 'function' ? init() : init, vi.fn()], useEffect: vi.fn() };
+});
+
 import React from 'react';
 globalThis.React = React;
 
