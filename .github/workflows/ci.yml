@@ -160,9 +160,14 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: Install JS deps and sync Capacitor Android
+        # `npx cap sync` copies the built web assets into the native project and
+        # aborts if `./dist` is missing. Build the web bundle first (same order as
+        # the android-release job) — otherwise sync fails with
+        # "Could not find the web assets directory: ./dist".
         run: |
           npm install -g npm@11
           npm install --legacy-peer-deps
+          npm run build
           npx cap sync android
       - name: Run Android JVM unit tests (ES256 DER transcoder + RASP)
         run: |
