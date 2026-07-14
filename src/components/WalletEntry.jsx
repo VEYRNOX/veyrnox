@@ -678,11 +678,15 @@ export default function WalletEntry() {
       // Hardware factor transiently/structurally unavailable (no enrollment, lockout, HW
       // missing). Also NOT a wrong PIN — do NOT increment the wipe counter. Keep the user
       // on the unlock screen: the hardware may be transiently unavailable and they can
-      // retry or go to Settings.
+      // retry or go to Settings. If the device key was permanently lost (e.g. after a
+      // reinstall cycle), the user must restore from their seed phrase — surface that path.
       // HARDWARE_FACTOR_DEGENERATE (all-zero H) is the same class: a hardware-output
       // failure, never a wrong PIN (Codex P1 follow-up, same wipe-counter leak).
       if (e?.code === KEK_UI_ERR.NO_HARDWARE_FACTOR || e?.code === KEK_UI_ERR.HARDWARE_FACTOR_DEGENERATE) {
-        setError("Hardware protection is unavailable right now. Try again, or manage it in Settings.");
+        setError(
+          "Hardware protection is unavailable. If this persists, your device's security key may have been lost — " +
+          "use \"Forgot your PIN? Restore from seed phrase\" below to regain access."
+        );
         return;
       }
       // User CANCELLED the per-use biometric sheet. This is user-initiated, NOT a wrong
