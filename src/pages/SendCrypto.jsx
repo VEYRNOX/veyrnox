@@ -1023,6 +1023,14 @@ export default function SendCrypto() {
           // expects (evmFeeOverrides). gasLimit is intentionally omitted — the
           // helper estimates + applies +20% headroom (issue #961: replaces the
           // old hardcoded 21000n/65000n that broke L2 native + USDT transfers).
+          //
+          // TODO(#972 P2a): the confirmation screen's displayed fee is computed
+          // from the tier hint's 21000/65000 gasLimit, but the signed tx uses
+          // estimateGas + 20%. The Trezor device screen shows the actual value
+          // (so a careful user can catch the divergence) but in-app numbers and
+          // signed numbers diverge. Fix requires resolving gasLimit BEFORE the
+          // confirm screen renders and threading it through both the display and
+          // the signed tx. Deferred from the #972 hotfix — see follow-up.
           const clampedFee = (cappedMaxFeePerGas != null)
             ? {
                 maxFeePerGasWei: cappedMaxFeePerGas.toString(),

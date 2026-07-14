@@ -58,11 +58,23 @@ export async function applyEstimatedGasLimit(provider, txRequest, overrides) {
       : null;
     overrides.gasLimit = userLimit && userLimit > withHeadroom ? userLimit : withHeadroom;
   } catch {
-    // Estimation failed; keep the hinted gasLimit or let ethers auto-fill.
-    // ethers re-estimates at sendTransaction and throws if that also fails, so
-    // there is no silent stall. No logging here by design: wallet-core must not
-    // write to the console (project rule) — a console line can leak an address or
-    // amount and is captured by native crash reporters.
+    // Estimation failed. If the caller supplied a gasLimit override, keep it
+    // (clamped by the block above's userLimit branch — but note that branch is
+    // in the try-body and did NOT execute; re-clamp here). If NO override was
+    // supplied, fail closed (I4) — issue #972 P2: hw-send has no ethers.Wallet
+    // auto-fill, so leaving overrides.gasLimit undefined caused a downstream
+    // toHex(undefined) → "Cannot convert undefined to a BigInt" that masked
+    // the real RPC hiccup. send.js / token-send.js callers that DO supply
+    // gasLimit are unaffected. No logging here by design: wallet-core must not
+    // write to the console (project rule) — a console line can leak an address
+    // or amount and is captured by native crash reporters.
+    if (overrides.gasLimit == null) {
+      throw Object.assign(
+        new Error('Could not estimate gas — RPC unavailable or reverted'),
+        { code: 'GAS_ESTIMATE_FAILED' },
+      );
+    }
+    if (overrides.gasLimit > MAX_GAS_ESTIMATE) overrides.gasLimit = MAX_GAS_ESTIMATE;
   }
   return overrides;
 }

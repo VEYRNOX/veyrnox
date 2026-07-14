@@ -28,8 +28,9 @@
 // catalogue "verified" bar). The physical device transport + the device's own
 // {v,r,s} wire encoding remain device-gated.
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Wallet, Transaction, parseEther, getAddress } from 'ethers';
+import { setDeniabilitySession } from '../../deniabilitySession.js';
 
 // Shared holders the hoisted mocks delegate to. Set per-test.
 const h = vi.hoisted(() => ({ ledgerSign: null, trezorSign: null }));
@@ -483,5 +484,79 @@ describe('evm/hw-send — Trezor ERC-20 helper (issue #961 / SEND H-1)', () => {
       fee: { maxFeePerGasWei: '2000000000', maxPriorityFeePerGasWei: '1000000000' },
     })).rejects.toThrow(/invalid recipient/i);
     expect(h.trezorSign).not.toHaveBeenCalled();
+  });
+});
+
+// Issue #972 (post-#963 hotfix): PR #963 moved the Trezor EVM flow into hw-send.js
+// but DID NOT carry over the I3 deniability gate that lived in the old
+// hw/trezor.js requireWebUsb() → checkDeniability() at entry. Under a decoy /
+// hidden / stealth session, hw-send would now hit the RPC (provider.send,
+// provider.estimateGas, provider.getTransactionCount) AND prompt the physical
+// device AND potentially broadcast — a direct I3 violation and a coercion-time
+// hazard.
+//
+// This suite pins the gate: with isDeniabilitySessionActive()===true, every
+// hardware-wallet public entrypoint MUST throw before ANY provider read or
+// device call. The error class is Error and the code / message match the old
+// hw/trezor.js exactly ('TREZOR_DENIABILITY_BLOCKED') so downstream UI catches
+// remain identical.
+describe('evm/hw-send — I3 deniability gate (issue #972, post-#963 hotfix)', () => {
+  const FEE_MIN = { maxFeePerGasWei: '2000000000', maxPriorityFeePerGasWei: '1000000000' };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.ledgerSign = null;
+    h.trezorSign = null;
+    setDeniabilitySession(true);
+  });
+  afterEach(() => { setDeniabilitySession(false); });
+
+  it('signAndBroadcastEvmTrezor throws TREZOR_DENIABILITY_BLOCKED before any RPC or device call', async () => {
+    const providerSpy = { send: vi.fn(), estimateGas: vi.fn(), getTransactionCount: vi.fn(), broadcastTransaction: vi.fn() };
+    getProvider.mockReturnValue(providerSpy);
+    h.trezorSign = vi.fn();
+
+    await expect(signAndBroadcastEvmTrezor({
+      networkKey: NETWORK, fromAddress: FROM, to: TO, amountEth: '0.01', fee: FEE,
+    })).rejects.toThrow(/TREZOR_DENIABILITY_BLOCKED/);
+
+    expect(providerSpy.send).not.toHaveBeenCalled();
+    expect(providerSpy.estimateGas).not.toHaveBeenCalled();
+    expect(providerSpy.getTransactionCount).not.toHaveBeenCalled();
+    expect(providerSpy.broadcastTransaction).not.toHaveBeenCalled();
+    expect(h.trezorSign).not.toHaveBeenCalled();
+  });
+
+  it('signAndBroadcastEvmTrezorToken throws TREZOR_DENIABILITY_BLOCKED before any RPC or device call', async () => {
+    const providerSpy = { send: vi.fn(), estimateGas: vi.fn(), getTransactionCount: vi.fn(), broadcastTransaction: vi.fn() };
+    getProvider.mockReturnValue(providerSpy);
+    h.trezorSign = vi.fn();
+
+    await expect(signAndBroadcastEvmTrezorToken({
+      networkKey: NETWORK, fromAddress: FROM, symbol: 'USDC',
+      to: TO, amount: '1.5', fee: FEE_MIN,
+    })).rejects.toThrow(/TREZOR_DENIABILITY_BLOCKED/);
+
+    expect(providerSpy.send).not.toHaveBeenCalled();
+    expect(providerSpy.estimateGas).not.toHaveBeenCalled();
+    expect(providerSpy.getTransactionCount).not.toHaveBeenCalled();
+    expect(providerSpy.broadcastTransaction).not.toHaveBeenCalled();
+    expect(h.trezorSign).not.toHaveBeenCalled();
+  });
+
+  it('signAndBroadcastEvmLedger throws TREZOR_DENIABILITY_BLOCKED before any RPC or device call (symmetry)', async () => {
+    const providerSpy = { send: vi.fn(), estimateGas: vi.fn(), getTransactionCount: vi.fn(), broadcastTransaction: vi.fn() };
+    getProvider.mockReturnValue(providerSpy);
+    h.ledgerSign = vi.fn();
+
+    await expect(signAndBroadcastEvmLedger({
+      transport: {}, networkKey: NETWORK, fromAddress: FROM, to: TO, amountEth: '0.01', fee: FEE,
+    })).rejects.toThrow(/TREZOR_DENIABILITY_BLOCKED/);
+
+    expect(providerSpy.send).not.toHaveBeenCalled();
+    expect(providerSpy.estimateGas).not.toHaveBeenCalled();
+    expect(providerSpy.getTransactionCount).not.toHaveBeenCalled();
+    expect(providerSpy.broadcastTransaction).not.toHaveBeenCalled();
+    expect(h.ledgerSign).not.toHaveBeenCalled();
   });
 });

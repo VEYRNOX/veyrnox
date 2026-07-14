@@ -18,6 +18,18 @@
 //   - signAndBroadcastEvmTrezorToken   (ERC-20 via Trezor — issue #961 wiring)
 //
 // No private key ever touches this module. I1 preserved.
+//
+// I3 DENIABILITY GATE (issue #972, post-#963 hotfix). The old low-level helper
+// hw/trezor.js:81 trezorSignEvmTx called requireWebUsb() → checkDeniability()
+// at entry, refusing to touch the RPC or the device under a decoy / hidden /
+// stealth session. PR #963 moved the Trezor EVM flow into this module but did
+// NOT carry that gate over — a direct I3 regression that would (a) hit the RPC,
+// (b) prompt the physical device, and (c) potentially broadcast under coercion.
+// Every public entrypoint below re-asserts isDeniabilitySessionActive() as its
+// FIRST action, throwing TREZOR_DENIABILITY_BLOCKED with the same error string
+// the old helper used so downstream UI catches remain identical. Fail-closed
+// (I4): the throw lands before getProvider(), before verifyLiveChainId(), and
+// before any TrezorConnect / Ledger transport call.
 
 import { Transaction, parseEther, Signature, isAddress, getAddress } from 'ethers';
 import Eth from '@ledgerhq/hw-app-eth';
@@ -28,6 +40,23 @@ import { evmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
 import { assertDecimalAmount } from '../amount.js';
 import { buildTokenTransfer } from './token-send.js';
+import { isDeniabilitySessionActive } from '../deniabilitySession.js';
+
+/**
+ * I3 gate (issue #972). Throws TREZOR_DENIABILITY_BLOCKED before any provider
+ * or device egress when the current session is decoy/hidden. String preserved
+ * exactly from the old hw/trezor.js:69 helper for consumer catch-compatibility.
+ * Fail-closed (I4): if the marker read throws, refuse.
+ */
+function assertNotDeniabilitySession() {
+  let active;
+  try {
+    active = isDeniabilitySessionActive();
+  } catch {
+    active = true;
+  }
+  if (active) throw new Error('TREZOR_DENIABILITY_BLOCKED');
+}
 
 const EVM_PATH = "44'/60'/0'/0/0";
 
@@ -147,6 +176,7 @@ async function trezorSignFieldsAndBroadcast(txFields, fromAddress, networkKey) {
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */
 export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAddress, to, amountEth, fee = null }) {
+  assertNotDeniabilitySession();
   const net = getNetwork(networkKey);
   const provider = getProvider(networkKey);
   const txFields = await buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee });
@@ -176,6 +206,7 @@ export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAdd
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */
 export async function signAndBroadcastEvmTrezor({ networkKey, fromAddress, to, amountEth, fee = null }) {
+  assertNotDeniabilitySession();
   const txFields = await buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee });
   return trezorSignFieldsAndBroadcast(txFields, fromAddress, networkKey);
 }
@@ -192,6 +223,7 @@ export async function signAndBroadcastEvmTrezor({ networkKey, fromAddress, to, a
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */
 export async function signAndBroadcastEvmTrezorToken({ networkKey, fromAddress, symbol, to, amount, fee = null }) {
+  assertNotDeniabilitySession();
   if (!isAddress(to)) throw new Error('Invalid recipient address');
   const { data, contract } = buildTokenTransfer({ networkKey, symbol, to, amount });
   const txFields = await buildUnsignedEvmTxCore({
