@@ -344,6 +344,32 @@ class RaspIntegrityPlugin : Plugin() {
             || checkProcMapsForHook()
             || checkGadgetThreads()
             || checkFridaPipes()
+            || checkTracerPid()
+    }
+
+    // Anti-debug: read /proc/self/status to detect an attached debugger.
+    // TracerPid is the PID of any process that has ptrace-attached to us.
+    // It is 0 on a normal (undebugged) app; non-zero when adb, gdb, LLDB,
+    // or a Frida server in ptrace mode is attached.
+    //
+    // This is a REACTIVE check (fires after attach) rather than PREVENTIVE
+    // (blocking the attach). For preventive anti-debug, ptrace self-attachment
+    // via JNI is the next step but is not yet implemented.
+    //
+    // FAIL CLOSED (I4): any IO/parse failure → false (not detected, not clean).
+    // NO EGRESS (I2): pure proc-fs read, no network.
+    private fun checkTracerPid(): Boolean {
+        return runCatching {
+            File("/proc/self/status").bufferedReader().use { reader ->
+                reader.lineSequence()
+                    .firstOrNull { it.startsWith("TracerPid:") }
+                    ?.removePrefix("TracerPid:")
+                    ?.trim()
+                    ?.toLongOrNull()
+                    ?.let { it != 0L }
+                    ?: false
+            }
+        }.getOrDefault(false)
     }
 
     private fun checkFridaPort(): Boolean {

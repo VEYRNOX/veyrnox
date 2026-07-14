@@ -43,6 +43,10 @@
 // scan for Frida/Substrate libraries). Missing until #826 put this file in the
 // build target — first real compile surfaced the implicit declarations.
 #import <mach-o/dyld.h>
+// PT_DENY_ATTACH: Apple public BSD ptrace constant (value 31 on Darwin).
+// Used in checkIntegrity to block future debugger-attach attempts. Declared
+// in the public iOS SDK headers; used widely in shipping App Store apps.
+#import <sys/ptrace.h>
 
 // CFNetwork for port probe
 #import <CFNetwork/CFNetwork.h>
@@ -58,6 +62,19 @@
 @implementation RaspIntegrityPlugin
 
 - (void)checkIntegrity:(CAPPluginCall *)call {
+    // Preventive anti-debug: request OS-level debugger-attach denial once per
+    // process lifetime. After PT_DENY_ATTACH, any subsequent ptrace-attach
+    // attempt (LLDB, Frida server, adb) is rejected by the kernel — the
+    // attaching process receives SIGKILL rather than connecting to ours.
+    // This is a preventive control; it does not affect the signals returned
+    // below. Jailbroken devices may have ptrace patched out (in which case
+    // this call is a no-op), but it closes the gap on stock devices where
+    // an analyst tries to attach a debugger before triggering a send.
+    static dispatch_once_t sPtDenyOnce;
+    dispatch_once(&sPtDenyOnce, ^{
+        ptrace(PT_DENY_ATTACH, 0, 0, 0);
+    });
+
     BOOL jailbroken    = [self detectJailbreak];
     BOOL hookedProcess = [self detectHook];
     BOOL emulator      = [self detectSimulator];
