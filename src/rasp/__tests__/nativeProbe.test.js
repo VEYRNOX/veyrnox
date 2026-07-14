@@ -208,6 +208,61 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
   });
 });
 
+// ── Item 31 — thirdPartyKeyboard folded into the rooted (WARN) signal ────────
+// Android checkThirdPartyKeyboard() (item 30) returns thirdPartyKeyboard:true
+// when the active IME lacks FLAG_SYSTEM — i.e. it was user-installed and could
+// be a keylogger capturing PIN input during KEK enrollment. WARN tier.
+// Android-only field; absent on iOS verdicts, treated as false by === true.
+describe('nativeProbeSource — item 31: thirdPartyKeyboard → rooted (WARN)', () => {
+  it('thirdPartyKeyboard:true maps to signals.rooted true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: false,
+      suspiciousPackage: false,
+      thirdPartyKeyboard: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(true);
+  });
+
+  it('thirdPartyKeyboard:true drives detect() to ROOTED (WARN), not HOOKED or TAMPERED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ thirdPartyKeyboard: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ROOTED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
+  });
+
+  it('thirdPartyKeyboard:false alone does not set rooted (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: false,
+      suspiciousPackage: false,
+      thirdPartyKeyboard: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(false);
+  });
+
+  it('any of rooted/jailbroken/overlayActive/developerMode/virtualApp/suspiciousPackage/thirdPartyKeyboard true is sufficient', async () => {
+    h.isNative = true;
+    for (const field of ['rooted', 'jailbroken', 'overlayActive', 'developerMode', 'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.rooted).toBe(true);
+    }
+  });
+});
+
 // ── Item 29 — suspiciousPackage folded into the rooted (WARN) signal ─────────
 // Android checkSuspiciousPackages() (item 28) returns suspiciousPackage:true
 // when a known root/hook tool package (Magisk Manager, LSPosed, SuperSU, etc.)

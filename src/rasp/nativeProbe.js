@@ -110,12 +110,16 @@ export async function nativeProbeSource() {
   // Item 29: fold suspiciousPackage (Android checkSuspiciousPackages, item 28)
   // into rooted → WARN. PackageManager detects Magisk Manager, LSPosed, SuperSU
   // etc. even when Magisk Hide masks file-system paths. Android-only field.
+  // Item 31: fold thirdPartyKeyboard (Android checkThirdPartyKeyboard, item 30)
+  // into rooted → WARN. A non-system IME (FLAG_SYSTEM == 0) could keylog PIN
+  // input during KEK enrollment. Android-only field.
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true
          || verdict.overlayActive === true
          || verdict.developerMode === true
          || verdict.virtualApp === true
-         || verdict.suspiciousPackage === true,
+         || verdict.suspiciousPackage === true
+         || verdict.thirdPartyKeyboard === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
     // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring
