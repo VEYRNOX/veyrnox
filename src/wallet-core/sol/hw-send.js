@@ -59,7 +59,20 @@ function buildUnsignedSolTx({ fromPubkey, toPubkey, amountLamports, blockhash, p
  *
  * `signFn(tx: Transaction): Promise<Buffer>` must return the 64-byte sig.
  */
-async function sendSolHw({ networkKey, fromAddress, toAddress, amountLamports, sendMax, priorityMicroLamports, computeUnitLimit, signFn }) {
+async function sendSolHw({ networkKey, fromAddress, toAddress, amountLamports, sendMax, priorityMicroLamports, computeUnitLimit, signFn, getPubkeyFn }) {
+  // 2026-07-14 audit LOW (parity with sol/send.js's "key controls fromAddress" check).
+  // Pre-sign verify that the connected device derives the SAME public key at SOL_PATH
+  // that the caller thinks it does. Without this, a mismatched device fails only at
+  // tx.serialize()'s implicit verifySignatures with an opaque "Signature verification
+  // failed" — a legible HW_SIGNER_MISMATCH here spares the user a wasted signing round-
+  // trip. Fail-closed is already provided by verifySignatures below; this is DiD +
+  // legibility. Optional so alternate callers/tests can pass just signFn.
+  if (typeof getPubkeyFn === 'function') {
+    const devicePubkey = await getPubkeyFn();
+    if (!devicePubkey || String(devicePubkey) !== String(fromAddress)) {
+      throw new Error(`HW_SIGNER_MISMATCH: device pubkey ${devicePubkey ?? '(none)'} does not match send-source ${fromAddress}`);
+    }
+  }
   getSolNetwork(networkKey);
   assertSolRecipient(toAddress);
 
@@ -152,6 +165,10 @@ export async function signAndBroadcastSolLedger({
   return sendSolHw({
     networkKey, fromAddress, toAddress, amountLamports, sendMax,
     priorityMicroLamports, computeUnitLimit,
+    getPubkeyFn: async () => {
+      const { address } = await solApp.getAddress(SOL_PATH);
+      return address; // base58 ed25519 pubkey
+    },
     signFn: async (msgBytes) => {
       const { signature } = await solApp.signTransaction(SOL_PATH, Buffer.from(msgBytes));
       return Buffer.from(signature); // 64-byte ed25519 sig
@@ -179,6 +196,11 @@ export async function signAndBroadcastSolTrezor({
   return sendSolHw({
     networkKey, fromAddress, toAddress, amountLamports, sendMax,
     priorityMicroLamports, computeUnitLimit,
+    getPubkeyFn: async () => {
+      const result = await TrezorConnect.solanaGetAddress({ path: `m/${SOL_PATH}`, showOnTrezor: false });
+      if (!result.success) throw new Error((result.payload && 'error' in result.payload ? result.payload.error : null) ?? 'Trezor SOL getAddress failed');
+      return result.payload.address;
+    },
     signFn: async (msgBytes) => {
       const result = await TrezorConnect.solanaSignTransaction({
         path: `m/${SOL_PATH}`,

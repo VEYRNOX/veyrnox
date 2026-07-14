@@ -46,6 +46,14 @@
 
 // CFNetwork for port probe
 #import <CFNetwork/CFNetwork.h>
+// 2026-07-14 audit MEDIUM: BSD sockets for a real, bounded TCP-connect Frida probe
+// (the previous CFStream open never confirmed a live connection).
+#import <sys/socket.h>
+#import <sys/select.h>
+#import <arpa/inet.h>
+#import <netinet/in.h>
+#import <fcntl.h>
+#import <errno.h>
 
 @implementation RaspIntegrityPlugin
 
@@ -243,23 +251,45 @@
 }
 
 - (BOOL)checkFridaPort {
-    // Frida-server default port 27042. A successful loopback connect means
-    // a Frida server is listening on the device.
+    // Frida-server default port 27042. Confirm a real TCP connect via a BSD
+    // socket with a bounded non-blocking connect + select — the previous
+    // CFStreamOpen implementation returned TRUE at kCFStreamStatusOpening and
+    // never confirmed a live TCP connect, so a real Frida-listening device
+    // could escape the probe entirely (2026-07-14 INTERNAL audit MEDIUM).
     @try {
-        CFReadStreamRef readStream  = NULL;
-        CFWriteStreamRef writeStream = NULL;
-        CFStreamCreatePairWithSocketToHost(
-            kCFAllocatorDefault,
-            (__bridge CFStringRef)@"127.0.0.1",
-            27042,
-            &readStream, &writeStream
-        );
-        if (readStream && writeStream) {
-            BOOL opened = CFReadStreamOpen(readStream) && CFWriteStreamOpen(writeStream);
-            if (readStream)  { CFReadStreamClose(readStream);  CFRelease(readStream);  }
-            if (writeStream) { CFWriteStreamClose(writeStream); CFRelease(writeStream); }
-            if (opened) return YES;
+        int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (fd < 0) return NO;
+        // Non-blocking connect so we can time-bound with select().
+        int flags = fcntl(fd, F_GETFL, 0);
+        if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+            close(fd);
+            return NO;
         }
+        struct sockaddr_in addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port   = htons(27042);
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        int rc = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+        BOOL connected = NO;
+        if (rc == 0) {
+            connected = YES; // instant loopback accept
+        } else if (errno == EINPROGRESS) {
+            fd_set wr;
+            FD_ZERO(&wr);
+            FD_SET(fd, &wr);
+            struct timeval tv = { .tv_sec = 0, .tv_usec = 150000 }; // 150 ms budget
+            int sel = select(fd + 1, NULL, &wr, NULL, &tv);
+            if (sel > 0 && FD_ISSET(fd, &wr)) {
+                int err = 0;
+                socklen_t elen = sizeof(err);
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &elen) == 0 && err == 0) {
+                    connected = YES;
+                }
+            }
+        }
+        close(fd);
+        return connected;
     } @catch (__unused NSException *e) {}
     return NO;
 }
@@ -297,6 +327,15 @@
 // builds RELEASE_CERT_SHA256 is not embedded, so this does NOT attempt the
 // cert-fingerprint comparison that the Android plugin does (iOS codesign
 // pinning requires entitlements the debug build does not carry).
+//
+// 2026-07-14 audit MEDIUM (open, tracked for independent audit): a resigned
+// IPA installed via enterprise profile or free provisioning on a non-jailbroken
+// device is not detected here — the dyld MobileSubstrate/Substrate/TweakInject
+// image scan below is not a cert-pin signal, and duplicates checkDynamicLibraries
+// which is already OR'd into detectHook. Android's equivalent fail-closes on
+// blank EXPECTED_CERT_SHA256. Bringing this to parity requires release cert
+// fingerprint embedding + rollout planning; deferred to the outstanding
+// independent audit rather than shipped blind here (fail-honest disclosure).
 
 - (BOOL)detectTamper {
     @try {
