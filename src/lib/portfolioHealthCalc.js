@@ -163,11 +163,12 @@ export function healthLabel(total) {
  * suppresses the score (`total: null, isIncomplete: true`) rather than present
  * a silently-understated number.
  *
+ * @param {{ wallets?: Array<{backedUp?: boolean}>, portfolio?: object|null, kekEnrolled?: boolean, passkey?: boolean, isDeniability?: boolean }} [opts]
  * @returns {{ total: number|null, factors: Array, label: string|null,
  *             isIncomplete: boolean, isDeniability: boolean }}
  */
 export function calculatePortfolioHealth({
-  wallets = [],
+  wallets = /** @type {Array<{backedUp?: boolean}>} */ ([]),
   portfolio = null,
   kekEnrolled = false,
   passkey = false,

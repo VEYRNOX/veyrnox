@@ -87,7 +87,7 @@ export default function PortfolioHealthScore({
     action: factorActions[f.key],
   }));
 
-  const labelColor = health.total >= 75 ? "text-success" : health.total >= 50 ? "text-caution" : "text-destructive";
+  const labelColor = (health.total ?? 0) >= 75 ? "text-success" : (health.total ?? 0) >= 50 ? "text-caution" : "text-destructive";
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
