@@ -157,6 +157,7 @@ describe('Android RASP — @JvmSynthetic on all private detection methods', () =
     'checkProcMapsForHook', 'checkGadgetThreads', 'checkFridaPipes',
     'detectEmulator', 'checkBuildProps', 'checkEmulatorFiles', 'detectTamper',
     'checkScreenCapture', 'checkOverlay', 'checkDeveloperMode', 'checkVirtualApp',
+    'checkSuspiciousPackages',
   ];
 
   for (const fn of privateFns) {
@@ -627,6 +628,59 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Item 28 — Android checkSuspiciousPackages + suspiciousPackage verdict ──────
+//
+// detectRoot() inspects filesystem paths (su binaries, Magisk files, etc.) that
+// Magisk Hide masks with mount-namespace tricks. checkSuspiciousPackages() takes
+// a complementary approach: it queries PackageManager for known root/hook tool
+// package names. PackageManager resolution goes through the system Binder, which
+// Magisk Hide cannot spoof — so the Magisk Manager APK (com.topjohnwu.magisk)
+// and LSPosed Manager remain visible even when file-system checks are masked.
+//
+// Packages checked:
+//   com.topjohnwu.magisk           — Magisk Manager (official)
+//   io.github.huskydg.magisk       — Delta Magisk fork
+//   me.weishu.kernelflasher        — KernelSU flasher
+//   org.lsposed.manager            — LSPosed framework manager
+//   de.robv.android.xposed.installer — original Xposed Installer
+//   eu.chainfire.supersu           — SuperSU
+//   com.noshufou.android.su        — older Superuser
+//   com.saurik.substrate           — Cydia Substrate (Android)
+//
+// Signal tier: WARN (same as rooted). Having these apps installed indicates an
+// intentionally modified device without definitively proving our process is
+// compromised. JS wiring to signals.rooted is a separate item (29).
+// NOT added to earlyCheck — WARN tier only.
+
+describe('Item 28 — Android checkSuspiciousPackages + suspiciousPackage verdict field', () => {
+  it('checkSuspiciousPackages() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkSuspiciousPackages()');
+  });
+
+  it('checkSuspiciousPackages() includes com.topjohnwu.magisk (Magisk Manager)', () => {
+    const start = kt.indexOf('fun checkSuspiciousPackages()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 600);
+    expect(body).toContain('com.topjohnwu.magisk');
+  });
+
+  it('checkSuspiciousPackages() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkSuspiciousPackages()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 950);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("suspiciousPackage") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("suspiciousPackage"');
+  });
+
+  it('file header verdict comment includes "suspiciousPackage":false', () => {
+    expect(kt).toContain('"suspiciousPackage":false');
+  });
+});
 
 // ── Item 26 — Android checkVirtualApp + virtualApp verdict field ──────────────
 //

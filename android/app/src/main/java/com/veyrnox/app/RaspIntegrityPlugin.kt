@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -108,6 +108,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("overlayActive",     checkOverlay())
         result.put("developerMode",     checkDeveloperMode())
         result.put("virtualApp",        checkVirtualApp())
+        result.put("suspiciousPackage", checkSuspiciousPackages())
         call.resolve(result)
     }
 
@@ -536,6 +537,37 @@ class RaspIntegrityPlugin : Plugin() {
         ) != 0 || android.provider.Settings.Global.getInt(
             cr, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
         ) != 0
+    }.getOrDefault(false)
+
+    // ── Suspicious package detection (item 28) ───────────────────────────────
+    // detectRoot() inspects filesystem paths (su binaries, Magisk files) that
+    // Magisk Hide masks with mount-namespace tricks. PackageManager queries go
+    // through the system Binder and cannot be spoofed the same way — so Magisk
+    // Manager (com.topjohnwu.magisk) and LSPosed Manager remain visible even
+    // when file-system checks pass clean.
+    //
+    // Each per-package lookup is individually guarded so a single PACKAGE_NOT_FOUND
+    // SecurityException (rare on some vendor ROM hardening) does not mask all
+    // others. The outer runCatching handles ContentResolver/Binder failures.
+    //
+    // WARN tier — same as rooted. NOT added to earlyCheck. JS wiring is item 29.
+
+    @JvmSynthetic
+    private fun checkSuspiciousPackages(): Boolean = runCatching {
+        val pm = context.packageManager
+        val suspiciousPackages = listOf(
+            "com.topjohnwu.magisk",                  // Magisk Manager (official)
+            "io.github.huskydg.magisk",              // Delta Magisk fork
+            "me.weishu.kernelflasher",               // KernelSU flasher
+            "org.lsposed.manager",                   // LSPosed framework manager
+            "de.robv.android.xposed.installer",      // original Xposed Installer
+            "eu.chainfire.supersu",                  // SuperSU
+            "com.noshufou.android.su",               // older Superuser
+            "com.saurik.substrate",                  // Cydia Substrate (Android)
+        )
+        suspiciousPackages.any { pkg ->
+            runCatching { pm.getPackageInfo(pkg, 0); true }.getOrDefault(false)
+        }
     }.getOrDefault(false)
 
     // ── Virtual app container detection (item 26) ────────────────────────────
