@@ -41,10 +41,21 @@ describe('G1b Vite obfuscator plugin', () => {
   it('stringArray: true is configured', () => {
     expect(viteConfig).toContain('stringArray: true');
   });
-  it('controlFlowFlattening: false (mobile perf guard)', () => {
-    expect(viteConfig).toContain('controlFlowFlattening: false');
+  it('controlFlowFlattening: true (G1 upgrade — RASP/wallet-core logic hardening)', () => {
+    expect(viteConfig).toContain('controlFlowFlattening: true');
   });
-  it('transformObjectKeys: false (Capacitor bridge safety)', () => {
+  it('controlFlowFlatteningThreshold ≤ 0.5 (perf guard — only partial flattening)', () => {
+    const m = viteConfig.match(/controlFlowFlatteningThreshold:\s*([\d.]+)/);
+    expect(m, 'controlFlowFlatteningThreshold must be set').toBeTruthy();
+    expect(parseFloat(m[1])).toBeLessThanOrEqual(0.5);
+  });
+  it('numbersToExpressions: true (numeric constant obfuscation)', () => {
+    expect(viteConfig).toContain('numbersToExpressions: true');
+  });
+  it('splitStrings: true (string chunking — layered with stringArray)', () => {
+    expect(viteConfig).toContain('splitStrings: true');
+  });
+  it('transformObjectKeys: false (Capacitor bridge safety — must never change)', () => {
     expect(viteConfig).toContain('transformObjectKeys: false');
   });
   it('renameGlobals: false (Capacitor window.Capacitor safety)', () => {
