@@ -925,8 +925,11 @@ export default function SendCrypto() {
       // One gate above the family dispatch catches all three Trezor branches;
       // software-key sends are UNAFFECTED (decoy has its own decoy vault, that
       // path is legitimate). Error string matches hw-send.js exactly so downstream
-      // catch-by-message keeps working.
-      if (useTrezorMode && isDeniabilitySessionActive()) {
+      // catch-by-message keeps working. Demo-mode check mirrors hw/trezor.js's
+      // deniabilityActive() — a demo build (VITE_DEMO_MODE / veyrnox-demo=1)
+      // must never touch a real Trezor device or leak fee/nonce RPC (codex
+      // round-2 finding, #972 P1b).
+      if (useTrezorMode && (isDeniabilitySessionActive() || DEMO)) {
         throw new Error('TREZOR_DENIABILITY_BLOCKED');
       }
 
@@ -1770,8 +1773,15 @@ export default function SendCrypto() {
 
             {/* Per-chain fee control. The EVM send path is EIP-1559; the chosen
                 tier/custom fee is passed into signAndBroadcast/sendToken. BTC/SOL
-                use an automatic fee this slice (no selector). */}
-            {!isBtc && !isSolana ? (
+                use an automatic fee this slice (no selector).
+                I3 hardware gate (#972 round-2 P1a, codex): FeeSelector's
+                react-query fires estimateEvmFeeTiers() → provider.getFeeData() on
+                mount, with no deniability enabled clause. Under useTrezorMode +
+                decoy/hidden/demo the Trezor address is the REAL hardware address,
+                so that unguarded RPC leaks the real address to the fee provider.
+                Skip the selector in that combination — the send-time gate above
+                will refuse anyway, so a fee tier serves no purpose. */}
+            {!isBtc && !isSolana && !(useTrezorMode && (isDeniabilitySessionActive() || DEMO)) ? (
               <FeeSelector
                 chain="evm"
                 networkKey={networkKey}

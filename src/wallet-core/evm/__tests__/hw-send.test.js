@@ -561,6 +561,12 @@ describe('evm/hw-send — I3 deniability gate (issue #972, post-#963 hotfix)', (
     expect(h.ledgerSign).not.toHaveBeenCalled();
   });
 
+  // TODO(#972 followup): add coverage for the demo-flag branch of
+  // assertNotDeniabilitySession (localStorage `veyrnox-demo`=='1'). The source
+  // fix matches the OLD hw/trezor.js:deniabilityActive() verbatim, so runtime
+  // behaviour parity is high-confidence — but a proper unit test needs
+  // localStorage stubbing that this file's mock harness doesn't provide today.
+
   // Codex second-pass finding (issue #972 P2, round 2). If the marker read
   // itself throws — e.g. localStorage is unavailable or the session module
   // crashes — assertNotDeniabilitySession must still fail CLOSED (treat as

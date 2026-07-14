@@ -33,12 +33,19 @@ export async function verifyLiveChainId(provider, expectedChainId) {
  *
  * Failure contract (issue #972 P2): on estimation failure, if the caller
  * supplied a `gasLimit` override the override is clamped to `MAX_GAS_ESTIMATE`
- * and kept; if no override was supplied the function THROWS `GAS_ESTIMATE_FAILED`
+ * and kept; if NO override was supplied the function THROWS `GAS_ESTIMATE_FAILED`
  * (fail-closed, I4). Prior to #972 this branch left `overrides.gasLimit`
  * undefined and relied on ethers.Wallet auto-fill — which the hw-send path does
- * not have, causing a downstream `toHex(undefined)` crash. Callers that need
- * an auto-fill (`send.js`, `token-send.js` when the caller omits gasLimit) are
- * unaffected because they always supply `fee.gasLimit` via evmFeeOverrides.
+ * not have, causing a downstream `toHex(undefined)` crash.
+ *
+ * BEHAVIOUR CHANGE FOR ALL CALLERS (not just hw-send): `send.js` /
+ * `token-send.js` also call this. When their `fee` argument is omitted OR when
+ * the FeeSelector fee query failed (selectedFee=null → fee=undefined →
+ * evmFeeOverrides(undefined)=={}), overrides.gasLimit is also undefined and the
+ * throw fires there too. This is deliberate: the previous ethers-auto-fill path
+ * masked RPC errors and could silently sign with a wrong gas limit. The
+ * throw now surfaces the RPC problem so the UI can surface it honestly
+ * (round-2 codex finding).
  *
  * Why it must run for BOTH native and token sends: a fee tier's `gasLimit` is
  * only a 21000 L1 simple-transfer DISPLAY hint. L2s need more intrinsic gas, and
