@@ -369,8 +369,9 @@ class RaspIntegrityPlugin : Plugin() {
     // or a Frida server in ptrace mode is attached.
     //
     // This is a REACTIVE check (fires after attach) rather than PREVENTIVE
-    // (blocking the attach). For preventive anti-debug, ptrace self-attachment
-    // via JNI is the next step but is not yet implemented.
+    // (blocking the attach). Preventive anti-debug via ptrace(PTRACE_TRACEME)
+    // is implemented in earlyPtraceTraceme() (companion object, runs at
+    // earlyCheck time before the Capacitor bridge initialises).
     //
     // FAIL CLOSED (I4): any IO/parse failure → false (not detected, not clean).
     // NO EGRESS (I2): pure proc-fs read, no network.
@@ -592,6 +593,17 @@ class RaspIntegrityPlugin : Plugin() {
         // must never prevent the app from launching.
         private const val PR_SET_DUMPABLE = 4
 
+        // Load the rasp_early native library (rasp_early.c → libRaspEarly.so).
+        // Fail-open: UnsatisfiedLinkError on a JVM unit-test host or a stripped
+        // build is caught here; earlyPtraceTraceme() has its own runCatching guard
+        // so a failed load returns false (not blocked) rather than crashing.
+        init {
+            runCatching { System.loadLibrary("rasp_early") }
+        }
+
+        @JvmStatic
+        private external fun nativeEarlyTraceme(): Boolean
+
         /**
          * earlyCheck — BLOCK-tier signals only, no Plugin instance required.
          * Returns true (BLOCK) if a debugger/hook or binary tamper is detected.
@@ -621,6 +633,16 @@ class RaspIntegrityPlugin : Plugin() {
                 || earlyProcMaps()
                 || earlyGadgetThreads()
                 || earlyFridaPipes()
+                || earlyPtraceTraceme()
+
+        // earlyPtraceTraceme — calls ptrace(PTRACE_TRACEME) via JNI. Hardening:
+        // claims the tracing slot for the parent (Zygote), complementing
+        // earlyAntiDump's PR_SET_DUMPABLE=0. Detection: returns true (BLOCK) if
+        // PTRACE_TRACEME fails, which indicates a debugger already holds the slot.
+        // Fail-open: UnsatisfiedLinkError (JVM tests, stripped build) caught here.
+        private fun earlyPtraceTraceme(): Boolean = runCatching {
+            nativeEarlyTraceme()
+        }.getOrDefault(false)
 
         private fun earlyTracerPid(): Boolean = runCatching {
             File("/proc/self/status").readLines()

@@ -48,6 +48,12 @@ const pbxproj = readFileSync(
   'utf8',
 );
 const entitlementsPath = resolve(root, 'ios/App/App/App.entitlements');
+const buildGradle = readFileSync(
+  resolve(root, 'android/app/build.gradle'),
+  'utf8',
+);
+const cFilePath     = resolve(root, 'android/app/src/main/cpp/rasp_early.c');
+const cmakePath     = resolve(root, 'android/app/src/main/cpp/CMakeLists.txt');
 
 // ── 1. Android: checkTracerPid ────────────────────────────────────────────────
 
@@ -518,5 +524,88 @@ describe('Item 7 — iOS App Attest entitlement', () => {
     expect(unsupportedIdx).toBeGreaterThan(-1);
     const block = appAttestM.slice(unsupportedIdx, unsupportedIdx + 200);
     expect(block).toContain('@(NO)');
+  });
+});
+
+// ── Item 8 — Android preventive ptrace self-attach via JNI ───────────────────
+// ptrace(PTRACE_TRACEME, 0, NULL, NULL) claims this process's ptrace slot for
+// its parent (Zygote/ActivityManager). This is both:
+//   • Preventive hardening: a process with PTRACE_TRACEME set cannot be
+//     ptrace-attached by an external process (belt-and-suspenders with
+//     PR_SET_DUMPABLE=0 from earlyAntiDump, which already blocks most paths).
+//   • Detection: if PTRACE_TRACEME returns -1/EPERM, a debugger was already
+//     attached before earlyCheck ran → BLOCK-tier signal.
+// ptrace is not accessible from Kotlin without JNI — hence the native library.
+describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
+  it('android/app/src/main/cpp/rasp_early.c exists', () => {
+    expect(existsSync(cFilePath)).toBe(true);
+  });
+
+  it('rasp_early.c includes sys/ptrace.h', () => {
+    expect(existsSync(cFilePath)).toBe(true);
+    const c = readFileSync(cFilePath, 'utf8');
+    expect(c).toContain('#include <sys/ptrace.h>');
+  });
+
+  it('rasp_early.c calls ptrace(PTRACE_TRACEME, 0, NULL, NULL)', () => {
+    expect(existsSync(cFilePath)).toBe(true);
+    const c = readFileSync(cFilePath, 'utf8');
+    expect(c).toContain('ptrace(PTRACE_TRACEME, 0, NULL, NULL)');
+  });
+
+  it('rasp_early.c declares the correct JNI method name for companion nativeEarlyTraceme', () => {
+    expect(existsSync(cFilePath)).toBe(true);
+    const c = readFileSync(cFilePath, 'utf8');
+    // $Companion mangled as _00024Companion in JNI symbol names
+    expect(c).toContain('Java_com_veyrnox_app_RaspIntegrityPlugin_00024Companion_nativeEarlyTraceme');
+  });
+
+  it('android/app/src/main/cpp/CMakeLists.txt exists', () => {
+    expect(existsSync(cmakePath)).toBe(true);
+  });
+
+  it('CMakeLists.txt adds rasp_early as a shared library from rasp_early.c', () => {
+    expect(existsSync(cmakePath)).toBe(true);
+    const cmake = readFileSync(cmakePath, 'utf8');
+    expect(cmake).toContain('rasp_early');
+    expect(cmake).toContain('rasp_early.c');
+    expect(cmake).toContain('SHARED');
+  });
+
+  it('build.gradle has externalNativeBuild block pointing to CMakeLists.txt', () => {
+    expect(buildGradle).toContain('externalNativeBuild');
+    expect(buildGradle).toContain('CMakeLists.txt');
+  });
+
+  it('RaspIntegrityPlugin.kt declares external fun nativeEarlyTraceme in companion', () => {
+    expect(kt).toContain('external fun nativeEarlyTraceme');
+  });
+
+  it('companion object init block loads rasp_early library (fail-open)', () => {
+    // System.loadLibrary inside runCatching so a JVM test or stripped build
+    // does not crash — earlyPtraceTraceme() has its own runCatching guard.
+    const initIdx = kt.indexOf('System.loadLibrary("rasp_early")');
+    expect(initIdx).toBeGreaterThan(-1);
+    // The load must be wrapped in runCatching (fail-open, I4)
+    const window = kt.slice(Math.max(0, initIdx - 100), initIdx + 50);
+    expect(window).toContain('runCatching');
+  });
+
+  it('earlyDetectHook chains earlyPtraceTraceme', () => {
+    const hookIdx = kt.indexOf('private fun earlyDetectHook()');
+    expect(hookIdx).toBeGreaterThan(-1);
+    const hookBody = kt.slice(hookIdx, hookIdx + 300);
+    expect(hookBody).toContain('earlyPtraceTraceme');
+  });
+
+  it('stale "not yet implemented" comment is removed from checkTracerPid context', () => {
+    // The comment at the TracerPid check said ptrace self-attachment via JNI is
+    // "not yet implemented" — that phrase must not appear within the checkTracerPid
+    // block once item 8 lands (a different TODO elsewhere in the file is unrelated).
+    const tracerPidIdx = kt.indexOf('private fun checkTracerPid()');
+    expect(tracerPidIdx).toBeGreaterThan(-1);
+    // Look at the 500-char window before the function (where the comment lives)
+    const window = kt.slice(Math.max(0, tracerPidIdx - 500), tracerPidIdx + 50);
+    expect(window).not.toContain('not yet implemented');
   });
 });
