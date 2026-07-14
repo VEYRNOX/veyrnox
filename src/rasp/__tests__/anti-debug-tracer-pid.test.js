@@ -626,6 +626,74 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 10 — iOS earlyAntiDump via task_set_exception_ports ─────────────────
+//
+// Android earlyAntiDump() calls Os.prctl(PR_SET_DUMPABLE, 0) to prevent crash
+// reporters and /proc/[pid]/mem reads from non-root processes. iOS has no
+// prctl(2). The Mach-level analogue is clearing the task exception ports via
+//   task_set_exception_ports(mach_task_self(), EXC_MASK_ALL,
+//                            MACH_PORT_NULL, EXCEPTION_DEFAULT, THREAD_STATE_NONE)
+// which removes the process's crash-reporter listener so debuggers / crash
+// reporters cannot receive exception notifications from our process.
+//
+// Fail-open: any error leaves exception ports unchanged — the app still runs
+// normally (I4). This is a preventive hardening action, not a detection gate.
+//
+// earlyAntiDump is a class method called at the START of earlyCheck, before
+// earlyDenyAttach and earlyCheckDynamicLibraries — same ordering as Android
+// where earlyAntiDump runs before earlyDetectHook.
+//
+// Requires #import <mach/mach.h> (provides task_set_exception_ports,
+// mach_task_self, MACH_PORT_NULL, EXC_MASK_ALL, EXCEPTION_DEFAULT,
+// THREAD_STATE_NONE — distinct from the already-present <mach-o/dyld.h>).
+
+describe('Item 10 — iOS earlyAntiDump via task_set_exception_ports', () => {
+  it('defines the +earlyAntiDump class method', () => {
+    expect(iosM).toContain('+ (void)earlyAntiDump');
+  });
+
+  it('earlyAntiDump calls task_set_exception_ports', () => {
+    const start = iosM.indexOf('+ (void)earlyAntiDump');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('task_set_exception_ports');
+  });
+
+  it('earlyAntiDump passes MACH_PORT_NULL to clear the exception port', () => {
+    const start = iosM.indexOf('+ (void)earlyAntiDump');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('MACH_PORT_NULL');
+  });
+
+  it('earlyAntiDump uses mach_task_self() (own task — no entitlements required)', () => {
+    const start = iosM.indexOf('+ (void)earlyAntiDump');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('mach_task_self');
+  });
+
+  it('earlyAntiDump wraps the call in @try/@catch (fail-open, must not block launch)', () => {
+    const start = iosM.indexOf('+ (void)earlyAntiDump');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('@try');
+    expect(body).toContain('@catch');
+  });
+
+  it('mach/mach.h is imported (required for task_set_exception_ports + mach_task_self)', () => {
+    expect(iosM).toContain('#import <mach/mach.h>');
+  });
+
+  it('earlyCheck calls earlyAntiDump before earlyCheckDynamicLibraries', () => {
+    const checkStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(checkStart).toBeGreaterThan(-1);
+    const checkBody = iosM.slice(checkStart, checkStart + 600);
+    const antiDumpIdx = checkBody.indexOf('earlyAntiDump');
+    const dynLibIdx   = checkBody.indexOf('earlyCheckDynamicLibraries');
+    expect(antiDumpIdx).toBeGreaterThan(-1);
+    expect(dynLibIdx).toBeGreaterThan(-1);
+    expect(antiDumpIdx).toBeLessThan(dynLibIdx);
+  });
+});
+
 describe('Android RASP — Item 9: Dead checks removed', () => {
   // ── checkProcNetUnix removed ─────────────────────────────────────────────
 

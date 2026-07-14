@@ -43,6 +43,9 @@
 // scan for Frida/Substrate libraries). Missing until #826 put this file in the
 // build target — first real compile surfaced the implicit declarations.
 #import <mach-o/dyld.h>
+// mach/mach.h for task_set_exception_ports + mach_task_self (item 10
+// earlyAntiDump). Distinct from <mach-o/dyld.h> (dyld image scan).
+#import <mach/mach.h>
 // PT_DENY_ATTACH: Apple BSD ptrace constant (value 31 on Darwin). The iOS SDK
 // does not ship <sys/ptrace.h> (confirmed absent from both the device and
 // simulator SDK header search paths) even though ptrace() itself remains a
@@ -462,6 +465,25 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
 // presignGate. Fail closed (I4): any exception → NO (not blocked), consistent
 // with other heuristic checks in this file.
 
+// earlyAntiDump — iOS analogue of Android's prctl(PR_SET_DUMPABLE, 0).
+// Clears the Mach task exception ports so crash reporters and debuggers cannot
+// receive exception notifications from this process. Uses mach_task_self() —
+// a process always has rights to its own task port; no special entitlement is
+// required. Fail-open (I4): any kern_return_t error is silently ignored and
+// the exception ports are left unchanged — the app still launches normally.
+// This is a preventive hardening action, not a detection gate.
++ (void)earlyAntiDump {
+    @try {
+        task_set_exception_ports(
+            mach_task_self(),
+            EXC_MASK_ALL,
+            MACH_PORT_NULL,
+            EXCEPTION_DEFAULT,
+            THREAD_STATE_NONE
+        );
+    } @catch (__unused NSException *e) {}
+}
+
 // earlyDenyAttach — preventive hardening: call ptrace(PT_DENY_ATTACH) at the
 // earliest possible moment, before the WebView loads. After this call any
 // subsequent debugger-attach attempt (LLDB, Frida server) causes the attacker's
@@ -476,6 +498,7 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
 }
 
 + (BOOL)earlyCheck {
+    [self earlyAntiDump];
     [self earlyDenyAttach];
     // BLOCK-tier: hookedProcess via checkDynamicLibraries dyld scan + tamper via CS_VALID
     return [self earlyCheckDynamicLibraries] || [self earlyDetectTamper];
