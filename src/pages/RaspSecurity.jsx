@@ -114,7 +114,7 @@ export default function RaspSecurity() {
         <div>
           <p className="font-bold text-accent">Browser-level detection active · OS-level detection pending native build</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Browser probes are live. OS-level probes (root/jailbreak) need a native plugin and real-device testing — pending Phase 4.
+            Browser probes are active. OS-level probes (root/jailbreak) need a native plugin and real-device testing — pending Phase 4.
           </p>
         </div>
       </div>
