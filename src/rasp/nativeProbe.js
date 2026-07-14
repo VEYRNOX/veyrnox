@@ -119,6 +119,10 @@ export async function nativeProbeSource() {
   // Item 35: fold networkProxy (Android checkNetworkProxy, item 34) into
   // rooted → WARN. An active system proxy (Burp/Charles/mitmproxy) intercepts
   // HTTPS traffic — a potential MitM vector. Android-only field.
+  // Item 37: fold accessibilityService (Android checkAccessibilityService,
+  // item 36) into rooted → WARN. A user-installed accessibility service has
+  // full UI-tree access and can inject events — keylogging/tapjacking risk
+  // during PIN entry. Android-only field.
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true
          || verdict.overlayActive === true
@@ -127,7 +131,8 @@ export async function nativeProbeSource() {
          || verdict.suspiciousPackage === true
          || verdict.thirdPartyKeyboard === true
          || verdict.mockLocation === true
-         || verdict.networkProxy === true,
+         || verdict.networkProxy === true
+         || verdict.accessibilityService === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
     // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring

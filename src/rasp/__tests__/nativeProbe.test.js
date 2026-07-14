@@ -208,6 +208,63 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
   });
 });
 
+// ── Item 37 — accessibilityService folded into the rooted (WARN) signal ──────
+// Android checkAccessibilityService() (item 36) returns accessibilityService:true
+// when a user-installed (FLAG_SYSTEM == 0) accessibility service is active.
+// Such a service can read the full UI tree and inject events — a keylogging /
+// tapjacking risk during PIN entry. WARN tier. Android-only field.
+describe('nativeProbeSource — item 37: accessibilityService → rooted (WARN)', () => {
+  it('accessibilityService:true maps to signals.rooted true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: false,
+      suspiciousPackage: false,
+      thirdPartyKeyboard: false,
+      mockLocation: false,
+      networkProxy: false,
+      accessibilityService: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(true);
+  });
+
+  it('accessibilityService:true drives detect() to ROOTED (WARN), not HOOKED or TAMPERED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ accessibilityService: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ROOTED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
+  });
+
+  it('accessibilityService:false alone does not set rooted (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false, jailbroken: false, overlayActive: false,
+      developerMode: false, virtualApp: false, suspiciousPackage: false,
+      thirdPartyKeyboard: false, mockLocation: false, networkProxy: false,
+      accessibilityService: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(false);
+  });
+
+  it('any of the rooted-tier fields true is sufficient for signals.rooted', async () => {
+    h.isNative = true;
+    for (const field of ['rooted', 'jailbroken', 'overlayActive', 'developerMode',
+                         'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard',
+                         'mockLocation', 'networkProxy', 'accessibilityService']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.rooted).toBe(true);
+    }
+  });
+});
+
 // ── Item 35 — networkProxy folded into the rooted (WARN) signal ──────────────
 // Android checkNetworkProxy() (item 34) returns networkProxy:true when a
 // system proxy (Burp Suite, Charles, mitmproxy) is active — a potential MitM
