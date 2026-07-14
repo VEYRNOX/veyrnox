@@ -54,6 +54,7 @@ const buildGradle = readFileSync(
 );
 const cFilePath     = resolve(root, 'android/app/src/main/cpp/rasp_early.c');
 const cmakePath     = resolve(root, 'android/app/src/main/cpp/CMakeLists.txt');
+const hwKekM        = readFileSync(resolve(root, 'ios/App/App/HardwareKekPlugin.m'), 'utf8');
 
 // ── 1. Android: checkTracerPid ────────────────────────────────────────────────
 
@@ -625,6 +626,63 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Item 11 — iOS HardwareKekPlugin mlock on H-factor key material ───────────
+//
+// The H factor (decrypted SE HMAC output) lives in an NSMutableData between
+// SE decryption and Capacitor bridge serialisation. If the device is under
+// memory pressure during that window, the OS could swap those pages to disk
+// before resetBytesInRange zeroes them — a disk-level memory dump would then
+// contain cleartext key material.
+//
+// Fix: mlock(h.mutableBytes, h.length) immediately after the NSMutableData is
+// allocated pins those pages in physical RAM. munlock(h.mutableBytes, h.length)
+// is called AFTER resetBytesInRange so the zeroed pages are unpinned once the
+// key bytes are gone. The window is as narrow as possible: allocated → pinned →
+// used → zeroed → unpinned.
+//
+// mlock/munlock are POSIX; available on iOS via <sys/mman.h> without any
+// special entitlement. Fail-open: if mlock returns non-zero (ENOMEM, EPERM)
+// the program still runs correctly — the bytes are just not guaranteed pinned.
+
+describe('Item 11 — iOS HardwareKekPlugin mlock on H-factor key material', () => {
+  it('sys/mman.h imported for mlock/munlock', () => {
+    expect(hwKekM).toContain('#import <sys/mman.h>');
+  });
+
+  it('mlock called on h.mutableBytes after NSMutableData allocation', () => {
+    expect(hwKekM).toContain('mlock(h.mutableBytes');
+    const allocIdx  = hwKekM.indexOf('NSMutableData *h = ');
+    const mlockIdx  = hwKekM.indexOf('mlock(h.mutableBytes');
+    expect(allocIdx).toBeGreaterThan(-1);
+    expect(mlockIdx).toBeGreaterThan(-1);
+    expect(mlockIdx).toBeGreaterThan(allocIdx);
+  });
+
+  it('mlock passes h.length as size (pins exactly the key material pages)', () => {
+    const mlockIdx  = hwKekM.indexOf('mlock(h.mutableBytes');
+    expect(mlockIdx).toBeGreaterThan(-1);
+    const mlockCall = hwKekM.slice(mlockIdx, mlockIdx + 60);
+    expect(mlockCall).toContain('h.length');
+  });
+
+  it('munlock called on h.mutableBytes after resetBytesInRange zeroing', () => {
+    expect(hwKekM).toContain('munlock(h.mutableBytes');
+    const resetIdx   = hwKekM.indexOf('[h resetBytesInRange:');
+    const munlockIdx = hwKekM.indexOf('munlock(h.mutableBytes');
+    expect(resetIdx).toBeGreaterThan(-1);
+    expect(munlockIdx).toBeGreaterThan(-1);
+    expect(munlockIdx).toBeGreaterThan(resetIdx);
+  });
+
+  it('mlock precedes munlock (pin before use, unpin after zero)', () => {
+    const mlockIdx   = hwKekM.indexOf('mlock(h.mutableBytes');
+    const munlockIdx = hwKekM.indexOf('munlock(h.mutableBytes');
+    expect(mlockIdx).toBeGreaterThan(-1);
+    expect(munlockIdx).toBeGreaterThan(-1);
+    expect(mlockIdx).toBeLessThan(munlockIdx);
+  });
+});
 
 // ── Item 10 — iOS earlyAntiDump via task_set_exception_ports ─────────────────
 //

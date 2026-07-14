@@ -28,6 +28,10 @@
 #import <Security/Security.h>
 #import <LocalAuthentication/LocalAuthentication.h>
 #import <os/log.h>
+// sys/mman.h for mlock/munlock — pin key material pages in physical RAM so
+// they cannot be swapped to disk during the narrow window between SE decryption
+// and resetBytesInRange zeroing (item 11).
+#import <sys/mman.h>
 
 static NSString * const KEYCHAIN_SVC = @"com.veyrnox.app";
 static NSString * const KEY_ENC_H    = @"veyrnox_kek_enc_h_v3";   // ECIES ciphertext blob
@@ -327,10 +331,17 @@ static os_log_t VeyrnoxKekLog(void) {
             // mutable copy is zeroed via resetBytesInRange once serialised.
             NSUInteger hLen = (NSUInteger)CFDataGetLength(pt);
             NSMutableData *h = [NSMutableData dataWithBytes:CFDataGetBytePtr(pt) length:hLen];
+            // Item 11: pin H pages in physical RAM — prevents the OS from swapping
+            // key material to disk during the window between SE decryption and zeroing.
+            // Fail-open: a non-zero return (ENOMEM, EPERM) is silently ignored;
+            // the unlock still proceeds, just without the swap-to-disk guarantee.
+            mlock(h.mutableBytes, h.length);
             NSString *hB64 = [h base64EncodedStringWithOptions:0];
             // Zero H from heap after bridge-serialisation (iOS-F5 — not zeroed by ARC).
             // 1. our mutable copy:
             [h resetBytesInRange:NSMakeRange(0, h.length)];
+            // Unpin now that H is zeroed — the locked pages no longer hold key material.
+            munlock(h.mutableBytes, h.length);
             CFRelease(pt);
             // iOS-F9 SE-unlock success marker — the device-verification procedure greps
             // this exact line in the collected system log to tie an SE unlock to a send.
