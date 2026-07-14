@@ -32,7 +32,10 @@
 // before any TrezorConnect / Ledger transport call.
 
 import { Transaction, parseEther, Signature, isAddress, getAddress } from 'ethers';
-import Eth from '@ledgerhq/hw-app-eth';
+// @ledgerhq/hw-app-eth is external in the Vite build (not installed as a dep).
+// Import it lazily inside signAndBroadcastEvmLedger so the bare specifier never
+// appears at bundle parse-time in the WebView — a static import here crashes the
+// ErrorBoundary on every page load even when Ledger is never used.
 import TrezorConnect from '@trezor/connect-web';
 import { getProvider } from './provider.js';
 import { getNetwork } from './networks.js';
@@ -208,6 +211,7 @@ export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAdd
   const provider = getProvider(networkKey);
   const txFields = await buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee });
 
+  const { default: Eth } = await import('@ledgerhq/hw-app-eth');
   const eth = new Eth(transport);
   // 2026-07-14 audit LOW: pre-sign check that the device at EVM_PATH derives the
   // SAME address the caller thinks it does. Without this, a mismatched device
