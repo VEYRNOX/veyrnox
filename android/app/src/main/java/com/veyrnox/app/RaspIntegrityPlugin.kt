@@ -27,11 +27,13 @@ package com.veyrnox.app
 // checkDangerousProps fired (ro.boot.verifiedbootstate=orange) via
 // readSystemPropReflect (SystemProperties reflection, not Runtime.exec).
 // Verdict: {"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}.
-// checkProcNetUnix did NOT fire on Magisk v30.7 (original marker list lacked
-// Zygisk companion names and the v26+ randomised daemon socket prefix). Fixed by
-// expanding to a broad "magisk" substring + explicit Zygisk companion patterns
-// (see checkProcNetUnix() below). checkSuFromRuntime did NOT fire (Magisk Hide
-// covers `su` in PATH for this app — expected).
+// checkProcNetUnix did NOT fire on Magisk v30.7. Root cause (device-verified
+// 2026-07-14): SELinux denies untrusted_app reading /proc/net/unix on Android
+// 10+ — the check is structurally inert on modern devices regardless of marker
+// names (avc: denied { read } proc_net confirmed in logcat). Marker list was
+// expanded anyway (PR #968) for completeness on older OS / policy changes.
+// checkSuFromRuntime did NOT fire (Magisk Hide covers `su` in PATH — expected).
+// Operative root signal: checkDangerousProps (verifiedbootstate=orange).
 //
 // FAIL CLOSED (I4): every detection block catches exceptions independently and
 // returns false (clean/unknown) rather than propagating — a crash or permission
@@ -143,26 +145,24 @@ class RaspIntegrityPlugin : Plugin() {
 
     // Scan /proc/net/unix for known root framework IPC socket names.
     // Magisk Hide masks file-system paths via mount namespace manipulation but
-    // CANNOT hide its own Unix domain sockets from /proc/net/unix (these are
-    // kernel-level IPC entries, not filesystem objects under Magisk's control).
-    // This is the Android analogue of the iOS C stat() check — accessing
-    // information from a kernel subsystem that the hide mechanism doesn't reach.
+    // CANNOT hide its own Unix domain sockets from /proc/net/unix — these are
+    // kernel-level IPC entries, not filesystem objects under Magisk's control.
     //
-    // Magisk v30.x socket naming history (honest gap record):
-    //   v20–25: daemon abstract socket "@magisk_" + 6 random hex chars.
-    //   v26+:   daemon socket name randomised per-install from a secret stored
-    //           in /data/adb/magisk/.magisk/config — static prefix detection is
-    //           therefore unreliable for the daemon socket.
-    //   v24+:   Zygisk companion uses predictable names: "zygisk_server",
-    //           "zygisk_ldr", ".magisk.zygisk" (varies by build).
-    //   v30.7:  Device-verified 2026-07-14 on SM-N981B — none of the original
-    //           markers fired. checkDangerousProps DID fire (verifiedbootstate=orange),
-    //           so Zygisk DenyList was not fully hooking libc in this app. Root cause:
-    //           the Zygisk companion sockets on this build use the expanded patterns
-    //           below rather than the original "@magisk_" / "magiskd" names.
-    //           Honest residual: if Magisk DenyList hooks /proc/net/unix file reads at
-    //           the libc level inside the injected process, all socket names would be
-    //           filtered. In that case checkDangerousProps remains the operative signal.
+    // ⚠️  ANDROID 10+ SELinux BLOCK (device-verified 2026-07-14, SM-N981B Android 12):
+    //     The untrusted_app SELinux domain does NOT have read permission for
+    //     proc_net files. On-device logcat confirmed:
+    //       avc: denied { read } for comm="CapacitorPlugin" name="unix"
+    //            scontext=u:r:untrusted_app:s0 tcontext=u:object_r:proc_net:s0
+    //     runCatching{}.getOrDefault(false) swallows the SecurityException and
+    //     returns false — this check is effectively inert on Android 10+ in the
+    //     untrusted_app context. checkDangerousProps is the operative signal.
+    //     A future implementation could use LocalSocket.connect() to attempt a
+    //     connection to known Magisk daemon paths (a behavioral probe that does
+    //     not require proc_net read permission), but that is not yet implemented.
+    //
+    // Marker list is kept current (expanded for Magisk v30.x, 2026-07-14) so
+    // the check is useful if ever run on a pre-Android-10 device or if SELinux
+    // policy changes. Markers cover Zygisk companion sockets, KSU, LSPosed, APatch.
     private fun checkProcNetUnix(): Boolean {
         val socketMarkers = listOf(
             // --- Magisk daemon (any version) ---
