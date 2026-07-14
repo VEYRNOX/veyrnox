@@ -208,6 +208,59 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
   });
 });
 
+// ── Item 27 — virtualApp folded into the rooted (WARN) signal ────────────────
+// Android checkVirtualApp() (item 26) returns virtualApp:true when
+// applicationInfo.sourceDir is under a known virtual container path
+// (VirtualApp/io.va, Parallel Space, Island, etc.). Running inside such a
+// container lets the host intercept binder calls, fake root/tamper signals,
+// and proxy biometrics — so it belongs in the same WARN tier as rooted.
+// Android-only field; absent on iOS verdicts and treated as false by === true.
+describe('nativeProbeSource — item 27: virtualApp → rooted (WARN)', () => {
+  it('virtualApp:true maps to signals.rooted true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(true);
+  });
+
+  it('virtualApp:true drives detect() to ROOTED (WARN), not HOOKED or TAMPERED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ virtualApp: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ROOTED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
+  });
+
+  it('virtualApp:false alone does not set rooted (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(false);
+  });
+
+  it('any of rooted / jailbroken / overlayActive / developerMode / virtualApp true is sufficient', async () => {
+    h.isNative = true;
+    for (const field of ['rooted', 'jailbroken', 'overlayActive', 'developerMode', 'virtualApp']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.rooted).toBe(true);
+    }
+  });
+});
+
 // ── Item 25 — developerMode folded into the rooted (WARN) signal ─────────────
 // Android checkDeveloperMode() (item 24) returns developerMode:true when
 // Settings.Global.ADB_ENABLED != 0 or DEVELOPMENT_SETTINGS_ENABLED != 0.

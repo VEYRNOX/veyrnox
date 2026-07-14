@@ -103,10 +103,15 @@ export async function nativeProbeSource() {
   // item 24) into rooted → WARN. USB debugging on = adb-level attack surface
   // (logcat capture, screenrecord, memory dump). Android-only field; absent on
   // iOS verdicts and treated as false by the === true guard.
+  // Item 27: fold virtualApp (Android checkVirtualApp, item 26) into rooted → WARN.
+  // Running inside a VirtualApp/Parallel Space/Island container lets the host
+  // intercept binder calls, fake root/tamper signals, and proxy biometrics.
+  // Android-only field; absent on iOS verdicts and treated as false by === true.
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true
          || verdict.overlayActive === true
-         || verdict.developerMode === true,
+         || verdict.developerMode === true
+         || verdict.virtualApp === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
     // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring
