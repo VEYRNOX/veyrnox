@@ -84,7 +84,6 @@ const RAW_NAV_GROUPS = [
       { path: "/portfolio-rewind", label: "Portfolio Rewind", icon: RotateCcw },
       { path: "/index-builder", label: "Custom Index", icon: LayoutGrid },
       { path: "/pl", label: "P&L Tracking", icon: TrendingUp },
-      { path: "/risk", label: "Risk Scoring", icon: ShieldCheck },
     ],
   },
   {
