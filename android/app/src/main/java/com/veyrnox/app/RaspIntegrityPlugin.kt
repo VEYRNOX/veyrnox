@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false,"mockLocation":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false,"mockLocation":false,"networkProxy":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -111,6 +111,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("suspiciousPackage", checkSuspiciousPackages())
         result.put("thirdPartyKeyboard", checkThirdPartyKeyboard())
         result.put("mockLocation",       checkMockLocation())
+        result.put("networkProxy",       checkNetworkProxy())
         call.resolve(result)
     }
 
@@ -539,6 +540,31 @@ class RaspIntegrityPlugin : Plugin() {
         ) != 0 || android.provider.Settings.Global.getInt(
             cr, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
         ) != 0
+    }.getOrDefault(false)
+
+    // ── Network proxy detection (item 34) ────────────────────────────────────
+    // A proxy configured on the device (Burp Suite, Charles, mitmproxy) can
+    // intercept HTTPS traffic — a potential MitM vector even with SSL pinning
+    // if the attacker has also installed a rogue CA cert.
+    //
+    // API 29+ (Q): ConnectivityManager.defaultProxy returns a ProxyInfo whose
+    //   .host is non-null when a proxy is set.
+    // Pre-API 29 : android.net.Proxy.getDefaultHost() (deprecated in API 29;
+    //   still present and readable on older firmware).
+    //
+    // Fail-open on any exception. WARN tier. NOT added to earlyCheck.
+    // JS wiring is item 35.
+
+    @JvmSynthetic
+    private fun checkNetworkProxy(): Boolean = runCatching {
+        val host: String? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+            cm?.defaultProxy?.host
+        } else {
+            @Suppress("DEPRECATION")
+            android.net.Proxy.getDefaultHost()
+        }
+        !host.isNullOrBlank()
     }.getOrDefault(false)
 
     // ── Mock location detection (item 32) ────────────────────────────────────

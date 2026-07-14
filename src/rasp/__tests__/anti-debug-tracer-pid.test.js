@@ -158,6 +158,7 @@ describe('Android RASP — @JvmSynthetic on all private detection methods', () =
     'detectEmulator', 'checkBuildProps', 'checkEmulatorFiles', 'detectTamper',
     'checkScreenCapture', 'checkOverlay', 'checkDeveloperMode', 'checkVirtualApp',
     'checkSuspiciousPackages', 'checkThirdPartyKeyboard', 'checkMockLocation',
+    'checkNetworkProxy',
   ];
 
   for (const fn of privateFns) {
@@ -628,6 +629,52 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Item 34 — Android checkNetworkProxy + networkProxy verdict field ──────────
+//
+// A proxy configured on the device (Burp Suite, Charles, mitmproxy) intercepts
+// HTTPS traffic and is a potential MitM vector even when SSL pinning is active,
+// if the attacker has also installed a rogue CA cert. Detecting an active proxy
+// adds a device-integrity signal independent of TLS-layer checks.
+//
+// Two API paths:
+//   API 29+ (Q): ConnectivityManager.defaultProxy → ProxyInfo.host
+//   Pre-API 29 : android.net.Proxy.getDefaultHost() (deprecated but present)
+//
+// Fail-open: any exception (missing permission, null CM) → false.
+// WARN tier. NOT added to earlyCheck. JS wiring is item 35.
+
+describe('Item 34 — Android checkNetworkProxy + networkProxy verdict field', () => {
+  it('checkNetworkProxy() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkNetworkProxy()');
+  });
+
+  it('checkNetworkProxy() uses ConnectivityManager.defaultProxy (API 29+ path)', () => {
+    const start = kt.indexOf('fun checkNetworkProxy()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 450);
+    expect(body).toContain('defaultProxy');
+  });
+
+  it('checkNetworkProxy() falls back to Proxy.getDefaultHost() (pre-API 29)', () => {
+    const start = kt.indexOf('fun checkNetworkProxy()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 450);
+    expect(body).toContain('getDefaultHost');
+  });
+
+  it('checkNetworkProxy() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkNetworkProxy()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 500);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("networkProxy") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("networkProxy"');
+  });
+});
 
 // ── Item 32 — Android checkMockLocation + mockLocation verdict field ─────────
 //
