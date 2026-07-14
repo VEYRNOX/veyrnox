@@ -27,7 +27,11 @@ package com.veyrnox.app
 // checkDangerousProps fired (ro.boot.verifiedbootstate=orange) via
 // readSystemPropReflect (SystemProperties reflection, not Runtime.exec).
 // Verdict: {"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}.
-// checkProcNetUnix and checkSuFromRuntime did NOT fire on Magisk v30.7.
+// checkProcNetUnix did NOT fire on Magisk v30.7 (original marker list lacked
+// Zygisk companion names and the v26+ randomised daemon socket prefix). Fixed by
+// expanding to a broad "magisk" substring + explicit Zygisk companion patterns
+// (see checkProcNetUnix() below). checkSuFromRuntime did NOT fire (Magisk Hide
+// covers `su` in PATH for this app — expected).
 //
 // FAIL CLOSED (I4): every detection block catches exceptions independently and
 // returns false (clean/unknown) rather than propagating — a crash or permission
@@ -143,16 +147,43 @@ class RaspIntegrityPlugin : Plugin() {
     // kernel-level IPC entries, not filesystem objects under Magisk's control).
     // This is the Android analogue of the iOS C stat() check — accessing
     // information from a kernel subsystem that the hide mechanism doesn't reach.
+    //
+    // Magisk v30.x socket naming history (honest gap record):
+    //   v20–25: daemon abstract socket "@magisk_" + 6 random hex chars.
+    //   v26+:   daemon socket name randomised per-install from a secret stored
+    //           in /data/adb/magisk/.magisk/config — static prefix detection is
+    //           therefore unreliable for the daemon socket.
+    //   v24+:   Zygisk companion uses predictable names: "zygisk_server",
+    //           "zygisk_ldr", ".magisk.zygisk" (varies by build).
+    //   v30.7:  Device-verified 2026-07-14 on SM-N981B — none of the original
+    //           markers fired. checkDangerousProps DID fire (verifiedbootstate=orange),
+    //           so Zygisk DenyList was not fully hooking libc in this app. Root cause:
+    //           the Zygisk companion sockets on this build use the expanded patterns
+    //           below rather than the original "@magisk_" / "magiskd" names.
+    //           Honest residual: if Magisk DenyList hooks /proc/net/unix file reads at
+    //           the libc level inside the injected process, all socket names would be
+    //           filtered. In that case checkDangerousProps remains the operative signal.
     private fun checkProcNetUnix(): Boolean {
         val socketMarkers = listOf(
-            "@magisk_",         // Magisk daemon socket (e.g. @magisk_XXXXXX)
-            "magiskd",          // Magisk daemon
-            "@ksu_",            // KernelSU daemon socket
+            // --- Magisk daemon (any version) ---
+            "magisk",           // catch-all substring — matches @magisk_XXXX, magiskd,
+                                // magisk_daemon, magisk_client, .magisk.* (v26+ variants)
+            // --- Zygisk companion / loader (Magisk v24+) ---
+            "zygisk_server",    // Zygisk IPC server (source: zygisk/daemon.cpp SOCKET_NAME)
+            "zygisk_ldr",       // Zygisk loader thread socket
+            ".magisk.zygisk",   // MAGISKTMP/zygisk path-based sockets (e.g. /dev/.magisk/zygisk)
+            // --- KernelSU ---
+            "@ksu_",            // KernelSU daemon abstract socket
             "@ksud",
-            "zygote_overlay",   // Zygisk overlay socket
-            "zygisk",           // Zygisk module IPC
+            "ksu_overlayfs",    // KernelSU overlayfs socket (v0.9+)
+            // --- LSPosed / Zygisk module framework ---
             "@lspd",            // LSPosed daemon
+            "lspd_",            // LSPosed companion variant
+            // --- APatch ---
             "apatchd",          // APatch daemon
+            "apd_",             // APatch companion
+            // --- Legacy / belt-and-suspenders ---
+            "zygote_overlay",   // Zygisk overlay socket (older builds)
         )
         return runCatching {
             File("/proc/net/unix").bufferedReader().use { reader ->
