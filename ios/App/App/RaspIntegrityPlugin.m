@@ -43,6 +43,15 @@
 // scan for Frida/Substrate libraries). Missing until #826 put this file in the
 // build target — first real compile surfaced the implicit declarations.
 #import <mach-o/dyld.h>
+// PT_DENY_ATTACH: Apple BSD ptrace constant (value 31 on Darwin). The iOS SDK
+// does not ship <sys/ptrace.h> (confirmed absent from both the device and
+// simulator SDK header search paths) even though ptrace() itself remains a
+// valid, linkable libSystem symbol — the standard workaround, used widely in
+// shipping App Store apps, is to declare the prototype and constant locally
+// instead of importing the missing header.
+#import <sys/types.h>
+#define PT_DENY_ATTACH 31
+extern int ptrace(int request, pid_t pid, caddr_t addr, int data);
 
 // CFNetwork for port probe
 #import <CFNetwork/CFNetwork.h>
@@ -58,6 +67,19 @@
 @implementation RaspIntegrityPlugin
 
 - (void)checkIntegrity:(CAPPluginCall *)call {
+    // Preventive anti-debug: request OS-level debugger-attach denial once per
+    // process lifetime. After PT_DENY_ATTACH, any subsequent ptrace-attach
+    // attempt (LLDB, Frida server, adb) is rejected by the kernel — the
+    // attaching process receives SIGKILL rather than connecting to ours.
+    // This is a preventive control; it does not affect the signals returned
+    // below. Jailbroken devices may have ptrace patched out (in which case
+    // this call is a no-op), but it closes the gap on stock devices where
+    // an analyst tries to attach a debugger before triggering a send.
+    static dispatch_once_t sPtDenyOnce;
+    dispatch_once(&sPtDenyOnce, ^{
+        ptrace(PT_DENY_ATTACH, 0, 0, 0);
+    });
+
     BOOL jailbroken    = [self detectJailbreak];
     BOOL hookedProcess = [self detectHook];
     BOOL emulator      = [self detectSimulator];
@@ -134,9 +156,12 @@
 // ── Jailbreak detection ────────────────────────────────────────────────────
 
 - (BOOL)detectJailbreak {
-    return [self checkJailbreakPaths]
+    // checkFork runs first: fork() succeeds on ALL jailbreaks (palera1n rootful,
+    // unc0ver, Dopamine, Taurine) because the Apple sandbox that blocks it on
+    // stock iOS is patched or bypassed. Path checks follow as belt-and-suspenders.
+    return [self checkFork]
+        || [self checkJailbreakPaths]
         || [self checkJailbreakPathsCstat]
-        || [self checkFork]
         || [self checkSandboxEscape]
         || [self checkDynamicLibraries];
 }

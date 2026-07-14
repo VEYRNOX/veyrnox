@@ -6,7 +6,18 @@
 
 # ── Capacitor core bridge ─────────────────────────────────────────────────────
 -keep class com.getcapacitor.** { *; }
--keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+# Keep class names for @CapacitorPlugin classes so Capacitor's annotation
+# processor (compile-time) and runtime class lookup can find them. Drop the
+# `{ *; }` that was previously here — that form kept ALL members (including
+# private detection methods like detectRoot/checkGadgetThreads) readable in
+# the binary. Now R8 is free to rename private/internal members; the
+# @PluginMethod keepclassmembers below handles bridge-callable methods, and
+# the keepclassmembers below keeps the no-arg constructor for reflection-based
+# plugin instantiation.
+-keep @com.getcapacitor.annotation.CapacitorPlugin class *
+-keepclassmembers @com.getcapacitor.annotation.CapacitorPlugin class * extends com.getcapacitor.Plugin {
+    public <init>();
+}
 -keep @com.getcapacitor.annotation.PluginMethod class * { *; }
 -keepclassmembers class * extends com.getcapacitor.Plugin {
     @com.getcapacitor.annotation.PluginMethod public *;

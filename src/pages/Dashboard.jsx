@@ -260,8 +260,27 @@ function DemoDashboard() {
         </Button>
       </div>
 
-      {/* Portfolio Health Score */}
-      {widgets.healthScore && <PortfolioHealthScore wallets={wallets} />}
+      {/* Portfolio Health Score — demo mode with mock portfolio data */}
+      {widgets.healthScore && (
+        <PortfolioHealthScore
+          wallets={wallets}
+          portfolio={{
+            assetTotals: wallets.reduce((acc, w) => {
+              const assets = w.balance_by_currency || {};
+              for (const [cur, amt] of Object.entries(assets)) {
+                if (!acc[cur]) acc[cur] = { usd: 0 };
+                acc[cur].usd += (amt * USD_RATES[cur]) || 0;
+              }
+              return acc;
+            }, {}),
+            grandTotal: displayValue,
+            indeterminate: false,
+          }}
+          isVaultKekEnrolled={false}
+          hasPasskeyOrBiometric={false}
+          isDeniability={false}
+        />
+      )}
 
       {/* Watchlist Widget */}
       {widgets.watchlist && <WatchlistWidget />}
