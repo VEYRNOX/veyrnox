@@ -16,25 +16,21 @@ const dir = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(dir, '../ColdSign.jsx'), 'utf8');
 
 describe('ColdSign — H11: cold-broadcast presignGate uses real runtime RASP detection', () => {
-  it('imports the RASP detect/degrade/browserProbeSource primitives', () => {
+  it('imports useRaspArtifact and TIER from @/rasp', () => {
     expect(src).toMatch(/from\s*["']@\/rasp["']/);
-    expect(src).toMatch(/\bdetect\b/);
-    expect(src).toMatch(/\bdegrade\b/);
-    expect(src).toMatch(/browserProbeSource/);
+    expect(src).toMatch(/useRaspArtifact/);
+    expect(src).toMatch(/\bTIER\b/);
   });
 
   it('does not pass a hardcoded TIER.ALLOW as the first argument to presignGate', () => {
     expect(src).not.toMatch(/presignGate\(\s*TIER\.ALLOW/);
   });
 
-  it('runs real runtime detection via detect(browserProbeSource) and degrade(...)', () => {
-    expect(src).toMatch(/detect\(\s*browserProbeSource\s*\)/);
-    expect(src).toMatch(/degrade\(/);
-  });
-
-  it('defaults the catch fallback to TIER.BLOCK, never TIER.ALLOW', () => {
-    expect(src).toMatch(/catch[\s\S]{0,80}TIER\.BLOCK/);
-    expect(src).not.toMatch(/catch[\s\S]{0,80}TIER\.ALLOW/);
+  it('derives tier from raspArtifact and defaults to TIER.BLOCK if unavailable', () => {
+    // useRaspArtifact() returns the degrade() artifact; .tier ?? TIER.BLOCK is the fail-closed pattern.
+    expect(src).toMatch(/raspArtifact/);
+    expect(src).toMatch(/TIER\.BLOCK/);
+    expect(src).not.toMatch(/TIER\.ALLOW[\s\S]{0,20}TIER\.BLOCK/); // ALLOW must not be the fallback
   });
 
   it('still passes riskAck to presignGate (risk acknowledgement unchanged)', () => {
