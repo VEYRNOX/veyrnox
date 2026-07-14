@@ -5,11 +5,15 @@
 // consumes that set at seed-reveal / export / import entry points so a BLOCK-tier
 // environment cannot exfiltrate key material via those paths.
 //
-// WARN tiers (ROOTED, INTEGRITY_UNAVAILABLE) have `blockedActions: []` — seed
-// access is allowed on WARN (the biometric re-confirm gate from B5 already covers
-// the send path; a separate WARN block on reveal is disproportionate and would
-// deadlock recovery on a degraded device). Callers may still surface the WARN
-// sentence to inform the user.
+// G4 (2026-07-14): WARN tiers (ROOTED, INTEGRITY_UNAVAILABLE) also block
+// seed-reveal / export / import — a detected-rooted or probe-unavailable device
+// must not expose seed material. 'sign' is intentionally NOT blocked at WARN:
+// it is handled by requiresBiometric re-confirm in SendCrypto.jsx B5.
+// EMULATOR (BLOCK tier) still blocks only 'sign' to preserve E2E test infra.
+//
+// I3: `sensitiveGate` is pure — no egress, no wallet-set handle. Safe to call in
+// any session type (real or decoy). The `blockedActions` set is symmetric by
+// construction (degrade() is I3-pure).
 //
 // I3: `sensitiveGate` is pure — no egress, no wallet-set handle. Safe to call in
 // any session type (real or decoy). The `blockedActions` set is symmetric by
@@ -56,22 +60,24 @@ describe('sensitiveGate — core blocking logic', () => {
   });
 });
 
-// ── WARN tiers do not hard-block access ─────────────────────────────────────
+// ── WARN tiers block sensitive key-access paths (G4, 2026-07-14) ────────────
 
-describe('sensitiveGate — WARN conditions pass through', () => {
-  it('ROOTED does not block seed-reveal (blockedActions is empty for WARN)', () => {
+describe('sensitiveGate — WARN conditions block seed-reveal/export/import', () => {
+  it('ROOTED blocks seed-reveal (G4: seed must not be exposed on a rooted device)', () => {
     const artifact = degrade(CONDITION.ROOTED);
-    expect(sensitiveGate(artifact, 'seed-reveal').blocked).toBe(false);
+    expect(sensitiveGate(artifact, 'seed-reveal').blocked).toBe(true);
   });
 
-  it('INTEGRITY_UNAVAILABLE does not block export', () => {
+  it('INTEGRITY_UNAVAILABLE blocks export (I4: fail closed when integrity unknown)', () => {
     const artifact = degrade(CONDITION.INTEGRITY_UNAVAILABLE);
-    expect(sensitiveGate(artifact, 'export').blocked).toBe(false);
+    expect(sensitiveGate(artifact, 'export').blocked).toBe(true);
   });
 
-  it('returns null sentence when not blocked (no sentence to surface)', () => {
+  it('ROOTED — blocked result carries the degrade sentence (not null)', () => {
     const artifact = degrade(CONDITION.ROOTED);
-    expect(sensitiveGate(artifact, 'seed-reveal').sentence).toBeNull();
+    const result = sensitiveGate(artifact, 'seed-reveal');
+    expect(result.sentence).toBe(artifact.sentence);
+    expect(result.sentence).toBeTruthy();
   });
 });
 
