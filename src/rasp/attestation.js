@@ -39,10 +39,14 @@
 //   (see the native plugins), no backend holds authority over whether to sign.
 //
 // ── HONEST LIMITATIONS (must not be overstated) ────────────────────────────
-//   • Android: the Play Integrity JWS is NOT cryptographically signature-verified
-//     on-device — no Google public key is bundled in this build. The verdict's
-//     integrity rests on the Play Services delivery channel, not an on-device RS256
-//     check. A future cycle can bundle Google's key and verify the JWS locally.
+//   • Android: the Play Integrity JWS IS on-device signature-verified since PR
+//     #943 (RS256 x5c chain-walk + Google-issuer root check). Issue #951
+//     (2026-07-14) added a raw R‖S → ASN.1 DER transcoder so the ES256 branch
+//     is algorithmically correct too (before the fix, JCA received raw R‖S and
+//     silently fail-closed on every real ES256 token — inert attested axis).
+//     Residual gap: root-cert pinning is still issuer.contains("Google")
+//     (G2-ROOTCERT-PIN) and NOT device-verified against a real Play Integrity
+//     token yet — treat attestation results as PROVISIONAL until Phase 4 + 5.
 //   • iOS: App Attest requires the com.apple.developer.devicecheck.appattest-environment
 //     entitlement (Apple Developer account + provisioning profile) which is NOT yet
 //     present — so on iOS this leg is code-present but honestly UNAVAILABLE until the
