@@ -205,11 +205,17 @@ describe('[P1] H-1 — unlock() spends an identical KDF PARAM-PROFILE on success
 
     const missProfile = await unlockMemoryProfile('totally-wrong-guess-0000', { expectThrow: true });
 
-    // RED EVIDENCE — surfaced in the failure message. Under the current code:
+    // What this test pins (GREEN, resolver-reuse fix): the sorted memorySize profile is
+    // IDENTICAL across success / duressHit / miss — e.g. all three = [64,192,192,192,192]
+    // for a legacy-param duress vault, because primary success now runs the failure
+    // path's own resolveDeniabilityUnlock (same blobs, same recorded params).
+    // HISTORICAL RED (pre-fix, count-only equalizer) — kept so a regression's failure
+    // output is legible:
     //   success   = [192,192,192,192,192]  (equalizer dummies all at CURRENT params)
     //   duressHit = [64,192,192,192,192]   (real duress slot at LEGACY 64 MiB)
     //   miss      = [64,192,192,192,192]
-    // The 64 MiB entry present in duress/miss but absent from success is the oracle.
+    // Back then the 64 MiB entry present in duress/miss but ABSENT from success was the
+    // opposite-direction oracle. This test now fails if that asymmetry ever returns.
     const observed = {
       success: successProfile.join(','),
       duressHit: duressProfile.join(','),
