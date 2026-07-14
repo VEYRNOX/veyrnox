@@ -530,7 +530,8 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
     [self earlyAntiDump];
     [self earlyDenyAttach];
     // BLOCK-tier: hookedProcess via checkDynamicLibraries dyld scan + tamper via CS_VALID
-    return [self earlyCheckDynamicLibraries] || [self earlyDetectTamper];
+    // + debugger already attached via sysctl P_TRACED (item 15)
+    return [self earlyCheckDynamicLibraries] || [self earlyDetectTamper] || [self earlyCheckDebugger];
 }
 
 // earlyDetectTamper — reads the kernel's code-signing status flags via csops().
@@ -567,6 +568,26 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
             if ([imageName containsString:@"lspd"])      return YES;
             if ([imageName containsString:@"ellekit"])   return YES;
         }
+    } @catch (__unused NSException *e) {}
+    return NO;
+}
+
+// earlyCheckDebugger — pre-bridge sysctl P_TRACED detection (item 15).
+// Runs the same kernel query as the instance -checkDebugger (item 12) but as a
+// class method so AppDelegate can invoke it before the Capacitor bridge is up.
+// Closes the window between app launch and the first checkIntegrity() call —
+// a debugger attached via Xcode "Wait for debugger" or a manual pre-launch LLDB
+// attach would be undetected by the instance method alone.
+// Fail-open (I4): sysctl failure returns NO (not blocked) so the app still
+// launches normally when the syscall is unavailable or denied.
++ (BOOL)earlyCheckDebugger {
+    @try {
+        int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, (int)getpid()};
+        struct kinfo_proc info;
+        memset(&info, 0, sizeof(info));
+        size_t size = sizeof(info);
+        if (sysctl(mib, 4, &info, &size, NULL, 0) != 0) return NO;
+        return (info.kp_proc.p_flag & P_TRACED) != 0;
     } @catch (__unused NSException *e) {}
     return NO;
 }

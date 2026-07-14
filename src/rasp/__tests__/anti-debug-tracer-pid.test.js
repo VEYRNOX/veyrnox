@@ -627,6 +627,87 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 15 — iOS +earlyCheckDebugger: pre-bridge sysctl P_TRACED ───────────
+//
+// checkDebugger() (item 12) added instance-method detection of an already-
+// attached debugger via sysctl(CTL_KERN/KERN_PROC/KERN_PROC_PID) + P_TRACED.
+// It fires only when checkIntegrity() is invoked, which is after the Capacitor
+// bridge is fully up. There is a window between app launch and the first
+// checkIntegrity() call during which a debugger attached via Xcode "Wait for
+// debugger" or a manual LLDB attach (before `jailbreakDetectionViewDidLoad`)
+// would go undetected.
+//
+// +earlyCheckDebugger is a class method that runs the same sysctl logic in the
+// pre-bridge early phase — after +earlyAntiDump and +earlyDenyAttach but
+// before the full bridge startup. This closes the pre-bridge detection window.
+//
+// Pattern: class method (+) using the same sysctl/P_TRACED idiom as item 12,
+// wrapped in @try/@catch (fail-open), returning NO on any error.
+
+describe('Item 15 — iOS +earlyCheckDebugger pre-bridge sysctl P_TRACED', () => {
+  it('+earlyCheckDebugger class method is defined (not the instance variant)', () => {
+    // Must be a class method (+), not the instance method (-) from item 12
+    expect(iosM).toContain('+ (BOOL)earlyCheckDebugger');
+  });
+
+  it('+earlyCheckDebugger calls sysctl with the kernel-proc mib', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 400);
+    expect(body).toContain('sysctl(mib');
+    expect(body).toContain('CTL_KERN');
+    expect(body).toContain('KERN_PROC');
+    expect(body).toContain('KERN_PROC_PID');
+  });
+
+  it('+earlyCheckDebugger checks the P_TRACED flag', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 400);
+    expect(body).toContain('P_TRACED');
+  });
+
+  it('+earlyCheckDebugger wraps in @try/@catch (fail-open — never blocks launch)', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 400);
+    expect(body).toContain('@try');
+    expect(body).toContain('@catch');
+  });
+
+  it('+earlyCheckDebugger returns NO on sysctl failure (fail-open)', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 400);
+    // sysctl returns non-zero on error; we gate on == 0 (or != 0 → return NO)
+    expect(body).toMatch(/!= 0.*return NO|return NO.*!= 0/s);
+  });
+
+  it('+earlyCheck calls earlyCheckDebugger', () => {
+    const earlyStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyStart).toBeGreaterThan(-1);
+    // 500-char window: the return line is long (3 OR'd helpers) so 300 cuts it short
+    const body = iosM.slice(earlyStart, earlyStart + 500);
+    expect(body).toContain('earlyCheckDebugger');
+  });
+
+  it('+earlyCheck ORs earlyCheckDebugger into its return expression', () => {
+    const earlyStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyStart).toBeGreaterThan(-1);
+    // 500-char window covers the full return line with all three OR'd helpers
+    const body = iosM.slice(earlyStart, earlyStart + 500);
+    // The return must combine earlyCheckDynamicLibraries || earlyDetectTamper ||
+    // earlyCheckDebugger (order may vary but all three must appear)
+    expect(body).toContain('earlyCheckDynamicLibraries');
+    expect(body).toContain('earlyDetectTamper');
+    expect(body).toContain('earlyCheckDebugger');
+    const retIdx = body.indexOf('return');
+    expect(retIdx).toBeGreaterThan(-1);
+    const retExpr = body.slice(retIdx, retIdx + 150);
+    expect(retExpr).toContain('earlyCheckDebugger');
+  });
+});
+
 // ── Item 14 — Android checkJdwpDebugger via Debug.isDebuggerConnected() ──────
 //
 // checkTracerPid() (item 1 / always present) detects native ptrace-based
