@@ -76,7 +76,6 @@ export function useRaspArtifact() {
       }
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [probeKey]);
 
   // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
