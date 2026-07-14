@@ -58,6 +58,7 @@ import { resolveMaxPriorityFeePerGas } from "@/lib/WalletConnectProvider";
 import { verifyPasskeyAssertion } from "@/lib/passkey";
 import { verifyBiometric2fa } from "@/lib/biometric";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
@@ -674,9 +675,9 @@ export default function SendCrypto() {
   // walletSet handle. I4: a RASP crash fails closed to the strongest BLOCK.
   //
   // F-09 — NATIVE OS probe. nativeProbeSource() is a Capacitor bridge call (async), so
-  // it cannot run on the synchronous render path. We sample it ONCE at mount behind an
-  // isNativePlatform() gate (RASP-A1: the OS verdict does not change during a session)
-  // and cache it in state. selectPresignProbeSource() then, on native, consumes the OS leg
+  // it cannot run on the synchronous render path. We sample it at mount AND on every
+  // app-foreground event + 60 s heartbeat (G4-A/G4-B: catches Frida injected mid-session
+  // or during backgrounding). selectPresignProbeSource() on native consumes the OS leg
   // ONLY and NEVER falls back to the browser leg's CLEAN — the browser leg reports CLEAN on
   // a native WebView (it cannot see root/jailbreak), so a native fallback to it was
   // fail-OPEN (C-01, internal-audit-2026-07-11, CRITICAL). Until the native leg genuinely
@@ -684,6 +685,30 @@ export default function SendCrypto() {
   // plugin yet), a plugin-absent/throwing verdict, and the not-yet-resolved async window.
   // On web the gate reads browserProbeSource exactly as before.
   const [nativeProbe, setNativeProbe] = useState(/** @type {any} */ (null));
+  const [probeKey, setProbeKey] = useState(0);
+
+  // G4-A: re-probe on foreground. Reset to null immediately so gate stays WARN (I4).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handle = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        setNativeProbe(null);
+        setProbeKey(k => k + 1);
+      }
+    });
+    return () => { handle.then(h => h.remove()); };
+  }, []);
+
+  // G4-B: 60 s heartbeat — catches injection without a background/foreground cycle.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const id = setInterval(() => {
+      setNativeProbe(null);
+      setProbeKey(k => k + 1);
+    }, 60_000);
+    return () => { clearInterval(id); };
+  }, []);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let cancelled = false;
@@ -698,7 +723,7 @@ export default function SendCrypto() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [probeKey]);
 
   // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
   // gated inside attestationProbeSource). SEPARATE effect from the OS-probe effect
