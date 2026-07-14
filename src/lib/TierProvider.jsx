@@ -22,7 +22,8 @@ import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js'
 const TierCtx = createContext(null);
 
 export function TierProvider({ children }) {
-  const [currentTier, setCurrentTier] = useState('free');
+  const FORCED_TIER = import.meta.env.VITE_FORCE_TIER || null;
+  const [currentTier, setCurrentTier] = useState(FORCED_TIER || 'free');
   const [loading, setLoading] = useState(true);
 
   const refreshTier = useCallback(async () => {
@@ -42,6 +43,7 @@ export function TierProvider({ children }) {
     // customer-info listener while a deniability session is active — fail closed
     // to 'free'. (resolveTier() also guards independently as the single egress
     // chokepoint, but we must not even initialize the SDK or open a listener.)
+    if (FORCED_TIER) { setLoading(false); return () => { cancelled = true; }; }
     if (isDeniabilitySessionActive()) {
       setCurrentTier('free');
       setLoading(false);

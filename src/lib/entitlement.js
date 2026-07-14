@@ -10,7 +10,12 @@ import { Capacitor } from '@capacitor/core';
 import { getCustomerInfo, SAFETY_PLUS_ENTITLEMENT } from './purchases';
 import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 
+// DEV override: VITE_FORCE_TIER=safety_plus bypasses RevenueCat for on-device
+// testing of paid features. Dead-code-eliminated in release builds (no env var set).
+const FORCED_TIER = import.meta.env.VITE_FORCE_TIER || null;
+
 export async function resolveTier() {
+  if (FORCED_TIER) return FORCED_TIER;
   // I3 (deniability = ZERO backend calls): a decoy/hidden session must never make
   // a RevenueCat customer-info request. This is the single egress chokepoint for
   // getCustomerInfo — fail closed to 'free' BEFORE any network call so no coerced
