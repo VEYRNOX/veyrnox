@@ -627,6 +627,65 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 14 — Android checkJdwpDebugger via Debug.isDebuggerConnected() ──────
+//
+// checkTracerPid() (item 1 / always present) detects native ptrace-based
+// debuggers (Frida server in ptrace mode, LLDB, GDB). It does NOT detect a
+// JDWP (Java Debug Wire Protocol) debugger — Android Studio / IntelliJ attach
+// via JDWP, which uses a separate channel (ADB port forwarding + DDMS) rather
+// than ptrace. A JDWP session can inspect and patch live Kotlin/Java execution
+// without triggering TracerPid.
+//
+// android.os.Debug.isDebuggerConnected() is the JVM-layer gate: the Dalvik/ART
+// runtime sets an internal flag when a JDWP session is active, and the API
+// reads it without any filesystem access. Weakly spoofable by root hooking the
+// Debug class, but adds a genuine second layer — an attacker must bypass BOTH.
+//
+// Added to detectHook() alongside checkTracerPid; @JvmSynthetic prevents Frida
+// from targeting the method by its readable Kotlin name.
+
+describe('Item 14 — Android checkJdwpDebugger via Debug.isDebuggerConnected()', () => {
+  it('checkJdwpDebugger method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkJdwpDebugger()');
+  });
+
+  it('checkJdwpDebugger calls Debug.isDebuggerConnected()', () => {
+    const start = kt.indexOf('fun checkJdwpDebugger()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('isDebuggerConnected');
+  });
+
+  it('checkJdwpDebugger is annotated @JvmSynthetic', () => {
+    const jvmIdx  = kt.lastIndexOf('@JvmSynthetic', kt.indexOf('fun checkJdwpDebugger()'));
+    const fnIdx   = kt.indexOf('fun checkJdwpDebugger()');
+    // @JvmSynthetic must appear in the 60 chars before the fun keyword
+    expect(fnIdx - jvmIdx).toBeLessThan(60);
+    expect(jvmIdx).toBeGreaterThan(-1);
+  });
+
+  it('checkJdwpDebugger wraps in runCatching (fail-open, must not block launch)', () => {
+    const start = kt.indexOf('fun checkJdwpDebugger()');
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('runCatching');
+  });
+
+  it('detectHook chains checkJdwpDebugger after checkTracerPid', () => {
+    const hookStart    = kt.indexOf('private fun detectHook()');
+    expect(hookStart).toBeGreaterThan(-1);
+    const hookBody     = kt.slice(hookStart, hookStart + 300);
+    const tracerIdx    = hookBody.indexOf('checkTracerPid()');
+    const jdwpIdx      = hookBody.indexOf('checkJdwpDebugger()');
+    expect(tracerIdx).toBeGreaterThan(-1);
+    expect(jdwpIdx).toBeGreaterThan(-1);
+    expect(jdwpIdx).toBeGreaterThan(tracerIdx);
+  });
+
+  it('android.os.Debug is imported', () => {
+    expect(kt).toContain('import android.os.Debug');
+  });
+});
+
 // ── Item 12 — iOS checkDebugger via sysctl P_TRACED ──────────────────────────
 //
 // Android checkTracerPid() reads /proc/self/status and inspects the TracerPid

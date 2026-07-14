@@ -44,6 +44,7 @@ package com.veyrnox.app
 
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Debug
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -265,6 +266,7 @@ class RaspIntegrityPlugin : Plugin() {
             || checkGadgetThreads()
             || checkFridaPipes()
             || checkTracerPid()
+            || checkJdwpDebugger()
     }
 
     // Anti-debug: read /proc/self/status to detect an attached debugger.
@@ -293,6 +295,17 @@ class RaspIntegrityPlugin : Plugin() {
             }
         }.getOrDefault(false)
     }
+
+    // Item 14: JDWP-layer debugger detection — complements checkTracerPid (ptrace).
+    // android.os.Debug.isDebuggerConnected() reads an ART-internal flag that is
+    // set whenever a JDWP session (Android Studio, IntelliJ, adb jdwp) is active.
+    // JDWP uses a separate channel from ptrace so checkTracerPid misses it.
+    // Weakly spoofable via root-hooking the Debug class, but adds a genuine second
+    // layer — an attacker must defeat both checks. Fail-open: runCatching returns
+    // false on any exception so the app still launches if the API is unavailable.
+    @JvmSynthetic
+    private fun checkJdwpDebugger(): Boolean =
+        runCatching { Debug.isDebuggerConnected() }.getOrDefault(false)
 
     @JvmSynthetic
     private fun checkFridaPort(): Boolean {
