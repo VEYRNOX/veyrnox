@@ -132,16 +132,12 @@ describe('iOS RASP — checkFork runs first in detectJailbreak', () => {
 
 // ── 4. Android: checkProcNetUnix gated on API < Q ────────────────────────────
 
-describe('Android RASP — checkProcNetUnix gated on Android 9 and below', () => {
-  it('checkProcNetUnix call is wrapped in a Build.VERSION.SDK_INT < Q check', () => {
-    // Device-verified 2026-07-14: SELinux denies /proc/net/unix reads on Android 10+
-    // (avc: denied { read } proc_net). The check is structurally inert on modern
-    // devices. Gate it to avoid wasted work and false-false confusion in logs.
-    const guard = 'Build.VERSION.SDK_INT < Build.VERSION_CODES.Q';
-    const idx = kt.indexOf(guard);
-    expect(idx).toBeGreaterThan(-1);
-    const line = kt.slice(idx, idx + 100);
-    expect(line).toContain('checkProcNetUnix');
+// ── 4. checkProcNetUnix removed — superseded by checkLocalSocketConnect ───────
+// (The former gate test is replaced by the item 9 absence tests below.)
+
+describe('Android RASP — checkProcNetUnix superseded (absence confirmed in item 9)', () => {
+  it('checkLocalSocketConnect exists as the behavioral replacement', () => {
+    expect(kt).toContain('private fun checkLocalSocketConnect(');
   });
 });
 
@@ -151,8 +147,10 @@ describe('Android RASP — @JvmSynthetic on all private detection methods', () =
   // Every private fun should have @JvmSynthetic directly above it so Frida's
   // Java API cannot address them by their readable name.
   const privateFns = [
-    'detectRoot', 'checkRootBinaries', 'checkMagiskPaths', 'checkProcNetUnix',
-    'checkLocalSocketConnect', 'checkSuFromRuntime', 'checkDangerousProps',
+    // checkProcNetUnix removed (item 9 — superseded by checkLocalSocketConnect)
+    // checkSuFromRuntime removed (item 9 — structurally inert on Android 10+)
+    'detectRoot', 'checkRootBinaries', 'checkMagiskPaths',
+    'checkLocalSocketConnect', 'checkDangerousProps',
     'readSystemPropReflect', 'checkSystemWritable', 'checkBuildTags',
     'detectHook', 'checkTracerPid', 'checkFridaPort', 'checkXposed',
     'checkProcMapsForHook', 'checkGadgetThreads', 'checkFridaPipes',
@@ -607,5 +605,71 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
     // Look at the 500-char window before the function (where the comment lives)
     const window = kt.slice(Math.max(0, tracerPidIdx - 500), tracerPidIdx + 50);
     expect(window).not.toContain('not yet implemented');
+  });
+});
+
+// ── 9. Dead Android checks removed ───────────────────────────────────────────
+//
+// Two checks documented as structurally inert / superseded are removed:
+//
+// checkProcNetUnix() — superseded by checkLocalSocketConnect().
+//   SELinux denies /proc/net/unix reads for untrusted_app on Android 10+
+//   (device-verified 2026-07-14). checkLocalSocketConnect() (behavioral
+//   connect probe) achieves the same detection on ALL API levels without
+//   needing proc_net read permission.
+//
+// checkSuFromRuntime() — structurally inert on Android 10+.
+//   Runtime.exec of shell utilities is SELinux-blocked for untrusted_app
+//   on API 29+ (device-verified 2026-07-14). Adds a 150 ms worst-case
+//   timeout to the RASP hot path for no benefit on modern devices.
+//   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
+//   reflection) is the operative root signal; checkLocalSocketConnect()
+//   covers the behavioral aspect.
+
+describe('Android RASP — Item 9: Dead checks removed', () => {
+  // ── checkProcNetUnix removed ─────────────────────────────────────────────
+
+  it('checkProcNetUnix method is absent — superseded by checkLocalSocketConnect', () => {
+    expect(kt).not.toContain('private fun checkProcNetUnix(');
+  });
+
+  it('checkProcNetUnix is not called anywhere in detectRoot', () => {
+    const rootIdx = kt.indexOf('private fun detectRoot()');
+    expect(rootIdx).toBeGreaterThan(-1);
+    const rootBody = kt.slice(rootIdx, rootIdx + 700);
+    expect(rootBody).not.toContain('checkProcNetUnix');
+  });
+
+  it('Build.VERSION.SDK_INT < Q gate for checkProcNetUnix is absent', () => {
+    // The gate was only needed while checkProcNetUnix existed.
+    // With the method removed, the gate expression is also gone.
+    expect(kt).not.toContain('Build.VERSION_CODES.Q && checkProcNetUnix');
+  });
+
+  // ── checkSuFromRuntime removed ───────────────────────────────────────────
+
+  it('checkSuFromRuntime method is absent — structurally inert on Android 10+', () => {
+    expect(kt).not.toContain('private fun checkSuFromRuntime(');
+  });
+
+  it('checkSuFromRuntime is not called anywhere in detectRoot', () => {
+    const rootIdx = kt.indexOf('private fun detectRoot()');
+    expect(rootIdx).toBeGreaterThan(-1);
+    const rootBody = kt.slice(rootIdx, rootIdx + 700);
+    expect(rootBody).not.toContain('checkSuFromRuntime');
+  });
+
+  // ── surviving root-detection chain still has all operative signals ───────
+
+  it('detectRoot still chains checkDangerousProps (operative root signal)', () => {
+    const rootIdx = kt.indexOf('private fun detectRoot()');
+    const rootBody = kt.slice(rootIdx, rootIdx + 700);
+    expect(rootBody).toContain('checkDangerousProps');
+  });
+
+  it('detectRoot still chains checkLocalSocketConnect (behavioral socket probe)', () => {
+    const rootIdx = kt.indexOf('private fun detectRoot()');
+    const rootBody = kt.slice(rootIdx, rootIdx + 700);
+    expect(rootBody).toContain('checkLocalSocketConnect');
   });
 });
