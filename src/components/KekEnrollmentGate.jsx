@@ -8,41 +8,29 @@
 // device binding. Without this gate the user silently lands in an unprotected wallet.
 //
 // SECURITY:
-//   - The user MUST enter their PIN — enrollKek() derives the C factor from it. We never
-//     call enrollKek() without a real PIN (fail-closed).
-//   - enrollHardwareCredential() prompts the real biometric and GATES on the reported
-//     security tier (ENROLL_ERR.INSECURE_TIER on a software/unknown tier). No fake "ON".
-//   - I3-safe: pure local keystore reads/writes, no egress, no RPC.
+//   - The user MUST enter their PIN — enrollKek() (called via onEnroll prop) derives the
+//     C factor from it. We never trigger enrollment without a real PIN (fail-closed).
+//   - enrollHardwareCredential() (inside onEnroll) prompts the real biometric and GATES
+//     on the reported security tier. No fake "ON".
+//   - I3-safe: no wallet-core imports here. All keystore calls live in
+//     useKekEnrollmentGate (src/lib), which is the allowed R2 ring layer.
 //   - Skip is explicit and honestly labelled with the security tradeoff (no hardware
 //     protection). It is the only escape when the device can't meet the hardware bar.
 //
+// Ring boundary: this component lives in src/components (a forbidden R0/R1 import
+// layer). All wallet-core work is delegated to the useKekEnrollmentGate hook in
+// src/lib, which IS allowed to import from @/wallet-core/keystore.
+//
 // Props:
-//   onComplete: () => void  — called after a successful enrollKek (clears the hold)
-//   onSkip:     () => void  — called when the user explicitly skips (clears the hold)
+//   onEnroll: (pin: string) => Promise<{ ok: boolean, msg?: string, isInsecureTier?: boolean, isWrongPin?: boolean }>
+//   onSkip:   () => void
 
 import { useState } from 'react';
 import { ShieldCheck, ShieldAlert, Loader2, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PinPad from '@/components/security/PinPad';
-import { getKeyStore } from '@/wallet-core/keystore';
-import { KEK_ERR } from '@/wallet-core/keystore/kek.js';
 
-// Machine-code → plain-language copy. We classify on the STABLE code, never on prose.
-const WRONG_PIN_MSG =
-  'That PIN didn’t match. Enter the PIN you use to unlock your wallet.';
-const NO_HARDWARE_MSG =
-  'Couldn’t reach this device’s hardware security. Please try again.';
-const INSECURE_TIER_MSG =
-  'This device doesn’t meet the hardware security requirement. You can continue without hardware protection.';
-const GENERIC_MSG = 'Something went wrong. Please try again.';
-
-// decryptVault throws a code-less Error whose message is a STABLE internal sentinel.
-function isWrongPinVaultError(e) {
-  const msg = e?.message || '';
-  return msg.startsWith('Decryption failed') || msg.startsWith('No wallet');
-}
-
-export default function KekEnrollmentGate({ onComplete, onSkip }) {
+export default function KekEnrollmentGate({ onEnroll, onSkip }) {
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -58,52 +46,20 @@ export default function KekEnrollmentGate({ onComplete, onSkip }) {
     setError('');
     setBusy(true);
     try {
-      const { enrollHardwareCredential, getHardwareFactor } = await import(
-        '@/wallet-core/keystore/hardware.js'
-      );
-      const ks = getKeyStore();
-      // Step 1: mint/confirm the hardware-bound key and GATE on the real tier. A
-      // software/unknown tier throws ENROLL_ERR.INSECURE_TIER before any wrap is written.
-      // Reconcile the double-enroll guard against the REAL vault state (a stale native
-      // alias over a bare restored vault must not block this fresh enroll).
-      const enrolledTier = await enrollHardwareCredential({
-        isVaultWrapped: () => ks.hasVaultKekWrap(),
-      });
-      // Step 2: KEK-wrap the vault using the typed PIN (C) + device factor (H).
-      await ks.enrollKek(pinToUse, {
-        getHardwareFactor,
-        hardwareKekTier: enrolledTier?.securityLevelName ?? null,
-      });
-      setPin('');
-      onComplete?.();
-    } catch (e) {
-      const code = e?.code;
-      if (code === 'KEK_ENROLL_INSECURE_TIER') {
-        // Honest-disable: this device can't do hardware protection. Offer Skip only.
+      const result = await onEnroll(pinToUse);
+      if (result.ok) {
+        setPin('');
+        return; // caller (WalletEntry) clears the gate via dismiss()
+      }
+      if (result.isInsecureTier) {
         setInsecureDevice(true);
-        setError(INSECURE_TIER_MSG);
-      } else if (
-        code === KEK_ERR.UNWRAP_FAILED ||
-        code === KEK_ERR.NO_HARDWARE_FACTOR ||
-        code === 'WRONG_PASSWORD' ||
-        code === 'KEK_NO_HARDWARE_FACTOR' ||
-        isWrongPinVaultError(e)
-      ) {
-        // Wrong PIN / hardware factor mismatch: shake, clear, let the user retry.
+        setError(result.msg);
+      } else if (result.isWrongPin) {
         setPin('');
         setShakeKey((k) => k + 1);
-        setError(code === KEK_ERR.NO_HARDWARE_FACTOR ? NO_HARDWARE_MSG : WRONG_PIN_MSG);
-        // Best-effort cleanup of any partially-created credential so a retry is clean.
-        try {
-          const { clearHardwareCredential } = await import('@/wallet-core/keystore/hardware.js');
-          await clearHardwareCredential();
-        } catch { /* best-effort */ }
+        setError(result.msg);
       } else {
-        setError(GENERIC_MSG);
-        try {
-          const { clearHardwareCredential } = await import('@/wallet-core/keystore/hardware.js');
-          await clearHardwareCredential();
-        } catch { /* best-effort */ }
+        setError(result.msg);
       }
     } finally {
       setBusy(false);
@@ -123,7 +79,7 @@ export default function KekEnrollmentGate({ onComplete, onSkip }) {
           <h1 className="text-xl font-semibold">Protect your wallet with Face ID</h1>
           <p className="text-sm text-muted-foreground">
             Your wallet was restored, but the hardware protection from your previous
-            install didn’t come with it. Turn it back on now so your wallet can only be
+            install didn't come with it. Turn it back on now so your wallet can only be
             opened on <strong>this device</strong> — even if someone gets your backup and
             your PIN.
           </p>
@@ -132,7 +88,7 @@ export default function KekEnrollmentGate({ onComplete, onSkip }) {
         <div className="flex items-start gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
           <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground">
-            This links your wallet to this phone’s secure hardware. Nothing leaves the
+            This links your wallet to this phone's secure hardware. Nothing leaves the
             device — your keys never go anywhere.
           </p>
         </div>
