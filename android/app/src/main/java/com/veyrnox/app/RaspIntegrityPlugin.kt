@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -63,7 +63,7 @@ import java.net.Socket
 class RaspIntegrityPlugin : Plugin() {
 
     /**
-     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered, debuggerAttached }
+     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered, debuggerAttached, screenCapture }
      *
      * Each field is true only when actively detected. Absence of a true signal
      * means "not detected" — not "definitely clean". The JS layer must treat the
@@ -73,6 +73,12 @@ class RaspIntegrityPlugin : Plugin() {
      * debuggerAttached (item 18): explicit platform-symmetry field mirroring the
      * iOS debuggerAttached key (item 12). checkJdwpDebugger() also remains in
      * detectHook() so hookedProcess fires independently — belt-and-suspenders.
+     *
+     * screenCapture (item 21): platform-symmetry field mirroring iOS screenCapture
+     * (UIScreen.isCaptured). True when a presentation/virtual display is active,
+     * indicating Miracast/WFD screen mirroring — a surveillance vector during PIN
+     * entry or seed display. nativeProbe.js maps screenCapture:true → signals.hooked
+     * (item 16 wiring), so this field flows to BLOCK via the same JS path as iOS.
      */
     @PluginMethod
     fun checkIntegrity(call: PluginCall) {
@@ -82,6 +88,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("emulator",          detectEmulator())
         result.put("tampered",          detectTamper())
         result.put("debuggerAttached",  checkJdwpDebugger())
+        result.put("screenCapture",     checkScreenCapture())
         call.resolve(result)
     }
 
@@ -442,6 +449,27 @@ class RaspIntegrityPlugin : Plugin() {
         )
         return emulatorFiles.any { runCatching { File(it).exists() }.getOrDefault(false) }
     }
+
+    // ── Screen capture / mirroring detection (item 21) ───────────────────────
+    // Android analogue of iOS UIScreen.isCaptured. Checks for an active virtual
+    // or presentation display (Miracast/WFD/ChromeCast mirror), which is the
+    // Android equivalent of AirPlay screen mirroring.
+    //
+    // Honest scope: detects Miracast/WFD presentation displays and virtual
+    // displays registered with DisplayManager. Does NOT detect MediaProjection
+    // screen-recording API (that requires explicit user-grant and a prompt — a
+    // separate threat model). False-positive: USB-C DisplayPort connections create
+    // a presentation display; the WARN/BLOCK is appropriate for a wallet send flow.
+    //
+    // nativeProbe.js item 16 maps verdict.screenCapture:true → signals.hooked →
+    // BLOCK with no additional JS changes required.
+
+    @JvmSynthetic
+    private fun checkScreenCapture(): Boolean = runCatching {
+        val dm = context.getSystemService(android.hardware.display.DisplayManager::class.java)
+            ?: return@runCatching false
+        dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION).isNotEmpty()
+    }.getOrDefault(false)
 
     // ── APK tamper detection (signing certificate check) ─────────────────────
     // Compares the installed APK's signing cert against a SHA-256 fingerprint

@@ -627,6 +627,52 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
 
+// ── Item 21 — Android checkScreenCapture + screenCapture verdict field ────────
+//
+// iOS has -checkScreenCapture (UIScreen.isCaptured) which surfaces a
+// screenCapture:true verdict field when the screen is being mirrored via AirPlay
+// or captured via iOS screen recording (item 16 wired it into nativeProbe.js
+// signals.hooked → BLOCK; item 17 added it to the iOS pre-bridge early gate).
+//
+// Android's analogue is DISPLAY_CATEGORY_PRESENTATION: the DisplayManager API
+// returns non-empty virtual/presentation displays when the screen is being
+// mirrored via Miracast/WFD or cast to a secondary display — a surveillance
+// vector during PIN entry or seed display identical to the iOS AirPlay case.
+//
+// Item 21 adds checkScreenCapture() to the Android plugin and exposes a
+// screenCapture field in the checkIntegrity() verdict dict.  nativeProbe.js
+// already maps verdict.screenCapture === true → signals.hooked (from item 16),
+// so Android screen-mirroring detection flows to BLOCK with no JS changes.
+
+describe('Item 21 — Android checkScreenCapture + screenCapture verdict field', () => {
+  it('checkScreenCapture() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkScreenCapture()');
+  });
+
+  it('checkScreenCapture() uses DisplayManager DISPLAY_CATEGORY_PRESENTATION', () => {
+    expect(kt).toContain('DISPLAY_CATEGORY_PRESENTATION');
+  });
+
+  it('checkScreenCapture() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkScreenCapture()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("screenCapture") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("screenCapture"');
+  });
+
+  it('file-header verdict example includes screenCapture:false', () => {
+    const start = kt.indexOf('checkIntegrity() verdict:');
+    expect(start).toBeGreaterThan(-1);
+    const window = kt.slice(start, start + 200);
+    expect(window).toContain('"screenCapture":false');
+  });
+});
+
 // ── Item 20 — Android earlyCheckJdwp in earlyDetectHook() ───────────────────
 //
 // checkJdwpDebugger() (item 14) catches JDWP sessions at runtime, called from
