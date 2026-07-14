@@ -69,31 +69,38 @@
 // the oracle now, mitigated by the 10-attempt wipe rather than by silence.
 //
 // RESIDUAL TIMING VARIANCE WE DO NOT (AND CANNOT FULLY) ELIMINATE — for audit:
-// VULN-17 ACCEPTED RESIDUAL: the primary success path is ~1 KDF faster than any
-// other outcome (wrong / duress / hidden / panic). This is intentional: equalizing
-// would 4× every real unlock with no security gain (the timing only reveals "the
-// primary password was correct" — inferable only by someone who already holds it).
-// The residual does NOT leak deniability-feature count; every NON-primary outcome
-// costs a constant 4 KDFs. An equalizer sleep on the primary-success path closes
-// this gap: PRIMARY_UNLOCK_EQUALIZER_MS (1500 ms) is implemented in WalletProvider.jsx
-// and runs after every primary-path success. See docs/Security.roadmap.md.
-//   - A CORRECT PRIMARY unlock returns after 1 KDF (it never enters this path),
-//     so it is faster than any other outcome. This does NOT leak deniability-
-//     feature presence/count — every NON-primary outcome (wrong / duress / hidden
-//     / panic) is an identical 4-KDF cost — it only reveals "the typed secret was
-//     the primary password", which is learnable only by someone who already holds
-//     it (at which point deniability is moot). Equalizing this too would 4x every
-//     legitimate unlock; we deliberately do not.
+// H-1 (formerly VULN-17 ACCEPTED RESIDUAL, NOW CLOSED STRUCTURALLY): the primary
+// success path used to return several KDFs faster than any other outcome (wrong / duress /
+// hidden / panic each run resolveDeniabilityUnlock, plus the shared unlock + verifier
+// KDFs). The old mitigation was a hand-tuned PRIMARY_UNLOCK_EQUALIZER_MS sleep in
+// WalletProvider.jsx, which (a) only covered ~1.4 of the deficit — leaving the fast path
+// measurably faster (the H-1 oracle) — and (b) was a magic constant that drifted whenever
+// KDF_PARAMS changed. It is REPLACED by spendPrimaryUnlockEqualizerKdfs (below): the
+// primary-success path now runs the SAME resolveDeniabilityUnlock the failure path runs
+// (result discarded), so every outcome costs an identical unlock(1) + resolver(3) +
+// verifier(1) = 5 KDFs. Timing is EQUAL by construction — it no longer reveals even "the
+// primary password was correct". See unlockTimingEqualizer.h1.test.jsx.
+//   - [P1] PARAM-PROFILE (not just count) is now equal too. An earlier count-only
+//     equalizer (3 dummyKdf at the CURRENT KDF_PARAMS) left an INSTALLED-BASE oracle: a
+//     vault whose deniability blob(s) were written under LEGACY params (64 MiB) and not
+//     yet migrated decrypts those real slots CHEAPLY on a miss/duress-hit (decryptVault
+//     uses each blob's OWN recorded params — M3), while the success padding spent the
+//     CURRENT 192 MiB — so success was measurably SLOWER (opposite-direction oracle) for
+//     exactly the users with deniability configured. Running the real resolver on success
+//     spends the same blobs at the same recorded params, so the full memorySize MULTISET
+//     matches across outcomes for fresh, current-param, AND legacy-param vaults. See
+//     unlockTimingLegacyParams.p1.test.jsx.
 //   - NON-KDF work differs slightly per branch (an extra IndexedDB GET, the
 //     AES-GCM tag check, mnemonic derivation on a hit). These are microseconds
 //     against ~100 ms KDFs — below the measurement floor the KDF cost sets — but
 //     are NOT provably zero. A timing-harness measurement under real noise is an
 //     explicit audit item (the SAST pass did code-reading + KDF-cost reasoning,
 //     not a bench).
-//   - The dummy-KDF chaff blob carries the current at-rest KDF params; if those
-//     params change (SAST M3), keep this blob in sync so the dummy cost still
-//     matches a real attempt. The KDF COUNT (what the test asserts) is invariant
-//     regardless.
+//   - The resolver's own dummy-KDF chaff blob (constantPanic/constantDuress pads) carries
+//     the current at-rest KDF params; if those params change (SAST M3), keep this blob in
+//     sync so an ABSENT feature's pad cost still matches a real attempt. The KDF COUNT and
+//     — because success reuses the resolver verbatim — the PARAM PROFILE are invariant
+//     across outcomes regardless.
 //
 // SELF-REVIEW CAVEAT. A self-authored timing fix to self-authored timing code is
 // the precise blind spot the audit must own; see docs/Security.roadmap.md.
@@ -163,6 +170,52 @@ async function constantDuress(password, configured) {
   if (configured) return tryDuressUnlock(password); // 1 KDF (real)
   await dummyKdf(password);                         // 1 KDF (pad)
   return null;
+}
+
+// H-1 PRIMARY-SUCCESS COST EQUALIZER (supersedes the old PRIMARY_UNLOCK_EQUALIZER_MS
+// magic sleep). A CORRECT primary unlock short-circuits BEFORE resolveDeniabilityUnlock,
+// so it would spend FEWER Argon2id KDFs than any failure/duress/hidden outcome (which
+// all run resolveDeniabilityUnlock). The old fix padded that deficit with a wall-clock
+// setTimeout tuned by hand against KDF_PARAMS — a magic number that drifted every time
+// the params changed (the VU-06 / 192-vs-64 MiB regression history) and, worse, only
+// covered ~1.4 of the deficit, leaving the primary-success path measurably FASTER than a
+// miss (the H-1 timing oracle).
+//
+// FIRST STRUCTURAL FIX (count parity): spend 3 throwaway `dummyKdf` calls so the KDF
+// COUNT matches the resolver. That closed the count gap but NOT the [P1] param-profile
+// gap: `dummyKdf` derives via chaffBlob() at the CURRENT KDF_PARAMS (192 MiB), while the
+// real duress/panic/hidden slots decrypt each stored blob at that blob's OWN recorded
+// params (M3 migration — decryptVault uses paramsFromVault). For an installed-base vault
+// whose deniability blob(s) were written under LEGACY params (64 MiB) and not yet
+// migrated, a miss/duress-hit spends a cheap 64 MiB real slot while the success padding
+// spent a 192 MiB dummy — so primary-success was measurably SLOWER, an opposite-direction
+// oracle for exactly the users who have deniability configured. Count equal, wall-clock
+// NOT (see unlockTimingLegacyParams.p1.test.jsx).
+//
+// [P1] STRUCTURAL FIX (param-profile parity): run the SAME resolveDeniabilityUnlock the
+// failure path runs and DISCARD the result. This spends EXACTLY the KDF work the failure
+// path spends for THIS vault — same blobs, same recorded params (legacy 64 MiB or current
+// 192 MiB), same dummies at current params — so the full memorySize MULTISET is identical
+// across every outcome and wall-clock parity holds for fresh, current-param, AND
+// legacy-param vaults. It also stays coupled to the failure path BY CONSTRUCTION (it is
+// literally the same function), so count/profile can never silently drift apart again.
+//
+// SIDE-EFFECT-FREE (deniability-critical). resolveDeniabilityUnlock is a PURE RESOLVER:
+// it only seeds the chaff pool (idempotent, non-destructive), reads existence flags, and
+// attempts decrypts — it NEVER wipes and NEVER mounts a decoy/hidden session. The wipe
+// and the decoy/hidden routing are done by the CALLER (WalletProvider.unlock) based on
+// the RETURN value. Here on the primary-success path we already hold the correct primary
+// secret and we THROW THE RETURN AWAY, so even the degenerate case where `password` also
+// matched a duress/panic/hidden slot cannot cause a wipe or decoy mount — nothing acts on
+// the discarded { panic, duressMnemonic, hiddenMnemonic }. The caller additionally wraps
+// this call in try/catch so a throw here can never fall into its `catch (primaryErr)` and
+// divert a confirmed unlock into the decoy (I4). ACCEPTED COST: this reads the deniability
+// storage (an extra IndexedDB GET / decrypt attempt) on every successful unlock — the
+// price of provable per-vault wall-clock parity.
+export async function spendPrimaryUnlockEqualizerKdfs(password) {
+  // Run the failure path's exact KDF work and discard the result. Same function ⇒ same
+  // KDF count AND same param profile as a miss/duress-hit, by construction.
+  await resolveDeniabilityUnlock(password);
 }
 
 /**
