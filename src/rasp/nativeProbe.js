@@ -107,11 +107,15 @@ export async function nativeProbeSource() {
   // Running inside a VirtualApp/Parallel Space/Island container lets the host
   // intercept binder calls, fake root/tamper signals, and proxy biometrics.
   // Android-only field; absent on iOS verdicts and treated as false by === true.
+  // Item 29: fold suspiciousPackage (Android checkSuspiciousPackages, item 28)
+  // into rooted → WARN. PackageManager detects Magisk Manager, LSPosed, SuperSU
+  // etc. even when Magisk Hide masks file-system paths. Android-only field.
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true
          || verdict.overlayActive === true
          || verdict.developerMode === true
-         || verdict.virtualApp === true,
+         || verdict.virtualApp === true
+         || verdict.suspiciousPackage === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
     // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring

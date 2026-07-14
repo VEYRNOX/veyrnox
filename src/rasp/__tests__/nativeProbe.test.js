@@ -208,6 +208,60 @@ describe('nativeProbeSource — item 13: debuggerAttached → hooked', () => {
   });
 });
 
+// ── Item 29 — suspiciousPackage folded into the rooted (WARN) signal ─────────
+// Android checkSuspiciousPackages() (item 28) returns suspiciousPackage:true
+// when a known root/hook tool package (Magisk Manager, LSPosed, SuperSU, etc.)
+// is detected via PackageManager. This is a WARN-tier signal: the device is
+// intentionally modified but our process is not necessarily compromised.
+// Android-only field; absent on iOS verdicts, treated as false by === true.
+describe('nativeProbeSource — item 29: suspiciousPackage → rooted (WARN)', () => {
+  it('suspiciousPackage:true maps to signals.rooted true', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: false,
+      suspiciousPackage: true,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(true);
+  });
+
+  it('suspiciousPackage:true drives detect() to ROOTED (WARN), not HOOKED or TAMPERED', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({ suspiciousPackage: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ROOTED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
+  });
+
+  it('suspiciousPackage:false alone does not set rooted (no false positive)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false,
+      jailbroken: false,
+      overlayActive: false,
+      developerMode: false,
+      virtualApp: false,
+      suspiciousPackage: false,
+    }));
+    const src = await nativeProbeSource();
+    expect(src.signals.rooted).toBe(false);
+  });
+
+  it('any of rooted/jailbroken/overlayActive/developerMode/virtualApp/suspiciousPackage true is sufficient', async () => {
+    h.isNative = true;
+    for (const field of ['rooted', 'jailbroken', 'overlayActive', 'developerMode', 'virtualApp', 'suspiciousPackage']) {
+      h.checkIntegrity = vi.fn(async () => ({ [field]: true }));
+      const src = await nativeProbeSource();
+      expect(src.signals.rooted).toBe(true);
+    }
+  });
+});
+
 // ── Item 27 — virtualApp folded into the rooted (WARN) signal ────────────────
 // Android checkVirtualApp() (item 26) returns virtualApp:true when
 // applicationInfo.sourceDir is under a known virtual container path
