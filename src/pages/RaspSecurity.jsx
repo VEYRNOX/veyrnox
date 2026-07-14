@@ -68,7 +68,7 @@ const DOT_TONE = {
 };
 
 export default function RaspSecurity() {
-  const [nativeProbe, setNativeProbe] = useState(null);
+  const [nativeProbe, setNativeProbe] = useState(/** @type {any} */ (null));
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
