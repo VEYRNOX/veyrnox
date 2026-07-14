@@ -19,7 +19,6 @@ export const SAFETY_PLUS_ROUTES = [
   '/duress-pin',
   '/stealth-wallets',
   '/panic-wipe',
-  '/risk',
   '/hardware-wallet',
   '/anomaly-detection',
   '/fraud',

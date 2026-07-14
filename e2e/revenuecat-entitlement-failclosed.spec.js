@@ -177,15 +177,15 @@ test.describe('RevenueCat entitlement fail-closed logic (module boundary, no hum
 
         // Paid routes (should be gated) — mirrors the SAFETY PLUS column of
         // https://veyrnox.com/plans (owner decision: full-match the plans page).
-        const paidRoutes = ['/advanced-analytics', '/onchain', '/recurring', '/risk',
+        const paidRoutes = ['/advanced-analytics', '/onchain', '/recurring',
                             '/duress-pin', '/panic-wipe', '/stealth-wallets',
                             '/hardware-wallet', '/fraud', '/anomaly-detection',
                             '/address-checker', '/token-approvals', '/budget',
                             '/spam-filter', '/personal-backup', '/audit-log',
                             '/crypto-signing'];
         // Free routes (marked FREE on the plans page — must never be gated).
-        // NOTE: Portfolio Risk Score (/risk-score) is FREE; the pre-sign Risk
-        // Scoring gate (/risk) is paid — do not conflate the two.
+        // NOTE: Portfolio Risk Score (/risk-score) is FREE. The old leverage-based
+        // /risk page was removed (no leverage/borrow product).
         const freeRoutes = ['/risk-score', '/rasp-security', '/security-dashboard',
                             '/price-charts', '/net-worth', '/pl', '/fee-analytics',
                             '/network-manager', '/address-book', '/nft', '/notifications',

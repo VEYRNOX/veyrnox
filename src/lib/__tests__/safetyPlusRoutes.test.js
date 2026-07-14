@@ -12,7 +12,6 @@ const EXPECTED_GATED = [
   '/duress-pin',
   '/stealth-wallets',
   '/panic-wipe',
-  '/risk',
   '/hardware-wallet',
   '/anomaly-detection',
   '/fraud',
@@ -45,12 +44,10 @@ describe('safetyPlusRoutes', () => {
     expect(isSafetyPlusRoute('/dashboard')).toBe(false);
   });
 
-  // Portfolio Risk Score (/risk-score) is FREE on the plans page — distinct from
-  // the pre-sign Risk Scoring gate (/risk), which is Safety Plus. Guard against
-  // conflating the two.
-  it('Portfolio Risk Score (/risk-score) is FREE; pre-sign Risk Scoring (/risk) is gated', () => {
+  // Portfolio Risk Score (/risk-score) is FREE on the plans page. The old
+  // leverage-based /risk page was removed (no leverage/borrow product).
+  it('Portfolio Risk Score (/risk-score) is FREE', () => {
     expect(isSafetyPlusRoute('/risk-score')).toBe(false);
-    expect(isSafetyPlusRoute('/risk')).toBe(true);
   });
 
   // These features are marked FREE on https://veyrnox.com/plans and must not be
