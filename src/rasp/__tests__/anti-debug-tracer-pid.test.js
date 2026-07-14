@@ -157,7 +157,7 @@ describe('Android RASP — @JvmSynthetic on all private detection methods', () =
     'checkProcMapsForHook', 'checkGadgetThreads', 'checkFridaPipes',
     'detectEmulator', 'checkBuildProps', 'checkEmulatorFiles', 'detectTamper',
     'checkScreenCapture', 'checkOverlay', 'checkDeveloperMode', 'checkVirtualApp',
-    'checkSuspiciousPackages',
+    'checkSuspiciousPackages', 'checkThirdPartyKeyboard',
   ];
 
   for (const fn of privateFns) {
@@ -628,6 +628,51 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Item 30 — Android checkThirdPartyKeyboard + thirdPartyKeyboard verdict ─────
+//
+// A keylogger IME (installed from Play Store or sideloaded, not a system app)
+// can silently capture every keystroke during PIN entry and KEK enrollment.
+// The active IME package is readable via Settings.Secure.DEFAULT_INPUT_METHOD;
+// checking ApplicationInfo.FLAG_SYSTEM tells us whether it is a pre-installed
+// system keyboard (trusted) or a user-installed one (elevated risk).
+//
+// Honest scope: many users use legitimate non-system keyboards (SwiftKey, etc.).
+// WARN tier — the user sees a caution notice; signing is not blocked.
+// JS wiring to signals.rooted is a separate item (31).
+// NOT added to earlyCheck — WARN tier only.
+
+describe('Item 30 — Android checkThirdPartyKeyboard + thirdPartyKeyboard verdict field', () => {
+  it('checkThirdPartyKeyboard() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkThirdPartyKeyboard()');
+  });
+
+  it('checkThirdPartyKeyboard() reads DEFAULT_INPUT_METHOD via Settings.Secure', () => {
+    const start = kt.indexOf('fun checkThirdPartyKeyboard()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 500);
+    expect(body).toContain('DEFAULT_INPUT_METHOD');
+  });
+
+  it('checkThirdPartyKeyboard() checks FLAG_SYSTEM on the IME package', () => {
+    const start = kt.indexOf('fun checkThirdPartyKeyboard()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 650);
+    expect(body).toContain('FLAG_SYSTEM');
+  });
+
+  it('checkThirdPartyKeyboard() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkThirdPartyKeyboard()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 700);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("thirdPartyKeyboard") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("thirdPartyKeyboard"');
+  });
+});
 
 // ── Item 28 — Android checkSuspiciousPackages + suspiciousPackage verdict ──────
 //

@@ -6,7 +6,7 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false}. `rooted:false` is expected
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -109,6 +109,7 @@ class RaspIntegrityPlugin : Plugin() {
         result.put("developerMode",     checkDeveloperMode())
         result.put("virtualApp",        checkVirtualApp())
         result.put("suspiciousPackage", checkSuspiciousPackages())
+        result.put("thirdPartyKeyboard", checkThirdPartyKeyboard())
         call.resolve(result)
     }
 
@@ -537,6 +538,33 @@ class RaspIntegrityPlugin : Plugin() {
         ) != 0 || android.provider.Settings.Global.getInt(
             cr, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
         ) != 0
+    }.getOrDefault(false)
+
+    // ── Third-party keyboard detection (item 30) ─────────────────────────────
+    // A keylogger IME installed from the Play Store (or sideloaded) can silently
+    // capture every keystroke during PIN entry and KEK enrollment. System keyboards
+    // (pre-installed, FLAG_SYSTEM) are trusted; user-installed keyboards are not.
+    //
+    // Settings.Secure.DEFAULT_INPUT_METHOD returns "<package>/<class>" for the
+    // currently active IME. We extract the package, resolve its ApplicationInfo,
+    // and check FLAG_SYSTEM. A missing/blank IME string is treated as false
+    // (fail-open: no IME ≠ suspicious). A getApplicationInfo() exception (package
+    // not found) is also fail-open — any edge case must not hard-block.
+    //
+    // WARN tier. NOT added to earlyCheck. JS wiring is item 31.
+
+    @JvmSynthetic
+    private fun checkThirdPartyKeyboard(): Boolean = runCatching {
+        val activeIme = android.provider.Settings.Secure.getString(
+            context.contentResolver,
+            android.provider.Settings.Secure.DEFAULT_INPUT_METHOD,
+        ) ?: return@runCatching false
+        val imePkg = activeIme.substringBefore('/').trim()
+        if (imePkg.isEmpty()) return@runCatching false
+        val appInfo = runCatching {
+            context.packageManager.getApplicationInfo(imePkg, 0)
+        }.getOrNull() ?: return@runCatching false
+        (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
     }.getOrDefault(false)
 
     // ── Suspicious package detection (item 28) ───────────────────────────────
