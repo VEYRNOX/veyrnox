@@ -626,6 +626,118 @@ Three detection vectors that Magisk Hide cannot mask:
 
 **Device-verified 2026-07-14 on SM-N981B (Magisk v30.7, Android debug build):** verdict `{"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}` — `rooted:true` fired via `checkDangerousProps` (`verifiedbootstate=orange`, unlocked bootloader). `checkProcNetUnix` did NOT fire (Magisk v30.7 uses different socket names than the current marker list). `checkSuFromRuntime` did NOT fire (Magisk Hide covers `su` in PATH for this app). `tampered:true` expected (debug build, `RELEASE_CERT_SHA256` not set, fail-closed I4). Extended path lists cover KernelSU, Apatch, LSPosed, newer Magisk artifacts. `checkXposed` + `checkProcMapsForHook` extended with LSPosed/Zygisk markers. ~~Frida Gadget hostile-device test~~ ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14) — see §2026-07-13/14 G3 Frida Gadget. **INTERNAL — not independently audited.**
 
+## 2026-07-13/14 RASP native-gate parity — PRs #954, #955
+
+Internal AI code-and-artifact review found two fail-open RASP gaps analogous to the
+already-fixed Send-path C-01 (PR #825). Both FIXED same session. BUILT / unit-tested
+only, INTERNAL — NOT device-verified, no on-chain txid.
+
+**PR #954 (H-1, fixes #950) — merged `184e81bb`.** WalletConnect's pre-sign gate
+(`WalletConnectProvider.presignGateOrReject()`) used only `browserProbeSource`, so on a
+real native Capacitor WebView a rooted/hooked/emulated/Play-Integrity-failed device
+signed WC requests with zero RASP friction — the same fail-open class C-01 closed for
+the Send screen but never carried over to WalletConnect. **Fix:** the WC gate now
+composes `selectPresignProbeSource(isNative, nativeSource, browserProbeSource)` +
+`attestationProbeSource` via `composeConditions` with fail-closed timeouts
+(`withFailClosedTimeout(1500ms)`); on native, the OS leg is authoritative and the
+browser CLEAN leg is never trusted; any shape drift or exception → `TIER.BLOCK` (I4).
+4 new tests, 1011/1011 targeted suite green.
+
+**PR #955 (H-2, fixes #951) — merged `11fb990d`.** Play Integrity ES256 JWS signatures
+were never actually verified. PR #943 added "ES256" → "SHA256withECDSA" alg dispatch but
+missed that JWS ES256 signatures are raw R‖S (RFC 7518 §3.4, 64 bytes) while Java's
+`Signature("SHA256withECDSA").verify()` requires DER-encoded `ECDSA-Sig-Value` (RFC
+3279) — every real ES256 token silently returned `false` → `unavailable()` →
+`INTEGRITY_UNAVAILABLE` → WARN, never a genuine PASS/FAIL. The prior 20/20 structural
+pins were source-string greps that never executed a verification. **Fix:** new
+`rawEcdsaSignatureToDer()` + `derEncodeInteger()` in `PlayIntegrityPlugin.kt` applied on
+the ES256 branch; a 64-byte length guard fails closed (I4); RS256 path unchanged.
+Coverage: a JS mirror (`src/rasp/__tests__/helpers/rawToDerEcdsa.js`) with 10 executable
+Vitest cases against real Node EC P-256 keypairs (roundtrip through Node's DER
+verifier), covering high-bit-set r/s, leading-zero stripping, all-zero, and
+length-mismatch edge cases; the Kotlin binding itself is still only source-string-pinned
+(follow-up **#957**, below). Also corrected stale doc comments in `src/rasp/attestation.js`
+and `src/plugins/attestation.js` that had claimed the JWS was "NOT signature-verified
+on-device" — it now is, at least on the JS-mirrored algorithm.
+
+Neither fix is device-verified against a real rooted/hooked device or a real Play
+Integrity token; both are gate-wiring/crypto-correctness fixes proven by code + unit
+test only.
+
+**Open follow-up filed tonight — #957:** add a Kotlin JVM test harness for
+`PlayIntegrityPlugin.verifyJwsSignature`. The ES256 raw→DER transcoder is proven
+algorithmically via the JS mirror + 10 Vitest cases, but the actual Kotlin binding is
+currently pinned only by a source-string grep, not executed. A Gradle JUnit source set +
+`./gradlew test` CI step would close that gap.
+
+## 2026-07-14 SEND H-1 Trezor hw-send consolidation + I3 hotfix — PRs #963, #978
+
+**PR #963 (SEND H-1, fixes #961) — merged `7ccaab4`.** Trezor EVM send now routes
+through the already-audited `hw-send.js` helpers instead of a parallel inline
+implementation. Prior state: `SendCrypto.jsx:960-1010` had reimplemented the Trezor EVM
+flow directly against low-level `trezorSignEvmTx`, silently bypassing three controls
+that already existed in the audited path (`signAndBroadcastEvmTrezor` was a dead
+export): (a) the M-2/#746 `serializeCheckedSignedTx` recovery check
+(`HW_SIGNER_MISMATCH` — catches a malicious/buggy Trezor signing a tx that recovers to a
+different sender), (b) `'pending'`-tag nonce fetch + a `0 ≤ n ≤ 1,000,000` sanity window,
+and (c) `applyEstimatedGasLimit` (the inline path hardcoded 21000/65000, which L2
+rollups reject and which reverts on USDT transfers). **Fix:** extracted a
+`buildUnsignedEvmTxCore({to,value,data})` primitive from `buildUnsignedEvmTx` plus a
+native wrapper; added `signAndBroadcastEvmTrezorToken` for ERC-20; both now share one
+`trezorSignFieldsAndBroadcast` helper gated by the single M-2 recovery check.
+`SendCrypto.jsx` rewired to call the shared helpers; the inline duplicate deleted.
+F-08-TREZOR / L-2 fee clamp stays put (pinned by an existing source-scan test). 8 new
+tests, 2271/2271 targeted suite green. `signAndBroadcastEvmLedger` remained a dead
+export at merge time — tracked in **#962** below. BUILT / unit-tested only, INTERNAL —
+not device-verified against real Trezor hardware.
+
+**PR #978 (SEND H-1 I3 hotfix, fixes #972) — merged `6d2077c7`.** A Codex second-pass
+review of #963 found a P1 I3 regression: moving the Trezor flow into `hw-send.js`
+dropped the old `hw/trezor.js:69 checkDeniability()` gate, which had previously covered
+all three hardware-wallet chains (EVM/BTC/SOL). Under a decoy/hidden/demo session with a
+Trezor connected, the new consolidated helpers would hit both the RPC and the physical
+device with no I3 check — a real egress and coercion-exfil vector, since the Trezor
+holds the REAL hardware seed regardless of which app session is active. Closed across
+four Codex review rounds, five commits:
+- Round 1 (`f7aa2e1`): `assertNotDeniabilitySession()` added to
+  `signAndBroadcastEvmTrezor` / `signAndBroadcastEvmTrezorToken` /
+  `signAndBroadcastEvmLedger`; `applyEstimatedGasLimit` now throws `GAS_ESTIMATE_FAILED`
+  fail-closed instead of leaving an override `undefined` (which crashed downstream on
+  `toHex(undefined)`).
+- Round 2 (`e5b31e7`): the caller (`SendCrypto.jsx`) was firing `provider.getFeeData()`
+  *before* ever reaching the hw-send helper — added an earlier Trezor gate at the top of
+  `sendTx.mutationFn`'s family dispatch, plus a preflight docstring fix.
+- Round 3 (`c018ea0`): the round-1/2 gate checked only the session marker, not the
+  persisted `veyrnox-demo` flag — added the localStorage check to
+  `assertNotDeniabilitySession` (matching the old `deniabilityActive()` verbatim);
+  `DEMO` added to the mutationFn gate; `FeeSelector` render skipped under
+  `useTrezorMode && (isDeniability || DEMO)`.
+- Round 4 (`61f0c81`): `DEMO` from `@/api/demoClient` is a load-time IIFE snapshot — a
+  `veyrnox-demo=1` flag flipped after import wouldn't propagate. Extracted a shared LIVE
+  helper `isDeniabilityOrDemoActive()` in `wallet-core/deniabilitySession.js` (reads both
+  signals fresh on every call, fail-closed on either read exception) and wired it into
+  all three gate sites.
+- Round 4b (`7903403`): kept the `DEMO` check additive to the live helper — `DEMO` also
+  covers `VITE_DEMO_MODE=1` and native-dev, neither of which sets localStorage.
+
+5 new tests (3 I3 gate pins + preflight coverage + 1 I4 belt-and-braces spy on the
+helper). Full evm suite 155/155 green. Codex is a second-model review pass, not the
+outstanding independent third-party audit. BUILT / unit-tested only, INTERNAL — not
+device-verified against real Trezor hardware.
+
+**Open follow-ups filed tonight:**
+- **#962** — SEND / Scanner audit cleanup, M-1..M-4 + L-1..L-3: M-1 outflow-fraction
+  `Number` precision loss; M-2 `Uint8Array` key zeroization for BTC/SOL
+  `withPrivateKey` variants; M-3 signal-registry tie-ordering docstring; M-4 `eth_call`
+  dry-run RPC-trust posture; L-1 preflight timeout comment drift; L-2
+  `signAndBroadcastEvmLedger` dead export; L-3 S8 median even-length BigInt truncation.
+- **#977** — `FeeSelector`'s react-query refetches every 30s with no reactive dependency
+  on the live deniability/demo flag; if the flag flips mid-session in the same window,
+  an already-mounted `FeeSelector` keeps firing RPCs even though the render conditional
+  would have prevented mount in the first place. Preexisting attack surface, not
+  introduced by #972/#978. Fix approach: gate the `queryFn` itself on the live helper,
+  not just the mount condition.
+
 ## 2026-07-12 LiveBalances / deniability (I3) audit — PR #858
 
 INTERNAL audit of live-balance read paths for I3 (zero-egress) compliance. Codex second
