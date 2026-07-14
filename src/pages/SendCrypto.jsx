@@ -2,7 +2,13 @@
 import BackButton from "@/components/BackButton";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
-import { trezorSignEvmTx, trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
+// Issue #961 (SEND H-1): the Trezor EVM branch now goes through the audited
+// hw-send.js helpers (signAndBroadcastEvmTrezor / signAndBroadcastEvmTrezorToken),
+// NOT the raw device wrapper — those helpers apply the M-2/#746 recovery check,
+// the 'pending' block-tag nonce + sanity window, and estimated gas + headroom.
+// BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
+import { trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
+import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -987,10 +993,14 @@ export default function SendCrypto() {
         // EVM native + ERC-20.
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
+          // Fee-clamp still lives here (NOT inside hw-send.js): the merge of
+          // selectedFee with the provider's fee-data fallback is a UI concern,
+          // and the F-08-TREZOR / L-2 caps must apply BEFORE the fee crosses the
+          // wallet-core boundary. We pre-compute the clamped values, then pass
+          // them into the audited helper via a normal { ...Wei } fee object so
+          // the exact clamped numbers are what get signed.
           const provider = getProvider(networkKey);
-          const nonce = await provider.getTransactionCount(trezorEvmAddress);
           const feeData = await provider.getFeeData();
-          const chainInfo = getNetworkInfo(networkKey);
           const fee = selectedFee?.fee || undefined;
           const rawMaxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
           // F-08-TREZOR (I5: RPC untrusted): clamp maxFeePerGas to the same
@@ -1002,39 +1012,41 @@ export default function SendCrypto() {
           const cappedMaxFeePerGas = rawMaxFeePerGas != null && rawMaxFeePerGas > maxFeePerGasCap
             ? maxFeePerGasCap
             : rawMaxFeePerGas;
-          const maxFeePerGas = cappedMaxFeePerGas;
           // L-2 (I5: RPC untrusted): clamp the priority fee against the already-
           // capped maxFeePerGas via the shared pure helper, so a misreporting
           // provider can't pin an implausibly large tip on a hardware signer.
-          const maxPriorityFeePerGas = resolveMaxPriorityFeePerGas(
+          const clampedPriorityFee = resolveMaxPriorityFeePerGas(
             fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n,
             cappedMaxFeePerGas,
           );
-          let signedHex;
+          // Shape the clamped values into the { ...Wei } fee object hw-send.js
+          // expects (evmFeeOverrides). gasLimit is intentionally omitted — the
+          // helper estimates + applies +20% headroom (issue #961: replaces the
+          // old hardcoded 21000n/65000n that broke L2 native + USDT transfers).
+          const clampedFee = (cappedMaxFeePerGas != null)
+            ? {
+                maxFeePerGasWei: cappedMaxFeePerGas.toString(),
+                maxPriorityFeePerGasWei: clampedPriorityFee.toString(),
+              }
+            : undefined;
           if (isErc20) {
-            const { data, contract: contractAddr } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
-            signedHex = await trezorSignEvmTx({
-              chainId: chainInfo.chainId,
-              nonce,
-              to: contractAddr,
-              value: 0n,
-              gasLimit: 65000n,
-              maxFeePerGas,
-              maxPriorityFeePerGas,
-              data,
+            raw = await signAndBroadcastEvmTrezorToken({
+              networkKey,
+              fromAddress: trezorEvmAddress,
+              symbol: selectedAsset.symbol,
+              to: toAddress,
+              amount,
+              fee: clampedFee,
             });
           } else {
-            signedHex = await trezorSignEvmTx({
-              chainId: chainInfo.chainId,
-              nonce,
+            raw = await signAndBroadcastEvmTrezor({
+              networkKey,
+              fromAddress: trezorEvmAddress,
               to: toAddress,
-              value: parseEther(String(amount)),
-              gasLimit: 21000n,
-              maxFeePerGas,
-              maxPriorityFeePerGas,
+              amountEth: amount,
+              fee: clampedFee,
             });
           }
-          raw = await provider.broadcastTransaction(signedHex);
         } else {
           // Map the wallet to its HD derivation index (public address match).
           // The user-selected EIP-1559 fee flows straight into the signing call;

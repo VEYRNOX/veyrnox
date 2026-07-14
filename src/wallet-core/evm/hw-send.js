@@ -1,14 +1,21 @@
 // wallet-core/evm/hw-send.js
 //
-// Hardware-wallet ETH signing for Ledger and Trezor.
+// Hardware-wallet ETH + ERC-20 signing for Ledger and Trezor.
 // BUILT — unverified pending real-device testnet confirmation (no txid yet).
 //
-// The flow mirrors evm/send.js (same preflight + nonce guard) but instead of
-// creating an ethers Wallet from a private key, it:
+// The flow mirrors evm/send.js + evm/token-send.js (same preflight + nonce
+// guard + estimated gas) but instead of creating an ethers Wallet from a
+// private key, it:
 //   Ledger  — serialises an unsigned EIP-1559 tx, calls eth.signTransaction(),
 //             reconstructs the signed payload, and broadcasts via the provider.
 //   Trezor  — calls TrezorConnect.ethereumSignTransaction() with the same tx
 //             fields, reconstructs the signed payload, and broadcasts.
+//
+// Exports (all callers in SendCrypto.jsx go through THESE — no direct
+// trezorSignEvmTx from UI code, issue #961):
+//   - signAndBroadcastEvmLedger        (native ETH via Ledger)
+//   - signAndBroadcastEvmTrezor        (native ETH via Trezor)
+//   - signAndBroadcastEvmTrezorToken   (ERC-20 via Trezor — issue #961 wiring)
 //
 // No private key ever touches this module. I1 preserved.
 
@@ -20,6 +27,7 @@ import { getNetwork } from './networks.js';
 import { evmFeeOverrides } from './fees.js';
 import { verifyLiveChainId, applyEstimatedGasLimit } from './preflight.js';
 import { assertDecimalAmount } from '../amount.js';
+import { buildTokenTransfer } from './token-send.js';
 
 const EVM_PATH = "44'/60'/0'/0/0";
 
@@ -44,18 +52,24 @@ function serializeCheckedSignedTx(txFields, signature, fromAddress) {
 
 /**
  * Build a fully-populated unsigned EIP-1559 tx (type 2), including nonce,
- * chainId, and gas overrides. All preflight checks from evm/send.js apply.
+ * chainId, and gas overrides. Core builder shared by native and ERC-20 paths —
+ * callers pre-resolve `to`/`value`/`data` (native: to=recipient, value=parseEther,
+ * data='0x'; ERC-20: to=contract, value=0n, data=transfer-calldata). All the
+ * preflight checks from evm/send.js apply: chainId verification, gas estimation
+ * with +20% headroom (I5 clamped to MAX_GAS_ESTIMATE), pending-nonce sanity
+ * window (issue #961 SEND H-1: this is why the UI must NOT bypass this helper).
  */
-async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee = null }) {
+async function buildUnsignedEvmTxCore({ networkKey, fromAddress, to, value, data = '0x', fee = null }) {
   if (!isAddress(to)) throw new Error('Invalid recipient address');
   const net = getNetwork(networkKey);
   const provider = getProvider(networkKey);
   await verifyLiveChainId(provider, net.chainId);
-  assertDecimalAmount(amountEth, 18);
 
-  const value = parseEther(String(amountEth));
   const overrides = evmFeeOverrides(fee);
-  await applyEstimatedGasLimit(provider, { from: fromAddress, to, value }, overrides);
+  // Pass `data` too: for an ERC-20 transfer the RPC needs the calldata to
+  // estimate correctly (~45–65k); without it, estimateGas returns 21000 for a
+  // bare call and the signed tx runs out of gas on-chain.
+  await applyEstimatedGasLimit(provider, { from: fromAddress, to, value, data }, overrides);
 
   const pendingNonce = await provider.getTransactionCount(fromAddress, 'pending');
   if (!Number.isInteger(pendingNonce) || pendingNonce < 0 || pendingNonce > 1_000_000) {
@@ -68,9 +82,62 @@ async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee 
     chainId: net.chainId,
     nonce: pendingNonce,
     type: 2,
-    data: '0x',
+    data,
     ...overrides,  // gasLimit, maxFeePerGas, maxPriorityFeePerGas
   });
+}
+
+/** Native ETH wrapper: value = parseEther(amountEth), data = '0x'. */
+async function buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee = null }) {
+  assertDecimalAmount(amountEth, 18);
+  return buildUnsignedEvmTxCore({
+    networkKey,
+    fromAddress,
+    to,
+    value: parseEther(String(amountEth)),
+    data: '0x',
+    fee,
+  });
+}
+
+/**
+ * Sign the built txFields via Trezor and broadcast, with the M-2/#746 recovery
+ * check. Shared by native and ERC-20 Trezor paths so both go through the same
+ * audited HW_SIGNER_MISMATCH gate.
+ */
+async function trezorSignFieldsAndBroadcast(txFields, fromAddress, networkKey) {
+  const net = getNetwork(networkKey);
+  const provider = getProvider(networkKey);
+  const toHex = (n) => '0x' + BigInt(n).toString(16);
+
+  const result = await TrezorConnect.ethereumSignTransaction({
+    path: `m/${EVM_PATH}`,
+    transaction: {
+      to:                   txFields.to,
+      value:                toHex(txFields.value),
+      chainId:              txFields.chainId,
+      nonce:                toHex(txFields.nonce),
+      gasLimit:             toHex(txFields.gasLimit),
+      maxFeePerGas:         toHex(txFields.maxFeePerGas),
+      maxPriorityFeePerGas: toHex(txFields.maxPriorityFeePerGas),
+      data:                 txFields.data,
+    },
+  });
+  if (!result.success) throw new Error((result.payload && 'error' in result.payload ? result.payload.error : null) ?? 'Trezor signing failed');
+
+  const { v, r, s } = result.payload;
+  const signed = serializeCheckedSignedTx(
+    txFields,
+    Signature.from({ v: parseInt(v, 16), r, s }),
+    fromAddress,
+  );
+
+  const txResponse = await provider.broadcastTransaction(signed);
+  return {
+    hash: txResponse.hash,
+    explorerUrl: `${net.explorer}/tx/${txResponse.hash}`,
+    wait: (confirmations = 1) => txResponse.wait(confirmations),
+  };
 }
 
 /**
@@ -109,38 +176,31 @@ export async function signAndBroadcastEvmLedger({ transport, networkKey, fromAdd
  * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
  */
 export async function signAndBroadcastEvmTrezor({ networkKey, fromAddress, to, amountEth, fee = null }) {
-  const net = getNetwork(networkKey);
-  const provider = getProvider(networkKey);
   const txFields = await buildUnsignedEvmTx({ networkKey, fromAddress, to, amountEth, fee });
+  return trezorSignFieldsAndBroadcast(txFields, fromAddress, networkKey);
+}
 
-  const toHex = (n) => '0x' + BigInt(n).toString(16);
-
-  const result = await TrezorConnect.ethereumSignTransaction({
-    path: `m/${EVM_PATH}`,
-    transaction: {
-      to:                   txFields.to,
-      value:                toHex(txFields.value),
-      chainId:              txFields.chainId,
-      nonce:                toHex(txFields.nonce),
-      gasLimit:             toHex(txFields.gasLimit),
-      maxFeePerGas:         toHex(txFields.maxFeePerGas),
-      maxPriorityFeePerGas: toHex(txFields.maxPriorityFeePerGas),
-      data:                 '0x',
-    },
-  });
-  if (!result.success) throw new Error((result.payload && 'error' in result.payload ? result.payload.error : null) ?? 'Trezor signing failed');
-
-  const { v, r, s } = result.payload;
-  const signed = serializeCheckedSignedTx(
-    txFields,
-    Signature.from({ v: parseInt(v, 16), r, s }),
+/**
+ * Sign and broadcast an ERC-20 transfer via Trezor Connect (issue #961 SEND
+ * H-1). Same preflight discipline as the native path: verifyLiveChainId,
+ * applyEstimatedGasLimit (+20% headroom — replaces the UI's old hardcoded
+ * 65000n that reverted USDT/permit-token sends), pending-nonce sanity window
+ * (0..1_000_000 — replaces the UI's block-tag "latest" that collided on
+ * mempool state), and the M-2/#746 HW_SIGNER_MISMATCH recovery check
+ * (fail-closed, I4). All balance/decimal checks live in buildTokenTransfer.
+ *
+ * @returns {Promise<{ hash: string, explorerUrl: string, wait: Function }>}
+ */
+export async function signAndBroadcastEvmTrezorToken({ networkKey, fromAddress, symbol, to, amount, fee = null }) {
+  if (!isAddress(to)) throw new Error('Invalid recipient address');
+  const { data, contract } = buildTokenTransfer({ networkKey, symbol, to, amount });
+  const txFields = await buildUnsignedEvmTxCore({
+    networkKey,
     fromAddress,
-  );
-
-  const txResponse = await provider.broadcastTransaction(signed);
-  return {
-    hash: txResponse.hash,
-    explorerUrl: `${net.explorer}/tx/${txResponse.hash}`,
-    wait: (confirmations = 1) => txResponse.wait(confirmations),
-  };
+    to: contract,     // gas + tx `to` are the token contract
+    value: 0n,        // ERC-20 transfer carries no native value
+    data,
+    fee,
+  });
+  return trezorSignFieldsAndBroadcast(txFields, fromAddress, networkKey);
 }
