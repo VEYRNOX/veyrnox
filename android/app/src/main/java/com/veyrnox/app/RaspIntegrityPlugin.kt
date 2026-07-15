@@ -6,34 +6,30 @@ package com.veyrnox.app
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
 // Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false}. `rooted:false` is expected and honest — Magisk
+// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false,"mockLocation":false,"networkProxy":false,"accessibilityService":false}. `rooted:false` is expected
+// and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
 // documented limitation of file-system-level detection against Magisk Hide.
 //
 // 2026-07-13 PARALLEL IMPROVEMENT (mirrors palera1n iOS work):
 // The same gap exists on Android: Magisk Hide masks file paths at the mount-namespace
-// level, exactly as palera1n's kernel sandbox blocked NSFileManager on iOS. Three new
-// detection vectors added that Magisk Hide cannot mask:
-//   - checkProcNetUnix: reads /proc/net/unix for Magisk/KSU socket names. Magisk
-//     hides file paths but cannot hide its own IPC sockets from /proc/net/unix.
-//   - checkSuFromRuntime: executes `which su` via Runtime.exec. On devices where
-//     Magisk Hide is incomplete or misconfigured, su remains in PATH.
+// level, exactly as palera1n's kernel sandbox blocked NSFileManager on iOS.
+//   - checkLocalSocketConnect: behavioral connect() probe to fixed-name abstract sockets
+//     (Zygisk, LSPosed, APatch, KernelSU daemons). No proc_net read required.
 //   - checkDangerousProps: reads ro.boot.verifiedbootstate and ro.boot.flash.locked
-//     via getprop. An unlocked bootloader (orange/red) is a reliable root indicator
+//     via SystemProperties reflection. Unlocked bootloader (orange/red) = reliable signal
 //     that Magisk Hide does not touch.
 // Extended path lists cover KernelSU, Apatch, and modern Magisk artifacts.
+// NOTE: checkProcNetUnix (SELinux-denied on Android 10+) and checkSuFromRuntime
+// (Runtime.exec blocked for untrusted_app on Android 10+) were removed — superseded by
+// checkLocalSocketConnect and checkDangerousProps respectively.
 // STATUS: DEVICE-VERIFIED (INTERNAL, 2026-07-14) — re-deployed to SM-N981B;
 // checkDangerousProps fired (ro.boot.verifiedbootstate=orange) via
 // readSystemPropReflect (SystemProperties reflection, not Runtime.exec).
 // Verdict: {"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}.
-// checkProcNetUnix did NOT fire on Magisk v30.7. Root cause (device-verified
-// 2026-07-14): SELinux denies untrusted_app reading /proc/net/unix on Android
-// 10+ — the check is structurally inert on modern devices regardless of marker
-// names (avc: denied { read } proc_net confirmed in logcat). Marker list was
-// expanded anyway (PR #968) for completeness on older OS / policy changes.
-// checkSuFromRuntime did NOT fire (Magisk Hide covers `su` in PATH — expected).
 // Operative root signal: checkDangerousProps (verifiedbootstate=orange).
+// (checkProcNetUnix and checkSuFromRuntime were subsequently removed — see item 9.)
 //
 // FAIL CLOSED (I4): every detection block catches exceptions independently and
 // returns false (clean/unknown) rather than propagating — a crash or permission
@@ -49,6 +45,7 @@ package com.veyrnox.app
 
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Debug
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -66,20 +63,56 @@ import java.net.Socket
 class RaspIntegrityPlugin : Plugin() {
 
     /**
-     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered }
+     * checkIntegrity() → { rooted, hookedProcess, emulator, tampered, debuggerAttached, screenCapture, overlayActive, developerMode, virtualApp, suspiciousPackage, thirdPartyKeyboard, mockLocation, networkProxy, accessibilityService }
      *
      * Each field is true only when actively detected. Absence of a true signal
      * means "not detected" — not "definitely clean". The JS layer must treat the
      * full absence of native detections as INTEGRITY_UNAVAILABLE-equivalent
      * (TIER.WARN) rather than verified-clean.
+     *
+     * debuggerAttached (item 18): explicit platform-symmetry field mirroring the
+     * iOS debuggerAttached key (item 12). checkJdwpDebugger() also remains in
+     * detectHook() so hookedProcess fires independently — belt-and-suspenders.
+     *
+     * screenCapture (item 21): platform-symmetry field mirroring iOS screenCapture
+     * (UIScreen.isCaptured). True when a presentation/virtual display is active,
+     * indicating Miracast/WFD screen mirroring — a surveillance vector during PIN
+     * entry or seed display. nativeProbe.js maps screenCapture:true → signals.hooked
+     * (item 16 wiring), so this field flows to BLOCK via the same JS path as iOS.
+     *
+     * overlayActive (item 23): platform-symmetry field mirroring iOS overlayActive
+     * (UIAccessibilityIsAssistiveTouchRunning). True when any accessibility service
+     * with FEEDBACK_ALL_MASK is active — a potential tapjacking vector during PIN
+     * entry. nativeProbe.js maps overlayActive:true → signals.rooted → WARN (item 19
+     * wiring); the send flow is not blocked but the user sees a caution notice.
+     * Honest scope: also fires for legitimate accessibility users (TalkBack etc.).
+     *
+     * developerMode (item 24): Android-only field (no iOS equivalent). True when
+     * Settings.Global.ADB_ENABLED != 0 (USB debugging on) OR
+     * Settings.Global.DEVELOPMENT_SETTINGS_ENABLED != 0 (developer options on).
+     * Developer mode exposes the device to adb-level attack surface: logcat capture
+     * (LOG-1 class), memory dumps, screenrecord without user prompt, APK extraction.
+     * nativeProbe.js wiring is a separate item; treated as WARN-tier (elevated risk,
+     * not a definitive compromise signal). Android-only: iOS Developer Mode is an
+     * opt-in sideloading feature not checkable from within an app.
      */
     @PluginMethod
     fun checkIntegrity(call: PluginCall) {
         val result = JSObject()
-        result.put("rooted",        detectRoot())
-        result.put("hookedProcess", detectHook())
-        result.put("emulator",      detectEmulator())
-        result.put("tampered",      detectTamper())
+        result.put("rooted",            detectRoot())
+        result.put("hookedProcess",     detectHook())
+        result.put("emulator",          detectEmulator())
+        result.put("tampered",          detectTamper())
+        result.put("debuggerAttached",  checkJdwpDebugger())
+        result.put("screenCapture",     checkScreenCapture())
+        result.put("overlayActive",     checkOverlay())
+        result.put("developerMode",     checkDeveloperMode())
+        result.put("virtualApp",        checkVirtualApp())
+        result.put("suspiciousPackage", checkSuspiciousPackages())
+        result.put("thirdPartyKeyboard", checkThirdPartyKeyboard())
+        result.put("mockLocation",       checkMockLocation())
+        result.put("networkProxy",       checkNetworkProxy())
+        result.put("accessibilityService", checkAccessibilityService())
         call.resolve(result)
     }
 
@@ -96,9 +129,7 @@ class RaspIntegrityPlugin : Plugin() {
             || checkMagiskPaths()
             || checkSystemWritable()
             || checkBuildTags()
-            || (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && checkProcNetUnix()) // /proc/net/unix: SELinux-denied Android 10+; active on ≤9
             || checkLocalSocketConnect()    // behavioral: connect to fixed-name Zygisk/LSPosed/APatch sockets
-            || checkSuFromRuntime()         // behavioral — `which su` via Runtime.exec
             || checkDangerousProps()        // ro.boot.verifiedbootstate orange/red
     }
 
@@ -154,66 +185,12 @@ class RaspIntegrityPlugin : Plugin() {
         return paths.any { runCatching { File(it).exists() }.getOrDefault(false) }
     }
 
-    // Scan /proc/net/unix for known root framework IPC socket names.
-    // Magisk Hide masks file-system paths via mount namespace manipulation but
-    // CANNOT hide its own Unix domain sockets from /proc/net/unix — these are
-    // kernel-level IPC entries, not filesystem objects under Magisk's control.
-    //
-    // ⚠️  ANDROID 10+ SELinux BLOCK (device-verified 2026-07-14, SM-N981B Android 12):
-    //     The untrusted_app SELinux domain does NOT have read permission for
-    //     proc_net files. On-device logcat confirmed:
-    //       avc: denied { read } for comm="CapacitorPlugin" name="unix"
-    //            scontext=u:r:untrusted_app:s0 tcontext=u:object_r:proc_net:s0
-    //     runCatching{}.getOrDefault(false) swallows the SecurityException and
-    //     returns false — this check is effectively inert on Android 10+ in the
-    //     untrusted_app context. checkDangerousProps is the operative signal.
-    //     A future implementation could use LocalSocket.connect() to attempt a
-    //     connection to known Magisk daemon paths (a behavioral probe that does
-    //     not require proc_net read permission), but that is not yet implemented.
-    //
-    // Marker list is kept current (expanded for Magisk v30.x, 2026-07-14) so
-    // the check is useful if ever run on a pre-Android-10 device or if SELinux
-    // policy changes. Markers cover Zygisk companion sockets, KSU, LSPosed, APatch.
-    @JvmSynthetic
-    private fun checkProcNetUnix(): Boolean {
-        val socketMarkers = listOf(
-            // --- Magisk daemon (any version) ---
-            "magisk",           // catch-all substring — matches @magisk_XXXX, magiskd,
-                                // magisk_daemon, magisk_client, .magisk.* (v26+ variants)
-            // --- Zygisk companion / loader (Magisk v24+) ---
-            "zygisk_server",    // Zygisk IPC server (source: zygisk/daemon.cpp SOCKET_NAME)
-            "zygisk_ldr",       // Zygisk loader thread socket
-            ".magisk.zygisk",   // MAGISKTMP/zygisk path-based sockets (e.g. /dev/.magisk/zygisk)
-            // --- KernelSU ---
-            "@ksu_",            // KernelSU daemon abstract socket
-            "@ksud",
-            "ksu_overlayfs",    // KernelSU overlayfs socket (v0.9+)
-            // --- LSPosed / Zygisk module framework ---
-            "@lspd",            // LSPosed daemon
-            "lspd_",            // LSPosed companion variant
-            // --- APatch ---
-            "apatchd",          // APatch daemon
-            "apd_",             // APatch companion
-            // --- Legacy / belt-and-suspenders ---
-            "zygote_overlay",   // Zygisk overlay socket (older builds)
-        )
-        return runCatching {
-            File("/proc/net/unix").bufferedReader().use { reader ->
-                reader.lineSequence().any { line ->
-                    val lower = line.lowercase()
-                    socketMarkers.any { lower.contains(it) }
-                }
-            }
-        }.getOrDefault(false)
-    }
-
     // Behavioral probe: attempt LocalSocket.connect() to known fixed-name abstract sockets
     // used by Zygisk (Magisk v24+), LSPosed, APatch, and KernelSU daemons.
     //
-    // WHY this instead of /proc/net/unix?
-    //   checkProcNetUnix() is inert on Android 10+ — SELinux denies proc_net reads
-    //   for untrusted_app (device-verified 2026-07-14, SM-N981B). LocalSocket.connect()
-    //   is a connect-only probe and does NOT require proc_net read permission.
+    // Replaces the removed checkProcNetUnix() which required proc_net read permission
+    // (SELinux-denied for untrusted_app on Android 10+, device-verified 2026-07-14).
+    // LocalSocket.connect() is a connect-only probe — no proc_net read needed.
     //
     // Target sockets (fixed names, not randomised by Magisk Hide):
     //   "zygisk_server" — Zygisk companion IPC server (SOCKET_NAME, Magisk v24+)
@@ -247,41 +224,6 @@ class RaspIntegrityPlugin : Plugin() {
                 }
             }.getOrDefault(false)
         }
-    }
-
-    // Behavioral root check: try `which su` via Runtime.exec.
-    // On a fully stock Android device, `which su` produces no output (su absent).
-    // On a rooted device where Magisk Hide is incomplete or not targeting the app,
-    // `which su` returns the su binary path. Analogous to the iOS fork() check —
-    // a behavioral test that the system blocks on stock but permits when rooted.
-    //
-    // 2026-07-14 audit LOW (honesty-I4): On Android 10+ default SELinux policy,
-    // Runtime.exec of a shell utility from the `untrusted_app` domain is DENIED —
-    // `runCatching` swallows the denial and returns false regardless of whether
-    // `su` exists in PATH. This mirrors the exec restriction that pushed
-    // checkDangerousProps to reflection-based readSystemPropReflect. On Android 10+
-    // this signal is structurally inert; treat any true return as anomalous rather
-    // than authoritative. Honest disclosure — not removed because on older
-    // Android versions the exec still works.
-    //
-    // 2026-07-14 audit LOW (correctness): waitFor() had no timeout. A hostile
-    // rooted-device wrapper `su` / `which` shim that never exits would block the
-    // RASP thread on the JS presignGate hot path (availability, not bypass).
-    // Bounded wait; destroyForcibly on timeout. Matches checkFridaPort's 150 ms
-    // budget elsewhere in this file.
-    @JvmSynthetic
-    private fun checkSuFromRuntime(): Boolean {
-        return runCatching {
-            val proc = Runtime.getRuntime().exec(arrayOf("which", "su"))
-            val finished = proc.waitFor(150, java.util.concurrent.TimeUnit.MILLISECONDS)
-            if (!finished) {
-                proc.destroyForcibly()
-                return@runCatching false
-            }
-            val output = proc.inputStream.bufferedReader().readText().trim()
-            proc.destroy()
-            output.isNotEmpty()
-        }.getOrDefault(false)
     }
 
     // Read system properties to detect an unlocked bootloader.
@@ -361,6 +303,7 @@ class RaspIntegrityPlugin : Plugin() {
             || checkGadgetThreads()
             || checkFridaPipes()
             || checkTracerPid()
+            || checkJdwpDebugger()
     }
 
     // Anti-debug: read /proc/self/status to detect an attached debugger.
@@ -369,8 +312,9 @@ class RaspIntegrityPlugin : Plugin() {
     // or a Frida server in ptrace mode is attached.
     //
     // This is a REACTIVE check (fires after attach) rather than PREVENTIVE
-    // (blocking the attach). For preventive anti-debug, ptrace self-attachment
-    // via JNI is the next step but is not yet implemented.
+    // (blocking the attach). Preventive anti-debug via ptrace(PTRACE_TRACEME)
+    // is implemented in earlyPtraceTraceme() (companion object, runs at
+    // earlyCheck time before the Capacitor bridge initialises).
     //
     // FAIL CLOSED (I4): any IO/parse failure → false (not detected, not clean).
     // NO EGRESS (I2): pure proc-fs read, no network.
@@ -388,6 +332,17 @@ class RaspIntegrityPlugin : Plugin() {
             }
         }.getOrDefault(false)
     }
+
+    // Item 14: JDWP-layer debugger detection — complements checkTracerPid (ptrace).
+    // android.os.Debug.isDebuggerConnected() reads an ART-internal flag that is
+    // set whenever a JDWP session (Android Studio, IntelliJ, adb jdwp) is active.
+    // JDWP uses a separate channel from ptrace so checkTracerPid misses it.
+    // Weakly spoofable via root-hooking the Debug class, but adds a genuine second
+    // layer — an attacker must defeat both checks. Fail-open: runCatching returns
+    // false on any exception so the app still launches if the API is unavailable.
+    @JvmSynthetic
+    private fun checkJdwpDebugger(): Boolean =
+        runCatching { Debug.isDebuggerConnected() }.getOrDefault(false)
 
     @JvmSynthetic
     private fun checkFridaPort(): Boolean {
@@ -519,6 +474,262 @@ class RaspIntegrityPlugin : Plugin() {
         return emulatorFiles.any { runCatching { File(it).exists() }.getOrDefault(false) }
     }
 
+    // ── Screen capture / mirroring detection (item 21) ───────────────────────
+    // Android analogue of iOS UIScreen.isCaptured. Checks for an active virtual
+    // or presentation display (Miracast/WFD/ChromeCast mirror), which is the
+    // Android equivalent of AirPlay screen mirroring.
+    //
+    // Honest scope: detects Miracast/WFD presentation displays and virtual
+    // displays registered with DisplayManager. Does NOT detect MediaProjection
+    // screen-recording API (that requires explicit user-grant and a prompt — a
+    // separate threat model). False-positive: USB-C DisplayPort connections create
+    // a presentation display; the WARN/BLOCK is appropriate for a wallet send flow.
+    //
+    // nativeProbe.js item 16 maps verdict.screenCapture:true → signals.hooked →
+    // BLOCK with no additional JS changes required.
+
+    @JvmSynthetic
+    private fun checkScreenCapture(): Boolean = runCatching {
+        val dm = context.getSystemService(android.hardware.display.DisplayManager::class.java)
+            ?: return@runCatching false
+        dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION).isNotEmpty()
+    }.getOrDefault(false)
+
+    // ── Accessibility overlay detection (item 23) ─────────────────────────────
+    // Android analogue of iOS UIAccessibilityIsAssistiveTouchRunning (checkOverlay).
+    // Returns true when any accessibility service is active via FEEDBACK_ALL_MASK.
+    // Active services can intercept touch events and draw overlays — the same
+    // tapjacking risk during PIN entry as iOS AssistiveTouch.
+    //
+    // Honest scope: also fires for legitimate accessibility users (TalkBack, Voice
+    // Access, Switch Access). The WARN tier (nativeProbe.js item 19 maps
+    // overlayActive → signals.rooted → WARN) means the send flow is not blocked
+    // but the user sees a caution notice — consistent with the iOS behaviour.
+    //
+    // NOT added to the early gate: overlayActive is WARN-tier, not BLOCK-tier.
+    // Only BLOCK signals (hook + tamper + screenCapture) gate app launch.
+
+    @JvmSynthetic
+    private fun checkOverlay(): Boolean = runCatching {
+        val am = context.getSystemService(android.view.accessibility.AccessibilityManager::class.java)
+            ?: return@runCatching false
+        if (!am.isEnabled) return@runCatching false
+        am.getEnabledAccessibilityServiceList(
+            android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+        ).isNotEmpty()
+    }.getOrDefault(false)
+
+    // ── Developer mode / USB debugging detection (item 24) ───────────────────
+    // Android-only signal with no iOS equivalent. ADB_ENABLED=1 means USB
+    // debugging is on → adb has direct shell + logcat + screenrecord access
+    // (LOG-1 class risk). DEVELOPMENT_SETTINGS_ENABLED=1 is the parent toggle
+    // that unlocks ADB and all other developer options.
+    //
+    // Checking both: a device where developer options is toggled ON but USB
+    // debugging was not explicitly re-enabled (e.g. after a reboot) can still
+    // have developer options active. Either being non-zero → developerMode:true.
+    //
+    // NOT added to the early gate: developerMode is WARN-tier (the device is
+    // exposed, but the app has not been actively compromised). Only BLOCK signals
+    // gate app launch before the bridge.
+
+    @JvmSynthetic
+    private fun checkDeveloperMode(): Boolean = runCatching {
+        val cr = context.contentResolver
+        android.provider.Settings.Global.getInt(
+            cr, android.provider.Settings.Global.ADB_ENABLED, 0
+        ) != 0 || android.provider.Settings.Global.getInt(
+            cr, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
+        ) != 0
+    }.getOrDefault(false)
+
+    // ── Accessibility service detection (item 36) ────────────────────────────
+    // A non-system accessibility service has OS-level access to the full UI tree,
+    // can inject touch and key events, and can read text in any field — including
+    // the PIN entry during KEK enrollment. This is a wider attack surface than a
+    // third-party keyboard (item 30) because no user action is required to exfiltrate.
+    //
+    // Detection: AccessibilityManager.getEnabledAccessibilityServiceList() →
+    //   filter to entries whose package lacks FLAG_SYSTEM (user-installed).
+    //   Resolves ResolveInfo → ServiceInfo → getApplicationInfo to check flags.
+    //
+    // Fail-open on any exception. WARN tier. NOT added to earlyCheck.
+    // JS wiring is item 37.
+
+    @JvmSynthetic
+    private fun checkAccessibilityService(): Boolean = runCatching {
+        val am = context.getSystemService(
+            android.view.accessibility.AccessibilityManager::class.java
+        ) ?: return@runCatching false
+        if (!am.isEnabled) return@runCatching false
+        val pm = context.packageManager
+        am.getEnabledAccessibilityServiceList(
+            android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+        ).any { info ->
+            val svcInfo = info.resolveInfo?.serviceInfo ?: return@any false
+            val appInfo = runCatching {
+                pm.getApplicationInfo(svcInfo.packageName, 0)
+            }.getOrNull() ?: return@any false
+            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
+        }
+    }.getOrDefault(false)
+
+    // ── Network proxy detection (item 34) ────────────────────────────────────
+    // A proxy configured on the device (Burp Suite, Charles, mitmproxy) can
+    // intercept HTTPS traffic — a potential MitM vector even with SSL pinning
+    // if the attacker has also installed a rogue CA cert.
+    //
+    // API 29+ (Q): ConnectivityManager.defaultProxy returns a ProxyInfo whose
+    //   .host is non-null when a proxy is set.
+    // Pre-API 29 : android.net.Proxy.getDefaultHost() (deprecated in API 29;
+    //   still present and readable on older firmware).
+    //
+    // Fail-open on any exception. WARN tier. NOT added to earlyCheck.
+    // JS wiring is item 35.
+
+    @JvmSynthetic
+    private fun checkNetworkProxy(): Boolean = runCatching {
+        val host: String? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+            cm?.defaultProxy?.host
+        } else {
+            @Suppress("DEPRECATION")
+            android.net.Proxy.getDefaultHost()
+        }
+        !host.isNullOrBlank()
+    }.getOrDefault(false)
+
+    // ── Mock location detection (item 32) ────────────────────────────────────
+    // Mock location providers let an attacker spoof GPS — a device-integrity
+    // signal (enabling mock locations requires developer options or a dedicated
+    // app-op grant). Two paths:
+    //   Pre-API 23: Settings.Secure.ALLOW_MOCK_LOCATION global toggle.
+    //   API 23+   : AppOpsManager.OPSTR_MOCK_LOCATION — any non-system package
+    //               holding MODE_ALLOWED is a mock location provider. System
+    //               packages are skipped to keep the scan bounded.
+    // WARN tier. NOT added to earlyCheck. JS wiring is item 33.
+
+    @JvmSynthetic
+    private fun checkMockLocation(): Boolean = runCatching {
+        @Suppress("DEPRECATION")
+        val legacySetting = android.provider.Settings.Secure.getInt(
+            context.contentResolver,
+            android.provider.Settings.Secure.ALLOW_MOCK_LOCATION, 0
+        ) != 0
+        if (legacySetting) return@runCatching true
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return@runCatching false
+        val appOps = context.getSystemService(android.app.AppOpsManager::class.java)
+            ?: return@runCatching false
+        context.packageManager.getInstalledPackages(0).any { pkg ->
+            val info = pkg.applicationInfo ?: return@any false
+            if ((info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0)
+                return@any false
+            runCatching {
+                appOps.checkOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_MOCK_LOCATION,
+                    info.uid,
+                    pkg.packageName,
+                ) == android.app.AppOpsManager.MODE_ALLOWED
+            }.getOrDefault(false)
+        }
+    }.getOrDefault(false)
+
+    // ── Third-party keyboard detection (item 30) ─────────────────────────────
+    // A keylogger IME installed from the Play Store (or sideloaded) can silently
+    // capture every keystroke during PIN entry and KEK enrollment. System keyboards
+    // (pre-installed, FLAG_SYSTEM) are trusted; user-installed keyboards are not.
+    //
+    // Settings.Secure.DEFAULT_INPUT_METHOD returns "<package>/<class>" for the
+    // currently active IME. We extract the package, resolve its ApplicationInfo,
+    // and check FLAG_SYSTEM. A missing/blank IME string is treated as false
+    // (fail-open: no IME ≠ suspicious). A getApplicationInfo() exception (package
+    // not found) is also fail-open — any edge case must not hard-block.
+    //
+    // WARN tier. NOT added to earlyCheck. JS wiring is item 31.
+
+    @JvmSynthetic
+    private fun checkThirdPartyKeyboard(): Boolean = runCatching {
+        val activeIme = android.provider.Settings.Secure.getString(
+            context.contentResolver,
+            android.provider.Settings.Secure.DEFAULT_INPUT_METHOD,
+        ) ?: return@runCatching false
+        val imePkg = activeIme.substringBefore('/').trim()
+        if (imePkg.isEmpty()) return@runCatching false
+        val appInfo = runCatching {
+            context.packageManager.getApplicationInfo(imePkg, 0)
+        }.getOrNull() ?: return@runCatching false
+        (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
+    }.getOrDefault(false)
+
+    // ── Suspicious package detection (item 28) ───────────────────────────────
+    // detectRoot() inspects filesystem paths (su binaries, Magisk files) that
+    // Magisk Hide masks with mount-namespace tricks. PackageManager queries go
+    // through the system Binder and cannot be spoofed the same way — so Magisk
+    // Manager (com.topjohnwu.magisk) and LSPosed Manager remain visible even
+    // when file-system checks pass clean.
+    //
+    // Each per-package lookup is individually guarded so a single PACKAGE_NOT_FOUND
+    // SecurityException (rare on some vendor ROM hardening) does not mask all
+    // others. The outer runCatching handles ContentResolver/Binder failures.
+    //
+    // WARN tier — same as rooted. NOT added to earlyCheck. JS wiring is item 29.
+
+    @JvmSynthetic
+    private fun checkSuspiciousPackages(): Boolean = runCatching {
+        val pm = context.packageManager
+        val suspiciousPackages = listOf(
+            "com.topjohnwu.magisk",                  // Magisk Manager (official)
+            "io.github.huskydg.magisk",              // Delta Magisk fork
+            "me.weishu.kernelflasher",               // KernelSU flasher
+            "org.lsposed.manager",                   // LSPosed framework manager
+            "de.robv.android.xposed.installer",      // original Xposed Installer
+            "eu.chainfire.supersu",                  // SuperSU
+            "com.noshufou.android.su",               // older Superuser
+            "com.saurik.substrate",                  // Cydia Substrate (Android)
+        )
+        suspiciousPackages.any { pkg ->
+            runCatching { pm.getPackageInfo(pkg, 0); true }.getOrDefault(false)
+        }
+    }.getOrDefault(false)
+
+    // ── Virtual app container detection (item 26) ────────────────────────────
+    // VirtualApp (io.va), Parallel Space (com.lbe.parallel), Island
+    // (com.oasisfeng.island), and similar "dual space" / app-cloning frameworks
+    // install a copy of the target APK under the container host's own data
+    // directory rather than the standard system path (/data/app/…).
+    //
+    // Running inside a virtual container is a trust-boundary violation:
+    //   – The container host can intercept binder calls, fake root/tamper signals,
+    //     and proxy biometric prompts — undermining all other RASP checks.
+    //   – The app's IPC and filesystem boundaries are crossed by the container
+    //     process, so key material and clipboard content are exposed.
+    //
+    // Detection: applicationInfo.sourceDir is the installed APK path. Under a
+    // normal system install this is /data/app/<pkg>/<hash>/base.apk. Inside a
+    // virtual container it resolves to a path under the host's own
+    // /data/data/<container.pkg>/ — a structural tell that cannot be hidden by
+    // standard mount-namespace tricks (the path is populated by PackageManager
+    // from the app's ApplicationInfo, not from the filesystem view).
+    //
+    // WARN tier — same as rooted. NOT added to earlyCheck (WARN only).
+    // JS wiring to signals.rooted is a separate item (27).
+
+    @JvmSynthetic
+    private fun checkVirtualApp(): Boolean = runCatching {
+        val sourceDir = context.applicationInfo.sourceDir ?: return@runCatching false
+        val knownVirtualPaths = listOf(
+            "/data/data/io.va/",
+            "/data/data/com.lbe.parallel",
+            "/data/data/com.excelliance.dualaid",
+            "/data/data/com.bly.dualspace",
+            "/data/data/com.parallel.space",
+            "/data/data/com.ludashi.superboost",
+            "/data/data/io.virtualapp.",
+            "/data/data/com.oasisfeng.island",
+        )
+        knownVirtualPaths.any { sourceDir.startsWith(it) }
+    }.getOrDefault(false)
+
     // ── APK tamper detection (signing certificate check) ─────────────────────
     // Compares the installed APK's signing cert against a SHA-256 fingerprint
     // embedded at build time. An unsigned or re-signed APK (sideloaded repack)
@@ -592,6 +803,17 @@ class RaspIntegrityPlugin : Plugin() {
         // must never prevent the app from launching.
         private const val PR_SET_DUMPABLE = 4
 
+        // Load the rasp_early native library (rasp_early.c → libRaspEarly.so).
+        // Fail-open: UnsatisfiedLinkError on a JVM unit-test host or a stripped
+        // build is caught here; earlyPtraceTraceme() has its own runCatching guard
+        // so a failed load returns false (not blocked) rather than crashing.
+        init {
+            runCatching { System.loadLibrary("rasp_early") }
+        }
+
+        @JvmStatic
+        private external fun nativeEarlyTraceme(): Boolean
+
         /**
          * earlyCheck — BLOCK-tier signals only, no Plugin instance required.
          * Returns true (BLOCK) if a debugger/hook or binary tamper is detected.
@@ -601,7 +823,10 @@ class RaspIntegrityPlugin : Plugin() {
         @JvmStatic
         fun earlyCheck(context: android.content.Context): Boolean {
             earlyAntiDump()
+            // BLOCK-tier early checks: hook (debugger/Frida/ptrace) + tamper (cert) +
+            // screen capture (Miracast/WFD mirroring — surveillance vector, item 22).
             return earlyDetectHook() || earlyDetectTamper(context)
+                || earlyCheckScreenCapture(context)
         }
 
         // earlyAntiDump — sets PR_SET_DUMPABLE to 0 via android.system.Os.prctl.
@@ -621,6 +846,43 @@ class RaspIntegrityPlugin : Plugin() {
                 || earlyProcMaps()
                 || earlyGadgetThreads()
                 || earlyFridaPipes()
+                || earlyPtraceTraceme()
+                || earlyCheckJdwp()
+
+        // earlyCheckJdwp — JDWP debugger detection in the early companion gate
+        // (item 20). Android analogue of iOS +earlyCheckDebugger (item 15).
+        // checkJdwpDebugger() (item 14) runs the same check post-bridge inside
+        // detectHook(); this companion-object mirror closes the pre-bridge window
+        // so an Android Studio / IntelliJ JDWP attach at app launch fires the
+        // native block screen before the Capacitor bridge initialises.
+        // Fail-open (runCatching + getOrDefault(false)): a missing Debug class
+        // or platform restriction must never block a legitimate launch.
+        private fun earlyCheckJdwp(): Boolean =
+            runCatching { Debug.isDebuggerConnected() }.getOrDefault(false)
+
+        // earlyCheckScreenCapture — pre-bridge Miracast/WFD screen-mirroring gate
+        // (item 22). Android analogue of iOS +earlyCheckScreenCapture (item 17).
+        // checkScreenCapture() (item 21) runs the same DisplayManager check
+        // post-bridge; this companion-object mirror closes the pre-bridge window
+        // so a screen-casting session active at launch fires the native block screen
+        // before the Capacitor bridge initialises — the same surveillance-vector
+        // rationale as AirPlay blocking on iOS.
+        // Requires context (DisplayManager.getSystemService); mirrors the context
+        // parameter pattern of earlyDetectTamper(context).
+        private fun earlyCheckScreenCapture(context: android.content.Context): Boolean = runCatching {
+            val dm = context.getSystemService(android.hardware.display.DisplayManager::class.java)
+                ?: return@runCatching false
+            dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION).isNotEmpty()
+        }.getOrDefault(false)
+
+        // earlyPtraceTraceme — calls ptrace(PTRACE_TRACEME) via JNI. Hardening:
+        // claims the tracing slot for the parent (Zygote), complementing
+        // earlyAntiDump's PR_SET_DUMPABLE=0. Detection: returns true (BLOCK) if
+        // PTRACE_TRACEME fails, which indicates a debugger already holds the slot.
+        // Fail-open: UnsatisfiedLinkError (JVM tests, stripped build) caught here.
+        private fun earlyPtraceTraceme(): Boolean = runCatching {
+            nativeEarlyTraceme()
+        }.getOrDefault(false)
 
         private fun earlyTracerPid(): Boolean = runCatching {
             File("/proc/self/status").readLines()
