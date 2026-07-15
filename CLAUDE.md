@@ -790,6 +790,122 @@ NOT independently audited, no on-chain txid.
 BUILT / unit-tested, INTERNAL — not device-verified, no on-chain txid. See
 `docs/qa/findings/livebalances-audit-2026-07-12.md` and `docs/Feature-Status.md`.
 
+## 2026-07-15 RASP audit-fix cycle — PRs #1009, #1010, #1012, #1013, #1014
+
+An internal multi-tool RASP audit ran 2026-07-14/15: three parallel reviewers (Claude
+honest-reviewer, Claude security-reviewer, GPT-5 Codex second-model pass) fed off a
+shared recon map, ranked findings P1/P2/P3, and adversarially cross-checked each other's
+list. **INTERNAL — explicitly NOT the outstanding independent third-party audit.** All
+five PRs below are BUILT / unit-tested only — NOT device-verified, no on-chain txid.
+
+**PR #1009 (P1-1, fixes the codex-only finding) — merged `02f3b277`.** Play Integrity
+verdicts were never nonce-bound at parse time — a replayed or substituted verdict blob
+could pass. New pure-JVM `PlayIntegrityNonceVerifier` (extracted for testability) runs
+after JWS signature verification and before verdict extraction, comparing the request
+nonce with `MessageDigest.isEqual` (constant-time). 12 executable JVM tests, plus a
+follow-up Gradle dependency fix (`org.json` as `testImplementation`). This was the only
+P1 that neither Claude reviewer flagged — caught by the Codex second-model pass alone,
+illustrating the value of the three-reviewer spread.
+
+**PR #1010 (P1-2 + P2-3 + P2-6) — merged `1a919711`.** Three JS-layer fail-closed fixes
+in one batch:
+- `sensitiveGate.js` previously returned `{blocked:false}` on a null artifact (fail-OPEN
+  on a missing probe); now fails CLOSED — `{blocked:true, sentence:"We couldn't confirm
+  this device's integrity just now — this action is turned off."}`. An impact check
+  confirmed all 5 production consumers call `useRaspArtifact()`, none of which ever
+  passed null, so this closes a latent gap rather than fixing a live regression.
+- `attestation.js`'s I3 deniability guard now calls `isDeniabilityOrDemoActive()` (the
+  LIVE helper added by PR #978) instead of the session-marker-only check — covers BOTH
+  the session marker AND the persisted `veyrnox-demo=1` flag, matching
+  `hw/trezor.js:deniabilityActive()` verbatim.
+- Shape validation added at three sites — `detect()`, the `nativeProbe.js` adapter, and
+  `detectAttestation()` — so a partial/mistyped verdict (missing or wrong-typed fields)
+  now fails closed to `INTEGRITY_UNAVAILABLE` instead of silently passing through.
+  Defense-in-depth against a compromised bridge — the same architectural residual class
+  P1-1 (above) sits in.
+- 21 new tests; 7 existing test files updated to full-shape verdicts.
+
+**PR #1012 (P2-1 + P2-4 + P2-7) — merged `422ddddc`.** SendCrypto RASP refactor:
+- New standalone `getFreshRaspArtifact()` — awaits fresh probes under a 1500ms
+  fail-closed timeout, composes + degrades, and returns `tier: TIER.BLOCK` on timeout or
+  throw. Mirrors WalletConnect's `presignGateOrReject` architecture (PR #954).
+- `SendCrypto.jsx`'s `sendTx.mutationFn` now `await`s `getFreshRaspArtifact()` at sign
+  time instead of using a RASP tier that could be up to 60s stale.
+- New `{ deferAttestation }` option on `useRaspArtifact` — SendCrypto passes
+  `{ deferAttestation: step !== 'verify' }` so the attestation network round-trip fires
+  only on explicit sign intent, not on Send page mount.
+- `useRaspArtifact` now invalidates BOTH `nativeProbe` and `attestationResult` on the G4-A
+  foreground event and the G4-B 60s heartbeat — attestation was previously once-per-mount
+  only (a freshness gap).
+- SendCrypto's inline probe-sampling duplicate deleted (140 lines). Zero behaviour change
+  for the 8 other `useRaspArtifact` consumers (default `deferAttestation=false`).
+- 20 new tests + 9 delegation-pin updates; full targeted suite 2512/2512 green.
+
+**PR #1013 (P2-5 + P2-8) — merged `855f26e8`.** iOS App Attest honesty rescoping + RASP
+dashboard freshness:
+- `AppAttestPlugin.m`'s header and subsequent-runs comment now honestly state that a
+  successful `generateAssertion` proves ONLY "this app install still holds its
+  SE-enrolled key" — NOT "device integrity confirmed." The SE responds even on a
+  jailbroken device; genuine integrity confirmation requires server-side verification,
+  which would conflict with I5. The compose lattice already handled this correctly
+  (jailbreak surfaces as TAMPERED/HOOKED and outranks any CLEAN from AppAttest) — this
+  fix is a documentation-honesty correction, not a compose-logic change.
+- `RaspSecurity.jsx` (the RASP Security dashboard page) replaced its inline
+  `useState`/`useEffect` sampling with `useRaspArtifact()` — the dashboard now re-probes
+  OS + attestation on the same G4-A/G4-B cadence as the Send gate (post-PR #1012), and
+  correctly composes the attestation axis instead of rendering only the OS-probe result.
+- `useRaspArtifact`'s return value extended with `condition` (additive superset — no
+  change for existing consumers).
+- Follow-up shape fix (`8421240`) added `condition` to the `BYPASS_RASP` early return so
+  TypeScript's union inference resolves correctly.
+
+**PR #1014 (P2-9 + P2-10 + five P3 items) — merged `8ff8fd18`.** Hardening + cleanup:
+- P2-9: `useRaspArtifact`'s bypass early-return moved BELOW the `useState`/`useEffect`
+  calls — fixes a rules-of-hooks violation (hooks are now called unconditionally;
+  harmless no-op on web).
+- P2-10: new CI script `scripts/check-cert-pin-manager-safety.mjs`, wired into the
+  `package.json` `pretest` chain and the `verify` job in `.github/workflows/ci.yml` —
+  fails CI if `CertPinManager` is referenced from an active OkHttp construction path
+  while `PINNED_HOSTS` still contains a `PLACEHOLDER_` value. Guards against a future
+  "wire it blind" regression.
+- P3-1: deleted the dead C-01-superseded helper `src/rasp/resolveProbeSource.js` and its
+  export from `src/rasp/index.js`, plus the legacy tests that pinned it.
+- P3-2: corrected doc-lag in `useRaspArtifact.js` and `index.js` — JWS RS256/ES256 IS
+  now on-device-code-verified (PRs #943 RS256, #955 ES256 raw→DER, #1009 nonce binding);
+  the tracked residual is G2-ROOTCERT-PIN (the weak issuer-string heuristic), not JWS
+  verification itself.
+- P3-3: rewrote the `RaspIntegrityPlugin.m` header to reflect the 2026-07-13/14 palera1n
+  and Frida device sessions, preserving the still-honest gaps (syslog-unavailable
+  ambiguity, `tampered:false` parity gap vs. Android).
+- P3-4: added an OEM false-positive note to `checkDangerousProps` —
+  `ro.boot.secureboot=="0"` can fire on older MediaTek / non-Google ROMs even when not
+  rooted.
+- P3-5: refreshed the `useRaspArtifact` consumer-list docstring.
+
+**Bonus, same day, not part of this audit-fix cycle — PR #1011 (`a383942`):**
+`fix(deniability): gate FeeSelector queryFn on live I3 check` — closes follow-up issue
+#977 (filed by the 2026-07-14 SEND H-1 session, see above). Adjacent, not part of the
+RASP audit cycle proper.
+
+**P2-2 — accepted as documented residual (not fixed).** WalletConnect signing timing
+side-channel: a real session awaits attestation (up to a 1500ms round trip), a decoy
+session skips it — an observable UI-latency delta a physically-present in-room coercer
+could detect across multiple sessions. **Decision: accepted as a documented residual**,
+consistent with the codebase's existing I4 honest-scope discipline for limitations that
+would only be closeable by an architectural change that conflicts with another
+invariant — padding the real path introduces its own observable-code-path side channel
+and degrades UX for real users. Sits alongside G2-ROOTCERT-PIN, the iOS App Attest
+entitlement gap, the iOS `detectTamper` cert-fingerprint parity gap, and the Android
+`checkProcNetUnix` SELinux-inertness gap on the "documented open residuals" shelf (see
+`docs/Feature-Status.md` § Open / residual items). **Revisit trigger:** if the codebase
+ever adds server-side attestation verification (which would introduce timing consistency
+by construction), or a future audit surfaces a scenario where this side channel is
+exploited in the wild.
+
+All five PRs: BUILT / unit-tested only, INTERNAL — not device-verified, no on-chain
+txid. Codex is a second-model reviewer, tier-equivalent to an internal AI review pass,
+not the outstanding independent third-party audit.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
