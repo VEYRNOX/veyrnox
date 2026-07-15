@@ -42,9 +42,10 @@ describe('selectPresignProbeSource — C-01 platform-aware, fail-closed', () => 
   });
 
   it('native + ROOTED native probe drives the tier to WARN (native leg consumed)', () => {
+    // P2-6a (audit batch, 2026-07-15): detect() now requires all four boolean fields.
     const chosen = selectPresignProbeSource(
       true,
-      { available: true, signals: { rooted: true } },
+      { available: true, signals: { rooted: true, hooked: false, emulator: false, tampered: false } },
       CLEAN_BROWSER_ON_NATIVE,
     );
     expect(tierOf(chosen)).toBe(TIER.WARN);
@@ -53,7 +54,7 @@ describe('selectPresignProbeSource — C-01 platform-aware, fail-closed', () => 
   it('native + HOOKED native probe BLOCKS the gate (native leg consumed)', () => {
     const chosen = selectPresignProbeSource(
       true,
-      { available: true, signals: { hooked: true } },
+      { available: true, signals: { rooted: false, hooked: true, emulator: false, tampered: false } },
       CLEAN_BROWSER_ON_NATIVE,
     );
     expect(tierOf(chosen)).toBe(TIER.BLOCK);
@@ -81,7 +82,8 @@ describe('selectPresignProbeSource — C-01 platform-aware, fail-closed', () => 
   });
 
   it('web + webdriver-hooked browser → BLOCK (web behaviour unchanged)', () => {
-    const hookedBrowser = { available: true, signals: { hooked: true } };
+    // P2-6a: full-shape signals required.
+    const hookedBrowser = { available: true, signals: { rooted: false, hooked: true, emulator: false, tampered: false } };
     expect(tierOf(selectPresignProbeSource(false, null, hookedBrowser))).toBe(TIER.BLOCK);
   });
 });

@@ -48,19 +48,17 @@ describe('G2 wiring — useRaspArtifact.js composes the attestation leg', () => 
 });
 
 describe('G2 wiring — SendCrypto.jsx composes the attestation leg', () => {
-  it('imports/uses attestationProbeSource', () => {
-    expect(sendCryptoSrc).toContain('attestationProbeSource');
+  // P2-7 (audit 2026-07-15): SendCrypto no longer duplicates the OS/attestation
+  // probe-sampling effects inline — it now delegates to useRaspArtifact() (which
+  // pins the same attestation composition above) and, on the sign hot-path,
+  // awaits getFreshRaspArtifact() (which pins it in src/rasp/getFreshRaspArtifact.js).
+  // The attestation leg is therefore still composed for the Send flow, but via
+  // shared code rather than an inline duplicate.
+  it('routes RASP through useRaspArtifact (the hook that composes the attestation leg)', () => {
+    expect(sendCryptoSrc).toContain('useRaspArtifact');
   });
 
-  it('calls detectAttestation(', () => {
-    expect(sendCryptoSrc).toContain('detectAttestation(');
-  });
-
-  it('calls composeConditions(', () => {
-    expect(sendCryptoSrc).toContain('composeConditions(');
-  });
-
-  it('calls attestationProbeSource()', () => {
-    expect(sendCryptoSrc).toContain('attestationProbeSource()');
+  it('awaits getFreshRaspArtifact on the sign hot-path (composes fresh attestation at sign)', () => {
+    expect(sendCryptoSrc).toContain('getFreshRaspArtifact');
   });
 });

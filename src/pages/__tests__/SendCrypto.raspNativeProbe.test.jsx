@@ -33,8 +33,15 @@ const src = readFileSync(join(dir, '../SendCrypto.jsx'), 'utf8');
 // pre-sign gate (its browser fallback is fail-open on native; see C-01).
 describe('resolveProbeSource — legacy native/browser chooser (superseded for the gate)', () => {
   it('a rooted native probe drives the RASP tier to WARN', () => {
-    const nativeSource = { available: true, signals: { rooted: true } };
-    const browserSource = { available: true, signals: {} }; // browser sees nothing
+    // P2-6a (audit batch, 2026-07-15): detect() now requires all four boolean fields.
+    const nativeSource = {
+      available: true,
+      signals: { rooted: true, hooked: false, emulator: false, tampered: false },
+    };
+    const browserSource = {
+      available: true,
+      signals: { rooted: false, hooked: false, emulator: false, tampered: false },
+    };
     const chosen = resolveProbeSource(nativeSource, browserSource);
     expect(chosen).toBe(nativeSource);
     expect(degrade(detect(chosen)).tier).toBe(TIER.WARN);
@@ -42,8 +49,11 @@ describe('resolveProbeSource — legacy native/browser chooser (superseded for t
 
   it('an unavailable native probe falls back to the browser source (never fabricated clean)', () => {
     const nativeSource = { available: false };
-    // The browser leg still catches a hooked/automation runtime → BLOCK.
-    const browserSource = { available: true, signals: { hooked: true } };
+    // The browser leg still catches a hooked/automation runtime → BLOCK. Full-shape.
+    const browserSource = {
+      available: true,
+      signals: { rooted: false, hooked: true, emulator: false, tampered: false },
+    };
     const chosen = resolveProbeSource(nativeSource, browserSource);
     expect(chosen).toBe(browserSource);
     expect(degrade(detect(chosen)).tier).toBe(TIER.BLOCK);
@@ -60,32 +70,30 @@ describe('resolveProbeSource — legacy native/browser chooser (superseded for t
 });
 
 describe('SendCrypto.jsx — the native RASP probe is wired fail-closed (F-09 + C-01)', () => {
-  it('imports nativeProbeSource and selectPresignProbeSource from @/rasp', () => {
-    expect(src).toMatch(/nativeProbeSource/);
-    expect(src).toMatch(/selectPresignProbeSource/);
+  // P2-7 (audit 2026-07-15): SendCrypto no longer duplicates the native probe
+  // wiring inline. It now delegates render-time RASP to useRaspArtifact() (which
+  // owns the mount/foreground/heartbeat sampling + selectPresignProbeSource +
+  // fail-closed try/catch) and, on the sign hot-path, awaits getFreshRaspArtifact()
+  // (which composes fresh OS + attestation with the 1500 ms fail-closed timeout).
+  // Both delegates pin the same "native leg only on native, never falls back to
+  // browser CLEAN" invariant (C-01). The old inline pins have been replaced
+  // with the delegation pins below; the invariant they guarded is now guarded
+  // by useRaspArtifact and getFreshRaspArtifact's own tests.
+  it('routes render-time RASP through useRaspArtifact (hook owns fail-closed native wiring)', () => {
+    expect(src).toMatch(/useRaspArtifact\s*\(/);
   });
 
-  it('samples nativeProbeSource() inside a Capacitor.isNativePlatform()-gated useEffect', () => {
-    // The native OS probe must not run on web, and must be sampled (not called on
-    // every render). Pin the mount-effect wiring by source.
-    expect(src).toMatch(/Capacitor\.isNativePlatform\(\)/);
-    expect(src).toMatch(/nativeProbeSource\(\)/);
+  it('awaits getFreshRaspArtifact on the sign hot-path (P2-1 fresh-at-sign)', () => {
+    expect(src).toMatch(/await\s+getFreshRaspArtifact\s*\(\s*\)/);
   });
 
-  it('wraps the native probe sampling in a try/catch (I4: a throw falls back to browser)', () => {
-    // The effect body must catch — a native-bridge throw must degrade to the browser
-    // source, never leave a stale clean signal. We assert the effect keeps the state
-    // null/browser on failure by pinning a catch near the nativeProbeSource call.
-    const callIdx = src.indexOf('await nativeProbeSource()');
-    expect(callIdx).toBeGreaterThan(-1);
-    const effectRegion = src.slice(Math.max(0, callIdx - 400), callIdx + 400);
-    expect(effectRegion).toMatch(/catch/);
+  it('does NOT reintroduce inline nativeProbeSource() sampling (dedupe)', () => {
+    // The inline duplicate was the RASP-A1 / C-01 chokepoint pre-refactor. If
+    // it comes back, the hook and inline diverge again — reject.
+    expect(src).not.toMatch(/await\s+nativeProbeSource\s*\(\s*\)/);
   });
 
-  it('passes the platform-aware chosen source into detect(), not raw browserProbeSource and not the fail-open resolveProbeSource', () => {
-    // The live detect() call must consume selectPresignProbeSource(isNative, native, browser)
-    // — which fails closed on native — NOT resolveProbeSource (fail-open browser fallback).
-    expect(src).toMatch(/detect\(\s*selectPresignProbeSource\(\s*Capacitor\.isNativePlatform\(\)/);
+  it('does NOT call the fail-open legacy resolveProbeSource for detect()', () => {
     expect(src).not.toMatch(/detect\(\s*resolveProbeSource\(/);
   });
 });
