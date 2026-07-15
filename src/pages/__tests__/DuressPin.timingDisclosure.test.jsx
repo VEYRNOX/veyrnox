@@ -10,8 +10,16 @@
 // disclosure on that state would create exactly the oracle the page avoids
 // elsewhere (see the always-rendered Removal card for the same pattern).
 //
-// We assert STRUCTURE (testid + presence) and load-bearing honesty words
-// (network monitoring / not protection against / Hardware KEK), not full prose.
+// We assert STRUCTURE (testid + presence) and the load-bearing honesty words
+// actually carried by the (humanized, PR #833) copy: the timing tell is real
+// ("real PIN unlocks faster" / "network" / "tell them apart") and its scope is
+// honest ("someone in the room, not someone remote"). We do NOT assert a
+// Hardware-KEK/Hardware-Protection recommendation here: PR #833 deliberately
+// dropped that line, and re-adding it would overclaim — the duress *decoy*
+// slot is not hardware-backed yet (src/wallet-core/duress.js:54-56) and a
+// hardware KEK does not fix this timing residual (D-02, accepted). Keep this
+// comment in sync with the assertions below; it must not claim a guard the
+// test does not enforce.
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
