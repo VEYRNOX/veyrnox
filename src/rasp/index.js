@@ -55,6 +55,7 @@ export { resolveProbeSource } from './resolveProbeSource.js';
 export { selectPresignProbeSource } from './selectPresignProbeSource.js';
 export { sensitiveGate } from './sensitiveGate.js';
 export { useRaspArtifact } from './useRaspArtifact.js';
+export { getFreshRaspArtifact, FRESH_PROBE_TIMEOUT_MS } from './getFreshRaspArtifact.js';
 export {
   ATTESTATION_ENABLED,
   attestationProbeSource,
