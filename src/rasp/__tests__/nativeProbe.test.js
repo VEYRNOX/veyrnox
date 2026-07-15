@@ -70,11 +70,13 @@ describe('nativeProbeSource — web / non-native', () => {
 describe('nativeProbeSource — native', () => {
   it('returns available:true with the four OS signals when the plugin runs', async () => {
     h.isNative = true;
+    // P2-6b (audit batch, 2026-07-15): full-shape verdict required.
     h.checkIntegrity = vi.fn(async () => ({
       rooted: false,
       jailbroken: false,
       hookedProcess: false,
       emulator: false,
+      tampered: false,
     }));
     const src = await nativeProbeSource();
     expect(src.available).toBe(true);
@@ -88,11 +90,14 @@ describe('nativeProbeSource — native', () => {
 
   it('maps rooted OR jailbroken to the rooted signal; hookedProcess to hooked', async () => {
     h.isNative = true;
+    // P2-6b (audit batch, 2026-07-15): full-shape verdict required. This verdict
+    // includes `tampered:false` — the honest Android/iOS producers always emit it.
     h.checkIntegrity = vi.fn(async () => ({
       rooted: false,
       jailbroken: true,
       hookedProcess: true,
       emulator: false,
+      tampered: false,
     }));
     const src = await nativeProbeSource();
     expect(src.signals.rooted).toBe(true);
@@ -101,7 +106,10 @@ describe('nativeProbeSource — native', () => {
 
   it('a hooked native verdict drives detect() to HOOKED', async () => {
     h.isNative = true;
-    h.checkIntegrity = vi.fn(async () => ({ hookedProcess: true }));
+    // P2-6b: full-shape verdict required.
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: false, hookedProcess: true, emulator: false, tampered: false,
+    }));
     const src = await nativeProbeSource();
     expect(detect(src)).toBe(CONDITION.HOOKED);
   });
@@ -109,7 +117,7 @@ describe('nativeProbeSource — native', () => {
   it('a clean native verdict drives detect() to CLEAN', async () => {
     h.isNative = true;
     h.checkIntegrity = vi.fn(async () => ({
-      rooted: false, jailbroken: false, hookedProcess: false, emulator: false,
+      rooted: false, jailbroken: false, hookedProcess: false, emulator: false, tampered: false,
     }));
     const src = await nativeProbeSource();
     expect(detect(src)).toBe(CONDITION.CLEAN);
@@ -145,7 +153,10 @@ describe('nativeProbeSource — fail closed (I4)', () => {
 describe('nativeProbeSource — I3 deniability (no wallet-set oracle)', () => {
   it('takes no arguments and is byte-identical regardless of any passed set handle', async () => {
     h.isNative = true;
-    h.checkIntegrity = vi.fn(async () => ({ rooted: true }));
+    // P2-6b: full-shape verdict required.
+    h.checkIntegrity = vi.fn(async () => ({
+      rooted: true, hookedProcess: false, emulator: false, tampered: false,
+    }));
 
     // The function MUST ignore any argument — it has no set parameter at all.
     const real = await nativeProbeSource({ set: 'real', walletSet: 'A' });
