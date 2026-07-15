@@ -7,21 +7,28 @@
 // should not publish its own audit ledger or "not-yet-done" list — that is a
 // roadmap for an attacker, not information a user needs.
 //
-// DENIABILITY (§3, D2/D4): every value here is environment-derived. detect() is
-// a pure function of the runtime (no wallet-set handle), so this renders
-// byte-identical across primary and decoy sessions.
+// DENIABILITY (§3, D2/D4): every value here is environment-derived.
+// useRaspArtifact() is a pure function of the runtime (no wallet-set handle),
+// so this renders byte-identical across primary and decoy sessions.
 //
 // raspSurfaceModel() is retained as a pure, unit-tested helper (signing-path
 // honesty guard, VULN-8) but is intentionally no longer surfaced on this page.
+//
+// ── P2-8 (2026-07-15) — dashboard uses the shared useRaspArtifact() hook ──
+// Previously this page sampled the native probe once on mount (no G4-A
+// foreground / G4-B 60s heartbeat re-probe) and composed ONLY detect(nativeProbe)
+// — the remote-attestation axis (detectAttestation + composeConditions) was
+// missing, so a device where the OS probe said CLEAN but attestation said
+// INTEGRITY_FAIL rendered "clean/allow" here while the Send flow correctly
+// composed to BLOCK. The refactor to useRaspArtifact() closes both gaps: the
+// hook re-probes on foreground + heartbeat AND composes the attestation axis.
+// The dashboard is an environment-read surface (not an unlock path), so
+// attestation is sampled eagerly (the hook's default behaviour) — attestation
+// itself remains I3-guarded inside attestationProbeSource().
 
-import { useState, useEffect } from "react";
-import { Capacitor } from "@capacitor/core";
 import { Cpu } from "lucide-react";
 import { STATUS } from "@/lib/featureCatalogue";
-import {
-  detect, degrade, browserProbeSource, nativeProbeSource,
-  selectPresignProbeSource, CONDITION, TIER,
-} from "@/rasp";
+import { useRaspArtifact, CONDITION, TIER } from "@/rasp";
 
 // Human-readable label for a CONDITION constant.
 const CONDITION_LABEL = {
@@ -68,28 +75,13 @@ const DOT_TONE = {
 };
 
 export default function RaspSecurity() {
-  const [nativeProbe, setNativeProbe] = useState(/** @type {any} */ (null));
-
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const src = await nativeProbeSource();
-        if (!cancelled) setNativeProbe(src);
-      } catch {
-        if (!cancelled) setNativeProbe({ available: false });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const probeSource = selectPresignProbeSource(
-    Capacitor.isNativePlatform(), nativeProbe, browserProbeSource,
-  );
-  const liveCondition = detect(probeSource);
-  const liveTier = degrade(liveCondition).tier;
-  const liveConditionLabel = CONDITION_LABEL[liveCondition] ?? liveCondition;
+  // P2-8: single source of truth. The hook composes on-device probe AND
+  // attestation, re-probes on foreground/heartbeat, and returns a fail-closed
+  // BLOCK artifact on any detection throw.
+  const artifact = useRaspArtifact();
+  const liveTier = artifact?.tier ?? TIER.BLOCK;
+  const liveCondition = artifact?.condition;
+  const liveConditionLabel = CONDITION_LABEL[liveCondition] ?? (liveCondition ?? "unavailable");
   const dotTone = DOT_TONE[liveTier] ?? "bg-caution";
 
   return (
