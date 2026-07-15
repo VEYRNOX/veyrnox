@@ -47,6 +47,7 @@ import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";
+import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
@@ -538,6 +539,9 @@ export default function WalletPortfolioPage() {
   const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
 
+  // Portfolio Health scoring inputs (KEK, passkey, deniability).
+  const healthInputs = usePortfolioHealthInputs({ isUnlocked });
+
   const canManage = isUnlocked && !isDecoy && !isHidden;
 
   // Receive detection: on each poll, compare per-wallet USD total against the previous
@@ -806,7 +810,13 @@ export default function WalletPortfolioPage() {
       )}
 
       {/* Portfolio health + watchlist */}
-      <PortfolioHealthScore wallets={wallets} />
+      <PortfolioHealthScore
+        wallets={wallets}
+        portfolio={portfolio}
+        isVaultKekEnrolled={healthInputs.isVaultKekEnrolled}
+        hasPasskeyOrBiometric={healthInputs.hasPasskeyOrBiometric}
+        isDeniability={healthInputs.isDeniability}
+      />
       <WatchlistWidget />
 
       {/* Tabs: Tokens / Activity / Analytics */}

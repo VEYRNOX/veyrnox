@@ -59,8 +59,14 @@ public class VeyrnoxSpeechRecognitionPlugin: CAPPlugin {
         call.resolve(["available": recognizer.isAvailable])
     }
 
+    private var currentLanguage: String?
+
     @objc func start(_ call: CAPPluginCall) {
-        if let engine = audioEngine, engine.isRunning {
+        // Guards a genuinely overlapping call, not "the engine happens to already be
+        // running" — the engine/session are now kept warm across back-to-back
+        // commands (see the continuous-listening note below), so "already running"
+        // is the normal, expected state between two consecutive start() calls.
+        if recognitionTask != nil {
             call.reject(messageOngoing)
             return
         }
@@ -82,42 +88,89 @@ public class VeyrnoxSpeechRecognitionPlugin: CAPPlugin {
             let maxResults = call.getInt("maxResults") ?? self.defaultMatches
             let partialResults = call.getBool("partialResults") ?? false
 
-            if self.recognitionTask != nil {
-                self.recognitionTask?.cancel()
-                self.recognitionTask = nil
+            if self.speechRecognizer == nil || self.currentLanguage != language {
+                self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: language))
+                self.currentLanguage = language
             }
 
-            self.audioEngine = AVAudioEngine()
-            self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: language))
+            guard let recognizer = self.speechRecognizer else {
+                call.reject("Speech recognizer unavailable for \(language) on this device.")
+                return
+            }
 
-            let audioSession = AVAudioSession.sharedInstance()
-            do {
-                try audioSession.setCategory(.playAndRecord, options: .defaultToSpeaker)
-                try audioSession.setMode(.default)
+            // Continuous-listening design: a fresh AVAudioEngine + AVAudioSession
+            // route activation on every single command (the original behavior) is
+            // the expensive part of the restart cycle — Android's equivalent restart
+            // (SpeechRecognizer Intent to the OS service) never touches an app-level
+            // audio route, which is why it read as "always listening" while iOS had a
+            // perceptible gap between commands. Keep the engine/session warm across
+            // calls and only rebuild the (cheap) recognition request + task each time.
+            let engineAlreadyRunning = self.audioEngine?.isRunning == true
+
+            // `available()` only checks the device's default-locale recognizer, so
+            // re-verify the per-request-locale recognizer too — but ONLY on the
+            // first listen of a session (engine not yet running). SFSpeechRecognizer
+            // can legitimately report isAvailable == false for a brief moment while
+            // it recycles between back-to-back on-device sessions; re-enforcing this
+            // guard on every restart of an already-working continuous session turned
+            // one transient false into a hard reject, and after 5 consecutive rejects
+            // the JS loop gave up entirely — the "it ended on its own" symptom. A
+            // session that has already recognized speech once is proven working;
+            // don't second-guess it on every subsequent restart.
+            if !engineAlreadyRunning && !recognizer.isAvailable {
+                call.reject("Speech recognizer unavailable for \(language) on this device.")
+                return
+            }
+
+            if !engineAlreadyRunning {
+                self.audioEngine = AVAudioEngine()
+                let audioSession = AVAudioSession.sharedInstance()
                 do {
-                    try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+                    try audioSession.setCategory(.playAndRecord, options: .defaultToSpeaker)
+                    try audioSession.setMode(.default)
+                    do {
+                        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+                    } catch {
+                        call.reject("Microphone is already in use by another application.")
+                        return
+                    }
                 } catch {
-                    call.reject("Microphone is already in use by another application.")
-                    return
+                    // Non-fatal category/mode failure — proceed; the engine start below
+                    // will surface a hard failure if the session is truly unusable.
                 }
-            } catch {
-                // Non-fatal category/mode failure — proceed; the engine start below
-                // will surface a hard failure if the session is truly unusable.
             }
 
             self.recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
             self.recognitionRequest?.shouldReportPartialResults = partialResults
+
+            // Prefer on-device recognition when the model is installed: it removes the
+            // dependency on Apple's cloud speech service (and, with it, the "Enable
+            // Dictation" system toggle and network reachability) — the same silent-hang
+            // failure mode as the locale-availability gap above.
+            if recognizer.supportsOnDeviceRecognition {
+                self.recognitionRequest?.requiresOnDeviceRecognition = true
+            }
 
             guard let engine = self.audioEngine, let request = self.recognitionRequest else {
                 call.reject(self.messageUnknown)
                 return
             }
 
-            let inputNode = engine.inputNode
-            let format = inputNode.outputFormat(forBus: 0)
+            // Captured by identity below so a stray callback from a task we've
+            // already retired (e.g. the cancellation error our own .cancel() call
+            // triggers, below) can be told apart from the CURRENT task — without
+            // this, that late callback would run teardownEngine() against
+            // whichever session is active by the time it arrives, killing a
+            // next command that had already started successfully.
+            var thisTask: SFSpeechRecognitionTask?
 
-            self.recognitionTask = self.speechRecognizer?.recognitionTask(with: request) { [weak self] result, error in
+            thisTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
                 guard let self = self else { return }
+                guard self.recognitionTask == nil || self.recognitionTask === thisTask else {
+                    // Stale callback from a task that's no longer current — ignore.
+                    return
+                }
+
                 if let result = result {
                     let matches = NSMutableArray()
                     var counter = 0
@@ -130,36 +183,60 @@ public class VeyrnoxSpeechRecognitionPlugin: CAPPlugin {
 
                     if partialResults {
                         self.notifyListeners("partialResults", data: ["matches": matches])
+                        if result.isFinal {
+                            self.recognitionRequest = nil
+                            self.recognitionTask = nil
+                            self.notifyListeners("listeningState", data: ["status": "stopped"])
+                        }
                     } else {
+                        // One-shot contract: the FIRST result is the answer — do not
+                        // wait for Apple's own `isFinal` timing. `isFinal` can lag
+                        // well past our between-command pause (Apple's finalization
+                        // silence-timeout can run several seconds), so waiting for it
+                        // left `recognitionTask` non-nil when the next start() call
+                        // arrived, which rejected with "Speech recognition is already
+                        // running" — the task ONLY ever got past its first command.
                         call.resolve(["matches": matches])
-                    }
-
-                    if result.isFinal {
-                        self.teardownEngine()
+                        self.recognitionTask?.cancel()
+                        self.recognitionRequest = nil
+                        self.recognitionTask = nil
                         self.notifyListeners("listeningState", data: ["status": "stopped"])
                     }
                 }
 
                 if let error = error {
+                    // A real recognition error (vs. a clean resolve above) forces a
+                    // full teardown — the engine/session may be in a bad state and a
+                    // warm reuse next call could otherwise wedge silently. The
+                    // staleness guard above ensures this never fires for the benign
+                    // cancellation error our own .cancel() call (just above) triggers
+                    // once a newer session is already active.
                     self.teardownEngine()
                     self.notifyListeners("listeningState", data: ["status": "stopped"])
                     call.reject(error.localizedDescription)
                 }
             }
+            self.recognitionTask = thisTask
 
-            inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-                self?.recognitionRequest?.append(buffer)
+            if !engineAlreadyRunning {
+                let inputNode = engine.inputNode
+                let format = inputNode.outputFormat(forBus: 0)
+                inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+                    self?.recognitionRequest?.append(buffer)
+                }
+
+                engine.prepare()
+                do {
+                    try engine.start()
+                } catch {
+                    call.reject(self.messageUnknown)
+                    return
+                }
             }
 
-            engine.prepare()
-            do {
-                try engine.start()
-                self.notifyListeners("listeningState", data: ["status": "started"])
-                if partialResults {
-                    call.resolve()
-                }
-            } catch {
-                call.reject(self.messageUnknown)
+            self.notifyListeners("listeningState", data: ["status": "started"])
+            if partialResults {
+                call.resolve()
             }
         }
     }
@@ -167,9 +244,10 @@ public class VeyrnoxSpeechRecognitionPlugin: CAPPlugin {
     @objc func stop(_ call: CAPPluginCall) {
         DispatchQueue.global(qos: .default).async { [weak self] in
             guard let self = self else { return }
-            if let engine = self.audioEngine, engine.isRunning {
-                engine.stop()
-                self.recognitionRequest?.endAudio()
+            let wasRunning = self.audioEngine?.isRunning == true
+            self.teardownEngine()
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            if wasRunning {
                 self.notifyListeners("listeningState", data: ["status": "stopped"])
             }
             call.resolve()
@@ -228,6 +306,8 @@ public class VeyrnoxSpeechRecognitionPlugin: CAPPlugin {
     }
 
     private func teardownEngine() {
+        recognitionTask?.cancel()
+        recognitionRequest?.endAudio()
         audioEngine?.stop()
         audioEngine?.inputNode.removeTap(onBus: 0)
         recognitionRequest = nil

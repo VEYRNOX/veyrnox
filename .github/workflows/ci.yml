@@ -152,14 +152,23 @@ jobs:
     needs: verify
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
+      - name: Install JS deps and sync Capacitor Android
+        run: |
+          npm install -g npm@11
+          npm install --legacy-peer-deps
+          mkdir -p dist && echo '<html></html>' > dist/index.html
+          npx cap sync android
       - name: Run Android JVM unit tests (ES256 DER transcoder + RASP)
         run: |
           chmod +x gradlew
-          ./gradlew test --tests "com.veyrnox.app.*" --info
+          ./gradlew :app:testDebugUnitTest --info
         working-directory: android
 
   android-release:
