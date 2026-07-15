@@ -15,7 +15,7 @@
 // Tests start RED when the implementation is absent; turn GREEN once the
 // code lands. Do NOT skip — RED = required gate.
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, it, expect } from 'vitest';
@@ -39,6 +39,31 @@ const playKt = readFileSync(
   resolve(root, 'android/app/src/main/java/com/veyrnox/app/PlayIntegrityPlugin.kt'),
   'utf8',
 );
+const appAttestM = readFileSync(
+  resolve(root, 'ios/App/App/AppAttestPlugin.m'),
+  'utf8',
+);
+const pbxproj = readFileSync(
+  resolve(root, 'ios/App/App.xcodeproj/project.pbxproj'),
+  'utf8',
+);
+const entitlementsPath = resolve(root, 'ios/App/App/App.entitlements');
+const buildGradle = readFileSync(
+  resolve(root, 'android/app/build.gradle'),
+  'utf8',
+);
+const cFilePath     = resolve(root, 'android/app/src/main/cpp/rasp_early.c');
+const cmakePath     = resolve(root, 'android/app/src/main/cpp/CMakeLists.txt');
+const hwKekM        = readFileSync(resolve(root, 'ios/App/App/HardwareKekPlugin.m'), 'utf8');
+const ecdsaTranscoderKt = readFileSync(
+  resolve(root, 'android/app/src/main/java/com/veyrnox/app/EcdsaDerTranscoder.kt'),
+  'utf8',
+);
+const ecdsaTestKt = readFileSync(
+  resolve(root, 'android/app/src/test/java/com/veyrnox/app/RawEcdsaDerTranscoderTest.kt'),
+  'utf8',
+);
+const ciYml = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
 
 // ── 1. Android: checkTracerPid ────────────────────────────────────────────────
 
@@ -117,16 +142,12 @@ describe('iOS RASP — checkFork runs first in detectJailbreak', () => {
 
 // ── 4. Android: checkProcNetUnix gated on API < Q ────────────────────────────
 
-describe('Android RASP — checkProcNetUnix gated on Android 9 and below', () => {
-  it('checkProcNetUnix call is wrapped in a Build.VERSION.SDK_INT < Q check', () => {
-    // Device-verified 2026-07-14: SELinux denies /proc/net/unix reads on Android 10+
-    // (avc: denied { read } proc_net). The check is structurally inert on modern
-    // devices. Gate it to avoid wasted work and false-false confusion in logs.
-    const guard = 'Build.VERSION.SDK_INT < Build.VERSION_CODES.Q';
-    const idx = kt.indexOf(guard);
-    expect(idx).toBeGreaterThan(-1);
-    const line = kt.slice(idx, idx + 100);
-    expect(line).toContain('checkProcNetUnix');
+// ── 4. checkProcNetUnix removed — superseded by checkLocalSocketConnect ───────
+// (The former gate test is replaced by the item 9 absence tests below.)
+
+describe('Android RASP — checkProcNetUnix superseded (absence confirmed in item 9)', () => {
+  it('checkLocalSocketConnect exists as the behavioral replacement', () => {
+    expect(kt).toContain('private fun checkLocalSocketConnect(');
   });
 });
 
@@ -136,12 +157,17 @@ describe('Android RASP — @JvmSynthetic on all private detection methods', () =
   // Every private fun should have @JvmSynthetic directly above it so Frida's
   // Java API cannot address them by their readable name.
   const privateFns = [
-    'detectRoot', 'checkRootBinaries', 'checkMagiskPaths', 'checkProcNetUnix',
-    'checkLocalSocketConnect', 'checkSuFromRuntime', 'checkDangerousProps',
+    // checkProcNetUnix removed (item 9 — superseded by checkLocalSocketConnect)
+    // checkSuFromRuntime removed (item 9 — structurally inert on Android 10+)
+    'detectRoot', 'checkRootBinaries', 'checkMagiskPaths',
+    'checkLocalSocketConnect', 'checkDangerousProps',
     'readSystemPropReflect', 'checkSystemWritable', 'checkBuildTags',
     'detectHook', 'checkTracerPid', 'checkFridaPort', 'checkXposed',
     'checkProcMapsForHook', 'checkGadgetThreads', 'checkFridaPipes',
     'detectEmulator', 'checkBuildProps', 'checkEmulatorFiles', 'detectTamper',
+    'checkScreenCapture', 'checkOverlay', 'checkDeveloperMode', 'checkVirtualApp',
+    'checkSuspiciousPackages', 'checkThirdPartyKeyboard', 'checkMockLocation',
+    'checkNetworkProxy', 'checkAccessibilityService',
   ];
 
   for (const fn of privateFns) {
@@ -461,5 +487,1215 @@ describe('Item 6 — iOS PT_DENY_ATTACH at pre-bridge time', () => {
     expect(denyIdx).toBeGreaterThan(-1);
     expect(detectIdx).toBeGreaterThan(-1);
     expect(denyIdx).toBeLessThan(detectIdx);
+  });
+});
+
+// ── Item 7 — iOS App Attest entitlement ──────────────────────────────────────
+// AppAttestPlugin.m already contains the DCAppAttestService logic, but the
+// com.apple.developer.devicecheck.appattest-environment entitlement was missing.
+// Without it, DCAppAttestService.isSupported returns NO on every device and the
+// plugin always fails closed — the channel is unreachable. These pins verify
+// the entitlements file exists and is wired into the Xcode build settings so
+// a provisioned build can actually exercise the attest API.
+describe('Item 7 — iOS App Attest entitlement', () => {
+  it('ios/App/App/App.entitlements file exists', () => {
+    expect(existsSync(entitlementsPath)).toBe(true);
+  });
+
+  it('App.entitlements contains com.apple.developer.devicecheck.appattest-environment', () => {
+    expect(existsSync(entitlementsPath)).toBe(true);
+    const content = readFileSync(entitlementsPath, 'utf8');
+    expect(content).toContain('com.apple.developer.devicecheck.appattest-environment');
+  });
+
+  it('App.entitlements sets environment to development or production', () => {
+    expect(existsSync(entitlementsPath)).toBe(true);
+    const content = readFileSync(entitlementsPath, 'utf8');
+    const hasDev  = content.includes('<string>development</string>');
+    const hasProd = content.includes('<string>production</string>');
+    expect(hasDev || hasProd).toBe(true);
+  });
+
+  it('project.pbxproj references CODE_SIGN_ENTITLEMENTS for both Debug and Release', () => {
+    // Both build configurations must carry the entitlements path so signing
+    // picks it up in both debug device builds and App Store release builds.
+    const matches = pbxproj.match(/CODE_SIGN_ENTITLEMENTS\s*=\s*App\/App\.entitlements/g);
+    expect(matches).not.toBeNull();
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('AppAttestPlugin.m imports DeviceCheck framework', () => {
+    expect(appAttestM).toContain('#import <DeviceCheck/DeviceCheck.h>');
+  });
+
+  it('AppAttestPlugin.m checks isSupported before any attest call (fail-closed, I4)', () => {
+    expect(appAttestM).toContain('isSupported');
+    // The only exit on isSupported=NO must resolve available:NO — never fabricate PASS.
+    const unsupportedIdx = appAttestM.indexOf('!service.isSupported');
+    expect(unsupportedIdx).toBeGreaterThan(-1);
+    const block = appAttestM.slice(unsupportedIdx, unsupportedIdx + 200);
+    expect(block).toContain('@(NO)');
+  });
+});
+
+// ── Item 8 — Android preventive ptrace self-attach via JNI ───────────────────
+// ptrace(PTRACE_TRACEME, 0, NULL, NULL) claims this process's ptrace slot for
+// its parent (Zygote/ActivityManager). This is both:
+//   • Preventive hardening: a process with PTRACE_TRACEME set cannot be
+//     ptrace-attached by an external process (belt-and-suspenders with
+//     PR_SET_DUMPABLE=0 from earlyAntiDump, which already blocks most paths).
+//   • Detection: if PTRACE_TRACEME returns -1/EPERM, a debugger was already
+//     attached before earlyCheck ran → BLOCK-tier signal.
+// ptrace is not accessible from Kotlin without JNI — hence the native library.
+describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
+  it('android/app/src/main/cpp/rasp_early.c exists', () => {
+    expect(existsSync(cFilePath)).toBe(true);
+  });
+
+  it('rasp_early.c includes sys/ptrace.h', () => {
+    expect(existsSync(cFilePath)).toBe(true);
+    const c = readFileSync(cFilePath, 'utf8');
+    expect(c).toContain('#include <sys/ptrace.h>');
+  });
+
+  it('rasp_early.c calls ptrace(PTRACE_TRACEME, 0, NULL, NULL)', () => {
+    expect(existsSync(cFilePath)).toBe(true);
+    const c = readFileSync(cFilePath, 'utf8');
+    expect(c).toContain('ptrace(PTRACE_TRACEME, 0, NULL, NULL)');
+  });
+
+  it('rasp_early.c declares the correct JNI method name for companion nativeEarlyTraceme', () => {
+    expect(existsSync(cFilePath)).toBe(true);
+    const c = readFileSync(cFilePath, 'utf8');
+    // $Companion mangled as _00024Companion in JNI symbol names
+    expect(c).toContain('Java_com_veyrnox_app_RaspIntegrityPlugin_00024Companion_nativeEarlyTraceme');
+  });
+
+  it('android/app/src/main/cpp/CMakeLists.txt exists', () => {
+    expect(existsSync(cmakePath)).toBe(true);
+  });
+
+  it('CMakeLists.txt adds rasp_early as a shared library from rasp_early.c', () => {
+    expect(existsSync(cmakePath)).toBe(true);
+    const cmake = readFileSync(cmakePath, 'utf8');
+    expect(cmake).toContain('rasp_early');
+    expect(cmake).toContain('rasp_early.c');
+    expect(cmake).toContain('SHARED');
+  });
+
+  it('build.gradle has externalNativeBuild block pointing to CMakeLists.txt', () => {
+    expect(buildGradle).toContain('externalNativeBuild');
+    expect(buildGradle).toContain('CMakeLists.txt');
+  });
+
+  it('RaspIntegrityPlugin.kt declares external fun nativeEarlyTraceme in companion', () => {
+    expect(kt).toContain('external fun nativeEarlyTraceme');
+  });
+
+  it('companion object init block loads rasp_early library (fail-open)', () => {
+    // System.loadLibrary inside runCatching so a JVM test or stripped build
+    // does not crash — earlyPtraceTraceme() has its own runCatching guard.
+    const initIdx = kt.indexOf('System.loadLibrary("rasp_early")');
+    expect(initIdx).toBeGreaterThan(-1);
+    // The load must be wrapped in runCatching (fail-open, I4)
+    const window = kt.slice(Math.max(0, initIdx - 100), initIdx + 50);
+    expect(window).toContain('runCatching');
+  });
+
+  it('earlyDetectHook chains earlyPtraceTraceme', () => {
+    const hookIdx = kt.indexOf('private fun earlyDetectHook()');
+    expect(hookIdx).toBeGreaterThan(-1);
+    const hookBody = kt.slice(hookIdx, hookIdx + 300);
+    expect(hookBody).toContain('earlyPtraceTraceme');
+  });
+
+  it('stale "not yet implemented" comment is removed from checkTracerPid context', () => {
+    // The comment at the TracerPid check said ptrace self-attachment via JNI is
+    // "not yet implemented" — that phrase must not appear within the checkTracerPid
+    // block once item 8 lands (a different TODO elsewhere in the file is unrelated).
+    const tracerPidIdx = kt.indexOf('private fun checkTracerPid()');
+    expect(tracerPidIdx).toBeGreaterThan(-1);
+    // Look at the 500-char window before the function (where the comment lives)
+    const window = kt.slice(Math.max(0, tracerPidIdx - 500), tracerPidIdx + 50);
+    expect(window).not.toContain('not yet implemented');
+  });
+});
+
+// ── 9. Dead Android checks removed ───────────────────────────────────────────
+//
+// Two checks documented as structurally inert / superseded are removed:
+//
+// checkProcNetUnix() — superseded by checkLocalSocketConnect().
+//   SELinux denies /proc/net/unix reads for untrusted_app on Android 10+
+//   (device-verified 2026-07-14). checkLocalSocketConnect() (behavioral
+//   connect probe) achieves the same detection on ALL API levels without
+//   needing proc_net read permission.
+//
+// checkSuFromRuntime() — structurally inert on Android 10+.
+//   Runtime.exec of shell utilities is SELinux-blocked for untrusted_app
+//   on API 29+ (device-verified 2026-07-14). Adds a 150 ms worst-case
+//   timeout to the RASP hot path for no benefit on modern devices.
+//   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
+//   reflection) is the operative root signal; checkLocalSocketConnect()
+//   covers the behavioral aspect.
+
+// ── Item 38 — Kotlin JVM test harness for ES256 DER transcoder (#957 original) ─
+//
+// PlayIntegrityPlugin.verifyJwsSignature() transcodes JWS ES256 raw R‖S
+// signatures (RFC 7518 §3.4, 64 bytes) to ASN.1 DER before calling JCA
+// SHA256withECDSA.verify(). The algorithm was extracted into EcdsaDerTranscoder.kt
+// (pure JVM, no Android context) so that RawEcdsaDerTranscoderTest.kt can
+// execute it with real P-256 keypairs on `./gradlew :app:testDebugUnitTest`.
+// The CI job android-unit-tests runs it on every push.
+//
+// These structural pins confirm the three artefacts are all present and wired:
+//   1. EcdsaDerTranscoder.kt — extracted pure-JVM object
+//   2. RawEcdsaDerTranscoderTest.kt — JUnit test class with roundtrip fuzz
+//   3. ci.yml android-unit-tests job — `./gradlew :app:testDebugUnitTest`
+
+describe('Item 38 — Kotlin JVM test harness: EcdsaDerTranscoder + CI gate', () => {
+  it('EcdsaDerTranscoder.kt defines rawEcdsaSignatureToDer', () => {
+    expect(ecdsaTranscoderKt).toContain('fun rawEcdsaSignatureToDer(raw: ByteArray)');
+  });
+
+  it('EcdsaDerTranscoder.kt defines derEncodeInteger', () => {
+    expect(ecdsaTranscoderKt).toContain('fun derEncodeInteger(bytes: ByteArray)');
+  });
+
+  it('RawEcdsaDerTranscoderTest.kt contains a JCA roundtrip test', () => {
+    expect(ecdsaTestKt).toContain('SHA256withECDSA');
+    expect(ecdsaTestKt).toContain('rawEcdsaSignatureToDer');
+  });
+
+  it('RawEcdsaDerTranscoderTest.kt contains a fuzz test over multiple P-256 signatures', () => {
+    expect(ecdsaTestKt).toContain('fuzz');
+    expect(ecdsaTestKt).toContain('secp256r1');
+  });
+
+  it('ci.yml android-unit-tests job runs testDebugUnitTest', () => {
+    expect(ciYml).toContain('android-unit-tests');
+    expect(ciYml).toContain('testDebugUnitTest');
+  });
+});
+
+// ── Item 36 — Android checkAccessibilityService + accessibilityService verdict ─
+//
+// A non-system accessibility service has OS-level access to screen content,
+// can inject touch/key events, and can intercept text typed into any field —
+// including PIN entry during KEK enrollment. This is a wider attack surface
+// than a third-party keyboard (item 30) because it can read the entire UI tree
+// and manufacture input without user interaction.
+//
+// Detection: AccessibilityManager.getEnabledAccessibilityServiceList() →
+//   filter to entries whose package's ApplicationInfo.FLAG_SYSTEM == 0
+//   (user-installed, not pre-loaded by OEM).
+//
+// Fail-open: exception → false. WARN tier. NOT added to earlyCheck.
+// JS wiring is item 37.
+
+describe('Item 36 — Android checkAccessibilityService + accessibilityService verdict field', () => {
+  it('checkAccessibilityService() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkAccessibilityService()');
+  });
+
+  it('checkAccessibilityService() queries AccessibilityManager service list', () => {
+    const start = kt.indexOf('fun checkAccessibilityService()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 500);
+    expect(body).toContain('AccessibilityManager');
+    expect(body).toContain('getEnabledAccessibilityServiceList');
+  });
+
+  it('checkAccessibilityService() filters non-system packages via FLAG_SYSTEM', () => {
+    const start = kt.indexOf('fun checkAccessibilityService()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 800);
+    expect(body).toContain('FLAG_SYSTEM');
+  });
+
+  it('checkAccessibilityService() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkAccessibilityService()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 850);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("accessibilityService") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("accessibilityService"');
+  });
+});
+
+// ── Item 34 — Android checkNetworkProxy + networkProxy verdict field ──────────
+//
+// A proxy configured on the device (Burp Suite, Charles, mitmproxy) intercepts
+// HTTPS traffic and is a potential MitM vector even when SSL pinning is active,
+// if the attacker has also installed a rogue CA cert. Detecting an active proxy
+// adds a device-integrity signal independent of TLS-layer checks.
+//
+// Two API paths:
+//   API 29+ (Q): ConnectivityManager.defaultProxy → ProxyInfo.host
+//   Pre-API 29 : android.net.Proxy.getDefaultHost() (deprecated but present)
+//
+// Fail-open: any exception (missing permission, null CM) → false.
+// WARN tier. NOT added to earlyCheck. JS wiring is item 35.
+
+describe('Item 34 — Android checkNetworkProxy + networkProxy verdict field', () => {
+  it('checkNetworkProxy() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkNetworkProxy()');
+  });
+
+  it('checkNetworkProxy() uses ConnectivityManager.defaultProxy (API 29+ path)', () => {
+    const start = kt.indexOf('fun checkNetworkProxy()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 450);
+    expect(body).toContain('defaultProxy');
+  });
+
+  it('checkNetworkProxy() falls back to Proxy.getDefaultHost() (pre-API 29)', () => {
+    const start = kt.indexOf('fun checkNetworkProxy()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 450);
+    expect(body).toContain('getDefaultHost');
+  });
+
+  it('checkNetworkProxy() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkNetworkProxy()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 500);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("networkProxy") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("networkProxy"');
+  });
+});
+
+// ── Item 32 — Android checkMockLocation + mockLocation verdict field ─────────
+//
+// Mock location providers let an attacker spoof GPS coordinates — relevant for
+// geo-fencing controls and as a general device-integrity signal (enabling mock
+// locations requires developer options or a dedicated mock-location app).
+//
+// Two detection paths:
+//   Pre-API 23: Settings.Secure.ALLOW_MOCK_LOCATION global toggle.
+//   API 23+   : AppOpsManager.OPSTR_MOCK_LOCATION — checks whether any
+//               non-system package currently holds the mock-location app-op.
+//               Skips system packages to keep the scan bounded.
+//
+// WARN tier — same as developerMode. NOT added to earlyCheck.
+// JS wiring to signals.rooted is a separate item (33).
+
+describe('Item 32 — Android checkMockLocation + mockLocation verdict field', () => {
+  it('checkMockLocation() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkMockLocation()');
+  });
+
+  it('checkMockLocation() checks ALLOW_MOCK_LOCATION (pre-API 23 path)', () => {
+    const start = kt.indexOf('fun checkMockLocation()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 500);
+    expect(body).toContain('ALLOW_MOCK_LOCATION');
+  });
+
+  it('checkMockLocation() checks OPSTR_MOCK_LOCATION via AppOpsManager (API 23+ path)', () => {
+    const start = kt.indexOf('fun checkMockLocation()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 950);
+    expect(body).toContain('OPSTR_MOCK_LOCATION');
+  });
+
+  it('checkMockLocation() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkMockLocation()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 1100);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("mockLocation") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("mockLocation"');
+  });
+});
+
+// ── Item 30 — Android checkThirdPartyKeyboard + thirdPartyKeyboard verdict ─────
+//
+// A keylogger IME (installed from Play Store or sideloaded, not a system app)
+// can silently capture every keystroke during PIN entry and KEK enrollment.
+// The active IME package is readable via Settings.Secure.DEFAULT_INPUT_METHOD;
+// checking ApplicationInfo.FLAG_SYSTEM tells us whether it is a pre-installed
+// system keyboard (trusted) or a user-installed one (elevated risk).
+//
+// Honest scope: many users use legitimate non-system keyboards (SwiftKey, etc.).
+// WARN tier — the user sees a caution notice; signing is not blocked.
+// JS wiring to signals.rooted is a separate item (31).
+// NOT added to earlyCheck — WARN tier only.
+
+describe('Item 30 — Android checkThirdPartyKeyboard + thirdPartyKeyboard verdict field', () => {
+  it('checkThirdPartyKeyboard() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkThirdPartyKeyboard()');
+  });
+
+  it('checkThirdPartyKeyboard() reads DEFAULT_INPUT_METHOD via Settings.Secure', () => {
+    const start = kt.indexOf('fun checkThirdPartyKeyboard()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 500);
+    expect(body).toContain('DEFAULT_INPUT_METHOD');
+  });
+
+  it('checkThirdPartyKeyboard() checks FLAG_SYSTEM on the IME package', () => {
+    const start = kt.indexOf('fun checkThirdPartyKeyboard()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 650);
+    expect(body).toContain('FLAG_SYSTEM');
+  });
+
+  it('checkThirdPartyKeyboard() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkThirdPartyKeyboard()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 700);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("thirdPartyKeyboard") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("thirdPartyKeyboard"');
+  });
+});
+
+// ── Item 28 — Android checkSuspiciousPackages + suspiciousPackage verdict ──────
+//
+// detectRoot() inspects filesystem paths (su binaries, Magisk files, etc.) that
+// Magisk Hide masks with mount-namespace tricks. checkSuspiciousPackages() takes
+// a complementary approach: it queries PackageManager for known root/hook tool
+// package names. PackageManager resolution goes through the system Binder, which
+// Magisk Hide cannot spoof — so the Magisk Manager APK (com.topjohnwu.magisk)
+// and LSPosed Manager remain visible even when file-system checks are masked.
+//
+// Packages checked:
+//   com.topjohnwu.magisk           — Magisk Manager (official)
+//   io.github.huskydg.magisk       — Delta Magisk fork
+//   me.weishu.kernelflasher        — KernelSU flasher
+//   org.lsposed.manager            — LSPosed framework manager
+//   de.robv.android.xposed.installer — original Xposed Installer
+//   eu.chainfire.supersu           — SuperSU
+//   com.noshufou.android.su        — older Superuser
+//   com.saurik.substrate           — Cydia Substrate (Android)
+//
+// Signal tier: WARN (same as rooted). Having these apps installed indicates an
+// intentionally modified device without definitively proving our process is
+// compromised. JS wiring to signals.rooted is a separate item (29).
+// NOT added to earlyCheck — WARN tier only.
+
+describe('Item 28 — Android checkSuspiciousPackages + suspiciousPackage verdict field', () => {
+  it('checkSuspiciousPackages() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkSuspiciousPackages()');
+  });
+
+  it('checkSuspiciousPackages() includes com.topjohnwu.magisk (Magisk Manager)', () => {
+    const start = kt.indexOf('fun checkSuspiciousPackages()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 600);
+    expect(body).toContain('com.topjohnwu.magisk');
+  });
+
+  it('checkSuspiciousPackages() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkSuspiciousPackages()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 950);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("suspiciousPackage") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("suspiciousPackage"');
+  });
+
+  it('file header verdict comment includes "suspiciousPackage":false', () => {
+    expect(kt).toContain('"suspiciousPackage":false');
+  });
+});
+
+// ── Item 26 — Android checkVirtualApp + virtualApp verdict field ──────────────
+//
+// VirtualApp (io.va), Parallel Space (com.lbe.parallel), Island
+// (com.oasisfeng.island), and similar "dual space" / app-cloning frameworks
+// install a copy of the target APK under the container host's own data directory
+// rather than the standard system path (/data/app/…). Running inside a virtual
+// container means:
+//   – RASP root/tamper signals can be faked by the container host
+//   – Biometric authentication can be proxied or bypassed by the container layer
+//   – The app's IPC and filesystem boundaries are crossed by the container process
+//
+// Detection: applicationInfo.sourceDir is the installed APK path. Under a normal
+// Android system install this is /data/app/<pkg>/<hash>/base.apk. Inside a
+// virtual container it resolves to a path under the container's
+// /data/data/<host.pkg>/ directory — a distinctive structural tell.
+//
+// Signal tier: WARN (same as rooted — trust boundary broken, not definitive
+// compromise). JS wiring to signals.rooted is a separate item (27).
+// NOT added to earlyCheck() — WARN-tier only.
+
+describe('Item 26 — Android checkVirtualApp + virtualApp verdict field', () => {
+  it('checkVirtualApp() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkVirtualApp()');
+  });
+
+  it('checkVirtualApp() inspects applicationInfo.sourceDir', () => {
+    const start = kt.indexOf('fun checkVirtualApp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('applicationInfo.sourceDir');
+  });
+
+  it('checkVirtualApp() includes at least one known virtual container path (io.va)', () => {
+    const start = kt.indexOf('fun checkVirtualApp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('io.va');
+  });
+
+  it('checkVirtualApp() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkVirtualApp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 650);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("virtualApp") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("virtualApp"');
+  });
+});
+
+// ── Item 24 — Android checkDeveloperMode + developerMode verdict field ────────
+//
+// A device with developer options enabled exposes the app to adb-level attack
+// surface: USB debugging (ADB_ENABLED) allows logcat capture (LOG-1 risk),
+// memory dumping via gdb/lldb, screenrecord without the RECORD_AUDIO permission
+// prompt, and APK extraction. DEVELOPMENT_SETTINGS_ENABLED is the parent toggle
+// that unlocks all of the above. There is no iOS equivalent (iOS Developer Mode
+// is user-opt-in for sideloading only and is not checkable from an app).
+//
+// checkDeveloperMode() checks both Settings.Global constants:
+//   - ADB_ENABLED (USB debugging toggle — direct adb/logcat access)
+//   - DEVELOPMENT_SETTINGS_ENABLED (developer options master switch)
+// Either being non-zero → developerMode:true in the verdict.
+//
+// Signal tier: WARN (same as rooted; not a definitive compromise signal, but
+// elevated risk during signing). nativeProbe.js wiring is a separate item.
+
+describe('Item 24 — Android checkDeveloperMode + developerMode verdict field', () => {
+  it('checkDeveloperMode() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkDeveloperMode()');
+  });
+
+  it('checkDeveloperMode() checks ADB_ENABLED via Settings.Global', () => {
+    const start = kt.indexOf('fun checkDeveloperMode()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('ADB_ENABLED');
+  });
+
+  it('checkDeveloperMode() also checks DEVELOPMENT_SETTINGS_ENABLED', () => {
+    const start = kt.indexOf('fun checkDeveloperMode()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('DEVELOPMENT_SETTINGS_ENABLED');
+  });
+
+  it('checkDeveloperMode() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkDeveloperMode()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("developerMode") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("developerMode"');
+  });
+});
+
+// ── Item 23 — Android checkOverlay + overlayActive verdict field ──────────────
+//
+// iOS -checkOverlay (UIAccessibilityIsAssistiveTouchRunning) returns
+// overlayActive:true when an accessibility overlay is active on screen —
+// a tapjacking risk during PIN entry (item 19 wired it to signals.rooted →
+// WARN in nativeProbe.js). Android has no equivalent verdict field.
+//
+// The Android analogue: AccessibilityManager.getEnabledAccessibilityServiceList
+// (FEEDBACK_ALL_MASK) — returns the list of active accessibility services.
+// Non-empty = some visual/touch-intercepting overlay may be present (TalkBack,
+// Voice Access, Switch Access). This mirrors the iOS "any accessibility overlay
+// is a potential tapjacking vector" rationale. Honest scope: fires for
+// legitimate accessibility users; the WARN tier (not BLOCK) means the send
+// flow is not blocked but the user sees a caution notice.
+//
+// nativeProbe.js item 19 already maps verdict.overlayActive:true → signals.rooted
+// → WARN on both platforms with no JS changes required.
+
+describe('Item 23 — Android checkOverlay + overlayActive verdict field', () => {
+  it('checkOverlay() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkOverlay()');
+  });
+
+  it('checkOverlay() uses AccessibilityManager', () => {
+    const start = kt.indexOf('fun checkOverlay()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('AccessibilityManager');
+  });
+
+  it('checkOverlay() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkOverlay()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 450);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("overlayActive") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("overlayActive"');
+  });
+
+  it('file-header verdict example includes overlayActive:false', () => {
+    const start = kt.indexOf('checkIntegrity() verdict:');
+    expect(start).toBeGreaterThan(-1);
+    const window = kt.slice(start, start + 250);
+    expect(window).toContain('"overlayActive":false');
+  });
+});
+
+// ── Item 22 — Android earlyCheckScreenCapture in companion earlyCheck() ──────
+//
+// Item 21 added runtime checkScreenCapture() to detectHook's verdict.
+// There is still a window between app launch and bridge-up during which a
+// Miracast/WFD connection could be established without detection. The iOS
+// analogue (item 17, +earlyCheckScreenCapture) gates app launch itself —
+// the block screen fires before any Capacitor code loads.
+//
+// earlyCheckScreenCapture(context) is a companion-object private fun that uses
+// DisplayManager.DISPLAY_CATEGORY_PRESENTATION (same signal as item 21) and is
+// chained into earlyCheck() alongside earlyDetectHook() and earlyDetectTamper().
+// It takes context because DisplayManager requires a Context, mirroring how
+// earlyDetectTamper(context) is structured.
+
+describe('Item 22 — Android earlyCheckScreenCapture in companion earlyCheck()', () => {
+  it('earlyCheckScreenCapture( is defined in the companion object', () => {
+    expect(kt).toContain('fun earlyCheckScreenCapture(');
+  });
+
+  it('earlyCheckScreenCapture body uses DISPLAY_CATEGORY_PRESENTATION', () => {
+    const start = kt.indexOf('fun earlyCheckScreenCapture(');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('DISPLAY_CATEGORY_PRESENTATION');
+  });
+
+  it('earlyCheckScreenCapture wraps in runCatching + getOrDefault(false)', () => {
+    const start = kt.indexOf('fun earlyCheckScreenCapture(');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('earlyCheck() chains earlyCheckScreenCapture(context)', () => {
+    const start = kt.indexOf('fun earlyCheck(context');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('earlyCheckScreenCapture(context)');
+  });
+
+  it('earlyCheckScreenCapture is a companion method (placed after earlyCheckJdwp)', () => {
+    const jdwpPos = kt.indexOf('fun earlyCheckJdwp()');
+    const capturePos = kt.indexOf('fun earlyCheckScreenCapture(');
+    expect(jdwpPos).toBeGreaterThan(-1);
+    expect(capturePos).toBeGreaterThan(-1);
+    expect(capturePos).toBeGreaterThan(jdwpPos);
+  });
+});
+
+// ── Item 21 — Android checkScreenCapture + screenCapture verdict field ────────
+//
+// iOS has -checkScreenCapture (UIScreen.isCaptured) which surfaces a
+// screenCapture:true verdict field when the screen is being mirrored via AirPlay
+// or captured via iOS screen recording (item 16 wired it into nativeProbe.js
+// signals.hooked → BLOCK; item 17 added it to the iOS pre-bridge early gate).
+//
+// Android's analogue is DISPLAY_CATEGORY_PRESENTATION: the DisplayManager API
+// returns non-empty virtual/presentation displays when the screen is being
+// mirrored via Miracast/WFD or cast to a secondary display — a surveillance
+// vector during PIN entry or seed display identical to the iOS AirPlay case.
+//
+// Item 21 adds checkScreenCapture() to the Android plugin and exposes a
+// screenCapture field in the checkIntegrity() verdict dict.  nativeProbe.js
+// already maps verdict.screenCapture === true → signals.hooked (from item 16),
+// so Android screen-mirroring detection flows to BLOCK with no JS changes.
+
+describe('Item 21 — Android checkScreenCapture + screenCapture verdict field', () => {
+  it('checkScreenCapture() method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkScreenCapture()');
+  });
+
+  it('checkScreenCapture() uses DisplayManager DISPLAY_CATEGORY_PRESENTATION', () => {
+    expect(kt).toContain('DISPLAY_CATEGORY_PRESENTATION');
+  });
+
+  it('checkScreenCapture() wraps in runCatching + getOrDefault(false) (fail-open I4)', () => {
+    const start = kt.indexOf('fun checkScreenCapture()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 400);
+    expect(body).toContain('runCatching');
+    expect(body).toContain('getOrDefault(false)');
+  });
+
+  it('result.put("screenCapture") is emitted in checkIntegrity()', () => {
+    expect(kt).toContain('result.put("screenCapture"');
+  });
+
+  it('file-header verdict example includes screenCapture:false', () => {
+    const start = kt.indexOf('checkIntegrity() verdict:');
+    expect(start).toBeGreaterThan(-1);
+    const window = kt.slice(start, start + 200);
+    expect(window).toContain('"screenCapture":false');
+  });
+});
+
+// ── Item 20 — Android earlyCheckJdwp in earlyDetectHook() ───────────────────
+//
+// checkJdwpDebugger() (item 14) catches JDWP sessions at runtime, called from
+// detectHook() which runs when checkIntegrity() is invoked post-bridge. There
+// is a window between app launch and bridge-up during which an Android Studio /
+// IntelliJ JDWP attach would go undetected — the same gap that iOS item 15
+// (+earlyCheckDebugger) closed for sysctl P_TRACED.
+//
+// earlyCheckJdwp() is a companion-object private fun that calls
+// Debug.isDebuggerConnected() wrapped in runCatching (fail-open). It is added
+// to earlyDetectHook() so a JDWP session active at launch triggers the native
+// block screen before the Capacitor bridge initialises.
+
+describe('Item 20 — Android earlyCheckJdwp in earlyDetectHook()', () => {
+  it('earlyCheckJdwp() companion method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun earlyCheckJdwp()');
+  });
+
+  it('earlyCheckJdwp() calls Debug.isDebuggerConnected()', () => {
+    const start = kt.indexOf('fun earlyCheckJdwp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('isDebuggerConnected');
+  });
+
+  it('earlyCheckJdwp() wraps in runCatching (fail-open, must not block launch)', () => {
+    const start = kt.indexOf('fun earlyCheckJdwp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('runCatching');
+  });
+
+  it('earlyDetectHook() chains earlyCheckJdwp() after existing early checks', () => {
+    const hookStart = kt.indexOf('fun earlyDetectHook()');
+    expect(hookStart).toBeGreaterThan(-1);
+    const hookBody = kt.slice(hookStart, hookStart + 300);
+    expect(hookBody).toContain('earlyCheckJdwp()');
+    // Must still chain the existing early checks
+    expect(hookBody).toContain('earlyPtraceTraceme()');
+    const ptraceIdx = hookBody.indexOf('earlyPtraceTraceme()');
+    const jdwpIdx   = hookBody.indexOf('earlyCheckJdwp()');
+    expect(jdwpIdx).toBeGreaterThan(ptraceIdx);
+  });
+
+  it('earlyCheckJdwp() uses getOrDefault(false) — fail-open on exception', () => {
+    const start = kt.indexOf('fun earlyCheckJdwp()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('getOrDefault(false)');
+  });
+});
+
+// ── Item 18 — Android debuggerAttached verdict field (platform symmetry) ──────
+//
+// iOS checkIntegrity() returns debuggerAttached (item 12). Android does not —
+// JDWP detection fires only via hookedProcess (detectHook → checkJdwpDebugger).
+// nativeProbeSource.js already ORs debuggerAttached into signals.hooked, but
+// on Android that branch is always undefined/false so the OR is dead.
+//
+// Adding result.put("debuggerAttached", checkJdwpDebugger()) to Android
+// checkIntegrity() makes both platforms structurally symmetric. checkJdwpDebugger
+// remains in detectHook() as belt-and-suspenders so hookedProcess still fires too.
+
+describe('Item 18 — Android debuggerAttached verdict field', () => {
+  it('checkIntegrity result includes debuggerAttached key', () => {
+    expect(kt).toContain('result.put("debuggerAttached"');
+  });
+
+  it('debuggerAttached value comes from checkJdwpDebugger()', () => {
+    const idx = kt.indexOf('result.put("debuggerAttached"');
+    expect(idx).toBeGreaterThan(-1);
+    const line = kt.slice(idx, idx + 80);
+    expect(line).toContain('checkJdwpDebugger()');
+  });
+
+  it('checkJdwpDebugger remains in detectHook() for belt-and-suspenders hookedProcess', () => {
+    const hookStart = kt.indexOf('private fun detectHook()');
+    expect(hookStart).toBeGreaterThan(-1);
+    const hookBody = kt.slice(hookStart, hookStart + 300);
+    expect(hookBody).toContain('checkJdwpDebugger()');
+  });
+
+  it('checkIntegrity JSDoc/comment lists debuggerAttached among returned keys', () => {
+    // The JSDoc comment at the top of checkIntegrity must name the key so it
+    // stays in sync with callers.
+    const commentIdx = kt.indexOf('checkIntegrity()');
+    expect(commentIdx).toBeGreaterThan(-1);
+    // Search in the first 300 chars of the function header comment area
+    const ctx = kt.slice(Math.max(0, commentIdx - 10), commentIdx + 300);
+    expect(ctx).toContain('debuggerAttached');
+  });
+});
+
+// ── Item 17 — iOS +earlyCheckScreenCapture: pre-bridge UIScreen.isCaptured ───
+//
+// checkScreenCapture() (PR #985, -checkScreenCapture instance method) detects
+// AirPlay mirroring / ReplayKit screen recording via UIScreen.isCaptured.
+// It fires only when checkIntegrity() is called — after the bridge is up.
+// Adding +earlyCheckScreenCapture as a class method extends the detection
+// window back to AppDelegate, before any wallet UI is rendered.
+//
+// UIScreen.mainScreen is available from the start of
+// applicationDidFinishLaunchingWithOptions (UIApplication already initialised).
+// isCaptured was introduced iOS 11.0; app targets 14.0+ so no @available guard.
+// Fail-open (I4): @catch returns NO on any UIKit exception so the app still
+// launches if the API is unavailable.
+
+describe('Item 17 — iOS +earlyCheckScreenCapture pre-bridge UIScreen.isCaptured', () => {
+  it('+earlyCheckScreenCapture class method is defined', () => {
+    expect(iosM).toContain('+ (BOOL)earlyCheckScreenCapture');
+  });
+
+  it('+earlyCheckScreenCapture reads UIScreen.mainScreen.isCaptured', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckScreenCapture');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 300);
+    expect(body).toContain('UIScreen');
+    expect(body).toContain('isCaptured');
+  });
+
+  it('+earlyCheckScreenCapture wraps in @try/@catch (fail-open)', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckScreenCapture');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 300);
+    expect(body).toContain('@try');
+    expect(body).toContain('@catch');
+  });
+
+  it('+earlyCheckScreenCapture returns NO in the @catch fallback (fail-open)', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckScreenCapture');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 300);
+    expect(body).toContain('return NO');
+  });
+
+  it('+earlyCheck calls earlyCheckScreenCapture', () => {
+    const earlyStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyStart).toBeGreaterThan(-1);
+    const body = iosM.slice(earlyStart, earlyStart + 600);
+    expect(body).toContain('earlyCheckScreenCapture');
+  });
+
+  it('+earlyCheck ORs earlyCheckScreenCapture into its return expression', () => {
+    const earlyStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyStart).toBeGreaterThan(-1);
+    const body = iosM.slice(earlyStart, earlyStart + 600);
+    const retIdx = body.indexOf('return');
+    expect(retIdx).toBeGreaterThan(-1);
+    const retExpr = body.slice(retIdx, retIdx + 200);
+    expect(retExpr).toContain('earlyCheckScreenCapture');
+  });
+});
+
+// ── Item 15 — iOS +earlyCheckDebugger: pre-bridge sysctl P_TRACED ───────────
+//
+// checkDebugger() (item 12) added instance-method detection of an already-
+// attached debugger via sysctl(CTL_KERN/KERN_PROC/KERN_PROC_PID) + P_TRACED.
+// It fires only when checkIntegrity() is invoked, which is after the Capacitor
+// bridge is fully up. There is a window between app launch and the first
+// checkIntegrity() call during which a debugger attached via Xcode "Wait for
+// debugger" or a manual LLDB attach (before `jailbreakDetectionViewDidLoad`)
+// would go undetected.
+//
+// +earlyCheckDebugger is a class method that runs the same sysctl logic in the
+// pre-bridge early phase — after +earlyAntiDump and +earlyDenyAttach but
+// before the full bridge startup. This closes the pre-bridge detection window.
+//
+// Pattern: class method (+) using the same sysctl/P_TRACED idiom as item 12,
+// wrapped in @try/@catch (fail-open), returning NO on any error.
+
+describe('Item 15 — iOS +earlyCheckDebugger pre-bridge sysctl P_TRACED', () => {
+  it('+earlyCheckDebugger class method is defined (not the instance variant)', () => {
+    // Must be a class method (+), not the instance method (-) from item 12
+    expect(iosM).toContain('+ (BOOL)earlyCheckDebugger');
+  });
+
+  it('+earlyCheckDebugger calls sysctl with the kernel-proc mib', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 400);
+    expect(body).toContain('sysctl(mib');
+    expect(body).toContain('CTL_KERN');
+    expect(body).toContain('KERN_PROC');
+    expect(body).toContain('KERN_PROC_PID');
+  });
+
+  it('+earlyCheckDebugger checks the P_TRACED flag', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 400);
+    expect(body).toContain('P_TRACED');
+  });
+
+  it('+earlyCheckDebugger wraps in @try/@catch (fail-open — never blocks launch)', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 400);
+    expect(body).toContain('@try');
+    expect(body).toContain('@catch');
+  });
+
+  it('+earlyCheckDebugger returns NO on sysctl failure (fail-open)', () => {
+    const start = iosM.indexOf('+ (BOOL)earlyCheckDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 400);
+    // sysctl returns non-zero on error; we gate on == 0 (or != 0 → return NO)
+    expect(body).toMatch(/!= 0.*return NO|return NO.*!= 0/s);
+  });
+
+  it('+earlyCheck calls earlyCheckDebugger', () => {
+    const earlyStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyStart).toBeGreaterThan(-1);
+    // 500-char window: the return line is long (3 OR'd helpers) so 300 cuts it short
+    const body = iosM.slice(earlyStart, earlyStart + 500);
+    expect(body).toContain('earlyCheckDebugger');
+  });
+
+  it('+earlyCheck ORs earlyCheckDebugger into its return expression', () => {
+    const earlyStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(earlyStart).toBeGreaterThan(-1);
+    // 500-char window covers the full return line with all three OR'd helpers
+    const body = iosM.slice(earlyStart, earlyStart + 500);
+    // The return must combine earlyCheckDynamicLibraries || earlyDetectTamper ||
+    // earlyCheckDebugger (order may vary but all three must appear)
+    expect(body).toContain('earlyCheckDynamicLibraries');
+    expect(body).toContain('earlyDetectTamper');
+    expect(body).toContain('earlyCheckDebugger');
+    const retIdx = body.indexOf('return');
+    expect(retIdx).toBeGreaterThan(-1);
+    const retExpr = body.slice(retIdx, retIdx + 150);
+    expect(retExpr).toContain('earlyCheckDebugger');
+  });
+});
+
+// ── Item 14 — Android checkJdwpDebugger via Debug.isDebuggerConnected() ──────
+//
+// checkTracerPid() (item 1 / always present) detects native ptrace-based
+// debuggers (Frida server in ptrace mode, LLDB, GDB). It does NOT detect a
+// JDWP (Java Debug Wire Protocol) debugger — Android Studio / IntelliJ attach
+// via JDWP, which uses a separate channel (ADB port forwarding + DDMS) rather
+// than ptrace. A JDWP session can inspect and patch live Kotlin/Java execution
+// without triggering TracerPid.
+//
+// android.os.Debug.isDebuggerConnected() is the JVM-layer gate: the Dalvik/ART
+// runtime sets an internal flag when a JDWP session is active, and the API
+// reads it without any filesystem access. Weakly spoofable by root hooking the
+// Debug class, but adds a genuine second layer — an attacker must bypass BOTH.
+//
+// Added to detectHook() alongside checkTracerPid; @JvmSynthetic prevents Frida
+// from targeting the method by its readable Kotlin name.
+
+describe('Item 14 — Android checkJdwpDebugger via Debug.isDebuggerConnected()', () => {
+  it('checkJdwpDebugger method is defined in RaspIntegrityPlugin.kt', () => {
+    expect(kt).toContain('fun checkJdwpDebugger()');
+  });
+
+  it('checkJdwpDebugger calls Debug.isDebuggerConnected()', () => {
+    const start = kt.indexOf('fun checkJdwpDebugger()');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('isDebuggerConnected');
+  });
+
+  it('checkJdwpDebugger is annotated @JvmSynthetic', () => {
+    const jvmIdx  = kt.lastIndexOf('@JvmSynthetic', kt.indexOf('fun checkJdwpDebugger()'));
+    const fnIdx   = kt.indexOf('fun checkJdwpDebugger()');
+    // @JvmSynthetic must appear in the 60 chars before the fun keyword
+    expect(fnIdx - jvmIdx).toBeLessThan(60);
+    expect(jvmIdx).toBeGreaterThan(-1);
+  });
+
+  it('checkJdwpDebugger wraps in runCatching (fail-open, must not block launch)', () => {
+    const start = kt.indexOf('fun checkJdwpDebugger()');
+    const body = kt.slice(start, start + 200);
+    expect(body).toContain('runCatching');
+  });
+
+  it('detectHook chains checkJdwpDebugger after checkTracerPid', () => {
+    const hookStart    = kt.indexOf('private fun detectHook()');
+    expect(hookStart).toBeGreaterThan(-1);
+    const hookBody     = kt.slice(hookStart, hookStart + 300);
+    const tracerIdx    = hookBody.indexOf('checkTracerPid()');
+    const jdwpIdx      = hookBody.indexOf('checkJdwpDebugger()');
+    expect(tracerIdx).toBeGreaterThan(-1);
+    expect(jdwpIdx).toBeGreaterThan(-1);
+    expect(jdwpIdx).toBeGreaterThan(tracerIdx);
+  });
+
+  it('android.os.Debug is imported', () => {
+    expect(kt).toContain('import android.os.Debug');
+  });
+});
+
+// ── Item 12 — iOS checkDebugger via sysctl P_TRACED ──────────────────────────
+//
+// Android checkTracerPid() reads /proc/self/status and inspects the TracerPid
+// field to detect a debugger already attached to the process. iOS has no /proc
+// filesystem, but the kernel exposes the same information via sysctl:
+//
+//   int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
+//   struct kinfo_proc info;
+//   sysctl(mib, 4, &info, &size, NULL, 0);
+//   return (info.kp_proc.p_flag & P_TRACED) != 0;
+//
+// P_TRACED is set in the kernel process flags when a debugger is attached.
+// This complements PT_DENY_ATTACH (preventive) with detection: if PT_DENY_ATTACH
+// is patched on a jailbroken device, a debugger could still attach before
+// earlyDenyAttach runs; checkDebugger catches that condition.
+//
+// Surfaced as @"debuggerAttached" in the checkIntegrity result dict so the JS
+// presignGate can fold it into the HOOKED → TIER.BLOCK path.
+// Requires #import <sys/sysctl.h> (P_TRACED via <sys/proc.h>, transitively).
+// Purely local (I2); fail-closed to NO on any sysctl error (I4).
+
+describe('Item 12 — iOS checkDebugger via sysctl P_TRACED', () => {
+  it('sys/sysctl.h imported (provides sysctl, kinfo_proc, P_TRACED)', () => {
+    expect(iosM).toContain('#import <sys/sysctl.h>');
+  });
+
+  it('defines the -checkDebugger instance method', () => {
+    expect(iosM).toMatch(/-\s*\(BOOL\)checkDebugger/);
+  });
+
+  it('checkDebugger uses sysctl with CTL_KERN / KERN_PROC / KERN_PROC_PID', () => {
+    const start = iosM.indexOf('(BOOL)checkDebugger');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('CTL_KERN');
+    expect(body).toContain('KERN_PROC');
+    expect(body).toContain('KERN_PROC_PID');
+  });
+
+  it('checkDebugger tests the P_TRACED flag in kp_proc.p_flag', () => {
+    const start = iosM.indexOf('(BOOL)checkDebugger');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('P_TRACED');
+    expect(body).toContain('kp_proc');
+    expect(body).toContain('p_flag');
+  });
+
+  it('checkDebugger wraps in @try/@catch (fail-closed to NO on sysctl error, I4)', () => {
+    const start = iosM.indexOf('(BOOL)checkDebugger');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('@try');
+    expect(body).toContain('@catch');
+  });
+
+  it('adds "debuggerAttached" key to the checkIntegrity result dict', () => {
+    expect(iosM).toContain('@"debuggerAttached"');
+  });
+
+  it('wires [self checkDebugger] into checkIntegrity', () => {
+    expect(iosM).toMatch(/\[self checkDebugger\]/);
+  });
+
+  it('existing result keys are preserved (jailbroken, hookedProcess, emulator, tampered)', () => {
+    expect(iosM).toContain('@"jailbroken"');
+    expect(iosM).toContain('@"hookedProcess"');
+    expect(iosM).toContain('@"emulator"');
+    expect(iosM).toContain('@"tampered"');
+  });
+});
+
+// ── Item 11 — iOS HardwareKekPlugin mlock on H-factor key material ───────────
+//
+// The H factor (decrypted SE HMAC output) lives in an NSMutableData between
+// SE decryption and Capacitor bridge serialisation. If the device is under
+// memory pressure during that window, the OS could swap those pages to disk
+// before resetBytesInRange zeroes them — a disk-level memory dump would then
+// contain cleartext key material.
+//
+// Fix: mlock(h.mutableBytes, h.length) immediately after the NSMutableData is
+// allocated pins those pages in physical RAM. munlock(h.mutableBytes, h.length)
+// is called AFTER resetBytesInRange so the zeroed pages are unpinned once the
+// key bytes are gone. The window is as narrow as possible: allocated → pinned →
+// used → zeroed → unpinned.
+//
+// mlock/munlock are POSIX; available on iOS via <sys/mman.h> without any
+// special entitlement. Fail-open: if mlock returns non-zero (ENOMEM, EPERM)
+// the program still runs correctly — the bytes are just not guaranteed pinned.
+
+describe('Item 11 — iOS HardwareKekPlugin mlock on H-factor key material', () => {
+  it('sys/mman.h imported for mlock/munlock', () => {
+    expect(hwKekM).toContain('#import <sys/mman.h>');
+  });
+
+  it('mlock called on h.mutableBytes after NSMutableData allocation', () => {
+    expect(hwKekM).toContain('mlock(h.mutableBytes');
+    const allocIdx  = hwKekM.indexOf('NSMutableData *h = ');
+    const mlockIdx  = hwKekM.indexOf('mlock(h.mutableBytes');
+    expect(allocIdx).toBeGreaterThan(-1);
+    expect(mlockIdx).toBeGreaterThan(-1);
+    expect(mlockIdx).toBeGreaterThan(allocIdx);
+  });
+
+  it('mlock passes h.length as size (pins exactly the key material pages)', () => {
+    const mlockIdx  = hwKekM.indexOf('mlock(h.mutableBytes');
+    expect(mlockIdx).toBeGreaterThan(-1);
+    const mlockCall = hwKekM.slice(mlockIdx, mlockIdx + 60);
+    expect(mlockCall).toContain('h.length');
+  });
+
+  it('munlock called on h.mutableBytes after resetBytesInRange zeroing', () => {
+    expect(hwKekM).toContain('munlock(h.mutableBytes');
+    const resetIdx   = hwKekM.indexOf('[h resetBytesInRange:');
+    const munlockIdx = hwKekM.indexOf('munlock(h.mutableBytes');
+    expect(resetIdx).toBeGreaterThan(-1);
+    expect(munlockIdx).toBeGreaterThan(-1);
+    expect(munlockIdx).toBeGreaterThan(resetIdx);
+  });
+
+  it('mlock precedes munlock (pin before use, unpin after zero)', () => {
+    const mlockIdx   = hwKekM.indexOf('mlock(h.mutableBytes');
+    const munlockIdx = hwKekM.indexOf('munlock(h.mutableBytes');
+    expect(mlockIdx).toBeGreaterThan(-1);
+    expect(munlockIdx).toBeGreaterThan(-1);
+    expect(mlockIdx).toBeLessThan(munlockIdx);
+  });
+});
+
+// ── Item 10 — iOS earlyAntiDump via task_set_exception_ports ─────────────────
+//
+// Android earlyAntiDump() calls Os.prctl(PR_SET_DUMPABLE, 0) to prevent crash
+// reporters and /proc/[pid]/mem reads from non-root processes. iOS has no
+// prctl(2). The Mach-level analogue is clearing the task exception ports via
+//   task_set_exception_ports(mach_task_self(), EXC_MASK_ALL,
+//                            MACH_PORT_NULL, EXCEPTION_DEFAULT, THREAD_STATE_NONE)
+// which removes the process's crash-reporter listener so debuggers / crash
+// reporters cannot receive exception notifications from our process.
+//
+// Fail-open: any error leaves exception ports unchanged — the app still runs
+// normally (I4). This is a preventive hardening action, not a detection gate.
+//
+// earlyAntiDump is a class method called at the START of earlyCheck, before
+// earlyDenyAttach and earlyCheckDynamicLibraries — same ordering as Android
+// where earlyAntiDump runs before earlyDetectHook.
+//
+// Requires #import <mach/mach.h> (provides task_set_exception_ports,
+// mach_task_self, MACH_PORT_NULL, EXC_MASK_ALL, EXCEPTION_DEFAULT,
+// THREAD_STATE_NONE — distinct from the already-present <mach-o/dyld.h>).
+
+describe('Item 10 — iOS earlyAntiDump via task_set_exception_ports', () => {
+  it('defines the +earlyAntiDump class method', () => {
+    expect(iosM).toContain('+ (void)earlyAntiDump');
+  });
+
+  it('earlyAntiDump calls task_set_exception_ports', () => {
+    const start = iosM.indexOf('+ (void)earlyAntiDump');
+    expect(start).toBeGreaterThan(-1);
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('task_set_exception_ports');
+  });
+
+  it('earlyAntiDump passes MACH_PORT_NULL to clear the exception port', () => {
+    const start = iosM.indexOf('+ (void)earlyAntiDump');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('MACH_PORT_NULL');
+  });
+
+  it('earlyAntiDump uses mach_task_self() (own task — no entitlements required)', () => {
+    const start = iosM.indexOf('+ (void)earlyAntiDump');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('mach_task_self');
+  });
+
+  it('earlyAntiDump wraps the call in @try/@catch (fail-open, must not block launch)', () => {
+    const start = iosM.indexOf('+ (void)earlyAntiDump');
+    const body = iosM.slice(start, start + 500);
+    expect(body).toContain('@try');
+    expect(body).toContain('@catch');
+  });
+
+  it('mach/mach.h is imported (required for task_set_exception_ports + mach_task_self)', () => {
+    expect(iosM).toContain('#import <mach/mach.h>');
+  });
+
+  it('earlyCheck calls earlyAntiDump before earlyCheckDynamicLibraries', () => {
+    const checkStart = iosM.indexOf('+ (BOOL)earlyCheck');
+    expect(checkStart).toBeGreaterThan(-1);
+    const checkBody = iosM.slice(checkStart, checkStart + 600);
+    const antiDumpIdx = checkBody.indexOf('earlyAntiDump');
+    const dynLibIdx   = checkBody.indexOf('earlyCheckDynamicLibraries');
+    expect(antiDumpIdx).toBeGreaterThan(-1);
+    expect(dynLibIdx).toBeGreaterThan(-1);
+    expect(antiDumpIdx).toBeLessThan(dynLibIdx);
+  });
+});
+
+describe('Android RASP — Item 9: Dead checks removed', () => {
+  // ── checkProcNetUnix removed ─────────────────────────────────────────────
+
+  it('checkProcNetUnix method is absent — superseded by checkLocalSocketConnect', () => {
+    expect(kt).not.toContain('private fun checkProcNetUnix(');
+  });
+
+  it('checkProcNetUnix is not called anywhere in detectRoot', () => {
+    const rootIdx = kt.indexOf('private fun detectRoot()');
+    expect(rootIdx).toBeGreaterThan(-1);
+    const rootBody = kt.slice(rootIdx, rootIdx + 700);
+    expect(rootBody).not.toContain('checkProcNetUnix');
+  });
+
+  it('Build.VERSION.SDK_INT < Q gate for checkProcNetUnix is absent', () => {
+    // The gate was only needed while checkProcNetUnix existed.
+    // With the method removed, the gate expression is also gone.
+    expect(kt).not.toContain('Build.VERSION_CODES.Q && checkProcNetUnix');
+  });
+
+  // ── checkSuFromRuntime removed ───────────────────────────────────────────
+
+  it('checkSuFromRuntime method is absent — structurally inert on Android 10+', () => {
+    expect(kt).not.toContain('private fun checkSuFromRuntime(');
+  });
+
+  it('checkSuFromRuntime is not called anywhere in detectRoot', () => {
+    const rootIdx = kt.indexOf('private fun detectRoot()');
+    expect(rootIdx).toBeGreaterThan(-1);
+    const rootBody = kt.slice(rootIdx, rootIdx + 700);
+    expect(rootBody).not.toContain('checkSuFromRuntime');
+  });
+
+  // ── surviving root-detection chain still has all operative signals ───────
+
+  it('detectRoot still chains checkDangerousProps (operative root signal)', () => {
+    const rootIdx = kt.indexOf('private fun detectRoot()');
+    const rootBody = kt.slice(rootIdx, rootIdx + 700);
+    expect(rootBody).toContain('checkDangerousProps');
+  });
+
+  it('detectRoot still chains checkLocalSocketConnect (behavioral socket probe)', () => {
+    const rootIdx = kt.indexOf('private fun detectRoot()');
+    const rootBody = kt.slice(rootIdx, rootIdx + 700);
+    expect(rootBody).toContain('checkLocalSocketConnect');
   });
 });
