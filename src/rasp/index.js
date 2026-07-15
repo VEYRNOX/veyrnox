@@ -30,8 +30,12 @@
 //       unlock), and fails closed to INTEGRITY_UNAVAILABLE (→ WARN). It is the only
 //       source of the *attested* INTEGRITY_FAIL/INTEGRITY_UNAVAILABLE axis.
 //   BUILT · UNAUDITED-PROVISIONAL · NOT device-verified · NOT independently audited.
-//   Honest gaps: Android JWS is not on-device signature-verified (no Google key
-//   bundled); iOS App Attest needs the appattest entitlement + DeviceCheck linkage.
+//   Play Integrity JWS RS256/ES256 IS on-device signature-verified (PR #943
+//   landed RS256 with cert-chain walk; PR #955 added ES256 raw→DER transcoding;
+//   PR #1009 added nonce binding). Tracked residual: G2-ROOTCERT-PIN — the
+//   cert-chain walk still uses a weak issuer heuristic instead of a pinned
+//   Google root cert. iOS App Attest still needs the appattest entitlement +
+//   DeviceCheck linkage.
 //   The wiring into SendCrypto.jsx / useRaspArtifact is a SEPARATE follow-on PR;
 //   this module + the native plugin layer are what land here. detect()'s on-device
 //   probes still fail closed to INTEGRITY_UNAVAILABLE with no native capability, and
@@ -51,7 +55,10 @@ export { degrade } from './degrade.js';
 export { detect, classifyEnvironment } from './detect.js';
 export { browserProbeSource } from './browserProbe.js';
 export { nativeProbeSource } from './nativeProbe.js';
-export { resolveProbeSource } from './resolveProbeSource.js';
+// resolveProbeSource (the legacy chooser) was removed 2026-07-15 (P3-1 audit
+// cleanup): its fail-open browser fallback was replaced by selectPresignProbeSource
+// (fail-closed on native) as part of the C-01 fix (PR #825). No live consumers
+// remained.
 export { selectPresignProbeSource } from './selectPresignProbeSource.js';
 export { sensitiveGate } from './sensitiveGate.js';
 export { useRaspArtifact } from './useRaspArtifact.js';

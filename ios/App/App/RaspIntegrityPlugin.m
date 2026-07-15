@@ -1,28 +1,47 @@
 // RaspIntegrityPlugin.m — iOS RASP integrity probe
 //
-// STATUS: BUILT-UNVALIDATED — logic is present and, as of 2026-07-11 (#826), this
-// file + RaspIntegrityPluginBridge.m are in the Xcode App build target (so CAP_PLUGIN
-// actually registers at runtime). It has NOT been exercised on a real jailbroken /
-// Frida-hooked device. Requires on-device hostile testing and the independent audit
-// before the status can advance (F-09).
+// STATUS: DEVICE-VERIFIED (INTERNAL, 2026-07-14). Registered in the Xcode App
+// build target since PR #826 (2026-07-11) via RaspIntegrityPluginBridge.m so
+// CAP_PLUGIN actually registers at runtime.
 //
-// 2026-07-13 PALERA1N FINDING: tested on iPhone 8 Plus (A11, iOS 16.7.16, palera1n
-// rootful jailbreak). Result was GREEN (all signals false) — palera1n was NOT detected
-// by the original checks. Root causes:
-//   1. NSFileManager path checks: app sandbox enforced at kernel level even on palera1n
-//      rootful — fileExistsAtPath: returns NO for /bin/bash etc. because stat() is
-//      sandboxed by the kernel, not just userspace.
-//   2. Sandbox escape write: kernel sandbox still prevents write to /private.
-//   3. Dyld scan: palera1n does not inject Substrate/Frida into the app process.
-// This session added three new detection vectors to address palera1n:
+// F-09 palera1n: DEVICE-VERIFIED (INTERNAL, 2026-07-14) on iPhone 8 Plus
+// (iPhone10,5, iOS 16.7.16, palera1n rootful jailbreak). After the additions
+// below rebuilt and deployed (PRs #947 + #953), Security Dashboard rendered
+// RED and RASP Security page rendered RED "hooked" — palera1n IS now detected.
+// Operative firing condition: `hooked` (maps to TIER.BLOCK, signing refused),
+// NOT merely `rooted` (TIER.WARN). checkDynamicLibraries() caught a
+// Substrate/ElleKit dylib injected by the palera1n bootstrap. (The initial
+// 2026-07-13 pre-fix run was GREEN — palera1n's kernel sandbox blocked
+// NSFileManager path checks and the sandbox-escape write, and the original
+// dyld scan missed the ElleKit dylib.)
+//
+// G3 Frida Gadget: DEVICE-VERIFIED (INTERNAL, 2026-07-14) on the same device.
+// checkDynamicLibraries() lowercases both the image name and each marker string
+// so a signed stub FridaGadget.dylib is caught via _dyld_get_image_name()
+// (real Frida 17.15.4 crashes SIGKILL-CODESIGNING on this device — missing JIT
+// entitlement — so the stub is the strongest reachable proof of the detection
+// path; the check reads the NAME, not runtime behaviour).
+//
+// Detection vectors added during the palera1n work (all now shipping):
 //   - checkJailbreakPathsCstat: direct C stat() syscall bypasses NSFileManager's
-//     sandbox filter on some iOS 16 palera1n configurations.
-//   - checkFork: fork() succeeds on jailbroken devices; Apple sandbox blocks it on
-//     stock iOS. Most reliable cross-jailbreak signal.
+//     sandbox filter on iOS 16 palera1n configurations.
+//   - checkFork: fork() succeeds on jailbroken devices; Apple sandbox blocks it
+//     on stock iOS. Cross-jailbreak signal.
 //   - Extended path list: palera1n-specific paths (/var/jb/, /private/preboot/
 //     .installed_palera1n, /Library/dpkg, /usr/sbin/sshd, /var/lib/dpkg).
-// These additions are BUILT, NOT YET RE-TESTED on palera1n — status stays
-// BUILT-UNVALIDATED until a re-run confirms detection.
+//
+// HONEST GAPS (2026-07-14):
+//   1. Individual vector attribution: which of checkJailbreakPathsCstat /
+//      checkFork / the extended path list contributed alongside
+//      checkDynamicLibraries on palera1n is confirmed via UI state ONLY —
+//      syslog was unavailable in the device session, so per-check outputs are
+//      unlogged. The dyld image scan is the confirmed firing vector.
+//   2. `tampered:false` on palera1n: the debug provisioning profile passed
+//      csops CS_VALID; iOS detectTamper() does not do cert-pin comparison
+//      (Android has an equivalent — iOS gap tracked for independent audit).
+//   3. Not independently audited — INTERNAL device verification only. Requires
+//      the outstanding independent third-party audit before status can advance
+//      further.
 //
 // FAIL CLOSED (I4): every detection block catches exceptions. On any error the
 // signal is false (not detected). A total plugin failure → the JS side receives

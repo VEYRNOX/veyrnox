@@ -2,9 +2,20 @@
 // src/rasp/useRaspArtifact.js
 //
 // React hook: sample the RASP environment and return the current degrade() artifact.
-// Encapsulates the probe-sampling pattern from SendCrypto.jsx so callsites outside
-// the send flow (seed-reveal, export, import) can gate on the same RASP verdict
-// without copy-pasting the async effect.
+// Encapsulates the probe-sampling pattern so every surface that gates on the RASP
+// verdict shares one implementation (chokepoint) — no copy-pasted async effect,
+// no divergent inline sampling. Current live consumers (2026-07-15):
+//   • src/pages/SendCrypto.jsx           — pre-sign environment gate (P2-7)
+//   • src/pages/RaspSecurity.jsx         — environment dashboard (P2-8)
+//   • src/pages/SecurityDashboard.jsx    — top-level security surface
+//   • src/pages/CryptoSigning.jsx        — sign-flow re-confirm
+//   • src/pages/ColdSign.jsx             — cold-sign surface
+//   • src/pages/HDWalletManager.jsx      — key/seed management gate
+//   • src/pages/PersonalBackup.jsx       — backup/export gate
+//   • src/pages/WalletPortfolioPage.jsx  — portfolio surface
+//   • src/components/WalletEntry.jsx     — first-mount readout
+//   • src/components/security/useRevealWithReauth.jsx — reveal re-auth
+//   • src/lib/WalletConnectProvider.jsx  — WC pre-sign environment gate
 //
 // On native: asynchronously calls the native integrity plugin once per mount AND on
 // every app-foreground event (G4-A). A 60 s periodic heartbeat (G4-B) additionally
@@ -45,11 +56,13 @@ const HEARTBEAT_MS = 60_000;
 //     flag flips false the effect re-runs (probeKey deps carry through) and the
 //     probe fires. Default behaviour is unchanged for existing consumers.
 export function useRaspArtifact({ deferAttestation = false } = {}) {
-  // Dev bypass: skip all probe effects and return ALLOW immediately. Shape must
-  // match the success/catch branches (P2-8, 2026-07-15) — include `condition`
-  // so tsc unions the three returns without an inconsistent-shape error.
-  if (BYPASS_RASP) return { ...degrade(CONDITION.CLEAN), condition: CONDITION.CLEAN };
-
+  // P2-9 (audit 2026-07-15): rules-of-hooks — every hook call MUST run
+  // unconditionally on every render, regardless of BYPASS_RASP. The bypass
+  // early-return that used to sit ABOVE useState/useEffect was runtime-stable
+  // only because BYPASS_RASP is a module-load constant; a future author
+  // reactifying the flag would turn that into a real hook-order bug. Hooks
+  // now come first; the bypass short-circuits the returned ARTIFACT below
+  // (probe effects still fire but no-op on web / return-value substituted).
   const [nativeProbe, setNativeProbe] = useState(null);
   const [attestationResult, setAttestationResult] = useState(null);
   // probeKey increments to re-trigger the OS-probe effect on foreground/heartbeat.
@@ -99,8 +112,11 @@ export function useRaspArtifact({ deferAttestation = false } = {}) {
   }, [probeKey]);
 
   // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
-  // gated inside attestationProbeSource). BUILT · NOT device-verified (Play Integrity
-  // JWS RS256 not verified on-device; iOS appattest entitlement not yet present).
+  // gated inside attestationProbeSource). Play Integrity JWS RS256/ES256 IS
+  // on-device signature-verified (PR #943 landed RS256; PR #955 added ES256
+  // raw→DER transcoding; PR #1009 added nonce binding). The tracked residual is
+  // G2-ROOTCERT-PIN (weak issuer heuristic in the cert-chain walk); iOS App
+  // Attest entitlement + DeviceCheck linkage remain honest gaps.
   useEffect(() => {
     if (!ATTESTATION_ENABLED) return;
     if (!Capacitor.isNativePlatform()) return;
@@ -121,6 +137,12 @@ export function useRaspArtifact({ deferAttestation = false } = {}) {
     })();
     return () => { cancelled = true; };
   }, [probeKey, deferAttestation]);
+
+  // Dev bypass: substitute the returned ARTIFACT with ALLOW, AFTER every hook
+  // above has been invoked (P2-9). Shape matches the success/catch branches —
+  // `condition` is included so tsc unions the three returns without an
+  // inconsistent-shape error (P2-8, 2026-07-15).
+  if (BYPASS_RASP) return { ...degrade(CONDITION.CLEAN), condition: CONDITION.CLEAN };
 
   try {
     const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));
