@@ -329,7 +329,7 @@ export default function DuressPin() {
         className="p-4 rounded-xl border border-border bg-secondary/30"
       >
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Your real PIN unlocks faster than the decoy. Someone on your network could tell them apart. This protects you from someone in the room, not someone remote.
+          Veyrnox spends the same effort on every unlock — whether you enter your real PIN or your Emergency PIN — so the one you used isn&apos;t given away by how long unlock takes. It&apos;s a safeguard for when someone in the room forces you to unlock, not against a remote attacker watching your connection.
         </p>
       </div>
 
