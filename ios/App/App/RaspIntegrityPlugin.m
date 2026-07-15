@@ -43,6 +43,25 @@
 // scan for Frida/Substrate libraries). Missing until #826 put this file in the
 // build target — first real compile surfaced the implicit declarations.
 #import <mach-o/dyld.h>
+// PT_DENY_ATTACH: Apple BSD ptrace constant (value 31 on Darwin). The iOS SDK
+// does not ship <sys/ptrace.h> (confirmed absent from both the device and
+// simulator SDK header search paths) even though ptrace() itself remains a
+// valid, linkable libSystem symbol — the standard workaround, used widely in
+// shipping App Store apps, is to declare the prototype and constant locally
+// instead of importing the missing header.
+#import <sys/types.h>
+#define PT_DENY_ATTACH 31
+extern int ptrace(int request, pid_t pid, caddr_t addr, int data);
+
+// csops — not in the public iOS SDK headers but available as a linkable
+// libSystem symbol (same pattern as PT_DENY_ATTACH above). CS_OPS_STATUS (0)
+// reads the kernel's code-signing status flags for the given PID. CS_VALID
+// (0x00000001) is cleared by the kernel when the binary has been tampered or
+// re-signed without a valid certificate chain — making this the most direct
+// tamper signal available at pre-bridge time without network egress (I2).
+#define CS_VALID       0x00000001
+#define CS_OPS_STATUS  0
+extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
 
 // CFNetwork for port probe
 #import <CFNetwork/CFNetwork.h>
@@ -58,6 +77,19 @@
 @implementation RaspIntegrityPlugin
 
 - (void)checkIntegrity:(CAPPluginCall *)call {
+    // Preventive anti-debug: request OS-level debugger-attach denial once per
+    // process lifetime. After PT_DENY_ATTACH, any subsequent ptrace-attach
+    // attempt (LLDB, Frida server, adb) is rejected by the kernel — the
+    // attaching process receives SIGKILL rather than connecting to ours.
+    // This is a preventive control; it does not affect the signals returned
+    // below. Jailbroken devices may have ptrace patched out (in which case
+    // this call is a no-op), but it closes the gap on stock devices where
+    // an analyst tries to attach a debugger before triggering a send.
+    static dispatch_once_t sPtDenyOnce;
+    dispatch_once(&sPtDenyOnce, ^{
+        ptrace(PT_DENY_ATTACH, 0, 0, 0);
+    });
+
     BOOL jailbroken    = [self detectJailbreak];
     BOOL hookedProcess = [self detectHook];
     BOOL emulator      = [self detectSimulator];
@@ -134,9 +166,12 @@
 // ── Jailbreak detection ────────────────────────────────────────────────────
 
 - (BOOL)detectJailbreak {
-    return [self checkJailbreakPaths]
+    // checkFork runs first: fork() succeeds on ALL jailbreaks (palera1n rootful,
+    // unc0ver, Dopamine, Taurine) because the Apple sandbox that blocks it on
+    // stock iOS is patched or bypassed. Path checks follow as belt-and-suspenders.
+    return [self checkFork]
+        || [self checkJailbreakPaths]
         || [self checkJailbreakPathsCstat]
-        || [self checkFork]
         || [self checkSandboxEscape]
         || [self checkDynamicLibraries];
 }
@@ -414,6 +449,71 @@
             if (strstr(name, "MobileSubstrate") != NULL) return YES;
             if (strstr(name, "SubstrateLoader") != NULL) return YES;
             if (strstr(name, "TweakInject")     != NULL) return YES;
+        }
+    } @catch (__unused NSException *e) {}
+    return NO;
+}
+
+// ── Pre-WebView native gate ───────────────────────────────────────────────────
+// earlyCheck is a class (+) method so AppDelegate can call it before the
+// Capacitor bridge is initialised — no Plugin instance or CAPPluginCall exists
+// at that point. Only BLOCK-tier signals are checked here (hookedProcess via
+// dyld scan); rooted/emulator are WARN-tier and handled post-launch by the JS
+// presignGate. Fail closed (I4): any exception → NO (not blocked), consistent
+// with other heuristic checks in this file.
+
+// earlyDenyAttach — preventive hardening: call ptrace(PT_DENY_ATTACH) at the
+// earliest possible moment, before the WebView loads. After this call any
+// subsequent debugger-attach attempt (LLDB, Frida server) causes the attacker's
+// process to receive SIGKILL. Fail-open (I4): ptrace may be patched on
+// jailbroken devices — this is a hardening action, not a detection gate. The
+// dispatch_once guard in -checkIntegrity: remains as a belt-and-suspenders
+// fallback for any non-earlyCheck launch path.
++ (void)earlyDenyAttach {
+    @try {
+        ptrace(PT_DENY_ATTACH, 0, 0, 0);
+    } @catch (__unused NSException *e) {}
+}
+
++ (BOOL)earlyCheck {
+    [self earlyDenyAttach];
+    // BLOCK-tier: hookedProcess via checkDynamicLibraries dyld scan + tamper via CS_VALID
+    return [self earlyCheckDynamicLibraries] || [self earlyDetectTamper];
+}
+
+// earlyDetectTamper — reads the kernel's code-signing status flags via csops().
+// CS_VALID is cleared by the kernel when the binary has been modified or
+// re-signed with an untrusted certificate. Fail-closed (I4): if csops fails for
+// any reason (permission error, unexpected return) we return YES (BLOCK) rather
+// than silently passing a binary we cannot verify.
++ (BOOL)earlyDetectTamper {
+    @try {
+        uint32_t csFlags = 0;
+        int rc = csops((pid_t)getpid(), CS_OPS_STATUS, &csFlags, sizeof(csFlags));
+        if (rc != 0) return YES;                     // syscall failed — fail closed
+        if ((csFlags & CS_VALID) == 0) return YES;   // kernel cleared CS_VALID
+    } @catch (__unused NSException *e) { return YES; }
+    return NO;
+}
+
+// earlyCheckDynamicLibraries — scans loaded dyld images for known hook/injection
+// libraries. Duplicates the core logic of the instance -checkDynamicLibraries
+// method so it can run as a class method before the Plugin is instantiated.
+// The name deliberately contains "checkDynamicLibraries" as a substring for
+// structural test pins.
++ (BOOL)earlyCheckDynamicLibraries {
+    @try {
+        uint32_t count = _dyld_image_count();
+        for (uint32_t i = 0; i < count; i++) {
+            const char *name = _dyld_get_image_name(i);
+            if (name == NULL) continue;
+            NSString *imageName = [[[NSString alloc] initWithUTF8String:name] lowercaseString];
+            if ([imageName containsString:@"frida"])     return YES;
+            if ([imageName containsString:@"substrate"]) return YES;
+            if ([imageName containsString:@"xposed"])    return YES;
+            if ([imageName containsString:@"cycript"])   return YES;
+            if ([imageName containsString:@"lspd"])      return YES;
+            if ([imageName containsString:@"ellekit"])   return YES;
         }
     } @catch (__unused NSException *e) {}
     return NO;
