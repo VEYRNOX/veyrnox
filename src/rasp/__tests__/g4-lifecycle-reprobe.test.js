@@ -84,16 +84,20 @@ describe('useRaspArtifact — G4 periodic heartbeat', () => {
 
 // ── C. SendCrypto.jsx — foreground re-probe ───────────────────────────────────
 
-describe('SendCrypto — G4 foreground re-probe', () => {
-  it('imports App from @capacitor/app', () => {
-    expect(send).toMatch(/@capacitor\/app/);
+describe('SendCrypto — G4 foreground re-probe (via useRaspArtifact)', () => {
+  // P2-7 (audit 2026-07-15): SendCrypto no longer duplicates the appStateChange /
+  // heartbeat / probe effects inline — that logic lives in useRaspArtifact.js
+  // (pinned above in this file). The Send screen now delegates by calling the
+  // hook, so foreground/heartbeat re-probes still happen — through shared code.
+  it('delegates the re-probe lifecycle to useRaspArtifact()', () => {
+    expect(send).toMatch(/useRaspArtifact\s*\(/);
   });
 
-  it('listens to appStateChange in the send screen', () => {
-    expect(send).toMatch(/appStateChange/);
+  it('no longer contains an inline appStateChange listener (dedupe)', () => {
+    expect(send).not.toMatch(/appStateChange/);
   });
 
-  it('resets nativeProbe to null on foreground in the send screen', () => {
-    expect(send).toMatch(/setNativeProbe\s*\(\s*null\s*\)/);
+  it('no longer manages nativeProbe state directly (delegated to the hook)', () => {
+    expect(send).not.toMatch(/setNativeProbe\s*\(/);
   });
 });
