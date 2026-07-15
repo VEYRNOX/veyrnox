@@ -79,6 +79,13 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
+    // Android's android.jar stubs org.json.* out for JVM unit tests (they throw
+    // "not mocked" at runtime) — the real implementation must come from Maven for
+    // PlayIntegrityNonceVerifierTest to parse test payloads. AndroidX/Android
+    // Test framework doesn't pull org.json transitively for the JVM unit-test
+    // classpath. Version pinned to a maintained release (Android SDK bundles
+    // this same library at OS level; test-time we use the Maven artifact).
+    testImplementation 'org.json:json:20240303'
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
