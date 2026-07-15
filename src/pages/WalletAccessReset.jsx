@@ -298,7 +298,7 @@ export default function WalletAccessReset() {
         <div className="flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            <b>No password reset here.</b> We never hold your keys. Your seed phrase is your only way back in. Lose both the password and seed = funds gone forever.
+            <b>No password reset here.</b> We never hold your keys. Your seed phrase is your only way back in. Lose both the password and seed and your funds are gone forever.
           </span>
         </div>
       </div>
@@ -472,7 +472,7 @@ export default function WalletAccessReset() {
         <div className="flex items-start gap-2 p-3 rounded-lg border border-caution/30 bg-caution/5 text-xs text-caution">
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>
-            Type your seed phrase only on devices you trust. It's encrypted locally, never leaves this phone, but anyone with it has full access to your funds.
+            Type your seed phrase only on devices you trust. It's encrypted locally, never leaves this device, but anyone with it has full access to your funds.
           </span>
         </div>
 
@@ -555,7 +555,7 @@ export default function WalletAccessReset() {
           <li>No password reset — we never see it.</li>
           <li>No email/SMS recovery link. We have nothing on our servers to recover.</li>
           <li>No key escrow. Support cannot restore access.</li>
-          <li>Lose both password and seed = funds gone permanently.</li>
+          <li>Lose both password and seed and your funds are gone permanently.</li>
           <li>No guardian or social recovery.</li>
         </ul>
       </div>

@@ -94,7 +94,7 @@ export default function SecurityScanner() {
         <CardContent className="pt-4 space-y-2 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">What this does</p>
           <p>
-            Paste the <span className="font-mono">data</span> field. Detects known risk patterns — unlimited approvals, spoofed addresses, unrecognised calls — on your device, no network. Never says "safe". Nothing flagged = nothing detected, not a thumbs-up.
+            Paste the <span className="font-mono">data</span> field. Detects known risk patterns — unlimited approvals, spoofed addresses, unrecognised calls — on your device, no network. Never says "safe". Nothing flagged means nothing detected, not a thumbs-up.
           </p>
         </CardContent>
       </Card>

@@ -199,7 +199,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
           <li>No addresses, no transaction history, no personal data.</li>
         </ul>
         <p className="mt-2 text-caution font-medium">
-          Choose a backup password and PIN now — different from your app unlock PIN, not stored in the file. Forget both = funds gone forever.
+          Choose a backup password and PIN now — different from your app unlock PIN, not stored in the file. Forget both and your funds are gone forever.
         </p>
         <p className="mt-1">
           Use the password for highest security. A short PIN has weaker entropy but works in a pinch.
