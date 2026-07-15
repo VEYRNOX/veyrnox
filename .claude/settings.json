@@ -73,6 +73,15 @@
             "timeout": 8000
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ]; then echo \"[cloud-setup] Installing deps for Claude Code on the web sandbox\"; npm ci --no-audit --no-fund || npm install --no-audit --no-fund; fi'",
+            "timeout": 600000
+          }
+        ]
       }
     ],
     "SessionEnd": [
