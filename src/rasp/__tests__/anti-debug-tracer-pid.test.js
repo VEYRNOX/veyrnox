@@ -55,6 +55,10 @@ const buildGradle = readFileSync(
 const cFilePath     = resolve(root, 'android/app/src/main/cpp/rasp_early.c');
 const cmakePath     = resolve(root, 'android/app/src/main/cpp/CMakeLists.txt');
 const hwKekM        = readFileSync(resolve(root, 'ios/App/App/HardwareKekPlugin.m'), 'utf8');
+const hwKekKt = readFileSync(
+  resolve(root, 'android/app/src/main/java/com/veyrnox/app/HardwareKekPlugin.kt'),
+  'utf8',
+);
 const ecdsaTranscoderKt = readFileSync(
   resolve(root, 'android/app/src/main/java/com/veyrnox/app/EcdsaDerTranscoder.kt'),
   'utf8',
@@ -638,6 +642,49 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
 //   checkDangerousProps() (verifiedbootstate/flash.locked via SystemProperties
 //   reflection) is the operative root signal; checkLocalSocketConnect()
 //   covers the behavioral aspect.
+
+// ── Native signing gate — isBlockTier + HardwareKekPlugin integration ────────
+//
+// The JS presign gate (detect.js → compose.js → presignGate) can be bypassed
+// by patching nativeProbe.js to return { available: false }. The only way to
+// close this bypass is to enforce the BLOCK-tier check inside the native plugin
+// BEFORE it returns the hardware H factor.
+//
+// RaspIntegrityPlugin companion gains isBlockTier(context): Boolean — delegates
+// to the existing earlyDetectHook() + earlyDetectTamper(context) +
+// earlyCheckScreenCapture(context). Internal visibility (same package).
+//
+// HardwareKekPlugin.getHardwareFactor() calls isBlockTier() as its first gate.
+// On BLOCK → call.reject("RASP_BLOCK", ...) — H is never returned; the vault
+// cannot be unlocked; signing is impossible regardless of JS state (I4).
+
+describe('Native signing gate — RaspIntegrityPlugin.isBlockTier + HardwareKekPlugin gate', () => {
+  it('RaspIntegrityPlugin companion defines isBlockTier', () => {
+    expect(kt).toContain('fun isBlockTier(');
+  });
+
+  it('isBlockTier delegates to earlyDetectHook()', () => {
+    const start = kt.indexOf('fun isBlockTier(');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 300);
+    expect(body).toContain('earlyDetectHook()');
+  });
+
+  it('isBlockTier delegates to earlyDetectTamper(context)', () => {
+    const start = kt.indexOf('fun isBlockTier(');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 300);
+    expect(body).toContain('earlyDetectTamper(');
+  });
+
+  it('HardwareKekPlugin.getHardwareFactor calls isBlockTier', () => {
+    expect(hwKekKt).toContain('isBlockTier(');
+  });
+
+  it('HardwareKekPlugin rejects with RASP_BLOCK when isBlockTier fires', () => {
+    expect(hwKekKt).toContain('RASP_BLOCK');
+  });
+});
 
 // ── Item 38 — Kotlin JVM test harness for ES256 DER transcoder (#957 original) ─
 //
