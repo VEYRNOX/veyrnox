@@ -50,7 +50,7 @@ export default function DAppSecurityAlerts() {
       <div className="p-3 rounded-xl bg-secondary/50 border border-border flex items-start gap-2">
         <Info className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
         <p className="text-xs text-muted-foreground">
-          We don't audit dApps. This checks a small local list — flagged = known bad. Not on the list ≠ safe. Always verify the URL yourself.
+          We don't audit dApps. This checks a small local list — flagged means known bad. Not on the list does not mean safe. Always verify the URL yourself.
         </p>
       </div>
 
