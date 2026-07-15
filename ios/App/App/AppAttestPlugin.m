@@ -15,6 +15,33 @@
 //    device-exercised.
 // 4. NOT independently audited.
 //
+// ── P2-5 (2026-07-15) — HONEST SCOPE OF THE "SUBSEQUENT RUNS" ASSERTION LEG ──
+// A successful `generateAssertion` call proves ONLY that "this specific app
+// install still holds its SE-enrolled App Attest key." It does NOT prove
+// "this device is not jailbroken." SE-key operations are answered by the
+// Secure Enclave regardless of whether the surrounding OS/userland is
+// compromised — SE keys survive jailbreak, so a local assertion cannot
+// detect jailbreak on its own.
+//
+// Real App Attest integrity relies on SERVER-SIDE verification of the
+// assertion: the server holds the previously-attested public key, tracks
+// the monotonic counter/receipt, and validates the nonce against Apple's
+// servers. Without that server-side leg, this branch cannot detect a
+// compromised runtime — it can only confirm SE key intact.
+//
+// Under the on-device-decision design (Option A,
+// docs/rasp-attestation-egress-decision.md), Veyrnox deliberately keeps
+// the signing-gate DECISION on-device (I5 — backend untrusted). The
+// accepted trade-off is that this leg contributes NO independent
+// jailbreak signal at the pre-sign gate; the runtime-integrity axis is
+// carried by RaspIntegrityPlugin.m (on-device jailbreak probes). When
+// this leg's verdict is composed with the OS probe axis via
+// composeConditions (src/rasp/attestation.js), a jailbroken iOS device
+// is caught by TAMPERED/HOOKED from the OS probe — that outranks any
+// CLEAN result from this leg, so the compose lattice is safe even
+// though a maintainer must NOT trust this leg's "attestationFailed:NO"
+// as a device-integrity verdict on its own.
+//
 // I4 — FAIL CLOSED. Unsupported device, any DeviceCheck error, or a missing nonce
 // resolves { available:false }, which the JS layer maps to INTEGRITY_UNAVAILABLE
 // (→ WARN), never a fabricated clean/allow.
@@ -90,7 +117,20 @@ static NSString * const APPATTEST_KEY_ID_DEFAULT = @"veyrnox_appattest_key_id";
         } else {
             // (4) Subsequent runs: the key is already attested with Apple, so we
             // only need a LOCAL assertion (no further network verification of the
-            // key itself). A successful assertion signals the key/device are intact.
+            // key itself).
+            //
+            // P2-5 HONESTY (2026-07-15): a successful assertion proves ONLY that
+            // this app install still holds its SE-enrolled key. It does NOT
+            // prove device integrity / that this device is not jailbroken —
+            // the Secure Enclave answers generateAssertion calls whether the
+            // surrounding OS/userland is jailbroken or not. Real integrity
+            // requires server-side verification (nonce + monotonic counter/
+            // receipt tracking against Apple), which contradicts Veyrnox's I5
+            // (backend untrusted). Under Option A (on-device decision), this
+            // is the accepted trade-off: the jailbreak signal comes from
+            // RaspIntegrityPlugin.m, and the compose lattice
+            // (src/rasp/attestation.js composeConditions) ensures TAMPERED/
+            // HOOKED from the OS probe outranks a CLEAN result from this leg.
             [service generateAssertion:storedKeyId
                         clientDataHash:clientDataHash
                      completionHandler:^(NSData *assertion, NSError *asrtErr) {

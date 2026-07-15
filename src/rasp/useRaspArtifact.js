@@ -123,8 +123,15 @@ export function useRaspArtifact({ deferAttestation = false } = {}) {
   try {
     const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));
     const _attestCondition = detectAttestation(attestationResult);
-    return degrade(composeConditions(_osCondition, _attestCondition));
+    const composed = composeConditions(_osCondition, _attestCondition);
+    // P2-8 (2026-07-15): expose the composed CONDITION so environment-read
+    // surfaces (e.g. RaspSecurity.jsx dashboard) can render a specific
+    // condition label without re-sampling the probes themselves. Existing
+    // consumers that only read {tier, sentence, blockedActions, requiresBiometric}
+    // are unaffected (superset shape).
+    return { ...degrade(composed), condition: composed };
   } catch {
-    return degrade(undefined); // fail-closed (BLOCK) if detection throws
+    // fail-closed (BLOCK) if detection throws; keep the artifact shape stable.
+    return { ...degrade(undefined), condition: undefined };
   }
 }
