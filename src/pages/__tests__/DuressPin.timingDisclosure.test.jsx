@@ -1,10 +1,10 @@
 // D-02 — Emergency PIN unlock-timing disclosure.
 //
-// ⛔ BLOCKED ON PR #1000 (H-1 unlock-timing equalizer). DO NOT MERGE until #1000
-// lands on main. This file's copy + assertions describe the state AFTER #1000:
-// the timing oracle they used to disclose is CLOSED. Merged before #1000, the
-// page would tell users unlock timing is equalized while the equalizer isn't in
-// main yet — an overclaim. Reconcile wording with #1000's final state first.
+// This file's copy + assertions describe the state AFTER PR #1000 (H-1
+// unlock-timing equalizer), which has now LANDED on main — the timing oracle they
+// used to disclose is CLOSED. (Historical note: this branch was held until #1000
+// merged, so the page could not claim unlock timing is equalized before the
+// equalizer was actually in main.)
 //
 // HISTORY: D-02 (2026-07-05 audit) accepted a residual where a correct primary
 // unlock spent ~1 KDF FEWER than any Emergency-PIN / wrong-PIN outcome, making
