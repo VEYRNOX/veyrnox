@@ -123,6 +123,26 @@ export async function nativeProbeSource() {
   // item 36) into rooted → WARN. A user-installed accessibility service has
   // full UI-tree access and can inject events — keylogging/tapjacking risk
   // during PIN entry. Android-only field.
+
+  // P2-6b fail-closed shape validation (from main): a bridge returning `{}` or a
+  // one-field partial previously coerced every absent axis to false → CLEAN, a
+  // fabricated pass (fail-open). Refuse partial/malformed shapes and fail closed
+  // (I4). Rooted-axis is a UNION — Android emits `rooted`, iOS emits `jailbroken`
+  // — so require at least ONE of the two as a boolean, plus the other three core
+  // fields as booleans. The item-19–37 verdict fields above are OPTIONAL
+  // Android-only extensions and are deliberately NOT required here (absent → false
+  // via the `=== true` guards), so a valid core verdict without them still passes.
+  const rootedIsBool = typeof verdict.rooted === 'boolean';
+  const jailbrokenIsBool = typeof verdict.jailbroken === 'boolean';
+  if (
+    !(rootedIsBool || jailbrokenIsBool) ||
+    typeof verdict.hookedProcess !== 'boolean' ||
+    typeof verdict.emulator !== 'boolean' ||
+    typeof verdict.tampered !== 'boolean'
+  ) {
+    return UNAVAILABLE;
+  }
+
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true
          || verdict.overlayActive === true
