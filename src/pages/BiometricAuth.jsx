@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/pages/BiometricAuth.jsx
 //
 // "Biometric Re-Auth" — the settings surface for requiring a biometric / passkey

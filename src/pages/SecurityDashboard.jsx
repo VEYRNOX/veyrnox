@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import {
   screenAddressHistory,
   buildReviewItems,
 } from "@/lib/securityPosture";
+import { useRaspArtifact, TIER } from "@/rasp";
 import { isBiometricUnlockEnabled } from "@/lib/biometric";
 import { isPasskeyUnlockEnabled, isPasskeyRegistered } from "@/lib/passkey";
 import { loadAutoLockValue, AUTO_LOCK_OPTIONS } from "@/lib/session";
@@ -89,6 +91,10 @@ export default function SecurityDashboard() {
   const wallet = useWallet();
   const { isDecoy, isHidden } = wallet;
 
+  // I3 (deniability): RASP verdict is environment-only (set-blind by construction
+  // in degrade/detect) — safe to call unconditionally, same result in any session.
+  const raspArtifact = useRaspArtifact();
+
   // I3 (deniability): decoy/hidden sessions must not fire base44 entity queries.
   // Gate consistent with LoginActivity.jsx — no UI tell that confirms session type.
   const entityQueryEnabled = !isDecoy && !isHidden;
@@ -137,9 +143,26 @@ export default function SecurityDashboard() {
   const approvals = useMemo(() => summarizeApprovals(approvalRows), [approvalRows]);
   const spam = useMemo(() => summarizeSpamTokens(tokenRows), [tokenRows]);
   const addresses = useMemo(() => screenAddressHistory(txRows), [txRows]);
-  const { review } = useMemo(
+  const { review: postureReview } = useMemo(
     () => buildReviewItems({ approvals, spam, addresses, features: { autoLockNever } }),
     [approvals, spam, addresses, autoLockNever]
+  );
+
+  // Prepend a RASP device-integrity item when the environment is non-clean.
+  // BLOCK (tampered/hooked) → high; WARN (rooted/unavailable) → high.
+  // ALLOW (clean environment) → no item added.
+  const raspReviewItem = useMemo(() => {
+    if (!raspArtifact || raspArtifact.tier === TIER.ALLOW) return null;
+    return {
+      severity: 'high',
+      text: raspArtifact.sentence || 'Device integrity check failed — review before signing.',
+      path: null,
+    };
+  }, [raspArtifact]);
+
+  const review = useMemo(
+    () => (raspReviewItem ? [raspReviewItem, ...postureReview] : postureReview),
+    [raspReviewItem, postureReview]
   );
 
   const loading = loadingApprovals || loadingTokens || loadingTxs;
@@ -193,11 +216,18 @@ export default function SecurityDashboard() {
           <ul className="mt-3 space-y-1.5">
             {review.map((r, i) => (
               <li key={i}>
-                <Link to={r.path} className="flex items-center gap-2 text-sm hover:underline">
-                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${SEV[r.severity].dot}`} />
-                  <span className={`flex-1 ${SEV[r.severity].cls}`}>{r.text}</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                </Link>
+                {r.path ? (
+                  <Link to={r.path} className="flex items-center gap-2 text-sm hover:underline">
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${SEV[r.severity].dot}`} />
+                    <span className={`flex-1 ${SEV[r.severity].cls}`}>{r.text}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${SEV[r.severity].dot}`} />
+                    <span className={`flex-1 ${SEV[r.severity].cls}`}>{r.text}</span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

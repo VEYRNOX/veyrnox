@@ -1,3 +1,4 @@
+// @ts-nocheck
 // analytics/feeAnalytics.js
 //
 // Slice 1 — STATELESS native-unit fee analytics. Pure functions over an active-

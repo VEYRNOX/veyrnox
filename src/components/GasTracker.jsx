@@ -86,7 +86,7 @@ function CongestionBadge({ level }) {
   );
 }
 
-function SkeletonRow({ last = false }) {
+function SkeletonRow({ last }) {
   return (
     <div className={`flex items-center justify-between py-3 ${last ? "" : "border-b border-border"}`}>
       <div className="flex items-center gap-2.5">
@@ -241,8 +241,8 @@ export default function GasTracker() {
 
       {isLoading ? (
         <div>
-          <SkeletonRow />
-          <SkeletonRow />
+          <SkeletonRow last={false} />
+          <SkeletonRow last={false} />
           <SkeletonRow last />
         </div>
       ) : (

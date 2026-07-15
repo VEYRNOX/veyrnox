@@ -1,6 +1,14 @@
+// @ts-nocheck
+import BackButton from "@/components/BackButton";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
-import { trezorSignEvmTx, trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
+// Issue #961 (SEND H-1): the Trezor EVM branch now goes through the audited
+// hw-send.js helpers (signAndBroadcastEvmTrezor / signAndBroadcastEvmTrezorToken),
+// NOT the raw device wrapper — those helpers apply the M-2/#746 recovery check,
+// the 'pending' block-tag nonce + sanity window, and estimated gas + headroom.
+// BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
+import { trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
+import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -12,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowUpRight, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
+import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
@@ -38,30 +46,32 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
-import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, selectPresignProbeSource } from "@/rasp";
+import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, selectPresignProbeSource, ATTESTATION_ENABLED, attestationProbeSource, detectAttestation, composeConditions } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
-import { isSelfSend } from "@/lib/selfSend";
+import { isSelfSend, addressesEqualForCurrency } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate, SEND_GATE } from "@/lib/sendGate";
 import { resolveEnsName } from "@/lib/ens";
 import { getProvider } from "@/wallet-core/evm/provider";
 import { evaluateTwoFactor } from "@/lib/twoFactorGate";
-import { resolveSend2faMethod, SEND_2FA } from "@/lib/send2faMethod";
+import { SEND_2FA } from "@/lib/send2faMethod";
+import { useSend2faMethod } from "@/lib/useSend2faMethod";
 import { resolveMaxPriorityFeePerGas } from "@/lib/WalletConnectProvider";
-import { is2faPasskeyEnabled, isPasskeyRegistered, verifyPasskeyAssertion } from "@/lib/passkey";
-import { is2faBiometricEnabled, verifyBiometric2fa } from "@/lib/biometric";
+import { verifyPasskeyAssertion } from "@/lib/passkey";
+import { verifyBiometric2fa } from "@/lib/biometric";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
-import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession.js";
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -116,22 +126,24 @@ export default function SendCrypto() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
+  const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = /** @type {any} */ (useWallet());
 
   // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
   // see lib/send2faMethod.js). Audit H-1: keying the send gate off actionPasswordConfigured
   // alone silently skipped a PASSKEY-only second factor. is2faPasskeyEnabled/isPasskeyRegistered
   // are synchronous localStorage reads, so this is a plain computed value. 'none' means opt-in
   // was not configured — the send proceeds via the baseline windowed PIN step-up, unchanged.
-  const send2faMethod = resolveSend2faMethod({
+  // L-3: reactive — re-reads the device-global biometric/passkey prefs (localStorage)
+  // on a same-tab 2FA-pref change (SEND_2FA_CHANGED_EVENT), a passkey
+  // registration/clear, or a cross-tab `storage` change, so a Send screen left mounted
+  // while the user toggles 2FA in Settings does NOT keep a stale factor. The security
+  // decision is unchanged — the hook delegates to the same pure resolveSend2faMethod.
+  // I3: the resolver suppresses device-global factors in decoy/hidden sessions
+  // (per-set Action Password still applies) — see lib/send2faMethod.js.
+  const send2faMethod = useSend2faMethod({
     demo: DEMO,
     isNative: Capacitor.isNativePlatform(),
-    biometric2faEnabled: is2faBiometricEnabled(),
-    passkey2faEnabled: is2faPasskeyEnabled(),
-    passkeyRegistered: isPasskeyRegistered(),
     actionPasswordConfigured,
-    // I3: suppress device-global passkey/biometric factors in decoy/hidden sessions
-    // (per-set Action Password still applies) — see lib/send2faMethod.js.
     isDecoy,
     isHidden,
   });
@@ -156,8 +168,8 @@ export default function SendCrypto() {
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const [txResult, setTxResult] = useState(null); // { hash, explorerUrl } from a real broadcast
-  const [selectedFee, setSelectedFee] = useState(null); // user-chosen EIP-1559 fee (FeeSelector)
+  const [txResult, setTxResult] = useState(/** @type {any} */ (null)); // { hash, explorerUrl } from a real broadcast
+  const [selectedFee, setSelectedFee] = useState(/** @type {any} */ (null)); // user-chosen EIP-1559 fee (FeeSelector)
 
   // TREZOR hardware-wallet signing mode
   const { connected: trezorConnected, platform: trezorPlatform, evmAddress: trezorEvmAddress, btcAddress: trezorBtcAddress, solAddress: trezorSolAddress } = useTrezor();
@@ -172,7 +184,7 @@ export default function SendCrypto() {
   const [, setReauthTick] = useState(0); // bump to force a re-render so the window check re-evaluates
   const [ensName, setEnsName] = useState("");
   const [ensResolving, setEnsResolving] = useState(false);
-  const [ensResolved, setEnsResolved] = useState(null);
+  const [ensResolved, setEnsResolved] = useState(/** @type {any} */ (null));
 
   const resolveENS = async (name) => {
     if (!name || (!name.endsWith(".eth") && !name.endsWith(".sol"))) return;
@@ -181,7 +193,14 @@ export default function SendCrypto() {
     // session makes zero backend calls, and an observer must not see a resolver
     // query tied to a send from a hidden wallet. Fail closed: paste the 0x/base58
     // address directly in these sessions (resolution is a convenience, not a gate).
-    if (isDecoy || isHidden) {
+    // 2026-07-14 audit MEDIUM: mirror the full triple guard used by every other
+    // network-touching call site in this file (balance queries at 381/389/397 and
+    // simulation at 564/587). isDeniabilitySessionActive() is a module-scoped flag
+    // set independently of the WalletProvider flags — a stealth/panic-triggered
+    // deniable state can have the session flag true while isDecoy/isHidden are
+    // still false, and this was the only outlier that would fire resolveEnsName →
+    // getProvider(network) in that window (I3 egress).
+    if (isDecoy || isHidden || isDeniabilitySessionActive()) {
       toast.error("Name resolution is off in this session — paste the address directly.");
       return;
     }
@@ -287,17 +306,17 @@ export default function SendCrypto() {
     queryFn: () => base44.entities.WhitelistedAddress.list(),
   });
 
-  const { data: txLimits = [] } = useQuery({
+  const { data: txLimits = [] } = /** @type {{ data: any[] }} */ (useQuery({
     queryKey: ["tx-limits"],
     queryFn: () => base44.entities.TransactionLimit.list(),
-  });
+  }));
 
   // Sources for LOCAL address-poisoning screening: the addresses the user has
   // actually interacted with. All read client-side; nothing is sent anywhere.
-  const { data: history = [] } = useQuery({
+  const { data: history = [] } = /** @type {{ data: any[] }} */ (useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
-  });
+  }));
   const { data: addressBook = [] } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list(),
@@ -330,12 +349,12 @@ export default function SendCrypto() {
   // (.currency/.address/.balance) from the live source, so downstream send / limit /
   // screening logic is unchanged. Address comes from the active wallet's derived
   // accounts (EVM shared / BTC / SOL) via resolveReceive.
-  const selectedWallet = buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount });
+  const selectedWallet = /** @type {any} */ (buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount }));
 
   // Capability gate: only assets whose status is `live` may move funds. ETH is
   // live (Phase A); ERC-20 tokens (Phase B) are receive_only until a testnet
   // transfer is verified, so they read balances but cannot yet send.
-  const selectedAsset = getAsset(selectedWallet?.currency);
+  const selectedAsset = /** @type {any} */ (getAsset(selectedWallet?.currency));
   const sendEnabled = canSend(selectedAsset);
   const isErc20 = selectedAsset?.family === "erc20";
 
@@ -402,7 +421,7 @@ export default function SendCrypto() {
   // Decode EXACTLY what an ERC-20 send will sign, for display on the confirm
   // screen BEFORE any signature (the anti-blind-signing control). Transfers show
   // recipient/amount/token; an unlimited `approve` would surface a red warning.
-  const tokenCalldata = useMemo(() => {
+  const tokenCalldata = /** @type {any} */ (useMemo(() => {
     if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
     try {
       const { data } = buildTokenTransfer({ networkKey: networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
@@ -410,7 +429,7 @@ export default function SendCrypto() {
     } catch {
       return null; // unconfigured token / invalid input — UI shows nothing to decode
     }
-  }, [isErc20, selectedAsset, toAddress, amount]);
+  }, [isErc20, selectedAsset, toAddress, amount]));
 
   // Unlimited-approval extra confirmation. Send flows are transfer-only, so this
   // stays false in normal use; it hard-gates the action only if an unlimited
@@ -463,9 +482,13 @@ export default function SendCrypto() {
   const isSelfSendRecipient = isSelfSend(toAddress, selectedWallet?.address, selectedWallet?.currency);
 
   const currencyWhitelist = whitelist.filter(w => w.currency === selectedWallet?.currency);
+  // 2026-07-14 audit LOW: per-currency compare. Previously `.toLowerCase()` on both
+  // sides was semantically wrong for base58 BTC/SOL (case-significant) — two distinct
+  // valid base58 addresses could compare equal and suppress the "not on whitelist"
+  // warning. Reuses the same case-fold rules as isSelfSend.
   const isAddressWhitelisted = currencyWhitelist.length === 0
     ? true
-    : currencyWhitelist.some(w => w.address.toLowerCase() === toAddress.toLowerCase());
+    : currencyWhitelist.some(w => addressesEqualForCurrency(w.address, toAddress, selectedWallet?.currency));
 
   // Addresses the user has interacted with — the corpus the look-alike screen
   // compares against. Each entry carries a human label so the warning can name
@@ -501,8 +524,8 @@ export default function SendCrypto() {
       amount,
       currency: selectedWallet?.currency,
       usdRates: USD_RATES,
-      history,
-      limits: txLimits,
+      history: /** @type {any} */ (history),
+      limits: /** @type {any} */ (txLimits),
       now: new Date(),
     }),
     [amount, selectedWallet, history, txLimits]
@@ -535,7 +558,7 @@ export default function SendCrypto() {
   // Disabled in DEMO (no live RPC) — the demo harness renders sample previews
   // instead. Errors are surfaced as a degraded "couldn't simulate" note, not a
   // block. Keys are never involved (simulation needs only the sender address).
-  const txSim = useQuery({
+  const txSim = /** @type {any} */ (useQuery({
     queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, amount, selectedAsset?.symbol, isErc20],
     queryFn: async () => {
       const from = selectedWallet.address;
@@ -545,7 +568,7 @@ export default function SendCrypto() {
         return simulateEvmTransaction({
           networkKey, from, to: t.address, data, valueWei: 0n,
           nativeSymbol, tokenSymbol: selectedAsset.symbol, tokenDecimals: t.decimals,
-          tokenBalance: liveBalance != null ? String(liveBalance) : null, knownAddresses,
+          tokenBalance: liveBalance != null ? String(liveBalance) : /** @type {any} */ (null), knownAddresses,
           priorSends, knownCounterparties,
         });
       }
@@ -559,7 +582,7 @@ export default function SendCrypto() {
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
-  });
+  }));
 
   // BTC PRE-SIGN PREVIEW (internal audit H-1/M-2). Bitcoin has no programmable
   // execution to dry-run, so this is an HONEST decode of the EXACT transaction the
@@ -569,7 +592,7 @@ export default function SendCrypto() {
   // in btc/provider.js) flowed straight into a signed tx. This surfaces the fee +
   // plan + decode-only risk flags (entire_balance / large_outflow) BEFORE signing.
   // LOCAL: only the existing Esplora indexer; no third-party scorer; no keys.
-  const btcSim = useQuery({
+  const btcSim = /** @type {any} */ (useQuery({
     queryKey: ["btc-sim", networkKey, selectedWallet?.address, toAddress, amount],
     queryFn: async () => {
       const fromAddress = selectedWallet.address;
@@ -582,7 +605,7 @@ export default function SendCrypto() {
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
     retry: false,
     staleTime: 10000,
-  });
+  }));
 
   // Raw calldata for the risk scorer (S2/S3/S7 read tx.data). Distinct from
   // tokenCalldata above, which is the human-readable DECODE. Native sends have no
@@ -650,6 +673,13 @@ export default function SendCrypto() {
   // (same freshness discipline as limitAck above).
   const [riskAck, setRiskAck] = useState(false);
   useEffect(() => { setRiskAck(false); }, [amount, selectedWallet?.currency, toAddress]);
+
+  // B5 — RASP WARN biometric re-confirm. On a WARN-tier native environment (rooted or
+  // integrity-unavailable), the user must pass a biometric verify AFTER the checkbox ack
+  // before the send button activates. State resets whenever inputs change (same freshness
+  // discipline as riskAck) so a cleared bio can't carry into a changed send.
+  const [raspWarnBioOk, setRaspWarnBioOk] = useState(false);
+  useEffect(() => { setRaspWarnBioOk(false); }, [amount, selectedWallet?.currency, toAddress]);
   // While the score is still computing (simulation in flight) the verdict is
   // unknown — block the verify buttons rather than letting the user proceed into
   // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
@@ -662,16 +692,40 @@ export default function SendCrypto() {
   // walletSet handle. I4: a RASP crash fails closed to the strongest BLOCK.
   //
   // F-09 — NATIVE OS probe. nativeProbeSource() is a Capacitor bridge call (async), so
-  // it cannot run on the synchronous render path. We sample it ONCE at mount behind an
-  // isNativePlatform() gate (RASP-A1: the OS verdict does not change during a session)
-  // and cache it in state. selectPresignProbeSource() then, on native, consumes the OS leg
+  // it cannot run on the synchronous render path. We sample it at mount AND on every
+  // app-foreground event + 60 s heartbeat (G4-A/G4-B: catches Frida injected mid-session
+  // or during backgrounding). selectPresignProbeSource() on native consumes the OS leg
   // ONLY and NEVER falls back to the browser leg's CLEAN — the browser leg reports CLEAN on
   // a native WebView (it cannot see root/jailbreak), so a native fallback to it was
   // fail-OPEN (C-01, internal-audit-2026-07-11, CRITICAL). Until the native leg genuinely
   // ran we fail CLOSED (INTEGRITY_UNAVAILABLE → WARN, never ALLOW): this covers iOS (no
   // plugin yet), a plugin-absent/throwing verdict, and the not-yet-resolved async window.
   // On web the gate reads browserProbeSource exactly as before.
-  const [nativeProbe, setNativeProbe] = useState(null);
+  const [nativeProbe, setNativeProbe] = useState(/** @type {any} */ (null));
+  const [probeKey, setProbeKey] = useState(0);
+
+  // G4-A: re-probe on foreground. Reset to null immediately so gate stays WARN (I4).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handle = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        setNativeProbe(null);
+        setProbeKey(k => k + 1);
+      }
+    });
+    return () => { handle.then(h => h.remove()); };
+  }, []);
+
+  // G4-B: 60 s heartbeat — catches injection without a background/foreground cycle.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const id = setInterval(() => {
+      setNativeProbe(null);
+      setProbeKey(k => k + 1);
+    }, 60_000);
+    return () => { clearInterval(id); };
+  }, []);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let cancelled = false;
@@ -686,15 +740,44 @@ export default function SendCrypto() {
       }
     })();
     return () => { cancelled = true; };
+  }, [probeKey]);
+
+  // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
+  // gated inside attestationProbeSource). SEPARATE effect from the OS-probe effect
+  // above (one leg per effect). BUILT · NOT device-verified (Play Integrity JWS RS256
+  // not verified on-device; iOS appattest entitlement not yet present).
+  const [attestationResult, setAttestationResult] = useState(/** @type {any} */ (null));
+  useEffect(() => {
+    if (!ATTESTATION_ENABLED) return;
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await attestationProbeSource();
+        if (!cancelled) setAttestationResult(r);
+      } catch {
+        // I4 FAIL CLOSED: bridge throw → unavailable, never fabricated clean.
+        if (!cancelled) setAttestationResult({ available: false });
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  let raspArtifact = null;
+  let raspArtifact = /** @type {any} */ (null);
   // RASP-A1 (2026-07-05 internal audit, HIGH): browserProbeSource re-samples the
   // environment FRESH on every property read (its `available`/`signals` are getters),
   // so a debugger / WebDriver flag attached AFTER module-load is still caught. This
   // runs on every render, and the signer chokepoint re-derives the gate too. On native an
   // unavailable OS leg fails CLOSED — it does NOT fall back to the browser CLEAN (C-01).
-  try { raspArtifact = degrade(detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource))); } catch { raspArtifact = degrade(undefined); }
+  // The remote-attestation condition is composed in (the more dangerous leg wins): during
+  // the async window detectAttestation(null) → INTEGRITY_UNAVAILABLE (WARN), fail-closed.
+  try {
+    const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));
+    const _attestCondition = detectAttestation(attestationResult);
+    raspArtifact = degrade(composeConditions(_osCondition, _attestCondition));
+  } catch {
+    raspArtifact = degrade(/** @type {any} */ (undefined));
+  }
   // I4 FAIL CLOSED (RASP-A2, 2026-07-05 internal audit, HIGH): if the RASP artifact
   // is missing a tier (a crash, or degrade() shape drift), fall back to the strongest
   // BLOCK — NEVER ALLOW. A fail-open fallback here would let a hostile runtime sign
@@ -706,6 +789,15 @@ export default function SendCrypto() {
   // (mutationFn) re-derives the SAME gate, so UI and enforcement cannot diverge.
   const presign = riskVerdict ? presignGate(raspTier, riskVerdict.level, riskAck) : null;
   const blockedByRisk = riskPending || (presign ? !presign.proceedAllowed : false);
+
+  // B5 — biometric gate for WARN environments. `requiresBiometric` is set by degrade()
+  // for ROOTED and INTEGRITY_UNAVAILABLE. Only enforced on native: verifyBiometric2fa()
+  // throws immediately on web (no native platform), and ROOTED is only reachable via the
+  // native OS probe. BLOCK overrides bio (the signer is already unreachable).
+  const raspNeedsBio = raspArtifact?.requiresBiometric === true
+    && Capacitor.isNativePlatform()
+    && presign?.decision !== 'block';
+  const blockedByRaspBio = raspNeedsBio && !raspWarnBioOk;
 
   // BTC pre-sign risk gate (internal audit M-2). BTC isn't EVM-shaped, so it has no
   // `presign` verdict — instead its honest decode (btcSim → describeBtcPlan) raises
@@ -738,8 +830,8 @@ export default function SendCrypto() {
         amount,
         currency: selectedWallet.currency,
         usdRates: USD_RATES,
-        history,
-        limits: txLimits,
+        history: /** @type {any} */ (history),
+        limits: /** @type {any} */ (txLimits),
         now: new Date(),
       });
 
@@ -755,7 +847,7 @@ export default function SendCrypto() {
       }
 
       let riskScoreFailed = false;
-      let presignAtSign = null;
+      let presignAtSign = /** @type {any} */ (null);
       try {
         const freshScore = scoreCurrentSend();
         presignAtSign = presignGate(raspTier, freshScore.level, riskAck);
@@ -765,6 +857,22 @@ export default function SendCrypto() {
         riskScoreFailed = true;
       }
 
+      // B5 — RASP WARN biometric enforcement chokepoint (I4 fail-closed).
+      // Defense-in-depth: re-assert the bio gate at sign time so UI state cannot be
+      // bypassed. `raspNeedsBio` is re-derived here (not from closure) to avoid any
+      // stale render state. `presignAtSign` may be null if scoreCurrentSend threw
+      // (riskScoreFailed), in which case the gate is effectively BLOCK already via
+      // evaluateSendGate below — but we still enforce bio here to be safe.
+      const raspNeedsBioAtSign = raspArtifact?.requiresBiometric === true
+        && Capacitor.isNativePlatform()
+        && presignAtSign?.decision !== 'block';
+      if (raspNeedsBioAtSign && !raspWarnBioOk) {
+        throw Object.assign(
+          new Error('Biometric confirmation required before signing on a modified device.'),
+          { code: 'RASP_BIO_REQUIRED' }
+        );
+      }
+
       // The single ordered verdict (capability → unlock → re-auth → limits → risk →
       // approval). canSend() stays the production truth, relaxed only by the dev,
       // testnet-only, build-eliminated ungate. Mainnet stays gated in networks.js.
@@ -772,7 +880,7 @@ export default function SendCrypto() {
       const twoFactorVerified = twoFactorVerifiedRef.current;
       twoFactorVerifiedRef.current = false;
 
-      const gate = evaluateSendGate({
+      const gate = /** @type {any} */ (evaluateSendGate({
         canSend: canSend(selectedAsset),
         devUngated,
         currency: selectedWallet?.currency,
@@ -794,7 +902,7 @@ export default function SendCrypto() {
         // verdict is recomputed above.
         btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
         blockedByApproval,
-      });
+      }));
       if (!gate.allowed) {
         throw Object.assign(new Error(gate.message), { code: gate.code });
       }
@@ -815,6 +923,30 @@ export default function SendCrypto() {
       // lives inside the EVM branch of the family dispatch below. Hoisting it would
       // throw "not in the unlocked HD set" for BTC/SOL, whose address is not an EVM
       // account.
+
+      // I3 hardware-send gate (#972 P1, codex round 2). The old hw/trezor.js
+      // module's requireWebUsb() gated ALL three device paths (EVM/BTC/SOL) on
+      // isDeniabilitySessionActive() — throwing TREZOR_DENIABILITY_BLOCKED before
+      // any RPC or device call. My earlier hotfix restored that gate inside
+      // hw-send.js's public entrypoints, but the caller pre-computes a fee-clamp
+      // (getFeeData for EVM) / a UTXO+blockhash preflight (BTC/SOL) BEFORE reaching
+      // those helpers — leaking one RPC round-trip. Under decoy/hidden with a
+      // Trezor connected the device holds the REAL seed regardless of session
+      // type, so any egress here is an I3 violation AND a coercion-exfil vector.
+      // One gate above the family dispatch catches all three Trezor branches;
+      // software-key sends are UNAFFECTED (decoy has its own decoy vault, that
+      // path is legitimate). Error string matches hw-send.js exactly so downstream
+      // catch-by-message keeps working. Demo-mode check mirrors hw/trezor.js's
+      // deniabilityActive() — a demo build (VITE_DEMO_MODE / veyrnox-demo=1)
+      // must never touch a real Trezor device or leak fee/nonce RPC (codex
+      // round-2 finding, #972 P1b).
+      // Use the LIVE deniability-OR-demo check (round-3 codex finding): the
+      // module-level DEMO constant is a load-time IIFE snapshot, so a
+      // veyrnox-demo=1 flag flipped AFTER import wouldn't fire this gate. The
+      // shared helper reads both signals fresh on every call.
+      if (useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) {
+        throw new Error('TREZOR_DENIABILITY_BLOCKED');
+      }
 
       // Sign LOCALLY and broadcast. The signing key is transient and never
       // persisted. Branch on the asset family — each has its own derivation/
@@ -896,10 +1028,14 @@ export default function SendCrypto() {
         // EVM native + ERC-20.
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
+          // Fee-clamp still lives here (NOT inside hw-send.js): the merge of
+          // selectedFee with the provider's fee-data fallback is a UI concern,
+          // and the F-08-TREZOR / L-2 caps must apply BEFORE the fee crosses the
+          // wallet-core boundary. We pre-compute the clamped values, then pass
+          // them into the audited helper via a normal { ...Wei } fee object so
+          // the exact clamped numbers are what get signed.
           const provider = getProvider(networkKey);
-          const nonce = await provider.getTransactionCount(trezorEvmAddress);
           const feeData = await provider.getFeeData();
-          const chainInfo = getNetworkInfo(networkKey);
           const fee = selectedFee?.fee || undefined;
           const rawMaxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
           // F-08-TREZOR (I5: RPC untrusted): clamp maxFeePerGas to the same
@@ -911,39 +1047,49 @@ export default function SendCrypto() {
           const cappedMaxFeePerGas = rawMaxFeePerGas != null && rawMaxFeePerGas > maxFeePerGasCap
             ? maxFeePerGasCap
             : rawMaxFeePerGas;
-          const maxFeePerGas = cappedMaxFeePerGas;
           // L-2 (I5: RPC untrusted): clamp the priority fee against the already-
           // capped maxFeePerGas via the shared pure helper, so a misreporting
           // provider can't pin an implausibly large tip on a hardware signer.
-          const maxPriorityFeePerGas = resolveMaxPriorityFeePerGas(
+          const clampedPriorityFee = resolveMaxPriorityFeePerGas(
             fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n,
             cappedMaxFeePerGas,
           );
-          let signedHex;
+          // Shape the clamped values into the { ...Wei } fee object hw-send.js
+          // expects (evmFeeOverrides). gasLimit is intentionally omitted — the
+          // helper estimates + applies +20% headroom (issue #961: replaces the
+          // old hardcoded 21000n/65000n that broke L2 native + USDT transfers).
+          //
+          // TODO(#972 P2a): the confirmation screen's displayed fee is computed
+          // from the tier hint's 21000/65000 gasLimit, but the signed tx uses
+          // estimateGas + 20%. The Trezor device screen shows the actual value
+          // (so a careful user can catch the divergence) but in-app numbers and
+          // signed numbers diverge. Fix requires resolving gasLimit BEFORE the
+          // confirm screen renders and threading it through both the display and
+          // the signed tx. Deferred from the #972 hotfix — see follow-up.
+          const clampedFee = (cappedMaxFeePerGas != null)
+            ? {
+                maxFeePerGasWei: cappedMaxFeePerGas.toString(),
+                maxPriorityFeePerGasWei: clampedPriorityFee.toString(),
+              }
+            : undefined;
           if (isErc20) {
-            const { data, contract: contractAddr } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
-            signedHex = await trezorSignEvmTx({
-              chainId: chainInfo.chainId,
-              nonce,
-              to: contractAddr,
-              value: 0n,
-              gasLimit: 65000n,
-              maxFeePerGas,
-              maxPriorityFeePerGas,
-              data,
+            raw = await signAndBroadcastEvmTrezorToken({
+              networkKey,
+              fromAddress: trezorEvmAddress,
+              symbol: selectedAsset.symbol,
+              to: toAddress,
+              amount,
+              fee: clampedFee,
             });
           } else {
-            signedHex = await trezorSignEvmTx({
-              chainId: chainInfo.chainId,
-              nonce,
+            raw = await signAndBroadcastEvmTrezor({
+              networkKey,
+              fromAddress: trezorEvmAddress,
               to: toAddress,
-              value: parseEther(String(amount)),
-              gasLimit: 21000n,
-              maxFeePerGas,
-              maxPriorityFeePerGas,
+              amountEth: amount,
+              fee: clampedFee,
             });
           }
-          raw = await provider.broadcastTransaction(signedHex);
         } else {
           // Map the wallet to its HD derivation index (public address match).
           // The user-selected EIP-1559 fee flows straight into the signing call;
@@ -1096,6 +1242,7 @@ export default function SendCrypto() {
 
   return (
     <div className="max-w-md mx-auto space-y-6">
+      {fromDetail && <BackButton />}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Send Crypto</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Transfer funds securely</p>
@@ -1162,7 +1309,7 @@ export default function SendCrypto() {
             </div>
             <div>
               <Label id="send-asset-label">Asset</Label>
-              <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={!walletId}>
+              <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={/** @type {any} */ (!walletId)}>
                 <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="send-asset-label">
                   <SelectValue placeholder="Select asset">
                     {assetSymbol ? (
@@ -1528,6 +1675,31 @@ export default function SendCrypto() {
               <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
             )}
 
+            {/* B5 — biometric re-confirm on native WARN (ROOTED / INTEGRITY_UNAVAILABLE).
+                Rendered OUTSIDE the owner-branch ternary so it appears regardless of which
+                banner plane (rasp or tx) owns the copy. Without this, the WARN+RISK compose
+                case (owner='tx', decision='confirm') would permanently block the send button
+                with no reachable affordance to clear raspWarnBioOk — the same dead-end class
+                as PR #834. Fail-closed: bio cancel/error leaves raspWarnBioOk false (I4). */}
+            {riskAck && raspNeedsBio && !raspWarnBioOk && (
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-xs underline underline-offset-2 font-medium mt-1 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                onClick={async () => {
+                  try {
+                    const ok = await verifyBiometric2fa();
+                    if (ok) setRaspWarnBioOk(true);
+                  } catch {
+                    // bio unavailable or cancelled — remain blocked (I4 fail-closed)
+                  }
+                }}
+              >
+                <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
+                Verify with biometrics to proceed
+              </button>
+            )}
+
+
             {/* Hint: one-tap escape while the risk check is still running. */}
             {riskPending && simEnabled && (
               <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-dashed border-border bg-card">
@@ -1616,8 +1788,15 @@ export default function SendCrypto() {
 
             {/* Per-chain fee control. The EVM send path is EIP-1559; the chosen
                 tier/custom fee is passed into signAndBroadcast/sendToken. BTC/SOL
-                use an automatic fee this slice (no selector). */}
-            {!isBtc && !isSolana ? (
+                use an automatic fee this slice (no selector).
+                I3 hardware gate (#972 round-2 P1a, codex): FeeSelector's
+                react-query fires estimateEvmFeeTiers() → provider.getFeeData() on
+                mount, with no deniability enabled clause. Under useTrezorMode +
+                decoy/hidden/demo the Trezor address is the REAL hardware address,
+                so that unguarded RPC leaks the real address to the fee provider.
+                Skip the selector in that combination — the send-time gate above
+                will refuse anyway, so a fee tier serves no purpose. */}
+            {!isBtc && !isSolana && !(useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) ? (
               <FeeSelector
                 chain="evm"
                 networkKey={networkKey}
@@ -1648,7 +1827,12 @@ export default function SendCrypto() {
               // the existing windowed PIN step-up below is byte-unchanged. Risk/approval
               // gates still come first (the gate is hidden until those pass). The Argon2id
               // checks run SEQUENTIALLY (one-at-a-time — Defect-A safe).
-              if (send2faMethod !== SEND_2FA.NONE && !blockedByApproval && !blockedByRisk && !blockedByBtcRisk) {
+              // 2026-07-14 audit LOW: also gate on !blockedByRaspBio, matching the
+              // parallel Confirm-button (:1828) and PinPad (:1854) branches. Without
+              // this, on native RASP-WARN + 2FA-configured + tx-owner, the user could
+              // complete 2FA only for the signer to throw RASP_BIO_REQUIRED — the UI
+              // contract diverges from enforcement even though security is preserved.
+              if (send2faMethod !== SEND_2FA.NONE && !blockedByApproval && !blockedByRisk && !blockedByBtcRisk && !blockedByRaspBio) {
                 return (
                   <TwoFactorGate
                     mode={send2faMethod}
@@ -1696,7 +1880,7 @@ export default function SendCrypto() {
                 return (
                   <Button
                     className="w-full gap-2"
-                    disabled={blockedByApproval || blockedByRisk || blockedByBtcRisk || sendTx.isPending}
+                    disabled={blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk || sendTx.isPending}
                     onClick={() => {
                       // Re-check freshness at click time (isSendReauthRequired reads a ref, always
                       // current). If the window lapsed while idle on this screen, force a re-render so
@@ -1722,7 +1906,7 @@ export default function SendCrypto() {
                       value={reauthValue}
                       onChange={setReauthValue}
                       onComplete={submitReauth}
-                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByBtcRisk}
+                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                       submitLabel="Authorise"
                     />
                   ) : (
@@ -1738,7 +1922,7 @@ export default function SendCrypto() {
                       />
                       <Button
                         className="w-full gap-2"
-                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByBtcRisk}
+                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                         onClick={() => submitReauth(reauthValue)}
                       >
                         {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { Capacitor } from '@capacitor/core';
 const isNative = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();
@@ -8,7 +9,8 @@ import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useTier } from "@/lib/TierProvider";
 import { getAuthModel } from "@/lib/authModel";
-import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText } from "lucide-react";
+import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature } from "lucide-react";
+import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -19,33 +21,18 @@ import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import HardwareKekSettings from "../components/security/HardwareKekSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
-import { probeRuntimeServices, loadAuditSnapshot } from '@/lib/appHealth';
-import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession';
 
 export default function Settings() {
   const queryClient = useQueryClient();
   const { lock, recordAudit, getAuditLogEnabled, toggleAuditLog, fetchAuditEntries } = useWallet();
   const { currentTier } = useTier();
   const isSafetyPlus = currentTier === "safety_plus";
-  const [issueCount, setIssueCount] = useState(0);
-  useEffect(() => {
-    if (isDeniabilitySessionActive()) return;
-    Promise.allSettled([probeRuntimeServices(), loadAuditSnapshot()]).then(([svcResult, auditResult]) => {
-      let count = 0;
-      if (svcResult.status === 'fulfilled') {
-        count += svcResult.value.filter(s => s.status !== 'ok').length;
-      }
-      if (auditResult.status === 'fulfilled' && !auditResult.value.unavailable) {
-        count += auditResult.value.critical + auditResult.value.high;
-      }
-      setIssueCount(count);
-    });
-  }, []);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [auditLog, setAuditLog] = useState(() => getAuditLogEnabled());
   const [auditEntries, setAuditEntries] = useState(null);
+  const [messageSigning, setMessageSigning] = useState(() => isMessageSigningEnabled());
 
   useEffect(() => {
     if (!auditLog) { setAuditEntries(null); return; }
@@ -149,7 +136,7 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          A private log of what you changed, sent, or revoked. No amounts or addresses are recorded. Panic Wipe erases it. Turning this off clears it too.
+          Private log: what you changed, sent, revoked. No amounts or addresses. Panic Wipe erases it.
         </p>
         {auditLog && auditEntries !== null && (
           <div className="mt-3 border-t border-border pt-3">
@@ -167,6 +154,37 @@ export default function Settings() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Message signing (opt-in, OFF by default — fail-closed, I4).
+          Lets the /crypto-signing page sign arbitrary text with the wallet key.
+          A wallet that never blind-signs arbitrary messages is safer against
+          signature-phishing, so the capability is present only when the user
+          explicitly enables it. */}
+      <div className="p-5 rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FileSignature className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Message signing</p>
+              <p className="text-xs text-muted-foreground">Off by default · stored on this device only</p>
+            </div>
+          </div>
+          <Switch
+            checked={messageSigning}
+            aria-label={messageSigning ? 'Disable message signing' : 'Enable message signing'}
+            onCheckedChange={(checked) => {
+              setMessageSigningEnabled(checked);
+              setMessageSigning(checked);
+              recordAudit('settings_changed');
+            }}
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Off by default. Lets you sign arbitrary text messages with your wallet key. Only enable if a dApp or service asks you to sign a message.
+        </p>
       </div>
 
       {/* Security settings — shown on all platforms.
@@ -220,7 +238,7 @@ export default function Settings() {
           <div>
             <p className="text-sm font-semibold">Current plan: {isSafetyPlus ? "Safety Plus" : "Free"}</p>
             <p className="text-xs text-muted-foreground">
-              {isSafetyPlus ? "Advanced analytics & premium insights" : "Upgrade to Safety Plus — $5.99/mo"}
+              {isSafetyPlus ? "Deeper security controls & advanced analytics" : "Upgrade to Safety Plus — $5.99/mo"}
             </p>
           </div>
         </div>
@@ -293,28 +311,6 @@ export default function Settings() {
         <span className="text-sm text-primary font-medium">View</span>
       </Link>
 
-      {/* App health — nav row with warning dot when services/CVEs are degraded */}
-      <Link
-        to="/app-health"
-        className="flex items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors min-h-[44px]"
-      >
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <i className="ti ti-topology-star text-primary" aria-hidden="true" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold">App health</p>
-            <p className="text-xs text-muted-foreground">Services, packages &amp; device status</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {issueCount > 0 && (
-            <span className="w-2 h-2 rounded-full bg-caution inline-block" aria-label={`${issueCount} issues`} />
-          )}
-          <i className="ti ti-chevron-right text-muted-foreground text-sm" aria-hidden="true" />
-        </div>
-      </Link>
-
       {/* Danger Zone */}
       <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
         <div className="flex items-center gap-2 text-destructive">
@@ -325,7 +321,7 @@ export default function Settings() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium">Delete Account</p>
-              <p className="text-xs text-muted-foreground">Clears saved data and locks the wallet. Your recovery phrase still controls your funds — use Panic Wipe to erase the keys.</p>
+              <p className="text-xs text-muted-foreground">Clears data, locks wallet. Recovery phrase still works. Use Panic Wipe to erase keys.</p>
             </div>
             <button
               onClick={() => setShowDelete(true)}

@@ -97,7 +97,12 @@ describe('FLAG S3 — self-send is now guarded (#179)', () => {
   });
 
   it('imports the pure self-send helper rather than inlining the compare', () => {
-    expect(send).toMatch(/import\s*\{\s*isSelfSend\s*\}\s*from\s*["']@\/lib\/selfSend["']/);
+    // 2026-07-14 audit LOW: SendCrypto.jsx also imports `addressesEqualForCurrency`
+    // from the same module for the whitelist compare (previously used a raw
+    // `.toLowerCase()` that was semantically wrong for base58 BTC/SOL). Assert
+    // that both symbols come from the same helper module.
+    expect(send).toMatch(/import\s*\{[^}]*\bisSelfSend\b[^}]*\}\s*from\s*["']@\/lib\/selfSend["']/);
+    expect(send).toMatch(/import\s*\{[^}]*\baddressesEqualForCurrency\b[^}]*\}\s*from\s*["']@\/lib\/selfSend["']/);
   });
 });
 

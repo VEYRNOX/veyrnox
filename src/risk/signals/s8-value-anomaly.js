@@ -41,7 +41,9 @@ function medianWei(values) {
   const sorted = values.slice().sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const n = sorted.length;
   const mid = Math.floor(n / 2);
-  return n % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2n;
+  // L-3: for even n, (a+b)/2n truncates toward zero, biasing the threshold down.
+  // Use upper-middle element instead — standard for BigInt where halving is lossy.
+  return sorted[mid];
 }
 
 /**

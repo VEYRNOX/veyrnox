@@ -20,14 +20,22 @@
 //   These are pure: no egress, no device, no key access. Safe to land now;
 //   landing the deniability test early is protective.
 //
-//   HELD off this landing — AUDIT-GATED (the remote-attestation egress leg, parked):
-//     • the Play Integrity / App Attest verdict client (Phase 2b: real egress + a
-//       backend dependency — an I2 disclosure decision in its own right, and the
-//       only source of the INTEGRITY_FAIL/INTEGRITY_UNAVAILABLE *attested* axis).
-//   Held until (a) the I2 egress-disclosure decision is written and (b) a
-//   real-device verification run exists. detect()'s probes fail closed to
-//   INTEGRITY_UNAVAILABLE with no native capability, and degrade() maps that to a
-//   WARN re-confirm (I4), so the safe default holds while the attested leg is held.
+//   LANDED — Phase 2b remote-attestation egress leg (Option B, signed off 2026-07-13,
+//   docs/rasp-attestation-egress-decision.md):
+//     • attestation.js — the Play Integrity / App Attest verdict client seam
+//       (composeConditions / detectAttestation / attestationProbeSource). This IS
+//       real egress + a backend touch, so it is DISCLOSED and DENIABILITY-GATED:
+//       attestationProbeSource() checks isDeniabilitySessionActive() FIRST (zero
+//       egress under decoy/hidden), is called ONLY at the pre-sign gate (never on
+//       unlock), and fails closed to INTEGRITY_UNAVAILABLE (→ WARN). It is the only
+//       source of the *attested* INTEGRITY_FAIL/INTEGRITY_UNAVAILABLE axis.
+//   BUILT · UNAUDITED-PROVISIONAL · NOT device-verified · NOT independently audited.
+//   Honest gaps: Android JWS is not on-device signature-verified (no Google key
+//   bundled); iOS App Attest needs the appattest entitlement + DeviceCheck linkage.
+//   The wiring into SendCrypto.jsx / useRaspArtifact is a SEPARATE follow-on PR;
+//   this module + the native plugin layer are what land here. detect()'s on-device
+//   probes still fail closed to INTEGRITY_UNAVAILABLE with no native capability, and
+//   degrade() maps that to a WARN re-confirm (I4), so the safe default holds.
 //
 // Two planes, one chokepoint, no shared inputs (brief §6): this module is a pure
 // function of (environment) ONLY. RASP signals never enter the tx scorer
@@ -45,3 +53,11 @@ export { browserProbeSource } from './browserProbe.js';
 export { nativeProbeSource } from './nativeProbe.js';
 export { resolveProbeSource } from './resolveProbeSource.js';
 export { selectPresignProbeSource } from './selectPresignProbeSource.js';
+export { sensitiveGate } from './sensitiveGate.js';
+export { useRaspArtifact } from './useRaspArtifact.js';
+export {
+  ATTESTATION_ENABLED,
+  attestationProbeSource,
+  detectAttestation,
+  composeConditions,
+} from './attestation.js';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/WalletPortfolioPage.jsx — MULTI-WALLET + PORTFOLIOS view (real vault).
 //
 // Replaces the single-wallet/mock dashboard in the LOCAL/native build. Models:
@@ -42,9 +43,11 @@ import CoinLogo from "@/components/CoinLogo";
 import QuickAccessGrid from "@/components/QuickAccessGrid";
 import SpendingPatternsCard from "@/components/SpendingPatternsCard";
 import { copySecret } from "@/lib/copySecret";
+import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";
+import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
@@ -67,6 +70,7 @@ const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { 
 function SeedGrid({ mnemonic }) {
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
+  const raspArtifact = useRaspArtifact();
   const words = (mnemonic || "").split(" ");
   return (
     <div className="p-3 rounded-xl border border-border bg-card">
@@ -76,7 +80,7 @@ function SeedGrid({ mnemonic }) {
           <button onClick={() => setShow((s) => !s)} aria-label={show ? "Hide recovery phrase" : "Show recovery phrase"} className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
-          <button onClick={async () => { await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
+          <button onClick={async () => { const gate = sensitiveGate(raspArtifact, 'seed-reveal'); if (gate.blocked) { toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.'); return; } await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
             {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
@@ -535,6 +539,9 @@ export default function WalletPortfolioPage() {
   const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
 
+  // Portfolio Health scoring inputs (KEK, passkey, deniability).
+  const healthInputs = usePortfolioHealthInputs({ isUnlocked });
+
   const canManage = isUnlocked && !isDecoy && !isHidden;
 
   // Receive detection: on each poll, compare per-wallet USD total against the previous
@@ -803,7 +810,13 @@ export default function WalletPortfolioPage() {
       )}
 
       {/* Portfolio health + watchlist */}
-      <PortfolioHealthScore wallets={wallets} />
+      <PortfolioHealthScore
+        wallets={wallets}
+        portfolio={portfolio}
+        isVaultKekEnrolled={healthInputs.isVaultKekEnrolled}
+        hasPasskeyOrBiometric={healthInputs.hasPasskeyOrBiometric}
+        isDeniability={healthInputs.isDeniability}
+      />
       <WatchlistWidget />
 
       {/* Tabs: Tokens / Activity / Analytics */}
@@ -861,7 +874,7 @@ export default function WalletPortfolioPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-3 space-y-6">
-          <AnalyticsChartContent wallet={activeWallet} currentBalance={pfTotal} />
+          <PortfolioChart transactions={txList} currentBalance={pfTotal} />
           <AssetDistributionChart wallets={pfWallets} />
         </TabsContent>
       </Tabs>

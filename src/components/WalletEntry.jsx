@@ -102,6 +102,9 @@ import {
 } from "@/lib/pinAttemptGuard";
 import { setPendingReferral } from "@/lib/referral";
 import { copySecret } from "@/lib/copySecret";
+import { useRaspArtifact, sensitiveGate } from "@/rasp";
+import KekEnrollmentGate from "@/components/KekEnrollmentGate";
+import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
 // Both operands are local strings with no remote attacker; this is a codebase
@@ -382,6 +385,7 @@ export default function WalletEntry() {
 
   // Check biometric preference fresh every render (not cached), so preference changes take effect immediately
   const biometricEnabled = vaultExists && isBiometricUnlockEnabled() && bioReady;
+  const raspArtifact = useRaspArtifact();
 
   // Transiently holds the just-set vault password between "Generate" and the
   // "Enable Face ID" decision on the SAME screen, so we can cache it for biometric
@@ -412,6 +416,15 @@ export default function WalletEntry() {
   // slots + cohort + salt). Holds the dashboard back until everything is committed;
   // on failure the vault is torn down (fail closed) and we show an honest error.
   const [provisioning, setProvisioning] = useState(false);
+
+  // MANDATORY hardware-KEK enrollment gate (post-restore). After a
+  // delete+reinstall+seed-restore on a native device, the SE/StrongBox key is gone and
+  // the restored vault is bare (PIN-only, no device binding). We hold the app back and
+  // present KekEnrollmentGate so the user re-enables hardware protection before landing
+  // in the wallet. Detection + enrollment logic live in useKekEnrollmentGate (src/lib)
+  // to stay within the ring boundary (components cannot import wallet-core directly).
+  const { gateActive: kekGatePending, enroll: kekEnroll, dismiss: kekDismiss } =
+    useKekEnrollmentGate({ isUnlocked });
 
   // Notify user when decoy wallet is unlocked (duress PIN).
   useEffect(() => {
@@ -492,6 +505,11 @@ export default function WalletEntry() {
   }, [hasVault, isUnlocked]);
 
   const copySeed = async () => {
+    const gate = sensitiveGate(raspArtifact, 'seed-reveal');
+    if (gate.blocked) {
+      toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.');
+      return;
+    }
     await copySecret(generatedSeed);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
@@ -660,11 +678,15 @@ export default function WalletEntry() {
       // Hardware factor transiently/structurally unavailable (no enrollment, lockout, HW
       // missing). Also NOT a wrong PIN — do NOT increment the wipe counter. Keep the user
       // on the unlock screen: the hardware may be transiently unavailable and they can
-      // retry or go to Settings.
+      // retry or go to Settings. If the device key was permanently lost (e.g. after a
+      // reinstall cycle), the user must restore from their seed phrase — surface that path.
       // HARDWARE_FACTOR_DEGENERATE (all-zero H) is the same class: a hardware-output
       // failure, never a wrong PIN (Codex P1 follow-up, same wipe-counter leak).
       if (e?.code === KEK_UI_ERR.NO_HARDWARE_FACTOR || e?.code === KEK_UI_ERR.HARDWARE_FACTOR_DEGENERATE) {
-        setError("Hardware protection is unavailable right now. Try again, or manage it in Settings.");
+        setError(
+          "Hardware protection is unavailable. If this persists, your device's security key may have been lost — " +
+          "use \"Forgot your PIN? Restore from seed phrase\" below to regain access."
+        );
         return;
       }
       // User CANCELLED the per-use biometric sheet. This is user-initiated, NOT a wrong
@@ -790,6 +812,8 @@ export default function WalletEntry() {
   // Fail-closed: a bad phrase throws inside the import, leaving the existing vault
   // untouched; we clear the bridged pendingPin so no stale PIN lingers.
   const finishPinRecover = async () => {
+    const gate = sensitiveGate(raspArtifact, 'import');
+    if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setBusy(true); setProvisioning(true); setError("");
     try {
       setupPin(realPin);               // bridge the new PIN as pendingPin (markers + salt)
@@ -850,6 +874,8 @@ export default function WalletEntry() {
 
   // ---- Import an existing seed (vault password mandatory) ----
   const handleImport = async () => {
+    const gate = sensitiveGate(raspArtifact, 'import');
+    if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setError("");
     const pw = checkVaultPasswordStrength(importPassword);
     if (!pw.ok) { setError(pw.reason); return; }
@@ -895,7 +921,24 @@ export default function WalletEntry() {
     );
   }
 
-  if (isUnlocked && !generatedSeed) return <Outlet />;
+  // MANDATORY hardware-KEK enrollment hold. When a restored/created vault on a
+  // hardware-capable device is not yet KEK-wrapped, intercept BEFORE the app renders and
+  // require the user to enroll (or explicitly skip with a labelled security tradeoff).
+  // Held behind !generatedSeed so the one-time create seed-backup screen shows first.
+  if (kekGatePending && isUnlocked && !generatedSeed) {
+    return (
+      <KekEnrollmentGate
+        onEnroll={async (pin) => {
+          const result = await kekEnroll(pin);
+          if (result.ok) kekDismiss();
+          return result;
+        }}
+        onSkip={kekDismiss}
+      />
+    );
+  }
+
+  if (isUnlocked && !generatedSeed && !kekGatePending) return <Outlet />;
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
   // Render the real app behind a persistent create/import CTA. Tapping it (or any
@@ -969,6 +1012,12 @@ export default function WalletEntry() {
       setError(""); setDesyncWiping(true);
       try {
         await clearVault();
+        // I4 (fail honest): the vault was destroyed — raise the SAME loud, persistent
+        // acknowledgement the panic-wipe path shows (setLocalWiped mirrors that flow),
+        // so the user gets an unmistakable notice their keys are gone rather than a
+        // silent drop into onboarding. The WipedNotice gate (wasWiped||localWiped &&
+        // vaultExists===false) renders before the pin-create view below.
+        setLocalWiped(true);
         setVaultExists(false);
         setDesyncConfirmWipe(false);
         setDesyncWipeInput("");

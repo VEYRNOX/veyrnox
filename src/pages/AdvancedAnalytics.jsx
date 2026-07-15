@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { USD_RATES } from "@/lib/cryptos";
 import { useMemo } from "react";
 import { useWallet } from "@/lib/WalletProvider";

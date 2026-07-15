@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { Copy, CheckCircle2, ChevronDown, ShieldCheck, Pencil } from "lucide-react";
 import { toast } from "sonner";

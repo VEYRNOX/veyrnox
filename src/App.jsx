@@ -43,7 +43,6 @@ const MultiChainNFT = lazy(() => import('./pages/MultiChainNFT'));
 const FraudDetection = lazy(() => import('./pages/FraudDetection'));
 const RaspSecurity = lazy(() => import('./pages/RaspSecurity'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
-const RiskScoring = lazy(() => import('./pages/RiskScoring'));
 const NewsSentimentPage = lazy(() => import('./pages/NewsSentimentPage'));
 const NotificationCentre = lazy(() => import('./pages/NotificationCentre'));
 const SavingsGoals = lazy(() => import('./pages/SavingsGoals'));
@@ -108,7 +107,6 @@ const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const Subscription = lazy(() => import('./pages/Subscription'));
 const SafetyPlus = lazy(() => import('./pages/SafetyPlus'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
-const AppHealthPage = lazy(() => import('./pages/AppHealthPage'));
 
 const AuthenticatedApp = () => {
   // Render the main app
@@ -151,7 +149,6 @@ const AuthenticatedApp = () => {
           <Route path="/security-dashboard" element={<SecurityDashboard />} />
           <Route path="/what-this-protects" element={<WhatThisProtects />} />
           <Route path="/terms-legal" element={<TermsLegal />} />
-          <Route path="/app-health" element={<AppHealthPage />} />
           <Route path="/nft" element={<NFTPortfolio />} />
           <Route path="/snapshots" element={<PortfolioSnapshots />} />
           <Route path="/pl" element={<PLTracking />} />
@@ -164,7 +161,6 @@ const AuthenticatedApp = () => {
           <Route path="/fraud" element={<FraudDetection />} />
           <Route path="/rasp-security" element={<RaspSecurity />} />
           <Route path="/audit-log" element={<AuditLog />} />
-          <Route path="/risk" element={<RiskScoring />} />
           <Route path="/news-sentiment" element={<NewsSentimentPage />} />
           <Route path="/notifications" element={<NotificationCentre />} />
           <Route path="/savings" element={<SavingsGoals />} />

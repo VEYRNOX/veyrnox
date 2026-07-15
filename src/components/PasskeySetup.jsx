@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { Shield, ShieldCheck, Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";

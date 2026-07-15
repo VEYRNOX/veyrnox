@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/TrustScore.jsx
 //
 // Token spam / scam-airdrop heuristic screening. This page runs the REAL

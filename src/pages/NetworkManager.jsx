@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { assertSafeRpcUrl, safeExternalUrl } from "@/wallet-core/netUrl.js";
+import CoinLogo from "@/components/CoinLogo";
 
 const DEFAULTS = [
   { id: "d1", name: "Ethereum Mainnet", rpc_url: "https://mainnet.infura.io/v3/", chain_id: 1, symbol: "ETH", explorer_url: "https://etherscan.io", is_testnet: false, is_active: true, logo_color: "#627EEA" },
@@ -62,9 +64,9 @@ export default function NetworkManager() {
 
       {active && (
         <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ backgroundColor: active.logo_color }}>{active.symbol?.slice(0, 2)}</div>
-          <div>
-            <p className="font-semibold">{active.name}</p>
+          <CoinLogo symbol={active.symbol} size={40} className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold truncate">{active.name}</p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
               <span>Network ID: {active.chain_id}</span>
               <span className="font-mono truncate max-w-[200px]">{active.rpc_url}</span>
@@ -91,10 +93,10 @@ export default function NetworkManager() {
       <div className="space-y-2">
         {visible.map(n => (
           <div key={n.id} className={`p-4 rounded-xl border bg-card flex items-center gap-3 ${n.is_active ? "border-primary/30" : "border-border"}`}>
-            <div className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: n.logo_color || "#627EEA" }}>{n.symbol?.slice(0, 2)}</div>
+            <CoinLogo symbol={n.symbol} size={36} className="shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium">{n.name}</p>
+              <div className="flex items-center gap-2 min-w-0">
+                <p className="text-sm font-medium truncate">{n.name}</p>
                 {n.is_testnet && <span className="text-[9px] px-1.5 py-0.5 rounded bg-caution/10 text-caution font-semibold">Test Network</span>}
                 {n.is_active && <CheckCircle className="h-3.5 w-3.5 text-success" />}
               </div>

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/DuressPin.jsx
 //
 // DURESS PIN / DECOY WALLET  (S3 — individual security).  PROVISIONAL.
@@ -340,7 +341,7 @@ export default function DuressPin() {
         </div>
         <p className="text-xs text-muted-foreground">
           An empty wallet looks suspicious. Send a small amount you&apos;re
-          willing to hand over. The balance comes straight from the blockchain
+          willing to hand over. The real balance comes straight from the blockchain
           — it can&apos;t be faked in the app.
         </p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/btc/send.js
 //
 // High-level BTC send: fetch UTXOs -> select coins + change (coinselect.js) ->

@@ -24,24 +24,46 @@
   margin: 0;
 }
 
-@media (prefers-color-scheme: light) {
-  .title,
-  .dappName,
-  .address,
-  .list,
-  .riskBody,
-  .riskCheck,
-  .honestyCaveat,
-  .optionalNote {
-    color: #1a1a1a;
-  }
-  .overlay {
-    background: rgba(255, 255, 255, 0.85);
-  }
-  .modal {
-    background: #ffffff;
-    border-color: #e0e0e0;
-  }
+/* Light mode: responds to BOTH OS preference and in-app class toggle (darkMode: ["class"]) */
+:global(:root:not(.dark)) .title,
+:global(:root:not(.dark)) .dappName,
+:global(:root:not(.dark)) .address,
+:global(:root:not(.dark)) .list,
+:global(:root:not(.dark)) .riskBody,
+:global(:root:not(.dark)) .riskCheck,
+:global(:root:not(.dark)) .honestyCaveat,
+:global(:root:not(.dark)) .optionalNote {
+  color: #1a1a1a;
+}
+:global(:root:not(.dark)) .overlay {
+  background: rgba(255, 255, 255, 0.85);
+}
+:global(:root:not(.dark)) .modal {
+  background: #ffffff;
+  border-color: #e0e0e0;
+}
+:global(:root:not(.dark)) .dappInfo {
+  background: #f4f5f7;
+}
+:global(:root:not(.dark)) .optionalSection {
+  background: #f4f5f7;
+  border-color: #d0d5dd;
+}
+:global(:root:not(.dark)) .rejectBtn {
+  color: #1a1a1a;
+  border-color: #d0d5dd;
+}
+:global(:root:not(.dark)) .rejectBtn:hover:not(:disabled) {
+  background: #f0f2f5;
+}
+:global(:root:not(.dark)) .label {
+  color: #4a5568;
+}
+:global(:root:not(.dark)) .dappUrl {
+  color: #4a5568;
+}
+:global(:root:not(.dark)) .optionalList {
+  color: #4a5568;
 }
 
 .dappInfo {

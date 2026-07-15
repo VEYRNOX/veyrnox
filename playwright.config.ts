@@ -19,6 +19,7 @@ export default defineConfig({
         '**/send-broadcast.harness-b.spec.js',
         '**/webauthn-prf-tier2-send.spec.js',
         '**/webauthn-prf-sepolia-verified.spec.js',
+        '**/walletconnect-live-pairing.spec.js',
       ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

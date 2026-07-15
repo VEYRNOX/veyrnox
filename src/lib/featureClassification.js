@@ -19,7 +19,7 @@ export const ALL_ROUTE_PATHS = [
   '/terms-legal', '/nft',
   '/snapshots', '/pl', '/onchain', '/spending',
   '/recurring', '/push', '/advanced-analytics', '/nft-multichain',
-  '/fraud', '/risk', '/news-sentiment', '/notifications',
+  '/fraud', '/news-sentiment', '/notifications',
   '/savings', '/invoices', '/watchlist', '/address-book',
   '/net-worth', '/budget', '/duress-pin',
   '/wallet-access', '/stealth-wallets', '/panic-wipe', '/risk-score',
@@ -36,7 +36,6 @@ export const ALL_ROUTE_PATHS = [
   '/referrals',
   '/walletconnect',
   '/asset/:symbol',
-  '/app-health',
 ];
 
 export const CLASSIFICATION = {
@@ -134,11 +133,6 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'base44-entities',
     note: 'CURRENT_PRICES removed. Unrealised P&L shows "enter exit price" for open trades. Close action now collects user-supplied exit price inline before writing P&L — no stale market price used. Realised P&L on closed trades uses the user-entered entry/exit prices only.',
   },
-  '/risk': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Derives risk score from real local wallet balances (base44.entities.Wallet) and borrow counts (LendingPosition). Formula uses transparent static coefficients (concentration × 0.5, leverage × 15, volatile-asset count × 5). HEDGING list is generic advice, not presented as user-specific data. No fabrication.',
-  },
-
   // ── Finance group (audit batch 3) ─────────────────────────────────────────
   '/savings': {
     verdict: 'live', dataSource: 'base44-entities',
@@ -347,7 +341,7 @@ export const CLASSIFICATION = {
   },
   '/plans': {
     verdict: 'live', dataSource: 'static',
-    note: 'Tier cards rendered from TierProvider (real, fail-closed tier via resolveTier) using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). On native the upgrade + restore buttons run a real RevenueCat purchase flow showing the real store price; on web they are disabled with an honest mobile-only disclosure. In-app purchase is BUILT / unit-tested only, NOT device-verified. No fabricated capabilities listed as currently available.',
+    note: 'Tier cards rendered from TierProvider (real, fail-closed tier via resolveTier) using FREE_FEATURES and SAFETY_PLUS_FEATURES from lib/tier. Two tiers: Free ($0) and Safety Plus ($5.99/mo). The tier feature split mirrors the public plans page at https://veyrnox.com/plans; Safety Plus gates the security + analytics feature set listed in SAFETY_PLUS_ROUTES. On native the upgrade + restore buttons run a real RevenueCat purchase flow showing the real store price; on web they are disabled with an honest mobile-only disclosure. In-app purchase is BUILT / unit-tested only, NOT device-verified. No fabricated capabilities listed as currently available.',
   },
   '/safety-plus': {
     verdict: 'live', dataSource: 'static',
@@ -379,7 +373,6 @@ export const CLASSIFICATION = {
   // artifact; the surviving entry below was the one winning at runtime.)
   '/walletconnect':     { verdict: 'live', dataSource: 'on-device', note: 'WalletConnect v2 transport + signing (D1+D2). Pairing + session management via WC relay; signing via on-device key derivation (withPrivateKey). CORRECTION (factual): eth_sendTransaction is NOT display-only — WalletConnectProvider.handleSendTransaction builds new ethers.Wallet(pk, provider) and calls wallet.sendTransaction(tx), a REAL on-chain sign + broadcast (the UI warns "Approving sends a real on-chain transaction"). It is mainnet-capable: the target chain comes from the WC session namespace (getNetworkByChainId on the CAIP-2 chainId), not restricted to testnet. STATUS: BUILT, UNVERIFIED — no on-chain testnet txid has been supplied/confirmed on an explorer, so this is not "verified". Guards present: gas capped at 1M and an eth_chainId match check (VULN-19) before broadcast.' },
   '/asset/:symbol':     { verdict: 'live', dataSource: 'on-device', note: 'CryptoDetailPage — candlestick chart + period selector for a single asset. Price data from useBasketPrices (live market feed, same source as portfolio). Balance strip shows real on-device balance via usePortfolio. Send/Receive deep-links pre-select the asset via ?asset= query param. BUILT, UI-complete.' },
-  '/app-health':        { verdict: 'live', dataSource: 'external', note: 'AppHealthPage (PR #813) — runtime dependency probes (RPC reachability, price feed, RevenueCat, RASP browser tier) plus the local /audit-snapshot.json npm-audit summary and device capability reads. External probes are reachability checks only (no wallet data sent); the widget skips ALL probes when isDeniabilitySessionActive() (I3). BUILT, not independently audited.' },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts

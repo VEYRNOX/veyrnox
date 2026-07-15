@@ -45,7 +45,12 @@ describe('hiddenBalance I3 guard (M-6)', () => {
 
   it('throws and makes NO node read when a deniability session is active', async () => {
     isDeniabilitySessionActive.mockReturnValue(true);
-    await expect(resolveHiddenBalance('evm', '0xabc')).rejects.toBe('I3: no egress in deniability session');
+    // Must reject with a real Error instance (not a raw string): the caller in
+    // StealthWallets.jsx reads `e?.message`, which is undefined for a raw-string
+    // throw and silently mis-classifies the I3 guard as a generic "read failed".
+    const err = await resolveHiddenBalance('evm', '0xabc').catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe('I3: no egress in deniability session');
     // Fail-closed: the live balance read never happened.
     expect(getBalanceEth).not.toHaveBeenCalled();
     expect(getBalanceSats).not.toHaveBeenCalled();

@@ -14,7 +14,16 @@
 // window is absent so browserProbeSource.available=false → detect() returns
 // INTEGRITY_UNAVAILABLE ('unavailable'). Tests below account for this.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// RaspSecurity is called as a plain function (no RTL) to walk the element tree.
+// Mock hooks so the component can be invoked outside the React reconciler.
+// nativeProbe starts null by design (async bridge call); useEffect is side-effect only.
+vi.mock('react', async (importOriginal) => {
+  const actual = /** @type {any} */ (await importOriginal());
+  return { ...actual, useState: (init) => [typeof init === 'function' ? init() : init, vi.fn()], useEffect: vi.fn() };
+});
+
 import React from 'react';
 globalThis.React = React;
 
@@ -56,24 +65,24 @@ describe('raspSurfaceModel — honesty-lock (§5): detection is derived, never h
   });
 });
 
-describe('RaspSecurity — honest current-state render', () => {
+describe('RaspSecurity — active-behaviour render (no status vocabulary)', () => {
   const el = RaspSecurity();
   const t = allText(el);
 
-  it('shows the "browser-level detection active" banner', () => {
-    expect(t).toMatch(/browser-level detection active/i);
-    expect(t).toMatch(/OS-level detection pending native build/i);
+  it('shows the active runtime-integrity banner describing what the checks do', () => {
+    expect(t).toMatch(/runtime integrity checks active/i);
+    expect(t).toMatch(/before every signature/i);
+    expect(t).toMatch(/a compromised one is refused/i);
   });
 
-  it('shows the four current-state stat values', () => {
-    expect(t).toMatch(/Degradation policy/i);
-    expect(t).toMatch(/\bbuilt\b/);
-    expect(t).toMatch(/\bbrowser-active\b/);
-    expect(t).toMatch(/Wired to send path/i);
-    expect(t).toMatch(/\byes\b/);
-    expect(t).toMatch(/Independent audit/i);
-    expect(t).toMatch(/2026-06-23/);
-    expect(t).toMatch(/browser lane/i);
+  it('carries NO build-status / audit / roadmap vocabulary on the page', () => {
+    // The deliberate opsec choice: the surface states active behaviour only. It
+    // must not publish build status, an audit ledger, or a "pending/roadmap" list.
+    expect(t).not.toMatch(/\bbuilt\b/i);
+    expect(t).not.toMatch(/\bpending\b/i);
+    expect(t).not.toMatch(/independent audit|2026-06-23|browser lane/i);
+    expect(t).not.toMatch(/phase\s*4/i);
+    expect(t).not.toMatch(/native build|not yet wired/i);
   });
 
   it('shows the live condition readout (clean in Vitest/jsdom — no webdriver flag set)', () => {
@@ -84,18 +93,14 @@ describe('RaspSecurity — honest current-state render', () => {
   });
 
   it('shows the degradation ladder (allow / warn / block)', () => {
-    expect(t).toMatch(/browser-level detection active/i);
     expect(t).toMatch(/allow/i);
     expect(t).toMatch(/warn/i);
     expect(t).toMatch(/block/i);
   });
 
   it('states the deliberate omissions in the footer', () => {
-    // Footer names what RASP deliberately does NOT fake: event counts and scan
-    // buttons. Guards against reintroducing fabricated-activity theatre.
-    expect(t).toMatch(/no fake event counts/i);
-    expect(t).toMatch(/scan buttons/i);
-    expect(t).toMatch(/only real detections/i);
+    expect(t).toMatch(/no fake|no fabricated/i);
+    expect(t).toMatch(/scan button/i);
   });
 });
 

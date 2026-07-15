@@ -3,6 +3,22 @@
 // Run: npm run android:test:send-scenarios
 import appHelper from '../helpers/appHelper.js';
 import walletHelper from '../helpers/walletHelper.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+// Source-structure pin for the WalletConnect security controls. These Appium tests
+// cannot drive a live dApp pairing on an unattended device (that path is covered by
+// the supervised e2e/walletconnect-live-pairing.spec.js), so instead of a vacuous
+// expect(true).toBe(true) they read the provider source and assert the named guard
+// codes/predicates are still present in the shipped build — a real, if modest, pin
+// that the control has not been silently deleted. HONEST SCOPE: this proves the
+// guard exists in source, NOT that it fires at runtime on the device.
+const __specDir = dirname(fileURLToPath(import.meta.url));
+const WC_PROVIDER_SRC = readFileSync(
+  resolve(__specDir, '../../../src/lib/WalletConnectProvider.jsx'),
+  'utf8',
+);
 
 describe('Send Scenarios — Android Multi-Asset, Fee Tiers & Error Handling', () => {
   before(async () => {
@@ -730,7 +746,9 @@ Testing:
     const source = await driver.getPageSource();
     const raspSurfacePresent = /rasp|device.*integrity|security.*check/i.test(source) || true; // best-effort, non-blocking
     console.log(`RASP status surface heuristically present: ${raspSurfacePresent}`);
-    expect(true).toBe(true);
+    // Honest source-structure pin: presignGate is still called inside the provider
+    // (the C3 gate has not been removed). Proves presence in source, not runtime firing.
+    expect(WC_PROVIDER_SRC.includes('presignGate')).toBe(true);
   });
 
   it('should enforce the step-up re-auth window before any WalletConnect signing action', async () => {
@@ -771,9 +789,11 @@ Testing:
     const source = await driver.getPageSource();
     const staleConnectedBadge = /connected/i.test(source);
     console.log(`"Connected" badge rendered with no active pairing in this run: ${staleConnectedBadge}`);
-    // Informational only — a "Connected" string could legitimately appear in
-    // static help copy. Hard assertion is deferred to a live-pairing harness.
-    expect(source).toBeDefined();
+    // Honest source-structure pin: the M11 predicate + its call site are still in
+    // the provider. checkSessionExpiry() must be exported (unit-tested pure predicate)
+    // and assertSessionLive() must run before signing. Proves presence, not runtime firing.
+    expect(WC_PROVIDER_SRC.includes('export function checkSessionExpiry')).toBe(true);
+    expect(WC_PROVIDER_SRC.includes('assertSessionLive')).toBe(true);
   });
 
   it('should reject EIP-712 requests whose domain.chainId does not match the session CAIP-2 chain (H7, code-boundary check)', async () => {
@@ -792,8 +812,17 @@ future enhancement to this Appium suite could drive a real pairing via a
 scripted headless dApp peer (e.g. a minimal @walletconnect/sign-client test
 harness) to close this device-level gap — not attempted here to avoid
 fabricating a pass against a mocked peer.
+
+NOTE: that live-pairing harness now EXISTS as the supervised Playwright spec
+e2e/walletconnect-live-pairing.spec.js (RUN_SUPERVISED_E2E=1, live relay). It
+drives a real @walletconnect/sign-client peer through H7/H8/M11 end-to-end on the
+web build. This Android test remains a source-structure pin only.
     `);
-    expect(true).toBe(true);
+    // Honest source-structure pin: the H7 (CHAIN_ID_MISMATCH) and H8
+    // (PERSONAL_SIGN_ADDRESS_MISMATCH) reject codes are still emitted by the
+    // provider. Proves the fail-closed branches exist in source, not runtime firing.
+    expect(WC_PROVIDER_SRC.includes('CHAIN_ID_MISMATCH')).toBe(true);
+    expect(WC_PROVIDER_SRC.includes('PERSONAL_SIGN_ADDRESS_MISMATCH')).toBe(true);
   });
 
   it('should complete send scenarios E2E test suite', async () => {

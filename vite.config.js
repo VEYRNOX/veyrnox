@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
 import inject from '@rollup/plugin-inject'
+import JavaScriptObfuscator from 'javascript-obfuscator'
 
 // logLevel 'error' suppresses Vite's startup banner too, so the
 // "Local: http://localhost:5173/" line never prints. This tiny plugin restores
@@ -53,6 +54,54 @@ const printUrls = () => ({
 // A runtime belt-and-suspenders assertion lives in src/api/demoClient.js.
 const RELEASE_BUILD = process.env.VITE_RELEASE === '1';
 const DEMO_BUILD = process.env.VITE_DEMO_MODE === '1';
+
+// G1b — production JS obfuscation plugin (string-array encoding, release-builds only).
+// Raises cost of static analysis on the APK's assets/ JS bundle.
+// G1 obfuscation settings (VITE_RELEASE=1 only).
+// Safety invariants that must never change:
+//   transformObjectKeys: false — Capacitor bridge passes objects by key name;
+//     mangling would silently break every native plugin call.
+//   renameGlobals: false — window.Capacitor and other globals must stay intact.
+//   selfDefending: false — honest; we don't claim tamper-resistance here.
+//   deadCodeInjection: false — increases bundle size ~2× with low security ROI.
+// G1 upgrade (2026-07-14):
+//   controlFlowFlattening: true (threshold 0.3) — makes RASP/wallet-core logic
+//     opaque to static analysis without excessive perf cost (30% of blocks).
+//   numbersToExpressions: true — numeric constants become arithmetic expressions.
+//   splitStrings: true — strings split into chunks before stringArray encoding.
+function veyrnoxObfuscatorPlugin() {
+  return {
+    name: 'veyrnox-obfuscator',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      if (process.env.VITE_RELEASE !== '1') return;
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue;
+        const result = JavaScriptObfuscator.obfuscate(chunk.code, {
+          stringArray: true,
+          stringArrayEncoding: ['base64'],
+          stringArrayCallsTransform: true,
+          stringArrayCallsTransformThreshold: 0.75,
+          stringArrayThreshold: 0.75,
+          splitStrings: true,
+          splitStringsChunkLength: 10,
+          numbersToExpressions: true,
+          controlFlowFlattening: true,
+          controlFlowFlatteningThreshold: 0.3,
+          deadCodeInjection: false,
+          renameGlobals: false,
+          selfDefending: false,
+          transformObjectKeys: false,
+          disableConsoleOutput: false,
+          compact: true,
+          identifierNamesGenerator: 'hexadecimal',
+          seed: 0,
+        });
+        chunk.code = result.getObfuscatedCode();
+      }
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => {
@@ -108,6 +157,7 @@ export default defineConfig(({ command }) => {
       react(),
       printUrls(),
       inject({ Buffer: ['buffer', 'Buffer'], include: ['src/**'] }),
+      veyrnoxObfuscatorPlugin(),
     ],
     // Pre-bundle the wallet-core's crypto deps so Vite doesn't discover them
     // mid-session and trigger an optimize + forced full-reload (which can flash a

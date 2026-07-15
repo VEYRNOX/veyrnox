@@ -84,7 +84,7 @@ export default function Analytics() {
     let running = totalUSD;
     const sorted = [...history].filter(t => t.timestamp != null).sort((a, b) => b.timestamp - a.timestamp);
     for (const tx of sorted) {
-      if (tx.timestamp < cutoffMs - range * 86400_000) break;
+      if (tx.timestamp < cutoffMs) break;
       const rate = (prices[tx.assetSymbol] ?? USD_RATES[tx.assetSymbol]) || 0;
       const usd = parseFloat(tx.amount || '0') * rate;
       if (tx.type === 'send') running += usd;

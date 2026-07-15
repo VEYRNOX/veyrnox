@@ -52,6 +52,6 @@ self.onmessage = async (e) => {
     self.postMessage({ type: 'result', id, raw }, { transfer: [raw.buffer] });
   } catch (err) {
     opts.password.fill(0);
-    self.postMessage({ type: 'error', id, message: String((err && err.message) || err) });
+    self.postMessage({ type: 'error', id, message: String(err instanceof Error ? err.message : err) });
   }
 };

@@ -1,6 +1,6 @@
 # RASP attestation — I2 egress-disclosure decision
 
-**Status:** PRE-AUDIT · **DECISION PROPOSED (awaiting sign-off)** · surface state unchanged (RASP stays `roadmap`, detection parked)
+**Status:** **DECIDED · Option B signed off 2026-07-13** · Phase 2b module + native plugin layer BUILT (`src/rasp/attestation.js`, `src/plugins/attestation.js`, `PlayIntegrityPlugin.kt`, `AppAttestPlugin.m`) · pre-sign gate wiring BUILT (`SendCrypto.jsx`, `useRaspArtifact.js`) · UNAUDITED-PROVISIONAL, NOT device-verified, NOT independently audited · **RS256 on-device JWS signature verification absent** (no Google root cert bundled — `PlayIntegrityPlugin.kt:113`; treat attestation result as PROVISIONAL until root-cert pinning lands)
 **Phase:** Validation roadmap Phase 1 — the documented prerequisite (a) for the attested detection leg.
 **Scope:** decides *whether and how* RASP may use **remote device attestation** (a network egress), separately from the **on-device self-attested probes** (no egress, Phase 2a). Pure analysis — no code, touches no detector/signer/key.
 **Related:** `docs/rasp-validation-roadmap.md`, `src/rasp/index.js` (§8a build seam), `docs/audit-log-login-activity-deniability-decision.md` (same posture), invariants I1–I5.
@@ -62,13 +62,34 @@ If attestation is later pursued (Option B), it returns as its own audit-reviewed
 | **I4** fail honest/closed | Probe unavailable → `INTEGRITY_UNAVAILABLE` → WARN; never read as clean. |
 | **I5** backend untrusted | No backend in the detection or gating path. |
 
-## 8. Open items for sign-off (genuinely your / the audit's call — not mine to decide)
+## 8. Sign-off — DECIDED 2026-07-13
 
-1. **Accept Option A** (no attestation egress in v1; on-device probes only)? — *recommended.*
-2. If/when **Option B** is pursued: confirm the hard constraints — never on unlock, never under decoy/duress, explicit disclosed trigger only, on-device verdict validation (no backend authority over signing), identical across primary sets.
-3. Confirm that **on-device probe *results* are never transmitted anywhere** — they stay local and only drive the local pre-sign gate (no telemetry, no "we detected root" beacon, which would itself be egress + a fingerprint).
-4. Confirm RASP detection v1 may proceed to **Phase 2a build** on the strength of Option A (probes are pre-audit-safe; no egress decision blocks them).
+The owner reviewed the options and **chose Option B** (disclosed, deniability-gated
+attestation at pre-sign time only). The four items below are resolved accordingly:
 
----
+1. ~~Accept Option A (no attestation egress in v1)~~ — **SUPERSEDED.** Option B was
+   chosen: attestation egress is permitted under the §4-(2) hard constraints.
+2. **Option B hard constraints — ACCEPTED and enforced in code.** Never on unlock
+   (attestation.js is called only at the pre-sign gate; it is deliberately NOT wired
+   into WalletProvider.unlock); never under decoy/duress/hidden
+   (`attestationProbeSource()` checks `isDeniabilitySessionActive()` FIRST and makes
+   zero egress in a deniability session); on-device verdict validation (the JWS
+   payload / App Attest result is parsed on-device — no backend holds authority over
+   signing, I5); identical across primary sets (the probe takes no wallet-set handle).
+3. **On-device probe *results* are never transmitted — CONFIRMED.** The only value
+   sent off-device is a fresh random nonce; probe verdicts stay local and drive only
+   the local pre-sign gate. No telemetry, no "we detected root" beacon.
+4. ~~Phase 2a build may proceed~~ — **DONE.** Phase 2a (on-device probes) already
+   shipped; this decision unblocks the Phase 2b attested-leg BUILD, now landed as
+   `src/rasp/attestation.js` + `src/plugins/attestation.js` + `PlayIntegrityPlugin.kt`
+   + `AppAttestPlugin.{h,m}`+Bridge.
 
-**Until signed off, this is a proposal.** No detection code lands and no status changes on the strength of a proposal. Sign-off on item 1 (or 4) unblocks Phase 2a (the no-egress probe scaffolding); the attested leg (2b) stays parked behind the audit regardless.
+**Honest status of the landed build (I4).** BUILT · UNAUDITED-PROVISIONAL · NOT
+device-verified · NOT independently audited. Known honest gaps: (a) the Android Play
+Integrity JWS is NOT cryptographically signature-verified on-device (no Google public
+key bundled — verdict trust rests on the Play Services delivery channel; a future
+cycle can bundle the key); (b) iOS App Attest requires the
+`com.apple.developer.devicecheck.appattest-environment` entitlement + DeviceCheck
+framework linkage, neither yet present, so on iOS the leg is code-present but honestly
+UNAVAILABLE (fails closed) until those land and are device-exercised. The independent
+third-party audit of this egress leg remains outstanding.

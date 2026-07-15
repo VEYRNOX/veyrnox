@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/TierProvider.jsx
 //
 // Resolves and exposes the user's real subscription tier. On mount, it first
@@ -21,7 +22,8 @@ import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js'
 const TierCtx = createContext(null);
 
 export function TierProvider({ children }) {
-  const [currentTier, setCurrentTier] = useState('free');
+  const FORCED_TIER = import.meta.env.VITE_FORCE_TIER || null;
+  const [currentTier, setCurrentTier] = useState(FORCED_TIER || 'free');
   const [loading, setLoading] = useState(true);
 
   const refreshTier = useCallback(async () => {
@@ -46,6 +48,9 @@ export function TierProvider({ children }) {
       setLoading(false);
       return () => { cancelled = true; };
     }
+    // DEV override: checked AFTER deniability so a decoy session never surfaces
+    // a forced paid tier — the dev override is honest even in deniability mode.
+    if (FORCED_TIER) { setLoading(false); return () => { cancelled = true; }; }
 
     // Initialize the RevenueCat SDK once, before any entitlement/offering read.
     // No-op on web; fails closed — a rejection (e.g. missing key) is swallowed

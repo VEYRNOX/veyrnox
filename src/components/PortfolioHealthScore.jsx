@@ -1,5 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { Shield, TrendingUp, Layers, ChevronRight } from "lucide-react";
+import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
+import { calculatePortfolioHealth, calculateSecurityScore, calculateDiversificationScore, calculateGrowthScore } from "@/lib/portfolioHealthCalc";
+export { calculateSecurityScore, calculateDiversificationScore, calculateGrowthScore, calculatePortfolioHealth };
 
 function ScoreRing({ score }) {
   const r = 28;
@@ -27,57 +30,86 @@ function ScoreRing({ score }) {
   );
 }
 
-export default function PortfolioHealthScore({ wallets = [] }) {
+export default function PortfolioHealthScore({
+  wallets = [],
+  portfolio = null,
+  isVaultKekEnrolled = false,
+  hasPasskeyOrBiometric = false,
+  isDeniability = false,
+}) {
   const navigate = useNavigate();
 
-  const factors = [
-    {
-      label: "Diversification",
-      icon: Layers,
-      score: Math.min(wallets.length * 20, 40),
-      max: 40,
-      tip: wallets.length < 2 ? "Add more assets" : "Well diversified",
-      action: "/",
-    },
-    {
-      label: "Security",
-      icon: Shield,
-      score: wallets.length > 0 ? 30 : 0,
-      max: 30,
-      tip: wallets.length > 0 ? "Review security settings" : "Set up your wallet",
-      action: "/security",
-    },
-    {
-      label: "Growth",
-      icon: TrendingUp,
-      score: wallets.some(w => w.balance > 0) ? 30 : 0,
-      max: 30,
-      tip: "Based on holdings",
-      action: "/analytics",
-    },
-  ];
+  const health = calculatePortfolioHealth({
+    wallets,
+    portfolio,
+    kekEnrolled: isVaultKekEnrolled,
+    passkey: hasPasskeyOrBiometric,
+    isDeniability,
+  });
 
-  const total = factors.reduce((s, f) => s + f.score, 0);
-  const label = total >= 75 ? "Excellent" : total >= 50 ? "Good" : total >= 25 ? "Fair" : "Needs Attention";
-  const labelColor = total >= 75 ? "text-success" : total >= 50 ? "text-caution" : "text-destructive";
+  // I3 + I4 fail-closed: suppress score display if indeterminate or deniability
+  if (health.isDeniability) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Portfolio Health</p>
+            <p className="text-sm font-bold mt-0.5 text-muted-foreground">Unavailable</p>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">Portfolio health score is unavailable in this session.</p>
+      </div>
+    );
+  }
+
+  if (health.isIncomplete) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Portfolio Health</p>
+            <p className="text-sm font-bold mt-0.5 text-destructive">Incomplete Data</p>
+          </div>
+        </div>
+        <IncompleteBalanceNote />
+      </div>
+    );
+  }
+
+  // Map factor objects to display format (add max from calculation)
+  const factorMaxes = { security: 40, diversification: 35, growth: 25 };
+  const factorIcons = { security: Shield, diversification: Layers, growth: TrendingUp };
+  const factorActions = { security: "/security", diversification: "/", growth: "/analytics" };
+
+  const displayFactors = health.factors.map((f) => ({
+    ...f,
+    max: factorMaxes[f.key] || f.max,
+    icon: factorIcons[f.key],
+    action: factorActions[f.key],
+  }));
+
+  const labelColor = (health.total ?? 0) >= 75 ? "text-success" : (health.total ?? 0) >= 50 ? "text-caution" : "text-destructive";
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Portfolio Health</p>
-          <p className={`text-sm font-bold mt-0.5 ${labelColor}`}>{label}</p>
+          <p className={`text-sm font-bold mt-0.5 ${labelColor}`}>{health.label}</p>
         </div>
-        <ScoreRing score={total} />
+        <ScoreRing score={health.total} />
       </div>
 
       <div className="space-y-2">
-        {factors.map(f => {
+        {displayFactors.map((f) => {
           const Icon = f.icon;
           const pct = (f.score / f.max) * 100;
           return (
-            <button key={f.label} onClick={() => navigate(f.action)}
-              className="w-full flex items-center gap-2.5 group hover:bg-secondary rounded-lg px-2 py-1.5 transition-colors">
+            <button
+              key={f.key}
+              onClick={() => navigate(f.action)}
+              className="w-full flex items-center gap-2.5 group hover:bg-secondary rounded-lg px-2 py-1.5 transition-colors"
+            >
               <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between mb-0.5">
@@ -89,7 +121,12 @@ export default function PortfolioHealthScore({ wallets = [] }) {
                     className="h-full rounded-full transition-all duration-700"
                     style={{
                       width: `${pct}%`,
-                      background: pct === 100 ? "hsl(var(--success))" : pct > 0 ? "hsl(var(--caution))" : "hsl(var(--destructive) / 0.25)"
+                      background:
+                        pct === 100
+                          ? "hsl(var(--success))"
+                          : pct > 0
+                            ? "hsl(var(--caution))"
+                            : "hsl(var(--destructive) / 0.25)",
                     }}
                   />
                 </div>

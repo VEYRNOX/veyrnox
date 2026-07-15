@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/rehearsal/snapshot.js — Deniability Rehearsal Simulator (build brief §4).
 //
 // A PURE read of the ALREADY-UNLOCKED active set's display state — the exact

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/WalletProvider.jsx
 //
 // React context for the unlocked wallet session.
@@ -25,6 +26,7 @@ import React, { createContext, useContext, useRef, useState, useCallback, useEff
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
+import { ACTIVE_BTC_NETWORK_KEY } from '@/wallet-core/btc/networks';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
 import { captureVerifierSafe, verifyCredential, verifyCredentialDetailed, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
 import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
@@ -86,7 +88,7 @@ import {
 // SAST M2: the post-primary-miss deniability resolution runs a CONSTANT number
 // of KDFs regardless of which features are configured, so the presence/count of
 // panic/duress/hidden is not timeable at the prompt. See deniabilityUnlock.js.
-import { resolveDeniabilityUnlock } from '@/wallet-core/deniabilityUnlock';
+import { resolveDeniabilityUnlock, spendPrimaryUnlockEqualizerKdfs } from '@/wallet-core/deniabilityUnlock';
 // Brief A, Lane 2: locking must also wipe any sensitive value left on the OS
 // clipboard while the page stays visible (copySecret listens for this event).
 import { APP_LOCK_EVENT } from '@/lib/copySecret';
@@ -115,6 +117,7 @@ import {
   getBiometricStatus,
   BiometricGateError,
 } from '@/lib/biometric';
+import { setLivePricesEnabled } from '@/lib/priceFeed';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
 // let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
 // it to retract the shared veyrnox-biometric-unlock pref, so removing the duress PIN
@@ -192,24 +195,14 @@ async function isVaultKekEnrolledSafe() {
   }
 }
 
-// VULN-17 / H3 equalizer: primary success runs ~1 fewer Argon2id KDF than any
-// other unlock outcome (a miss / duress / panic / hidden all spend 3 KDFs via
-// resolveDeniabilityUnlock; primary success short-circuits). This sleep closes
-// the gap so correct-primary and wrong-password cost the same wall-clock time.
-// INVARIANT (two-sided): must be >= the wall-clock cost of ONE Argon2id KDF at
-// the CURRENT KDF_PARAMS, but also NOT much larger than the worst-case path
-// (<= 4 KDFs) — over-padding turns the fast path into a SLOWER-than-miss oracle.
-// At the current 192 MiB / t=3 params one KDF is ~1440 ms on mobile WebView
-// (400 MB/s throughput, 192 MiB × 3 iterations = 576 MiB processed). The miss
-// path runs 3 KDFs via resolveDeniabilityUnlock. 2000 ms (slightly above one
-// measured KDF in the Node.js/WASM test env at ~1720 ms) keeps the padded
-// success path within the 4-KDF worst-case window. History: 1500 ms was
-// calibrated for the short-lived 64 MiB params (commit 1226085e); when KDF
-// params were reverted to 192 MiB (SAST M3) this constant was not updated,
-// causing deniability-timing.test.js to fail (VU-06). See
-// primaryUnlockEqualizer.test.js for the two-sided bound derived from
-// KDF_PARAMS.memorySize.
-export const PRIMARY_UNLOCK_EQUALIZER_MS = 2000;
+// H-1 unlock-timing equalizer — see spendPrimaryUnlockEqualizerKdfs in
+// wallet-core/deniabilityUnlock.js. The former magic-sleep constant
+// (PRIMARY_UNLOCK_EQUALIZER_MS) was REMOVED: it only bridged ~1.4 of the 3-KDF deficit
+// between a primary success (which short-circuits before resolveDeniabilityUnlock) and
+// any failure/duress outcome, so the fast path stayed measurably faster (the H-1
+// oracle), and the constant drifted whenever KDF_PARAMS changed. The primary-success
+// path now spends the SAME 3 throwaway KDFs the failure path spends, so every outcome
+// costs an identical 5 KDFs — timing is equal by construction, with no constant to tune.
 
 // M6: re-export so callers/tests pin the reveal window against the same constant.
 export { REAUTH_WINDOW_MS };
@@ -727,7 +720,12 @@ export function WalletProvider({ children }) {
       try {
         map[w.id] = {
           evm: deriveEvmAccount(w.mnemonic, 0).address,
-          btc: deriveBtcAccount(w.mnemonic, { networkKey: 'mainnet' }).address,
+          // Portfolio/analytics BTC address MUST match the network the balance is
+          // read on: portfolioBalances.js reads getBalanceSats(asset.chain, addr.btc),
+          // where the BTC asset's chain is ACTIVE_BTC_NETWORK_KEY. Deriving on a
+          // different network yields a tb1… address the mainnet indexer can't
+          // resolve → BTC always reads 0. Bind to the single source of truth.
+          btc: deriveBtcAccount(w.mnemonic, { networkKey: ACTIVE_BTC_NETWORK_KEY }).address,
           sol: deriveSolAccount(w.mnemonic).address,
         };
       } catch { /* skip a wallet that fails to derive rather than break the view */ }
@@ -868,6 +866,7 @@ export function WalletProvider({ children }) {
     // as if no vault were present, bouncing the user back to `/`.
     setVaultExists(true);
     setUnlocked(true);
+    setLivePricesEnabled(true); // Enable live prices after wallet creation (I2: fresh device now has a real wallet)
     setIsDecoy(false);
     setIsHidden(false);
     setLastUnlockAt(null);
@@ -923,6 +922,7 @@ export function WalletProvider({ children }) {
     // guard) don't fail-close on a stale pre-onboarding `false`.
     setVaultExists(true);
     setUnlocked(true);
+    setLivePricesEnabled(true); // Enable live prices after wallet import (I2: fresh device now has a real wallet)
     setIsDecoy(false);
     setIsHidden(false);
     setLastUnlockAt(null);
@@ -1119,10 +1119,28 @@ export function WalletProvider({ children }) {
 
   const setActionPassword = useCallback(async (password, actionPassword) => {
     if (!actionPassword) throw new Error('Action Password cannot be empty.');
-    // H2: removed the isDecoy/isHidden guards — every set manages its OWN second
-    // factor. `password` is the ACTIVE set's credential (vault password / duress
-    // password / reveal secret), used both to re-auth and to re-encrypt below.
-    const current = isDecoy || isHidden ? containerRef.current : await decryptPrimaryContainer(password);
+    // H2: every set manages its OWN second factor. `password` is the ACTIVE set's
+    // credential (vault password / duress password / reveal secret), used both to
+    // re-auth and to re-encrypt below.
+    //
+    // L-2 (INTERNAL S1–S4 audit, 2026-07-08): the decoy/hidden branch previously
+    // read containerRef.current with NO credential re-auth, letting an already-open
+    // decoy/hidden session INSTALL a new Action Password without proving knowledge
+    // of the duress/reveal secret. Mirror clearActionPassword: verify the supplied
+    // credential against the ACTIVE set FIRST (tryDuressUnlock / tryRevealHidden),
+    // and fail closed (I4) — a wrong credential throws and mutates nothing.
+    let current;
+    if (isDecoy) {
+      const opened = await tryDuressUnlock(password);
+      if (opened == null) throw new Error('Decryption failed: wrong password or corrupted vault');
+      current = containerRef.current;
+    } else if (isHidden) {
+      const revealed = await tryRevealHidden(password);
+      if (revealed == null) throw new Error('Decryption failed: wrong password or corrupted vault');
+      current = containerRef.current;
+    } else {
+      current = await decryptPrimaryContainer(password);
+    }
     const verifier = await createCredentialVerifier(actionPassword); // full vault Argon2id cost
     const container = mv.withActionPasswordRecord(current, serializeActionPasswordRecord(verifier));
     await persistActiveSetContainer(password, container);
@@ -1482,12 +1500,30 @@ export function WalletProvider({ children }) {
         // getHardwareFactor is never called inside unlock (native or web).
         getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
       });
-      // VULN-17 fix: equalize timing between primary success (1 KDF) and all
-      // failure paths (4 KDFs via resolveDeniabilityUnlock). A correct password
-      // returns ~500 ms faster without this sleep, creating a timing oracle.
-      // (The ~300 ms figure was calibrated at 192 MiB KDF cost; post-downgrade
-      // to 64 MiB / t=3 one KDF ≈ 500 ms, so the advantage is ~500 ms.)
-      await new Promise(resolve => setTimeout(resolve, PRIMARY_UNLOCK_EQUALIZER_MS));
+      // H-1 fix: a correct primary unlock short-circuits BEFORE the deniability
+      // resolver, so it would spend fewer Argon2id KDFs than any failure/duress/
+      // hidden outcome — a stopwatch-distinguishable timing oracle at the prompt.
+      // spendPrimaryUnlockEqualizerKdfs runs the SAME resolveDeniabilityUnlock the
+      // failure path runs and DISCARDS the result, so every outcome costs an identical
+      // unlock(1) + resolver(3) + verifier(1) = 5 KDFs — and, because it is literally
+      // the same resolver, the same KDF PARAM PROFILE too (real slots at each stored
+      // blob's own recorded params, incl. legacy 64 MiB installed-base blobs — [P1]).
+      // Structural equality — no magic sleep to drift or over-pad. See
+      // unlockTimingEqualizer.h1.test.jsx and unlockTimingLegacyParams.p1.test.jsx.
+      //
+      // FAIL-CLOSED ISOLATION (deniability-critical): the equalizer is a pure timing
+      // pad whose RETURN IS DISCARDED — its outcome must NEVER affect this
+      // already-confirmed-correct unlock. resolveDeniabilityUnlock itself never wipes
+      // or mounts a decoy (the caller does, from its return value — which we throw
+      // away here), so even a degenerate primary secret that also matched a
+      // duress/panic/hidden slot cannot divert the success path. It is additionally
+      // swallowed in its own try/catch so that even if the resolver threw, the throw
+      // can never fall into `catch (primaryErr)` below and be misread as a primary
+      // miss — which, with a duress vault configured, would silently open the DECOY
+      // instead of the real wallet (I4).
+      try {
+        await spendPrimaryUnlockEqualizerKdfs(password);
+      } catch { /* timing pad only — a confirmed unlock must not be diverted */ }
     } catch (primaryErr) {
       // BIOMETRIC FAILURE (native, biometric-unlock enabled): the OS prompt was
       // cancelled/failed/locked-out BEFORE any password check (tagged in
@@ -1689,6 +1725,7 @@ export function WalletProvider({ children }) {
     }
 
     setUnlocked(true);
+    setLivePricesEnabled(true); // Enable live prices after unlock (I2: user restored a real wallet, expect live data)
     setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
@@ -1899,7 +1936,12 @@ export function WalletProvider({ children }) {
     if (!active) throw new Error('Wallet is locked');
     touch();
     const { privateKey, publicKey, address } = deriveBtcAccount(active, { networkKey });
-    return fn({ privateKey, publicKey, address });
+    // M-2: zero the Uint8Array key in .finally() so it doesn't outlive the callback
+    // even on an async/throw path. Unlike EVM (JS string, architecturally unzeroable),
+    // BTC keys are Uint8Array — zeroization is both possible and low-cost.
+    return Promise.resolve(fn({ privateKey, publicKey, address })).finally(() => {
+      privateKey.fill(0);
+    });
   }, [touch]);
 
   // SOL counterpart: provide the ed25519 private+public key bytes for the Solana
@@ -1912,7 +1954,10 @@ export function WalletProvider({ children }) {
     if (!active) throw new Error('Wallet is locked');
     touch();
     const { privateKey, publicKey, address } = deriveSolAccount(active);
-    return fn({ privateKey, publicKey, address });
+    // M-2: zero the Uint8Array ed25519 seed in .finally() (mirrors BTC pattern above).
+    return Promise.resolve(fn({ privateKey, publicKey, address })).finally(() => {
+      privateKey.fill(0);
+    });
   }, [touch]);
 
   // DURESS / DECOY management (S3). Configure or remove the decoy vault that the

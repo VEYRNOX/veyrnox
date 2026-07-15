@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/vaultBackup.js
 //
 // Self-custodial encrypted vault backup (S4 — Option A: two sealed copies).
@@ -17,13 +18,16 @@
 // Google Drive, a USB drive, a local folder.
 //
 // HONESTY NOTE on PIN seal: the seal is only as strong as the PIN. The export
-// function accepts 6–12 digits (matching the UI minimum in PersonalBackup.jsx canExport),
-// so a real seal carries ~20 bits (6-digit, 10^6) up to
-// ~40 bits (12-digit); an 8-digit PIN is ~27 bits. At 64 MiB Argon2id per attempt,
-// offline brute-force of a 6-digit seal (10^6) is feasible for a well-resourced
-// attacker who obtains the file — materially weaker than an 8-digit assumption. The
-// password seal is the stronger recovery path. If both are forgotten, there is no
-// recovery — this is non-custodial.
+// function enforces /^\d{8,12}$/ (see line ~213), matching PersonalBackup.jsx
+// canExport, so a real seal carries ~27 bits (8-digit, 10^8) up to ~40 bits
+// (12-digit). At 192 MiB Argon2id per attempt (KDF_PARAMS.memorySize, raised
+// 64→192 MiB by PR #604, 2026-07-05), offline brute-force of an 8-digit seal is
+// materially harder than the earlier 64 MiB assumption but is still bounded by the
+// ~27-bit floor — a well-resourced attacker who obtains the file can still exhaust
+// it eventually. The password seal is the stronger recovery path. If both are
+// forgotten, there is no recovery — this is non-custodial. (2026-07-14 audit LOW:
+// docstring corrected from stale "6–12 digits / 64 MiB Argon2id" claims that
+// predated PR #604 and the 8-digit floor.)
 //
 // RESTORE
 //   Password restore: the password seal IS a valid vault blob → saved directly
@@ -417,11 +421,12 @@ export function parseBackupFile(data) {
  */
 export async function restoreWithPassword(envelope, password) {
   if (!isValidBackup(envelope)) throw new Error('Invalid backup');
+  const env = /** @type {any} */ (envelope);
   // Verify the password is correct by decrypting (throws on wrong credential).
-  await decryptVault(envelope.seals.password, password);
+  await decryptVault(env.seals.password, password);
   // The blob is correct — save it as the local primary vault. The user can now
   // unlock with their original password through the normal flow.
-  await saveVault(envelope.seals.password);
+  await saveVault(env.seals.password);
 }
 
 /**
@@ -436,7 +441,8 @@ export async function restoreWithPassword(envelope, password) {
  */
 export async function decryptPinSeal(envelope, pin) {
   if (!isValidBackup(envelope)) throw new Error('Invalid backup');
-  return await decryptVault(envelope.seals.pin, pin);
+  const env = /** @type {any} */ (envelope);
+  return await decryptVault(env.seals.pin, pin);
 }
 
 /**

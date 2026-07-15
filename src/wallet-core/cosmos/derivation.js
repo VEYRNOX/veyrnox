@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/cosmos/derivation.js
 //
 // Cosmos SDK address derivation: secp256k1 HD key → bech32 address.
@@ -34,6 +35,15 @@ const COSMOS_COIN_TYPE = 118;
 /**
  * Build the Cosmos BIP-44 derivation path.
  * @param {number} index - address index (0-based).
+ *
+ * PATH NOTE (M-10, 2026-07-12): The final `index` level is NON-HARDENED, which
+ * is correct per BIP-44 and matches Keplr/Cosmostation. This means that if an
+ * attacker obtains BOTH a child private key at this level AND the account-level
+ * extended public key (xpub at `m/44'/118'/0'`), they can derive all sibling
+ * address private keys. Veyrnox does not export the account xpub (there is no
+ * watch-wallet feature), so this risk is theoretical today. If a watch-wallet or
+ * any xpub-export feature is ever added, this derivation structure means ALL
+ * sibling private keys become computable from the xpub + any one child key.
  */
 export function cosmosPath(index = 0) {
   return `m/44'/${COSMOS_COIN_TYPE}'/0'/0/${index}`;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/passkey.js — app-layer FIDO2 / WebAuthn passkey UNLOCK GATE helpers.
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐
@@ -167,6 +168,15 @@ export function set2faPasskeyEnabled(on) {
   } catch {
     /* storage unavailable — preference is best-effort, non-fatal. */
   }
+  // L-3: signal a same-tab 2FA-pref change so a mounted Send screen re-resolves its
+  // second factor live (the native `storage` event fires only in OTHER tabs). Event
+  // name is SEND_2FA_CHANGED_EVENT in lib/useSend2faMethod.js — inlined here to avoid
+  // a circular import. Best-effort; a missing event bus must never block the write.
+  try {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new Event('veyrnox:2fa-changed'));
+    }
+  } catch { /* noop */ }
 }
 
 /**

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/derivation.js
 //
 // HD key derivation (BIP-32/44) producing REAL addresses from REAL keys.

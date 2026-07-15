@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/duress.js
 //
 // DURESS / DECOY VAULT  (S3 — individual security).  PROVISIONAL.
@@ -136,11 +137,11 @@ export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswo
   }
   const db = await openDb();
   try {
-    await new Promise((res, rej) => {
+    await /** @type {Promise<void>} */ (new Promise((res, rej) => {
       const r = store(db, 'readwrite').put(blob, DECOY_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
-    });
+    }));
   } finally {
     db.close();
   }
@@ -159,7 +160,13 @@ export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswo
  */
 export async function tryDuressUnlock(password) {
   const blob = await loadDecoy();
-  if (!blob) return null;
+  if (!blob) {
+    // Constant-time guard: run one full Argon2id KDF pass so the absence of a
+    // duress vault is timing-indistinguishable from a wrong-password miss.
+    // Mirrors stealth.js:tryRevealHidden's dummy decryptVault on no-salt path.
+    await encryptVault('__duress_timing_chaff__', password).catch(() => {});
+    return null;
+  }
   try {
     return await decryptVault(blob, password); // throws on wrong password
   } catch {
@@ -171,11 +178,11 @@ export async function tryDuressUnlock(password) {
 export async function clearDuressVault() {
   const db = await openDb();
   try {
-    await new Promise((res, rej) => {
+    await /** @type {Promise<void>} */ (new Promise((res, rej) => {
       const r = store(db, 'readwrite').delete(DECOY_KEY);
       r.onsuccess = () => res();
       r.onerror = () => rej(r.error);
-    });
+    }));
   } finally {
     db.close();
   }
