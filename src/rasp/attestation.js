@@ -128,6 +128,29 @@ export function composeConditions(a, b) {
  *   - available:true, attestationFailed:false → CLEAN (does NOT worsen the native
  *     probe result when composed)
  *
+ * ── P2-5 (2026-07-15) — iOS-SPECIFIC WEAKER MEANING OF A CLEAN RESULT ──────
+ * On iOS the "subsequent runs" branch of AppAttestPlugin.m returns
+ * { available:true, attestationFailed:false } from a successful LOCAL
+ * `generateAssertion` call. That result proves ONLY "this app install still
+ * holds its SE-enrolled App Attest key," NOT "this device is not
+ * jailbroken." SE-key operations survive jailbreak, and Veyrnox's on-device
+ * decision design (Option A, docs/rasp-attestation-egress-decision.md,
+ * signed off 2026-07-13) deliberately omits server-side verification (I5 —
+ * backend untrusted). So on iOS, CLEAN from this axis means "SE key intact,"
+ * not "device integrity confirmed."
+ *
+ * This is safe under the compose lattice because
+ * composeConditions(osProbeCondition, attestationCondition) returns the
+ * MORE dangerous of the two: an iOS jailbreak surfaces via
+ * TAMPERED/HOOKED from RaspIntegrityPlugin.m's on-device probes, which
+ * outranks INTEGRITY_UNAVAILABLE/CLEAN from this leg. A future maintainer
+ * MUST NOT read attestationFailed:false in isolation as "device is safe" —
+ * always compose with the OS probe axis.
+ *
+ * On Android the CLEAN result is stronger (Play Integrity JWS verified
+ * on-device since PR #943), though root-cert pinning is still
+ * issuer-contains-"Google" (G2-ROOTCERT-PIN) and NOT device-verified.
+ *
  * @param {{ available?: boolean, attestationFailed?: boolean }|null|undefined} probeResult
  * @returns {string} a CONDITION.*
  */
