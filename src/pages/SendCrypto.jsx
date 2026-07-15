@@ -46,7 +46,7 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
-import { degrade, detect, TIER, browserProbeSource, nativeProbeSource, selectPresignProbeSource, ATTESTATION_ENABLED, attestationProbeSource, detectAttestation, composeConditions } from "@/rasp";
+import { TIER, useRaspArtifact, getFreshRaspArtifact } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
@@ -64,7 +64,6 @@ import { resolveMaxPriorityFeePerGas } from "@/lib/WalletConnectProvider";
 import { verifyPasskeyAssertion } from "@/lib/passkey";
 import { verifyBiometric2fa } from "@/lib/biometric";
 import { Capacitor } from "@capacitor/core";
-import { App } from "@capacitor/app";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
@@ -685,103 +684,24 @@ export default function SendCrypto() {
   // a bare fail-closed error at signing. RISK additionally requires acknowledgement.
   const riskPending = riskApplicable && !riskReady;
 
-  // RASP §7 — pre-sign ENVIRONMENT gate (Phase 3, browser + native OS detection).
-  // A normal runtime returns CLEAN → ALLOW (no added friction). Automation/WebDriver →
-  // HOOKED → BLOCK (browser leg). Root/jailbreak/hook/emulator → native OS leg (F-09).
-  // I3: detect()/degrade() are pure functions of the ENVIRONMENT only — no
-  // walletSet handle. I4: a RASP crash fails closed to the strongest BLOCK.
+  // RASP §7 — pre-sign ENVIRONMENT gate (Phase 3, browser + native OS + attestation).
   //
-  // F-09 — NATIVE OS probe. nativeProbeSource() is a Capacitor bridge call (async), so
-  // it cannot run on the synchronous render path. We sample it at mount AND on every
-  // app-foreground event + 60 s heartbeat (G4-A/G4-B: catches Frida injected mid-session
-  // or during backgrounding). selectPresignProbeSource() on native consumes the OS leg
-  // ONLY and NEVER falls back to the browser leg's CLEAN — the browser leg reports CLEAN on
-  // a native WebView (it cannot see root/jailbreak), so a native fallback to it was
-  // fail-OPEN (C-01, internal-audit-2026-07-11, CRITICAL). Until the native leg genuinely
-  // ran we fail CLOSED (INTEGRITY_UNAVAILABLE → WARN, never ALLOW): this covers iOS (no
-  // plugin yet), a plugin-absent/throwing verdict, and the not-yet-resolved async window.
-  // On web the gate reads browserProbeSource exactly as before.
-  const [nativeProbe, setNativeProbe] = useState(/** @type {any} */ (null));
-  const [probeKey, setProbeKey] = useState(0);
-
-  // G4-A: re-probe on foreground. Reset to null immediately so gate stays WARN (I4).
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    const handle = App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        setNativeProbe(null);
-        setProbeKey(k => k + 1);
-      }
-    });
-    return () => { handle.then(h => h.remove()); };
-  }, []);
-
-  // G4-B: 60 s heartbeat — catches injection without a background/foreground cycle.
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    const id = setInterval(() => {
-      setNativeProbe(null);
-      setProbeKey(k => k + 1);
-    }, 60_000);
-    return () => { clearInterval(id); };
-  }, []);
-
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const source = await nativeProbeSource();
-        if (!cancelled) setNativeProbe(source);
-      } catch {
-        // I4 FAIL CLOSED: a native-bridge throw leaves state null → on native
-        // selectPresignProbeSource returns the UNAVAILABLE source (WARN), never clean.
-        if (!cancelled) setNativeProbe({ available: false });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [probeKey]);
-
-  // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
-  // gated inside attestationProbeSource). SEPARATE effect from the OS-probe effect
-  // above (one leg per effect). BUILT · NOT device-verified (Play Integrity JWS RS256
-  // not verified on-device; iOS appattest entitlement not yet present).
-  const [attestationResult, setAttestationResult] = useState(/** @type {any} */ (null));
-  useEffect(() => {
-    if (!ATTESTATION_ENABLED) return;
-    if (!Capacitor.isNativePlatform()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await attestationProbeSource();
-        if (!cancelled) setAttestationResult(r);
-      } catch {
-        // I4 FAIL CLOSED: bridge throw → unavailable, never fabricated clean.
-        if (!cancelled) setAttestationResult({ available: false });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  let raspArtifact = /** @type {any} */ (null);
-  // RASP-A1 (2026-07-05 internal audit, HIGH): browserProbeSource re-samples the
-  // environment FRESH on every property read (its `available`/`signals` are getters),
-  // so a debugger / WebDriver flag attached AFTER module-load is still caught. This
-  // runs on every render, and the signer chokepoint re-derives the gate too. On native an
-  // unavailable OS leg fails CLOSED — it does NOT fall back to the browser CLEAN (C-01).
-  // The remote-attestation condition is composed in (the more dangerous leg wins): during
-  // the async window detectAttestation(null) → INTEGRITY_UNAVAILABLE (WARN), fail-closed.
-  try {
-    const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));
-    const _attestCondition = detectAttestation(attestationResult);
-    raspArtifact = degrade(composeConditions(_osCondition, _attestCondition));
-  } catch {
-    raspArtifact = degrade(/** @type {any} */ (undefined));
-  }
-  // I4 FAIL CLOSED (RASP-A2, 2026-07-05 internal audit, HIGH): if the RASP artifact
-  // is missing a tier (a crash, or degrade() shape drift), fall back to the strongest
-  // BLOCK — NEVER ALLOW. A fail-open fallback here would let a hostile runtime sign
-  // the moment the detector itself misbehaves. Absence of a clean signal is not clean.
+  // P2-7 (audit 2026-07-15): SendCrypto used to duplicate the OS/attestation
+  // probe-sampling effects inline. That duplication has been removed — this
+  // component now goes through the shared useRaspArtifact() hook, which owns the
+  // G4-A foreground re-probe, G4-B 60 s heartbeat, and the attestation-on-
+  // probeKey re-sample (the attestation freshness gap the inline version had).
+  //
+  // P2-4 (audit 2026-07-15): deferAttestation is bound to step === "verify" so
+  // the attestation network call (Google Play Integrity / Apple App Attest)
+  // does NOT fire on Send-page mount — it fires only once the user has
+  // committed sign intent by entering the verify step. This matches the
+  // documented "attestation only on explicit pre-sign egress" boundary.
+  //
+  // I3: attestationProbeSource() checks isDeniabilityOrDemoActive() FIRST — no
+  // egress under decoy/hidden/demo. I4: a RASP crash fails closed (BLOCK).
+  const raspArtifact = useRaspArtifact({ deferAttestation: step !== 'verify' });
+  // I4 FAIL CLOSED (RASP-A2): missing tier → strongest BLOCK, never ALLOW.
   const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
 
   // The COMPOSITE pre-sign decision (RASP env plane ⊕ tx-risk plane), set-blind by
@@ -840,17 +760,27 @@ export default function SendCrypto() {
       // mark it failed and the gate refuses to sign. Otherwise compose the tx verdict
       // with the RASP environment tier (Phase 3; raspTier is ALLOW when the flag is
       // off → reduces to the tx-risk gate).
+      //
+      // P2-1 (audit 2026-07-15): fetch a FRESH RASP artifact right here on the sign
+      // hot-path instead of reusing the closure's `raspTier` (which could be up
+      // to ~60 s stale — last heartbeat sample). An attacker who injected a hook
+      // AFTER the last probe but BEFORE the user tapped Send previously slipped
+      // past a stale ALLOW. getFreshRaspArtifact awaits both the OS and
+      // attestation legs with a 1500 ms fail-closed timeout (WC pattern);
+      // timeout/throw/shape-drift → BLOCK. Never a fabricated CLEAN.
+      const freshArtifact = await getFreshRaspArtifact();
+      const freshRaspTier = freshArtifact?.tier ?? TIER.BLOCK;
       // Emit a security notification if RASP found a non-clean environment at sign time.
       // Fire-and-forget (I4) — the notification path must never block or unwind the send.
-      if (raspTier !== 'allow') {
-        notifyRaspAlert({ tier: raspTier, sentence: raspArtifact?.sentence ?? null, ts: Date.now() });
+      if (freshRaspTier !== 'allow') {
+        notifyRaspAlert({ tier: freshRaspTier, sentence: freshArtifact?.sentence ?? null, ts: Date.now() });
       }
 
       let riskScoreFailed = false;
       let presignAtSign = /** @type {any} */ (null);
       try {
         const freshScore = scoreCurrentSend();
-        presignAtSign = presignGate(raspTier, freshScore.level, riskAck);
+        presignAtSign = presignGate(freshRaspTier, freshScore.level, riskAck);
         // Fire-and-forget (I4) — notification failure must never block or unwind the send.
         notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
       } catch {
@@ -859,11 +789,9 @@ export default function SendCrypto() {
 
       // B5 — RASP WARN biometric enforcement chokepoint (I4 fail-closed).
       // Defense-in-depth: re-assert the bio gate at sign time so UI state cannot be
-      // bypassed. `raspNeedsBio` is re-derived here (not from closure) to avoid any
-      // stale render state. `presignAtSign` may be null if scoreCurrentSend threw
-      // (riskScoreFailed), in which case the gate is effectively BLOCK already via
-      // evaluateSendGate below — but we still enforce bio here to be safe.
-      const raspNeedsBioAtSign = raspArtifact?.requiresBiometric === true
+      // bypassed. Uses the FRESH artifact (P2-1), not the stale closure, so a
+      // just-injected hook cannot slip past biometric friction.
+      const raspNeedsBioAtSign = freshArtifact?.requiresBiometric === true
         && Capacitor.isNativePlatform()
         && presignAtSign?.decision !== 'block';
       if (raspNeedsBioAtSign && !raspWarnBioOk) {

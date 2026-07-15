@@ -36,7 +36,15 @@ const BYPASS_RASP = import.meta.env.VITE_BYPASS_RASP === '1';
 
 const HEARTBEAT_MS = 60_000;
 
-export function useRaspArtifact() {
+// Options:
+//   deferAttestation (default false): when true, the attestation useEffect body
+//     early-returns — the network call is NOT fired on mount / foreground /
+//     heartbeat. Callers pass true until the user reaches an explicit sign
+//     intent (e.g. step === "verify"), matching the documented "attestation only
+//     on explicit pre-sign egress" boundary (P2-4 audit 2026-07-15). When the
+//     flag flips false the effect re-runs (probeKey deps carry through) and the
+//     probe fires. Default behaviour is unchanged for existing consumers.
+export function useRaspArtifact({ deferAttestation = false } = {}) {
   // Dev bypass: skip all probe effects and return ALLOW immediately.
   if (BYPASS_RASP) return degrade(CONDITION.CLEAN);
 
@@ -52,6 +60,7 @@ export function useRaspArtifact() {
     const handle = App.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
         setNativeProbe(null);
+        setAttestationResult(null);
         setProbeKey(k => k + 1);
       }
     });
@@ -63,6 +72,7 @@ export function useRaspArtifact() {
     if (!Capacitor.isNativePlatform()) return;
     const id = setInterval(() => {
       setNativeProbe(null);
+      setAttestationResult(null);
       setProbeKey(k => k + 1);
     }, HEARTBEAT_MS);
     return () => { clearInterval(id); };
@@ -92,6 +102,11 @@ export function useRaspArtifact() {
   useEffect(() => {
     if (!ATTESTATION_ENABLED) return;
     if (!Capacitor.isNativePlatform()) return;
+    // P2-4 (audit 2026-07-15): caller opt-out. When deferred, no network call
+    // fires — the attestation-plane condition stays INTEGRITY_UNAVAILABLE (WARN)
+    // by construction (detectAttestation(null) fail-closes). The effect re-runs
+    // when deferAttestation flips false → true→false, sampling then.
+    if (deferAttestation) return;
     let cancelled = false;
     (async () => {
       try {
@@ -103,7 +118,7 @@ export function useRaspArtifact() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [probeKey, deferAttestation]);
 
   try {
     const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));
