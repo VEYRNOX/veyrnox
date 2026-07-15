@@ -45,8 +45,10 @@ const HEARTBEAT_MS = 60_000;
 //     flag flips false the effect re-runs (probeKey deps carry through) and the
 //     probe fires. Default behaviour is unchanged for existing consumers.
 export function useRaspArtifact({ deferAttestation = false } = {}) {
-  // Dev bypass: skip all probe effects and return ALLOW immediately.
-  if (BYPASS_RASP) return degrade(CONDITION.CLEAN);
+  // Dev bypass: skip all probe effects and return ALLOW immediately. Shape must
+  // match the success/catch branches (P2-8, 2026-07-15) — include `condition`
+  // so tsc unions the three returns without an inconsistent-shape error.
+  if (BYPASS_RASP) return { ...degrade(CONDITION.CLEAN), condition: CONDITION.CLEAN };
 
   const [nativeProbe, setNativeProbe] = useState(null);
   const [attestationResult, setAttestationResult] = useState(null);
