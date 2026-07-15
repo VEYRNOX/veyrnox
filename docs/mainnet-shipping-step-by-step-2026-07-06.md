@@ -35,7 +35,7 @@
 - **Device:** Pixel 10 Pro XL (Android 16/API 36, StrongBox Keymaster)
 - **Verification Path:**
   - v1 (bare StrongBox): txid `0x9d9ff549…` (block 11180398, 2026-07-01)
-  - v2 (initial salt-binding): txid `0xeb71a5d3…` (block 11185289, 2026-07-02) — *later found REGRESSED*
+  - v2 (initial salt-binding): txid `0xeb71a5d3…` (block 11187337, 2026-07-02) — *later found REGRESSED*
   - v3 (fixed salt-binding): txid `0xecd68494…` (block 11206686, 2026-07-05) — *DEVICE-VERIFIED same-day fix*
 - **C-1 Status:** FIXED / device-verified (v3, 2026-07-05)
 - **Logcat Evidence:** Per-enrollment salt binding confirmed via bridge call (44-char base64 STRING, not {} or null)

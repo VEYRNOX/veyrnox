@@ -92,7 +92,7 @@
 
 **Device Evidence:**
 - Sepolia txid: `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`
-- Block: 11185289
+- Block: 11187337
 - Vault confirmed: `hardwareKekVersion:2`, `hardwareKekTier:STRONGBOX`
 - Date: 2026-07-02 (device-verified on Pixel 10 Pro XL)
 

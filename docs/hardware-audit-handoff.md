@@ -247,7 +247,7 @@ KEK Phase 1/2 was not in that scope.
       `tests/android/`. The auditor can witness or drive these once on a Mac + iPhone.
   - Already remediated at audit start (do not re-raise as new findings):
     - C-1 (CRITICAL Android HMAC fixed input): RESOLVED / device-verified 2026-07-02,
-      PR #529 (commit 732f9676), Sepolia txid `0xeb71a5d…`, block 11185289, v2 protocol
+      PR #529 (commit 732f9676), Sepolia txid `0xeb71a5d…`, block 11187337, v2 protocol
       (`hardwareKekVersion:2`, per-enrollment `kekSalt`).
     - H-1 (StrongBox tier surfacing): FIXED PR #527 (merged 2026-07-02), `tierBadge.js`
       + `HardwareKekSettings.jsx` + `getVaultKekTier()`.

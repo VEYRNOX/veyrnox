@@ -21,7 +21,7 @@ identity; the app never holds keys server-side.
   A 2026-07-01 internal static-analysis audit (Hardware KEK — WebAuthn PRF, iOS SE,
   Android StrongBox) found 1C/9H/12M/6L; 10 remediable findings fixed (PRs #520–#522).
   The 1 CRITICAL — C-1, Android HMAC fixed input — went through a RESOLVED (2026-07-02,
-  PR #529, Sepolia txid `0xeb71a5d…` block 11185289; proved the unlock FLOW only) →
+  PR #529, Sepolia txid `0xeb71a5d…` block 11187337; proved the unlock FLOW only) →
   REGRESSED (2026-07-05: per-enrollment salt binding cryptographically inert on-device —
   a facade arg-drop + Capacitor-bridge `JSON.stringify` silently reverted enroll+unlock to
   the fixed v1 salt) → FIXED / device-verified (2026-07-05, v3, PR #568, Sepolia txid
@@ -163,7 +163,7 @@ identity; the app never holds keys server-side.
   4/4 C-1 contract tests + 172/172 keystore tests pass. Recorded 2026-07-02 as
   DEVICE-VERIFIED on Pixel 10 Pro XL (Android 16/API 36): v2 re-enroll → cold restart →
   StrongBox-gated unlock → KEK-gated Sepolia send, txid
-  `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289,
+  `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11187337,
   vault read confirmed `hardwareKekVersion:2`, `kekSaltLength:44`.
   **REGRESSED 2026-07-05:** an OODA investigation found this fix is cryptographically
   inert on device. Bug A (runtime-confirmed via logcat on the same Pixel 10 Pro XL:

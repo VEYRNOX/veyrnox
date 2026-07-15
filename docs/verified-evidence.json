@@ -8,7 +8,8 @@
     }
   },
   "_corrected": {
-    "USDT mainnet send (full UI path, build:release, Ethereum mainnet)": "Txid corrected 2026-06-22. PR #280 originally recorded 0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986 — that hash is a real mainnet tx but targets the USDC contract, not USDT, so it did not substantiate the USDT claim. The actual USDT mainnet send is 0xf06a0ba731d1b8bf4d3f859a5904830b2f064725ba837c8c7332e5264f0b5b08 (verified on-chain via eth_getTransactionByHash/Receipt 2026-06-22: to=Tether USDT contract 0xdAC17F95…831ec7, transfer 1 USDT to 0x82D0…5BAB, chainId 1, status SUCCESS, block 25360159). Entry below now carries the correct txid."
+    "USDT mainnet send (full UI path, build:release, Ethereum mainnet)": "Txid corrected 2026-06-22. PR #280 originally recorded 0x3f2fe19a1092af36b4ca758846c4d266fd55f947efc110a1122013c2b242b986 — that hash is a real mainnet tx but targets the USDC contract, not USDT, so it did not substantiate the USDT claim. The actual USDT mainnet send is 0xf06a0ba731d1b8bf4d3f859a5904830b2f064725ba837c8c7332e5264f0b5b08 (verified on-chain via eth_getTransactionByHash/Receipt 2026-06-22: to=Tether USDT contract 0xdAC17F95…831ec7, transfer 1 USDT to 0x82D0…5BAB, chainId 1, status SUCCESS, block 25360159). Entry below now carries the correct txid.",
+    "C-1 Android KEK v2 send block number (0xeb71a5d…)": "Block corrected 2026-07-15 during the Phase-2 checklist reconciliation. This entry and ~6 other docs (Feature-Status.md, CLAUDE.md, audit-2026-07-01-kek-internal.md, TEST_COVERAGE.md, hardware-audit-handoff.md, mainnet-shipping-step-by-step-2026-07-06.md) recorded block 11185289 for txid 0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580. Re-confirmed on-chain 2026-07-15 via eth_getTransactionReceipt AND eth_getTransactionByHash on TWO independent Sepolia nodes (publicnode + drpc): the tx is at block 11187337, nonce 33, status SUCCESS. The txid and SUCCESS were always genuine — only the block number was wrong (a single mis-recorded value copy-propagated across the docs). All occurrences corrected to 11187337."
   },
   "_h1_passkey_2fa_fix_confirmation": {
     "_why_not_in_evidence": "Deliberately a META key, NOT under 'evidence' — so it does NOT promote any catalogue feature to 'verified'. The Two-Factor feature stays BUILT. This records that the ECC audit H-1 fix (passkey-2FA was silently bypassed on Send) was exercised end-to-end on-chain, while being honest that the authenticator was SOFTWARE, not a Secure Enclave.",
@@ -59,9 +60,9 @@
     "from": "0x90f9f1F9F5a1938B21ef0C20352C7b792E68a729",
     "to": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
     "amount": "0.001 ETH",
-    "block": 11185289,
+    "block": 11187337,
     "nonce": 33,
-    "verified_onchain": "eth_getTransactionByHash, chainId 11155111 (Sepolia), type 0x2 (EIP-1559), status confirmed (blockHash present), block 11185289, 2026-07-02.",
+    "verified_onchain": "eth_getTransactionByHash, chainId 11155111 (Sepolia), type 0x2 (EIP-1559), status confirmed (blockHash present), block 11187337, 2026-07-02.",
     "vault_state_at_send": {
       "kdf": "kek-dek",
       "hardwareKekVersion": 2,
