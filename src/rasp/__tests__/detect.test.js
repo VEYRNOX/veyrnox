@@ -52,10 +52,13 @@ describe('detect — FAIL CLOSED (the honesty boundary)', () => {
     expect(detect({ available: 1, signals: {} })).toBe(CONDITION.INTEGRITY_UNAVAILABLE);
     expect(detect({ available: 'yes', signals: {} })).toBe(CONDITION.INTEGRITY_UNAVAILABLE);
   });
-  it('classifies real signals when the source is genuinely available', () => {
-    expect(detect({ available: true, signals: {} })).toBe(CONDITION.CLEAN);
-    expect(detect({ available: true, signals: { rooted: true } })).toBe(CONDITION.ROOTED);
-    expect(detect({ available: true, signals: { tampered: true } })).toBe(CONDITION.TAMPERED);
+  it('classifies real signals when the source is genuinely available (all four booleans required, P2-6a)', () => {
+    // P2-6a (audit batch, 2026-07-15): detect() now requires all four boolean
+    // signal fields — a partial shape fails closed (see partial-shape tests below).
+    const allFalse = { rooted: false, hooked: false, emulator: false, tampered: false };
+    expect(detect({ available: true, signals: allFalse })).toBe(CONDITION.CLEAN);
+    expect(detect({ available: true, signals: { ...allFalse, rooted: true } })).toBe(CONDITION.ROOTED);
+    expect(detect({ available: true, signals: { ...allFalse, tampered: true } })).toBe(CONDITION.TAMPERED);
   });
 });
 
@@ -66,12 +69,18 @@ describe('detect → degrade composition (end-to-end tiers)', () => {
     expect(a.requiresBiometric).toBe(true);
   });
   it('tampered → BLOCK, signing refused', () => {
-    const a = degrade(detect({ available: true, signals: { tampered: true } }));
+    const a = degrade(detect({
+      available: true,
+      signals: { rooted: false, hooked: false, emulator: false, tampered: true },
+    }));
     expect(a.tier).toBe(TIER.BLOCK);
     expect(a.blockedActions).toContain('sign');
   });
   it('clean (probes ran, nothing found) → ALLOW', () => {
-    const a = degrade(detect({ available: true, signals: {} }));
+    const a = degrade(detect({
+      available: true,
+      signals: { rooted: false, hooked: false, emulator: false, tampered: false },
+    }));
     expect(a.tier).toBe(TIER.ALLOW);
   });
 });
@@ -83,7 +92,13 @@ describe('I3 deniability — detection is set-blind', () => {
     try { return detect(source); } finally { delete globalThis.__VEYRNOX_ACTIVE_SET__; }
   }
   it('identical output under real vs decoy for every source kind', () => {
-    const sources = [undefined, { available: false }, { available: true, signals: {} }, { available: true, signals: { rooted: true } }];
+    const allFalse = { rooted: false, hooked: false, emulator: false, tampered: false };
+    const sources = [
+      undefined,
+      { available: false },
+      { available: true, signals: allFalse },
+      { available: true, signals: { ...allFalse, rooted: true } },
+    ];
     for (const s of sources) {
       expect(detectUnderActiveSet(s, 'real')).toBe(detectUnderActiveSet(s, 'decoy'));
     }

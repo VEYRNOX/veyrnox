@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { makeCopy } from '@/pages/HDWalletManager';
+import { degrade } from '@/rasp/degrade.js';
+import { CONDITION } from '@/rasp/conditions.js';
+
+// P1-2 (audit batch, 2026-07-15): sensitiveGate now fail-closes on a null/undefined
+// artifact. `makeCopy`'s default `raspArtifact = null` therefore blocks sensitive
+// copies — this test must pass an explicit CLEAN artifact to exercise the copy path,
+// mirroring how the real component wires `useRaspArtifact()` at line 160.
+const CLEAN_ARTIFACT = degrade(CONDITION.CLEAN);
 
 // M15: the recovery-phrase ("seed") copy on the Wallet Manager page is sensitive
 // and must schedule a 30 s clipboard wipe. Public address copies must NOT wipe.
@@ -36,7 +44,7 @@ describe('HDWalletManager clipboard wipe (M15)', () => {
   const WIPE_REPLACEMENT = '•'.repeat(24);
 
   it('schedules a wipe after copying the recovery phrase (sensitive)', async () => {
-    const copy = makeCopy(() => {});
+    const copy = makeCopy(() => {}, CLEAN_ARTIFACT);
     copy('abandon abandon about', 'seed', { sensitive: true });
     await vi.advanceTimersByTimeAsync(30_000);
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(WIPE_REPLACEMENT);

@@ -91,16 +91,32 @@ export async function nativeProbeSource() {
     return UNAVAILABLE;
   }
 
+  // P2-6b (audit batch, 2026-07-15): DEFENSE-IN-DEPTH against a compromised bridge.
+  // Previously `verdict.rooted === true || verdict.jailbroken === true` coerced any
+  // absent/malformed field to false → CLEAN, so a bridge returning `{}` (empty) or
+  // a `{ hookedProcess: true }`-only partial fabricated a passing verdict on the
+  // three missing axes. Refuse partial shapes and fail closed (I4). Rooted-axis is
+  // a UNION — Android emits `rooted`, iOS emits `jailbroken` — so we require at
+  // least ONE of the two to be present as a boolean (preserving cross-platform
+  // compat), plus the other three fields as booleans.
+  const rootedIsBool = typeof verdict.rooted === 'boolean';
+  const jailbrokenIsBool = typeof verdict.jailbroken === 'boolean';
+  if (
+    !(rootedIsBool || jailbrokenIsBool) ||
+    typeof verdict.hookedProcess !== 'boolean' ||
+    typeof verdict.emulator !== 'boolean' ||
+    typeof verdict.tampered !== 'boolean'
+  ) {
+    return UNAVAILABLE;
+  }
+
   // Adapt the native verdict to detect()'s ProbeSignals. root OR jailbreak both
   // mean "OS trust boundary broken" → the `rooted` signal (degrade() → WARN).
-  // A hooked process → `hooked` (→ BLOCK). Missing fields are "not observed"
-  // (false), exactly as classifyEnvironment() treats absent fields.
+  // A hooked process → `hooked` (→ BLOCK).
   const signals = {
     rooted: verdict.rooted === true || verdict.jailbroken === true,
     hooked: verdict.hookedProcess === true,
     emulator: verdict.emulator === true,
-    // Binary-tamper is a separate native probe not yet wired (see TODO). Until the
-    // plugin reports it, it is not observed.
     tampered: verdict.tampered === true,
   };
 

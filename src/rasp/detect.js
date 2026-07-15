@@ -79,5 +79,23 @@ export function detect(probeSource = UNAVAILABLE_PROBE_SOURCE) {
   if (!probeSource || probeSource.available !== true) {
     return CONDITION.INTEGRITY_UNAVAILABLE;
   }
-  return classifyEnvironment(probeSource.signals || {});
+  // P2-6a (audit batch, 2026-07-15): DEFENSE-IN-DEPTH against a compromised bridge.
+  // Previously `probeSource.signals || {}` treated absent/partial signals as
+  // "not observed" → CLEAN. Honest producers (browserProbe.js, nativeProbe.js)
+  // always emit all four boolean fields, so a partial/malformed shape indicates
+  // bridge drift or hostile tampering — refuse it and fail closed (I4). This is
+  // strictly about the `available:true` case; `available:false` still short-circuits
+  // to INTEGRITY_UNAVAILABLE above.
+  const signals = probeSource.signals;
+  if (
+    signals == null ||
+    typeof signals !== 'object' ||
+    typeof signals.rooted !== 'boolean' ||
+    typeof signals.hooked !== 'boolean' ||
+    typeof signals.emulator !== 'boolean' ||
+    typeof signals.tampered !== 'boolean'
+  ) {
+    return CONDITION.INTEGRITY_UNAVAILABLE;
+  }
+  return classifyEnvironment(signals);
 }

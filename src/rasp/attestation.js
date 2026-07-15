@@ -54,7 +54,13 @@
 //   • NOT device-verified on either platform; NOT independently audited.
 
 import { Capacitor } from '@capacitor/core';
-import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
+// P2-3 (audit batch, 2026-07-15): use the LIVE deniability-OR-demo helper (added
+// in PR #978, mirrors the Trezor I3 hotfix). isDeniabilitySessionActive alone
+// misses the persisted `veyrnox-demo=1` localStorage flag — under demo mode the
+// attestation bridge would still fire, potentially leaking a wallet-set oracle
+// via the DEMO/real contrast. isDeniabilityOrDemoActive checks both signals fresh
+// on every call and fail-closes on either read exception.
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { CONDITION } from './conditions.js';
 
 // Option B was signed off 2026-07-13 (docs/rasp-attestation-egress-decision.md).
@@ -129,6 +135,14 @@ export function detectAttestation(probeResult) {
   if (!probeResult || probeResult.available !== true) {
     return CONDITION.INTEGRITY_UNAVAILABLE;
   }
+  // P2-6c (audit batch, 2026-07-15): DEFENSE-IN-DEPTH against a compromised bridge.
+  // A verdict lacking a well-formed boolean `attestationFailed` was previously
+  // normalised to CLEAN (attestationFailed !== true fell through to CLEAN). Refuse
+  // partial shapes and treat them as UNAVAILABLE (I4). Honest producers always
+  // emit the boolean, so this only trips on garbage/tampered bridge output.
+  if (typeof probeResult.attestationFailed !== 'boolean') {
+    return CONDITION.INTEGRITY_UNAVAILABLE;
+  }
   return probeResult.attestationFailed === true ? CONDITION.INTEGRITY_FAIL : CONDITION.CLEAN;
 }
 
@@ -154,7 +168,7 @@ export async function attestationProbeSource(_verdictFn = null) {
   // Under a decoy/duress/hidden session this leg must make zero network calls, so
   // it cannot become a wallet-set oracle. Returning here means the verdict fn is
   // never even constructed or invoked.
-  if (isDeniabilitySessionActive()) {
+  if (isDeniabilityOrDemoActive()) {
     return UNAVAILABLE;
   }
 
@@ -187,6 +201,15 @@ export async function attestationProbeSource(_verdictFn = null) {
     return UNAVAILABLE;
   }
 
+  // P2-6c (audit batch, 2026-07-15): DEFENSE-IN-DEPTH against a compromised bridge.
+  // Previously `attestationFailed === true` boolean-coerced any non-true value to
+  // false → CLEAN. A bridge returning `{ available:true }` (no attestationFailed at
+  // all) or a non-boolean would silently fabricate a passing attestation. Refuse
+  // partial shapes and fail closed (I4). Honest producers always emit the boolean.
+  if (typeof verdict.attestationFailed !== 'boolean') {
+    return UNAVAILABLE;
+  }
+
   // Normalise to the two-field ProbeSource shape detectAttestation consumes.
-  return { available: true, attestationFailed: verdict.attestationFailed === true };
+  return { available: true, attestationFailed: verdict.attestationFailed };
 }

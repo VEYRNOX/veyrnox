@@ -33,8 +33,15 @@ const src = readFileSync(join(dir, '../SendCrypto.jsx'), 'utf8');
 // pre-sign gate (its browser fallback is fail-open on native; see C-01).
 describe('resolveProbeSource — legacy native/browser chooser (superseded for the gate)', () => {
   it('a rooted native probe drives the RASP tier to WARN', () => {
-    const nativeSource = { available: true, signals: { rooted: true } };
-    const browserSource = { available: true, signals: {} }; // browser sees nothing
+    // P2-6a (audit batch, 2026-07-15): detect() now requires all four boolean fields.
+    const nativeSource = {
+      available: true,
+      signals: { rooted: true, hooked: false, emulator: false, tampered: false },
+    };
+    const browserSource = {
+      available: true,
+      signals: { rooted: false, hooked: false, emulator: false, tampered: false },
+    };
     const chosen = resolveProbeSource(nativeSource, browserSource);
     expect(chosen).toBe(nativeSource);
     expect(degrade(detect(chosen)).tier).toBe(TIER.WARN);
@@ -42,8 +49,11 @@ describe('resolveProbeSource — legacy native/browser chooser (superseded for t
 
   it('an unavailable native probe falls back to the browser source (never fabricated clean)', () => {
     const nativeSource = { available: false };
-    // The browser leg still catches a hooked/automation runtime → BLOCK.
-    const browserSource = { available: true, signals: { hooked: true } };
+    // The browser leg still catches a hooked/automation runtime → BLOCK. Full-shape.
+    const browserSource = {
+      available: true,
+      signals: { rooted: false, hooked: true, emulator: false, tampered: false },
+    };
     const chosen = resolveProbeSource(nativeSource, browserSource);
     expect(chosen).toBe(browserSource);
     expect(degrade(detect(chosen)).tier).toBe(TIER.BLOCK);

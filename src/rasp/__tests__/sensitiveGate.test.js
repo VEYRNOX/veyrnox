@@ -93,19 +93,26 @@ describe('sensitiveGate — ALLOW passes all actions', () => {
   });
 });
 
-// ── Null/undefined artifact (during async probe load) ────────────────────────
+// ── Null/undefined artifact — fail-CLOSED (P1-2, audit batch 2026-07-15) ─────
+//
+// The original behaviour returned blocked:false on null (fail-OPEN). All real
+// consumers use useRaspArtifact() which always returns a valid degrade() artifact,
+// so the null branch only fires on a genuine "verdict unknown" condition — refuse
+// the sensitive action rather than let it through (I4).
 
-describe('sensitiveGate — null artifact is safe (not blocked)', () => {
-  it('null artifact → not blocked (probe still loading)', () => {
-    expect(sensitiveGate(null, 'seed-reveal').blocked).toBe(false);
+describe('sensitiveGate — null artifact is fail-CLOSED (P1-2)', () => {
+  it('null artifact → blocked:true (verdict unknown → refuse)', () => {
+    expect(sensitiveGate(null, 'seed-reveal').blocked).toBe(true);
   });
 
-  it('undefined artifact → not blocked', () => {
-    expect(sensitiveGate(undefined, 'export').blocked).toBe(false);
+  it('undefined artifact → blocked:true', () => {
+    expect(sensitiveGate(undefined, 'export').blocked).toBe(true);
   });
 
-  it('null artifact → null sentence', () => {
-    expect(sensitiveGate(null, 'import').sentence).toBeNull();
+  it('null artifact → honest sentence (not null)', () => {
+    const s = sensitiveGate(null, 'import').sentence;
+    expect(typeof s).toBe('string');
+    expect(s.length).toBeGreaterThan(0);
   });
 });
 
