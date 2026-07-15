@@ -31,6 +31,11 @@ vi.mock('@capacitor/core', () => ({
 
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilitySessionActive: () => h.deniabilityActive,
+  // P2-3 (audit batch, 2026-07-15): attestation.js now gates on the LIVE
+  // deniability-OR-demo helper (mirrors PR #978's Trezor I3 hotfix). For unit-test
+  // purposes we route this to the same flag — the DEMO-specific matrix lives in
+  // audit-batch-p1p2.test.js.
+  isDeniabilityOrDemoActive: () => h.deniabilityActive,
 }));
 
 import {
