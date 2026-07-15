@@ -48,6 +48,15 @@ package com.veyrnox.app
 // still NOT device-verified against a real Play Integrity token — the residual
 // gap sits with Phase 4 device exercise + Phase 5 independent audit.
 //
+// NONCE ROUND-TRIP (audit finding P1-1, 2026-07-14): the caller-supplied nonce
+// passed to IntegrityTokenRequest.setNonce() is now compared byte-for-byte against
+// the `requestDetails.nonce` field echoed back in the JWS payload
+// (PlayIntegrityNonceVerifier.verifyNonce). Without this check a hooked response
+// path could REPLAY an older genuinely-signed passing verdict — signatures + chain
+// walk would pass but nothing would bind the response to THIS request. Fail-closed
+// on mismatch/absent/empty (I4). See PlayIntegrityNonceVerifier for the full
+// threat model and the executable JVM tests (PlayIntegrityNonceVerifierTest).
+//
 // ROOT CERT PINNING (G2-ROOTCERT-PIN): SHA-256 fingerprint of root cert DER bytes
 // is now checked against GOOGLE_ROOT_CA_SHA256 (verifyRootCertFingerprint). The
 // issuer string check is retained as belt-and-suspenders fallback. Status:
@@ -115,10 +124,12 @@ class PlayIntegrityPlugin : Plugin() {
                     IntegrityTokenRequest.builder().setNonce(nonce).build()
                 )
                 .addOnSuccessListener { response ->
-                    // On-device verdict read: parse the JWS payload directly.
+                    // On-device verdict read: parse the JWS payload directly. The
+                    // nonce we sent to setNonce() is threaded through so the parser
+                    // can bind the returned verdict to THIS request (audit P1-1).
                     call.resolve(
                         try {
-                            parseVerdictToken(response.token())
+                            parseVerdictToken(response.token(), nonce)
                         } catch (e: Exception) {
                             unavailable()
                         }
@@ -146,8 +157,14 @@ class PlayIntegrityPlugin : Plugin() {
      * on-device via verifyJwsSignature() before any payload is trusted. A failed
      * signature check maps to fail-closed { available:false }. Any structural
      * anomaly still throws and the caller maps it to fail-closed too.
+     *
+     * NONCE ROUND-TRIP (audit P1-1, 2026-07-14): after signature verification the
+     * payload's `requestDetails.nonce` is compared byte-for-byte against the
+     * `expectedNonce` originally passed to setNonce(). Mismatch/absent/empty →
+     * unavailable() (fail-closed, I4). This closes the replay attack where an
+     * attacker replays an older genuinely-signed passing verdict.
      */
-    private fun parseVerdictToken(token: String): JSObject {
+    private fun parseVerdictToken(token: String, expectedNonce: String): JSObject {
         // Verify RS256 signature before trusting payload (I4: fail closed on bad sig).
         // See verifyJwsSignature for the honest limitation on issuer pinning.
         if (!verifyJwsSignature(token)) return unavailable()
@@ -157,6 +174,15 @@ class PlayIntegrityPlugin : Plugin() {
         if (parts.size != 3) throw IllegalArgumentException("malformed JWS")
 
         val payloadJson = String(base64UrlDecode(parts[1]), Charsets.UTF_8)
+
+        // Bind the verdict to THIS request: the nonce echoed back at
+        // requestDetails.nonce must match what we sent (audit P1-1). Fail-closed
+        // on any mismatch/absent/empty — the caller cannot distinguish this from
+        // any other INTEGRITY_UNAVAILABLE cause, which is correct (I4).
+        if (!PlayIntegrityNonceVerifier.verifyNonce(payloadJson, expectedNonce)) {
+            return unavailable()
+        }
+
         val root = JSONObject(payloadJson)
 
         val deviceIntegrity = root.optJSONObject("deviceIntegrity")
