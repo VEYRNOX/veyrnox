@@ -248,6 +248,18 @@ class RaspIntegrityPlugin : Plugin() {
             val flashLocked       = readSystemPropReflect("ro.boot.flash.locked")
             val secureBootState   = readSystemPropReflect("ro.boot.secureboot")
 
+            // P3-4 (audit 2026-07-15): FALSE-POSITIVE RISK — `secureboot == "0"`.
+            // Some quirky OEMs (older MediaTek / non-Google ROMs) report
+            // `ro.boot.secureboot` as "0" even on genuinely LOCKED bootloaders,
+            // because the property is not part of AOSP's mandatory verified-boot
+            // contract and its meaning is vendor-specific. On those devices, this
+            // OR-branch will fire → `rooted:true` → TIER.WARN, degrading a
+            // legitimate user to the CAUTION path. The other three signals
+            // (verifiedbootstate=orange/red, flash.locked=0) come from the AOSP
+            // verified-boot spec and are cross-vendor reliable; keep the
+            // secureboot branch for coverage but be prepared to drop it if
+            // real-world false-positive telemetry accumulates. See CLAUDE.md
+            // §2026-07-14 Android Magisk Hide bypass for device-verified firing.
             verifiedBootState == "orange"
                 || verifiedBootState == "red"
                 || flashLocked == "0"

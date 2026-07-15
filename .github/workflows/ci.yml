@@ -144,6 +144,12 @@ jobs:
       # findings registry cites a source doc that does not mention the ID. This
       # is the tripwire for the 2026-07-06 C-1 mislabel; see docs/findings-registry.json.
       - run: npm run check:finding-ids
+      # P2-10 (audit 2026-07-15): stop a future contributor from silently wiring
+      # the dormant CertPinManager.kt into an active OkHttp construction path
+      # while its PINNED_HOSTS map still carries PLACEHOLDER_ SPKI pins (that
+      # combination would make OkHttp refuse every pinned host at connect time
+      # — availability regression). Static grep, no runtime.
+      - run: npm run check:cert-pin-manager
       - run: npm run build
       - run: npm test
 
