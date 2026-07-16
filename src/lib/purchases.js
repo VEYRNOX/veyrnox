@@ -9,6 +9,14 @@ import { Purchases } from '@revenuecat/purchases-capacitor';
 
 export const SAFETY_PLUS_ENTITLEMENT = 'safety_plus';
 
+// RevenueCat standard package identifiers for the Safety Plus offering. Both
+// packages grant the SAME entitlement (`safety_plus`) — annual is a pricing
+// choice, not a feature difference. If a store/offering doesn't carry one of
+// these yet (staged rollout), Subscription.jsx falls back to whichever is
+// present — never crash, never surface a broken purchase button (I4).
+export const SAFETY_PLUS_MONTHLY_PACKAGE = '$rc_monthly';
+export const SAFETY_PLUS_ANNUAL_PACKAGE = '$rc_annual';
+
 let configured = false;
 
 function isNative() {
