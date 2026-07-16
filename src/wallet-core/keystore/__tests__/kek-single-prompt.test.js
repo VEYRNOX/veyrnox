@@ -194,6 +194,88 @@ describe('enrollKek — single biometric prompt on happy path', () => {
   });
 });
 
+// ── enrollKek — reviewer T1 follow-ups (2026-07-16): coverage gaps ──────────────────
+// (T1.1/1.2/1.3 are regression pins for already-correct behaviour; T1.4 is a genuine
+// RED — the .cause preservation didn't exist in the first-cut wrapper.)
+describe('enrollKek — reviewer T1 coverage: rollback + already-enrolled + double-lockout + cause preservation', () => {
+  // T1.1 — pin that a clean enroll does NOT touch the rollback path.
+  it('happy path: clearHardwareCredential is NOT called on success', async () => {
+    setVault(bareVault());
+    const getHF = vi.fn(async () => newHF());
+
+    await nativeKeyStore.enrollKek('pw', { getHardwareFactor: getHF });
+
+    expect(clearHardwareCredentialMock).not.toHaveBeenCalled();
+  });
+
+  // T1.2 — pin that the KEK_ALREADY_ENROLLED early throw beats any biometric prompt.
+  // A user re-tapping "Enable Hardware Protection" on an already-enrolled vault must
+  // NOT be shown Face ID or a fingerprint sheet before the honest error surfaces.
+  it('KEK_ALREADY_ENROLLED: fires ZERO prompts (no authenticate, no getHF, no rollback)', async () => {
+    const enrolledBlob = JSON.stringify({
+      v: 1, kdf: 'kek-dek', iv: 'oldiv', ct: 'oldct',
+      kekWrap: { v: 1, iv: 'wrapiv', ct: 'wrapct' }, kekSalt, hardwareKekVersion: 3,
+    });
+    setVault(enrolledBlob);
+    const getHF = vi.fn(async () => newHF());
+
+    await expect(
+      nativeKeyStore.enrollKek('pw', { getHardwareFactor: getHF }),
+    ).rejects.toThrow('KEK_ALREADY_ENROLLED');
+
+    expect(authenticateMock).toHaveBeenCalledTimes(0);
+    expect(getHF).toHaveBeenCalledTimes(0);
+    // Nothing was materialised, so nothing to roll back.
+    expect(clearHardwareCredentialMock).not.toHaveBeenCalled();
+  });
+
+  // T1.3 — double lockout: the wrapper must bound the retry (single retry, no loop) so
+  // a hard-lockout device does not spin authenticateOrThrow forever.
+  it('double-lockout: retry ALSO throws lockout → authenticate=1 (no loop), rollback still fires', async () => {
+    setVault(bareVault());
+    const getHF = vi.fn()
+      .mockRejectedValueOnce(lockoutErr())  // primary getHF: OS lockout
+      .mockRejectedValueOnce(lockoutErr()); // retry: STILL locked out
+
+    await expect(
+      nativeKeyStore.enrollKek('pw', { getHardwareFactor: getHF }),
+    ).rejects.toMatchObject({ code: NO_HARDWARE_FACTOR });
+
+    // Exactly ONE fallback authenticateOrThrow call — no second attempt after retry fails.
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(2);
+    // enrollKek's outer catch still rolls back the orphaned hardware credential (I4).
+    expect(clearHardwareCredentialMock).toHaveBeenCalledTimes(1);
+  });
+
+  // T1.4 — the review's specific ask: when authenticateOrThrow itself throws (user
+  // cancels the device-credential fallback), the propagated error must carry the
+  // ORIGINAL getHF lockout error as .cause so the UI can honestly distinguish
+  // "cancelled while recovering from lockout" from "cancelled the primary prompt".
+  it('authenticateOrThrow cancels inside the wrapper: propagated error carries original lockout as .cause + .origCode sidecar; NO retry; rollback fires', async () => {
+    setVault(bareVault());
+    const lockout = lockoutErr();
+    const getHF = vi.fn().mockRejectedValueOnce(lockout);
+    const cancelErr = Object.assign(new Error('User cancelled'), { code: 'biometryCancel' });
+    authenticateMock.mockRejectedValueOnce(cancelErr);
+
+    let caught;
+    await nativeKeyStore.enrollKek('pw', { getHardwareFactor: getHF }).catch((e) => { caught = e; });
+
+    expect(caught).toBeDefined();
+    // Original lockout preserved as .cause AND on a .origCode sidecar (belt + suspenders,
+    // some environments strip Error.cause across await boundaries).
+    expect(caught.cause).toBe(lockout);
+    expect(caught.origCode).toBe(NO_HARDWARE_FACTOR);
+    // The fallback authenticateOrThrow was attempted exactly ONCE; no getHF retry.
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(1);
+    // enrollKek's outer catch still rolls back (a hardware credential may have been
+    // materialised by the primary getHF before it threw — I4 fail-closed).
+    expect(clearHardwareCredentialMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 // ── changePassword (KEK branch) ─────────────────────────────────────────────────────
 describe('changePassword (KEK vault) — single biometric per prompt on happy path', () => {
   it('happy path: authenticate=0, getHardwareFactor=2 (old-salt + new-salt)', async () => {

@@ -225,32 +225,73 @@ async function withLockSuppressed(fn) {
   }
 }
 
-// Wrap a getHardwareFactor() call so that a biometric-lockout-shaped failure engages
-// the app-layer authenticateOrThrow() FALLBACK (which itself falls back from biometric
-// to device credential — the H16-DEVIATION path) and retries getHF once. Any other
-// failure (USER_CANCELLED, KEY_PERMANENTLY_INVALIDATED, arbitrary bridge throws)
-// propagates unchanged — the fallback branch is narrow (I4 fail-closed).
+// Wrap a getHardwareFactor() call so that a hardware-factor failure on the
+// recoverable-class code (KEK_ERR.NO_HARDWARE_FACTOR) engages the app-layer
+// authenticateOrThrow() fallback (which itself falls back from biometric to device
+// credential — the H16-DEVIATION path) and retries getHF once. On any
+// hardware-factor failure classified as NO_HARDWARE_FACTOR, we attempt an app-layer
+// auth + retry once — the retry is bounded (single retry, no loop on the second
+// failure) and is a no-op on non-recoverable errors (they simply re-throw and
+// propagate). USER_CANCELLED, KEY_PERMANENTLY_INVALIDATED, and DEGENERATE_INPUT
+// each carry their own stable code and short-circuit at the guard — never enter
+// the fallback path (I4 fail-closed: user cancelled deliberately; key is destroyed;
+// H is invalid — no retry can help).
 //
-// WHY THE NARROW CODE MATCH: hardware.js:236 masks BiometricPrompt.ERROR_LOCKOUT /
-// ERROR_LOCKOUT_PERMANENT, "no biometric enrolled", "HW unavailable" and unknown-cause
-// hardware-side failures ALL to KEK_ERR.NO_HARDWARE_FACTOR. For each of these the OS
-// path forward is "authenticate against device credential" — exactly what
-// authenticateOrThrow's allowDeviceCredential:true branch does. USER_CANCELLED /
-// KEY_PERMANENTLY_INVALIDATED / degenerate-H each carry their own stable code and
-// MUST NOT be retried (user cancelled deliberately; key is destroyed; H is invalid).
+// HONEST SCOPE — why the trigger is NO_HARDWARE_FACTOR, not a tighter
+// BIOMETRIC_LOCKOUT code (C1 review 2026-07-16): hardware.js:235-270 currently
+// classifies SEVEN distinct plugin rejections all to NO_HARDWARE_FACTOR —
+//   (1) biometric lockout,          (5) null bridge result,
+//   (2) no biometric enrolled,      (6) malformed h,
+//   (3) HW unavailable,             (7) wrong-length h.
+//   (4) unknown bridge throw,
+// Six of the seven are NOT lockout, so on paper the wrapper fires an
+// authenticateOrThrow prompt on more classes than strictly necessary. We DELIBERATELY
+// keep the wide trigger because the two platforms classify differently and the
+// tighter version leaves iOS lockout softlocked:
+//   - Android: HardwareKekPlugin.kt:389 preserves BiometricPrompt.ERROR_LOCKOUT (7) /
+//     ERROR_LOCKOUT_PERMANENT (9) via the "KEK_BIOMETRIC_ERROR:<code>:" reject
+//     prefix — a tighter classification (KEK_ERR.BIOMETRIC_LOCKOUT gated on this
+//     prefix) is achievable here.
+//   - iOS: HardwareKekPlugin.m:321 flattens EVERY biometric-side error (lockout,
+//     user cancel-through-Face-ID, key invalidated, sensor unavailable) to a single
+//     "DECRYPT_FAILED" reject carrying only an unstructured LAError
+//     localizedDescription — the OS lockout code is NOT preserved across the bridge.
+// So a tighter trigger would leave iOS lockout users unable to reach their vault
+// via device credential — worse UX than the current "extra prompt on 6 non-lockout
+// classes" cost. Documented follow-up: an iOS plugin patch that preserves the
+// LAError code, then introduce KEK_ERR.BIOMETRIC_LOCKOUT and narrow the trigger.
 //
 // The retry runs getHF with the SAME opts (same kekSalt). authenticateOrThrow's
-// device-credential auth resets the biometric lockout counter on Android, so the
-// retry can succeed. If it fails again, the second error propagates without a
-// second fallback (no infinite loop). The SE/StrongBox key ACL still enforces
-// biometric at the OS level — the app-layer PIN fallback does NOT weaken it (H16).
+// device-credential auth resets the biometric lockout counter on Android and clears
+// the Face ID lockout state on iOS (LAContext state refreshed post-passcode), so
+// the retry CAN succeed. If it fails again, the second error propagates without a
+// second fallback (no infinite loop, bounded). The SE/StrongBox key ACL still
+// enforces biometric at the OS level — the app-layer PIN fallback does NOT weaken
+// it (H16-DEVIATION).
+//
+// If authenticateOrThrow itself throws (the user cancels the fallback prompt) we
+// preserve the ORIGINAL getHF error as .cause + a .origCode sidecar on the
+// propagated fallback error, so the UI can distinguish "cancelled while trying to
+// recover from lockout" from "cancelled a primary prompt" (C3 review 2026-07-16).
+// Both fields are set because some environments strip Error.cause across await
+// boundaries; .origCode is the belt-and-braces contract.
 async function getHardwareFactorWithLockoutFallback(getHF, hfOpts) {
   try {
     return await getHF(hfOpts);
   } catch (err) {
     if (!err || err.code !== KEK_ERR.NO_HARDWARE_FACTOR) throw err;
-    await authenticateOrThrow(); // engages device-credential fallback on lockout
-    return await getHF(hfOpts);   // retry once; a second failure propagates
+    try {
+      await authenticateOrThrow(); // engages device-credential fallback on lockout
+    } catch (fallbackErr) {
+      // C3: preserve the original getHF failure so the UI can honestly distinguish
+      // "cancelled while recovering from lockout" from "cancelled the primary prompt".
+      if (fallbackErr && typeof fallbackErr === 'object') {
+        if (!fallbackErr.cause) fallbackErr.cause = err;
+        if (!fallbackErr.origCode) fallbackErr.origCode = err.code;
+      }
+      throw fallbackErr;
+    }
+    return await getHF(hfOpts); // retry once; a second failure propagates
   }
 }
 
@@ -347,6 +388,15 @@ async function _unlockInner(password, opts = {}) {
     const saltBytes = decodeKekSalt(blob.kekSalt);
     // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed salt
     // (v2 inert-binding / v1 legacy). See hfOptsForBlob.
+    // TODO(kek-single-prompt-b1) — 2026-07-16 honest-reviewer B1: the KEK-write paths
+    // (enrollKek / changePassword KEK / upgradeKekToV3) route getHF through
+    // getHardwareFactorWithLockoutFallback so an OS biometric-lockout on those paths
+    // engages the app-layer device-credential fallback. This unlock path — plus
+    // saveVaultContents and unenrollKek — still call getHF directly, so an unlock on a
+    // locked-out device propagates NO_HARDWARE_FACTOR without a fallback prompt. B1
+    // consistency is DEFERRED to a follow-up PR (needs real-device UX validation of
+    // extra-prompt-on-unlock trade-off, plus deniability-session review — unlock is a
+    // hotter path than the write paths and has stricter deniability constraints).
     const H = await getHF(hfOptsForBlob(blob, saltBytes)); // biometric prompt (Android Keystore)
     let C;
     let kek;
