@@ -62,7 +62,13 @@ export default function QRCodeDisplay({ address, size = 200 }) {
           <img src={dataUrl} alt="Receive address QR code" width={size} height={size} className="rounded-lg" />
         )}
       </div>
-      <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={handleDownload} disabled={!dataUrl}>
+      {/* variant=secondary (not outline): the QR page renders inside a
+          text-muted-foreground context so the outline variant's transparent
+          background + inherited grey text is nearly invisible against the
+          dark bg-background (#050608). Secondary carries explicit
+          bg-secondary + text-secondary-foreground tokens that read in both
+          themes. */}
+      <Button variant="secondary" size="sm" className="gap-2 text-xs" onClick={handleDownload} disabled={!dataUrl}>
         <Download className="h-3.5 w-3.5" />
         Save QR Code
       </Button>

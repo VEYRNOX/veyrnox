@@ -15,7 +15,7 @@
 import {
   LayoutDashboard, Send, Download, Settings, ShieldCheck, Plug, Calculator, BarChart2, Zap,
   Receipt, Repeat, ShieldAlert, Image,
-  BarChart3, Camera, TrendingUp, Network, PieChart, BellRing, Link2, BellDot, Users,
+  BarChart3, Camera, TrendingUp, Network, PieChart, BellRing, Link2, Users,
   Activity, Layers, Fingerprint, Cpu,
   Leaf, ScrollText, Newspaper,
   Target, Eye, BookOpen,
@@ -143,7 +143,6 @@ const RAW_NAV_GROUPS = [
       { path: "/gas-fees", label: "Gas Fees", icon: Gauge },
       { path: "/walletconnect", label: "dApp Connector", icon: Link2 },
       { path: "/connect", label: "Connect Wallet", icon: Plug },
-      { path: "/push", label: "Notifications", icon: BellDot },
     ],
   },
 ];

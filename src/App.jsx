@@ -37,7 +37,6 @@ const PLTracking = lazy(() => import('./pages/PLTracking'));
 const OnChainAnalytics = lazy(() => import('./pages/OnChainAnalytics'));
 const SpendingPatterns = lazy(() => import('./pages/SpendingPatterns'));
 const RecurringPayments = lazy(() => import('./pages/RecurringPayments'));
-const PushNotificationsPage = lazy(() => import('./pages/PushNotificationsPage'));
 const AdvancedAnalytics = lazy(() => import('./pages/AdvancedAnalytics'));
 const MultiChainNFT = lazy(() => import('./pages/MultiChainNFT'));
 const FraudDetection = lazy(() => import('./pages/FraudDetection'));
@@ -155,7 +154,6 @@ const AuthenticatedApp = () => {
           <Route path="/onchain" element={<OnChainAnalytics />} />
           <Route path="/spending" element={<SpendingPatterns />} />
           <Route path="/recurring" element={<RecurringPayments />} />
-          <Route path="/push" element={<PushNotificationsPage />} />
           <Route path="/advanced-analytics" element={<AdvancedAnalytics />} />
           <Route path="/nft-multichain" element={<MultiChainNFT />} />
           <Route path="/fraud" element={<FraudDetection />} />

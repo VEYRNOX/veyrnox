@@ -109,21 +109,12 @@ export default function WalletSeedQR() {
         <p className="text-sm text-muted-foreground">Display and print your recovery phrase for secure offline backup.</p>
       </div>
 
-      {/* Warning */}
-      <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-2">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
-          <p className="text-sm font-semibold text-destructive">Critical Security Warning</p>
-        </div>
-        <ul className="text-xs text-muted-foreground space-y-1 ml-7">
-          <li>• Your recovery phrase grants full wallet access — never share it</li>
-          <li>• Only reveal your recovery phrase in a private, secure environment</li>
-          <li>• Store the printed phrase in a fireproof safe or safety deposit box</li>
-          <li>• This page never transmits your recovery phrase — it reads from your local vault</li>
-        </ul>
-      </div>
-
-      {/* Wallet selector */}
+      {/* Wallet selector — moved ABOVE the security warning so it's the first
+          actionable control on the page. Previously the verbose warning card
+          pushed the selector below the fold on small viewports, so users could
+          not see or reach the "pick a wallet" step without scrolling. The
+          warning is still critical context but reads as a confirmation of intent
+          AFTER the user has committed to picking a wallet. */}
       <div>
         <Label id="seed-wallet-label">Select Wallet</Label>
         <Select value={selectedWalletId} onValueChange={setSelectedWalletId}>
@@ -141,6 +132,20 @@ export default function WalletSeedQR() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Warning */}
+      <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-2">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+          <p className="text-sm font-semibold text-destructive">Critical Security Warning</p>
+        </div>
+        <ul className="text-xs text-muted-foreground space-y-1 ml-7">
+          <li>• Your recovery phrase grants full wallet access — never share it</li>
+          <li>• Only reveal your recovery phrase in a private, secure environment</li>
+          <li>• Store the printed phrase in a fireproof safe or safety deposit box</li>
+          <li>• This page never transmits your recovery phrase — it reads from your local vault</li>
+        </ul>
       </div>
 
       {/* Session-timeout re-auth — inline "unlock again" prompt in place of the
