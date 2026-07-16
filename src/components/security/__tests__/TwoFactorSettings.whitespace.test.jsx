@@ -47,8 +47,8 @@ describe('TwoFactorSettings — #2 reject all-whitespace Action Password at setu
   it('a real 8+ char Action Password enables Save (control)', () => {
     render(<TwoFactorSettings />);
     fireEvent.change(screen.getByLabelText(/wallet password/i), { target: { value: 'vault-pass-12' } });
-    fireEvent.change(screen.getByLabelText(/^action password$/i), { target: { value: 'realsecret' } });
-    fireEvent.change(screen.getByLabelText(/^confirm$/i), { target: { value: 'realsecret' } });
+    fireEvent.change(screen.getByLabelText(/^action password$/i), { target: { value: 'realsecret!!' } });
+    fireEvent.change(screen.getByLabelText(/^confirm$/i), { target: { value: 'realsecret!!' } });
 
     const save = screen.getByRole('button', { name: /set action password/i });
     expect(save.disabled).toBe(false);

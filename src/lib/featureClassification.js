@@ -18,7 +18,7 @@ export const ALL_ROUTE_PATHS = [
   '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects',
   '/terms-legal', '/nft',
   '/snapshots', '/pl', '/onchain', '/spending',
-  '/recurring', '/push', '/advanced-analytics', '/nft-multichain',
+  '/recurring', '/advanced-analytics', '/nft-multichain',
   '/fraud', '/news-sentiment', '/notifications',
   '/savings', '/invoices', '/watchlist', '/address-book',
   '/net-worth', '/budget', '/duress-pin',
@@ -113,7 +113,7 @@ export const CLASSIFICATION = {
   },
   '/recurring': {
     verdict: 'live', dataSource: 'base44-entities',
-    note: 'Schedules stored in base44.entities.RecurringPayment (local IndexedDB). Page uses browser Notification API (same pattern as /push) to fire a reminder when a payment is due. Monthly estimate now shown per-currency — cross-currency totals removed. Self-custody contract maintained: no autonomous value transfer; due payments hand off to /send for user signing. Monthly-estimate mixed-currency bug fixed.',
+    note: 'Schedules stored in base44.entities.RecurringPayment (local IndexedDB). Page uses browser Notification API to fire a reminder when a payment is due. Monthly estimate now shown per-currency — cross-currency totals removed. Self-custody contract maintained: no autonomous value transfer; due payments hand off to /send for user signing. Monthly-estimate mixed-currency bug fixed.',
   },
   '/calculator': {
     verdict: 'live', dataSource: 'external',
@@ -321,11 +321,6 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'on-device',
     note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom). Balance reads go through the injected provider API (eth_getBalance) or a public Solana JSON-RPC call (user-initiated, single request on connect, not a background feed). Imports to base44.entities.Wallet as a read-only snapshot with an honest disclosure. No private key access.',
   },
-  '/push': {
-    verdict: 'live', dataSource: 'on-device',
-    note: 'Uses browser-native Notification API (Notification.requestPermission / new Notification()). Preferences stored in localStorage only. No push service, server relay, or third-party SDK is involved. The page explicitly states "No personal data is shared with third-party notification services". Test notification is a real browser Notification(), not a stub.',
-  },
-
   // ── Core / Preferences group (audit batch 5) ──────────────────────────────
   '/settings': {
     verdict: 'live', dataSource: 'on-device',
