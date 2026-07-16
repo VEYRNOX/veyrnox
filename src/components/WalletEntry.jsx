@@ -467,7 +467,10 @@ export default function WalletEntry() {
 
   // Check biometric preference fresh every render (not cached), so preference changes take effect immediately
   const biometricEnabled = vaultExists && isBiometricUnlockEnabled() && bioReady;
-  const raspArtifact = useRaspArtifact();
+  // excludeAttestation: this surface gates seed-reveal + seed import (local seed
+  // material) — not gated on the remote attestation leg (unavailable on sideloaded
+  // builds → would block reveal/import). On-device threats still block. (2026-07-16)
+  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
 
   // Transiently holds the just-set vault password between "Generate" and the
   // "Enable Face ID" decision on the SAME screen, so we can cache it for biometric

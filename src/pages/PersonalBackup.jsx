@@ -67,7 +67,10 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
   const [savedPath, setSavedPath] = useState(null);   // set after successful Downloads save
   const [envelope, setEnvelope] = useState(null);     // held so user can re-save without re-encrypting
   const { gateModal } = useActionGuard();
-  const raspArtifact = useRaspArtifact();
+  // excludeAttestation: local seed backup/export/import must not be gated on the
+  // REMOTE Play-Integrity leg (unavailable on any sideloaded build → would block
+  // backup). Genuine on-device threats still block. Owner decision 2026-07-16.
+  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
   const isIos = Capacitor.getPlatform() === "ios";
 
   if (isDecoy || isHidden) {

@@ -190,7 +190,8 @@ describe('P2-6b — nativeProbe rejects partial bridge verdicts (structural test
     state.verdict = { jailbroken: false, hookedProcess: false, emulator: false, tampered: false };
     const src = await nativeProbeSource();
     expect(src.available).toBe(true);
-    expect(src.signals).toEqual({ rooted: false, hooked: false, emulator: false, tampered: false });
+    // 2026-07-16: `elevated` is now a fifth signal alongside the original four.
+    expect(src.signals).toEqual({ rooted: false, hooked: false, emulator: false, tampered: false, elevated: false });
   });
   it('full Android-shape → available:true, correctly mapped', async () => {
     state.verdict = { rooted: true, hookedProcess: false, emulator: false, tampered: false };

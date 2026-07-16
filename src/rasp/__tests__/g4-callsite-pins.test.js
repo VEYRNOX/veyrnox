@@ -16,13 +16,30 @@ import { dirname, join } from 'node:path';
 const dir = dirname(fileURLToPath(import.meta.url));
 const src = join(dir, '../..');  // src/rasp/__tests__ → src/
 
-const reveal  = readFileSync(join(src, 'components/security/useRevealWithReauth.jsx'), 'utf8');
-const backup  = readFileSync(join(src, 'pages/PersonalBackup.jsx'), 'utf8');
+const reveal   = readFileSync(join(src, 'components/security/useRevealWithReauth.jsx'), 'utf8');
+const backup   = readFileSync(join(src, 'pages/PersonalBackup.jsx'), 'utf8');
 // The restore (import) gate was extracted from PersonalBackup's inline RestoreTab
 // into the shared RestoreFromFile component (rendered by BOTH PersonalBackup's
 // Restore tab AND onboarding). The 'import' G4 gate lives there now.
-const restore = readFileSync(join(src, 'components/backup/RestoreFromFile.jsx'), 'utf8');
-const entry   = readFileSync(join(src, 'components/WalletEntry.jsx'), 'utf8');
+const restore  = readFileSync(join(src, 'components/backup/RestoreFromFile.jsx'), 'utf8');
+const entry    = readFileSync(join(src, 'components/WalletEntry.jsx'), 'utf8');
+const seedgrid = readFileSync(join(src, 'components/SeedGrid.jsx'), 'utf8');
+const hdwallet = readFileSync(join(src, 'pages/HDWalletManager.jsx'), 'utf8');
+
+// Every LOCAL seed-material surface must gate on the ON-DEVICE leg only — i.e. pass
+// { excludeAttestation: true } to useRaspArtifact — so an unavailable REMOTE
+// attestation (Play Integrity 404 on any sideloaded build) can never block backup /
+// export / import / reveal. Owner decision 2026-07-16. Genuine on-device threats
+// still block via the OS leg; the remote leg stays in force for signing only.
+const EXCL = /useRaspArtifact\(\{\s*excludeAttestation:\s*true\s*\}\)/;
+describe('seed-material surfaces — excludeAttestation pin (backup not gated on remote leg)', () => {
+  it('useRevealWithReauth passes excludeAttestation', () => expect(reveal).toMatch(EXCL));
+  it('PersonalBackup passes excludeAttestation', () => expect(backup).toMatch(EXCL));
+  it('RestoreFromFile passes excludeAttestation', () => expect(restore).toMatch(EXCL));
+  it('WalletEntry passes excludeAttestation', () => expect(entry).toMatch(EXCL));
+  it('SeedGrid passes excludeAttestation', () => expect(seedgrid).toMatch(EXCL));
+  it('HDWalletManager passes excludeAttestation', () => expect(hdwallet).toMatch(EXCL));
+});
 
 // ── useRevealWithReauth — seed-reveal gate ───────────────────────────────────
 
@@ -32,8 +49,8 @@ describe('useRevealWithReauth — G4 seed-reveal gate', () => {
     expect(reveal).toMatch(/useRaspArtifact/);
   });
 
-  it('calls useRaspArtifact() to sample the environment', () => {
-    expect(reveal).toMatch(/useRaspArtifact\(\)/);
+  it('calls useRaspArtifact with excludeAttestation (local seed-material not gated on the remote leg)', () => {
+    expect(reveal).toMatch(/useRaspArtifact\(\{\s*excludeAttestation:\s*true\s*\}\)/);
   });
 
   it("calls sensitiveGate with 'seed-reveal' action", () => {

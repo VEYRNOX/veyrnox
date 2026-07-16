@@ -7,9 +7,17 @@
 // that set at entry points for seed-reveal / export / import so a BLOCK-tier
 // environment cannot exfiltrate key material via those paths.
 //
-// WARN tiers (ROOTED, INTEGRITY_UNAVAILABLE) have `blockedActions: []` — seed
-// access passes through on WARN. The biometric re-confirm from B5 already gates
-// the send path; blocking reveal on a WARN device would deadlock recovery.
+// Only the ELEVATED tier (soft environment signals — developer mode, an
+// accessibility service, etc.; added 2026-07-16) has `blockedActions: []`, so seed
+// access passes through there with just a biometric re-confirm (B5) — blocking
+// backup on a benign dev-device state would deadlock recovery. GENUINE-threat
+// conditions still block seed-reveal/export/import here: ROOTED (real root/
+// jailbreak), TAMPERED, HOOKED, INTEGRITY_FAIL, and INTEGRITY_UNAVAILABLE all carry
+// the SENSITIVE set. NOTE (2026-07-16): local seed-material surfaces call
+// useRaspArtifact({ excludeAttestation: true }), so the REMOTE Play-Integrity leg
+// (unavailable by design on any sideloaded build → INTEGRITY_UNAVAILABLE) is never
+// composed into the artifact this gate sees — only the on-device leg is, so backup
+// is gated on genuine on-device threats, not on an unreachable remote attestation.
 //
 // PURE. No egress, no wallet-set handle (I3). Safe to call in any session type.
 //

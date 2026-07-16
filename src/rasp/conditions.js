@@ -20,9 +20,21 @@
 // integrity-axis outcomes that are themselves conditions (a failed or unavailable
 // attested verdict is a condition with its own honest copy, rather than being
 // silently folded into root/tamper copy). These are the inputs degrade() maps.
+//
+// ELEVATED (added 2026-07-16, owner-approved fix for a #1007+#979 regression):
+// a MILDER condition than ROOTED for the 8 "soft" environment signals
+// (overlayActive, developerMode, virtualApp, suspiciousPackage,
+// thirdPartyKeyboard, mockLocation, networkProxy, accessibilityService) —
+// see nativeProbe.js. These signals warrant a WARN + biometric re-confirm, but
+// unlike genuine root/jailbreak they must NOT block seed BACKUP
+// (seed-reveal/export/import): degrade.js gives CONDITION.ELEVATED
+// `blockedActions: []`. CONDITION.ROOTED is reserved for GENUINE root/jailbreak
+// (verdict.rooted / verdict.jailbroken) and keeps its stronger blockedActions.
+// ROOTED always outranks ELEVATED in classifyEnvironment()/composeConditions().
 export const CONDITION = Object.freeze({
   CLEAN: 'clean',
   ROOTED: 'rooted',
+  ELEVATED: 'elevated',
   EMULATOR: 'emulator',
   HOOKED: 'hooked',
   TAMPERED: 'tampered',

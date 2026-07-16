@@ -114,7 +114,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const [pinDecryptedJson, setPinDecryptedJson] = useState(null);
   const [backups, setBackups] = useState([]);
   const [listBusy, setListBusy] = useState(false);
-  const raspArtifact = useRaspArtifact();
+  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
 
   const isAndroid = Capacitor.getPlatform() === 'android';
 

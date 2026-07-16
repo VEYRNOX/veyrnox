@@ -103,7 +103,9 @@ export default function HDWalletManager() {
   // Biometric escape hatch (dual of passkeyFailed) — see WalletEntry / unlock().
   const [biometricFailed, setBiometricFailed] = useState(false);
   const [copied, setCopied] = useState(null);
-  const raspArtifact = useRaspArtifact();
+  // excludeAttestation: seed-reveal must not be gated on the remote attestation
+  // leg (unavailable on sideloaded builds). On-device threats still block. (2026-07-16)
+  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [vaultExists, setVaultExists] = useState(false);
