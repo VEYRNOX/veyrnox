@@ -120,8 +120,11 @@ describe('RaspSecurity — active-behaviour render (no status vocabulary)', () =
   });
 
   it('states the deliberate omissions in the footer', () => {
-    expect(t).toMatch(/no fake|no fabricated/i);
-    expect(t).toMatch(/scan button/i);
+    // Footer names what RASP deliberately does NOT fake: event counts and scan
+    // buttons. Guards against reintroducing fabricated-activity theatre.
+    expect(t).toMatch(/no fake event counts/i);
+    expect(t).toMatch(/scan buttons/i);
+    expect(t).toMatch(/only real detections/i);
   });
 });
 
