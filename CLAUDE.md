@@ -1021,10 +1021,17 @@ NOT deleted — it remains the lockout-fallback path and the bare-vault gate.
 
 Honest scope: C1 — the wrapper triggers on the aggregate `NO_HARDWARE_FACTOR` code (7
 distinct underlying cases; hardware lockout is only one of them), so the fallback can
-also fire on non-lockout causes bucketed under the same error code. B1 — `_unlockInner`,
+also fire on non-lockout causes bucketed under the same error code. ~~B1 — `_unlockInner`,
 `saveVaultContents`, and `unenrollKek` still call `getHF` directly and were NOT converted
-to the new helper (deferred; a TODO landed marking this). Tests: 15/15 new; keystore
-329/329; wallet-core 1094/1094. Two honest-review passes, both LAND-READY.
+to the new helper (deferred; a TODO landed marking this).~~ **B1 CLOSED (issue #1031):**
+all three remaining `getHF` call sites (`_unlockInner`, `saveVaultContents`,
+`unenrollKek`) now route through `getHardwareFactorWithLockoutFallback`. I3 deniability
+symmetry preserved — `authenticateOrThrow` uses the OS biometric API with no
+session-type indicator; fires identically in real/decoy/hidden. Tests: 30/30
+kek-single-prompt; keystore 352/352. Honest-reviewed LAND-READY. BUILT / unit-tested
+only — NOT device-verified, NOT independently audited, no on-chain txid.
+Tests: 15/15 new; keystore 329/329; wallet-core 1094/1094. Two honest-review passes,
+both LAND-READY.
 
 ## 2026-07-16 web PRF single-prompt enrollment + stale biometric comment — PR #1034
 
