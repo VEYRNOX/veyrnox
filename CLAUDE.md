@@ -1056,6 +1056,29 @@ cached-PIN Keychain item to the biometric enrollment set via
 `setInvalidatedByBiometricEnrollment(true)`) remains a separate TARGET item, tracked in
 `docs/Feature-Status.md`, not touched by this PR.
 
+## 2026-07-16 KEK lockout-fallback B1 closure — PR #1038
+
+Closes issue #1031 (the B1 scope gap from PR #1028). The three remaining direct
+`getHF()` call sites in `src/wallet-core/keystore/native.js` — `_unlockInner` (every
+KEK-enrolled unlock), `saveVaultContents` (add/import/remove wallet, container migrate),
+and `unenrollKek` (Settings → Remove hardware protection) — now route through
+`getHardwareFactorWithLockoutFallback`. Users in biometric lockout get a
+device-credential recovery prompt on ALL KEK operations, not just the three write paths
+PR #1028 covered.
+
+**I3 deniability:** `authenticateOrThrow` uses the OS biometric API with generic prompt
+text ("Unlock your VEYRNOX wallet") and no session-type indicator — fires identically in
+real/decoy/hidden sessions. Zero network egress. Reviewed and confirmed symmetric.
+
+Tests: 30/30 `kek-single-prompt.test.js` (15 existing + 15 new: 5 unlock +
+5 saveVaultContents + 5 unenrollKek covering happy path, lockout fallback,
+double-lockout, non-lockout throw, and `.cause`/`.origCode` preservation). 352/352 full
+keystore suite — zero regressions. Honest-reviewed LAND-READY.
+
+BUILT / unit-tested only, INTERNAL — NOT device-verified (real-device lockout test on
+iOS Face ID + Android StrongBox still outstanding), NOT independently audited, no
+on-chain txid.
+
 ## 2026-07-16 biometric 2FA auto-enable on native — PR #1033
 
 Native devices with biometric hardware (Face ID, Touch ID, fingerprint) now get biometric
