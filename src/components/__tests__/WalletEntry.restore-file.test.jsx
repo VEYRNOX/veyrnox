@@ -10,7 +10,7 @@
 // The shared RestoreFromFile component is stubbed here — its own crypto/gating flow
 // is covered by src/components/backup/__tests__/RestoreFromFile.test.jsx. These tests
 // pin only WalletEntry's WIRING: the entry point is reachable, onBack returns, and
-// onFinish routes into the password-cohort unlock surface.
+// onFinish routes into the PIN-cohort unlock surface (owner decision 2026-07-16).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
@@ -103,7 +103,7 @@ describe('WalletEntry — Restore from backup file onboarding entry', () => {
     expect(screen.queryByText(/choose an 8-digit pin/i)).toBeNull();
   });
 
-  it('onFinish routes into the password-cohort UNLOCK screen and marks authModel=password', async () => {
+  it('onFinish routes into the PIN-cohort UNLOCK screen and marks authModel=pin', async () => {
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
@@ -113,11 +113,11 @@ describe('WalletEntry — Restore from backup file onboarding entry', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'stub-finish' }));
 
-    // Restored vault → normal unlock surface. Restore always yields a password-
-    // unlockable vault (password seal, or PIN seal re-wrapped under a new password),
-    // so the unlock view must render the password input, not a numeric PinPad.
-    await waitFor(() => expect(screen.getByPlaceholderText(/vault password/i)).toBeTruthy());
-    expect(setAuthModel).toHaveBeenCalledWith('password');
+    // Restored vault → normal unlock surface. Restore always yields a PIN-cohort
+    // vault (both backup-credential paths re-wrap under a device PIN via
+    // finalisePinRestore), so the unlock view renders a numeric PinPad.
+    await waitFor(() => expect(screen.getByLabelText(/pin entry/i)).toBeTruthy());
+    expect(setAuthModel).toHaveBeenCalledWith('pin');
   });
 
   it('onBack returns from the restore surface to the welcome screen', async () => {
