@@ -225,6 +225,76 @@ async function withLockSuppressed(fn) {
   }
 }
 
+// Wrap a getHardwareFactor() call so that a hardware-factor failure on the
+// recoverable-class code (KEK_ERR.NO_HARDWARE_FACTOR) engages the app-layer
+// authenticateOrThrow() fallback (which itself falls back from biometric to device
+// credential — the H16-DEVIATION path) and retries getHF once. On any
+// hardware-factor failure classified as NO_HARDWARE_FACTOR, we attempt an app-layer
+// auth + retry once — the retry is bounded (single retry, no loop on the second
+// failure) and is a no-op on non-recoverable errors (they simply re-throw and
+// propagate). USER_CANCELLED, KEY_PERMANENTLY_INVALIDATED, and DEGENERATE_INPUT
+// each carry their own stable code and short-circuit at the guard — never enter
+// the fallback path (I4 fail-closed: user cancelled deliberately; key is destroyed;
+// H is invalid — no retry can help).
+//
+// HONEST SCOPE — why the trigger is NO_HARDWARE_FACTOR, not a tighter
+// BIOMETRIC_LOCKOUT code (C1 review 2026-07-16): hardware.js:235-270 currently
+// classifies SEVEN distinct plugin rejections all to NO_HARDWARE_FACTOR —
+//   (1) biometric lockout,          (5) null bridge result,
+//   (2) no biometric enrolled,      (6) malformed h,
+//   (3) HW unavailable,             (7) wrong-length h.
+//   (4) unknown bridge throw,
+// Six of the seven are NOT lockout, so on paper the wrapper fires an
+// authenticateOrThrow prompt on more classes than strictly necessary. We DELIBERATELY
+// keep the wide trigger because the two platforms classify differently and the
+// tighter version leaves iOS lockout softlocked:
+//   - Android: HardwareKekPlugin.kt:389 preserves BiometricPrompt.ERROR_LOCKOUT (7) /
+//     ERROR_LOCKOUT_PERMANENT (9) via the "KEK_BIOMETRIC_ERROR:<code>:" reject
+//     prefix — a tighter classification (KEK_ERR.BIOMETRIC_LOCKOUT gated on this
+//     prefix) is achievable here.
+//   - iOS: HardwareKekPlugin.m:321 flattens EVERY biometric-side error (lockout,
+//     user cancel-through-Face-ID, key invalidated, sensor unavailable) to a single
+//     "DECRYPT_FAILED" reject carrying only an unstructured LAError
+//     localizedDescription — the OS lockout code is NOT preserved across the bridge.
+// So a tighter trigger would leave iOS lockout users unable to reach their vault
+// via device credential — worse UX than the current "extra prompt on 6 non-lockout
+// classes" cost. Documented follow-up: an iOS plugin patch that preserves the
+// LAError code, then introduce KEK_ERR.BIOMETRIC_LOCKOUT and narrow the trigger.
+//
+// The retry runs getHF with the SAME opts (same kekSalt). authenticateOrThrow's
+// device-credential auth resets the biometric lockout counter on Android and clears
+// the Face ID lockout state on iOS (LAContext state refreshed post-passcode), so
+// the retry CAN succeed. If it fails again, the second error propagates without a
+// second fallback (no infinite loop, bounded). The SE/StrongBox key ACL still
+// enforces biometric at the OS level — the app-layer PIN fallback does NOT weaken
+// it (H16-DEVIATION).
+//
+// If authenticateOrThrow itself throws (the user cancels the fallback prompt) we
+// preserve the ORIGINAL getHF error as .cause + a .origCode sidecar on the
+// propagated fallback error, so the UI can distinguish "cancelled while trying to
+// recover from lockout" from "cancelled a primary prompt" (C3 review 2026-07-16).
+// Both fields are set because some environments strip Error.cause across await
+// boundaries; .origCode is the belt-and-braces contract.
+async function getHardwareFactorWithLockoutFallback(getHF, hfOpts) {
+  try {
+    return await getHF(hfOpts);
+  } catch (err) {
+    if (!err || err.code !== KEK_ERR.NO_HARDWARE_FACTOR) throw err;
+    try {
+      await authenticateOrThrow(); // engages device-credential fallback on lockout
+    } catch (fallbackErr) {
+      // C3: preserve the original getHF failure so the UI can honestly distinguish
+      // "cancelled while recovering from lockout" from "cancelled the primary prompt".
+      if (fallbackErr && typeof fallbackErr === 'object') {
+        if (!fallbackErr.cause) fallbackErr.cause = err;
+        if (!fallbackErr.origCode) fallbackErr.origCode = err.code;
+      }
+      throw fallbackErr;
+    }
+    return await getHF(hfOpts); // retry once; a second failure propagates
+  }
+}
+
 // Prompt for biometric auth (with a deliberate device-credential fallback).
 // Throws BiometryError on user cancel / failure / lockout — propagated so the
 // unlock UI can surface it, exactly like a wrong-password throw on web.
@@ -318,6 +388,15 @@ async function _unlockInner(password, opts = {}) {
     const saltBytes = decodeKekSalt(blob.kekSalt);
     // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed salt
     // (v2 inert-binding / v1 legacy). See hfOptsForBlob.
+    // TODO(kek-single-prompt-b1) — 2026-07-16 honest-reviewer B1: the KEK-write paths
+    // (enrollKek / changePassword KEK / upgradeKekToV3) route getHF through
+    // getHardwareFactorWithLockoutFallback so an OS biometric-lockout on those paths
+    // engages the app-layer device-credential fallback. This unlock path — plus
+    // saveVaultContents and unenrollKek — still call getHF directly, so an unlock on a
+    // locked-out device propagates NO_HARDWARE_FACTOR without a fallback prompt. B1
+    // consistency is DEFERRED to a follow-up PR (needs real-device UX validation of
+    // extra-prompt-on-unlock trade-off, plus deniability-session review — unlock is a
+    // hotter path than the write paths and has stricter deniability constraints).
     const H = await getHF(hfOptsForBlob(blob, saltBytes)); // biometric prompt (Android Keystore)
     let C;
     let kek;
@@ -536,10 +615,14 @@ export const nativeKeyStore = {
         return { upgraded: false, version: 3 };
       }
 
-      // v1/v2 kekWrap → a genuine upgrade. Gate on the app-layer biometric (same as
-      // changePassword/enrollKek), then re-wrap under a FRESH per-enrollment salt and stamp
-      // v3. Identical to changePassword's KEK branch with currentPassword === newPassword.
-      await authenticateOrThrow(); // throws on cancel/failure/lockout
+      // v1/v2 kekWrap → a genuine upgrade. Two getHardwareFactor calls (unwrap H on
+      // the old salt + re-wrap H2 on the new salt) each present the SE/StrongBox
+      // biometric sheet natively — TWO OS prompts total on the happy path (was THREE
+      // before the 2026-07-16 single-prompt fix removed the standalone app-layer
+      // authenticateOrThrow at the top of this branch). Two prompts here is CORRECT
+      // and acceptable for a one-time, user-consented upgrade (unlike the per-unlock
+      // second prompt we removed from the unlock hot path). authenticateOrThrow is
+      // preserved as the lockout fallback inside getHardwareFactorWithLockoutFallback.
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
@@ -556,9 +639,9 @@ export const nativeKeyStore = {
       // derived KEKs, and the recovered DEK are wiped on EVERY path (I4).
       try {
         // Old side: whatever the stored blob binds to (v2/v1 → fixed salt via hfOptsForBlob).
-        H = await getHF(hfOptsForBlob(blob, oldSaltBytes));
+        H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, oldSaltBytes));
         // New side: the re-enrolled vault is always v3 — bind the new H to the new salt.
-        H2 = await getHF({ kekSalt: newSaltBytes.slice() });
+        H2 = await getHardwareFactorWithLockoutFallback(getHF, { kekSalt: newSaltBytes.slice() });
         oldC = await deriveKekC(password, oldSaltBytes);
         oldKek = await combineKek(H, oldC);
         if (H && H.fill) H.fill(0);
@@ -729,20 +812,19 @@ export const nativeKeyStore = {
 
   // Re-encrypt the EXISTING vault under a new password, keeping the SAME secret
   // (non-custodial "change my vault password"). Mirrors web.js exactly over the
-  // same unchanged ../vault.js crypto — only WHERE the blob lives differs. We
-  // GATE this behind the biometric/device-credential prompt (same as unlock),
-  // since it both reads and rewrites the at-rest secret; then decrypt with the
-  // current password (throws the generic error on a mismatch, changing nothing)
-  // and persist the re-encrypted blob. The secret never leaves memory.
+  // same unchanged ../vault.js crypto — only WHERE the blob lives differs. On a
+  // BARE vault we gate behind the standalone app-layer biometric prompt (no SE key
+  // to inherit from); on a KEK vault getHardwareFactor is the sole biometric gate
+  // per call (single-prompt-per-getHF, matching the unlock path). Then decrypt with
+  // the current password (throws generic error on mismatch, changing nothing) and
+  // persist the re-encrypted blob. The secret never leaves memory.
   async changePassword(currentPassword, newPassword, opts = {}) {
     await init();
-    // L1: this both opens an OS biometric sheet (authenticateOrThrow, and on a
-    // KEK vault getHardwareFactor) whose appStateChange pause would otherwise fire
-    // the background lock hook mid-rewrite. Suppress the lock hook for the whole
-    // operation, matching unlock/enrollKek/unenrollKek.
+    // L1: this opens OS biometric sheets (bare branch: one authenticateOrThrow;
+    // KEK branch: TWO getHardwareFactor calls, one per salt) whose appStateChange
+    // pause would otherwise fire the background lock hook mid-rewrite. Suppress
+    // the lock hook for the whole operation, matching unlock/enrollKek/unenrollKek.
     return withLockSuppressed(async () => {
-      await authenticateOrThrow(); // throws on cancel/failure/lockout
-
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (raw === null || raw === undefined) {
         throw new Error('No wallet found on this device');
@@ -752,6 +834,14 @@ export const nativeKeyStore = {
       if (blob.kekWrap) {
         // KEK-enrolled: rotate the PIN by re-wrapping the DEK under a new KEK.
         // The seed ciphertext (blob.ct) stays UNCHANGED — that is the §3 property.
+        //
+        // 2026-07-16 (single-prompt fix): the standalone app-layer authenticateOrThrow
+        // was removed from the top of this method — the two getHardwareFactor calls
+        // below present the SE/StrongBox biometric sheets natively (one per salt), so
+        // this operation fires exactly TWO OS prompts on the happy path (was THREE).
+        // The removed app-layer gate is preserved as the lockout fallback inside
+        // getHardwareFactorWithLockoutFallback, which engages the device-credential
+        // (H16-DEVIATION) path only when a getHF throws NO_HARDWARE_FACTOR.
         const getHF = opts && opts.getHardwareFactor;
         if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
         const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
@@ -765,8 +855,8 @@ export const nativeKeyStore = {
         let newKek;
         let dek;
         try {
-          H = await getHF(hfOptsForBlob(blob, oldSaltBytes));
-          H2 = await getHF({ kekSalt: newSaltBytes.slice() });
+          H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, oldSaltBytes));
+          H2 = await getHardwareFactorWithLockoutFallback(getHF, { kekSalt: newSaltBytes.slice() });
           oldC = await deriveKekC(currentPassword, oldSaltBytes);
           oldKek = await combineKek(H, oldC);
           if (H && H.fill) H.fill(0);
@@ -792,6 +882,11 @@ export const nativeKeyStore = {
         return;
       }
 
+      // Bare (non-KEK) vault: no SE prompt to inherit from, so we retain the
+      // standalone app-layer biometric gate to keep this operation authenticated
+      // end-to-end. authenticateOrThrow's own device-credential fallback covers
+      // biometric lockout on this branch.
+      await authenticateOrThrow(); // throws on cancel/failure/lockout
       const secret = await decryptVault(blob, currentPassword); // ../vault.js — unchanged
       const rewrapped = await encryptVault(secret, newPassword); // ../vault.js — unchanged
       await safeWriteVault(rewrapped);
@@ -801,11 +896,16 @@ export const nativeKeyStore = {
   // Enroll the Hardware KEK on an existing vault. After enrollment, unlock()
   // and changePassword() require BOTH the hardware factor H (via opts.getHardwareFactor)
   // and the correct PIN. Fail-closed (I4): missing hardware factor → explicit throw.
-  // Gates behind the biometric prompt so the operation itself is authenticated.
+  // The SE/StrongBox getHF() call presents the OS biometric sheet natively (the SE ACL
+  // is .biometryCurrentSet on iOS / setUserAuthenticationRequired on Android), so getHF
+  // is the SOLE biometric gate on the happy path — no separate app-layer
+  // authenticateOrThrow() is needed (mirrors _unlockInner's KEK branch, native.js:311-312).
+  // authenticateOrThrow() is preserved as a FALLBACK inside getHardwareFactorWithLockoutFallback:
+  // on biometric lockout (getHF throws NO_HARDWARE_FACTOR) it engages the device-credential
+  // fallback (H16-DEVIATION) and retries getHF once.
   async enrollKek(password, opts) {
     await init();
     return withLockSuppressed(async () => {
-      await authenticateOrThrow();
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const raw = await SecureStorage.get(VAULT_KEY, false);
@@ -818,17 +918,22 @@ export const nativeKeyStore = {
       if (blob.kekWrap) {
         throw Object.assign(new Error('KEK_ALREADY_ENROLLED'), { code: 'KEK_ALREADY_ENROLLED' });
       }
+      // 2026-07-16 (single-prompt fix): verify the password and recover the seed BEFORE
+      // any biometric prompt. A mistyped PIN must NOT flash Face ID / fingerprint (I4
+      // honest failure — a "wrong password" error should look like a wrong-password
+      // error), and must NOT materialise a hardware credential that then needs to be
+      // rolled back. decryptVault throws generic wrong-password; no credential created.
       const secret = await decryptVault(blob, password); // verify password and recover seed
 
       const saltBytes = crypto.getRandomValues(new Uint8Array(32));
       const kekSalt = btoa(String.fromCharCode(...saltBytes));
       // H-1 (#720): getHF materialises the native credential. It lives INSIDE the outer
       // try so that a throw AFTER the credential exists still reaches the clear-credential
-      // rollback below (fail honest, fail closed — I4). authenticateOrThrow() stays outside
-      // (a biometric cancel there creates no credential, so there is nothing to roll back).
+      // rollback below (fail honest, fail closed — I4). The password check above runs
+      // BEFORE this so a wrong PIN never creates a credential to roll back.
       let H;
       try {
-        H = await getHF({ kekSalt: saltBytes.slice() });
+        H = await getHardwareFactorWithLockoutFallback(getHF, { kekSalt: saltBytes.slice() });
         let C;
         let kek;
         const dek = randomDek();
