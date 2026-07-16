@@ -1049,6 +1049,49 @@ cached-PIN Keychain item to the biometric enrollment set via
 `setInvalidatedByBiometricEnrollment(true)`) remains a separate TARGET item, tracked in
 `docs/Feature-Status.md`, not touched by this PR.
 
+## 2026-07-16 biometric 2FA auto-enable on native — PR #1033
+
+Native devices with biometric hardware (Face ID, Touch ID, fingerprint) now get biometric
+2FA auto-enabled on first unlock — critical actions show "PIN + Biometric" by default
+instead of requiring users to find the toggle in Security Settings. One-shot
+`ensureBiometric2faOnNative()` helper in `src/lib/biometric.js` uses a
+`veyrnox-2fa-biometric-auto` localStorage marker so it fires exactly once; if the user
+later disables biometric 2FA in Settings, it stays off (the marker prevents re-enable).
+Called fire-and-forget from `WalletProvider.unlock()` (same pattern as
+`ensureStealthPool`), covering both fresh installs and existing installs on their next
+unlock. No-op on web, no-op when biometrics are unavailable, never throws (best-effort —
+a failed auto-enable must not block unlock). Tests: 5/5 new unit tests
+(`ensureBiometric2faOnNative.test.js`), 13/13 existing biometric/2FA tests pass. BUILT /
+unit-tested only, INTERNAL — NOT device-verified, NOT independently audited, no on-chain
+txid.
+
+## 2026-07-16 PIN-cohort file restore + ≥12 password enforcement — PR #1032
+
+**Restore→PIN cohort:** both backup credential paths (password seal, PIN seal) now
+decrypt to container JSON, then the user sets a fresh 8-digit device PIN via
+`finalisePinRestore` in `src/wallet-core/vaultBackup.js` — vault is always PIN-cohort
+after restore. Fixes the KEK enrollment failure where the KEK settings card asked for a
+PIN but the vault was password-cohort (restore had preserved the backup's auth model
+instead of converting to the device's 8-digit PIN cohort). `RestoreFromFile.jsx`
+extracted as a shared component used by both `PersonalBackup.jsx` (post-unlock Restore
+tab) and `WalletEntry.jsx` (fresh-install onboarding). Animated `RestoreProgress.jsx`
+replaces the plain spinner during Argon2id decryption.
+
+**≥12 password minimum:** enforced across backup export (`PersonalBackup`), action
+password (`TwoFactorSettings`), and `createBackupEnvelope` core assertion. All surfaces
+use `MIN_PASSWORD_LENGTH` from `passwordStrength.js`.
+
+**RASP ELEVATED condition** (carried from PR #1025): soft environment signals (developer
+mode, accessibility service) route to `CONDITION.ELEVATED` → `TIER.WARN` with
+`blockedActions: []` — backup proceeds after biometric re-confirm. `excludeAttestation`
+on all 6 seed-material surfaces prevents Play Integrity from blocking backup/restore on
+sideloaded builds.
+
+Tests: 69/69 across 10 files (RestoreFromFile, WalletEntry, vaultBackup,
+g4-callsite-pins). Device-verified on Pixel 10 Pro XL: restore from `.enc` → set device
+PIN → unlock with PIN → KEK enrollment succeeds with same PIN. BUILT / unit-tested +
+device-verified (restore flow), INTERNAL — NOT independently audited, no on-chain txid.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
