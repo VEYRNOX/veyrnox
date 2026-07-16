@@ -1079,6 +1079,32 @@ BUILT / unit-tested only, INTERNAL — NOT device-verified (real-device lockout 
 iOS Face ID + Android StrongBox still outstanding), NOT independently audited, no
 on-chain txid.
 
+## 2026-07-16 remove broken push notifications page — PR #1037
+
+Deleted `PushNotificationsPage.jsx` — it used the browser `Notification` API pretending
+to be push notifications; no real push transport (FCM/APNs) was ever installed (I4
+honesty violation). Removed `/push` from sidebar nav, route table, and feature
+classification registry. Updated feature catalogue entry from "Notifications & Push" to
+"Price Alert Notifications", pointing to `/alerts` which uses real
+`@capacitor/local-notifications`. Kept `notification_prefs` in panic wipe residue list
+(harmless localStorage cleanup for any leftover data). Tests: navigation 7/7, feature
+classification 10/10, audit-log 3/3, panic wipe 23/23. BUILT / unit-tested, INTERNAL.
+
+## 2026-07-16 QR save button dark mode fix + seed QR layout — PR #1040
+
+`QRCodeDisplay.jsx`: switched "Save QR Code" button from `variant="outline"` to
+`variant="secondary"`. The outline variant's transparent background + inherited
+`text-muted-foreground` was nearly invisible against the dark `bg-background` (#050608).
+Secondary carries explicit `bg-secondary` + `text-secondary-foreground` tokens that read
+in both themes.
+
+`WalletSeedQR.jsx`: moved the wallet selector above the security warning card so it's
+the first actionable control on the page — previously the verbose warning pushed the
+selector below the fold on small viewports. The warning still renders, just after the
+selector.
+
+BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
+
 ## 2026-07-16 biometric 2FA auto-enable on native — PR #1033
 
 Native devices with biometric hardware (Face ID, Touch ID, fingerprint) now get biometric
