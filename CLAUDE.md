@@ -906,6 +906,65 @@ All five PRs: BUILT / unit-tested only, INTERNAL — not device-verified, no on-
 txid. Codex is a second-model reviewer, tier-equivalent to an internal AI review pass,
 not the outstanding independent third-party audit.
 
+## 2026-07-16 Safety Plus IAP — annual $49.99/yr package added (PR #1026)
+
+Added a second Safety Plus purchase option alongside the existing $5.99/mo monthly:
+**annual $49.99/yr (~30% off equivalent 12 × monthly; ~$4.17/mo effective, "4 months free")**.
+Both packages grant the **same** `safety_plus` entitlement — annual is a pricing lever,
+not a feature axis. **BUILT / unit-tested only, INTERNAL — NOT device-verified, no
+sandbox purchase, not independently audited.** No on-chain txid involved (IAP is
+storefront-verified, not on-chain).
+
+**Code (all in PR #1026, squashed to `3c1acd53`):**
+- `src/lib/purchases.js` — new exports `SAFETY_PLUS_MONTHLY_PACKAGE` (`$rc_monthly`) and
+  `SAFETY_PLUS_ANNUAL_PACKAGE` (`$rc_annual`). Package identifiers centralized so the
+  drift guard (preflight) has a single source of truth.
+- `src/pages/Subscription.jsx` — fetches BOTH packages from `getOfferings().availablePackages`;
+  renders a Monthly/Annual segmented `radiogroup` toggle with a "Save 30%" badge on
+  annual; annual is the DEFAULT selection. `selectedPackage` drives both the CTA copy
+  (`Upgrade to Safety Plus — $49.99/yr`) and `purchasePackage()`. **Fail-honest, I4:**
+  if `$rc_annual` is missing from the offering (staged store rollout, or dashboard
+  not-yet-configured), the toggle hides entirely and the page falls back to the
+  pre-existing monthly-only UI — never a dead button.
+- `src/pages/SafetyPlus.jsx:116` — teaser price line updated to reflect both plans.
+- `scripts/preflight-iap-config.mjs` — canonical `EXPECT` extended with
+  `productAnnual: 'safety_plus_annual'` and `packageAnnual: '$rc_annual'`. New checks:
+  code constants match, `Subscription.jsx` imports both, both products exist on the
+  RevenueCat dashboard, both are attached to the `safety_plus` entitlement, both
+  packages sit on the `default` offering with the right product on each. Drift on any
+  leg fails the preflight — the whole point of the guard.
+- `docs/iap-safety-plus-setup-checklist.md` — updated Tasks 1/2/3 with the App Store
+  Connect / Google Play Console / RevenueCat dashboard steps for creating
+  `safety_plus_annual` alongside the existing monthly product.
+
+**Tests (all green, PR #1026):** `src/lib/__tests__/purchases.test.js` pins both package
+constants; `src/pages/__tests__/Subscription.test.jsx` covers monthly-only offering
+(toggle hidden, unchanged behaviour), monthly+annual offering (toggle renders, annual
+default, purchase-selected uses annual, switching to monthly then purchasing uses
+monthly). 40/40 targeted tests green (purchases + Subscription + tier catalogue + entitlement
+I3 guard + TierProvider).
+
+**Honest gaps / outstanding (must complete before toggle renders on-device):**
+1. App Store Connect: create `safety_plus_annual` auto-renewing subscription at $49.99
+   in the same Safety Plus subscription group as monthly (Apple upgrade/downgrade
+   requires same group).
+2. Google Play Console: create `safety_plus_annual` subscription at $49.99 with a
+   1-year base plan.
+3. RevenueCat dashboard: attach `safety_plus_annual` to the `safety_plus` entitlement;
+   add `$rc_annual` package on the `default` offering.
+4. Re-run `npm run check:iap-preflight` with `REVENUECAT_V2_SECRET_KEY` +
+   `REVENUECAT_PROJECT_ID` set. Must be clean before running the device-verification
+   runbook (Task 15 in `docs/superpowers/plans/2026-07-06-iap-subscription-stitching.md`).
+5. Sandbox purchase on iOS + Android of both packages, entitlement resolves to
+   `safety_plus`, tier switches, restore-purchases works. This is when the feature moves
+   from BUILT → device-verified for annual (still not independently audited).
+
+**Security invariants preserved:** I3 (deniability = zero backend calls) is untouched —
+`entitlement.js:resolveTier()` still fails closed to `'free'` in decoy/hidden sessions
+before any `getCustomerInfo()` call, and the two annual packages hit the exact same
+egress chokepoint as monthly. No new network surface, no new key material touched. Same
+`safety_plus` entitlement grant regardless of package.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
