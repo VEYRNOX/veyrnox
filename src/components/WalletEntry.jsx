@@ -77,6 +77,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
 import VaultIllustration from "@/components/VaultIllustration";
@@ -1329,8 +1330,7 @@ export default function WalletEntry() {
               runUnlock if the credential is wrong. */}
           {authModel === "password" ? (
             <div className="space-y-2">
-              <input
-                type="password"
+              <PasswordInput
                 className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 placeholder="Vault password"
                 value={unlockPassword}
@@ -1600,7 +1600,7 @@ export default function WalletEntry() {
             )}
             <div>
               <Label>Vault Password</Label>
-              <Input type="password" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
+              <PasswordInput className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
               <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed. This is your real key — required, never skipped.</p>
             </div>
             <Button className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
@@ -1659,7 +1659,7 @@ export default function WalletEntry() {
         </div>
         <div>
           <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>
-          <Input type="password" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
+          <PasswordInput className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
           <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed.</p>
         </div>
 
