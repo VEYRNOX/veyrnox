@@ -959,8 +959,14 @@ describe('Item 28 — Android checkSuspiciousPackages + suspiciousPackage verdic
     expect(kt).toContain('result.put("suspiciousPackage"');
   });
 
-  it('file header verdict comment includes "suspiciousPackage":false', () => {
-    expect(kt).toContain('"suspiciousPackage":false');
+  it('canonical checkIntegrity() field list documents suspiciousPackage', () => {
+    // The KDoc canonical field list above checkIntegrity() enumerates all
+    // verdict fields. The file-header dated device verdicts intentionally list
+    // only fields captured on that date (evidence-integrity, verify-don't-assert).
+    const listIdx = kt.indexOf('{ rooted, hookedProcess');
+    expect(listIdx).toBeGreaterThan(-1);
+    const window = kt.slice(listIdx, listIdx + 500);
+    expect(window).toContain('suspiciousPackage');
   });
 });
 
@@ -1107,11 +1113,13 @@ describe('Item 23 — Android checkOverlay + overlayActive verdict field', () =>
     expect(kt).toContain('result.put("overlayActive"');
   });
 
-  it('file-header verdict example includes overlayActive:false', () => {
-    const start = kt.indexOf('checkIntegrity() verdict:');
-    expect(start).toBeGreaterThan(-1);
-    const window = kt.slice(start, start + 250);
-    expect(window).toContain('"overlayActive":false');
+  it('canonical checkIntegrity() field list documents overlayActive', () => {
+    // See suspiciousPackage rationale: point at KDoc canonical list, not the
+    // dated header verdict (which lists only captured fields).
+    const listIdx = kt.indexOf('{ rooted, hookedProcess');
+    expect(listIdx).toBeGreaterThan(-1);
+    const window = kt.slice(listIdx, listIdx + 500);
+    expect(window).toContain('overlayActive');
   });
 });
 
@@ -1203,11 +1211,13 @@ describe('Item 21 — Android checkScreenCapture + screenCapture verdict field',
     expect(kt).toContain('result.put("screenCapture"');
   });
 
-  it('file-header verdict example includes screenCapture:false', () => {
-    const start = kt.indexOf('checkIntegrity() verdict:');
-    expect(start).toBeGreaterThan(-1);
-    const window = kt.slice(start, start + 200);
-    expect(window).toContain('"screenCapture":false');
+  it('canonical checkIntegrity() field list documents screenCapture', () => {
+    // See suspiciousPackage rationale: point at KDoc canonical list, not the
+    // dated header verdict (which lists only captured fields).
+    const listIdx = kt.indexOf('{ rooted, hookedProcess');
+    expect(listIdx).toBeGreaterThan(-1);
+    const window = kt.slice(listIdx, listIdx + 500);
+    expect(window).toContain('screenCapture');
   });
 });
 
@@ -1294,12 +1304,14 @@ describe('Item 18 — Android debuggerAttached verdict field', () => {
   });
 
   it('checkIntegrity JSDoc/comment lists debuggerAttached among returned keys', () => {
-    // The JSDoc comment at the top of checkIntegrity must name the key so it
-    // stays in sync with callers.
-    const commentIdx = kt.indexOf('checkIntegrity()');
-    expect(commentIdx).toBeGreaterThan(-1);
-    // Search in the first 300 chars of the function header comment area
-    const ctx = kt.slice(Math.max(0, commentIdx - 10), commentIdx + 300);
+    // The KDoc canonical field list above checkIntegrity() must name the key so
+    // it stays in sync with callers. Anchor on the canonical list rather than
+    // the first "checkIntegrity()" occurrence, because the file header now
+    // contains dated device-verdict comments that list only captured fields
+    // (evidence-integrity, verify-don't-assert).
+    const listIdx = kt.indexOf('{ rooted, hookedProcess');
+    expect(listIdx).toBeGreaterThan(-1);
+    const ctx = kt.slice(listIdx, listIdx + 500);
     expect(ctx).toContain('debuggerAttached');
   });
 });
