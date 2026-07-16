@@ -965,6 +965,67 @@ before any `getCustomerInfo()` call, and the two annual packages hit the exact s
 egress chokepoint as monthly. No new network surface, no new key material touched. Same
 `safety_plus` entitlement grant regardless of package.
 
+## 2026-07-16 RASP seed-backup fail-open fix + KEK single-prompt fix — PRs #1024, #1025, #1028
+
+**PR #1024 (docs-only) — RASP developer-mode gate device-verified as a "good catch."**
+On 2026-07-16, a real Pixel 10 Pro XL (stock/clean, locked bootloader, not rooted) running
+a release build hit the "This device looks modified" WARN when tapping Backup Wallet —
+because USB debugging (`adb_enabled=1`) was ON. This is intended I4 behaviour, not a false
+positive: disabling USB debugging clears the WARN. Evidence is on-device UI behaviour +
+adb-confirmed input signals (release build ships a silent bridge, so no captured JSON).
+Recorded in `docs/Feature-Status.md` §7; this is the same WARN-tier gate PR #1025 (below)
+found was mis-wired to *block* rather than step-up on exactly this class of signal.
+
+**PR #1025 (fixes #1007 + #979 fail-open bug) — RASP no longer blocks seed backup on
+ordinary devices. BUILT / unit-tested + installed to a real Pixel 10 Pro XL (release
+APK), INTERNAL — not independently audited, no on-chain txid.**
+
+**The bug:** PR #1007 folded 8 soft environment signals (developer mode, accessibility
+service enabled, etc.) into the `rooted` condition. PR #979 (separately, both landed
+previously) made WARN-tier block seed-reveal/export/import. Combined effect: developer
+mode OR an accessibility service OR an unreachable Play Integrity leg → seed backup
+blocked outright on an otherwise-clean device. Device-reproduced on the same clean
+Pixel 10 Pro XL from PR #1024.
+
+**Fix 1 — new `CONDITION.ELEVATED`:** the 8 soft signals now drive a distinct `elevated`
+condition (WARN + biometric re-confirm, `blockedActions: []` — backup proceeds after
+step-up) instead of `rooted`. Genuine root/jailbreak/tamper/hook/emulator signals are
+unchanged and still hard-block.
+
+**Fix 2 — `excludeAttestation` on `useRaspArtifact`:** local seed-material surfaces
+(`PersonalBackup`, `RestoreFromFile`, `HDWalletManager`, `SeedGrid`, `WalletEntry`,
+`useRevealWithReauth`) now gate on the on-device RASP leg only — the remote Play
+Integrity leg (permanently unavailable on sideloaded/debug builds) is excluded from
+these pages specifically. Signing surfaces are untouched: attestation stays fully in
+force for sends.
+
+Two independent honest-review passes, both CLEAN. Tests: 605/605 RASP+backup. During
+rebase onto main, a merge conflict was resolved: `PersonalBackup.jsx`'s inline
+`RestoreTab` had already been extracted to `RestoreFromFile.jsx` on main;
+`excludeAttestation: true` was applied to `RestoreFromFile.jsx` as well.
+
+**PR #1028 — single biometric prompt for `enrollKek` / `changePassword` (KEK branch) /
+`upgradeKekToV3`. BUILT / unit-tested only, NOT device-verified, NOT independently
+audited, no on-chain txid.**
+
+On both iOS and Android these three flows fired an extra biometric prompt each — a
+JS-layer `authenticateOrThrow()` at the top, followed by the hardware-enforced Face
+ID/fingerprint from `getHardwareFactor()`'s SE/StrongBox ACL. **Fix:** new pure helper
+`getHardwareFactorWithLockoutFallback(getHF, hfOpts)` in `native.js`: (1) calls `getHF`
+once — happy path is a single hardware-enforced OS prompt; (2) on
+`KEK_ERR.NO_HARDWARE_FACTOR` (lockout), falls back to `authenticateOrThrow()` for
+device-credential auth and retries once; (3) any other error propagates unchanged.
+Prompt counts: `enrollKek` 2→1, `changePassword` (KEK branch) 3→2, `upgradeKekToV3`
+3→2. Bare-vault enrollment and plain unlock are unchanged. `authenticateOrThrow` was
+NOT deleted — it remains the lockout-fallback path and the bare-vault gate.
+
+Honest scope: C1 — the wrapper triggers on the aggregate `NO_HARDWARE_FACTOR` code (7
+distinct underlying cases; hardware lockout is only one of them), so the fallback can
+also fire on non-lockout causes bucketed under the same error code. B1 — `_unlockInner`,
+`saveVaultContents`, and `unenrollKek` still call `getHF` directly and were NOT converted
+to the new helper (deferred; a TODO landed marking this). Tests: 15/15 new; keystore
+329/329; wallet-core 1094/1094. Two honest-review passes, both LAND-READY.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode

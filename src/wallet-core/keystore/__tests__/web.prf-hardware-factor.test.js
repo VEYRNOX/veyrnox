@@ -231,6 +231,41 @@ describe('Web PRF Hardware Factor (Phase 1 — I6)', () => {
       expect(stored).toBeTruthy();
     });
 
+    // #1030 — single-prompt enrollment on Chrome ≥118
+    it('skips get() when create() already returns PRF output (Chrome >=118, single prompt)', async () => {
+      // Default mock: create() returns PRF output in extension results
+      const getSpy = global.navigator.credentials.get;
+      const H = await webKeyStore.getHardwareFactor();
+      expect(H.length).toBe(32);
+      expect(getSpy).not.toHaveBeenCalled(); // single prompt — no get() needed
+    });
+
+    // #1030 — two-prompt fallback on Safari/Firefox
+    it('falls through to get() when create() returns no PRF output (Safari/Firefox, two prompts)', async () => {
+      // create() returns NO PRF results (Safari/Firefox behavior)
+      global.navigator.credentials.create = vi.fn(async () => ({
+        rawId: new Uint8Array([1, 2, 3, 4]),
+        getClientExtensionResults: () => ({ prf: { enabled: true } }), // no results.first
+      }));
+      global.navigator.credentials.get = vi.fn(async () => ({
+        getClientExtensionResults: () => ({
+          prf: { results: { first: fixedBytes(0xaa) } },
+        }),
+      }));
+      vi.resetModules();
+      const mod = await import('../web.js');
+      const H = await mod.webKeyStore.getHardwareFactor();
+      expect(H.length).toBe(32);
+      expect(global.navigator.credentials.get).toHaveBeenCalledTimes(1); // fallback to get()
+    });
+
+    // #1030 — credential id persisted in both paths (F-05 safety)
+    it('persists credential id after PRF confirmed from create() (F-05)', async () => {
+      await webKeyStore.getHardwareFactor();
+      const stored = mockLocalStorage.getItem('veyrnox-prf-cred-id');
+      expect(stored).toBeTruthy();
+    });
+
     it('reuses stored credential on second call (no new create)', async () => {
       // First call: creates credential
       await webKeyStore.getHardwareFactor();
@@ -247,6 +282,11 @@ describe('Web PRF Hardware Factor (Phase 1 — I6)', () => {
     });
 
     it('throws when get() is cancelled by user', async () => {
+      // create() must NOT return PRF (Safari path) so code falls through to get()
+      global.navigator.credentials.create = vi.fn(async () => ({
+        rawId: new Uint8Array([1, 2, 3, 4]),
+        getClientExtensionResults: () => ({ prf: { enabled: true } }),
+      }));
       global.navigator.credentials.get = vi.fn(async () => null);
       vi.resetModules();
       const mod = await import('../web.js');
@@ -254,6 +294,11 @@ describe('Web PRF Hardware Factor (Phase 1 — I6)', () => {
     });
 
     it('throws when PRF extension returns no output', async () => {
+      // create() must NOT return PRF (Safari path) so code falls through to get()
+      global.navigator.credentials.create = vi.fn(async () => ({
+        rawId: new Uint8Array([1, 2, 3, 4]),
+        getClientExtensionResults: () => ({ prf: { enabled: true } }),
+      }));
       global.navigator.credentials.get = vi.fn(async () => ({
         getClientExtensionResults: () => ({ prf: { results: {} } }), // missing 'first'
       }));
@@ -263,6 +308,11 @@ describe('Web PRF Hardware Factor (Phase 1 — I6)', () => {
     });
 
     it('throws when PRF output is wrong length', async () => {
+      // create() must NOT return PRF (Safari path) so code falls through to get()
+      global.navigator.credentials.create = vi.fn(async () => ({
+        rawId: new Uint8Array([1, 2, 3, 4]),
+        getClientExtensionResults: () => ({ prf: { enabled: true } }),
+      }));
       global.navigator.credentials.get = vi.fn(async () => ({
         getClientExtensionResults: () => ({
           prf: { results: { first: fixedBytes(0xaa, 16) } }, // wrong: 16 instead of 32
