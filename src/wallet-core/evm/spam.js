@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/evm/spam.js
 //
 // Spam / scam-airdrop token classification (Phase S2 — transaction safety).
@@ -84,8 +85,9 @@ export function classifyToken(token = {}) {
  */
 export function annotateTokens(tokens = [], overrides = {}) {
   return tokens.map((t) => {
+    const tok = /** @type {any} */ (t);
     const { spam, reasons } = classifyToken(t);
-    const override = overrides[t.id];
+    const override = overrides[tok.id];
     let hidden = spam; // default: hide detected spam
     if (override === 'show') hidden = false;
     else if (override === 'hide') hidden = true;

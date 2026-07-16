@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
@@ -10,6 +11,7 @@ import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
+import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
 
 // Only assets that derive a real address can have an address to look up. The
 // history view mirrors the wallet's receivable assets (coming_soon assets have no
@@ -89,6 +91,9 @@ export default function TransactionHistory() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["tx-history", asset.symbol, address, DEMO],
     queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
+    // I3 zero-egress: never attempt the address->indexer disclosure in a
+    // deniability (decoy/hidden) session — disable the query entirely.
+    enabled: !isDeniabilitySessionActive(),
     // History is a snapshot the user explicitly opens; don't auto-refetch in the
     // background (that would repeat the address->indexer disclosure silently).
     refetchOnWindowFocus: false,

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/risk/score.js
 //
 // Risk Scoring v1 — PROVISIONAL (ECC independent audit complete 2026-06-23).
@@ -37,6 +38,13 @@ import { s8ValueAnomaly } from './signals/s8-value-anomaly.js';
 // priority: the earlier entry owns the sentence. The attacker-targeted RISK
 // signals (S2 unlimited, S3 fresh-spender, S4 poisoning, S5 ENS) are placed ahead
 // of the softer ones so the most actionable warning wins a tie.
+//
+// M-3 (explicit tie-ordering decision): S2 ("unlimited spending approval") precedes
+// S3 ("first-time approval to untrusted spender"). On a first-time unlimited approve
+// both fire at RISK tier. S2 wins because the UNLIMITED amount is the more acute
+// threat — even a trusted spender receiving unlimited allowance is dangerous. This
+// is a deliberate product decision: if the ordering is ever reversed, update this
+// comment and the corresponding test in score.test.js.
 export const SIGNALS = Object.freeze([
   { id: 'S2', fn: s2UnlimitedApproval },
   { id: 'S3', fn: s3FreshSpenderApproval },

@@ -70,13 +70,21 @@ describe('HardwareKekPlugin.kt — L8 KEK enroll hardening (M4 + L3)', () => {
     expect(code).toMatch(/KEK_REQUIRES_ANDROID_11/);
   });
 
-  // L3 — enroll() must not silently re-key KEY_ALIAS (that permanently bricks the
-  // existing kekWrap). Re-enroll must be explicit: reject if the alias already exists.
+  // L3 — enroll() must not silently re-key KEY_ALIAS over a LIVE kekWrap (that
+  // permanently bricks the existing vault). The JS layer blocks that case via
+  // isVaultWrapped() before calling the plugin. The Kotlin layer handles the stale-alias
+  // case (alias exists, vault is bare — reinstall+restore) by force-deleting the stale
+  // key before enrolling fresh. If deletion fails, it rejects with KEK_CLEAR_STALE_FAILED
+  // so the JS classifier can surface an actionable message (never GENERIC_MSG stuck loop).
   it('L3: pre-checks containsAlias(KEY_ALIAS) before generating a new key', () => {
     expect(code).toMatch(/containsAlias\(KEY_ALIAS\)/);
   });
 
-  it('L3: rejects an existing enrollment with the KEK_ALREADY_ENROLLED machine code', () => {
-    expect(code).toMatch(/KEK_ALREADY_ENROLLED/);
+  it('L3: auto-clears a stale alias via deleteEntry() on reinstall+restore', () => {
+    expect(code).toMatch(/deleteEntry\(KEY_ALIAS\)/);
+  });
+
+  it('L3: rejects with KEK_CLEAR_STALE_FAILED when stale alias deletion fails', () => {
+    expect(code).toMatch(/KEK_CLEAR_STALE_FAILED/);
   });
 });

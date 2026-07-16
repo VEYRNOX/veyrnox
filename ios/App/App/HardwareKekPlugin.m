@@ -28,6 +28,10 @@
 #import <Security/Security.h>
 #import <LocalAuthentication/LocalAuthentication.h>
 #import <os/log.h>
+// sys/mman.h for mlock/munlock — pin key material pages in physical RAM so
+// they cannot be swapped to disk during the narrow window between SE decryption
+// and resetBytesInRange zeroing (item 11).
+#import <sys/mman.h>
 
 static NSString * const KEYCHAIN_SVC = @"com.veyrnox.app";
 static NSString * const KEY_ENC_H    = @"veyrnox_kek_enc_h_v3";   // ECIES ciphertext blob
@@ -66,7 +70,9 @@ static os_log_t VeyrnoxKekLog(void) {
 // bind this @implementation to NSObject. Here the class is a real CAPPlugin.
 
 @interface HardwareKekPlugin (PrivateMethods)
-- (void)storeKeychainItem:(NSString *)label data:(NSData *)data;
+// 2026-07-14 audit MEDIUM: storeKeychainItem returns OSStatus so enroll can
+// reject KEYCHAIN_STORE_FAILED on non-success SecItemAdd (see @implementation).
+- (OSStatus)storeKeychainItem:(NSString *)label data:(NSData *)data;
 - (NSData *)loadKeychainItem:(NSString *)label;
 - (OSStatus)deleteKeychainItem:(NSString *)label;
 - (OSStatus)deleteSecureEnclaveKey;
@@ -187,7 +193,17 @@ static os_log_t VeyrnoxKekLog(void) {
             os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: H (32B) ECIES-encrypted under SE pubkey → ciphertext %lu bytes", (unsigned long)encH.length);
 
             // 5. Persist only the ciphertext. The SE private key lives in the enclave.
-            [self storeKeychainItem:KEY_ENC_H data:encH];
+            // 2026-07-14 audit MEDIUM: verify OSStatus. If SecItemAdd fails, roll back
+            // the SE key (kSecAttrIsPermanent:@YES makes it persistent — line 137) so
+            // a retry starts clean, and reject KEYCHAIN_STORE_FAILED so JS never stamps
+            // hardwareKekVersion:3 on a partial enroll (fail-honest, I4).
+            OSStatus storeSt = [self storeKeychainItem:KEY_ENC_H data:encH];
+            if (storeSt != errSecSuccess) {
+                os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: KEYCHAIN_STORE_FAILED (OSStatus=%d) — rolling back SE key", (int)storeSt);
+                [self deleteSecureEnclaveKey];
+                [call reject:@"KEYCHAIN_STORE_FAILED" :[NSString stringWithFormat:@"Failed to persist encrypted hardware factor (OSStatus=%d). SE key rolled back.", (int)storeSt] :nil :nil];
+                return;
+            }
             os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: SUCCESS — ciphertext stored, SE privkey retained in enclave");
 
             [call resolve:@{@"keyTier": @"SecureEnclave"}];
@@ -315,10 +331,17 @@ static os_log_t VeyrnoxKekLog(void) {
             // mutable copy is zeroed via resetBytesInRange once serialised.
             NSUInteger hLen = (NSUInteger)CFDataGetLength(pt);
             NSMutableData *h = [NSMutableData dataWithBytes:CFDataGetBytePtr(pt) length:hLen];
+            // Item 11: pin H pages in physical RAM — prevents the OS from swapping
+            // key material to disk during the window between SE decryption and zeroing.
+            // Fail-open: a non-zero return (ENOMEM, EPERM) is silently ignored;
+            // the unlock still proceeds, just without the swap-to-disk guarantee.
+            mlock(h.mutableBytes, h.length);
             NSString *hB64 = [h base64EncodedStringWithOptions:0];
             // Zero H from heap after bridge-serialisation (iOS-F5 — not zeroed by ARC).
             // 1. our mutable copy:
             [h resetBytesInRange:NSMakeRange(0, h.length)];
+            // Unpin now that H is zeroed — the locked pages no longer hold key material.
+            munlock(h.mutableBytes, h.length);
             CFRelease(pt);
             // iOS-F9 SE-unlock success marker — the device-verification procedure greps
             // this exact line in the collected system log to tie an SE unlock to a send.
@@ -334,7 +357,13 @@ static os_log_t VeyrnoxKekLog(void) {
 
 #pragma mark - Keychain / SE Helpers
 
-- (void)storeKeychainItem:(NSString *)label data:(NSData *)data {
+// 2026-07-14 audit MEDIUM: return OSStatus so enroll can reject KEYCHAIN_STORE_FAILED
+// on a non-success SecItemAdd and roll back the persisted Secure Enclave key. Without
+// this, a failed ciphertext write (keychain quota / ACL conflict / dupe race with the
+// SecItemDelete above) still resolved SUCCESS to JS, which then stamped the vault as
+// KEK-wrapped — locking the user out (getHardwareFactor rejects NOT_ENROLLED forever
+// after). Fail-honest, I4.
+- (OSStatus)storeKeychainItem:(NSString *)label data:(NSData *)data {
     NSDictionary *query = @{
         (__bridge id)kSecClass:        (__bridge id)kSecClassGenericPassword,
         (__bridge id)kSecAttrService:  KEYCHAIN_SVC,
@@ -343,7 +372,7 @@ static os_log_t VeyrnoxKekLog(void) {
         (__bridge id)kSecAttrAccessible: (__bridge id)kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
     };
     SecItemDelete((__bridge CFDictionaryRef)query);
-    SecItemAdd((__bridge CFDictionaryRef)query, NULL);
+    return SecItemAdd((__bridge CFDictionaryRef)query, NULL);
 }
 
 - (NSData *)loadKeychainItem:(NSString *)label {

@@ -5,11 +5,11 @@
 // Mirrors the EVM `networks.js` discipline exactly so the safety properties are
 // identical and obvious to a reviewer:
 //
-//   - testnet (testnet3) is the default and the only network enabled for real
-//     use until the security audit clears.
-//   - signet is also testnet-class (real-funds-free) and enabled.
-//   - mainnet is present but GATED behind ALLOW_BTC_MAINNET so real BTC cannot
-//     move by accident before audit + a verified testnet send.
+//   - mainnet is the active network (ACTIVE_BTC_NETWORK_KEY), unlocked after the
+//     internal security audit + owner sign-off (2026-06-17); it still requires
+//     ALLOW_BTC_MAINNET so real BTC cannot move while that gate is false.
+//   - testnet (testnet3) and signet remain enabled testnet-class (real-funds-free)
+//     networks for verification and derivation testing.
 //
 // SECURITY RATIONALE
 //   - The indexer/Esplora endpoint is UNTRUSTED infrastructure (reads +
@@ -32,7 +32,7 @@
 import { NETWORK as BTC_MAINNET_PARAMS, TEST_NETWORK as BTC_TEST_PARAMS } from '@scure/btc-signer';
 
 export const BTC_NETWORKS = {
-  // ---- testnet3 (default) ----
+  // ---- testnet3 (verification / real-funds-free) ----
   testnet: {
     key: 'testnet',
     name: 'Bitcoin Testnet',
@@ -61,7 +61,7 @@ export const BTC_NETWORKS = {
     enabled: true,
   },
 
-  // ---- mainnet (GATED) ----
+  // ---- mainnet (ACTIVE; gated by ALLOW_BTC_MAINNET) ----
   mainnet: {
     key: 'mainnet',
     name: 'Bitcoin Mainnet',

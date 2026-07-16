@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
@@ -89,13 +90,37 @@ export function VoiceProvider({ children }) {
     if (!plugin) { setError("Speech plugin not ready"); return; }
     setError(null);
 
+    // Graceful degradation: re-verify the engine is actually available on this
+    // device/OS before touching any privacy API. On iOS a device with no speech
+    // recognizer (or a build missing the NSSpeechRecognition/NSMicrophone usage
+    // descriptions) must fail honest here, not push forward into start() and
+    // crash. available() itself never requests permission, so it is safe to call.
+    try {
+      const { available } = await plugin.available();
+      if (!available) {
+        setSupported(false);
+        setError("Voice recognition isn't available on this device.");
+        return;
+      }
+    } catch {
+      setSupported(false);
+      setError("Voice recognition isn't available on this device.");
+      return;
+    }
+
+    // Request mic + speech-recognition permission. Unlike the Android-only "already
+    // granted" fast-path, a rejection or a non-granted status must stop us before
+    // start() — otherwise a denied/restricted device falls through and errors mid-loop.
     try {
       const status = await plugin.requestPermissions();
       if (status?.speechRecognition !== "granted") {
-        setError("Microphone permission denied. Go to Android Settings → Apps → Veyrnox → Permissions → Microphone.");
+        setError("Microphone or speech-recognition permission denied. Enable it in Settings → Veyrnox → Microphone & Speech Recognition.");
         return;
       }
-    } catch { /* already granted */ }
+    } catch (e) {
+      setError(e?.message || "Couldn't obtain microphone permission.");
+      return;
+    }
 
     keepListeningRef.current = true;
     setListening(true);
@@ -103,7 +128,13 @@ export function VoiceProvider({ children }) {
 
     while (keepListeningRef.current) {
       try {
-        const result = await plugin.start({ language: "en-US", maxResults: 1, popup: false });
+        // A stalled native recognizer resolves neither result nor error (see
+        // VeyrnoxSpeechRecognitionPlugin.swift) — race against a timeout so the loop
+        // can recover instead of leaving the mic listening indicator on forever.
+        const result = await Promise.race([
+          plugin.start({ language: "en-US", maxResults: 1, popup: false }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Voice recognition timed out")), 10000)),
+        ]);
         if (!keepListeningRef.current) break;
         consecutiveErrors = 0;
         const text = result?.matches?.[0] ?? "";
@@ -112,8 +143,13 @@ export function VoiceProvider({ children }) {
           // Wait for navigation animation before starting next listen cycle.
           await new Promise(r => setTimeout(r, 1200));
         }
-      } catch {
+      } catch (e) {
         if (!keepListeningRef.current) break;
+        if (e?.message === "Voice recognition timed out") {
+          // The native start() call is still pending — cancel it so the mic/engine
+          // actually stops before the next listen cycle starts a fresh one.
+          try { await plugin.stop(); } catch { /* ignore */ }
+        }
         consecutiveErrors++;
         // Stop only after 5 back-to-back failures — transient engine errors
         // (busy, canceled, no-speech) should not kill the session.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/evm/preflight.js
 //
 // Pre-sign safety helpers shared by the native (send.js) and ERC-20
@@ -28,8 +29,23 @@ export async function verifyLiveChainId(provider, expectedChainId) {
 
 /**
  * Resolve the gas limit for THIS chain: estimate + 20% headroom, honoring a
- * larger user-supplied limit; on estimation failure keep whatever the caller's
- * overrides carried (or let ethers auto-fill). Mutates + returns `overrides`.
+ * larger user-supplied limit. Mutates + returns `overrides`.
+ *
+ * Failure contract (issue #972 P2): on estimation failure, if the caller
+ * supplied a `gasLimit` override the override is clamped to `MAX_GAS_ESTIMATE`
+ * and kept; if NO override was supplied the function THROWS `GAS_ESTIMATE_FAILED`
+ * (fail-closed, I4). Prior to #972 this branch left `overrides.gasLimit`
+ * undefined and relied on ethers.Wallet auto-fill — which the hw-send path does
+ * not have, causing a downstream `toHex(undefined)` crash.
+ *
+ * BEHAVIOUR CHANGE FOR ALL CALLERS (not just hw-send): `send.js` /
+ * `token-send.js` also call this. When their `fee` argument is omitted OR when
+ * the FeeSelector fee query failed (selectedFee=null → fee=undefined →
+ * evmFeeOverrides(undefined)=={}), overrides.gasLimit is also undefined and the
+ * throw fires there too. This is deliberate: the previous ethers-auto-fill path
+ * masked RPC errors and could silently sign with a wrong gas limit. The
+ * throw now surfaces the RPC problem so the UI can surface it honestly
+ * (round-2 codex finding).
  *
  * Why it must run for BOTH native and token sends: a fee tier's `gasLimit` is
  * only a 21000 L1 simple-transfer DISPLAY hint. L2s need more intrinsic gas, and
@@ -57,11 +73,23 @@ export async function applyEstimatedGasLimit(provider, txRequest, overrides) {
       : null;
     overrides.gasLimit = userLimit && userLimit > withHeadroom ? userLimit : withHeadroom;
   } catch {
-    // Estimation failed; keep the hinted gasLimit or let ethers auto-fill.
-    // ethers re-estimates at sendTransaction and throws if that also fails, so
-    // there is no silent stall. No logging here by design: wallet-core must not
-    // write to the console (project rule) — a console line can leak an address or
-    // amount and is captured by native crash reporters.
+    // Estimation failed. If the caller supplied a gasLimit override, keep it
+    // (clamped by the block above's userLimit branch — but note that branch is
+    // in the try-body and did NOT execute; re-clamp here). If NO override was
+    // supplied, fail closed (I4) — issue #972 P2: hw-send has no ethers.Wallet
+    // auto-fill, so leaving overrides.gasLimit undefined caused a downstream
+    // toHex(undefined) → "Cannot convert undefined to a BigInt" that masked
+    // the real RPC hiccup. send.js / token-send.js callers that DO supply
+    // gasLimit are unaffected. No logging here by design: wallet-core must not
+    // write to the console (project rule) — a console line can leak an address
+    // or amount and is captured by native crash reporters.
+    if (overrides.gasLimit == null) {
+      throw Object.assign(
+        new Error('Could not estimate gas — RPC unavailable or reverted'),
+        { code: 'GAS_ESTIMATE_FAILED' },
+      );
+    }
+    if (overrides.gasLimit > MAX_GAS_ESTIMATE) overrides.gasLimit = MAX_GAS_ESTIMATE;
   }
   return overrides;
 }

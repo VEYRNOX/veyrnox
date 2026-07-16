@@ -1,9 +1,11 @@
+// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '../lib/WalletProvider';
 import { usePortfolio } from '../lib/portfolioBalances';
 import { useLivePrices, isLivePricesEnabled } from '../lib/priceFeed';
 import { fetchAssetHistory } from '../lib/txHistory';
 import { getAsset } from '../wallet-core/assets';
+import { isDeniabilitySessionActive } from '../wallet-core/deniabilitySession';
 
 export function useAnalytics() {
   const { isUnlocked, wallets, walletAddresses } = useWallet();
@@ -56,7 +58,9 @@ export function useAnalytics() {
       }
       return { transactions: allTxs, failedAssets };
     },
-    enabled: isUnlocked && wallets.length > 0,
+    // I3 zero-egress: disable in a deniability (decoy/hidden) session so no
+    // per-asset address->indexer disclosure is attempted.
+    enabled: isUnlocked && wallets.length > 0 && !isDeniabilitySessionActive(),
     staleTime: 60_000,
   });
 

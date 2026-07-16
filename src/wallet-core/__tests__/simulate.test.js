@@ -139,6 +139,21 @@ describe('assessEvmTransaction — KNOWN risk flags', () => {
     expect(codes(a)).toContain('large_outflow');
   });
 
+  it('M-1 (issue #962): outflow fraction is correct for amounts > 2^53 wei (BigInt precision)', () => {
+    // A value slightly below the large_outflow threshold should NOT trip the flag.
+    // 2^53 wei ≈ 9007 ETH — well above any real wallet but used to prove no Number
+    // precision loss in the ratio calculation. 50% of 2^53+1 must not round to 100%.
+    const largeBalance = BigInt(2) ** BigInt(53) + BigInt(1);
+    const halfBalance = largeBalance / BigInt(2);
+    // halfBalance / largeBalance = ~50%, well below the default large_outflow threshold (90%).
+    const a = assessEvmTransaction({
+      decoded: { kind: 'native' }, txTo: FRESH,
+      valueWei: halfBalance, nativeBalanceWei: largeBalance, nativeSymbol: 'ETH',
+    });
+    expect(codes(a)).not.toContain('large_outflow');
+    expect(codes(a)).not.toContain('entire_balance');
+  });
+
   it('flags a large ERC-20 outflow relative to the token balance', () => {
     const data = iface.encodeFunctionData('transfer', [FRESH, parseUnits('1200', 6)]);
     const decoded = describeErc20Call({ data, tokenSymbol: 'USDC', decimals: 6 });

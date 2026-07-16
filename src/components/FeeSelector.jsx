@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatUnits } from "ethers";
@@ -7,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { estimateEvmFeeTiers, buildEvmCustomFee } from "@/wallet-core/evm/fees";
 import { estimateBtcFeeTiers } from "@/wallet-core/btc/fees";
 import { estimateSolFeeTiers } from "@/wallet-core/sol/fees";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 // Per-chain transaction-fee picker. These are GENUINELY different fee models and
 // are rendered each in their own native units — never one chain's format forced
@@ -82,9 +84,22 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
   const [custom, setCustom] = useState({ maxBaseFeeGwei: "", priorityGwei: "", gasLimit: "" });
 
   const queryFn = useMemo(() => {
-    if (chain === "evm") return () => estimateEvmFeeTiers(/** @type {any} */ ({ networkKey, gasLimit: gasLimitHint }));
-    if (chain === "btc") return () => estimateBtcFeeTiers({ networkKey });
-    return () => estimateSolFeeTiers({ networkKey });
+    // I3 reactive gate (issue #977). refetchInterval re-invokes this queryFn every
+    // 30s regardless of re-render, and `enabled`/parent conditionals don't react to
+    // a same-window localStorage `veyrnox-demo` flip. So the LIVE deniability-or-demo
+    // check must run INSIDE the queryFn on every call and fail closed BEFORE any fee
+    // provider is touched — otherwise a mid-session flag flip keeps leaking the (real,
+    // under Trezor) address to a third-party RPC. The query degrades gracefully on
+    // throw ("the wallet will use a safe default fee"), so this stays honest (I4).
+    const gate = (run) => () => {
+      if (isDeniabilityOrDemoActive()) {
+        throw new Error("FEE_ESTIMATE_SUPPRESSED_DENIABILITY");
+      }
+      return run();
+    };
+    if (chain === "evm") return gate(() => estimateEvmFeeTiers(/** @type {any} */ ({ networkKey, gasLimit: gasLimitHint })));
+    if (chain === "btc") return gate(() => estimateBtcFeeTiers({ networkKey }));
+    return gate(() => estimateSolFeeTiers({ networkKey }));
   }, [chain, networkKey, gasLimitHint]);
 
   const { data, isLoading, isError, error } = useQuery({

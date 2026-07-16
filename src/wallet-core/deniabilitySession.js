@@ -48,3 +48,35 @@ export function setDeniabilitySession(active) {
 export function isDeniabilitySessionActive() {
   return _deniabilityActive === true;
 }
+
+/**
+ * LIVE deniability-OR-demo check (issue #972 round-3 P1). Matches the OLD
+ * hw/trezor.js:deniabilityActive() semantics verbatim: returns true when EITHER
+ *   1. isDeniabilitySessionActive() (in-memory decoy/hidden session), OR
+ *   2. `localStorage['veyrnox-demo']` === '1' (persisted demo/tour flag).
+ * The persisted flag is read LIVE on every call, so a flag set AFTER module
+ * import is still caught (`api/demoClient.js`'s exported DEMO is a load-time
+ * IIFE snapshot and won't catch that case — this helper does). Fail-closed:
+ * either read throwing returns true.
+ *
+ * Callers (SendCrypto.jsx render conditional, mutationFn gate, hw-send.js's
+ * assertNotDeniabilitySession) MUST use this — using the imported DEMO constant
+ * alone leaves a post-import-flip window where an RPC egress path fires before
+ * the ultimate hw-send.js gate refuses.
+ * @returns {boolean}
+ */
+export function isDeniabilityOrDemoActive() {
+  try {
+    if (isDeniabilitySessionActive()) return true;
+  } catch {
+    return true;
+  }
+  try {
+    return (
+      typeof localStorage !== 'undefined' &&
+      localStorage.getItem('veyrnox-demo') === '1'
+    );
+  } catch {
+    return true;
+  }
+}

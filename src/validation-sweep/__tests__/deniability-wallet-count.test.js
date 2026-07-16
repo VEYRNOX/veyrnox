@@ -21,8 +21,8 @@
 //   * it(...)        — green guard / characterization of confirmed-correct state.
 //
 // Reachability was verified: Dashboard.jsx renders WalletPortfolioPage in the
-// local (real) build; StealthWallets/OnChainAnalytics/RiskScoring are all routed
-// in App.jsx. None of these are demo-only.
+// local (real) build; StealthWallets/OnChainAnalytics are all routed in
+// App.jsx. None of these are demo-only.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -35,7 +35,6 @@ const read = (rel) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)),
 const portfolio = read('../../pages/WalletPortfolioPage.jsx');
 const stealth = read('../../pages/StealthWallets.jsx');
 const onchain = read('../../pages/OnChainAnalytics.jsx');
-const risk = read('../../pages/RiskScoring.jsx');
 
 describe('FLAG D1 — the real-build dashboard renders a wallet-count string', () => {
   // FIXED: WalletPortfolioPage.jsx previously rendered
@@ -59,13 +58,10 @@ describe('FLAG D2 — StealthWallets surfaces a visible wallet count', () => {
 
 describe('FLAG D3 — analytics surfaces expose wallets.length as a labelled stat', () => {
   // FIXED: OnChainAnalytics.jsx swapped the "Wallets" count tile for a
-  // transaction-derived "Pending" stat; RiskScoring.jsx made "Diversification"
-  // a score-derived /100 reading instead of wallets.length + " wallets".
+  // transaction-derived "Pending" stat.
   it('IDEAL: analytics stat tiles do NOT publish wallets.length as a count', () => {
     expect(onchain).not.toContain('value: wallets.length');
-    expect(risk).not.toContain('value: wallets.length');
     expect(onchain).not.toMatch(/label:\s*"Wallets"/);
-    expect(risk).not.toContain('unit: " wallets"');
   });
 });
 

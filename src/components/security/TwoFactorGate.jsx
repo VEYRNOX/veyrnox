@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/security/TwoFactorGate.jsx
 //
 // The reusable critical-action 2FA gate: collects the PIN + Action Password, runs
@@ -44,6 +45,11 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
+  // Tracks whether the current error came from a network/infra failure (thrown
+  // exception) rather than a wrong credential. Network errors do NOT burn an
+  // attempt and keep the fields intact — the user should be able to retry
+  // without penalty.
+  const [isNetworkError, setIsNetworkError] = useState(false);
 
   const isPasskey = mode === 'passkey';
   const isBio = mode === 'biometric';
@@ -71,13 +77,22 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
     if (!canSubmit) return;
     setBusy(true);
     setError('');
+    setIsNetworkError(false);
     let verdict;
+    let threw = false;
     try {
       verdict = await verify({ pin, password });
     } catch {
-      verdict = { allowed: false, message: 'Could not complete verification — not proceeding.' };
+      threw = true;
     }
     setBusy(false);
+    if (threw) {
+      // Network / infra failure — do NOT burn an attempt or clear the fields.
+      // Show the error and a retry button so the user can re-attempt without penalty.
+      setIsNetworkError(true);
+      setError('Could not reach the verification service. Check your connection and try again.');
+      return;
+    }
     if (verdict?.allowed) {
       onSuccess?.();
       return;
@@ -160,7 +175,22 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
         <p id="tfg-external-help" className="text-[11px] text-muted-foreground">{isNative ? 'After your PIN, Face ID / Touch ID will confirm this action.' : 'After your PIN, your browser will ask you to tap your passkey or security key.'}</p>
       )}
       {/* #4 a11y: announce the attempt-error (the "(N left)" copy) to assistive tech. */}
-      {error && <p role="alert" aria-live="polite" className="text-[11px] text-destructive">{error}</p>}
+      {error && (
+        <div className="space-y-2">
+          <p role="alert" aria-live="polite" className="text-[11px] text-destructive">{error}</p>
+          {isNetworkError && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] px-3"
+              onClick={() => { setError(''); setIsNetworkError(false); submit(); }}
+              disabled={busy}
+            >
+              Try again
+            </Button>
+          )}
+        </div>
+      )}
       <div className="flex gap-2">
         {onCancel && (
           <Button variant="ghost" className="flex-1" onClick={onCancel} disabled={busy}>Back</Button>

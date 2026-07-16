@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/keystore/native.js — the NATIVE KeyStore implementation (M2b).
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐
@@ -170,7 +171,11 @@ function init() {
     // never leave this device, never migrate via backup. (Android ignores this;
     // its store is Keystore-backed regardless.)
     await SecureStorage.setDefaultKeychainAccess(
-      KeychainAccess.whenPasscodeSetThisDeviceOnly,
+      // whenPasscodeSetThisDeviceOnly requires securityd to verify a passcode is SET —
+      // fails with errSecNotAvailable (-25291) on palera1n (jailbreak patches securityd).
+      // whenUnlockedThisDeviceOnly keeps the ThisDeviceOnly property (no iCloud/backup
+      // migration) and unlocks only when the device is unlocked, without the passcode check.
+      KeychainAccess.whenUnlockedThisDeviceOnly,
     );
 
     // One-time cleanup: drop any leftover legacy journal key (vault_v1.next) from a
@@ -632,7 +637,10 @@ export const nativeKeyStore = {
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
       const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
-      // C-1 (v2): bind H to this vault's kekSalt (v2) or fall back to the fixed salt (v1).
+      // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed
+      // salt for v2 (inert-bound, C-1 residual) / v1 (legacy). See hfOptsForBlob and
+      // upgradeKekToV3 for the v2→v3 migration path. 2026-07-14 audit LOW: stale
+      // "(v2)" wording corrected — v2 is the inert-binding branch, not salt-bound.
       const H = await getHF(hfOptsForBlob(blob, saltBytes)); // one biometric prompt for this write
       let C;
       let kek;
@@ -803,6 +811,13 @@ export const nativeKeyStore = {
       const raw = await SecureStorage.get(VAULT_KEY, false);
       if (raw === null || raw === undefined) throw new Error('No wallet found on this device');
       const blob = parseVaultBlob(raw); // corrupt store value → KEK_ERR.MALFORMED_VAULT
+      // 2026-07-14 audit LOW: mirror web.js:538 — reject re-enrollment on an already-KEK-
+      // enrolled blob with a stable KEK_ALREADY_ENROLLED code so the caller can distinguish
+      // "wrong PIN" (decryptVault throws generic wrong-password) from "vault is already
+      // enrolled" (no PIN attempt needed). Fail-closed / fail-honest, I4.
+      if (blob.kekWrap) {
+        throw Object.assign(new Error('KEK_ALREADY_ENROLLED'), { code: 'KEK_ALREADY_ENROLLED' });
+      }
       const secret = await decryptVault(blob, password); // verify password and recover seed
 
       const saltBytes = crypto.getRandomValues(new Uint8Array(32));

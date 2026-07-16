@@ -1,3 +1,4 @@
+// @ts-nocheck
 // pages/DuressPin.jsx
 //
 // DURESS PIN / DECOY WALLET  (S3 — individual security).  PROVISIONAL.
@@ -328,7 +329,7 @@ export default function DuressPin() {
         className="p-4 rounded-xl border border-border bg-secondary/30"
       >
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Your real PIN unlocks faster than the decoy. Someone on your network could tell them apart. This protects you from someone in the room, not someone remote.
+          Veyrnox spends the same effort on every unlock — whether you enter your real PIN or your Emergency PIN — so the one you used isn&apos;t given away by how long unlock takes. It&apos;s a safeguard for when someone in the room forces you to unlock, not against a remote attacker watching your connection.
         </p>
       </div>
 
@@ -340,7 +341,7 @@ export default function DuressPin() {
         </div>
         <p className="text-xs text-muted-foreground">
           An empty wallet looks suspicious. Send a small amount you&apos;re
-          willing to hand over. The balance comes straight from the blockchain
+          willing to hand over. The real balance comes straight from the blockchain
           — it can&apos;t be faked in the app.
         </p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">

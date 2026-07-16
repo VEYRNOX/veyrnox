@@ -7,12 +7,18 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
     defaultConfig {
         applicationId "com.veyrnox.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // RELEASE_CERT_SHA256: SHA-256 fingerprint of the release signing certificate for
         // RASP APK tamper detection (RaspIntegrityPlugin.detectTamper).
@@ -54,6 +60,10 @@ android {
             def ksPath = System.getenv("KEYSTORE_PATH")
             signingConfig ksPath ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
+            // Remove unused resources (layouts, drawables, strings, etc.) from the
+            // release APK. Reduces attack surface and APK size. Requires minifyEnabled
+            // true (R8 drives the reachability analysis that shrinkResources depends on).
+            shrinkResources true
             // Explicitly non-debuggable in release (defense-in-depth alongside the
             // MainActivity setWebContentsDebuggingEnabled(false) guard).
             debuggable false
@@ -75,10 +85,26 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
+    // Android's android.jar stubs org.json.* out for JVM unit tests (they throw
+    // "not mocked" at runtime) — the real implementation must come from Maven for
+    // PlayIntegrityNonceVerifierTest to parse test payloads. AndroidX/Android
+    // Test framework doesn't pull org.json transitively for the JVM unit-test
+    // classpath. Version pinned to a maintained release (Android SDK bundles
+    // this same library at OS level; test-time we use the Maven artifact).
+    testImplementation 'org.json:json:20240303'
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
     implementation 'androidx.biometric:biometric:1.1.0'
+    // Play Integrity API — RASP Phase 2b remote attestation (PlayIntegrityPlugin.kt).
+    // Requests a signed integrity verdict token; the verdict is decoded on-device.
+    implementation 'com.google.android.play:integrity:1.3.0'
+    // OkHttp — required by CertPinManager.kt (G2 Android certificate pinning, PR #984).
+    // OkHttpClient + CertificatePinner build a per-host pin set and reject any TLS
+    // handshake whose leaf/intermediate SHA-256 spki hash doesn't match. Not shipped
+    // with Capacitor by default; without this, :app:compileDebugKotlin fails with
+    // "Unresolved reference 'okhttp3'" on the CertPinManager import.
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
 
 apply from: 'capacitor.build.gradle'

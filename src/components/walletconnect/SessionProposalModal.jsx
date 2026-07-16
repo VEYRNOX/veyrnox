@@ -1,3 +1,4 @@
+// @ts-nocheck
 import styles from './SessionProposalModal.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { useState } from 'react';

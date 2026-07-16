@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySelector";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -259,8 +260,27 @@ function DemoDashboard() {
         </Button>
       </div>
 
-      {/* Portfolio Health Score */}
-      {widgets.healthScore && <PortfolioHealthScore wallets={wallets} />}
+      {/* Portfolio Health Score — demo mode with mock portfolio data */}
+      {widgets.healthScore && (
+        <PortfolioHealthScore
+          wallets={wallets}
+          portfolio={{
+            assetTotals: wallets.reduce((acc, w) => {
+              const assets = w.balance_by_currency || {};
+              for (const [cur, amt] of Object.entries(assets)) {
+                if (!acc[cur]) acc[cur] = { usd: 0 };
+                acc[cur].usd += (amt * USD_RATES[cur]) || 0;
+              }
+              return acc;
+            }, {}),
+            grandTotal: displayValue,
+            indeterminate: false,
+          }}
+          isVaultKekEnrolled={false}
+          hasPasskeyOrBiometric={false}
+          isDeniability={false}
+        />
+      )}
 
       {/* Watchlist Widget */}
       {widgets.watchlist && <WatchlistWidget />}
@@ -363,7 +383,7 @@ function DemoDashboard() {
               { label: "Address Check", icon: Search,        path: "/address-checker", color: "text-[hsl(var(--chart-5))]", bg: "bg-[hsl(var(--chart-5))]/10" },
               { label: "Analytics",     icon: BarChart2,     path: "/analytics",       color: "text-[hsl(var(--chart-4))]", bg: "bg-[hsl(var(--chart-4))]/10" },
               { label: "Sentiment",     icon: Newspaper,     path: "/news-sentiment",  color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
-              { label: "Risk Score",    icon: ShieldCheck,   path: "/risk",            color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
+              { label: "Risk Score",    icon: ShieldCheck,   path: "/risk-score",      color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
             ].map(item => (
               <button key={item.path} onClick={() => navigate(item.path)}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-center">

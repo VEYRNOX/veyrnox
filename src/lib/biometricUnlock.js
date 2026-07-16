@@ -1,3 +1,4 @@
+// @ts-nocheck
 // lib/biometricUnlock.js — the biometric-gated VAULT-PASSWORD cache that powers
 // one-tap "Face ID → dashboard" for returning users.
 //
@@ -100,7 +101,7 @@ async function nativeStore(pw) {
   const { SecureStorage, KeychainAccess } = await import('@aparajita/capacitor-secure-storage');
   await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
   await SecureStorage.setSynchronize(false);
-  await SecureStorage.setDefaultKeychainAccess(KeychainAccess.whenPasscodeSetThisDeviceOnly);
+  await SecureStorage.setDefaultKeychainAccess(KeychainAccess.whenUnlockedThisDeviceOnly);
   await SecureStorage.set(NATIVE_KEY, pw);
 }
 

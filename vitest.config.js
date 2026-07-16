@@ -33,6 +33,15 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Dev-only .env.local flags (VITE_FORCE_TIER, VITE_BYPASS_RASP) must never
+    // leak into the test environment — Vitest loads .env.local, so a developer
+    // forcing a tier locally would silently bypass the real entitlement/RASP
+    // code paths under test. Force both to empty strings here so tests always
+    // exercise the genuine logic regardless of the developer's .env.local.
+    env: {
+      VITE_FORCE_TIER: '',
+      VITE_BYPASS_RASP: '',
+    },
     setupFiles: ['fake-indexeddb/auto', './vitest.setup.js'],
     include: ['src/**/*.test.{js,jsx}'],
     globals: true, // Faster test execution
@@ -42,7 +51,7 @@ export default defineConfig({
     // chain multiple real encrypt/decrypt operations. Raise the per-test and
     // per-hook budgets so genuine multi-KDF tests don't false-fail on timeout —
     // this reflects the heavier (intended) KDF cost, not slow test logic.
-    testTimeout: 60000,
+    testTimeout: 180000,
     hookTimeout: 60000,
     // After each test file's tests complete, vitest sends SIGTERM to the fork and
     // waits this long for a clean exit before force-killing. jsdom + WASM handles

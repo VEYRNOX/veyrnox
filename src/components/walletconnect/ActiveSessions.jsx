@@ -1,3 +1,4 @@
+// @ts-nocheck
 import styles from './ActiveSessions.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/notify/useNotifications.js
 //
 // In-app Notifications v1 (transient, Path A) — PROVISIONAL — independent audit

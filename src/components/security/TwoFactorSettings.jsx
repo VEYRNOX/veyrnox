@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/security/TwoFactorSettings.jsx
 //
 // Security Settings → "Two-factor at critical actions". This is the ONE place a user

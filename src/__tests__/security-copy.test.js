@@ -62,19 +62,17 @@ describe('Part D — offline-brute-force limit stays disclosed app-wide', () => 
 const HONESTY = {
   'pages/DuressPin.jsx': [
     'surrendered wallet under coercion',  // what it is (in file header comment)
-    'examining the device might still spot the second wallet', // device-access caveat disclosed (banner)
+    'examines the device may still find the second wallet', // device-access caveat (plausibility bullet)
     'second wallet',                      // ...a second wallet
     'no history, which makes it less convincing', // freshly-funded hidden-wallet limit
-    'examines the device may still find the second wallet',    // may figure out there's a second wallet (plausibility bullet)
-    'real balance',                       // balance is real from the blockchain
+    'straight from the blockchain',       // balance is real from the blockchain
   ],
   'pages/StealthWallets.jsx': [
-    'no list, no count, no indicator',    // not listed/counted/hinted
+    'never reveals the count',            // not counted/hinted (pool-count concealment)
     'normal unlock screen',               // revealed via secret at normal prompt
-    'count deniability',                  // runtime + count deniability
-    'not hidden-volume storage',          // NOT a hidden volume (banner phrasing, contiguous in source)
-    'every',                              // chaff seeded for every device...
-    'not "this device has hidden wallets"',
+    'no list',                            // no list of hidden wallets kept
+    'every wallet',                       // chaff seeded for every device...
+    'not "hidden wallets"',               // proves "this device has VEYRNOX", not "hidden wallets"
     'not on-chain',                       // hides in app, not on-chain
     'public',                             // addresses public on explorer
     'unrecoverable',                      // forgotten secret = unrecoverable

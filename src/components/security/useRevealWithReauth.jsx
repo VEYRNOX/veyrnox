@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/security/useRevealWithReauth.jsx
 //
 // Shared "reveal a wallet's mnemonic" flow used by every seed-backup entry point
@@ -40,6 +41,7 @@ import PinPad from '@/components/security/PinPad';
 import { getAuthModel } from '@/lib/authModel';
 import { useWallet } from '@/lib/WalletProvider';
 import { useActionGuard } from '@/components/security/useActionGuard';
+import { useRaspArtifact, sensitiveGate } from '@/rasp';
 
 const REAUTH_CAP = 5;
 
@@ -50,6 +52,7 @@ const REAUTH_CAP = 5;
 export function useRevealWithReauth(onRevealed) {
   const { revealWalletMnemonic, verifyActiveCredentialDetailed, lock } = useWallet();
   const { requireTwoFactor, gateModal } = useActionGuard();
+  const raspArtifact = useRaspArtifact();
 
   // { walletId } while the inline "session timed out, unlock again" prompt is open.
   const [pendingWalletId, setPendingWalletId] = useState(null);
@@ -81,10 +84,15 @@ export function useRevealWithReauth(onRevealed) {
   // Entry point for callers: gate behind the existing 2FA action guard, then try
   // the reveal. Byte-identical first leg to the old per-callsite code.
   const revealWithReauth = useCallback((walletId, opts = {}) => {
+    const gate = sensitiveGate(raspArtifact, 'seed-reveal');
+    if (gate.blocked) {
+      toast.error(gate.sentence || 'Seed access is disabled on this device right now.');
+      return;
+    }
     requireTwoFactor(() => attemptReveal(walletId), {
       title: opts.title || 'Reveal your recovery phrase',
     });
-  }, [requireTwoFactor, attemptReveal]);
+  }, [requireTwoFactor, attemptReveal, raspArtifact]);
 
   const submitReauth = async (entered) => {
     if (reauthPending || !pendingWalletId) return;

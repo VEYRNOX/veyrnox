@@ -100,18 +100,26 @@ class HardwareKekPlugin : Plugin() {
         if (Build.VERSION.SDK_INT >= 30) {
             enrollApi30(call)
         } else {
-            call.reject("KEK_REQUIRES_ANDROID_11: Hardware KEK requires Android 11+ (API 30)")
+            call.reject("Hardware KEK requires Android 11+ (API 30)", "KEK_REQUIRES_ANDROID_11")
         }
     }
 
     private fun enrollApi30(call: PluginCall) {
         try {
-            // L3: never silently re-key. Refuse to overwrite an existing enrollment;
-            // re-enroll must be explicit (clearCredential first).
+            // L3: never silently re-key. Refuse to overwrite an active enrollment (where
+            // the vault kekWrap is present — guarded in JS before this is called). Stale
+            // aliases survive app uninstall on Android; JS best-effort clearCredential()
+            // may silently fail. If the alias exists here but the JS layer called enroll()
+            // anyway (meaning the vault is bare), force-delete the stale key and proceed —
+            // mirrors the iOS SE pre-clear (L4). This closes the reinstall+restore stuck loop.
             val existing = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
             if (existing.containsAlias(KEY_ALIAS)) {
-                call.reject("KEK_ALREADY_ENROLLED: clearCredential first to re-enroll")
-                return
+                try {
+                    existing.deleteEntry(KEY_ALIAS)
+                } catch (e: Exception) {
+                    call.reject("Cannot remove stale hardware key before re-enrollment: ${e.message}", "KEK_CLEAR_STALE_FAILED")
+                    return
+                }
             }
             // H15: prefer StrongBox; fall back to TEE on devices without it.
             val enrolled = tryEnrollKey(useStrongBox = true)
@@ -273,6 +281,12 @@ class HardwareKekPlugin : Plugin() {
      */
     @PluginMethod
     fun getHardwareFactor(call: PluginCall) {
+        // RASP BLOCK-tier gate — enforced at the native layer so a JS-level presignGate
+        // bypass cannot reach the hardware H factor. Hook / tamper / screen-capture →
+        // reject immediately; H is never returned; vault unlock is impossible (I4).
+        if (RaspIntegrityPlugin.isBlockTier(context)) {
+            return call.reject("RASP_BLOCK", "Device integrity check failed — hardware key access refused (I4)")
+        }
         try {
             // C-1: resolve the MAC input. Present kekSalt → v2 per-enrollment binding;
             // absent → v1 fallback to the fixed PRF_EVAL_SALT. A supplied-but-empty

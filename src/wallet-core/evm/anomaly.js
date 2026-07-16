@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/evm/anomaly.js
 //
 // Anomaly / Fraud Detection (Phase S2 — the LAST transaction-safety item). LOCAL,

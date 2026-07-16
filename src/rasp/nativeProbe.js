@@ -95,9 +95,71 @@ export async function nativeProbeSource() {
   // mean "OS trust boundary broken" → the `rooted` signal (degrade() → WARN).
   // A hooked process → `hooked` (→ BLOCK). Missing fields are "not observed"
   // (false), exactly as classifyEnvironment() treats absent fields.
+  // Item 19: fold overlayActive (iOS UIAccessibilityIsAssistiveTouchRunning) into
+  // rooted → WARN. The plugin comment says "must NOT trigger TIER.BLOCK on its
+  // own"; WARN satisfies that constraint. AssistiveTouch is legitimate but an
+  // active accessibility overlay is a tapjacking risk during PIN entry.
+  // Item 25: fold developerMode (Android ADB_ENABLED / DEVELOPMENT_SETTINGS_ENABLED,
+  // item 24) into rooted → WARN. USB debugging on = adb-level attack surface
+  // (logcat capture, screenrecord, memory dump). Android-only field; absent on
+  // iOS verdicts and treated as false by the === true guard.
+  // Item 27: fold virtualApp (Android checkVirtualApp, item 26) into rooted → WARN.
+  // Running inside a VirtualApp/Parallel Space/Island container lets the host
+  // intercept binder calls, fake root/tamper signals, and proxy biometrics.
+  // Android-only field; absent on iOS verdicts and treated as false by === true.
+  // Item 29: fold suspiciousPackage (Android checkSuspiciousPackages, item 28)
+  // into rooted → WARN. PackageManager detects Magisk Manager, LSPosed, SuperSU
+  // etc. even when Magisk Hide masks file-system paths. Android-only field.
+  // Item 31: fold thirdPartyKeyboard (Android checkThirdPartyKeyboard, item 30)
+  // into rooted → WARN. A non-system IME (FLAG_SYSTEM == 0) could keylog PIN
+  // input during KEK enrollment. Android-only field.
+  // Item 33: fold mockLocation (Android checkMockLocation, item 32) into
+  // rooted → WARN. Active mock-location provider = device-integrity signal
+  // (requires developer options or explicit app-op grant). Android-only field.
+  // Item 35: fold networkProxy (Android checkNetworkProxy, item 34) into
+  // rooted → WARN. An active system proxy (Burp/Charles/mitmproxy) intercepts
+  // HTTPS traffic — a potential MitM vector. Android-only field.
+  // Item 37: fold accessibilityService (Android checkAccessibilityService,
+  // item 36) into rooted → WARN. A user-installed accessibility service has
+  // full UI-tree access and can inject events — keylogging/tapjacking risk
+  // during PIN entry. Android-only field.
+
+  // P2-6b fail-closed shape validation (from main): a bridge returning `{}` or a
+  // one-field partial previously coerced every absent axis to false → CLEAN, a
+  // fabricated pass (fail-open). Refuse partial/malformed shapes and fail closed
+  // (I4). Rooted-axis is a UNION — Android emits `rooted`, iOS emits `jailbroken`
+  // — so require at least ONE of the two as a boolean, plus the other three core
+  // fields as booleans. The item-19–37 verdict fields above are OPTIONAL
+  // Android-only extensions and are deliberately NOT required here (absent → false
+  // via the `=== true` guards), so a valid core verdict without them still passes.
+  const rootedIsBool = typeof verdict.rooted === 'boolean';
+  const jailbrokenIsBool = typeof verdict.jailbroken === 'boolean';
+  if (
+    !(rootedIsBool || jailbrokenIsBool) ||
+    typeof verdict.hookedProcess !== 'boolean' ||
+    typeof verdict.emulator !== 'boolean' ||
+    typeof verdict.tampered !== 'boolean'
+  ) {
+    return UNAVAILABLE;
+  }
+
   const signals = {
-    rooted: verdict.rooted === true || verdict.jailbroken === true,
-    hooked: verdict.hookedProcess === true,
+    rooted: verdict.rooted === true || verdict.jailbroken === true
+         || verdict.overlayActive === true
+         || verdict.developerMode === true
+         || verdict.virtualApp === true
+         || verdict.suspiciousPackage === true
+         || verdict.thirdPartyKeyboard === true
+         || verdict.mockLocation === true
+         || verdict.networkProxy === true
+         || verdict.accessibilityService === true,
+    // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
+    // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
+    // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring
+    // or screen recording during signing is a surveillance vector → BLOCK.
+    hooked: verdict.hookedProcess === true
+         || verdict.debuggerAttached === true
+         || verdict.screenCapture === true,
     emulator: verdict.emulator === true,
     // Binary-tamper is a separate native probe not yet wired (see TODO). Until the
     // plugin reports it, it is not observed.

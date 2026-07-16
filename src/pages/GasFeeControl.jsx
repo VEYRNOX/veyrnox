@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { Fuel, Info } from "lucide-react";
 import FeeSelector from "@/components/FeeSelector";

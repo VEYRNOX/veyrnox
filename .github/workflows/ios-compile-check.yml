@@ -109,6 +109,36 @@ jobs:
           fi
           echo "✓ iOS-F5 PASSED — HardwareKekPlugin.o compiled at: $OBJ"
 
+      - name: Assert G5 — RaspIntegrityPlugin compiled successfully
+        run: |
+          # Confirm the RASP probe ObjC file compiled. Parallel evidence to F5's
+          # HardwareKekPlugin.o check — proves ios/App/App/RaspIntegrityPlugin.m
+          # and RaspIntegrityPluginBridge.m built clean.
+          OBJ=$(find /tmp -name "RaspIntegrityPlugin.o" 2>/dev/null | head -1)
+          if [ -z "$OBJ" ]; then
+            OBJ=$(find ~/Library/Developer/Xcode/DerivedData -name "RaspIntegrityPlugin.o" 2>/dev/null | head -1)
+          fi
+          if [ -z "$OBJ" ]; then
+            echo "::error::G5 FAILED — RaspIntegrityPlugin.o not found; RASP probe plugin did not compile"
+            exit 1
+          fi
+          echo "✓ G5 PASSED — RaspIntegrityPlugin.o compiled at: $OBJ"
+
+      - name: Assert G2 — AppAttestPlugin compiled successfully
+        run: |
+          # Confirm the App Attest remote-attestation ObjC file compiled. Parallel
+          # evidence to G5's RaspIntegrityPlugin.o check — proves
+          # ios/App/App/AppAttestPlugin.m and AppAttestPluginBridge.m built clean.
+          OBJ=$(find /tmp -name "AppAttestPlugin.o" 2>/dev/null | head -1)
+          if [ -z "$OBJ" ]; then
+            OBJ=$(find ~/Library/Developer/Xcode/DerivedData -name "AppAttestPlugin.o" 2>/dev/null | head -1)
+          fi
+          if [ -z "$OBJ" ]; then
+            echo "::error::G2 FAILED — AppAttestPlugin.o not found; App Attest plugin did not compile"
+            exit 1
+          fi
+          echo "✓ G2 PASSED — AppAttestPlugin.o compiled at: $OBJ"
+
       - name: Assert build succeeded (no errors)
         run: |
           # The authoritative xcodebuild result is the "** BUILD SUCCEEDED **" or
@@ -127,7 +157,7 @@ jobs:
 
       - name: Upload build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: xcode-build-log
           path: /tmp/xcode-build.log

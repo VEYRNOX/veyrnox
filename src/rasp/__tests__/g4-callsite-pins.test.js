@@ -1,0 +1,101 @@
+// G4 — structural pins: sensitiveGate wired at seed-reveal / export / import entry.
+//
+// RASP BLOCK tiers (HOOKED, TAMPERED, INTEGRITY_FAIL, fail-closed) populate
+// `blockedActions` with ['sign', 'seed-reveal', 'export', 'import']. The
+// `sensitiveGate` helper consumes that set. These tests pin that the three
+// callsite files actually import and call `sensitiveGate` at the correct entry
+// points — so the gate can't be silently removed by a future refactor.
+//
+// Structural pins only: the pure-function correctness is in sensitiveGate.test.js.
+
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const dir = dirname(fileURLToPath(import.meta.url));
+const src = join(dir, '../..');  // src/rasp/__tests__ → src/
+
+const reveal  = readFileSync(join(src, 'components/security/useRevealWithReauth.jsx'), 'utf8');
+const backup  = readFileSync(join(src, 'pages/PersonalBackup.jsx'), 'utf8');
+const entry   = readFileSync(join(src, 'components/WalletEntry.jsx'), 'utf8');
+
+// ── useRevealWithReauth — seed-reveal gate ───────────────────────────────────
+
+describe('useRevealWithReauth — G4 seed-reveal gate', () => {
+  it('imports sensitiveGate and useRaspArtifact from @/rasp', () => {
+    expect(reveal).toMatch(/sensitiveGate/);
+    expect(reveal).toMatch(/useRaspArtifact/);
+  });
+
+  it('calls useRaspArtifact() to sample the environment', () => {
+    expect(reveal).toMatch(/useRaspArtifact\(\)/);
+  });
+
+  it("calls sensitiveGate with 'seed-reveal' action", () => {
+    expect(reveal).toMatch(/sensitiveGate\s*\(.*'seed-reveal'\s*\)/);
+  });
+
+  it('returns early when gate.blocked is true (no reveal on BLOCK tier)', () => {
+    const gateIdx = reveal.indexOf("sensitiveGate(");
+    const gateRegion = reveal.slice(gateIdx, gateIdx + 300);
+    expect(gateRegion).toMatch(/gate\.blocked/);
+    expect(gateRegion).toMatch(/return/);
+  });
+});
+
+// ── PersonalBackup — export gate ─────────────────────────────────────────────
+
+describe('PersonalBackup ExportTab — G4 export gate', () => {
+  it('imports sensitiveGate and useRaspArtifact', () => {
+    expect(backup).toMatch(/sensitiveGate/);
+    expect(backup).toMatch(/useRaspArtifact/);
+  });
+
+  it("calls sensitiveGate with 'export' before createBackup", () => {
+    const exportIdx = backup.indexOf("sensitiveGate(raspArtifact, 'export')");
+    expect(exportIdx).toBeGreaterThan(-1);
+    const createBackupIdx = backup.indexOf('createBackup(password, pin)');
+    expect(exportIdx).toBeLessThan(createBackupIdx);
+  });
+});
+
+// ── PersonalBackup — import gate ─────────────────────────────────────────────
+
+describe('PersonalBackup RestoreTab — G4 import gate', () => {
+  it("calls sensitiveGate with 'import' before restoreWithPassword", () => {
+    const importGateIdx = backup.indexOf("sensitiveGate(raspArtifact, 'import')");
+    expect(importGateIdx).toBeGreaterThan(-1);
+    const restoreIdx = backup.indexOf('restoreWithPassword(');
+    expect(importGateIdx).toBeLessThan(restoreIdx);
+  });
+});
+
+// ── WalletEntry — import gate (handleImport + finishPinRecover) ──────────────
+
+describe('WalletEntry — G4 import gate on seed import paths', () => {
+  it('imports sensitiveGate and useRaspArtifact', () => {
+    expect(entry).toMatch(/sensitiveGate/);
+    expect(entry).toMatch(/useRaspArtifact/);
+  });
+
+  it("calls sensitiveGate with 'import' in handleImport before importWallet", () => {
+    const handleImportIdx = entry.indexOf('const handleImport');
+    expect(handleImportIdx).toBeGreaterThan(-1);
+    const handleImportRegion = entry.slice(handleImportIdx, handleImportIdx + 500);
+    expect(handleImportRegion).toMatch(/sensitiveGate/);
+    const gateIdx = handleImportIdx + handleImportRegion.indexOf('sensitiveGate');
+    const importWalletIdx = entry.indexOf('importWallet(importPhrase');
+    expect(gateIdx).toBeLessThan(importWalletIdx);
+  });
+
+  it("calls sensitiveGate with 'import' in finishPinRecover before importWalletForPendingPin", () => {
+    const recoverIdx = entry.indexOf('const finishPinRecover');
+    expect(recoverIdx).toBeGreaterThan(-1);
+    const recoverRegion = entry.slice(recoverIdx, recoverIdx + 400);
+    expect(recoverRegion).toMatch(/sensitiveGate/);
+    const gateIdx = recoverIdx + recoverRegion.indexOf('sensitiveGate');
+    const importForPinIdx = entry.indexOf('importWalletForPendingPin(recoverySeed)');
+    expect(gateIdx).toBeLessThan(importForPinIdx);
+  });
+});

@@ -21,7 +21,7 @@ identity; the app never holds keys server-side.
   A 2026-07-01 internal static-analysis audit (Hardware KEK — WebAuthn PRF, iOS SE,
   Android StrongBox) found 1C/9H/12M/6L; 10 remediable findings fixed (PRs #520–#522).
   The 1 CRITICAL — C-1, Android HMAC fixed input — went through a RESOLVED (2026-07-02,
-  PR #529, Sepolia txid `0xeb71a5d…` block 11185289; proved the unlock FLOW only) →
+  PR #529, Sepolia txid `0xeb71a5d…` block 11187337; proved the unlock FLOW only) →
   REGRESSED (2026-07-05: per-enrollment salt binding cryptographically inert on-device —
   a facade arg-drop + Capacitor-bridge `JSON.stringify` silently reverted enroll+unlock to
   the fixed v1 salt) → FIXED / device-verified (2026-07-05, v3, PR #568, Sepolia txid
@@ -78,7 +78,7 @@ identity; the app never holds keys server-side.
   plus hardening of 2 existing specs (send-scenarios, hidden-wallet) — 96 tests across 13
   suites total. BUILT test-coverage work, NOT a new device-verification or "verified"
   claim: no new on-chain txid. Honest gaps disclosed in #638 itself: WalletConnect
-  live-pairing still needs a real dApp/scripted peer; KDF perf measured on one flagship
+  live-pairing: supervised E2E spec added (PR #919, 2026-07-13, `e2e/walletconnect-live-pairing.spec.js`, 4 tests H7/H8/M11, gated `RUN_SUPERVISED_E2E=1`; 4 vacuous Appium stubs replaced with source-structure pins); **live relay gap CLOSED (PR #931, 2026-07-13)** — all 4 tests now pass against real `relay.walletconnect.com` (H8 happy path, H8 mismatch pre-modal, M11 disconnect, H7 chain-mismatch pre-modal; 27s, BUILT/INTERNAL, no on-chain txid); KDF perf measured on one flagship
   device only; the LOG-1 spec is a regression canary for the already-shipped redaction fix,
   not a new fix; the passkey clone-signCount proof stays web-only, the Android test only
   proves native doesn't fabricate a value. PR #638 also added a password-entry mode (≥12
@@ -163,7 +163,7 @@ identity; the app never holds keys server-side.
   4/4 C-1 contract tests + 172/172 keystore tests pass. Recorded 2026-07-02 as
   DEVICE-VERIFIED on Pixel 10 Pro XL (Android 16/API 36): v2 re-enroll → cold restart →
   StrongBox-gated unlock → KEK-gated Sepolia send, txid
-  `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11185289,
+  `0xeb71a5d31a8794682cf681d8ebb2916967c1097e951519dcf1b53327d2d8e580`, block 11187337,
   vault read confirmed `hardwareKekVersion:2`, `kekSaltLength:44`.
   **REGRESSED 2026-07-05:** an OODA investigation found this fix is cryptographically
   inert on device. Bug A (runtime-confirmed via logcat on the same Pixel 10 Pro XL:
@@ -284,9 +284,10 @@ no on-chain txid involved.**
   non-null decoy entry; (2) after removing the duress PIN in-app (Settings → Duress →
   Remove duress PIN) and one real-PIN unlock, `veyrnox_bio_unlock_secret` reappeared in
   SecureStorage and the same CDP query confirmed the decoy entry was now `undefined` — a
-  genuine before/after device trace. Outstanding: the vault-desync screen half of PR #613
-  was NOT exercised this session and remains device-unverified. No on-chain txid involved
-  (not applicable to a UX/security-logic check). INTERNAL verification, not independent.
+  genuine before/after device trace. The vault-desync screen I4 gap was CLOSED by PR #920
+  (2026-07-13): `doDesyncWipe()` now calls `setLocalWiped(true)` after `clearVault()` —
+  users are no longer silently dropped onto onboarding; `e2e/vault-desync-screen.spec.js`
+  4/4. BUILT / unit-tested + e2e. NOT device-verified on real native hardware, INTERNAL.
 - **PR #614 (c2012713)** — hides `CryptoNewsFeed`/Calculator refetch() header buttons
   in decoy/hidden sessions (react-query v5 `refetch()` bypasses `enabled`; was a live I3
   egress vector).
@@ -322,13 +323,18 @@ single PIN cohort end-to-end (create, confirm, unlock, recover) — there is no 
 web "password" cohort left to diverge from unlock again, consistent with web being a
 testing-only surface, never production (native is the real product). Regression coverage:
 `src/components/__tests__/WalletEntry.web-authmodel.test.jsx`, rewritten
-`e2e/onboarding.spec.js`. **Known residual (not fixed this pass, flagged for the owner):**
-a legacy `authModel==='password'` code path still exists (the "Forgot password? Restore
-from seed phrase" recovery link, reachable only from a pre-existing password-cohort
-vault) and its unlock fallback still renders a numeric-only `PinPad` with no
-`numericOnly={false}` override — the same bug class would resurface if that path were
-ever exercised. Very likely dead/vestigial code today (no live path creates a new
-password-cohort vault post-#651), but not verified unreachable.
+`e2e/onboarding.spec.js`. **Known residual (verified 2026-07-13):**
+a legacy `authModel==='password'` code path still exists for pre-PR-#651 users (the
+"Forgot password? Restore from seed phrase" recovery link at `WalletEntry.jsx:1204`,
+reachable only from a pre-existing password-cohort vault). The unlock surface is correct
+— `WalletEntry.jsx:1156` renders a free-text `<input type="password">` for
+`authModel === "password"`, not a numeric PinPad (that fix landed in PR #645 and is
+present in current code). Fresh-install users cannot reach this path: no `setView("generate")`
+call exists anywhere, and all new-user flows write `setAuthModel('pin')`. The path is
+live for legacy users and works correctly; it is unreachable for any new user post-#651.
+One design gap: legacy users who recover via this path skip `provisionDeniabilityChaff()`
+— duress/stealth/panic are not provisioned in onboarding (by design, noted in
+`WalletEntry.jsx:31–38`; advanced security is set up in-app later).
 
 **PR #644 (commit `dc63c8ec9`)** — app icon restored to the hexagon + teal V brand logo
 (cosmetic), plus four new automated Playwright e2e specs under `e2e/`, each closing an
@@ -378,7 +384,7 @@ After PR #651 unified web onto the 8-digit PIN cohort, `HardwareKekSettings.jsx`
 - **iOS-F5** (`NSMutableData` zeroing): `HardwareKekPlugin.o` built clean — compile-verified.
 Both were code-complete since PR #526 but had never been compiled on a Mac. CI now runs on every push to `ios/**`. Runtime device checks (biometric prompt rendering, heap dump) remain device-gated per `docs/runbook-ios-kek-session.md` P2/P3.
 
-**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. ~~RASP F-09~~ ✅ DEVICE-VERIFIED (FULL, INTERNAL) 2026-07-12 — Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7; `checkIntegrity()` full verdict captured (all signals false, Magisk Hide operating at probe level — expected); pre-sign TIER.ALLOW → CAUTION → send; Ethereum mainnet txid `0x4556e2e68087d0b75b35504247ed09f011d42614f11b31c5d1423694799da515`, block 25,511,567 (0x1854a8f), SUCCESS. PRs #832 + #834 fixes (CAUTION flow + riskReady gate) also landed this session. See Feature-Status.md F-09 row. Independent security audit.
+**Remaining hardware-gated items (updated 2026-07-07):** ~~iOS-F9~~ CLOSED (2026-07-07, prospective, time-correlated with txid). ~~iOS-F5~~ device-verified (2026-07-07, source+build, not heap dump). ~~iOS-F3~~ device-verified (2026-07-07). Still open: ~~H-2/iOS-F11 iOS biometric re-enrollment~~ ✅ CLOSED 2026-07-08 on iPhone 8 Plus (iOS 16.7.16, Touch ID): re-enrolled fingerprint → SE key invalidated → "Incorrect PIN" (fail-closed, I4) → no unlock, no silent fallback. **iOS headline: device-verified FULL** (P1 + P4 both passed). Android C-1 residual ~~T1~~ ✅ CLOSED (PR #719 real-crypto integration test); ~~T2~~ salt-tamper ✅ CLOSED 2026-07-07, ~~T3~~ salt distinctness ✅ CLOSED 2026-07-07, LOG-1 redaction device-verified 2026-07-07 debug + ~~release~~ CLOSED 2026-07-07. ~~RASP F-09~~ ✅ DEVICE-VERIFIED (FULL, INTERNAL) 2026-07-12 — Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7; `checkIntegrity()` full verdict captured (all signals false, Magisk Hide operating at probe level — expected); pre-sign TIER.ALLOW → CAUTION → send; Ethereum mainnet txid `0x4556e2e68087d0b75b35504247ed09f011d42614f11b31c5d1423694799da515`, block 25,511,567 (0x1854a8f), SUCCESS. PRs #832 + #834 fixes (CAUTION flow + riskReady gate) also landed this session. See Feature-Status.md F-09 row. ~~iOS RASP F-09 palera1n (2026-07-13 BUILT-UNVALIDATED)~~ ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14) on iPhone 8 Plus (iPhone10,5, iOS 16.7.16, palera1n rootful): Security Dashboard RED; RASP Security page RED "hooked" — `checkDynamicLibraries()` caught a Substrate/ElleKit dylib injected by the palera1n bootstrap; maps to TIER.BLOCK (more severe than ROOTED/TIER.WARN; signing refused). PR #953 (RaspSecurity.jsx now calls `nativeProbeSource()` on native, was previously hardwired to `browserProbeSource` → always "clean") was also required to surface the verdict. Honest gap: individual check contributions (checkJailbreakPathsCstat, checkFork) unconfirmed — syslog unavailable this session; evidence is UI state only. ~~G3 Frida Gadget hostile-device injection~~ ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14) on Android SM-N981B (Frida 17.15.4, real GLib runtime threads) AND iPhone 8 Plus (iOS 16.7.16, palera1n rootful, stub FridaGadget.dylib) — see §2026-07-13/14 G3 Frida Gadget below. Independent security audit still outstanding.
 
 ## 2026-07-07/08 INTERNAL KEK stack audit — PRs #723, #735, #743
 
@@ -445,7 +451,7 @@ wallet-core); EVM/BTC/SOL/Cosmos derivation paths correct, all spec vectors pass
 SLIP-0010 hardened-only enforced for ed25519; I1 signing isolation (no network call inside
 any signing function); I3 deniability stack (all egress points gated — prices, news, RPC,
 SDK; M-6 closed the last gap); decoy/real seed separation; wallet-count tells removed
-(D1/D2/D3); panic wipe completeness (with M-7 fixed); stealth pool chaff (256-slot,
+(D1/D2/D3); panic wipe completeness (with M-7 fixed; residue GAP-1/2/3/4 CLOSED PR #918, 2026-07-13 — `veyrnox-passkey-signcount`, `veyrnox-decoy-biometric`, `RESIDUE_KEY_PREFIXES` wildcard sweep, 9 metadata tells; 23/23 tests, INTERNAL); stealth pool chaff (256-slot,
 all users, FIXED_LEN uniform); WalletConnect controls (C3 RASP gate, H7 EIP-712 chain
 binding, M9 gas cap, M11 session expiry, H-NEW-B step-up re-auth) all PASS; RASP BLOCK
 tier unconditional (browser probe); AES-256-GCM IV fresh per encryption, no nonce reuse,
@@ -463,9 +469,11 @@ auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
   vector; full AAD binding is in the independent audit scope; issue #752)
 - M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
   owner decision on disclosure wording; issue #754; docs disclosure BUILT #753)
-- M-10 (Cosmos non-hardened index level — correct BIP-44 but xpub-risk; documentation gap)
-- L-1, L-2, L-3, L-5 (low-priority; see `docs/Feature-Status.md` §"2026-07-08 INTERNAL
-  S1–S4 + crypto audit")
+- ~~M-10~~ BUILT (2026-07-12): Cosmos non-hardened index level — correct BIP-44, matches Keplr/Cosmostation; xpub-risk disclosure added as source comment in `cosmos/derivation.js:40–46`; Veyrnox does not export the account xpub so risk is theoretical; flagged for any future xpub-export feature
+- L-1 (open, low-priority): EVM has no address-only derivation variant — `deriveEvmAccount` runs full key derivation even for receive-address display; performance concern only, no security impact
+- ~~L-2~~ BUILT (`WalletProvider.jsx:1133–1148`): `setActionPassword` decoy/hidden re-auth guard added; wrong credential throws and mutates nothing (fail-closed, I4)
+- ~~L-3~~ BUILT (`src/lib/useSend2faMethod.js`): reactive hook re-reads on `storage` / `SEND_2FA_CHANGED_EVENT` / `PASSKEY_REGISTRATION_EVENT` — mid-session 2FA pref changes propagate live to mounted Send screen
+- ~~L-5~~ BUILT (2026-07-12): iCloud IndexedDB sync disclosure added to `evm/vaultStore.js`; vault is AES-256-GCM ciphertext so possession alone does not break the cipher
 
 INTERNAL pass — not independent. The independent third-party audit (S1–S4 + crypto,
 including the vault cipher path) remains outstanding. See `docs/Feature-Status.md`
@@ -569,6 +577,334 @@ Unit-tested (`src/rasp/__tests__/selectPresignProbeSource.test.js`;
 - `rooted:false` on a Magisk device is correct at the probe level (Magisk Hide). A Frida-hooked device test was NOT performed. iOS device test NOT performed (Mac required).
 - The `tampered` check relies on `RELEASE_CERT_SHA256` being set in the production Gradle build — if unset, production builds will fail `tampered` on every launch. This is a production-configuration dependency, not a code flaw.
 - INTERNAL evidence only — not independently audited. Independent security audit remains outstanding.
+- **2026-07-13 Android RASP improvements (PR #949) — DEVICE-VERIFIED (INTERNAL, 2026-07-14):** Three new Magisk-Hide-bypass detection vectors added to `RaspIntegrityPlugin.kt` — `checkProcNetUnix()` (scans `/proc/net/unix` for Magisk/KSU IPC socket names; kernel-level, not masked by mount-namespace Hide, analogous to iOS `checkJailbreakPathsCstat`), `checkSuFromRuntime()` (`which su` via `Runtime.getRuntime().exec()`; behavioral test, analogous to iOS `checkFork`), and `checkDangerousProps()` (`ro.boot.verifiedbootstate`/`ro.boot.flash.locked` via `android.os.SystemProperties` reflection — original `Runtime.exec("getprop ...")` was SELinux-denied for `untrusted_app` on Android 10+ and returned empty; replaced with in-process reflection in commit `f46abecba`). Extended path lists cover KernelSU (`/data/adb/ksud`, `/proc/ksud`), Apatch (`/data/adb/apatch`), LSPosed (`/data/adb/lspd`), and newer Magisk artifacts (`/data/adb/magisk_db`, `/dev/.magisk.unblock`, `/data/adb/modules`). `checkXposed` extended with LSPosed Manager (`org.lsposed.manager`) and KernelFlasher (`me.weishu.kernelflasher`). `checkProcMapsForHook` extended with `zygisk` and `lspd` markers. **Device-verified 2026-07-14 at 00:20:12 on SM-N981B (Samsung Galaxy Note 20 5G, Magisk v30.7, Android debug build):** verdict `{"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}` — `rooted:true` fired via `checkDangerousProps` (`ro.boot.verifiedbootstate=orange`, unlocked bootloader); `tampered:true` expected (debug build, `RELEASE_CERT_SHA256` not set, fail-closed I4). `checkProcNetUnix` did NOT fire (Magisk v30.7 uses different socket names than the markers). `checkSuFromRuntime` did NOT fire (Magisk Hide covers `su` in PATH for this app). INTERNAL — not independently audited.
+
+## 2026-07-13 iOS RASP — palera1n false negative + detection updates
+
+**F-09 iOS: NOT device-verified. FALSE NEGATIVE found 2026-07-13.** Device: iPhone 8 Plus (A11, iOS 16.7.16, palera1n rootful jailbreak). `RaspIntegrityPlugin.checkIntegrity()` returned `{"rooted":false,"hookedProcess":false,"emulator":false,"tampered":false}` — palera1n was NOT detected. The Android F-09 verification (2026-07-12, Samsung Galaxy Note 20 5G) stands independently; iOS is a separate, still-open gap.
+
+**Root cause — three structural misses in the original iOS checks:**
+1. **Path checks** — palera1n does not install Cydia/Sileo by default; the app sandbox (enforced at kernel level even on palera1n rootful) prevents `NSFileManager fileExistsAtPath:` from seeing jailbreak artifacts like `/bin/bash`.
+2. **Sandbox escape** — kernel-enforced even on palera1n rootful; write to `/private` still denied.
+3. **Dyld image scan** — palera1n does not inject Substrate/Frida into the Veyrnox process.
+
+**Detection updates applied to `RaspIntegrityPlugin.m` (same session):**
+- Extended path list with palera1n-specific paths: `/var/jb/`, `/private/preboot/.installed_palera1n`, `/Library/dpkg`, `/usr/sbin/sshd`, `/var/lib/dpkg`.
+- `checkJailbreakPathsCstat` — uses C `stat()` syscall directly; bypasses `NSFileManager`'s sandbox filter and can see `/bin/bash` etc. on palera1n rootful.
+- `checkFork` — `fork()` succeeds on palera1n (Apple sandbox blocks it on non-jailbroken devices); most reliable check for palera1n rootful.
+- `detectJailbreak` updated to call all four methods (original two + two new).
+
+**Status (2026-07-13): BUILT-UNVALIDATED.** Code compiled. NOT yet re-tested on a palera1n device — a new build, deploy, and re-run was required.
+
+**Status update 2026-07-14: DEVICE-VERIFIED (INTERNAL).** PRs #947 + #953 rebuilt and deployed to iPhone 8 Plus (iPhone10,5, iOS 16.7.16, palera1n rootful jailbreak). Result: Security Dashboard shows RED high-risk alert; RASP Security page shows RED "hooked" condition — palera1n IS now detected. Firing condition: `hooked` (maps to TIER.BLOCK — signing refused), NOT merely `rooted` (TIER.WARN) — `checkDynamicLibraries()` caught a Substrate/ElleKit dylib injected by the palera1n bootstrap into the Veyrnox process. Note: the original root-cause item 3 above ("palera1n does not inject Substrate/Frida into the Veyrnox process") was incorrect for the rootful bootstrap with ElleKit — the dyld image scan DID catch the injected library. **PR #953 was additionally required** to surface the verdict in the UI: `RaspSecurity.jsx` previously always used `browserProbeSource` (always "clean" in a native WebView) rather than `nativeProbeSource()` on native platforms — the native plugin fired correctly but the RASP Security page was reading the wrong probe source. **Honest gaps:** (1) which specific detection vector(s) among `checkJailbreakPathsCstat`, `checkFork`, and the extended path list contributed alongside `checkDynamicLibraries` is confirmed via UI state only — syslog was unavailable this session, so individual check outputs are unlogged; (2) ~~G3 Frida Gadget hostile-device injection~~ ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14) on Android SM-N981B AND iPhone 8 Plus (iOS 16.7.16, palera1n rootful) — see §2026-07-13/14 G3 Frida Gadget; (3) INTERNAL — not independently audited.
+
+**Side findings from this session (both BUILT / INTERNAL, no production code change):**
+
+- **Keychain `whenPasscodeSetThisDeviceOnly` fails on palera1n (`errSecNotAvailable` -25291): ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14)** on iPhone 8 Plus (iPhone10,5, iOS 16.7.16, palera1n rootful). Bridge log from this session captured `SecureStorage internalSetItem` → `{"errorMessage":"An OS error occurred (-25291)","message":"An OS error occurred (-25291)","code":"osError"}` firing on the very first Keychain write during startup, before wallet creation completes. `BiometricAuthNative checkBiometry` simultaneously returned `{"deviceIsSecure":false,...}` — confirming `securityd` is patched and does not report the device as secure. Net: on palera1n, wallet creation itself is blocked at the Keychain layer (OS error -25291); Hardware KEK enrollment is unreachable because the vault cannot even be persisted. This is independent from and additive to the RASP TIER.BLOCK layer. **Contrast with Android (Magisk):** StrongBox operates below the OS layer and is unaffected by Magisk — Hardware KEK works on a rooted Android device (RASP detects `rooted:true` and gates sends at TIER.WARN/CAUTION, but the hardware key material is still accessible and cryptographically bound). **iOS: jailbroken = no hardware protection** (two independent mechanisms: RASP TIER.BLOCK + Keychain OS-level failure). **Android: jailbroken = hardware protection intact** (StrongBox below OS; RASP gates sends but key material survives). Fixed in the prior test build by changing ACL to `whenUnlockedThisDeviceOnly` — **test-build-only workaround** — production builds must retain `whenPasscodeSetThisDeviceOnly` (stronger ACL; failure only manifests on jailbroken devices where `securityd` is patched). Not production-patched; documented here for honesty. INTERNAL — not independently audited.
+
+- **Argon2id 192 MiB OOM on A11 hardware (iPhone 8 Plus):** 3× 192 MiB Argon2id runs out of memory or times out in WKWebView on an A11 device with 3 GB RAM. The 192 MiB KDF cost was originally measured only on a Pixel 10 Pro XL (flagship Android, 12 GB RAM); iOS and older hardware are unmeasured. Workaround for the test session: KDF reduced to 1 MiB locally. **Open device compatibility gap** — 192 MiB is too aggressive for A11-class (and likely other older) devices. The test-build KDF reduction was reverted by linter and is NOT in production code. No code change proposed; flagged for owner decision on older-device support policy. INTERNAL, not independently audited.
+
+## 2026-07-13/14 G3 Frida Gadget detection + Android Magisk Hide bypass — PRs #948, #949
+
+**G3 — Frida Gadget detection (PR #948, 2026-07-13). ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14).**
+
+Frida Gadget embeds as a renamed shared library rather than running a server — port 27042 and a simple `"frida"` `/proc/self/maps` scan miss it. Three new signals added to `detectHook()` in `RaspIntegrityPlugin.kt`:
+
+1. **`checkGadgetThreads()`** — scans `/proc/self/task/*/comm` for `gum-js-loop`, `gmain`, `gdbus`, `pool-frida`. Frida's GLib runtime spawns these thread names regardless of the `.so` filename.
+2. **`checkFridaPipes()`** — scans `/proc/self/fd/*` symlinks; Frida creates named pipes/sockets whose resolved paths contain `"frida"`.
+3. **Expanded `checkProcMapsForHook()` markers** — adds `frida-agent`, `frida-gadget`, `linjector` alongside existing markers.
+
+Each check is independently exception-guarded (fail-open on `SecurityException`/permission denial). 13 new structural pin tests (`src/rasp/__tests__/g3-frida-gadget.test.js`); 29/29 total G3 tests. **Device-verified 2026-07-14 on SM-N981B (Samsung Galaxy Note 20 5G, Magisk v30.7, Android debug build, Frida 17.15.4):** Frida Gadget 17.15.4 (`libfrida-gadget.so`) loaded into the Veyrnox process via `System.loadLibrary` in a verification-only debug build; gadget configured in listen mode (port 27042); Frida client connected via `adb forward tcp:27042` — full GLib runtime threads spawned: `/proc/28707/task/*/comm` confirmed `gum-js-loop`, `gmain`, `gdbus`, `frida-gadget` visible to the OS-level thread scan. `checkIntegrity()` verdict: `{"rooted":true,"hookedProcess":true,"emulator":false,"tampered":true}` — `hookedProcess` flipped from `false` (clean baseline) to `true` (Frida injected), proving `checkGadgetThreads()` fired. Operative signal: thread-comm scan (`gum-js-loop` / `gmain` / `gdbus`); `pool-frida` thread not spawned by Frida 17.15.4 (may be version-specific). Verification build reverted after session: `System.loadLibrary` block and `jniLibs/arm64-v8a/libfrida-gadget*` removed; clean APK reinstalled. **INTERNAL — not independently audited.**
+
+**G3 — iOS Frida Gadget detection. ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14).**
+
+Device: iPhone 8 Plus (iPhone10,5, iOS 16.7.16, palera1n rootful jailbreak, UDID `daec9dfcabcae6fa7bc9e6fdca503bed584ea896`). Safari Web Inspector (Capacitor bridge log) captured at app startup ~04:51:35 UTC+1:
+
+```
+[Log] native RaspIntegrity.checkIntegrity (#72976823)
+[Log] result RaspIntegrity.checkIntegrity (#72976823)
+[Log] "{\"tampered\":false,\"hookedProcess\":true,\"emulator\":false,\"jailbroken\":true}"
+```
+
+`hookedProcess:true` — `checkDynamicLibraries()` in `RaspIntegrityPlugin.m` detected `FridaGadget.dylib` via `_dyld_get_image_name()`. The check lowercases both the image name and each marker string: "FridaGadget" → "fridagadget" → `containsString:@"frida"` → YES. App navigated to `/rasp-security` (TIER.BLOCK, signing refused).
+
+**Stub dylib — not real Frida.** Real Frida Gadget 17.15.4 (37 MB universal dylib) crashed the process with `SIGKILL - CODESIGNING Invalid Page` — its GLib JIT initializer (`sys_icache_invalidate`) requires the `com.apple.security.cs.allow-jit` entitlement, which the debug provisioning profile does not grant. A minimal arm64 stub (`FridaGadget.dylib`, 48 K, `NSLog` constructor only, no JIT) was compiled, signed with `Apple Development: Al Jobson (7V994446UL)`, and injected into the App bundle via `insert_dylib --strip-codesig --inplace`. amfid validated the signed stub from bundle; the dylib loaded cleanly. `checkDynamicLibraries()` only scans `_dyld_get_image_name()` — it checks the name, not the dylib's behavior, so the stub is a valid proof of the detection path.
+
+**Operative signal:** `checkDynamicLibraries()` only. `checkFridaPort()` returned false — the stub starts no Frida server on port 27042.
+
+**Honest gaps:** (1) stub, not real Frida — real Frida 17.15.4 crashes with SIGKILL-CODESIGNING due to missing JIT entitlement; (2) `checkFridaPort()` false — no server process; (3) `tampered:false` because the test build retained the debug provisioning profile and the iOS `detectTamper()` path does not do cert-pin comparison (Android equiv does — iOS gap tracked for independent audit); (4) INTERNAL — not independently audited.
+
+**Android Magisk Hide bypass vectors (PR #949, merged 2026-07-14). DEVICE-VERIFIED (INTERNAL, 2026-07-14) on SM-N981B (Samsung Galaxy Note 20 5G, Magisk v30.7).**
+
+Three detection vectors that Magisk Hide cannot mask:
+
+1. **`checkProcNetUnix()`** — kernel `/proc/net/unix` socket scan for Magisk/KSU IPC socket names (`@magisk_`, `magiskd`, `@ksu_`, `zygisk`, `@lspd`, `apatchd`). Magisk Hide operates at the mount-namespace level and cannot hide kernel-level IPC sockets.
+2. **`checkSuFromRuntime()`** — `which su` via `Runtime.exec`; fails closed on SELinux denial (returns false, not exception).
+3. **`checkDangerousProps()`** — reads `ro.boot.verifiedbootstate` / `ro.boot.flash.locked` via `android.os.SystemProperties` reflection. NOTE: `Runtime.exec("getprop ...")` is SELinux-denied for `untrusted_app` on Android 10+ — device-verified 2026-07-14 on SM-N981B: `verifiedbootstate=orange` and `flash.locked=0` were present but `Runtime.exec` produced no output. Fix: in-process `SystemProperties.get()` via reflection (no exec, no SELinux denial).
+
+**Device-verified 2026-07-14 on SM-N981B (Magisk v30.7, Android debug build):** verdict `{"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}` — `rooted:true` fired via `checkDangerousProps` (`verifiedbootstate=orange`, unlocked bootloader). `checkProcNetUnix` did NOT fire (Magisk v30.7 uses different socket names than the current marker list). `checkSuFromRuntime` did NOT fire (Magisk Hide covers `su` in PATH for this app). `tampered:true` expected (debug build, `RELEASE_CERT_SHA256` not set, fail-closed I4). Extended path lists cover KernelSU, Apatch, LSPosed, newer Magisk artifacts. `checkXposed` + `checkProcMapsForHook` extended with LSPosed/Zygisk markers. ~~Frida Gadget hostile-device test~~ ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14) on Android — see §2026-07-13/14 G3 Frida Gadget. ~~iOS G3~~ ✅ DEVICE-VERIFIED (INTERNAL, 2026-07-14) on iPhone 8 Plus — see iOS subsection in §2026-07-13/14 G3 Frida Gadget. **INTERNAL — not independently audited.**
+
+## 2026-07-13/14 RASP native-gate parity — PRs #954, #955
+
+Internal AI code-and-artifact review found two fail-open RASP gaps analogous to the
+already-fixed Send-path C-01 (PR #825). Both FIXED same session. BUILT / unit-tested
+only, INTERNAL — NOT device-verified, no on-chain txid.
+
+**PR #954 (H-1, fixes #950) — merged `184e81bb`.** WalletConnect's pre-sign gate
+(`WalletConnectProvider.presignGateOrReject()`) used only `browserProbeSource`, so on a
+real native Capacitor WebView a rooted/hooked/emulated/Play-Integrity-failed device
+signed WC requests with zero RASP friction — the same fail-open class C-01 closed for
+the Send screen but never carried over to WalletConnect. **Fix:** the WC gate now
+composes `selectPresignProbeSource(isNative, nativeSource, browserProbeSource)` +
+`attestationProbeSource` via `composeConditions` with fail-closed timeouts
+(`withFailClosedTimeout(1500ms)`); on native, the OS leg is authoritative and the
+browser CLEAN leg is never trusted; any shape drift or exception → `TIER.BLOCK` (I4).
+4 new tests, 1011/1011 targeted suite green.
+
+**PR #955 (H-2, fixes #951) — merged `11fb990d`.** Play Integrity ES256 JWS signatures
+were never actually verified. PR #943 added "ES256" → "SHA256withECDSA" alg dispatch but
+missed that JWS ES256 signatures are raw R‖S (RFC 7518 §3.4, 64 bytes) while Java's
+`Signature("SHA256withECDSA").verify()` requires DER-encoded `ECDSA-Sig-Value` (RFC
+3279) — every real ES256 token silently returned `false` → `unavailable()` →
+`INTEGRITY_UNAVAILABLE` → WARN, never a genuine PASS/FAIL. The prior 20/20 structural
+pins were source-string greps that never executed a verification. **Fix:** new
+`rawEcdsaSignatureToDer()` + `derEncodeInteger()` in `PlayIntegrityPlugin.kt` applied on
+the ES256 branch; a 64-byte length guard fails closed (I4); RS256 path unchanged.
+Coverage: a JS mirror (`src/rasp/__tests__/helpers/rawToDerEcdsa.js`) with 10 executable
+Vitest cases against real Node EC P-256 keypairs (roundtrip through Node's DER
+verifier), covering high-bit-set r/s, leading-zero stripping, all-zero, and
+length-mismatch edge cases; the Kotlin binding itself is still only source-string-pinned
+(follow-up **#957**, below). Also corrected stale doc comments in `src/rasp/attestation.js`
+and `src/plugins/attestation.js` that had claimed the JWS was "NOT signature-verified
+on-device" — it now is, at least on the JS-mirrored algorithm.
+
+Neither fix is device-verified against a real rooted/hooked device or a real Play
+Integrity token; both are gate-wiring/crypto-correctness fixes proven by code + unit
+test only.
+
+**Open follow-up filed tonight — #957:** add a Kotlin JVM test harness for
+`PlayIntegrityPlugin.verifyJwsSignature`. The ES256 raw→DER transcoder is proven
+algorithmically via the JS mirror + 10 Vitest cases, but the actual Kotlin binding is
+currently pinned only by a source-string grep, not executed. A Gradle JUnit source set +
+`./gradlew test` CI step would close that gap.
+
+## 2026-07-14 SEND H-1 Trezor hw-send consolidation + I3 hotfix — PRs #963, #978
+
+**PR #963 (SEND H-1, fixes #961) — merged `7ccaab4`.** Trezor EVM send now routes
+through the already-audited `hw-send.js` helpers instead of a parallel inline
+implementation. Prior state: `SendCrypto.jsx:960-1010` had reimplemented the Trezor EVM
+flow directly against low-level `trezorSignEvmTx`, silently bypassing three controls
+that already existed in the audited path (`signAndBroadcastEvmTrezor` was a dead
+export): (a) the M-2/#746 `serializeCheckedSignedTx` recovery check
+(`HW_SIGNER_MISMATCH` — catches a malicious/buggy Trezor signing a tx that recovers to a
+different sender), (b) `'pending'`-tag nonce fetch + a `0 ≤ n ≤ 1,000,000` sanity window,
+and (c) `applyEstimatedGasLimit` (the inline path hardcoded 21000/65000, which L2
+rollups reject and which reverts on USDT transfers). **Fix:** extracted a
+`buildUnsignedEvmTxCore({to,value,data})` primitive from `buildUnsignedEvmTx` plus a
+native wrapper; added `signAndBroadcastEvmTrezorToken` for ERC-20; both now share one
+`trezorSignFieldsAndBroadcast` helper gated by the single M-2 recovery check.
+`SendCrypto.jsx` rewired to call the shared helpers; the inline duplicate deleted.
+F-08-TREZOR / L-2 fee clamp stays put (pinned by an existing source-scan test). 8 new
+tests, 2271/2271 targeted suite green. `signAndBroadcastEvmLedger` remained a dead
+export at merge time — tracked in **#962** below. BUILT / unit-tested only, INTERNAL —
+not device-verified against real Trezor hardware.
+
+**PR #978 (SEND H-1 I3 hotfix, fixes #972) — merged `6d2077c7`.** A Codex second-pass
+review of #963 found a P1 I3 regression: moving the Trezor flow into `hw-send.js`
+dropped the old `hw/trezor.js:69 checkDeniability()` gate, which had previously covered
+all three hardware-wallet chains (EVM/BTC/SOL). Under a decoy/hidden/demo session with a
+Trezor connected, the new consolidated helpers would hit both the RPC and the physical
+device with no I3 check — a real egress and coercion-exfil vector, since the Trezor
+holds the REAL hardware seed regardless of which app session is active. Closed across
+four Codex review rounds, five commits:
+- Round 1 (`f7aa2e1`): `assertNotDeniabilitySession()` added to
+  `signAndBroadcastEvmTrezor` / `signAndBroadcastEvmTrezorToken` /
+  `signAndBroadcastEvmLedger`; `applyEstimatedGasLimit` now throws `GAS_ESTIMATE_FAILED`
+  fail-closed instead of leaving an override `undefined` (which crashed downstream on
+  `toHex(undefined)`).
+- Round 2 (`e5b31e7`): the caller (`SendCrypto.jsx`) was firing `provider.getFeeData()`
+  *before* ever reaching the hw-send helper — added an earlier Trezor gate at the top of
+  `sendTx.mutationFn`'s family dispatch, plus a preflight docstring fix.
+- Round 3 (`c018ea0`): the round-1/2 gate checked only the session marker, not the
+  persisted `veyrnox-demo` flag — added the localStorage check to
+  `assertNotDeniabilitySession` (matching the old `deniabilityActive()` verbatim);
+  `DEMO` added to the mutationFn gate; `FeeSelector` render skipped under
+  `useTrezorMode && (isDeniability || DEMO)`.
+- Round 4 (`61f0c81`): `DEMO` from `@/api/demoClient` is a load-time IIFE snapshot — a
+  `veyrnox-demo=1` flag flipped after import wouldn't propagate. Extracted a shared LIVE
+  helper `isDeniabilityOrDemoActive()` in `wallet-core/deniabilitySession.js` (reads both
+  signals fresh on every call, fail-closed on either read exception) and wired it into
+  all three gate sites.
+- Round 4b (`7903403`): kept the `DEMO` check additive to the live helper — `DEMO` also
+  covers `VITE_DEMO_MODE=1` and native-dev, neither of which sets localStorage.
+
+5 new tests (3 I3 gate pins + preflight coverage + 1 I4 belt-and-braces spy on the
+helper). Full evm suite 155/155 green. Codex is a second-model review pass, not the
+outstanding independent third-party audit. BUILT / unit-tested only, INTERNAL — not
+device-verified against real Trezor hardware.
+
+**Open follow-ups filed tonight:**
+- **#962** — SEND / Scanner audit cleanup, M-1..M-4 + L-1..L-3: M-1 outflow-fraction
+  `Number` precision loss; M-2 `Uint8Array` key zeroization for BTC/SOL
+  `withPrivateKey` variants; M-3 signal-registry tie-ordering docstring; M-4 `eth_call`
+  dry-run RPC-trust posture; L-1 preflight timeout comment drift; L-2
+  `signAndBroadcastEvmLedger` dead export; L-3 S8 median even-length BigInt truncation.
+- **#977** — `FeeSelector`'s react-query refetches every 30s with no reactive dependency
+  on the live deniability/demo flag; if the flag flips mid-session in the same window,
+  an already-mounted `FeeSelector` keeps firing RPCs even though the render conditional
+  would have prevented mount in the first place. Preexisting attack surface, not
+  introduced by #972/#978. Fix approach: gate the `queryFn` itself on the live helper,
+  not just the mount condition.
+
+## 2026-07-12 LiveBalances / deniability (I3) audit — PR #858
+
+INTERNAL audit of live-balance read paths for I3 (zero-egress) compliance. Codex second
+pass FAILED both attempts (transient network/websocket outage, no report produced); HIGH
+findings were instead independently re-verified by direct code inspection — still a
+single-signal INTERNAL pass, NOT the outstanding independent third-party audit.
+
+**H1 (HIGH) — FIXED (PR #858).** `sol/provider.js` `getBalanceLamports` had no
+`isDeniabilitySessionActive()` guard; `sol/send.js`/`sol/hw-send.js` called it directly,
+so a hidden/stealth SOL send fired live RPC during a deniability session. Fixed at the
+primitive (choke-point) so all callers fail closed; zero-egress test added.
+
+**H2 (HIGH) — FIXED (PR #858).** `/live-balances` rendered the raw `"I3: no egress in
+deniability session"` guard string verbatim — a plain-English deniability tell. Fixed
+via `sanitizeBalanceError()` rewrapping to a generic RPC-failure message.
+
+**Open (not fixed in PR #858):** ~~L1 (LOW)~~ ✅ CLOSED (PR #921, 2026-07-13) —
+`computePortfolio`/`usePortfolio` now has an explicit `isDeniabilitySessionActive()` guard;
+ERC-20 `balanceOf()` I3 bypass also fixed (see PR #921 below). M1 (LOW) —
+`hiddenBalance.js:151` throws a raw string, not `new Error(...)`. Also flagged, not
+closed: no device/runtime trace yet proves `WalletProvider.unlock()` never leaks a real
+address into a decoy/hidden render.
+
+**PR #921 (2026-07-13) — I3 ERC-20 egress gaps CLOSED:** GAP-1 (HIGH) ERC-20
+`Contract.balanceOf()` in `portfolioBalances.js` bypassed `isDeniabilitySessionActive()`
+guard — fixed fail-closed; GAP-2 `computePortfolio` now has its own explicit I3 guard
+(closes L1); GAP-3 `TransactionHistory`/`FeeAnalytics`/`useAnalytics` `enabled` gates
+updated; GAP-4 `e2e/i3-deniability-egress.spec.js` re-enabled + host list expanded.
+21 new unit tests + e2e re-enabled. BUILT / unit-tested, INTERNAL — NOT device-verified,
+NOT independently audited, no on-chain txid.
+
+BUILT / unit-tested, INTERNAL — not device-verified, no on-chain txid. See
+`docs/qa/findings/livebalances-audit-2026-07-12.md` and `docs/Feature-Status.md`.
+
+## 2026-07-15 RASP audit-fix cycle — PRs #1009, #1010, #1012, #1013, #1014
+
+An internal multi-tool RASP audit ran 2026-07-14/15: three parallel reviewers (Claude
+honest-reviewer, Claude security-reviewer, GPT-5 Codex second-model pass) fed off a
+shared recon map, ranked findings P1/P2/P3, and adversarially cross-checked each other's
+list. **INTERNAL — explicitly NOT the outstanding independent third-party audit.** All
+five PRs below are BUILT / unit-tested only — NOT device-verified, no on-chain txid.
+
+**PR #1009 (P1-1, fixes the codex-only finding) — merged `02f3b277`.** Play Integrity
+verdicts were never nonce-bound at parse time — a replayed or substituted verdict blob
+could pass. New pure-JVM `PlayIntegrityNonceVerifier` (extracted for testability) runs
+after JWS signature verification and before verdict extraction, comparing the request
+nonce with `MessageDigest.isEqual` (constant-time). 12 executable JVM tests, plus a
+follow-up Gradle dependency fix (`org.json` as `testImplementation`). This was the only
+P1 that neither Claude reviewer flagged — caught by the Codex second-model pass alone,
+illustrating the value of the three-reviewer spread.
+
+**PR #1010 (P1-2 + P2-3 + P2-6) — merged `1a919711`.** Three JS-layer fail-closed fixes
+in one batch:
+- `sensitiveGate.js` previously returned `{blocked:false}` on a null artifact (fail-OPEN
+  on a missing probe); now fails CLOSED — `{blocked:true, sentence:"We couldn't confirm
+  this device's integrity just now — this action is turned off."}`. An impact check
+  confirmed all 5 production consumers call `useRaspArtifact()`, none of which ever
+  passed null, so this closes a latent gap rather than fixing a live regression.
+- `attestation.js`'s I3 deniability guard now calls `isDeniabilityOrDemoActive()` (the
+  LIVE helper added by PR #978) instead of the session-marker-only check — covers BOTH
+  the session marker AND the persisted `veyrnox-demo=1` flag, matching
+  `hw/trezor.js:deniabilityActive()` verbatim.
+- Shape validation added at three sites — `detect()`, the `nativeProbe.js` adapter, and
+  `detectAttestation()` — so a partial/mistyped verdict (missing or wrong-typed fields)
+  now fails closed to `INTEGRITY_UNAVAILABLE` instead of silently passing through.
+  Defense-in-depth against a compromised bridge — the same architectural residual class
+  P1-1 (above) sits in.
+- 21 new tests; 7 existing test files updated to full-shape verdicts.
+
+**PR #1012 (P2-1 + P2-4 + P2-7) — merged `422ddddc`.** SendCrypto RASP refactor:
+- New standalone `getFreshRaspArtifact()` — awaits fresh probes under a 1500ms
+  fail-closed timeout, composes + degrades, and returns `tier: TIER.BLOCK` on timeout or
+  throw. Mirrors WalletConnect's `presignGateOrReject` architecture (PR #954).
+- `SendCrypto.jsx`'s `sendTx.mutationFn` now `await`s `getFreshRaspArtifact()` at sign
+  time instead of using a RASP tier that could be up to 60s stale.
+- New `{ deferAttestation }` option on `useRaspArtifact` — SendCrypto passes
+  `{ deferAttestation: step !== 'verify' }` so the attestation network round-trip fires
+  only on explicit sign intent, not on Send page mount.
+- `useRaspArtifact` now invalidates BOTH `nativeProbe` and `attestationResult` on the G4-A
+  foreground event and the G4-B 60s heartbeat — attestation was previously once-per-mount
+  only (a freshness gap).
+- SendCrypto's inline probe-sampling duplicate deleted (140 lines). Zero behaviour change
+  for the 8 other `useRaspArtifact` consumers (default `deferAttestation=false`).
+- 20 new tests + 9 delegation-pin updates; full targeted suite 2512/2512 green.
+
+**PR #1013 (P2-5 + P2-8) — merged `855f26e8`.** iOS App Attest honesty rescoping + RASP
+dashboard freshness:
+- `AppAttestPlugin.m`'s header and subsequent-runs comment now honestly state that a
+  successful `generateAssertion` proves ONLY "this app install still holds its
+  SE-enrolled key" — NOT "device integrity confirmed." The SE responds even on a
+  jailbroken device; genuine integrity confirmation requires server-side verification,
+  which would conflict with I5. The compose lattice already handled this correctly
+  (jailbreak surfaces as TAMPERED/HOOKED and outranks any CLEAN from AppAttest) — this
+  fix is a documentation-honesty correction, not a compose-logic change.
+- `RaspSecurity.jsx` (the RASP Security dashboard page) replaced its inline
+  `useState`/`useEffect` sampling with `useRaspArtifact()` — the dashboard now re-probes
+  OS + attestation on the same G4-A/G4-B cadence as the Send gate (post-PR #1012), and
+  correctly composes the attestation axis instead of rendering only the OS-probe result.
+- `useRaspArtifact`'s return value extended with `condition` (additive superset — no
+  change for existing consumers).
+- Follow-up shape fix (`8421240`) added `condition` to the `BYPASS_RASP` early return so
+  TypeScript's union inference resolves correctly.
+
+**PR #1014 (P2-9 + P2-10 + five P3 items) — merged `8ff8fd18`.** Hardening + cleanup:
+- P2-9: `useRaspArtifact`'s bypass early-return moved BELOW the `useState`/`useEffect`
+  calls — fixes a rules-of-hooks violation (hooks are now called unconditionally;
+  harmless no-op on web).
+- P2-10: new CI script `scripts/check-cert-pin-manager-safety.mjs`, wired into the
+  `package.json` `pretest` chain and the `verify` job in `.github/workflows/ci.yml` —
+  fails CI if `CertPinManager` is referenced from an active OkHttp construction path
+  while `PINNED_HOSTS` still contains a `PLACEHOLDER_` value. Guards against a future
+  "wire it blind" regression.
+- P3-1: deleted the dead C-01-superseded helper `src/rasp/resolveProbeSource.js` and its
+  export from `src/rasp/index.js`, plus the legacy tests that pinned it.
+- P3-2: corrected doc-lag in `useRaspArtifact.js` and `index.js` — JWS RS256/ES256 IS
+  now on-device-code-verified (PRs #943 RS256, #955 ES256 raw→DER, #1009 nonce binding);
+  the tracked residual is G2-ROOTCERT-PIN (the weak issuer-string heuristic), not JWS
+  verification itself.
+- P3-3: rewrote the `RaspIntegrityPlugin.m` header to reflect the 2026-07-13/14 palera1n
+  and Frida device sessions, preserving the still-honest gaps (syslog-unavailable
+  ambiguity, `tampered:false` parity gap vs. Android).
+- P3-4: added an OEM false-positive note to `checkDangerousProps` —
+  `ro.boot.secureboot=="0"` can fire on older MediaTek / non-Google ROMs even when not
+  rooted.
+- P3-5: refreshed the `useRaspArtifact` consumer-list docstring.
+
+**Bonus, same day, not part of this audit-fix cycle — PR #1011 (`a383942`):**
+`fix(deniability): gate FeeSelector queryFn on live I3 check` — closes follow-up issue
+#977 (filed by the 2026-07-14 SEND H-1 session, see above). Adjacent, not part of the
+RASP audit cycle proper.
+
+**P2-2 — accepted as documented residual (not fixed).** WalletConnect signing timing
+side-channel: a real session awaits attestation (up to a 1500ms round trip), a decoy
+session skips it — an observable UI-latency delta a physically-present in-room coercer
+could detect across multiple sessions. **Decision: accepted as a documented residual**,
+consistent with the codebase's existing I4 honest-scope discipline for limitations that
+would only be closeable by an architectural change that conflicts with another
+invariant — padding the real path introduces its own observable-code-path side channel
+and degrades UX for real users. Sits alongside G2-ROOTCERT-PIN, the iOS App Attest
+entitlement gap, the iOS `detectTamper` cert-fingerprint parity gap, and the Android
+`checkProcNetUnix` SELinux-inertness gap on the "documented open residuals" shelf (see
+`docs/Feature-Status.md` § Open / residual items). **Revisit trigger:** if the codebase
+ever adds server-side attestation verification (which would introduce timing consistency
+by construction), or a future audit surfaces a scenario where this side channel is
+exploited in the wild.
+
+All five PRs: BUILT / unit-tested only, INTERNAL — not device-verified, no on-chain
+txid. Codex is a second-model reviewer, tier-equivalent to an internal AI review pass,
+not the outstanding independent third-party audit.
 
 ## Security invariants
 
@@ -659,8 +995,14 @@ sweep. Key controls now on main:
 - **H7 — EIP-712 chain binding:** `eth_signTypedData_v4` validates `domain.chainId` vs
   WC session CAIP-2 chain; mismatch → `CHAIN_ID_MISMATCH` reject (fail-closed).
   No-chainId domain is also rejected (fail-closed; supersedes earlier backwards-compat).
+  **PR #931 (2026-07-13):** H7 now also enforced pre-modal — `domain.chainId` is parsed
+  at `session_request` arrival in the event handler; mismatch → `rejectRequest` before
+  `pendingRequests` / approval modal (dual-layer: handler + sign-time).
 - **H8 — personal_sign address binding:** resolves EIP-1474 vs MetaMask-legacy param
   order; rejects if neither param is the wallet's own address (I4).
+  **PR #931 (2026-07-13):** H8 now also enforced pre-modal — `resolvePersonalSignMessage()`
+  called at `session_request` arrival; mismatch → `rejectRequest` before the approval
+  modal is shown (dual-layer: handler + sign-time).
 - **M9 — 1M gas cap:** dApp-supplied gas is clamped to 1,000,000; estimates are also
   capped.
 - **M11 — session expiry:** `assertSessionLive` runs before any key operation;
@@ -675,6 +1017,17 @@ sweep. Key controls now on main:
   software-layer controls; `isSecureHardwareAvailable()` is the honest gate.
 - **H-C — mainnet gate consolidation:** `SendCrypto.jsx` imports compile-time
   `ALLOW_MAINNET` from `networks.js` (not a runtime env var). Dead-code-eliminated in prod.
+- **Supervised WC e2e specs** (`e2e/walletconnect-live-pairing.spec.js`, PR #931,
+  2026-07-13, `RUN_SUPERVISED_E2E=1`) — 4 Playwright tests against real
+  relay.walletconnect.com: H8 happy path (own address → valid 65-byte sig), H8 mismatch
+  (foreign address → pre-modal reject), M11 (disconnected session → SDK-level reject),
+  H7 (domain.chainId=1 on Sepolia session → pre-modal reject). BUILT / INTERNAL — no
+  on-chain txid, live relay gap SUPERVISED (not CI-automated), not independently audited.
+  **PR #933 (2026-07-13):** CLAUDE.md + `docs/Feature-Status.md` sync for all PR #931 changes
+  (H7/H8 pre-modal, supervised spec, honest-gaps paragraph).
+  **PR #934 (2026-07-13):** CLAUDE.md update recording PR #933 docs sync.
+  **PR #935 (2026-07-13):** CLAUDE.md update recording PR #934 docs sync.
+  **PR #937 (2026-07-13):** CLAUDE.md update recording PR #935 docs sync.
 
 ## Per-chain gotchas
 

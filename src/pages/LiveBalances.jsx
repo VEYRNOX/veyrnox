@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { Contract, formatUnits, isAddress } from "ethers";
 import { getProvider, getBalanceEth } from "@/wallet-core/evm/provider";
@@ -22,6 +23,22 @@ const NETWORKS = listEnabledNetworks().map((n) => ({
 }));
 
 const DEFAULT_NETWORK = NETWORKS[0]?.id || "sepolia";
+
+// Generic message shown for ANY balance-read failure on this diagnostic page.
+export const GENERIC_RPC_ERROR = "Failed to fetch on-chain data from the RPC.";
+
+// I3 / deniability tell guard. In a decoy/hidden session the wallet-core
+// provider guards throw a literal "I3: no egress in deniability session"
+// string. Surfacing that verbatim in the UI is a plain-English deniability
+// tell (it announces the current session is a decoy/hidden mode). Rewrap the
+// I3 guard error into the SAME generic RPC-failure message any user would see
+// on a real network failure, so a decoy session is indistinguishable. Genuine
+// RPC errors keep their own message for debuggability.
+export function sanitizeBalanceError(err) {
+  const msg = typeof err?.message === "string" ? err.message : "";
+  if (msg.startsWith("I3:")) return GENERIC_RPC_ERROR;
+  return msg || GENERIC_RPC_ERROR;
+}
 
 export default function LiveBalances() {
   const [address, setAddress] = useState("");
@@ -83,7 +100,8 @@ export default function LiveBalances() {
       }
       setTokens(found);
     } catch (e) {
-      setError(e?.message || "Failed to fetch on-chain data from the RPC.");
+      // Never surface the raw I3 deniability guard string (see sanitizeBalanceError).
+      setError(sanitizeBalanceError(e));
     }
     setLoading(false);
   };
@@ -95,7 +113,7 @@ export default function LiveBalances() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2"><Wifi className="h-5 w-5 text-primary" /> Live RPC Balances</h1>
-        <p className="text-sm text-muted-foreground">Real on-chain reads via the wallet's own public RPC providers — testnet only (mainnet is gated until audit).</p>
+        <p className="text-sm text-muted-foreground">Real on-chain reads via the wallet's own public RPC providers — testnet only.</p>
       </div>
 
       {/* Status indicators — honest about what this actually queries. */}

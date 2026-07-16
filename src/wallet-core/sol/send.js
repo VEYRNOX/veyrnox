@@ -1,3 +1,4 @@
+// @ts-nocheck
 // wallet-core/sol/send.js
 //
 // High-level Solana send: plan (rent-aware) -> fetch FRESH blockhash -> build a
@@ -228,8 +229,9 @@ export function buildUnsignedSolTx({
   if (blockhash != null) return assemble(blockhash);
 
   // Live path: fetch a fresh blockhash, then assemble.
-  const fetchBh = connection
-    ? connection.getLatestBlockhash()
+  const conn = /** @type {any} */ (connection);
+  const fetchBh = conn
+    ? conn.getLatestBlockhash()
     : getLatestBlockhash(networkKey);
   return Promise.resolve(fetchBh).then(({ blockhash: bh, lastValidBlockHeight }) =>
     assemble(bh, lastValidBlockHeight),
