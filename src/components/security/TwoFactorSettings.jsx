@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { ShieldCheck, KeyRound, Lock, Trash2, Fingerprint, Send, Eye, UserX, EyeOff } from 'lucide-react';
 import PinPad from '@/components/security/PinPad';
 import { getAuthModel } from '@/lib/authModel';
+import { MIN_PASSWORD_LENGTH } from '@/lib/passwordStrength';
 
 // The critical actions the guard gates — shown explicitly so the user knows what the
 // second factor actually protects (matches the useActionGuard call sites).
@@ -58,9 +59,9 @@ export default function TwoFactorSettings() {
   // #2: trim before the length check so an all-whitespace Action Password (e.g. 8
   // spaces) is rejected — otherwise a user could set an effectively-empty second
   // factor and lock critical actions behind nothing.
-  const apTooShort = apNew.length > 0 && apNew.trim().length < 8;
+  const apTooShort = apNew.length > 0 && apNew.trim().length < MIN_PASSWORD_LENGTH;
   const apMismatch = apConfirm.length > 0 && apConfirm !== apNew;
-  const apCanSave = !!apVaultPw && apNew.trim().length >= 8 && apConfirm === apNew && !apBusy;
+  const apCanSave = !!apVaultPw && apNew.trim().length >= MIN_PASSWORD_LENGTH && apConfirm === apNew && !apBusy;
   const resetApForm = () => { setApVaultPw(''); setApNew(''); setApConfirm(''); };
   const isPinModel = getAuthModel() === 'pin';
   const setupBlocked = isDecoy || isHidden; // configure from your real session only
@@ -223,7 +224,7 @@ export default function TwoFactorSettings() {
               <Input id="ap-new" type="password" autoComplete="new-password" value={apNew}
                 onChange={e => setApNew(e.target.value)} placeholder="At least 8 characters" className="mt-1.5 mono-value" />
               <p className="text-xs text-muted-foreground mt-1">At least 8 characters · any characters allowed</p>
-              {apTooShort && <p className="text-[11px] text-destructive mt-1">Use at least 8 characters.</p>}
+              {apTooShort && <p className="text-[11px] text-destructive mt-1">Use at least {MIN_PASSWORD_LENGTH} characters.</p>}
             </div>
             <div>
               <Label htmlFor="ap-confirm">Confirm</Label>

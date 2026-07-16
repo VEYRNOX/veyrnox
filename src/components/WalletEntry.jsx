@@ -938,20 +938,17 @@ export default function WalletEntry() {
   };
 
   // ---- Restore from an encrypted backup FILE (onboarding, no seed phrase) ----
-  // The encrypted .enc backup carries its OWN credential (backup password/PIN set at
-  // export), so restore is NOT forced through a fresh pin-create re-wrap. The shared
-  // RestoreFromFile component performs the real restore via wallet-core/vaultBackup
-  // (restoreWithPassword / decryptPinSeal + finalisePinRestore) and, on success,
-  // calls this onFinish. At that point a password-unlockable vault EXISTS on this
-  // device (the password seal is a valid vault blob; the PIN path re-wraps under a
-  // new password). We mark the cohort 'password' so the returning-user surface
-  // renders the password input (not a numeric PinPad) and the native vault/settings
-  // desync guard is satisfied (mirrors handleImport), then route to the normal unlock
-  // gate. isUnlocked is still false — the user unlocks with their backup credential,
+  // The shared RestoreFromFile component decrypts the backup (via decryptPasswordSeal
+  // or decryptPinSeal), asks the user to set a fresh 8-digit device PIN, and re-wraps
+  // the vault under that PIN via finalisePinRestore. On success it calls this
+  // onFinish. At that point a PIN-unlockable vault EXISTS on this device. We mark the
+  // cohort 'pin' so the returning-user surface renders a PinPad (not a password
+  // input). isUnlocked is still false — the user unlocks with their new device PIN,
   // which then triggers the MANDATORY hardware-KEK enrollment gate (kekOrigin
-  // 'restored'), exactly like a seed re-import.
+  // 'restored'), exactly like a seed re-import. The KEK gate also asks for the PIN —
+  // and since the vault is PIN-cohort, it matches. Owner decision 2026-07-16.
   const handleFileRestored = () => {
-    setAuthModel("password"); setAuthModelState("password");
+    setAuthModel("pin"); setAuthModelState("pin");
     setKekOrigin('restored');
     setError(""); setRecovering(false);
     setVaultExists(true);

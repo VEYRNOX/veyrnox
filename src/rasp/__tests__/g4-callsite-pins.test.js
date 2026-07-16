@@ -89,11 +89,12 @@ describe('RestoreFromFile — G4 import gate (shared restore component)', () => 
     expect(restore).toMatch(/useRaspArtifact/);
   });
 
-  it("calls sensitiveGate with 'import' before restoreWithPassword", () => {
+  it("calls sensitiveGate with 'import' before decryptPasswordSeal / decryptPinSeal", () => {
     const importGateIdx = restore.indexOf("sensitiveGate(raspArtifact, 'import')");
     expect(importGateIdx).toBeGreaterThan(-1);
-    const restoreIdx = restore.indexOf('restoreWithPassword(');
-    expect(importGateIdx).toBeLessThan(restoreIdx);
+    const decryptIdx = restore.indexOf('decryptPasswordSeal(');
+    expect(decryptIdx).toBeGreaterThan(-1);
+    expect(importGateIdx).toBeLessThan(decryptIdx);
   });
 });
 

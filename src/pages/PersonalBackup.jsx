@@ -13,6 +13,7 @@ import BackButton from "@/components/BackButton";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
+import { MIN_PASSWORD_LENGTH } from "@/lib/passwordStrength";
 import {
   CloudUpload, Download, Upload,
   AlertTriangle, Shield, CheckCircle2, Loader2,
@@ -84,7 +85,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
     );
   }
 
-  const canExport = password.length >= 8 && pin.length >= 8 && pin === pinConfirm;
+  const canExport = password.length >= MIN_PASSWORD_LENGTH && pin.length >= 8 && pin === pinConfirm;
 
   const runExport = async () => {
     const gate = sensitiveGate(raspArtifact, 'export');
@@ -192,11 +193,11 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
           type="password"
           value={password}
           onChange={setPassword}
-          placeholder="A new password to protect this backup (min 8)"
+          placeholder={`A new password to protect this backup (min ${MIN_PASSWORD_LENGTH})`}
         />
-        <p className="text-xs text-muted-foreground mt-1">At least 8 characters · any characters allowed</p>
-        {password.length > 0 && password.length < 8 && (
-          <p className="text-xs text-destructive">Use at least 8 characters.</p>
+        <p className="text-xs text-muted-foreground mt-1">At least {MIN_PASSWORD_LENGTH} characters · any characters allowed</p>
+        {password.length > 0 && password.length < MIN_PASSWORD_LENGTH && (
+          <p className="text-xs text-destructive">Use at least {MIN_PASSWORD_LENGTH} characters.</p>
         )}
         <PinField label="Choose a backup PIN (8–12 digits)" value={pin} onChange={setPin} />
         <PinField label="Confirm backup PIN" value={pinConfirm} onChange={setPinConfirm} />
