@@ -906,6 +906,149 @@ All five PRs: BUILT / unit-tested only, INTERNAL — not device-verified, no on-
 txid. Codex is a second-model reviewer, tier-equivalent to an internal AI review pass,
 not the outstanding independent third-party audit.
 
+## 2026-07-16 Safety Plus IAP — annual $49.99/yr package added (PR #1026)
+
+Added a second Safety Plus purchase option alongside the existing $5.99/mo monthly:
+**annual $49.99/yr (~30% off equivalent 12 × monthly; ~$4.17/mo effective, "4 months free")**.
+Both packages grant the **same** `safety_plus` entitlement — annual is a pricing lever,
+not a feature axis. **BUILT / unit-tested only, INTERNAL — NOT device-verified, no
+sandbox purchase, not independently audited.** No on-chain txid involved (IAP is
+storefront-verified, not on-chain).
+
+**Code (all in PR #1026, squashed to `3c1acd53`):**
+- `src/lib/purchases.js` — new exports `SAFETY_PLUS_MONTHLY_PACKAGE` (`$rc_monthly`) and
+  `SAFETY_PLUS_ANNUAL_PACKAGE` (`$rc_annual`). Package identifiers centralized so the
+  drift guard (preflight) has a single source of truth.
+- `src/pages/Subscription.jsx` — fetches BOTH packages from `getOfferings().availablePackages`;
+  renders a Monthly/Annual segmented `radiogroup` toggle with a "Save 30%" badge on
+  annual; annual is the DEFAULT selection. `selectedPackage` drives both the CTA copy
+  (`Upgrade to Safety Plus — $49.99/yr`) and `purchasePackage()`. **Fail-honest, I4:**
+  if `$rc_annual` is missing from the offering (staged store rollout, or dashboard
+  not-yet-configured), the toggle hides entirely and the page falls back to the
+  pre-existing monthly-only UI — never a dead button.
+- `src/pages/SafetyPlus.jsx:116` — teaser price line updated to reflect both plans.
+- `scripts/preflight-iap-config.mjs` — canonical `EXPECT` extended with
+  `productAnnual: 'safety_plus_annual'` and `packageAnnual: '$rc_annual'`. New checks:
+  code constants match, `Subscription.jsx` imports both, both products exist on the
+  RevenueCat dashboard, both are attached to the `safety_plus` entitlement, both
+  packages sit on the `default` offering with the right product on each. Drift on any
+  leg fails the preflight — the whole point of the guard.
+- `docs/iap-safety-plus-setup-checklist.md` — updated Tasks 1/2/3 with the App Store
+  Connect / Google Play Console / RevenueCat dashboard steps for creating
+  `safety_plus_annual` alongside the existing monthly product.
+
+**Tests (all green, PR #1026):** `src/lib/__tests__/purchases.test.js` pins both package
+constants; `src/pages/__tests__/Subscription.test.jsx` covers monthly-only offering
+(toggle hidden, unchanged behaviour), monthly+annual offering (toggle renders, annual
+default, purchase-selected uses annual, switching to monthly then purchasing uses
+monthly). 40/40 targeted tests green (purchases + Subscription + tier catalogue + entitlement
+I3 guard + TierProvider).
+
+**Honest gaps / outstanding (must complete before toggle renders on-device):**
+1. App Store Connect: create `safety_plus_annual` auto-renewing subscription at $49.99
+   in the same Safety Plus subscription group as monthly (Apple upgrade/downgrade
+   requires same group).
+2. Google Play Console: create `safety_plus_annual` subscription at $49.99 with a
+   1-year base plan.
+3. RevenueCat dashboard: attach `safety_plus_annual` to the `safety_plus` entitlement;
+   add `$rc_annual` package on the `default` offering.
+4. Re-run `npm run check:iap-preflight` with `REVENUECAT_V2_SECRET_KEY` +
+   `REVENUECAT_PROJECT_ID` set. Must be clean before running the device-verification
+   runbook (Task 15 in `docs/superpowers/plans/2026-07-06-iap-subscription-stitching.md`).
+5. Sandbox purchase on iOS + Android of both packages, entitlement resolves to
+   `safety_plus`, tier switches, restore-purchases works. This is when the feature moves
+   from BUILT → device-verified for annual (still not independently audited).
+
+**Security invariants preserved:** I3 (deniability = zero backend calls) is untouched —
+`entitlement.js:resolveTier()` still fails closed to `'free'` in decoy/hidden sessions
+before any `getCustomerInfo()` call, and the two annual packages hit the exact same
+egress chokepoint as monthly. No new network surface, no new key material touched. Same
+`safety_plus` entitlement grant regardless of package.
+
+## 2026-07-16 RASP seed-backup fail-open fix + KEK single-prompt fix — PRs #1024, #1025, #1028
+
+**PR #1024 (docs-only) — RASP developer-mode gate device-verified as a "good catch."**
+On 2026-07-16, a real Pixel 10 Pro XL (stock/clean, locked bootloader, not rooted) running
+a release build hit the "This device looks modified" WARN when tapping Backup Wallet —
+because USB debugging (`adb_enabled=1`) was ON. This is intended I4 behaviour, not a false
+positive: disabling USB debugging clears the WARN. Evidence is on-device UI behaviour +
+adb-confirmed input signals (release build ships a silent bridge, so no captured JSON).
+Recorded in `docs/Feature-Status.md` §7; this is the same WARN-tier gate PR #1025 (below)
+found was mis-wired to *block* rather than step-up on exactly this class of signal.
+
+**PR #1025 (fixes #1007 + #979 fail-open bug) — RASP no longer blocks seed backup on
+ordinary devices. BUILT / unit-tested + installed to a real Pixel 10 Pro XL (release
+APK), INTERNAL — not independently audited, no on-chain txid.**
+
+**The bug:** PR #1007 folded 8 soft environment signals (developer mode, accessibility
+service enabled, etc.) into the `rooted` condition. PR #979 (separately, both landed
+previously) made WARN-tier block seed-reveal/export/import. Combined effect: developer
+mode OR an accessibility service OR an unreachable Play Integrity leg → seed backup
+blocked outright on an otherwise-clean device. Device-reproduced on the same clean
+Pixel 10 Pro XL from PR #1024.
+
+**Fix 1 — new `CONDITION.ELEVATED`:** the 8 soft signals now drive a distinct `elevated`
+condition (WARN + biometric re-confirm, `blockedActions: []` — backup proceeds after
+step-up) instead of `rooted`. Genuine root/jailbreak/tamper/hook/emulator signals are
+unchanged and still hard-block.
+
+**Fix 2 — `excludeAttestation` on `useRaspArtifact`:** local seed-material surfaces
+(`PersonalBackup`, `RestoreFromFile`, `HDWalletManager`, `SeedGrid`, `WalletEntry`,
+`useRevealWithReauth`) now gate on the on-device RASP leg only — the remote Play
+Integrity leg (permanently unavailable on sideloaded/debug builds) is excluded from
+these pages specifically. Signing surfaces are untouched: attestation stays fully in
+force for sends.
+
+Two independent honest-review passes, both CLEAN. Tests: 605/605 RASP+backup. During
+rebase onto main, a merge conflict was resolved: `PersonalBackup.jsx`'s inline
+`RestoreTab` had already been extracted to `RestoreFromFile.jsx` on main;
+`excludeAttestation: true` was applied to `RestoreFromFile.jsx` as well.
+
+**PR #1028 — single biometric prompt for `enrollKek` / `changePassword` (KEK branch) /
+`upgradeKekToV3`. BUILT / unit-tested only, NOT device-verified, NOT independently
+audited, no on-chain txid.**
+
+On both iOS and Android these three flows fired an extra biometric prompt each — a
+JS-layer `authenticateOrThrow()` at the top, followed by the hardware-enforced Face
+ID/fingerprint from `getHardwareFactor()`'s SE/StrongBox ACL. **Fix:** new pure helper
+`getHardwareFactorWithLockoutFallback(getHF, hfOpts)` in `native.js`: (1) calls `getHF`
+once — happy path is a single hardware-enforced OS prompt; (2) on
+`KEK_ERR.NO_HARDWARE_FACTOR` (lockout), falls back to `authenticateOrThrow()` for
+device-credential auth and retries once; (3) any other error propagates unchanged.
+Prompt counts: `enrollKek` 2→1, `changePassword` (KEK branch) 3→2, `upgradeKekToV3`
+3→2. Bare-vault enrollment and plain unlock are unchanged. `authenticateOrThrow` was
+NOT deleted — it remains the lockout-fallback path and the bare-vault gate.
+
+Honest scope: C1 — the wrapper triggers on the aggregate `NO_HARDWARE_FACTOR` code (7
+distinct underlying cases; hardware lockout is only one of them), so the fallback can
+also fire on non-lockout causes bucketed under the same error code. B1 — `_unlockInner`,
+`saveVaultContents`, and `unenrollKek` still call `getHF` directly and were NOT converted
+to the new helper (deferred; a TODO landed marking this). Tests: 15/15 new; keystore
+329/329; wallet-core 1094/1094. Two honest-review passes, both LAND-READY.
+
+## 2026-07-16 web PRF single-prompt enrollment + stale biometric comment — PR #1034
+
+**#1030 (FIXED, PR #1034)** — web WebAuthn PRF first-time Hardware KEK enrollment fired
+two prompts (a `create()` then a `get()`). Fix: `createPrfCredential()` in
+`src/wallet-core/keystore/web.js` now extracts the PRF extension results directly from
+`create()`. On Chrome ≥118 (which supports PRF evaluation during `create()`), that
+output is used as H — enrollment collapses to a single WebAuthn prompt. Safari/Firefox
+(no PRF-in-create support) fall through to the existing two-prompt `create()`+`get()`
+path unchanged. F-05 credential-id persistence-after-confirmed-PRF safety is preserved
+on both paths (`getHardwareFactor` unaffected in its persistence timing). Tests: 27/27
+PRF tests, 338/338 full keystore suite. BUILT / unit-tested, NOT browser-UAT'd with a
+real platform authenticator, NOT independently audited, no on-chain txid (app-layer UX
+fix only).
+
+**#1029 (CLOSED as not-a-bug)** — issue claimed non-KEK Face ID one-tap unlock fired two
+prompts. Code trace confirmed `skipBiometric: true` (passed from `unlockWithBiometric` to
+`unlock()` in `src/lib/WalletProvider.jsx`) already prevents the second prompt. The issue
+was filed against a stale comment describing pre-fix behavior; the comment was rewritten
+to accurately describe the single-prompt design already in force. H-NEW-5 (binding the
+cached-PIN Keychain item to the biometric enrollment set via
+`setInvalidatedByBiometricEnrollment(true)`) remains a separate TARGET item, tracked in
+`docs/Feature-Status.md`, not touched by this PR.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
