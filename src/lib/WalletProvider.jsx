@@ -1851,8 +1851,12 @@ export function WalletProvider({ children }) {
       try { await showSimulatedPrompt(status); }
       catch (err) { throw new BiometricGateError('cancelled', err); }
     }
-    // native: the OS biometric sheet fires inside retrieveUnlockSecret() (to
-    // release the cache) and again inside keyStore.unlock() (to read the vault).
+    // SINGLE-PROMPT DESIGN (device-confirmed iPhone 17 Pro Max / Pixel 10 Pro XL).
+    // Both KEK and non-KEK vaults fire exactly ONE biometric prompt per one-tap
+    // unlock: non-KEK gets it from retrieveUnlockSecret() (the cache-gate), KEK
+    // gets it from the SE/StrongBox ACL inside keyStore.unlock(). The second call
+    // (unlock) always receives skipBiometric:true, which disables both the
+    // app-layer runBiometricGate and the native requireBiometric gate.
     //
     // TRIPLE-PROMPT FIX (device-confirmed iPhone 17 Pro Max / Pixel 10 Pro XL).
     // On a KEK-enrolled native vault, one-tap unlock fired THREE biometric prompts:
