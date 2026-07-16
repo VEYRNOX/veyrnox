@@ -24,6 +24,7 @@ import { useNotifications } from "@/notify/useNotifications";
 import NotificationToast from "./NotificationToast";
 import NotificationBell from "./NotificationBell";
 import { useReceiveDetector } from "@/notify/useReceiveDetector";
+import LockSealingOverlay from "./LockSealingOverlay";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
 const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
@@ -80,14 +81,24 @@ export default function Layout() {
   //   - web demo: there is no on-device gate, so call the (no-op) hosted logout
   //             and return to the public landing screen so Exit still does
   //             something visible instead of silently no-op'ing.
+  // Full-viewport "vault sealing" overlay played briefly on lock so the moment
+  // has ceremony, mirroring the "sealing your wallet into hardware" beat at
+  // onboarding. The actual lock() is delayed by the same ~350ms — imperceptibly
+  // short and the user has already committed by tapping. See LockSealingOverlay.
+  const [sealing, setSealing] = useState(false);
   const signOut = () => {
-    lock();
-    if (WALLET_GATE) {
-      navigate("/", { replace: true });
-    } else {
-      base44.auth.logout();
-      navigate("/landing", { replace: true });
-    }
+    if (sealing) return; // debounce double-taps
+    setSealing(true);
+    setTimeout(() => {
+      lock();
+      if (WALLET_GATE) {
+        navigate("/", { replace: true });
+      } else {
+        base44.auth.logout();
+        navigate("/landing", { replace: true });
+      }
+      // No need to reset sealing — Layout unmounts as WalletEntry takes over.
+    }, 380);
   };
   const ROOT_TABS = ['/', '/send', '/receive', '/settings'];
   const isRootTab = ROOT_TABS.includes(location.pathname);
@@ -460,13 +471,25 @@ export default function Layout() {
               aria-controls={`tab-panel-${index}`}
               tabIndex={active ? 0 : -1}
               onClick={() => handleMobileTabClick(item.path)}
-              className={`flex flex-col items-center justify-center gap-1 py-3 flex-1 transition-colors hover:bg-secondary/60 active:bg-secondary select-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${
+              className={`relative flex flex-col items-center justify-center gap-1 py-3 flex-1 transition-colors hover:bg-secondary/60 active:bg-secondary select-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
               aria-label={item.label}
             >
-              <item.icon className="h-5 w-5" aria-hidden="true" />
-              <span className="text-[11px] font-medium">{item.label}</span>
+              {/* Shared-element active pill — physically slides between tabs
+                  when the active tab changes (skill §7 shared-element-transition,
+                  Bento-2.0 signature). Uses layoutId so framer treats it as one
+                  element crossfading position across siblings. */}
+              {active && (
+                <motion.span
+                  layoutId="mobile-tab-pill"
+                  aria-hidden
+                  className="absolute inset-x-3 top-1.5 bottom-1.5 rounded-xl bg-primary/10 border border-primary/25"
+                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                />
+              )}
+              <item.icon className="relative h-5 w-5" aria-hidden="true" />
+              <span className="relative text-[11px] font-medium">{item.label}</span>
             </button>
           );
         })}
@@ -522,6 +545,7 @@ export default function Layout() {
           </div>
         </div>
       )}
+      <AnimatePresence>{sealing && <LockSealingOverlay />}</AnimatePresence>
     </div>
     </AccessibilityWrapper>
   );

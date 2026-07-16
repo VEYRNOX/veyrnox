@@ -7,6 +7,7 @@ import {
   ExternalLink, Loader2, AlertTriangle, Lock, ShieldCheck, History, Info,
 } from "lucide-react";
 import { DEMO } from "@/api/demoClient";
+import { SkeletonList } from "@/components/Skeleton";
 import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
@@ -156,8 +157,8 @@ export default function TransactionHistory() {
       {/* States */}
       <div className="space-y-2">
         {isLoading && (
-          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading {asset.symbol} history…
+          <div className="py-2" role="status" aria-live="polite" aria-label={`Loading ${asset.symbol} history`}>
+            <SkeletonList rows={5} />
           </div>
         )}
 

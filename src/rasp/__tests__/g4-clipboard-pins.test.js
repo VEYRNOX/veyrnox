@@ -3,7 +3,12 @@
 // Verifies that every sensitiveGate callsite covering clipboard/seed-reveal is
 // wired in the three copy entry points:
 //   1. WalletEntry.jsx      — copySeed() during onboarding seed display
-//   2. WalletPortfolioPage  — SeedGrid copy button
+//   2. SeedGrid.jsx         — shared seed-phrase reveal grid used by
+//                             WalletPortfolioPage BackupDialog / AddWalletDialog
+//                             AND WalletEntry view='generate' (extracted from
+//                             WalletPortfolioPage.jsx in the onboarding-UI polish
+//                             PR — the gate moved with the component, invariant
+//                             preserved)
 //   3. HDWalletManager      — makeCopy factory (sensitive=true leg)
 //
 // TDD: these pins are written BEFORE implementation and must be RED until the
@@ -38,9 +43,15 @@ describe('G4 clipboard — WalletEntry.jsx copySeed gate', () => {
   });
 });
 
-// ── 2. WalletPortfolioPage.jsx — SeedGrid ────────────────────────────────────
-describe('G4 clipboard — WalletPortfolioPage SeedGrid gate', () => {
-  const src = read('pages/WalletPortfolioPage.jsx');
+// ── 2. SeedGrid.jsx — shared seed-phrase reveal grid ─────────────────────────
+// SeedGrid was extracted from WalletPortfolioPage.jsx during the onboarding-UI
+// polish work so both the multi-wallet backup dialogs AND the fresh-user
+// seed-reveal at onboarding share one ceremony. The G4 gate moved with it —
+// the pin now points at the extracted file. Also enforce that
+// WalletPortfolioPage still IMPORTS SeedGrid, so a future refactor that dropped
+// the component (regressing coverage) would fail here.
+describe('G4 clipboard — SeedGrid gate', () => {
+  const src = read('components/SeedGrid.jsx');
 
   it('imports useRaspArtifact and sensitiveGate', () => {
     expect(src).toMatch(/useRaspArtifact/);
@@ -49,6 +60,12 @@ describe('G4 clipboard — WalletPortfolioPage SeedGrid gate', () => {
 
   it('SeedGrid calls sensitiveGate with seed-reveal before copySecret', () => {
     expect(src).toContain("sensitiveGate(raspArtifact, 'seed-reveal')");
+  });
+
+  it('WalletPortfolioPage still uses SeedGrid (no coverage regression)', () => {
+    const portfolio = read('pages/WalletPortfolioPage.jsx');
+    expect(portfolio).toMatch(/from ['"]@\/components\/SeedGrid['"]/);
+    expect(portfolio).toMatch(/<SeedGrid\b/);
   });
 });
 

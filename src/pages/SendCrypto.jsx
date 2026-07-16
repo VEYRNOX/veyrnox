@@ -1,5 +1,8 @@
 // @ts-nocheck
 import BackButton from "@/components/BackButton";
+import SuccessBeacon from "@/components/SuccessBeacon";
+import RiskShield from "@/components/RiskShield";
+import { motion, useReducedMotion } from "framer-motion";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
 // Issue #961 (SEND H-1): the Trezor EVM branch now goes through the audited
@@ -118,6 +121,57 @@ function PoisonWarning({ screen }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// Post-broadcast confirmation screen. This is the critical "your funds have
+// left" moment — the confirmation deserves motion weight (skill rule 7: motion
+// has meaning). Beacon springs in, copy stagger-fades, tx card lifts up.
+// Reduced-motion pins the whole thing static.
+function SendDoneView({ amount, currency, txResult, onSendAnother }) {
+  const reduce = useReducedMotion();
+  const container = {
+    hidden: {},
+    show: { transition: reduce ? {} : { staggerChildren: 0.08, delayChildren: 0.15 } },
+  };
+  const item = reduce
+    ? { hidden: { opacity: 1, y: 0 }, show: { opacity: 1, y: 0 } }
+    : {
+        hidden: { opacity: 0, y: 10 },
+        show: { opacity: 1, y: 0, transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] } },
+      };
+  return (
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="max-w-md mx-auto text-center py-16 space-y-5"
+    >
+      <motion.div variants={item} className="flex justify-center">
+        <SuccessBeacon size={112} label="Transaction broadcast" />
+      </motion.div>
+      <motion.h2 variants={item} className="text-xl font-bold tracking-tight">Transaction Broadcast</motion.h2>
+      <motion.p variants={item} className="text-sm text-muted-foreground">
+        <span className="mono-value text-foreground">{amount} {currency}</span> signed locally and sent to the network
+      </motion.p>
+      {txResult?.hash && (
+        <motion.div variants={item} className="p-3 rounded-xl bg-secondary/30 border border-border text-left space-y-2">
+          <p className="text-xs text-muted-foreground">Transaction hash</p>
+          <p className="text-xs mono-value break-all">{txResult.hash}</p>
+          {txResult.explorerUrl && (
+            <a href={txResult.explorerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+              View on block explorer <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+          <p className="text-[11px] text-muted-foreground">Pending until confirmed on the network. Balance updates from the blockchain, not a stored value.</p>
+        </motion.div>
+      )}
+      <motion.div variants={item}>
+        <Button variant="outline" onClick={onSendAnother}>
+          Send Another
+        </Button>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -1140,32 +1194,12 @@ export default function SendCrypto() {
   };
 
   if (step === "done") {
-    return (
-      <div className="max-w-md mx-auto text-center py-16 space-y-4">
-        <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-          <CheckCircle2 className="h-8 w-8 text-primary" />
-        </div>
-        <h2 className="text-xl font-bold">Transaction Broadcast</h2>
-        <p className="text-sm text-muted-foreground">
-          <span className="mono-value text-foreground">{amount} {selectedWallet?.currency}</span> signed locally and sent to the network
-        </p>
-        {txResult?.hash && (
-          <div className="p-3 rounded-lg bg-secondary/30 border border-border text-left space-y-2">
-            <p className="text-xs text-muted-foreground">Transaction hash</p>
-            <p className="text-xs mono-value break-all">{txResult.hash}</p>
-            {txResult.explorerUrl && (
-              <a href={txResult.explorerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
-                View on block explorer <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-            <p className="text-[11px] text-muted-foreground">Pending until confirmed on the network. Balance updates from the blockchain, not a stored value.</p>
-          </div>
-        )}
-        <Button variant="outline" onClick={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); setReauthAttempts(0); }}>
-          Send Another
-        </Button>
-      </div>
-    );
+    return <SendDoneView
+      amount={amount}
+      currency={selectedWallet?.currency}
+      txResult={txResult}
+      onSendAnother={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); setReauthAttempts(0); }}
+    />;
   }
 
   return (
@@ -1582,8 +1616,8 @@ export default function SendCrypto() {
                 the tx banner is suppressed (never two stacked warnings). When tx owns
                 (or the flag is off), the src/risk RiskVerdictBanner shows as before. */}
             {presign?.owner === 'rasp' && raspArtifact?.sentence ? (
-              <div className={`flex items-start gap-2 p-3 rounded-lg border ${presign.decision === 'block' ? 'bg-risk/10 border-risk/40 text-risk' : 'bg-caution/10 border-caution/30 text-caution'}`}>
-                <ShieldAlert aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className={`flex items-start gap-3 p-3 rounded-lg border ${presign.decision === 'block' ? 'bg-risk/10 border-risk/40 text-risk' : 'bg-caution/10 border-caution/30 text-caution'}`}>
+                <RiskShield severity={presign.decision === 'block' ? 'block' : 'warn'} />
                 <div className="text-xs space-y-1.5 min-w-0 font-medium">
                   <p>{raspArtifact.sentence}</p>
                   {presign.decision !== 'block' && (

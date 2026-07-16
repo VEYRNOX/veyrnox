@@ -73,12 +73,15 @@ import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Shield, Wallet, Lock, KeyRound, Download, RefreshCw,
-  Eye, EyeOff, Copy, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace, Zap,
+  Eye, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
+import VaultIllustration from "@/components/VaultIllustration";
+import SeedGrid from "@/components/SeedGrid";
+import ShakeOnKey from "@/components/ShakeOnKey";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
@@ -177,6 +180,55 @@ function WipedNotice({ onRestore, onStartNew }) {
   );
 }
 
+// PROVISIONING VIEW — shown while a Phase-2 PIN wallet is being atomically
+// provisioned (createWalletFromPendingPin / importWalletForPendingPin), which
+// runs Argon2id at 192 MiB and can take up to ~1s on flagship devices, longer
+// on mid-tier hardware. This is the "your seed is being locked in" moment for
+// PIN-cohort users, who never see the seed. Anchored with the same vault
+// illustration used at KEK enrollment + password-cohort seed backup, so all
+// three onboarding moments read as one arc. Copy cycles through the three
+// honest phases that actually run inside the provisioning promise — nothing
+// fake, nothing decorative. Module-level so identity is stable across
+// re-renders. Reduced-motion pins the label to the first phase and skips the
+// cycle.
+const PROVISIONING_STEPS = [
+  'Generating your recovery phrase…',
+  'Encrypting your vault on this device…',
+  'Sealing it to hardware…',
+];
+function ProvisioningView() {
+  const reduce = useReducedMotion();
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    if (reduce) return;
+    const t = setInterval(() => setStep((s) => (s + 1) % PROVISIONING_STEPS.length), 1400);
+    return () => clearInterval(t);
+  }, [reduce]);
+  return (
+    <div className="p-6 rounded-2xl border border-border bg-card text-center space-y-5">
+      <div className="flex justify-center">
+        <VaultIllustration size={168} label="Sealing your wallet" />
+      </div>
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">Setting up your wallet</p>
+        <div className="min-h-[1.25rem] text-xs text-muted-foreground" aria-live="polite">
+          {PROVISIONING_STEPS[step]}
+        </div>
+      </div>
+      <div
+        aria-hidden
+        className="mx-auto h-[3px] w-40 overflow-hidden rounded-full bg-secondary"
+      >
+        <motion.div
+          className="h-full w-1/3 rounded-full bg-primary/80"
+          animate={reduce ? undefined : { x: ['-100%', '400%'] }}
+          transition={reduce ? undefined : { duration: 1.8, ease: 'easeInOut', repeat: Infinity }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // FIRST-RUN WELCOME — the branded VEYRNOX hero a fresh device lands on BEFORE the
 // 8-digit PIN (lib/onboardingEntry.js: no-vault → 'welcome'). PURE PRESENTATION: it
 // holds no wallet and no balances; its single "Get Started" action advances to
@@ -204,7 +256,22 @@ function WelcomeHero({ onGetStarted }) {
     { icon: Lock, label: "On-device encrypted vault" },
   ];
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background overflow-hidden">
+    <div className="relative min-h-[100dvh] flex flex-col items-center justify-center p-6 bg-background overflow-hidden">
+      {/* Ambient aurora backdrop — two teal blobs that drift asymmetrically.
+          Fixed, pointer-events off, behind everything. Pure decoration; uses
+          only the design-system --primary token at low opacity, no rainbow. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <motion.div
+          className="absolute -top-24 -left-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
+          animate={reduce ? undefined : { x: [0, 24, 0], y: [0, 18, 0] }}
+          transition={reduce ? undefined : { duration: 14, ease: 'easeInOut', repeat: Infinity }}
+        />
+        <motion.div
+          className="absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
+          animate={reduce ? undefined : { x: [0, -20, 0], y: [0, -14, 0] }}
+          transition={reduce ? undefined : { duration: 18, ease: 'easeInOut', repeat: Infinity }}
+        />
+      </div>
       <motion.div
         variants={container}
         initial="hidden"
@@ -417,14 +484,29 @@ export default function WalletEntry() {
   // on failure the vault is torn down (fail closed) and we show an honest error.
   const [provisioning, setProvisioning] = useState(false);
 
-  // MANDATORY hardware-KEK enrollment gate (post-restore). After a
-  // delete+reinstall+seed-restore on a native device, the SE/StrongBox key is gone and
-  // the restored vault is bare (PIN-only, no device binding). We hold the app back and
-  // present KekEnrollmentGate so the user re-enables hardware protection before landing
-  // in the wallet. Detection + enrollment logic live in useKekEnrollmentGate (src/lib)
-  // to stay within the ring boundary (components cannot import wallet-core directly).
+  // MANDATORY hardware-KEK enrollment gate (post-restore AND post-fresh-create).
+  // After a delete+reinstall+seed-restore on a native device the SE/StrongBox key
+  // is gone and the restored vault is bare; the same gate also fires after a fresh
+  // Phase-2 PIN create on hardware-capable devices (the vault has just been sealed
+  // but not yet bound to the device). We hold the app back and present
+  // KekEnrollmentGate so the user re-enables hardware protection before landing
+  // in the wallet. Detection + enrollment logic live in useKekEnrollmentGate
+  // (src/lib) to stay within the ring boundary (components cannot import
+  // wallet-core directly).
   const { gateActive: kekGatePending, enroll: kekEnroll, dismiss: kekDismiss } =
     useKekEnrollmentGate({ isUnlocked });
+
+  // Shake feedback counter — increment on any wrong-PIN / PIN-mismatch moment
+  // so ShakeOnKey wrappers around the unlock and confirm PinPads fire a short
+  // horizontal wiggle. Pure presentation; no security value.
+  const [pinShakeKey, setPinShakeKey] = useState(0);
+
+  // Distinguishes fresh vs restored so KekEnrollmentGate can pick honest copy.
+  // Defaults to 'restored' — matches historical behaviour on an unknown path.
+  // Set to 'fresh' by the two create handlers (PIN doCreateWallet + password
+  // finishCreate) before the gate becomes reachable, and to 'restored' by the
+  // three restore paths (PIN doImportWallet, PIN recovery, password handleImport).
+  const [kekOrigin, setKekOrigin] = useState('restored');
 
   // Notify user when decoy wallet is unlocked (duress PIN).
   useEffect(() => {
@@ -583,6 +665,8 @@ export default function WalletEntry() {
         setError("Biometric authentication failed or was cancelled. Unlock with your vault password below.");
       } else {
         setError(e?.message || "Unlock failed");
+        setUnlockPassword("");
+        setPinShakeKey((k) => k + 1);
       }
     } finally { setBusy(false); }
   };
@@ -722,6 +806,8 @@ export default function WalletEntry() {
       // Not yet at the limit: honest "Incorrect PIN", upgraded to the iOS-style
       // remaining-count warning once within a few attempts of the wipe.
       setError(pinAttemptWarning(attempts) || "Incorrect PIN. Try again.");
+      setUnlockPin("");                    // clear the entered digits
+      setPinShakeKey((k) => k + 1);        // shake the pad
     } finally { setBusy(false); }
   };
 
@@ -747,7 +833,7 @@ export default function WalletEntry() {
   // fail-closed). The provisioning gate below holds the dashboard back until it commits.
   const doCreateWallet = async () => {
     setBusy(true); setProvisioning(true); setError("");
-    try { await createWalletFromPendingPin(); setProvisioning(false); }
+    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
       setProvisioning(false);
       if (e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT) {
@@ -773,7 +859,7 @@ export default function WalletEntry() {
     const phrase = importPhrasePin.trim().replace(/\s+/g, " ");
     if (!phrase) return;
     setBusy(true); setProvisioning(true); setError("");
-    try { await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
+    try { setKekOrigin('restored'); await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
     catch (e) {
       setProvisioning(false);
       if (isRecoverableSeedInputError(e)) {
@@ -816,6 +902,7 @@ export default function WalletEntry() {
     if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setBusy(true); setProvisioning(true); setError("");
     try {
+      setKekOrigin('restored');
       setupPin(realPin);               // bridge the new PIN as pendingPin (markers + salt)
       await importWalletForPendingPin(recoverySeed);
       setAuthModelState("pin");
@@ -842,6 +929,7 @@ export default function WalletEntry() {
       // Stash the password so we can cache it for Face ID if the user opts in on
       // this same screen (createWallet clears genPassword from state below).
       createdPasswordRef.current = genPassword;
+      setKekOrigin('fresh');
       const seed = await createWallet(genPassword); // returns mnemonic ONCE for backup
       setGeneratedSeed(seed);
       setShowSeed(false);
@@ -881,6 +969,7 @@ export default function WalletEntry() {
     if (!pw.ok) { setError(pw.reason); return; }
     setBusy(true);
     try {
+      setKekOrigin('restored');
       await importWallet(importPhrase.trim(), importPassword); // validates BIP-39 + unlocks
       // A restored/imported wallet is password-encrypted. If this device was in the
       // PIN cohort (e.g. PIN forgotten → "Restore from seed phrase"), leave the PIN
@@ -912,11 +1001,7 @@ export default function WalletEntry() {
   if (provisioning) {
     return (
       <EntryShell error={error}>
-        <div className="p-6 rounded-xl border border-border bg-card text-center space-y-3">
-          <RefreshCw className="h-6 w-6 text-primary mx-auto animate-spin" />
-          <p className="text-sm font-medium">Setting up your wallet…</p>
-          <p className="text-xs text-muted-foreground">Securing your wallet on this device. This takes a moment.</p>
-        </div>
+        <ProvisioningView />
       </EntryShell>
     );
   }
@@ -928,6 +1013,7 @@ export default function WalletEntry() {
   if (kekGatePending && isUnlocked && !generatedSeed) {
     return (
       <KekEnrollmentGate
+        origin={kekOrigin}
         onEnroll={async (pin) => {
           const result = await kekEnroll(pin);
           if (result.ok) kekDismiss();
@@ -1132,7 +1218,9 @@ export default function WalletEntry() {
           <div className="flex items-center justify-center gap-2 text-sm font-medium">
             <Lock className="h-4 w-4 text-muted-foreground" /> Enter your PIN
           </div>
-          <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} submitLabel="Unlock" />
+          <ShakeOnKey shakeKey={pinShakeKey}>
+            <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} submitLabel="Unlock" />
+          </ShakeOnKey>
         </div>
 
         {/* HONEST recovery: no custodial reset. A forgotten PIN is recovered ONLY by
@@ -1201,7 +1289,9 @@ export default function WalletEntry() {
               </Button>
             </div>
           ) : (
-            <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
+            <ShakeOnKey shakeKey={pinShakeKey}>
+              <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
+            </ShakeOnKey>
           )}
 
           {passkeyFailed && (
@@ -1456,29 +1546,19 @@ export default function WalletEntry() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl border border-border bg-card">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold">Your Seed Phrase (shown once)</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setShowSeed(s => !s)} aria-label={showSeed ? "Hide seed phrase" : "Reveal seed phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
-                  <button onClick={copySeed} aria-label={copied ? "Seed phrase copied" : "Copy seed phrase"} className="p-1.5 text-muted-foreground hover:text-foreground">{copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</button>
-                </div>
-              </div>
-              {showSeed ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {generatedSeed.split(" ").map((w, i) => (
-                    <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary text-xs">
-                      <span className="text-muted-foreground w-4 text-right mono-value">{i + 1}.</span>
-                      <span className="mono-value font-semibold">{w}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-20 flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">Tap the eye icon to reveal your seed phrase</p>
-                </div>
-              )}
+            {/* Anchor the moment: this seed is being sealed into the on-device
+                vault. The illustration mirrors the KEK enrollment screen so
+                the "your wallet lives inside this device" story reads as one
+                continuous arc across onboarding. */}
+            <div className="flex flex-col items-center text-center gap-2 pt-1">
+              <VaultIllustration size={168} label="Encrypted vault" />
+              <h2 className="text-lg font-semibold tracking-tight">Sealing your wallet into the vault</h2>
+              <p className="text-xs leading-relaxed text-muted-foreground max-w-[20rem]">
+                These 12 words are the only backup. Write them down offline before you
+                continue — they're shown once and we cannot recover them for you.
+              </p>
             </div>
+            <SeedGrid mnemonic={generatedSeed} />
             <div className="p-3 rounded-xl bg-secondary/30 text-xs text-muted-foreground flex items-start gap-2">
               <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               <span>Your wallet is created and unlocked. Back up your phrase before continuing — it is never shown again and we cannot recover it for you.</span>
