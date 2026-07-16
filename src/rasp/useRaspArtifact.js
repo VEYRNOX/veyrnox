@@ -55,7 +55,17 @@ const HEARTBEAT_MS = 60_000;
 //     on explicit pre-sign egress" boundary (P2-4 audit 2026-07-15). When the
 //     flag flips false the effect re-runs (probeKey deps carry through) and the
 //     probe fires. Default behaviour is unchanged for existing consumers.
-export function useRaspArtifact({ deferAttestation = false } = {}) {
+//   excludeAttestation (default false): when true, the returned artifact is
+//     derived from the ON-DEVICE probe leg ONLY — the remote Play Integrity /
+//     App Attest condition is NOT composed in, and its network effect does not
+//     fire (no egress). Local seed-material surfaces (backup / export / import /
+//     reveal) pass this: a self-custody backup must not be gated on a REMOTE
+//     attestation that is unavailable by design on any sideloaded / non-Play-Store
+//     build (Google returns HTTP 404 for unregistered apps → INTEGRITY_UNAVAILABLE
+//     → backup blocked). Owner decision 2026-07-16: genuine ON-DEVICE threats
+//     (root/jailbreak, tamper, hook) STILL block via the OS leg; the remote leg
+//     stays fully in force for SIGNING/sending (SendCrypto/WC do NOT pass this).
+export function useRaspArtifact({ deferAttestation = false, excludeAttestation = false } = {}) {
   // P2-9 (audit 2026-07-15): rules-of-hooks — every hook call MUST run
   // unconditionally on every render, regardless of BYPASS_RASP. The bypass
   // early-return that used to sit ABOVE useState/useEffect was runtime-stable
@@ -125,6 +135,9 @@ export function useRaspArtifact({ deferAttestation = false } = {}) {
     // by construction (detectAttestation(null) fail-closes). The effect re-runs
     // when deferAttestation flips false → true→false, sampling then.
     if (deferAttestation) return;
+    // Local seed-material surfaces opt out of the remote leg entirely — no egress,
+    // and the composed condition below ignores attestation (owner decision 2026-07-16).
+    if (excludeAttestation) return;
     let cancelled = false;
     (async () => {
       try {
@@ -136,7 +149,7 @@ export function useRaspArtifact({ deferAttestation = false } = {}) {
       }
     })();
     return () => { cancelled = true; };
-  }, [probeKey, deferAttestation]);
+  }, [probeKey, deferAttestation, excludeAttestation]);
 
   // Dev bypass: substitute the returned ARTIFACT with ALLOW, AFTER every hook
   // above has been invoked (P2-9). Shape matches the success/catch branches —
@@ -146,8 +159,12 @@ export function useRaspArtifact({ deferAttestation = false } = {}) {
 
   try {
     const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));
-    const _attestCondition = detectAttestation(attestationResult);
-    const composed = composeConditions(_osCondition, _attestCondition);
+    // excludeAttestation: seed-material surfaces gate on the ON-DEVICE leg only.
+    // Genuine on-device threats (root/tamper/hook) still surface here; the remote
+    // Play-Integrity condition (unavailable on any sideloaded build) is NOT composed.
+    const composed = excludeAttestation
+      ? _osCondition
+      : composeConditions(_osCondition, detectAttestation(attestationResult));
     // P2-8 (2026-07-15): expose the composed CONDITION so environment-read
     // surfaces (e.g. RaspSecurity.jsx dashboard) can render a specific
     // condition label without re-sampling the probes themselves. Existing

@@ -34,6 +34,7 @@ import { useRaspArtifact, CONDITION, TIER } from "@/rasp";
 const CONDITION_LABEL = {
   [CONDITION.CLEAN]: "clean",
   [CONDITION.ROOTED]: "rooted",
+  [CONDITION.ELEVATED]: "elevated (device setting)",
   [CONDITION.EMULATOR]: "emulator",
   [CONDITION.HOOKED]: "hooked",
   [CONDITION.TAMPERED]: "tampered",
