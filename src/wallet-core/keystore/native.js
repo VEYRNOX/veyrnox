@@ -388,16 +388,7 @@ async function _unlockInner(password, opts = {}) {
     const saltBytes = decodeKekSalt(blob.kekSalt);
     // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed salt
     // (v2 inert-binding / v1 legacy). See hfOptsForBlob.
-    // TODO(kek-single-prompt-b1) — 2026-07-16 honest-reviewer B1: the KEK-write paths
-    // (enrollKek / changePassword KEK / upgradeKekToV3) route getHF through
-    // getHardwareFactorWithLockoutFallback so an OS biometric-lockout on those paths
-    // engages the app-layer device-credential fallback. This unlock path — plus
-    // saveVaultContents and unenrollKek — still call getHF directly, so an unlock on a
-    // locked-out device propagates NO_HARDWARE_FACTOR without a fallback prompt. B1
-    // consistency is DEFERRED to a follow-up PR (needs real-device UX validation of
-    // extra-prompt-on-unlock trade-off, plus deniability-session review — unlock is a
-    // hotter path than the write paths and has stricter deniability constraints).
-    const H = await getHF(hfOptsForBlob(blob, saltBytes)); // biometric prompt (Android Keystore)
+    const H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
     let C;
     let kek;
     let dek;
@@ -724,7 +715,7 @@ export const nativeKeyStore = {
       // salt for v2 (inert-bound, C-1 residual) / v1 (legacy). See hfOptsForBlob and
       // upgradeKekToV3 for the v2→v3 migration path. 2026-07-14 audit LOW: stale
       // "(v2)" wording corrected — v2 is the inert-binding branch, not salt-bound.
-      const H = await getHF(hfOptsForBlob(blob, saltBytes)); // one biometric prompt for this write
+      const H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
       let C;
       let kek;
       let dek;
@@ -987,7 +978,7 @@ export const nativeKeyStore = {
       }
 
       const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
-      const H = await getHF(hfOptsForBlob(blob, saltBytes));
+      const H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
       let C;
       let kek;
       let dek;

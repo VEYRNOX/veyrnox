@@ -375,3 +375,215 @@ describe('upgradeKekToV3 — single biometric per prompt on happy path', () => {
     expect(getHF).toHaveBeenCalledTimes(0);
   });
 });
+
+// ── _unlockInner (via unlock) — B1 lockout-fallback coverage ──────────────────────────
+describe('unlock (KEK vault) — lockout-fallback wrapper (B1)', () => {
+  it('happy path: authenticate=0, getHardwareFactor=1', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn(async () => newHF());
+
+    await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(0);
+    expect(getHF).toHaveBeenCalledTimes(1);
+  });
+
+  it('biometric lockout: engages authenticateOrThrow fallback, then retries getHardwareFactor', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn()
+      .mockRejectedValueOnce(lockoutErr())
+      .mockResolvedValue(newHF());
+
+    await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(2);
+  });
+
+  it('double-lockout: retry also throws → authenticate=1 (no loop)', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn()
+      .mockRejectedValueOnce(lockoutErr())
+      .mockRejectedValueOnce(lockoutErr());
+
+    await expect(
+      nativeKeyStore.unlock('pw', { getHardwareFactor: getHF }),
+    ).rejects.toMatchObject({ code: NO_HARDWARE_FACTOR });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(2);
+  });
+
+  it('non-lockout getHF throw: propagates immediately, no fallback', async () => {
+    setVault(v3blob());
+    const err = Object.assign(new Error('KEK_USER_CANCELLED'), { code: 'KEK_USER_CANCELLED' });
+    const getHF = vi.fn().mockRejectedValue(err);
+
+    await expect(
+      nativeKeyStore.unlock('pw', { getHardwareFactor: getHF }),
+    ).rejects.toThrow('KEK_USER_CANCELLED');
+
+    expect(authenticateMock).toHaveBeenCalledTimes(0);
+    expect(getHF).toHaveBeenCalledTimes(1);
+  });
+
+  it('authenticateOrThrow cancel inside wrapper: .cause + .origCode preserved', async () => {
+    setVault(v3blob());
+    const lockout = lockoutErr();
+    const getHF = vi.fn().mockRejectedValueOnce(lockout);
+    const cancelErr = Object.assign(new Error('User cancelled'), { code: 'biometryCancel' });
+    authenticateMock.mockRejectedValueOnce(cancelErr);
+
+    let caught;
+    await nativeKeyStore.unlock('pw', { getHardwareFactor: getHF }).catch((e) => { caught = e; });
+
+    expect(caught).toBeDefined();
+    expect(caught.cause).toBe(lockout);
+    expect(caught.origCode).toBe(NO_HARDWARE_FACTOR);
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── saveVaultContents — B1 lockout-fallback coverage ──────────────────────────────────
+describe('saveVaultContents (KEK vault) — lockout-fallback wrapper (B1)', () => {
+  it('happy path: authenticate=0, getHardwareFactor=1', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn(async () => newHF());
+
+    await nativeKeyStore.saveVaultContents('newseed', 'pw', { getHardwareFactor: getHF });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(0);
+    expect(getHF).toHaveBeenCalledTimes(1);
+  });
+
+  it('biometric lockout: engages authenticateOrThrow fallback, then retries getHardwareFactor', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn()
+      .mockRejectedValueOnce(lockoutErr())
+      .mockResolvedValue(newHF());
+
+    await nativeKeyStore.saveVaultContents('newseed', 'pw', { getHardwareFactor: getHF });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(2);
+  });
+
+  it('double-lockout: retry also throws → authenticate=1 (no loop)', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn()
+      .mockRejectedValueOnce(lockoutErr())
+      .mockRejectedValueOnce(lockoutErr());
+
+    await expect(
+      nativeKeyStore.saveVaultContents('newseed', 'pw', { getHardwareFactor: getHF }),
+    ).rejects.toMatchObject({ code: NO_HARDWARE_FACTOR });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(2);
+  });
+
+  it('non-lockout getHF throw: propagates immediately, no fallback', async () => {
+    setVault(v3blob());
+    const err = Object.assign(new Error('KEK_USER_CANCELLED'), { code: 'KEK_USER_CANCELLED' });
+    const getHF = vi.fn().mockRejectedValue(err);
+
+    await expect(
+      nativeKeyStore.saveVaultContents('newseed', 'pw', { getHardwareFactor: getHF }),
+    ).rejects.toThrow('KEK_USER_CANCELLED');
+
+    expect(authenticateMock).toHaveBeenCalledTimes(0);
+    expect(getHF).toHaveBeenCalledTimes(1);
+  });
+
+  it('authenticateOrThrow cancel inside wrapper: .cause + .origCode preserved', async () => {
+    setVault(v3blob());
+    const lockout = lockoutErr();
+    const getHF = vi.fn().mockRejectedValueOnce(lockout);
+    const cancelErr = Object.assign(new Error('User cancelled'), { code: 'biometryCancel' });
+    authenticateMock.mockRejectedValueOnce(cancelErr);
+
+    let caught;
+    await nativeKeyStore.saveVaultContents('newseed', 'pw', { getHardwareFactor: getHF }).catch((e) => { caught = e; });
+
+    expect(caught).toBeDefined();
+    expect(caught.cause).toBe(lockout);
+    expect(caught.origCode).toBe(NO_HARDWARE_FACTOR);
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── unenrollKek — B1 lockout-fallback coverage ────────────────────────────────────────
+describe('unenrollKek — lockout-fallback wrapper (B1)', () => {
+  it('happy path: authenticate=0, getHardwareFactor=1', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn(async () => newHF());
+
+    await nativeKeyStore.unenrollKek('pw', { getHardwareFactor: getHF });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(0);
+    expect(getHF).toHaveBeenCalledTimes(1);
+  });
+
+  it('biometric lockout: engages authenticateOrThrow fallback, then retries getHardwareFactor', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn()
+      .mockRejectedValueOnce(lockoutErr())
+      .mockResolvedValue(newHF());
+
+    await nativeKeyStore.unenrollKek('pw', { getHardwareFactor: getHF });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(2);
+    expect(clearHardwareCredentialMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('double-lockout: retry also throws → authenticate=1 (no loop), no unenroll', async () => {
+    setVault(v3blob());
+    const getHF = vi.fn()
+      .mockRejectedValueOnce(lockoutErr())
+      .mockRejectedValueOnce(lockoutErr());
+
+    await expect(
+      nativeKeyStore.unenrollKek('pw', { getHardwareFactor: getHF }),
+    ).rejects.toMatchObject({ code: NO_HARDWARE_FACTOR });
+
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(2);
+    // Unenroll did NOT complete — credential must be preserved (I4 fail-closed).
+    expect(clearHardwareCredentialMock).not.toHaveBeenCalled();
+  });
+
+  it('non-lockout getHF throw: propagates immediately, no fallback', async () => {
+    setVault(v3blob());
+    const err = Object.assign(new Error('KEK_USER_CANCELLED'), { code: 'KEK_USER_CANCELLED' });
+    const getHF = vi.fn().mockRejectedValue(err);
+
+    await expect(
+      nativeKeyStore.unenrollKek('pw', { getHardwareFactor: getHF }),
+    ).rejects.toThrow('KEK_USER_CANCELLED');
+
+    expect(authenticateMock).toHaveBeenCalledTimes(0);
+    expect(getHF).toHaveBeenCalledTimes(1);
+    expect(clearHardwareCredentialMock).not.toHaveBeenCalled();
+  });
+
+  it('authenticateOrThrow cancel inside wrapper: .cause + .origCode preserved, no unenroll', async () => {
+    setVault(v3blob());
+    const lockout = lockoutErr();
+    const getHF = vi.fn().mockRejectedValueOnce(lockout);
+    const cancelErr = Object.assign(new Error('User cancelled'), { code: 'biometryCancel' });
+    authenticateMock.mockRejectedValueOnce(cancelErr);
+
+    let caught;
+    await nativeKeyStore.unenrollKek('pw', { getHardwareFactor: getHF }).catch((e) => { caught = e; });
+
+    expect(caught).toBeDefined();
+    expect(caught.cause).toBe(lockout);
+    expect(caught.origCode).toBe(NO_HARDWARE_FACTOR);
+    expect(authenticateMock).toHaveBeenCalledTimes(1);
+    expect(getHF).toHaveBeenCalledTimes(1);
+    expect(clearHardwareCredentialMock).not.toHaveBeenCalled();
+  });
+});
