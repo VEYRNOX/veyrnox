@@ -38,16 +38,22 @@
 import { CONDITION } from './conditions.js';
 
 /**
- * @typedef {{ tampered?: boolean, hooked?: boolean, emulator?: boolean, rooted?: boolean }} ProbeSignals
+ * @typedef {{ tampered?: boolean, hooked?: boolean, emulator?: boolean, rooted?: boolean, elevated?: boolean }} ProbeSignals
  * The seam a native layer implements. `available` MUST be exactly true to assert
  * the probes genuinely ran; anything else is treated as "could not evaluate".
+ * `elevated` (added 2026-07-16) is OPTIONAL — browserProbe.js and the required-shape
+ * check in detect() below only ever emit/require the original four core booleans;
+ * a source without `elevated` is still a fully valid ProbeSignals (absent → falsy,
+ * same as any other unset field).
  * @typedef {{ available: boolean, signals?: ProbeSignals }} ProbeSource
  */
 
 // Danger precedence: the strongest condition a signal set implies wins. tamper and
 // hook are full-block; emulator blocks production but degrade() permits testnet;
-// rooted is warn. All-clear is the ONLY path to CLEAN. Absent/undefined signal
-// fields count as "not observed" (false), never as a clean affirmation.
+// rooted is warn (genuine root/jailbreak only — seed backup BLOCKED); elevated
+// (2026-07-16) is a MILDER warn for the 8 soft environment signals — seed backup
+// ALLOWED. All-clear is the ONLY path to CLEAN. Absent/undefined signal fields
+// count as "not observed" (false), never as a clean affirmation.
 //
 // Signature note: the `signals` param carries NO default in the declaration, so
 // the function's arity stays 1 (the I3 set-blind contract the deniability test
@@ -59,6 +65,7 @@ export function classifyEnvironment(signals) {
   if (signals.hooked) return CONDITION.HOOKED;
   if (signals.emulator) return CONDITION.EMULATOR;
   if (signals.rooted) return CONDITION.ROOTED;
+  if (signals.elevated) return CONDITION.ELEVATED;
   return CONDITION.CLEAN;
 }
 

@@ -58,8 +58,14 @@ const UNAVAILABLE = Object.freeze({ available: false });
  * shape detect()/classifyEnvironment() understand.
  *
  * Async because the native bridge is async. Returns a ProbeSource:
- *   { available: true, signals: { rooted, hooked, emulator, tampered } }  on success
+ *   { available: true, signals: { rooted, hooked, emulator, tampered, elevated } }
+ *                                                                        on success
  *   { available: false }                                                  fail-closed
+ *
+ * `elevated` (added 2026-07-16) is optional/derived — it carries the 8 SOFT
+ * environment signals (see the big comment block below) and drives
+ * CONDITION.ELEVATED (WARN, seed backup allowed), distinct from `rooted`
+ * (genuine root/jailbreak only, WARN, seed backup BLOCKED).
  *
  * NOTE: no parameters — see the I3 note above. Do not add a wallet-set argument.
  *
@@ -92,37 +98,49 @@ export async function nativeProbeSource() {
   }
 
   // Adapt the native verdict to detect()'s ProbeSignals. root OR jailbreak both
-  // mean "OS trust boundary broken" → the `rooted` signal (degrade() → WARN).
-  // A hooked process → `hooked` (→ BLOCK). Missing fields are "not observed"
-  // (false), exactly as classifyEnvironment() treats absent fields.
-  // Item 19: fold overlayActive (iOS UIAccessibilityIsAssistiveTouchRunning) into
-  // rooted → WARN. The plugin comment says "must NOT trigger TIER.BLOCK on its
-  // own"; WARN satisfies that constraint. AssistiveTouch is legitimate but an
-  // active accessibility overlay is a tapjacking risk during PIN entry.
-  // Item 25: fold developerMode (Android ADB_ENABLED / DEVELOPMENT_SETTINGS_ENABLED,
-  // item 24) into rooted → WARN. USB debugging on = adb-level attack surface
-  // (logcat capture, screenrecord, memory dump). Android-only field; absent on
-  // iOS verdicts and treated as false by the === true guard.
-  // Item 27: fold virtualApp (Android checkVirtualApp, item 26) into rooted → WARN.
-  // Running inside a VirtualApp/Parallel Space/Island container lets the host
+  // mean "OS trust boundary broken" → the `rooted` signal (degrade() → WARN,
+  // seed-reveal/export/import BLOCKED). A hooked process → `hooked` (→ BLOCK).
+  // Missing fields are "not observed" (false), exactly as classifyEnvironment()
+  // treats absent fields.
+  //
+  // 2026-07-16 owner-approved fix (regression from #1007 + #979): items 19-37
+  // below (8 "soft" environment signals) previously folded into `rooted`. #979
+  // then added `blockedActions: ['seed-reveal','export','import']` to the
+  // ROOTED WARN spec, so a benign state like plain developer mode or an
+  // accessibility service silently blocked seed BACKUP — never the intent.
+  // These 8 signals now fold into the separate `elevated` signal instead:
+  // still WARN + biometric re-confirm (degrade.js CONDITION.ELEVATED), but
+  // backup is explicitly NOT blocked. GENUINE root/jailbreak (verdict.rooted /
+  // verdict.jailbroken) is the ONLY thing that still sets `rooted`.
+  //
+  // Item 19: overlayActive (iOS UIAccessibilityIsAssistiveTouchRunning) → WARN.
+  // The plugin comment says "must NOT trigger TIER.BLOCK on its own"; WARN
+  // satisfies that. AssistiveTouch is legitimate but an active accessibility
+  // overlay is a tapjacking risk during PIN entry.
+  // Item 25: developerMode (Android ADB_ENABLED / DEVELOPMENT_SETTINGS_ENABLED,
+  // item 24) → WARN. USB debugging on = adb-level attack surface (logcat
+  // capture, screenrecord, memory dump). Android-only field; absent on iOS
+  // verdicts and treated as false by the === true guard.
+  // Item 27: virtualApp (Android checkVirtualApp, item 26) → WARN. Running
+  // inside a VirtualApp/Parallel Space/Island container lets the host
   // intercept binder calls, fake root/tamper signals, and proxy biometrics.
   // Android-only field; absent on iOS verdicts and treated as false by === true.
-  // Item 29: fold suspiciousPackage (Android checkSuspiciousPackages, item 28)
-  // into rooted → WARN. PackageManager detects Magisk Manager, LSPosed, SuperSU
-  // etc. even when Magisk Hide masks file-system paths. Android-only field.
-  // Item 31: fold thirdPartyKeyboard (Android checkThirdPartyKeyboard, item 30)
-  // into rooted → WARN. A non-system IME (FLAG_SYSTEM == 0) could keylog PIN
-  // input during KEK enrollment. Android-only field.
-  // Item 33: fold mockLocation (Android checkMockLocation, item 32) into
-  // rooted → WARN. Active mock-location provider = device-integrity signal
-  // (requires developer options or explicit app-op grant). Android-only field.
-  // Item 35: fold networkProxy (Android checkNetworkProxy, item 34) into
-  // rooted → WARN. An active system proxy (Burp/Charles/mitmproxy) intercepts
-  // HTTPS traffic — a potential MitM vector. Android-only field.
-  // Item 37: fold accessibilityService (Android checkAccessibilityService,
-  // item 36) into rooted → WARN. A user-installed accessibility service has
-  // full UI-tree access and can inject events — keylogging/tapjacking risk
-  // during PIN entry. Android-only field.
+  // Item 29: suspiciousPackage (Android checkSuspiciousPackages, item 28) →
+  // WARN. PackageManager detects Magisk Manager, LSPosed, SuperSU etc. even
+  // when Magisk Hide masks file-system paths. Android-only field.
+  // Item 31: thirdPartyKeyboard (Android checkThirdPartyKeyboard, item 30) →
+  // WARN. A non-system IME (FLAG_SYSTEM == 0) could keylog PIN input during
+  // KEK enrollment. Android-only field.
+  // Item 33: mockLocation (Android checkMockLocation, item 32) → WARN. Active
+  // mock-location provider = device-integrity signal (requires developer
+  // options or explicit app-op grant). Android-only field.
+  // Item 35: networkProxy (Android checkNetworkProxy, item 34) → WARN. An
+  // active system proxy (Burp/Charles/mitmproxy) intercepts HTTPS traffic — a
+  // potential MitM vector. Android-only field.
+  // Item 37: accessibilityService (Android checkAccessibilityService, item 36)
+  // → WARN. A user-installed accessibility service has full UI-tree access and
+  // can inject events — keylogging/tapjacking risk during PIN entry.
+  // Android-only field.
 
   // P2-6b fail-closed shape validation (from main): a bridge returning `{}` or a
   // one-field partial previously coerced every absent axis to false → CLEAN, a
@@ -144,8 +162,12 @@ export async function nativeProbeSource() {
   }
 
   const signals = {
-    rooted: verdict.rooted === true || verdict.jailbroken === true
-         || verdict.overlayActive === true
+    // GENUINE root/jailbreak ONLY (2026-07-16 fix) — the 8 soft signals below
+    // no longer widen this axis; see signals.elevated instead.
+    rooted: verdict.rooted === true || verdict.jailbroken === true,
+    // The 8 soft environment signals (items 19/25/27/29/31/33/35/37) — WARN +
+    // biometric re-confirm via CONDITION.ELEVATED, but seed backup is allowed.
+    elevated: verdict.overlayActive === true
          || verdict.developerMode === true
          || verdict.virtualApp === true
          || verdict.suspiciousPackage === true

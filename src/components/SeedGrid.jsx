@@ -31,7 +31,9 @@ import { useRaspArtifact, sensitiveGate } from '@/rasp';
 export default function SeedGrid({ mnemonic, defaultHidden = true }) {
   const [show, setShow] = useState(!defaultHidden);
   const [copied, setCopied] = useState(false);
-  const raspArtifact = useRaspArtifact();
+  // excludeAttestation: seed-reveal (local seed material) is not gated on the
+  // remote attestation leg (unavailable on sideloaded builds). (2026-07-16)
+  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
   const reduce = useReducedMotion();
   const words = (mnemonic || '').split(' ');
   const container = {

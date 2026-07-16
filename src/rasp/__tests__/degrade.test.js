@@ -46,6 +46,34 @@ describe('degrade — §4 degradation ladder (condition → tier)', () => {
     expect(a.requiresBiometric).toBe(true);
   });
 
+  // 2026-07-16 owner-approved fix: ELEVATED is WARN + biometric re-confirm, same
+  // as ROOTED, but seed BACKUP (seed-reveal/export/import) is explicitly ALLOWED —
+  // this is the whole point of splitting the 8 soft signals out of ROOTED.
+  it('ELEVATED → warn-before-sign: one sentence + biometric re-confirm, backup NOT blocked', () => {
+    const a = degrade(CONDITION.ELEVATED);
+    expect(a.tier).toBe(TIER.WARN);
+    expect(typeof a.sentence).toBe('string');
+    expect(a.sentence.length).toBeGreaterThan(0);
+    expect(a.blockedActions).toEqual([]);
+    for (const action of ['seed-reveal', 'export', 'import', 'sign']) {
+      expect(a.blockedActions).not.toContain(action);
+    }
+    expect(a.requiresBiometric).toBe(true);
+  });
+
+  it('ELEVATED copy does not claim the device is rooted or jailbroken', () => {
+    const a = degrade(CONDITION.ELEVATED);
+    expect(a.sentence.toLowerCase()).not.toContain('rooted');
+    expect(a.sentence.toLowerCase()).not.toContain('jailbroken');
+  });
+
+  it('ROOTED still blocks seed-reveal/export/import (unchanged genuine-root behaviour)', () => {
+    const a = degrade(CONDITION.ROOTED);
+    for (const action of ['seed-reveal', 'export', 'import']) {
+      expect(a.blockedActions).toContain(action);
+    }
+  });
+
   it('INTEGRITY_UNAVAILABLE → warn (cautious tier per §2/I4), sensitive paths blocked', () => {
     const a = degrade(CONDITION.INTEGRITY_UNAVAILABLE);
     expect(a.tier).toBe(TIER.WARN);
@@ -106,7 +134,7 @@ describe('degrade — honest copy (I4): copy must not promise unenforced behavio
   });
 
   it('WARN copy does NOT promise an enforced biometric re-confirm', () => {
-    for (const condition of [CONDITION.ROOTED, CONDITION.INTEGRITY_UNAVAILABLE]) {
+    for (const condition of [CONDITION.ROOTED, CONDITION.INTEGRITY_UNAVAILABLE, CONDITION.ELEVATED]) {
       const a = degrade(condition);
       expect(a.tier).toBe(TIER.WARN);
       expect(a.sentence.toLowerCase()).not.toContain('biometric');
