@@ -14,6 +14,8 @@ vi.mock('@/lib/purchases', () => ({
   getOfferings: (...a) => getOfferings(...a),
   purchasePackage: (...a) => purchasePackage(...a),
   restorePurchases: (...a) => restorePurchases(...a),
+  SAFETY_PLUS_MONTHLY_PACKAGE: '$rc_monthly',
+  SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
 }));
 
 const refreshTier = vi.fn();
@@ -46,7 +48,7 @@ describe('Subscription page — web (no store)', () => {
   });
 });
 
-describe('Subscription page — native', () => {
+describe('Subscription page — native, monthly-only offering', () => {
   beforeEach(() => {
     isNativePlatform.mockReturnValue(true);
     getOfferings.mockResolvedValue({
@@ -59,6 +61,12 @@ describe('Subscription page — native', () => {
   it('shows the real store price once offerings load', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('$5.99')).toBeTruthy());
+  });
+
+  it('does not render the billing-period toggle when only monthly is available', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('$5.99')).toBeTruthy());
+    expect(screen.queryByRole('radiogroup', { name: /billing period/i })).toBeNull();
   });
 
   it('purchasing calls purchasePackage then refreshes the tier', async () => {
@@ -82,5 +90,63 @@ describe('Subscription page — native', () => {
     fireEvent.click(screen.getByText(/restore purchases/i));
     await waitFor(() => expect(restorePurchases).toHaveBeenCalled());
     await waitFor(() => expect(refreshTier).toHaveBeenCalled());
+  });
+});
+
+describe('Subscription page — native, monthly + annual offering', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferings.mockResolvedValue({
+      availablePackages: [
+        { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
+        { identifier: '$rc_annual', product: { priceString: '$49.99' } },
+      ],
+    });
+  });
+
+  it('defaults to the annual package and shows the annual price', async () => {
+    renderPage();
+    // The card headline price shows the annual selection by default.
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    // The CTA reflects the selected billing period.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /upgrade to safety plus.*\$49\.99/i })).toBeTruthy()
+    );
+  });
+
+  it('renders both toggle options with the store-supplied prices', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('radiogroup', { name: /billing period/i })).toBeTruthy());
+    expect(screen.getByRole('radio', { name: /monthly/i })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /annual/i })).toBeTruthy();
+    expect(screen.getByText('$5.99')).toBeTruthy();
+    // $49.99 appears in the annual toggle button and the card headline — both are fine.
+    expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0);
+  });
+
+  it('purchasing while annual is selected calls purchasePackage with the annual package', async () => {
+    purchasePackage.mockResolvedValue({});
+    refreshTier.mockResolvedValue('safety_plus');
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('radiogroup', { name: /billing period/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
+      identifier: '$rc_annual',
+      product: { priceString: '$49.99' },
+    }));
+    await waitFor(() => expect(refreshTier).toHaveBeenCalled());
+  });
+
+  it('switching to monthly and purchasing calls purchasePackage with the monthly package', async () => {
+    purchasePackage.mockResolvedValue({});
+    refreshTier.mockResolvedValue('safety_plus');
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('radio', { name: /monthly/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /monthly/i }));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
+      identifier: '$rc_monthly',
+      product: { priceString: '$5.99' },
+    }));
   });
 });
