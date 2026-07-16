@@ -121,7 +121,13 @@ export default function WalletSeedQR() {
           <SelectTrigger className="mt-1.5" aria-labelledby="seed-wallet-label">
             <SelectValue placeholder="Choose wallet..." />
           </SelectTrigger>
-          <SelectContent>
+          {/* position="popper" anchors the dropdown to the trigger's bottom edge.
+              Radix's default position="item-aligned" tries to align the currently-
+              selected item over the trigger — on mobile with a short viewport and
+              no current selection (first open), that falls through and floats the
+              popover to wherever fits, which on this layout is the bottom of the
+              screen (past the warning card). popper keeps it attached. */}
+          <SelectContent position="popper" side="bottom" align="start" sideOffset={4}>
             {wallets.map(w => (
               <SelectItem key={w.id} value={w.id}>
                 <span className="flex items-center gap-2">
