@@ -201,11 +201,16 @@ function readStoredCredentialId() {
  *
  * F-05 (audit): this function intentionally does NOT persist the credential id.
  * Persistence is the caller's (getHardwareFactor) responsibility and must happen
- * only AFTER a non-null PRF output is confirmed by a subsequent get() — otherwise a
- * WebAuthn-capable but PRF-incapable browser (Safari) would leave an orphan
- * credential id in localStorage that can never yield an H.
+ * only AFTER a non-null PRF output is confirmed — otherwise a WebAuthn-capable but
+ * PRF-incapable browser (Safari) would leave an orphan credential id in
+ * localStorage that can never yield an H.
  *
- * @returns {Promise<{ credId: string }>}
+ * Chrome >=118 returns PRF output directly from create() via extension results.
+ * Safari/Firefox do not. This function extracts the PRF output if present and
+ * returns it alongside the credential id so the caller can skip the second
+ * get() prompt when create() already yielded H (#1030).
+ *
+ * @returns {Promise<{ credId: string, prfOutput: ArrayBuffer | null }>}
  */
 async function createPrfCredential() {
   if (!window.PublicKeyCredential || !navigator.credentials?.create) {
@@ -242,7 +247,12 @@ async function createPrfCredential() {
     throw new Error('Failed to create passkey credential.');
   }
 
-  return { credId: bufferToB64u((/** @type {any} */ (cred)).rawId) };
+  // Chrome >=118: PRF output may already be in create() extension results.
+  // Safari/Firefox return no results here — prfOutput will be null.
+  const ext = (/** @type {any} */ (cred)).getClientExtensionResults?.() || {};
+  const prfOutput = ext.prf?.results?.first || null;
+
+  return { credId: bufferToB64u((/** @type {any} */ (cred)).rawId), prfOutput };
 }
 
 /** @type {import('./keyStore.js').KeyStore} */
@@ -399,6 +409,26 @@ export const webKeyStore = {
       const created = await createPrfCredential();
       credId = created.credId;
       freshCredId = created.credId;
+
+      // Chrome >=118: PRF was already evaluated during create() — single prompt (#1030).
+      // If the browser returned a valid 32-byte PRF output from create(), use it
+      // directly and skip the get() call entirely. F-05 safety: persist the credential
+      // id ONLY after confirming PRF output, same as the get() path below.
+      if (created.prfOutput) {
+        const H = new Uint8Array(created.prfOutput);
+        if (H.length === 32) {
+          // PRF output confirmed from create() — persist the credential id (F-05).
+          if (freshCredId && typeof window !== 'undefined' && window.localStorage) {
+            try {
+              window.localStorage.setItem(PRF_CRED_KEY, freshCredId);
+            } catch {
+              // localStorage unavailable (private mode) — proceed without persistence.
+            }
+          }
+          return H;
+        }
+        // Wrong length — defensive fallthrough to get() (should not happen).
+      }
     }
 
     // get() with the prf extension to evaluate the hardware factor
