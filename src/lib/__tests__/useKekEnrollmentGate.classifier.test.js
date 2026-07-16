@@ -88,6 +88,24 @@ describe('classifyEnrollError — Android 11 gate', () => {
   });
 });
 
+describe('classifyEnrollError — biometric lockout', () => {
+  it('origCode NO_HARDWARE_FACTOR (lockout fallback cancelled) → lockout message', async () => {
+    const err = makeError('User cancelled');
+    err.origCode = 'KEK_NO_HARDWARE_FACTOR';
+    const r = await enrollAndGetResult(err);
+    expect(r.ok).toBe(false);
+    expect(r.msg).toMatch(/biometric sensor is temporarily locked/i);
+    expect(r.isInsecureTier).toBe(false);
+    expect(r.isWrongPin).toBe(false);
+  });
+
+  it('biometryLockout in message → lockout message', async () => {
+    const r = await enrollAndGetResult(makeError('biometryLockout: too many attempts'));
+    expect(r.ok).toBe(false);
+    expect(r.msg).toMatch(/biometric sensor is temporarily locked/i);
+  });
+});
+
 describe('classifyEnrollError — existing classifications still work', () => {
   it('KEK_ENROLL_INSECURE_TIER → insecure tier', async () => {
     const r = await enrollAndGetResult(makeError('SOFTWARE tier refused', 'KEK_ENROLL_INSECURE_TIER'));

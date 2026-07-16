@@ -19,6 +19,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1873,8 +1874,7 @@ export default function SendCrypto() {
                     />
                   ) : (
                     <>
-                      <Input
-                        type="password"
+                      <PasswordInput
                         value={reauthValue}
                         onChange={(e) => setReauthValue(e.target.value)}
                         placeholder="Vault password"

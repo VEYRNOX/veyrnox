@@ -29,6 +29,8 @@ const STALE_KEY_MSG =
   "A stale hardware key from a previous install couldn’t be removed. Try again — if it keeps failing, use Skip and re-enable hardware protection from Security settings.";
 const ANDROID_11_MSG =
   "Hardware protection requires Android 11 or later. You can continue without it.";
+const BIOMETRIC_LOCKOUT_MSG =
+  "Your device's biometric sensor is temporarily locked from too many attempts. Wait a moment, then try again — or skip for now and enable hardware protection later in Security settings.";
 const GENERIC_MSG = 'Something went wrong. Please try again.';
 
 function isWrongPinVaultError(e) {
@@ -66,6 +68,13 @@ function classifyEnrollError(e) {
   // Android < API 30 (Android 11): hardware KEK not supported.
   if (code === 'KEK_REQUIRES_ANDROID_11' || emsg.includes('KEK_REQUIRES_ANDROID_11')) {
     return { msg: ANDROID_11_MSG, isInsecureTier: true, isWrongPin: false };
+  }
+  // Biometric lockout: the user cancelled the OS device-credential recovery dialog
+  // that Android shows when biometric is locked out from too many attempts. The
+  // origCode marker is set by getHardwareFactorWithLockoutFallback (native.js) so we
+  // can distinguish "cancelled while recovering from lockout" from other cancels.
+  if (e?.origCode === KEK_ERR.NO_HARDWARE_FACTOR || emsg.includes('biometryLockout')) {
+    return { msg: BIOMETRIC_LOCKOUT_MSG, isInsecureTier: false, isWrongPin: false };
   }
   return { msg: GENERIC_MSG, isInsecureTier: false, isWrongPin: false };
 }

@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { Wallet, Plus, Copy, Check, RefreshCw, ChevronDown, ChevronRight, Key, KeyRound, Lock, Unlock, AlertTriangle, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import CoinLogo from "@/components/CoinLogo";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -266,7 +266,7 @@ export default function HDWalletManager() {
               ) : (
                 <>
                   <Label htmlFor="hd-unlock-password">Vault Password</Label>
-                  <Input id="hd-unlock-password" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
+                  <PasswordInput id="hd-unlock-password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
                   <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={handleUnlock}>
                     {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
                   </Button>

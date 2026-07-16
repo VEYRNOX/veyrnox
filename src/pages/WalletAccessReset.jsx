@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
@@ -516,8 +517,7 @@ export default function WalletAccessReset() {
         <>
         <div>
           <Label>New vault password</Label>
-          <Input
-            type="password"
+          <PasswordInput
             className="mt-1.5"
             value={recPw}
             onChange={(e) => setRecPw(e.target.value)}

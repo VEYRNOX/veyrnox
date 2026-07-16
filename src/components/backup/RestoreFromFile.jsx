@@ -55,6 +55,8 @@ import {
   FileText, RefreshCw, ChevronLeft, FolderOpen,
 } from 'lucide-react';
 import RestoreProgress from './RestoreProgress';
+import PinPad from '@/components/security/PinPad';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 // ── Local field helpers (kept in sync with PersonalBackup's originals) ──────────
 
@@ -70,25 +72,6 @@ function Field({ label, type = 'text', value, onChange, placeholder }) {
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-      />
-    </div>
-  );
-}
-
-function PinField({ label, value, onChange, maxDigits = 12, placeholder }) {
-  const fieldId = useId();
-  return (
-    <div className="space-y-1">
-      <label htmlFor={fieldId} className="text-xs font-medium text-muted-foreground">{label}</label>
-      <input
-        id={fieldId}
-        type="tel"
-        inputMode="numeric"
-        pattern="\d*"
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, maxDigits))}
-        placeholder={placeholder || `${maxDigits} digits`}
-        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
     </div>
   );
@@ -122,6 +105,9 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const [unlockPin, setUnlockPin] = useState('');
   const [devicePin, setDevicePin] = useState('');
   const [devicePinConfirm, setDevicePinConfirm] = useState('');
+  const [pinStep, setPinStep] = useState('choose'); // 'choose' | 'confirm'
+  const [pinEntry, setPinEntry] = useState('');
+  const [pinErr, setPinErr] = useState('');
   const [phase, setPhase] = useState('pick'); // pick | browse | unlock | restoring | setpin | done
   const [busy, setBusy] = useState(false);
   const [decryptedContainer, setDecryptedContainer] = useState(null);
@@ -292,47 +278,67 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
       </div>
     );
   } else if (phase === 'setpin') {
-    const valid = devicePin.length === 8 && devicePin === devicePinConfirm;
+    const handlePinComplete = (pin) => {
+      setPinErr('');
+      if (pinStep === 'choose') {
+        setDevicePin(pin);
+        setPinEntry('');
+        setPinStep('confirm');
+        return;
+      }
+      if (pin !== devicePin) {
+        setPinErr('PINs do not match — try again.');
+        setDevicePin('');
+        setPinEntry('');
+        setPinStep('choose');
+        return;
+      }
+      setDevicePinConfirm(pin);
+    };
+    const ready = devicePin.length === 8 && devicePinConfirm.length === 8 && devicePin === devicePinConfirm;
     content = (
       <div className="space-y-4">
         <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">
           <Lock className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
           <p>
             {restoredVia === 'pin' ? 'Backup PIN' : 'Backup password'} verified.
-            Choose an 8-digit PIN to lock this wallet on your device.
+            {pinStep === 'choose'
+              ? ' Choose an 8-digit PIN to lock this wallet on your device.'
+              : ' Enter the same PIN again to confirm.'}
           </p>
         </div>
-        <PinField
-          label="Choose a device PIN"
-          value={devicePin}
-          onChange={setDevicePin}
-          maxDigits={8}
-          placeholder="8 digits"
-        />
-        <PinField
-          label="Confirm device PIN"
-          value={devicePinConfirm}
-          onChange={setDevicePinConfirm}
-          maxDigits={8}
-          placeholder="8 digits"
-        />
-        {devicePinConfirm.length > 0 && devicePin !== devicePinConfirm && (
-          <p className="text-xs text-destructive">PINs do not match.</p>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            {pinStep === 'choose' ? 'Choose a device PIN' : 'Confirm device PIN'}
+          </label>
+          <PinPad
+            value={pinEntry}
+            onChange={setPinEntry}
+            onComplete={handlePinComplete}
+            length={8}
+            submitLabel={pinStep === 'choose' ? 'Next' : 'Confirm'}
+          />
+        </div>
+        {pinErr && <p className="text-xs text-destructive">{pinErr}</p>}
+        {ready && (
+          <button
+            onClick={handleSetPin}
+            disabled={busy}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {busy ? 'Saving…' : 'Save & restore'}
+          </button>
         )}
-        <button
-          onClick={handleSetPin}
-          disabled={!valid || busy}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {busy ? 'Saving…' : 'Save & restore'}
-        </button>
 
         <button
           onClick={() => {
             setDecryptedContainer(null);
             setDevicePin('');
             setDevicePinConfirm('');
+            setPinEntry('');
+            setPinStep('choose');
+            setPinErr('');
             setUnlockPassword('');
             setUnlockPin('');
             setEnvelope(null);
@@ -361,13 +367,14 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
 
         {/* Both credentials shown stacked — the backup carries a password seal AND a
             PIN seal, so the user simply fills the one they remember. No toggle. */}
-        <Field
-          label="Backup password"
-          type="password"
-          value={unlockPassword}
-          onChange={setUnlockPassword}
-          placeholder="Your original password"
-        />
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Backup password</label>
+          <PasswordInput
+            value={unlockPassword}
+            onChange={(e) => setUnlockPassword(e.target.value)}
+            placeholder="Your original password"
+          />
+        </div>
 
         <div className="flex items-center gap-3" aria-hidden>
           <div className="h-px flex-1 bg-border" />
@@ -375,7 +382,10 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        <PinField label="Backup PIN" value={unlockPin} onChange={setUnlockPin} />
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Backup PIN</label>
+          <PinPad value={unlockPin} onChange={setUnlockPin} length={12} />
+        </div>
 
         <button
           onClick={handleUnlock}

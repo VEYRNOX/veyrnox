@@ -28,14 +28,15 @@ import {
   is2faBiometricEnabled, set2faBiometricEnabled, getBiometricStatus,
 } from '@/lib/biometric';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { ShieldCheck, KeyRound, Lock, Trash2, Fingerprint, Send, Eye, UserX, EyeOff } from 'lucide-react';
 import PinPad from '@/components/security/PinPad';
 import { getAuthModel } from '@/lib/authModel';
-import { MIN_PASSWORD_LENGTH } from '@/lib/passwordStrength';
+
+const MIN_ACTION_PASSWORD_LENGTH = 8;
 
 // The critical actions the guard gates — shown explicitly so the user knows what the
 // second factor actually protects (matches the useActionGuard call sites).
@@ -59,9 +60,9 @@ export default function TwoFactorSettings() {
   // #2: trim before the length check so an all-whitespace Action Password (e.g. 8
   // spaces) is rejected — otherwise a user could set an effectively-empty second
   // factor and lock critical actions behind nothing.
-  const apTooShort = apNew.length > 0 && apNew.trim().length < MIN_PASSWORD_LENGTH;
+  const apTooShort = apNew.length > 0 && apNew.trim().length < MIN_ACTION_PASSWORD_LENGTH;
   const apMismatch = apConfirm.length > 0 && apConfirm !== apNew;
-  const apCanSave = !!apVaultPw && apNew.trim().length >= MIN_PASSWORD_LENGTH && apConfirm === apNew && !apBusy;
+  const apCanSave = !!apVaultPw && apNew.trim().length >= MIN_ACTION_PASSWORD_LENGTH && apConfirm === apNew && !apBusy;
   const resetApForm = () => { setApVaultPw(''); setApNew(''); setApConfirm(''); };
   const isPinModel = getAuthModel() === 'pin';
   const setupBlocked = isDecoy || isHidden; // configure from your real session only
@@ -215,20 +216,20 @@ export default function TwoFactorSettings() {
                   />
                 </div>
               ) : (
-                <Input id="ap-vault" type="password" autoComplete="current-password" value={apVaultPw}
+                <PasswordInput id="ap-vault" autoComplete="current-password" value={apVaultPw}
                   onChange={e => setApVaultPw(e.target.value)} placeholder="Confirm it's you" className="mt-1.5 mono-value" />
               )}
             </div>
             <div>
               <Label htmlFor="ap-new">{actionPasswordConfigured ? 'New Action Password' : 'Action Password'}</Label>
-              <Input id="ap-new" type="password" autoComplete="new-password" value={apNew}
+              <PasswordInput id="ap-new" autoComplete="new-password" value={apNew}
                 onChange={e => setApNew(e.target.value)} placeholder="At least 8 characters" className="mt-1.5 mono-value" />
               <p className="text-xs text-muted-foreground mt-1">At least 8 characters · any characters allowed</p>
-              {apTooShort && <p className="text-[11px] text-destructive mt-1">Use at least {MIN_PASSWORD_LENGTH} characters.</p>}
+              {apTooShort && <p className="text-[11px] text-destructive mt-1">Use at least {MIN_ACTION_PASSWORD_LENGTH} characters.</p>}
             </div>
             <div>
               <Label htmlFor="ap-confirm">Confirm</Label>
-              <Input id="ap-confirm" type="password" autoComplete="new-password" value={apConfirm}
+              <PasswordInput id="ap-confirm" autoComplete="new-password" value={apConfirm}
                 onChange={e => setApConfirm(e.target.value)} placeholder="Re-enter the Action Password" className="mt-1.5 mono-value" />
               <p className="text-xs text-muted-foreground mt-1">Must match your Action Password</p>
               {apMismatch && <p className="text-[11px] text-destructive mt-1">Passwords don't match.</p>}

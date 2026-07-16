@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { Button as ButtonBase } from "@/components/ui/button";
 import { Input as InputBase } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label as LabelBase } from "@/components/ui/label";
 /** @type {React.ComponentType<any>} */
 const Button = ButtonBase;
@@ -331,11 +332,11 @@ function MoveExistingWallet() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Reveal secret</Label>
-              <Input type="password" className="mt-1" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="≥ 4 chars" />
+              <PasswordInput className="mt-1" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="≥ 4 chars" />
             </div>
             <div>
               <Label className="text-xs">Confirm</Label>
-              <Input type="password" className="mt-1" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="re-enter" />
+              <PasswordInput className="mt-1" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="re-enter" />
             </div>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}

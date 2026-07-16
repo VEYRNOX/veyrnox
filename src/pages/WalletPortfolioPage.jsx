@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
@@ -229,7 +230,7 @@ export function AddWalletDialog({ onClose }) {
                 {isPin ? (
                   <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={mode === "create" ? doCreate : doImport} disabled={busy || (mode === "import" && !phrase.trim())} submitLabel={mode === "create" ? "Create & back up" : "Import wallet"} aria-label="Vault PIN" /></div>
                 ) : (
-                  <Input type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Confirm it's you to change your vault" />
+                  <PasswordInput className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Confirm it's you to change your vault" />
                 )}
                 <p className="text-xs text-muted-foreground mt-1">Re-entered to authorise a change to your seed vault. Never kept in memory.</p>
               </div>
@@ -318,7 +319,7 @@ export function RemoveDialog({ wallet, canRemove, onClose }) {
               {isPin ? (
                 <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={doRemove} disabled={busy} submitLabel="Remove wallet" aria-label="Vault PIN" /></div>
               ) : (
-                <Input type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <PasswordInput className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} />
               )}
             </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
