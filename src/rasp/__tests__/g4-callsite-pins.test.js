@@ -18,6 +18,10 @@ const src = join(dir, '../..');  // src/rasp/__tests__ → src/
 
 const reveal  = readFileSync(join(src, 'components/security/useRevealWithReauth.jsx'), 'utf8');
 const backup  = readFileSync(join(src, 'pages/PersonalBackup.jsx'), 'utf8');
+// The restore (import) gate was extracted from PersonalBackup's inline RestoreTab
+// into the shared RestoreFromFile component (rendered by BOTH PersonalBackup's
+// Restore tab AND onboarding). The 'import' G4 gate lives there now.
+const restore = readFileSync(join(src, 'components/backup/RestoreFromFile.jsx'), 'utf8');
 const entry   = readFileSync(join(src, 'components/WalletEntry.jsx'), 'utf8');
 
 // ── useRevealWithReauth — seed-reveal gate ───────────────────────────────────
@@ -62,11 +66,16 @@ describe('PersonalBackup ExportTab — G4 export gate', () => {
 
 // ── PersonalBackup — import gate ─────────────────────────────────────────────
 
-describe('PersonalBackup RestoreTab — G4 import gate', () => {
+describe('RestoreFromFile — G4 import gate (shared restore component)', () => {
+  it('imports sensitiveGate and useRaspArtifact', () => {
+    expect(restore).toMatch(/sensitiveGate/);
+    expect(restore).toMatch(/useRaspArtifact/);
+  });
+
   it("calls sensitiveGate with 'import' before restoreWithPassword", () => {
-    const importGateIdx = backup.indexOf("sensitiveGate(raspArtifact, 'import')");
+    const importGateIdx = restore.indexOf("sensitiveGate(raspArtifact, 'import')");
     expect(importGateIdx).toBeGreaterThan(-1);
-    const restoreIdx = backup.indexOf('restoreWithPassword(');
+    const restoreIdx = restore.indexOf('restoreWithPassword(');
     expect(importGateIdx).toBeLessThan(restoreIdx);
   });
 });

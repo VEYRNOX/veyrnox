@@ -108,6 +108,7 @@ import { copySecret } from "@/lib/copySecret";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
+import RestoreFromFile from "@/components/backup/RestoreFromFile";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
 // Both operands are local strings with no remote attacker; this is a codebase
@@ -237,7 +238,7 @@ function ProvisioningView() {
 // NO "partial-custody", NO shipped-AI claims. Module-level so its identity is stable
 // across WalletEntry re-renders. The Framer Motion entrance + looping logo glow
 // degrade to an instant, static render under prefers-reduced-motion.
-function WelcomeHero({ onGetStarted }) {
+function WelcomeHero({ onGetStarted, onRestore }) {
   const reduce = useReducedMotion();
   const container = {
     hidden: {},
@@ -318,6 +319,20 @@ function WelcomeHero({ onGetStarted }) {
             </Button>
           </motion.div>
         </motion.div>
+
+        {/* Third onboarding path: restore from an encrypted .enc backup file +
+            its OWN backup password/PIN, WITHOUT the seed phrase. Secondary to the
+            primary Create/Import flow behind "Get Started". */}
+        {onRestore && (
+          <motion.button
+            variants={item}
+            type="button"
+            onClick={onRestore}
+            className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Have an encrypted backup? <span className="text-primary">Restore from a backup file</span>
+          </motion.button>
+        )}
 
         <motion.p variants={item} className="mt-6 text-[11px] text-muted-foreground">
           v1.0 · keys stay on-device
@@ -919,6 +934,27 @@ export default function WalletEntry() {
     } finally { setBusy(false); }
   };
 
+  // ---- Restore from an encrypted backup FILE (onboarding, no seed phrase) ----
+  // The encrypted .enc backup carries its OWN credential (backup password/PIN set at
+  // export), so restore is NOT forced through a fresh pin-create re-wrap. The shared
+  // RestoreFromFile component performs the real restore via wallet-core/vaultBackup
+  // (restoreWithPassword / decryptPinSeal + finalisePinRestore) and, on success,
+  // calls this onFinish. At that point a password-unlockable vault EXISTS on this
+  // device (the password seal is a valid vault blob; the PIN path re-wraps under a
+  // new password). We mark the cohort 'password' so the returning-user surface
+  // renders the password input (not a numeric PinPad) and the native vault/settings
+  // desync guard is satisfied (mirrors handleImport), then route to the normal unlock
+  // gate. isUnlocked is still false — the user unlocks with their backup credential,
+  // which then triggers the MANDATORY hardware-KEK enrollment gate (kekOrigin
+  // 'restored'), exactly like a seed re-import.
+  const handleFileRestored = () => {
+    setAuthModel("password"); setAuthModelState("password");
+    setKekOrigin('restored');
+    setError(""); setRecovering(false);
+    setVaultExists(true);
+    setView("unlock");
+  };
+
   // ---- Create: generate the wallet (vault password mandatory) ----
   const handleGenerate = async () => {
     setError("");
@@ -1083,7 +1119,25 @@ export default function WalletEntry() {
           setRealPin(""); setRealPinConfirm(""); setPinStep("real");
           setView("pin-create");
         }}
+        onRestore={() => { setError(""); setView("restore-file"); }}
       />
+    );
+  }
+
+  // ---- View: Restore from an encrypted backup file (onboarding, no seed) ----
+  // Renders the SAME shared component PersonalBackup's Restore tab uses. The backup
+  // carries its own credential, so this path does NOT go through pin-create. On a
+  // successful restore, handleFileRestored routes into the unlock screen (then the
+  // KEK enrollment gate). onBack returns to welcome (fresh install) or unlock.
+  if (view === "restore-file") {
+    return (
+      <EntryShell error={error}>
+        <RestoreFromFile
+          onBack={() => { setError(""); setView(vaultExists ? "unlock" : "welcome"); }}
+          onFinish={handleFileRestored}
+          backLabel="Back"
+        />
+      </EntryShell>
     );
   }
 
@@ -1414,6 +1468,15 @@ export default function WalletEntry() {
             <Button className="w-full gap-2" onClick={() => { setError(""); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("pin-create"); }}>
               <Shield className="h-4 w-4" /> Set a PIN to continue
             </Button>
+            {/* Third path: restore from an encrypted .enc backup + its own backup
+                credential (no seed phrase, no new-PIN re-wrap). */}
+            <button
+              type="button"
+              onClick={() => { setError(""); setView("restore-file"); }}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Have an encrypted backup? <span className="text-primary">Restore from a backup file</span>
+            </button>
           </div>
         </div>
       </EntryShell>
