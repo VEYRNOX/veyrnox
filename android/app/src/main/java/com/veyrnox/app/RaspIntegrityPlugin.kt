@@ -5,8 +5,8 @@ package com.veyrnox.app
 // Native RASP (Runtime Application Self-Protection) integrity probe for Android.
 //
 // DEVICE-VERIFIED (2026-07-12) on Samsung Galaxy Note 20 5G SM-N981B, Magisk v30.7,
-// Android debug build. checkIntegrity() verdict: {"rooted":false,"hookedProcess":false,
-// "emulator":false,"tampered":false,"debuggerAttached":false,"screenCapture":false,"overlayActive":false,"developerMode":false,"virtualApp":false,"suspiciousPackage":false,"thirdPartyKeyboard":false,"mockLocation":false,"networkProxy":false,"accessibilityService":false}. `rooted:false` is expected
+// Android debug build. checkIntegrity() verdict AS CAPTURED ON THAT DATE (4 fields):
+// {"rooted":false,"hookedProcess":false,"emulator":false,"tampered":false}. `rooted:false` is expected
 // and honest — Magisk
 // Hide operates at the OS-probe (mount namespace) level and masks the file paths
 // checked by checkRootBinaries/checkMagiskPaths. This is not a code flaw; it is the
@@ -30,6 +30,13 @@ package com.veyrnox.app
 // Verdict: {"rooted":true,"hookedProcess":false,"emulator":false,"tampered":true}.
 // Operative root signal: checkDangerousProps (verifiedbootstate=orange).
 // (checkProcNetUnix and checkSuFromRuntime were subsequently removed — see item 9.)
+//
+// EVIDENCE SCOPE (verify-don't-assert, I4): the newer detection axes —
+// debuggerAttached, screenCapture, overlayActive, developerMode, virtualApp,
+// suspiciousPackage, thirdPartyKeyboard, mockLocation, networkProxy,
+// accessibilityService — were added in code by PRs #1007/#1008 (2026-07-14/15),
+// AFTER the 2026-07-12 verdict above. They have NOT yet been captured in a dated
+// all-fields device verdict; do not backfill them into an earlier dated record.
 //
 // FAIL CLOSED (I4): every detection block catches exceptions independently and
 // returns false (clean/unknown) rather than propagating — a crash or permission
