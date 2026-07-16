@@ -44,7 +44,7 @@ import {
 import { toast } from 'sonner';
 import { useRaspArtifact, sensitiveGate } from '@/rasp';
 import {
-  Upload, Lock, KeyRound, CheckCircle2, Loader2,
+  Upload, Lock, CheckCircle2, Loader2,
   FileText, RefreshCw, ChevronLeft, FolderOpen,
 } from 'lucide-react';
 import RestoreProgress from './RestoreProgress';
@@ -105,8 +105,13 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const fileRef = useRef(null);
   const [envelope, setEnvelope] = useState(null);
   const [fileName, setFileName] = useState('');
-  const [method, setMethod] = useState('password'); // 'password' | 'pin'
-  const [credential, setCredential] = useState('');
+  // Two stacked credential fields — the backup file carries BOTH a password seal
+  // and a PIN seal, so the user simply fills whichever they have (no confusing
+  // either/or toggle). `restoredVia` records which one was used, purely to pick the
+  // honest progress + done-screen copy.
+  const [unlockPassword, setUnlockPassword] = useState('');
+  const [unlockPin, setUnlockPin] = useState('');
+  const [restoredVia, setRestoredVia] = useState('password'); // 'password' | 'pin'
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [phase, setPhase] = useState('pick'); // pick | browse | unlock | restoring | setpw | done
@@ -208,15 +213,19 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const handleUnlock = async () => {
     const gate = sensitiveGate(raspArtifact, 'import');
     if (gate.blocked) { toast.error(gate.sentence || 'Backup restore is disabled on this device right now.'); return; }
+    // The user fills whichever they have; prefer the password seal when both are
+    // present (it restores directly, no new-password step).
+    const usePassword = unlockPassword.length > 0;
+    setRestoredVia(usePassword ? 'password' : 'pin');
     setBusy(true);
     setPhase('restoring');
     try {
-      if (method === 'password') {
-        await restoreWithPassword(envelope, credential);
+      if (usePassword) {
+        await restoreWithPassword(envelope, unlockPassword);
         setPhase('done');
         toast.success('Wallet restored — unlock with your original password.');
       } else {
-        const containerJson = await decryptPinSeal(envelope, credential);
+        const containerJson = await decryptPinSeal(envelope, unlockPin);
         setPinDecryptedJson(containerJson);
         setPhase('setpw');
       }
@@ -253,7 +262,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
 
   if (phase === 'restoring') {
     // ISOLATED animation seam — see components/backup/RestoreProgress.jsx.
-    content = <RestoreProgress method={method} />;
+    content = <RestoreProgress method={restoredVia} />;
   } else if (phase === 'done') {
     content = (
       <div className="space-y-4">
@@ -262,7 +271,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
           <div>
             <p className="text-sm font-semibold">Wallet restored successfully</p>
             <p className="text-xs text-muted-foreground mt-1">
-              The app will lock now. Unlock with your {method === 'pin' ? 'new password' : 'original password'} to continue.
+              The app will lock now. Unlock with your {restoredVia === 'pin' ? 'new password' : 'original password'} to continue.
             </p>
           </div>
         </div>
@@ -315,7 +324,8 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
             setPinDecryptedJson(null);
             setNewPassword('');
             setNewPasswordConfirm('');
-            setCredential('');
+            setUnlockPassword('');
+            setUnlockPin('');
             setEnvelope(null);
             setFileName('');
             setPhase('pick');
@@ -328,7 +338,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
       </div>
     );
   } else if (phase === 'unlock') {
-    const credOk = method === 'password' ? credential.length > 0 : /^\d{4,12}$/.test(credential);
+    const credOk = unlockPassword.length > 0 || /^\d{4,12}$/.test(unlockPin);
     content = (
       <div className="space-y-4">
         <div className="p-3 rounded-lg border border-border bg-card/50 flex items-center gap-2 text-xs text-muted-foreground">
@@ -337,30 +347,26 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Enter the <b>backup password or PIN you created with this file</b> — not your app unlock PIN.
+          Enter the <b>backup password or PIN you created with this file</b> — whichever you have. This is <b>not</b> your app unlock PIN.
         </p>
 
-        <div className="flex gap-2">
-          {['password', 'pin'].map((m) => (
-            <button
-              key={m}
-              onClick={() => { setMethod(m); setCredential(''); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                method === m
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-card text-muted-foreground'
-              }`}
-            >
-              {m === 'password'
-                ? <span className="flex items-center justify-center gap-1.5"><KeyRound className="h-3.5 w-3.5" />Password</span>
-                : <span className="flex items-center justify-center gap-1.5"><Lock className="h-3.5 w-3.5" />PIN</span>}
-            </button>
-          ))}
+        {/* Both credentials shown stacked — the backup carries a password seal AND a
+            PIN seal, so the user simply fills the one they remember. No toggle. */}
+        <Field
+          label="Backup password"
+          type="password"
+          value={unlockPassword}
+          onChange={setUnlockPassword}
+          placeholder="Your original password"
+        />
+
+        <div className="flex items-center gap-3" aria-hidden>
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
         </div>
 
-        {method === 'password'
-          ? <Field label="Wallet password" type="password" value={credential} onChange={setCredential} placeholder="Your original password" />
-          : <PinField label="Backup PIN" value={credential} onChange={setCredential} />}
+        <PinField label="Backup PIN" value={unlockPin} onChange={setUnlockPin} />
 
         <button
           onClick={handleUnlock}
@@ -372,7 +378,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
         </button>
 
         <button
-          onClick={() => { setEnvelope(null); setFileName(''); setCredential(''); setPhase('pick'); }}
+          onClick={() => { setEnvelope(null); setFileName(''); setUnlockPassword(''); setUnlockPin(''); setPhase('pick'); }}
           className="w-full py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary/40 transition-colors"
         >
           Choose a different file

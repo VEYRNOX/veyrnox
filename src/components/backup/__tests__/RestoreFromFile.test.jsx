@@ -99,7 +99,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared();
     await loadFile(container);
 
-    const pw = await screen.findByLabelText(/wallet password/i);
+    const pw = await screen.findByLabelText(/backup password/i);
     fireEvent.change(pw, { target: { value: 'my-original-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
@@ -114,7 +114,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared();
     await loadFile(container);
 
-    const pw = await screen.findByLabelText(/wallet password/i);
+    const pw = await screen.findByLabelText(/backup password/i);
     fireEvent.change(pw, { target: { value: 'wrong-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
@@ -143,7 +143,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared();
     await loadFile(container);
 
-    const pw = await screen.findByLabelText(/wallet password/i);
+    const pw = await screen.findByLabelText(/backup password/i);
     fireEvent.change(pw, { target: { value: 'my-original-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
@@ -159,7 +159,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared({ onFinish });
     await loadFile(container);
 
-    const pw = await screen.findByLabelText(/wallet password/i);
+    const pw = await screen.findByLabelText(/backup password/i);
     fireEvent.change(pw, { target: { value: 'my-original-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
@@ -175,8 +175,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared();
     await loadFile(container);
 
-    // Switch to the PIN method.
-    fireEvent.click(await screen.findByRole('button', { name: /^pin$/i }));
+    // Both fields are shown stacked (no toggle) — fill the PIN field directly.
     const pinField = await screen.findByLabelText(/backup pin/i);
     fireEvent.change(pinField, { target: { value: '12345678' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
