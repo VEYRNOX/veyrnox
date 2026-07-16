@@ -376,7 +376,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Price Alert Notifications',
         status: 'built',
         summary: 'On-device price alert notifications via LocalNotifications',
-        explanation: 'Built (/price-alerts). Real @capacitor/local-notifications on native, browser Notification API on web. Polls CoinGecko every 60s while the app is open; fires when a price target is hit. No push server — notifications only fire while the app is running. Advisory only — alerts never initiate transactions.',
+        explanation: 'Built (/alerts). Real @capacitor/local-notifications on native, browser Notification API on web. Polls CoinGecko every 60s while the app is open; fires when a price target is hit. No push server — notifications only fire while the app is running. Advisory only — alerts never initiate transactions.',
       },
     ],
   },
