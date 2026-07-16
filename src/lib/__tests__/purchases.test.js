@@ -31,6 +31,8 @@ vi.mock('@revenuecat/purchases-capacitor', () => ({
 
 const {
   SAFETY_PLUS_ENTITLEMENT,
+  SAFETY_PLUS_MONTHLY_PACKAGE,
+  SAFETY_PLUS_ANNUAL_PACKAGE,
   configurePurchases,
   getOfferings,
   purchasePackage,
@@ -43,6 +45,24 @@ beforeEach(() => {
   vi.clearAllMocks();
   isNativePlatform.mockReturnValue(false);
   getPlatform.mockReturnValue('web');
+});
+
+describe('purchases.js — package identifier constants', () => {
+  // These strings are cross-checked against the RevenueCat dashboard by
+  // scripts/preflight-iap-config.mjs. A change here without a matching
+  // dashboard change would silently break the purchase flow — pin the
+  // exact values so the drift is caught in CI.
+  it('exports the RevenueCat monthly package identifier', () => {
+    expect(SAFETY_PLUS_MONTHLY_PACKAGE).toBe('$rc_monthly');
+  });
+
+  it('exports the RevenueCat annual package identifier', () => {
+    expect(SAFETY_PLUS_ANNUAL_PACKAGE).toBe('$rc_annual');
+  });
+
+  it('exports the safety_plus entitlement identifier', () => {
+    expect(SAFETY_PLUS_ENTITLEMENT).toBe('safety_plus');
+  });
 });
 
 describe('purchases.js — web (no App Store / Play Store)', () => {

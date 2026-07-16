@@ -45,11 +45,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // point of the script is to prove that equality, so they live here once and get cross-checked
 // against the code (local) and the API (remote).
 const EXPECT = {
-  entitlement: 'safety_plus',       // purchases.js SAFETY_PLUS_ENTITLEMENT; code reads entitlements.active['safety_plus']
-  package: '$rc_monthly',           // Subscription.jsx availablePackages.find(p => p.identifier === '$rc_monthly')
-  product: 'safety_plus_monthly',   // App Store Connect + Play Console product id (same string on both stores)
-  offering: 'default',              // the RevenueCat offering that must be marked "current"
-  appId: 'com.veyrnox.app',         // capacitor.config appId / bundle id / package name
+  entitlement: 'safety_plus',              // purchases.js SAFETY_PLUS_ENTITLEMENT; code reads entitlements.active['safety_plus']
+  package: '$rc_monthly',                  // Subscription.jsx availablePackages.find(p => p.identifier === '$rc_monthly')
+  packageAnnual: '$rc_annual',             // Subscription.jsx annual package identifier — same entitlement, different price
+  product: 'safety_plus_monthly',          // App Store Connect + Play Console product id (same string on both stores)
+  productAnnual: 'safety_plus_annual',     // annual product id (both stores) — grants the same 'safety_plus' entitlement
+  offering: 'default',                     // the RevenueCat offering that must be marked "current"
+  appId: 'com.veyrnox.app',                // capacitor.config appId / bundle id / package name
 };
 
 // ── Result plumbing ──────────────────────────────────────────────────────────────────────
@@ -82,7 +84,7 @@ function parseEnvFile(rel) {
 
 // ── LOCAL CHECKS (always run) ──────────────────────────────────────────────────────────────
 function localChecks() {
-  // 1. Code constant: SAFETY_PLUS_ENTITLEMENT === 'safety_plus'
+  // 1. Code constants: SAFETY_PLUS_ENTITLEMENT + monthly/annual package identifiers.
   const purchases = readIfExists('src/lib/purchases.js');
   if (!purchases) {
     fail('code: purchases.js present', 'src/lib/purchases.js not found');
@@ -91,16 +93,30 @@ function localChecks() {
     if (!m) fail('code: SAFETY_PLUS_ENTITLEMENT defined', 'constant not found in purchases.js');
     else if (m[1] !== EXPECT.entitlement) fail('code: entitlement constant', `purchases.js has '${m[1]}', expected '${EXPECT.entitlement}'`);
     else pass('code: entitlement constant', `SAFETY_PLUS_ENTITLEMENT === '${EXPECT.entitlement}'`);
+
+    const mMonthly = purchases.match(/SAFETY_PLUS_MONTHLY_PACKAGE\s*=\s*['"]([^'"]+)['"]/);
+    if (!mMonthly) fail('code: SAFETY_PLUS_MONTHLY_PACKAGE defined', 'constant not found in purchases.js');
+    else if (mMonthly[1] !== EXPECT.package) fail('code: monthly package constant', `purchases.js has '${mMonthly[1]}', expected '${EXPECT.package}'`);
+    else pass('code: monthly package constant', `SAFETY_PLUS_MONTHLY_PACKAGE === '${EXPECT.package}'`);
+
+    const mAnnual = purchases.match(/SAFETY_PLUS_ANNUAL_PACKAGE\s*=\s*['"]([^'"]+)['"]/);
+    if (!mAnnual) fail('code: SAFETY_PLUS_ANNUAL_PACKAGE defined', 'constant not found in purchases.js');
+    else if (mAnnual[1] !== EXPECT.packageAnnual) fail('code: annual package constant', `purchases.js has '${mAnnual[1]}', expected '${EXPECT.packageAnnual}'`);
+    else pass('code: annual package constant', `SAFETY_PLUS_ANNUAL_PACKAGE === '${EXPECT.packageAnnual}'`);
   }
 
-  // 2. Code: Subscription.jsx keys the monthly package on '$rc_monthly'
+  // 2. Code: Subscription.jsx imports the package constants from purchases.js.
+  //    (The strings themselves live in purchases.js — checked above.)
   const sub = readIfExists('src/pages/Subscription.jsx');
   if (!sub) {
     warn('code: Subscription.jsx present', 'src/pages/Subscription.jsx not found — cannot confirm package lookup');
-  } else if (sub.includes(`"${EXPECT.package}"`) || sub.includes(`'${EXPECT.package}'`)) {
-    pass('code: package lookup', `Subscription.jsx looks up '${EXPECT.package}'`);
   } else {
-    fail('code: package lookup', `Subscription.jsx does not reference '${EXPECT.package}' — package identifier drift`);
+    const importsMonthly = sub.includes('SAFETY_PLUS_MONTHLY_PACKAGE');
+    const importsAnnual = sub.includes('SAFETY_PLUS_ANNUAL_PACKAGE');
+    if (importsMonthly) pass('code: monthly package lookup', 'Subscription.jsx imports SAFETY_PLUS_MONTHLY_PACKAGE');
+    else fail('code: monthly package lookup', 'Subscription.jsx does not import SAFETY_PLUS_MONTHLY_PACKAGE — package identifier drift risk');
+    if (importsAnnual) pass('code: annual package lookup', 'Subscription.jsx imports SAFETY_PLUS_ANNUAL_PACKAGE');
+    else warn('code: annual package lookup', 'Subscription.jsx does not import SAFETY_PLUS_ANNUAL_PACKAGE — annual pricing UI not wired');
   }
 
   // 3. Capacitor appId / bundle id === com.veyrnox.app
@@ -114,11 +130,13 @@ function localChecks() {
     else pass('config: capacitor appId', `appId === '${EXPECT.appId}'`);
   }
 
-  // 4. Optional: a StoreKit local-testing config (Task 13) — cross-check product id if present.
+  // 4. Optional: a StoreKit local-testing config (Task 13) — cross-check both product ids if present.
   const storekit = readIfExists('ios/App/App/Configuration.storekit') ?? readIfExists('ios/App/App/Products.storekit') ?? readIfExists('ios/App/Products.storekit');
   if (storekit) {
-    if (storekit.includes(EXPECT.product)) pass('config: .storekit product id', `.storekit config references '${EXPECT.product}'`);
-    else fail('config: .storekit product id', `.storekit config present but does not reference '${EXPECT.product}'`);
+    if (storekit.includes(EXPECT.product)) pass('config: .storekit product id (monthly)', `.storekit config references '${EXPECT.product}'`);
+    else fail('config: .storekit product id (monthly)', `.storekit config present but does not reference '${EXPECT.product}'`);
+    if (storekit.includes(EXPECT.productAnnual)) pass('config: .storekit product id (annual)', `.storekit config references '${EXPECT.productAnnual}'`);
+    else warn('config: .storekit product id (annual)', `.storekit config present but does not reference '${EXPECT.productAnnual}' — annual not wired for local StoreKit testing`);
   } else {
     skip('config: .storekit product id', 'no Products.storekit (Task 13 not done yet) — nothing to cross-check');
   }
@@ -176,25 +194,40 @@ async function remoteChecks(secret, projectId) {
     return; // auth/project problem — later calls will just repeat the same error
   }
 
-  // 2. Product `safety_plus_monthly` exists (matched on store_identifier).
+  // 2. Products exist (monthly + annual, matched on store_identifier).
+  //    Both products grant the SAME entitlement — annual is a pricing choice,
+  //    not a feature axis.
   let product = null;
+  let productAnnual = null;
   try {
     const products = await rcList(secret, `${base}/products?limit=50`);
     product = products.find((p) => p.store_identifier === EXPECT.product) ?? null;
-    if (product) pass('rc: product exists', `store_identifier '${EXPECT.product}' found (id ${product.id})`);
-    else fail('rc: product exists', `no product with store_identifier '${EXPECT.product}' in the RevenueCat project`);
+    productAnnual = products.find((p) => p.store_identifier === EXPECT.productAnnual) ?? null;
+    if (product) pass('rc: product exists (monthly)', `store_identifier '${EXPECT.product}' found (id ${product.id})`);
+    else fail('rc: product exists (monthly)', `no product with store_identifier '${EXPECT.product}' in the RevenueCat project`);
+    if (productAnnual) pass('rc: product exists (annual)', `store_identifier '${EXPECT.productAnnual}' found (id ${productAnnual.id})`);
+    else fail('rc: product exists (annual)', `no product with store_identifier '${EXPECT.productAnnual}' — annual pricing not configured`);
   } catch (e) {
     fail('rc: product exists', e.message);
   }
 
-  // 3. Product attached to the `safety_plus` entitlement.
-  if (entitlement && product) {
+  // 3. Both products attached to the `safety_plus` entitlement.
+  if (entitlement && (product || productAnnual)) {
     try {
       const attached = await rcList(secret, `${base}/entitlements/${entitlement.id}/products?limit=50`);
-      if (attached.some((p) => p.id === product.id || p.store_identifier === EXPECT.product)) {
-        pass('rc: product ↔ entitlement', `'${EXPECT.product}' is attached to entitlement '${EXPECT.entitlement}'`);
-      } else {
-        fail('rc: product ↔ entitlement', `'${EXPECT.product}' is NOT attached to '${EXPECT.entitlement}' — purchase succeeds but grants nothing`);
+      if (product) {
+        if (attached.some((p) => p.id === product.id || p.store_identifier === EXPECT.product)) {
+          pass('rc: product ↔ entitlement (monthly)', `'${EXPECT.product}' is attached to entitlement '${EXPECT.entitlement}'`);
+        } else {
+          fail('rc: product ↔ entitlement (monthly)', `'${EXPECT.product}' is NOT attached to '${EXPECT.entitlement}' — purchase succeeds but grants nothing`);
+        }
+      }
+      if (productAnnual) {
+        if (attached.some((p) => p.id === productAnnual.id || p.store_identifier === EXPECT.productAnnual)) {
+          pass('rc: product ↔ entitlement (annual)', `'${EXPECT.productAnnual}' is attached to entitlement '${EXPECT.entitlement}'`);
+        } else {
+          fail('rc: product ↔ entitlement (annual)', `'${EXPECT.productAnnual}' is NOT attached to '${EXPECT.entitlement}' — annual purchase succeeds but grants nothing`);
+        }
       }
     } catch (e) {
       warn('rc: product ↔ entitlement', `could not auto-verify attachment via API (${e.message}) — confirm manually in the dashboard`);
@@ -233,18 +266,34 @@ async function remoteChecks(secret, projectId) {
   if (offering) {
     try {
       const packages = await rcList(secret, `${base}/offerings/${offering.id}/packages?limit=50&expand=items.product`);
+
       const pkg = packages.find((p) => p.lookup_key === EXPECT.package) ?? null;
       if (!pkg) {
-        fail('rc: package exists', `offering '${EXPECT.offering}' has no package with lookup_key '${EXPECT.package}'`);
+        fail('rc: package exists (monthly)', `offering '${EXPECT.offering}' has no package with lookup_key '${EXPECT.package}'`);
       } else {
-        pass('rc: package exists', `package '${EXPECT.package}' found on offering '${EXPECT.offering}'`);
+        pass('rc: package exists (monthly)', `package '${EXPECT.package}' found on offering '${EXPECT.offering}'`);
         const attached = (pkg.products?.items ?? [])
           .map((it) => it?.product?.store_identifier)
           .filter(Boolean);
         if (attached.includes(EXPECT.product)) {
-          pass('rc: package ↔ product', `'${EXPECT.package}' points at '${EXPECT.product}'`);
+          pass('rc: package ↔ product (monthly)', `'${EXPECT.package}' points at '${EXPECT.product}'`);
         } else {
-          fail('rc: package ↔ product', `'${EXPECT.package}' points at [${attached.join(', ') || 'nothing'}], not '${EXPECT.product}' — the monthly purchase would buy the wrong product`);
+          fail('rc: package ↔ product (monthly)', `'${EXPECT.package}' points at [${attached.join(', ') || 'nothing'}], not '${EXPECT.product}' — the monthly purchase would buy the wrong product`);
+        }
+      }
+
+      const pkgAnnual = packages.find((p) => p.lookup_key === EXPECT.packageAnnual) ?? null;
+      if (!pkgAnnual) {
+        fail('rc: package exists (annual)', `offering '${EXPECT.offering}' has no package with lookup_key '${EXPECT.packageAnnual}' — annual pricing UI will hide the toggle`);
+      } else {
+        pass('rc: package exists (annual)', `package '${EXPECT.packageAnnual}' found on offering '${EXPECT.offering}'`);
+        const attached = (pkgAnnual.products?.items ?? [])
+          .map((it) => it?.product?.store_identifier)
+          .filter(Boolean);
+        if (attached.includes(EXPECT.productAnnual)) {
+          pass('rc: package ↔ product (annual)', `'${EXPECT.packageAnnual}' points at '${EXPECT.productAnnual}'`);
+        } else {
+          fail('rc: package ↔ product (annual)', `'${EXPECT.packageAnnual}' points at [${attached.join(', ') || 'nothing'}], not '${EXPECT.productAnnual}' — the annual purchase would buy the wrong product`);
         }
       }
     } catch (e) {

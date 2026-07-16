@@ -17,7 +17,13 @@ import { toast } from "sonner";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
 import { FREE_FEATURES, SAFETY_PLUS_FEATURES } from "@/lib/tier";
-import { getOfferings, purchasePackage, restorePurchases } from "@/lib/purchases";
+import {
+  getOfferings,
+  purchasePackage,
+  restorePurchases,
+  SAFETY_PLUS_MONTHLY_PACKAGE,
+  SAFETY_PLUS_ANNUAL_PACKAGE,
+} from "@/lib/purchases";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
@@ -39,7 +45,13 @@ function FeatureList({ features }) {
 
 export default function Subscription() {
   const { currentTier, refreshTier } = useTier();
-  const [plusPackage, setPlusPackage] = useState(null);
+  const [monthlyPackage, setMonthlyPackage] = useState(null);
+  const [annualPackage, setAnnualPackage] = useState(null);
+  // Default to annual — it's the recommended plan per the pricing model
+  // (annual carries the discount; the toggle re-picks monthly if the user
+  // prefers it). Falls back to monthly on the render side if the annual
+  // package isn't in the offering yet (staged store rollout, I4).
+  const [billing, setBilling] = useState("annual");
   const [busy, setBusy] = useState(false);
   const isNative = Capacitor.isNativePlatform();
 
@@ -49,10 +61,16 @@ export default function Subscription() {
     getOfferings()
       .then((offering) => {
         if (cancelled) return;
-        const pkg = offering?.availablePackages?.find((p) => p.identifier === "$rc_monthly")
-          ?? offering?.availablePackages?.[0]
-          ?? null;
-        setPlusPackage(pkg);
+        const packages = offering?.availablePackages ?? [];
+        const monthly = packages.find((p) => p.identifier === SAFETY_PLUS_MONTHLY_PACKAGE) ?? null;
+        const annual = packages.find((p) => p.identifier === SAFETY_PLUS_ANNUAL_PACKAGE) ?? null;
+        // Fallback: some offerings may only carry one package during staged
+        // rollout. If neither known identifier matches, take the first
+        // package as a last resort so the button isn't permanently disabled
+        // when the offering exists but the identifiers drifted.
+        const fallback = !monthly && !annual ? packages[0] ?? null : null;
+        setMonthlyPackage(monthly ?? fallback);
+        setAnnualPackage(annual);
       })
       .catch((err) => {
         // Leave the upgrade button disabled (no package to buy). Surface the
@@ -64,13 +82,21 @@ export default function Subscription() {
     return () => { cancelled = true; };
   }, [isNative]);
 
-  const priceString = plusPackage?.product?.priceString ?? "$5.99/mo";
+  // If annual isn't available (staged rollout, or offering not yet configured),
+  // force the selection back to monthly rather than leaving a dead button.
+  const effectiveBilling = billing === "annual" && !annualPackage ? "monthly" : billing;
+  const selectedPackage = effectiveBilling === "annual" ? annualPackage : monthlyPackage;
+  const hasAnnualToggle = Boolean(annualPackage && monthlyPackage);
+
+  const monthlyPriceString = monthlyPackage?.product?.priceString ?? "$5.99/mo";
+  const annualPriceString = annualPackage?.product?.priceString ?? "$49.99/yr";
+  const selectedPriceString = effectiveBilling === "annual" ? annualPriceString : monthlyPriceString;
 
   async function handleUpgrade() {
-    if (!plusPackage) return;
+    if (!selectedPackage) return;
     setBusy(true);
     try {
-      await purchasePackage(plusPackage);
+      await purchasePackage(selectedPackage);
       await refreshTier();
       toast.success("Safety Plus unlocked");
     } catch (err) {
@@ -162,12 +188,64 @@ export default function Subscription() {
                 <Badge variant="outline" className={CURRENT_BADGE}>Current plan</Badge>
               )}
             </div>
-            <p className="text-2xl font-bold mt-1">{priceString}</p>
-            <CardDescription>
+            <p className="text-2xl font-bold mt-1">{selectedPriceString}</p>
+            {effectiveBilling === "annual" && annualPackage && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Billed annually — 4 months free vs. monthly
+              </p>
+            )}
+            <CardDescription className="mt-2">
               Everything in Free, plus pre-sign intelligence and advanced analytics.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {hasAnnualToggle && currentTier !== "safety_plus" && (
+              <div
+                role="radiogroup"
+                aria-label="Billing period"
+                className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={effectiveBilling === "monthly"}
+                  onClick={() => setBilling("monthly")}
+                  className={
+                    "text-sm rounded-md px-3 py-2 transition-colors " +
+                    (effectiveBilling === "monthly"
+                      ? "bg-background border border-border font-medium"
+                      : "text-muted-foreground hover:text-foreground")
+                  }
+                >
+                  Monthly
+                  <span className="block text-xs text-muted-foreground font-normal">
+                    {monthlyPriceString}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={effectiveBilling === "annual"}
+                  onClick={() => setBilling("annual")}
+                  className={
+                    "text-sm rounded-md px-3 py-2 transition-colors relative " +
+                    (effectiveBilling === "annual"
+                      ? "bg-background border border-primary/40 font-medium"
+                      : "text-muted-foreground hover:text-foreground")
+                  }
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    Annual
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">
+                      Save 30%
+                    </Badge>
+                  </span>
+                  <span className="block text-xs text-muted-foreground font-normal">
+                    {annualPriceString}
+                  </span>
+                </button>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Everything in Free, plus:</p>
             <FeatureList features={SAFETY_PLUS_FEATURES} />
           </CardContent>
@@ -191,12 +269,12 @@ export default function Subscription() {
       {currentTier !== "safety_plus" && (
         <div className="flex flex-col items-center gap-2 pt-2">
           <Button
-            disabled={!isNative || !plusPackage || busy}
+            disabled={!isNative || !selectedPackage || busy}
             className="w-full max-w-md"
             onClick={handleUpgrade}
           >
             {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            {isNative ? `Upgrade to Safety Plus — ${priceString}` : "Upgrade to Safety Plus — mobile only"}
+            {isNative ? `Upgrade to Safety Plus — ${selectedPriceString}` : "Upgrade to Safety Plus — mobile only"}
           </Button>
           {isNative ? (
             <button
