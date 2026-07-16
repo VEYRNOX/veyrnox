@@ -1026,6 +1026,29 @@ also fire on non-lockout causes bucketed under the same error code. B1 — `_unl
 to the new helper (deferred; a TODO landed marking this). Tests: 15/15 new; keystore
 329/329; wallet-core 1094/1094. Two honest-review passes, both LAND-READY.
 
+## 2026-07-16 web PRF single-prompt enrollment + stale biometric comment — PR #1034
+
+**#1030 (FIXED, PR #1034)** — web WebAuthn PRF first-time Hardware KEK enrollment fired
+two prompts (a `create()` then a `get()`). Fix: `createPrfCredential()` in
+`src/wallet-core/keystore/web.js` now extracts the PRF extension results directly from
+`create()`. On Chrome ≥118 (which supports PRF evaluation during `create()`), that
+output is used as H — enrollment collapses to a single WebAuthn prompt. Safari/Firefox
+(no PRF-in-create support) fall through to the existing two-prompt `create()`+`get()`
+path unchanged. F-05 credential-id persistence-after-confirmed-PRF safety is preserved
+on both paths (`getHardwareFactor` unaffected in its persistence timing). Tests: 27/27
+PRF tests, 338/338 full keystore suite. BUILT / unit-tested, NOT browser-UAT'd with a
+real platform authenticator, NOT independently audited, no on-chain txid (app-layer UX
+fix only).
+
+**#1029 (CLOSED as not-a-bug)** — issue claimed non-KEK Face ID one-tap unlock fired two
+prompts. Code trace confirmed `skipBiometric: true` (passed from `unlockWithBiometric` to
+`unlock()` in `src/lib/WalletProvider.jsx`) already prevents the second prompt. The issue
+was filed against a stale comment describing pre-fix behavior; the comment was rewritten
+to accurately describe the single-prompt design already in force. H-NEW-5 (binding the
+cached-PIN Keychain item to the biometric enrollment set via
+`setInvalidatedByBiometricEnrollment(true)`) remains a separate TARGET item, tracked in
+`docs/Feature-Status.md`, not touched by this PR.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
