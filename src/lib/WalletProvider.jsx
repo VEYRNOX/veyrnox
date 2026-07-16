@@ -116,6 +116,7 @@ import {
   setBiometricUnlockEnabled,
   getBiometricStatus,
   BiometricGateError,
+  ensureBiometric2faOnNative,
 } from '@/lib/biometric';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
@@ -1731,6 +1732,7 @@ export function WalletProvider({ children }) {
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
     // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
     void ensureStealthPool().catch(() => {});
+    void ensureBiometric2faOnNative().catch(() => {});
     touch();
     deriveActiveAndAll();
     // STEP-UP capture: a per-session verifier for the credential that opened THIS
