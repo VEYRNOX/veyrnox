@@ -211,8 +211,8 @@ export function isValidBackup(parsed) {
 export async function createBackupEnvelope(containerJson, password, pin) {
   if (typeof containerJson !== 'string' || containerJson.length === 0)
     throw new Error('No container to back up');
-  if (typeof password !== 'string' || password.length === 0)
-    throw new Error('Password required');
+  if (typeof password !== 'string' || password.length < 12)
+    throw new Error('Backup password must be at least 12 characters');
   if (typeof pin !== 'string' || !/^\d{8,12}$/.test(pin))
     throw new Error('PIN must be 8–12 digits');
 
@@ -424,9 +424,16 @@ export async function restoreWithPassword(envelope, password) {
   const env = /** @type {any} */ (envelope);
   // Verify the password is correct by decrypting (throws on wrong credential).
   await decryptVault(env.seals.password, password);
-  // The blob is correct — save it as the local primary vault. The user can now
-  // unlock with their original password through the normal flow.
-  await saveVault(env.seals.password);
+  // Decrypt SUCCEEDED — the credential is correct. A failure past this point is a
+  // persistence problem, NOT a wrong credential, and must not be reported as one
+  // (that misleads the user into re-entering a password that was already right).
+  try {
+    // The blob is correct — save it as the local primary vault. The user can now
+    // unlock with their original password through the normal flow.
+    await saveVault(env.seals.password);
+  } catch (e) {
+    throw Object.assign(new Error('RESTORE_SAVE_FAILED'), { code: 'RESTORE_SAVE_FAILED', cause: e });
+  }
 }
 
 /**
@@ -446,15 +453,43 @@ export async function decryptPinSeal(envelope, pin) {
 }
 
 /**
- * Final step of a PIN restore: encrypt the container JSON under the new
- * password and save it as the local primary vault.
- * @param {string} containerJson  result of decryptPinSeal()
- * @param {string} newPassword
+ * Decrypt the PASSWORD seal to the container JSON (mirror of decryptPinSeal).
+ * Unlike restoreWithPassword (which saved the password-sealed blob verbatim and
+ * left the on-device vault in the PASSWORD cohort), this only RETURNS the plaintext
+ * container so the caller can re-wrap it under an on-device PIN — keeping the whole
+ * app PIN-cohort (owner decision 2026-07-16). Does NOT persist anything.
+ * @param {object} envelope   result of parseBackupFile()
+ * @param {string} password   the backup password
+ * @returns {Promise<string>} the decrypted container JSON (LIVE SECRET — short-lived)
+ * @throws if the password is wrong or the blob is corrupted
  */
-export async function finalisePinRestore(containerJson, newPassword) {
+export async function decryptPasswordSeal(envelope, password) {
+  if (!isValidBackup(envelope)) throw new Error('Invalid backup');
+  const env = /** @type {any} */ (envelope);
+  return await decryptVault(env.seals.password, password);
+}
+
+/**
+ * Final step of a file restore: encrypt the container JSON under the on-device
+ * 8-digit PIN the user just set, and save it as the local primary vault. Both
+ * restore paths (backup-password seal via decryptPasswordSeal, backup-PIN seal via
+ * decryptPinSeal) converge here, so the restored on-device vault is ALWAYS
+ * PIN-cohort — unlock and the hardware-KEK gate both use the PIN (owner decision
+ * 2026-07-16). Credential-agnostic: accepts any non-empty string (the UI enforces
+ * the 8-digit PIN); it does not require a 12-char password.
+ * @param {string} containerJson  result of decryptPinSeal() / decryptPasswordSeal()
+ * @param {string} devicePin      the on-device 8-digit PIN chosen during restore
+ */
+export async function finalisePinRestore(containerJson, devicePin) {
   if (typeof containerJson !== 'string' || containerJson.length === 0)
     throw new Error('No container to save');
-  if (typeof newPassword !== 'string' || newPassword.length === 0)
-    throw new Error('New password required');
-  await getKeyStore().createVault(containerJson, newPassword);
+  if (typeof devicePin !== 'string' || devicePin.length === 0)
+    throw new Error('Device PIN required');
+  try {
+    await getKeyStore().createVault(containerJson, devicePin);
+  } catch (e) {
+    // The PIN seal already decrypted — a save failure here is persistence, not a
+    // credential error. Tag it so the UI shows an honest, non-misleading message.
+    throw Object.assign(new Error('RESTORE_SAVE_FAILED'), { code: 'RESTORE_SAVE_FAILED', cause: e });
+  }
 }

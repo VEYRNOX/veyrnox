@@ -15,7 +15,7 @@
 
 export {
   parseBackupFile,
-  restoreWithPassword,
+  decryptPasswordSeal,
   decryptPinSeal,
   finalisePinRestore,
 } from '@/wallet-core/vaultBackup';
