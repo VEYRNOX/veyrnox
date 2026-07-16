@@ -125,7 +125,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
                 aria-label="Clear — re-enter PIN"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
-                className="h-14 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-40"
+                className="h-14 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground active:bg-secondary active:scale-95 transition-all duration-100 disabled:opacity-40"
               >
                 Re-enter
               </button>
@@ -140,7 +140,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
                 aria-label="Delete last digit"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
-                className="h-14 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-40"
+                className="h-14 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-secondary active:scale-95 transition-all duration-100 disabled:opacity-40"
               >
                 <Delete className="h-5 w-5" />
               </button>
@@ -153,7 +153,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
               tabIndex={-1}
               disabled={disabled}
               onClick={() => press(k)}
-              className="h-14 rounded-xl bg-secondary/40 hover:bg-secondary text-xl font-semibold mono-value disabled:opacity-40"
+              className="h-14 rounded-xl bg-secondary/40 hover:bg-secondary active:bg-primary active:text-primary-foreground active:scale-95 transition-all duration-100 text-xl font-semibold mono-value disabled:opacity-40"
             >
               {k}
             </button>
@@ -171,7 +171,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
         aria-label="Submit PIN"
         disabled={disabled}
         onClick={() => press("submit")}
-        className="h-12 w-full rounded-xl bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 disabled:opacity-40"
+        className="h-12 w-full rounded-xl bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 active:bg-primary/80 active:scale-[0.98] transition-all duration-100 disabled:opacity-40"
       >
         {submitLabel}
       </button>
