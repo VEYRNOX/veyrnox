@@ -23,6 +23,7 @@ import {
 } from '@/lib/biometric';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { EyeOff, Lock, Fingerprint, Key } from 'lucide-react';
@@ -151,9 +152,8 @@ export default function HiddenWalletUnlockSettings() {
       <div className="space-y-4">
         <div className="space-y-3">
           <Label htmlFor="hidden-2fa-password">Wallet PIN / Password</Label>
-          <Input
+          <PasswordInput
             id="hidden-2fa-password"
-            type="password"
             placeholder="Enter your PIN or password to confirm"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

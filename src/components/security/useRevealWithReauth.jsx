@@ -36,7 +36,7 @@ import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Lock, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import PinPad from '@/components/security/PinPad';
 import { getAuthModel } from '@/lib/authModel';
 import { useWallet } from '@/lib/WalletProvider';
@@ -151,8 +151,7 @@ export function useRevealWithReauth(onRevealed) {
           submitLabel="Unlock"
         />
       ) : (
-        <Input
-          type="password"
+        <PasswordInput
           autoComplete="off"
           autoFocus
           value={reauthValue}

@@ -13,6 +13,8 @@ import BackButton from "@/components/BackButton";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
+import PinPad from "@/components/security/PinPad";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordStrength";
 import {
   CloudUpload, Download, Upload,
@@ -39,31 +41,14 @@ function Field({ label, type = "text", value, onChange, placeholder, maxLength =
   );
 }
 
-function PinField({ label, value, onChange }) {
-  const fieldId = useId();
-  return (
-    <div className="space-y-1">
-      <label htmlFor={fieldId} className="text-xs font-medium text-muted-foreground">{label}</label>
-      <input
-        id={fieldId}
-        type="tel"
-        inputMode="numeric"
-        pattern="\d*"
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 12))}
-        placeholder="6–12 digits"
-        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/40"
-      />
-    </div>
-  );
-}
-
 // ── Export tab ───────────────────────────────────────────────────────────────
 
 function ExportTab({ createBackup, isDecoy, isHidden }) {
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
+  const [pinStep, setPinStep] = useState("choose"); // 'choose' | 'confirm'
+  const [pinErr, setPinErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [savedPath, setSavedPath] = useState(null);   // set after successful Downloads save
   const [envelope, setEnvelope] = useState(null);     // held so user can re-save without re-encrypting
@@ -98,14 +83,14 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       setEnvelope(env);
       if (result && typeof result === "object" && result.saved) {
         setSavedPath(result.path);
-        setPassword(""); setPin(""); setPinConfirm("");
+        setPassword(""); setPin(""); setPinConfirm(""); setPinStep("choose"); setPinErr("");
       } else if (result && typeof result === "object" && !result.saved) {
         // iOS: share sheet was dismissed without saving
         toast("Backup created but not saved — tap the button to try again.");
       } else {
         // Web / desktop: anchor download triggered
         toast.success("Backup verified and saved — it opens with this password or PIN.");
-        setPassword(""); setPin(""); setPinConfirm("");
+        setPassword(""); setPin(""); setPinConfirm(""); setPinStep("choose"); setPinErr("");
       }
     } catch (err) {
       toast.error(err?.message || "Backup failed.");
@@ -188,22 +173,52 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
       </div>
 
       <div className="space-y-3">
-        <Field
-          label="Choose a backup password"
-          type="password"
-          value={password}
-          onChange={setPassword}
-          placeholder={`A new password to protect this backup (min ${MIN_PASSWORD_LENGTH})`}
-        />
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Choose a backup password</label>
+          <PasswordInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={`A new password to protect this backup (min ${MIN_PASSWORD_LENGTH})`}
+            className="w-full"
+          />
+        </div>
         <p className="text-xs text-muted-foreground mt-1">At least {MIN_PASSWORD_LENGTH} characters · any characters allowed</p>
         {password.length > 0 && password.length < MIN_PASSWORD_LENGTH && (
           <p className="text-xs text-destructive">Use at least {MIN_PASSWORD_LENGTH} characters.</p>
         )}
-        <PinField label="Choose a backup PIN (8–12 digits)" value={pin} onChange={setPin} />
-        <PinField label="Confirm backup PIN" value={pinConfirm} onChange={setPinConfirm} />
-        {pin.length >= 8 && pinConfirm.length >= 8 && pin !== pinConfirm && (
-          <p className="text-xs text-destructive">PINs do not match.</p>
-        )}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            {pinStep === "choose" ? "Choose a backup PIN (8–12 digits)" : "Confirm backup PIN"}
+          </label>
+          <PinPad
+            value={pinStep === "choose" ? pin : pinConfirm}
+            onChange={(v) => { if (pinStep === "choose") setPin(v); else setPinConfirm(v); setPinErr(""); }}
+            onComplete={(v) => {
+              if (pinStep === "choose") {
+                setPin(v);
+                setPinConfirm("");
+                setPinStep("confirm");
+              } else {
+                if (v !== pin) {
+                  setPinErr("PINs don't match. Try again.");
+                  setPinConfirm("");
+                  setPinStep("choose");
+                  setPin("");
+                } else {
+                  setPinConfirm(v);
+                }
+              }
+            }}
+            length={12}
+            submitLabel={pinStep === "choose" ? "Next" : "Confirm"}
+          />
+          {pinStep === "confirm" && (
+            <button type="button" onClick={() => { setPinStep("choose"); setPin(""); setPinConfirm(""); setPinErr(""); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              ← Change PIN
+            </button>
+          )}
+        </div>
+        {pinErr && <p className="text-xs text-destructive">{pinErr}</p>}
       </div>
 
       <button

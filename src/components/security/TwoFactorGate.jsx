@@ -18,7 +18,7 @@
 import { useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Label } from '@/components/ui/label';
 import { Loader2, ShieldCheck, Fingerprint } from 'lucide-react';
 import PinPad from '@/components/security/PinPad';
@@ -139,9 +139,8 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
           ) : (
             <>
               <Label htmlFor="tfg-pin">Vault password</Label>
-              <Input
+              <PasswordInput
                 id="tfg-pin"
-                type="password"
                 autoComplete="off"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
@@ -156,9 +155,8 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
       {!isExternalFactor && (
         <div>
           <Label htmlFor="tfg-ap">Action Password</Label>
-          <Input
+          <PasswordInput
             id="tfg-ap"
-            type="password"
             autoComplete="off"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

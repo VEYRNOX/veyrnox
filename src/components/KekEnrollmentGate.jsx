@@ -168,7 +168,8 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
             ) : (
               <>
                 <p className="text-xs text-muted-foreground text-center">
-                  Enter your PIN, then confirm with Face ID or your fingerprint.
+                  Enter your PIN, then confirm with Face ID, your fingerprint,
+                  or your device passcode.
                 </p>
                 <ShakeOnKey shakeKey={shakeKey}>
                   <PinPad
