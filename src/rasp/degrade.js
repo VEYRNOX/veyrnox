@@ -66,6 +66,31 @@ const SPECS = Object.freeze({
     blockedActions: ['seed-reveal', 'export', 'import'],
     requiresBiometric: true,
   },
+  [CONDITION.ELEVATED]: {
+    // 2026-07-16 OWNER-APPROVED FIX for a regression introduced by #1007 + #979.
+    // #1007 folded 8 "soft" environment signals (overlayActive, developerMode,
+    // virtualApp, suspiciousPackage, thirdPartyKeyboard, mockLocation,
+    // networkProxy, accessibilityService) into the `rooted` signal. #979 then
+    // added `blockedActions: ['seed-reveal','export','import']` to the ROOTED
+    // WARN spec. Combined, a benign state — plain developer mode being on, or
+    // a user-installed accessibility service — silently blocked seed BACKUP,
+    // which was never the intent (developer mode and an accessibility service
+    // are common, non-hostile device states, unlike genuine root/jailbreak).
+    //
+    // ELEVATED is the fix: same WARN tier + biometric re-confirm as ROOTED
+    // (B5, SendCrypto.jsx) — this device state still deserves scrutiny — but
+    // `blockedActions: []` explicitly ALLOWS seed-reveal/export/import. Only
+    // GENUINE root/jailbreak (CONDITION.ROOTED, driven solely by
+    // verdict.rooted / verdict.jailbroken in nativeProbe.js) keeps the
+    // seed-backup block. The copy is deliberately generic ("a device setting")
+    // and must NOT say "rooted or jailbroken" — that would misdescribe a
+    // developer-mode or accessibility-service state as genuine compromise.
+    tier: TIER.WARN,
+    sentence:
+      'A device setting that can weaken protection is on (for example developer mode or an accessibility service). Continue only if you trust this device.',
+    blockedActions: [],
+    requiresBiometric: true,
+  },
   [CONDITION.INTEGRITY_UNAVAILABLE]: {
     // requiresBiometric: true — same B5 enforcement as ROOTED (native only;
     // web stays checkbox-only since verifyBiometric2fa() throws on web).

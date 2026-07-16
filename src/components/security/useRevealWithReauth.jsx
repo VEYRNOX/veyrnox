@@ -52,7 +52,9 @@ const REAUTH_CAP = 5;
 export function useRevealWithReauth(onRevealed) {
   const { revealWalletMnemonic, verifyActiveCredentialDetailed, lock } = useWallet();
   const { requireTwoFactor, gateModal } = useActionGuard();
-  const raspArtifact = useRaspArtifact();
+  // excludeAttestation: seed reveal is local seed-material access — not gated on
+  // the remote attestation leg (unavailable on sideloaded builds). (2026-07-16)
+  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
 
   // { walletId } while the inline "session timed out, unlock again" prompt is open.
   const [pendingWalletId, setPendingWalletId] = useState(null);

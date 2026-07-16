@@ -81,15 +81,24 @@ const UNAVAILABLE = Object.freeze({ available: false });
 // silently treated as the weaker/safer one.
 //
 //   TAMPERED > HOOKED > INTEGRITY_FAIL > EMULATOR > ROOTED >
-//   INTEGRITY_UNAVAILABLE > CLEAN
+//   INTEGRITY_UNAVAILABLE > ELEVATED > CLEAN
+//
+// ELEVATED (added 2026-07-16, owner-approved fix): the 8 "soft" environment
+// signals split out of ROOTED (see nativeProbe.js / conditions.js / degrade.js).
+// It ranks just above CLEAN and below every BLOCK-tier condition AND below
+// ROOTED/INTEGRITY_UNAVAILABLE — a genuine ROOTED (or any stronger BLOCK
+// condition) always outranks ELEVATED when both the native probe and the
+// attestation leg are composed, so this fix cannot accidentally downgrade a
+// real compromise signal to the milder ELEVATED tier.
 const DANGER_RANK = Object.freeze({
   [CONDITION.CLEAN]: 0,
-  [CONDITION.INTEGRITY_UNAVAILABLE]: 1,
-  [CONDITION.ROOTED]: 2,
-  [CONDITION.EMULATOR]: 3,
-  [CONDITION.INTEGRITY_FAIL]: 4,
-  [CONDITION.HOOKED]: 5,
-  [CONDITION.TAMPERED]: 6,
+  [CONDITION.ELEVATED]: 1,
+  [CONDITION.INTEGRITY_UNAVAILABLE]: 2,
+  [CONDITION.ROOTED]: 3,
+  [CONDITION.EMULATOR]: 4,
+  [CONDITION.INTEGRITY_FAIL]: 5,
+  [CONDITION.HOOKED]: 6,
+  [CONDITION.TAMPERED]: 7,
 });
 
 function dangerRank(condition) {

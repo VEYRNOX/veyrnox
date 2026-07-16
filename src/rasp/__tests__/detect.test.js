@@ -33,6 +33,26 @@ describe('classifyEnvironment — danger precedence (pure)', () => {
   it('rooted alone classifies ROOTED', () => {
     expect(classifyEnvironment({ rooted: true })).toBe(CONDITION.ROOTED);
   });
+
+  // 2026-07-16 owner-approved fix: ELEVATED is a new, milder condition for the
+  // 8 SOFT environment signals (dev mode, accessibility service, etc.) that
+  // #1007 had previously folded into `rooted`. ROOTED must still win when both
+  // are present (genuine root always outranks a soft signal).
+  it('elevated alone classifies ELEVATED', () => {
+    expect(classifyEnvironment({ elevated: true })).toBe(CONDITION.ELEVATED);
+  });
+  it('rooted outranks elevated when both are present', () => {
+    expect(classifyEnvironment({ rooted: true, elevated: true })).toBe(CONDITION.ROOTED);
+  });
+  it('elevated outranks CLEAN (all-clear with elevated:false is CLEAN)', () => {
+    expect(classifyEnvironment({ tampered: false, hooked: false, emulator: false, rooted: false, elevated: false })).toBe(CONDITION.CLEAN);
+    expect(classifyEnvironment({ tampered: false, hooked: false, emulator: false, rooted: false, elevated: true })).toBe(CONDITION.ELEVATED);
+  });
+  it('tampered/hooked/emulator all outrank elevated', () => {
+    expect(classifyEnvironment({ tampered: true, elevated: true })).toBe(CONDITION.TAMPERED);
+    expect(classifyEnvironment({ hooked: true, elevated: true })).toBe(CONDITION.HOOKED);
+    expect(classifyEnvironment({ emulator: true, elevated: true })).toBe(CONDITION.EMULATOR);
+  });
 });
 
 describe('detect — FAIL CLOSED (the honesty boundary)', () => {
