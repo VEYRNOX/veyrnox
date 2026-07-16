@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Copy, CheckCircle2, Lock, Clock, AlertTriangle, ArrowRight } from "lucide-react";
 import QRCodeDisplay from "../components/QRCodeDisplay";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import CoinLogo from "@/components/CoinLogo";
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ export default function ReceiveCrypto() {
   const urlAsset = searchParams.get("asset") ?? "ETH";
   const [symbol, setSymbol] = useState(urlAsset);
   const [copied, setCopied] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   // Re-sync on ?asset= change — useState reads its initializer only at mount, so
   // without this a nav from /asset/BTC → /receive?asset=BTC would still show ETH (#829).
@@ -163,17 +165,53 @@ export default function ReceiveCrypto() {
               </div>
             </div>
 
-            <QRCodeDisplay address={r.address} size={200} />
+            <motion.div
+              key={r.address}
+              initial={reduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 220, damping: 22 }}
+              className="flex justify-center"
+            >
+              <QRCodeDisplay address={r.address} size={200} />
+            </motion.div>
 
-            <div>
+            <motion.div
+              initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.28, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+            >
               <p className="text-[11px] text-muted-foreground text-center mb-1">{r.asset.symbol} receive address</p>
               <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2.5">
                 <code className="mono-value text-xs flex-1 break-all">{r.address}</code>
-                <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0" onClick={copyAddress} aria-label="Copy address">
-                  {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                <Button size="icon" variant="ghost" className="relative h-11 w-11 shrink-0" onClick={copyAddress} aria-label={copied ? "Address copied to clipboard" : "Copy address"}>
+                  <AnimatePresence mode="wait" initial={false}>
+                    {copied ? (
+                      <motion.span
+                        key="check"
+                        initial={reduceMotion ? { scale: 1, opacity: 1 } : { scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={reduceMotion ? { opacity: 0 } : { scale: 0.7, opacity: 0 }}
+                        transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 18 }}
+                        className="flex"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="copy"
+                        initial={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="flex"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Button>
               </div>
-            </div>
+            </motion.div>
 
             {sendOnNote && (
               <div className={`flex items-start gap-2 p-3 rounded-lg border ${r.isErc20 ? "bg-caution/10 border-caution/40" : "bg-secondary/60 border-border"}`}>

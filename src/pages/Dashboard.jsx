@@ -3,7 +3,10 @@ import { useState, useEffect, useRef } from "react";
 import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySelector";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
+import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
+import { motion } from "framer-motion";
+import AnimatedFiat from "@/components/AnimatedFiat";
+import EmptyState from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -208,24 +211,30 @@ function DemoDashboard() {
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Portfolio Value</p>
           <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
         </div>
-        <p className={`text-4xl font-bold transition-all duration-300 ${isLocked ? 'blur-md select-none' : ''}`}>
-          {formatFiat(displayValue, fiatCurrency)}
+        <p className={`text-4xl font-bold mono-value transition-all duration-300 ${isLocked ? 'blur-md select-none' : ''}`}>
+          <AnimatedFiat value={displayValue} format={(v) => formatFiat(v, fiatCurrency)} />
         </p>
         <ReferenceRateNote />
         {!isLocked && wallets.length > 0 && (
-          <div className="flex items-center justify-center gap-3 mt-1">
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 px-2 py-0.5 rounded-full">
-              ▲ {changePercent}% (24h)
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.15 }}
+            className="flex items-center justify-center gap-3 mt-1"
+          >
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 px-2 py-0.5 rounded-full mono-value">
+              <ArrowUp className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" /> {changePercent}% (24h)
             </span>
             <span className="text-[10px] text-muted-foreground">Synced {syncLabel}</span>
-          </div>
+          </motion.div>
         )}
         {!isLocked && (
           <button
             onClick={() => setIsLocked(true)}
+            aria-label="Lock balance behind biometric"
             className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Lock className="h-3 w-3" /> Lock Dashboard
+            <Lock className="h-3 w-3" /> Lock balance
           </button>
         )}
       </div>
@@ -295,12 +304,16 @@ function DemoDashboard() {
 
         <TabsContent value="tokens" className="mt-3">
           {wallets.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              <p>No wallets yet</p>
-              <Button size="sm" className="mt-3" onClick={() => setOpen(true)}>
-                <Plus className="h-4 w-4 mr-1.5" />Add Wallet
-              </Button>
-            </div>
+            <EmptyState
+              kind="wallets"
+              title="No wallets yet"
+              description="Add a wallet to start receiving, sending, and holding assets across chains."
+              action={(
+                <Button size="sm" onClick={() => setOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1.5" />Add Wallet
+                </Button>
+              )}
+            />
           ) : (
             <TokenList
               wallets={wallets}
@@ -325,9 +338,11 @@ function DemoDashboard() {
             <ExportTransactions transactions={filteredTx} />
           </div>
           {filteredTx.length === 0 ? (
-            <p className="text-center py-12 text-sm text-muted-foreground">
-              {txSearch || Object.values(txFilters).some(Boolean) ? "No matching transactions" : "No transactions yet"}
-            </p>
+            (txSearch || Object.values(txFilters).some(Boolean)) ? (
+              <EmptyState kind="search" title="No matching transactions" description="Try clearing filters or searching a different asset or address." />
+            ) : (
+              <EmptyState kind="transactions" title="No transactions yet" description="Your on-chain activity will show up here once you send or receive." />
+            )
           ) : (
             filteredTx.map(tx => (
               <div key={tx.id} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-secondary transition-colors">

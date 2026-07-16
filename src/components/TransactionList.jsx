@@ -1,5 +1,6 @@
 import { ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import EmptyState from "@/components/EmptyState";
 
 const statusIcons = {
   pending: <Clock className="h-3.5 w-3.5 text-caution" />,
@@ -10,9 +11,11 @@ const statusIcons = {
 export default function TransactionList({ transactions = [] }) {
   if (!transactions.length) {
     return (
-      <div className="text-center py-12 text-muted-foreground text-sm">
-        No transactions yet
-      </div>
+      <EmptyState
+        kind="transactions"
+        title="No transactions yet"
+        description="When you send or receive on this wallet, your on-chain activity will show up here."
+      />
     );
   }
 

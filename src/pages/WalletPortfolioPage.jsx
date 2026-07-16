@@ -38,6 +38,9 @@ import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
 import { formatFiat } from "@/components/FiatCurrencySelector";
+import { motion, useReducedMotion } from "framer-motion";
+import VaultIllustration from "@/components/VaultIllustration";
+import SeedGrid from "@/components/SeedGrid";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import CoinLogo from "@/components/CoinLogo";
 import QuickAccessGrid from "@/components/QuickAccessGrid";
@@ -66,40 +69,7 @@ const fmtAmount = (n) =>
 // "12:04" local time for the live-price freshness stamp.
 const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "");
 
-// Seed reveal grid (shared by the create-backup step and the "back up" action).
-function SeedGrid({ mnemonic }) {
-  const [show, setShow] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const raspArtifact = useRaspArtifact();
-  const words = (mnemonic || "").split(" ");
-  return (
-    <div className="p-3 rounded-xl border border-border bg-card">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold">Recovery Phrase</p>
-        <div className="flex gap-2">
-          <button onClick={() => setShow((s) => !s)} aria-label={show ? "Hide recovery phrase" : "Show recovery phrase"} className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
-            {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-          <button onClick={async () => { const gate = sensitiveGate(raspArtifact, 'seed-reveal'); if (gate.blocked) { toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.'); return; } await copySecret(mnemonic); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="Copy recovery phrase" className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground">
-            {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-      {show ? (
-        <div className="grid grid-cols-3 gap-2">
-          {words.map((w, i) => (
-            <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg bg-secondary text-xs">
-              <span className="text-muted-foreground w-4 text-right">{i + 1}.</span>
-              <span className="mono-value font-semibold">{w}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="h-20 flex items-center justify-center"><p className="text-sm text-muted-foreground">Tap the eye icon to reveal</p></div>
-      )}
-    </div>
-  );
-}
+// Seed reveal grid is a shared component — see src/components/SeedGrid.jsx.
 
 // Stand-alone seed backup dialog used by the "Back up Wallet N" action on existing
 // wallets (the session already holds the seed in memory; no password needed).
@@ -109,14 +79,34 @@ function SeedGrid({ mnemonic }) {
 function BackupDialog({ walletName, mnemonic = null, reauthPrompt = null, onClose, onConfirm = () => {} }) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Back up "{walletName}"</DialogTitle></DialogHeader>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="sr-only">Back up "{walletName}"</DialogTitle>
+        </DialogHeader>
         {reauthPrompt ? (
-          reauthPrompt
+          <>
+            <div className="flex flex-col items-center text-center gap-3 pt-1 pb-2">
+              <VaultIllustration size={132} label="Encrypted vault" />
+              <h2 className="text-lg font-semibold tracking-tight">Back up "{walletName}"</h2>
+              <p className="text-xs text-muted-foreground max-w-[20rem]">
+                Confirm it's you, then we'll show the recovery phrase for this wallet.
+              </p>
+            </div>
+            {reauthPrompt}
+          </>
         ) : (
           <>
-            <div className="p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
-              Anyone with this phrase has full access to THIS wallet's funds, and it is the only way to recover it.
+            <div className="flex flex-col items-center text-center gap-3 pt-1 pb-2">
+              <VaultIllustration size={132} label="Encrypted vault" />
+              <h2 className="text-lg font-semibold tracking-tight">Back up "{walletName}"</h2>
+              <p className="text-xs text-muted-foreground max-w-[20rem]">
+                Write these 12 words down offline. Anyone with them can spend this
+                wallet's funds — and they're the only way to recover it.
+              </p>
+            </div>
+            <div className="flex items-start gap-2 p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>Never take a screenshot. Never type it into another app.</span>
             </div>
             <SeedGrid mnemonic={mnemonic} />
             <DialogFooter>
@@ -186,9 +176,20 @@ export function AddWalletDialog({ onClose }) {
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         {created ? (
           <>
-            <DialogHeader><DialogTitle>Back up "{name.trim() || "your new wallet"}"</DialogTitle></DialogHeader>
-            <div className="p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
-              This wallet has its OWN recovery phrase — back it up separately. It's the only way to recover this wallet.
+            <DialogHeader>
+              <DialogTitle className="sr-only">Back up "{name.trim() || "your new wallet"}"</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center text-center gap-3 pt-1 pb-2">
+              <VaultIllustration size={132} label="Encrypted vault" />
+              <h2 className="text-lg font-semibold tracking-tight">Back up "{name.trim() || "your new wallet"}"</h2>
+              <p className="text-xs text-muted-foreground max-w-[20rem]">
+                This wallet has its own recovery phrase — separate from every other
+                wallet in your vault. Write it down offline before you use it.
+              </p>
+            </div>
+            <div className="flex items-start gap-2 p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>Never take a screenshot. Never type it into another app.</span>
             </div>
             <SeedGrid mnemonic={created.mnemonic} />
             <DialogFooter>
