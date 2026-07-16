@@ -435,7 +435,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
         ) : backups.length === 0 ? (
           <div className="p-4 rounded-xl border border-border bg-card/50 text-xs text-muted-foreground space-y-1">
             <p className="text-foreground text-sm font-medium">No backup files found</p>
-            <p>No <span className=”font-mono”>.enc</span> files were found in your Downloads folder. If your backup is somewhere else, use “Browse other location”.</p>
+            <p>No <span className="font-mono">.enc</span> files were found in your Downloads folder. If your backup is somewhere else, use "Browse other location".</p>
           </div>
         ) : (
           <ul className="space-y-2">

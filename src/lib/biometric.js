@@ -157,6 +157,34 @@ export function isBiometricGateError(err) {
   return !!(err && typeof err === 'object' && err.isBiometricGateError);
 }
 
+const BIOMETRIC_2FA_AUTO_KEY = 'veyrnox-2fa-biometric-auto';
+
+/**
+ * One-shot auto-enable of biometric 2FA on native devices that support it.
+ * Runs once per install: if the device has biometric hardware available, flip
+ * the 2FA pref on so critical actions (send, reveal, duress) are gated behind
+ * PIN + Biometric by default — no manual toggle hunt required.
+ *
+ * Idempotent: a second call is a no-op (the "already offered" marker is set on
+ * first run). If the user later disables biometric 2FA in Settings, this will
+ * NOT re-enable it — the marker persists independently of the pref.
+ *
+ * Best-effort, never throws — a failed auto-enable must not block unlock.
+ */
+export async function ensureBiometric2faOnNative() {
+  try {
+    if (localStorage.getItem(BIOMETRIC_2FA_AUTO_KEY)) return;
+  } catch { return; }
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const status = await getBiometricStatus();
+    if (status.available && !status.simulated) {
+      set2faBiometricEnabled(true);
+    }
+    localStorage.setItem(BIOMETRIC_2FA_AUTO_KEY, '1');
+  } catch { /* best-effort */ }
+}
+
 /** Persist the "require biometric unlock" preference. */
 export function setBiometricUnlockEnabled(on) {
   try {
