@@ -14,7 +14,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Wallet, Plus, Send, Download, ShieldAlert, Eye, EyeOff, Copy, Check,
+  Wallet, Plus, Send, Download, ShieldAlert, Check,
   RefreshCw, MoreVertical, Pencil, Trash2, SlidersHorizontal, Star, FolderPlus,
   Folder, ArrowRightLeft, ChevronDown, ChevronUp,
   ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle, ExternalLink,
@@ -38,15 +38,12 @@ import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
 import { formatFiat } from "@/components/FiatCurrencySelector";
-import { motion, useReducedMotion } from "framer-motion";
 import VaultIllustration from "@/components/VaultIllustration";
 import SeedGrid from "@/components/SeedGrid";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import CoinLogo from "@/components/CoinLogo";
 import QuickAccessGrid from "@/components/QuickAccessGrid";
 import SpendingPatternsCard from "@/components/SpendingPatternsCard";
-import { copySecret } from "@/lib/copySecret";
-import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import HiddenWallet2faGate from "@/components/security/HiddenWallet2faGate";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";

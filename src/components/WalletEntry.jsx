@@ -73,7 +73,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Shield, Wallet, Lock, KeyRound, Download, RefreshCw,
-  Eye, EyeOff, Copy, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace, Zap,
+  Eye, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
