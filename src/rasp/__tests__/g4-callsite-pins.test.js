@@ -21,12 +21,16 @@ const backup   = readFileSync(join(src, 'pages/PersonalBackup.jsx'), 'utf8');
 const entry    = readFileSync(join(src, 'components/WalletEntry.jsx'), 'utf8');
 const seedgrid = readFileSync(join(src, 'components/SeedGrid.jsx'), 'utf8');
 const hdwallet = readFileSync(join(src, 'pages/HDWalletManager.jsx'), 'utf8');
+// The restore (import) gate was extracted from PersonalBackup's inline RestoreTab
+// into the shared RestoreFromFile component (rendered by BOTH PersonalBackup's
+// Restore tab AND onboarding). The 'import' G4 gate lives there now.
+const restore  = readFileSync(join(src, 'components/backup/RestoreFromFile.jsx'), 'utf8');
 
 // Every LOCAL seed-material surface must gate on the ON-DEVICE leg only — i.e. pass
 // { excludeAttestation: true } to useRaspArtifact — so an unavailable REMOTE
 // attestation (Play Integrity 404 on any sideloaded build) can never block backup /
-// export / import / reveal. Owner decision 2026-07-16. Genuine on-device threats
-// still block via the OS leg; the remote leg stays in force for signing only.
+// export / import / reveal / restore. Owner decision 2026-07-16. Genuine on-device
+// threats still block via the OS leg; the remote leg stays in force for signing only.
 const EXCL = /useRaspArtifact\(\{\s*excludeAttestation:\s*true\s*\}\)/;
 describe('seed-material surfaces — excludeAttestation pin (backup not gated on remote leg)', () => {
   it('useRevealWithReauth passes excludeAttestation', () => expect(reveal).toMatch(EXCL));
@@ -34,6 +38,7 @@ describe('seed-material surfaces — excludeAttestation pin (backup not gated on
   it('WalletEntry passes excludeAttestation', () => expect(entry).toMatch(EXCL));
   it('SeedGrid passes excludeAttestation', () => expect(seedgrid).toMatch(EXCL));
   it('HDWalletManager passes excludeAttestation', () => expect(hdwallet).toMatch(EXCL));
+  it('RestoreFromFile passes excludeAttestation', () => expect(restore).toMatch(EXCL));
 });
 
 // ── useRevealWithReauth — seed-reveal gate ───────────────────────────────────
@@ -78,11 +83,16 @@ describe('PersonalBackup ExportTab — G4 export gate', () => {
 
 // ── PersonalBackup — import gate ─────────────────────────────────────────────
 
-describe('PersonalBackup RestoreTab — G4 import gate', () => {
+describe('RestoreFromFile — G4 import gate (shared restore component)', () => {
+  it('imports sensitiveGate and useRaspArtifact', () => {
+    expect(restore).toMatch(/sensitiveGate/);
+    expect(restore).toMatch(/useRaspArtifact/);
+  });
+
   it("calls sensitiveGate with 'import' before restoreWithPassword", () => {
-    const importGateIdx = backup.indexOf("sensitiveGate(raspArtifact, 'import')");
+    const importGateIdx = restore.indexOf("sensitiveGate(raspArtifact, 'import')");
     expect(importGateIdx).toBeGreaterThan(-1);
-    const restoreIdx = backup.indexOf('restoreWithPassword(');
+    const restoreIdx = restore.indexOf('restoreWithPassword(');
     expect(importGateIdx).toBeLessThan(restoreIdx);
   });
 });
