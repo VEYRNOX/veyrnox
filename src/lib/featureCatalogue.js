@@ -373,10 +373,10 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Built (/watchlist): follow assets independently of the active wallet with real opt-in price feeds from CryptoCompare (I2-gated; shows "—" when live prices are off).',
       },
       {
-        name: 'Notifications & Push',
+        name: 'Price Alert Notifications',
         status: 'built',
-        summary: 'Web Push notification centre with opt-in subscription',
-        explanation: 'Built (/push). Browser Web Push API integration: opt-in subscription management, test notification trigger, notification permission status. Advisory only — alerts never initiate transactions.',
+        summary: 'On-device price alert notifications via LocalNotifications',
+        explanation: 'Built (/price-alerts). Real @capacitor/local-notifications on native, browser Notification API on web. Polls CoinGecko every 60s while the app is open; fires when a price target is hit. No push server — notifications only fire while the app is running. Advisory only — alerts never initiate transactions.',
       },
     ],
   },

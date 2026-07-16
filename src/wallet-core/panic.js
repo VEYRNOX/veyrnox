@@ -235,7 +235,7 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-remote-screen',          // pages/SendCrypto.jsx remote-screen toggle
   'veyrnox-sim-enabled',            // pages/SendCrypto.jsx tx-simulation toggle
   'dashboard-widgets',              // pages/Dashboard.jsx widget layout
-  'notification_prefs',             // pages/PushNotificationsPage.jsx
+  'notification_prefs',             // legacy push notifications page (removed)
   'veyrnox-demo',                   // api/demoClient.js demo-mode persistence
 ]);
 
