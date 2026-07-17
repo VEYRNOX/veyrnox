@@ -61,7 +61,6 @@ export const FREE_FEATURES = [
   { name: 'RASP', summary: 'Runtime environment detection' },
   { name: 'Security dashboard', summary: 'At-a-glance security posture' },
   { name: 'Portfolio dashboard & net-worth', summary: 'Aggregate crypto net worth' },
-  { name: 'P&L tracking', summary: 'Realised / unrealised profit and loss' },
   { name: 'Fee analytics', summary: 'Track fees paid in native units' },
   { name: 'Portfolio risk score', summary: 'Concentration, leverage, volatility' },
   { name: 'Price charts, alerts & watchlist', summary: 'Real OHLCV data, threshold alerts' },

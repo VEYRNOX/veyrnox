@@ -17,7 +17,7 @@ export const ALL_ROUTE_PATHS = [
   '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
   '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects',
   '/terms-legal', '/nft',
-  '/snapshots', '/pl', '/onchain', '/spending',
+  '/snapshots', '/onchain', '/spending',
   '/recurring', '/advanced-analytics', '/nft-multichain',
   '/fraud', '/news-sentiment', '/notifications',
   '/savings', '/invoices', '/watchlist', '/address-book',
@@ -27,7 +27,7 @@ export const ALL_ROUTE_PATHS = [
   '/address-checker', '/fee-analytics', '/correlation-timeline',
   '/dashboard-widgets', '/wallet-seed-qr',
   '/hardware-wallet', '/personal-backup', '/rasp-security', '/audit-log', '/login-activity', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
-  '/index-builder', '/voice-commands', '/token-approvals', '/network-manager',
+  '/voice-commands', '/token-approvals', '/network-manager',
   '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
   '/security-scanner', '/docs', '/features',
@@ -124,14 +124,6 @@ export const CLASSIFICATION = {
   '/portfolio-rewind': {
     verdict: 'live', dataSource: 'local-first',
     note: 'Migrated (2026-06-17): PRICE_HISTORY multipliers removed. Rewind derived by walking real tx history backwards from current balance using live prices. Gated on pricesEnabled.',
-  },
-  '/index-builder': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'PERF hardcoded performance percentages removed. Index CRUD (create/list/delete) is real base44 entity storage. Index cards now show composition pie chart and weight breakdown only — no fabricated return percentage. What remains is fully user-driven: name, description, components, rebalance frequency.',
-  },
-  '/pl': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'CURRENT_PRICES removed. Unrealised P&L shows "enter exit price" for open trades. Close action now collects user-supplied exit price inline before writing P&L — no stale market price used. Realised P&L on closed trades uses the user-entered entry/exit prices only.',
   },
   // ── Finance group (audit batch 3) ─────────────────────────────────────────
   '/savings': {
