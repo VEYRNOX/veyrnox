@@ -57,6 +57,8 @@ import {
   FRESH_PROBE_TIMEOUT_MS,
 } from '@/rasp';
 import { DEMO } from '@/api/demoClient';
+import { evaluateSendAgainstLimits } from '@/lib/txLimits';
+import { USD_RATES } from '@/lib/cryptos';
 
 // L-1 (PR #962): use the shared constant from getFreshRaspArtifact so the
 // Send-path and WC-path stay in sync with a single source of truth.
@@ -411,15 +413,66 @@ export async function _handleSignTypedData({ withPrivateKey }, topic, id, params
   await respondToRequest(topic, id, sig);
 }
 
-export async function _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId) {
+export async function _handleSendTransaction(
+  { withPrivateKey, evmAddress, actionPasswordConfigured = false, txLimits = [], history = [], usdRates = USD_RATES },
+  topic, id, params, caip2ChainId,
+) {
   const gate = await presignGateOrReject();
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
-  const txParams = params[0];
+  const txParams = params[0] ?? {};
   const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
   const net = getNetworkByChainId(chainId);
+
+  // #1090 — Action Password 2FA gate. The in-app Send flow requires the second
+  // factor at the sign chokepoint (see sendGate.js §6b). The WC surface has NO
+  // in-band affordance to collect the Action Password mid-flow; the honest
+  // fail-closed path (I4) is to REJECT so the user routes through the in-app
+  // Send screen where the full 2FA dance runs. Never bypass.
+  if (actionPasswordConfigured === true) {
+    await rejectRequest(topic, id, 'WC_TWO_FACTOR_REQUIRED').catch(() => {});
+    throw new Error(
+      `Rejected transaction [WC_TWO_FACTOR_REQUIRED]: an Action Password ` +
+      `is configured for this wallet. Complete the send from the in-app ` +
+      `Send screen so the second factor can be entered.`,
+    );
+  }
+
+  // #1090 — spend limit gate. Mirrors the in-app Send flow's evaluation. WC has
+  // no acknowledgement affordance, so a breach REJECTS (fail closed, I4). Only
+  // the native `value` field is scored — ERC-20 amount is inside calldata and
+  // is not decoded here (honest scope: unlimited ERC-20 spend still hits the
+  // approval-warning code path via risk scoring, see #1093).
+  try {
+    let amount = 0;
+    if (txParams.value != null && txParams.value !== '0x' && txParams.value !== '0x0') {
+      // wei → native units, safe for values up to ~9e6 ETH.
+      amount = Number(BigInt(txParams.value)) / 1e18;
+    }
+    const limitGate = evaluateSendAgainstLimits({
+      amount,
+      currency: net?.symbol,
+      usdRates,
+      history,
+      limits: txLimits,
+    });
+    if (limitGate.blocked) {
+      await rejectRequest(topic, id, 'WC_SEND_LIMIT_EXCEEDED').catch(() => {});
+      throw new Error(
+        `Rejected transaction [WC_SEND_LIMIT_EXCEEDED]: this send would exceed ` +
+        `a configured spending cap. Complete the send from the in-app Send ` +
+        `screen so the limit can be reviewed and acknowledged.`,
+      );
+    }
+  } catch (err) {
+    if (err && typeof err.message === 'string' && err.message.includes('WC_SEND_LIMIT_EXCEEDED')) throw err;
+    // Any other failure computing the limit gate is fail-open on the LIMIT
+    // axis specifically (matches the in-app Send flow where an empty
+    // limits/history yields no breach). We do NOT auto-reject on compute
+    // errors — the RASP + risk-score gates still bite.
+  }
 
   const hash = await withPrivateKey(0, async (pk) => {
     const provider = getProvider(net.key);
@@ -478,7 +531,7 @@ export function WalletConnectProvider({ children }) {
   // NOTE: lastAuthAt is NOT in the WalletProvider context value (it lives in a
   // private ref: lastAuthAtRef). isSendReauthRequired() is the context-exposed gate
   // that reads it. We expose isSendReauthRequired to the modal instead.
-  const { accounts, isUnlocked, isDecoy, isHidden, withPrivateKey, isSendReauthRequired } = useWallet();
+  const { accounts, isUnlocked, isDecoy, isHidden, withPrivateKey, isSendReauthRequired, actionPasswordConfigured } = useWallet();
   const evmAddress = accounts?.[0]?.address ?? null;
 
   const [initialized, setInitialized] = useState(false);
@@ -694,9 +747,33 @@ export function WalletConnectProvider({ children }) {
         `Veyrnox will not broadcast a transaction on an unapproved chain.`,
       );
     }
-    await _handleSendTransaction({ withPrivateKey }, topic, id, params, boundCaip2);
+    // #1090 — fetch the same limits + history sources the in-app Send screen
+    // reads so the WC send path enforces the SAME gates. Fail-open on read
+    // error (matches the in-app "no limits configured → allow" default);
+    // fail-closed happens inside _handleSendTransaction if a limit is breached.
+    // Dynamic-import base44 so unrelated WC tests (e.g. demoGate) that mock
+    // demoClient without the full base44 surface don't break on module load;
+    // the entities are only needed at sign-time, not at provider mount.
+    let txLimits = [];
+    let history = [];
+    try {
+      const { base44 } = await import('@/api/base44Client');
+      try { txLimits = await base44.entities.TransactionLimit.list(); } catch { txLimits = []; }
+      try { history = await base44.entities.Transaction.list('-created_date', 100); } catch { history = []; }
+    } catch { /* base44 unavailable in this test surface — fail open on limit axis */ }
+    await _handleSendTransaction(
+      {
+        withPrivateKey,
+        evmAddress,
+        actionPasswordConfigured,
+        txLimits,
+        history,
+        usdRates: USD_RATES,
+      },
+      topic, id, params, boundCaip2,
+    );
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, assertSessionLive, isSendReauthRequired]);
+  }, [withPrivateKey, evmAddress, actionPasswordConfigured, assertSessionLive, isSendReauthRequired]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);
