@@ -462,8 +462,7 @@ auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
 - ~~M-5 (`planSolTransfer` accepts non-bigint `amountLamports`; issue #750)~~ **BUILT (PR #806):** `typeof amountLamports !== 'bigint'` guard added in `src/wallet-core/sol/send.js:115` — throws on non-bigint input. Unit-tested. INTERNAL.
 
 **Still open (owner-decision or architectural gate required):**
-- M-1 (EVM private key as JS string — architecturally unzeroable; ethers v6 limitation,
-  no available fix; tracked issue #746)
+- ~~M-1~~ ACCEPTED RESIDUAL (2026-07-17, issue #746): EVM private key as JS string — architecturally unzeroable; ethers v6 `HDNodeWallet` holds the private key as a string internally and provides no zeroing API. No fix available without replacing ethers v6 entirely. Accepted alongside the existing S1-S4 audit scope; revisit trigger: ethers v7 or a replacement signer library that exposes a zeroing path.
 - M-4 (2FA retry dead end after network failure — UX, not a security bypass; issue #749)
 - ~~M-8~~ BUILT (PR #1076, 2026-07-17): `encryptVault`/`encryptVaultWithDek` now produce v:2 blobs with `additionalData: vaultAad(blob)` binding `{v,kdf,salt}` into the GCM auth-tag; `decryptVault`/`decryptVaultWithDek` gate AAD on v≥2 (v:1 backward-compat preserved); `BIN_VERSION` bumped to 2 (per-seal `blobV` byte); 14 new unit tests. BUILT / unit-tested, INTERNAL.
 - M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
