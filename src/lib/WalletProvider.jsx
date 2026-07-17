@@ -24,7 +24,7 @@
 
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
-import { deriveEvmAccount } from '@/wallet-core/derivation';
+import { deriveEvmAccount, deriveEvmAddress } from '@/wallet-core/derivation';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { ACTIVE_BTC_NETWORK_KEY } from '@/wallet-core/btc/networks';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
@@ -721,7 +721,7 @@ export function WalletProvider({ children }) {
     for (const w of c.wallets) {
       try {
         map[w.id] = {
-          evm: deriveEvmAccount(w.mnemonic, 0).address,
+          evm: deriveEvmAddress(w.mnemonic, 0),
           // Portfolio/analytics BTC address MUST match the network the balance is
           // read on: portfolioBalances.js reads getBalanceSats(asset.chain, addr.btc),
           // where the BTC asset's chain is ACTIVE_BTC_NETWORK_KEY. Deriving on a
@@ -742,7 +742,8 @@ export function WalletProvider({ children }) {
     if (!active) throw new Error('Wallet is locked');
     const list = [];
     for (let i = 0; i < count; i++) {
-      const { address, path } = deriveEvmAccount(active, i);
+      const address = deriveEvmAddress(active, i);
+      const path = `m/44'/60'/0'/0/${i}`; // path is a well-known format — no private derivation needed
       list.push({ address, path, index: i }); // NOTE: no privateKey stored here
     }
     setAccounts(list);
@@ -1989,7 +1990,7 @@ export function WalletProvider({ children }) {
     // FUND the decoy (a decoy is only plausible once it holds a small, real,
     // block-explorer-verifiable amount). Derived here from the in-memory decoy
     // mnemonic via the SAME derivation as the primary wallet; no key persisted.
-    const { address } = deriveEvmAccount(decoyMnemonic, 0);
+    const address = deriveEvmAddress(decoyMnemonic, 0);
     return { mnemonic: decoyMnemonic, address };
   }, []);
 
@@ -2052,7 +2053,7 @@ export function WalletProvider({ children }) {
   const peekHiddenWallet = useCallback(async (secret) => {
     const m = await tryRevealHidden(secret);
     if (m == null) return null;
-    const { address } = deriveEvmAccount(m, 0);
+    const address = deriveEvmAddress(m, 0);
     return { address };
   }, []);
 

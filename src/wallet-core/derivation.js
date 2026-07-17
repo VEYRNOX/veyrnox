@@ -51,10 +51,15 @@ export function deriveEvmAccount(mnemonic, accountIndex = 0, passphrase = '') {
 
 /**
  * Derive the EVM address for a given account index WITHOUT materialising the
- * private key as a JS value. Uses @scure/bip32 public-key derivation +
+ * LEAF private key as a JS value. Uses @scure/bip32 public-key derivation +
  * ethers.computeAddress. Safe for receive-address display, portfolio fetch,
  * and address comparison — callers that need the private key for signing
  * must still use deriveEvmAccount (L-1, S1-S4 audit).
+ *
+ * Architectural scope (I4 honesty): BIP-32 hardened derivation up to the
+ * account level (m/44'/60'/0') unavoidably requires the parent private key;
+ * it is zeroed immediately after the xpub is extracted. The EVM LEAF private
+ * key at m/44'/60'/0'/0/index is never materialised — that is the audit goal.
  * @param {string} mnemonic
  * @param {number} [accountIndex=0]
  * @param {string} [passphrase='']
