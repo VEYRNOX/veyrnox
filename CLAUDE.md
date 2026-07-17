@@ -1309,6 +1309,71 @@ plus 17/17 downstream (`entitlement.i3guard`, `TierProvider`, `TierProvider.i3gu
 requires a real device; `@capacitor/app.openUrl` is a no-op stub in web mode). Not
 independently audited, no on-chain txid.
 
+## 2026-07-17/18 P2 issue sweep — PRs #1128–#1135
+
+Batch closure of 18 open P2 issues across 7 PRs (all squash-merged via `--admin`). All
+BUILT / unit-tested only, INTERNAL — NOT device-verified, NOT independently audited, no
+on-chain txid.
+
+**PR #1128 (fixes #1113, #1109):** Master-seed private key wiping + Cosmos public-only
+address derivation. `derivation.js` `deriveAllAddresses` now zeros the HD root private
+key in `finally` after extracting per-chain keys. `cosmos/derivation.js`
+`deriveCosmosBech32` uses `HDKey.fromExtendedKey(xpub)` for address-only derivation —
+the Cosmos leaf private key never materialises. Strict TDD (RED→GREEN).
+
+**PR #1129 (fixes #1099, #1100, #1103, #1105, #1111, #1114):** Six honesty + hardening
+fixes in one batch:
+- #1099: `WalletConnectProvider.jsx` WC relay `init()` gated on
+  `isDeniabilityOrDemoActive()` (LIVE helper, not stale `DEMO` snapshot) — relay
+  connection blocked in decoy/hidden/demo sessions.
+- #1100: `native.js` `createVault` gates on `BiometricAuth.checkBiometry()` —
+  `deviceIsSecure === false` throws `DEVICE_NOT_SECURE` (fail-closed, I4).
+- #1103: `native.js` iOS caveat comment — v3 stamps protocol parity, NOT salt-binding
+  on iOS (ObjC plugin ignores `kekSalt`).
+- #1105: `WalletConnectProvider.jsx` `handleApproveSession` calls
+  `presignGateOrReject()` before session approval — a rooted/hooked device cannot
+  approve new WC sessions.
+- #1111: `vault.js` `vaultAad` accepted-residual comment — kek-dek blobs intentionally
+  omit `hardwareKekVersion` from AAD (enforced by salt-binding chain instead).
+- #1114: `web.js` documented-residual comment — WebAuthn PRF `ArrayBuffer` is
+  architecturally unzeroable (parallel to iOS-F5 M-6).
+
+**PR #1130 (fixes #1121, #1120):** `TransactionHistory.jsx` and `FeeAnalytics.jsx`
+react-query v5 `refetch()` buttons hidden (not just disabled) in deniability sessions.
+`isDeniabilityOrDemoActive()` gate prevents the refetch bypass of `enabled: false`.
+
+**PR #1132 (fixes #1115, #1101):**
+- #1115: `resolveMaxPriorityFeePerGas` null guard was already merged (PR #1129); this PR
+  adds the missing regression test (4 assertions).
+- #1101: `restoreWithPassword()` dead export removed from `vaultBackup.js` (zero
+  production callers confirmed by grep). 3 structural tests added.
+
+**PR #1133 (fixes #1108, #1104):** RASP native-probe severity corrections in
+`nativeProbe.js`:
+- #1108: `screenCapture` demoted from `hooked` (TIER.BLOCK) to `elevated` (TIER.WARN) —
+  screen recording no longer blocks sends.
+- #1104: `overlayActive` removed from all RASP conditions entirely — AssistiveTouch no
+  longer triggers any RASP friction.
+
+**PR #1134 (fixes #1110, #1107):**
+- #1110: `vaultAad()` now canonicalizes field order before `JSON.stringify` — explicit
+  property ordering for both the `kdf` sub-object and top-level fields. Byte-identical
+  output for all existing v:2 vaults (no migration needed). Function exported for direct
+  unit testing.
+- #1107: `VITE_BYPASS_RASP` CI guard — `scripts/check-rasp-bypass.mjs` fails if any
+  `.env.production*` file sets the flag; runtime `console.error` in
+  `useRaspArtifact.js` when bypass is active in `import.meta.env.PROD`.
+
+**PR #1135 (fixes #1106, #1102):**
+- #1106: `kekPinNotice.js` module-scope `getKeyStore()` moved inside
+  `ensureKekPinNoticeOnNative()` as a lazy call — no more boot-order side-effect.
+- #1102: `hiddenBalance.js` guard changed from `isDeniabilitySessionActive()` to
+  `isDeniabilityOrDemoActive()` — covers the persisted `veyrnox-demo=1` flag that the
+  session-marker-only check missed.
+
+**Remaining open:** #1073 (M2c ungate checklist — owner-decision item, intentionally
+open).
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
