@@ -33,6 +33,7 @@ vi.mock('@/rasp', () => ({
   detectAttestation: vi.fn(() => 'clean'),
   composeConditions: vi.fn((a) => a),
   ATTESTATION_ENABLED: false,
+  FRESH_PROBE_TIMEOUT_MS: 1500,
 }));
 
 // NOTE: presignGate is NOT mocked here — we use the real pure gate so the
