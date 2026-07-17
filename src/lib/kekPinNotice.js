@@ -19,8 +19,6 @@ import { getKeyStore } from '@/wallet-core/keystore';
 // so a session flipped after module import is still respected.
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
-const _ks = getKeyStore();
-
 export const KEK_PIN_NOTICE_KEY = 'veyrnox-kek-pin-notice';
 
 export async function ensureKekPinNoticeOnNative() {
@@ -32,8 +30,12 @@ export async function ensureKekPinNoticeOnNative() {
     if (isDeniabilityOrDemoActive()) return;
     if (localStorage.getItem(KEK_PIN_NOTICE_KEY)) return;
 
-    const enrolled = typeof _ks.hasVaultKekWrap === 'function'
-      ? await _ks.hasVaultKekWrap()
+    // Issue #1106: resolve the keystore lazily inside the function body — a
+    // module-load `getKeyStore()` forces singleton instantiation for every
+    // importer and is a boot-order landmine (see PRs #1082/#1086).
+    const ks = getKeyStore();
+    const enrolled = typeof ks.hasVaultKekWrap === 'function'
+      ? await ks.hasVaultKekWrap()
       : false;
     // Mark regardless so the notice never fires retroactively if the user unenrolls.
     localStorage.setItem(KEK_PIN_NOTICE_KEY, '1');
