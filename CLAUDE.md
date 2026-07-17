@@ -1105,6 +1105,32 @@ selector.
 
 BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
 
+## 2026-07-17 Binance-first OHLCV — chart timeframe fix + secondary source — PR #1056
+
+**Root cause:** CoinGecko's free `/coins/{id}/ohlc` endpoint maps 1H, 4H, and 1D all to
+`days=1` — identical 24-hour data regardless of which period is selected. Cycling through
+periods also trips CoinGecko's ~5 req/min anonymous rate limit, breaking the chart
+entirely on rapid switching.
+
+**Fix (PR #1056):** New `src/lib/binance.js` fetches per-period candles from Binance's
+public klines API (no key required, ~1200 req/min anonymous). `src/lib/ohlcv.js` wires
+Binance-first with automatic CoinGecko fallback. Period mapping:
+
+| Period | Binance call | spans |
+|--------|-------------|-------|
+| 1H | interval=1m, limit=60 | last 60 minutes |
+| 4H | interval=1m, limit=240 | last 4 hours |
+| 1D | interval=1h, limit=24 | last 24 hours |
+| 1W | interval=1h, limit=168 | last 7 days |
+| 1M | interval=1d, limit=30 | last 30 days |
+
+Additional: MATIC→POLUSDT (MATICUSDT frozen on Binance since 2024 POL migration);
+staleness guard rejects HTTP 200 responses with frozen candles; `formatCandleTime` shows
+HH:MM for intraday periods and dates for 1W/1M; I3 deniability guard at the
+`fetchOHLCV` export level (zero egress in decoy/demo sessions); `binance.com` added to
+e2e egress host pattern; generic error copy — no raw HTTP codes in UI. 44/44 unit tests.
+BUILT / unit-tested, INTERNAL — not device-verified, no on-chain txid.
+
 ## 2026-07-17 toast position restored to bottom — PR #1046
 
 `src/components/ui/sonner.jsx`: changed `position="top-center"` back to
