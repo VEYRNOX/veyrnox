@@ -336,6 +336,13 @@ static os_log_t VeyrnoxKekLog(void) {
             // Fail-open: a non-zero return (ENOMEM, EPERM) is silently ignored;
             // the unlock still proceeds, just without the swap-to-disk guarantee.
             mlock(h.mutableBytes, h.length);
+            // M-6 (KEK audit, accepted residual 2026-07-17): hB64 is an immutable NSString
+            // copy of H in base64 form — the Capacitor bridge requires a string here and
+            // NSString is not zeroable. H is zeroed in our NSMutableData copy below (iOS-F5
+            // fix), but the bridge intermediary persists until ARC/GC. This is an
+            // architectural constraint of the Capacitor plugin protocol, not a code defect.
+            // Severity LOW-MEDIUM. M2C_HARDWARE_WRAP_ENABLED stays false until the
+            // independent audit confirms the residual risk is tolerable in full KEK context.
             NSString *hB64 = [h base64EncodedStringWithOptions:0];
             // Zero H from heap after bridge-serialisation (iOS-F5 — not zeroed by ARC).
             // 1. our mutable copy:
