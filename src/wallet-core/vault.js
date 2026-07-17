@@ -92,17 +92,17 @@ const MIN_KDF_PARAMS = Object.freeze({
  * integers within [MIN_KDF_PARAMS, MAX_KDF_PARAMS]. Throws a GENERIC error — a blob
  * with out-of-range params is malformed/tampered/malicious, not a credential signal,
  * so this leaks no oracle. Called by paramsFromVault before any argon2id derivation.
- * @param {{parallelism:number,iterations:number,memorySize:number,hashLength:number}} p
- * @returns {typeof p}
+ * @param {{parallelism:number,iterations:number,memorySize:number,hashLength:number}} params
+ * @returns {{parallelism:number,iterations:number,memorySize:number,hashLength:number}}
  */
-export function assertSaneKdfParams(p) {
+export function assertSaneKdfParams(params) {
   for (const name of ['parallelism', 'iterations', 'memorySize', 'hashLength']) {
-    const v = p[name];
+    const v = params[name];
     if (!Number.isInteger(v) || v < MIN_KDF_PARAMS[name] || v > MAX_KDF_PARAMS[name]) {
       throw new Error('Vault KDF parameters out of range — refusing to derive key');
     }
   }
-  return p;
+  return params;
 }
 
 const enc = new TextEncoder();

@@ -89,5 +89,7 @@ export async function manageSubscription() {
   const url = Capacitor.getPlatform() === 'ios'
     ? 'itms-apps://apps.apple.com/account/subscriptions'
     : 'https://play.google.com/store/account/subscriptions';
+  // @ts-ignore -- @capacitor/app's AppPlugin type omits `openUrl` even though it is
+  // a documented runtime method (see App.openUrl docs); no runtime behavior change.
   await App.openUrl({ url });
 }

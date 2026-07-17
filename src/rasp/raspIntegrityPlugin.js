@@ -34,6 +34,16 @@ import { registerPlugin } from '@capacitor/core';
  * @property {boolean} [hookedProcess]
  * @property {boolean} [emulator]
  * @property {boolean} [tampered]
+ * @property {boolean} [overlayActive] - Android-only soft signal (item 19); ELEVATED, not rooted.
+ * @property {boolean} [developerMode] - Android-only soft signal (item 25); ELEVATED, not rooted.
+ * @property {boolean} [virtualApp] - Android-only soft signal (item 27); ELEVATED, not rooted.
+ * @property {boolean} [suspiciousPackage] - Android-only soft signal (item 29); ELEVATED, not rooted.
+ * @property {boolean} [thirdPartyKeyboard] - Android-only soft signal (item 31); ELEVATED, not rooted.
+ * @property {boolean} [mockLocation] - Android-only soft signal (item 33); ELEVATED, not rooted.
+ * @property {boolean} [networkProxy] - Android-only soft signal (item 35); ELEVATED, not rooted.
+ * @property {boolean} [accessibilityService] - Android-only soft signal (item 37); ELEVATED, not rooted.
+ * @property {boolean} [debuggerAttached] - iOS sysctl P_TRACED (item 12); folded into `hooked`.
+ * @property {boolean} [screenCapture] - iOS UIScreen.isCaptured (item 16); folded into `hooked`.
  *
  * @typedef {Object} RaspIntegrityPlugin
  * @property {() => Promise<IntegrityVerdict>} checkIntegrity
