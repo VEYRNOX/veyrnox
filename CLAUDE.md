@@ -1122,6 +1122,54 @@ g4-callsite-pins). Device-verified on Pixel 10 Pro XL: restore from `.enc` → s
 PIN → unlock with PIN → KEK enrollment succeeds with same PIN. BUILT / unit-tested +
 device-verified (restore flow), INTERNAL — NOT independently audited, no on-chain txid.
 
+## 2026-07-17 PinPad UX polish + biometric lockout copy — PR #1043
+
+Four UX fixes in one commit. BUILT / unit-tested only, INTERNAL — NOT device-verified,
+NOT independently audited, no on-chain txid.
+
+- **PinPad press feedback:** digit/clear/back/submit buttons now flash teal (`bg-primary/20`)
+  + scale down (`scale-95`) on press via `active:` pseudo-class in `PinPad.jsx`. Visible
+  optical feedback on mobile where hover states don't exist.
+- **Biometric lockout messaging:** `useKekEnrollmentGate.js` now classifies
+  `NO_HARDWARE_FACTOR` and `USER_CANCEL` lockout errors with a specific message
+  ("biometric sensor is temporarily locked out") instead of generic "Something went wrong";
+  `KekEnrollmentGate.jsx` instruction copy updated to include device passcode as an option.
+  New classifier test (`useKekEnrollmentGate.classifier.test.js`, 18 lines).
+- **Double PinPad fix:** `PersonalBackup.jsx` export tab replaced two stacked PinPad fields
+  (choose + confirm visible simultaneously) with a single PinPad and a choose→confirm state
+  machine (`pinStep`). Same pattern applied to `RestoreFromFile.jsx`'s setpin phase.
+- **Action Password 8-char consistency:** `TwoFactorSettings.jsx` validation and UI text now
+  consistently use 8-character minimum (was mixing 8 in UI text with 12 in validation).
+
+## 2026-07-17 Binance-first OHLCV — chart timeframe fix — PR #1056
+
+CoinGecko's free `/coins/{id}/ohlc` endpoint mapped 1H, 4H, and 1D all to `days=1` —
+identical 24-hour data regardless of period. Cycling through periods also tripped
+CoinGecko's ~5 req/min anonymous rate limit. New `src/lib/binance.js` fetches per-period
+candles from Binance's public klines API (no key required); `src/lib/ohlcv.js` wires
+Binance-first with automatic CoinGecko fallback. MATIC→POLUSDT mapping, staleness guard,
+`formatCandleTime` for intraday vs date labels, I3 deniability guard at export level.
+`binance.com` added to e2e egress host pattern. 44/44 unit tests. BUILT / unit-tested,
+INTERNAL — not device-verified, no on-chain txid.
+
+## 2026-07-17 PR #962 audit follow-ups — PRs #1060, #1064
+
+Two batches from the SEND / Scanner audit (issue #962):
+
+**PR #1060 — M-2 + M-3:** BTC/SOL private key zeroing + score.js docstring fix.
+`btc/send.js` `signAndBroadcastBtc` wraps `buildAndSignTx` in `try/finally` that zeros the
+caller-supplied `privateKey` Uint8Array. `sol/send.js` `signAndBroadcastSol` zeros the
+32-byte seed immediately after `Keypair.fromSeed()`. Honest limitation: `Keypair.secretKey`
+in `@solana/web3.js` returns a copy, so `zeroKeypairSecret` wipes a throwaway copy — the
+caller-owned seed is the operative fix. `score.js` `requiresConfirmation` comment updated
+to include CAUTION (PR #832). Strict TDD. 2 new zeroing tests. BUILT / INTERNAL.
+
+**PR #1064 — M-1 + L-1:** `SendCrypto.jsx:597` `t.amount` was coerced via `Number()`,
+losing bits above 2^53 (~9 ETH in wei); changed to `String()`. `WalletConnectProvider.jsx`
+independent `RASP_ASYNC_PROBE_TIMEOUT_MS = 1500` constant deduped — now imports
+`FRESH_PROBE_TIMEOUT_MS` from `@/rasp`. SendCrypto 42/42, s8-value-anomaly 5/5. BUILT /
+INTERNAL.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
