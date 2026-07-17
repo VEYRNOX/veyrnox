@@ -1105,6 +1105,30 @@ selector.
 
 BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
 
+## 2026-07-17 Save QR Code + Print Secure Backup on native — PR #1048
+
+**Save QR Code (`QRCodeDisplay.jsx`):** the `handleDownload` handler used `<a download>` +
+`.click()` which is silently ignored by Capacitor WebViews on iOS and Android. Fixed:
+`handleDownload` now branches on `Capacitor.isNativePlatform()`. Native path writes the
+PNG (base64-stripped from the `data:` URL) to `Directory.Cache` via `@capacitor/filesystem`
+then opens the OS share sheet via `@capacitor/share` — users can save to Photos, Files,
+Drive, AirDrop, etc. Web path is unchanged. Errors are caught: share-sheet dismiss is
+silent, filesystem write failure shows a short alert.
+
+**Print Secure Backup (`WalletSeedQR.jsx`):** `handlePrint` called `window.open("", "_blank")`
+which on Capacitor native opens an orphaned WKWebView / Android Activity with no app
+back-stack — users were stranded on the print page with no route back to Recovery Phrase
+Backup. Also: `window.open` returning `null` (popup blocked) crashed immediately on
+`w.document.write(...)`. Fixed: native path builds a plain-text backup string and passes
+it to `@capacitor/share` (AirPrint / Google Cloud Print / Files / Drive) — user stays
+inside the Veyrnox WebView the whole time. Web path injects a `#veyrnox-seed-print-container`
+div + `@media print` stylesheet into the current document and calls `window.print()` on
+the current window — no new tab, no orphaned popup, back navigation intact. All
+`textContent` assignments replace the previous `innerHTML` usage; the null-crash is
+eliminated because `window.open` is gone entirely on both paths.
+
+BUILT, INTERNAL — UI-layer only, no seed/key/signing/auth logic touched. ESLint 0 errors, 0 warnings.
+
 ## 2026-07-16 biometric 2FA auto-enable on native — PR #1033
 
 Native devices with biometric hardware (Face ID, Touch ID, fingerprint) now get biometric
