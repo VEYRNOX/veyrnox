@@ -795,6 +795,21 @@ export function WalletConnectProvider({ children }) {
     if (!evmAddress) throw new Error('No wallet address — unlock first');
     const proposal = pendingProposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error('Proposal not found');
+    // #1105 — RASP pre-approve gate. Downstream signing handlers already
+    // fail-closed on TIER.BLOCK/WARN, but session pairing itself had no gate:
+    // topic + dApp URL persisted and the peer-side relay socket stayed open on
+    // a rooted/hooked/attest-failed device. Mirrors WC signing-path RASP-A3
+    // discipline: the pair surface has no interactive "sign anyway" affordance,
+    // so WARN AND BLOCK both reject (fail closed, I4). No session persisted.
+    const gate = await presignGateOrReject();
+    if (!gate.proceedAllowed) {
+      await rejectSession(proposalId).catch(() => {});
+      setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
+      throw new Error(
+        `Rejected session approval [${gate.rejectCode}]: device integrity ` +
+        `gate refused pairing.`,
+      );
+    }
     // Extract requested chains (CAIP-2, e.g. "eip155:1") from required + optional
     // namespaces and parse to integer chain IDs. session.js:approveSession filters
     // these against SUPPORTED_CHAIN_IDS, so unsupported chains drop out there.
