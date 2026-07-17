@@ -6,17 +6,22 @@ package com.veyrnox.app
 // standard JUnit test rig, without spinning up a Capacitor PluginCall or a
 // keystore.
 //
-// Mirrors the JS wrapper gate in src/plugins/veyrnoxEnclave.js and the Swift
-// bridge gate in ios/App/CapApp-SPM/Sources/CapApp-SPM/VeyrnoxEnclavePlugin.swift
-// (VeyrnoxEnclavePlugin.deleteWrappingKey). The allowlist MUST stay identical
-// across all three: JS wrapper, Swift bridge, Kotlin bridge.
+// Current cross-platform status (honest): at THIS branch's base — cut from
+// origin/main — the JS wrapper in src/plugins/veyrnoxEnclave.js still calls
+// deleteWrappingKey() with no argument, and the Swift bridge in
+// ios/App/CapApp-SPM/Sources/CapApp-SPM/VeyrnoxEnclavePlugin.swift does not
+// yet read or enforce an intent. Both of those changes land on PR #1098
+// (M2c hardening / Codex 2026-07-17 P2-A) — merge dependency for the
+// eventual M2D_ENABLED flag flip, NOT for this scaffold PR. On this branch
+// today, Android is STRICTER than JS and Swift; when #1098 lands the three
+// layers converge on the same allowlist (cleanup / unenroll / wipe).
 //
 // Rationale: Capacitor auto-registers the plugin, so
 // Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey() is reachable from any
-// in-page JS on Android — an injected script bypassing the JS wrapper's intent
-// check would otherwise strand a live Enclave-wrapped vault once M2d is enabled.
-// Enforcing the same allowlist at the native bridge closes that gap on Android
-// exactly as Codex 2026-07-17 P2-A closed it on iOS.
+// in-page JS on Android — an injected script bypassing the JS wrapper's
+// intent check would otherwise strand a live Enclave-wrapped vault once M2d
+// is enabled. Enforcing the allowlist at the native bridge closes that gap
+// on Android from day one, before any JS-side plumbing exists.
 //
 // Not a confidentiality control (delete cannot reveal key material) — this is
 // defence-in-depth against an availability hazard.
