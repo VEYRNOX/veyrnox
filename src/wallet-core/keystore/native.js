@@ -351,6 +351,10 @@ async function authenticateOrThrow() {
 // getHardwareFactor() with NO kekSalt, so the native plugin falls back to the fixed
 // PRF_EVAL_SALT and reproduces the H the wrap was actually made with (fail-closed to
 // backwards-compat; changing this would brick the existing wrap):
+//     iOS caveat (#1103): on iOS, H is a random 32-byte value ECIES-wrapped under an
+//     SE key — the ObjC plugin ignores kekSalt entirely. v3 stamps protocol parity
+//     (same blob schema across platforms), NOT salt-binding on iOS. Do not read
+//     `getVaultKekVersion() === 3` as evidence of salt-bound H on iOS.
 //   - v3 → { kekSalt } (per-enrollment salt-bound H — the real binding).
 //   - v2 → undefined. The v2 stamp was aspirational: two masking bugs (the facade dropped
 //     getHardwareFactor's opts, and hardware.js sent kekSalt as raw bytes the Capacitor
@@ -703,6 +707,17 @@ export const nativeKeyStore = {
   // localStorage and is not retained here after this call returns.
   async createVault(secret, password) {
     await init();
+    try {
+      const bio = await BiometricAuth.checkBiometry();
+      if (bio && bio.deviceIsSecure === false) {
+        throw Object.assign(
+          new Error('DEVICE_NOT_SECURE'),
+          { code: 'DEVICE_NOT_SECURE', userMessage: 'Please set a device passcode or biometric before creating a wallet.' },
+        );
+      }
+    } catch (err) {
+      if (err && err.code === 'DEVICE_NOT_SECURE') throw err;
+    }
     const blob = await encryptVault(secret, password); // ../vault.js — unchanged
     // Store as a JSON string; convertDate=false on read avoids any date coercion
     // of base64 fields. The blob is { v, kdf, salt, iv, ct } — all ciphertext.

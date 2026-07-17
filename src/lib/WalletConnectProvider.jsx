@@ -109,6 +109,7 @@ import {
   FRESH_PROBE_TIMEOUT_MS,
 } from '@/rasp';
 import { DEMO } from '@/api/demoClient';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { evaluateSendAgainstLimits } from '@/lib/txLimits';
 import { USD_RATES } from '@/lib/cryptos';
 
@@ -199,6 +200,11 @@ export function resolveMaxFeePerGas(rawMaxFee, networkKey) {
 // or unparseable value becomes 0n (the EIP-1559 default), never larger than the cap.
 // Pure; exported for unit tests.
 export function resolveMaxPriorityFeePerGas(rawPriorityFee, resolvedMaxFee) {
+  // #1115: when both feeData.maxFeePerGas and feeData.gasPrice are nullish,
+  // cappedMaxFeePerGas is undefined. The BigInt comparison `parsed > undefined`
+  // throws "Cannot mix BigInt and other types". Return null so the caller can
+  // let ethers/RPC populate fees rather than crash with an opaque error.
+  if (resolvedMaxFee == null) return null;
   let parsed;
   try {
     parsed = BigInt(rawPriorityFee ?? 0);
@@ -655,7 +661,7 @@ export function WalletConnectProvider({ children }) {
     // simulates sends elsewhere, so the WC relay must NOT open here — otherwise a
     // demo facade would front a live relay socket and real dApp signing/broadcast
     // (I2/I3 violation). Fail closed (I4): treat demo like a deniability session.
-    if (DEMO || !isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
+    if (isDeniabilityOrDemoActive() || !isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
     let cancelled = false;
     // I2-WC-RELAY: WC relay opens at unlock time, not pairing. Lazy-init is a TODO (see audit-2026-07-04-internal.md).
     initWalletConnect()
@@ -752,7 +758,7 @@ export function WalletConnectProvider({ children }) {
   // survives into a demo session (e.g. demo flag flipped after unlock), tear it down
   // so no relay socket or real dApp signing lingers behind the demo facade (I4).
   useEffect(() => {
-    if (DEMO || !isUnlocked || isDecoy || isHidden) {
+    if (isDeniabilityOrDemoActive() || !isUnlocked || isDecoy || isHidden) {
       destroyWalletConnect();
       setInitialized(false);
       setPendingProposals([]);
@@ -762,6 +768,8 @@ export function WalletConnectProvider({ children }) {
   }, [isUnlocked, isDecoy, isHidden]);
 
   const handleApproveSession = useCallback(async (proposalId) => {
+    const gate = await presignGateOrReject();
+    if (gate && gate.blocked) throw new Error(gate.sentence || 'RASP integrity check failed — session refused');
     if (!evmAddress) throw new Error('No wallet address — unlock first');
     const proposal = pendingProposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error('Proposal not found');

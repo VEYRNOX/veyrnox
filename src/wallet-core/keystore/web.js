@@ -683,6 +683,10 @@ export const webKeyStore = {
   // params, a legacy-params vault is also upgraded here (same effect as the
   // unlock-time M3 migration). The secret is never written anywhere in plaintext.
   async changePassword(currentPassword, newPassword, opts) {
+    // Documented residual (#1114, parallel to iOS-F5 M-6): the WebAuthn PRF extension
+    // may return an ArrayBuffer that shares backing memory with an internal Chromium
+    // buffer. We own the Uint8Array view and zero it in finally, but the original
+    // PRF ArrayBuffer is not ours to wipe — architecturally unzeroable.
     assertNotNativePlatform(); // fail closed BEFORE any storage read (I4)
     // M-8 (issue #731): enforce the web password minimum on the NEW password up
     // front — fail closed BEFORE any vault read or re-wrap — so a rotation can
