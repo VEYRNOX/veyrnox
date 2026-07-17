@@ -462,14 +462,13 @@ auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
 - ~~M-5 (`planSolTransfer` accepts non-bigint `amountLamports`; issue #750)~~ **BUILT (PR #806):** `typeof amountLamports !== 'bigint'` guard added in `src/wallet-core/sol/send.js:115` — throws on non-bigint input. Unit-tested. INTERNAL.
 
 **Still open (owner-decision or architectural gate required):**
-- M-1 (EVM private key as JS string — architecturally unzeroable; ethers v6 limitation,
-  no available fix; tracked issue #746)
+- ~~M-1~~ ACCEPTED RESIDUAL (2026-07-17, issue #746): EVM private key as JS string — architecturally unzeroable; ethers v6 `HDNodeWallet` holds the private key as a string internally and provides no zeroing API. No fix available without replacing ethers v6 entirely. Accepted alongside the existing S1-S4 audit scope; revisit trigger: ethers v7 or a replacement signer library that exposes a zeroing path.
 - M-4 (2FA retry dead end after network failure — UX, not a security bypass; issue #749)
 - ~~M-8~~ BUILT (PR #1076, 2026-07-17): `encryptVault`/`encryptVaultWithDek` now produce v:2 blobs with `additionalData: vaultAad(blob)` binding `{v,kdf,salt}` into the GCM auth-tag; `decryptVault`/`decryptVaultWithDek` gate AAD on v≥2 (v:1 backward-compat preserved); `BIN_VERSION` bumped to 2 (per-seal `blobV` byte); 14 new unit tests. BUILT / unit-tested, INTERNAL.
 - M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
   owner decision on disclosure wording; issue #754; docs disclosure BUILT #753)
 - ~~M-10~~ BUILT (2026-07-12): Cosmos non-hardened index level — correct BIP-44, matches Keplr/Cosmostation; xpub-risk disclosure added as source comment in `cosmos/derivation.js:40–46`; Veyrnox does not export the account xpub so risk is theoretical; flagged for any future xpub-export feature
-- L-1 (open, low-priority): EVM has no address-only derivation variant — `deriveEvmAccount` runs full key derivation even for receive-address display; performance concern only, no security impact
+- ~~L-1~~ BUILT (PR #1080, 2026-07-17): `deriveEvmAddress()` added to `derivation.js` — derives private only to the hardened account boundary (`m/44'/60'/0'`), converts to a public-only `HDKey` via `publicExtendedKey`, then derives the non-hardened tail (`m/0/index`) in public mode; the leaf EVM signing key never materialises as a JS value. Four `WalletProvider.jsx` address-only callers (`deriveAllAddresses`, `deriveAccounts`, `setDuressPin`, `peekHiddenWallet`) rewired. Codex two-pass PASS (third pass clean). Architectural honest scope: BIP-32 hardened derivation to `m/44'/60'/0'` unavoidably materialises the account-level intermediate private key; it is zeroed immediately after xpub extraction — the LEAF signing key is the audit goal. BUILT / unit-tested, INTERNAL — not device-verified, no on-chain txid.
 - ~~L-2~~ BUILT (`WalletProvider.jsx:1133–1148`): `setActionPassword` decoy/hidden re-auth guard added; wrong credential throws and mutates nothing (fail-closed, I4)
 - ~~L-3~~ BUILT (`src/lib/useSend2faMethod.js`): reactive hook re-reads on `storage` / `SEND_2FA_CHANGED_EVENT` / `PASSKEY_REGISTRATION_EVENT` — mid-session 2FA pref changes propagate live to mounted Send screen
 - ~~L-5~~ BUILT (2026-07-12): iCloud IndexedDB sync disclosure added to `evm/vaultStore.js`; vault is AES-256-GCM ciphertext so possession alone does not break the cipher
@@ -1168,6 +1167,41 @@ losing bits above 2^53 (~9 ETH in wei); changed to `String()`. `WalletConnectPro
 independent `RASP_ASYNC_PROBE_TIMEOUT_MS = 1500` constant deduped — now imports
 `FRESH_PROBE_TIMEOUT_MS` from `@/rasp`. SendCrypto 42/42, s8-value-anomaly 5/5. BUILT /
 INTERNAL.
+
+## 2026-07-17 S1–S4 audit remaining fixes — PRs #1071, #1074, #1076, #1077
+
+Four PRs closing remaining items from the 2026-07-08 S1–S4 + crypto audit and issue #957.
+All BUILT / unit-tested only, INTERNAL — NOT device-verified, NOT independently audited,
+no on-chain txid.
+
+**PR #1071 — M-9 (PIN exhaustion notice):** `src/lib/kekPinNotice.js` adds
+`ensureKekPinNoticeOnNative()` — one-shot `toast.warning` on first unlock for native users
+without hardware KEK, explaining the ~100M-combination offline-exhaustion risk and pointing
+to Security Settings. Uses a `veyrnox-kek-pin-notice` localStorage marker (fires once).
+Web/Safari: no UI surface (testing-only; docs disclosure in `SECURITY.md` via #753). 7/7
+tests.
+
+**PR #1074 — #957 (PlayIntegrity JVM tests):** `PlayIntegrityJwsVerifier.kt` extracted from
+`PlayIntegrityPlugin.kt` as a pure-JVM-testable class. 8 executable Gradle JUnit tests
+covering ES256 raw→DER roundtrip, RS256 path, nonce verification (match/mismatch/missing),
+and malformed-JWS rejection. Closes the gap where the ES256 raw→DER transcoder was proven
+only by the JS mirror (PR #955) — now also proven at the Kotlin layer.
+
+**PR #1076 — M-8 (vault AAD binding):** `encryptVault`/`encryptVaultWithDek` now produce
+v:2 blobs with `additionalData: vaultAad(blob)` binding `{v,kdf,salt}` into the AES-GCM
+auth-tag. `decryptVault`/`decryptVaultWithDek` gate AAD on `v >= 2` (v:1 backward-compat
+preserved). `vaultNeedsRekey()` triggers lazy v:1→v:2 upgrade on next unlock/password
+change. `BIN_VERSION` bumped to 2 (per-seal `blobV` byte in binary backup format; legacy
+v:1 files read back cleanly). 14 new unit tests (`vault-aad.test.js`). Closes issue #752.
+
+**PR #1077 — M-4 (2FA retry dead end):** `TwoFactorGate.jsx` now shows a persistent
+in-card error message when the broadcast fails after 2FA verification, with a retry
+affordance. Previously, a network failure after 2FA left the user in a dead end with no
+way to retry without navigating away. `SendCrypto.jsx` wires the error through.
+`TwoFactorGate.sendError.test.jsx` added. Closes issue #749.
+
+**PR #1072 — docs (owner decisions):** Feature-Status.md updated to close M-6, M-4, M-9
+owner-decision items with final status notes. Docs-only.
 
 ## Security invariants
 

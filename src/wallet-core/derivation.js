@@ -20,7 +20,8 @@
 // validated against published BIP-44 / chain test vectors before use.
 
 import { HDKey } from '@scure/bip32';
-import { HDNodeWallet, Mnemonic } from 'ethers';
+import { HDNodeWallet, Mnemonic, computeAddress } from 'ethers';
+import { bytesToHex } from '@noble/hashes/utils';
 import { mnemonicToSeed } from './mnemonic.js';
 
 // Standard BIP-44 coin types. Verify each against the chain's spec/test vectors.
@@ -46,6 +47,36 @@ export function deriveEvmAccount(mnemonic, accountIndex = 0, passphrase = '') {
   const mn = Mnemonic.fromPhrase(mnemonic, passphrase || null);
   const node = HDNodeWallet.fromMnemonic(mn, path);
   return { address: node.address, privateKey: node.privateKey, path };
+}
+
+/**
+ * Derive the EVM address for a given account index WITHOUT materialising the
+ * LEAF private key as a JS value. Uses @scure/bip32 public-key derivation +
+ * ethers.computeAddress. Safe for receive-address display, portfolio fetch,
+ * and address comparison — callers that need the private key for signing
+ * must still use deriveEvmAccount (L-1, S1-S4 audit).
+ *
+ * Architectural scope (I4 honesty): BIP-32 hardened derivation up to the
+ * account level (m/44'/60'/0') unavoidably requires the parent private key;
+ * it is zeroed immediately after the xpub is extracted. The EVM LEAF private
+ * key at m/44'/60'/0'/0/index is never materialised — that is the audit goal.
+ * @param {string} mnemonic
+ * @param {number} [accountIndex=0]
+ * @param {string} [passphrase='']
+ * @returns {string} checksummed EIP-55 address
+ */
+export function deriveEvmAddress(mnemonic, accountIndex = 0, passphrase = '') {
+  const seed = mnemonicToSeed(mnemonic, passphrase); // 64-byte BIP-39 seed
+  // Derive private only as far as the hardened account level (m/44'/60'/0').
+  // Then switch to a public-only node so the leaf private key at m/44'/60'/0'/0/index
+  // never materialises as a JS value (Codex P1 — L-1 audit).
+  const acctPriv = HDKey.fromMasterSeed(seed).derive(`m/44'/60'/0'`);
+  const acctPub = HDKey.fromExtendedKey(acctPriv.publicExtendedKey);
+  if (acctPriv.privateKey) acctPriv.privateKey.fill(0); // best-effort wipe
+  const node = acctPub.derive(`m/0/${accountIndex}`); // public-only path
+  const pub = node.publicKey;
+  if (!pub) throw new Error('EVM public key derivation failed');
+  return computeAddress('0x' + bytesToHex(pub));
 }
 
 /**

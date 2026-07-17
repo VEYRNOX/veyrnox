@@ -125,7 +125,7 @@ import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
-import { deriveEvmAccount } from './derivation.js';
+import { deriveEvmAddress } from './derivation.js';
 import { makeContainer, serializeContainer, parseVault, newWalletId, FIXED_LEN } from './multiVault.js';
 // A hidden wallet is a real BIP-39 wallet, so it has the SAME multi-chain
 // identity any wallet does. We reuse the EXISTING public-address-only derivation
@@ -147,7 +147,7 @@ const HIDDEN_SOL_NETWORK = 'devnet';
 // and SOL (ed25519 devnet) — all via the existing derivation modules. No key
 // material is returned or persisted; addresses only. No network access.
 function deriveHiddenIdentity(mnemonic) {
-  const { address: evm } = deriveEvmAccount(mnemonic, 0);
+  const evm = deriveEvmAddress(mnemonic, 0);
   const { address: btc, path: btcPath } = deriveBtcAddress(mnemonic, { networkKey: HIDDEN_BTC_NETWORK });
   const { address: sol, path: solPath } = deriveSolAddress(mnemonic);
   return {
@@ -503,7 +503,7 @@ export async function moveWalletToHidden(mnemonic, secret) {
     throw new Error('Move failed to verify; the wallet was NOT hidden and nothing was removed.');
   }
 
-  const { address } = deriveEvmAccount(mnemonic, 0);
+  const address = deriveEvmAddress(mnemonic, 0);
   return { address, slot };
 }
 

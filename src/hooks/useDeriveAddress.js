@@ -4,16 +4,17 @@
 // lint rule permits src/hooks/ to import from wallet-core; pages must not reach
 // past this boundary directly (issue #627). This wrapper only forwards the call
 // — it does NOT persist or log the derived private key.
-import { deriveEvmAccount } from '@/wallet-core/derivation';
+import { deriveEvmAddress } from '@/wallet-core/derivation';
 
 /**
- * Derive the EVM account (address + live private key + path) for a mnemonic.
- * Callers typically use only `.address`. The privateKey is a LIVE SECRET —
- * do not persist it in plaintext (same contract as deriveEvmAccount).
+ * Derive ONLY the EVM address for a mnemonic — the private key is never
+ * materialised (address-only public-key derivation, L-1 S1-S4 audit). This is
+ * all UI/page code needs (display + address comparison); anything that must
+ * sign uses deriveEvmAccount directly, never this hook.
  * @param {string} mnemonic
  * @param {number} [index=0] - final BIP-44 path index (m/44'/60'/0'/0/{index})
- * @returns {{ address: string, privateKey: string, path: string }}
+ * @returns {string} checksummed EIP-55 address
  */
 export function deriveAddressFromMnemonic(mnemonic, index = 0) {
-  return deriveEvmAccount(mnemonic, index);
+  return deriveEvmAddress(mnemonic, index);
 }
