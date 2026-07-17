@@ -1105,6 +1105,13 @@ selector.
 
 BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
 
+## 2026-07-17 toast position restored to bottom — PR #1046
+
+`src/components/ui/sonner.jsx`: changed `position="top-center"` back to
+`position="bottom-center"`. PR #1023's visual polish pass had silently moved every
+toast (including "Decoy mode active") to the top of the screen. One-line revert.
+BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
+
 ## 2026-07-16 biometric 2FA auto-enable on native — PR #1033
 
 Native devices with biometric hardware (Face ID, Touch ID, fingerprint) now get biometric
@@ -1147,6 +1154,32 @@ Tests: 69/69 across 10 files (RestoreFromFile, WalletEntry, vaultBackup,
 g4-callsite-pins). Device-verified on Pixel 10 Pro XL: restore from `.enc` → set device
 PIN → unlock with PIN → KEK enrollment succeeds with same PIN. BUILT / unit-tested +
 device-verified (restore flow), INTERNAL — NOT independently audited, no on-chain txid.
+
+## 2026-07-17 PinPad UX polish + biometric lockout copy — PR #1043
+
+Four UX fixes in one commit, merged after cherry-pick rebase (original branch predated
+PRs #1025/#1032/#1033). BUILT / unit-tested only, INTERNAL — NOT device-verified, NOT
+independently audited, no on-chain txid.
+
+- **PinPad press feedback:** digit/clear/back/submit buttons now flash teal (`bg-primary/20`)
+  + scale down (`scale-95`) on press via `active:` pseudo-class in `PinPad.jsx`. Visible
+  optical feedback on mobile where hover states don't exist.
+- **Biometric lockout messaging:** `useKekEnrollmentGate.js` now classifies
+  `NO_HARDWARE_FACTOR` and `USER_CANCEL` lockout errors with a specific message
+  ("biometric sensor is temporarily locked out") instead of generic "Something went wrong";
+  `KekEnrollmentGate.jsx` instruction copy updated to include device passcode as an option.
+  New classifier test (`useKekEnrollmentGate.classifier.test.js`, 18 lines).
+- **Double PinPad fix:** `PersonalBackup.jsx` export tab replaced two stacked PinPad fields
+  (choose + confirm visible simultaneously) with a single PinPad and a choose→confirm state
+  machine (`pinStep`). Same pattern applied to `RestoreFromFile.jsx`'s setpin phase.
+- **Action Password 8-char consistency:** `TwoFactorSettings.jsx` validation and UI text now
+  consistently use 8-character minimum (was mixing 8 in UI text with 12 in validation).
+
+Files changed: `PinPad.jsx`, `KekEnrollmentGate.jsx`, `useKekEnrollmentGate.js`,
+`PersonalBackup.jsx`, `RestoreFromFile.jsx`, `TwoFactorSettings.jsx`, `TwoFactorGate.jsx`,
+`WalletEntry.jsx`, `HDWalletManager.jsx`, `SendCrypto.jsx`, `StealthWallets.jsx`,
+`WalletAccessReset.jsx`, `WalletPortfolioPage.jsx`, `useRevealWithReauth.jsx`,
+`HiddenWalletUnlockSettings.jsx` (16 files, 176 insertions, 123 deletions).
 
 ## Security invariants
 
