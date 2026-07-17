@@ -12,11 +12,15 @@ package com.veyrnox.app
 // │   Does NOT ship: any AndroidKeyStore key material, any biometric       │
 // │           prompt, any wrap/unwrap logic. Those land in M2d-1b/-1c/-1d. │
 // │                                                                        │
-// │ Runtime behaviour is byte-identical to "plugin not registered" until   │
-// │ M2D_ENABLED is flipped, EXCEPT that deleteWrappingKey now requires an  │
-// │ explicit allowlisted intent (Codex 2026-07-17 P2-A extended to         │
-// │ Android: closes the M-5-class auto-registration attack surface at the  │
-// │ native bridge, not just the JS wrapper).                               │
+// │ Runtime behaviour for KEY MATERIAL is byte-identical to "plugin not    │
+// │ registered" until M2D_ENABLED is flipped — no AndroidKeyStore write,   │
+// │ no biometric prompt, no key touched. This scaffold DOES newly expose:  │
+// │   - isHardwareKeyAvailable() — read-only capability probe, no side     │
+// │     effects, no identifier leak (returns tier + biometry-enrolled bit).│
+// │   - deleteWrappingKey({ intent }) — requires an explicit allowlisted   │
+// │     intent (Codex 2026-07-17 P2-A extended to Android: closes the     │
+// │     M-5-class auto-registration attack surface at the native bridge,   │
+// │     not just the JS wrapper). No-op until M2d-1b mints a key.          │
 // │                                                                        │
 // │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2.      │
 // └─────────────────────────────────────────────────────────────────────────┘
