@@ -18,7 +18,6 @@ import { NotificationsProvider } from '@/notify/useNotifications';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import EnvBadge from '@/components/EnvBadge';
-import DemoBanner from '@/components/DemoBanner';
 import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -240,7 +239,6 @@ function App() {
           <QueryClientProvider client={queryClientInstance}>
             <Router>
               <VoiceProvider>
-                <DemoBanner />
                 <EnvBadge />
                 <AuthenticatedApp />
                 <VoiceFab />
