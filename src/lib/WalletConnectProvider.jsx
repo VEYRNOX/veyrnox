@@ -368,12 +368,28 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
   await respondToRequest(topic, id, sig);
 }
 
-export async function _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2) {
+export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic, id, params, sessionCaip2) {
   const gate = await presignGateOrReject();
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
+
+  // #1092 — bind params[0] (the signer address per eth_signTypedData_v4) to
+  // the active EVM address. A dApp naming a foreign address would otherwise
+  // receive a signature attributed to our active key. Fail closed (I4): an
+  // absent evmAddress or params[0] cannot be bound, so both reject.
+  const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
+  const signerParam = typeof params?.[0] === 'string' ? params[0].toLowerCase() : null;
+  if (!ownAddr || !signerParam || ownAddr !== signerParam) {
+    await rejectRequest(topic, id, 'TYPED_DATA_ADDRESS_MISMATCH').catch(() => {});
+    throw new Error(
+      `Rejected typed-data signature [TYPED_DATA_ADDRESS_MISMATCH]: request ` +
+      `targets ${params?.[0] ?? '(none)'} but active address is ${evmAddress ?? '(none)'}. ` +
+      `Veyrnox will not sign typed data bound to a different address.`,
+    );
+  }
+
   const typedDataJson = params[1] ?? params[0];
   const parsed = parseTypedData(typedDataJson);
   if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
@@ -621,9 +637,18 @@ export function WalletConnectProvider({ children }) {
         } else if (method === 'eth_signTypedData_v4') {
           // H7 pre-modal: reject before showing the modal if domain.chainId mismatches
           // the session chain. Mirrors _handleSignTypedData's chain-binding check.
+          // #1092 pre-modal: also reject if params[0] (signer address) doesn't
+          // match our active EVM address (mirror H8's address-binding pattern).
           let rejected = false;
+          const reqParams = data.params?.request?.params ?? [];
+          const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
+          const signerParam = typeof reqParams?.[0] === 'string' ? reqParams[0].toLowerCase() : null;
+          if (!ownAddr || !signerParam || ownAddr !== signerParam) {
+            rejectRequest(data.topic, data.id, 'TYPED_DATA_ADDRESS_MISMATCH').catch(() => {});
+            rejected = true;
+          }
           try {
-            const reqParams = data.params?.request?.params ?? [];
+            if (rejected) throw new Error('__skip_h7_check');
             const typedDataJson = reqParams[1] ?? reqParams[0];
             const parsed = JSON.parse(typedDataJson);
             const domainChainId = parsed?.domain?.chainId != null
@@ -747,9 +772,9 @@ export function WalletConnectProvider({ children }) {
     // rejects with SESSION_CHAINID_INVALID (fail closed, I4).
     const session = getActiveSessions().find((s) => s.topic === topic);
     const sessionCaip2 = resolveSessionCaip2(session, requestCaip2);
-    await _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2);
+    await _handleSignTypedData({ withPrivateKey, evmAddress }, topic, id, params, sessionCaip2);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, assertSessionLive, isSendReauthRequired]);
+  }, [withPrivateKey, evmAddress, assertSessionLive, isSendReauthRequired]);
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
