@@ -1169,6 +1169,41 @@ independent `RASP_ASYNC_PROBE_TIMEOUT_MS = 1500` constant deduped — now import
 `FRESH_PROBE_TIMEOUT_MS` from `@/rasp`. SendCrypto 42/42, s8-value-anomaly 5/5. BUILT /
 INTERNAL.
 
+## 2026-07-17 S1–S4 audit remaining fixes — PRs #1071, #1074, #1076, #1077
+
+Four PRs closing remaining items from the 2026-07-08 S1–S4 + crypto audit and issue #957.
+All BUILT / unit-tested only, INTERNAL — NOT device-verified, NOT independently audited,
+no on-chain txid.
+
+**PR #1071 — M-9 (PIN exhaustion notice):** `src/lib/kekPinNotice.js` adds
+`ensureKekPinNoticeOnNative()` — one-shot `toast.warning` on first unlock for native users
+without hardware KEK, explaining the ~100M-combination offline-exhaustion risk and pointing
+to Security Settings. Uses a `veyrnox-kek-pin-notice` localStorage marker (fires once).
+Web/Safari: no UI surface (testing-only; docs disclosure in `SECURITY.md` via #753). 7/7
+tests.
+
+**PR #1074 — #957 (PlayIntegrity JVM tests):** `PlayIntegrityJwsVerifier.kt` extracted from
+`PlayIntegrityPlugin.kt` as a pure-JVM-testable class. 8 executable Gradle JUnit tests
+covering ES256 raw→DER roundtrip, RS256 path, nonce verification (match/mismatch/missing),
+and malformed-JWS rejection. Closes the gap where the ES256 raw→DER transcoder was proven
+only by the JS mirror (PR #955) — now also proven at the Kotlin layer.
+
+**PR #1076 — M-8 (vault AAD binding):** `encryptVault`/`encryptVaultWithDek` now produce
+v:2 blobs with `additionalData: vaultAad(blob)` binding `{v,kdf,salt}` into the AES-GCM
+auth-tag. `decryptVault`/`decryptVaultWithDek` gate AAD on `v >= 2` (v:1 backward-compat
+preserved). `vaultNeedsRekey()` triggers lazy v:1→v:2 upgrade on next unlock/password
+change. `BIN_VERSION` bumped to 2 (per-seal `blobV` byte in binary backup format; legacy
+v:1 files read back cleanly). 14 new unit tests (`vault-aad.test.js`). Closes issue #752.
+
+**PR #1077 — M-4 (2FA retry dead end):** `TwoFactorGate.jsx` now shows a persistent
+in-card error message when the broadcast fails after 2FA verification, with a retry
+affordance. Previously, a network failure after 2FA left the user in a dead end with no
+way to retry without navigating away. `SendCrypto.jsx` wires the error through.
+`TwoFactorGate.sendError.test.jsx` added. Closes issue #749.
+
+**PR #1072 — docs (owner decisions):** Feature-Status.md updated to close M-6, M-4, M-9
+owner-decision items with final status notes. Docs-only.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
