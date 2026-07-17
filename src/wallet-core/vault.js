@@ -248,17 +248,50 @@ function paramsFromVault(vault) {
   });
 }
 
+// M-8 (S1-S4 audit, issue #752): current vault schema version. Bumped from 1→2 to
+// introduce AAD binding. v:1 blobs decrypt on the legacy no-AAD path; v:2 blobs
+// require matching AAD at both encrypt and decrypt time (GCM auth-tag covers the
+// entire blob header, not just the ciphertext). An in-place field swap that does
+// not re-encrypt can no longer produce a valid v:2 blob.
+const VAULT_VERSION = 2;
+
 /**
- * Whether a blob's stored KDF params differ from the current KDF_PARAMS and should
- * be transparently re-encrypted on the next successful unlock. Triggers in both
- * directions, but the live direction is UP: vaults encrypted at the old 64 MiB
- * default are silently rekeyed to 192 MiB after one successful unlock (stronger
- * offline-seizure resistance; the ~6-8 s cost is absorbed by biometric unlock).
- * @param {object} vault
+ * Compute the GCM additionalData bytes for a vault blob. Covers all plaintext
+ * fields that an attacker could swap without touching the ciphertext: v, kdf, and
+ * salt (Argon2id blobs) or v and kdf (KEK-DEK blobs, which have no salt field).
+ * JSON.stringify is deterministic for these scalar/object shapes; both encrypt and
+ * decrypt paths call this with the same blob object so the AAD matches.
+ * @param {Record<string, unknown>} blob
+ * @returns {Uint8Array<ArrayBuffer>}
+ */
+function vaultAad(blob) {
+  const fields = blob.salt !== undefined
+    ? { v: blob.v, kdf: blob.kdf, salt: blob.salt }
+    : { v: blob.v, kdf: blob.kdf };
+  return /** @type {Uint8Array<ArrayBuffer>} */ (enc.encode(JSON.stringify(fields)));
+}
+
+/**
+ * Whether a blob needs AAD binding (v < VAULT_VERSION). Returns true for v:1
+ * blobs and for null/missing vaults. Used to trigger a lazy rekey on unlock.
+ * @param {Record<string, unknown>|null|undefined} vault
+ * @returns {boolean}
+ */
+export function vaultNeedsAAD(vault) {
+  return (/** @type {number} */ (vault?.v) ?? 0) < VAULT_VERSION;
+}
+
+/**
+ * Whether a blob's stored KDF params differ from the current KDF_PARAMS, OR the
+ * blob predates the AAD epoch (v < VAULT_VERSION), and should be transparently
+ * re-encrypted on the next successful unlock.
+ * @param {Record<string, unknown>} vault
  * @returns {boolean}
  */
 // Direction now UP: existing 64 MiB vaults rekey to 192 MiB on first unlock (deliberate, biometric-mitigated).
+// M-8: v:1 blobs also trigger rekey so AAD binding is added on first unlock.
 export function vaultNeedsRekey(vault) {
+  if (vaultNeedsAAD(vault)) return true;
   const p = paramsFromVault(vault);
   return p.memorySize !== KDF_PARAMS.memorySize
     || p.iterations !== KDF_PARAMS.iterations
@@ -269,6 +302,7 @@ export function vaultNeedsRekey(vault) {
 /**
  * Encrypt a plaintext secret (e.g. the mnemonic) into a portable vault blob.
  * The returned object is safe to persist locally and to sync to a backend.
+ * GCM additionalData binds v, kdf, and salt into the auth-tag (M-8).
  * @param {string} secret - LIVE SECRET (mnemonic / seed material)
  * @param {string} password
  * @returns {Promise<object>} serializable vault { v, kdf, salt, iv, ct }
@@ -278,24 +312,30 @@ export async function encryptVault(secret, password) {
   const iv = randomBytes(12); // 96-bit nonce for GCM
   const key = await deriveKey(password, salt);
   const ptBytes = enc.encode(secret);
-  const ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, ptBytes);
-  zero(ptBytes);
-  return {
-    v: 1,
+  const blob = {
+    v: VAULT_VERSION,
     kdf: { name: 'argon2id', ...KDF_PARAMS },
     salt: b64(salt),
     iv: b64(iv),
-    ct: b64(new Uint8Array(ctBuf)),
   };
+  const ctBuf = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, additionalData: vaultAad(blob) },
+    key,
+    ptBytes,
+  );
+  zero(ptBytes);
+  return { ...blob, ct: b64(new Uint8Array(ctBuf)) };
 }
 
 /**
  * Decrypt a vault blob back to the plaintext secret.
  * GCM authentication means a wrong password OR tampered blob throws.
+ * v:2+ blobs verify additionalData (M-8); v:1 blobs use the legacy no-AAD path.
  * @returns {Promise<string>} the secret (LIVE SECRET — minimize lifetime)
  */
 export async function decryptVault(vault, password) {
-  if (vault?.v !== 1) throw new Error('Unsupported vault version');
+  const v = vault?.v;
+  if (v !== 1 && v !== 2) throw new Error('Unsupported vault version');
   const salt = unb64(vault.salt);
   const iv = unb64(vault.iv);
   const ct = unb64(vault.ct);
@@ -303,9 +343,11 @@ export async function decryptVault(vault, password) {
   // vault written under the old 64 MiB params still opens after the default is
   // raised. New vaults record the new params and decrypt with them.
   const key = await deriveKey(password, salt, paramsFromVault(vault));
+  const gcmOpts = { name: 'AES-GCM', iv };
+  if (v >= 2) gcmOpts.additionalData = vaultAad(vault); // M-8: verify header integrity
   let ptBuf;
   try {
-    ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    ptBuf = await crypto.subtle.decrypt(gcmOpts, key, ct);
   } catch {
     // Do not distinguish "wrong password" from "tampered blob" to the caller.
     throw new Error('Decryption failed: wrong password or corrupted vault');
@@ -320,6 +362,7 @@ export async function decryptVault(vault, password) {
  * Encrypt a secret directly under a raw DEK (for KEK-enrolled vaults).
  * The DEK replaces the Argon2id-derived key so PIN rotation doesn't require
  * re-encrypting the seed — only the DEK wrap changes (spec §3).
+ * GCM additionalData binds v and kdf into the auth-tag (M-8).
  * @param {string} secret
  * @param {Uint8Array} dek 32-byte DEK
  * @returns {Promise<{v:number, kdf:string, iv:string, ct:string}>}
@@ -328,21 +371,29 @@ export async function encryptVaultWithDek(secret, dek) {
   const iv = randomBytes(12);
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['encrypt']);
   const ptBytes = enc.encode(secret);
-  const ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, ptBytes);
+  const blob = { v: VAULT_VERSION, kdf: 'kek-dek', iv: b64(iv) };
+  const ctBuf = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, additionalData: vaultAad(blob) },
+    key,
+    ptBytes,
+  );
   zero(ptBytes);
-  return { v: 1, kdf: 'kek-dek', iv: b64(iv), ct: b64(new Uint8Array(ctBuf)) };
+  return { ...blob, ct: b64(new Uint8Array(ctBuf)) };
 }
 
 /**
  * Decrypt a secret from a DEK-encrypted vault blob.
- * @param {{iv:string, ct:string}} vault
+ * v:2+ blobs verify additionalData (M-8); v:1 blobs use the legacy no-AAD path.
+ * @param {{v?:number, iv:string, ct:string}} vault
  * @param {Uint8Array} dek 32-byte DEK
  * @returns {Promise<string>}
  */
 export async function decryptVaultWithDek(vault, dek) {
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['decrypt']);
+  const gcmOpts = { name: 'AES-GCM', iv: unb64(vault.iv) };
+  if ((vault?.v ?? 1) >= 2) gcmOpts.additionalData = vaultAad(vault); // M-8
   try {
-    const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(vault.iv) }, key, unb64(vault.ct));
+    const ptBuf = await crypto.subtle.decrypt(gcmOpts, key, unb64(vault.ct));
     const out = dec.decode(ptBuf);
     zero(new Uint8Array(ptBuf));
     return out;

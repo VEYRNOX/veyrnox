@@ -1801,6 +1801,7 @@ export default function SendCrypto() {
                   <TwoFactorGate
                     mode={send2faMethod}
                     title={send2faMethod === SEND_2FA.BIOMETRIC ? "Authorise this send with your PIN + biometrics" : send2faMethod === SEND_2FA.PASSKEY ? "Authorise this send with your PIN + passkey" : "Authorise this send with your PIN + Action Password"}
+                    sendError={sendTx.isError ? /** @type {Error} */ (sendTx.error) : null}
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
                     onSuccess={() => { twoFactorVerifiedRef.current = true; sendTx.mutate(); }}
