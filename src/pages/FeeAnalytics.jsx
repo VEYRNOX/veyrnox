@@ -106,12 +106,20 @@ export default function FeeAnalytics() {
   const asset = useMemo(() => FEE_ASSETS.find((a) => a.symbol === symbol) || FEE_ASSETS[0], [symbol]);
   const address = DEMO ? null : addressFor(asset, wallet);
 
+  // I3 (issue #1120): react-query v5 refetch() bypasses the `enabled` gate
+  // below, so a decoy/hidden session's Retry/Refresh buttons could still
+  // fire the address->indexer disclosure. Same bug class as GasTracker
+  // (#1095, PRs #614/#925) — compute the gate once and hide both buttons
+  // (not disable them) when it's false, matching GasTracker's egressAllowed
+  // pattern.
+  const egressAllowed = !isDeniabilitySessionActive();
+
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["fee-analytics", asset.symbol, address, DEMO],
     queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
     // I3 zero-egress: disable entirely in a deniability (decoy/hidden) session so
     // the address->indexer disclosure is never even attempted.
-    enabled: !isDeniabilitySessionActive(),
+    enabled: egressAllowed,
     // Like the history view, this is a snapshot the user explicitly opens — no
     // background refetch (that would repeat the address->indexer disclosure).
     refetchOnWindowFocus: false,
@@ -183,9 +191,11 @@ export default function FeeAnalytics() {
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <span>Couldn’t read history: {error?.message || "the indexer/RPC didn’t respond"}.</span>
           </div>
-          <button onClick={() => refetch()} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary">
-            Retry
-          </button>
+          {egressAllowed && (
+            <button onClick={() => refetch()} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary">
+              Retry
+            </button>
+          )}
         </div>
       )}
 
@@ -259,14 +269,16 @@ export default function FeeAnalytics() {
           )}
 
           <div className="flex items-center justify-end text-xs text-muted-foreground">
-            <button
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
-            >
-              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Fuel className="h-3.5 w-3.5" />}
-              Refresh
-            </button>
+            {egressAllowed && (
+              <button
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
+              >
+                {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Fuel className="h-3.5 w-3.5" />}
+                Refresh
+              </button>
+            )}
           </div>
         </>
       )}

@@ -96,6 +96,23 @@ export function isFormAmountWellFormed(amountStr) {
   return /[1-9]/.test(s);
 }
 
+// #1115 (P2): guards the Trezor fee-clamp path. `cappedMaxFeePerGas` is
+// `undefined` when the provider's getFeeData() returns both maxFeePerGas AND
+// gasPrice as nullish (a rare but real provider response). Passing `undefined`
+// into resolveMaxPriorityFeePerGas(parsed: BigInt, resolvedMaxFee: undefined)
+// evaluates `parsed > undefined`, which throws "Cannot mix BigInt and other
+// types, use explicit conversions" — an opaque, non-fail-closed-looking error
+// that leaks an implementation detail to the user. This guard fails closed
+// (I4) with a coded, user-legible error BEFORE the BigInt comparison ever runs.
+// Pure; exported for unit tests.
+export function assertFeeDataAvailable(cappedMaxFeePerGas) {
+  if (cappedMaxFeePerGas == null) {
+    const err = new Error("Network fee data unavailable — try again in a moment");
+    err.code = "FEE_DATA_UNAVAILABLE";
+    throw err;
+  }
+}
+
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
@@ -1030,6 +1047,11 @@ export default function SendCrypto() {
           const cappedMaxFeePerGas = rawMaxFeePerGas != null && rawMaxFeePerGas > maxFeePerGasCap
             ? maxFeePerGasCap
             : rawMaxFeePerGas;
+          // #1115 (P2): a rare provider response (maxFeePerGas AND gasPrice both
+          // nullish) leaves cappedMaxFeePerGas undefined; fail closed here with a
+          // user-legible error before the BigInt comparison inside
+          // resolveMaxPriorityFeePerGas can throw an opaque TypeError.
+          assertFeeDataAvailable(cappedMaxFeePerGas);
           // L-2 (I5: RPC untrusted): clamp the priority fee against the already-
           // capped maxFeePerGas via the shared pure helper, so a misreporting
           // provider can't pin an implausibly large tip on a hardware signer.

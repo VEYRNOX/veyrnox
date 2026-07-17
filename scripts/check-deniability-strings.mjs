@@ -280,17 +280,14 @@ const DENIABILITY_SIGNAL_RE =
   /isDecoy|isHidden|egressAllowed|i3Active|isDeniabilitySessionActive|isDeniabilityOrDemoActive/;
 
 // Pre-existing instances of this exact bug class, found by rule 3 itself when
-// it was added (issue #1095 session) — NOT fixed here, out of that task's
-// file-ownership scope (GasTracker.jsx / this script only). Grandfathered so
-// this new CI gate goes live immediately without breaking the build on
-// unrelated files; each is a real un-gated `refetch()` button and should be
-// fixed and removed from this list, not left here indefinitely. Do NOT add
-// new entries for freshly-introduced code — this list is a one-time migration
-// allowance, not a general escape hatch.
-export const RULE3_LEGACY_EXEMPT_PATHS = [
-  'src/pages/FeeAnalytics.jsx', // TODO(#follow-up): un-gated Retry + Refresh buttons
-  'src/pages/TransactionHistory.jsx', // TODO(#follow-up): un-gated Retry + Refresh buttons
-];
+// it was added (issue #1095 session) — grandfathered so the new CI gate went
+// live immediately without breaking the build on unrelated files. Both
+// FeeAnalytics.jsx and TransactionHistory.jsx were fixed and removed from
+// this list in issues #1120/#1121 — every Retry/Refresh button in both files
+// is now wrapped in the same `egressAllowed` gate used by `enabled:`. Do NOT
+// add new entries for freshly-introduced code — this list is a one-time
+// migration allowance, not a general escape hatch.
+export const RULE3_LEGACY_EXEMPT_PATHS = [];
 
 function isRule3LegacyExempt(filename) {
   const normalized = filename.replace(/\\/g, '/');

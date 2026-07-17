@@ -703,6 +703,20 @@ export const nativeKeyStore = {
   // localStorage and is not retained here after this call returns.
   async createVault(secret, password) {
     await init();
+    // #1100 (I4 fail-closed): the iOS `whenUnlockedThisDeviceOnly` ACL — and Android
+    // StrongBox/Keystore protections generally — assume a device passcode / screen
+    // lock exists. On a passcode-less device the vault would still be persisted, but
+    // the attacker-friction the OS is supposed to add is not there. Refuse creation
+    // with a stable code the UI can surface as "please set a device passcode". See
+    // CLAUDE.md I4 (fail honest, fail closed).
+    let info;
+    try { info = await BiometricAuth.checkBiometry(); } catch { info = null; }
+    if (!info || !info.deviceIsSecure) {
+      throw Object.assign(
+        new Error('Please set a device passcode or screen lock before creating a wallet.'),
+        { code: 'DEVICE_NOT_SECURE' },
+      );
+    }
     const blob = await encryptVault(secret, password); // ../vault.js — unchanged
     // Store as a JSON string; convertDate=false on read avoids any date coercion
     // of base64 fields. The blob is { v, kdf, salt, iv, ct } — all ciphertext.
