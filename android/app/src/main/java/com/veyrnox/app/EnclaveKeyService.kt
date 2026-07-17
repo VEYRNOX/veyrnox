@@ -250,12 +250,17 @@ class EnclaveKeyService {
      * falls back to isInsideSecureHardware and encodes true→1, false→0.
      */
     private fun backingFromLevel(level: Int): String = when (level) {
-        KeyProperties.SECURITY_LEVEL_STRONGBOX -> "strongBox"
-        KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT -> "tee"
-        KeyProperties.SECURITY_LEVEL_SOFTWARE -> "software"
-        1 -> "tee"                 // pre-31 isInsideSecureHardware==true (TEE or StrongBox — can't distinguish, report conservative "tee")
-        0 -> "software"            // pre-31 isInsideSecureHardware==false
-        -99 -> "none"              // sentinel from readSecurityLevel when key absent
-        else -> "unknown"          // never fabricate a hardware claim from an unmapped level
+        KeyProperties.SECURITY_LEVEL_STRONGBOX -> "strongBox"       // = 2
+        KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT -> "tee"   // = 1 (also the pre-31 isInsideSecureHardware==true encoding — see readSecurityLevel)
+        KeyProperties.SECURITY_LEVEL_SOFTWARE -> "software"         // = 0 (also the pre-31 isInsideSecureHardware==false encoding)
+        -99 -> "none"                                               // sentinel from readSecurityLevel when key absent
+        else -> "unknown"                                           // never fabricate a hardware claim from an unmapped level
     }
+    // Pre-31 note: readSecurityLevel encodes isInsideSecureHardware as 1/0 —
+    // those values are IDENTICAL to KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT
+    // (=1) and SECURITY_LEVEL_SOFTWARE (=0), so the two named branches above cover
+    // both API 31+ and pre-31 encodings without duplicate `when` conditions
+    // (Kotlin compile-fails on duplicate literal branch values — Codex 2026-07-17 P1).
+    // The pre-31 secure-hardware bit CANNOT distinguish TEE from StrongBox, so it
+    // conservatively lands on "tee" — never a fabricated "strongBox" claim (I4).
 }
