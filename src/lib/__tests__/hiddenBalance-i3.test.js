@@ -10,9 +10,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Control the deniability-session flag per test.
-const isDeniabilitySessionActive = vi.fn();
+// #1102: now uses isDeniabilityOrDemoActive
+const isDeniabilityOrDemoActive = vi.fn();
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({
-  isDeniabilitySessionActive: () => isDeniabilitySessionActive(),
+  isDeniabilityOrDemoActive: () => isDeniabilityOrDemoActive(),
 }));
 
 // Prove the guard runs BEFORE any node read: no provider read may be called when
@@ -37,14 +38,14 @@ import { resolveHiddenBalance } from '../hiddenBalance.js';
 
 describe('hiddenBalance I3 guard (M-6)', () => {
   beforeEach(() => {
-    isDeniabilitySessionActive.mockReset();
+    isDeniabilityOrDemoActive.mockReset();
     getBalanceEth.mockClear();
     getBalanceSats.mockClear();
     getBalanceSol.mockClear();
   });
 
   it('throws and makes NO node read when a deniability session is active', async () => {
-    isDeniabilitySessionActive.mockReturnValue(true);
+    isDeniabilityOrDemoActive.mockReturnValue(true);
     // Must reject with a real Error instance (not a raw string): the caller in
     // StealthWallets.jsx reads `e?.message`, which is undefined for a raw-string
     // throw and silently mis-classifies the I3 guard as a generic "read failed".
@@ -58,7 +59,7 @@ describe('hiddenBalance I3 guard (M-6)', () => {
   });
 
   it('reads the chain normally when NO deniability session is active', async () => {
-    isDeniabilitySessionActive.mockReturnValue(false);
+    isDeniabilityOrDemoActive.mockReturnValue(false);
     const out = await resolveHiddenBalance('evm', '0xabc');
     expect(out).toEqual({ amount: 0.5, unit: 'ETH', source: 'chain' });
     expect(getBalanceEth).toHaveBeenCalledTimes(1);
