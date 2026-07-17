@@ -1105,6 +1105,13 @@ selector.
 
 BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
 
+## 2026-07-17 toast position restored to bottom — PR #1046
+
+`src/components/ui/sonner.jsx`: changed `position="top-center"` back to
+`position="bottom-center"`. PR #1023's visual polish pass had silently moved every
+toast (including "Decoy mode active") to the top of the screen. One-line revert.
+BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
+
 ## 2026-07-16 biometric 2FA auto-enable on native — PR #1033
 
 Native devices with biometric hardware (Face ID, Touch ID, fingerprint) now get biometric
