@@ -988,6 +988,37 @@ change while `M2C_ENABLED = false`.
   allowlisted `e.code` → log code; else `e.constructor.name` → log
   `"<Name> (unknown code)"`; else `"unknown error"`. `e.message` is never logged.
 
+**Codex second-pass 2026-07-17 P2 follow-up (same PR #1098) — incomplete-hardening
+gaps closed.** Codex re-reviewed P2-#1/#2 and raised two follow-ups: the JS `intent`
+allowlist ran but the native call was fired WITHOUT the intent (in-page JS calling
+`Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey()` directly bypasses the JS layer
+entirely), and asserting `kSecAttrTokenID == kSecAttrTokenIDSecureEnclave` proves the
+key lives in the Enclave but NOT that its ACL flags are the expected
+`[.privateKeyUsage, .biometryCurrentSet]`. Both closed via a follow-up commit on the
+same PR:
+- **P2-A (native-bridge intent gate)** — `deleteWrappingKey` JS wrapper now forwards
+  `{ intent }` through the Capacitor bridge; `VeyrnoxEnclavePlugin.swift` re-enforces
+  the same `["cleanup", "unenroll", "wipe"]` allowlist at the native selector and
+  rejects with `M2C_DELETE_INTENT_REQUIRED` without touching the keychain. Allowlist
+  extracted to a `private static let ALLOWED_DELETE_INTENTS` — kept in lockstep with
+  the JS `_M2C_DELETE_INTENTS` Set. Four new JS tests (11/11 in the delete-intent
+  suite).
+- **P2-B (versioned Enclave key tag)** — application tag bumped from
+  `"com.veyrnox.app.enclaveWrappingKey"` to `"com.veyrnox.app.enclaveWrappingKey.v2"`.
+  The `.vN` suffix encodes THIS commit's ACL policy
+  (`kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly` +
+  `[.privateKeyUsage, .biometryCurrentSet]`); a key found under the current versioned
+  tag is guaranteed to have been minted by THIS codepath with THIS ACL, because there
+  is no other producer. Stronger than trying to introspect `kSecAttrAccessControl`
+  flags at reuse (no public API for that). The P2-#2 `kSecAttrTokenID` check is kept
+  as belt-and-braces. `deleteWrappingKey` deletes under the current versioned tag
+  only — legacy-tag sweep is a runbook step for the eventual `M2C_ENABLED` flip
+  (acceptable today because no real user has ever had one).
+
+BUILT — JS is unit-tested (25/25 across the three targeted suites), Swift is
+code-only on this Windows dev box. INTERNAL. NOT device-verified, NOT independently
+audited, no on-chain txid. No runtime behaviour change while `M2C_ENABLED = false`.
+
 ---
 
 ### 2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757

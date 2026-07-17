@@ -11,16 +11,20 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { nativeCalls, fakePlugin } = vi.hoisted(() => {
+const { nativeCalls, lastArgs, fakePlugin } = vi.hoisted(() => {
   const nativeCalls = { deleteWrappingKey: 0 };
+  const lastArgs = { deleteWrappingKey: undefined };
   const fakePlugin = {
     isHardwareKeyAvailable: async () => ({ backing: 'none', biometryEnrolled: false }),
     createWrappingKey: async () => {},
     wrap: async () => ({ ciphertext: 'CT' }),
     unwrap: async () => ({ blob: 'BLOB' }),
-    deleteWrappingKey: async () => { nativeCalls.deleteWrappingKey++; },
+    deleteWrappingKey: async (args) => {
+      nativeCalls.deleteWrappingKey++;
+      lastArgs.deleteWrappingKey = args;
+    },
   };
-  return { nativeCalls, fakePlugin };
+  return { nativeCalls, lastArgs, fakePlugin };
 });
 
 vi.mock('@capacitor/core', () => ({
@@ -31,6 +35,7 @@ import { deleteWrappingKey } from '../veyrnoxEnclave.js';
 
 beforeEach(() => {
   nativeCalls.deleteWrappingKey = 0;
+  lastArgs.deleteWrappingKey = undefined;
 });
 
 describe('P2-#1: deleteWrappingKey requires explicit allowlisted intent', () => {
@@ -74,5 +79,34 @@ describe('P2-#1: deleteWrappingKey requires explicit allowlisted intent', () => 
       code: 'M2C_DELETE_INTENT_REQUIRED',
     });
     expect(nativeCalls.deleteWrappingKey).toBe(0);
+  });
+});
+
+// Codex second-pass 2026-07-17 P2-A: the JS wrapper's allowlist check was
+// running but the native call was fired WITHOUT the intent. Injected in-page
+// JS that reaches Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey()
+// directly still bypasses the JS layer entirely — but even a caller that
+// went THROUGH the wrapper was losing the intent on the bridge crossing.
+// Forward {intent} to the native selector so the Swift plugin can enforce
+// the same allowlist at the bridge boundary too (defence-in-depth).
+describe('P2-A: deleteWrappingKey forwards intent through the Capacitor bridge', () => {
+  it('forwards {intent:"cleanup"} to the native call', async () => {
+    await deleteWrappingKey({ intent: 'cleanup' });
+    expect(lastArgs.deleteWrappingKey).toEqual({ intent: 'cleanup' });
+  });
+
+  it('forwards {intent:"unenroll"} to the native call', async () => {
+    await deleteWrappingKey({ intent: 'unenroll' });
+    expect(lastArgs.deleteWrappingKey).toEqual({ intent: 'unenroll' });
+  });
+
+  it('forwards {intent:"wipe"} to the native call', async () => {
+    await deleteWrappingKey({ intent: 'wipe' });
+    expect(lastArgs.deleteWrappingKey).toEqual({ intent: 'wipe' });
+  });
+
+  it('does NOT invoke native at all when the JS allowlist rejects', async () => {
+    await expect(deleteWrappingKey({ intent: 'nope' })).rejects.toBeTruthy();
+    expect(lastArgs.deleteWrappingKey).toBeUndefined();
   });
 });
