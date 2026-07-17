@@ -20,6 +20,7 @@
     "check:release-hygiene": "node scripts/check-release-hygiene.mjs",
     "check:finding-ids": "node scripts/check-finding-id-consistency.mjs",
     "check:cert-pin-manager": "node scripts/check-cert-pin-manager-safety.mjs",
+    "check:rasp-bypass": "node scripts/check-rasp-bypass.mjs",
     "check:iap-preflight": "node scripts/preflight-iap-config.mjs",
     "verify:onchain": "node scripts/verify-onchain-evidence.mjs",
     "phase2:checklist": "node scripts/phase2-checklist-runner.mjs",
