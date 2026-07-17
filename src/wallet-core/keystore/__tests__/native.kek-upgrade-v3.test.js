@@ -92,8 +92,11 @@ async function makeKekVault({ password, saltB64, version, dek, tier }) {
   const C = await deterministicC(password, salt);
   const kek = await combineKek(H, C); // combineKek zeroes H/C
   const kekWrap = await wrapDek(kek, dek);
-  const { iv, ct } = await encryptVaultWithDek(SECRET, dek);
-  const blob = { v: 1, kdf: 'kek-dek', iv, ct, kekWrap, kekSalt: saltB64 };
+  // Spread the full encryptVaultWithDek result so the blob's `v` matches VAULT_VERSION
+  // (currently 2, PR #1076). decryptVaultWithDek gates the AAD path on v >= 2; hard-
+  // coding v:1 here would encrypt-with-AAD but decrypt-without → auth-tag mismatch.
+  const encrypted = await encryptVaultWithDek(SECRET, dek);
+  const blob = { ...encrypted, kdf: 'kek-dek', kekWrap, kekSalt: saltB64 };
   if (version !== undefined) blob.hardwareKekVersion = version;
   if (tier) blob.hardwareKekTier = tier;
   return blob;
