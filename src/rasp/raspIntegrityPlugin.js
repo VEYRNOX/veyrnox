@@ -35,6 +35,22 @@ import { registerPlugin } from '@capacitor/core';
  * @property {boolean} [emulator]
  * @property {boolean} [tampered]
  *
+ * Soft environment signals (PR #1007 → CONDITION.ELEVATED). Consumed by
+ * nativeProbe.js when composing the elevated axis. All optional — a native
+ * plugin that doesn't report a signal simply omits it (treated as false).
+ * @property {boolean} [overlayActive]
+ * @property {boolean} [developerMode]
+ * @property {boolean} [virtualApp]
+ * @property {boolean} [suspiciousPackage]
+ * @property {boolean} [thirdPartyKeyboard]
+ * @property {boolean} [mockLocation]
+ * @property {boolean} [networkProxy]
+ * @property {boolean} [accessibilityService]
+ *
+ * Additional signals folded into the hooked axis (nativeProbe.js:182–184).
+ * @property {boolean} [debuggerAttached]
+ * @property {boolean} [screenCapture]
+ *
  * @typedef {Object} RaspIntegrityPlugin
  * @property {() => Promise<IntegrityVerdict>} checkIntegrity
  */

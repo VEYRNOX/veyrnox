@@ -93,7 +93,7 @@ const MIN_KDF_PARAMS = Object.freeze({
  * with out-of-range params is malformed/tampered/malicious, not a credential signal,
  * so this leaks no oracle. Called by paramsFromVault before any argon2id derivation.
  * @param {{parallelism:number,iterations:number,memorySize:number,hashLength:number}} p
- * @returns {typeof p}
+ * @returns {{parallelism:number,iterations:number,memorySize:number,hashLength:number}}
  */
 export function assertSaneKdfParams(p) {
   for (const name of ['parallelism', 'iterations', 'memorySize', 'hashLength']) {
