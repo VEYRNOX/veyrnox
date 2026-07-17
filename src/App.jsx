@@ -32,7 +32,6 @@ const TaxReport = lazy(() => import('./pages/TaxReport'));
 const SecurityCenter = lazy(() => import('./pages/SecurityCenter'));
 const NFTPortfolio = lazy(() => import('./pages/NFTPortfolio'));
 const PortfolioSnapshots = lazy(() => import('./pages/PortfolioSnapshots'));
-const PLTracking = lazy(() => import('./pages/PLTracking'));
 const OnChainAnalytics = lazy(() => import('./pages/OnChainAnalytics'));
 const SpendingPatterns = lazy(() => import('./pages/SpendingPatterns'));
 const RecurringPayments = lazy(() => import('./pages/RecurringPayments'));
@@ -54,7 +53,6 @@ const HardwareWalletPage = lazy(() => import('./pages/HardwareWalletPage'));
 const BiometricAuth = lazy(() => import('./pages/BiometricAuth'));
 const AnomalyDetection = lazy(() => import('./pages/AnomalyDetection'));
 const PortfolioRewind = lazy(() => import('./pages/PortfolioRewind'));
-const CustomIndexBuilder = lazy(() => import('./pages/CustomIndexBuilder'));
 const VoiceCommands = lazy(() => import('./pages/VoiceCommands'));
 const AssetCorrelationTimeline = lazy(() => import('./pages/AssetCorrelationTimeline'));
 const CustomDashboardWidgets = lazy(() => import('./pages/CustomDashboardWidgets'));
@@ -149,7 +147,6 @@ const AuthenticatedApp = () => {
           <Route path="/terms-legal" element={<TermsLegal />} />
           <Route path="/nft" element={<NFTPortfolio />} />
           <Route path="/snapshots" element={<PortfolioSnapshots />} />
-          <Route path="/pl" element={<PLTracking />} />
           <Route path="/onchain" element={<OnChainAnalytics />} />
           <Route path="/spending" element={<SpendingPatterns />} />
           <Route path="/recurring" element={<RecurringPayments />} />
@@ -191,7 +188,6 @@ const AuthenticatedApp = () => {
           <Route path="/biometric-auth" element={<BiometricAuth />} />
           <Route path="/anomaly-detection" element={<AnomalyDetection />} />
           <Route path="/portfolio-rewind" element={<PortfolioRewind />} />
-          <Route path="/index-builder" element={<CustomIndexBuilder />} />
           <Route path="/voice-commands" element={<VoiceCommands />} />
           <Route path="/token-approvals" element={<TokenApprovals />} />
           <Route path="/network-manager" element={<NetworkManager />} />

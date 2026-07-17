@@ -85,7 +85,6 @@ const features = [
   { category: "Portfolio & Analytics", icon: BarChart3, items: [
     { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains; live prices I2-gated behind opt-in", status: "built" },
     { name: "Net-Worth Tracker", desc: "Aggregate crypto net worth from on-device portfolio balances; I2-gated live price conversion", status: "built" },
-    { name: "P&L Tracking", desc: "Realised/unrealised P&L records on-device; current prices from CryptoCompare (I2-gated)", status: "built" },
     { name: "On-Chain Analytics", desc: "Address-level tx lookup and inbound/outbound activity breakdown via public network connection", status: "built" },
     { name: "Fee Analytics", desc: "Stateless native-unit network fee totals computed on-device from chain history; Ethereum-compatible chains fail honest to 'unavailable'", status: "built" },
     { name: "Tax Report", desc: "Exports raw tx data (date/type/asset/amount/fee/tx_hash) as CSV — no invented prices. Directs to Koinly/CoinTracker. Not tax advice.", status: "built" },
