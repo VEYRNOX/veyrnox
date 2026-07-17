@@ -87,8 +87,12 @@ const KEK_HKDF_SALT = enc.encode('veyrnox/kek/v1/hkdf-salt');
 // version is authenticated; a downgrade/cross-version reinterpretation now fails closed.
 const WRAP_AAD_V2 = enc.encode('veyrnox/kek/wrap/v2/aad');
 
-// Wrap format versions. v1 = legacy, no AAD (still unwrappable — real devices hold these).
+// DEK wrap format versions. v1 = legacy, no AAD (still unwrappable — real devices hold these).
 // v2 = current, binds WRAP_AAD_V2 as GCM AAD. New wraps are always written as v2.
+// NOTE: these are the DEK *wrap format* versions (GCM AAD scheme), distinct from the
+// hardware KEK salt-binding protocol tracked as `hardwareKekVersion` in the vault blob
+// (that protocol history: v1 fixed-salt → v2 inert fix → v3 genuine per-enrollment salt,
+// C-1 CRITICAL, PR #568). The WRAP_V1/WRAP_V2 constants here are current and correct.
 const WRAP_V1 = 1;
 const WRAP_V2 = 2;
 
