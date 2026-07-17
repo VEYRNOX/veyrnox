@@ -259,18 +259,43 @@ const VAULT_VERSION = 2;
  * Compute the GCM additionalData bytes for a vault blob. Covers all plaintext
  * fields that an attacker could swap without touching the ciphertext: v, kdf, and
  * salt (Argon2id blobs) or v and kdf (KEK-DEK blobs, which have no salt field).
- * JSON.stringify is deterministic for these scalar/object shapes; both encrypt and
- * decrypt paths call this with the same blob object so the AAD matches.
+ *
+ * #1110: Field order is EXPLICIT -- the function canonicalizes both the top-level
+ * keys and the kdf sub-object keys before serializing, so the output is
+ * byte-identical regardless of the property insertion order of the input blob.
+ * This removes the dependency on unspecified JS object-property iteration order
+ * in JSON.stringify. The canonical order matches what the original code produced
+ * (v, kdf{name,parallelism,iterations,memorySize,hashLength}, salt) so existing
+ * v:2 vaults decrypt without migration.
+ *
  * @param {Record<string, unknown>} blob
  * @returns {Uint8Array<ArrayBuffer>}
  */
-function vaultAad(blob) {
+export function vaultAad(blob) {
   // kek-dek blobs spread the prior Argon2id blob and may carry a stale `salt` field,
   // but encryptVaultWithDek seals AAD off a salt-free stub — exclude salt for kek-dek
   // so encrypt and decrypt agree (Codex P1 #1).
-  const fields = (blob.salt !== undefined && blob.kdf !== 'kek-dek')
-    ? { v: blob.v, kdf: blob.kdf, salt: blob.salt }
-    : { v: blob.v, kdf: blob.kdf };
+  //
+  // Accepted residual (#1111): kek-dek blobs do NOT bind hardwareKekVersion into the
+  // AAD. Adding it would require a VAULT_VERSION bump (2→3) + migration path for
+  // existing v:2 kek-dek blobs, and the kekVersion is already enforced by the
+  // salt-binding chain (v3 kekSalt → combineKek → KEK → wrapDek). Deferred until
+  // the next protocol-version bump where it can be added atomically.
+  const kdf = blob.kdf;
+
+  // Canonicalize the kdf field: if it is an object (Argon2id), rebuild with
+  // explicit property order; if it is a string ('kek-dek'), pass through as-is.
+  const kdfCanonical = typeof kdf === 'string'
+    ? kdf
+    : { name: kdf.name, parallelism: kdf.parallelism, iterations: kdf.iterations,
+        memorySize: kdf.memorySize, hashLength: kdf.hashLength };
+
+  const includeSalt = blob.salt !== undefined && kdf !== 'kek-dek';
+
+  // Canonical top-level order: v, kdf, salt (when present).
+  const fields = includeSalt
+    ? { v: blob.v, kdf: kdfCanonical, salt: blob.salt }
+    : { v: blob.v, kdf: kdfCanonical };
   return /** @type {Uint8Array<ArrayBuffer>} */ (enc.encode(JSON.stringify(fields)));
 }
 
