@@ -17,7 +17,7 @@ const Toaster = ({
     (<Sonner
       theme={theme}
       className="toaster group"
-      position="top-center"
+      position="bottom-center"
       offset={16}
       toastOptions={{
         classNames: {
