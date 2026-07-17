@@ -10,6 +10,12 @@
 //       finalisePinRestore — restored vault is ALWAYS PIN-cohort (owner decision
 //       2026-07-16);
 //   (e) a successful restore drives the parametrised onFinish.
+//
+// The credential surface is the real product UI: the backup PASSWORD is a
+// PasswordInput text field (queried by placeholder), and every PIN — the backup
+// PIN and the fresh device PIN — is entered through the numeric PinPad keypad
+// (digit buttons + an explicit "Submit PIN", exactly as on device). Driving those
+// components the way a user/AT actually does is what these tests verify.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
@@ -62,13 +68,25 @@ async function loadFile(container) {
   fireEvent.change(input, { target: { files: [file] } });
 }
 
-// After decrypting, drive the set-device-PIN phase to completion.
-async function setDevicePin(pin = '87654321') {
-  const pinField = await screen.findByLabelText(/choose a device pin/i);
-  fireEvent.change(pinField, { target: { value: pin } });
-  const confirmField = await screen.findByLabelText(/confirm device pin/i);
-  fireEvent.change(confirmField, { target: { value: pin } });
-  fireEvent.click(screen.getByRole('button', { name: /save & restore/i }));
+// Enter a PIN into the numeric PinPad: click each digit button, then (optionally)
+// the explicit "Submit PIN" control (PinPad completion is always explicit).
+function typePinDigits(pin) {
+  for (const digit of pin) fireEvent.click(screen.getByRole('button', { name: digit }));
+}
+function submitPinPad() {
+  fireEvent.click(screen.getByRole('button', { name: /submit pin/i }));
+}
+
+// The set-device-PIN phase is a choose → confirm keypad flow; a matching pair
+// enables "Save & restore".
+async function setDevicePinViaPad(pin) {
+  await screen.findByText(/choose a device pin/i);
+  typePinDigits(pin);
+  submitPinPad();
+  await screen.findByText(/confirm device pin/i);
+  typePinDigits(pin);
+  submitPinPad();
+  fireEvent.click(await screen.findByRole('button', { name: /save & restore/i }));
 }
 
 beforeEach(() => {
@@ -99,7 +117,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared();
     await loadFile(container);
 
-    const pw = await screen.findByLabelText(/backup password/i);
+    const pw = await screen.findByPlaceholderText(/your original password/i);
     fireEvent.change(pw, { target: { value: 'my-original-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
@@ -114,7 +132,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared();
     await loadFile(container);
 
-    const pw = await screen.findByLabelText(/backup password/i);
+    const pw = await screen.findByPlaceholderText(/your original password/i);
     fireEvent.change(pw, { target: { value: 'wrong-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
@@ -143,7 +161,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared();
     await loadFile(container);
 
-    const pw = await screen.findByLabelText(/backup password/i);
+    const pw = await screen.findByPlaceholderText(/your original password/i);
     fireEvent.change(pw, { target: { value: 'my-original-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
@@ -151,8 +169,8 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     await waitFor(() => expect(screen.getByTestId('restore-progress')).toBeTruthy());
 
     resolveDecrypt('CONTAINER-JSON-PW');
-    // After decrypt resolves, we should advance to setpin phase.
-    await waitFor(() => expect(screen.getByLabelText(/choose a device pin/i)).toBeTruthy());
+    // After decrypt resolves, we should advance to the setpin phase.
+    await screen.findByText(/choose a device pin/i);
   });
 
   it('(d) PASSWORD method: decryptPasswordSeal → set-device-PIN → finalisePinRestore (PIN-cohort)', async () => {
@@ -161,14 +179,14 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     await loadFile(container);
 
     // Enter backup password and submit.
-    const pw = await screen.findByLabelText(/backup password/i);
+    const pw = await screen.findByPlaceholderText(/your original password/i);
     fireEvent.change(pw, { target: { value: 'my-original-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
     await waitFor(() => expect(decryptPasswordSeal).toHaveBeenCalledWith(expect.anything(), 'my-original-password'));
 
-    // Now on the set-device-PIN phase — enter 8-digit device PIN.
-    await setDevicePin('87654321');
+    // Now on the set-device-PIN phase — choose + confirm a fresh 8-digit device PIN.
+    await setDevicePinViaPad('87654321');
 
     await waitFor(() => expect(finalisePinRestore).toHaveBeenCalledWith('CONTAINER-JSON-PW', '87654321'));
 
@@ -183,15 +201,17 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared({ onFinish });
     await loadFile(container);
 
-    // Enter backup PIN (not device PIN — backup PIN unlocks the .enc file).
-    const pinField = await screen.findByLabelText(/backup pin/i);
-    fireEvent.change(pinField, { target: { value: '12345678' } });
+    // Enter the backup PIN on the keypad (this unlocks the .enc file — NOT the
+    // device PIN) then restore. The backup PIN pad has no auto-complete; the
+    // "Restore wallet" button drives the unlock once the pad holds a valid PIN.
+    await screen.findByText(/backup pin/i);
+    typePinDigits('12345678');
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
     await waitFor(() => expect(decryptPinSeal).toHaveBeenCalledWith(expect.anything(), '12345678'));
 
-    // Now on the set-device-PIN phase — enter a DIFFERENT 8-digit device PIN.
-    await setDevicePin('99887766');
+    // Now on the set-device-PIN phase — choose a DIFFERENT 8-digit device PIN.
+    await setDevicePinViaPad('99887766');
 
     await waitFor(() => expect(finalisePinRestore).toHaveBeenCalledWith('CONTAINER-JSON-PIN', '99887766'));
 
@@ -205,24 +225,24 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     const { container } = renderShared();
     await loadFile(container);
 
-    const pw = await screen.findByLabelText(/backup password/i);
+    const pw = await screen.findByPlaceholderText(/your original password/i);
     fireEvent.change(pw, { target: { value: 'my-original-password' } });
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
     await waitFor(() => expect(decryptPasswordSeal).toHaveBeenCalled());
 
-    // Enter mismatched PINs.
-    const pinField = await screen.findByLabelText(/choose a device pin/i);
-    fireEvent.change(pinField, { target: { value: '87654321' } });
-    const confirmField = await screen.findByLabelText(/confirm device pin/i);
-    fireEvent.change(confirmField, { target: { value: '12345678' } });
+    // Choose one PIN, then confirm a DIFFERENT one — the keypad is choose→confirm.
+    await screen.findByText(/choose a device pin/i);
+    typePinDigits('87654321');
+    submitPinPad();
+    await screen.findByText(/confirm device pin/i);
+    typePinDigits('12345678');
+    submitPinPad();
 
-    // The mismatch message should appear.
-    expect(screen.getByText(/pins do not match/i)).toBeTruthy();
-
-    // Save button should be disabled.
-    const saveBtn = screen.getByRole('button', { name: /save & restore/i });
-    expect(saveBtn.disabled).toBe(true);
+    // The mismatch message appears and the flow resets — no save is offered and
+    // no crypto ran (fail closed).
+    expect(await screen.findByText(/pins do not match/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /save & restore/i })).toBeNull();
     expect(finalisePinRestore).not.toHaveBeenCalled();
   });
 });
