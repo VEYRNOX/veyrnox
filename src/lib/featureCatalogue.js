@@ -320,12 +320,6 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Built (/net-worth). Aggregates current net worth on-device from portfolio balances via usePortfolio + buildAllocation. I2-gated: live price conversion requires explicit opt-in; shows reference-rate note otherwise. No time-series store (avoids size oracle). Read-only; no backend.',
       },
       {
-        name: 'P&L Tracking',
-        status: 'built',
-        summary: 'Realised / unrealised profit and loss',
-        explanation: 'Built (/pl). Per-asset P&L records stored on-device via base44 entities; current prices from CryptoCompare (I2-gated behind live-prices opt-in — shows "—" when off). Fabricated CURRENT_PRICES constant replaced with real feed. Read-only; no autonomous trading.',
-      },
-      {
         name: 'On-Chain Analytics',
         status: 'built',
         summary: 'Public on-chain activity insights',

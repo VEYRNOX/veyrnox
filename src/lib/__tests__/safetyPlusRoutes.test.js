@@ -59,7 +59,6 @@ describe('safetyPlusRoutes', () => {
       '/rasp-security',       // RASP (FREE)
       '/security-dashboard',  // Security dashboard (FREE)
       '/net-worth',           // Portfolio dashboard & net-worth (FREE)
-      '/pl',                  // P&L tracking (FREE)
       '/fee-analytics',       // Fee analytics (FREE)
       '/price-charts',        // Price charts, alerts & watchlist (FREE)
       '/network-manager',     // Network Manager (FREE)
