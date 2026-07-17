@@ -281,7 +281,11 @@ export function vaultAad(blob) {
   // existing v:2 kek-dek blobs, and the kekVersion is already enforced by the
   // salt-binding chain (v3 kekSalt → combineKek → KEK → wrapDek). Deferred until
   // the next protocol-version bump where it can be added atomically.
-  const kdf = blob.kdf;
+  // TS narrowing: blob is Record<string,unknown> so blob.kdf is `unknown`.
+  // Cast to the concrete kdf shape so the object-branch below has typed field
+  // access. Runtime invariant: assertSaneKdfParams (called upstream on read
+  // paths) guarantees this shape when kdf is not the 'kek-dek' string.
+  const kdf = /** @type {string | {name:string, parallelism:number, iterations:number, memorySize:number, hashLength:number}} */ (blob.kdf);
 
   // Canonicalize the kdf field: if it is an object (Argon2id), rebuild with
   // explicit property order; if it is a string ('kek-dek'), pass through as-is.
