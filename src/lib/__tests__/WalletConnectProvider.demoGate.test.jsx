@@ -31,6 +31,7 @@ vi.mock('@/rasp', () => ({
   degrade: vi.fn(() => ({ tier: 'allow' })),
   TIER: { ALLOW: 'allow', BLOCK: 'block' },
   browserProbeSource: {},
+  FRESH_PROBE_TIMEOUT_MS: 1500,
 }));
 vi.mock('@/risk/levels', () => ({ LEVEL: { OK: 'ok' } }));
 

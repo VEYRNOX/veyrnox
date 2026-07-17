@@ -22,6 +22,7 @@ vi.mock('@/rasp', () => ({
   detect: vi.fn(() => ({ condition: 'CLEAN' })),
   degrade: vi.fn((r) => ({ tier: 'allow', sentence: null, ...(r ?? {}) })),
   browserProbeSource: {},
+  FRESH_PROBE_TIMEOUT_MS: 1500,
 }));
 
 // WalletConnect session helpers — minimal stubs; tests exercise handler logic only

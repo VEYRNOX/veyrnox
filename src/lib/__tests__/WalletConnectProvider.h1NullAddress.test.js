@@ -33,6 +33,7 @@ vi.mock('@/rasp', () => ({
   detectAttestation: vi.fn(() => 'clean'),
   composeConditions: vi.fn((a) => a),
   ATTESTATION_ENABLED: false,
+  FRESH_PROBE_TIMEOUT_MS: 1500,
 }));
 vi.mock('@/risk/levels', () => ({ LEVEL: { OK: 'ok' } }));
 
