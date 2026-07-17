@@ -19,6 +19,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
+import assert from 'node:assert/strict';
 
 // ---------------------------------------------------------------------------
 // CONFIG — denylist / config constants. Add future sites here.
@@ -256,6 +257,103 @@ function isSanctionedClipboardPath(filename) {
 }
 
 // ---------------------------------------------------------------------------
+// Rule 3 — refetch()-bypasses-`enabled` in a deniability-gated useQuery.
+//
+// react-query v5's refetch() ignores the `enabled` option, so a component that
+// gates its useQuery/useInfiniteQuery `enabled` on a deniability signal
+// (isDecoy / isHidden / egressAllowed / i3Active / isDeniabilitySessionActive /
+// isDeniabilityOrDemoActive) but wires an UNCONDITIONAL
+// `onClick={() => refetch()}` button still lets a decoy/hidden/DEMO session
+// trigger live third-party egress by tapping the button. This is the third
+// occurrence of this exact bug class (PR #614 — CryptoNewsFeed/Calculator;
+// PR #925; issue #1095 — GasTracker). The house fix (CryptoNewsFeed.jsx,
+// GasTracker.jsx) wraps the button in the same gate variable used by
+// `enabled:` — `{egressAllowed && ( <button onClick={() => refetch()}>… )}` —
+// so we only flag an occurrence with NO immediately-preceding JSX conditional
+// gate (`{<ident> && (`) wrapping its enclosing `<button`.
+// ---------------------------------------------------------------------------
+
+const REFETCH_ONCLICK_RE =
+  /(?:onClick\s*=\s*\{\s*\(\s*\)\s*=>\s*refetch\s*\(\s*\)\s*\}|\.onClick\s*\(\s*\(\s*\)\s*=>\s*refetch\s*\()/g;
+
+const DENIABILITY_SIGNAL_RE =
+  /isDecoy|isHidden|egressAllowed|i3Active|isDeniabilitySessionActive|isDeniabilityOrDemoActive/;
+
+// Pre-existing instances of this exact bug class, found by rule 3 itself when
+// it was added (issue #1095 session) — NOT fixed here, out of that task's
+// file-ownership scope (GasTracker.jsx / this script only). Grandfathered so
+// this new CI gate goes live immediately without breaking the build on
+// unrelated files; each is a real un-gated `refetch()` button and should be
+// fixed and removed from this list, not left here indefinitely. Do NOT add
+// new entries for freshly-introduced code — this list is a one-time migration
+// allowance, not a general escape hatch.
+export const RULE3_LEGACY_EXEMPT_PATHS = [
+  'src/pages/FeeAnalytics.jsx', // TODO(#follow-up): un-gated Retry + Refresh buttons
+  'src/pages/TransactionHistory.jsx', // TODO(#follow-up): un-gated Retry + Refresh buttons
+];
+
+function isRule3LegacyExempt(filename) {
+  const normalized = filename.replace(/\\/g, '/');
+  return RULE3_LEGACY_EXEMPT_PATHS.some((p) => normalized.endsWith(p));
+}
+
+function isDeniabilityGatedQuery(strippedSrc) {
+  if (!/use(?:Query|InfiniteQuery)\s*\(/.test(strippedSrc)) return false;
+  // Look for an `enabled:` value that references a deniability signal.
+  const enabledRe = /enabled\s*:\s*([^,\n}]+)/g;
+  let m;
+  while ((m = enabledRe.exec(strippedSrc))) {
+    if (DENIABILITY_SIGNAL_RE.test(m[1])) return true;
+  }
+  return false;
+}
+
+// Gated iff the nearest preceding JSX conditional-render opener
+// (`{<ident> && (`) is still "open" at the match position — i.e. no `)}`
+// closing that same conditional appears between the opener and the match.
+// Deliberately tag-name-agnostic (the house fix wraps a plain `<button>` in
+// CryptoNewsFeed's Retry / GasTracker, but a `<Button>` design-system
+// component elsewhere — see CryptoNewsFeed.jsx's header trigger), so this
+// checks the JSX conditional structure directly rather than anchoring on any
+// particular element name.
+function isRefetchButtonGated(strippedSrc, matchIdx) {
+  const windowStart = Math.max(0, matchIdx - 400);
+  const before = strippedSrc.slice(windowStart, matchIdx);
+  const gateOpenRe = /\{\s*[A-Za-z_$][\w$.]*\s*&&\s*\(/g;
+  let lastOpenEnd = -1;
+  let gm;
+  while ((gm = gateOpenRe.exec(before))) {
+    lastOpenEnd = gm.index + gm[0].length;
+  }
+  if (lastOpenEnd === -1) return false;
+  const between = before.slice(lastOpenEnd);
+  // A `)}` between the gate opener and our match means that conditional
+  // already closed before reaching this button — not actually gated.
+  return !/\)\s*\}/.test(between);
+}
+
+function findRule3Hits(strippedSrc, filename) {
+  const hits = [];
+  if (isRule3LegacyExempt(filename)) return hits;
+  if (!isDeniabilityGatedQuery(strippedSrc)) return hits;
+
+  let m;
+  REFETCH_ONCLICK_RE.lastIndex = 0;
+  while ((m = REFETCH_ONCLICK_RE.exec(strippedSrc))) {
+    const matchIdx = m.index;
+    if (!isRefetchButtonGated(strippedSrc, matchIdx)) {
+      hits.push({
+        file: filename,
+        line: lineAt(strippedSrc, matchIdx),
+        text: m[0],
+        rule: 'D-refetch-egress-bypass',
+      });
+    }
+  }
+  return hits;
+}
+
+// ---------------------------------------------------------------------------
 // Public core matcher — pure function, unit-testable.
 // ---------------------------------------------------------------------------
 
@@ -271,6 +369,7 @@ export function scanSource(source, filename) {
     ...findRule1aHits(stripped, filename),
     ...findRule1bHits(stripped, filename),
     ...findRule2Hits(stripped, filename),
+    ...findRule3Hits(stripped, filename),
   ].sort((a, b) => a.line - b.line);
 }
 
@@ -297,7 +396,73 @@ function walk(dir, acc = []) {
   return acc;
 }
 
+// ---------------------------------------------------------------------------
+// Self-test — a fast in-process sanity check that rule 3 (D-refetch-egress-
+// bypass) actually catches the bug class it was written for, and does not
+// false-positive on the already-fixed house pattern. Runs before the real
+// tree scan on every `main()` invocation, so a future edit that silently
+// regresses the rule (e.g. an overly-narrow regex) fails CI immediately
+// instead of only being caught the next time someone introduces instance #4.
+// ---------------------------------------------------------------------------
+
+export function runSelfTest() {
+  // Unconditional refetch() button in a deniability-gated component — MUST
+  // be flagged (this is exactly the bug this rule exists to catch).
+  const vulnerable = `
+    import { useQuery } from "@tanstack/react-query";
+    export default function Fixture() {
+      const { refetch } = useQuery({ queryFn: fetchThing, enabled: egressAllowed });
+      return (
+        <button onClick={() => refetch()} aria-label="Refresh">Refresh</button>
+      );
+    }
+  `;
+  const vulnHits = scanSource(vulnerable, 'src/components/SelfTestFixture.jsx');
+  assert.ok(
+    vulnHits.some((h) => h.rule === 'D-refetch-egress-bypass'),
+    'check-deniability-strings self-test FAILED: rule 3 did not flag an unconditional refetch() button in a deniability-gated query fixture — the D-refetch-egress-bypass check has regressed.'
+  );
+
+  // The house fix — refetch() button wrapped in the same gate variable used
+  // by `enabled:` — MUST NOT be flagged (no false positive on correct code).
+  const fixed = `
+    import { useQuery } from "@tanstack/react-query";
+    export default function Fixture() {
+      const { refetch } = useQuery({ queryFn: fetchThing, enabled: egressAllowed });
+      return (
+        <div>
+          {egressAllowed && (
+            <button onClick={() => refetch()} aria-label="Refresh">Refresh</button>
+          )}
+        </div>
+      );
+    }
+  `;
+  const fixedHits = scanSource(fixed, 'src/components/SelfTestFixture.jsx');
+  assert.ok(
+    !fixedHits.some((h) => h.rule === 'D-refetch-egress-bypass'),
+    'check-deniability-strings self-test FAILED: rule 3 false-positived on the gated (correct) refetch() button pattern.'
+  );
+
+  // A non-deniability-gated query's refetch() button must not be flagged —
+  // this rule only applies where `enabled:` references a deniability signal.
+  const unrelated = `
+    import { useQuery } from "@tanstack/react-query";
+    export default function Fixture() {
+      const { refetch } = useQuery({ queryFn: fetchThing, enabled: true });
+      return <button onClick={() => refetch()} aria-label="Refresh">Refresh</button>;
+    }
+  `;
+  const unrelatedHits = scanSource(unrelated, 'src/components/SelfTestFixture.jsx');
+  assert.ok(
+    !unrelatedHits.some((h) => h.rule === 'D-refetch-egress-bypass'),
+    'check-deniability-strings self-test FAILED: rule 3 flagged a refetch() button whose useQuery is not deniability-gated.'
+  );
+}
+
 function main() {
+  runSelfTest();
+
   const files = walk(SCAN_ROOT).filter((f) => !isExcludedPath(f));
   let hits = [];
   for (const f of files) {
