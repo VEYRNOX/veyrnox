@@ -12,7 +12,7 @@ import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
-import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 // Only assets that derive a real address can have an address to look up. The
 // history view mirrors the wallet's receivable assets (coming_soon assets have no
@@ -85,6 +85,7 @@ function TxRow({ tx }) {
 
 export default function TransactionHistory() {
   const wallet = useWallet();
+  const egressAllowed = !isDeniabilityOrDemoActive();
   const [symbol, setSymbol] = useState("ETH");
   const asset = useMemo(() => HISTORY_ASSETS.find((a) => a.symbol === symbol) || HISTORY_ASSETS[0], [symbol]);
   const address = DEMO ? null : addressFor(asset, wallet);
@@ -168,12 +169,14 @@ export default function TransactionHistory() {
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>Couldn’t load history: {error?.message?.toLowerCase().includes("fetch") ? "Couldn’t reach the RPC node — check your connection and try again." : (error?.message || "the indexer didn’t respond")}.</span>
             </div>
-            <button
-              onClick={() => refetch()}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary"
-            >
-              Retry
-            </button>
+            {egressAllowed && (
+              <button
+                onClick={() => refetch()}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary"
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
 
@@ -227,14 +230,16 @@ export default function TransactionHistory() {
       {data?.supported && !evmNoIndexer && !lockedLive && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{txs.length} transaction{txs.length !== 1 ? "s" : ""}{!DEMO && " · most recent"}</span>
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
-          >
-            {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <History className="h-3.5 w-3.5" />}
-            Refresh
-          </button>
+          {egressAllowed && (
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
+            >
+              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <History className="h-3.5 w-3.5" />}
+              Refresh
+            </button>
+          )}
         </div>
       )}
     </div>
