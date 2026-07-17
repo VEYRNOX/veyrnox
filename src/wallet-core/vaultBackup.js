@@ -61,12 +61,16 @@ export const BACKUP_VERSION = 1;
 //
 // Layout (big-endian):
 //   magic   "VYRNXENC" (8 bytes)
-//   version 1 byte (= 1)
+//   version 1 byte
 //   created 8 bytes  Float64 epoch-ms
 //   nSeals  1 byte
-//   per seal: id(1: 0=password,1=pin) saltLen(1) salt ivLen(1) iv ctLen(4) ct
+//   per seal (version 1): id(1: 0=password,1=pin) hasKdf(1) [kdf(16)] saltLen(1) salt ivLen(1) iv ctLen(4) ct
+//   per seal (version 2): id(1) hasKdf(1) blobV(1) [kdf(16)] saltLen(1) salt ivLen(1) iv ctLen(4) ct
+//     blobV carries the vault blob schema version (e.g. 2 for M-8 AAD binding).
+//     Version 2 new in M-8 so decrypt can supply the correct additionalData.
 const BIN_MAGIC = new Uint8Array([0x56, 0x59, 0x52, 0x4e, 0x58, 0x45, 0x4e, 0x43]); // "VYRNXENC"
-const BIN_VERSION = 1;
+const BIN_VERSION = 2; // bumped from 1 → 2 for M-8 AAD binding (adds blobV per seal)
+const BIN_VERSION_LEGACY = 1; // old files still accepted on read (no blobV byte)
 const SEAL_IDS = { password: 0, pin: 1 };
 const SEAL_NAMES = { 0: 'password', 1: 'pin' };
 
@@ -101,7 +105,10 @@ function encodeBinary(envelope) {
     // it is reconstructed on read). These are REQUIRED to derive the right key:
     // dropping them makes decrypt fall back to legacy params and fail.
     const k = blob.kdf;
-    parts.push(Uint8Array.of(SEAL_IDS[name], k ? 1 : 0));
+    // blobV: vault blob schema version — written so decodeBinary can reconstruct
+    // the blob with the correct v field and supply AAD for v:2+ blobs (M-8).
+    const blobV = blob.v ?? 1;
+    parts.push(Uint8Array.of(SEAL_IDS[name], k ? 1 : 0, blobV));
     if (k) {
       const kp = new Uint8Array(16);
       const kdv = new DataView(kp.buffer);
@@ -140,12 +147,15 @@ function decodeBinary(bytes) {
   let o = BIN_MAGIC.length;
   const need = (n) => { if (o + n > bytes.length) throw new Error('Not a valid Veyrnox backup file'); };
   need(1); const version = bytes[o]; o += 1;
-  if (version !== BIN_VERSION) throw new Error('Unsupported backup version');
+  if (version !== BIN_VERSION && version !== BIN_VERSION_LEGACY) throw new Error('Unsupported backup version');
   need(8); const created_at = dv.getFloat64(o, false); o += 8;
   need(1); const nSeals = bytes[o]; o += 1;
   const seals = {};
   for (let s = 0; s < nSeals; s++) {
     need(2); const id = bytes[o]; o += 1; const hasKdf = bytes[o]; o += 1;
+    // blobV: present only in BIN_VERSION 2+ — vault blob schema version for AAD (M-8).
+    let blobV = 1;
+    if (version >= BIN_VERSION) { need(1); blobV = bytes[o]; o += 1; }
     let kdf = null;
     if (hasKdf) {
       need(16);
@@ -166,7 +176,7 @@ function decodeBinary(bytes) {
     need(ctLen); const ct = bytes.slice(o, o + ctLen); o += ctLen;
     const name = SEAL_NAMES[id];
     if (name) {
-      const blob = { v: 1, salt: bytesToB64(salt), iv: bytesToB64(iv), ct: bytesToB64(ct) };
+      const blob = { v: blobV, salt: bytesToB64(salt), iv: bytesToB64(iv), ct: bytesToB64(ct) };
       if (kdf) blob.kdf = kdf;
       seals[name] = blob;
     }
@@ -177,7 +187,8 @@ function decodeBinary(bytes) {
 // ── Validation ────────────────────────────────────────────────────────────────
 
 function isValidBlob(b) {
-  return b != null && b.v === 1 && typeof b.ct === 'string'
+  // Accept v:1 (legacy, no AAD) and v:2+ (M-8, AAD-bound).
+  return b != null && (b.v === 1 || b.v === 2) && typeof b.ct === 'string'
     && typeof b.iv === 'string' && typeof b.salt === 'string';
 }
 

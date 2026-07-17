@@ -465,8 +465,7 @@ auth-tag failure generic; Argon2id params consistent, blob-stored for migration.
 - M-1 (EVM private key as JS string — architecturally unzeroable; ethers v6 limitation,
   no available fix; tracked issue #746)
 - M-4 (2FA retry dead end after network failure — UX, not a security bypass; issue #749)
-- M-8 (no AAD on base vault blob — `assertSaneKdfParams` partially mitigates the OOM
-  vector; full AAD binding is in the independent audit scope; issue #752)
+- ~~M-8~~ BUILT (PR #1076, 2026-07-17): `encryptVault`/`encryptVaultWithDek` now produce v:2 blobs with `additionalData: vaultAad(blob)` binding `{v,kdf,salt}` into the GCM auth-tag; `decryptVault`/`decryptVaultWithDek` gate AAD on v≥2 (v:1 backward-compat preserved); `BIN_VERSION` bumped to 2 (per-seal `blobV` byte); 14 new unit tests. BUILT / unit-tested, INTERNAL.
 - M-9 (short-PIN exhaustion time not disclosed; Safari users have no hardware factor —
   owner decision on disclosure wording; issue #754; docs disclosure BUILT #753)
 - ~~M-10~~ BUILT (2026-07-12): Cosmos non-hardened index level — correct BIP-44, matches Keplr/Cosmostation; xpub-risk disclosure added as source comment in `cosmos/derivation.js:40–46`; Veyrnox does not export the account xpub so risk is theoretical; flagged for any future xpub-export feature
