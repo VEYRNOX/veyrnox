@@ -39,7 +39,6 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { encryptVault, decryptVault } from './vault.js';
-import { saveVault } from './evm/vaultStore.js';
 import { getKeyStore, withLockSuppressed } from './keystore/index.js';
 
 export const BACKUP_APP = 'veyrnox';
@@ -420,32 +419,15 @@ export function parseBackupFile(data) {
   return parsed;
 }
 
-/**
- * Restore from a backup using the password seal. The password seal blob IS a
- * valid vault blob — it is saved directly to IndexedDB so the user can unlock
- * with their original password immediately. No re-encryption needed.
- *
- * @param {object} envelope   result of parseBackupFile()
- * @param {string} password   the original wallet password
- * @returns {Promise<void>}
- * @throws if the password is wrong or the blob is corrupted
- */
-export async function restoreWithPassword(envelope, password) {
-  if (!isValidBackup(envelope)) throw new Error('Invalid backup');
-  const env = /** @type {any} */ (envelope);
-  // Verify the password is correct by decrypting (throws on wrong credential).
-  await decryptVault(env.seals.password, password);
-  // Decrypt SUCCEEDED — the credential is correct. A failure past this point is a
-  // persistence problem, NOT a wrong credential, and must not be reported as one
-  // (that misleads the user into re-entering a password that was already right).
-  try {
-    // The blob is correct — save it as the local primary vault. The user can now
-    // unlock with their original password through the normal flow.
-    await saveVault(env.seals.password);
-  } catch (e) {
-    throw Object.assign(new Error('RESTORE_SAVE_FAILED'), { code: 'RESTORE_SAVE_FAILED', cause: e });
-  }
-}
+// NOTE: A prior `restoreWithPassword(envelope, password)` export was removed
+// (issue #1101). It decrypted the backup password seal and then called the web
+// `saveVault()` directly, bypassing `getKeyStore().createVault()` — on native
+// that silently wrote to web storage instead of SecureStorage / the KEK-wrapped
+// vault. It had no production caller (the real path is
+// `decryptPasswordSeal` / `decryptPinSeal` → `finalisePinRestore`, which routes
+// through `getKeyStore().createVault()` and keeps the on-device vault in the
+// PIN cohort). Do NOT reintroduce a password-seal restore that persists via
+// `saveVault()`; route through `finalisePinRestore` instead.
 
 /**
  * Restore from a backup using the PIN seal, then re-encrypt under a new
@@ -465,8 +447,9 @@ export async function decryptPinSeal(envelope, pin) {
 
 /**
  * Decrypt the PASSWORD seal to the container JSON (mirror of decryptPinSeal).
- * Unlike restoreWithPassword (which saved the password-sealed blob verbatim and
- * left the on-device vault in the PASSWORD cohort), this only RETURNS the plaintext
+ * Unlike the removed restoreWithPassword (which saved the password-sealed blob
+ * verbatim and left the on-device vault in the PASSWORD cohort), this only
+ * RETURNS the plaintext
  * container so the caller can re-wrap it under an on-device PIN — keeping the whole
  * app PIN-cohort (owner decision 2026-07-16). Does NOT persist anything.
  * @param {object} envelope   result of parseBackupFile()
