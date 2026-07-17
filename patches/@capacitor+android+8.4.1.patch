@@ -58,3 +58,25 @@ index f5e7cc4..f44bc58 100644
                  if (isFullConsole(c)) {
                      c.groupCollapsed('%cnative %c' + call.pluginId + '.' + call.methodName + ' (#' + call.callbackId + ')', 'font-weight: lighter; color: gray', 'font-weight: bold; color: #000');
                      c.dir(call);
+diff --git a/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java b/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java
+index fd713709..1b4eae48 100644
+--- a/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java
++++ b/node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java
+@@ -262,10 +262,13 @@ public class SystemBars extends Plugin {
+                     Locale.US,
+                     """
+                     try {
+-                      document.documentElement.style.setProperty("--safe-area-inset-top", "%dpx");
+-                      document.documentElement.style.setProperty("--safe-area-inset-right", "%dpx");
+-                      document.documentElement.style.setProperty("--safe-area-inset-bottom", "%dpx");
+-                      document.documentElement.style.setProperty("--safe-area-inset-left", "%dpx");
++                      var el = document.documentElement;
++                      if (el) {
++                        el.style.setProperty("--safe-area-inset-top", "%dpx");
++                        el.style.setProperty("--safe-area-inset-right", "%dpx");
++                        el.style.setProperty("--safe-area-inset-bottom", "%dpx");
++                        el.style.setProperty("--safe-area-inset-left", "%dpx");
++                      }
+                     } catch(e) { console.error('Error injecting safe area CSS:', e); }
+                     """,
+                     (int) topPx,
