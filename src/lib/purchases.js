@@ -89,5 +89,13 @@ export async function manageSubscription() {
   const url = Capacitor.getPlatform() === 'ios'
     ? 'itms-apps://apps.apple.com/account/subscriptions'
     : 'https://play.google.com/store/account/subscriptions';
+  // @capacitor/app@8.x's public TS surface does not include `openUrl`
+  // (it exposes lifecycle events + getLaunchUrl only). The method exists on
+  // the underlying native plugin bridge; PR #1085's own runbook flags the
+  // device-verify of this deep-link as outstanding. Silence the typecheck
+  // here without changing the runtime call — if a future @capacitor/app
+  // release adds `openUrl` to the plugin type, this pragma will fail the
+  // build and prompt its removal.
+  // @ts-expect-error TS2339 — App.openUrl runtime-only in @capacitor/app@8.x
   await App.openUrl({ url });
 }
