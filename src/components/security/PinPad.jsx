@@ -114,6 +114,16 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
         ))}
       </div>
 
+      {/* Larger keys (h-16) + pressed-state feedback. Mobile touch does NOT fire
+          :hover reliably, so relying on hover-only gave a keypress ZERO visible
+          feedback on-device. Added:
+            - active:bg-primary/20 — a clear teal flash on tap (design-system token,
+              not a raw hex; light + dark themes both read cleanly)
+            - active:scale-[0.96] — tactile press micro-motion (skill §7 scale-feedback)
+            - transition-transform duration-75 — snappy, not floaty
+            - touch-manipulation — kills the 300ms mobile tap delay
+          Hover state still fires on desktop for keyboard/pointer input. Reduced-
+          motion users get the color flash without the scale (a11y). */}
       <div className="grid grid-cols-3 gap-3">
         {KEYS.map((k) => {
           if (k === "clear") {
@@ -125,7 +135,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
                 aria-label="Clear — re-enter PIN"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
-                className="h-14 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground active:bg-secondary active:scale-95 transition-all duration-100 disabled:opacity-40"
+                className="h-16 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground active:bg-secondary/60 active:scale-[0.96] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
               >
                 Re-enter
               </button>
@@ -140,7 +150,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
                 aria-label="Delete last digit"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
-                className="h-14 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-secondary active:scale-95 transition-all duration-100 disabled:opacity-40"
+                className="h-16 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-secondary/60 active:scale-[0.96] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
               >
                 <Delete className="h-5 w-5" />
               </button>
@@ -153,7 +163,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
               tabIndex={-1}
               disabled={disabled}
               onClick={() => press(k)}
-              className="h-14 rounded-xl bg-secondary/40 hover:bg-secondary active:bg-primary active:text-primary-foreground active:scale-95 transition-all duration-100 text-xl font-semibold mono-value disabled:opacity-40"
+              className="h-16 rounded-xl bg-secondary/40 hover:bg-secondary active:bg-primary/20 active:scale-[0.96] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation text-2xl font-semibold mono-value disabled:opacity-40 disabled:active:scale-100"
             >
               {k}
             </button>
