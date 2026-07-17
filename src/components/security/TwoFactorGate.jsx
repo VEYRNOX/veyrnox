@@ -38,8 +38,11 @@ const ATTEMPT_CAP = 5;
  *   collects the PIN then triggers an OS biometric prompt inside verify() (both have
  *   no password field). 'password' collects PIN + Action Password.
  * @param {string} [props.title]
+ * @param {Error|null} [props.sendError]  error from the downstream send mutation
+ *   (broadcast failure after 2FA succeeded). Rendered as a persistent in-card
+ *   banner so the user understands why the gate re-appeared (M-4).
  */
-export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mode = 'password', title }) {
+export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mode = 'password', title, sendError }) {
   const [pin, setPin] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -171,6 +174,13 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
       )}
       {isPasskey && (
         <p id="tfg-external-help" className="text-[11px] text-muted-foreground">{isNative ? 'After your PIN, Face ID / Touch ID will confirm this action.' : 'After your PIN, your browser will ask you to tap your passkey or security key.'}</p>
+      )}
+      {/* M-4: persistent banner when the downstream broadcast failed after 2FA succeeded.
+          Shown above the attempt-error so the user sees the send outcome first. */}
+      {sendError && (
+        <p role="alert" aria-live="polite" className="text-[11px] text-destructive">
+          Send failed — please verify again to retry.
+        </p>
       )}
       {/* #4 a11y: announce the attempt-error (the "(N left)" copy) to assistive tech. */}
       {error && (
