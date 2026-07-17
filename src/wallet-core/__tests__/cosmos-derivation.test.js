@@ -5,7 +5,8 @@
 // encoding match the Cosmos SDK and Keplr reference implementations — i.e.
 // funds are recoverable with any compliant Cosmos wallet.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import * as bip32 from '@scure/bip32';
 import { deriveCosmosAccount, deriveCosmosAddress, cosmosPath } from '../cosmos/derivation.js';
 
 // Canonical BIP-39 all-"abandon" mnemonic (public, BIP-39 spec).
@@ -78,6 +79,29 @@ describe('deriveCosmosAddress — no secret material', () => {
     expect(result.address).toBe('cosmos19rl4cm2hmr8afy4kldpxz3fka4jguq0auqdal4');
     expect(result.path).toBe("m/44'/118'/0'/0/0");
     expect(result).not.toHaveProperty('privateKey');
+  });
+
+  // #1109 (L-1 class, same as EVM PR #1080): the ADDRESS-only path must not
+  // materialise the LEAF signing key. Derive private only to the hardened account
+  // level (m/44'/118'/0'), switch to publicExtendedKey, then derive the
+  // non-hardened `m/0/index` tail in public mode.
+  it('derives the leaf via publicExtendedKey (no leaf private key materialised)', () => {
+    const spy = vi.spyOn(bip32.HDKey, 'fromExtendedKey');
+    try {
+      const { address } = deriveCosmosAddress(TEST_MNEMONIC, { index: 0 });
+      expect(address).toBe('cosmos19rl4cm2hmr8afy4kldpxz3fka4jguq0auqdal4');
+      expect(spy).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('matches deriveCosmosAccount for the same index (address-only agrees with signing path)', () => {
+    for (const index of [0, 1, 3]) {
+      const addrOnly = deriveCosmosAddress(TEST_MNEMONIC, { index });
+      const acct = deriveCosmosAccount(TEST_MNEMONIC, { index });
+      expect(addrOnly.address).toBe(acct.address);
+    }
   });
 });
 

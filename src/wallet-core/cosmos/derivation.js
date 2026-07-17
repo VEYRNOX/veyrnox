@@ -88,11 +88,40 @@ export function deriveCosmosAccount(mnemonic, opts = {}) {
 
 /**
  * Public address only — no secret material. Convenient for display/receive.
+ *
+ * Architectural scope (I4 honesty), same as `deriveEvmAddress` (L-1, PR #1080,
+ * carried to Cosmos as #1109): BIP-32 hardened derivation up to the account
+ * level (m/44'/118'/0') unavoidably materialises the account-level private
+ * key; it is zeroed immediately after the xpub is extracted. The LEAF signing
+ * key at m/44'/118'/0'/0/index is NEVER materialised as a JS value — the
+ * non-hardened `m/0/index` tail is derived in public-only mode via the
+ * account-level extended public key.
+ *
+ * Callers that need the private key for signing must still use
+ * `deriveCosmosAccount`; this function is safe for receive-address display,
+ * portfolio fetch, and address comparison.
+ *
  * @param {string} mnemonic
  * @param {object} [opts] - same as deriveCosmosAccount
  * @returns {{ address: string, path: string, hrp: string }}
  */
 export function deriveCosmosAddress(mnemonic, opts = {}) {
-  const { address, path, hrp } = deriveCosmosAccount(mnemonic, opts);
+  const { hrp = 'cosmos', index = 0, passphrase = '' } = opts;
+
+  const seed = mnemonicToSeed(mnemonic, passphrase);
+  // Derive private only as far as the hardened account level (m/44'/118'/0').
+  // Then switch to a public-only node so the leaf private key at
+  // m/44'/118'/0'/0/index never materialises as a JS value (#1109, L-1).
+  const acctPriv = HDKey.fromMasterSeed(seed).derive(`m/44'/${COSMOS_COIN_TYPE}'/0'`);
+  const acctPub = HDKey.fromExtendedKey(acctPriv.publicExtendedKey);
+  if (acctPriv.privateKey) acctPriv.privateKey.fill(0); // best-effort wipe
+  const node = acctPub.derive(`m/0/${index}`); // public-only path
+  const publicKey = node.publicKey;
+  if (!publicKey) throw new Error('Cosmos public key derivation failed');
+
+  const pubkeyHash = ripemd160(sha256(publicKey));
+  const words = bech32.toWords(pubkeyHash);
+  const address = bech32.encode(hrp, words);
+  const path = cosmosPath(index);
   return { address, path, hrp };
 }
