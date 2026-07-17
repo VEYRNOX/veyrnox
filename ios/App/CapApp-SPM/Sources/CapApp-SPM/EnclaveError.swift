@@ -28,6 +28,13 @@ enum EnclaveError: Error {
     // Encoding.
     case base64DecodeFailed
 
+    // Codex ad-hoc review 2026-07-17 P2-#2: a pre-existing keychain item under our
+    // application tag that is NOT backed by the Secure Enclave (e.g. left over from
+    // an older dev build with a weaker ACL / non-SE token). Refuse to reuse it —
+    // the caller must explicitly delete it (via deleteWrappingKey with an intent)
+    // before createWrappingKey can re-create a fresh SE-backed key.
+    case staleWrappingKey
+
     /// Stable machine code handed to JS via CAPPluginCall.reject(message, code).
     var code: String {
         switch self {
@@ -44,6 +51,7 @@ enum EnclaveError: Error {
         case .userFallback:             return "USER_FALLBACK"
         case .authFailed:               return "AUTH_FAILED"
         case .base64DecodeFailed:       return "BASE64_DECODE_FAILED"
+        case .staleWrappingKey:         return "STALE_WRAPPING_KEY"
         }
     }
 
@@ -63,6 +71,7 @@ enum EnclaveError: Error {
         case .userFallback:             return "Password fallback requested"
         case .authFailed(let c):        return "Authentication failed (code \(c))"
         case .base64DecodeFailed:       return "Invalid base64 input"
+        case .staleWrappingKey:         return "Existing wrapping key is not Secure-Enclave-backed; explicit delete required before re-create"
         }
     }
 }

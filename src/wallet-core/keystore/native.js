@@ -448,17 +448,54 @@ export { withLockSuppressed };
 // #725 (M-3): the M2c up-migration in unlock() is best-effort — it MUST NOT fail
 // the unlock (the secret has already been recovered). But it also must not SWALLOW
 // the failure silently: a persistent VAULT_WRITE_VERIFY_FAILED (or any repeated
-// migration error) needs to be visible so it can be diagnosed. This handler logs
-// ONLY the error's code (or, absent a code, its message) — NEVER the error object,
-// the vault blob, the ciphertext, or any key material (LOG-1). Extracted as a pure
-// helper because the M2c branch itself is dormant (M2C_HARDWARE_WRAP_ENABLED=false),
-// so the handler's contract is pinned by a direct unit test.
+// migration error) needs to be visible so it can be diagnosed.
+//
+// Codex 2026-07-17 P2-#3 (allowlist tightening): previously fell back to e.message
+// when e.code was absent, which would leak a future error class's secret-bearing
+// message into the log. Now:
+//   1. e.code is in the allowlist  → log the code
+//   2. e has a named constructor    → log "<Name> (unknown code)"
+//   3. otherwise                    → log "unknown error"
+// e.message is NEVER logged. This handler logs NEVER the error object, the vault
+// blob, the ciphertext, or any key material (LOG-1). Extracted as a pure helper
+// because the M2c branch itself is dormant (M2C_HARDWARE_WRAP_ENABLED=false), so
+// the handler's contract is pinned by a direct unit test.
+const ALLOWED_M2C_CODES = new Set([
+  // From native.js safeWriteVault():
+  'VAULT_WRITE_VERIFY_FAILED',
+  // From veyrnoxEnclave.js (M2c JS gate + intent gate):
+  'M2C_DISABLED',
+  'M2C_DELETE_INTENT_REQUIRED',
+  // From parseVaultBlob() (defensive — up-migration path re-reads the raw blob):
+  'MALFORMED_VAULT',
+  // From EnclaveError (iOS Secure Enclave plugin) — the codes reachable along the
+  // wrap side of the up-migration; unwrap-side codes included for the future
+  // down-migration path that also feeds this logger if ever re-wired:
+  'KEY_NOT_FOUND',
+  'WRAP_FAILED',
+  'UNWRAP_FAILED',
+  'ENCLAVE_UNAVAILABLE',
+  'KEY_GEN_FAILED',
+  'PUBLIC_KEY_UNAVAILABLE',
+  'ALGORITHM_UNSUPPORTED',
+]);
 export function logM2cMigrationFailure(e) {
   // Coerce to a primitive string first: passing the raw error object to
   // console.error could serialise attached fields (hw/kekWrap/ct) in some logger
   // configs. Only a plain string crosses the boundary.
-  const detail = (e && (e.code || e.message)) || 'unknown error';
-  console.error('[keystore] M2c up-migration failed:', String(detail));
+  let detail;
+  if (e && typeof e === 'object' && typeof e.code === 'string' && ALLOWED_M2C_CODES.has(e.code)) {
+    detail = e.code;
+  } else if (
+    e && typeof e === 'object'
+    && e.constructor && typeof e.constructor.name === 'string'
+    && e.constructor.name !== 'Object'
+  ) {
+    detail = `${e.constructor.name} (unknown code)`;
+  } else {
+    detail = 'unknown error';
+  }
+  console.error('[keystore] M2c up-migration failed:', detail);
 }
 
 /** @type {import('./keyStore.js').KeyStore} */
@@ -1051,7 +1088,9 @@ export const nativeKeyStore = {
       const blobJson = utf8FromBase64(await hwUnwrap(record.hw)); // throws on cancel
       const blob = parseVaultBlob(blobJson); // validate it parses before overwriting
       await safeWriteVault(blob);
-      try { await deleteWrappingKey(); } catch { /* non-fatal */ }
+      // Codex 2026-07-17 P2-#1: deleteWrappingKey requires an allowlisted intent —
+      // this is the disable-biometric-unlock down-migration, so intent:'unenroll'.
+      try { await deleteWrappingKey({ intent: 'unenroll' }); } catch { /* non-fatal */ }
     });
   },
 
