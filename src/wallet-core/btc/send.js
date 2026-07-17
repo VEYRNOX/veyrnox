@@ -178,10 +178,18 @@ export async function signAndBroadcastBtc({
     sendMax,
   });
 
-  // Build + sign + finalize, with the fee/change backstop baked in.
-  const { hex: rawHex, txid: localTxid } = buildAndSignTx({
-    plan, privateKey, publicKey, params: net.params,
-  });
+  // Build + sign + finalize, with the fee/change backstop baked in. The live
+  // signing key is zeroed in-place in `finally` (M-2, PR #962) — wiped on every
+  // path, success or throw, once signing is done and the buffer is no longer
+  // needed (mirrors keystore/web.js deriveKekC's finally-block zeroing).
+  let rawHex, localTxid;
+  try {
+    ({ hex: rawHex, txid: localTxid } = buildAndSignTx({
+      plan, privateKey, publicKey, params: net.params,
+    }));
+  } finally {
+    if (privateKey && typeof privateKey.fill === 'function') privateKey.fill(0);
+  }
 
   // broadcastTx now THROWS on a rejected/empty broadcast, so reaching here means
   // the network accepted the tx. The canonical txid is the one we computed locally
