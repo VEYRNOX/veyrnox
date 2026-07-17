@@ -118,6 +118,7 @@ import {
   BiometricGateError,
   ensureBiometric2faOnNative,
 } from '@/lib/biometric';
+import { ensureKekPinNoticeOnNative } from '@/lib/kekPinNotice';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
 // let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
@@ -1733,6 +1734,7 @@ export function WalletProvider({ children }) {
     // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
     void ensureStealthPool().catch(() => {});
     void ensureBiometric2faOnNative().catch(() => {});
+    void ensureKekPinNoticeOnNative().catch(() => {}); // M-9: one-time offline-exhaustion notice for unenrolled native users
     touch();
     deriveActiveAndAll();
     // STEP-UP capture: a per-session verifier for the credential that opened THIS

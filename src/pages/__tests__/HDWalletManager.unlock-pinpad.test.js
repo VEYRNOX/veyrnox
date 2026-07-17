@@ -29,7 +29,10 @@ describe('HDWalletManager — unlock surface follows the auth cohort', () => {
   });
 
   it('keeps the legacy free-text password box on the non-PIN branch', () => {
-    // The password Input still exists for the password cohort (guarded by the isPin ternary).
-    expect(src).toMatch(/id="hd-unlock-password"\s+type="password"/);
+    // The password cohort still gets a free-text PasswordInput (a show/hide password
+    // box — type="password" internally) rather than a numeric PinPad, guarded by the
+    // isPin ternary, so a pre-#651 password vault is never locked out. (The raw
+    // <input type="password"> was refactored to the shared PasswordInput component.)
+    expect(src).toMatch(/<PasswordInput\s+id="hd-unlock-password"/);
   });
 });
