@@ -278,14 +278,14 @@ function vaultAad(blob) {
  * @returns {boolean}
  */
 export function vaultNeedsAAD(vault) {
-  return (vault?.v ?? 0) < VAULT_VERSION;
+  return (/** @type {number} */ (vault?.v) ?? 0) < VAULT_VERSION;
 }
 
 /**
  * Whether a blob's stored KDF params differ from the current KDF_PARAMS, OR the
  * blob predates the AAD epoch (v < VAULT_VERSION), and should be transparently
  * re-encrypted on the next successful unlock.
- * @param {object} vault
+ * @param {Record<string, unknown>} vault
  * @returns {boolean}
  */
 // Direction now UP: existing 64 MiB vaults rekey to 192 MiB on first unlock (deliberate, biometric-mitigated).
