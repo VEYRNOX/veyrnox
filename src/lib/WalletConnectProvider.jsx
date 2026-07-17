@@ -423,6 +423,22 @@ export async function _handleSendTransaction(
     return;
   }
   const txParams = params[0] ?? {};
+
+  // #1091 — bind txParams.from to the active EVM address. A dApp requesting a
+  // send FROM a foreign address, or omitting `from` entirely, MUST reject
+  // before the key is touched. Mirrors H8 for personal_sign. Fail closed (I4):
+  // an absent evmAddress cannot be bound to anything, so it also rejects.
+  const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
+  const fromAddr = typeof txParams.from === 'string' ? txParams.from.toLowerCase() : null;
+  if (!ownAddr || !fromAddr || ownAddr !== fromAddr) {
+    await rejectRequest(topic, id, 'SEND_ADDRESS_MISMATCH').catch(() => {});
+    throw new Error(
+      `Rejected transaction [SEND_ADDRESS_MISMATCH]: request targets ` +
+      `${txParams.from ?? '(none)'} but active address is ${evmAddress ?? '(none)'}. ` +
+      `Veyrnox will not broadcast from a foreign address.`,
+    );
+  }
+
   const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
   const net = getNetworkByChainId(chainId);
 
@@ -588,6 +604,20 @@ export function WalletConnectProvider({ children }) {
           } else {
             setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
           }
+        } else if (method === 'eth_sendTransaction') {
+          // #1091 pre-modal: reject before showing the approval modal if the
+          // requested `from` doesn't match the active wallet address. Fail
+          // closed (I4) — the user must never be asked to approve a send from
+          // a foreign address. Mirrors H8's pre-modal pattern.
+          const reqParams = data.params?.request?.params ?? [];
+          const txParam = reqParams[0] ?? {};
+          const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
+          const fromAddr = typeof txParam.from === 'string' ? txParam.from.toLowerCase() : null;
+          if (!ownAddr || !fromAddr || ownAddr !== fromAddr) {
+            rejectRequest(data.topic, data.id, 'SEND_ADDRESS_MISMATCH').catch(() => {});
+          } else {
+            setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
+          }
         } else if (method === 'eth_signTypedData_v4') {
           // H7 pre-modal: reject before showing the modal if domain.chainId mismatches
           // the session chain. Mirrors _handleSignTypedData's chain-binding check.
@@ -623,7 +653,7 @@ export function WalletConnectProvider({ children }) {
       cancelled = true;
       unsub();
     };
-  }, [isUnlocked, isDecoy, isHidden, refreshSessions]);
+  }, [isUnlocked, isDecoy, isHidden, refreshSessions, evmAddress]);
 
   // Destroy client when wallet locks or transitions into a deniability session (I3).
   // DEMO is treated exactly like a deniability transition: if a live client somehow
