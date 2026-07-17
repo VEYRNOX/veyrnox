@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound, QrCode } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
 import CoinLogo from "@/components/CoinLogo";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import { Button } from "@/components/ui/button";
@@ -59,36 +61,120 @@ export default function WalletSeedQR() {
 
   const handlePrint = async () => {
     if (!mnemonic) return;
+
     // Encode the phrase to a QR locally (same `qrcode` lib, no network) so the
-    // printed sheet carries both the words and a scannable backup.
+    // printed/shared sheet carries both the words and a scannable backup.
     let qrDataUrl = "";
     try {
       qrDataUrl = await QRCode.toDataURL(mnemonic, { errorCorrectionLevel: "M", margin: 2, width: 240 });
     } catch {
       /* QR is best-effort — the printed words remain a complete backup on their own. */
     }
-    const w = window.open("", "_blank");
-    const nameHtml = escapeHtml(selectedWallet?.name || "Wallet");
-    const qrHtml = qrDataUrl
-      ? `<img class="qr" src="${qrDataUrl}" alt="Recovery phrase QR" width="240" height="240" />`
-      : "";
-    w.document.write(`<html><head><title>Recovery Backup — ${nameHtml}</title><style>
-      body { font-family: monospace; text-align: center; padding: 40px; }
-      h2 { margin-bottom: 8px; }
-      p { color: #666; font-size: 13px; margin: 4px 0; }
-      .seed { font-size: 14px; font-weight: bold; margin: 20px 0; word-break: break-all; background: #f5f5f5; padding: 16px; border-radius: 8px; }
-      .qr { margin: 12px auto; display: block; }
-      .warning { color: #ef4444; font-size: 12px; margin-top: 20px; }
-    </style></head><body>
-      <h2>${nameHtml} — Recovery Backup</h2>
-      <p>${escapeHtml(selectedWallet?.currency || "")} · ${escapeHtml(selectedWallet?.address?.slice(0, 16) || "")}...</p>
-      <div class="seed">${escapeHtml(mnemonic)}</div>
-      ${qrHtml}
-      <p class="warning">⚠️ KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.</p>
-      <p class="warning">The QR encodes the same recovery phrase — anyone who scans it controls this wallet.</p>
-    </body></html>`);
-    w.document.close();
-    w.print();
+
+    const nameText = selectedWallet?.name || "Wallet";
+
+    if (Capacitor.isNativePlatform()) {
+      // window.open("", "_blank") on Capacitor opens an orphaned WebView with no
+      // back navigation — the user gets stranded. Instead share the backup text
+      // via the OS share sheet so they can save/print through their own apps.
+      const shareText = [
+        `${nameText} — Recovery Backup`,
+        `${escapeHtml(selectedWallet?.currency || "")} · ${selectedWallet?.address?.slice(0, 16) || ""}...`,
+        "",
+        mnemonic,
+        "",
+        "KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.",
+        "The QR encodes the same recovery phrase — anyone who scans it controls this wallet.",
+      ].join("\n");
+
+      try {
+        await Share.share({
+          title: `${nameText} — Recovery Backup`,
+          text: shareText,
+          dialogTitle: "Print or Save Recovery Backup",
+        });
+      } catch {
+        // Share sheet dismissed — no action needed; user stays on the page.
+      }
+      setPrinted(true);
+      confirmWalletBackup(selectedWalletId);
+      return;
+    }
+
+    // Web path: inject a hidden print container into THIS document so the user
+    // stays on the page. @media print hides everything except the container, then
+    // we call window.print() on the current window — no popup, no orphaned tab.
+    const PRINT_ID = "veyrnox-seed-print-container";
+    let container = document.getElementById(PRINT_ID);
+    if (!container) {
+      container = document.createElement("div");
+      container.id = PRINT_ID;
+      document.body.appendChild(container);
+    }
+
+    // Build the print container with DOM methods — no innerHTML, no XSS surface.
+    // All content is plain text set via textContent (wallet name, mnemonic, address)
+    // or a data: URL from the local qrcode library (QR image).
+    container.textContent = "";
+
+    const h2 = document.createElement("h2");
+    h2.textContent = `${nameText} — Recovery Backup`;
+    container.appendChild(h2);
+
+    const meta = document.createElement("p");
+    meta.textContent = `${selectedWallet?.currency || ""} · ${selectedWallet?.address?.slice(0, 16) || ""}...`;
+    container.appendChild(meta);
+
+    const seedDiv = document.createElement("div");
+    seedDiv.className = "seed";
+    seedDiv.textContent = mnemonic;
+    container.appendChild(seedDiv);
+
+    if (qrDataUrl) {
+      // qrDataUrl is a data:image/png;base64,... string produced locally by the
+      // qrcode library — no user-supplied value goes into the src attribute.
+      const img = document.createElement("img");
+      img.className = "qr";
+      img.src = qrDataUrl;
+      img.alt = "Recovery phrase QR";
+      img.width = 240;
+      img.height = 240;
+      container.appendChild(img);
+    }
+
+    const warn1 = document.createElement("p");
+    warn1.className = "warning";
+    warn1.textContent = "KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.";
+    container.appendChild(warn1);
+
+    const warn2 = document.createElement("p");
+    warn2.className = "warning";
+    warn2.textContent = "The QR encodes the same recovery phrase — anyone who scans it controls this wallet.";
+    container.appendChild(warn2);
+
+    // Inject scoped print styles once (idempotent).
+    const STYLE_ID = "veyrnox-seed-print-styles";
+    if (!document.getElementById(STYLE_ID)) {
+      const style = document.createElement("style");
+      style.id = STYLE_ID;
+      style.textContent = `
+        @media print {
+          body > *:not(#${PRINT_ID}) { display: none !important; }
+          #${PRINT_ID} { display: block !important; font-family: monospace; text-align: center; padding: 40px; }
+          #${PRINT_ID} h2 { margin-bottom: 8px; }
+          #${PRINT_ID} p { color: #666; font-size: 13px; margin: 4px 0; }
+          #${PRINT_ID} .seed { font-size: 14px; font-weight: bold; margin: 20px 0; word-break: break-all; background: #f5f5f5; padding: 16px; border-radius: 8px; }
+          #${PRINT_ID} .qr { margin: 12px auto; display: block; }
+          #${PRINT_ID} .warning { color: #ef4444; font-size: 12px; margin-top: 20px; }
+        }
+        @media screen {
+          #${PRINT_ID} { display: none; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    window.print();
     setPrinted(true);
     confirmWalletBackup(selectedWalletId);
   };
