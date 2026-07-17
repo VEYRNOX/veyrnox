@@ -75,7 +75,7 @@ class VeyrnoxEnclavePlugin : Plugin() {
     @PluginMethod
     fun isHardwareKeyAvailable(call: PluginCall) {
         val ctx = context ?: run {
-            call.reject("NO_CONTEXT", "Plugin context unavailable")
+            call.reject("Plugin context unavailable", "NO_CONTEXT")
             return
         }
         val capability = service.capability(ctx)
@@ -87,36 +87,41 @@ class VeyrnoxEnclavePlugin : Plugin() {
     }
 
     // ── Gated: mints key material. Fail-closed while M2D_ENABLED is false ──
+    // NOTE (Codex second-pass 2026-07-17 P2-A): Android PluginCall.reject takes
+    // (message, code) — OPPOSITE of the iOS bridge's (code, message). Passing
+    // args in the wrong order silently mislabels err.code at the JS layer, so
+    // callers matching `if (e.code === 'M2C_DISABLED')` wouldn't fire. Native
+    // convention verified against HardwareKekPlugin.kt:103,120 — reject(message, code).
     @PluginMethod
     fun createWrappingKey(call: PluginCall) {
         if (!M2D_ENABLED) {
-            call.reject(DISABLED_CODE, DISABLED_MESSAGE)
+            call.reject(DISABLED_MESSAGE, DISABLED_CODE)
             return
         }
         // M2d-1b lands the AndroidKeyStore key creation here.
-        call.reject(NOT_IMPLEMENTED_CODE, NOT_IMPLEMENTED_MESSAGE)
+        call.reject(NOT_IMPLEMENTED_MESSAGE, NOT_IMPLEMENTED_CODE)
     }
 
     // ── Gated: wraps a vault blob. Fail-closed while M2D_ENABLED is false ──
     @PluginMethod
     fun wrap(call: PluginCall) {
         if (!M2D_ENABLED) {
-            call.reject(DISABLED_CODE, DISABLED_MESSAGE)
+            call.reject(DISABLED_MESSAGE, DISABLED_CODE)
             return
         }
         // M2d-1c lands the wrap-key AES-GCM encrypt here.
-        call.reject(NOT_IMPLEMENTED_CODE, NOT_IMPLEMENTED_MESSAGE)
+        call.reject(NOT_IMPLEMENTED_MESSAGE, NOT_IMPLEMENTED_CODE)
     }
 
     // ── Gated: unwraps under a biometric prompt. Fail-closed while off. ────
     @PluginMethod
     fun unwrap(call: PluginCall) {
         if (!M2D_ENABLED) {
-            call.reject(DISABLED_CODE, DISABLED_MESSAGE)
+            call.reject(DISABLED_MESSAGE, DISABLED_CODE)
             return
         }
         // M2d-1d lands the BiometricPrompt(CryptoObject(cipher)) unwrap here.
-        call.reject(NOT_IMPLEMENTED_CODE, NOT_IMPLEMENTED_MESSAGE)
+        call.reject(NOT_IMPLEMENTED_MESSAGE, NOT_IMPLEMENTED_CODE)
     }
 
     // ── Intent-gated: no M2D_ENABLED check (delete must remain available   ──
@@ -133,9 +138,11 @@ class VeyrnoxEnclavePlugin : Plugin() {
     fun deleteWrappingKey(call: PluginCall) {
         val intent = call.getString("intent")
         if (!VeyrnoxEnclaveDeleteIntent.isAllowed(intent)) {
+            // Android PluginCall.reject signature is (message, code) — see the
+            // note on createWrappingKey above. Codex 2026-07-17 P2-A.
             call.reject(
-                VeyrnoxEnclaveDeleteIntent.REJECT_CODE,
-                VeyrnoxEnclaveDeleteIntent.REJECT_MESSAGE
+                VeyrnoxEnclaveDeleteIntent.REJECT_MESSAGE,
+                VeyrnoxEnclaveDeleteIntent.REJECT_CODE
             )
             return
         }
