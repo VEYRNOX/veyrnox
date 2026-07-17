@@ -43,6 +43,58 @@ import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
+
+// #1093 — WC pre-sign tx-risk plane. Risk-signal modules (`@/risk/signals` and
+// `@/risk/calldata`) instantiate an ethers Interface at MODULE INIT time, so a
+// static top-level import would crash sibling test files that fully-mock ethers
+// without `Interface`. `scoreWcTxLevel` therefore lazy-imports the risk stack
+// only when the SEND handler actually runs; a load or scoring failure falls
+// back to LEVEL.CAUTION (I4 fail-closed).
+//
+// Signal subset (MINIMUM VIABLE for the WC surface): the WC handler has no
+// recipientCode (S7), ENS (S5), UTXO (S6), send-history (S1/S8), or whitelist
+// (S3) inputs — feeding empty/undefined would fail-closed CAUTION on every
+// plain send. So we run only the two signals the audit brief called out:
+//   S2 unlimited-approval — pure calldata; catches approve(_, MAX_UINT256).
+//   S4 address-poisoning  — needs `counterparties`; empty today so always OK,
+//                           but wired for a future address-book pass.
+// A non-approve, non-lookalike send composes txLevel=LEVEL.OK, and the RASP
+// env plane is the sole determinant (previous behaviour preserved).
+export async function scoreWcTxLevel(txParams, caip2ChainId) {
+  try {
+    const [
+      { score },
+      { s2UnlimitedApproval },
+      { s4AddressPoisoning },
+      { buildRiskInputsFromWcRequest },
+    ] = await Promise.all([
+      import('@/risk/score'),
+      import('@/risk/signals/s2-unlimited-approval'),
+      import('@/risk/signals/s4-address-poisoning'),
+      import('@/risk/fromWalletConnect'),
+    ]);
+    const WC_TX_RISK_SIGNALS = [
+      { id: 'S2', fn: s2UnlimitedApproval },
+      { id: 'S4', fn: s4AddressPoisoning },
+    ];
+    const parsedChainId = typeof caip2ChainId === 'string'
+      ? parseInt(caip2ChainId.replace(/^eip155:/, ''), 10)
+      : undefined;
+    const riskInputs = buildRiskInputsFromWcRequest({
+      txParam: txParams,
+      chainId: Number.isFinite(parsedChainId) ? parsedChainId : undefined,
+    });
+    const verdict = score(
+      riskInputs.unsignedTx,
+      riskInputs.activeSetLocalState,
+      riskInputs.chainData,
+      WC_TX_RISK_SIGNALS,
+    );
+    return verdict?.level ?? LEVEL.CAUTION;
+  } catch {
+    return LEVEL.CAUTION;
+  }
+}
 import {
   detect,
   degrade,
@@ -270,7 +322,7 @@ export function resolveSessionCaip2(session, requestCaip2) {
 // leg's CLEAN on native (C-01), and detectAttestation fails closed to
 // INTEGRITY_UNAVAILABLE on unavailable / thrown / timed-out verdicts. On web
 // the browser leg is used exactly as before.
-async function presignGateOrReject() {
+async function presignGateOrReject(txLevel = LEVEL.OK) {
   let tier;
   try {
     const isNative = Capacitor.isNativePlatform();
@@ -305,20 +357,25 @@ async function presignGateOrReject() {
     // Total failure in the detection chain → strongest BLOCK, signer unreachable.
     tier = TIER.BLOCK;
   }
-  // txLevel = LEVEL.OK: the WalletConnect signing path has NO in-app tx-risk score
-  // feeding this gate (its tx-safety controls — H7 chain binding, H8 address
-  // binding, M9 gas cap — are enforced separately in the handlers). Passing OK is
-  // honest (the tx plane genuinely has no signal here), so RASP's environment tier
-  // is the sole determinant.
+  // #1093 — txLevel is now composed from a real WC-scoped tx-risk score (see
+  // WC_TX_RISK_SIGNALS and _handleSendTransaction). Passing LEVEL.OK is still
+  // honest for the signing paths that have no tx plane at all (personal_sign,
+  // eth_signTypedData_v4): those callers omit txLevel and get the default.
   //
   // acknowledged=false: the WC path has no interactive surface to obtain a real
   // "sign anyway" tap, so it must never present one. Only a clean ALLOW passes;
   // WARN/CONFIRM/BLOCK do not (fail closed, I4).
-  const gate = presignGate(tier, LEVEL.OK, false);
+  const gate = presignGate(tier, txLevel, false);
   if (gate.proceedAllowed) return { proceedAllowed: true, rejectCode: null };
-  // A hard BLOCK (signer unreachable) reports RASP_BLOCK; a WARN/CONFIRM that could
-  // only proceed with an (unavailable) acknowledgement reports RASP_WARN_REJECTED.
-  const rejectCode = gate.signerReachable ? 'RASP_WARN_REJECTED' : 'RASP_BLOCK';
+  // Attribute the reject to the owning plane so the reject code is truthful:
+  //   owner==='tx' → the tx-risk plane blocked (S2 unlimited approval, S4 poison,
+  //     …): TX_RISK_REJECTED — the WC surface cannot obtain "sign anyway".
+  //   hard BLOCK (signer unreachable) → RASP_BLOCK.
+  //   otherwise WARN/CONFIRM owned by the RASP plane → RASP_WARN_REJECTED.
+  let rejectCode;
+  if (!gate.signerReachable) rejectCode = 'RASP_BLOCK';
+  else if (gate.owner === 'tx') rejectCode = 'TX_RISK_REJECTED';
+  else rejectCode = 'RASP_WARN_REJECTED';
   return { proceedAllowed: false, rejectCode };
 }
 
@@ -433,12 +490,22 @@ export async function _handleSendTransaction(
   { withPrivateKey, evmAddress, actionPasswordConfigured = false, txLimits = [], history = [], usdRates = USD_RATES },
   topic, id, params, caip2ChainId,
 ) {
-  const gate = await presignGateOrReject();
+  const txParams = params[0] ?? {};
+
+  // #1093 — compose a real tx-risk txLevel BEFORE calling the pre-sign gate,
+  // so unlimited approvals (and future poison-address hits) drive presignGate
+  // → CONFIRM/BLOCK. Pure: no network, no signer, no seed. Failures fall back
+  // to CAUTION (I4 fail-closed) — the WC surface has no "sign anyway" ack.
+  const txLevel = await scoreWcTxLevel(txParams, caip2ChainId);
+
+  // RASP + tx compose gate. Kept BEFORE the from-binding so a WARN/BLOCK-tier
+  // environment (or a tx-owned RISK) is reported by the appropriate code even
+  // when the request also happens to have a foreign / missing `from`.
+  const gate = await presignGateOrReject(txLevel);
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
-  const txParams = params[0] ?? {};
 
   // #1091 — bind txParams.from to the active EVM address. A dApp requesting a
   // send FROM a foreign address, or omitting `from` entirely, MUST reject
