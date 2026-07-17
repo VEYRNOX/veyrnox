@@ -19,14 +19,29 @@ import path from 'node:path';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '../../..');
 
-describe('G2 RS256 — x5c chain-walk (PlayIntegrityPlugin.kt regression pin)', () => {
+// The JWS verification path (chain walk, alg dispatch, cert decode, signature
+// verify) was extracted from PlayIntegrityPlugin.kt into PlayIntegrityJwsVerifier.kt
+// for pure-JVM unit-testability (issue #957). PlayIntegrityPlugin.verifyJwsSignature
+// is now a one-line delegate. These structural pins therefore scan the verifier file
+// where the logic actually lives; the JVM harness (PlayIntegrityJwsVerifierTest.kt)
+// executes it against real EC/RSA keypairs.
+describe('G2 RS256 — x5c chain-walk (PlayIntegrityJwsVerifier.kt regression pin)', () => {
   let src;
+  let pluginSrc;
 
   beforeAll(() => {
     src = readFileSync(
+      path.join(root, 'android/app/src/main/java/com/veyrnox/app/PlayIntegrityJwsVerifier.kt'),
+      'utf8',
+    );
+    pluginSrc = readFileSync(
       path.join(root, 'android/app/src/main/java/com/veyrnox/app/PlayIntegrityPlugin.kt'),
       'utf8',
     );
+  });
+
+  it('PlayIntegrityPlugin delegates verifyJwsSignature to PlayIntegrityJwsVerifier', () => {
+    expect(pluginSrc).toMatch(/PlayIntegrityJwsVerifier\.verify\s*\(/);
   });
 
   it('buildcerts the full chain from x5c array', () => {
@@ -40,18 +55,24 @@ describe('G2 RS256 — x5c chain-walk (PlayIntegrityPlugin.kt regression pin)', 
 
   it('chain walk is guarded — a verification failure returns false (fail-closed)', () => {
     // The chain walk must return false on verify() exception, not throw
-    const walkBlock = src.slice(src.indexOf('for (i in 0 until chainLen'), src.indexOf('// 4.'));
+    const walkStart = src.indexOf('for (i in 0 until chainLen');
+    expect(walkStart).toBeGreaterThan(-1);
+    const walkBlock = src.slice(walkStart, src.indexOf('// 4.', walkStart));
+    expect(walkBlock.length).toBeGreaterThan(0);
     expect(walkBlock).toContain('return false');
     expect(walkBlock).toContain('catch');
   });
 
-  it('root cert subject is checked (not just the leaf)', () => {
-    // After the chain walk, the root cert's subject is checked against Google.
-    // (Weak issuer check — G2-ROOTCERT-PIN replaces this with fingerprint pinning.)
-    // G2-ROOTCERT-PIN (item 4) extracted rootCert as a local var so it can be passed
-    // to verifyRootCertFingerprint — the expression is now two lines.
+  it('root cert (chain[chainLen - 1]) is passed to verifyRootCertFingerprint', () => {
+    // Per issue #1097, the weak issuer.contains("Google") fallback was REMOVED —
+    // root-cert trust is now the SHA-256 fingerprint pin ONLY (stricter). The last
+    // cert in the chain must be extracted and pinned via verifyRootCertFingerprint;
+    // pin-miss fails closed (no issuer-string bypass).
     expect(src).toContain('chain[chainLen - 1]');
-    expect(src).toContain('.subjectX500Principal.name');
+    expect(src).toMatch(/verifyRootCertFingerprint\s*\(\s*rootCert\s*\)/);
+    // Regression guard: the removed issuer-string fallback must not sneak back in.
+    expect(src).not.toContain('.subjectX500Principal');
+    expect(src).not.toMatch(/issuer[^\n]*\.contains\("Google"/);
   });
 
   it('leaf cert public key (chain[0]) is used for RS256 verification', () => {

@@ -401,45 +401,62 @@ describe('Pre-WebView native gate — iOS earlyDetectTamper', () => {
 
 // ── 10. Play Integrity root cert SHA-256 pinning (G2-ROOTCERT-PIN) ───────────
 //
-// The weak root cert issuer check (issuer.contains("Google")) is trivially
-// spoofable by any attacker who constructs a self-signed cert with "Google" in
-// the subject DN. Replace with SHA-256 fingerprint comparison of the root cert's
-// raw DER bytes (cert.encoded) against a set of known Google root CA fingerprints.
+// The weak root cert issuer check (issuer.contains("Google")) was trivially
+// spoofable by any attacker who constructed a self-signed cert with "Google" in
+// the subject DN. Per issue #1097 this fallback was REMOVED — root-cert trust
+// is now the SHA-256 fingerprint pin ONLY, against a set of known Google root CA
+// fingerprints computed over the root cert's raw DER bytes (cert.encoded).
 //
-// Belt-and-suspenders for BUILT-UNVALIDATED state: fingerprint check is primary;
-// issuer check is retained as fallback while GOOGLE_ROOT_CA_SHA256 is unconfirmed
-// against a real production Play Integrity token.
+// The JWS verification path (and therefore verifyRootCertFingerprint + the
+// GOOGLE_ROOT_CA_SHA256 pinset) was extracted from PlayIntegrityPlugin.kt into
+// PlayIntegrityJwsVerifier.kt for pure-JVM unit-testability (issue #957); the
+// JVM harness PlayIntegrityJwsVerifierTest.kt executes the actual crypto path.
+// Structural pins here scan the verifier file where the logic now lives.
+
+const playJwsKt = readFileSync(
+  resolve(root, 'android/app/src/main/java/com/veyrnox/app/PlayIntegrityJwsVerifier.kt'),
+  'utf8',
+);
 
 describe('Play Integrity root cert SHA-256 pinning (G2-ROOTCERT-PIN)', () => {
   it('GOOGLE_ROOT_CA_SHA256 pinset constant is defined', () => {
-    expect(playKt).toContain('GOOGLE_ROOT_CA_SHA256');
+    expect(playJwsKt).toContain('GOOGLE_ROOT_CA_SHA256');
   });
 
   it('verifyRootCertFingerprint private method is present', () => {
-    expect(playKt).toContain('fun verifyRootCertFingerprint(');
+    expect(playJwsKt).toContain('fun verifyRootCertFingerprint(');
   });
 
   it('verifyRootCertFingerprint computes SHA-256 of DER bytes via MessageDigest', () => {
-    const fnStart = playKt.indexOf('fun verifyRootCertFingerprint(');
+    const fnStart = playJwsKt.indexOf('fun verifyRootCertFingerprint(');
     expect(fnStart).toBeGreaterThan(-1);
-    const fnBody = playKt.slice(fnStart, fnStart + 500);
+    const fnBody = playJwsKt.slice(fnStart, fnStart + 500);
     expect(fnBody).toContain('MessageDigest');
     expect(fnBody).toContain('SHA-256');
     expect(fnBody).toContain('cert.encoded');
   });
 
   it('verifyJwsSignature step 4 calls verifyRootCertFingerprint', () => {
-    // "// 4. Root cert" marks step 4 in verifyJwsSignature. The new code must
-    // call verifyRootCertFingerprint() alongside the issuer check.
-    const step4Idx = playKt.indexOf('// 4. Root cert');
+    // "// 4. Root cert" marks step 4 in verifyJwsSignature.
+    const step4Idx = playJwsKt.indexOf('// 4. Root cert');
     expect(step4Idx).toBeGreaterThan(-1);
-    const step4Block = playKt.slice(step4Idx, step4Idx + 500);
+    const step4Block = playJwsKt.slice(step4Idx, step4Idx + 500);
     expect(step4Block).toContain('verifyRootCertFingerprint');
   });
 
-  it('issuer.contains("Google") is retained as belt-and-suspenders fallback', () => {
-    // Must not be deleted while GOOGLE_ROOT_CA_SHA256 is BUILT-UNVALIDATED.
-    expect(playKt).toContain('.contains("Google"');
+  it('issuer.contains("Google") fallback is REMOVED (issue #1097 hardening)', () => {
+    // The prior "|| issuer.contains(\"Google\")" OR-fallback was a full trust
+    // bypass — any self-signed cert whose subject DN contained "Google" satisfied
+    // the OR and was accepted as a trusted root. Fingerprint pin is now the sole
+    // check; pin-miss fail-closes (I4). Regression guard against re-introduction.
+    expect(playJwsKt).not.toMatch(/issuer[^\n]*\.contains\("Google"/);
+    expect(playJwsKt).not.toContain('.subjectX500Principal');
+  });
+
+  it('PlayIntegrityPlugin delegates verifyJwsSignature to PlayIntegrityJwsVerifier', () => {
+    // The plugin file must keep a one-line delegate so the verifier is actually
+    // called at runtime. If the delegate is deleted, the verifier is dead code.
+    expect(playKt).toMatch(/PlayIntegrityJwsVerifier\.verify\s*\(/);
   });
 });
 

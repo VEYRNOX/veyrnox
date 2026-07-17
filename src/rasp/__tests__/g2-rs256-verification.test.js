@@ -45,6 +45,14 @@ const kt = readFileSync(
   resolve(root, 'android/app/src/main/java/com/veyrnox/app/PlayIntegrityPlugin.kt'),
   'utf8',
 );
+// The JWS verification path (alg dispatch, cert chain build, chain walk, signature
+// verify, root-cert fingerprint pin) lives in PlayIntegrityJwsVerifier.kt after the
+// issue #957 extraction. PlayIntegrityPlugin.verifyJwsSignature is a one-line
+// delegate now. Structural pins for the verifier internals scan this file.
+const jwsKt = readFileSync(
+  resolve(root, 'android/app/src/main/java/com/veyrnox/app/PlayIntegrityJwsVerifier.kt'),
+  'utf8',
+);
 const transcoderKt = readFileSync(
   resolve(root, 'android/app/src/main/java/com/veyrnox/app/EcdsaDerTranscoder.kt'),
   'utf8',
@@ -73,32 +81,37 @@ describe('G2 RS256/ES256 — signature verification structural pins', () => {
   });
 
   it('RS256 and ES256 are the only accepted algorithms; unknown alg returns false (fail-closed)', () => {
-    expect(kt).toContain('"RS256" -> "SHA256withRSA"');
-    expect(kt).toContain('"ES256" -> "SHA256withECDSA"');
-    expect(kt).toContain('else -> return false');
+    expect(jwsKt).toContain('"RS256" -> "SHA256withRSA"');
+    expect(jwsKt).toContain('"ES256" -> "SHA256withECDSA"');
+    expect(jwsKt).toContain('else -> return false');
   });
 
   it('x5c certificate chain is extracted from JWS header', () => {
-    expect(kt).toContain('x5c');
+    expect(jwsKt).toContain('x5c');
   });
 
   it('leaf certificate is decoded from x5c[0]', () => {
-    expect(kt).toContain('CertificateFactory');
-    expect(kt).toContain('X509Certificate');
+    expect(jwsKt).toContain('CertificateFactory');
+    expect(jwsKt).toContain('X509Certificate');
   });
 
   it('SHA256withRSA and SHA256withECDSA are the Java algorithm names used for RS256/ES256', () => {
-    expect(kt).toContain('SHA256withRSA');
-    expect(kt).toContain('SHA256withECDSA');
+    expect(jwsKt).toContain('SHA256withRSA');
+    expect(jwsKt).toContain('SHA256withECDSA');
   });
 
   it('Signature.getInstance is used to verify', () => {
-    expect(kt).toContain('Signature.getInstance');
+    expect(jwsKt).toContain('Signature.getInstance');
   });
 
-  it('Google issuer constraint is checked on the leaf certificate', () => {
-    expect(kt).toContain('Google');
-    expect(kt).toContain('issuer');
+  it('root-cert trust is enforced via SHA-256 fingerprint pin (issue #1097 hardening)', () => {
+    // Per issue #1097 the weak issuer.contains("Google") fallback was removed —
+    // root-cert trust is now the SHA-256 fingerprint pin ONLY. The pinset constant
+    // must exist and the verify path must call verifyRootCertFingerprint.
+    expect(jwsKt).toContain('GOOGLE_ROOT_CA_SHA256');
+    expect(jwsKt).toContain('verifyRootCertFingerprint');
+    // Regression guard: the removed OR-fallback must not sneak back in.
+    expect(jwsKt).not.toMatch(/issuer[^\n]*\.contains\("Google"/);
   });
 
   it('verification failure returns unavailable() fail-closed', () => {
@@ -106,36 +119,42 @@ describe('G2 RS256/ES256 — signature verification structural pins', () => {
   });
 
   it('signed data covers header AND payload (header.payload byte string)', () => {
-    expect(kt).toContain('"${parts[0]}.${parts[1]}"');
+    expect(jwsKt).toContain('"${parts[0]}.${parts[1]}"');
   });
 
   it('JWS requires exactly 3 parts (header.payload.signature)', () => {
-    expect(kt).toContain('parts.size != 3');
+    expect(jwsKt).toContain('parts.size != 3');
   });
 
-  it('honest limitation comment preserved in the file', () => {
+  it('honest limitation comment preserved in the plugin file', () => {
     expect(kt).toContain('HONEST LIMITATION');
   });
 
+  it('PlayIntegrityPlugin delegates verifyJwsSignature to PlayIntegrityJwsVerifier', () => {
+    // The plugin file must keep a one-line delegate so the verifier is actually
+    // called at runtime. If the delegate is deleted, the verifier is dead code.
+    expect(kt).toMatch(/PlayIntegrityJwsVerifier\.verify\s*\(/);
+  });
+
   // Issue #951 — Kotlin transcoder must exist and be called on the ES256 branch.
-  it('ES256 raw R‖S → ASN.1 DER transcoder function is defined in Kotlin', () => {
+  it('ES256 raw R‖S → ASN.1 DER transcoder function is called on the ES256 branch', () => {
     // rawEcdsaSignatureToDer(raw: ByteArray): ByteArray — the Kotlin mirror of
     // helpers/rawToDerEcdsa.js. Its presence is the structural fix for #951.
-    expect(kt).toContain('rawEcdsaSignatureToDer');
+    expect(jwsKt).toContain('rawEcdsaSignatureToDer');
   });
 
   it('ES256 rejects a signature whose length is not 64 bytes (fail-closed)', () => {
     // The 64-byte length constant must appear in the transcoder / caller.
     // ES256 raw R‖S is exactly 64 bytes for P-256; anything else must throw.
-    expect(kt).toMatch(/64/);
+    expect(jwsKt).toMatch(/64/);
   });
 
   it('transcoder result is used on the ES256 verify path (not raw signatureBytes)', () => {
     // The ES256 branch must call sig.verify(...) with the transcoded DER bytes,
     // not the raw JWS bytes. Grep for the call-site.
-    expect(kt).toContain('rawEcdsaSignatureToDer');
+    expect(jwsKt).toContain('rawEcdsaSignatureToDer');
     // And the alg-specific branch must be present.
-    expect(kt).toMatch(/ES256|SHA256withECDSA/);
+    expect(jwsKt).toMatch(/ES256|SHA256withECDSA/);
   });
 });
 
