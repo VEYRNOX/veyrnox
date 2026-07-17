@@ -150,6 +150,9 @@ jobs:
       # combination would make OkHttp refuse every pinned host at connect time
       # — availability regression). Static grep, no runtime.
       - run: npm run check:cert-pin-manager
+      # #1107: fail CI if any .env.production* file sets VITE_BYPASS_RASP=1 --
+      # that disables the entire RASP pre-sign integrity gate.
+      - run: npm run check:rasp-bypass
       - run: npm run build
       - run: npm test
 
