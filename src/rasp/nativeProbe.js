@@ -113,10 +113,9 @@ export async function nativeProbeSource() {
   // backup is explicitly NOT blocked. GENUINE root/jailbreak (verdict.rooted /
   // verdict.jailbroken) is the ONLY thing that still sets `rooted`.
   //
-  // Item 19: overlayActive (iOS UIAccessibilityIsAssistiveTouchRunning) → WARN.
-  // The plugin comment says "must NOT trigger TIER.BLOCK on its own"; WARN
-  // satisfies that. AssistiveTouch is legitimate but an active accessibility
-  // overlay is a tapjacking risk during PIN entry.
+  // Item 19: overlayActive (iOS UIAccessibilityIsAssistiveTouchRunning) — DROPPED
+  // (#1104). AssistiveTouch is a first-class iOS accessibility feature many
+  // users leave permanently on. It is NOT adversarial and is now ignored.
   // Item 25: developerMode (Android ADB_ENABLED / DEVELOPMENT_SETTINGS_ENABLED,
   // item 24) → WARN. USB debugging on = adb-level attack surface (logcat
   // capture, screenrecord, memory dump). Android-only field; absent on iOS
@@ -167,21 +166,19 @@ export async function nativeProbeSource() {
     rooted: verdict.rooted === true || verdict.jailbroken === true,
     // The 8 soft environment signals (items 19/25/27/29/31/33/35/37) — WARN +
     // biometric re-confirm via CONDITION.ELEVATED, but seed backup is allowed.
-    elevated: verdict.overlayActive === true
-         || verdict.developerMode === true
+    elevated: verdict.developerMode === true
          || verdict.virtualApp === true
          || verdict.suspiciousPackage === true
          || verdict.thirdPartyKeyboard === true
          || verdict.mockLocation === true
          || verdict.networkProxy === true
-         || verdict.accessibilityService === true,
+         || verdict.accessibilityService === true
+         || verdict.screenCapture === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
-    // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring
-    // or screen recording during signing is a surveillance vector → BLOCK.
+    // #1108: screenCapture moved to elevated (WARN) — not Frida-severity.
     hooked: verdict.hookedProcess === true
-         || verdict.debuggerAttached === true
-         || verdict.screenCapture === true,
+         || verdict.debuggerAttached === true,
     emulator: verdict.emulator === true,
     // Binary-tamper is a separate native probe not yet wired (see TODO). Until the
     // plugin reports it, it is not observed.
