@@ -11,6 +11,7 @@ vi.mock('@capacitor/core', () => ({
 }));
 
 const configure = vi.fn();
+const setLogLevelMock = vi.fn();
 const getOfferingsMock = vi.fn();
 const purchasePackageMock = vi.fn();
 const restorePurchasesMock = vi.fn();
@@ -20,12 +21,21 @@ const removeCustomerInfoUpdateListenerMock = vi.fn();
 vi.mock('@revenuecat/purchases-capacitor', () => ({
   Purchases: {
     configure,
+    setLogLevel: setLogLevelMock,
     getOfferings: getOfferingsMock,
     purchasePackage: purchasePackageMock,
     restorePurchases: restorePurchasesMock,
     getCustomerInfo: getCustomerInfoMock,
     addCustomerInfoUpdateListener: addCustomerInfoUpdateListenerMock,
     removeCustomerInfoUpdateListener: removeCustomerInfoUpdateListenerMock,
+  },
+  LOG_LEVEL: { VERBOSE: 'VERBOSE', DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR' },
+}));
+
+const openUrlMock = vi.fn();
+vi.mock('@capacitor/app', () => ({
+  App: {
+    openUrl: (...a) => openUrlMock(...a),
   },
 }));
 
@@ -39,6 +49,7 @@ const {
   restorePurchases,
   getCustomerInfo,
   addCustomerInfoUpdateListener,
+  manageSubscription,
 } = await import('../purchases');
 
 beforeEach(() => {
@@ -89,6 +100,11 @@ describe('purchases.js — web (no App Store / Play Store)', () => {
     expect(() => unsubscribe()).not.toThrow();
     expect(addCustomerInfoUpdateListenerMock).not.toHaveBeenCalled();
   });
+
+  it('manageSubscription throws PURCHASES_NATIVE_ONLY on web', async () => {
+    await expect(manageSubscription()).rejects.toThrow('PURCHASES_NATIVE_ONLY');
+    expect(openUrlMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('purchases.js — native', () => {
@@ -133,5 +149,55 @@ describe('purchases.js — native', () => {
     expect(addCustomerInfoUpdateListenerMock).toHaveBeenCalled();
     await unsubscribe();
     expect(removeCustomerInfoUpdateListenerMock).toHaveBeenCalledWith({ listenerToRemove: 'callback-id-123' });
+  });
+
+  it('manageSubscription opens the App Store subscriptions URL on iOS', async () => {
+    openUrlMock.mockResolvedValue(undefined);
+    await manageSubscription();
+    expect(openUrlMock).toHaveBeenCalledWith({ url: 'itms-apps://apps.apple.com/account/subscriptions' });
+  });
+
+  it('manageSubscription opens the Play Store subscriptions URL on Android', async () => {
+    getPlatform.mockReturnValue('android');
+    openUrlMock.mockResolvedValue(undefined);
+    await manageSubscription();
+    expect(openUrlMock).toHaveBeenCalledWith({ url: 'https://play.google.com/store/account/subscriptions' });
+  });
+});
+
+describe('purchases.js — setLogLevel hardening (LOG-1)', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getPlatform.mockReturnValue('ios');
+    vi.stubEnv('VITE_REVENUECAT_APPLE_API_KEY', 'ios-key');
+  });
+
+  it('sets LOG_LEVEL.ERROR after configure on release builds (import.meta.env.PROD)', async () => {
+    vi.stubEnv('PROD', true);
+    // Configure is a one-shot; the module caches `configured` across tests, so
+    // we import a fresh copy via vi.resetModules() to observe a clean call.
+    vi.resetModules();
+    const fresh = await import('../purchases');
+    setLogLevelMock.mockResolvedValue(undefined);
+    await fresh.configurePurchases();
+    expect(configure).toHaveBeenCalled();
+    expect(setLogLevelMock).toHaveBeenCalledWith({ level: 'ERROR' });
+  });
+
+  it('does NOT set log level on dev builds', async () => {
+    vi.stubEnv('PROD', false);
+    vi.resetModules();
+    const fresh = await import('../purchases');
+    await fresh.configurePurchases();
+    expect(configure).toHaveBeenCalled();
+    expect(setLogLevelMock).not.toHaveBeenCalled();
+  });
+
+  it('setLogLevel rejection is swallowed — configure still completes', async () => {
+    vi.stubEnv('PROD', true);
+    vi.resetModules();
+    const fresh = await import('../purchases');
+    setLogLevelMock.mockRejectedValue(new Error('plugin failure'));
+    await expect(fresh.configurePurchases()).resolves.toBeUndefined();
   });
 });
