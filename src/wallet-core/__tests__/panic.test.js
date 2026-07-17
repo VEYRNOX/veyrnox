@@ -479,6 +479,26 @@ describe('panic wipe', () => {
     expect(report.clean).toBe(true);
   });
 
+  it('issue #1094: panic wipe clears veyrnox-kek-pin-notice (M-9 short-PIN disclosure marker)', async () => {
+    localStorage.setItem('veyrnox-kek-pin-notice', '1');
+    const before = await inspectKeyMaterial();
+    expect(before.localStorageResidue).toContain('veyrnox-kek-pin-notice');
+    const report = await panicWipeLocal();
+    expect(localStorage.getItem('veyrnox-kek-pin-notice')).toBeNull();
+    expect(report.localStorageResidue).toEqual([]);
+    expect(report.clean).toBe(true);
+  });
+
+  it('issue #1112: panic wipe clears veyrnox-2fa-biometric-auto (biometric-2FA auto-enable marker)', async () => {
+    localStorage.setItem('veyrnox-2fa-biometric-auto', '1');
+    const before = await inspectKeyMaterial();
+    expect(before.localStorageResidue).toContain('veyrnox-2fa-biometric-auto');
+    const report = await panicWipeLocal();
+    expect(localStorage.getItem('veyrnox-2fa-biometric-auto')).toBeNull();
+    expect(report.localStorageResidue).toEqual([]);
+    expect(report.clean).toBe(true);
+  });
+
   it('GAP-3: panic wipe removes veyrnox-snapshots-<fingerprint> wildcard keys', async () => {
     // Exact key names aren't known at build time (fingerprint is runtime-derived).
     localStorage.setItem('veyrnox-snapshots-abc123', 'snap-data-1');

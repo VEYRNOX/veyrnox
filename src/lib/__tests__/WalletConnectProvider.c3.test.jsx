@@ -187,7 +187,7 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
     it('handleSendTransaction rejects and does not respond', async () => {
       const h = captureHandlers();
       await act(async () => {
-        await h.sendTransaction('topic3', 3, [{ to: '0xdef', value: '0x0' }], 'eip155:11155111');
+        await h.sendTransaction('topic3', 3, [{ from: '0xabc', to: '0xdef', value: '0x0' }], 'eip155:11155111');
       });
       expect(rejectRequest).toHaveBeenCalledWith('topic3', 3, 'RASP_BLOCK');
       expect(respondToRequest).not.toHaveBeenCalled();
@@ -225,7 +225,7 @@ describe('WalletConnectProvider — C3: dApp signing handlers obey the RASP pre-
     it('handleSendTransaction responds and never rejects', async () => {
       const h = captureHandlers();
       await act(async () => {
-        await h.sendTransaction('topicC', 12, [{ to: '0xdef', value: '0x0' }], 'eip155:11155111');
+        await h.sendTransaction('topicC', 12, [{ from: '0xabc', to: '0xdef', value: '0x0' }], 'eip155:11155111');
       });
       expect(respondToRequest).toHaveBeenCalled();
       expect(rejectRequest).not.toHaveBeenCalled();
@@ -333,7 +333,7 @@ describe('WalletConnectProvider — M11: expired session rejected before signing
   it('handleSendTransaction rejects SESSION_EXPIRED and never signs', async () => {
     const h = captureHandlers();
     await act(async () => {
-      await h.sendTransaction('expTopic', 202, [{ to: '0xdef', value: '0x0' }], 'eip155:11155111').catch(() => {});
+      await h.sendTransaction('expTopic', 202, [{ from: '0xabc', to: '0xdef', value: '0x0' }], 'eip155:11155111').catch(() => {});
     });
     expect(rejectRequest).toHaveBeenCalledWith('expTopic', 202, 'SESSION_EXPIRED');
     expect(respondToRequest).not.toHaveBeenCalled();
@@ -367,7 +367,7 @@ describe('WalletConnectProvider — M9: 1M gas cap enforced in BOTH branches', (
     await act(async () => {
       await h.sendTransaction(
         'topicM9a', 90,
-        [{ to: '0xdef', value: '0x0', gas: '0x1312D00' }], // 20,000,000
+        [{ from: '0xabc', to: '0xdef', value: '0x0', gas: '0x1312D00' }], // 20,000,000
         'eip155:11155111',
       );
     });
@@ -380,7 +380,7 @@ describe('WalletConnectProvider — M9: 1M gas cap enforced in BOTH branches', (
     await act(async () => {
       await h.sendTransaction(
         'topicM9b', 91,
-        [{ to: '0xdef', value: '0x0', gas: '0x5208' }], // 21,000
+        [{ from: '0xabc', to: '0xdef', value: '0x0', gas: '0x5208' }], // 21,000
         'eip155:11155111',
       );
     });
@@ -394,7 +394,7 @@ describe('WalletConnectProvider — M9: 1M gas cap enforced in BOTH branches', (
     await act(async () => {
       await h.sendTransaction(
         'topicM9c', 92,
-        [{ to: '0xdef', value: '0x0' }], // no gas
+        [{ from: '0xabc', to: '0xdef', value: '0x0' }], // no gas
         'eip155:11155111',
       );
     });
@@ -408,7 +408,7 @@ describe('WalletConnectProvider — M9: 1M gas cap enforced in BOTH branches', (
     await act(async () => {
       await h.sendTransaction(
         'topicM9d', 93,
-        [{ to: '0xdef', value: '0x0' }], // no gas
+        [{ from: '0xabc', to: '0xdef', value: '0x0' }], // no gas
         'eip155:11155111',
       );
     });

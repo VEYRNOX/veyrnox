@@ -11,6 +11,13 @@
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
 import { getKeyStore } from '@/wallet-core/keystore';
+// Issue #1094 (I3, GAP-6-adjacent): the short-PIN disclosure toast AND its
+// persisted localStorage marker are both deniability tells — the toast is a
+// UI-visible artefact of a real vault (a decoy/hidden/demo session must never
+// surface it), and the marker itself proves a real Veyrnox vault existed on the
+// device. Gate BOTH on the LIVE deniability-or-demo helper (PR #978 pattern),
+// so a session flipped after module import is still respected.
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 const _ks = getKeyStore();
 
@@ -19,6 +26,10 @@ export const KEK_PIN_NOTICE_KEY = 'veyrnox-kek-pin-notice';
 export async function ensureKekPinNoticeOnNative() {
   try {
     if (!Capacitor.isNativePlatform()) return;
+    // I3 (issue #1094): fail-closed — no toast, no marker write in a decoy/
+    // hidden/demo session. Gate BEFORE the localStorage read too, so the marker
+    // is never even queried in a deniability context.
+    if (isDeniabilityOrDemoActive()) return;
     if (localStorage.getItem(KEK_PIN_NOTICE_KEY)) return;
 
     const enrolled = typeof _ks.hasVaultKekWrap === 'function'

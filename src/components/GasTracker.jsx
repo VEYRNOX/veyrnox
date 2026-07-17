@@ -226,14 +226,21 @@ export default function GasTracker() {
           <Zap className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">Network Gas Tracker</span>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          title="Refresh"
-          aria-label="Refresh gas fees"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-        </button>
+        {/* I3: refetch() bypasses the useQuery `enabled` gate in react-query v5
+            (this is the third instance of this bug class — see PR #614, #925,
+            issue #1095). Hide the button entirely (not disable it) when egress
+            isn't allowed, matching CryptoNewsFeed.jsx's egressAllowed pattern —
+            a disabled-but-visible button is still a UI tell. */}
+        {egressAllowed && (
+          <button
+            onClick={() => refetch()}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Refresh"
+            aria-label="Refresh gas fees"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          </button>
+        )}
       </div>
       {lastUpdated && (
         <p className="text-[10px] text-muted-foreground mb-3">Updated {lastUpdated} · refreshes every 30s</p>
