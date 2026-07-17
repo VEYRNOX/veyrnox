@@ -8,6 +8,7 @@ import CryptoNewsFeed from "@/components/CryptoNewsFeed";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { safeFormat } from "@/lib/safeDate";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -74,7 +75,7 @@ export default function NewsSentimentPage() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Newspaper className="h-6 w-6 text-primary" /> News Sentiment</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Real-time crypto news sentiment</p>
         </div>
-        {LLM_AVAILABLE && (
+        {LLM_AVAILABLE && !isDeniabilityOrDemoActive() && (
           <Button onClick={() => refresh.mutate()} disabled={refresh.isPending}>
             <RefreshCw className={`h-4 w-4 mr-1.5 ${refresh.isPending ? "animate-spin" : ""}`} />
             {refresh.isPending ? "Refreshing…" : "Refresh"}

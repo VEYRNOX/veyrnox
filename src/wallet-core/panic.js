@@ -197,6 +197,14 @@ const DENIABILITY_RESIDUE_KEYS = Object.freeze([
   // GAP-2: decoy-vault biometric secret marker. lib/WalletProvider.jsx
   // DECOY_BIOMETRIC_MARKER_KEY. Reveals a duress/decoy vault existed; must be erased.
   'veyrnox-decoy-biometric',
+  // Issue #1094: M-9 short-PIN disclosure marker. lib/kekPinNotice.js
+  // KEK_PIN_NOTICE_KEY. Presence proves the one-shot native-user notice fired,
+  // i.e. a real Veyrnox vault existed on this device — deniability tell (I3).
+  'veyrnox-kek-pin-notice',
+  // Issue #1112: biometric-2FA auto-enable marker. lib/biometric.js
+  // (ensureBiometric2faOnNative one-shot flag). Same class — presence proves a
+  // real native install unlocked here; must be erased on panic.
+  'veyrnox-2fa-biometric-auto',
 ]);
 
 // NON-SECRET wallet/token METADATA residue (F-06). Unlike the keys above, these do
