@@ -68,6 +68,7 @@ import {
 } from '@aparajita/capacitor-secure-storage';
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
@@ -369,6 +370,26 @@ export function hfOptsForBlob(blob, saltBytes) {
   return undefined;
 }
 
+// #1103 (I4 honesty) — the v3 protocol fix is per-enrollment kekSalt binding:
+// the native plugin derives H via HMAC(SE_KEY, kekSalt) so each vault gets a
+// distinct H. That description is correct on Android StrongBox but NOT on iOS —
+// the iOS Secure Enclave plugin generates a random 32-byte H and ECIES-wraps it
+// under an SE key; kekSalt is not consumed. The wrap IS device-bound (SE key
+// non-exportable) but H is not salt-bound in the v3 sense. Stamping a numeric
+// `3` on iOS would let the numeric === 3 salt-bound check misread the state.
+// So iOS enrollments carry a distinct string tag `'ios-se-v1'`. hfOptsForBlob's
+// `=== 3` check returns undefined for it, which is HONEST because the iOS plugin
+// would ignore kekSalt anyway. See CLAUDE.md I4 (fail honest, fail closed).
+export function hardwareKekVersionForPlatform() {
+  try {
+    return Capacitor.getPlatform() === 'ios' ? 'ios-se-v1' : 3;
+  } catch {
+    // If the platform probe fails, prefer the numeric v3 tag (Android is the
+    // salt-bound path this was designed for; iOS is the special case).
+    return 3;
+  }
+}
+
 async function _unlockInner(password, opts = {}) {
   const raw = await SecureStorage.get(VAULT_KEY, false);
   if (raw === null || raw === undefined) {
@@ -639,8 +660,11 @@ export const nativeKeyStore = {
       // IDEMPOTENT: an already-v3 vault is genuinely salt-bound — nothing to do. Return
       // WITHOUT any biometric prompt (neither the app-layer gate nor getHardwareFactor
       // runs) and WITHOUT writing.
-      if (blob.hardwareKekVersion === 3) {
-        return { upgraded: false, version: 3 };
+      // #1103 (I4 honesty): iOS enrollments carry the honest 'ios-se-v1' tag (SE-key-bound,
+      // not salt-bound); they are already honest and have no salt-binding upgrade path
+      // (the iOS plugin does not consume kekSalt). Treat as idempotent.
+      if (blob.hardwareKekVersion === 3 || blob.hardwareKekVersion === 'ios-se-v1') {
+        return { upgraded: false, version: blob.hardwareKekVersion };
       }
 
       // v1/v2 kekWrap → a genuine upgrade. Two getHardwareFactor calls (unwrap H on
@@ -682,7 +706,8 @@ export const nativeKeyStore = {
         const newKekWrap = await wrapDek(newKek, dek);
         // ...blob spread preserves hardwareKekTier and the seed's iv/ct (seed CT UNCHANGED
         // — only the wrap and salt rotate; §3). safeWriteVault verifies the write (I4).
-        await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
+        // #1103: platform-honest tag stamp.
+        await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: hardwareKekVersionForPlatform() });
       } finally {
         if (H && H.fill) H.fill(0);
         if (H2 && H2.fill) H2.fill(0);
@@ -694,7 +719,7 @@ export const nativeKeyStore = {
         oldSaltBytes.fill(0);
         newSaltBytes.fill(0);
       }
-      return { upgraded: true, version: 3 };
+      return { upgraded: true, version: hardwareKekVersionForPlatform() };
     });
   },
 
@@ -909,7 +934,8 @@ export const nativeKeyStore = {
           if (H2 && H2.fill) H2.fill(0);
           if (newC) newC.fill(0);
           const newKekWrap = await wrapDek(newKek, dek);
-          await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
+          // #1103: platform-honest tag stamp.
+          await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: hardwareKekVersionForPlatform() });
         } finally {
           if (H && H.fill) H.fill(0);
           if (H2 && H2.fill) H2.fill(0);
@@ -989,7 +1015,9 @@ export const nativeKeyStore = {
           const tierEntry = opts && opts.hardwareKekTier
             ? { hardwareKekTier: opts.hardwareKekTier }
             : {};
-          await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, ...tierEntry });
+          // #1103: iOS enrollments carry 'ios-se-v1' (SE-key-bound, NOT salt-bound);
+          // Android carries numeric 3 (genuinely salt-bound). See hardwareKekVersionForPlatform.
+          await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: hardwareKekVersionForPlatform(), ...tierEntry });
         } finally {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
