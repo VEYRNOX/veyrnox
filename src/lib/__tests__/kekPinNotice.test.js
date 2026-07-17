@@ -18,15 +18,16 @@ vi.mock('sonner', () => ({
 }));
 
 // Keystore module — control hasVaultKekWrap per test
+const mockKeyStore = { hasVaultKekWrap: vi.fn(async () => false) };
 vi.mock('@/wallet-core/keystore', () => ({
-  keyStore: { hasVaultKekWrap: vi.fn(async () => false) },
+  getKeyStore: () => mockKeyStore,
 }));
 
 // --- helpers -----------------------------------------------------------------
 
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
-import { keyStore } from '@/wallet-core/keystore';
+const keyStore = mockKeyStore;
 
 const LS_KEY = 'veyrnox-kek-pin-notice';
 
