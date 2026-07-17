@@ -13,6 +13,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const isDeniabilitySessionActive = vi.fn();
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilitySessionActive: () => isDeniabilitySessionActive(),
+  // Mirror the real helper (issue #1102): fail-closed OR of the session flag
+  // and a LIVE read of localStorage['veyrnox-demo']. Reading localStorage live
+  // lets the post-import flip test flip the flag AFTER module import.
+  isDeniabilityOrDemoActive: () => {
+    if (isDeniabilitySessionActive()) return true;
+    try {
+      return (
+        typeof localStorage !== 'undefined' &&
+        localStorage.getItem('veyrnox-demo') === '1'
+      );
+    } catch {
+      return true;
+    }
+  },
 }));
 
 // Prove the guard runs BEFORE any node read: no provider read may be called when
@@ -62,5 +76,26 @@ describe('hiddenBalance I3 guard (M-6)', () => {
     const out = await resolveHiddenBalance('evm', '0xabc');
     expect(out).toEqual({ amount: 0.5, unit: 'ETH', source: 'chain' });
     expect(getBalanceEth).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws fail-closed when veyrnox-demo=1 is flipped in localStorage AFTER module import (issue #1102)', async () => {
+    // DEMO import from @/api/demoClient is a load-time IIFE snapshot (mocked
+    // false at top of file). Guarding only on isDeniabilitySessionActive() and
+    // that load-time DEMO leaves a post-import flip window: a caller sets
+    // localStorage['veyrnox-demo']='1' after module load, the module still sees
+    // DEMO=false + no I3 session, and falls through to a live chain read.
+    // isDeniabilityOrDemoActive() reads localStorage LIVE and must catch this.
+    isDeniabilitySessionActive.mockReturnValue(false);
+    try {
+      localStorage.setItem('veyrnox-demo', '1');
+      const err = await resolveHiddenBalance('evm', '0xabc').catch((e) => e);
+      expect(err).toBeInstanceOf(Error);
+      expect(err.message).toBe('I3: no egress in deniability session');
+      expect(getBalanceEth).not.toHaveBeenCalled();
+      expect(getBalanceSats).not.toHaveBeenCalled();
+      expect(getBalanceSol).not.toHaveBeenCalled();
+    } finally {
+      localStorage.removeItem('veyrnox-demo');
+    }
   });
 });

@@ -155,9 +155,11 @@ describe('nativeProbeSource — native', () => {
     expect(src.signals.elevated).toBe(true);
   });
 
-  it('each of the 8 soft signals independently maps to elevated:true, rooted:false', async () => {
+  it('each of the 7 soft signals (post-#1104) independently maps to elevated:true, rooted:false', async () => {
+    // #1104 (2026-07-17): overlayActive is no longer an ELEVATED signal (see the
+    // #1104 describe block below). The remaining 7 soft signals still fold in.
     const softFields = [
-      'overlayActive', 'developerMode', 'virtualApp', 'suspiciousPackage',
+      'developerMode', 'virtualApp', 'suspiciousPackage',
       'thirdPartyKeyboard', 'mockLocation', 'networkProxy', 'accessibilityService',
     ];
     h.isNative = true;
@@ -354,7 +356,7 @@ describe('nativeProbeSource — item 37: accessibilityService → elevated (WARN
 
   it('any of the SOFT fields true is sufficient for signals.elevated (rooted stays false)', async () => {
     h.isNative = true;
-    for (const field of ['overlayActive', 'developerMode',
+    for (const field of ['developerMode',
                          'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard',
                          'mockLocation', 'networkProxy', 'accessibilityService']) {
       h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
@@ -418,7 +420,7 @@ describe('nativeProbeSource — item 35: networkProxy → elevated (WARN, backup
 
   it('any of the SOFT fields true is sufficient for signals.elevated (rooted stays false)', async () => {
     h.isNative = true;
-    for (const field of ['overlayActive', 'developerMode',
+    for (const field of ['developerMode',
                          'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard',
                          'mockLocation', 'networkProxy']) {
       h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
@@ -475,7 +477,7 @@ describe('nativeProbeSource — item 33: mockLocation → elevated (WARN, backup
 
   it('any of the SOFT fields true is sufficient for signals.elevated (rooted stays false)', async () => {
     h.isNative = true;
-    for (const field of ['overlayActive', 'developerMode',
+    for (const field of ['developerMode',
                          'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard', 'mockLocation']) {
       h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
       const src = await nativeProbeSource();
@@ -534,7 +536,7 @@ describe('nativeProbeSource — item 31: thirdPartyKeyboard → elevated (WARN, 
 
   it('any of the SOFT fields (overlayActive/developerMode/virtualApp/suspiciousPackage/thirdPartyKeyboard) true is sufficient for elevated', async () => {
     h.isNative = true;
-    for (const field of ['overlayActive', 'developerMode', 'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard']) {
+    for (const field of ['developerMode', 'virtualApp', 'suspiciousPackage', 'thirdPartyKeyboard']) {
       h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
       const src = await nativeProbeSource();
       expect(src.signals.elevated, `${field} → elevated`).toBe(true);
@@ -591,7 +593,7 @@ describe('nativeProbeSource — item 29: suspiciousPackage → elevated (WARN, b
 
   it('any of the SOFT fields (overlayActive/developerMode/virtualApp/suspiciousPackage) true is sufficient for elevated', async () => {
     h.isNative = true;
-    for (const field of ['overlayActive', 'developerMode', 'virtualApp', 'suspiciousPackage']) {
+    for (const field of ['developerMode', 'virtualApp', 'suspiciousPackage']) {
       h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
       const src = await nativeProbeSource();
       expect(src.signals.elevated, `${field} → elevated`).toBe(true);
@@ -647,7 +649,7 @@ describe('nativeProbeSource — item 27: virtualApp → elevated (WARN, backup a
 
   it('any of the SOFT fields (overlayActive / developerMode / virtualApp) true is sufficient for elevated', async () => {
     h.isNative = true;
-    for (const field of ['overlayActive', 'developerMode', 'virtualApp']) {
+    for (const field of ['developerMode', 'virtualApp']) {
       h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
       const src = await nativeProbeSource();
       expect(src.signals.elevated, `${field} → elevated`).toBe(true);
@@ -703,7 +705,7 @@ describe('nativeProbeSource — item 25: developerMode → elevated (WARN, backu
 
   it('any of the SOFT fields (overlayActive / developerMode) true is sufficient for elevated; rooted/jailbroken still map to rooted', async () => {
     h.isNative = true;
-    for (const field of ['overlayActive', 'developerMode']) {
+    for (const field of ['developerMode']) {
       h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
       const src = await nativeProbeSource();
       expect(src.signals.elevated, `${field} → elevated`).toBe(true);
@@ -717,7 +719,39 @@ describe('nativeProbeSource — item 25: developerMode → elevated (WARN, backu
   });
 });
 
-// ── Item 19 — overlayActive folded into the elevated (WARN, backup OK) signal ──
+// ── #1104 — overlayActive dropped from the elevated fold (2026-07-17) ─────────
+// AssistiveTouch (iOS UIAccessibilityIsAssistiveTouchRunning) is a first-class
+// accessibility feature many users leave permanently enabled. Folding it into
+// signals.elevated (WARN) produced a permanent yellow banner + biometric
+// re-confirm on every Send, training users to click through — degrading the
+// meaning of the ELEVATED tier. Accessibility is not an adversarial signal;
+// overlayActive is now dropped from the elevated OR entirely. Genuine
+// tapjacking risk is still surfaced via other signals (accessibilityService on
+// Android; screenCapture surveillance vector — see #1108).
+describe('#1104 — overlayActive is NOT adversarial; must not drive ELEVATED', () => {
+  it('overlayActive:true alone → signals.elevated false, detect() CLEAN', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => withCore({ overlayActive: true }));
+    const src = await nativeProbeSource();
+    expect(src.signals.elevated).toBe(false);
+    expect(src.signals.rooted).toBe(false);
+    expect(src.signals.hooked).toBe(false);
+    expect(detect(src)).toBe(CONDITION.CLEAN);
+  });
+
+  it('overlayActive combined with a real elevated signal does not itself add to the fold', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => withCore({
+      overlayActive: true,
+      developerMode: true,
+    }));
+    const src = await nativeProbeSource();
+    // developerMode still drives elevated:true — overlayActive is irrelevant.
+    expect(src.signals.elevated).toBe(true);
+  });
+});
+
+// ── Item 19 (SUPERSEDED by #1104, kept for regression pinning) ────────────────
 // iOS checkOverlay() (UIAccessibilityIsAssistiveTouchRunning) returns
 // overlayActive:true when an accessibility overlay is active. AssistiveTouch is
 // legitimate, so the plugin comment explicitly says "must NOT trigger TIER.BLOCK
@@ -725,81 +759,52 @@ describe('nativeProbeSource — item 25: developerMode → elevated (WARN, backu
 // Mapping to signals.elevated (→ CONDITION.ELEVATED → TIER.WARN, backup allowed)
 // satisfies both constraints: the send flow is not blocked, seed backup is not
 // blocked, and the user sees a caution notice.
-describe('nativeProbeSource — item 19: overlayActive → elevated (WARN, backup allowed)', () => {
-  it('overlayActive:true maps to signals.elevated true, rooted false', async () => {
-    h.isNative = true;
-    h.checkIntegrity = vi.fn(async () => withCore({
-      rooted: false,
-      jailbroken: false,
-      overlayActive: true,
-    }));
-    const src = await nativeProbeSource();
-    expect(src.signals.elevated).toBe(true);
-    expect(src.signals.rooted).toBe(false);
-  });
-
-  it('overlayActive:true drives detect() to ELEVATED (WARN), not ROOTED, HOOKED, or TAMPERED', async () => {
+describe('nativeProbeSource — item 19 (SUPERSEDED by #1104): overlayActive no longer folds into elevated', () => {
+  it('overlayActive:true alone → signals.elevated false (SUPERSEDED)', async () => {
     h.isNative = true;
     h.checkIntegrity = vi.fn(async () => withCore({ overlayActive: true }));
-    const src = await nativeProbeSource();
-    expect(detect(src)).toBe(CONDITION.ELEVATED);
-    expect(detect(src)).not.toBe(CONDITION.ROOTED);
-    expect(detect(src)).not.toBe(CONDITION.HOOKED);
-    expect(detect(src)).not.toBe(CONDITION.TAMPERED);
-  });
-
-  it('overlayActive:false alone does not set elevated (no false positive)', async () => {
-    h.isNative = true;
-    h.checkIntegrity = vi.fn(async () => withCore({
-      rooted: false,
-      jailbroken: false,
-      overlayActive: false,
-    }));
     const src = await nativeProbeSource();
     expect(src.signals.elevated).toBe(false);
+    expect(src.signals.rooted).toBe(false);
   });
 
-  it('overlayActive alone is sufficient for elevated; rooted/jailbroken alone still map to rooted', async () => {
+  it('genuine root/jailbreak still map to signals.rooted', async () => {
     h.isNative = true;
-    h.checkIntegrity = vi.fn(async () => withCore({ overlayActive: true }));
-    let src = await nativeProbeSource();
-    expect(src.signals.elevated).toBe(true);
-    expect(src.signals.rooted).toBe(false);
     for (const field of ['rooted', 'jailbroken']) {
       h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
-      src = await nativeProbeSource();
+      const src = await nativeProbeSource();
       expect(src.signals.rooted, `${field} → rooted`).toBe(true);
     }
   });
 });
 
-// ── Item 16 — screenCapture folded into the hooked signal ─────────────────────
-// iOS checkScreenCapture (UIScreen.isCaptured) returns screenCapture:true when
-// the screen is being mirrored via AirPlay or captured via iOS screen recording.
-// During PIN entry or seed display this is a surveillance attack vector — the
-// attacker can observe the user's input or recover key material from the video.
-// nativeProbeSource folds screenCapture into signals.hooked so the presignGate
-// sees HOOKED → BLOCK rather than treating active screen capture as clean.
-describe('nativeProbeSource — item 16: screenCapture → hooked', () => {
-  it('screenCapture:true maps to signals.hooked true', async () => {
-    h.isNative = true;
-    h.checkIntegrity = vi.fn(async () => withCore({
-      hookedProcess: false,
-      debuggerAttached: false,
-      screenCapture: true,
-    }));
-    const src = await nativeProbeSource();
-    expect(src.signals.hooked).toBe(true);
-  });
-
-  it('screenCapture:true drives detect() to HOOKED', async () => {
+// ── #1108 — screenCapture: HOOKED (BLOCK) → ELEVATED (WARN) ────────────────────
+// iOS UIScreen.isCaptured fires on AirPlay mirroring, iOS Screen Recording,
+// QuickTime tethered capture, and coincidentally on some legitimate contexts
+// (e.g. a user demoing the app in a call). It's a real surveillance vector, but
+// bucketing it with Frida-attach severity (BLOCK) is user-hostile and
+// disproportionate — WARN is the honest tier: the user is told screen capture
+// is active and asked to acknowledge / pause before signing. Signal is
+// preserved (surveillance is still worth surfacing); severity is corrected.
+describe('#1108 — screenCapture is surveillance (WARN), not process compromise (BLOCK)', () => {
+  it('screenCapture:true alone → signals.hooked false, signals.elevated true', async () => {
     h.isNative = true;
     h.checkIntegrity = vi.fn(async () => withCore({ screenCapture: true }));
     const src = await nativeProbeSource();
-    expect(detect(src)).toBe(CONDITION.HOOKED);
+    expect(src.signals.hooked).toBe(false);
+    expect(src.signals.elevated).toBe(true);
+    expect(src.signals.rooted).toBe(false);
   });
 
-  it('all three false → hooked false (no false positive)', async () => {
+  it('screenCapture:true alone drives detect() to ELEVATED (acknowledgeable), not HOOKED (blocking)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => withCore({ screenCapture: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ELEVATED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+  });
+
+  it('screenCapture:false alone leaves elevated and hooked both false', async () => {
     h.isNative = true;
     h.checkIntegrity = vi.fn(async () => withCore({
       hookedProcess: false,
@@ -808,14 +813,22 @@ describe('nativeProbeSource — item 16: screenCapture → hooked', () => {
     }));
     const src = await nativeProbeSource();
     expect(src.signals.hooked).toBe(false);
+    expect(src.signals.elevated).toBe(false);
   });
 
-  it('any of hookedProcess / debuggerAttached / screenCapture true is sufficient', async () => {
+  it('hookedProcess:true still drives HOOKED (BLOCK) — only screenCapture is downgraded', async () => {
     h.isNative = true;
-    for (const field of ['hookedProcess', 'debuggerAttached', 'screenCapture']) {
-      h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
-      const src = await nativeProbeSource();
-      expect(src.signals.hooked).toBe(true);
-    }
+    h.checkIntegrity = vi.fn(async () => withCore({ hookedProcess: true }));
+    const src = await nativeProbeSource();
+    expect(src.signals.hooked).toBe(true);
+    expect(detect(src)).toBe(CONDITION.HOOKED);
+  });
+
+  it('debuggerAttached:true still drives HOOKED (BLOCK) — only screenCapture is downgraded', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => withCore({ debuggerAttached: true }));
+    const src = await nativeProbeSource();
+    expect(src.signals.hooked).toBe(true);
+    expect(detect(src)).toBe(CONDITION.HOOKED);
   });
 });

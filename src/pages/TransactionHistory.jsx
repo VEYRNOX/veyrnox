@@ -89,12 +89,20 @@ export default function TransactionHistory() {
   const asset = useMemo(() => HISTORY_ASSETS.find((a) => a.symbol === symbol) || HISTORY_ASSETS[0], [symbol]);
   const address = DEMO ? null : addressFor(asset, wallet);
 
+  // I3 (issue #1121): react-query v5 refetch() bypasses the `enabled` gate
+  // below, so a decoy/hidden session's Retry/Refresh buttons could still
+  // fire the address->indexer disclosure. Same bug class as GasTracker
+  // (#1095, PRs #614/#925) — compute the gate once and hide both buttons
+  // (not disable them) when it's false, matching GasTracker's egressAllowed
+  // pattern.
+  const egressAllowed = !isDeniabilitySessionActive();
+
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["tx-history", asset.symbol, address, DEMO],
     queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
     // I3 zero-egress: never attempt the address->indexer disclosure in a
     // deniability (decoy/hidden) session — disable the query entirely.
-    enabled: !isDeniabilitySessionActive(),
+    enabled: egressAllowed,
     // History is a snapshot the user explicitly opens; don't auto-refetch in the
     // background (that would repeat the address->indexer disclosure silently).
     refetchOnWindowFocus: false,
@@ -168,12 +176,14 @@ export default function TransactionHistory() {
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>Couldn’t load history: {error?.message?.toLowerCase().includes("fetch") ? "Couldn’t reach the RPC node — check your connection and try again." : (error?.message || "the indexer didn’t respond")}.</span>
             </div>
-            <button
-              onClick={() => refetch()}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary"
-            >
-              Retry
-            </button>
+            {egressAllowed && (
+              <button
+                onClick={() => refetch()}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary"
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
 
@@ -227,14 +237,16 @@ export default function TransactionHistory() {
       {data?.supported && !evmNoIndexer && !lockedLive && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{txs.length} transaction{txs.length !== 1 ? "s" : ""}{!DEMO && " · most recent"}</span>
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
-          >
-            {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <History className="h-3.5 w-3.5" />}
-            Refresh
-          </button>
+          {egressAllowed && (
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
+            >
+              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <History className="h-3.5 w-3.5" />}
+              Refresh
+            </button>
+          )}
         </div>
       )}
     </div>

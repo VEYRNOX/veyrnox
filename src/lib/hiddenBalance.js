@@ -47,7 +47,7 @@ import { getBalanceSol } from '@/wallet-core/sol/provider';
 import { getNetworkInfo } from '@/wallet-core/evm/networks';
 import { getBtcNetworkInfo } from '@/wallet-core/btc/networks';
 import { getSolNetworkInfo } from '@/wallet-core/sol/networks';
-import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 // satoshis per BTC (BIP-84 testnet uses the same 1e8 base unit as mainnet).
 const SATS_PER_BTC = 100_000_000;
@@ -146,9 +146,13 @@ export function getDemoHiddenBalance(chainKey, address) {
 export async function resolveHiddenBalance(chainKey, address) {
   // I3: a hidden-wallet balance is a live node read (phone-home). It must never
   // run inside a deniability session — fail closed on the exported function
-  // itself (return null), not just on some callers, so a future caller can't
-  // leak egress. Mirrors decoyBalance.js's guard.
-  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
+  // itself, not just on some callers, so a future caller can't leak egress.
+  // Uses the LIVE isDeniabilityOrDemoActive() helper (issue #1102): the
+  // load-time DEMO IIFE snapshot from @/api/demoClient does NOT catch a
+  // mid-session flip of localStorage['veyrnox-demo']='1' after this module is
+  // imported; isDeniabilityOrDemoActive reads localStorage live on every call.
+  // Mirrors decoyBalance.js's guard.
+  if (isDeniabilityOrDemoActive()) throw new Error('I3: no egress in deniability session');
   const chain = getHiddenChain(chainKey);
   if (!chain) throw new Error(`Unknown chain: ${chainKey}`);
   if (!address) return { amount: 0, unit: chain.unit, source: DEMO ? 'demo-seed' : 'chain' };

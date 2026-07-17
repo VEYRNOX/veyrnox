@@ -285,10 +285,18 @@ export function vaultAad(blob) {
 
   // Canonicalize the kdf field: if it is an object (Argon2id), rebuild with
   // explicit property order; if it is a string ('kek-dek'), pass through as-is.
+  // Cast the object branch to Record<string,unknown> so tsc accepts property
+  // access — `blob.kdf` comes off `Record<string,unknown>` so `kdf` is `unknown`
+  // after typeof narrowing away the string case.
   const kdfCanonical = typeof kdf === 'string'
     ? kdf
-    : { name: kdf.name, parallelism: kdf.parallelism, iterations: kdf.iterations,
-        memorySize: kdf.memorySize, hashLength: kdf.hashLength };
+    : (() => {
+        const k = /** @type {Record<string, unknown>} */ (kdf);
+        return {
+          name: k.name, parallelism: k.parallelism, iterations: k.iterations,
+          memorySize: k.memorySize, hashLength: k.hashLength,
+        };
+      })();
 
   const includeSalt = blob.salt !== undefined && kdf !== 'kek-dek';
 

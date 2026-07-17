@@ -39,10 +39,17 @@ import { nativeProbeSource } from './nativeProbe.js';
 import { browserProbeSource } from './browserProbe.js';
 import { selectPresignProbeSource } from './selectPresignProbeSource.js';
 import { ATTESTATION_ENABLED, attestationProbeSource, detectAttestation, composeConditions } from './attestation.js';
-import { CONDITION } from './conditions.js';
+import { CONDITION, TIER } from './conditions.js';
 
 // DEV override: VITE_BYPASS_RASP=1 skips all integrity checks for on-device testing.
 // Dead-code-eliminated in production builds (env var never set in CI/release).
+//
+// #1107 defence-in-depth (Layer 2 — runtime fail-loud): if this flag somehow
+// reaches a PRODUCTION build (mis-configured CI, leaked .env, manual override),
+// the hook logs a [SECURITY] error to console AND returns TIER.BLOCK
+// (fail-closed, I4) rather than silently allowing every RASP-gated action.
+// Layer 1 is `scripts/check-vite-bypass-rasp.mjs`, wired into CI. Dev / test
+// builds keep the CLEAN bypass behaviour so on-device testing is unaffected.
 const BYPASS_RASP = import.meta.env.VITE_BYPASS_RASP === '1';
 
 const HEARTBEAT_MS = 60_000;
@@ -155,7 +162,20 @@ export function useRaspArtifact({ deferAttestation = false, excludeAttestation =
   // above has been invoked (P2-9). Shape matches the success/catch branches —
   // `condition` is included so tsc unions the three returns without an
   // inconsistent-shape error (P2-8, 2026-07-15).
-  if (BYPASS_RASP) return { ...degrade(CONDITION.CLEAN), condition: CONDITION.CLEAN };
+  //
+  // #1107 Layer 2 — runtime fail-loud: if the bypass flag is on in a PRODUCTION
+  // build, do NOT return CLEAN. Log a [SECURITY] error and return the same
+  // fail-closed BLOCK artifact the catch branch below uses (degrade(undefined)
+  // → strongest BLOCK, sensitive paths refused). Never silently ship an
+  // integrity-check bypass to end users (I4).
+  if (BYPASS_RASP) {
+    if (import.meta.env.PROD) {
+      // eslint-disable-next-line no-console
+      console.error('[SECURITY] VITE_BYPASS_RASP is enabled in a PRODUCTION build — RASP is disabled. This must never ship.');
+      return { ...degrade(undefined), tier: TIER.BLOCK, condition: undefined };
+    }
+    return { ...degrade(CONDITION.CLEAN), condition: CONDITION.CLEAN };
+  }
 
   try {
     const _osCondition = detect(selectPresignProbeSource(Capacitor.isNativePlatform(), nativeProbe, browserProbeSource));

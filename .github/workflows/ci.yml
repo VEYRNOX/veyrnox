@@ -150,6 +150,11 @@ jobs:
       # combination would make OkHttp refuse every pinned host at connect time
       # — availability regression). Static grep, no runtime.
       - run: npm run check:cert-pin-manager
+      # #1107 — VITE_BYPASS_RASP is a dev-only integrity-check override in
+      # src/rasp/useRaspArtifact.js. If it leaks into a release build all RASP
+      # gates are silently disabled. Fails CI if any .env* file in the repo
+      # enables the flag. Complementary runtime fail-loud sits in the hook itself.
+      - run: npm run check:vite-bypass-rasp
       - run: npm run build
       - run: npm test
 

@@ -18,6 +18,9 @@ describe('TransactionHistory — I3 deniability gate', () => {
     expect(src).toMatch(/isDeniabilitySessionActive/);
   });
   it('the useQuery enabled clause gates on !isDeniabilitySessionActive()', () => {
-    expect(src).toMatch(/enabled:\s*!isDeniabilitySessionActive\(\)/);
+    // #1121: gate is now computed once into `egressAllowed` (shared with the
+    // Retry/Refresh buttons) and passed to `enabled` rather than inlined.
+    expect(src).toMatch(/const egressAllowed = !isDeniabilitySessionActive\(\);/);
+    expect(src).toMatch(/enabled:\s*egressAllowed/);
   });
 });
