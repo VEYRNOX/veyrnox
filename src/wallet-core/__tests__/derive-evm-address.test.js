@@ -6,7 +6,8 @@
 // address-only path is a safe substitute for receive-address display,
 // portfolio fetch, and address comparison.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import * as bip32 from '@scure/bip32';
 import { deriveEvmAccount, deriveEvmAddress } from '../derivation.js';
 
 const TEST_MNEMONIC =
@@ -46,5 +47,30 @@ describe('deriveEvmAddress (address-only, no private key)', () => {
     expect(deriveEvmAddress(TEST_MNEMONIC, 0)).toBe(
       '0x9858EfFD232B4033E47d90003D41EC34EcaEda94'
     );
+  });
+
+  // #1113 (L-1 90%): PR #1080 wiped the account-level privateKey but the
+  // MASTER HDKey.privateKey persisted until GC. Assert we now zero it.
+  it('wipes the master HDKey.privateKey after derivation (#1113)', () => {
+    const origFromMasterSeed = bip32.HDKey.fromMasterSeed.bind(bip32.HDKey);
+    const captured = [];
+    const spy = vi
+      .spyOn(bip32.HDKey, 'fromMasterSeed')
+      .mockImplementation((seed) => {
+        const m = origFromMasterSeed(seed);
+        captured.push(m);
+        return m;
+      });
+    try {
+      deriveEvmAddress(TEST_MNEMONIC, 0);
+      expect(captured.length).toBeGreaterThanOrEqual(1);
+      const master = captured[0];
+      // After the call returns, the master's private key bytes must be zeroed.
+      const pk = master.privateKey;
+      expect(pk).toBeTruthy();
+      expect(Array.from(pk).every((b) => b === 0)).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

@@ -70,13 +70,22 @@ export function deriveEvmAddress(mnemonic, accountIndex = 0, passphrase = '') {
   // Derive private only as far as the hardened account level (m/44'/60'/0').
   // Then switch to a public-only node so the leaf private key at m/44'/60'/0'/0/index
   // never materialises as a JS value (Codex P1 — L-1 audit).
-  const acctPriv = HDKey.fromMasterSeed(seed).derive(`m/44'/60'/0'`);
-  const acctPub = HDKey.fromExtendedKey(acctPriv.publicExtendedKey);
-  if (acctPriv.privateKey) acctPriv.privateKey.fill(0); // best-effort wipe
-  const node = acctPub.derive(`m/0/${accountIndex}`); // public-only path
-  const pub = node.publicKey;
-  if (!pub) throw new Error('EVM public key derivation failed');
-  return computeAddress('0x' + bytesToHex(pub));
+  // #1113: hoist the MASTER HDKey so we can zero its privateKey in `finally` —
+  // PR #1080 wiped acctPriv but the master persisted until GC.
+  let master;
+  try {
+    master = HDKey.fromMasterSeed(seed);
+    const acctPriv = master.derive(`m/44'/60'/0'`);
+    const acctPub = HDKey.fromExtendedKey(acctPriv.publicExtendedKey);
+    if (acctPriv.privateKey) acctPriv.privateKey.fill(0); // best-effort wipe
+    const node = acctPub.derive(`m/0/${accountIndex}`); // public-only path
+    const pub = node.publicKey;
+    if (!pub) throw new Error('EVM public key derivation failed');
+    return computeAddress('0x' + bytesToHex(pub));
+  } finally {
+    if (master && master.privateKey) master.privateKey.fill(0); // #1113
+    seed.fill(0); // #1113
+  }
 }
 
 /**
