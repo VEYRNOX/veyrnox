@@ -265,7 +265,10 @@ const VAULT_VERSION = 2;
  * @returns {Uint8Array<ArrayBuffer>}
  */
 function vaultAad(blob) {
-  const fields = blob.salt !== undefined
+  // kek-dek blobs spread the prior Argon2id blob and may carry a stale `salt` field,
+  // but encryptVaultWithDek seals AAD off a salt-free stub — exclude salt for kek-dek
+  // so encrypt and decrypt agree (Codex P1 #1).
+  const fields = (blob.salt !== undefined && blob.kdf !== 'kek-dek')
     ? { v: blob.v, kdf: blob.kdf, salt: blob.salt }
     : { v: blob.v, kdf: blob.kdf };
   return /** @type {Uint8Array<ArrayBuffer>} */ (enc.encode(JSON.stringify(fields)));

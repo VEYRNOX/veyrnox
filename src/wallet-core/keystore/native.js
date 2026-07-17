@@ -725,9 +725,9 @@ export const nativeKeyStore = {
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
         dek = await unwrapDek(kek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
-        const { iv, ct } = await encryptVaultWithDek(secret, dek);
-        // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv change.
-        await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek' });
+        const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
+        // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv/v change.
+        await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek' });
       } finally {
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
@@ -934,11 +934,11 @@ export const nativeKeyStore = {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
           const kekWrap = await wrapDek(kek, dek);
-          const { iv, ct } = await encryptVaultWithDek(secret, dek);
+          const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
           const tierEntry = opts && opts.hardwareKekTier
             ? { hardwareKekTier: opts.hardwareKekTier }
             : {};
-          await safeWriteVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, ...tierEntry });
+          await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, ...tierEntry });
         } finally {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
