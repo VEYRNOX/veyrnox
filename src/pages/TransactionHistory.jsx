@@ -12,7 +12,7 @@ import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
-import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 // Only assets that derive a real address can have an address to look up. The
 // history view mirrors the wallet's receivable assets (coming_soon assets have no
@@ -85,24 +85,17 @@ function TxRow({ tx }) {
 
 export default function TransactionHistory() {
   const wallet = useWallet();
+  const egressAllowed = !isDeniabilityOrDemoActive();
   const [symbol, setSymbol] = useState("ETH");
   const asset = useMemo(() => HISTORY_ASSETS.find((a) => a.symbol === symbol) || HISTORY_ASSETS[0], [symbol]);
   const address = DEMO ? null : addressFor(asset, wallet);
-
-  // I3 (issue #1121): react-query v5 refetch() bypasses the `enabled` gate
-  // below, so a decoy/hidden session's Retry/Refresh buttons could still
-  // fire the address->indexer disclosure. Same bug class as GasTracker
-  // (#1095, PRs #614/#925) — compute the gate once and hide both buttons
-  // (not disable them) when it's false, matching GasTracker's egressAllowed
-  // pattern.
-  const egressAllowed = !isDeniabilitySessionActive();
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["tx-history", asset.symbol, address, DEMO],
     queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
     // I3 zero-egress: never attempt the address->indexer disclosure in a
     // deniability (decoy/hidden) session — disable the query entirely.
-    enabled: egressAllowed,
+    enabled: !isDeniabilitySessionActive(),
     // History is a snapshot the user explicitly opens; don't auto-refetch in the
     // background (that would repeat the address->indexer disclosure silently).
     refetchOnWindowFocus: false,

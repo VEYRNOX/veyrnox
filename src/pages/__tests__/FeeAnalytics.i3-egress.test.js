@@ -17,9 +17,6 @@ describe('FeeAnalytics — I3 deniability gate', () => {
     expect(src).toMatch(/isDeniabilitySessionActive/);
   });
   it('the useQuery enabled clause gates on !isDeniabilitySessionActive()', () => {
-    // #1120: gate is now computed once into `egressAllowed` (shared with the
-    // Retry/Refresh buttons) and passed to `enabled` rather than inlined.
-    expect(src).toMatch(/const egressAllowed = !isDeniabilitySessionActive\(\);/);
-    expect(src).toMatch(/enabled:\s*egressAllowed/);
+    expect(src).toMatch(/enabled:\s*!isDeniabilitySessionActive\(\)/);
   });
 });

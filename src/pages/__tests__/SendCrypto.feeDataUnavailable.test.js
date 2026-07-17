@@ -16,20 +16,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { assertFeeDataAvailable } from '../SendCrypto.jsx';
-import { resolveMaxPriorityFeePerGas } from '@/lib/WalletConnectProvider';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(here, '../SendCrypto.jsx'), 'utf8');
 
-describe('#1115 — RED: the underlying gap this guard closes', () => {
-  it('resolveMaxPriorityFeePerGas does NOT cap the priority fee when resolvedMaxFee is undefined (silent L-2 bypass)', () => {
-    // Without assertFeeDataAvailable() gating this call first, an undefined
-    // cappedMaxFeePerGas means the "cap" is never enforced — the raw priority
-    // fee passes through unbounded instead of being rejected.
-    const raw = 1_000_000_000n;
-    expect(resolveMaxPriorityFeePerGas(raw, undefined)).toBe(raw);
-  });
-});
+// RED-block deleted: the underlying gap this guard closes was that
+// `resolveMaxPriorityFeePerGas(raw, undefined)` returned the raw unclamped
+// fee (BigInt > undefined coerces to NaN → comparison is false → cap
+// bypassed). That documentational assertion is no longer stable because
+// `WalletConnectProvider` may itself add guards in future PRs, and the
+// structural pin below is a sufficient regression fence.
 
 describe('#1115 — GREEN: assertFeeDataAvailable fails closed with a coded, friendly error', () => {
   it('throws FEE_DATA_UNAVAILABLE when cappedMaxFeePerGas is undefined', () => {

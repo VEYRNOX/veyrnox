@@ -26,7 +26,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 import { computeFeeAnalytics } from "@/analytics/feeAnalytics";
-import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 // Fee analytics mirrors the wallet's receivable assets (an asset needs a derived
 // address to have history). ETH is first/default — and is also the canonical
@@ -102,24 +102,17 @@ function FeeRow({ tx, symbol }) {
 
 export default function FeeAnalytics() {
   const wallet = useWallet();
+  const egressAllowed = !isDeniabilityOrDemoActive();
   const [symbol, setSymbol] = useState("BTC"); // a chain with in-app history by default
   const asset = useMemo(() => FEE_ASSETS.find((a) => a.symbol === symbol) || FEE_ASSETS[0], [symbol]);
   const address = DEMO ? null : addressFor(asset, wallet);
-
-  // I3 (issue #1120): react-query v5 refetch() bypasses the `enabled` gate
-  // below, so a decoy/hidden session's Retry/Refresh buttons could still
-  // fire the address->indexer disclosure. Same bug class as GasTracker
-  // (#1095, PRs #614/#925) — compute the gate once and hide both buttons
-  // (not disable them) when it's false, matching GasTracker's egressAllowed
-  // pattern.
-  const egressAllowed = !isDeniabilitySessionActive();
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["fee-analytics", asset.symbol, address, DEMO],
     queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
     // I3 zero-egress: disable entirely in a deniability (decoy/hidden) session so
     // the address->indexer disclosure is never even attempted.
-    enabled: egressAllowed,
+    enabled: !isDeniabilitySessionActive(),
     // Like the history view, this is a snapshot the user explicitly opens — no
     // background refetch (that would repeat the address->indexer disclosure).
     refetchOnWindowFocus: false,
