@@ -29,7 +29,6 @@ vi.mock('@/api/base44Client', () => ({
 // pin; stub it out so the render is focused on the Refresh-button surface.
 vi.mock('@/components/CryptoNewsFeed', () => ({ default: () => null }));
 
-// eslint-disable-next-line import/first
 import NewsSentimentPage from '@/pages/NewsSentimentPage.jsx';
 
 function renderPage() {
