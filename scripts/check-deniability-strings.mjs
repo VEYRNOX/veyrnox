@@ -288,8 +288,7 @@ const DENIABILITY_SIGNAL_RE =
 // new entries for freshly-introduced code — this list is a one-time migration
 // allowance, not a general escape hatch.
 export const RULE3_LEGACY_EXEMPT_PATHS = [
-  'src/pages/FeeAnalytics.jsx', // TODO(#follow-up): un-gated Retry + Refresh buttons
-  'src/pages/TransactionHistory.jsx', // TODO(#follow-up): un-gated Retry + Refresh buttons
+  // All legacy exemptions resolved.
 ];
 
 function isRule3LegacyExempt(filename) {

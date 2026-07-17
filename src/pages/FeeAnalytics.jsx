@@ -26,7 +26,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 import { computeFeeAnalytics } from "@/analytics/feeAnalytics";
-import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 // Fee analytics mirrors the wallet's receivable assets (an asset needs a derived
 // address to have history). ETH is first/default — and is also the canonical
@@ -102,6 +102,7 @@ function FeeRow({ tx, symbol }) {
 
 export default function FeeAnalytics() {
   const wallet = useWallet();
+  const egressAllowed = !isDeniabilityOrDemoActive();
   const [symbol, setSymbol] = useState("BTC"); // a chain with in-app history by default
   const asset = useMemo(() => FEE_ASSETS.find((a) => a.symbol === symbol) || FEE_ASSETS[0], [symbol]);
   const address = DEMO ? null : addressFor(asset, wallet);
@@ -183,9 +184,11 @@ export default function FeeAnalytics() {
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <span>Couldn’t read history: {error?.message || "the indexer/RPC didn’t respond"}.</span>
           </div>
-          <button onClick={() => refetch()} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary">
-            Retry
-          </button>
+          {egressAllowed && (
+            <button onClick={() => refetch()} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary">
+              Retry
+            </button>
+          )}
         </div>
       )}
 
@@ -259,14 +262,16 @@ export default function FeeAnalytics() {
           )}
 
           <div className="flex items-center justify-end text-xs text-muted-foreground">
-            <button
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
-            >
-              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Fuel className="h-3.5 w-3.5" />}
-              Refresh
-            </button>
+            {egressAllowed && (
+              <button
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
+              >
+                {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Fuel className="h-3.5 w-3.5" />}
+                Refresh
+              </button>
+            )}
           </div>
         </>
       )}
