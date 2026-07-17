@@ -699,6 +699,15 @@ export const webKeyStore = {
       // Verify current PIN first.
       const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → KEK_ERR.MALFORMED_VAULT
       const H = await getHF();
+      // HONEST RESIDUAL (#1114): the H2 = H.slice() copy is zeroed in the finally
+      // block below (and H itself is wiped after the first combineKek call), but
+      // the ORIGINAL PRF-output ArrayBuffer returned by authenticator.getAssertion()
+      // is not owned by us — some Chromium builds share the backing buffer with an
+      // internal WebAuthn PRF extension buffer, and we have no API to wipe it. It
+      // persists until GC. This is the web-side parallel to iOS-F5 M-6 (base64
+      // bridge residue) and is accepted as architectural under I4 (honest scope).
+      // Not fixable at this layer; do NOT mark as "fixed" without evidence the
+      // underlying ArrayBuffer was actually zeroed.
       const H2 = H.slice(); // M20: combineKek zeroes its H/C inputs; copy before first call
       let oldC = null;
       let newC = null;
