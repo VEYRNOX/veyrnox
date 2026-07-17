@@ -1168,17 +1168,15 @@ Codex is a second-model review pass, not the outstanding independent third-party
 - **#957** — Kotlin JVM test harness for `PlayIntegrityPlugin.verifyJwsSignature` (the
   ES256 raw→DER transcoder is algorithmically proven via the JS mirror, not the actual
   Kotlin binding). See §7 G2 attestation row.
-- **#962** — SEND / Scanner audit cleanup, M-1..M-4 + L-1..L-3: M-1 outflow-fraction
-  `Number` precision loss; M-2 `Uint8Array` key zeroization for BTC/SOL `withPrivateKey`
-  variants; M-3 signal-registry tie-ordering docstring; M-4 `eth_call` dry-run RPC-trust
-  posture; L-1 preflight timeout comment drift; L-2 `signAndBroadcastEvmLedger` dead
-  export; L-3 S8 median even-length BigInt truncation.
-- **#977** — `FeeSelector`'s react-query refetches every 30s with no reactive dependency
-  on the live deniability/demo flag; if the flag flips mid-session in the same window, an
-  already-mounted `FeeSelector` keeps firing RPCs even though the render conditional would
-  have prevented mount in the first place. Preexisting attack surface, not introduced by
-  #972/#978. Fix approach: gate the `queryFn` itself on the live helper, not just the
-  mount condition.
+- **#962** — SEND / Scanner audit cleanup, M-1..M-4 + L-1..L-3:
+  - ~~M-2 `Uint8Array` key zeroization for BTC/SOL `withPrivateKey` variants~~ ✅ **BUILT — PR #1060** (2026-07-17): `signAndBroadcastBtc` + `signAndBroadcastSol` zero caller-supplied `privateKey` in `finally` blocks; SOL seed zeroed immediately after `Keypair.fromSeed()`; `zeroKeypairSecret()` wipes keypair's `secretKey` (best-effort — `@solana/web3.js` returns a copy); 2 new zeroing tests, strict TDD (RED→GREEN), INTERNAL.
+  - ~~M-3 signal-registry tie-ordering docstring~~ ✅ **BUILT — PR #1060** (2026-07-17): `score.js` JSDoc `requiresConfirmation` line corrected to state "true on RISK or CAUTION" (PR #832 added CAUTION), INTERNAL.
+  - ~~M-1 outflow-fraction `Number` precision loss~~ ✅ **BUILT — PR #1064** (2026-07-17): `priorSends` in `SendCrypto.jsx:597` now maps `t.amount` via `String()` instead of `Number()`, preserving full BigInt precision through `s8-value-anomaly.js`'s `toWei()`. Signed-tx amount was always safe (`parseEther` path). INTERNAL.
+  - ~~L-1 preflight timeout comment drift~~ ✅ **BUILT — PR #1064** (2026-07-17): `WalletConnectProvider.jsx` now imports `FRESH_PROBE_TIMEOUT_MS` from `@/rasp` and aliases `RASP_ASYNC_PROBE_TIMEOUT_MS` to it — single source of truth for both Send-path and WC-path timeouts; `SendCrypto.jsx` comment updated from inline literal to constant name. INTERNAL.
+  - ~~L-3 S8 median even-length BigInt truncation~~ ✅ **RESOLVED in code** (2026-07-08): `medianWei()` at `s8-value-anomaly.js:40–47` uses upper-middle element (`sorted[mid]`) for even-n arrays — deliberately avoids the `(a+b)/2n` truncation-toward-zero path; the `// L-3:` comment at line 44 is the decision record. No further code change outstanding.
+  - **M-4** `eth_call` dry-run RPC-trust posture — open, code-only fix possible without a device.
+  - **L-2** `signAndBroadcastEvmLedger` dead export — open, requires UI wiring into `SendCrypto.jsx` Ledger branch (larger lift).
+- ~~**#977**~~ ✅ **BUILT — PR #1011** (`a383942`, merged 2026-07-15): `FeeSelector`'s `queryFn` now gates on `isDeniabilityOrDemoActive()` (the LIVE helper) — not just the mount-time render conditional — so an in-session deniability/demo flag flip stops the 30s refetch cycle. INTERNAL.
 
 ## 2026-07-15 RASP audit-fix cycle — PRs #1009, #1010, #1012, #1013, #1014
 
