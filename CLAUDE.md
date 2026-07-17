@@ -1105,12 +1105,29 @@ selector.
 
 BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
 
-## 2026-07-17 toast position restored to bottom — PR #1046
+## 2026-07-17 Save QR Code + Print Secure Backup on native — PR #1048
 
-`src/components/ui/sonner.jsx`: changed `position="top-center"` back to
-`position="bottom-center"`. PR #1023's visual polish pass had silently moved every
-toast (including "Decoy mode active") to the top of the screen. One-line revert.
-BUILT, INTERNAL — cosmetic/UI only, no security surface touched.
+**Save QR Code (`QRCodeDisplay.jsx`):** the `handleDownload` handler used `<a download>` +
+`.click()` which is silently ignored by Capacitor WebViews on iOS and Android. Fixed:
+`handleDownload` now branches on `Capacitor.isNativePlatform()`. Native path writes the
+PNG (base64-stripped from the `data:` URL) to `Directory.Cache` via `@capacitor/filesystem`
+then opens the OS share sheet via `@capacitor/share` — users can save to Photos, Files,
+Drive, AirDrop, etc. Web path is unchanged. Errors are caught: share-sheet dismiss is
+silent, filesystem write failure shows a short alert.
+
+**Print Secure Backup (`WalletSeedQR.jsx`):** `handlePrint` called `window.open("", "_blank")`
+which on Capacitor native opens an orphaned WKWebView / Android Activity with no app
+back-stack — users were stranded on the print page with no route back to Recovery Phrase
+Backup. Also: `window.open` returning `null` (popup blocked) crashed immediately on
+`w.document.write(...)`. Fixed: native path builds a plain-text backup string and passes
+it to `@capacitor/share` (AirPrint / Google Cloud Print / Files / Drive) — user stays
+inside the Veyrnox WebView the whole time. Web path injects a `#veyrnox-seed-print-container`
+div + `@media print` stylesheet into the current document and calls `window.print()` on
+the current window — no new tab, no orphaned popup, back navigation intact. All
+`textContent` assignments replace the previous `innerHTML` usage; the null-crash is
+eliminated because `window.open` is gone entirely on both paths.
+
+BUILT, INTERNAL — UI-layer only, no seed/key/signing/auth logic touched. ESLint 0 errors, 0 warnings.
 
 ## 2026-07-16 biometric 2FA auto-enable on native — PR #1033
 
@@ -1154,32 +1171,6 @@ Tests: 69/69 across 10 files (RestoreFromFile, WalletEntry, vaultBackup,
 g4-callsite-pins). Device-verified on Pixel 10 Pro XL: restore from `.enc` → set device
 PIN → unlock with PIN → KEK enrollment succeeds with same PIN. BUILT / unit-tested +
 device-verified (restore flow), INTERNAL — NOT independently audited, no on-chain txid.
-
-## 2026-07-17 PinPad UX polish + biometric lockout copy — PR #1043
-
-Four UX fixes in one commit, merged after cherry-pick rebase (original branch predated
-PRs #1025/#1032/#1033). BUILT / unit-tested only, INTERNAL — NOT device-verified, NOT
-independently audited, no on-chain txid.
-
-- **PinPad press feedback:** digit/clear/back/submit buttons now flash teal (`bg-primary/20`)
-  + scale down (`scale-95`) on press via `active:` pseudo-class in `PinPad.jsx`. Visible
-  optical feedback on mobile where hover states don't exist.
-- **Biometric lockout messaging:** `useKekEnrollmentGate.js` now classifies
-  `NO_HARDWARE_FACTOR` and `USER_CANCEL` lockout errors with a specific message
-  ("biometric sensor is temporarily locked out") instead of generic "Something went wrong";
-  `KekEnrollmentGate.jsx` instruction copy updated to include device passcode as an option.
-  New classifier test (`useKekEnrollmentGate.classifier.test.js`, 18 lines).
-- **Double PinPad fix:** `PersonalBackup.jsx` export tab replaced two stacked PinPad fields
-  (choose + confirm visible simultaneously) with a single PinPad and a choose→confirm state
-  machine (`pinStep`). Same pattern applied to `RestoreFromFile.jsx`'s setpin phase.
-- **Action Password 8-char consistency:** `TwoFactorSettings.jsx` validation and UI text now
-  consistently use 8-character minimum (was mixing 8 in UI text with 12 in validation).
-
-Files changed: `PinPad.jsx`, `KekEnrollmentGate.jsx`, `useKekEnrollmentGate.js`,
-`PersonalBackup.jsx`, `RestoreFromFile.jsx`, `TwoFactorSettings.jsx`, `TwoFactorGate.jsx`,
-`WalletEntry.jsx`, `HDWalletManager.jsx`, `SendCrypto.jsx`, `StealthWallets.jsx`,
-`WalletAccessReset.jsx`, `WalletPortfolioPage.jsx`, `useRevealWithReauth.jsx`,
-`HiddenWalletUnlockSettings.jsx` (16 files, 176 insertions, 123 deletions).
 
 ## Security invariants
 
