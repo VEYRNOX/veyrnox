@@ -156,14 +156,15 @@
 > independent, despite its filename) code-and-artifact review of the Android hardware-KEK
 > suite (`docs/audit-triage/independent-audit-2026-07-06-android-kek-suite.md`) — headline
 > "no security regression in the C-1 v3 fix"; 6 documentation-honesty findings (F1.1
-> StrongBox title overclaim, F2.1 stale v2/v3 evidence contradiction — still unresolved,
-> flagged for owner, F2.2 stale v2 code comments, F2.3 obsolete lazy-migration item —
-> corrected in §4 below, F2.4 missing salt-tamper valid-value test, F3.1 re-enroll scope)
-> reconciled in §4. PR #685 (salt-tamper unit test + LOG-1 CI guard) and PR #686 (F1.1/F2.1
-> label-honesty comment + doc sync) have both since merged, closing F2.4 and F4.1 and the
-> StrongBox-title/v2-v3-label wording — F2.1's underlying evidence-doc contradiction
-> (`docs/device-verification-2026-07-05.md`) remains unresolved. Full detail: §4 "2026-07-06
-> INTERNAL code-and-artifact review" subsection.
+> StrongBox title overclaim, F2.1 stale v2/v3 evidence contradiction, F2.2 stale v2 code
+> comments, F2.3 obsolete lazy-migration item — corrected in §4 below, F2.4 missing
+> salt-tamper valid-value test, F3.1 re-enroll scope) reconciled in §4. PR #685
+> (salt-tamper unit test + LOG-1 CI guard) and PR #686 (F1.1/F2.1 label-honesty comment +
+> doc sync) have both since merged, closing F2.4 and F4.1 and the
+> StrongBox-title/v2-v3-label wording. F2.1's underlying evidence-doc contradiction
+> (`docs/device-verification-2026-07-05.md`) was subsequently resolved by PR #743 (L-3,
+> 2026-07-08) — correction banner prepended, I6 section updated. Full detail: §4
+> "2026-07-06 INTERNAL code-and-artifact review" subsection.
 
 ---
 
@@ -829,8 +830,8 @@ in this file and the code comments, not vulnerabilities:
 | ID | Severity | Finding | Resolution |
 |---|---|---|---|
 | F1.1 | MEDIUM | The "StrongBox HMAC-SHA256" feature title overclaims — `tryEnrollKey(useStrongBox=true) \|\| tryEnrollKey(useStrongBox=false)` means StrongBox is *preferred*, not enforced; TEE/software fallback is accepted (`ACCEPTED_TIER_NAMES` in `hardware.js` also accepts `TRUSTED_ENVIRONMENT`, `SECURE_HARDWARE_PRE31`, `UNKNOWN_SECURE`). | **FIXED — PR #686 (merged 2026-07-06).** The Android headline in the Phase 2 narrative above now reads "StrongBox HMAC-SHA256 (StrongBox-**preferred**, NOT enforced — ...)" inline. Enforcement-vs-observe decision tracked in `docs/audit-triage/strongbox-tier-enforcement-decision-2026-07-06.md`. |
-| F2.1 | MEDIUM | Evidence contradiction: `docs/device-verification-2026-07-05.md` still reads "KEK v2 protocol confirmed" while this file's table claims v3 device-verified for the same session. | **PARTIALLY ADDRESSED — PR #686 (merged 2026-07-06)** added a LABEL NOTE comment in `HardwareKekPlugin.kt` clarifying that the debug `"salt-source: v2-bound"` string is a legacy *branch* label (per-enrollment-salt-supplied vs fixed-salt), not the vault's `hardwareKekVersion` stamp — explaining why the two artifacts aren't actually describing the same thing. **The underlying evidence doc itself (`docs/device-verification-2026-07-05.md`) was NOT edited** and still reads "v2 confirmed" verbatim — still flagged for the owner to correct or annotate. |
-| F2.2 | LOW-MEDIUM | Stale "v2" comments remain in `HardwareKekPlugin.kt` and `kek.js` referring to the superseded v2 protocol (the native side is version-agnostic at runtime — this is a comments-only issue). | **FIXED (HardwareKekPlugin.kt) — PR #686 (merged 2026-07-06).** "C-1 (v2 protocol)" → v3 comment correction + LABEL NOTE added; same fix applied to the `PRF_EVAL_SALT` block comment. `kek.js` was not touched by #686 — any stale v2 wording there remains open. |
+| F2.1 | MEDIUM | Evidence contradiction: `docs/device-verification-2026-07-05.md` still reads "KEK v2 protocol confirmed" while this file's table claims v3 device-verified for the same session. | **FIXED — PR #743 (merged 2026-07-08, L-3)** prepended a correction banner to `docs/device-verification-2026-07-05.md` making the v2 claim context explicit and explaining the C-1 regression. The I6 section of that doc was also updated (lines 215–223) to clarify that `"salt-source: v2-bound"` is a legacy branch label, not the vault's `hardwareKekVersion` stamp, and that the session exercised the genuine **v3** path (PR #568); the vault read back `hardwareKekVersion:3`. The "v2 confirmed" wording is now fully annotated and the contradiction resolved. INTERNAL. |
+| F2.2 | LOW-MEDIUM | Stale "v2" comments remain in `HardwareKekPlugin.kt` and `kek.js` referring to the superseded v2 protocol (the native side is version-agnostic at runtime — this is a comments-only issue). | **FIXED — PR #686 (HardwareKekPlugin.kt, 2026-07-06) + 2026-07-17 (`kek.js`).** `HardwareKekPlugin.kt`: "C-1 (v2 protocol)" → v3 correction + LABEL NOTE (PR #686). `kek.js`: the `WRAP_V1`/`WRAP_V2` constants refer to the DEK *wrap format* AAD scheme — a distinct, current versioning axis from the hardware KEK salt-binding protocol (`hardwareKekVersion` 2→3, C-1). A disambiguation comment was added to `kek.js:90–95` clarifying this explicitly so the constants are not misread as stale C-1 artefacts. INTERNAL. |
 | F2.3 | LOW | The "v2→v3 lazy migration not device-exercised" residual item (carried in the C-1 row and the Android narrative above) is obsolete — the lazy on-unlock migration was removed 2026-07-06 (PR #662), confirmed by source check. | **CORRECTED in this file** (C-1 row and Android-narrative outstanding-items list above) — reframed as a device-exercise gap against the `changePassword`/`upgradeKekToV3` path, not the removed lazy migration. |
 | F2.4 | LOW-MEDIUM | No test previously mutated a valid v3 `kekSalt` to a different valid 32-byte value and asserted fail-closed (only degenerate/empty-salt and wrap-version-tamper tests existed). | **FIXED — PR #685 (merged 2026-07-06)** — added `src/wallet-core/keystore/__tests__/kek.salt-binding-tamper.test.js` (real WebCrypto; both-factor, H-only, C-only tamper; asserts `KEK_ERR.UNWRAP_FAILED`). |
 | F3.1 | LOW-MEDIUM | Biometric re-enroll invalidation (H-2/iOS-F11 Android half) applies only to KEK-enrolled vaults (a property of the Keystore HMAC key), not to the bare-vault app-layer biometric gate (`authenticateOrThrow`) — this file's H-2/iOS-F11 row should not conflate the two. | Flagged; the H-2/iOS-F11 row above already scopes its claim to "Biometric factor not bound to enrollment set" (the KEK-enrolled case) and does not itself claim bare-vault OS-ACL coverage, so no wording change was required there — noted here for completeness. |
@@ -858,7 +859,8 @@ described in the table above (`HardwareKekPlugin.kt` comments + this file's Stro
 and v2→v3-migration wording). The corrections recorded in this file were reconciled against
 #686's actual merged diff (not assumed) — see the F1.1/F2.1/F2.2 rows above for the precise
 scope of what #686 did and did not change (notably, it did not edit
-`docs/device-verification-2026-07-05.md`, so F2.1's evidence-doc contradiction persists).
+`docs/device-verification-2026-07-05.md` — that gap was subsequently closed by PR #743
+(L-3, 2026-07-08): correction banner prepended + I6 section updated; F2.1 now RESOLVED).
 
 **Positive confirmations:** H-NEW-D CLOSED (SE ECIES confirmed); `kSecAccessControlBiometryCurrentSet` correctly set on iOS SE key ACL; `combineKek` HKDF construction sound; `android:allowBackup="false"` correct; ATS enforced on iOS.
 
@@ -1166,17 +1168,15 @@ Codex is a second-model review pass, not the outstanding independent third-party
 - **#957** — Kotlin JVM test harness for `PlayIntegrityPlugin.verifyJwsSignature` (the
   ES256 raw→DER transcoder is algorithmically proven via the JS mirror, not the actual
   Kotlin binding). See §7 G2 attestation row.
-- **#962** — SEND / Scanner audit cleanup, M-1..M-4 + L-1..L-3: M-1 outflow-fraction
-  `Number` precision loss; M-2 `Uint8Array` key zeroization for BTC/SOL `withPrivateKey`
-  variants; M-3 signal-registry tie-ordering docstring; M-4 `eth_call` dry-run RPC-trust
-  posture; L-1 preflight timeout comment drift; L-2 `signAndBroadcastEvmLedger` dead
-  export; L-3 S8 median even-length BigInt truncation.
-- **#977** — `FeeSelector`'s react-query refetches every 30s with no reactive dependency
-  on the live deniability/demo flag; if the flag flips mid-session in the same window, an
-  already-mounted `FeeSelector` keeps firing RPCs even though the render conditional would
-  have prevented mount in the first place. Preexisting attack surface, not introduced by
-  #972/#978. Fix approach: gate the `queryFn` itself on the live helper, not just the
-  mount condition.
+- **#962** — SEND / Scanner audit cleanup, M-1..M-4 + L-1..L-3:
+  - ~~M-2 `Uint8Array` key zeroization for BTC/SOL `withPrivateKey` variants~~ ✅ **BUILT — PR #1060** (2026-07-17): `signAndBroadcastBtc` + `signAndBroadcastSol` zero caller-supplied `privateKey` in `finally` blocks; SOL seed zeroed immediately after `Keypair.fromSeed()`; `zeroKeypairSecret()` wipes keypair's `secretKey` (best-effort — `@solana/web3.js` returns a copy); 2 new zeroing tests, strict TDD (RED→GREEN), INTERNAL.
+  - ~~M-3 signal-registry tie-ordering docstring~~ ✅ **BUILT — PR #1060** (2026-07-17): `score.js` JSDoc `requiresConfirmation` line corrected to state "true on RISK or CAUTION" (PR #832 added CAUTION), INTERNAL.
+  - ~~M-1 outflow-fraction `Number` precision loss~~ ✅ **BUILT — PR #1064** (2026-07-17): `priorSends` in `SendCrypto.jsx:597` now maps `t.amount` via `String()` instead of `Number()`, preserving full BigInt precision through `s8-value-anomaly.js`'s `toWei()`. Signed-tx amount was always safe (`parseEther` path). INTERNAL.
+  - ~~L-1 preflight timeout comment drift~~ ✅ **BUILT — PR #1064** (2026-07-17): `WalletConnectProvider.jsx` now imports `FRESH_PROBE_TIMEOUT_MS` from `@/rasp` and aliases `RASP_ASYNC_PROBE_TIMEOUT_MS` to it — single source of truth for both Send-path and WC-path timeouts; `SendCrypto.jsx` comment updated from inline literal to constant name. INTERNAL.
+  - ~~L-3 S8 median even-length BigInt truncation~~ ✅ **RESOLVED in code** (2026-07-08): `medianWei()` at `s8-value-anomaly.js:40–47` uses upper-middle element (`sorted[mid]`) for even-n arrays — deliberately avoids the `(a+b)/2n` truncation-toward-zero path; the `// L-3:` comment at line 44 is the decision record. No further code change outstanding.
+  - **M-4** `eth_call` dry-run RPC-trust posture — open, code-only fix possible without a device.
+  - **L-2** `signAndBroadcastEvmLedger` dead export — open, requires UI wiring into `SendCrypto.jsx` Ledger branch (larger lift).
+- ~~**#977**~~ ✅ **BUILT — PR #1011** (`a383942`, merged 2026-07-15): `FeeSelector`'s `queryFn` now gates on `isDeniabilityOrDemoActive()` (the LIVE helper) — not just the mount-time render conditional — so an in-session deniability/demo flag flip stops the 30s refetch cycle. INTERNAL.
 
 ## 2026-07-15 RASP audit-fix cycle — PRs #1009, #1010, #1012, #1013, #1014
 
