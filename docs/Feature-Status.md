@@ -156,14 +156,15 @@
 > independent, despite its filename) code-and-artifact review of the Android hardware-KEK
 > suite (`docs/audit-triage/independent-audit-2026-07-06-android-kek-suite.md`) — headline
 > "no security regression in the C-1 v3 fix"; 6 documentation-honesty findings (F1.1
-> StrongBox title overclaim, F2.1 stale v2/v3 evidence contradiction — still unresolved,
-> flagged for owner, F2.2 stale v2 code comments, F2.3 obsolete lazy-migration item —
-> corrected in §4 below, F2.4 missing salt-tamper valid-value test, F3.1 re-enroll scope)
-> reconciled in §4. PR #685 (salt-tamper unit test + LOG-1 CI guard) and PR #686 (F1.1/F2.1
-> label-honesty comment + doc sync) have both since merged, closing F2.4 and F4.1 and the
-> StrongBox-title/v2-v3-label wording — F2.1's underlying evidence-doc contradiction
-> (`docs/device-verification-2026-07-05.md`) remains unresolved. Full detail: §4 "2026-07-06
-> INTERNAL code-and-artifact review" subsection.
+> StrongBox title overclaim, F2.1 stale v2/v3 evidence contradiction, F2.2 stale v2 code
+> comments, F2.3 obsolete lazy-migration item — corrected in §4 below, F2.4 missing
+> salt-tamper valid-value test, F3.1 re-enroll scope) reconciled in §4. PR #685
+> (salt-tamper unit test + LOG-1 CI guard) and PR #686 (F1.1/F2.1 label-honesty comment +
+> doc sync) have both since merged, closing F2.4 and F4.1 and the
+> StrongBox-title/v2-v3-label wording. F2.1's underlying evidence-doc contradiction
+> (`docs/device-verification-2026-07-05.md`) was subsequently resolved by PR #743 (L-3,
+> 2026-07-08) — correction banner prepended, I6 section updated. Full detail: §4
+> "2026-07-06 INTERNAL code-and-artifact review" subsection.
 
 ---
 
@@ -829,7 +830,7 @@ in this file and the code comments, not vulnerabilities:
 | ID | Severity | Finding | Resolution |
 |---|---|---|---|
 | F1.1 | MEDIUM | The "StrongBox HMAC-SHA256" feature title overclaims — `tryEnrollKey(useStrongBox=true) \|\| tryEnrollKey(useStrongBox=false)` means StrongBox is *preferred*, not enforced; TEE/software fallback is accepted (`ACCEPTED_TIER_NAMES` in `hardware.js` also accepts `TRUSTED_ENVIRONMENT`, `SECURE_HARDWARE_PRE31`, `UNKNOWN_SECURE`). | **FIXED — PR #686 (merged 2026-07-06).** The Android headline in the Phase 2 narrative above now reads "StrongBox HMAC-SHA256 (StrongBox-**preferred**, NOT enforced — ...)" inline. Enforcement-vs-observe decision tracked in `docs/audit-triage/strongbox-tier-enforcement-decision-2026-07-06.md`. |
-| F2.1 | MEDIUM | Evidence contradiction: `docs/device-verification-2026-07-05.md` still reads "KEK v2 protocol confirmed" while this file's table claims v3 device-verified for the same session. | **PARTIALLY ADDRESSED — PR #686 (merged 2026-07-06)** added a LABEL NOTE comment in `HardwareKekPlugin.kt` clarifying that the debug `"salt-source: v2-bound"` string is a legacy *branch* label (per-enrollment-salt-supplied vs fixed-salt), not the vault's `hardwareKekVersion` stamp — explaining why the two artifacts aren't actually describing the same thing. **The underlying evidence doc itself (`docs/device-verification-2026-07-05.md`) was NOT edited** and still reads "v2 confirmed" verbatim — still flagged for the owner to correct or annotate. |
+| F2.1 | MEDIUM | Evidence contradiction: `docs/device-verification-2026-07-05.md` still reads "KEK v2 protocol confirmed" while this file's table claims v3 device-verified for the same session. | **FIXED — PR #743 (merged 2026-07-08, L-3)** prepended a correction banner to `docs/device-verification-2026-07-05.md` making the v2 claim context explicit and explaining the C-1 regression. The I6 section of that doc was also updated (lines 215–223) to clarify that `"salt-source: v2-bound"` is a legacy branch label, not the vault's `hardwareKekVersion` stamp, and that the session exercised the genuine **v3** path (PR #568); the vault read back `hardwareKekVersion:3`. The "v2 confirmed" wording is now fully annotated and the contradiction resolved. INTERNAL. |
 | F2.2 | LOW-MEDIUM | Stale "v2" comments remain in `HardwareKekPlugin.kt` and `kek.js` referring to the superseded v2 protocol (the native side is version-agnostic at runtime — this is a comments-only issue). | **FIXED (HardwareKekPlugin.kt) — PR #686 (merged 2026-07-06).** "C-1 (v2 protocol)" → v3 comment correction + LABEL NOTE added; same fix applied to the `PRF_EVAL_SALT` block comment. `kek.js` was not touched by #686 — any stale v2 wording there remains open. |
 | F2.3 | LOW | The "v2→v3 lazy migration not device-exercised" residual item (carried in the C-1 row and the Android narrative above) is obsolete — the lazy on-unlock migration was removed 2026-07-06 (PR #662), confirmed by source check. | **CORRECTED in this file** (C-1 row and Android-narrative outstanding-items list above) — reframed as a device-exercise gap against the `changePassword`/`upgradeKekToV3` path, not the removed lazy migration. |
 | F2.4 | LOW-MEDIUM | No test previously mutated a valid v3 `kekSalt` to a different valid 32-byte value and asserted fail-closed (only degenerate/empty-salt and wrap-version-tamper tests existed). | **FIXED — PR #685 (merged 2026-07-06)** — added `src/wallet-core/keystore/__tests__/kek.salt-binding-tamper.test.js` (real WebCrypto; both-factor, H-only, C-only tamper; asserts `KEK_ERR.UNWRAP_FAILED`). |
@@ -858,7 +859,8 @@ described in the table above (`HardwareKekPlugin.kt` comments + this file's Stro
 and v2→v3-migration wording). The corrections recorded in this file were reconciled against
 #686's actual merged diff (not assumed) — see the F1.1/F2.1/F2.2 rows above for the precise
 scope of what #686 did and did not change (notably, it did not edit
-`docs/device-verification-2026-07-05.md`, so F2.1's evidence-doc contradiction persists).
+`docs/device-verification-2026-07-05.md` — that gap was subsequently closed by PR #743
+(L-3, 2026-07-08): correction banner prepended + I6 section updated; F2.1 now RESOLVED).
 
 **Positive confirmations:** H-NEW-D CLOSED (SE ECIES confirmed); `kSecAccessControlBiometryCurrentSet` correctly set on iOS SE key ACL; `combineKek` HKDF construction sound; `android:allowBackup="false"` correct; ATS enforced on iOS.
 
