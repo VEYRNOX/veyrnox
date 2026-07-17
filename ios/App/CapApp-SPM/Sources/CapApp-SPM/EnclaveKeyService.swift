@@ -44,11 +44,35 @@ final class EnclaveKeyService {
 
     // MARK: - Key lifecycle
 
-    /// Idempotent: returns immediately if the wrapping key already exists.
-    /// Otherwise generates a non-exportable Enclave P-256 key whose private-key
-    /// use requires a current-set biometric.
+    /// Idempotent: returns immediately if the wrapping key already exists AND is
+    /// verified to be Secure-Enclave-backed.
+    ///
+    /// Codex ad-hoc review 2026-07-17 P2-#2 — hardening for the M2C_ENABLED=true
+    /// transition. Previously this short-circuited on `loadPrivateKey() != nil`
+    /// alone, which would silently reuse a stale keychain item under our
+    /// application tag left over from an older dev build with a WEAKER ACL or a
+    /// non-Secure-Enclave token. Now: on reuse, query kSecReturnAttributes and
+    /// assert kSecAttrTokenID == kSecAttrTokenIDSecureEnclave. If not, throw
+    /// .staleWrappingKey — the caller must explicitly delete it via
+    /// deleteWrappingKey({intent:'cleanup'}) (P2-#1) before we re-create. We do
+    /// NOT silently delete-and-recreate, matching P2-#1's discipline of no
+    /// accidental key destruction.
+    ///
+    /// NOT DEVICE-VERIFIED (this change made on Windows; no iOS build/test rig
+    /// available). Runbook item: exercise on a physical iPhone before flipping
+    /// M2C_ENABLED / M2C_HARDWARE_WRAP_ENABLED to true.
     func createWrappingKey() throws {
-        if loadPrivateKey() != nil { return }
+        if let existing = loadPrivateKeyAttributes() {
+            // Reuse only if the pre-existing key is verifiably Enclave-backed.
+            // kSecAttrTokenID is the string constant kSecAttrTokenIDSecureEnclave
+            // when — and only when — the private key material lives in the SE.
+            let tokenID = existing[kSecAttrTokenID as String] as? String
+            let expected = kSecAttrTokenIDSecureEnclave as String
+            if tokenID == expected {
+                return
+            }
+            throw EnclaveError.staleWrappingKey
+        }
         guard SecureEnclave.isAvailable else { throw EnclaveError.secureEnclaveUnavailable }
 
         var acError: Unmanaged<CFError>?
@@ -129,6 +153,27 @@ final class EnclaveKeyService {
     }
 
     // MARK: - Helpers
+
+    /// Codex ad-hoc review 2026-07-17 P2-#2: attribute-returning peer of
+    /// loadPrivateKey. Used by createWrappingKey() to verify a pre-existing
+    /// keychain item under our application tag is Secure-Enclave-backed
+    /// (kSecAttrTokenID == kSecAttrTokenIDSecureEnclave) before short-circuiting
+    /// the create path. Does NOT return the SecKey handle — pure metadata read,
+    /// no biometric prompt, no LAContext.
+    ///
+    /// NOT DEVICE-VERIFIED (Windows dev box).
+    private func loadPrivateKeyAttributes() -> [String: Any]? {
+        let query: [String: Any] = [
+            kSecClass as String:              kSecClassKey,
+            kSecAttrApplicationTag as String: tag,
+            kSecAttrKeyType as String:        kSecAttrKeyTypeECSECPrimeRandom,
+            kSecReturnAttributes as String:   true,
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let dict = item as? [String: Any] else { return nil }
+        return dict
+    }
 
     private func loadPrivateKey(context: LAContext? = nil) -> SecKey? {
         var query: [String: Any] = [

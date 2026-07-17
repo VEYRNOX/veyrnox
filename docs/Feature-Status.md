@@ -963,6 +963,31 @@ owner confirms a resolution and the gate condition (`M2C_HARDWARE_WRAP_ENABLED =
 satisfied. The independent third-party audit of the KEK stack remains outstanding and is
 not replaced by this pass.
 
+**Codex ad-hoc review 2026-07-17 P2-#1/#2/#3 — additional M2c hardening (still dormant
+behind the flag):** three P2 findings from a Codex second-model pass across the M2c JS
+bridge, native.js migration-log helper, and Swift EnclaveKeyService. All BUILT — JS is
+unit-tested (13/13 delete-intent, 8/8 m2c-gate, 8/8 migration-log; 29 total across the
+two suites), Swift is code-only (no iOS build/test rig on the Windows dev box). INTERNAL,
+NOT device-verified, NOT independently audited, no on-chain txid. No runtime behaviour
+change while `M2C_ENABLED = false`.
+- **P2-#1** — `deleteWrappingKey` now requires an allowlisted `intent`
+  (`'cleanup' | 'unenroll' | 'wipe'`), throws `M2C_DELETE_INTENT_REQUIRED` otherwise.
+  Defence-in-depth against injected-JS availability hazard (stranding a live
+  Enclave-wrapped vault once M2c is enabled). The lone internal caller
+  (`downgradeFromHardwareWrap`) passes `intent: 'unenroll'`.
+- **P2-#2** — `EnclaveKeyService.createWrappingKey()` no longer short-circuits on a
+  bare `loadPrivateKey() != nil` check; a new `loadPrivateKeyAttributes()` peer returns
+  `kSecReturnAttributes`, and the reuse branch asserts
+  `kSecAttrTokenID == kSecAttrTokenIDSecureEnclave`. Non-Enclave-backed stale items
+  (e.g. from an older dev build with a weaker ACL) throw the new
+  `EnclaveError.staleWrappingKey` / `STALE_WRAPPING_KEY` — no silent
+  delete-and-recreate. **Swift change NOT device-verified from this box; runbook
+  requires physical iPhone re-test before the M2c flag flip.**
+- **P2-#3** — `logM2cMigrationFailure` allowlist tightening. No longer falls back to
+  `e.message` (future error class could carry a secret-bearing message). Now:
+  allowlisted `e.code` → log code; else `e.constructor.name` → log
+  `"<Name> (unknown code)"`; else `"unknown error"`. `e.message` is never logged.
+
 ---
 
 ### 2026-07-08 INTERNAL S1–S4 + crypto audit — PR #757
