@@ -261,20 +261,20 @@ const VAULT_VERSION = 2;
  * salt (Argon2id blobs) or v and kdf (KEK-DEK blobs, which have no salt field).
  * JSON.stringify is deterministic for these scalar/object shapes; both encrypt and
  * decrypt paths call this with the same blob object so the AAD matches.
- * @param {object} blob
- * @returns {Uint8Array}
+ * @param {Record<string, unknown>} blob
+ * @returns {Uint8Array<ArrayBuffer>}
  */
 function vaultAad(blob) {
   const fields = blob.salt !== undefined
     ? { v: blob.v, kdf: blob.kdf, salt: blob.salt }
     : { v: blob.v, kdf: blob.kdf };
-  return enc.encode(JSON.stringify(fields));
+  return /** @type {Uint8Array<ArrayBuffer>} */ (enc.encode(JSON.stringify(fields)));
 }
 
 /**
  * Whether a blob needs AAD binding (v < VAULT_VERSION). Returns true for v:1
  * blobs and for null/missing vaults. Used to trigger a lazy rekey on unlock.
- * @param {object|null|undefined} vault
+ * @param {Record<string, unknown>|null|undefined} vault
  * @returns {boolean}
  */
 export function vaultNeedsAAD(vault) {
