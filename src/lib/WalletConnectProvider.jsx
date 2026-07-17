@@ -54,14 +54,13 @@ import {
   composeConditions,
   ATTESTATION_ENABLED,
   TIER,
+  FRESH_PROBE_TIMEOUT_MS,
 } from '@/rasp';
 import { DEMO } from '@/api/demoClient';
 
-// Bounded timeout for the async probe legs so an in-flight bridge call cannot
-// silently allow — on timeout the source resolves to UNAVAILABLE (fail closed,
-// I4). 1500 ms is comfortably above measured native probe latency and short
-// enough that a stuck bridge does not lock the WC handler indefinitely.
-const RASP_ASYNC_PROBE_TIMEOUT_MS = 1500;
+// L-1 (PR #962): use the shared constant from getFreshRaspArtifact so the
+// Send-path and WC-path stay in sync with a single source of truth.
+const RASP_ASYNC_PROBE_TIMEOUT_MS = FRESH_PROBE_TIMEOUT_MS;
 
 const UNAVAILABLE_SOURCE = Object.freeze({ available: false });
 

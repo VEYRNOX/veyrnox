@@ -594,8 +594,8 @@ export default function SendCrypto() {
   const priorSends = useMemo(
     () => history
       .filter((t) => t.type === "send" && t.currency === selectedWallet?.currency)
-      .map((t) => Number(t.amount))
-      .filter((n) => Number.isFinite(n) && n > 0),
+      .map((t) => String(t.amount))
+      .filter((s) => s && s !== '0'),
     [history, selectedWallet]
   );
   const knownCounterparties = useMemo(
@@ -821,7 +821,7 @@ export default function SendCrypto() {
       // to ~60 s stale — last heartbeat sample). An attacker who injected a hook
       // AFTER the last probe but BEFORE the user tapped Send previously slipped
       // past a stale ALLOW. getFreshRaspArtifact awaits both the OS and
-      // attestation legs with a 1500 ms fail-closed timeout (WC pattern);
+      // attestation legs with a FRESH_PROBE_TIMEOUT_MS fail-closed timeout (WC pattern);
       // timeout/throw/shape-drift → BLOCK. Never a fabricated CLEAN.
       const freshArtifact = await getFreshRaspArtifact();
       const freshRaspTier = freshArtifact?.tier ?? TIER.BLOCK;
