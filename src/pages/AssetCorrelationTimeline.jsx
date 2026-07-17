@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { fetchOHLCVCG as fetchOHLCV } from "@/lib/coinGecko";
+import { fetchOHLCV } from "@/lib/ohlcv";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import {
   ResponsiveContainer,
@@ -95,7 +96,9 @@ const CorrTooltip = ({ active = undefined, payload = undefined, label = undefine
 // Main component
 // ---------------------------------------------------------------------------
 export default function AssetCorrelationTimeline() {
-  const livePricesOn = isLivePricesEnabled();
+  // I3: a deniability/demo session makes zero chart egress (belt-and-braces
+  // with the runtime guard inside fetchOHLCV itself).
+  const livePricesOn = isLivePricesEnabled() && !isDeniabilityOrDemoActive();
 
   // News sentiment (always fetched — no price data required)
   const { data: newsSentiments = [], isError: newsError } = useQuery({
@@ -125,8 +128,9 @@ export default function AssetCorrelationTimeline() {
 
   const isLoading = btcQ.isLoading || ethQ.isLoading || solQ.isLoading;
   const isError = btcQ.isError || ethQ.isError || solQ.isError;
-  const errorMsg =
-    btcQ.error?.message ?? ethQ.error?.message ?? solQ.error?.message ?? "unknown error";
+  // Generic copy on purpose: raw provider errors (HTTP codes, guard strings)
+  // must never render — see the H2 sanitisation pattern.
+  const errorMsg = "price sources didn't respond. Try again in a minute.";
 
   // Build chart data when all three series are ready
   let chartData = null;
