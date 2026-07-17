@@ -113,10 +113,15 @@ export async function nativeProbeSource() {
   // backup is explicitly NOT blocked. GENUINE root/jailbreak (verdict.rooted /
   // verdict.jailbroken) is the ONLY thing that still sets `rooted`.
   //
-  // Item 19: overlayActive (iOS UIAccessibilityIsAssistiveTouchRunning) → WARN.
-  // The plugin comment says "must NOT trigger TIER.BLOCK on its own"; WARN
-  // satisfies that. AssistiveTouch is legitimate but an active accessibility
-  // overlay is a tapjacking risk during PIN entry.
+  // Item 19 (#1104, 2026-07-17): overlayActive is DROPPED from ELEVATED.
+  // AssistiveTouch (iOS UIAccessibilityIsAssistiveTouchRunning) is a first-class
+  // accessibility feature many users leave permanently enabled — folding it
+  // into ELEVATED produced a permanent WARN banner + biometric re-confirm on
+  // every Send, training users to click through and degrading the ELEVATED
+  // tier's meaning. Accessibility is not an adversarial signal. Genuine
+  // tapjacking risk is still surfaced by adversarial signals like Android
+  // accessibilityService (a user-installed service, item 37). The verdict field
+  // remains parsed by the plugin; it simply no longer contributes here.
   // Item 25: developerMode (Android ADB_ENABLED / DEVELOPMENT_SETTINGS_ENABLED,
   // item 24) → WARN. USB debugging on = adb-level attack surface (logcat
   // capture, screenrecord, memory dump). Android-only field; absent on iOS
@@ -167,8 +172,8 @@ export async function nativeProbeSource() {
     rooted: verdict.rooted === true || verdict.jailbroken === true,
     // The 8 soft environment signals (items 19/25/27/29/31/33/35/37) — WARN +
     // biometric re-confirm via CONDITION.ELEVATED, but seed backup is allowed.
-    elevated: verdict.overlayActive === true
-         || verdict.developerMode === true
+    // #1104: verdict.overlayActive is intentionally NOT in this OR chain.
+    elevated: verdict.developerMode === true
          || verdict.virtualApp === true
          || verdict.suspiciousPackage === true
          || verdict.thirdPartyKeyboard === true
