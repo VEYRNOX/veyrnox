@@ -778,33 +778,33 @@ describe('nativeProbeSource — item 19 (SUPERSEDED by #1104): overlayActive no 
   });
 });
 
-// ── Item 16 — screenCapture folded into the hooked signal ─────────────────────
-// iOS checkScreenCapture (UIScreen.isCaptured) returns screenCapture:true when
-// the screen is being mirrored via AirPlay or captured via iOS screen recording.
-// During PIN entry or seed display this is a surveillance attack vector — the
-// attacker can observe the user's input or recover key material from the video.
-// nativeProbeSource folds screenCapture into signals.hooked so the presignGate
-// sees HOOKED → BLOCK rather than treating active screen capture as clean.
-describe('nativeProbeSource — item 16: screenCapture → hooked', () => {
-  it('screenCapture:true maps to signals.hooked true', async () => {
-    h.isNative = true;
-    h.checkIntegrity = vi.fn(async () => withCore({
-      hookedProcess: false,
-      debuggerAttached: false,
-      screenCapture: true,
-    }));
-    const src = await nativeProbeSource();
-    expect(src.signals.hooked).toBe(true);
-  });
-
-  it('screenCapture:true drives detect() to HOOKED', async () => {
+// ── #1108 — screenCapture: HOOKED (BLOCK) → ELEVATED (WARN) ────────────────────
+// iOS UIScreen.isCaptured fires on AirPlay mirroring, iOS Screen Recording,
+// QuickTime tethered capture, and coincidentally on some legitimate contexts
+// (e.g. a user demoing the app in a call). It's a real surveillance vector, but
+// bucketing it with Frida-attach severity (BLOCK) is user-hostile and
+// disproportionate — WARN is the honest tier: the user is told screen capture
+// is active and asked to acknowledge / pause before signing. Signal is
+// preserved (surveillance is still worth surfacing); severity is corrected.
+describe('#1108 — screenCapture is surveillance (WARN), not process compromise (BLOCK)', () => {
+  it('screenCapture:true alone → signals.hooked false, signals.elevated true', async () => {
     h.isNative = true;
     h.checkIntegrity = vi.fn(async () => withCore({ screenCapture: true }));
     const src = await nativeProbeSource();
-    expect(detect(src)).toBe(CONDITION.HOOKED);
+    expect(src.signals.hooked).toBe(false);
+    expect(src.signals.elevated).toBe(true);
+    expect(src.signals.rooted).toBe(false);
   });
 
-  it('all three false → hooked false (no false positive)', async () => {
+  it('screenCapture:true alone drives detect() to ELEVATED (acknowledgeable), not HOOKED (blocking)', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => withCore({ screenCapture: true }));
+    const src = await nativeProbeSource();
+    expect(detect(src)).toBe(CONDITION.ELEVATED);
+    expect(detect(src)).not.toBe(CONDITION.HOOKED);
+  });
+
+  it('screenCapture:false alone leaves elevated and hooked both false', async () => {
     h.isNative = true;
     h.checkIntegrity = vi.fn(async () => withCore({
       hookedProcess: false,
@@ -813,14 +813,22 @@ describe('nativeProbeSource — item 16: screenCapture → hooked', () => {
     }));
     const src = await nativeProbeSource();
     expect(src.signals.hooked).toBe(false);
+    expect(src.signals.elevated).toBe(false);
   });
 
-  it('any of hookedProcess / debuggerAttached / screenCapture true is sufficient', async () => {
+  it('hookedProcess:true still drives HOOKED (BLOCK) — only screenCapture is downgraded', async () => {
     h.isNative = true;
-    for (const field of ['hookedProcess', 'debuggerAttached', 'screenCapture']) {
-      h.checkIntegrity = vi.fn(async () => withCore({ [field]: true }));
-      const src = await nativeProbeSource();
-      expect(src.signals.hooked).toBe(true);
-    }
+    h.checkIntegrity = vi.fn(async () => withCore({ hookedProcess: true }));
+    const src = await nativeProbeSource();
+    expect(src.signals.hooked).toBe(true);
+    expect(detect(src)).toBe(CONDITION.HOOKED);
+  });
+
+  it('debuggerAttached:true still drives HOOKED (BLOCK) — only screenCapture is downgraded', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => withCore({ debuggerAttached: true }));
+    const src = await nativeProbeSource();
+    expect(src.signals.hooked).toBe(true);
+    expect(detect(src)).toBe(CONDITION.HOOKED);
   });
 });

@@ -173,20 +173,27 @@ export async function nativeProbeSource() {
     // The 8 soft environment signals (items 19/25/27/29/31/33/35/37) — WARN +
     // biometric re-confirm via CONDITION.ELEVATED, but seed backup is allowed.
     // #1104: verdict.overlayActive is intentionally NOT in this OR chain.
+    // #1108 (2026-07-17): verdict.screenCapture moved here (was in `hooked`).
+    // UIScreen.isCaptured fires on AirPlay mirroring / iOS Screen Recording /
+    // QuickTime tethered capture — a real surveillance vector, but bucketing
+    // it with Frida-attach severity (BLOCK) is user-hostile. WARN is the
+    // honest tier: the user is told screen capture is active and asked to
+    // acknowledge / pause before signing.
     elevated: verdict.developerMode === true
          || verdict.virtualApp === true
          || verdict.suspiciousPackage === true
          || verdict.thirdPartyKeyboard === true
          || verdict.mockLocation === true
          || verdict.networkProxy === true
-         || verdict.accessibilityService === true,
+         || verdict.accessibilityService === true
+         || verdict.screenCapture === true,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
-    // Item 16: fold screenCapture (iOS UIScreen.isCaptured) — active mirroring
-    // or screen recording during signing is a surveillance vector → BLOCK.
+    // #1108: verdict.screenCapture NO LONGER contributes to `hooked` — it
+    // is now an ELEVATED (WARN) signal above. Only true process-compromise
+    // signals (hookedProcess, debuggerAttached) remain here.
     hooked: verdict.hookedProcess === true
-         || verdict.debuggerAttached === true
-         || verdict.screenCapture === true,
+         || verdict.debuggerAttached === true,
     emulator: verdict.emulator === true,
     // Binary-tamper is a separate native probe not yet wired (see TODO). Until the
     // plugin reports it, it is not observed.
