@@ -87,12 +87,47 @@ export function deriveCosmosAccount(mnemonic, opts = {}) {
 }
 
 /**
- * Public address only — no secret material. Convenient for display/receive.
+ * Public address only — no leaf signing key materialised. Mirrors the EVM
+ * deriveEvmAddress pattern (PR #1080, L-1 audit): derive private only to
+ * the hardened account boundary (m/44'/118'/0'), extract publicExtendedKey,
+ * then derive the non-hardened tail (m/0/index) in public mode.
+ *
+ * Architectural scope (I4 honesty): BIP-32 hardened derivation up to the
+ * account level requires the parent private key; it is zeroed immediately
+ * after the xpub is extracted. The Cosmos LEAF signing key at
+ * m/44'/118'/0'/0/index is never materialised — that is the audit goal.
+ *
  * @param {string} mnemonic
- * @param {object} [opts] - same as deriveCosmosAccount
+ * @param {object} [opts]
+ * @param {string} [opts.hrp='cosmos']
+ * @param {number} [opts.index=0]
+ * @param {string} [opts.passphrase='']
  * @returns {{ address: string, path: string, hrp: string }}
  */
 export function deriveCosmosAddress(mnemonic, opts = {}) {
-  const { address, path, hrp } = deriveCosmosAccount(mnemonic, opts);
-  return { address, path, hrp };
+  const { hrp = 'cosmos', index = 0, passphrase = '' } = opts;
+  const seed = mnemonicToSeed(mnemonic, passphrase);
+  const master = HDKey.fromMasterSeed(seed);
+  try {
+    // Derive private only to the hardened account boundary.
+    const acctPriv = master.derive(`m/44'/${COSMOS_COIN_TYPE}'/0'`);
+    // Switch to a public-only node for the non-hardened tail.
+    const acctPub = HDKey.fromExtendedKey(acctPriv.publicExtendedKey);
+    if (acctPriv.privateKey) acctPriv.privateKey.fill(0); // wipe account priv
+
+    const node = acctPub.derive(`m/0/${index}`); // public-only derivation
+    const pub = node.publicKey;
+    if (!pub) throw new Error('Cosmos public key derivation failed');
+
+    // Cosmos SDK address: SHA-256 then RIPEMD-160 of the compressed public key.
+    const pubkeyHash = ripemd160(sha256(pub));
+    const words = bech32.toWords(pubkeyHash);
+    const address = bech32.encode(hrp, words);
+    const path = cosmosPath(index);
+
+    return { address, path, hrp };
+  } finally {
+    if (master.privateKey) master.privateKey.fill(0);
+    seed.fill(0);
+  }
 }
