@@ -4,25 +4,32 @@ package com.veyrnox.app
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐
 // │ PROVISIONAL — NOT AUDITED-SECURE, NOT DEVICE-VERIFIED.                  │
-// │ M2d-1a SCAFFOLD.                                                        │
+// │ M2d-1b — real createWrappingKey landed BEHIND the M2D_ENABLED=false     │
+// │ flag. Code lands, does not run in production.                          │
 // │                                                                        │
-// │   Ships:  plugin registration, capability probe, deleteWrappingKey     │
-// │           intent gate, M2D_ENABLED=false fail-closed on wrap/unwrap/   │
-// │           createWrappingKey.                                           │
-// │   Does NOT ship: any AndroidKeyStore key material, any biometric       │
-// │           prompt, any wrap/unwrap logic. Those land in M2d-1b/-1c/-1d. │
+// │   TRUE today:                                                          │
+// │     - plugin registration, capability probe (isHardwareKeyAvailable). │
+// │     - deleteWrappingKey({ intent }) intent-allowlist gate at the      │
+// │       native bridge (Android-only on this branch pre-#1098).          │
+// │     - createWrappingKey real path via EnclaveKeyService — AES-GCM 256 │
+// │       AndroidKeyStore key, per-use BIOMETRIC_STRONG auth,             │
+// │       invalidate-on-biometric-enrollment, StrongBox-preferred with    │
+// │       TEE fall-through. Idempotent — refuses to silently re-key.      │
+// │     - M2D_ENABLED=false fail-closed on createWrappingKey, wrap,       │
+// │       unwrap — none of these run in production yet. Runtime for KEY  │
+// │       MATERIAL is byte-identical to "plugin not registered" until    │
+// │       the flag is flipped in lockstep with the JS-side gates AFTER   │
+// │       docs/audit-triage/m2d-strongbox-device-test.md is executed and │
+// │       the independent audit signs off.                                │
 // │                                                                        │
-// │ Runtime behaviour for KEY MATERIAL is byte-identical to "plugin not    │
-// │ registered" until M2D_ENABLED is flipped — no AndroidKeyStore write,   │
-// │ no biometric prompt, no key touched. This scaffold DOES newly expose:  │
-// │   - isHardwareKeyAvailable() — read-only capability probe, no side     │
-// │     effects, no identifier leak (returns tier + biometry-enrolled bit).│
-// │   - deleteWrappingKey({ intent }) — requires an explicit allowlisted   │
-// │     intent (Codex 2026-07-17 P2-A extended to Android: closes the     │
-// │     M-5-class auto-registration attack surface at the native bridge,   │
-// │     not just the JS wrapper). No-op until M2d-1b mints a key.          │
+// │   NOT YET (pending future increments):                                 │
+// │     - wrap()   — M2d-1c (Cipher AES/GCM encrypt).                     │
+// │     - unwrap() — M2d-1d (BiometricPrompt(CryptoObject(cipher)) +      │
+// │       decrypt).                                                       │
+// │     - JS wrapper opt-in flip (M2C_ENABLED / M2C_HARDWARE_WRAP_ENABLED)│
 // │                                                                        │
-// │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2.      │
+// │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2,     │
+// │ docs/audit-triage/m2d-strongbox-device-test.md (STATUS: NOT RUN).     │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
 // Intended parity with iOS VeyrnoxEnclavePlugin.swift — current state on
@@ -42,12 +49,20 @@ package com.veyrnox.app
 //     native bridge from day one, before any JS-side plumbing exists.
 //
 // Divergence from iOS (documented and by design):
-//   - Capability.backing may be "strongBox" or "tee" (Android has two hardware
-//     tiers), where iOS reports "secureEnclave" or "none".
-//   - Cipher choice for M2d-1b will be AES-GCM in AndroidKeyStore, NOT ECIES
-//     P-256 (see plan §5: RSA-OAEP/EC StrongBox support is spotty on target
-//     OEMs; AES-GCM is universally supported).
+//   - capability().backing may be "strongBox" | "tee" | "none" (pre-key OS-feature
+//     probe). createWrappingKey's CreateResult.backing may additionally return
+//     "software" (KeyStore fell back to in-process bytes — e.g. emulator or
+//     misconfigured device) or "unknown" (unmapped securityLevel); NEVER label
+//     software or unknown as "tee" (I4 honesty). iOS reports "secureEnclave"
+//     or "none".
+//   - Cipher: AES-GCM 256 in AndroidKeyStore, NOT ECIES P-256 (plan §5:
+//     RSA-OAEP/EC StrongBox support is spotty on target OEMs; AES-GCM is
+//     universally supported). Consequence: `setUserAuthenticationRequired(true)`
+//     on this single key means biometric prompt on BOTH wrap and unwrap.
+//     RSA-OAEP asymmetric ("wrap without prompt") deferred; revisit criterion
+//     is the M2d-1c/-1d device runbook surfacing UX pain.
 
+import android.os.Build
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -76,6 +91,12 @@ class VeyrnoxEnclavePlugin : Plugin() {
         private const val NOT_IMPLEMENTED_CODE = "M2C_DISABLED"
         private const val NOT_IMPLEMENTED_MESSAGE =
             "M2d hardware wrap is disabled (scaffold: wrap/unwrap not yet implemented)"
+
+        private const val REQUIRES_ANDROID_11_CODE = "M2D_REQUIRES_ANDROID_11"
+        private const val REQUIRES_ANDROID_11_MESSAGE =
+            "M2d hardware wrap requires Android 11+ (API 30) for BIOMETRIC_STRONG auth parameters"
+
+        private const val CREATE_FAILED_CODE = "M2D_CREATE_FAILED"
     }
 
     private val service = EnclaveKeyService()
@@ -84,6 +105,9 @@ class VeyrnoxEnclavePlugin : Plugin() {
     // Touches no key material. Callers (native.js) use this to decide whether
     // the hardware path is even reachable on this device. Reports the true
     // tier ("strongBox" | "tee" | "none") — never fabricates a claim (I4).
+    // Note: CreateResult.backing (from createWrappingKey below) has a wider
+    // enum ("strongBox" | "tee" | "software" | "unknown"); capability() is
+    // the pre-key OS probe and stays with the M2d-1a 3-value shape.
     @PluginMethod
     fun isHardwareKeyAvailable(call: PluginCall) {
         val ctx = context ?: run {
@@ -106,12 +130,37 @@ class VeyrnoxEnclavePlugin : Plugin() {
     // convention verified against HardwareKekPlugin.kt:103,120 — reject(message, code).
     @PluginMethod
     fun createWrappingKey(call: PluginCall) {
+        // M2D_ENABLED gate FIRST — production behaviour is byte-identical to
+        // the pre-M2d-1b scaffold until this flag flips in lockstep with the
+        // JS-side gates AFTER the device runbook + independent audit sign-off.
         if (!M2D_ENABLED) {
             call.reject(DISABLED_MESSAGE, DISABLED_CODE)
             return
         }
-        // M2d-1b lands the AndroidKeyStore key creation here.
-        call.reject(NOT_IMPLEMENTED_MESSAGE, NOT_IMPLEMENTED_CODE)
+        // API gate — setUserAuthenticationParameters is API 30+. Do NOT weaken
+        // auth strength to run on older APIs (fail honest, fail closed).
+        if (Build.VERSION.SDK_INT < EnclaveKeySpecConfig.MIN_API) {
+            call.reject(REQUIRES_ANDROID_11_MESSAGE, REQUIRES_ANDROID_11_CODE)
+            return
+        }
+        val ctx = context ?: run {
+            call.reject("Plugin context unavailable", "NO_CONTEXT")
+            return
+        }
+        try {
+            val result = service.createWrappingKey(ctx)
+            val response = JSObject().apply {
+                put("backing", result.backing)
+                put("securityLevel", result.securityLevel)
+                put("securityLevelName", result.securityLevelName)
+                put("created", result.created)
+            }
+            call.resolve(response)
+        } catch (e: Exception) {
+            // Android PluginCall.reject: (message, code) — see the note on the
+            // deleteWrappingKey handler below (Codex 2026-07-17 P2-A).
+            call.reject("createWrappingKey failed: ${e.message}", CREATE_FAILED_CODE)
+        }
     }
 
     // ── Gated: wraps a vault blob. Fail-closed while M2D_ENABLED is false ──
@@ -158,9 +207,15 @@ class VeyrnoxEnclavePlugin : Plugin() {
             )
             return
         }
-        // M2d-1b lands the AndroidKeyStore.deleteEntry() calls for both the
-        // wrap-only alias and the unwrap alias here. Today's scaffold has no
-        // aliases to delete — resolve as a no-op after the intent check.
-        call.resolve()
+        // M2d-1b: delete the single AES-GCM wrapping key alias. Idempotent —
+        // service is a no-op if the alias is not present. The M2d-1a
+        // reserved wrap-only alias was dropped in M2d-1b (see EnclaveKeyService
+        // header), so there is only one alias to remove.
+        try {
+            service.deleteWrappingKey()
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject("deleteWrappingKey failed: ${e.message}", "M2D_DELETE_FAILED")
+        }
     }
 }

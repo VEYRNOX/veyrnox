@@ -44,13 +44,28 @@ Run the whole matrix twice, once per device, at minimum:
 
 ## Fresh vault (M2d-1b/1c — createVault hardware path)
 
-- [ ] Create a new wallet. No biometric prompt during creation on the wrap-only
-      key (AES-GCM in AndroidKeyStore, no `setUserAuthenticationRequired`).
-- [ ] Confirm `KeyInfo.isInsideSecureHardware == true` on the wrap-only alias.
-- [ ] Confirm `KeyInfo.isInsideSecureHardware == true` AND
-      `securityLevel == SECURITY_LEVEL_STRONGBOX` on the unwrap alias (StrongBox
-      device only); on TEE-only device `securityLevel == SECURITY_LEVEL_TRUSTED_ENVIRONMENT`.
-- [ ] Inspect the stored record: it is `{ wrap: 'androidkey-v1', hw: '<base64>' }` — NOT a raw `{v,kdf,salt,iv,ct}` blob.
+> M2d-1b landed the real `createWrappingKey` (2026-07-17) — the key mint path
+> is now runnable end-to-end on a device once `M2D_ENABLED` is flipped in a
+> test build. M2d-1a's separate "wrap-only" alias was DROPPED — M2d uses one
+> AES-GCM 256 key at `EnclaveKeySpecConfig.KEY_ALIAS`
+> (`com.veyrnox.app.enclaveWrappingKey.v1`) for both encrypt and decrypt.
+> Documented UX tradeoff: biometric prompt on BOTH wrap and unwrap.
+
+- [ ] `createWrappingKey()` succeeds; response contains
+      `{ backing: 'strongBox'|'tee', securityLevel, securityLevelName, created: true }`.
+- [ ] Call `createWrappingKey()` a second time — response has `created: false`
+      and the same `securityLevel` (idempotent; no silent re-key).
+- [ ] Confirm `KeyInfo.securityLevel == SECURITY_LEVEL_STRONGBOX` on the
+      StrongBox device; on TEE-only device it is
+      `SECURITY_LEVEL_TRUSTED_ENVIRONMENT`. The `backing` string in the
+      response matches the KeyInfo tier (no synthetic StrongBox claim on a
+      TEE-only device — I4).
+- [ ] On API < 30, `createWrappingKey()` rejects with
+      `M2D_REQUIRES_ANDROID_11` — no keystore write, no biometric prompt.
+- [ ] (M2d-1c) Create a new wallet. Wrap path issues one biometric prompt
+      (AES-GCM single-key means both wrap and unwrap prompt — documented).
+- [ ] (M2d-1c) Inspect the stored record: it is
+      `{ wrap: 'androidkey-v1', hw: '<base64>' }` — NOT a raw `{v,kdf,salt,iv,ct}` blob.
 - [ ] The mnemonic / decrypted blob NEVER appears in logcat during create.
 
 ## Unlock (M2d-1d — unwrap → BiometricPrompt with CryptoObject)
@@ -63,6 +78,10 @@ Run the whole matrix twice, once per device, at minimum:
 - [ ] Repeated failures beyond lockout → `ERROR_LOCKOUT_PERMANENT`; PIN recovery still works.
 
 ## Non-exportability & invalidation (the F-2 guarantees)
+
+> M2d-1b sets both `setUserAuthenticationRequired(true)` and
+> `setInvalidatedByBiometricEnrollment(true)` on the KEY_ALIAS. Both boxes
+> below are now runnable on-device against a real key.
 
 - [ ] Confirm the AES key material is non-exportable
       (`KeyStore.getKey(alias, null)` returns a `SecretKey` whose `getEncoded()` returns null — AndroidKeyStore contract).
@@ -80,9 +99,9 @@ Run the whole matrix twice, once per device, at minimum:
       DevTools with no argument → rejects with `M2C_DELETE_INTENT_REQUIRED`,
       no keystore write.
 - [ ] Call with `{ intent: 'CLEANUP' }` (wrong case) → rejects.
-- [ ] Call with `{ intent: 'cleanup' }` → resolves; keystore aliases removed.
-- [ ] Call with `{ intent: 'unenroll' }` → resolves; keystore aliases removed.
-- [ ] Call with `{ intent: 'wipe' }` → resolves; keystore aliases removed.
+- [ ] Call with `{ intent: 'cleanup' }` → resolves; KEY_ALIAS removed (M2d-1b: single alias — wrap-only alias dropped).
+- [ ] Call with `{ intent: 'unenroll' }` → resolves; KEY_ALIAS removed.
+- [ ] Call with `{ intent: 'wipe' }` → resolves; KEY_ALIAS removed.
 
 ## Migration (legacy M2b → M2d) — OPT-IN
 
