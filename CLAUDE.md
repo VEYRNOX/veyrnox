@@ -1203,6 +1203,112 @@ way to retry without navigating away. `SendCrypto.jsx` wires the error through.
 **PR #1072 — docs (owner decisions):** Feature-Status.md updated to close M-6, M-4, M-9
 owner-decision items with final status notes. Docs-only.
 
+## 2026-07-17 M-8 Codex P1 follow-up — PR #1079
+
+Codex second-model review of PR #1076 (M-8 vault AAD) found two P1 regressions that would
+have locked out KEK-enrolled vaults:
+
+**P1 #1 — kek-dek AAD salt exclusion:** `encryptVaultWithDek()` sealed AAD from a
+salt-free stub blob, but `decryptVaultWithDek()` called `vaultAad()` with the full saved
+blob (which includes a stale `salt` field from the prior Argon2id blob). GCM auth-tag
+mismatch on every KEK-enrolled unlock. Fix: `vaultAad()` now excludes `salt` when
+`kdf === 'kek-dek'`.
+
+**P1 #2 — native.js v-field not propagated:** both `safeWriteVault` calls in `native.js`
+destructured only `{ iv, ct }` from `encryptVaultWithDek()`, discarding the new `v:2`.
+Saved blob retained `v:1` → `decryptVaultWithDek()` took the no-AAD path while ciphertext
+was sealed with v:2 AAD → auth-tag mismatch. Fix: both sites now propagate `v: newV`.
+
+40/40 kek + vault-aad tests green. BUILT / unit-tested, INTERNAL — NOT device-verified,
+NOT independently audited, no on-chain txid.
+
+## 2026-07-17 Safety Plus annual — store-side setup + RC hardening — PR #1085
+
+Two things landed today after the annual $49.99/yr code (PR #1026, 2026-07-16):
+
+**1. Store-side setup for the annual package — owner-driven, code-verified over screenshots.**
+- **App Store Connect**: `safety_plus_annual` auto-renewing subscription created in the existing
+  Safety Plus subscription group. Reference name `Safety Plus Annual`, product ID
+  `safety_plus_annual`, duration 1 Year, price $49.99 USD, English localization: display name
+  `Safety Plus (Annual)`, description `Advanced Security & Features. Save 30% vs. monthly.`
+  Ready for Submission. Sits alongside the existing `safety_plus_monthly` at the same subscription
+  level so a swap between them is a billing-period crossgrade (not a downgrade/upgrade).
+- **Google Play Console**: `safety_plus_annual` subscription created, base plan `annual`,
+  auto-renewing, 1-year billing period, $49.99 USD, backwards-compatible. The Play
+  `safety_plus_monthly` product was ALSO created in this session (previously missing) —
+  same fields, base plan `monthly`.
+- **RevenueCat dashboard**: entitlement `safety_plus` now has BOTH real store products
+  (Apple + Play) for BOTH monthly and annual attached alongside the pre-existing Test Store
+  entries (6 attachments total). Offering `default` (Current) has two packages: `$rc_monthly`
+  → `safety_plus_monthly` (Apple + Play), `$rc_annual` → `safety_plus_annual` (Apple + Play).
+  The setup was walked click-by-click and cross-checked against each screenshot; the RC v2
+  API preflight was NOT run this session (owner off-Mac, no v2 secret key on hand — deferred
+  to Sunday).
+- **`.env.local`**: both `VITE_REVENUECAT_APPLE_API_KEY` (`appl_…`) and
+  `VITE_REVENUECAT_GOOGLE_API_KEY` (`goog_…`) added (both are PUBLIC app-specific keys, safe
+  to keep in git-ignored `.env.local`). Local preflight after this: 8 passed, 0 failed,
+  2 warnings (pre-existing `capacitor appId` regex miss + `.storekit` doesn't reference
+  `safety_plus_annual` — local StoreKit-testing gap, not sandbox-blocking).
+
+**Honest gaps outstanding for annual (must complete before annual is BUILT → device-verified):**
+- Remote preflight (`REVENUECAT_V2_SECRET_KEY` + `REVENUECAT_PROJECT_ID`) — not run this
+  session; equivalent verification was done manually against the RC dashboard screenshots.
+- iOS device-verify (rebuild release with new keys, sandbox purchase of annual, entitlement
+  resolves to `safety_plus`, tier switches, restore works). Needs a Mac.
+- Android device-verify: Play `safety_plus_monthly` and `safety_plus_annual` both show
+  `Could not check` on the RC dashboard — expected while Google product-service propagation
+  runs (~24h) and until the app is on an internal-testing track (Play Billing never works
+  for sideloaded APKs). Also needs a physical Android device.
+- Independent audit: still outstanding.
+
+**2. PR #1085 (`727736a9`) — RC hardening: `setLogLevel('error')` on release + Manage subscription deep-link.**
+Two small changes in [src/lib/purchases.js](src/lib/purchases.js) identified during a
+post-setup audit of the RC SDK surface:
+
+- **LOG-1 defence-in-depth:** `configurePurchases()` now sets
+  `Purchases.setLogLevel({ level: LOG_LEVEL.ERROR })` after `configure()`, gated on
+  `import.meta.env.PROD`. RevenueCat's default log level (INFO on release, DEBUG in debug
+  builds) otherwise echoes SDK activity — including customer-info dumps — to logcat / os_log.
+  Same class of leak PR #572 closed for the Capacitor bridge. Dev builds keep default
+  verbose logs for debugging. Fail-open — a rejection from `setLogLevel` is swallowed;
+  `configure()` completing is the security-relevant event, quieter logs are best-effort
+  hardening.
+- **Manage subscription deep-link:** new `manageSubscription()` export deep-links to the
+  OS's own subscription management page (iOS: `itms-apps://apps.apple.com/account/subscriptions`,
+  Android: `https://play.google.com/store/account/subscriptions`) via `@capacitor/app`'s
+  `App.openUrl()`. The Capacitor RC plugin (`@revenuecat/purchases-capacitor@13.2.1`) does
+  NOT expose the native SDK's `showManageSubscriptions`, so the URL-scheme path is the
+  cleanest alternative — **zero egress from our code** (OS handler opens the OS surface,
+  no RevenueCat call). No-op on web. `Subscription.jsx` renders a "Manage subscription"
+  button below the plan card when `currentTier === 'safety_plus'` AND on a native platform,
+  with helper copy naming the correct store per platform. Users can cancel or change their
+  plan without hunting through OS Settings.
+
+**Security invariants preserved:** I3 (deniability = zero backend calls) is untouched — the
+Manage button is only rendered when `currentTier === 'safety_plus'`, and `currentTier` in a
+decoy/hidden session is always `'free'` per `entitlement.js:resolveTier()`. So the button is
+hidden in deniability sessions, matching every other paid-tier UI element. The
+`App.openUrl()` call is not a network call from our JS — it hands a URL to the OS URL
+handler.
+
+**Explicitly NOT added** (all cataloged during the RC SDK audit as invariant-violating):
+`logIn`/`logOut` (identity linking → deniability leak), `setAttributes`/`setEmail`/
+`setPushToken`/`setDisplayName` (identity leak), `collectDeviceIdentifiers` (IDFV/GAID
+fingerprint), `enableAdServicesAttributionTokenCollection` (ad-attribution exfil),
+`presentCodeRedemptionSheet` (promo codes — not needed today),
+`beginRefundRequestForActiveEntitlement` (in-app refund flow — nice-to-have, not urgent),
+`checkTrialOrIntroductoryPriceEligibility` (no free trial today), all attribution
+integrations (Facebook / Adjust / AppsFlyer / Amplitude / Mixpanel / Segment / Braze /
+Iterable / PostHog / Attribution APIs) — those need to stay UNCONFIGURED on the RC
+dashboard side; not enforceable from code.
+
+Tests: 35/35 targeted green for PR #1085 (11 new: setLogLevel PROD/dev/rejection paths,
+`manageSubscription` on iOS/Android/web, UI button visibility + click + per-platform copy)
+plus 17/17 downstream (`entitlement.i3guard`, `TierProvider`, `TierProvider.i3guard`,
+`tier`). BUILT / unit-tested only, INTERNAL — NOT device-verified (deep-link resolution
+requires a real device; `@capacitor/app.openUrl` is a no-op stub in web mode). Not
+independently audited, no on-chain txid.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode

@@ -11,7 +11,7 @@ import { Capacitor } from "@capacitor/core";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Sparkles, Info, ArrowRight, Loader2 } from "lucide-react";
+import { Check, Sparkles, Info, ArrowRight, Loader2, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import BackButton from "@/components/BackButton";
@@ -21,6 +21,7 @@ import {
   getOfferings,
   purchasePackage,
   restorePurchases,
+  manageSubscription,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
 } from "@/lib/purchases";
@@ -118,6 +119,14 @@ export default function Subscription() {
       toast.error("Restore failed — please try again");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleManage() {
+    try {
+      await manageSubscription();
+    } catch {
+      toast.error("Couldn't open subscription settings");
     }
   }
 
@@ -290,6 +299,23 @@ export default function Subscription() {
               No payment can be made on this screen. Your plan stays Free on web.
             </p>
           )}
+        </div>
+      )}
+
+      {currentTier === "safety_plus" && isNative && (
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <Button
+            variant="outline"
+            className="w-full max-w-md"
+            onClick={handleManage}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Manage subscription
+          </Button>
+          <p className="text-xs text-muted-foreground text-center max-w-md">
+            Opens the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"} subscription
+            settings — cancel, change plan or update your payment method there.
+          </p>
         </div>
       )}
     </div>

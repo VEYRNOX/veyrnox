@@ -82,8 +82,6 @@ const RAW_NAV_GROUPS = [
       { path: "/price-charts", label: "Price Charts", icon: BarChart3 },
       { path: "/alerts", label: "Price Alerts", icon: BellRing },
       { path: "/portfolio-rewind", label: "Portfolio Rewind", icon: RotateCcw },
-      { path: "/index-builder", label: "Custom Index", icon: LayoutGrid },
-      { path: "/pl", label: "P&L Tracking", icon: TrendingUp },
     ],
   },
   {
