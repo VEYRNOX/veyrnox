@@ -32,13 +32,33 @@
 let _deniabilityActive = false;
 
 /**
+ * Best-effort DOM event fired whenever the deniability marker is set (I-2 fix).
+ * Listeners (e.g. TierProvider) subscribe to invalidate cached paid-tier state
+ * the instant a decoy/hidden session opens mid-session — without this signal a
+ * cached `safety_plus` would leak into the decoy UI (Manage-subscription button,
+ * SafetyPlus "unlocked" copy). Mirrors SEND_2FA_CHANGED_EVENT / PASSKEY_
+ * REGISTRATION_EVENT (same-tab in-document notify). A missing event bus must
+ * never block the setter — dispatch is wrapped best-effort.
+ */
+export const DENIABILITY_SESSION_CHANGED_EVENT = 'veyrnox:deniability-session-changed';
+
+/**
  * Mark whether the CURRENT in-memory session is a deniability (decoy/hidden) one.
  * Called by WalletProvider.unlock for every session: true for decoy/hidden,
  * false for a confirmed primary session. Called by lock() to clear on lock.
+ * Dispatches DENIABILITY_SESSION_CHANGED_EVENT best-effort so live listeners
+ * (TierProvider) can react to a mid-session flip.
  * @param {boolean} active
  */
 export function setDeniabilitySession(active) {
   _deniabilityActive = active === true;
+  try {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new Event(DENIABILITY_SESSION_CHANGED_EVENT));
+    }
+  } catch {
+    /* best-effort — a missing event bus must never block the setter. */
+  }
 }
 
 /**

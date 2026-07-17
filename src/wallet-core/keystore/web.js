@@ -354,9 +354,16 @@ export const webKeyStore = {
       H.fill(0);
       C.fill(0);
       dek = await unwrapDek(kek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
-      const { iv, ct } = await encryptVaultWithDek(secret, dek);
-      // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv change.
-      await saveVault({ ...blob, iv, ct, kdf: 'kek-dek' });
+      // I-1: destructure `v` from encryptVaultWithDek and propagate it into the
+      // saved blob. encryptVaultWithDek() seals GCM AAD over {v, kdf}; if the
+      // header `v` on the persisted blob does not match the `v` used to seal
+      // the AAD, next unlock's vaultAad() computation mismatches and decrypt
+      // fails GCM auth. Today v is stably 2 on both sides so leaking blob.v
+      // via `...blob` is benign — a future VAULT_VERSION bump would make it
+      // permanently unlockable. Mirror native.js (PR #1079).
+      const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
+      // Preserve kek-dek format: same kekWrap/kekSalt, only content v/ct/iv change.
+      await saveVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek' });
     } finally {
       if (H) H.fill(0);
       if (C) C.fill(0);
@@ -602,8 +609,12 @@ export const webKeyStore = {
       C.fill(0);
       const kekWrap = await wrapDek(kek, dek);
       // Re-encrypt seed under the DEK so PIN rotation doesn't require changing CT (§3).
-      const { iv, ct } = await encryptVaultWithDek(secret, dek);
-      await saveVault({ ...blob, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+      // I-1: destructure `v: newV` and persist it — encryptVaultWithDek() sealed
+      // GCM AAD over {v, kdf}; the saved header `v` must match or next decrypt
+      // fails GCM auth. Benign today (both v:2), fatal if VAULT_VERSION bumps.
+      // Mirrors native.js (PR #1079).
+      const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
+      await saveVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
     } finally {
       // H-NEW-4 / F-01: wipe H, C, the derived KEK and the DEK on every path (I4).
       if (H && H.fill) H.fill(0);
@@ -716,6 +727,15 @@ export const webKeyStore = {
         H2.fill(0);
         newC.fill(0);
         const newKekWrap = await wrapDek(newKek, dek);
+        // I-1 (intentional preserve, NOT the enrollKek/saveVaultContents fix):
+        // this branch rotates the DEK wrap only — the seed CT (blob.iv/blob.ct)
+        // is NOT re-encrypted (§3: PIN rotation without touching seed CT). The
+        // seed CT's GCM auth-tag was sealed with vaultAad({v:blob.v, kdf:'kek-dek'}),
+        // so preserving blob.v (via `...blob`) is REQUIRED — bumping v here
+        // without re-sealing the seed CT would break next unlock's AAD match
+        // and permanently lock the vault. If a future VAULT_VERSION bump ever
+        // needs to lift the seed CT, that must be a separate rekey path (like
+        // vaultNeedsRekey on unlock), not a silent header-only version bump.
         await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
       } finally {
         // F-06 (audit, I4): H is captured before the try block (needed to make the
