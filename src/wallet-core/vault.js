@@ -256,23 +256,76 @@ function paramsFromVault(vault) {
 const VAULT_VERSION = 2;
 
 /**
- * Compute the GCM additionalData bytes for a vault blob. Covers all plaintext
- * fields that an attacker could swap without touching the ciphertext: v, kdf, and
- * salt (Argon2id blobs) or v and kdf (KEK-DEK blobs, which have no salt field).
- * JSON.stringify is deterministic for these scalar/object shapes; both encrypt and
- * decrypt paths call this with the same blob object so the AAD matches.
+ * Compute the GCM additionalData bytes for a vault blob (issue #1110).
+ *
+ * Covers all plaintext blob-header fields an attacker could swap without touching
+ * the ciphertext: `v`, `kdf`, and `salt` (Argon2id blobs) or `v` and `kdf`
+ * (KEK-DEK blobs, whose Argon2id salt is unused for the DEK wrap).
+ *
+ * CANONICAL SERIALIZATION — DO NOT `JSON.stringify` A RAW OBJECT HERE.
+ *
+ * The prior implementation relied on the accident that `JSON.stringify` iterates
+ * own string-keyed properties in insertion order (ES2015+) and that today's blob
+ * literals happen to declare `{v, kdf, salt}` and `KDF_PARAMS` as
+ * `{parallelism, iterations, memorySize, hashLength}` in that order. A refactor
+ * that reshuffled either literal — or a caller that built the blob with a spread
+ * from a differently-ordered source — would silently change the AAD bytes and
+ * lock every stored v:2 vault (fail message: "wrong password or corrupted vault",
+ * no diagnostic).
+ *
+ * This implementation writes fields in an EXPLICIT fixed order that BYTE-MATCHES
+ * the current `JSON.stringify({v, kdf, salt})` output for today's shapes — so no
+ * migration is needed and every existing v:2 blob on disk keeps decrypting. Any
+ * future field addition must bump `VAULT_VERSION` and land a coordinated
+ * lazy-migration path (see issue #1111 for the folded-in kekWrap/kekSalt/
+ * hardwareKekVersion binding, which requires v:3).
+ *
  * @param {Record<string, unknown>} blob
  * @returns {Uint8Array<ArrayBuffer>}
  */
 function vaultAad(blob) {
-  // kek-dek blobs spread the prior Argon2id blob and may carry a stale `salt` field,
-  // but encryptVaultWithDek seals AAD off a salt-free stub — exclude salt for kek-dek
-  // so encrypt and decrypt agree (Codex P1 #1).
-  const fields = (blob.salt !== undefined && blob.kdf !== 'kek-dek')
-    ? { v: blob.v, kdf: blob.kdf, salt: blob.salt }
-    : { v: blob.v, kdf: blob.kdf };
-  return /** @type {Uint8Array<ArrayBuffer>} */ (enc.encode(JSON.stringify(fields)));
+  const v = blob.v;
+  const kdf = blob.kdf;
+  // kek-dek blobs spread the prior Argon2id blob and may carry a stale `salt`
+  // field, but encryptVaultWithDek seals AAD off a salt-free stub — exclude salt
+  // for kek-dek so encrypt and decrypt agree (Codex P1 #1, PR #1079).
+  const includeSalt = blob.salt !== undefined && kdf !== 'kek-dek';
+
+  let kdfStr;
+  if (kdf === 'kek-dek') {
+    kdfStr = '"kek-dek"';
+  } else if (kdf && typeof kdf === 'object') {
+    // Fixed field order: name, parallelism, iterations, memorySize, hashLength.
+    // Byte-matches JSON.stringify({name:'argon2id', ...KDF_PARAMS}) for today's
+    // KDF_PARAMS declaration order. Any extra fields on `kdf` are IGNORED — they
+    // are not part of the binding contract. Missing fields serialize as their
+    // canonical JSON form (undefined field is omitted by JSON.stringify — we
+    // mirror that with a conditional).
+    const parts = [];
+    if (kdf.name !== undefined) parts.push('"name":' + JSON.stringify(kdf.name));
+    if (kdf.parallelism !== undefined) parts.push('"parallelism":' + JSON.stringify(kdf.parallelism));
+    if (kdf.iterations !== undefined) parts.push('"iterations":' + JSON.stringify(kdf.iterations));
+    if (kdf.memorySize !== undefined) parts.push('"memorySize":' + JSON.stringify(kdf.memorySize));
+    if (kdf.hashLength !== undefined) parts.push('"hashLength":' + JSON.stringify(kdf.hashLength));
+    kdfStr = '{' + parts.join(',') + '}';
+  } else {
+    // Unknown/absent kdf — fall back to JSON.stringify of the value alone. This
+    // path is exercised only by malformed blobs; the auth-tag will reject them.
+    kdfStr = JSON.stringify(kdf);
+  }
+
+  const outParts = ['"v":' + JSON.stringify(v), '"kdf":' + kdfStr];
+  if (includeSalt) outParts.push('"salt":' + JSON.stringify(blob.salt));
+  return /** @type {Uint8Array<ArrayBuffer>} */ (enc.encode('{' + outParts.join(',') + '}'));
 }
+
+/**
+ * Test-only export of the canonical AAD serializer, so unit tests can pin the
+ * exact byte-image of the AAD without going through the full encrypt/decrypt
+ * round-trip. Not part of the production API.
+ * @internal
+ */
+export const __vaultAad_forTest = vaultAad;
 
 /**
  * Whether a blob needs AAD binding (v < VAULT_VERSION). Returns true for v:1
