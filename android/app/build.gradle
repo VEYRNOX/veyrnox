@@ -92,6 +92,10 @@ dependencies {
     // classpath. Version pinned to a maintained release (Android SDK bundles
     // this same library at OS level; test-time we use the Maven artifact).
     testImplementation 'org.json:json:20240303'
+    // BouncyCastle for JVM unit tests only — generates real P-256 key pairs and
+    // self-signed X.509 certs in PlayIntegrityJwsVerifierTest without Robolectric.
+    testImplementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    testImplementation 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')

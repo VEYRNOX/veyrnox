@@ -82,10 +82,6 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.IntegrityTokenRequest
-import java.security.MessageDigest
-import java.security.Signature
-import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -210,30 +206,6 @@ class PlayIntegrityPlugin : Plugin() {
         }
     }
 
-    // Known Google root CA SHA-256 fingerprints (lowercase hex, no separators).
-    // Source: Google's published PKI at https://pki.goog/repository/ (2026-07-14).
-    // STATUS: BUILT-UNVALIDATED — Play Integrity's specific root CA is not officially
-    // documented; fingerprints below are from Google's published TLS root infrastructure
-    // (GTS Root R1-R4). Must be confirmed against a real production Play Integrity token.
-    // If none match, verifyJwsSignature falls back to the issuer string check.
-    private val GOOGLE_ROOT_CA_SHA256 = setOf(
-        // GTS Root R1 — 4096-bit RSA, Google Trust Services LLC
-        "2a575471e31340bc21581cbd2cf13e158463203ece94bcf9d3cc196bf09a5472",
-        // GTS Root R2, R3, R4 — add fingerprints once confirmed from live token capture
-    )
-
-    // verifyRootCertFingerprint — SHA-256 fingerprint of the root cert's raw DER bytes
-    // (cert.encoded) compared against GOOGLE_ROOT_CA_SHA256. Returns true if the pin set
-    // is empty (BUILT-UNVALIDATED fallback — issuer check then applies) or if a pin
-    // matches. Returns false on any digest exception (fail-closed, I4).
-    private fun verifyRootCertFingerprint(cert: X509Certificate): Boolean = runCatching {
-        if (GOOGLE_ROOT_CA_SHA256.isEmpty()) return@runCatching true // not yet populated
-        val digest = MessageDigest.getInstance("SHA-256")
-        val fingerprint = digest.digest(cert.encoded)
-            .joinToString("") { "%02x".format(it) }
-        GOOGLE_ROOT_CA_SHA256.any { pin -> pin == fingerprint }
-    }.getOrDefault(false)
-
     /**
      * Verify the JWS RS256 signature using the certificate chain in the x5c header claim.
      *
@@ -262,106 +234,11 @@ class PlayIntegrityPlugin : Plugin() {
      * correct Signature instance). Algorithm selection cannot be confirmed without a
      * real production token. Any unknown alg returns false (fail-closed, I4).
      */
-    private fun verifyJwsSignature(token: String): Boolean {
-        return try {
-            val parts = token.split(".")
-            if (parts.size != 3) return false
-
-            // 1. Parse JWS header — accept RS256 (RSA) or ES256 (ECDSA); any other
-            //    alg is rejected fail-closed (I4). See ALGORITHM note in the file header.
-            val headerJson = String(base64UrlDecode(parts[0]), Charsets.UTF_8)
-            val header = JSONObject(headerJson)
-            val javaAlg = when (header.optString("alg")) {
-                "RS256" -> "SHA256withRSA"
-                "ES256" -> "SHA256withECDSA"
-                else -> return false
-            }
-
-            // 2. Build cert chain from x5c array
-            val x5c = header.optJSONArray("x5c") ?: return false
-            val chainLen = x5c.length()
-            if (chainLen == 0) return false
-            val certFactory = CertificateFactory.getInstance("X.509")
-            val chain: List<X509Certificate> = (0 until chainLen).map { i ->
-                val der = Base64.decode(x5c.getString(i), Base64.DEFAULT)
-                certFactory.generateCertificate(der.inputStream()) as X509Certificate
-            }
-
-            // 3. Walk chain: every cert must be signed by the next cert's key.
-            // This prevents an attacker from supplying an arbitrary leaf cert alongside
-            // an unrelated Google root — the whole chain must be cryptographically linked.
-            for (i in 0 until chainLen - 1) {
-                try {
-                    chain[i].verify(chain[i + 1].publicKey)
-                } catch (e: Exception) {
-                    return false
-                }
-            }
-
-            // 4. Root cert fingerprint + issuer belt-and-suspenders (G2-ROOTCERT-PIN).
-            // verifyRootCertFingerprint checks SHA-256 of DER bytes against known Google
-            // root CA pins (BUILT-UNVALIDATED — source: pki.goog, 2026-07-14). The
-            // issuer check is the fallback while pins are unconfirmed on a real token.
-            // Reject only if BOTH fail; once pins are device-validated, drop issuer check.
-            val rootCert = chain[chainLen - 1]
-            val rootIssuer = rootCert.subjectX500Principal.name
-            if (!verifyRootCertFingerprint(rootCert) && !rootIssuer.contains("Google", ignoreCase = true)) return false
-
-            // 5. Verify JWS signature over header.payload (RFC 7515 signed data).
-            //    Algorithm dispatched from the `alg` header field (RS256 → SHA256withRSA,
-            //    ES256 → SHA256withECDSA). Public key from the verified leaf cert (x5c[0]).
-            //
-            //    ES256 encoding fix (issue #951, 2026-07-14): JWS ES256 signatures are
-            //    raw R‖S (RFC 7518 §3.4, exactly 64 bytes for P-256). JCA's
-            //    Signature("SHA256withECDSA").verify() requires ASN.1 DER-encoded
-            //    ECDSA-Sig-Value (RFC 3279). Transcode raw → DER before verify() so
-            //    the ES256 branch actually functions instead of silently fail-closing
-            //    on every real token. RS256 signatures are used as-is (JCA accepts
-            //    them directly).
-            val signedData = "${parts[0]}.${parts[1]}".toByteArray(Charsets.UTF_8)
-            val rawSignatureBytes = base64UrlDecode(parts[2])
-            val signatureBytes = when (javaAlg) {
-                "SHA256withECDSA" -> {
-                    // ES256 raw R‖S is exactly 64 bytes for P-256. Any other length is
-                    // malformed → fail closed (I4). rawEcdsaSignatureToDer throws on
-                    // wrong length; the outer catch maps that to false.
-                    if (rawSignatureBytes.size != 64) return false
-                    EcdsaDerTranscoder.rawEcdsaSignatureToDer(rawSignatureBytes)
-                }
-                else -> rawSignatureBytes // RS256: PKCS#1 v1.5 signature is not encoded.
-            }
-            val sig = Signature.getInstance(javaAlg)
-            sig.initVerify(chain[0].publicKey)
-            sig.update(signedData)
-            sig.verify(signatureBytes)
-        } catch (e: Exception) {
-            // Any exception → false → unavailable() → INTEGRITY_UNAVAILABLE → WARN (I4)
-            false
-        }
-    }
-
-    /**
-     * Transcode a raw JWS ECDSA P-256 signature (R || S, 64 bytes) to ASN.1 DER
-     * ECDSA-Sig-Value { INTEGER r, INTEGER s } as required by JCA
-     * `Signature("SHA256withECDSA").verify()`.
-     *
-     * See RFC 7518 §3.4 (JWS ES256 = raw R‖S 64 bytes) and RFC 3279
-     * (ECDSA-Sig-Value SEQUENCE { INTEGER r, INTEGER s }).
-     *
-     * FAIL CLOSED (I4): throws on any length mismatch. The caller's outer
-     * try/catch maps the throw to `return false` → unavailable().
-     *
-     * The algorithm is executable-tested via the JS mirror at
-     * `src/rasp/__tests__/helpers/rawToDerEcdsa.js` (issue #951) AND via the
-     * Kotlin JVM test harness `RawEcdsaDerTranscoderTest` against real P-256
-     * keypairs (issue #957). Delegates to EcdsaDerTranscoder.
-     */
-    // Delegated to EcdsaDerTranscoder (extracted for JVM unit-testability — issue #957).
-    private fun rawEcdsaSignatureToDer(raw: ByteArray): ByteArray =
-        EcdsaDerTranscoder.rawEcdsaSignatureToDer(raw)
-
-    private fun derEncodeInteger(bytes: ByteArray): ByteArray =
-        EcdsaDerTranscoder.derEncodeInteger(bytes)
+    // Delegated to PlayIntegrityJwsVerifier (extracted for JVM unit-testability — issue #957).
+    // The decoder lambda supplies android.util.Base64 so the verifier object stays free of
+    // android.* imports and is directly testable in desktop JVM unit tests.
+    private fun verifyJwsSignature(token: String): Boolean =
+        PlayIntegrityJwsVerifier.verify(token, ::base64UrlDecode)
 
     // Base64URL decode: Play Integrity JWS segments are base64url (- and _, no
     // padding). Convert to standard alphabet and pad to a multiple of 4.
