@@ -1149,6 +1149,7 @@ export default function SendCrypto() {
       // (cleared at line 724 before the gate ran); we are only changing which
       // UI step is rendered, not relaxing any security check.
       if (/** @type {Error & {code?: string}} */ (err)?.code === SEND_GATE.TWO_FACTOR) {
+        toast.info("Send couldn't complete — please verify again to retry.");
         setStep("verify");
         return;
       }
