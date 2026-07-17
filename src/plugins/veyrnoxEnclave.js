@@ -75,9 +75,34 @@ export async function hwUnwrap(ciphertextB64, reason = 'Unlock your VEYRNOX wall
   return blob;
 }
 
-// Ungated: cleanup path. Deleting a key cannot leak key material, and clearVault
-// relies on this to tear down any Enclave key regardless of the M2c gate — gating it
-// would strand keys created before the flag was turned off (fail-open of cleanup).
-export async function deleteWrappingKey() {
-  return VeyrnoxEnclave.deleteWrappingKey();
+// Ungated w.r.t. M2C_ENABLED: cleanup path. Deleting a key cannot leak key material,
+// and clearVault / disableBiometricUnlock rely on this to tear down any Enclave key
+// regardless of the M2c gate — gating on M2C_ENABLED would strand keys created before
+// the flag was turned off (fail-open of cleanup).
+//
+// Codex ad-hoc review 2026-07-17 P2-#1: even so, this remains reachable from any
+// in-page JS (injected script, XSS gadget, dev-tools) via the auto-registered
+// Capacitor plugin. While M2c is dormant that only erases orphan keys; once
+// M2C_ENABLED=true and real users have Enclave-wrapped vaults, an unauthenticated
+// call could strand a vault (availability hazard). Require an explicit, allowlisted
+// intent string at THIS JS boundary — internal callers pass one, injected JS almost
+// certainly won't. This is defence-in-depth, not a substitute for the OS ACL on the
+// key itself.
+//
+// Codex second-pass 2026-07-17 P2-A: forward {intent} through the Capacitor bridge
+// so the Swift plugin can re-enforce the same allowlist at the native boundary.
+// The JS guard alone is trivially bypassed by injected code that calls
+// Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey() directly; the bridge-side
+// gate closes that path. Keep the allowlist strings in lockstep with
+// VeyrnoxEnclavePlugin.swift's ALLOWED_INTENTS.
+const _M2C_DELETE_INTENTS = new Set(['cleanup', 'unenroll', 'wipe']);
+export async function deleteWrappingKey(opts) {
+  const intent = opts && typeof opts === 'object' ? opts.intent : undefined;
+  if (typeof intent !== 'string' || !_M2C_DELETE_INTENTS.has(intent)) {
+    throw Object.assign(
+      new Error('deleteWrappingKey requires an explicit intent'),
+      { code: 'M2C_DELETE_INTENT_REQUIRED' },
+    );
+  }
+  return VeyrnoxEnclave.deleteWrappingKey({ intent });
 }

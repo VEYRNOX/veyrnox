@@ -69,8 +69,11 @@ describe('#729 M-5: veyrnoxEnclave M2c JS fail-closed gate', () => {
     expect(nativeCalls.isHardwareKeyAvailable).toBe(1);
   });
 
-  it('deleteWrappingKey stays callable (cleanup path used by clearVault)', async () => {
-    await expect(deleteWrappingKey()).resolves.toBeUndefined();
+  it('deleteWrappingKey stays callable (cleanup path used by clearVault) — with explicit intent (P2-#1)', async () => {
+    // P2-#1: deleteWrappingKey now requires an allowlisted intent string. The M-5
+    // guarantee is unchanged (cleanup path stays ungated w.r.t. M2C_ENABLED); the
+    // intent is a separate injected-JS availability guard.
+    await expect(deleteWrappingKey({ intent: 'cleanup' })).resolves.toBeUndefined();
     expect(nativeCalls.deleteWrappingKey).toBe(1);
   });
 });

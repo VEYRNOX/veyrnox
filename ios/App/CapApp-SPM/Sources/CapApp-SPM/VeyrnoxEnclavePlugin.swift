@@ -37,9 +37,19 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
     // keep all three in lockstep.
     private static let m2cEnabled = false
 
-    // isHardwareKeyAvailable (read-only probe) and deleteWrappingKey (cleanup —
-    // deleting a key cannot leak material, and clearVault relies on it) are
-    // intentionally NOT gated.
+    // Codex second-pass 2026-07-17 P2-A: intent gate at native bridge closes the
+    // auto-registered plugin's M-5 attack surface. The JS wrapper
+    // (src/plugins/veyrnoxEnclave.js) already enforces the same allowlist, but
+    // injected in-page JS can call Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey()
+    // directly and skip the JS layer entirely. Enforce the allowlist at the bridge
+    // boundary too. Keep in lockstep with the JS _M2C_DELETE_INTENTS Set.
+    // NOT DEVICE-VERIFIED (Windows dev box).
+    private static let ALLOWED_DELETE_INTENTS: Set<String> = ["cleanup", "unenroll", "wipe"]
+
+    // isHardwareKeyAvailable (read-only probe) is intentionally NOT gated.
+    // deleteWrappingKey (cleanup — deleting a key cannot leak material, and
+    // clearVault relies on it) is NOT gated on m2cEnabled, but IS gated on an
+    // explicit allowlisted `intent` string (P2-A above).
     @objc func isHardwareKeyAvailable(_ call: CAPPluginCall) {
         let capability = service.capability()
         call.resolve([
@@ -107,6 +117,16 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func deleteWrappingKey(_ call: CAPPluginCall) {
+        // P2-A: fail closed if the caller did not pass an allowlisted intent.
+        // The keychain is NOT touched on rejection.
+        guard let intent = call.getString("intent"),
+              Self.ALLOWED_DELETE_INTENTS.contains(intent) else {
+            call.reject(
+                "deleteWrappingKey requires an explicit intent",
+                "M2C_DELETE_INTENT_REQUIRED"
+            )
+            return
+        }
         do {
             try service.deleteWrappingKey()
             call.resolve()
