@@ -111,6 +111,7 @@ import {
 import { DEMO } from '@/api/demoClient';
 import { evaluateSendAgainstLimits } from '@/lib/txLimits';
 import { USD_RATES } from '@/lib/cryptos';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 // L-1 (PR #962): use the shared constant from getFreshRaspArtifact so the
 // Send-path and WC-path stay in sync with a single source of truth.
@@ -656,12 +657,13 @@ export function WalletConnectProvider({ children }) {
     // demo facade would front a live relay socket and real dApp signing/broadcast
     // (I2/I3 violation). Fail closed (I4): treat demo like a deniability session.
     if (DEMO || !isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
-    let cancelled = false;
-    // I2-WC-RELAY: WC relay opens at unlock time, not pairing. Lazy-init is a TODO (see audit-2026-07-04-internal.md).
-    initWalletConnect()
-      .then(() => { if (!cancelled) { setInitialized(true); refreshSessions(); } })
-      .catch((e) => { if (!cancelled) setError(e.message); });
-
+    // #1099 — WC relay init is DEFERRED to the first explicit pair/approve
+    // intent (see ensureInitialized below). Historically initWalletConnect()
+    // ran here on unlock, opening a WebSocket to relay.walletconnect.com with
+    // no pairing/signing intent — a silent I2 egress ("app-in-use" beacon)
+    // and an I3 violation whenever a stale WC config coexists with a decoy
+    // session. Subscribing to events here without init is safe: listeners
+    // only fire once the client is created by ensureInitialized().
     const unsub = onWalletConnectEvent((event, data) => {
       if (event === 'session_proposal') {
         setPendingProposals((prev) => [...prev.filter((p) => p.id !== data.id), data]);
@@ -742,10 +744,38 @@ export function WalletConnectProvider({ children }) {
     });
 
     return () => {
-      cancelled = true;
       unsub();
     };
   }, [isUnlocked, isDecoy, isHidden, refreshSessions, evmAddress]);
+
+  // #1099 — lazy relay init. Called from the first explicit pair/approve
+  // intent. Fail-closed on any deniability/demo signal (belt-and-braces vs.
+  // the React-prop gate above): even if isDecoy/isHidden look clean, honour a
+  // live decoy-session or persisted veyrnox-demo=1 flag before opening the
+  // relay socket. Idempotent — subsequent calls are a no-op once initialised.
+  const ensureInitialized = useCallback(async () => {
+    if (initialized) return true;
+    if (DEMO || !isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return false;
+    if (isDeniabilityOrDemoActive()) return false;
+    try {
+      await initWalletConnect();
+      setInitialized(true);
+      refreshSessions();
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }, [initialized, isUnlocked, isDecoy, isHidden, refreshSessions]);
+
+  // #1099 — pair is the primary user-triggered init entry point. Route it
+  // through ensureInitialized so scanning a WC URI (and only that) opens the
+  // relay socket. Fail-closed if ensureInitialized refuses (deniability/demo).
+  const handlePair = useCallback(async (uri) => {
+    const ok = await ensureInitialized();
+    if (!ok) throw new Error('WalletConnect unavailable in this session');
+    return pairWithDapp(uri);
+  }, [ensureInitialized]);
 
   // Destroy client when wallet locks or transitions into a deniability session (I3).
   // DEMO is treated exactly like a deniability transition: if a live client somehow
@@ -933,7 +963,7 @@ export function WalletConnectProvider({ children }) {
       pendingProposals,
       pendingRequests: pendingRequests.map(enrichRequest),
       sessions,
-      pair: pairWithDapp,
+      pair: handlePair,
       approveSession: handleApproveSession,
       rejectSession: handleRejectSession,
       signPersonal: handlePersonalSign,
