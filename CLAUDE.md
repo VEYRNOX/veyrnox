@@ -1203,6 +1203,25 @@ way to retry without navigating away. `SendCrypto.jsx` wires the error through.
 **PR #1072 — docs (owner decisions):** Feature-Status.md updated to close M-6, M-4, M-9
 owner-decision items with final status notes. Docs-only.
 
+## 2026-07-17 M-8 Codex P1 follow-up — PR #1079
+
+Codex second-model review of PR #1076 (M-8 vault AAD) found two P1 regressions that would
+have locked out KEK-enrolled vaults:
+
+**P1 #1 — kek-dek AAD salt exclusion:** `encryptVaultWithDek()` sealed AAD from a
+salt-free stub blob, but `decryptVaultWithDek()` called `vaultAad()` with the full saved
+blob (which includes a stale `salt` field from the prior Argon2id blob). GCM auth-tag
+mismatch on every KEK-enrolled unlock. Fix: `vaultAad()` now excludes `salt` when
+`kdf === 'kek-dek'`.
+
+**P1 #2 — native.js v-field not propagated:** both `safeWriteVault` calls in `native.js`
+destructured only `{ iv, ct }` from `encryptVaultWithDek()`, discarding the new `v:2`.
+Saved blob retained `v:1` → `decryptVaultWithDek()` took the no-AAD path while ciphertext
+was sealed with v:2 AAD → auth-tag mismatch. Fix: both sites now propagate `v: newV`.
+
+40/40 kek + vault-aad tests green. BUILT / unit-tested, INTERNAL — NOT device-verified,
+NOT independently audited, no on-chain txid.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
