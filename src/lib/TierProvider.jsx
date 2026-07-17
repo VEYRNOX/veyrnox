@@ -17,7 +17,10 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { resolveTier } from '@/lib/entitlement';
 import { configurePurchases, addCustomerInfoUpdateListener, SAFETY_PLUS_ENTITLEMENT } from '@/lib/purchases';
 import { TIERS } from '@/lib/tier';
-import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
+import {
+  isDeniabilitySessionActive,
+  DENIABILITY_SESSION_CHANGED_EVENT,
+} from '@/wallet-core/deniabilitySession.js';
 
 const TierCtx = createContext(null);
 
@@ -100,6 +103,33 @@ export function TierProvider({ children }) {
       unsubscribe();
     };
   }, []);
+
+  // I-2 fix: cached paid-tier state must not survive a mid-session flip INTO a
+  // decoy/hidden session. Subscribe to DENIABILITY_SESSION_CHANGED_EVENT and:
+  //   - on flip TRUE → force currentTier='free' locally (NO RC egress — I3).
+  //   - on flip FALSE → re-resolve (deniability exits → real tier recomputed).
+  // FORCED_TIER (dev override) short-circuits to preserve the override honestly.
+  // Fail-closed: any listener error is swallowed and does not block the setter.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onChange = () => {
+      try {
+        if (FORCED_TIER) return;
+        if (isDeniabilitySessionActive()) {
+          // Local force — do NOT burn an RC call in a deniability session (I3).
+          setCurrentTier('free');
+        } else {
+          // Flip-off: re-resolve to pick up the real tier.
+          refreshTier().catch(() => setCurrentTier('free'));
+        }
+      } catch {
+        // Fail-closed on any listener error — never leak a cached paid tier.
+        setCurrentTier('free');
+      }
+    };
+    window.addEventListener(DENIABILITY_SESSION_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(DENIABILITY_SESSION_CHANGED_EVENT, onChange);
+  }, [FORCED_TIER, refreshTier]);
 
   const value = { currentTier, tiers: TIERS, loading, refreshTier };
 
