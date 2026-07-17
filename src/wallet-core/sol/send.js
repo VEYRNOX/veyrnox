@@ -353,8 +353,15 @@ export async function signAndBroadcastSol({
   // Reconstruct the signer from the transient seed scalar. fromSeed expects the
   // 32-byte ed25519 seed (our SLIP-0010 private scalar).
   const keypair = Keypair.fromSeed(privateKey);
+  // Zero the caller-supplied seed the moment the Keypair has been reconstructed —
+  // the seed is not needed again (retries reuse `keypair`, never `privateKey`).
+  // The Keypair's own 64-byte secretKey (seed‖pubkey) is zeroed in the `finally`
+  // below once all signing is done (M-2, PR #962; mirrors keystore/web.js
+  // deriveKekC's finally-block zeroing).
+  if (privateKey && typeof privateKey.fill === 'function') privateKey.fill(0);
   if (keypair.publicKey.toBase58() !== fromAddress) {
     // Defense-in-depth: the supplied key must actually control fromAddress.
+    zeroKeypairSecret(keypair);
     throw new Error('Provided key does not control the from address');
   }
   const toPubkey = new PublicKey(toAddress);
@@ -381,6 +388,7 @@ export async function signAndBroadcastSol({
   });
 
   let lastErr;
+  try {
   for (let attempt = 1; attempt <= MAX_BLOCKHASH_RETRIES; attempt++) {
     // FRESH blockhash every attempt — never reuse one that may have expired. The
     // SAME priority fee is re-attached on every rebuild so a retry pays what the
@@ -456,4 +464,21 @@ export async function signAndBroadcastSol({
     }
   }
   throw lastErr || new Error('Solana send failed after blockhash retries.');
+  } finally {
+    // Wipe the reconstructed signer's 64-byte secretKey (seed‖pubkey) on every
+    // path once all signing/retry work is done (M-2, PR #962).
+    zeroKeypairSecret(keypair);
+  }
+}
+
+// Best-effort in-place zeroing of a web3.js Keypair's secretKey (the 64-byte
+// seed‖pubkey buffer). Guarded so a runtime that exposes a non-writable or
+// non-typed secretKey cannot break the send.
+function zeroKeypairSecret(keypair) {
+  try {
+    const sk = keypair && keypair.secretKey;
+    if (sk && typeof sk.fill === 'function') sk.fill(0);
+  } catch {
+    // non-fatal — zeroing is best-effort defense-in-depth.
+  }
 }

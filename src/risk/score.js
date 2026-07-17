@@ -74,7 +74,7 @@ function reportLevel(level) {
  *   sentence: string|null,         // the one sentence; null when OK
  *   evidence: object|null,         // winning signal's evidence (reason + mono values)
  *   signalId: string|null,         // which signal owns the verdict
- *   requiresConfirmation: boolean, // true only on RISK (destructive-confirm gate)
+ *   requiresConfirmation: boolean, // true on RISK or CAUTION (destructive-confirm gate; PR #832 added CAUTION)
  *   signals: Array<{id, level, evidence}>, // every signal's result (fixed shape)
  * }}
  */
