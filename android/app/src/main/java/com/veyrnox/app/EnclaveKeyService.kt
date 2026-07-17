@@ -14,10 +14,13 @@ package com.veyrnox.app
 // decide whether the hardware path is even reachable on this device — no
 // AndroidKeyStore write, no biometric prompt, no key touched.
 //
-// Follows the same versioned-tag discipline as iOS EnclaveKeyService.swift
-// (P2-B, PR #1098): the .v1 suffix encodes the ACL policy this codepath will
-// mint keys under once M2d-1b lands. Any change to the KeyGenParameterSpec
-// (ACL flags, cipher, key size) MUST bump the alias suffix.
+// Adopts the versioned-tag discipline being introduced for iOS
+// EnclaveKeyService.swift on PR #1098 (Codex P2-B) — on THIS branch (cut from
+// origin/main) iOS's tag is still the un-versioned "com.veyrnox.app.enclaveWrappingKey".
+// Once #1098 merges the two platforms converge on the same discipline. The .v1
+// suffix here encodes the ACL policy this codepath will mint keys under once
+// M2d-1b lands. Any change to the KeyGenParameterSpec (ACL flags, cipher, key
+// size) MUST bump the alias suffix.
 
 import android.content.Context
 import android.content.pm.PackageManager

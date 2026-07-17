@@ -25,13 +25,21 @@ package com.veyrnox.app
 // │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2.      │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
-// Intentional parity with iOS VeyrnoxEnclavePlugin.swift:
-//   - Same @CapacitorPlugin name ("VeyrnoxEnclave") so JS bridge is one file.
+// Intended parity with iOS VeyrnoxEnclavePlugin.swift — current state on
+// THIS branch (cut from origin/main), before PR #1098 (M2c hardening) lands:
+//   - Same @CapacitorPlugin name ("VeyrnoxEnclave") — TRUE today; the shared
+//     JS bridge is one file across platforms.
 //   - Same method signatures (createWrappingKey, wrap, unwrap,
-//     deleteWrappingKey, isHardwareKeyAvailable).
-//   - Same M2C_DISABLED error code + M2C_DELETE_INTENT_REQUIRED code.
-//   - Same allowlist (cleanup / unenroll / wipe) — enforced via
-//     VeyrnoxEnclaveDeleteIntent object (JVM-unit-testable).
+//     deleteWrappingKey, isHardwareKeyAvailable) — TRUE today.
+//   - Same M2C_DISABLED error code for gated methods — TRUE today (iOS
+//     bridge returns M2C_DISABLED from the pre-existing scaffold).
+//   - Same M2C_DELETE_INTENT_REQUIRED code + (cleanup / unenroll / wipe)
+//     allowlist — CURRENTLY ANDROID-ONLY on this branch. The iOS Swift
+//     bridge does not yet enforce an intent, and the JS wrapper still
+//     calls deleteWrappingKey() with no argument. Both land on PR #1098;
+//     once it merges, all three layers converge on the same allowlist.
+//     Until then Android is intentionally STRICTER — fail-closed at the
+//     native bridge from day one, before any JS-side plumbing exists.
 //
 // Divergence from iOS (documented and by design):
 //   - Capability.backing may be "strongBox" or "tee" (Android has two hardware
