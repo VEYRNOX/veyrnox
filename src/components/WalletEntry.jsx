@@ -749,10 +749,6 @@ export default function WalletEntry() {
           try { await enableBiometricUnlock(pin); } catch { /* best-effort; non-fatal */ }
         }
       }
-      // Notify user if decoy wallet was unlocked.
-      if (isUnlocked && isDecoy) {
-        toast.success("Decoy mode active", { duration: 2000, position: "bottom-center" });
-      }
     } catch (e) {
       setUnlockPin("");
       // A passkey/biometric GATE failure is genuine infra, NOT a wrong PIN: keep its own
