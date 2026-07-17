@@ -44,12 +44,14 @@ Run the whole matrix twice, once per device, at minimum:
 
 ## Fresh vault (M2d-1b/1c — createVault hardware path)
 
-> M2d-1b landed the real `createWrappingKey` (2026-07-17) — the key mint path
-> is now runnable end-to-end on a device once `M2D_ENABLED` is flipped in a
-> test build. M2d-1a's separate "wrap-only" alias was DROPPED — M2d uses one
-> AES-GCM 256 key at `EnclaveKeySpecConfig.KEY_ALIAS`
-> (`com.veyrnox.app.enclaveWrappingKey.v1`) for both encrypt and decrypt.
-> Documented UX tradeoff: biometric prompt on BOTH wrap and unwrap.
+> M2d-1b landed the real `createWrappingKey` (2026-07-17); M2d-1c landed the
+> real `wrap()` behind `BiometricPrompt(CryptoObject(cipher))` (2026-07-18) —
+> the full create-key + first-wrap path is now runnable end-to-end on a device
+> once `M2D_ENABLED` is flipped in a test build. M2d-1a's separate "wrap-only"
+> alias was DROPPED — M2d uses one AES-GCM 256 key at
+> `EnclaveKeySpecConfig.KEY_ALIAS` (`com.veyrnox.app.enclaveWrappingKey.v1`)
+> for both encrypt and decrypt. Documented UX tradeoff: biometric prompt on
+> BOTH wrap and unwrap.
 
 - [ ] `createWrappingKey()` succeeds; response contains
       `{ backing: 'strongBox'|'tee', securityLevel, securityLevelName, created: true }`.
@@ -64,9 +66,40 @@ Run the whole matrix twice, once per device, at minimum:
       `M2D_REQUIRES_ANDROID_11` — no keystore write, no biometric prompt.
 - [ ] (M2d-1c) Create a new wallet. Wrap path issues one biometric prompt
       (AES-GCM single-key means both wrap and unwrap prompt — documented).
+      Prompt strings are the generic
+      `"Confirm to save vault"` / `"Unlock the wallet key with your biometric
+      to encrypt this vault."` — no wallet or session identifier (I3
+      defence-in-depth; any real I3 gating is the JS-side caller's job).
+- [ ] (M2d-1c) On the successful prompt, `wrap()` resolves with
+      `{ bundle: '<base64>' }`. Decode → first 12 bytes are the IV
+      (`EnclaveWireFormat.IV_SIZE_BYTES`), remaining bytes are
+      `ciphertext ‖ 16-byte GCM tag`. Each wrap call yields a DIFFERENT IV
+      (AndroidKeyStore's KeyGenerator picks it — reused IV under GCM is
+      catastrophic; verify by running wrap twice on the same plaintext and
+      confirming the first 12 bytes differ across the two bundles).
+- [ ] (M2d-1c) Cancel the biometric prompt (negative button) → `wrap()`
+      rejects with `M2D_USER_CANCEL` — no ciphertext, no partial write.
+- [ ] (M2d-1c) Force biometric lockout (5 failed attempts) during wrap →
+      `wrap()` rejects with `M2D_BIOMETRY_LOCKOUT`. Repeat past lockout →
+      `M2D_BIOMETRY_LOCKOUT` still (both `ERROR_LOCKOUT` and
+      `ERROR_LOCKOUT_PERMANENT` map to the same code).
+- [ ] (M2d-1c) Delete the wrapping key via `deleteWrappingKey({intent:'cleanup'})`
+      then call `wrap()` immediately → rejects with `M2D_KEY_NOT_FOUND`; no
+      biometric prompt rendered (cipher init fails first).
+- [ ] (M2d-1c, the F-2 guarantee overlap with the invalidation test below):
+      enrol a new fingerprint AFTER `createWrappingKey`, then call `wrap()` →
+      rejects with `M2D_KEY_INVALIDATED`; PIN recovery path fires.
 - [ ] (M2d-1c) Inspect the stored record: it is
       `{ wrap: 'androidkey-v1', hw: '<base64>' }` — NOT a raw `{v,kdf,salt,iv,ct}` blob.
-- [ ] The mnemonic / decrypted blob NEVER appears in logcat during create.
+- [ ] (M2d-1c) Roundtrip: unwrap the bundle produced by wrap → get back the
+      original base64 plaintext byte-identical (Cipher.doFinal auth-tag verify
+      passes on the correct bundle; a single-byte flip in the IV or ciphertext
+      → auth-tag verify fails → `M2D_WRAP_FAILED`-equivalent on the unwrap
+      side. Note: unwrap is M2d-1d — this bullet is a M2d-1c/1d integration
+      check to run once 1d lands).
+- [ ] The mnemonic / decrypted blob NEVER appears in logcat during create or
+      wrap (both debug and release builds). Includes the base64 plaintext
+      argument, the raw ciphertext, and the returned bundle.
 
 ## Unlock (M2d-1d — unwrap → BiometricPrompt with CryptoObject)
 
