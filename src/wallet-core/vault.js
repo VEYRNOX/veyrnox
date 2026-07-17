@@ -301,12 +301,13 @@ function vaultAad(blob) {
     // are not part of the binding contract. Missing fields serialize as their
     // canonical JSON form (undefined field is omitted by JSON.stringify — we
     // mirror that with a conditional).
+    const kdfObj = /** @type {Record<string, unknown>} */ (kdf);
     const parts = [];
-    if (kdf.name !== undefined) parts.push('"name":' + JSON.stringify(kdf.name));
-    if (kdf.parallelism !== undefined) parts.push('"parallelism":' + JSON.stringify(kdf.parallelism));
-    if (kdf.iterations !== undefined) parts.push('"iterations":' + JSON.stringify(kdf.iterations));
-    if (kdf.memorySize !== undefined) parts.push('"memorySize":' + JSON.stringify(kdf.memorySize));
-    if (kdf.hashLength !== undefined) parts.push('"hashLength":' + JSON.stringify(kdf.hashLength));
+    if (kdfObj.name !== undefined) parts.push('"name":' + JSON.stringify(kdfObj.name));
+    if (kdfObj.parallelism !== undefined) parts.push('"parallelism":' + JSON.stringify(kdfObj.parallelism));
+    if (kdfObj.iterations !== undefined) parts.push('"iterations":' + JSON.stringify(kdfObj.iterations));
+    if (kdfObj.memorySize !== undefined) parts.push('"memorySize":' + JSON.stringify(kdfObj.memorySize));
+    if (kdfObj.hashLength !== undefined) parts.push('"hashLength":' + JSON.stringify(kdfObj.hashLength));
     kdfStr = '{' + parts.join(',') + '}';
   } else {
     // Unknown/absent kdf — fall back to JSON.stringify of the value alone. This
