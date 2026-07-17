@@ -21,7 +21,7 @@
 // release build with the flag on fails closed instead of silently allowing.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, extname, basename } from 'node:path';
+import { join, basename } from 'node:path';
 import assert from 'node:assert/strict';
 
 export const SCAN_ROOT = '.';
