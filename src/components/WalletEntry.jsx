@@ -530,7 +530,7 @@ export default function WalletEntry() {
   // Notify user when decoy wallet is unlocked (duress PIN).
   useEffect(() => {
     if (isDecoy && isUnlocked) {
-      toast.success("Decoy mode active", { duration: 2000 });
+      toast.success("Decoy mode active", { duration: 2000, position: "bottom-center" });
     }
   }, [isDecoy, isUnlocked]);
 
@@ -751,7 +751,7 @@ export default function WalletEntry() {
       }
       // Notify user if decoy wallet was unlocked.
       if (isUnlocked && isDecoy) {
-        toast.success("Decoy mode active", { duration: 2000 });
+        toast.success("Decoy mode active", { duration: 2000, position: "bottom-center" });
       }
     } catch (e) {
       setUnlockPin("");
