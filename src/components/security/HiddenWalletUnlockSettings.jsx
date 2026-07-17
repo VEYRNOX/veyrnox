@@ -22,7 +22,6 @@ import {
   getBiometricStatus,
 } from '@/lib/biometric';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';

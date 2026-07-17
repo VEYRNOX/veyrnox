@@ -11,7 +11,7 @@ export default function DemoBanner() {
   if (!DEMO) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 flex justify-center pt-2 pointer-events-none z-50">
+    <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-2 pointer-events-none z-50" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
       <Badge variant="caution" className="pointer-events-auto">
         Demo — simulated balances, no real transactions
       </Badge>
