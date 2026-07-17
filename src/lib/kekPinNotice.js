@@ -10,7 +10,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
-import { keyStore } from '@/wallet-core/keystore';
+import { getKeyStore } from '@/wallet-core/keystore';
 
 export const KEK_PIN_NOTICE_KEY = 'veyrnox-kek-pin-notice';
 
@@ -19,7 +19,7 @@ export async function ensureKekPinNoticeOnNative() {
     if (!Capacitor.isNativePlatform()) return;
     if (localStorage.getItem(KEK_PIN_NOTICE_KEY)) return;
 
-    const enrolled = await keyStore.hasVaultKekWrap();
+    const enrolled = await getKeyStore().hasVaultKekWrap();
     // Mark regardless so the notice never fires retroactively if the user unenrolls.
     localStorage.setItem(KEK_PIN_NOTICE_KEY, '1');
     if (enrolled) return;
