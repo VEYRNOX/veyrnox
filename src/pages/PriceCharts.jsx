@@ -4,10 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { ResponsiveContainer, ComposedChart, Bar } from "@/lib/recharts";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
-import { fetchOHLCVCG as fetchOHLCV } from "@/lib/coinGecko";
+import { fetchOHLCV } from "@/lib/ohlcv";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import CandlestickChart from "@/components/CandlestickChart";
-import { PERIOD_PARAMS, PERIODS } from "@/lib/chartPeriods";
+import { PERIOD_PARAMS, PERIODS, formatCandleTime } from "@/lib/chartPeriods";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 const ASSETS = TOP_CRYPTOS.map((c) => ({
   symbol: c.symbol, name: c.name, price: c.usd, change24h: c.change24h, color: c.color, mcap: c.mcap,
@@ -17,7 +18,10 @@ export default function PriceCharts() {
   const [selected, setSelected] = useState("BTC");
   const [period, setPeriod] = useState("1D");
 
-  const livePricesOn = isLivePricesEnabled();
+  // I3: a deniability/demo session makes zero chart egress and renders the
+  // innocuous "live prices are disabled" state — identical to prices-off, no
+  // visual tell (belt-and-braces with the runtime guard inside fetchOHLCV).
+  const livePricesOn = isLivePricesEnabled() && !isDeniabilityOrDemoActive();
   const asset = ASSETS.find((a) => a.symbol === selected);
   const { resolution, limit } = PERIOD_PARAMS[period];
 
@@ -33,7 +37,7 @@ export default function PriceCharts() {
     close: d.close,
     volume: d.volumefrom,
     price: d.close,
-    time: new Date(d.time * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+    time: formatCandleTime(d.time, period),
   }));
 
   const prices = data.map((d) => d.price);

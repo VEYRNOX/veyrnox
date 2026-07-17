@@ -52,12 +52,12 @@ const BASE = process.env.BASE_URL || 'http://localhost:5173';
 // Expanded gated-host list: news feeds + price feed + all chain egress endpoints.
 // A decoy/hidden session must reach NONE of these.
 //   - news:   cointelegraph.com, decrypt.co, api.rss2json.com
-//   - price:  api.coingecko.com, coincap / cryptocompare price feeds
+//   - price:  api.coingecko.com, api.binance.com (OHLCV), coincap / cryptocompare price feeds
 //   - EVM RPC: ethereum-rpc.publicnode.com + any sepolia/publicnode RPC
 //   - BTC:    mempool.space / blockstream esplora
 //   - SOL:    *.solana.com RPC
 const EGRESS_HOST_PATTERN =
-  /cointelegraph\.com|decrypt\.co|api\.rss2json\.com|coingecko\.com|coincap\.io|cryptocompare\.com|publicnode\.com|infura\.io|alchemy\.com|mempool\.space|blockstream\.info|solana\.com|ankr\.com/i;
+  /cointelegraph\.com|decrypt\.co|api\.rss2json\.com|coingecko\.com|binance\.com|coincap\.io|cryptocompare\.com|publicnode\.com|infura\.io|alchemy\.com|mempool\.space|blockstream\.info|solana\.com|ankr\.com/i;
 
 test.describe('I3 deniability — zero egress in a decoy/hidden session (no human)', () => {
   test.setTimeout(60 * 1000);

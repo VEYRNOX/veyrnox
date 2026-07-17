@@ -4,9 +4,10 @@ import {
   ResponsiveContainer, ComposedChart, Bar, XAxis, YAxis,
   Tooltip, CartesianGrid, ReferenceLine,
 } from "@/lib/recharts";
-import { fetchOHLCVCG as fetchOHLCV } from "@/lib/coinGecko";
+import { fetchOHLCV } from "@/lib/ohlcv";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
-import { PERIOD_PARAMS } from "@/lib/chartPeriods";
+import { PERIOD_PARAMS, formatCandleTime } from "@/lib/chartPeriods";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 const CandlestickBar = (props) => {
   const { x, width, open, close, high, low, chartHeight, yMin, yRange } = props;
@@ -49,10 +50,12 @@ const CustomTooltip = ({ active, payload } = {}) => {
           </p>
         ))}
       </div>
-      <p className="mt-1">
-        <span className="text-muted-foreground">Vol </span>
-        <span className="font-semibold">{(d.volume / 1000).toFixed(0)}K</span>
-      </p>
+      {d.volume > 0 && (
+        <p className="mt-1">
+          <span className="text-muted-foreground">Vol </span>
+          <span className="font-semibold">{d.volume >= 1000 ? `${(d.volume / 1000).toFixed(0)}K` : d.volume.toFixed(2)}</span>
+        </p>
+      )}
     </div>
   );
 };
@@ -60,10 +63,13 @@ const CustomTooltip = ({ active, payload } = {}) => {
 const CHART_H = 280;
 
 export default function CandlestickChart({ symbol, period }) {
-  const livePricesOn = isLivePricesEnabled();
+  // I3: a deniability/demo session makes zero chart egress and renders the
+  // innocuous "live prices are disabled" state — identical to prices-off, no
+  // visual tell (belt-and-braces with the runtime guard inside fetchOHLCV).
+  const livePricesOn = isLivePricesEnabled() && !isDeniabilityOrDemoActive();
   const { resolution, limit } = PERIOD_PARAMS[period] || PERIOD_PARAMS["1D"];
 
-  const { data: rawCandles, isLoading, isError, error } = useQuery({
+  const { data: rawCandles, isLoading, isError } = useQuery({
     queryKey: ["ohlcv", symbol, period],
     queryFn: () => fetchOHLCV(symbol, resolution, limit),
     enabled: livePricesOn,
@@ -74,7 +80,7 @@ export default function CandlestickChart({ symbol, period }) {
     open: d.open, close: d.close, high: d.high, low: d.low,
     volume: d.volumefrom,
     price: d.close,
-    time: new Date(d.time * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+    time: formatCandleTime(d.time, period),
   }));
 
   const prices = data.map((d) => d.price);
@@ -82,9 +88,8 @@ export default function CandlestickChart({ symbol, period }) {
   const yMax = prices.length ? Math.max(...prices) * 1.002 : 1;
   const yRange = yMax - yMin || 1;
   const firstPrice = data[0]?.price;
-  const ticks = data.length
-    ? data.filter((_, i) => i % Math.floor(data.length / 6) === 0).map((d) => d.time)
-    : [];
+  const tickStep = Math.max(1, Math.floor(data.length / 6));
+  const ticks = data.length ? data.filter((_, i) => i % tickStep === 0).map((d) => d.time) : [];
 
   return (
     <div data-testid="candlestick-chart" className="p-4 rounded-xl border border-border bg-card">
@@ -110,7 +115,9 @@ export default function CandlestickChart({ symbol, period }) {
       )}
       {livePricesOn && isError && (
         <p className="text-xs text-destructive text-center py-6">
-          Chart unavailable: {error?.message ?? "unknown error"}
+          {/* Generic copy on purpose: raw provider errors (HTTP codes, guard
+              strings) must never render — see the H2 sanitisation pattern. */}
+          Chart unavailable — price sources didn't respond. Try again in a minute.
         </p>
       )}
       {livePricesOn && !isLoading && !isError && (
