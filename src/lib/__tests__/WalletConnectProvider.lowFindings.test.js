@@ -50,6 +50,14 @@ describe('resolveMaxPriorityFeePerGas (L-2 — priority fee never exceeds max fe
   it('clamps a negative priority fee up to 0', () => {
     expect(resolveMaxPriorityFeePerGas(-5n, 3n * GWEI)).toBe(0n);
   });
+
+  // #1115: nullish resolvedMaxFee guard
+  it('returns null when resolvedMaxFee is nullish (#1115, fail-closed I4)', () => {
+    expect(resolveMaxPriorityFeePerGas(1n * GWEI, undefined)).toBeNull();
+    expect(resolveMaxPriorityFeePerGas(1n * GWEI, null)).toBeNull();
+    expect(resolveMaxPriorityFeePerGas(undefined, undefined)).toBeNull();
+    expect(resolveMaxPriorityFeePerGas(0n, null)).toBeNull();
+  });
 });
 
 // ---- L-1: handleSendTransaction validates the session chain before signing ---
