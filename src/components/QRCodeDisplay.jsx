@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Download, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 
 // Renders a QR code for a receive address.
 //
@@ -42,13 +45,42 @@ export default function QRCodeDisplay({ address, size = 200 }) {
         style={{ width: size + 24, height: size + 24 }}
       >
         <AlertTriangle className="h-5 w-5 text-destructive" />
-        <p className="text-xs text-destructive">Couldn't render QR. Copy the address below instead.</p>
+        <p className="text-xs text-destructive">Could not render QR. Copy the address below instead.</p>
       </div>
     );
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!dataUrl) return;
+    if (Capacitor.isNativePlatform()) {
+      // `<a download>` + `.click()` is silently ignored in Capacitor WebViews.
+      // Write the PNG to the cache directory then share/save via the OS sheet.
+      try {
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+        const fileName = `veyrnox-receive-${address.slice(0, 10)}.png`;
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+        try {
+          await Share.share({
+            title: "Veyrnox receive address QR",
+            text: "Scan to send funds to this address.",
+            url: result.uri,
+            dialogTitle: "Save QR Code",
+          });
+        } catch {
+          // Share sheet dismissed or unavailable — file is still in cache, let
+          // the user know via a non-blocking alert so they can try again.
+          alert("QR saved to device storage. Open it from your Files app.");
+        }
+      } catch {
+        alert("Could not save QR code. Please screenshot the QR instead.");
+      }
+      return;
+    }
+    // Web path: anchor-click download works in browsers.
     const a = document.createElement("a");
     a.href = dataUrl;
     a.download = `veyrnox-receive-${address.slice(0, 10)}.png`;
