@@ -1013,6 +1013,13 @@ export default function WalletEntry() {
       // cohort so the returning surface matches the vault — otherwise the stale 'pin'
       // marker would render a PIN pad that cannot open this password vault. Done on
       // SUCCESS only: abandoning recovery leaves the existing PIN vault untouched.
+      // LEGACY COHORT — pre-PR-#651 restore path. Do NOT remove: live users who ran
+      // "Restore from seed phrase" before the PIN unification (PR #651, 2026-07-06) still
+      // hold password-cohort vault markers. Removing this write would permanently strand
+      // them on the PinPad unlock branch, which cannot accept non-digit vault passwords.
+      // New users cannot reach this path: setView("generate") does not exist anywhere.
+      // Known gap: this path skips provisionDeniabilityChaff() — duress/stealth/panic
+      // chaff is not provisioned. Users must configure deniability manually in Settings.
       setAuthModel("password"); setAuthModelState("password");
       // Optionally enable Face ID for next time (importWallet reset any prior
       // wallet's biometric state, so we enable AFTER it). The vault password is
