@@ -5,15 +5,23 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 const isNativePlatform = vi.fn();
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => isNativePlatform() } }));
+const getPlatform = vi.fn(() => 'ios');
+vi.mock('@capacitor/core', () => ({
+  Capacitor: {
+    isNativePlatform: () => isNativePlatform(),
+    getPlatform: () => getPlatform(),
+  },
+}));
 
 const getOfferings = vi.fn();
 const purchasePackage = vi.fn();
 const restorePurchases = vi.fn();
+const manageSubscription = vi.fn();
 vi.mock('@/lib/purchases', () => ({
   getOfferings: (...a) => getOfferings(...a),
   purchasePackage: (...a) => purchasePackage(...a),
   restorePurchases: (...a) => restorePurchases(...a),
+  manageSubscription: (...a) => manageSubscription(...a),
   SAFETY_PLUS_MONTHLY_PACKAGE: '$rc_monthly',
   SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
 }));
@@ -148,5 +156,62 @@ describe('Subscription page — native, monthly + annual offering', () => {
       identifier: '$rc_monthly',
       product: { priceString: '$5.99' },
     }));
+  });
+});
+
+describe('Subscription page — Manage subscription (paid tier, native)', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getPlatform.mockReturnValue('ios');
+    useTierMock.mockReturnValue({ currentTier: 'safety_plus', tiers: [], refreshTier });
+    getOfferings.mockResolvedValue({ availablePackages: [] });
+  });
+
+  it('renders the Manage subscription button on a paid native session', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /manage subscription/i })).toBeTruthy()
+    );
+  });
+
+  it('clicking Manage subscription calls manageSubscription()', async () => {
+    manageSubscription.mockResolvedValue(undefined);
+    renderPage();
+    const btn = await screen.findByRole('button', { name: /manage subscription/i });
+    fireEvent.click(btn);
+    await waitFor(() => expect(manageSubscription).toHaveBeenCalledTimes(1));
+  });
+
+  it('helper copy names the App Store on iOS', async () => {
+    getPlatform.mockReturnValue('ios');
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/App Store subscription settings/i)).toBeTruthy());
+  });
+
+  it('helper copy names the Play Store on Android', async () => {
+    getPlatform.mockReturnValue('android');
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/Play Store subscription settings/i)).toBeTruthy());
+  });
+});
+
+describe('Subscription page — Manage subscription hidden when it should be', () => {
+  it('is hidden on native when tier is free (upgrade path shows instead)', async () => {
+    isNativePlatform.mockReturnValue(true);
+    getPlatform.mockReturnValue('ios');
+    useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
+    getOfferings.mockResolvedValue({ availablePackages: [] });
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('button', { name: /upgrade to safety plus/i })).toBeTruthy());
+    expect(screen.queryByRole('button', { name: /manage subscription/i })).toBeNull();
+  });
+
+  it('is hidden on web even when tier is safety_plus (no subscription surface on web)', async () => {
+    isNativePlatform.mockReturnValue(false);
+    useTierMock.mockReturnValue({ currentTier: 'safety_plus', tiers: [], refreshTier });
+    renderPage();
+    // Wait long enough for any offering effect (there is none on web) to run.
+    await waitFor(() => expect(screen.getByText(/Plans/i)).toBeTruthy());
+    expect(screen.queryByRole('button', { name: /manage subscription/i })).toBeNull();
   });
 });
