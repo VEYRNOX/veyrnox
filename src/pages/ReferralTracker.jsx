@@ -17,7 +17,7 @@ import {
 import { registerCode, redeemCode, fetchStatus } from '@/api/referralApi';
 
 const TIER_LABELS = { none: 'No referrals yet', bronze: 'Bronze', silver: 'Silver', gold: 'Gold' };
-const TIER_COLOR = { none: 'text-muted-foreground', bronze: 'text-amber-400', silver: 'text-slate-300', gold: 'text-yellow-400' };
+const TIER_COLOR = { none: 'text-muted-foreground', bronze: 'text-caution/60', silver: 'text-caution/80', gold: 'text-caution' };
 const MILESTONES = [1, 5, 10];
 
 function TierBadge({ tier }) {
@@ -181,15 +181,15 @@ export default function ReferralTracker() {
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Rewards</p>
         <ul className="space-y-2 text-sm">
           <li className={`flex items-center gap-2 ${inviteCount >= 1 ? 'text-foreground' : 'text-muted-foreground'}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${inviteCount >= 1 ? 'bg-amber-400' : 'bg-secondary'}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${inviteCount >= 1 ? 'bg-caution/60' : 'bg-secondary'}`} />
             1 invite — Bronze badge
           </li>
           <li className={`flex items-center gap-2 ${inviteCount >= 5 ? 'text-foreground' : 'text-muted-foreground'}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${inviteCount >= 5 ? 'bg-slate-300' : 'bg-secondary'}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${inviteCount >= 5 ? 'bg-caution/80' : 'bg-secondary'}`} />
             5 invites — Silver: unlock Portfolio Snapshots
           </li>
           <li className={`flex items-center gap-2 ${inviteCount >= 10 ? 'text-foreground' : 'text-muted-foreground'}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${inviteCount >= 10 ? 'bg-yellow-400' : 'bg-secondary'}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${inviteCount >= 10 ? 'bg-caution' : 'bg-secondary'}`} />
             10 invites — Gold: subscription credit + external reward
           </li>
         </ul>

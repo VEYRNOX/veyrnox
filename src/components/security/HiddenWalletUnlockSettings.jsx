@@ -143,8 +143,8 @@ export default function HiddenWalletUnlockSettings() {
       </div>
 
       {setupBlocked && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-          ℹ️ Configure from your real wallet session only (not from a decoy or hidden wallet).
+        <div className="bg-caution/10 border border-caution/30 rounded p-3 text-sm text-caution">
+          Configure from your real wallet session only (not from a decoy or hidden wallet).
         </div>
       )}
 
@@ -186,7 +186,7 @@ export default function HiddenWalletUnlockSettings() {
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900 space-y-2">
+      <div className="bg-info/10 border border-info/30 rounded p-3 text-sm text-info space-y-2">
         <p className="font-semibold">How it will work</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
           <li>You unlock your wallet with your PIN as usual.</li>

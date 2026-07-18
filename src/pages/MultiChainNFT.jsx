@@ -11,11 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 
 const CHAINS = [
-  { id: "ethereum", label: "Ethereum", icon: "Ξ", color: "bg-blue-500/10 text-blue-400", marketplace: "https://opensea.io/assets/ethereum" },
-  { id: "solana", label: "Solana", icon: "◎", color: "bg-purple-500/10 text-purple-400", marketplace: "https://magiceden.io" },
-  { id: "polygon", label: "Polygon", icon: "⬟", color: "bg-purple-600/10 text-purple-500", marketplace: "https://opensea.io/assets/matic" },
-  { id: "base", label: "Base", icon: "🔵", color: "bg-blue-400/10 text-blue-300", marketplace: "https://opensea.io/assets/base" },
-  { id: "arbitrum", label: "Arbitrum", icon: "🔷", color: "bg-blue-600/10 text-blue-500", marketplace: "https://opensea.io/assets/arbitrum" },
+  { id: "ethereum", label: "Ethereum", icon: "Ξ", color: "bg-secondary text-muted-foreground", marketplace: "https://opensea.io/assets/ethereum" },
+  { id: "solana", label: "Solana", icon: "◎", color: "bg-secondary text-muted-foreground", marketplace: "https://magiceden.io" },
+  { id: "polygon", label: "Polygon", icon: "⬟", color: "bg-secondary text-muted-foreground", marketplace: "https://opensea.io/assets/matic" },
+  { id: "base", label: "Base", icon: "🔵", color: "bg-secondary text-muted-foreground", marketplace: "https://opensea.io/assets/base" },
+  { id: "arbitrum", label: "Arbitrum", icon: "🔷", color: "bg-secondary text-muted-foreground", marketplace: "https://opensea.io/assets/arbitrum" },
 ];
 
 const STATUS_STYLES = { holding: "bg-secondary text-muted-foreground", listed: "bg-caution/10 text-caution", sold: "bg-success/10 text-success" };

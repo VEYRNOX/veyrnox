@@ -727,8 +727,8 @@ export default function StealthWallets() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   {isHidden
-                    ? <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-500 text-xs font-semibold">HIDDEN WALLET</span>
-                    : <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-600 text-xs font-semibold">VISIBLE WALLET</span>}
+                    ? <span className="px-2 py-0.5 rounded bg-caution/10 text-caution text-xs font-semibold">HIDDEN WALLET</span>
+                    : <span className="px-2 py-0.5 rounded bg-success/10 text-success text-xs font-semibold">VISIBLE WALLET</span>}
                   <span className="text-[11px] text-muted-foreground">full multi-chain identity</span>
                 </div>
 

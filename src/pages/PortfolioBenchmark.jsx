@@ -112,12 +112,12 @@ export default function PortfolioBenchmark() {
         </div>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={monthlyData}>
-            <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
             <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="inflow" name="Received" fill="#22c55e" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="outflow" name="Sent" fill="#ef4444" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="inflow" name="Received" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="outflow" name="Sent" fill="hsl(var(--risk))" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         <p className="text-xs text-muted-foreground mt-2">

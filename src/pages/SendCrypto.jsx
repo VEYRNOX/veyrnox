@@ -1249,8 +1249,8 @@ export default function SendCrypto() {
                   <SelectValue placeholder="Select wallet">
                     {selectedWalletName ? (
                       <span className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
-                          <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
+                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/20 border border-primary/40">
+                          <Wallet className="h-3 w-3 text-primary" />
                         </span>
                         {selectedWalletName}
                       </span>
@@ -1261,8 +1261,8 @@ export default function SendCrypto() {
                   {wallets.map(w => (
                     <SelectItem key={w.id} value={w.id}>
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-gradient-to-br from-[#4ADAC2] via-[#A78BFA] to-[#F472B6] shadow-[0_0_6px_rgba(74,218,194,0.5)]">
-                          <Wallet className="h-3 w-3 text-white drop-shadow-sm" />
+                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/20 border border-primary/40">
+                          <Wallet className="h-3 w-3 text-primary" />
                         </span>
                         <span>{w.name}</span>
                       </div>

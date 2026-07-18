@@ -18,12 +18,12 @@ const CORRELATIONS = {
 const ALL_ASSETS = ["BTC", "ETH", "SOL", "USDC", "USDT", "BNB", "ADA"];
 
 function getColor(value) {
-  if (value === 1) return "bg-primary/80 text-white";
-  if (value >= 0.7) return "bg-destructive/70 text-white";
-  if (value >= 0.4) return "bg-risk/60 text-white";
+  if (value === 1) return "bg-primary/80 text-primary-foreground";
+  if (value >= 0.7) return "bg-destructive/70 text-destructive-foreground";
+  if (value >= 0.4) return "bg-risk/60 text-risk-foreground";
   if (value >= 0.1) return "bg-caution/50 text-foreground";
   if (value >= -0.1) return "bg-secondary text-muted-foreground";
-  return "bg-success/50 text-white";
+  return "bg-success/50 text-success-foreground";
 }
 
 function getLabel(value) {

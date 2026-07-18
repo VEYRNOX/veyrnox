@@ -142,7 +142,7 @@ export default function PortfolioChart({ transactions, currentBalance }) {
           ))}
         </div>
         <div className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-          isPositive ? "bg-green-500/15 text-green-400" : "bg-destructive/15 text-destructive"
+          isPositive ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
         }`}>
           <span>{isPositive ? "▲" : "▼"}</span>
           <span>

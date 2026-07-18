@@ -136,10 +136,10 @@ export default function PortfolioRewind() {
         <p className="text-xs font-semibold text-muted-foreground mb-3">Portfolio Value Over Time</p>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={chartData}>
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={3} />
-            <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} interval={3} />
+            <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
             <Tooltip formatter={v => [`$${v.toLocaleString()}`, "Portfolio"]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
-            <Line dataKey="value" stroke="#f97316" strokeWidth={2.5} dot={false} />
+            <Line dataKey="value" stroke="hsl(var(--caution))" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
