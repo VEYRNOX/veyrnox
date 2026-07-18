@@ -2,6 +2,7 @@
 import { useEffect, useId, useState } from 'react';
 import { ethers } from 'ethers';
 import styles from './RequestApprovalModal.module.css';
+import { successHaptic, errorHaptic, tapHaptic } from '@/lib/haptics';
 import { useWalletConnect, resolvePersonalSignMessage } from '@/lib/WalletConnectProvider.jsx';
 import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 import { checkDappDomain } from '@/risk/knownBadDapps.js';
@@ -197,8 +198,10 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
       } else {
         throw new Error(`Signing for ${type} via the dApp Connector is not yet implemented.`);
       }
+      successHaptic();
       onClose();
     } catch (e) {
+      errorHaptic();
       setErr(e.message);
     } finally {
       setBusy(false);
@@ -206,6 +209,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   }
 
   async function handleReject() {
+    tapHaptic();
     try { await rejectRequest(topic, id); } catch { /* ignore */ }
     onClose();
   }

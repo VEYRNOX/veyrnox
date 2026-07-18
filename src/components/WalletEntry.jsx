@@ -111,6 +111,7 @@ import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
+import { errorHaptic } from "@/lib/haptics";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
 // Both operands are local strings with no remote attacker; this is a codebase
@@ -826,6 +827,7 @@ export default function WalletEntry() {
 
       // Not yet at the limit: honest "Incorrect PIN", upgraded to the iOS-style
       // remaining-count warning once within a few attempts of the wipe.
+      errorHaptic();
       setError(pinAttemptWarning(attempts) || "Incorrect PIN. Try again.");
       setUnlockPin("");                    // clear the entered digits
       setPinShakeKey((k) => k + 1);        // shake the pad
