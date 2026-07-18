@@ -1,5 +1,6 @@
 // @ts-nocheck
 import styles from './SessionProposalModal.module.css';
+import { successHaptic, errorHaptic, tapHaptic } from '@/lib/haptics';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { useId, useState } from 'react';
 import { checkDappDomain, LOCAL_KNOWN_BAD } from '@/risk/knownBadDapps.js';
@@ -49,8 +50,10 @@ export function SessionProposalModal({ proposal, onClose }) {
     setErr(null);
     try {
       await approveSession(proposal.id);
+      successHaptic();
       onClose();
     } catch (e) {
+      errorHaptic();
       setErr(e.message);
     } finally {
       setBusy(false);
@@ -59,6 +62,7 @@ export function SessionProposalModal({ proposal, onClose }) {
 
   async function handleReject() {
     setBusy(true);
+    tapHaptic();
     try {
       await rejectSession(proposal.id);
       onClose();
