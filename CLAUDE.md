@@ -1800,17 +1800,18 @@ device-verified (except iOS icon RGB byte check).
   `demoClient.js:65-71` throws at import time if a release build ever
   resolves `DEMO=true`.
 
-### Deferred (13, filed per-PR body)
+### Deferred (14, filed as trackable issues 2026-07-18)
 
-Larger UX/nav restructuring — F-P2-4 (More drawer pinning/recents), F-P2-7
-(mobile ⌘K), F-P2-9 (navigate(-1) parent-fallback), F-P2-11 (fromMore
-fallback), F-P3-1 (spinner primitive rollout across 22 files), F-P3-2
-(Preferences group), F-P3-3 (first-run tour), PageState 40-page rollout.
-Motion — M-P3-2 (WalletEntry low-end gating), M-P3-4 (mobile
-back-vs-forward direction awareness). A11y architectural — A-P3-5 (Radix
-Switch target size — affects every switch), A-P3-7 (sonner global duration
-— needs 31-site wrapper), WC modal → full Radix Dialog refactor. iOS —
-I-P3-2 (V-stroke at 40pt needs Xcode simulator).
+Larger UX/nav restructuring — F-P2-4 More drawer pinning/recents (#1154),
+F-P2-7 mobile ⌘K discoverability (#1155), F-P2-9 navigate(-1) parent-fallback
+(#1156), F-P2-11 fromMore fallback (#1157), F-P3-1 spinner primitive rollout
+across 22+ sites (#1158), F-P3-2 Preferences group (#1159), F-P3-3 first-run
+tour (#1160), F-P2-8 PageState 40-page rollout (#1161). Motion — M-P3-2
+WalletEntry low-end gating (#1162), M-P3-4 mobile back-vs-forward direction
+awareness (#1163). A11y architectural — A-P3-5 Radix Switch target size
+(#1164), A-P3-7 sonner global error toast duration (#1165), A-P1-1 followup
+WC modals → Radix Dialog primitive (#1166). iOS — I-P3-2 V-stroke at 40pt
+Xcode simulator eyeball (#1167).
 
 ## Security invariants
 
