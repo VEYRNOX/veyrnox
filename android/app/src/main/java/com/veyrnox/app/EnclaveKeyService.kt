@@ -43,10 +43,16 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
+import android.util.Base64
 import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import java.security.KeyStore
+import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.SecretKeyFactory
@@ -155,6 +161,201 @@ class EnclaveKeyService {
             securityLevelName = tier.second,
             created = true,
         )
+    }
+
+    /**
+     * Typed error codes for wrap() (mirrors iOS bridge shape). Callers at the
+     * plugin layer translate `.code` into `PluginCall.reject(message, code)`.
+     * I4: never fabricate a success — every terminal error surfaces here.
+     */
+    object WrapErrors {
+        const val KEY_NOT_FOUND = "M2D_KEY_NOT_FOUND"
+        const val KEY_INVALIDATED = "M2D_KEY_INVALIDATED"
+        const val USER_CANCEL = "M2D_USER_CANCEL"
+        const val BIOMETRY_LOCKOUT = "M2D_BIOMETRY_LOCKOUT"
+        const val BIOMETRY_NOT_ENROLLED = "M2D_BIOMETRY_NOT_ENROLLED"
+        const val AUTH_FAILED = "M2D_AUTH_FAILED"
+        const val WRAP_FAILED = "M2D_WRAP_FAILED"
+    }
+
+    class WrapException(val code: String, message: String) : Exception(message)
+
+    /**
+     * wrap() — Present BiometricPrompt(CryptoObject(cipher)), then encrypt the
+     * base64 plaintext blob under the stored AES-GCM 256 wrapping key.
+     *
+     * Wire format (base64-encoded end-to-end):
+     *
+     *     out = base64( IV (12 bytes) || cipher.doFinal(plaintext) )
+     *
+     * where cipher.doFinal returns ciphertext ‖ 16-byte GCM tag concatenated.
+     * The IV is chosen by AndroidKeyStore's KeyGenerator inside Cipher.init —
+     * we NEVER pass a caller-picked IV (a reused IV against a per-use-auth key
+     * still catastrophically breaks GCM confidentiality + authenticity).
+     *
+     * Asynchronous by construction — BiometricPrompt fires callbacks on the
+     * main thread. The caller MUST NOT resolve/reject its PluginCall
+     * synchronously; wrap()'s callback delivers the terminal result via a
+     * Kotlin Result<String>.
+     *
+     * Terminal callback outcomes:
+     *   - Result.success(base64Bundle)     → happy path
+     *   - Result.failure(WrapException):
+     *       KEY_NOT_FOUND        alias not present (createWrappingKey first)
+     *       KEY_INVALIDATED      KeyPermanentlyInvalidatedException — biometric
+     *                            enrollment changed (the F-2 guarantee kicked
+     *                            in); caller should re-enroll
+     *       USER_CANCEL          BiometricPrompt ERROR_USER_CANCELED /
+     *                            ERROR_NEGATIVE_BUTTON
+     *       BIOMETRY_LOCKOUT     ERROR_LOCKOUT / ERROR_LOCKOUT_PERMANENT
+     *       BIOMETRY_NOT_ENROLLED ERROR_NO_BIOMETRICS
+     *       AUTH_FAILED          other BiometricPrompt errors
+     *       WRAP_FAILED          generic (cipher init/doFinal exception)
+     *
+     * I3 note: this method knows nothing about deniability sessions. Any
+     * I3 gating is the CALLER's responsibility (JS-side native.js); this
+     * plugin is an OS-primitive wrapper.
+     *
+     * I4: onAuthenticationFailed (individual bad-finger/face) does NOT
+     * produce a callback — BiometricPrompt keeps the sheet open for the OS's
+     * standard retry UX; only terminal events (succeeded / error) surface.
+     *
+     * NEVER logs the plaintext, ciphertext, or key material — anywhere.
+     *
+     * @param activity   FragmentActivity for BiometricPrompt attachment
+     * @param blobB64    base64-encoded plaintext blob (a vault DEK / blob)
+     * @param callback   fires on the main thread with the terminal result
+     */
+    fun wrap(
+        activity: FragmentActivity,
+        blobB64: String,
+        callback: (Result<String>) -> Unit,
+    ) {
+        val cipher: Cipher
+        try {
+            val ks = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+            val key = ks.getKey(EnclaveKeySpecConfig.KEY_ALIAS, null) as? SecretKey
+                ?: return callback(
+                    Result.failure(
+                        WrapException(
+                            WrapErrors.KEY_NOT_FOUND,
+                            "Wrapping key not found; call createWrappingKey first",
+                        )
+                    )
+                )
+            cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            try {
+                cipher.init(Cipher.ENCRYPT_MODE, key)
+            } catch (e: KeyPermanentlyInvalidatedException) {
+                return callback(
+                    Result.failure(
+                        WrapException(
+                            WrapErrors.KEY_INVALIDATED,
+                            "Wrapping key invalidated — biometric enrollment changed",
+                        )
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            return callback(
+                Result.failure(
+                    WrapException(
+                        WrapErrors.WRAP_FAILED,
+                        "wrap init failed: ${e.javaClass.simpleName}",
+                    )
+                )
+            )
+        }
+
+        val cryptoObject = BiometricPrompt.CryptoObject(cipher)
+        val executor = ContextCompat.getMainExecutor(activity)
+
+        val prompt = BiometricPrompt(
+            activity,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult,
+                ) {
+                    try {
+                        val authedCipher = result.cryptoObject?.cipher
+                            ?: return callback(
+                                Result.failure(
+                                    WrapException(
+                                        WrapErrors.WRAP_FAILED,
+                                        "BiometricPrompt returned no Cipher",
+                                    )
+                                )
+                            )
+                        // Decode plaintext base64 → bytes. NO_WRAP: match iOS bridge.
+                        val plaintext = Base64.decode(blobB64, Base64.NO_WRAP)
+                        try {
+                            val ctWithTag = authedCipher.doFinal(plaintext)
+                            val iv = authedCipher.iv
+                            val bundle = EnclaveWireFormat.pack(iv, ctWithTag)
+                            val b64 = Base64.encodeToString(bundle, Base64.NO_WRAP)
+                            callback(Result.success(b64))
+                        } finally {
+                            // Best-effort scrub of the decoded plaintext buffer.
+                            java.util.Arrays.fill(plaintext, 0.toByte())
+                        }
+                    } catch (e: Exception) {
+                        callback(
+                            Result.failure(
+                                WrapException(
+                                    WrapErrors.WRAP_FAILED,
+                                    // No plaintext or ciphertext in message.
+                                    "wrap finalise failed: ${e.javaClass.simpleName}",
+                                )
+                            )
+                        )
+                    }
+                }
+
+                override fun onAuthenticationError(
+                    errorCode: Int,
+                    errString: CharSequence,
+                ) {
+                    val code = when (errorCode) {
+                        BiometricPrompt.ERROR_USER_CANCELED,
+                        BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+                        BiometricPrompt.ERROR_CANCELED,
+                        -> WrapErrors.USER_CANCEL
+                        BiometricPrompt.ERROR_LOCKOUT,
+                        BiometricPrompt.ERROR_LOCKOUT_PERMANENT,
+                        -> WrapErrors.BIOMETRY_LOCKOUT
+                        BiometricPrompt.ERROR_NO_BIOMETRICS,
+                        -> WrapErrors.BIOMETRY_NOT_ENROLLED
+                        else -> WrapErrors.AUTH_FAILED
+                    }
+                    callback(
+                        Result.failure(
+                            WrapException(code, "BiometricPrompt error $errorCode"),
+                        )
+                    )
+                }
+
+                override fun onAuthenticationFailed() {
+                    // I4: individual bad-finger / bad-face attempts leave the
+                    // prompt open (OS-standard retry UX). Only terminal events
+                    // (succeeded / error) surface a result. Do NOT callback.
+                }
+            },
+        )
+
+        // Generic prompt text — no session/wallet identifier that could leak
+        // deniability state. I3 gating is the caller's job (JS native.js),
+        // but the strings we render must be indistinguishable across sessions.
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Confirm to save vault")
+            .setSubtitle("Unlock the wallet key with your biometric to encrypt this vault.")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .setNegativeButtonText("Cancel")
+            .build()
+
+        activity.runOnUiThread {
+            prompt.authenticate(promptInfo, cryptoObject)
+        }
     }
 
     /**
