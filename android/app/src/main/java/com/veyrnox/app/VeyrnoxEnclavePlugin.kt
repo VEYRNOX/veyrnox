@@ -22,10 +22,16 @@ package com.veyrnox.app
 // │       docs/audit-triage/m2d-strongbox-device-test.md is executed and │
 // │       the independent audit signs off.                                │
 // │                                                                        │
+// │     - wrap()   — M2d-1c: real Cipher AES/GCM encrypt behind a         │
+// │       BiometricPrompt(CryptoObject(cipher)), gated by M2D_ENABLED.    │
+// │     - unwrap() — M2d-1d: real Cipher AES/GCM decrypt behind the same  │
+// │       BiometricPrompt shape; returns `{ blob: '<base64>' }` matching  │
+// │       the shared JS wrapper and iOS bridge. Fail-closed on            │
+// │       AEADBadTagException → M2D_CIPHERTEXT_TAMPERED (distinct from    │
+// │       M2D_UNWRAP_FAILED); malformed base64/short-bundle input →       │
+// │       M2D_MALFORMED_BUNDLE. All still behind M2D_ENABLED=false.      │
+// │                                                                        │
 // │   NOT YET (pending future increments):                                 │
-// │     - wrap()   — M2d-1c (Cipher AES/GCM encrypt).                     │
-// │     - unwrap() — M2d-1d (BiometricPrompt(CryptoObject(cipher)) +      │
-// │       decrypt).                                                       │
 // │     - JS wrapper opt-in flip (M2C_ENABLED / M2C_HARDWARE_WRAP_ENABLED)│
 // │                                                                        │
 // │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2,     │
@@ -86,12 +92,13 @@ class VeyrnoxEnclavePlugin : Plugin() {
         private const val DISABLED_CODE = "M2C_DISABLED"
         private const val DISABLED_MESSAGE = "M2d hardware wrap is disabled"
 
-        // Same error code as iOS bridge for wrap/unwrap not-yet-implemented on
-        // the scaffold; distinguishable from DISABLED_CODE at the JS layer via
-        // a different message.
-        private const val NOT_IMPLEMENTED_CODE = "M2C_DISABLED"
-        private const val NOT_IMPLEMENTED_MESSAGE =
-            "M2d hardware wrap is disabled (scaffold: wrap/unwrap not yet implemented)"
+        // NOT_IMPLEMENTED_CODE / NOT_IMPLEMENTED_MESSAGE were used by the
+        // M2d-1a/1b/1c scaffold to distinguish an unimplemented wrap/unwrap
+        // from the M2D_ENABLED gate. Both are now implemented (wrap in
+        // M2d-1c, unwrap in M2d-1d), so the scaffold-only strings were
+        // removed here. If a future increment adds a new gated method it
+        // can reintroduce a distinct code without collapsing back onto this
+        // one.
 
         private const val REQUIRES_ANDROID_11_CODE = "M2D_REQUIRES_ANDROID_11"
         private const val REQUIRES_ANDROID_11_MESSAGE =
@@ -262,14 +269,108 @@ class VeyrnoxEnclavePlugin : Plugin() {
     }
 
     // ── Gated: unwraps under a biometric prompt. Fail-closed while off. ────
+    //
+    // M2d-1d: real AES-GCM decrypt behind BiometricPrompt(CryptoObject(cipher)).
+    // The M2D_ENABLED gate STAYS at the top of this method — code lands INSIDE
+    // the guard; production runtime is byte-identical to the M2d-1c scaffold
+    // (immediate M2C_DISABLED reject) until the flag flips in lockstep with
+    // the JS-side gates AFTER the device runbook + independent audit sign-off.
+    //
+    // Response shape MUST be { blob: '<base64>' } — the shared JS wrapper
+    // (src/plugins/veyrnoxEnclave.js:hwUnwrap) does
+    //   `const { blob } = await VeyrnoxEnclave.unwrap({ ciphertext, reason });`
+    // The iOS bridge returns `blob`; Android must too. Do NOT rename this
+    // field without updating BOTH the JS wrapper AND the iOS bridge — Codex
+    // 2026-07-18 P2 lesson from M2d-1c wrap-response shape.
+    //
+    // Asynchronous: BiometricPrompt callbacks fire on the main thread. We
+    // MUST NOT resolve/reject synchronously — the plugin call is kept alive
+    // via setKeepAlive(true), and the callback surfaces the terminal result.
+    // Every terminal path (onSuccess, onFailure, synchronous-throw catch)
+    // MUST call setKeepAlive(false) before its resolve/reject — Codex
+    // 2026-07-18 P2 lesson from M2d-1c wrap.
+    //
+    // I3 note: this plugin does NOT know about deniability sessions. Any I3
+    // gating is the CALLER's responsibility (JS-side native.js). This is an
+    // OS-primitive wrapper — future readers, do NOT add session-type logic
+    // here (it would leak into the biometric prompt UX and defeat I3).
+    //
+    // LOG-1 note: NEVER log the plaintext output. The plaintext IS the
+    // secret (it's the decrypted vault blob). Not even in debug builds.
     @PluginMethod
     fun unwrap(call: PluginCall) {
         if (!M2D_ENABLED) {
             call.reject(DISABLED_MESSAGE, DISABLED_CODE)
             return
         }
-        // M2d-1d lands the BiometricPrompt(CryptoObject(cipher)) unwrap here.
-        call.reject(NOT_IMPLEMENTED_MESSAGE, NOT_IMPLEMENTED_CODE)
+        // API gate — mirrors createWrappingKey/wrap. unwrap() uses the same
+        // key with the same API-30+ auth params, so refuse on older APIs
+        // symmetrically.
+        if (Build.VERSION.SDK_INT < EnclaveKeySpecConfig.MIN_API) {
+            call.reject(REQUIRES_ANDROID_11_MESSAGE, REQUIRES_ANDROID_11_CODE)
+            return
+        }
+        val ciphertextB64 = call.getString("ciphertext")
+        if (ciphertextB64.isNullOrEmpty()) {
+            call.reject(
+                "unwrap requires a non-empty base64 'ciphertext' argument",
+                "M2D_MISSING_CIPHERTEXT",
+            )
+            return
+        }
+        // `reason` is optional; the service defaults to a generic subtitle
+        // when it's null/empty. Callers pass the wallet-facing "Unlock your
+        // VEYRNOX wallet" string (see src/plugins/veyrnoxEnclave.js:hwUnwrap
+        // default), but keeping the fallback here is I4 defence-in-depth.
+        val reason = call.getString("reason") ?: ""
+        // BiometricPrompt requires a FragmentActivity — same rationale as wrap.
+        val fragmentActivity = activity as? FragmentActivity ?: run {
+            call.reject("Activity is not a FragmentActivity", "NO_CONTEXT")
+            return
+        }
+        // Async — the biometric callback is what resolves/rejects. Without
+        // setKeepAlive(true), the bridge releases the PluginCall as soon as
+        // this method returns and the eventual resolve/reject no-ops. Every
+        // terminal path calls setKeepAlive(false) before surfacing the result
+        // so retained slots don't accumulate (Codex 2026-07-18 P2, M2d-1c).
+        call.setKeepAlive(true)
+        try {
+            service.unwrap(fragmentActivity, ciphertextB64, reason) { result ->
+                result.fold(
+                    onSuccess = { b64 ->
+                        // Response shape { blob: '<base64>' } — pinned by the
+                        // shared JS wrapper. Do NOT rename without updating
+                        // BOTH the JS wrapper AND the iOS bridge.
+                        val response = JSObject().apply { put("blob", b64) }
+                        call.setKeepAlive(false)
+                        call.resolve(response)
+                    },
+                    onFailure = { err ->
+                        // Android PluginCall.reject signature is (message, code)
+                        // — see the createWrappingKey note above (Codex 2026-07-17 P2-A).
+                        call.setKeepAlive(false)
+                        if (err is EnclaveKeyService.WrapException) {
+                            call.reject(err.message ?: err.code, err.code)
+                        } else {
+                            // Never leak plaintext or ciphertext in error text.
+                            call.reject(
+                                "unwrap failed: ${err.javaClass.simpleName}",
+                                EnclaveErrors.UNWRAP_FAILED,
+                            )
+                        }
+                    },
+                )
+            }
+        } catch (e: Exception) {
+            // Guard against a synchronous throw from the setup path (shouldn't
+            // happen — service.unwrap catches its own init errors — but I4
+            // defence-in-depth). Release the keep-alive on this terminal path too.
+            call.setKeepAlive(false)
+            call.reject(
+                "unwrap failed: ${e.javaClass.simpleName}",
+                EnclaveErrors.UNWRAP_FAILED,
+            )
+        }
     }
 
     // ── Intent-gated: no M2D_ENABLED check (delete must remain available   ──
