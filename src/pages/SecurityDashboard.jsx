@@ -196,7 +196,7 @@ export default function SecurityDashboard() {
               : <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />}
           <div className="flex-1 min-w-0">
             {loading ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-2"><Spinner size="sm" label="Checking signals on this device…" /> Checking signals on this device…</p>
+              <p className="text-sm text-muted-foreground flex items-center gap-2"><Spinner size="sm" decorative /> Checking signals on this device…</p>
             ) : review.length > 0 ? (
               <>
                 <p className="text-sm font-semibold">
