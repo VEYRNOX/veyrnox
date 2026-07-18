@@ -2075,6 +2075,28 @@ owner-decision on whether to Internal-Test / Closed-Test / Production-launch
 before it lands. Not a Play requirement; is a Veyrnox honest-scope requirement
 under I4.
 
+## 2026-07-18 Android release AAB build + Gradle OOM fix — PR #1199
+
+Successfully built a release AAB (versionCode 4 / 1.0.3, 7.7 MB) on Windows for Google
+Play upload. During the build, R8 minification crashed three times with
+`OutOfMemoryError: Metaspace` — root cause traced through three layers:
+
+1. `android/gradle.properties` set `org.gradle.jvmargs=-Xmx1536m` (default 1.5 GB heap,
+   ~320 MB Metaspace) — insufficient for R8's class analysis across the full Capacitor +
+   app dependency graph.
+2. `GRADLE_OPTS` env var does NOT override `gradlew.bat`'s JVM args — must set
+   `org.gradle.jvmargs` in `gradle.properties` directly.
+3. Stale Gradle daemons retain old JVM settings — `./gradlew.bat --stop` required before
+   new settings take effect.
+
+**Fix (PR #1199, merged `555fd4eb`):** bumped `org.gradle.jvmargs` to
+`-Xmx4096m -XX:MaxMetaspaceSize=1024m`. Build succeeded on the next run.
+
+**Release AAB location:** `android/app/build/outputs/bundle/release/app-release.aab`
+(7.7 MB, release-signed, RASP cert pin injected via `-PRELEASE_CERT_SHA256`). Ready for
+Play Console upload — next step is the Sunday-on-Mac session (or direct Windows upload
+to Play Console).
+
 ## 2026-07-18 Referral system — PRs #1194, #1195
 
 Two PRs building the full referral/affiliate system. All BUILT / unit-tested only,
