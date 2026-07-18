@@ -16,11 +16,13 @@
 
 import { useEffect, useState } from 'react';
 import { ScanFace, X, ShieldAlert } from 'lucide-react';
+import { useModalA11y } from '@/lib/useModalA11y.js';
 
 const AUTO_SUCCESS_MS = 1600;
 
 export default function BiometricPrompt({ label = 'Face ID', onResult }) {
   const [scanning, setScanning] = useState(true);
+  const dialogRef = useModalA11y({ active: true, onEscape: () => onResult(false) });
 
   useEffect(() => {
     // Auto-resolve success so the demo unlock flows hands-free on the simulator.
@@ -34,6 +36,7 @@ export default function BiometricPrompt({ label = 'Face ID', onResult }) {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"

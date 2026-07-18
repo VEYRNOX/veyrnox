@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { ethers } from 'ethers';
 import styles from './RequestApprovalModal.module.css';
 import { useWalletConnect, resolvePersonalSignMessage } from '@/lib/WalletConnectProvider.jsx';
@@ -10,6 +10,7 @@ import { buildRiskInputsFromWcRequest } from '@/risk/fromWalletConnect.js';
 import RiskVerdictBanner from '@/components/RiskVerdictBanner.jsx';
 import { simulateEvmTransaction } from '@/wallet-core/evm/simulate.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+import { useModalA11y } from '@/lib/useModalA11y.js';
 
 // "eip155:11155111" -> 11155111. Returns NaN for anything unparseable.
 function parseWcChainId(caip2) {
@@ -29,6 +30,9 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
 
   const { topic, id, params, type, blocked, typedDataMeta } = request;
   const { request: { method, params: reqParams } } = params;
+
+  const titleId = useId();
+  const descId = useId();
 
   // Resolve the request's network once: it drives the native symbol, the network
   // NAME shown to the user, and the mainnet "real funds" warning. A chain we cannot
@@ -95,13 +99,30 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
     return () => { cancelled = true; };
   }, [type, reqParams, params.chainId, evmAddress]);
 
+  const blockedRef = useModalA11y({
+    active: !!blocked,
+    onEscape: () => { rejectRequest(topic, id); onClose(); },
+  });
+
+  const activeRef = useModalA11y({
+    active: !blocked,
+    onEscape: () => { if (!busy) handleReject(); },
+  });
+
   // --- Blocked methods: auto-reject UI, never show approve ---
   if (blocked) {
     return (
       <div className={styles.overlay}>
-        <div className={styles.modal}>
-          <h2 className={styles.title}>Request blocked</h2>
-          <p className={styles.body}>
+        <div
+          ref={blockedRef}
+          className={styles.modal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={descId}
+        >
+          <h2 id={titleId} className={styles.title}>Request blocked</h2>
+          <p id={descId} className={styles.body}>
             <strong>{method}</strong> is not supported by Veyrnox.
             {method === 'eth_sign' && ' Raw byte signing (eth_sign) is disabled — it cannot show you what you are signing.'}
             {method === 'wallet_addEthereumChain' && ' Adding arbitrary chains is disabled to prevent RPC injection attacks.'}
@@ -191,9 +212,15 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.modal}>
+      <div
+        ref={activeRef}
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className={styles.header}>
-          <span className={styles.appName}>{sessionMeta.name ?? 'dApp'}</span>
+          <span id={titleId} className={styles.appName}>{sessionMeta.name ?? 'dApp'}</span>
           <span className={styles.methodBadge}>{method}</span>
         </div>
 

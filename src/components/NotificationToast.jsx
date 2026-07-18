@@ -18,8 +18,8 @@
 // same layout, same copy logic. Nothing here branches on or reveals which set is
 // active.
 
-import { useEffect } from 'react';
-import { Info, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Info, AlertTriangle, ShieldAlert, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { shortenAddress } from '@/lib/address';
 
@@ -33,32 +33,41 @@ const LEVEL_STYLES = {
 };
 
 export default function NotificationToast({ notification, onDismiss }) {
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
+
   useEffect(() => {
     if (!notification) return undefined;
+    if (paused) return undefined;
     const t = setTimeout(() => onDismiss?.(notification.id), AUTO_DISMISS_MS);
     return () => clearTimeout(t);
-  }, [notification, onDismiss]);
+  }, [notification, onDismiss, paused]);
 
   if (!notification) return null;
 
   const s = LEVEL_STYLES[notification.level] || LEVEL_STYLES.info;
   const { Icon } = s;
   const ev = notification.evidence || {};
+  const isRisk = notification.level === 'risk';
 
   return (
     <div
-      role="status"
-      aria-live="polite"
-      onClick={() => onDismiss?.(notification.id)}
+      role={isRisk ? 'alert' : 'status'}
+      aria-live={isRisk ? 'assertive' : 'polite'}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
       className={cn(
-        'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer select-none',
+        'flex items-start gap-2.5 rounded-xl border p-3 select-none',
         'bg-card/95 backdrop-blur-sm shadow-lg',
-        'animate-in fade-in slide-in-from-bottom-2 duration-200',
+        'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-200',
         s.box
       )}
     >
       <Icon className={cn('h-4 w-4 shrink-0 mt-0.5', s.text)} />
-      <div className="min-w-0 space-y-0.5">
+      <div className="min-w-0 space-y-0.5 flex-1">
         {/* Prose — calm, sentence case. */}
         <p className="text-sm text-foreground">{notification.message}</p>
         {/* Mono for truth — verifiable values only. */}
@@ -71,6 +80,14 @@ export default function NotificationToast({ notification, onDismiss }) {
           </p>
         )}
       </div>
+      <button
+        type="button"
+        onClick={() => onDismiss?.(notification.id)}
+        aria-label="Dismiss notification"
+        className="shrink-0 -mr-1 -mt-1 p-1 rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
     </div>
   );
 }
