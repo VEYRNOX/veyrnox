@@ -20,7 +20,7 @@
 // honest phases the single operation runs through.
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import VaultIllustration from '../VaultIllustration';
 
 const STEPS = {

@@ -14,7 +14,7 @@
 //   never jitter mid-animation.
 
 import { useEffect, useRef, useState } from 'react';
-import { animate, useReducedMotion } from 'framer-motion';
+import { animate, useReducedMotion } from "motion/react";
 
 export default function AnimatedFiat({
   value = 0,

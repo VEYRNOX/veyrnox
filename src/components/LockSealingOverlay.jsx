@@ -21,7 +21,7 @@
 // Isolation: memoized. No wallet-core imports.
 
 import { memo } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from "motion/react";
 import { Lock } from 'lucide-react';
 import VaultIllustration from './VaultIllustration';
 

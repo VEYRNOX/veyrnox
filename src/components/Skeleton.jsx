@@ -15,7 +15,7 @@
 //   <Skeleton className="h-4 w-32" />
 //   <SkeletonList rows={5} />
 
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from "motion/react";
 import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
 import { easing } from '@/lib/motion-tokens';
 

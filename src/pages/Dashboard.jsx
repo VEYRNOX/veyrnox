@@ -4,7 +4,7 @@ import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySele
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import AnimatedFiat from "@/components/AnimatedFiat";
 import EmptyState from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";

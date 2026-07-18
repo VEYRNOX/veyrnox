@@ -16,7 +16,7 @@
 //   'search'       — magnifying glass
 //   'generic'      — three dots
 
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from "motion/react";
 
 const ILLUSTRATIONS = {
   transactions: (
