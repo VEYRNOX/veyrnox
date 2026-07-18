@@ -251,10 +251,9 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Imports summarizeAllowance, buildRevokeCalldata, sendRevoke from @/wallet-core/evm/approvals and getNetworkInfo from @/wallet-core/evm/networks. Risk badge derived from real calldata-decoded allowance (not a stored label). In DEMO mode revoke is simulated but exercises the real calldata builder and is clearly badged "Demo · simulated". In native/testnet mode a real approve(spender,0) is signed locally and broadcast.',
   },
-  '/spam-filter': {
-    verdict: 'cut', dataSource: 'wallet-core',
-    note: 'Redirects to /trust-score (PR #1148). Route removed from App.jsx Layout; kept as cut entry so the registry gate and cutPaths() work.',
-  },
+  // /spam-filter removed 2026-07-18 (PR #1148, F-P2-2): now a compat
+  // <Navigate to="/trust-score" replace /> — a redirect alias, not a live
+  // page. Redirect routes have no page classification of their own.
   '/trust-score': {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Imports classifyToken from @/wallet-core/evm/spam. Runs the real on-device heuristic classifier over user-supplied or preset token metadata. Extensive in-file honesty contract: never claims on-chain analysis, never asserts safety, explicitly labels results as local-heuristic only. No external call.',
