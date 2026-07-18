@@ -1800,18 +1800,85 @@ device-verified (except iOS icon RGB byte check).
   `demoClient.js:65-71` throws at import time if a release build ever
   resolves `DEMO=true`.
 
-### Deferred (14, filed as trackable issues 2026-07-18)
+### Deferred (14 filed → 12 fixed PR #1174, 2 closed without code)
 
-Larger UX/nav restructuring — F-P2-4 More drawer pinning/recents (#1154),
-F-P2-7 mobile ⌘K discoverability (#1155), F-P2-9 navigate(-1) parent-fallback
-(#1156), F-P2-11 fromMore fallback (#1157), F-P3-1 spinner primitive rollout
-across 22+ sites (#1158), F-P3-2 Preferences group (#1159), F-P3-3 first-run
-tour (#1160), F-P2-8 PageState 40-page rollout (#1161). Motion — M-P3-2
-WalletEntry low-end gating (#1162), M-P3-4 mobile back-vs-forward direction
-awareness (#1163). A11y architectural — A-P3-5 Radix Switch target size
-(#1164), A-P3-7 sonner global error toast duration (#1165), A-P1-1 followup
-WC modals → Radix Dialog primitive (#1166). iOS — I-P3-2 V-stroke at 40pt
-Xcode simulator eyeball (#1167).
+**12 FIXED in PR #1174 (`aca998a2`, 2026-07-18):** F-P2-4 More drawer
+pinning/recents (#1154), F-P2-7 mobile ⌘K discoverability (#1155), F-P2-9
+navigate(-1) parent-fallback (#1156), F-P2-11 fromMore fallback (#1157),
+F-P3-1 spinner primitive (#1158), F-P3-2 Preferences group (#1159), F-P3-3
+first-run tour (#1160), F-P2-8 PageState rollout (#1161), M-P3-2 low-end
+device gating (#1162), M-P3-4 back-vs-forward direction (#1163), A-P3-5
+Radix Switch target size (#1164), A-P3-7 sonner error toast duration (#1165).
+See §2026-07-18 ECC audit deferred batch below.
+
+**Closed without code:** #1166 (WC modals → Radix Dialog — closed by design,
+`useModalA11y` from PR #1147 provides equivalent focus-trap/Escape/restore);
+#1167 (iOS icon V-stroke at 40pt — requires Xcode/macOS, cannot fix on
+Windows).
+
+## 2026-07-18 ECC audit deferred batch — 12 issues, PR #1174
+
+Closes the 12 deferred ECC multi-lens items (#1154–#1165) in one batch.
+66 files changed, 585 insertions, 180 deletions. BUILT / unit-tested,
+INTERNAL — NOT device-verified, NOT independently audited, no on-chain txid.
+
+**New shared primitives:**
+- `src/lib/toast.js` — thin wrapper around sonner's `toast` that overrides
+  `.error()` default to `duration: 8000` and `.warning()` to `duration: 6000`.
+  All 36 production files that previously imported from `sonner` now import
+  from `@/lib/toast` (#1165).
+- `src/lib/parentRoute.js` — parent-route fallback map for mobile back
+  navigation; `getParentRoute(pathname)` + `isFromMoreDrawer(pathname)` map
+  ~60 routes to logical parents (#1156, #1157).
+- `src/hooks/useRecentPages.js` — tracks 6 most recently visited pages in
+  sessionStorage (deniability-safe — no residual across sessions) (#1154).
+- `src/hooks/useLowEndDevice.js` — module-scope constant `isLowEndDevice`
+  (≤4GB RAM or ≤4 cores); not a stateful hook (#1162).
+- `src/components/Spinner.jsx` — shared spinner with `role="status"`, sr-only
+  label, motion-safe animation, sizes sm/md/lg (#1158).
+- `src/components/FirstRunTour.jsx` — 5-step security feature walkthrough
+  triggered once per device via localStorage marker (#1160).
+
+**Layout.jsx changes (#1154, #1155, #1156, #1157, #1163):** Back button uses
+`getParentRoute()` fallback when no history; mobile sub-page transitions use
+`useNavigationType` to flip x direction (back vs forward); mobile search pill
+on Home tab; Recents section at top of More drawer.
+
+**Navigation (#1159):** "Preferences" group added to `navGroups` in
+`src/lib/navigation.js` with Settings, Documentation, Features items;
+`EXTRA_ROUTES` array removed (items moved into navGroups).
+
+**Switch target size (#1164):** `src/components/ui/switch.jsx` gains
+`before:absolute before:inset-[-12px]` pseudo-element hit area for WCAG
+2.5.5 44px minimum.
+
+**WalletEntry low-end gating (#1162):** Aurora blob divs wrapped in
+`{!isLowEndDevice && (<>...</>)}`.
+
+**PageState rollout (#1161):** `AddressBook.jsx` wrapped in PageState with
+loading/error/empty props. Other pages deferred (no react-query, complex
+state, or security-sensitive).
+
+## 2026-07-18 haptic feedback — PRs #1170, #1171
+
+**PR #1170** — PinPad digit/clear/back/submit buttons gain haptic feedback via
+`@capacitor/haptics` (`ImpactStyle.Light` on digit, `.Medium` on submit) +
+stronger visual press feedback (`active:scale-95 active:bg-primary/20`). Web
+no-op (Haptics unavailable). BUILT / unit-tested, INTERNAL — NOT
+device-verified.
+
+**PR #1171** — Haptic feedback wired across four additional surfaces: Send
+confirm button (`ImpactStyle.Medium`), WalletConnect approval/reject
+(`NotificationStyle.Success` / `ImpactStyle.Heavy`), 2FA gate verify
+(`.Medium`), wrong-PIN shake (`.Heavy`). Each guarded by
+`Capacitor.isNativePlatform()` — web no-op. BUILT / unit-tested, INTERNAL —
+NOT device-verified.
+
+## 2026-07-18 useModalA11y typecheck fix — PR #1172
+
+`useModalA11y.js` `handleKeyDown` was comparing `event.key` against a
+non-existent constant. Fixed to compare against the string `'Escape'`
+directly. CI-unblocking fix on main.
 
 ## Security invariants
 
