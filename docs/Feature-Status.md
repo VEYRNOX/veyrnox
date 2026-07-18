@@ -1272,6 +1272,61 @@ All five PRs + the P2-2 decision: BUILT / unit-tested only, INTERNAL — not
 device-verified, no on-chain txid. Codex is a second-model reviewer, not the outstanding
 independent third-party audit.
 
+## 2026-07-18 ECC multi-lens audit sweep — PRs #1144, #1146–#1150
+
+> ⚠️ BUILT · unit-tested · INTERNAL — NOT independently audited, NOT device-verified
+> (except iOS icon RGB byte check).
+
+Read-only ECC multi-lens audit produced by 5 parallel `general-purpose` agents applying
+the ECC design-system, liquid-glass-design, make-interfaces-feel-better,
+motion-foundations, motion-advanced, frontend-a11y, accessibility,
+frontend-design-direction, design-taste-frontend, click-path-audit,
+workspace-surface-audit, ui-demo, and ios-icon-gen skills. Full report:
+[docs/audits/ecc-multi-lens-2026-07-18.md](audits/ecc-multi-lens-2026-07-18.md) — 78
+findings (14 P1 / 42 P2 / 22 P3); 65 landed across 6 PRs, 13 deferred (per-PR bodies),
+2 verification-only confirmed sound. INTERNAL AI-driven — not the outstanding
+independent third-party audit.
+
+| PR | Merge commit | Batch | User-facing delta |
+|---|---|---|---|
+| #1144 | `fc3dff28` | Visual system (19) | Second-accent leakage swept across the app: `QuickAccessGrid` 7-hue rainbow → single teal; `LandingPage` hero pulsing multi-color coin discs → flat mono glyphs; `SendCrypto` preview brand pill violet+pink gradient → primary/20 (signing-critical surface); Recharts fills → semantic `--chart-*` tokens; chain-typed tile chrome across NFT/token/security pages neutralised; status pills mapped to caution/risk/info/success tokens. Skeleton shimmer uses `via-foreground/5`. |
+| #1146 | `62899934` | Motion foundations (13) | New shared [src/lib/motion-tokens.js](../src/lib/motion-tokens.js) + [src/lib/useInfiniteAnimation.js](../src/lib/useInfiniteAnimation.js). Route transitions now respect `useReducedMotion` (both desktop + mobile), `motion-safe:` prefix on ~87 Tailwind `animate-*` sites across ~60 files. WalletConnect spinner reduced-motion → `animation: none` (vestibular-safe). Infinite aurora-blob loops pause on background tab. |
+| #1147 | `0da53715` | Accessibility (14) | WalletConnect approval surfaces now have `role="dialog"` + focus trap via new shared [src/lib/useModalA11y.js](../src/lib/useModalA11y.js) — keyboard users can no longer tab behind an active signing sheet. `RiskVerdictBanner` verdict now `role="alert"` (screen readers hear the poison-address CAUTION/RISK sentence pre-sign). NotificationToast becomes a real `<button>`, pauses on hover/focus. SendCrypto amount input: `aria-invalid` + `aria-describedby`. RaspSecurity severity gets sr-only prefix ("High risk — " etc.). BiometricPrompt focus trap. |
+| #1148 | `abb26ec5` | Flow / IA (12 + 2 bundled a11y) | **F-P1-1 I3 fix — `PersonalBackup` decoy copy** was "Backup only works in the main wallet. Switch to your primary wallet to back it up." (plain-English wallet-existence tell under coercion) → "Backup is temporarily unavailable." **F-P1-3** "HD Wallet Manager" → "Wallets" promoted to top of Wallet nav group; `AccountHeader` gains "+ Add wallet" affordance in mobile drawer + desktop popup (3-4 taps → 2). New primitive [src/components/PageState.jsx](../src/components/PageState.jsx) (rollout deferred). Mobile Lock button now `window.confirm`-gated (prevents mis-tap mid-Send). NotificationBell badge in decoy/hidden/demo renders 8px dot with no numeric label (closes cardinality tell). Sign Out/Exit copy unified to "Lock". HardwareKekSettings label → "On-device hardware protection" (disambiguates from Trezor/Ledger). `/spam-filter` redirects to `/trust-score`. Danger-zone "Delete Account" → "Clear local cache". |
+| #1149 | `1adddd07` | framer-motion → motion/react (17 files) | `motion@^12.42.2` installed (v12 is the current name for framer-motion — same maintainers, API-compatible for our uses). `framer-motion@11.16.4` removed. Sed sweep across AnimatedFiat, EmptyState, KekEnrollmentGate, Layout, LockSealingOverlay, NotificationBell, RiskShield, SeedGrid, ShakeOnKey, Skeleton, SuccessBeacon, VaultIllustration, WalletEntry, backup/RestoreProgress, pages/Dashboard, pages/ReceiveCrypto, pages/SendCrypto. Smoke test 357/357 green. |
+| #1150 | `a33f3df4` | iOS icon (3) | **I-P1-1 App Store blocker fix:** `AppIcon-512@2x.png` was RGBA — App Store rejects with ITMS-90717. Regenerated as RGB via new [scripts/generate-ios-icons.mjs](../scripts/generate-ios-icons.mjs) (`sharp`-based, reads `public/veyrnox-icon.svg`); `file` confirms `PNG image data, 1024 x 1024, 8-bit/color RGB, non-interlaced`. **I-P2-1:** dark (flattened `#000000` RGB) + tinted (grayscale RGBA per Apple HIG) variants added for iOS 18+; `Contents.json` updated with three appearance entries. **I-P3-1:** `npm run icons:ios` script. I-P3-2 (V-stroke legibility at 40pt) deferred — needs Xcode simulator eyeball. |
+
+**Verified verification-only items (no code change):**
+- **F-P1-2 Reveal Seed decoy guard** — architectural trace verified sound.
+  [Settings.jsx:284](../src/pages/Settings.jsx) renders the Reveal Seed tile identically in
+  every session (correct — a hidden tile would itself be a probe). `revealWalletMnemonic`
+  ([WalletProvider.jsx:1230-1242](../src/lib/WalletProvider.jsx)) reads
+  `containerRef.current`, which `unlock()` populates from whichever container the entered
+  credential decrypts. Decoy user gets decoy phrase; real seed unreachable from a decoy
+  session (never in memory during one). Design correct per I3/I4.
+- **F-P2-10 DuressPin DEMO block DCE** — verified via release build byte-check.
+  `npm run build:release` (`VITE_RELEASE=1`); grepped `dist/` for 5 DEMO-only signatures
+  (`real-pin-2468`, `duress-pin-1357`, `demo oracle`, `real wallet address`, `Live
+  demonstration`) — **0 hits each**. Terser dead-code eliminates the DEMO block after
+  `import.meta.env.VITE_RELEASE === "1"` folds `DEMO` to `false` in
+  [src/api/demoClient.js:31](../src/api/demoClient.js). Belt-and-suspenders:
+  [vite.config.js:108-125](../vite.config.js) refuses to build when both `VITE_RELEASE=1`
+  and `VITE_DEMO_MODE=1` are set; `demoClient.js:65-71` throws at import time if a release
+  build ever resolves `DEMO=true`.
+
+**Deferred (13 items, tracked per-PR body):** F-P2-4 (More drawer pinning/recents),
+F-P2-7 (mobile ⌘K), F-P2-9 (`navigate(-1)` parent-fallback map), F-P2-11 (`fromMore`
+fallback map), F-P3-1 (spinner primitive rollout across 22+ files), F-P3-2 (Preferences
+group collapse), F-P3-3 (first-run tour), PageState 40-page rollout, M-P3-2 (WalletEntry
+low-end device gating), M-P3-4 (mobile back-vs-forward direction awareness), A-P3-5
+(Radix Switch primitive target size), A-P3-7 (sonner error toast duration — needs 31-site
+wrapper), WC modal → full Radix Dialog refactor, I-P3-2 (iOS icon V-stroke thickness at
+40pt).
+
+All 6 PRs: BUILT / unit-tested only, INTERNAL — not device-verified (except the iOS icon
+RGB byte check on PR #1150), not independently audited, no on-chain txid (UI/UX/a11y
+scope only, no send-path or crypto changes).
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
