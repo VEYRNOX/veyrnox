@@ -46,10 +46,15 @@ vi.mock('@capacitor/core', () => ({
   Capacitor: { getPlatform: () => 'web' },
   registerPlugin: vi.fn(() => ({})),
 }));
+vi.mock('@capacitor/haptics', () => ({
+  Haptics: { impact: vi.fn(), notification: vi.fn() },
+  ImpactStyle: { Light: 'LIGHT', Medium: 'MEDIUM', Heavy: 'HEAVY' },
+  NotificationType: { Success: 'SUCCESS', Warning: 'WARNING', Error: 'ERROR' },
+}));
 
 const toastError = vi.fn();
 const toastSuccess = vi.fn();
-vi.mock('sonner', () => ({ toast: { error: (...a) => toastError(...a), success: (...a) => toastSuccess(...a) } }));
+vi.mock('@/lib/toast', () => ({ toast: { error: (...a) => toastError(...a), success: (...a) => toastSuccess(...a), warning: vi.fn() } }));
 
 import RestoreFromFile from '@/components/backup/RestoreFromFile';
 
@@ -138,9 +143,7 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
 
     await waitFor(() => expect(decryptPasswordSeal).toHaveBeenCalled());
     // Generic message — must NOT distinguish "wrong password" from "corrupt file".
-    // Post PR #1174: toast now routes through @/lib/toast which adds a
-    // { duration } option, so accept any second arg here.
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Wrong credential or corrupted backup.', expect.anything()));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Wrong credential or corrupted backup.'));
     // Still on the unlock phase so the user can retry (fail closed, not advanced).
     expect(screen.getByRole('button', { name: /restore wallet/i })).toBeTruthy();
   });
