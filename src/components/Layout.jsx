@@ -291,11 +291,11 @@ export default function Layout() {
         <div className="px-2 pb-4 border-t border-border pt-2">
           <button
             onClick={signOut}
-            title={collapsed ? "Sign Out" : undefined}
+            title={collapsed ? "Lock" : undefined}
             className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all w-full ${collapsed ? 'justify-center' : ''}`}
           >
             <LogOut className="h-3.5 w-3.5" />
-            {!collapsed && "Sign Out"}
+            {!collapsed && "Lock"}
           </button>
         </div>
       </aside>
@@ -356,7 +356,18 @@ export default function Layout() {
           <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <Settings className="h-4 w-4" aria-hidden="true" />
           </Link>
-          <button onClick={signOut} aria-label="Exit — lock wallet" title="Exit — lock wallet" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
+          {/* F-P2-6: mobile Lock button sits next to Settings gear; a mis-tap
+              mid-Send would clear session state and force re-auth. Confirm before
+              actually locking to prevent that class of mis-tap. */}
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.confirm && !window.confirm('Lock this wallet now?')) return;
+              signOut();
+            }}
+            aria-label="Lock"
+            title="Lock"
+            className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]"
+          >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>

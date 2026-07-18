@@ -194,7 +194,11 @@ const AuthenticatedApp = () => {
           <Route path="/watch-wallets" element={<WatchWallets />} />
           <Route path="/price-charts" element={<PriceCharts />} />
           <Route path="/gas-fees" element={<GasFeeControl />} />
-          <Route path="/spam-filter" element={<SpamTokenFilter />} />
+          {/* F-P2-2: /spam-filter kept as legacy compat redirect to canonical /trust-score.
+              Both surfaced overlapping "token spam" functionality; /trust-score is the
+              broader screening surface. SpamTokenFilter component retained for now — see
+              ecc-multi-lens-2026-07-18.md. */}
+          <Route path="/spam-filter" element={<Navigate to="/trust-score" replace />} />
           <Route path="/hd-wallet" element={<HDWalletManager />} />
           <Route path="/trust-score" element={<TrustScore />} />
           <Route path="/solana" element={<SolanaTokens />} />
@@ -210,10 +214,6 @@ const AuthenticatedApp = () => {
           <Route path="/referrals" element={<ReferralTracker />} />
         </Route>
         </Route>
-        {/* Onboarding created a hosted-style wallet *entity* with a fabricated
-            address. In the local build the real first run is the on-device
-            create/import flow (WalletGate -> WalletEntry), so redirect there. */}
-        <Route path="/onboarding" element={<Navigate to="/" replace />} />
       </Route>
       {import.meta.env.DEV && PrfSpike && (
         <Route path="/dev/prf-spike" element={<PrfSpike />} />

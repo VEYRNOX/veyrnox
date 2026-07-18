@@ -59,12 +59,14 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
   const raspArtifact = useRaspArtifact({ excludeAttestation: true });
   const isIos = Capacitor.getPlatform() === "ios";
 
+  // I3: decoy/hidden/demo — no wallet-existence tell. Copy must not imply the presence
+  // of another (primary) wallet. See ecc-multi-lens-2026-07-18.md F-P1-1.
   if (isDecoy || isHidden) {
     return (
       <div className="p-4 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3">
         <AlertTriangle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-sm text-muted-foreground">
-          Backup only works in the main wallet. Switch to your primary wallet to back it up.
+          Backup is temporarily unavailable.
         </p>
       </div>
     );

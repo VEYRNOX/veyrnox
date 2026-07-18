@@ -490,7 +490,11 @@ export default function DuressPin() {
         )}
       </div>
 
-      {/* Live demonstration — DEMO only */}
+      {/* Live demonstration — DEMO only.
+          TODO(owner): verify DCE strips this entire block from the production Vite
+          build (VITE_DEMO_MODE=0, no ?demo=1). The block prints the real wallet
+          address as a teaching oracle; if any prod bundle retains it, that's a
+          catastrophic I3 leak. See F-P2-10 in ecc-multi-lens-2026-07-18.md. */}
       {DEMO && (
         <div className="p-5 rounded-xl border border-dashed border-primary/40 bg-primary/5 space-y-4">
           <div className="flex items-center gap-2">
